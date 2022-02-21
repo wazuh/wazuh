@@ -282,7 +282,7 @@ types::Lifter opBuilderHelperIntEqual(const types::DocumentValue & def) //{field
 
     std::vector<std::string> parameters = utils::string::split(rawValue, '/');
 
-    if(parameters.size() != 2)
+    if (parameters.size() != 2)
     {
         throw std::runtime_error("Invalid parameters");
     }
@@ -290,7 +290,7 @@ types::Lifter opBuilderHelperIntEqual(const types::DocumentValue & def) //{field
     std::optional<std::string> refValue;
     std::optional<int> value;
 
-    if(parameters[1][0] == '$')
+    if (parameters[1][0] == '$')
     {
         // Check case `+int/$`
         refValue = parameters[1].substr(1, std::string::npos);
@@ -304,25 +304,29 @@ types::Lifter opBuilderHelperIntEqual(const types::DocumentValue & def) //{field
     return [refValue, value, field](types::Observable o)
     {
         // Append rxcpp operation
-        return o.filter([=](types::Event e) {
-            if(e.exists("/" + field))
+        return o.filter(
+            [=](types::Event e)
             {
-                auto fieldToCheck = e.getObject().FindMember(field.c_str());
-                if(fieldToCheck->value.IsInt())
+                if (e.exists("/" + field))
                 {
-                    if(value.has_value())
+                    auto fieldToCheck = e.getObject().FindMember(field.c_str());
+                    if (fieldToCheck->value.IsInt())
                     {
-                        return fieldToCheck->value.GetInt() == value.value();
-                    }
-                    auto refValueToCheck = e.getObject().FindMember(refValue.value().c_str());
-                    if(refValueToCheck->value.IsInt())
-                    {
-                        return fieldToCheck->value.GetInt() == refValueToCheck->value.GetInt();
+                        if (value.has_value())
+                        {
+                            return fieldToCheck->value.GetInt() == value.value();
+                        }
+                        auto refValueToCheck =
+                            e.getObject().FindMember(refValue.value().c_str());
+                        if (refValueToCheck->value.IsInt())
+                        {
+                            return fieldToCheck->value.GetInt() ==
+                                   refValueToCheck->value.GetInt();
+                        }
                     }
                 }
-            }
-            return false;
-        });
+                return false;
+            });
     };
 }
 
@@ -334,7 +338,7 @@ types::Lifter opBuilderHelperIntNotEqual(const types::DocumentValue & def)
 
     std::vector<std::string> parameters = utils::string::split(rawValue, '/');
 
-    if(parameters.size() != 2)
+    if (parameters.size() != 2)
     {
         throw std::runtime_error("Invalid parameters");
     }
@@ -342,7 +346,7 @@ types::Lifter opBuilderHelperIntNotEqual(const types::DocumentValue & def)
     std::optional<std::string> refValue;
     std::optional<int> value;
 
-    if(parameters[1][0] == '$')
+    if (parameters[1][0] == '$')
     {
         // Check case `+int/$`
         refValue = parameters[1].substr(1, std::string::npos);
@@ -356,25 +360,29 @@ types::Lifter opBuilderHelperIntNotEqual(const types::DocumentValue & def)
     return [refValue, value, field](types::Observable o)
     {
         // Append rxcpp operation
-        return o.filter([=](types::Event e) {
-            if(e.exists("/" + field))
+        return o.filter(
+            [=](types::Event e)
             {
-                auto fieldToCheck = e.getObject().FindMember(field.c_str());
-                if(fieldToCheck->value.IsInt())
+                if (e.exists("/" + field))
                 {
-                    if(value.has_value())
+                    auto fieldToCheck = e.getObject().FindMember(field.c_str());
+                    if (fieldToCheck->value.IsInt())
                     {
-                        return fieldToCheck->value.GetInt() != value.value();
-                    }
-                    auto refValueToCheck = e.getObject().FindMember(refValue.value().c_str());
-                    if(refValueToCheck->value.IsInt())
-                    {
-                        return fieldToCheck->value.GetInt() != refValueToCheck->value.GetInt();
+                        if (value.has_value())
+                        {
+                            return fieldToCheck->value.GetInt() != value.value();
+                        }
+                        auto refValueToCheck =
+                            e.getObject().FindMember(refValue.value().c_str());
+                        if (refValueToCheck->value.IsInt())
+                        {
+                            return fieldToCheck->value.GetInt() !=
+                                   refValueToCheck->value.GetInt();
+                        }
                     }
                 }
-            }
-            return false;
-        });
+                return false;
+            });
     };
 }
 

@@ -7,11 +7,11 @@
  * Foundation.
  */
 
-
 #ifndef _OP_BUILDER_HELPER_MAP_H
 #define _OP_BUILDER_HELPER_MAP_H
 
 #include "builderTypes.hpp"
+#include "stringUtils.hpp"
 
 /*
  * The helper Map (Transformation), builds a lifter that will chain rxcpp map operation
@@ -47,7 +47,20 @@ types::Lifter opBuilderHelperStringLO(const types::DocumentValue & def);
  * @param def The transformation definition. i.e : `<field>: +s_trim/[begin | end | both]/char`
  * @return types::Lifter The lifter with the `trim` transformation.
  */
+
+//*************************************************
+//*           Int tranform                        *
+//*************************************************
+
 types::Lifter opBuilderHelperStringTrim(const types::DocumentValue & def);
+/**
+ * @brief Builds helper map operation.
+ * Maps a field to a new field.
+ *
+ * @param def Definition of the operation to be built
+ * @return types::Lifter
+ */
+types::Lifter opBuilderHelperIntCalc(const types::DocumentValue & def);
 
 } // namespace builder::internals::builders
 
