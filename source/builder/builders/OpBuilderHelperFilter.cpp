@@ -74,8 +74,7 @@ types::Lifter opBuilderHelperNotExists(const types::DocumentValue & def)
     };
 }
 
-// TODO DOC
-bool opBuilderHelperAUXStringManipulation(const std::string key, char op, types::Event & e,
+bool opBuilderHelperStringComparison(const std::string key, char op, types::Event & e,
                                                  std::optional<std::string> refExpStr,
                                                  std::optional<std::string> expectedStr) {
 
@@ -161,11 +160,13 @@ types::Lifter opBuilderHelperString_eq(const types::DocumentValue & def)
     {
         // Append rxcpp operation
         return o.filter([key, expectedStr, refExpStr](types::Event e) {
-            return opBuilderHelperAUXStringManipulation(key, '=', e, refExpStr, expectedStr);
+            return opBuilderHelperStringComparison(key, '=', e, refExpStr, expectedStr);
         });
     };
 }
 
 // TODO field: +s_gt/str|$ref/
 // TODO field: +s_lt/str|$ref/
+// TODO field: +s_gte/str|$ref/
+// TODO field: +s_gte/str|$ref/
 } // namespace builder::internals::builders
