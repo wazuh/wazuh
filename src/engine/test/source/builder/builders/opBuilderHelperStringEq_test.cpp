@@ -17,27 +17,27 @@
 using namespace builder::internals::builders;
 
 // Build ok
-TEST(opBuilderHelperS_eq, Builds)
+TEST(opBuilderHelperString_eq, Builds)
 {
     Document doc{R"({
         "check":
             {"field2check": "+s_eq/test_value"}
     })"};
-    ASSERT_NO_THROW(opBuilderHelperS_eq(*doc.get("/check")));
+    ASSERT_NO_THROW(opBuilderHelperString_eq(*doc.get("/check")));
 }
 
 // Build incorrect number of arguments
-TEST(opBuilderHelperS_eq, BuildsIncorrectNumberOfArguments)
+TEST(opBuilderHelperString_eq, BuildsIncorrectNumberOfArguments)
 {
     Document doc{R"({
         "check":
             {"field2check": "+s_eq/test_value/test_value2"}
     })"};
-    ASSERT_THROW(opBuilderHelperS_eq(*doc.get("/check")), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperString_eq(*doc.get("/check")), std::runtime_error);
 }
 
 // Test ok: static values
-TEST(opBuilderHelperS_eq, staticStringOk)
+TEST(opBuilderHelperString_eq, staticStringOk)
 {
     Document doc{R"({
         "check":
@@ -65,7 +65,7 @@ TEST(opBuilderHelperS_eq, staticStringOk)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperS_eq(*doc.get("/check"));
+    Lifter lift = opBuilderHelperString_eq(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -75,7 +75,7 @@ TEST(opBuilderHelperS_eq, staticStringOk)
 }
 
 // Test ok: static values (numbers, compare as string)
-TEST(opBuilderHelperS_eq, staticNumberOk)
+TEST(opBuilderHelperString_eq, staticNumberOk)
 {
     Document doc{R"({
         "check":
@@ -103,7 +103,7 @@ TEST(opBuilderHelperS_eq, staticNumberOk)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperS_eq(*doc.get("/check"));
+    Lifter lift = opBuilderHelperString_eq(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -113,7 +113,7 @@ TEST(opBuilderHelperS_eq, staticNumberOk)
 }
 
 // Test ok: dynamic values (string)
-TEST(opBuilderHelperS_eq, dynamicsStringOk) {
+TEST(opBuilderHelperString_eq, dynamicsStringOk) {
     Document doc{R"({
         "check":
             {"field2check": "+s_eq/$ref_key"}
@@ -155,7 +155,7 @@ TEST(opBuilderHelperS_eq, dynamicsStringOk) {
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperS_eq(*doc.get("/check"));
+    Lifter lift = opBuilderHelperString_eq(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -165,7 +165,7 @@ TEST(opBuilderHelperS_eq, dynamicsStringOk) {
 }
 
 // Test ok: dynamic values (number)
-TEST(opBuilderHelperS_eq, dynamicsNumberOk) {
+TEST(opBuilderHelperString_eq, dynamicsNumberOk) {
     Document doc{R"({
         "check":
             {"field2check": "+s_eq/$ref_key"}
@@ -207,7 +207,7 @@ TEST(opBuilderHelperS_eq, dynamicsNumberOk) {
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperS_eq(*doc.get("/check"));
+    Lifter lift = opBuilderHelperString_eq(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
