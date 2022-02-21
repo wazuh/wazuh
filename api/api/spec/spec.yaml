@@ -5298,6 +5298,15 @@ components:
       schema:
         type: string
         format: alphanumeric
+    group_config_status:
+      in: query
+      name: group_config_status
+      description: "Agent groups configuration sync status"
+      schema:
+        type: string
+        enum:
+          - "synced"
+          - "not synced"
     force_single_group:
       in: query
       name: force_single_group
@@ -5617,6 +5626,7 @@ paths:
         - $ref: '#/components/parameters/name'
         - $ref: '#/components/parameters/ip'
         - $ref: '#/components/parameters/registerIP'
+        - $ref: '#/components/parameters/group_config_status'
       responses:
         '200':
           description: "List of agents or error description"
@@ -5655,6 +5665,7 @@ paths:
                       mergedSum: 9a016508cea1e997ab8569f5cfab30f5
                       version: Wazuh v4.3.0
                       node_name: worker2
+                      group_config_status: "synced"
                     - os:
                         arch: x86_64
                         codename: Focal Fossa
@@ -5678,6 +5689,7 @@ paths:
                       mergedSum: 9a016508cea1e997ab8569f5cfab30f5
                       version: Wazuh v4.3.0
                       node_name: worker2
+                      group_config_status: "synced"
                     - os:
                         arch: x86_64
                         codename: Focal Fossa
@@ -5701,6 +5713,7 @@ paths:
                       mergedSum: 9a016508cea1e997ab8569f5cfab30f5
                       version: Wazuh v4.3.0
                       node_name: worker1
+                      group_config_status: "not synced"
                   total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
