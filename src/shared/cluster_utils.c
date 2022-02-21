@@ -88,12 +88,7 @@ int w_is_single_node(int* is_worker) {
                         is_single_node = 1;
                     }
                 } else {
-                    is_single_node = 0;
-                    if (!strcmp(cl_type, "client") || !strcmp(cl_type, "worker")) {
-                        _is_worker = 1;
-                    } else {
-                        _is_worker = 0;
-                    }
+                    is_single_node = 1;
                 }
                 free(cl_status);
                 free(cl_type);
@@ -113,7 +108,6 @@ int w_is_single_node(int* is_worker) {
 
     return is_single_node;
 }
-
 
 char *get_master_node(void) {
     OS_XML xml;
