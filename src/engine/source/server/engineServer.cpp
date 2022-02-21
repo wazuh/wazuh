@@ -9,6 +9,7 @@
 
 #include "engineServer.hpp"
 
+#include <glog/logging.h>
 #include <map>
 #include <memory>
 #include <rxcpp/rx.hpp>
@@ -17,6 +18,7 @@
 #include "endpoints/baseEndpoint.hpp"
 #include "endpoints/endpointFactory.hpp"
 #include "json.hpp"
+#include "threadPool.hpp"
 
 using namespace std;
 using namespace engineserver::endpoints;
@@ -37,17 +39,36 @@ void EngineServer::configure(const vector<string> & config)
         tmpObs.push_back(this->m_endpoints[endpointConf]->output());
     }
 
-    auto obs = rxcpp::observable<>::iterate(tmpObs)
-        // TODO: Handle endpoint server errors
-        // From -> EndpointObs observable->observable->observable->event
-        // Emits -> ConnectionObs observable->observable->event
-        .flat_map([](BaseEndpoint::EndpointObs o) { return o; })
-        // TODO: Handle endpoint connection errors
-        // From -> ConnectionObs observable->observable->event
-        // Emits -> EventObs observable->event
-        .flat_map([](BaseEndpoint::ConnectionObs o) { return o; });
+    // Emits connections
+    auto tcpServerObs = tmpObs[0];
 
-    this->m_output = obs;
+    // Emits eventObservables
+    auto tcpConnectionObs = tcpServerObs.flat_map([&](BaseEndpoint::ConnectionObs o){
+        // This flat_map internally merges
+        // on_error/on_completed emited by ConnectionObs o
+        return o.on_error_resume_next([&](auto eptr){
+            LOG(INFO) << "Error from connection: " << rxcpp::util::what(eptr) << std::endl;
+            return rxcpp::observable<>::empty<BaseEndpoint::EventObs>();
+        });
+    }); // out subscriber  BaseEndpoint::ConnectionObs o
+
+    // tcpServerObs <- flat_map
+    // tcpServerObs --> ConnectionObs <- flat_map [tarea1, tarea2, ....] -> on_completed
+    // flat_map internal_subscriber(ConnectionObs -> on_completed) -> EventsObs
+    // src -> (src2 -> on_completed) -> on_next(evento) -> .... -> error )
+    // src -> on_completed -> on_completed(evento) -> .... -> error )
+    auto loop = rxcpp::schedulers::make_scheduler<threadpool::ThreadPool>(4);
+    // Emits events
+    BaseEndpoint::EventObs eventObs = tcpConnectionObs.flat_map([=](BaseEndpoint::EventObs o){
+
+        return o.observe_on(rxcpp::serialize_same_worker(loop.create_worker()));
+    });
+    // auto safeEventObs = eventObs.on_error_resume_next([=](auto eptr){
+    //     LOG(ERROR) << "safeEventObs treated error: e" << rxcpp::util::what(eptr) << std::endl;
+    //     return eventObs;
+    // });
+
+    this->m_output = eventObs;
 }
 
 EngineServer::EngineServer(const vector<string> & config)
@@ -55,7 +76,7 @@ EngineServer::EngineServer(const vector<string> & config)
     this->configure(config);
 }
 
-endpoints::BaseEndpoint::ConnectionObs EngineServer::output(void) const
+endpoints::BaseEndpoint::EventObs EngineServer::output(void) const
 {
     return this->m_output;
 }

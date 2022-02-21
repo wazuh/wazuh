@@ -15,10 +15,10 @@
 #include "engineServer.hpp"
 #include "graph.hpp"
 #include "json.hpp"
+#include "protocolHandler.hpp"
 #include "register.hpp"
 #include "router.hpp"
 #include "threadPool.hpp"
-#include "protocolHandler.hpp"
 
 using namespace std;
 
@@ -53,66 +53,32 @@ int main(int argc, char * argv[])
         return 1;
     }
 
-    // hardcoded catalog storage driver
-    // TODO: use argparse module
-    catalog::Catalog _catalog;
-    try
-    {
-        _catalog.setStorageDriver(make_unique<DiskStorage>(storagePath));
-    }
-    catch (const std::exception & e)
-    {
-        LOG(ERROR) << "Engine error, got exception while configuring catalog: " << e.what() << endl;
-        return 1;
-    }
-
-    // Builder
-    try
-    {
-        builder::internals::registerBuilders();
-    }
-    catch (const std::exception & e)
-    {
-        LOG(ERROR) << "Engine error, got exception while registering builders: " << e.what() << endl;
-        return 1;
-    }
-    builder::Builder<catalog::Catalog> _builder(_catalog);
     engineserver::ProtocolHandler p;
+    auto serverObs = server.output();
 
-    //Handle ThreadPool
-    auto sc = rxcpp::schedulers::make_scheduler<threadpool::ThreadPool>(3);
-    auto scheduledTask =
-        server.output().flat_map([&sc, p](engineserver::endpoints::BaseEndpoint::EventObs o)
-                                 { return o.observe_on(rxcpp::identity_same_worker(sc.create_worker())).map([=](string s){
-                                     return p.parse(s);
-                                 }); });
+    // rxcpp::observable<std::string> safeServerObs = serverObs.on_error_resume_next(
+    //     [&](auto eptr)
+    //     {
+    //         LOG(ERROR) << "safeServerObs treated error: " << rxcpp::util::what(eptr) << std::endl;
+    //         return safeServerObs;
+    //     });
 
-    // auto sc = rxcpp::schedulers::make_scheduler<threadpool::ThreadPool>(2);
-    // auto scheduledTask =
-    //     server.output().flat_map([&sc](engineserver::endpoints::BaseEndpoint::EventObs o)
-    //                              { return o; });
+    // auto safeServerObs = serverObs.retry(
+    //     [=](auto eptr)
+    //     {
+    //         LOG(ERROR) << "safeServerObs treated error: " << rxcpp::util::what(eptr) << std::endl;
+    //     });
 
-    // Build router
-    // TODO: Integrate filter creation with builder and default route with catalog
-    router::Router<builder::Builder<catalog::Catalog>> router{scheduledTask, _builder};
-
-    try
-    {
-        // Default route
-        router.add(
-            "test_route",
-            [](auto j)
+    std::atomic<int> total = 0;
+    serverObs.map([=](std::string event) { return p.parse(event); })
+        .subscribe(
+            [&](json::Document event)
             {
-                // TODO: check basic fields are present
-                return true;
+                total++;
+                LOG(INFO) << total << std::endl;
             },
-            "test_environment");
-    }
-    catch (const std::exception & e)
-    {
-        LOG(ERROR) << "Engine error, got exception while building default route: " << e.what() << endl;
-        return 1;
-    }
+            [](std::exception_ptr eptr) { LOG(ERROR) << "Subscriber got error: " << rxcpp::util::what(eptr) << endl; },
+            []() { LOG(INFO) << "Subscriber completed" << std::endl; });
 
     server.run();
 
