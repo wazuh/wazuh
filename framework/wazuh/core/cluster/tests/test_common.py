@@ -33,7 +33,6 @@ with patch('wazuh.common.wazuh_uid'):
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         import wazuh.core.cluster.common as cluster_common
-        import wazuh.core.common as core_common
         import wazuh.core.results as wresults
         from wazuh.core.wdb import WazuhDBConnection
 
@@ -579,10 +578,10 @@ async def test_handler_update_chunks_wdb(send_request_mock):
                 with patch.object(LoggerMock, "error") as logger_error_mock:
                     assert await handler.update_chunks_wdb(
                         data={'chunks': [0, 1, 2, 3, 4]}, info_type='info',
-                        logger=logger, error_command=b'ERROR') == {'error_messages': [0, 1],
-                                                                   'errors_per_folder': {'key': 'value'},
-                                                                   'generic_errors': ['ERR'], 'time_spent': 6,
-                                                                   'total_updated': 0, 'updated_chunks': 2}
+                        logger=logger, error_command=b'ERROR', timeout=10) == {'error_messages': [0, 1],
+                                                                               'errors_per_folder': {'key': 'value'},
+                                                                               'generic_errors': ['ERR'], 'time_spent': 6,
+                                                                               'total_updated': 0, 'updated_chunks': 2}
                     logger_debug_mock.assert_has_calls([call('2/5 chunks updated in wazuh-db in 6.000000s.')])
                     logger_debug2_mock.assert_has_calls([call('Chunk 1/5: 0'), call('Chunk 2/5: 1')])
                     logger_error_mock.assert_has_calls([call('other1'), call('other2'),
@@ -594,7 +593,7 @@ async def test_handler_update_chunks_wdb(send_request_mock):
     with pytest.raises(exception.WazuhClusterError,
                        match=r'.*Error 3037 - Error while processing Agent-info chunks: .*'):
         await handler.update_chunks_wdb(data={'chunks': [0, 1, 2, 3, 4]}, info_type='info',
-                                        logger=logger, error_command=b'ERROR')
+                                        logger=logger, error_command=b'ERROR', timeout=10)
     send_request_mock.assert_has_calls(
         [call(command=b'ERROR',
               data=b'error processing info chunks in process pool: '
@@ -635,7 +634,8 @@ async def test_handler_sync_wazuh_db_information(get_chunks_in_task_id_mock, upd
     handler = cluster_common.Handler(fernet_key, cluster_items)
     with patch.object(LoggerMock, "info") as logger_info_mock:
         assert await handler.sync_wazuh_db_information(task_id=b'1', info_type='info', logger=logger, command=b'command',
-                                                       error_command=b'error_command', sync_dict=sync_dict) == b'ok'
+                                                       error_command=b'error_command', sync_dict=sync_dict,
+                                                       timeout=10) == b'ok'
         logger_info_mock.assert_has_calls([call('Finished in 0.000s. Updated 1 chunks.')])
 
 
@@ -1235,131 +1235,6 @@ async def test_sync_task_request_permission(send_request_mock):
         assert await sync_task.request_permission() is False
         send_request_mock.assert_called_with(command=b"cmd" + b"_p", data=b"")
         logger_mock.assert_called_with("Master didn't grant permission to start a new synchronization: b'False'")
-
-
-# Test SyncFiles class methods
-
-@pytest.mark.asyncio
-@patch("json.dumps", return_value='')
-@patch("os.path.relpath", return_value="path")
-@patch("os.unlink", return_value="unlinked path")
-@patch("wazuh.core.cluster.cluster.compress_files", return_value="files/path/")
-async def test_sync_files_sync_ok(compress_files_mock, unlink_mock, relpath_mock, json_dumps_mock):
-    """Check if the methods to synchronize with master are defined."""
-    files_to_sync = {"path1": "metadata1"}
-    files_metadata = {"path2": "metadata2"}
-
-    class ServerMock:
-        """Class used to mock the self.worker value and enter the conditions inside the try."""
-
-        def __init__(self):
-            self.name = "Testing"
-            self.count = 1
-
-        async def send_request(self, command, data):
-            """Decide with will be the right output depending on the scenario."""
-            if command == b"cmd" and data == b"" and self.count == 1:
-                return b"Error"
-            elif command == b"cmd" and data == b"" and self.count == 2:
-                return b"OK"
-            elif command == b"cmd_e" and b"OK path" and self.count == 2:
-                return Exception()
-            elif command == b"cmd" and data == b"" and self.count == 3:
-                return b"OK"
-            elif command == b"cmd_e" and b"OK path" and self.count == 3:
-                return b"Error"
-            elif command == b"cmd" and data == b"" and self.count == 4:
-                return b"OK"
-            elif command == b"cmd_e" and b"OK path" and self.count == 4:
-                return b"OK"
-
-        async def send_file(self, filename):
-            """Auxiliary method."""
-            pass
-
-    worker_mock = ServerMock()
-    sync_files = cluster_common.SyncFiles(b"cmd", logging.getLogger("wazuh"), worker_mock)
-
-    # Test second condition
-    with patch.object(logging.getLogger("wazuh"), "error") as logger_mock:
-        await sync_files.sync(files_to_sync, files_metadata)
-        json_dumps_mock.assert_called_once_with(
-            exception.WazuhClusterError(code=3016, extra_message=str(b"Error")),
-            cls=cluster_common.WazuhJSONEncoder)
-        logger_mock.assert_called_once_with("Error")
-
-    worker_mock.count = 2
-    with patch.object(ServerMock, "send_file") as send_file_mock:
-        # Test if present in try and second exception
-        with patch.object(logging.getLogger("wazuh"), "debug") as logger_debug_mock:
-            with patch.object(logging.getLogger("wazuh"), "error") as logger_error_mock:
-                await sync_files.sync(files_to_sync, files_metadata)
-                send_file_mock.assert_called_once_with(filename='files/path/')
-                logger_debug_mock.assert_has_calls([call(
-                    f"Compressing {'files and ' if files_to_sync else ''}'files_metadata.json' of {len(files_metadata)}"
-                    f" files."), call("Sending zip file to master."), call("Zip file sent to master.")])
-                logger_error_mock.assert_called_once_with("Error sending zip file: ")
-                compress_files_mock.assert_called_once_with(name="Testing", list_path=files_to_sync,
-                                                            cluster_control_json=files_metadata)
-                unlink_mock.assert_called_once_with("files/path/")
-                relpath_mock.assert_called_once_with('files/path/', core_common.wazuh_path)
-                assert json_dumps_mock.call_count == 2
-
-                # Reset all mocks
-                all_mocks = [send_file_mock, logger_debug_mock, logger_error_mock, compress_files_mock, unlink_mock,
-                             relpath_mock, json_dumps_mock]
-                for mock in all_mocks:
-                    mock.reset_mock()
-
-                # Test elif present in try and first exception
-                worker_mock.count = 3
-                await sync_files.sync(files_to_sync, files_metadata)
-                send_file_mock.assert_called_once_with(filename='files/path/')
-                logger_debug_mock.assert_has_calls([call(
-                    f"Compressing {'files and ' if files_to_sync else ''}'files_metadata.json' of {len(files_metadata)}"
-                    f" files."), call("Sending zip file to master."), call("Zip file sent to master.")])
-                logger_error_mock.assert_called_once_with(
-                    f"Error sending zip file: {exception.WazuhException(3016, 'Error')}")
-                compress_files_mock.assert_called_once_with(name="Testing", list_path=files_to_sync,
-                                                            cluster_control_json=files_metadata)
-                unlink_mock.assert_called_once_with("files/path/")
-                relpath_mock.assert_called_once_with('files/path/', core_common.wazuh_path)
-                json_dumps_mock.assert_called_once()
-
-                # Reset all mocks
-                all_mocks = [send_file_mock, logger_debug_mock, logger_error_mock, compress_files_mock, unlink_mock,
-                             relpath_mock, json_dumps_mock]
-                for mock in all_mocks:
-                    mock.reset_mock()
-
-            # Test return
-            worker_mock.count = 4
-            assert await sync_files.sync(files_to_sync, files_metadata) is True
-            send_file_mock.assert_called_once_with(filename='files/path/')
-            logger_debug_mock.assert_has_calls([call(
-                f"Compressing {'files and ' if files_to_sync else ''}'files_metadata.json' of {len(files_metadata)}"
-                f" files."), call("Sending zip file to master."), call("Zip file sent to master.")])
-            compress_files_mock.assert_called_once_with(name="Testing", list_path=files_to_sync,
-                                                        cluster_control_json=files_metadata)
-            unlink_mock.assert_called_once_with("files/path/")
-            relpath_mock.assert_called_once_with('files/path/', core_common.wazuh_path)
-
-
-@pytest.mark.asyncio
-@patch("wazuh.core.cluster.common.Handler.send_request", return_value=Exception())
-async def test_sync_files_sync_ko(send_request_mock):
-    """Test if the right exceptions are being risen when necessary."""
-    files_to_sync = {"path1": "metadata1"}
-    files_metadata = {"path2": "metadata2"}
-
-    sync_files = cluster_common.SyncFiles(b"cmd", logging.getLogger("wazuh"),
-                                          cluster_common.Handler(fernet_key, cluster_items))
-
-    # Test first condition
-    with pytest.raises(Exception):
-        await sync_files.sync(files_to_sync, files_metadata)
-
-    send_request_mock.assert_called_once()
 
 
 # Test SyncWazuhdb class
