@@ -17,31 +17,31 @@
 using namespace builder::internals::builders;
 
 // Build ok
-TEST(opBuilderHelperString_eq, Builds)
+TEST(opBuilderHelperString_ne, Builds)
 {
     Document doc{R"({
         "check":
-            {"field2check": "+s_eq/test_value"}
+            {"field2check": "+s_ne/test_value"}
     })"};
-    ASSERT_NO_THROW(opBuilderHelperString_eq(*doc.get("/check")));
+    ASSERT_NO_THROW(opBuilderHelperString_ne(*doc.get("/check")));
 }
 
 // Build incorrect number of arguments
-TEST(opBuilderHelperString_eq, BuildsIncorrectNumberOfArguments)
+TEST(opBuilderHelperString_ne, BuildsIncorrectNumberOfArguments)
 {
     Document doc{R"({
         "check":
-            {"field2check": "+s_eq/test_value/test_value2"}
+            {"field2check": "+s_ne/test_value/test_value2"}
     })"};
-    ASSERT_THROW(opBuilderHelperString_eq(*doc.get("/check")), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperString_ne(*doc.get("/check")), std::runtime_error);
 }
 
 // Test ok: static values
-TEST(opBuilderHelperString_eq, staticStringOk)
+TEST(opBuilderHelperString_ne, staticStringOk)
 {
     Document doc{R"({
         "check":
-            {"field2check": "+s_eq/test_value"}
+            {"field2check": "+s_ne/test_value"}
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -65,58 +65,67 @@ TEST(opBuilderHelperString_eq, staticStringOk)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperString_eq(*doc.get("/check"));
+    Lifter lift = opBuilderHelperString_ne(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 2);
-    ASSERT_STREQ(expected[0].get("/field2check")->GetString(), "test_value");
-    ASSERT_STREQ(expected[1].get("/field2check")->GetString(), "test_value");
+    ASSERT_EQ(expected.size(), 3);
+    EXPECT_STRNE(expected[0].get("/field2check")->GetString(), "test_value");
+    EXPECT_EQ(expected[1].get("/field2check"), nullptr);
+    EXPECT_EQ(expected[2].get("/field2check"), nullptr);
+
 }
 
 // Test ok: static values (numbers, compare as string)
-TEST(opBuilderHelperString_eq, staticNumberOk)
+TEST(opBuilderHelperString_ne, staticNumberOk)
 {
     Document doc{R"({
         "check":
-            {"field2check": "+s_eq/11"}
+            {"field2check": "+s_ne/11"}
     })"};
 
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
+            // yes
             s.on_next(Event{R"(
                 {"field2check":"not_11"}
             )"});
+            // no
             s.on_next(Event{R"(
                 {"field2check":"11"}
             )"});
+            // yes
             s.on_next(Event{R"(
                 {"otherfield":"11"}
             )"});
+            // yes
             s.on_next(Event{R"(
                 {"otherfield":11}
             )"});
+            // no
             s.on_next(Event{R"(
                 {"field2check":"11"}
             )"});
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperString_eq(*doc.get("/check"));
+    Lifter lift = opBuilderHelperString_ne(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 2);
-    ASSERT_STREQ(expected[0].get("/field2check")->GetString(), "11");
-    ASSERT_STREQ(expected[1].get("/field2check")->GetString(), "11");
+    ASSERT_EQ(expected.size(), 3);
+    EXPECT_STRNE(expected[0].get("/field2check")->GetString(), "11");
+    EXPECT_EQ(expected[1].get("/field2check"), nullptr);
+    EXPECT_EQ(expected[2].get("/field2check"), nullptr);
+
 }
 
 // Test ok: dynamic values (string)
-TEST(opBuilderHelperString_eq, dynamicsStringOk) {
+TEST(opBuilderHelperString_ne, dynamicsStringOk) {
     Document doc{R"({
         "check":
-            {"field2check": "+s_eq/$ref_key"}
+            {"field2check": "+s_ne/$ref_key"}
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -155,20 +164,21 @@ TEST(opBuilderHelperString_eq, dynamicsStringOk) {
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperString_eq(*doc.get("/check"));
+    Lifter lift = opBuilderHelperString_ne(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 2);
-    ASSERT_STREQ(expected[0].get("/field2check")->GetString(), "test_value");
-    ASSERT_STREQ(expected[1].get("/field2check")->GetString(), "test_value");
+    ASSERT_EQ(expected.size(), 3);
+    ASSERT_STRNE(expected[0].get("/field2check")->GetString(), expected[0].get("/ref_key")->GetString());
+    ASSERT_EQ(expected[1].get("/field2check"), nullptr);
+    ASSERT_EQ(expected[2].get("/field2check"), nullptr);
 }
 
 // Test ok: dynamic values (number)
-TEST(opBuilderHelperString_eq, dynamicsNumberOk) {
+TEST(opBuilderHelperString_ne, dynamicsNumberOk) {
     Document doc{R"({
         "check":
-            {"field2check": "+s_eq/$ref_key"}
+            {"field2check": "+s_ne/$ref_key"}
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -194,12 +204,6 @@ TEST(opBuilderHelperString_eq, dynamicsNumberOk) {
             )"});
             s.on_next(Event{R"(
                 {
-                    "otherfield":11,
-                    "ref_key":11
-                }
-            )"});
-            s.on_next(Event{R"(
-                {
                     "field2check":11,
                     "ref_key":"11"
                 }
@@ -213,11 +217,22 @@ TEST(opBuilderHelperString_eq, dynamicsNumberOk) {
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperString_eq(*doc.get("/check"));
+    Lifter lift = opBuilderHelperString_ne(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 0);
+    ASSERT_EQ(expected.size(), 5);
+    ASSERT_FALSE(expected[0].get("/field2check")->IsString());
+    ASSERT_FALSE(expected[0].get("/ref_key")->IsString());
+
+    ASSERT_TRUE(expected[1].get("/field2check")->IsString());
+    ASSERT_FALSE(expected[1].get("/ref_key")->IsString());
+
+    ASSERT_EQ(expected[2].get("/field2check"), nullptr);
+
+    ASSERT_FALSE(expected[3].get("/field2check")->IsString());
+    ASSERT_TRUE(expected[3].get("/ref_key")->IsString());
+
 }
 
 
