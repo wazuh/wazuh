@@ -163,7 +163,7 @@ static void registry_key_transaction_callback(ReturnTypeCallback resultType,
     cJSON_AddStringToObject(data, "arch", arch == ARCH_32BIT ? "[x32]" : "[x64]");
     if(timestamp = cJSON_GetObjectItem(dbsync_event, "last_event"), timestamp != NULL){
         cJSON_AddNumberToObject(data, "timestamp", timestamp->valueint);
-    }else{
+    } else {
         cJSON_AddNumberToObject(data, "timestamp", key->last_event);
     }
     cJSON_AddItemToObject(data, "attributes", fim_registry_key_attributes_json(dbsync_event, key, configuration));
@@ -303,7 +303,7 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType,
 
     if(timestamp = cJSON_GetObjectItem(dbsync_event, "last_event"), timestamp != NULL){
         cJSON_AddNumberToObject(data, "timestamp", timestamp->valueint);
-    }else{
+    } else {
         cJSON_AddNumberToObject(data, "timestamp", value->last_event);
     }
 

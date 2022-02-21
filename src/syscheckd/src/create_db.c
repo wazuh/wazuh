@@ -290,7 +290,7 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
 
     if(timestamp = cJSON_GetObjectItem(dbsync_event, "last_event"), timestamp != NULL){
         cJSON_AddNumberToObject(data, "timestamp", timestamp->valueint);
-    }else{
+    } else {
         cJSON_AddNumberToObject(data, "timestamp", txn_context->latest_entry->file_entry.data->last_event);
     }
 
