@@ -2068,7 +2068,7 @@ wdbc_result wdb_global_unassign_agent_group(wdb_t *wdb, int id, cJSON* j_groups)
 int wdb_global_groups_number_get(wdb_t *wdb, int agent_id);
 
 /**
- * @brief Verifies that the group name complies with a predefined pattern.
+ * @brief Verifies that the group name satisfies with a predefined pattern.
  *
  * @param group_name Group name to be validated.
  * @return w_err_t OS_SUCCESS if valid. OS_INVALID otherwise.
