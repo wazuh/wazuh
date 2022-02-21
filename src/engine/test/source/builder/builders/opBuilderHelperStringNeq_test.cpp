@@ -174,6 +174,92 @@ TEST(opBuilderHelperString_ne, dynamicsStringOk) {
     ASSERT_EQ(expected[2].get("/field2check"), nullptr);
 }
 
+
+// Test ok: multilevel dynamic values (string)
+TEST(opBuilderHelperString_ne, multiLevelDynamicsStringOk) {
+    Document doc{R"({
+        "check":
+            {"parentObjt_1.field2check": "+s_ne/$parentObjt_2.ref_key"}
+    })"};
+
+    Observable input = observable<>::create<Event>(
+        [=](auto s)
+        {
+            // yes
+            s.on_next(Event{R"(
+                {
+                    "parentObjt_2": {
+                        "field2check": "test_value",
+                        "ref_key": "test_value"
+                    },
+                    "parentObjt_1": {
+                        "field2check": "not_test_value",
+                        "ref_key": "123_not_test_value"
+                    }
+                }
+            )"});
+            // no
+            s.on_next(Event{R"(
+                {
+                    "parentObjt_2": {
+                        "field2check": "not_test_value",
+                        "ref_key": "test_value"
+                    },
+                    "parentObjt_1": {
+                        "field2check": "test_value",
+                        "ref_key": "not_test_value"
+                    }
+                }
+            )"});
+            // yes
+            s.on_next(Event{R"(
+                {
+                    "parentObjt_2": {
+                        "field2check":"test_value",
+                        "ref_key":"test_value"
+                    },
+                    "parentObjt_1": {
+                        "otherfield":"value",
+                        "ref_key":"not_test_value"
+                    }
+                }
+            )"});
+            // yes
+            s.on_next(Event{R"(
+                {
+                    "parentObjt_2": {
+                        "field2check":"test_value",
+                        "otherfield":"test_value"
+                    },
+                    "parentObjt_1": {
+                        "field2check":"value",
+                        "ref_key":"not_test_value"
+                    }
+                }
+            )"});
+            s.on_completed();
+        });
+
+    Lifter lift = opBuilderHelperString_ne(*doc.get("/check"));
+    Observable output = lift(input);
+    vector<Event> expected;
+    output.subscribe([&](Event e) {
+        expected.push_back(e);
+    });
+    ASSERT_EQ(expected.size(), 3);
+
+    ASSERT_STRNE(expected[0].get("/parentObjt_1/field2check")->GetString(),
+                 expected[0].get("/parentObjt_2/ref_key")->GetString());
+
+    ASSERT_EQ(expected[1].get("/parentObjt_1/field2check"), nullptr);
+    ASSERT_NE(expected[1].get("/parentObjt_2/ref_key"), nullptr);
+
+    ASSERT_NE(expected[2].get("/parentObjt_1/field2check"), nullptr);
+    ASSERT_EQ(expected[2].get("/parentObjt_2/ref_key"), nullptr);
+
+}
+
+
 // Test ok: dynamic values (number)
 TEST(opBuilderHelperString_ne, dynamicsNumberOk) {
     Document doc{R"({
