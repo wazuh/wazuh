@@ -1103,8 +1103,19 @@ def get_agent_config(agent_list=None, component=None, config=None):
 def get_agents_sync_group(agent_list=None):
     """Get agents configuration sync status.
 
-    :param agent_list: List of agents ID's.
-    :return AffectedItemsWazuhResult.
+    Notes
+    -----
+    To be deprecated in v5.0.
+
+    Parameters
+    ----------
+    agent_list : list
+        List of agent IDs.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Agent group sync status information.
     """
     result = AffectedItemsWazuhResult(all_msg='Sync info was returned for all selected agents',
                                       some_msg='Sync info was not returned for some selected agents',
