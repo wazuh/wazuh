@@ -31,7 +31,7 @@ TEST(opBuilderHelperRegexMatch, NotEnoughArgumentsError)
         "check":
             {"field": "+r_match/"}
     })"};
-    ASSERT_THROW(opBuilderHelperRegexMatch(*doc.get("/check")),std::invalid_argument);
+    ASSERT_THROW(opBuilderHelperRegexMatch(*doc.get("/check")), std::invalid_argument);
 }
 
 TEST(opBuilderHelperRegexMatch, TooManyArgumentsError)
@@ -40,7 +40,7 @@ TEST(opBuilderHelperRegexMatch, TooManyArgumentsError)
         "check":
             {"field": "+r_match/regexp/regexp2"}
     })"};
-    ASSERT_THROW(opBuilderHelperRegexMatch(*doc.get("/check")),std::invalid_argument);
+    ASSERT_THROW(opBuilderHelperRegexMatch(*doc.get("/check")), std::invalid_argument);
 }
 
 TEST(opBuilderHelperRegexMatch, StringRegexMatch)

@@ -10,7 +10,8 @@
 #ifndef _OP_BUILDER_HELPER_FILTER_H
 #define _OP_BUILDER_HELPER_FILTER_H
 
-#include "stringUtils.hpp"
+#include <re2/re2.h>
+
 #include "builderTypes.hpp"
 #include "stringUtils.hpp"
 
@@ -20,9 +21,6 @@
  *
  * Warning: this function never should throw an exception.
  */
-
-#include <re2/re2.h>
-
 namespace builder::internals::builders
 {
 
