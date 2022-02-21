@@ -55,13 +55,19 @@ types::Lifter opBuilderHelperIntEqual(const types::DocumentValue & def);
  * @brief Compares a string of the event against another string that may or may not belong to the event `e`
  *
  * @param key The key/path of the field to be compared
- * @param op The operator to be used for the comparison
+ * @param op The operator to be used for the comparison. Operators are:
+ * - `=`: checks if the field is equal to the value
+ * - `!`: checks if the field is not equal to the value
+ * - `<`: checks if the field is less than the value
+ * - `>`: checks if the field is greater than the value
+ * - `m`: checks if the field is less than or equal to the value
+ * - `n`: checks if the field is greater than or equal to the value
  * @param e The event containing the field to be compared
  * @param refExpStr The key/path of the field to be compared against (optional)
  * @param expectedStr The string to be compared against (optional)
  * @return true if the comparison is true
  * @return false if the comparison is false
- * @warning If `refExpStr` is not provided, the comparison will be against the value of `expectedStr`
+ * @note If `refExpStr` is not provided, the comparison will be against the value of `expectedStr`
  */
 inline bool opBuilderHelperStringComparison(const std::string  key, char op, types::Event& e,
                                                  std::optional<std::string> refExpStr,
@@ -72,11 +78,26 @@ inline bool opBuilderHelperStringComparison(const std::string  key, char op, typ
  * field equals to a value.
  *
  * The filter checks if a field in the JSON event `wazuh` is equal to a value.
+ * Only pass events if the fields are equal (case sensitive) and the values are a string.
  * @param def The filter definition. i.e : `{wazuh: +s_eq/value}`
  * @return types::Lifter The lifter with the `s_eq` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
 types::Lifter opBuilderHelperString_eq(const types::DocumentValue & def);
+
+/**
+ * @brief Create `s_ne` helper function that filters events with a string
+ * field not equals to a value.
+ *
+ * The filter checks if a field in the JSON event `wazuh` is not  equal to a value.
+ * Only do not pass events if the fields are equal (case sensitive) and the values are a string.
+ * @param def The filter definition. i.e : `{wazuh: +s_ne/value}`
+ * @return types::Lifter The lifter with the `s_ne` filter.
+ * @throw std::runtime_error if the parameter is not a string.
+ */
+types::Lifter opBuilderHelperString_ne(const types::DocumentValue & def);
+
+
 } // namespace builder::internals::builders
 
 #endif // _OP_BUILDER_HELPER_FILTER_H
