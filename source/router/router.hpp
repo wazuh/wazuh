@@ -174,15 +174,19 @@ public:
         }
 
         // Connect server output to environment through route filter
+        // auto subscription = this->m_observable.filter(filterFunction)
+        //                         .on_error_resume_next(
+        //                             [=](std::exception_ptr e)
+        //                             {
+        //                                 std::cerr << "on_error_resume_next" << rxcpp::util::what(e).c_str()
+        //                                           << std::endl;
+        //                                 return this->m_observable.filter(filterFunction);
+        //                             })
+        //                         .subscribe(this->m_environments.at(environment).m_subject.get_subscriber());
+
         auto subscription = this->m_observable.filter(filterFunction)
-                                .on_error_resume_next(
-                                    [=](std::exception_ptr e)
-                                    {
-                                        std::cerr << "on_error_resume_next" << rxcpp::util::what(e).c_str()
-                                                  << std::endl;
-                                        return this->m_observable.filter(filterFunction);
-                                    })
                                 .subscribe(this->m_environments.at(environment).m_subject.get_subscriber());
+
         // Add route to list
         this->m_routes[route] = Route(route, environment, filterFunction, subscription);
     }

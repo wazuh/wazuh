@@ -24,6 +24,7 @@ BaseEndpoint::ConnectionObs TCPEndpoint::connectionHandler(const uvw::ListenEven
     auto obs = rxcpp::observable<>::create<BaseEndpoint::EventObs>(
         [client, timer, &srv](rxcpp::subscriber<BaseEndpoint::EventObs> s)
         {
+            LOG(INFO) << "CONN GOT SUBSCRIBER" << std::endl;
             auto ph = std::make_shared<ProtocolHandler>();
 
             client->on<uvw::ErrorEvent>(
@@ -54,6 +55,8 @@ BaseEndpoint::ConnectionObs TCPEndpoint::connectionHandler(const uvw::ListenEven
                     {
                         timer->close();
                         client.close();
+                        std::runtime_error e("Connection error from " + client.peer().ip + "  in protocol handler");
+                        // s.on_error(std::make_exception_ptr(e));
                     }
                 });
 
@@ -64,6 +67,21 @@ BaseEndpoint::ConnectionObs TCPEndpoint::connectionHandler(const uvw::ListenEven
                     timer->close();
                     client.close();
                     s.on_completed();
+                });
+
+            client->on<uvw::CloseEvent>(
+                [s](const uvw::CloseEvent & event, uvw::TCPHandle & client)
+                {
+                    std::runtime_error e("Dummy error from connection");
+                    if (s.is_subscribed())
+                    {
+                        LOG(INFO) << "CloseEvent Error from connection" << std::endl;
+                        s.on_error(std::make_exception_ptr(e));
+                    }
+                    else
+                    {
+                        LOG(INFO) << "CloseEvent from connection" << std::endl;
+                    }
                 });
 
             LOG(INFO) << "Accepting client!" << std::endl;
@@ -88,6 +106,7 @@ TCPEndpoint::TCPEndpoint(const std::string & config) : BaseEndpoint{config}
     this->m_out = rxcpp::observable<>::create<BaseEndpoint::ConnectionObs>(
         [this, config](rxcpp::subscriber<BaseEndpoint::ConnectionObs> s)
         {
+            LOG(INFO) << "TCP ENDPOINT SERVER GOT SUBSCRIBER" << std::endl;
             this->m_server->on<uvw::ListenEvent>(
                 [s, this](const uvw::ListenEvent & event, uvw::TCPHandle & client)
                 {
@@ -101,8 +120,16 @@ TCPEndpoint::TCPEndpoint(const std::string & config) : BaseEndpoint{config}
                     LOG(ERROR) << "TCP Server (" << client.sock().ip.c_str() << ":" << client.sock().port
                                << ") error: code=" << event.code() << "; name=" << event.name()
                                << "; message=" << event.what() << std::endl;
+
                     auto e = std::runtime_error("Server error due to " + std::string(event.what()));
                     s.on_error(std::make_exception_ptr(e));
+                });
+
+            this->m_server->on<uvw::CloseEvent>(
+                [s](const uvw::CloseEvent & event, uvw::TCPHandle & client)
+                {
+                    LOG(INFO) << "CloseEvent from tcp server" << std::endl;
+                    s.on_completed();
                 });
 
             LOG(INFO) << "A route has been enabled for endpoint " << config << std::endl;
