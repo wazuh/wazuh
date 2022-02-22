@@ -165,14 +165,19 @@ def test_agent_get_agents_summary_status(socket_mock, send_mock):
     summary = get_agents_summary_status(short_agent_list)
     assert isinstance(summary, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
     # Asserts are based on what it should get from the fake database
-    expected_results = {'active': 2, 'disconnected': 1, 'never_connected': 1, 'pending': 1, 'total': 5}
+    expected_results = {'connection': {'active': 2, 'disconnected': 1, 'never_connected': 1, 'pending': 1, 'total': 5},
+                        'configuration': {'synced': 2, 'not_synced': 3, 'total': 5}}
     summary_data = summary['data']
-    assert set(summary_data.keys()) == set(expected_results.keys())
-    assert summary_data['active'] == expected_results['active']
-    assert summary_data['disconnected'] == expected_results['disconnected']
-    assert summary_data['never_connected'] == expected_results['never_connected']
-    assert summary_data['pending'] == expected_results['pending']
-    assert summary_data['total'] == expected_results['total']
+
+    # For the following test cases, if summary_data has unexpected keys, a KeyError will be raised
+
+    # Check the data dictionary follows the expected keys schema
+    assert all(summary_data[key].keys() == expected_results[key].keys() for key in summary_data.keys()), \
+        'The result obtained has unexpected keys'
+    # Check that the agents count for connection and configuration statuses are the expected ones
+    assert all(all(summary_data[key][status] == expected_results[key][status] for status in
+                   summary_data[key].keys()) for key in summary_data.keys()), \
+        'The agents connection or configuration status counts are not the expected ones'
 
 
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
