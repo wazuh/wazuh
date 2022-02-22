@@ -7655,7 +7655,7 @@ paths:
       tags:
         - Agents
       summary: "Summarize agents status"
-      description: "Return a summary of the status of available agents"
+      description: "Return a summary of the connection and groups configuration synchronization statuses of available agents"
       operationId: api.controllers.agent_controller.get_agent_summary_status
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:read'
@@ -7664,7 +7664,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
-          description: "Get summary of agents"
+          description: "Get summary of agents connection and configuration statuses"
           content:
             application/json:
               schema:
