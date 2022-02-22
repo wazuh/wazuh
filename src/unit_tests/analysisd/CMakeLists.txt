@@ -61,7 +61,8 @@ list(APPEND analysisd_names "test_mitre")
 list(APPEND analysisd_flags "-Wl,--wrap,wdbc_query_ex -Wl,--wrap,wdbc_query_parse_json ${HASH_OP_WRAPPERS} ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND analysisd_names "test_rules")
-LIST(APPEND analysisd_flags "-Wl,--wrap,_os_analysisd_add_logmsg ${DEBUG_OP_WRAPPERS}")
+LIST(APPEND analysisd_flags "-Wl,--wrap,_mwarn -Wl,--wrap,_merror -Wl,--wrap,_os_analysisd_add_logmsg \
+                             -Wl,--wrap,OS_ClearNode -Wl,--wrap,w_get_attr_val_by_name ${DEBUG_OP_WRAPPERS}")
 
 LIST(APPEND analysisd_names "test_same_different_loop")
 LIST(APPEND analysisd_flags "-W")

@@ -496,6 +496,14 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storag
             }
 
             return;
+        } else if ((keys.keyentries[agentid]->sock >= 0) && (keys.keyentries[agentid]->sock != sock_client)) {
+            key_unlock();
+            mwarn("Agent key already in use: agent ID '%s'", keys.keyentries[agentid]->id);
+
+            if (sock_client >= 0) {
+                _close_sock(&keys, sock_client);
+            }
+            return;
         }
     } else if (strncmp(buffer, "#ping", 5) == 0) {
             int retval = 0;
@@ -525,6 +533,15 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storag
 
             // Send key request by ip
             push_request(srcip,"ip");
+            if (sock_client >= 0) {
+                _close_sock(&keys, sock_client);
+            }
+
+            return;
+        } else if ((keys.keyentries[agentid]->sock >= 0) && (keys.keyentries[agentid]->sock != sock_client)) {
+            key_unlock();
+            mwarn("Agent key already in use: agent ID '%s'", keys.keyentries[agentid]->id);
+
             if (sock_client >= 0) {
                 _close_sock(&keys, sock_client);
             }

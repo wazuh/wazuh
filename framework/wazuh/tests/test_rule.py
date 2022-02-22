@@ -272,11 +272,11 @@ def test_get_rules_file_invalid_xml(get_rules_mock):
 ])
 @patch('wazuh.rule.delete_rule_file')
 @patch('wazuh.rule.upload_file')
-@patch('wazuh.core.utils.copyfile')
+@patch('wazuh.core.utils.full_copy')
 @patch('wazuh.rule.remove')
 @patch('wazuh.rule.safe_move')
 @patch('wazuh.core.utils.check_remote_commands')
-def test_upload_file(mock_remote_commands, mock_safe_move, mock_remove, mock_copyfile, mock_xml, mock_delete, file,
+def test_upload_file(mock_remote_commands, mock_safe_move, mock_remove, mock_full_copy, mock_xml, mock_delete, file,
                      overwrite):
     """Test uploading a rule file.
 

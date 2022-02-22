@@ -32,6 +32,8 @@ xml_node ** __wrap_OS_GetElementsbyNode(__attribute__((unused)) const OS_XML * _
 }
 
 void __wrap_OS_ClearNode(xml_node ** node) {
+
+    function_called();
     if (node != NULL) {
         for (int i = 0; node[i]; i++) {
             if (node[i]->element) {
