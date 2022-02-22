@@ -427,7 +427,6 @@ typedef struct _config {
     int sym_checker_interval;
 
     pthread_rwlock_t directories_lock;
-    pthread_mutex_t fim_entry_mutex;
     pthread_mutex_t fim_scan_mutex;
     pthread_mutex_t fim_realtime_mutex;
 #ifndef WIN32

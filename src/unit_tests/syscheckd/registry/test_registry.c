@@ -702,7 +702,6 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
     expect_fim_registry_get_key_data_call(usid, gsid, "username", "groupname",
                                           "sid (allowed): delete|write_dac|write_data|append_data|write_attributes",
                                           last_write_time);
-    expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_fim_db_transaction_sync_row, -1);
     expect_string(__wrap__merror, formatted_msg, "Dbsync registry transaction failed due to -1");
     will_return(__wrap_fim_db_transaction_sync_row, -1);
@@ -718,11 +717,7 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
                                           "sid (allowed): delete|write_dac|write_data|append_data|write_attributes",
                                           last_write_time);
 
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_fim_db_transaction_sync_row, 0);
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);
@@ -769,8 +764,6 @@ static void test_fim_registry_scan_regular_scan(void **state) {
                                           "sid (allowed): delete|write_dac|write_data|append_data|write_attributes",
                                           last_write_time);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-
     will_return(__wrap_fim_db_transaction_sync_row, -1);
     will_return(__wrap_fim_db_transaction_sync_row, -1);
 
@@ -780,18 +773,13 @@ static void test_fim_registry_scan_regular_scan(void **state) {
     expect_fim_registry_value_diff("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\FirstSubKey", "test_value",
                                    (const char *)&value_data, 4, REG_DWORD, NULL);
 
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
     // Inside fim_registry_get_key_data
     expect_fim_registry_get_key_data_call(usid, gsid, "username", "groupname",
                                           "sid (allowed): delete|write_dac|write_data|append_data|write_attributes",
                                           last_write_time);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_fim_db_transaction_sync_row, -1);
     will_return(__wrap_fim_db_transaction_sync_row, -1);
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     // Scan a subkey of RecursionLevel0
     expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "Software\\RecursionLevel0", 0, KEY_READ | KEY_WOW64_64KEY, NULL, ERROR_SUCCESS);
@@ -803,9 +791,7 @@ static void test_fim_registry_scan_regular_scan(void **state) {
                                           "sid (allowed): delete|write_dac|write_data|append_data|write_attributes",
                                           last_write_time);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_fim_db_transaction_sync_row, -1);
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "Software\\FailToInsert", 0,
                              KEY_READ | KEY_WOW64_64KEY, NULL, ERROR_SUCCESS);
@@ -816,9 +802,6 @@ static void test_fim_registry_scan_regular_scan(void **state) {
     expect_fim_registry_get_key_data_call(usid, gsid, "username2", "groupname2",
                                           "sid (allowed): delete|write_dac|write_data|append_data|write_attributes",
                                           last_write_time);
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);

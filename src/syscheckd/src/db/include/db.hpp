@@ -29,12 +29,14 @@
 #define EXPORTED
 #endif
 
-typedef enum COUNT_SELECT_TYPE {
+typedef enum COUNT_SELECT_TYPE
+{
     COUNT_ALL,
     COUNT_INODE,
 } COUNT_SELECT_TYPE;
 
-typedef enum FILE_SEARCH_TYPE {
+typedef enum FILE_SEARCH_TYPE
+{
     SEARCH_TYPE_PATH,
     SEARCH_TYPE_INODE
 } FILE_SEARCH_TYPE;
@@ -43,104 +45,116 @@ using SearchData = std::tuple<FILE_SEARCH_TYPE, std::string, std::string, std::s
 
 class EXPORTED DB final
 {
-public:
-    static DB& instance()
-    {
-        static DB s_instance;
-        return s_instance;
-    }
+    public:
+        static DB& instance()
+        {
+            static DB s_instance;
+            return s_instance;
+        }
 
-    /**
-    * @brief Init facade with database connection
-    *
-    * @param storage Storage type.
-    * @param syncInterval Sync sync interval.
-    * @param callbackSyncFileWrapper Callback sync file values.
-    * @param callbackSyncRegistryWrapper Callback sync registry values.
-    * @param callbackLogWrapper Callback to log lines.
-    * @param fileLimit File limit.
-    * @param valueLimit Registry value limit.
-    * @param isWindows Enable Windows support.
-    */
-    void init(const int storage,
-              const int syncInterval,
-              std::function<void(const std::string&)> callbackSyncFileWrapper,
-              std::function<void(const std::string&)> callbackSyncRegistryWrapper,
-              std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,
-              int fileLimit,
-              int valueLimit,
-              bool isWindows);
+        /**
+        * @brief Init facade with database connection
+        *
+        * @param storage Storage type.
+        * @param syncInterval Sync sync interval.
+        * @param callbackSyncFileWrapper Callback sync file values.
+        * @param callbackSyncRegistryWrapper Callback sync registry values.
+        * @param callbackLogWrapper Callback to log lines.
+        * @param fileLimit File limit.
+        * @param valueLimit Registry value limit.
+        * @param isWindows Enable Windows support.
+        */
+        void init(const int storage,
+                  const int syncInterval,
+                  std::function<void(const std::string&)> callbackSyncFileWrapper,
+                  std::function<void(const std::string&)> callbackSyncRegistryWrapper,
+                  std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,
+                  int fileLimit,
+                  int valueLimit,
+                  bool isWindows);
 
-    /**
-    * @brief runIntegrity Execute the integrity mechanism.
-    */
-    void runIntegrity();
+        /**
+        * @brief runIntegrity Execute the integrity mechanism.
+        */
+        void runIntegrity();
 
-    /**
-    * @brief pushMessage Push a message to the queue of the integrity mechanism.
-    *
-    * @param message Message payload comming from the manager.
-    */
-    void pushMessage(const std::string &message);
+        /**
+        * @brief pushMessage Push a message to the queue of the integrity mechanism.
+        *
+        * @param message Message payload comming from the manager.
+        */
+        void pushMessage(const std::string& message);
 
-    /**
-    * @brief DBSyncHandle return the dbsync handle, for operations with the database.
-    *
-    * @return dbsync handle.
-    */
-    DBSYNC_HANDLE DBSyncHandle();
+        /**
+        * @brief DBSyncHandle return the dbsync handle, for operations with the database.
+        *
+        * @return dbsync handle.
+        */
+        DBSYNC_HANDLE DBSyncHandle();
 
-    /**
-    * @brief removeFile Remove a file from the database.
-    *
-    * @param path File to remove.
-    */
-    void removeFile(const std::string& path);
+        /**
+        * @brief createJsonEvent Create and fill the json with event data.
+        *
+        * @param fileJson The json structure with fim file data.
+        * @param resultJson The json structure with the result of the dbsync querie.
+        * @param type Represents the result type of the database operation events.
+        * @param ctx Context struct with data related to the fim_entry.
+        * @return jsonEvent The json structure with the event information.
+        */
+        nlohmann::json createJsonEvent(const nlohmann::json& fileJson, const nlohmann::json& resultJson, ReturnTypeCallback type, create_json_event_ctx* ctx);
 
-    /**
-    * @brief getFile Get a file from the database.
-    *
-    * @param path File to get.
-    * @param callback Callback return the file data.
-    */
-    void getFile(const std::string& path, std::function<void(const nlohmann::json&)> callback);
+        /**
+        * @brief removeFile Remove a file from the database.
+        *
+        * @param path File to remove.
+        */
+        void removeFile(const std::string& path);
 
-    /**
-    * @brief countEntries Count files in the database.
-    *
-    * @param tableName Table name.
-    * @param selectType Type of count.
-    * @return Number of files.
-    */
-    int countEntries(const std::string& tableName, const COUNT_SELECT_TYPE selectType);
+        /**
+        * @brief getFile Get a file from the database.
+        *
+        * @param path File to get.
+        * @param callback Callback return the file data.
+        */
+        void getFile(const std::string& path, std::function<void(const nlohmann::json&)> callback);
 
-    /**
-    * @brief updateFile Update/insert a file in the database.
-    *
-    * @param file File entry/data to update/insert.
-    * @return true if the file was updated, false if the file is inserted.
-    */
-    bool updateFile(const nlohmann::json &file);
+        /**
+        * @brief countEntries Count files in the database.
+        *
+        * @param tableName Table name.
+        * @param selectType Type of count.
+        * @return Number of files.
+        */
+        int countEntries(const std::string& tableName, const COUNT_SELECT_TYPE selectType);
 
-    /**
-    * @brief searchFiles Search files in the database.
-    *
-    * @param searchData parameter to search information.
-    * @param callback Callback return the file data.
-    */
-    void searchFile(const SearchData& data, std::function<void(const std::string &)> callback);
+        /**
+        * @brief updateFile Update/insert a file in the database.
+        *
+        * @param file File entry/data to update/insert.
+        * @param ctx Context struct with data related to the fim_entry.
+        * @param callback Callback to send the fim message.
+        */
+        void updateFile(const nlohmann::json& file, create_json_event_ctx* ctx, std::function<void(nlohmann::json)> callbackPrimitive);
 
-    /**
-    * @brief teardown Close the fimdb instances.
-    */
-    void teardown();
+        /**
+        * @brief searchFiles Search files in the database.
+        *
+        * @param searchData parameter to search information.
+        * @param callback Callback return the file data.
+        */
+        void searchFile(const SearchData& data, std::function<void(const std::string&)> callback);
 
-private:
-    DB() = default;
-    ~DB() = default;
-    DB(const DB&) = delete;
-    DB& operator=(const DB&) = delete;
-    std::string CreateStatement(const bool isWindows);
+        /**
+        * @brief teardown Close the fimdb instances.
+        */
+        void teardown();
+
+    private:
+        DB() = default;
+        ~DB() = default;
+        DB(const DB&) = delete;
+        DB& operator=(const DB&) = delete;
+        std::string CreateStatement(const bool isWindows);
 };
 
 

@@ -20,7 +20,7 @@
 #include "action.h"
 #include "factoryAction.h"
 
-static void syncCallback(const char * tag, const char * msg)
+static void syncCallback(const char* tag, const char* msg)
 {
     std::cout << tag << ": " << msg;
 }
@@ -41,6 +41,7 @@ int main(int argc, const char* argv[])
         std::cout << "Actions: " << actions.size() << std::endl;
 
         std::ifstream configFile{ cmdLineArgs.configFile() };
+
         if (configFile.good())
         {
             const auto& jsonConfigFile { nlohmann::json::parse(configFile) };
@@ -102,13 +103,13 @@ int main(int argc, const char* argv[])
 
                 DB::instance().teardown();
                 std::cout << "Resulting files are located in the "
-                    << cmdLineArgs.outputFolder() << " folder" << std::endl;
+                          << cmdLineArgs.outputFolder() << " folder" << std::endl;
             }
             catch (const std::exception& e)
             {
                 std::cerr << std::endl
-                    << "Something went wrong configuring the database. Please, check the config file data, "
-                    << e.what() << std::endl;
+                          << "Something went wrong configuring the database. Please, check the config file data, "
+                          << e.what() << std::endl;
             }
         }
         else

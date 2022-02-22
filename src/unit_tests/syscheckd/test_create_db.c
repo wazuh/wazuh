@@ -43,6 +43,7 @@ fim_state_db _files_db_state = FIM_STATE_DB_NORMAL;
 void update_wildcards_config();
 void fim_process_wildcard_removed(directory_t *configuration);
 void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data);
+void fim_event_callback(void* data, void * ctx);
 
 /* auxiliary structs */
 typedef struct __fim_data_s {
@@ -603,45 +604,6 @@ void expect_get_data (char *user, char *group, char *file_path, int calculate_ch
                                             0x400,
                                             0);
     }
-}
-
-/**
- * @brief This function will prepare the successfull execution of the double scan in Windows tests
- * @param test_file_path File path that will be scanned.
- * @param dir_file_path Directory of the file.
- * @param file Dirent structure for the file.
- */
-void prepare_win_double_scan_success (char *test_file_path, char *dir_file_path, struct dirent *file, struct stat *directory_stat, struct stat *file_stat) {
-    expect_string(__wrap_stat, __file, dir_file_path);
-    will_return(__wrap_stat, directory_stat);
-    will_return(__wrap_stat, 0);
-    expect_string(__wrap_HasFilesystem, path, dir_file_path);
-    will_return(__wrap_HasFilesystem, 0);
-    will_return(__wrap_opendir, 1);
-    will_return(__wrap_readdir, file);
-
-    expect_string(__wrap_stat, __file, test_file_path);
-    will_return(__wrap_stat, file_stat);
-    will_return(__wrap_stat, 0);
-    expect_string(__wrap_HasFilesystem, path, test_file_path);
-    will_return(__wrap_HasFilesystem, 0);
-
-    // fim_file
-    {
-        // fim_get_data
-        expect_get_data(strdup("user"), strdup("group"), test_file_path, 0);
-
-        expect_string(__wrap_w_get_file_attrs, file_path, test_file_path);
-        will_return(__wrap_w_get_file_attrs, 123456);
-
-        expect_value(__wrap_fim_db_file_update, fim_sql, syscheck.database);
-        expect_string(__wrap_fim_db_file_update, path, test_file_path);
-        will_return(__wrap_fim_db_file_update, NULL);
-        will_return(__wrap_fim_db_file_update, FIMDB_FULL);
-        // fim_json_event;
-    }
-
-    will_return(__wrap_readdir, NULL);
 }
 
 /* tests */
@@ -1302,9 +1264,6 @@ static void test_fim_file_add(void **state) {
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
     directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
                                              CHECK_SHA1SUM | CHECK_MTIME | CHECK_SHA256SUM | CHECK_SEECHANGES };
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
 #ifdef TEST_WINAGENT
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
 #else
@@ -1313,9 +1272,7 @@ static void test_fim_file_add(void **state) {
 
     expect_get_data(strdup("user"), strdup("group"), file_path, 1);
 
-    will_return(__wrap_fim_db_file_update, FIMDB_OK);
-
-    expect_fim_file_diff(file_path, strdup("diff"));
+    expect_function_call(__wrap_fim_db_file_update);
 
     fim_file(file_path, &configuration, &evt_data, NULL, NULL);
 }
@@ -1325,8 +1282,6 @@ static void test_fim_file_modify_transaction(void **state) {
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
     directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
                                              CHECK_SHA1SUM | CHECK_SHA256SUM };
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
     TXN_HANDLE mock_handle = (TXN_HANDLE)1;
 
     fim_txn_context_t mock_context = {0};
@@ -1388,9 +1343,6 @@ static void test_fim_file_modify(void **state) {
     event_data_t evt_data = { .mode = FIM_REALTIME, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
     directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
                                              CHECK_SHA1SUM | CHECK_SHA256SUM };
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
 #ifdef TEST_WINAGENT
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
     cJSON *permissions = create_win_permissions_object();
@@ -1438,7 +1390,7 @@ static void test_fim_file_modify(void **state) {
                                         "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", OS_BINARY,
                                         0x400, 0);
 
-    will_return(__wrap_fim_db_file_update, FIMDB_OK);
+    expect_function_call(__wrap_fim_db_file_update);;
 
     fim_file(file_path, &configuration, &evt_data, NULL, NULL);
 }
@@ -1449,9 +1401,6 @@ static void test_fim_file_no_attributes(void **state) {
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
     directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
                                              CHECK_SHA1SUM | CHECK_SHA256SUM };
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
 #ifdef TEST_WINAGENT
     char file_path[] = "c:\\windows\\system32\\cmd.exe";
     cJSON *permissions = create_win_permissions_object();
@@ -1495,9 +1444,6 @@ static void test_fim_file_error_on_insert(void **state) {
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
     directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
                                              CHECK_SHA1SUM | CHECK_SHA256SUM };
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
 #ifdef TEST_WINAGENT
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
     cJSON *permissions = create_win_permissions_object();
@@ -1550,7 +1496,7 @@ static void test_fim_file_error_on_insert(void **state) {
     expect_value(__wrap_OS_MD5_SHA1_SHA256_File, max_size, 0x400);
     will_return(__wrap_OS_MD5_SHA1_SHA256_File, 0);
 
-    will_return(__wrap_fim_db_file_update, FIMDB_ERR);
+    expect_function_call(__wrap_fim_db_file_update);;
 
     fim_file(file_path, &configuration, &evt_data, NULL, NULL);
 }
@@ -1741,7 +1687,7 @@ static void test_fim_checker_fim_regular(void **state) {
     will_return(__wrap_get_user, strdup("user"));
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, strdup("group"));
-    will_return(__wrap_fim_db_file_update, FIMDB_OK);
+    expect_function_call(__wrap_fim_db_file_update);;
 
     fim_checker(path, &evt_data, NULL, NULL, NULL);
 }
@@ -1776,7 +1722,7 @@ static void test_fim_checker_fim_regular_warning(void **state) {
 
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, strdup("group"));
-    will_return(__wrap_fim_db_file_update, FIMDB_ERR);
+    expect_function_call(__wrap_fim_db_file_update);;
 
     fim_checker(path, &evt_data, NULL, NULL, NULL);
 }
@@ -1956,7 +1902,7 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
 
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, strdup("group"));
-    will_return(__wrap_fim_db_file_update, FIMDB_OK);
+    expect_function_call(__wrap_fim_db_file_update);;
 
     fim_checker(path, &evt_data, NULL, NULL, NULL);
 }
@@ -2370,7 +2316,7 @@ static void test_fim_checker_fim_regular(void **state) {
     will_return(__wrap_HasFilesystem, 0);
     // Inside fim_file
     expect_get_data(strdup("user"), "group", expanded_path, 0);
-    will_return(__wrap_fim_db_file_update, 1);
+    expect_function_call(__wrap_fim_db_file_update);
     expect_string(__wrap_w_get_file_attrs, file_path, expanded_path);
     will_return(__wrap_w_get_file_attrs, 123456);
     fim_checker(expanded_path, &evt_data, NULL, NULL, NULL);
@@ -2465,7 +2411,7 @@ static void test_fim_checker_fim_regular_warning(void **state) {
     expect_string(__wrap_w_get_file_attrs, file_path, expanded_path);
     will_return(__wrap_w_get_file_attrs, 123456);
 
-    will_return(__wrap_fim_db_file_update, FIMDB_ERR);
+    expect_function_call(__wrap_fim_db_file_update);
 
     fim_checker(expanded_path, &evt_data, NULL, NULL, NULL);
 }
@@ -3919,7 +3865,7 @@ static void test_transaction_callback_full_db(void **state) {
     data->dbsync_event = result;
 
     // These functions are called every time transaction_callback calls fim_configuration_directory
-  #ifndef TEST_WINAGENT
+#ifndef TEST_WINAGENT
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
@@ -3938,6 +3884,35 @@ static void test_transaction_callback_full_db(void **state) {
 
     transaction_callback(MAX_ROWS, result, txn_context);
     assert_int_equal(txn_context->db_full, true);
+}
+
+static void test_fim_event_callback(void **state) {
+    whodata_evt w_event = {.user_name = "audit_user_name" };
+    event_data_t evt_data = { .report_event = true, .w_evt = &w_event };
+    directory_t configuration = { .options = -1, .tag = "tag_name" };
+    create_json_event_ctx callback_ctx = { .event = &evt_data, .config = &configuration };
+
+    cJSON* json_event = cJSON_CreateObject();
+    cJSON* data = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(data, "path", "/path/to/file");
+    cJSON_AddItemToObject(json_event, "data", data);
+
+    expect_fim_file_diff("/path/to/file", strdup("diff"));
+
+    expect_function_call(__wrap_send_syscheck_msg);
+
+    fim_event_callback(json_event, &callback_ctx);
+#ifndef TEST_WINAGENT
+    char* test_event = "{\"data\":{\"path\":\"/path/to/file\",\"content_changes\":\"diff\",\"audit\":{\"user_name\":\"audit_user_name\",\"process_id\":0,\"ppid\":0},\"tags\":\"tag_name\"}}";
+#else
+    char* test_event = "{\"data\":{\"path\":\"/path/to/file\",\"content_changes\":\"diff\",\"audit\":{\"user_name\":\"audit_user_name\",\"process_id\":0},\"tags\":\"tag_name\"}}";
+#endif
+    char* string_event = cJSON_PrintUnformatted(json_event);
+    assert_string_equal(string_event, test_event);
+
+    os_free(string_event);
+    cJSON_Delete(json_event);
 }
 
 int main(void) {
@@ -4100,6 +4075,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown (test_transaction_callback_delete_full_db, setup_transaction_callback, teardown_transaction_callback),
         cmocka_unit_test_setup_teardown(test_transaction_callback_full_db, setup_transaction_callback, teardown_transaction_callback),
 
+        /* fim_event_callback */
+        cmocka_unit_test(test_fim_event_callback),
     };
 
     const struct CMUnitTest root_monitor_tests[] = {

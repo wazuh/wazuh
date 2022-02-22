@@ -99,16 +99,10 @@ int fim_db_get_count_file_entry();
 /**
  * @brief Makes any necessary queries to get the entry updated in the DB.
  *
- * @param path The path to the file being processed.
- * @param data The information linked to the path to be created or updated
- * @param updated The updated is a flag to keep if the operation was updated or not.
- * @return The result of the update operation.
- *
- * @retval FIMDB_OK on success.
- * @retval FIMDB_FULL if the table limit was reached.
- * @retval FIMDB_ERR on failure.
+ * @param data The information linked to the path to be created or updated.
+ * @param callback Callback to send the fim message.
  */
-FIMDBErrorCode fim_db_file_update(const fim_entry* data, bool* updated);
+void fim_db_file_update(fim_entry* data, callback_context_t callback);
 
 /**
  * @brief Find entries using the inode.

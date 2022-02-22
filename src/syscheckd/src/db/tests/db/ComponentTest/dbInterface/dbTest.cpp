@@ -53,22 +53,23 @@ void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_jso
         "uid":  0,
         "user_name":    "fakeUser"
     }])"_json;
-    const cJSON *dbsync_event = NULL;
-    cJSON *json_path = NULL;
-    ASSERT_EQ(INSERTED, resultType);
-    ASSERT_EQ(FIM_ADD, event_data->evt_data->type);
+const cJSON* dbsync_event = NULL;
+cJSON* json_path = NULL;
+ASSERT_EQ(INSERTED, resultType);
+ASSERT_EQ(FIM_ADD, event_data->evt_data->type);
 
-    if (cJSON_IsArray(result_json))
+if (cJSON_IsArray(result_json))
+{
+    if (dbsync_event = cJSON_GetArrayItem(result_json, 0), dbsync_event != NULL)
     {
-        if (dbsync_event = cJSON_GetArrayItem(result_json, 0), dbsync_event != NULL)
+        dbsync_event = result_json;
+
+        if (json_path = cJSON_GetObjectItem(dbsync_event, "path"), json_path != NULL)
         {
-            dbsync_event = result_json;
-            if (json_path = cJSON_GetObjectItem(dbsync_event, "path"), json_path != NULL)
-            {
-                ASSERT_EQ(cJSON_GetStringValue(json_path), expectedValue.at("path"));
-            }
+            ASSERT_EQ(cJSON_GetStringValue(json_path), expectedValue.at("path"));
         }
     }
+}
 }
 
 TEST_F(DBTestFixture, TestFimDBInit)
@@ -76,9 +77,7 @@ TEST_F(DBTestFixture, TestFimDBInit)
     EXPECT_NO_THROW(
     {
         const auto fileFIMTest { std::make_unique<FileItem>(insertFileStatement) };
-        bool updated;
-        auto result = fim_db_file_update(fileFIMTest->toFimEntry(), &updated);
-        ASSERT_EQ(result, FIMDB_OK);
+        fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added);
     });
 }
 
@@ -87,9 +86,7 @@ TEST_F(DBTestWinFixture, TestFimDBInitWindows)
     EXPECT_NO_THROW(
     {
         const auto fileFIMTest { std::make_unique<FileItem>(insertFileStatement) };
-        bool updated;
-        auto result = fim_db_file_update(fileFIMTest->toFimEntry(), &updated);
-        ASSERT_EQ(result, FIMDB_OK);
+        fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added);
     });
 }
 
@@ -97,9 +94,7 @@ TEST_F(DBTestFixture, TestFimSyncPushMsg)
 {
     const auto test{R"(fim_file no_data {"begin":"a2fbef8f81af27155dcee5e3927ff6243593b91a","end":"a2fbef8f81af27155dcee5e3927ff6243593b91b","id":1})"};
     const auto fileFIMTest { std::make_unique<FileItem>(insertFileStatement) };
-    bool updated;
-    auto result = fim_db_file_update(fileFIMTest->toFimEntry(), &updated);
-    ASSERT_EQ(result, FIMDB_OK);
+    fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added);
     EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG_VERBOSE, std::string("Message pushed: ") + test)).Times(1);
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "FIM sync module started.")).Times(1);
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Executing FIM sync.")).Times(1);
