@@ -41,7 +41,10 @@ constexpr auto MAX_ADAPTERS_INFO_TRIES
     3
 };
 
-constexpr auto WINDOWS_UNIX_EPOCH_DIFF_SECONDS { 11644473600ULL };
+constexpr auto WINDOWS_UNIX_EPOCH_DIFF_SECONDS
+{
+    11644473600ULL
+};
 
 namespace Utils
 {
