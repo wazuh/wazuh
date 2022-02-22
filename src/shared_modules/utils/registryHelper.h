@@ -9,13 +9,11 @@
  * Foundation.
  */
 
-#include <typeinfo>
 #ifdef WIN32
 
 #ifndef _REGISTRY_HELPER_H
 #define _REGISTRY_HELPER_H
 
-#include <iostream>
 #include <string>
 #include <windows.h>
 #include <winreg.h>
@@ -128,7 +126,7 @@ namespace Utils
                     result = RegEnumValue(m_registryKey, index, buffer, &size, nullptr,  nullptr, nullptr, nullptr);
                 }
 
-                if (result != ERROR_NO_MORE_ITEMS)
+                if (ERROR_NO_MORE_ITEMS != result)
                 {
                     throw std::system_error
                     {
@@ -245,13 +243,16 @@ namespace Utils
             }
 
 
-            bool longint(const std::string& valueName, ULONGLONG* value) const
+            bool longint(const std::string& valueName, ULONGLONG& value) const
             {
+                ULONGLONG valueRegistry;
                 DWORD size {sizeof(ULONGLONG)};
                 DWORD type;
-                const auto result { RegQueryValueEx(m_registryKey, valueName.c_str(), nullptr, &type, reinterpret_cast<LPBYTE>(value), &size) };
+                auto ret {false};
 
-                if (result != ERROR_SUCCESS)
+                const auto result { RegQueryValueEx(m_registryKey, valueName.c_str(), nullptr, &type, reinterpret_cast<LPBYTE>(&valueRegistry), &size) };
+
+                if (ERROR_SUCCESS != result)
                 {
                     throw std::system_error
                     {
@@ -261,7 +262,13 @@ namespace Utils
                     };
                 }
 
-                return (type != REG_QWORD) ? false : true;
+                if (REG_QWORD == type)
+                {
+                    value = valueRegistry;
+                    ret = true;
+                }
+
+                return ret;
             }
 
             bool string(const std::string& valueName, std::string& value) const

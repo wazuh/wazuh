@@ -25,5 +25,5 @@ The System Inventory feature interacts with different modules to split responsib
 ## Sequence diagrams
 The different sequence diagrams illustrate the data provider's workflow to obtain the information.
 
-- 001-sequence-store-packages-windows-info: Explains how the data provider module obtains the packages information from the Windows Store.
+- 001-sequence-windows-store-packages-info: Explains how the data provider module obtains the packages information from the Windows Store.
 

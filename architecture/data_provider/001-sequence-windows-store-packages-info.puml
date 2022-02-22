@@ -34,7 +34,7 @@ loop For each user
             note right
                 (HKEY_USERS\<UserID>\SOFTWARE\\Classes\\Local Settings\\MrtCache)
             end note
-            registry --> dataprovider             : Name application
+            registry --> dataprovider             : Application name
         end
 
         dataprovider -> registry                  : Get vendor
@@ -42,6 +42,12 @@ loop For each user
             (HKEY_USERS\<userID>\SOFTWARE\Classes\<Registry>\Application)
         end note
         registry --> dataprovider                 : Application vendor
+
+        dataprovider -> registry                  : Get install time
+        note right
+            (HKEY_USERS\<userID>\SOFTWARE\Classes\Local Settings\Software\Microsoft\Windows\CurrentVersion\AppModel\Repository\Families)
+        end note
+        registry --> dataprovider                 : Install time
 
         alt package is in DB store packages
             dataprovider -->  consumer            : Delivers the package information

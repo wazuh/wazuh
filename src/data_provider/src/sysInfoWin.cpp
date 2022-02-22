@@ -82,7 +82,6 @@ class SysInfoProcess final
         ULONGLONG creationTime() const
         {
             //convert Win32 Epoch(1 January 1601 00:00:00) to Unix Epoch(1 January 1970 00:00:00)
-            constexpr auto WINDOWS_UNIX_EPOCH_DIFF_SECONDS { 11644473600ULL };
             return m_creationTime.QuadPart - WINDOWS_UNIX_EPOCH_DIFF_SECONDS;
         }
 

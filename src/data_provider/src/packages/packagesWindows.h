@@ -12,6 +12,7 @@
 #ifndef _PACKAGE_WINDOWS_H
 #define _PACKAGE_WINDOWS_H
 
+#include <winsock2.h>
 #include <windows.h>
 #include <set>
 #include "ipackageInterface.h"
