@@ -11,8 +11,8 @@ from unittest.mock import patch
 
 import pytest
 from sqlalchemy import create_engine
+from sqlalchemy import orm as sqlalchemy_orm
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import clear_mappers
 from yaml import safe_load
 
 from wazuh.core.exception import WazuhError
@@ -73,7 +73,7 @@ def db_setup():
                 with patch('api.constants.SECURITY_PATH', new=test_data_path):
                     import wazuh.rbac.orm as orm
                     # Clear mappers
-                    clear_mappers()
+                    sqlalchemy_orm.clear_mappers()
                     # Invalidate in-memory database
                     conn = orm._engine.connect()
                     orm._Session().close()
