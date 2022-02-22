@@ -113,6 +113,16 @@ static void executeParserList(std::string const &event, ParserList const &parser
                 }
                 break;
             }
+            case ParserType::Domain: {
+                DomainResult domainResult;
+                if (parseDomain(&eventIt, parser.endToken, parser.captureOpts, domainResult)){
+                    result[parser.name + ".domain"] = std::move(domainResult.domain);
+                    result[parser.name + ".subdomain"] = std::move(domainResult.subdomain);
+                    result[parser.name + ".registered_domain"] = std::move(domainResult.registered_domain);
+                    result[parser.name + ".top_level_domain"] = std::move(domainResult.top_level_domain);
+                    result[parser.name + ".address"] = std::move(domainResult.address);
+                }
+            }
             default: {
                 fprintf(stderr,
                         "Missing implementation for parser type: [%i]\n",
