@@ -485,12 +485,15 @@ types::Lifter opBuilderHelperRegexMatch(const types::DocumentValue & def)
         throw std::invalid_argument("Wrong number of arguments passed");
     }
     std::string regexp = parameters[1];
+    auto regex_ptr = std::make_shared<RE2>(regexp);
 
     // Return Lifter
     return [=](types::Observable o)
     {
         // Append rxcpp operations
-        return o.filter([=](types::Event e) { return (RE2::PartialMatch(e.get("/" + field)->GetString(), regexp)); });
+        return o.filter(
+            [=](types::Event e)
+            { return (RE2::PartialMatch(e.get("/" + field)->GetString(), *regex_ptr)); });
     };
 }
 
@@ -505,12 +508,16 @@ types::Lifter opBuilderHelperRegexNotMatch(const types::DocumentValue & def)
         throw std::invalid_argument("Wrong number of arguments passed");
     }
     std::string regexp = parameters[1];
+    auto regex_ptr = std::make_shared<RE2>(regexp);
 
     // Return Lifter
     return [=](types::Observable o)
     {
         // Append rxcpp operations
-        return o.filter([=](types::Event e) { return (!RE2::PartialMatch(e.get("/" + field)->GetString(), regexp)); });
+        return o.filter(
+            [=](types::Event e) {
+                return (!RE2::PartialMatch(e.get("/" + field)->GetString(), *regex_ptr));
+            });
     };
 }
 

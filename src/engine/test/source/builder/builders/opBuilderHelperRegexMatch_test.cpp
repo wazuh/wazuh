@@ -140,6 +140,8 @@ TEST(opBuilderHelperRegexMatch, AdvancedRegexMatch)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_TRUE(RE2::PartialMatch(expected[0].get("/field")->GetString(), "([^ @]+)@([^ @]+)"));
-    ASSERT_TRUE(RE2::PartialMatch(expected[1].get("/field")->GetString(), "([^ @]+)@([^ @]+)"));
+    ASSERT_TRUE(
+        RE2::PartialMatch(expected[0].get("/field")->GetString(), "([^ @]+)@([^ @]+)"));
+    ASSERT_TRUE(
+        RE2::PartialMatch(expected[1].get("/field")->GetString(), "([^ @]+)@([^ @]+)"));
 }
