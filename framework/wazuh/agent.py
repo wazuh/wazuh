@@ -110,11 +110,12 @@ def get_agents_summary_status(agent_list: list = None):
                                 **rbac_filters) as db_query:
             data = db_query.run()
 
-        for agent in data_items := data['items']:
+        items = data['items']
+        for agent in items:
             connection[agent['status']] += 1
             sync_configuration[agent['group_config_status']] += 1
 
-        connection['total'] = sync_configuration['total'] = len(data_items)
+        connection['total'] = sync_configuration['total'] = len(items)
 
     sync_configuration['not_synced'] = sync_configuration.pop('not synced')
     return WazuhResult({'data': {'connection': connection, 'configuration': sync_configuration}})
