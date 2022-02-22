@@ -131,6 +131,8 @@ TEST(opBuilderHelperRegexExtract, AdvancedRegexMatch)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_TRUE(RE2::PartialMatch(expected[0].get("/_field")->GetString(), "client@wazuh.com"));
-    ASSERT_TRUE(RE2::PartialMatch(expected[1].get("/_field")->GetString(), "engine@wazuh.com"));
+    ASSERT_TRUE(
+        RE2::PartialMatch(expected[0].get("/_field")->GetString(), "client@wazuh.com"));
+    ASSERT_TRUE(
+        RE2::PartialMatch(expected[1].get("/_field")->GetString(), "engine@wazuh.com"));
 }
