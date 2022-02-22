@@ -293,7 +293,6 @@ typedef struct wdb_t {
 } wdb_t;
 
 typedef struct wdb_config {
-    int sock_queue_size;
     int worker_pool_size;
     int commit_time_min;
     int commit_time_max;
