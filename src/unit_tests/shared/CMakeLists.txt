@@ -52,12 +52,13 @@ list(APPEND shared_tests_flags " ")
 endif()
 
 list(APPEND shared_tests_names "test_string_op")
+set(STRING_OP_BASE_FLAGS "${DEBUG_OP_WRAPPERS} -Wl,--wrap,syscom_dispatch")
 if(${TARGET} STREQUAL "winagent")
-list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
+list(APPEND shared_tests_flags "${STRING_OP_BASE_FLAGS} -Wl,--wrap,Start_win32_Syscheck \
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
                                 -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
 else()
-list(APPEND shared_tests_flags " ")
+list(APPEND shared_tests_flags "${STRING_OP_BASE_FLAGS}")
 endif()
 
 list(APPEND shared_tests_names "test_expression")
