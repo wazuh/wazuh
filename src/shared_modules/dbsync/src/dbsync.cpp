@@ -496,7 +496,7 @@ int dbsync_get_deleted_rows(const TXN_HANDLE  txn,
                     callback_data.callback(result, spJson.get(), callback_data.user_data);
                 }
             };
-            const auto jsOptions = spJsonBytes.get() ? nlohmann::json::parse(spJsonBytes.get()) : GetDeletedQuery::builder().query();
+            const auto jsOptions = spJsonBytes.get() ? nlohmann::json::parse(spJsonBytes.get()) : nlohmann::json::object();
             PipelineFactory::instance().pipeline(txn)->getDeleted(callbackWrapper, jsOptions);
             retVal = 0;
         }

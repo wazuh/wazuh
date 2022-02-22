@@ -364,7 +364,7 @@ struct GetDeletedRowsAction final : public IAction
     void execute(std::unique_ptr<TestContext>& ctx,
                  const nlohmann::json& value) override
     {
-        const auto options { value.contains("options") ? value["options"] : "{}"_json };
+        const auto options = value.contains("options") ? value["options"] : nlohmann::json::object();
         const auto txnOutputFileName{ ctx->outputPath + "/txn_ops.json" };
         auto callbackDelete
         {

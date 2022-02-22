@@ -232,7 +232,7 @@ struct GetDeletedRowsAction final : public IAction
     void execute(std::unique_ptr<TestContext>& ctx,
                  const nlohmann::json& value) override
     {
-        const auto options { value.contains("options") ? value["options"] : "{}"_json };
+        const auto options = value.contains("options") ? value["options"] : nlohmann::json::object();
         const std::unique_ptr<cJSON, TestDeleters::CJsonDeleter> jsOptions
         {
             cJSON_Parse(options.dump().c_str())
@@ -610,7 +610,7 @@ struct GetDeletedRowsActionCPP final : public IAction
         oFileName << "action_" << ctx->currentId << ".json";
         const auto& outputFileNameCallback{ ctx->outputPath + "/" + "callback." + oFileName.str() };
         const auto& loggerContext { std::make_unique<GetCallbackLogger>(outputFileNameCallback) };
-        const auto options { value.contains("options") ? value["options"] : "{}"_json  };
+        const auto options { value.contains("options") ? value["options"] : nlohmann::json::object() };
 
         auto callbackDelete
         {
