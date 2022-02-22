@@ -124,14 +124,15 @@ bool opBuilderHelperStringComparison(const std::string key, char op, types::Even
         //    return std::string{value->GetString()} != expectedStr.value();
         case '>':
             return std::string{value->GetString()} > expectedStr.value();
+        //case '>=':
+        case 'g':
+            return std::string{value->GetString()} >= expectedStr.value();
         case '<':
             return std::string{value->GetString()} < expectedStr.value();
-        //case '>=':
-        case 'm':
-            return std::string{value->GetString()} >= expectedStr.value();
         //case '<=':
-        case 'n':
+        case 'l':
             return std::string{value->GetString()} <= expectedStr.value();
+
         default:
             throw std::invalid_argument("Invalid operator: '" + std::string{op} + "' ");
     }
@@ -220,9 +221,83 @@ types::Lifter opBuilderHelperString_ne(const types::DocumentValue & def)
 }
 
 
-// TODO <field>: s_gt/<value>|$<ref>
+// <field>: s_gt/<value>|$<ref>
+types::Lifter opBuilderHelperString_gt(const types::DocumentValue & def)
+{
+    // Get field key to check
+    std::string key {def.MemberBegin()->name.GetString()};
+
+    // Get the raw value of parameter
+    if (!def.MemberBegin()->value.IsString()) {
+        throw std::runtime_error("Invalid parameter type for s_ne operator (str expected)");
+    }
+
+    // Parse parameters
+    std::string parm {def.MemberBegin()->value.GetString()};
+    auto parametersArr = utils::string::split(parm, '/');
+    if (parametersArr.size() != 2) {
+        throw std::runtime_error("Invalid number of parameters for s_ne operator");
+    }
+
+    std::optional<std::string> refExpStr {};
+    std::optional<std::string> expectedStr {};
+
+    // Check if is a reference to json event
+    if (parametersArr[1][0] == '$') {
+        refExpStr = parametersArr[1].substr(1);
+    } else {
+        expectedStr = parametersArr[1];
+    }
+
+    // Return Lifter
+    return [=](types::Observable o)
+    {
+        // Append rxcpp operation
+        return o.filter([key, expectedStr, refExpStr](types::Event e) {
+            return opBuilderHelperStringComparison(key, '>', e, refExpStr, expectedStr);
+        });
+    };
+}
+
+// <field>: s_ge/<value>|$<ref>
+types::Lifter opBuilderHelperString_ge(const types::DocumentValue & def)
+{
+    // Get field key to check
+    std::string key {def.MemberBegin()->name.GetString()};
+
+    // Get the raw value of parameter
+    if (!def.MemberBegin()->value.IsString()) {
+        throw std::runtime_error("Invalid parameter type for s_ne operator (str expected)");
+    }
+
+    // Parse parameters
+    std::string parm {def.MemberBegin()->value.GetString()};
+    auto parametersArr = utils::string::split(parm, '/');
+    if (parametersArr.size() != 2) {
+        throw std::runtime_error("Invalid number of parameters for s_ne operator");
+    }
+
+    std::optional<std::string> refExpStr {};
+    std::optional<std::string> expectedStr {};
+
+    // Check if is a reference to json event
+    if (parametersArr[1][0] == '$') {
+        refExpStr = parametersArr[1].substr(1);
+    } else {
+        expectedStr = parametersArr[1];
+    }
+
+    // Return Lifter
+    return [=](types::Observable o)
+    {
+        // Append rxcpp operation
+        return o.filter([key, expectedStr, refExpStr](types::Event e) {
+            return opBuilderHelperStringComparison(key, 'g', e, refExpStr, expectedStr);
+        });
+    };
+}
+
 // TODO <field>: s_lt/<value>|$<ref>
-// TODO <field>: s_gte/<value>|$<ref>
-// TODO <field>: s_lte/<value>|$<ref>
+// TODO <field>: s_le/<value>|$<ref>
 
 } // namespace builder::internals::builders
