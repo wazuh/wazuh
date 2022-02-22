@@ -62,7 +62,6 @@ class EXPORTED DB final
         * @param callbackLogWrapper Callback to log lines.
         * @param fileLimit File limit.
         * @param valueLimit Registry value limit.
-        * @param isWindows Enable Windows support.
         */
         void init(const int storage,
                   const int syncInterval,
@@ -70,8 +69,7 @@ class EXPORTED DB final
                   std::function<void(const std::string&)> callbackSyncRegistryWrapper,
                   std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,
                   int fileLimit,
-                  int valueLimit,
-                  bool isWindows);
+                  int valueLimit);
 
         /**
         * @brief runIntegrity Execute the integrity mechanism.
@@ -154,7 +152,6 @@ class EXPORTED DB final
         ~DB() = default;
         DB(const DB&) = delete;
         DB& operator=(const DB&) = delete;
-        std::string CreateStatement(const bool isWindows);
 };
 
 

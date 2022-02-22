@@ -10,37 +10,9 @@
  */
 
 #include "fimDB.hpp"
+#include "fimDBSpecialization.h"
 #include <future>
 
-void FIMDB::setFileLimit()
-{
-    std::shared_lock<std::shared_timed_mutex> lock(m_handlersMutex);
-
-    if (!m_stopping)
-    {
-        m_dbsyncHandler->setTableMaxRow("file_entry", m_fileLimit);
-    }
-}
-
-void FIMDB::setRegistryLimit()
-{
-    std::shared_lock<std::shared_timed_mutex> lock(m_handlersMutex);
-
-    if (!m_stopping)
-    {
-        m_dbsyncHandler->setTableMaxRow("registry_key", m_registryLimit);
-    }
-}
-
-void FIMDB::setValueLimit()
-{
-    std::shared_lock<std::shared_timed_mutex> lock(m_handlersMutex);
-
-    if (!m_stopping)
-    {
-        m_dbsyncHandler->setTableMaxRow("registry_data", m_registryLimit);
-    }
-}
 
 void FIMDB::registerRSync()
 {
@@ -48,18 +20,10 @@ void FIMDB::registerRSync()
 
     if (!m_stopping)
     {
-        m_rsyncHandler->registerSyncID(FIM_COMPONENT_FILE,
-                                       m_dbsyncHandler->handle(),
-                                       nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT),
-                                       m_syncFileMessageFunction);
-
-        if (m_isWindows)
-        {
-            m_rsyncHandler->registerSyncID(FIM_COMPONENT_REGISTRY,
-                                           m_dbsyncHandler->handle(),
-                                           nlohmann::json::parse(FIM_REGISTRY_SYNC_CONFIG_STATEMENT),
-                                           m_syncRegistryMessageFunction);
-        }
+        FIMDBCreator<OS_TYPE>::registerRsync(m_rsyncHandler,
+                                             m_dbsyncHandler->handle(),
+                                             m_syncFileMessageFunction,
+                                             m_syncRegistryMessageFunction);
     }
 }
 
@@ -70,17 +34,10 @@ void FIMDB::sync()
     if (!m_stopping)
     {
         m_loggingFunction(LOG_INFO, "Executing FIM sync.");
-        m_rsyncHandler->startSync(m_dbsyncHandler->handle(),
-                                  nlohmann::json::parse(FIM_FILE_START_CONFIG_STATEMENT),
-                                  m_syncFileMessageFunction);
-
-        if (m_isWindows)
-        {
-            m_rsyncHandler->startSync(m_dbsyncHandler->handle(),
-                                      nlohmann::json::parse(FIM_REGISTRY_START_CONFIG_STATEMENT),
-                                      m_syncRegistryMessageFunction);
-        }
-
+        FIMDBCreator<OS_TYPE>::sync(m_rsyncHandler,
+                                    m_dbsyncHandler->handle(),
+                                    m_syncFileMessageFunction,
+                                    m_syncRegistryMessageFunction);
         m_loggingFunction(LOG_INFO, "Finished FIM sync.");
     }
 }
@@ -92,14 +49,9 @@ void FIMDB::init(unsigned int syncInterval,
                  std::shared_ptr<DBSync> dbsyncHandler,
                  std::shared_ptr<RemoteSync> rsyncHandler,
                  unsigned int fileLimit,
-                 unsigned int registryLimit,
-                 bool isWindows)
+                 unsigned int registryLimit)
 {
     m_syncInterval = syncInterval;
-    m_fileLimit = fileLimit;
-    m_registryLimit = registryLimit;
-
-    m_isWindows = isWindows;
     m_dbsyncHandler = dbsyncHandler;
     m_rsyncHandler = rsyncHandler;
     m_syncFileMessageFunction = callbackSyncFileWrapper;
@@ -107,14 +59,7 @@ void FIMDB::init(unsigned int syncInterval,
     m_loggingFunction = callbackLogWrapper;
     m_stopping = false;
     m_runIntegrity = false;
-
-    setFileLimit();
-
-    if (m_isWindows)
-    {
-        setRegistryLimit();
-        setValueLimit();
-    }
+    FIMDBCreator<OS_TYPE>::setLimits(m_dbsyncHandler, fileLimit, registryLimit);
 }
 
 void FIMDB::removeItem(const nlohmann::json& item)

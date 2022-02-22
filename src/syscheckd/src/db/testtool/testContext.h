@@ -17,12 +17,12 @@
 static const std::map<ReturnTypeCallback, std::string> RETURN_TYPE_OPERATION =
 {
     { MODIFIED, "MODIFIED" },
-    { DELETED, "DELETED" },
+    { DELETED,  "DELETED"  },
     { INSERTED, "INSERTED" },
     { MAX_ROWS, "MAX_ROWS" },
     { DB_ERROR, "DB_ERROR" },
     { SELECTED, "SELECTED" },
-    { GENERIC, "GENERIC" }
+    { GENERIC,  "GENERIC"  }
 };
 
 struct TestContext

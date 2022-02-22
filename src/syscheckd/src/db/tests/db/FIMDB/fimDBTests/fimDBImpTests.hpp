@@ -51,21 +51,6 @@ class MockFIMDB: public FIMDB
         MockFIMDB() {};
         ~MockFIMDB() {};
 
-        void setFileLimit()
-        {
-            FIMDB::setFileLimit();
-        }
-
-        void setRegistryLimit()
-        {
-            FIMDB::setRegistryLimit();
-        }
-
-        void setValueLimit()
-        {
-            FIMDB::setValueLimit();
-        }
-
         void stopIntegrity()
         {
             FIMDB::stopIntegrity();

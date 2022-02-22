@@ -85,8 +85,7 @@ class DBTestFixture : public testing::Test {
                         mockSyncMessage,
                         mockLoggingFunction,
                         MAX_FILE_LIMIT,
-                        0,
-                        false);
+                        100000);
 
             evt_data = {};
             evt_data.report_event = true;
@@ -131,34 +130,4 @@ class DBTestFixture : public testing::Test {
         }
 };
 
-class DBTestWinFixture : public ::testing::Test
-{
-    protected:
-        DBTestWinFixture() = default;
-        virtual ~DBTestWinFixture() = default;
-
-        txn_context_test txn_ctx;
-        event_data_t evt_data;
-
-        void SetUp() override
-        {
-            fim_db_init(FIM_DB_MEMORY,
-                        300,
-                        nullptr,
-                        nullptr,
-                        MAX_FILE_LIMIT,
-                        100000,
-                        true);
-            evt_data = {};
-            evt_data.report_event = true;
-            evt_data.mode = FIM_SCHEDULED;
-            evt_data.w_evt = NULL;
-            txn_ctx = { .evt_data = &evt_data };
-        }
-
-        void TearDown() override
-        {
-            fim_db_teardown();
-        };
-};
 #endif //_DB_TEST_H

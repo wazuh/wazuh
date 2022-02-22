@@ -15,7 +15,7 @@
 #include "db.hpp"
 #include "fimDB.hpp"
 #include "dbFileItem.hpp"
-#include <iostream>
+
 
 static const char* FIM_EVENT_TYPE_ARRAY[] =
 {

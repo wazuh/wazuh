@@ -81,15 +81,6 @@ TEST_F(DBTestFixture, TestFimDBInit)
     });
 }
 
-TEST_F(DBTestWinFixture, TestFimDBInitWindows)
-{
-    EXPECT_NO_THROW(
-    {
-        const auto fileFIMTest { std::make_unique<FileItem>(insertFileStatement) };
-        fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added);
-    });
-}
-
 TEST_F(DBTestFixture, TestFimSyncPushMsg)
 {
     const auto test{R"(fim_file no_data {"begin":"a2fbef8f81af27155dcee5e3927ff6243593b91a","end":"a2fbef8f81af27155dcee5e3927ff6243593b91b","id":1})"};
@@ -133,21 +124,6 @@ TEST_F(DBTestFixture, TestFimRunIntegrityInitTwice)
     });
 }
 
-TEST_F(DBTestWinFixture, TestTransactionsWinFile)
-{
-    EXPECT_NO_THROW(
-    {
-        auto handler = fim_db_transaction_start(FIMDB_FILE_TXN_TABLE, transaction_callback, &txn_ctx);
-        ASSERT_TRUE(handler);
-        const auto fileFIMTest { std::make_unique<FileItem>(insertFileStatement) };
-        auto result = fim_db_transaction_sync_row(handler, fileFIMTest->toFimEntry());
-        ASSERT_EQ(result, FIMDB_OK);
-        result = fim_db_transaction_deleted_rows(handler, transaction_callback, &txn_ctx);
-        ASSERT_EQ(result, FIMDB_OK);
-
-    });
-}
-
 TEST_F(DBTestFixture, TestTransactionsFile)
 {
     EXPECT_NO_THROW(
@@ -161,8 +137,8 @@ TEST_F(DBTestFixture, TestTransactionsFile)
         ASSERT_EQ(result, FIMDB_OK);
     });
 }
-
-TEST_F(DBTestWinFixture, TestTransactionsRegistryKey)
+#ifdef WIN32
+TEST_F(DBTestFixture, TestTransactionsRegistryKey)
 {
     EXPECT_NO_THROW(
     {
@@ -176,7 +152,7 @@ TEST_F(DBTestWinFixture, TestTransactionsRegistryKey)
     });
 }
 
-TEST_F(DBTestWinFixture, TestTransactionsRegistryValue)
+TEST_F(DBTestFixture, TestTransactionsRegistryValue)
 {
     EXPECT_NO_THROW(
     {
@@ -189,23 +165,24 @@ TEST_F(DBTestWinFixture, TestTransactionsRegistryValue)
         ASSERT_EQ(result, FIMDB_OK);
     });
 }
+#endif
 
-TEST_F(DBTestWinFixture, TestInitTransactionWithInvalidParameters)
+TEST_F(DBTestFixture, TestInitTransactionWithInvalidParameters)
 {
     auto handler = fim_db_transaction_start(nullptr, nullptr, nullptr);
     ASSERT_FALSE(handler);
 }
 
-TEST_F(DBTestWinFixture, TestSyncRowTransactionWithInvalidHandler)
+TEST_F(DBTestFixture, TestSyncRowTransactionWithInvalidHandler)
 {
     const auto fileFIMTest { std::make_unique<FileItem>(insertFileStatement) };
     auto result = fim_db_transaction_sync_row(nullptr, fileFIMTest->toFimEntry());
     ASSERT_EQ(result, FIMDB_ERR);
 }
 
-TEST_F(DBTestWinFixture, TestSyncRowTransactionWithInvalidFimEntry)
+TEST_F(DBTestFixture, TestSyncRowTransactionWithInvalidFimEntry)
 {
-    auto handler = fim_db_transaction_start(FIMDB_REGISTRY_VALUE_TXN_TABLE, transaction_callback, &txn_ctx);
+    auto handler = fim_db_transaction_start(FIMDB_FILE_TXN_TABLE, transaction_callback, &txn_ctx);
     ASSERT_TRUE(handler);
     auto result = fim_db_transaction_sync_row(handler, nullptr);
     ASSERT_EQ(result, FIMDB_ERR);
@@ -213,7 +190,7 @@ TEST_F(DBTestWinFixture, TestSyncRowTransactionWithInvalidFimEntry)
     ASSERT_EQ(result, FIMDB_OK);
 }
 
-TEST_F(DBTestWinFixture, TestSyncDeletedRowsTransactionWithInvalidParameters)
+TEST_F(DBTestFixture, TestSyncDeletedRowsTransactionWithInvalidParameters)
 {
     auto result = fim_db_transaction_deleted_rows(nullptr, nullptr, nullptr);
     ASSERT_EQ(result, FIMDB_ERR);
