@@ -19,13 +19,14 @@
 #include "endpoints/endpointFactory.hpp"
 #include "json.hpp"
 #include "threadPool.hpp"
+#include "protocolHandler.hpp"
 
 using namespace std;
 using namespace engineserver::endpoints;
 
 namespace engineserver
 {
-void EngineServer::configure(const vector<string> & config)
+void EngineServer::configure(const vector<string> & config, rxcpp::observe_on_one_worker & mainthread)
 {
     vector<BaseEndpoint::EndpointObs> tmpObs;
 
@@ -40,43 +41,52 @@ void EngineServer::configure(const vector<string> & config)
     }
 
     // Emits connections
-    auto tcpServerObs = tmpObs[0];
+    BaseEndpoint::EndpointObs tcpServerObs = tmpObs[0];
+
+    auto sc = rxcpp::schedulers::make_scheduler<threadpool::ThreadPool>(8);
+    auto threadpoolW = rxcpp::observe_on_one_worker(sc);
 
     // Emits eventObservables
-    auto tcpConnectionObs = tcpServerObs.flat_map([&](BaseEndpoint::ConnectionObs o){
-        // This flat_map internally merges
-        // on_error/on_completed emited by ConnectionObs o
-        return o.on_error_resume_next([&](auto eptr){
-            LOG(INFO) << "Error from connection: " << rxcpp::util::what(eptr) << std::endl;
-            return rxcpp::observable<>::empty<BaseEndpoint::EventObs>();
-        });
-    }); // out subscriber  BaseEndpoint::ConnectionObs o
-
-    // tcpServerObs <- flat_map
-    // tcpServerObs --> ConnectionObs <- flat_map [tarea1, tarea2, ....] -> on_completed
-    // flat_map internal_subscriber(ConnectionObs -> on_completed) -> EventsObs
-    // src -> (src2 -> on_completed) -> on_next(evento) -> .... -> error )
-    // src -> on_completed -> on_completed(evento) -> .... -> error )
-    auto loop = rxcpp::schedulers::make_scheduler<threadpool::ThreadPool>(4);
+    BaseEndpoint::ConnectionObs tcpConnectionObs = tcpServerObs.flat_map(
+        [&](BaseEndpoint::ConnectionObs o)
+        {
+            // This flat_map internally merges
+            // on_error/on_completed emited by ConnectionObs o
+            return o.on_error_resume_next(
+                [&](auto eptr)
+                {
+                    LOG(INFO) << "Recovering from: " << rxcpp::util::what(eptr) << std::endl;
+                    return rxcpp::observable<>::empty<BaseEndpoint::EventObs>();
+                });
+        },
+        mainthread);
+    engineserver::ProtocolHandler p;
     // Emits events
-    BaseEndpoint::EventObs eventObs = tcpConnectionObs.flat_map([=](BaseEndpoint::EventObs o){
-
-        return o.observe_on(rxcpp::serialize_same_worker(loop.create_worker()));
-    });
-    // auto safeEventObs = eventObs.on_error_resume_next([=](auto eptr){
-    //     LOG(ERROR) << "safeEventObs treated error: e" << rxcpp::util::what(eptr) << std::endl;
-    //     return eventObs;
-    // });
+    rxcpp::observable<json::Document> eventObs = tcpConnectionObs.flat_map(
+        [=](BaseEndpoint::EventObs o)
+        {
+            return o
+                .on_error_resume_next(
+                    [&](auto eptr)
+                    {
+                        LOG(INFO) << "Recovering from: " << rxcpp::util::what(eptr) << std::endl;
+                        return rxcpp::observable<>::empty<BaseEndpoint::Event>();
+                    })
+                .observe_on(threadpoolW)
+                .map([=](std::string event) {
+                    LOG(INFO) << "[" << this_thread::get_id() << "]" << std::endl;
+                    return p.parse(event); });
+        }, threadpoolW);
 
     this->m_output = eventObs;
 }
 
-EngineServer::EngineServer(const vector<string> & config)
-{
-    this->configure(config);
-}
+// EngineServer::EngineServer(const vector<string> & config)
+// {
+//     this->configure(config, );
+// }
 
-endpoints::BaseEndpoint::EventObs EngineServer::output(void) const
+rxcpp::observable<json::Document> EngineServer::output(void) const
 {
     return this->m_output;
 }
