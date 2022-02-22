@@ -98,6 +98,31 @@ types::Lifter opBuilderHelperString_eq(const types::DocumentValue & def);
 types::Lifter opBuilderHelperString_ne(const types::DocumentValue & def);
 
 
+/**
+ * @brief Create `s_gt` helper function that filters events with a string
+ * field greater than a value.
+ *
+ * The filter checks if a field in the JSON event `wazuh` is equal to a value.
+ * Only pass events if the fields are equal (case sensitive) and the values are a string.
+ * @param def The filter definition. i.e : `{wazuh: +s_gt/value}`
+ * @return types::Lifter The lifter with the `s_gt` filter.
+ * @throw std::runtime_error if the parameter is not a string.
+ */
+types::Lifter opBuilderHelperString_gt(const types::DocumentValue & def);
+
+
+/**
+ * @brief Create `s_ge` helper function that filters events with a string
+ * field equals or greater than a value.
+ *
+ * The filter checks if a field in the JSON event `wazuh` is equal to a value.
+ * Only pass events if the fields are equal (case sensitive) and the values are a string.
+ * @param def The filter definition. i.e : `{wazuh: +s_ge/value}`
+ * @return types::Lifter The lifter with the `s_ge` filter.
+ * @throw std::runtime_error if the parameter is not a string.
+ */
+types::Lifter opBuilderHelperString_ge(const types::DocumentValue & def);
+
 } // namespace builder::internals::builders
 
 #endif // _OP_BUILDER_HELPER_FILTER_H
