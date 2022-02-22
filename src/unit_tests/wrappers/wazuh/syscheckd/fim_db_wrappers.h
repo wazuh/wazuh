@@ -88,4 +88,12 @@ int __wrap_fim_db_get_count_file_inode();
 
 void __wrap_fim_run_integrity();
 
+void __wrap_is_fim_shutdown();
+
+void __wrap_fim_db_teardown();
+
+void __wrap__imp__dbsync_initialize();
+
+void __wrap__imp__rsync_initialize();
+
 #endif

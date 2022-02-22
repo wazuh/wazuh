@@ -118,7 +118,8 @@ if(${TARGET} STREQUAL "winagent")
                                      -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
                                      -Wl,--wrap=fim_db_file_pattern_search -Wl,--wrap=fim_db_transaction_start \
                                      -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_transaction_deleted_rows \
-                                     -Wl,--wrap=fim_db_file_update -Wl,--wrap=fim_db_transaction_sync_row")
+                                     -Wl,--wrap=fim_db_file_update -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=is_fim_shutdown \
+                                     -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
 else()
   list(APPEND syscheckd_tests_flags "${FIM_SYSCOM_BASE_FLAGS}")
 endif()
@@ -142,7 +143,9 @@ set(FIM_DIFF_CHANGES_BASE_FLAGS "-Wl,--wrap,lstat -Wl,--wrap,stat \
 list(APPEND syscheckd_tests_names "fim_diff_changes")
 if(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${FIM_DIFF_CHANGES_BASE_FLAGS} -Wl,--wrap=FileSizeWin -Wl,--wrap,fim_sync_push_msg \
-                                     -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch")
+                                     -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
+                                     -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                                     -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
 else()
   list(APPEND syscheckd_tests_flags "${FIM_DIFF_CHANGES_BASE_FLAGS} -Wl,--wrap=unlink -Wl,--wrap=FileSize")
 endif()
@@ -162,14 +165,18 @@ set(RUN_REALTIME_BASE_FLAGS "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watc
 list(APPEND syscheckd_tests_names "run_realtime")
 if(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS} -Wl,--wrap=fim_configuration_directory -Wl,--wrap,fim_sync_push_msg \
-                                     -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch")
+                                     -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
+                                     -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                                     -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
 
   # Create event channel tests for run_realtime
   list(APPEND syscheckd_event_tests_names "test_run_realtime_event")
   list(APPEND syscheckd_event_tests_flags "${RUN_REALTIME_BASE_FLAGS} -Wl,--wrap=whodata_audit_start \
                                            -Wl,--wrap=check_path_type,--wrap=set_winsacl,--wrap=w_directory_exists \
                                            -Wl,--wrap,fim_sync_push_msg -Wl,--wrap=fim_db_get_count_registry_data \
-                                           -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch")
+                                           -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch
+                                           -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                                           -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
 else()
   list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS}")
 endif()
@@ -190,8 +197,10 @@ if(${TARGET} STREQUAL "agent")
 else()
   if(${TARGET} STREQUAL "winagent")
     list(APPEND syscheckd_tests_flags "${SYSCHECK_CONFIG_BASE_FLAGS} -Wl,--wrap,fim_sync_push_msg \
-                                      -Wl,--wrap=fim_db_get_count_registry_data \
-                                      -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch")
+                                      -Wl,--wrap=fim_db_get_count_registry_data \ 
+                                      -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
+                                      -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                                      -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
   else()
     list(APPEND syscheckd_tests_flags "${SYSCHECK_CONFIG_BASE_FLAGS} -Wl,--wrap,getpid")
   endif()
@@ -217,7 +226,9 @@ if(${TARGET} STREQUAL "winagent")
                                     -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_rwlock_wrlock \
                                     -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,fim_sync_push_msg \
                                     -Wl,--wrap=fim_db_get_count_registry_data \
-                                    -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch")
+                                    -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
+                                    -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                                    -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
 
 else()
   list(APPEND syscheckd_tests_flags "${SYSCHECK_BASE_FLAGS}")
@@ -245,7 +256,9 @@ elseif(${TARGET} STREQUAL "winagent")
                                      -Wl,--wrap,WaitForSingleObjectEx -Wl,--wrap,pthread_rwlock_rdlock \
                                      -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,pthread_rwlock_wrlock \
                                      -Wl,--wrap,fim_sync_push_msg -Wl,--wrap=fim_db_get_count_registry_data \
-                                     -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch")
+                                     -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
+                                     -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                                     -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
 
   # Create event channel tests for run_check
   list(APPEND syscheckd_event_tests_names "test_run_check_event")
@@ -258,7 +271,10 @@ elseif(${TARGET} STREQUAL "winagent")
                                                                    -Wl,--wrap,pthread_mutex_unlock \
                                                                    -Wl,--wrap,fim_sync_push_msg \
                                                                    -Wl,--wrap=fim_db_get_count_registry_data \
-                                                                   -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch")
+                                                                   -Wl,--wrap=fim_db_get_count_registry_key \
+                                                                   -Wl,--wrap=syscom_dispatch \
+                                                                   -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                                                                   -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
 else()
   list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=sleep,--wrap,time")
 endif()
@@ -349,7 +365,9 @@ if(${TARGET} STREQUAL "winagent")
                                           -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
                                           -Wl,--wrap=decode_win_acl_json,--wrap=w_get_file_attrs -Wl,--wrap=os_winreg_check \
                                           -Wl,--wrap,get_file_user -Wl,--wrap,fim_registry_scan \
-                                          -Wl,--wrap,get_UTC_modification_time -Wl,--wrap,fim_sync_push_msg")
+                                          -Wl,--wrap,get_UTC_modification_time -Wl,--wrap,fim_sync_push_msg \
+                                          -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                                          -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
 else()
     target_link_libraries(test_create_db "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=lstat -Wl,--wrap=count_watches \
                                           -Wl,--wrap,get_user -Wl,--wrap,realpath -Wl,--wrap,add_whodata_directory \
