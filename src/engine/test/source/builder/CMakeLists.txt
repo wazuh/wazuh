@@ -174,6 +174,18 @@ add_executable(opBuilderHelperStringGe_test
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp)
 gtest_discover_tests(opBuilderHelperStringGe_test)
 
+add_executable(opBuilderHelperStringLt_test
+  ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringLt_test.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp)
+gtest_discover_tests(opBuilderHelperStringLt_test)
+
+add_executable(opBuilderHelperStringLe_test
+  ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringLe_test.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp)
+gtest_discover_tests(opBuilderHelperStringLe_test)
+
 add_executable(opBuilderConditionTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderConditionTest.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderCondition.cpp
