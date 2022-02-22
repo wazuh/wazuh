@@ -211,6 +211,7 @@ if __name__ == "__main__":
     arg_parser.add_argument("-l", "--list_outdated", action="store_true",
                             help="Generates a list with all outdated agents.")
     arg_parser.add_argument("-f", "--file", type=str, help="Custom WPK filename.")
+    arg_parser.add_argument("-d", "--debug", action="store_true", help="Debug mode.")
     arg_parser.add_argument("-x", "--execute", type=str,
                             help="Executable filename in the WPK custom file. [Default: upgrade.sh]")
     arg_parser.add_argument("--http", action="store_true", help="Uses http protocol instead of https.")

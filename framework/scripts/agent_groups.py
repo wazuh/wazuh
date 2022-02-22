@@ -4,20 +4,29 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import argparse
+import asyncio
 import logging
-from getopt import GetoptError, getopt
 from os.path import basename
 from signal import signal, SIGINT
 from sys import exit, argv
 
-from wazuh import agent
-from wazuh.agent import remove_agent_from_groups
-from wazuh.core import agent as core_agent
-from wazuh.core.cluster.utils import read_config
-from wazuh.core.exception import WazuhError
-
 # Global variables
 debug = False
+
+try:
+    import wazuh.agent as agent
+    from api.util import raise_if_exc
+    from wazuh.core import common
+    from wazuh.core.agent import Agent
+    from wazuh.core.cluster.dapi.dapi import DistributedAPI
+    from wazuh.core.exception import WazuhError
+    from wazuh.core.cluster import utils as cluster_utils
+except Exception as e:
+    print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
+    exit()
+
+logger = logging.getLogger('wazuh')
 
 
 # Functions
@@ -35,137 +44,256 @@ def signal_handler(n_signal, frame):
     exit(1)
 
 
-def show_groups():
-    groups_data = agent.get_agent_groups().to_dict()
-    print("Groups ({0}):".format(groups_data['total_affected_items']))
-    for g in groups_data['affected_items']:
-        print("  {0} ({1})".format(g['name'], g['count']))
+async def show_groups():
+    """Show all the groups and the number of agents that belong to each one."""
+    groups = await cluster_utils.forward_function(func=agent.get_agent_groups,
+                                                  f_kwargs={})
+    unassigned_agents = await cluster_utils.forward_function(func=agent.get_agents,
+                                                             f_kwargs={'q': 'id!=000;group=null'})
+    check_if_exception(groups)
+    check_if_exception(unassigned_agents)
 
-    print("Unassigned agents: {0}.".format(agent.get_agents(q='id!=000;group=null').to_dict()['total_affected_items']))
+    print(f"Groups ({groups.total_affected_items}):")
+    for items in groups.affected_items:
+        print(f"  {items['name']} ({items['count']})")
+
+    print(f"Unassigned agens: {unassigned_agents.total_affected_items}.")
 
 
-def show_group(agent_id):
-    agent_info = agent.get_agents(agent_list=[agent_id]).to_dict()
-    if agent_info['total_affected_items'] == 0:
-        print(list(agent_info['failed_items'].keys())[0])
+async def show_group(agent_id):
+    """Show the groups an agent belong to.
+
+    Parameters
+    ----------
+    agent_id : str
+        The agent we want to know the groups for.
+    """
+
+    agent_id = agent_id.split(',')
+    agent_info = await cluster_utils.forward_function(func=agent.get_agents, f_kwargs={'agent_list': agent_id})
+
+    check_if_exception(agent_info)
+
+    if agent_info.total_affected_items == 0:
+        msg = list(agent_info.failed_items.keys())[0]
     else:
-        agent_info = agent_info['affected_items'][0]
+        agent_info = agent_info.affected_items[0]
         str_group = ', '.join(agent_info['group']) if 'group' in agent_info else "Null"
-        print("The agent '{0}' with ID '{1}' belongs to groups: {2}.".format(agent_info['name'], agent_info['id'],
-                                                                             str_group))
+        msg = f"The agent '{agent_info['name']}' with ID '{agent_info['id']}' belongs to groups: {str_group}."
+
+    print(msg)
 
 
-def show_synced_agent(agent_id):
-    result = agent.get_agents_sync_group(agent_list=[agent_id]).to_dict()
-    if result['total_affected_items'] == 0:
-        print(list(result['failed_items'].keys())[0])
+async def show_synced_agent(agent_id):
+    """Show if an agent is synchronized.
+
+    Parameters
+    ----------
+    agent_id : str
+        The agent we want to know if is synchronized.
+    """
+    result = await cluster_utils.forward_function(func=agent.get_agents_sync_group, f_kwargs={'agent_list': [agent_id]})
+    check_if_exception(result)
+
+    if result.total_affected_items == 0:
+        msg = list(result.failed_items.keys())[0]
     else:
-        print(
-            "Agent '{}' is{} synchronized. ".format(agent_id, '' if result['affected_items'][0]['synced'] else ' not'))
+        msg = f"Agent '{agent_id}' is{'' if result.affected_items[0]['synced'] else ' not'} synchronized. "
+
+    print(msg)
 
 
-def show_agents_with_group(group_id):
-    agents_data = agent.get_agents_in_group(group_list=[group_id], limit=None).to_dict()
+async def show_agents_with_group(group_id):
+    """Show agents that belong to a specific group.
 
-    if agents_data['total_affected_items'] == 0:
-        print("No agents found in group '{0}'.".format(group_id))
+    Parameters
+    ----------
+    group_id : str
+        The group we would like to see the agents for.
+    """
+    group_id = group_id.split(',')
+    result = await cluster_utils.forward_function(func=agent.get_agents_in_group, f_kwargs={'group_list': group_id})
+    check_if_exception(result)
+
+    if result.total_affected_items == 0:
+        print(f"No agents found in group '{group_id}'.")
     else:
-        print("{0} agent(s) in group '{1}':".format(agents_data['total_affected_items'], group_id))
-        for a in agents_data['affected_items']:
-            print("  ID: {0}  Name: {1}.".format(a['id'], a['name']))
+        print(f"{result.total_affected_items} agent(s) in group '{group_id}':")
+        for a in result.affected_items:
+            print(f"  ID: {a['id']}  Name: {a['name']}.")
 
 
-def show_group_files(group_id):
-    data = agent.get_group_files(group_list=[group_id]).to_dict()
-    print("{0} files for '{1}' group:".format(data['total_affected_items'], group_id))
+async def show_group_files(group_id):
+    """Obtain the configuration files for certain group.
+
+    Parameters
+    ----------
+    group_id : str
+        The group we want to check the configuration files for.
+    """
+    group_id = group_id.split(',')
+    result = await cluster_utils.forward_function(func=agent.get_group_files, f_kwargs={'group_list': group_id})
+    check_if_exception(result)
+
+    print("{0} files for '{1}' group:".format(result.total_affected_items, group_id))
 
     longest_name = 0
-    for item in data['affected_items']:
+    for item in result.affected_items:
         if len(item['filename']) > longest_name:
             longest_name = len(item['filename'])
 
-    for item in data['affected_items']:
+    for item in result.affected_items:
         spaces = longest_name - len(item['filename']) + 2
         print("  {0}{1}[{2}]".format(item['filename'], spaces * ' ', item['hash']))
 
 
-def unset_group(agent_id, group_id=None, quiet=False):
+async def unset_group(agent_id, group_id=None, quiet=False):
+    """Function to te remove agents from groups.
+
+    Parameters
+    ----------
+    agent_id : str
+        The agent we want to unset.
+    group_id : str
+        The group we want to unset the agent from.
+    quiet : bool
+        No confirmation mode.
+    """
     if not quiet:
         if group_id:
-            ans = get_stdin("Do you want to delete the group '{0}' of agent '{1}'? [y/N]: ".format(group_id, agent_id))
+            ans = get_stdin(f"Do you want to delete the group '{group_id}' of agent '{agent_id}'? [y/N]: ")
         else:
-            ans = get_stdin("Do you want to delete all groups of agent '{0}'? [y/N]: ".format(agent_id))
+            ans = get_stdin(f"Do you want to delete all groups of agent '{agent_id}'? [y/N]: ")
     else:
         ans = 'y'
 
     if ans.lower() == 'y':
-        if group_id:
-            msg = core_agent.Agent.unset_single_group_agent(agent_id, group_id)
+        result = await cluster_utils.forward_function(func=agent.remove_agent_from_groups,
+                                                      f_kwargs={'agent_list': [agent_id], 'group_list': [group_id]})
+        check_if_exception(result)
+
+        if result.total_affected_items != 0:
+            msg = f"Agent '{agent_id}' removed from {group_id}."
         else:
-            groups_agent_removed = remove_agent_from_groups(agent_list=[agent_id])._affected_items
-            if len(groups_agent_removed) == 0:
-                msg = f"Agent '{agent_id}' is only assigned to group default."
-            else:
-                msg = f"Agent '{agent_id}' removed from '{', '.join(groups_agent_removed)}'. Agent reassigned to group default."
+            msg = list(result.failed_items.keys())[0]
     else:
         msg = "Cancelled."
 
     print(msg)
 
 
-def remove_group(group_id, quiet=False):
+async def remove_group(group_id, quiet=False):
+    """Remove a group.
+
+    Parameters
+    ----------
+    group_id : str
+        The group we want to remove.
+    quiet : bool
+        No confirmation mode.
+    """
     if not quiet:
-        ans = get_stdin("Do you want to remove the '{0}' group? [y/N]: ".format(group_id))
+        ans = get_stdin(f"Do you want to remove the '{group_id}' group? [y/N]: ")
     else:
         ans = 'y'
 
     msg = ''
     if ans.lower() == 'y':
-        data = agent.delete_groups(group_list=[group_id]).to_dict()
-        if data['total_affected_items'] == 0:
-            print(list(data['failed_items'].keys())[0])
+        result = await cluster_utils.forward_function(func=agent.delete_groups, f_kwargs={'group_list': [group_id]})
+        check_if_exception(result)
+
+        if result.total_affected_items == 0:
+            msg = list(result.failed_items.keys())[0]
         else:
-            affected_agents = data['dikt']['affected_agents']
-            msg = f'Group {group_id} removed.'
-            if not affected_agents:
-                msg += "\nNo affected agents."
-            else:
-                msg += "\nAffected agents: {0}.".format(', '.join(affected_agents))
+            for items in result.affected_items:
+                affected_agents = items[group_id]
+                msg = f"Group {group_id} removed."
+
+                if not affected_agents:
+                    msg += '\nNo affected agents.'
+                else:
+                    msg += f"\nAffected agents: {', '.join(affected_agents)}."
+    else:
+        msg = 'Cancelled.'
+
+    print(msg)
+
+
+async def set_group(agent_id, group_id, quiet=False, replace=False):
+    """Function to add agents to certain groups.
+
+    Parameters
+    ----------
+    agent_id : str
+        List of agents we would like to add.
+    group_id : str
+        List of groups we would like to add them to.
+    quiet : bool
+        No confirmation mode.
+    replace : bool
+        Force only one group.
+    """
+    agent_id = agent_id.split(',')
+    group_id = group_id.split(',')
+    agent_id = [item.zfill(3) for item in agent_id]
+
+    if not quiet:
+        ans = get_stdin(f"Do you want to add the group '{group_id}' to the agent '{agent_id}'? [y/N]: ")
+    else:
+        ans = 'y'
+
+    if ans.lower() == 'y':
+        result = await cluster_utils.forward_function(func=agent.assign_agents_to_group,
+                                                      f_kwargs={'group_list': group_id, 'agent_list': agent_id,
+                                                                'replace': replace})
+        check_if_exception(result)
+
+        if result.total_affected_items != 0:
+            msg = f"Group '{group_id}' added to agent '{agent_id}'."
+        else:
+            msg = list(result.failed_items.keys())[0]
+
+    else:
+        msg = 'Cancelled.'
+
+    print(msg)
+
+
+async def create_group(group_id, quiet=False):
+    """Create a group.
+
+    Parameters
+    ----------
+    group_id : str
+        The name of the group we want to create.
+    quiet : bool
+        No confirmation mode.
+    """
+    if not quiet:
+        ans = get_stdin(f"Do you want to create the group '{group_id}'? [y/N]: ")
+    else:
+        ans = 'y'
+
+    if ans.lower() == 'y':
+        result = await cluster_utils.forward_function(func=agent.create_group, f_kwargs={'group_id': group_id})
+        check_if_exception(result)
+
+        msg = result.dikt['message']
     else:
         msg = "Cancelled."
 
     print(msg)
 
 
-def set_group(agent_id, group_id, quiet=False, replace=False):
-    agent_id = "{}".format(int(agent_id)).zfill(3)
-    if not quiet:
-        ans = get_stdin("Do you want to add the group '{0}' to the agent '{1}'? [y/N]: ".format(group_id, agent_id))
-    else:
-        ans = 'y'
+def check_if_exception(result):
+    """Check if the value return is an exception.
 
-    if ans.lower() == 'y':
-        data = agent.assign_agents_to_group(agent_list=[agent_id], group_list=[group_id], replace=replace).to_dict()
-        if data['total_affected_items'] == 0:
-            print(list(data['failed_items'].keys())[0])
-        else:
-            print("Group '{0}' added to agent '{1}'.".format(group_id, agent_id))
-    else:
-        print("Cancelled.")
-
-
-def create_group(group_id, quiet=False):
-    if not quiet:
-        ans = get_stdin("Do you want to create the group '{0}'? [y/N]: ".format(group_id))
-    else:
-        ans = 'y'
-
-    if ans.lower() == 'y':
-        msg = agent.create_group(group_id).dikt['message']
-    else:
-        msg = "Cancelled."
-
-    print(msg)
+    Parameters
+    ----------
+    result : value returned by function
+    """
+    if isinstance(result, Exception):
+        raise result
 
 
 def usage():
@@ -214,117 +342,76 @@ def invalid_option(msg=None):
     exit(1)
 
 
-def main():
+async def main():
     # Capture Cntrl + C
     signal(SIGINT, signal_handler)
 
-    # Parse arguments
-    arguments = {'n_args': 0, 'n_actions': 0, 'group': None, 'agent-id': None, 'list': False, 'list-files': False,
-                 'add-group': False, 'replace-group': False, 'show-group': False, 'show-sync': False,
-                 'remove-group': False, 'quiet': False}
-    try:
-        opts, args = getopt(argv[1:], "lcafsSri:g:qdh",
-                            ["list", "list-files", "add-group", "replace-group", "show-group", "show-sync",
-                             "remove-group", "agent-id=", "group=", "quiet", "debug", "help"])
-        arguments['n_args'] = len(opts)
-    except GetoptError as err:
-        print(str(err) + "\n" + "Try '--help' for more information.")
-        exit(1)
-
-    for o, a in opts:
-        if o in ("-l", "--list"):
-            arguments['list'] = True
-            arguments['n_actions'] += 1
-        elif o in ("-c", "--list-files"):
-            arguments['list-files'] = True
-            arguments['n_actions'] += 1
-        elif o in ("-a", "--add-group"):
-            arguments['add-group'] = True
-            arguments['n_actions'] += 1
-        elif o in ("-f", "--replace-group"):
-            arguments['replace-group'] = True
-        elif o in ("-s", "--show-group"):
-            arguments['show-group'] = True
-            arguments['n_actions'] += 1
-        elif o in ("-S", "--show-sync"):
-            arguments['show-sync'] = True
-            arguments['n_actions'] += 1
-        elif o in ("-r", "--remove-group"):
-            arguments['remove-group'] = True
-            arguments['n_actions'] += 1
-        elif o in ("-i", "--agent-id"):
-            arguments['agent-id'] = a
-        elif o in ("-g", "--group"):
-            arguments['group'] = a
-        elif o in ("-q", "--quiet"):
-            arguments['quiet'] = True
-        elif o in ("-d", "--debug"):
-            global debug
-            debug = True
-        elif o in ("-h", "--help"):
-            usage()
-            exit(0)
-        else:
-            invalid_option()
-
-    # Actions
-    if arguments['n_args'] > 5 or arguments['n_actions'] > 1:
-        invalid_option("Bad argument combination.")
-
-    # ./agent_groups.py
-    if arguments['n_args'] == 0:
-        show_groups()
     # ./agent_groups.py -l [ -g group_id ]
-    elif arguments['list']:
-        if arguments['group']:
-            show_agents_with_group(arguments['group'])
+    if args.list:
+        if args.group_id:
+            await show_agents_with_group(args.group_id)
         else:
-            show_groups()
+            await show_groups()
     # -c -g group_id
-    elif arguments['list-files']:
-        show_group_files(arguments['group']) if arguments['group'] else invalid_option("Missing group.")
+    elif args.list_files:
+        await show_group_files(args.group_id) if args.group_id else invalid_option("Missing group.")
     # -a (-i agent_id -g groupd_id | -g group_id) [-q] [-e]
-    elif arguments['add-group']:
-        if arguments['agent-id'] and arguments['group']:
-            set_group(arguments['agent-id'], arguments['group'], arguments['quiet'], arguments['replace-group'])
-        elif arguments['group']:
-            create_group(arguments['group'], arguments['quiet'])
+    elif args.add:
+        if args.agent_id and args.group_id:
+            await set_group(args.agent_id, args.group_id, args.quiet, args.force)
+        elif args.group_id:
+            await create_group(args.group_id, args.quiet)
         else:
             invalid_option("Missing agent ID or group.")
     # -s -i agent_id
-    elif arguments['show-group']:
-        show_group(arguments['agent-id']) if arguments['agent-id'] else invalid_option("Missing agent ID.")
+    elif args.show_group:
+        await show_group(args.agent_id) if args.agent_id else invalid_option("Missing agent ID.")
     # -S -i agent_id
-    elif arguments['show-sync']:
-        show_synced_agent(arguments['agent-id']) if arguments['agent-id'] else invalid_option("Missing agent ID.")
+    elif args.show_sync:
+        await show_synced_agent(args.agent_id) if args.agent_id else invalid_option("Missing agent ID.")
     # -r (-g group_id | -i agent_id) [-q]
-    elif arguments['remove-group']:
-        if arguments['agent-id']:
-            unset_group(arguments['agent-id'], arguments['group'], arguments['quiet'])
-        elif arguments['group']:
-            remove_group(arguments['group'], arguments['quiet'])
+    elif args.remove:
+        if args.agent_id:
+            await unset_group(args.agent_id, args.group_id, args.quiet)
+        elif args.group_id:
+            await remove_group(args.group_id, args.quiet)
         else:
             invalid_option("Missing agent ID or group.")
+    elif args.usage:
+        usage()
+    # ./agent_groups.py
     else:
-        invalid_option("Bad argument combination.")
+        await show_groups()
 
 
 if __name__ == "__main__":
-    logger = logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument("-l", "--list", action='store_true', dest="list", help="List the groups.")
+    arg_parser.add_argument("-c", "--list-files", action='store_true', dest="list_files",
+                            help="List the group's configuration files.")
+    arg_parser.add_argument("-a", "--add", action='store_true', dest="add", help="List the groups.")
+    arg_parser.add_argument("-f", "--force", action='store_true', dest="force", help="Force single group.")
+    arg_parser.add_argument("-s", "--show-group", action='store_true', dest="show_group", help="Show group of agent.")
+    arg_parser.add_argument("-S", "--show-sync", action='store_true', dest="show_sync",
+                            help="Show sync status of agent.")
+    arg_parser.add_argument("-r", "--remove", action='store_true', dest="remove",
+                            help="Remove group or agent from group.")
+    arg_parser.add_argument("-i", "--agent-id", type=str, dest="agent_id", help="Specify the agent ID.")
+    arg_parser.add_argument("-g", "--group-id", type=str, dest="group_id", help="Specify group ID.")
+    arg_parser.add_argument("-q", "--quiet", action='store_true', dest="quiet", help="Silent mode (no confirmation).")
+    arg_parser.add_argument("-d", "--debug", action='store_true', dest="debug", help="Debug mode.")
+    arg_parser.add_argument("-u", "--usage", action='store_true', dest="usage", help="Show usage.")
+    args = arg_parser.parse_args()
 
     try:
-        cluster_config = read_config()
-        executable_name = "agent_groups"
-        master_ip = cluster_config['nodes'][0]
-        if cluster_config['node_type'] != 'master' and not cluster_config['disabled']:
-            raise WazuhError(3019, {"EXECUTABLE_NAME": executable_name, "MASTER_IP": master_ip})
-        main()
+        asyncio.run(main())
 
     except WazuhError as e:
         print("Error {0}: {1}".format(e.code, e.message))
-        if debug:
+        if args.debug:
             raise
     except Exception as e:
         print("Internal error: {0}".format(str(e)))
-        if debug:
+        if args.debug:
             raise
