@@ -417,3 +417,113 @@ TEST(hlpTimestampTests, specific_format)
     ASSERT_EQ("5", result["_stampTs.seconds"]);
 }
 
+TEST(domain_test, success)
+{
+    const char *logQl ="<_my_domain/domain>";
+    ParserFn parseOp = getParserOp(logQl);
+    ParseResult result;
+
+    // Single TLD
+    const char *event1 ="www.wazuh.com";
+    result = parseOp(event1);
+    ASSERT_EQ("www", result["_my_domain.subdomain"]);
+    ASSERT_EQ("wazuh.com", result["_my_domain.registered_domain"]);
+    ASSERT_EQ("com", result["_my_domain.top_level_domain"]);
+
+    // Dual TLD
+    const char *event2 ="www.wazuh.com.ar";
+    result = parseOp(event2);
+    ASSERT_EQ("www", result["_my_domain.subdomain"]);
+    ASSERT_EQ("wazuh.com.ar", result["_my_domain.registered_domain"]);
+    ASSERT_EQ("com.ar", result["_my_domain.top_level_domain"]);
+
+    // Multiple subdomains
+    const char *event3 ="www.subdomain1.wazuh.com.ar";
+    result = parseOp(event3);
+    ASSERT_EQ("www.subdomain1", result["_my_domain.subdomain"]);
+    ASSERT_EQ("wazuh.com.ar", result["_my_domain.registered_domain"]);
+    ASSERT_EQ("com.ar", result["_my_domain.top_level_domain"]);
+
+    // No subdomains
+    const char *event4 ="wazuh.com.ar";
+    result = parseOp(event4);
+    ASSERT_EQ("", result["_my_domain.subdomain"]);
+    ASSERT_EQ("wazuh.com.ar", result["_my_domain.registered_domain"]);
+    ASSERT_EQ("com.ar", result["_my_domain.top_level_domain"]);
+
+    // No TLD
+    const char *event5 ="www.wazuh";
+    result = parseOp(event5);
+    ASSERT_EQ("www", result["_my_domain.subdomain"]);
+    ASSERT_EQ("wazuh", result["_my_domain.registered_domain"]);
+    ASSERT_EQ("", result["_my_domain.top_level_domain"]);
+
+    // Only Host
+    const char *event6 ="wazuh";
+    result = parseOp(event6);
+    ASSERT_EQ("", result["_my_domain.subdomain"]);
+    ASSERT_EQ("wazuh", result["_my_domain.registered_domain"]);
+    ASSERT_EQ("", result["_my_domain.top_level_domain"]);
+}
+
+TEST(domain_test, FQDN_validation)
+{
+    const char *logQl ="<_my_domain/domain/FQDN>";
+    ParserFn parseOp = getParserOp(logQl);
+    ParseResult result;
+
+    // Single TLD
+    const char *event1 ="www.wazuh.com";
+    result = parseOp(event1);
+    ASSERT_EQ("www", result["_my_domain.subdomain"]);
+    ASSERT_EQ("wazuh.com", result["_my_domain.registered_domain"]);
+    ASSERT_EQ("com", result["_my_domain.top_level_domain"]);
+
+    // No subdomains
+    const char *event2 ="wazuh.com";
+    result = parseOp(event2);
+    ASSERT_TRUE(result.empty());
+
+    // No TLD
+    const char *event3 ="www.wazuh";
+    result = parseOp(event3);
+    ASSERT_TRUE(result.empty());
+
+    // Only Host
+    const char *event4 ="wazuh";
+    result = parseOp(event4);
+    ASSERT_TRUE(result.empty());
+}
+
+TEST(domain_test, host_route)
+{
+    const char *logQl ="<_my_domain/domain>";
+    ParserFn parseOp = getParserOp(logQl);
+
+    const char *event1 ="ftp://www.wazuh.com/route.txt";
+    auto result = parseOp(event1);
+    // TODO protocol and route aren´t part of the result. We only extract it from the event
+    ASSERT_EQ("www", result["_my_domain.subdomain"]);
+    ASSERT_EQ("wazuh.com", result["_my_domain.registered_domain"]);
+    ASSERT_EQ("com", result["_my_domain.top_level_domain"]);
+}
+
+TEST(domain_test, valid_content)
+{
+    const char *logQl ="<_my_domain/domain>";
+    ParserFn parseOp = getParserOp(logQl);
+    ParseResult result;
+
+    std::string big_domain(254, 'w');
+    result = parseOp(big_domain.c_str());
+    ASSERT_TRUE(result.empty());
+
+    const char *invalid_character_domain = "www.wazuh?.com";
+    result = parseOp(invalid_character_domain);
+    ASSERT_TRUE(result.empty());
+
+    std::string invalid_label(64, 'w');
+    std::string invalid_label_domain = "www." + invalid_label + ".com";
+    result = parseOp(invalid_label_domain);
+    ASSERT_TRUE(result.empty());
+}

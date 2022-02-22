@@ -26,6 +26,17 @@ struct TimeStampResult {
     std::string timezone;
 };
 
+// TODO Define which of this fields is really desirable for the response.
+struct DomainResult{
+    std::string protocol;
+    std::string subdomain;
+    std::string top_level_domain;
+    std::string domain;
+    std::string address;
+    std::string registered_domain;
+    std::string route;
+};
+
 bool parseFilePath(const char **it, char endToken);
 
 std::string parseAny(const char **it, char endToken);
@@ -41,5 +52,7 @@ std::string parseIPaddress(const char **it, char endToken);
 bool parseTimeStamp(const char **it, std::vector<std::string> const& opts, char endToken, TimeStampResult &tsr);
 
 bool parseURL(const char **it, char endToken, URLResult &result);
+
+bool parseDomain(const char **it, char endToken, std::vector<std::string> const& captureOpts, DomainResult &result);
 
 #endif //_FILE_PATH_PARSER_H
