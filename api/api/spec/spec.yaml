@@ -1458,21 +1458,32 @@ components:
     AgentsSummaryStatus:
       type: object
       properties:
-        total:
-          type: integer
-          format: int32
-        active:
-          type: integer
-          format: int32
-        disconnected:
-          type: integer
-          format: int32
-        never_connected:
-          type: integer
-          format: int32
-        pending:
-          type: integer
-          format: int32
+        connection:
+          total:
+            type: integer
+            format: int32
+          active:
+            type: integer
+            format: int32
+          disconnected:
+            type: integer
+            format: int32
+          never_connected:
+            type: integer
+            format: int32
+          pending:
+            type: integer
+            format: int32
+        configuration:
+          total:
+            type: integer
+            format: int32
+          synced:
+            type: integer
+            format: int32
+          not synced:
+            type: integer
+            format: int32
 
     AgentDistinct:
       allOf:
