@@ -16,12 +16,14 @@ static const std::unordered_map<std::string_view, ParserType> kECSParserMapper {
     { "file.created", ParserType::Ts},
     { "url", ParserType::URL},
     { "http.request.method", ParserType::Any },
+    { "client", ParserType::Domain}
 };
 
 static const std::unordered_map<std::string_view, ParserType> kTempTypeMapper {
     { "JSON", ParserType::JSON },
     { "MAP", ParserType::Map},
     { "timestamp", ParserType::Ts},
+    { "domain", ParserType::Domain},
 };
 
 struct Tokenizer {
