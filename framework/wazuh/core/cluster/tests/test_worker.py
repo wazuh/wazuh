@@ -33,7 +33,7 @@ logger = logging.getLogger("wazuh")
 cluster_items = {'node': 'master-node',
                  'intervals': {'worker': {'connection_retry': 1, "sync_integrity": 2, "timeout_agent_groups": 0,
                                           "sync_agent_info": 5, "sync_agent_groups": 5,},
-                               "communication": {"timeout_receiving_file": 1}},
+                               "communication": {"timeout_receiving_file": 1, "timeout_cluster_request": 20}},
                  "files": {"cluster_item_key": {"remove_subdirs_if_empty": True, "permissions": "value"}}}
 configuration = {'node_name': 'master', 'nodes': ['master'], 'port': 1111, "name": "wazuh", "node_type": "master"}
 
@@ -83,14 +83,14 @@ def test_rgit_set_up_coro(create_task_mock):
         def __init__(self):
             pass
 
-        def setup_sync_wazuh_db_information(self, wazuh_common, task_id):
+        def recv_agent_groups_local_information(self, wazuh_common, task_id):
             """Auxiliary method."""
             pass
 
     wazuh_common_mock = WazuhCommonMock()
     receive_agent_groups_task = worker.ReceiveAgentGroupsTask(wazuh_common=wazuh_common_mock,
                                                               logger=logging.getLogger("wazuh"), task_id="0101")
-    assert receive_agent_groups_task.set_up_coro() == wazuh_common_mock.setup_sync_wazuh_db_information
+    assert receive_agent_groups_task.set_up_coro() == wazuh_common_mock.recv_agent_groups_local_information
     create_task_mock.assert_called_once()
 
 
@@ -522,7 +522,7 @@ def test_worker_handler_error_receiving_integrity(error_receiving_file_mock):
 
 @freeze_time('1970-01-01')
 @patch.object(logging.getLogger("wazuh.Integrity check"), "info")
-def test_worker_handler_setup_sync_wazuh_db_information(logger_mock):
+def test_worker_handler_sync_integrity_ok_from_master(logger_mock):
     """Check the correct output message when a command 'sync_m_c_ok' takes place."""
 
     worker_handler.integrity_check_status = {"date_start": 0}
@@ -531,15 +531,156 @@ def test_worker_handler_setup_sync_wazuh_db_information(logger_mock):
 
 
 @pytest.mark.asyncio
-@patch('wazuh.core.cluster.common.Handler.sync_wazuh_db_information', return_value='check')
-async def test_worker_handler_setup_sync_wazuh_db_information(sync_wazuh_db_information_mock):
+@patch("wazuh.core.wdb.socket.socket")
+async def test_worker_compare_agent_groups_checksum(socket_mock):
+    """Check all the possible cases in the checksum comparison."""
+
+    class LoggerMock:
+        """Auxiliary class."""
+
+        def __init__(self):
+            self._debug = []
+            self._debug2 = []
+
+        def debug(self, debug):
+            self._debug.append(debug)
+
+        def debug2(self, debug2):
+            self._debug2.append(debug2)
+
+    logger = LoggerMock()
+    wdb_conn = WazuhDBConnection()
+    w_handler = get_worker_handler()
+    w_handler.connected = True
+    sync_object = cluster_common.SyncWazuhdb(manager=w_handler, logger=logger, cmd=b'syn_g_m_w',
+                                             data_retriever=wdb_conn.run_wdb_command,
+                                             get_data_command='global sync-agent-groups-get ',
+                                             get_payload={"condition": "sync_status", "get_global_hash": True})
+
+    with patch('wazuh.core.cluster.worker.c_common.SyncWazuhdb', return_value=sync_object):
+        # There are records that need to be synchronized in the worker. Returns False without comparing checksums.
+        async def retrieve_information_callable():
+            """Auxiliary method."""
+
+            return ['[{"data": "000111", "hash": "checksum"}]']
+
+        with patch.object(sync_object, 'retrieve_information', side_effect=retrieve_information_callable):
+            assert await w_handler.compare_agent_groups_checksums(master_checksum='checksum', logger=logger) == False
+            assert 'There is no data requiring synchronization in the local database.' not in logger._debug2
+
+        # There are no records that need synchronization in the worker and the checksums are the same. Returns True.
+        async def retrieve_information_callable():
+            """Auxiliary method."""
+
+            return ['[{"data": "", "hash": "checksum"}]']
+
+        with patch.object(sync_object, 'retrieve_information', side_effect=retrieve_information_callable):
+            assert await w_handler.compare_agent_groups_checksums(master_checksum='checksum', logger=logger) == True
+            assert 'There is no data requiring synchronization in the local database.' in logger._debug2
+
+        # There are no records that need synchronization in the worker and the checksums are different.
+        # Returns False and sets the counter value to the maximum limit.
+        async def retrieve_information_callable():
+            """Auxiliary method."""
+
+            return ['[{"data": "", "hash": "checksum_not_equal"}]']
+
+        with patch.object(sync_object, 'retrieve_information', side_effect=retrieve_information_callable):
+            assert await w_handler.compare_agent_groups_checksums(master_checksum='checksum', logger=logger) == False
+            w_handler.agent_groups_checksum_mismatch_counter = w_handler.agent_groups_checksum_mismatch_limit
+            assert 'The master\'s checksum and the worker\'s checksum are different. ' \
+                   'Local checksum: checksum_not_equal | Master checksum: checksum.' in logger._debug
+
+
+@pytest.mark.asyncio
+@patch('wazuh.core.cluster.worker.c_common.Handler.send_result_to_manager')
+async def test_worker_check_agent_groups_checksums(send_result_to_manager_mock):
+    """Check that the function check_agent_groups_checksums correctly checks the comparison counter."""
+
+    class LoggerMock:
+        """Auxiliary class."""
+
+        def __init__(self):
+            self._debug = []
+            self._info = []
+
+        def debug(self, debug):
+            self._debug.append(debug)
+
+        def info(self, info):
+            self._info.append(info)
+
+        def clear(self):
+            self._info.clear()
+            self._debug.clear()
+
+    logger = LoggerMock()
+    worker_handler.agent_groups_checksum_mismatch_counter = 0
+    data = {"chunks": ['[{"hash": "a"}]']}
+
+    with patch('wazuh.core.cluster.worker.WorkerHandler.compare_agent_groups_checksums', return_value=False):
+        # Check that when the checksums are different the counter is incremented
+        await worker_handler.check_agent_groups_checksums(data=data, logger=logger)
+        assert worker_handler.agent_groups_checksum_mismatch_counter == 1
+        assert 'Checksum comparison failed. Attempt 1/10.' in logger._debug
+        assert len(logger._info) == 0
+
+        # Check that when the counter exceeds the maximum limit, the number of attempts is not printed in the logger
+        logger.clear()
+        worker_handler.agent_groups_checksum_mismatch_counter = worker_handler.agent_groups_checksum_mismatch_limit
+        await worker_handler.check_agent_groups_checksums(data=data, logger=logger)
+        assert worker_handler.agent_groups_checksum_mismatch_counter == 0
+        send_result_to_manager_mock.assert_called_once_with(b'syn_w_g_c', {})
+        assert 'Checksum comparison failed. Attempt 11/10.' not in logger._debug
+        assert 'Sent request to obtain all agent-groups information from the master node.' in logger._info
+
+    with patch('wazuh.core.cluster.worker.WorkerHandler.compare_agent_groups_checksums', return_value=True):
+        # Check that when the checksums are equal, the counter is reset (without previous attempts).
+        logger.clear()
+        worker_handler.agent_groups_checksum_mismatch_counter = 0
+        await worker_handler.check_agent_groups_checksums(data=data, logger=logger)
+        assert worker_handler.agent_groups_checksum_mismatch_counter == 0
+        assert 'The checksum of both databases match.' in logger._debug
+
+        # Check that when the checksum are equal the counter is reset (with previous attempts).
+        logger.clear()
+        worker_handler.agent_groups_checksum_mismatch_counter = 1
+        await worker_handler.check_agent_groups_checksums(data=data, logger=logger)
+        assert worker_handler.agent_groups_checksum_mismatch_counter == 0
+        assert 'The checksum of both databases match. Reset the attempt counter.' in logger._debug
+
+
+@pytest.mark.asyncio
+@freeze_time('1970-01-01')
+@patch('wazuh.core.cluster.worker.WorkerHandler.check_agent_groups_checksums', return_value='')
+@patch('wazuh.core.cluster.common.Handler.send_result_to_manager', return_value='check')
+@patch('wazuh.core.cluster.common.Handler.update_chunks_wdb', return_value={'updated_chunks': 1})
+@patch('wazuh.core.cluster.common.Handler.get_chunks_in_task_id', return_value='chunks')
+async def test_worker_handler_recv_agent_groups_local_information(
+        get_chunks_in_task_id_mock, update_chunks_wdb_mock,
+        send_result_to_manager_mock, check_agent_groups_checksums_mock):
     """Check that the wazuh-db data reception task is created."""
 
+    class LoggerMock:
+        """Auxiliary class."""
+
+        def __init__(self):
+            self._info = []
+
+        def info(self, info):
+            self._info.append(info)
+
+    logger = LoggerMock()
     worker_handler = get_worker_handler()
-    assert await worker_handler.setup_sync_wazuh_db_information(task_id=b'17', info_type='agent-groups') == 'check'
-    sync_wazuh_db_information_mock.assert_called_once_with(
-        task_id=b'17', info_type='agent-groups', error_command=b'syn_w_g_err',
-        logger=worker_handler.task_loggers['Agent-groups recv'], command=b'syn_w_g_e', timeout=0)
+    worker_handler.task_loggers['Agent-groups recv'] = logger
+
+    assert await worker_handler.recv_agent_groups_local_information(task_id=b'17', info_type='agent-groups') == 'check'
+    get_chunks_in_task_id_mock.assert_called_once_with(b'17', b'syn_w_g_err')
+    update_chunks_wdb_mock.assert_called_once_with('chunks', 'agent-groups', logger, b'syn_w_g_err', 0)
+    send_result_to_manager_mock.assert_called_once_with(b'syn_w_g_e', {'updated_chunks': 1})
+    check_agent_groups_checksums_mock.assert_called_once_with('chunks', logger)
+    assert 'Starting.' in logger._info
+    assert 'Finished in 0.000s. Updated 1 chunks.' in logger._info
 
 
 @pytest.mark.asyncio
