@@ -555,11 +555,16 @@ stages:
       json:
         error: !anyint
         data:
-          active: 0
-          disconnected: 0
-          never_connected: 0
-          pending: 0
-          total: 0
+          connection:
+            active: 0
+            disconnected: 0
+            never_connected: 0
+            pending: 0
+            total: 0
+          configuration:
+            synced: 0
+            not_synced: 0
+            total: 0
 
 ---
 test_name: GET /ciscat/{agent_id}/results

@@ -606,11 +606,16 @@ stages:
      json:
        error: 0
        data:
-         active: 4
-         disconnected: 1
-         never_connected: 1
-         pending: 0
-         total: 6
+         connection:
+           active: 4
+           disconnected: 1
+           never_connected: 1
+           pending: 0
+           total: 6
+         configuration:
+           synced: 4
+           not_synced: 2
+           total: 6
 
 ---
 test_name: GET /agents/summary/os
