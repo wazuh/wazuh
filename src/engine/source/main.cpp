@@ -6,6 +6,7 @@
 #include "glog/logging.h"
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "Catalog.hpp"
@@ -22,8 +23,16 @@
 
 using namespace std;
 
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+std::atomic<int> total = 0;
+rxcpp::composite_subscription lifetime;
+
 int main(int argc, char * argv[])
 {
+
     google::InitGoogleLogging(argv[0]);
     vector<string> serverArgs;
     string storagePath;
@@ -39,10 +48,13 @@ int main(int argc, char * argv[])
         return 1;
     }
 
+    static rxcpp::schedulers::run_loop rl;
+    rxcpp::observe_on_one_worker mainthread = rxcpp::observe_on_run_loop(rl);
+
     engineserver::EngineServer server;
     try
     {
-        server.configure(serverArgs);
+        server.configure(serverArgs, mainthread);
     }
     catch (const exception & e)
     {
@@ -69,18 +81,44 @@ int main(int argc, char * argv[])
     //         LOG(ERROR) << "safeServerObs treated error: " << rxcpp::util::what(eptr) << std::endl;
     //     });
 
-    std::atomic<int> total = 0;
-    serverObs.map([=](std::string event) { return p.parse(event); })
-        .subscribe(
-            [&](json::Document event)
-            {
-                total++;
-                LOG(INFO) << total << std::endl;
-            },
-            [](std::exception_ptr eptr) { LOG(ERROR) << "Subscriber got error: " << rxcpp::util::what(eptr) << endl; },
-            []() { LOG(INFO) << "Subscriber completed" << std::endl; });
+    serverObs.subscribe(
+        [](json::Document event)
+        {
+            total++;
+            //LOG(INFO) << "[" << std::this_thread::get_id() << "]" << total << std::endl;
+        },
+        [](std::exception_ptr eptr) { LOG(ERROR) << "Subscriber got error: " << rxcpp::util::what(eptr) << endl; },
+        []() { LOG(INFO) << "[" << this_thread::get_id() << "] Subscriber completed" << std::endl; });
 
-    server.run();
+
+    // rxcpp::observable<int> uvwLoop = rxcpp::observable<>::create<int>(
+    //     [&](auto s)
+    //     {
+
+    //         s.on_completed();
+    //     });
+
+    // uvwLoop.subscribe_on(mainthread)
+    //     .subscribe([](int v) {}, [](auto eptr) {}, []() { LOG(ERROR) << "UVW Loop completed" << std::endl; });
+
+    signal(SIGINT,
+           [](auto s)
+           {
+               LOG(INFO) << "[" << this_thread::get_id() << "] Total proccessed: " << total << std::endl;
+               lifetime.unsubscribe();
+           });
+
+    while (lifetime.is_subscribed())
+    {
+        server.run();
+        while (!rl.empty() && rl.peek().when < rl.now())
+        {
+            rl.dispatch();
+        }
+
+        // Throttle down
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
 
     return 0;
 }
