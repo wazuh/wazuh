@@ -479,6 +479,7 @@ types::Lifter opBuilderHelperRegexExtract(const types::DocumentValue & def)
     }
     std::string map_field = parameters[1];
     std::string regexp = parameters[2];
+    auto regex_ptr = std::make_shared<RE2>(regexp);
 
     // Return Lifter
     return [=](types::Observable o)
@@ -489,7 +490,8 @@ types::Lifter opBuilderHelperRegexExtract(const types::DocumentValue & def)
             [=](types::Event e)
             {
                 std::string match;
-                if (RE2::PartialMatch(e.get("/" + base_field)->GetString(), regexp, &match))
+                if (RE2::PartialMatch(e.get("/" + base_field)->GetString(), *regex_ptr,
+                                      &match))
                 {
                     auto aux_string = "{ \"" + map_field + "\": \"" + match + "\"}";
                     types::Document doc{aux_string.c_str()};
