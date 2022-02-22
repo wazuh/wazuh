@@ -297,7 +297,80 @@ types::Lifter opBuilderHelperString_ge(const types::DocumentValue & def)
     };
 }
 
-// TODO <field>: s_lt/<value>|$<ref>
-// TODO <field>: s_le/<value>|$<ref>
+// <field>: s_lt/<value>|$<ref>
+types::Lifter opBuilderHelperString_lt(const types::DocumentValue & def)
+{
+    // Get field key to check
+    std::string key {def.MemberBegin()->name.GetString()};
+
+    // Get the raw value of parameter
+    if (!def.MemberBegin()->value.IsString()) {
+        throw std::runtime_error("Invalid parameter type for s_ne operator (str expected)");
+    }
+
+    // Parse parameters
+    std::string parm {def.MemberBegin()->value.GetString()};
+    auto parametersArr = utils::string::split(parm, '/');
+    if (parametersArr.size() != 2) {
+        throw std::runtime_error("Invalid number of parameters for s_ne operator");
+    }
+
+    std::optional<std::string> refExpStr {};
+    std::optional<std::string> expectedStr {};
+
+    // Check if is a reference to json event
+    if (parametersArr[1][0] == '$') {
+        refExpStr = parametersArr[1].substr(1);
+    } else {
+        expectedStr = parametersArr[1];
+    }
+
+    // Return Lifter
+    return [=](types::Observable o)
+    {
+        // Append rxcpp operation
+        return o.filter([key, expectedStr, refExpStr](types::Event e) {
+            return opBuilderHelperStringComparison(key, '<', e, refExpStr, expectedStr);
+        });
+    };
+}
+
+// <field>: s_le/<value>|$<ref>
+types::Lifter opBuilderHelperString_le(const types::DocumentValue & def)
+{
+    // Get field key to check
+    std::string key {def.MemberBegin()->name.GetString()};
+
+    // Get the raw value of parameter
+    if (!def.MemberBegin()->value.IsString()) {
+        throw std::runtime_error("Invalid parameter type for s_ne operator (str expected)");
+    }
+
+    // Parse parameters
+    std::string parm {def.MemberBegin()->value.GetString()};
+    auto parametersArr = utils::string::split(parm, '/');
+    if (parametersArr.size() != 2) {
+        throw std::runtime_error("Invalid number of parameters for s_ne operator");
+    }
+
+    std::optional<std::string> refExpStr {};
+    std::optional<std::string> expectedStr {};
+
+    // Check if is a reference to json event
+    if (parametersArr[1][0] == '$') {
+        refExpStr = parametersArr[1].substr(1);
+    } else {
+        expectedStr = parametersArr[1];
+    }
+
+    // Return Lifter
+    return [=](types::Observable o)
+    {
+        // Append rxcpp operation
+        return o.filter([key, expectedStr, refExpStr](types::Event e) {
+            return opBuilderHelperStringComparison(key, 'l', e, refExpStr, expectedStr);
+        });
+    };
+}
 
 } // namespace builder::internals::builders
