@@ -97,13 +97,14 @@ types::Lifter opBuilderHelperString_eq(const types::DocumentValue & def);
  */
 types::Lifter opBuilderHelperString_ne(const types::DocumentValue & def);
 
-
 /**
  * @brief Create `s_gt` helper function that filters events with a string
  * field greater than a value.
  *
- * The filter checks if a field in the JSON event `wazuh` is equal to a value.
- * Only pass events if the fields are equal (case sensitive) and the values are a string.
+ * The filter checks if the JSON event field <field> is greater than a <value>
+ * or another field <$ref>. Only pass the filter if the event has both fields
+ * of type string and passes the condition.
+ * use: `<field>: s_gt/<value>|$<ref>`
  * @param def The filter definition. i.e : `{wazuh: +s_gt/value}`
  * @return types::Lifter The lifter with the `s_gt` filter.
  * @throw std::runtime_error if the parameter is not a string.
@@ -113,15 +114,48 @@ types::Lifter opBuilderHelperString_gt(const types::DocumentValue & def);
 
 /**
  * @brief Create `s_ge` helper function that filters events with a string
- * field equals or greater than a value.
+ * field less or equals than a value.
  *
- * The filter checks if a field in the JSON event `wazuh` is equal to a value.
- * Only pass events if the fields are equal (case sensitive) and the values are a string.
+ * The filter checks if the JSON event field <field> is greater or equals than a <value>
+ * or another field <$ref>. Only pass the filter if the event has both fields
+ * of type string and passes the condition.
+ * use: `<field>: s_ge/<value>|$<ref>`
  * @param def The filter definition. i.e : `{wazuh: +s_ge/value}`
  * @return types::Lifter The lifter with the `s_ge` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
 types::Lifter opBuilderHelperString_ge(const types::DocumentValue & def);
+
+
+/**
+ * @brief Create `s_lt` helper function that filters events with a string
+ * field less than a value.
+ *
+ * The filter checks if the JSON event field <field> is less than a <value>
+ * or another field <$ref>. Only pass the filter if the event has both fields
+ * of type string and passes the condition.
+ * use: `<field>: s_lt/<value>|$<ref>`
+ * @param def The filter definition. i.e : `{wazuh: +s_lt/value}`
+ * @return types::Lifter The lifter with the `s_lt` filter.
+ * @throw std::runtime_error if the parameter is not a string.
+ */
+types::Lifter opBuilderHelperString_lt(const types::DocumentValue & def);
+
+
+/**
+ * @brief Create `s_le` helper function that filters events with a string
+ * field less or equals than a value.
+ *
+ * The filter checks if the JSON event field <field> is less or equals than a <value>
+ * or another field <$ref>. Only pass the filter if the event has both fields
+ * of type string and passes the condition.
+ * use: `<field>: s_le/<value>|$<ref>`
+ * @param def The filter definition. i.e : `{wazuh: +s_le/value}`
+ * @return types::Lifter The lifter with the `s_le` filter.
+ * @throw std::runtime_error if the parameter is not a string.
+ */
+types::Lifter opBuilderHelperString_le(const types::DocumentValue & def);
+
 
 } // namespace builder::internals::builders
 
