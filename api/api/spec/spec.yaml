@@ -1459,31 +1459,35 @@ components:
       type: object
       properties:
         connection:
-          total:
-            type: integer
-            format: int32
-          active:
-            type: integer
-            format: int32
-          disconnected:
-            type: integer
-            format: int32
-          never_connected:
-            type: integer
-            format: int32
-          pending:
-            type: integer
-            format: int32
+          type: object
+          properties:
+            total:
+              type: integer
+              format: int32
+            active:
+              type: integer
+              format: int32
+            disconnected:
+              type: integer
+              format: int32
+            never_connected:
+              type: integer
+              format: int32
+            pending:
+              type: integer
+              format: int32
         configuration:
-          total:
-            type: integer
-            format: int32
-          synced:
-            type: integer
-            format: int32
-          not synced:
-            type: integer
-            format: int32
+          type: object
+          properties:
+            total:
+              type: integer
+              format: int32
+            synced:
+              type: integer
+              format: int32
+            not_synced:
+              type: integer
+              format: int32
 
     AgentDistinct:
       allOf:
@@ -7687,11 +7691,16 @@ paths:
                       $ref: '#/components/schemas/AgentsSummaryStatus'
               example:
                 data:
-                  active: 8
-                  disconnected: 0
-                  never_connected: 3
-                  pending: 0
-                  total: 11
+                  connection:
+                    active: 8
+                    disconnected: 0
+                    never_connected: 3
+                    pending: 0
+                    total: 11
+                  configuration:
+                    synced: 8
+                    not_synced: 3
+                    total: 11
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
