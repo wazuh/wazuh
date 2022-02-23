@@ -34,8 +34,8 @@ void *read_postgresql_log(logreader *lf, int *rc, int drop_it) {
 
     /* Zero buffer and str */
     buffer[0] = '\0';
-    buffer[OS_MAXSTR - OS_LOG_HEADER - 1] = '\0';
-    str[OS_MAXSTR - OS_LOG_HEADER - 1] = '\0';
+    buffer[sizeof(buffer) - 1] = '\0';
+    str[sizeof(str) - 1] = '\0';
     *rc = 0;
 
     /* Obtain context to calculate hash */
@@ -44,7 +44,7 @@ void *read_postgresql_log(logreader *lf, int *rc, int drop_it) {
     bool is_valid_context_file = w_get_hash_context(lf, &context, current_position);
 
     /* Get new entry */
-    while (can_read() && fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
+    while (can_read() && fgets(str, sizeof(str), lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
 
         lines++;
         /* Get buffer size */
@@ -103,7 +103,7 @@ void *read_postgresql_log(logreader *lf, int *rc, int drop_it) {
 
             /* If the saved message is empty, set it and continue */
             if (buffer[0] == '\0') {
-                snprintf(buffer, OS_MAXSTR - OS_LOG_HEADER, "%s", str);
+                snprintf(buffer, sizeof(buffer), "%s", str);
                 continue;
             }
 
@@ -111,7 +111,7 @@ void *read_postgresql_log(logreader *lf, int *rc, int drop_it) {
             else {
                 __send_pgsql_msg(lf, drop_it, buffer);
                 /* Store current one at the buffer */
-                snprintf(buffer, OS_MAXSTR - OS_LOG_HEADER, "%s", str);
+                snprintf(buffer, sizeof(buffer), "%s", str);
             }
         }
 
