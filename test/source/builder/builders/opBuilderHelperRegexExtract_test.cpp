@@ -136,3 +136,33 @@ TEST(opBuilderHelperRegexExtract, AdvancedRegexMatch)
     ASSERT_TRUE(
         RE2::PartialMatch(expected[1].get("/_field")->GetString(), "engine@wazuh.com"));
 }
+
+TEST(opBuilderHelperRegexExtract, NestedFieldRegexMatch)
+{
+    Document doc{R"~~({
+        "map":
+            {"test/field": "+r_ext/_field/(exp)/"}
+    })~~"};
+
+    Observable input = observable<>::create<Event>(
+        [=](auto s)
+        {
+            s.on_next(Event{R"~~({
+            "test":
+                {"field": "exp"}
+            })~~"});
+            s.on_next(Event{R"~~({
+            "test":
+                {"field": "this is a test exp"}
+            })~~"});
+            s.on_completed();
+        });
+
+    Lifter lift = opBuilderHelperRegexExtract(*doc.get("/map"));
+    Observable output = lift(input);
+    vector<Event> expected;
+    output.subscribe([&](Event e) { expected.push_back(e); });
+    ASSERT_EQ(expected.size(), 2);
+    ASSERT_TRUE(RE2::PartialMatch(expected[0].get("/_field")->GetString(), "exp"));
+    ASSERT_TRUE(RE2::PartialMatch(expected[1].get("/_field")->GetString(), "exp"));
+}
