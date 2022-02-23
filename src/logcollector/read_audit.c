@@ -24,7 +24,7 @@ static void audit_send_msg(char **cache, int top, const char *file, int drop_it,
     for (i = 0; i < top; i++) {
         z = strlen(cache[i]);
 
-        if (n + z + 1 < OS_MAXSTR - OS_LOG_HEADER) {
+        if (n + z + 1 < sizeof(message)) {
             if (n > 0)
                 message[n++] = ' ';
 
