@@ -43,6 +43,15 @@ TEST(opBuilderHelperRegexExtract, TooManyArgumentsError)
     ASSERT_THROW(opBuilderHelperRegexExtract(*doc.get("/map")), std::invalid_argument);
 }
 
+TEST(opBuilderHelperRegexExtract, RegularExpresionEmptyError)
+{
+    Document doc{R"({
+        "map":
+            {"field": "+r_ext/_field//"}
+    })"};
+    ASSERT_THROW(opBuilderHelperRegexExtract(*doc.get("/map")), std::invalid_argument);
+}
+
 TEST(opBuilderHelperRegexExtract, StringRegexExtract)
 {
     Document doc{R"~~({
