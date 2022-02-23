@@ -19,19 +19,19 @@ static void audit_send_msg(char **cache, int top, const char *file, int drop_it,
     int i;
     size_t n = 0;
     size_t z;
-    char message[OS_MAXSTR];
+    char message[OS_MAXSTR - OS_LOG_HEADER] = {0};
 
     for (i = 0; i < top; i++) {
         z = strlen(cache[i]);
 
-        if (n + z + 1 < OS_MAXSTR) {
+        if (n + z + 1 < OS_MAXSTR - OS_LOG_HEADER) {
             if (n > 0)
                 message[n++] = ' ';
 
-            strncpy(message + n, cache[i], z);
+            strncat(message, cache[i], OS_MAXSTR - OS_LOG_HEADER - 1 - n);
+            n += z;
         }
 
-        n += z;
         free(cache[i]);
     }
 
