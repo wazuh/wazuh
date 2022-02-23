@@ -43,6 +43,15 @@ TEST(opBuilderHelperRegexMatch, TooManyArgumentsError)
     ASSERT_THROW(opBuilderHelperRegexMatch(*doc.get("/check")), std::invalid_argument);
 }
 
+TEST(opBuilderHelperRegexMatch, RegularExpresionEmptyError)
+{
+    Document doc{R"({
+        "map":
+            {"field": "+r_match//"}
+    })"};
+    ASSERT_THROW(opBuilderHelperRegexMatch(*doc.get("/map")), std::invalid_argument);
+}
+
 TEST(opBuilderHelperRegexMatch, StringRegexMatch)
 {
     Document doc{R"({
@@ -150,7 +159,7 @@ TEST(opBuilderHelperRegexMatch, NestedFieldRegexMatch)
 {
     Document doc{R"~~({
         "map":
-            {"test/field": "+r_ext/exp"}
+            {"test/field": "+r_match/exp"}
     })~~"};
 
     Observable input = observable<>::create<Event>(
