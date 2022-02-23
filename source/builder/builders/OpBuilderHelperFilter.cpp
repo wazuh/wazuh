@@ -464,4 +464,43 @@ types::Lifter opBuilderHelperIntLessThan(const types::DocumentValue & def)
     };
 }
 
+types::Lifter opBuilderHelperIntLessThanEqual(const types::DocumentValue & def)
+{
+    // Get field
+    std::string field = def.MemberBegin()->name.GetString();
+    std::string rawValue = def.MemberBegin()->value.GetString();
+
+    std::vector<std::string> parameters = utils::string::split(rawValue, '/');
+
+    if (parameters.size() != 2)
+    {
+        throw std::runtime_error("Invalid parameters");
+    }
+
+    std::optional<std::string> refValue;
+    std::optional<int> value;
+
+    if (parameters[1][0] == '$')
+    {
+        // Check case `+int/$`
+        refValue = parameters[1].substr(1, std::string::npos);
+    }
+    else
+    {
+        value = std::stoi(parameters[1]);
+    }
+
+    // Return Lifter
+    return [refValue, value, field](types::Observable o)
+    {
+        // Append rxcpp operation
+        return o.filter(
+            [=](types::Event e)
+            {
+                // try and catche, return false
+                return opBuilderHelperIntComparison(field, 'l', e, refValue, value);
+            });
+    };
+}
+
 } // namespace builder::internals::builders
