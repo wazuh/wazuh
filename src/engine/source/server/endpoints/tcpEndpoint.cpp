@@ -49,7 +49,7 @@ BaseEndpoint::ConnectionObs TCPEndpoint::connectionHandler(const uvw::ListenEven
             client->on<uvw::DataEvent>(
                 [s, timer, ph](const uvw::DataEvent & event, uvw::TCPHandle & client)
                 {
-                    //LOG(INFO) << "[" << std::this_thread::get_id() << "] DataEvent: Got data" << std::endl;
+                    // LOG(INFO) << "[" << std::this_thread::get_id() << "] DataEvent: Got data" << std::endl;
                     timer->again();
                     if (!ph->process(event.data.get(), event.length, s))
                     {
@@ -133,15 +133,15 @@ TCPEndpoint::TCPEndpoint(const std::string & config) : BaseEndpoint{config}
                     s.on_completed();
                 });
 
-            m_server->bind(m_ip, m_port);
-            m_server->listen();
             LOG(INFO) << "TCP endpoint configured: " << config << std::endl;
         });
 }
 
 void TCPEndpoint::run()
 {
-    m_loop->run<uvw::Loop::Mode::NOWAIT>();
+    m_server->bind(m_ip, m_port);
+    m_server->listen();
+    m_loop->run<uvw::Loop::Mode::DEFAULT>();
 }
 
 void TCPEndpoint::close()

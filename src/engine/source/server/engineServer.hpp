@@ -32,7 +32,7 @@ class EngineServer
 {
 private:
     std::map<std::string, std::unique_ptr<endpoints::BaseEndpoint>> m_endpoints;
-    rxcpp::observable<json::Document> m_output;
+    endpoints::BaseEndpoint::ConnectionObs m_output;
 
 public:
     /**
@@ -46,21 +46,21 @@ public:
      *
      * @param config <type>:<config> string describing endpoint type with it associated configuration.
      */
-    //explicit EngineServer(const std::vector<std::string> & config);
+    // explicit EngineServer(const std::vector<std::string> & config);
 
     /**
      * @brief Set up endpoints and internal structures.
      *
      * @param config <type>:<config> string describing endpoint type with it associated configuration.
      */
-    void configure(const std::vector<std::string> & config, rxcpp::observe_on_one_worker & mainthread);
+    void configure(const std::vector<std::string> & config);
 
     /**
      * @brief Server rxcpp endpoint, all events ingested come through here.
      *
      * @return rxcpp::observable<json::Document>
      */
-    rxcpp::observable<json::Document> output() const;
+    endpoints::BaseEndpoint::ConnectionObs output() const;
 
     /**
      * @brief Start server.
