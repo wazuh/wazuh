@@ -266,7 +266,6 @@ VOID WINAPI OssecServiceCtrlHandler(DWORD dwOpcode)
                 stop_wmodules();
                 is_fim_shutdown = true;
                 fim_db_teardown();
-                os_delwait();
 #endif
                 ossecServiceStatus.dwCurrentState           = SERVICE_STOPPED;
                 SetServiceStatus (ossecServiceStatusHandle, &ossecServiceStatus);
