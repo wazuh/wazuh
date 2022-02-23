@@ -8,6 +8,8 @@
 #include <type_traits>
 
 #include "json.hpp"
+#include "protocolHandler.hpp"
+#include "threadPool.hpp"
 
 namespace router
 {
@@ -131,9 +133,10 @@ template <class Builder> class Router
                   "rxcpp::subjects::subject<json::Document>(std::string)");
 
 private:
+    using ServerOutputObs = rxcpp::observable<rxcpp::observable<std::string>>;
     std::map<std::string, Environment> m_environments;
     std::map<std::string, Route> m_routes;
-    rxcpp::observable<json::Document> m_observable;
+    ServerOutputObs m_observable;
     Builder m_builder;
 
 public:
@@ -143,7 +146,7 @@ public:
      * @param serverOutput Observable that emits items received by server
      * @param builder Injected Builder object
      */
-    Router(const rxcpp::observable<json::Document> & serverOutput, const Builder & builder) noexcept
+    Router(const ServerOutputObs & serverOutput, const Builder & builder) noexcept
         : m_observable{serverOutput}, m_builder{builder}
     {
     }
@@ -173,19 +176,29 @@ public:
             auto obs = envBuilder(in);
         }
 
-        // Connect server output to environment through route filter
-        // auto subscription = this->m_observable.filter(filterFunction)
-        //                         .on_error_resume_next(
-        //                             [=](std::exception_ptr e)
-        //                             {
-        //                                 std::cerr << "on_error_resume_next" << rxcpp::util::what(e).c_str()
-        //                                           << std::endl;
-        //                                 return this->m_observable.filter(filterFunction);
-        //                             })
-        //                         .subscribe(this->m_environments.at(environment).m_subject.get_subscriber());
 
-        auto subscription = this->m_observable.filter(filterFunction)
-                                .subscribe(this->m_environments.at(environment).m_subject.get_subscriber());
+        auto sc = rxcpp::schedulers::make_scheduler<threadpool::ThreadPool>(8);
+        static auto threadPoolW = rxcpp::observe_on_one_worker(sc);
+        engineserver::ProtocolHandler p;
+        static std::atomic<int> control = 0;
+
+        auto envIn = this->m_environments.at(environment).m_subject.get_subscriber();
+        auto subscription = this->m_observable
+        .subscribe([&, p, envIn, filterFunction](rxcpp::observable<std::string> o){
+
+            o
+                .observe_on(threadPoolW)
+                .map([p](std::string s){
+                    return p.parse(s);
+                })
+                .filter(filterFunction)
+                .tap(
+                    [envIn](json::Document s){
+                        //LOG(INFO) << "PARSED " << ++control << std::endl;
+                        envIn.on_next(s);
+                    }
+                ).subscribe();
+        });
 
         // Add route to list
         this->m_routes[route] = Route(route, environment, filterFunction, subscription);

@@ -18,15 +18,13 @@
 #include "endpoints/baseEndpoint.hpp"
 #include "endpoints/endpointFactory.hpp"
 #include "json.hpp"
-#include "threadPool.hpp"
-#include "protocolHandler.hpp"
 
 using namespace std;
 using namespace engineserver::endpoints;
 
 namespace engineserver
 {
-void EngineServer::configure(const vector<string> & config, rxcpp::observe_on_one_worker & mainthread)
+void EngineServer::configure(const vector<string> & config)
 {
     vector<BaseEndpoint::EndpointObs> tmpObs;
 
@@ -43,9 +41,6 @@ void EngineServer::configure(const vector<string> & config, rxcpp::observe_on_on
     // Emits connections
     BaseEndpoint::EndpointObs tcpServerObs = tmpObs[0];
 
-    auto sc = rxcpp::schedulers::make_scheduler<threadpool::ThreadPool>(8);
-    auto threadpoolW = rxcpp::observe_on_one_worker(sc);
-
     // Emits eventObservables
     BaseEndpoint::ConnectionObs tcpConnectionObs = tcpServerObs.flat_map(
         [&](BaseEndpoint::ConnectionObs o)
@@ -58,27 +53,9 @@ void EngineServer::configure(const vector<string> & config, rxcpp::observe_on_on
                     LOG(INFO) << "Recovering from: " << rxcpp::util::what(eptr) << std::endl;
                     return rxcpp::observable<>::empty<BaseEndpoint::EventObs>();
                 });
-        },
-        mainthread);
-    engineserver::ProtocolHandler p;
-    // Emits events
-    rxcpp::observable<json::Document> eventObs = tcpConnectionObs.flat_map(
-        [=](BaseEndpoint::EventObs o)
-        {
-            return o
-                .on_error_resume_next(
-                    [&](auto eptr)
-                    {
-                        LOG(INFO) << "Recovering from: " << rxcpp::util::what(eptr) << std::endl;
-                        return rxcpp::observable<>::empty<BaseEndpoint::Event>();
-                    })
-                .observe_on(threadpoolW)
-                .map([=](std::string event) {
-                    LOG(INFO) << "[" << this_thread::get_id() << "]" << std::endl;
-                    return p.parse(event); });
-        }, threadpoolW);
+        });
 
-    this->m_output = eventObs;
+    this->m_output = tcpConnectionObs;
 }
 
 // EngineServer::EngineServer(const vector<string> & config)
@@ -86,7 +63,7 @@ void EngineServer::configure(const vector<string> & config, rxcpp::observe_on_on
 //     this->configure(config, );
 // }
 
-rxcpp::observable<json::Document> EngineServer::output(void) const
+ BaseEndpoint::ConnectionObs EngineServer::output(void) const
 {
     return this->m_output;
 }

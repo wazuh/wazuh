@@ -27,9 +27,6 @@ using namespace std;
 #include <stdio.h>
 #include <stdlib.h>
 
-std::atomic<int> total = 0;
-rxcpp::composite_subscription lifetime;
-
 int main(int argc, char * argv[])
 {
 
@@ -48,13 +45,10 @@ int main(int argc, char * argv[])
         return 1;
     }
 
-    static rxcpp::schedulers::run_loop rl;
-    rxcpp::observe_on_one_worker mainthread = rxcpp::observe_on_run_loop(rl);
-
     engineserver::EngineServer server;
     try
     {
-        server.configure(serverArgs, mainthread);
+        server.configure(serverArgs);
     }
     catch (const exception & e)
     {
@@ -65,60 +59,61 @@ int main(int argc, char * argv[])
         return 1;
     }
 
-    engineserver::ProtocolHandler p;
-    auto serverObs = server.output();
+    // hardcoded catalog storage driver
+    // TODO: use argparse module
+    catalog::Catalog _catalog;
+    try
+    {
+        _catalog.setStorageDriver(make_unique<DiskStorage>(storagePath));
+    }
+    catch (const std::exception & e)
+    {
+        LOG(ERROR) << "Engine error, got exception while configuring catalog: " << e.what() << endl;
+        return 1;
+    }
 
-    // rxcpp::observable<std::string> safeServerObs = serverObs.on_error_resume_next(
-    //     [&](auto eptr)
-    //     {
-    //         LOG(ERROR) << "safeServerObs treated error: " << rxcpp::util::what(eptr) << std::endl;
-    //         return safeServerObs;
-    //     });
+    // Builder
+    try
+    {
+        builder::internals::registerBuilders();
+    }
+    catch (const std::exception & e)
+    {
+        LOG(ERROR) << "Engine error, got exception while registering builders: " << e.what() << endl;
+        return 1;
+    }
+    builder::Builder<catalog::Catalog> _builder(_catalog);
 
-    // auto safeServerObs = serverObs.retry(
-    //     [=](auto eptr)
-    //     {
-    //         LOG(ERROR) << "safeServerObs treated error: " << rxcpp::util::what(eptr) << std::endl;
-    //     });
+    // Build router
+    // TODO: Integrate filter creation with builder and default route with catalog
 
-    serverObs.subscribe(
-        [](json::Document event)
-        {
-            total++;
-            //LOG(INFO) << "[" << std::this_thread::get_id() << "]" << total << std::endl;
-        },
-        [](std::exception_ptr eptr) { LOG(ERROR) << "Subscriber got error: " << rxcpp::util::what(eptr) << endl; },
-        []() { LOG(INFO) << "[" << this_thread::get_id() << "] Subscriber completed" << std::endl; });
+    router::Router<builder::Builder<catalog::Catalog>> router{server.output(), _builder};
 
-
-    // rxcpp::observable<int> uvwLoop = rxcpp::observable<>::create<int>(
-    //     [&](auto s)
-    //     {
-
-    //         s.on_completed();
-    //     });
-
-    // uvwLoop.subscribe_on(mainthread)
-    //     .subscribe([](int v) {}, [](auto eptr) {}, []() { LOG(ERROR) << "UVW Loop completed" << std::endl; });
+    try
+    {
+        // Default route
+        router.add(
+            "test_route",
+            [](auto j)
+            {
+                // TODO: check basic fields are present
+                return true;
+            },
+            "test_environment");
+    }
+    catch (const std::exception & e)
+    {
+        LOG(ERROR) << "Engine error, got exception while building default route: " << e.what() << endl;
+        return 1;
+    }
 
     signal(SIGINT,
            [](auto s)
            {
-               LOG(INFO) << "[" << this_thread::get_id() << "] Total proccessed: " << total << std::endl;
-               lifetime.unsubscribe();
+               exit(1);
            });
 
-    while (lifetime.is_subscribed())
-    {
-        server.run();
-        while (!rl.empty() && rl.peek().when < rl.now())
-        {
-            rl.dispatch();
-        }
-
-        // Throttle down
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    }
+    server.run();
 
     return 0;
 }
