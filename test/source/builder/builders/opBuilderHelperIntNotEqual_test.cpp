@@ -20,7 +20,7 @@ TEST(opBuilderHelperIntNotEqual, Builds)
 {
     Document doc{R"({
         "check":
-            {"field_test": "+int/10"}
+            {"field_test": "+i_ne/10"}
     })"};
     ASSERT_NO_THROW(opBuilderHelperIntNotEqual(*doc.get("/check")));
 }
@@ -29,7 +29,7 @@ TEST(opBuilderHelperIntNotEqual, Builds_error_bad_parameter)
 {
     Document doc{R"({
         "check":
-            {"field_test": "+int/test"}
+            {"field_test": "+i_ne/test"}
     })"};
     ASSERT_THROW(opBuilderHelperIntNotEqual(*doc.get("/check")), std::invalid_argument);
 }
@@ -38,7 +38,7 @@ TEST(opBuilderHelperIntNotEqual, Builds_error_more_parameters)
 {
     Document doc{R"({
         "check":
-            {"field_test": "+int/10/10"}
+            {"field_test": "+i_ne/10/10"}
     })"};
     ASSERT_THROW(opBuilderHelperIntNotEqual(*doc.get("/check")), std::runtime_error);
 }
@@ -47,7 +47,7 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_ok)
 {
     Document doc{R"({
         "check":
-            {"field_test": "+int/10"}
+            {"field_test": "+i_ne/10"}
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -81,7 +81,7 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_true)
 {
     Document doc{R"({
         "check":
-            {"field_test": "+int/10"}
+            {"field_test": "+i_ne/10"}
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -115,7 +115,7 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_false)
 {
     Document doc{R"({
         "check":
-            {"field_test": "+int/10"}
+            {"field_test": "+i_ne/10"}
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -147,7 +147,7 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_ref_true)
 {
     Document doc{R"({
         "check":
-            {"field_test": "+int/$field_src"}
+            {"field_test": "+i_ne/$field_src"}
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -200,7 +200,7 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_ref_false)
 {
     Document doc{R"({
         "check":
-            {"field_test": "+int/$field_src"}
+            {"field_test": "+i_ne/$field_src"}
     })"};
 
     Observable input = observable<>::create<Event>(
