@@ -15,6 +15,8 @@
 /*
  * The helper filter, builds a lifter that will chain rxcpp filter operation
  * Rxcpp filter expects a function that returns bool.
+ *
+ * Warning: this function never should throw an exception.
  */
 
 namespace builder::internals::builders
@@ -42,14 +44,9 @@ types::Lifter opBuilderHelperExists(const types::DocumentValue & def);
  */
 types::Lifter opBuilderHelperNotExists(const types::DocumentValue & def);
 
-/**
- * @brief Builds helper integer equal operation.
- * Checks that the field is equal to an integer or another numeric field
- *
- * @param def Definition of the operation to be built
- * @return types::Lifter
- */
-types::Lifter opBuilderHelperIntEqual(const types::DocumentValue & def);
+//*************************************************
+//*           String filters                      *
+//*************************************************
 
 /**
  * @brief Compares a string of the event against another string that may or may not belong to the event `e`
@@ -155,6 +152,19 @@ types::Lifter opBuilderHelperString_lt(const types::DocumentValue & def);
  * @throw std::runtime_error if the parameter is not a string.
  */
 types::Lifter opBuilderHelperString_le(const types::DocumentValue & def);
+
+//*************************************************
+//*              Int filters                      *
+//*************************************************
+
+/**
+ * @brief Builds helper integer equal operation.
+ * Checks that the field is equal to an integer or another numeric field
+ *
+ * @param def Definition of the operation to be built
+ * @return types::Lifter
+ */
+types::Lifter opBuilderHelperIntEqual(const types::DocumentValue & def);
 
 
 } // namespace builder::internals::builders
