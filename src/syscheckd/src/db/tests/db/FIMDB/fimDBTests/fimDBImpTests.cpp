@@ -268,7 +268,6 @@ TEST_F(FimDBFixture, registerSyncIDError)
     EXPECT_CALL(*mockRSync, registerSyncID("fim_file", mockDBSync->handle(), nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT), testing::_));
 
     fimDBMock.registerRSync();
-
 }
 
 TEST_F(FimDBWinFixture, loopWinRSyncSuccess)
@@ -280,13 +279,10 @@ TEST_F(FimDBWinFixture, loopWinRSyncSuccess)
     EXPECT_CALL(*mockRSync, startSync(mockDBSync->handle(), nlohmann::json::parse(FIM_FILE_START_CONFIG_STATEMENT), testing::_));
     EXPECT_CALL(*mockRSync, startSync(mockDBSync->handle(), nlohmann::json::parse(FIM_REGISTRY_START_CONFIG_STATEMENT), testing::_));
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Finished FIM sync."));
+    EXPECT_CALL(*mockRSync, registerSyncID("fim_file", mockDBSync->handle(), nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT), testing::_));
+    EXPECT_CALL(*mockRSync, registerSyncID("fim_registry", mockDBSync->handle(), nlohmann::json::parse(FIM_REGISTRY_SYNC_CONFIG_STATEMENT), testing::_));
 
-    std::thread syncThread(&FIMDB::loopRSync, &fimDBMock);
-
-    fimDBMock.stopIntegrity();
-
-    syncThread.join();
-
+    fimDBMock.runIntegrity();
 }
 
 TEST_F(FimDBFixture, loopRSyncSuccess)
@@ -297,13 +293,9 @@ TEST_F(FimDBFixture, loopRSyncSuccess)
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Executing FIM sync."));
     EXPECT_CALL(*mockRSync, startSync(mockDBSync->handle(), nlohmann::json::parse(FIM_FILE_START_CONFIG_STATEMENT), testing::_));
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Finished FIM sync."));
+    EXPECT_CALL(*mockRSync, registerSyncID("fim_file", mockDBSync->handle(), nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT), testing::_));
 
-    std::thread syncThread(&FIMDB::loopRSync, &fimDBMock);
-
-    fimDBMock.stopIntegrity();
-
-    syncThread.join();
-
+    fimDBMock.runIntegrity();
 }
 
 TEST_F(FimDBFixture, executeQuerySuccess)
@@ -369,22 +361,11 @@ TEST(FimDB, notInitalizedDbSyncException)
     }, std::runtime_error);
 }
 
-TEST_F(FimDBFixture, fimRunIntegritySuccess)
+TEST_F(FimDBFixture, loopRSyncInvalidCallOrder)
 {
-
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "FIM sync module started."));
-    EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Executing FIM sync."));
-    EXPECT_CALL(*mockRSync, startSync(mockDBSync->handle(), nlohmann::json::parse(FIM_FILE_START_CONFIG_STATEMENT), testing::_));
-    EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Finished FIM sync."));
-    EXPECT_CALL(*mockRSync, registerSyncID("fim_file", mockDBSync->handle(), nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT), testing::_));
-    EXPECT_NO_THROW(
-    {
-        std::thread integrityThread(&FIMDB::runIntegrity, &fimDBMock);
-
-        fimDBMock.stopIntegrity();
-        integrityThread.join();
-    });
+    fimDBMock.stopIntegrity();
+    fimDBMock.runIntegrity();
 }
-
 
 #endif

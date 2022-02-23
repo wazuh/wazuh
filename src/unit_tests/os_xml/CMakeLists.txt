@@ -26,6 +26,7 @@ target_link_libraries(test_os_xml "-Wl,--wrap,getpid")
 if(${TARGET} STREQUAL "winagent")
 target_link_libraries(test_os_xml "-Wl,--wrap,getpid -Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig \
                                    -Wl,--wrap,getSyscheckInternalOptions -Wl,--wrap=Start_win32_Syscheck \
-                                   -Wl,--wrap,syscom_dispatch")
+                                   -Wl,--wrap,syscom_dispatch -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                                   -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
 endif()
 add_test(NAME test_os_xml COMMAND test_os_xml)

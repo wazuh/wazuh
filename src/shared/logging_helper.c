@@ -12,6 +12,12 @@
 #include "logging_helper.h"
 #include "debug_op.h"
 
+void loggingErrorFunction(const char * log) {
+    if (log) {
+        merror("%s", log);
+    }
+}
+
 void taggedLogFunction(modules_log_level_t level, const char* log, const char* tag) {
 
     switch(level) {

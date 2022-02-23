@@ -135,3 +135,19 @@ int __wrap_fim_db_get_count_file_inode() {
 void __wrap_fim_run_integrity() {
     function_called();
 }
+
+void __wrap_is_fim_shutdown() {
+    function_called();
+}
+
+void __wrap_fim_db_teardown() {
+    function_called();
+}
+
+void __wrap__imp__dbsync_initialize() {
+    function_called();
+}
+
+void __wrap__imp__rsync_initialize() {
+    function_called();
+}

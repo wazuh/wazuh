@@ -10,74 +10,79 @@
  */
 
 #include "fimDB.hpp"
+#include <future>
 
 void FIMDB::setFileLimit()
 {
-    m_dbsyncHandler->setTableMaxRow("file_entry", m_fileLimit);
+    std::shared_lock<std::shared_timed_mutex> lock(m_handlersMutex);
+
+    if (!m_stopping)
+    {
+        m_dbsyncHandler->setTableMaxRow("file_entry", m_fileLimit);
+    }
 }
 
 void FIMDB::setRegistryLimit()
 {
-    m_dbsyncHandler->setTableMaxRow("registry_key", m_registryLimit);
+    std::shared_lock<std::shared_timed_mutex> lock(m_handlersMutex);
 
+    if (!m_stopping)
+    {
+        m_dbsyncHandler->setTableMaxRow("registry_key", m_registryLimit);
+    }
 }
 
 void FIMDB::setValueLimit()
 {
-    m_dbsyncHandler->setTableMaxRow("registry_data", m_registryLimit);
+    std::shared_lock<std::shared_timed_mutex> lock(m_handlersMutex);
 
+    if (!m_stopping)
+    {
+        m_dbsyncHandler->setTableMaxRow("registry_data", m_registryLimit);
+    }
 }
 
 void FIMDB::registerRSync()
 {
-    m_rsyncHandler->registerSyncID(FIM_COMPONENT_FILE,
-                                   m_dbsyncHandler->handle(),
-                                   nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT),
-                                   m_syncFileMessageFunction);
+    std::shared_lock<std::shared_timed_mutex> lock(m_handlersMutex);
 
-    if (m_isWindows)
+    if (!m_stopping)
     {
-        m_rsyncHandler->registerSyncID(FIM_COMPONENT_REGISTRY,
+        m_rsyncHandler->registerSyncID(FIM_COMPONENT_FILE,
                                        m_dbsyncHandler->handle(),
-                                       nlohmann::json::parse(FIM_REGISTRY_SYNC_CONFIG_STATEMENT),
-                                       m_syncRegistryMessageFunction);
+                                       nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT),
+                                       m_syncFileMessageFunction);
+
+        if (m_isWindows)
+        {
+            m_rsyncHandler->registerSyncID(FIM_COMPONENT_REGISTRY,
+                                           m_dbsyncHandler->handle(),
+                                           nlohmann::json::parse(FIM_REGISTRY_SYNC_CONFIG_STATEMENT),
+                                           m_syncRegistryMessageFunction);
+        }
     }
 }
 
 void FIMDB::sync()
 {
-    m_loggingFunction(LOG_INFO, "Executing FIM sync.");
-    m_rsyncHandler->startSync(m_dbsyncHandler->handle(),
-                              nlohmann::json::parse(FIM_FILE_START_CONFIG_STATEMENT),
-                              m_syncFileMessageFunction);
+    std::shared_lock<std::shared_timed_mutex> lock(m_handlersMutex);
 
-    if (m_isWindows)
+    if (!m_stopping)
     {
+        m_loggingFunction(LOG_INFO, "Executing FIM sync.");
         m_rsyncHandler->startSync(m_dbsyncHandler->handle(),
-                                  nlohmann::json::parse(FIM_REGISTRY_START_CONFIG_STATEMENT),
-                                  m_syncRegistryMessageFunction);
+                                  nlohmann::json::parse(FIM_FILE_START_CONFIG_STATEMENT),
+                                  m_syncFileMessageFunction);
+
+        if (m_isWindows)
+        {
+            m_rsyncHandler->startSync(m_dbsyncHandler->handle(),
+                                      nlohmann::json::parse(FIM_REGISTRY_START_CONFIG_STATEMENT),
+                                      m_syncRegistryMessageFunction);
+        }
+
+        m_loggingFunction(LOG_INFO, "Finished FIM sync.");
     }
-
-    m_loggingFunction(LOG_INFO, "Finished FIM sync.");
-}
-
-void FIMDB::loopRSync()
-{
-    std::unique_lock<std::mutex> lock{m_fimSyncMutex};
-    m_loggingFunction(LOG_INFO, "FIM sync module started.");
-    sync();
-
-    while (!m_cv.wait_for(lock, std::chrono::seconds{m_syncInterval}, [&]()
-{
-    return m_stopping;
-}))
-    {
-        // LCOV_EXCL_START
-        sync();
-        // LCOV_EXCL_STOP
-    }
-    m_rsyncHandler = nullptr;
-    m_dbsyncHandler = nullptr;
 }
 
 void FIMDB::init(unsigned int syncInterval,
@@ -114,12 +119,22 @@ void FIMDB::init(unsigned int syncInterval,
 
 void FIMDB::removeItem(const nlohmann::json& item)
 {
-    m_dbsyncHandler->deleteRows(item);
+    std::shared_lock<std::shared_timed_mutex> lock(m_handlersMutex);
+
+    if (!m_stopping)
+    {
+        m_dbsyncHandler->deleteRows(item);
+    }
 }
 
 void FIMDB::updateItem(const nlohmann::json& item, ResultCallbackData callbackData)
 {
-    m_dbsyncHandler->syncRow(item, callbackData);
+    std::shared_lock<std::shared_timed_mutex> lock(m_handlersMutex);
+
+    if (!m_stopping)
+    {
+        m_dbsyncHandler->syncRow(item, callbackData);
+    }
 }
 
 void FIMDB::executeQuery(const nlohmann::json& item, ResultCallbackData callbackData)
@@ -135,11 +150,26 @@ void FIMDB::runIntegrity()
     {
         m_runIntegrity = true;
         registerRSync();
+        std::promise<void> promise;
 
-        m_integrityThread = std::thread([this]()
+        m_integrityThread = std::thread([&]()
         {
-            loopRSync();
+            m_loggingFunction(LOG_INFO, "FIM sync module started.");
+            sync();
+            promise.set_value();
+            std::unique_lock<std::mutex> lockCv{m_fimSyncMutex};
+
+            while (!m_cv.wait_for(lockCv, std::chrono::seconds{m_syncInterval}, [&]()
+        {
+            return m_stopping;
+        }))
+            {
+                // LCOV_EXCL_START
+                sync();
+                // LCOV_EXCL_STOP
+            }
         });
+        promise.get_future().wait();
     }
     else
     {
@@ -149,7 +179,7 @@ void FIMDB::runIntegrity()
 
 void FIMDB::pushMessage(const std::string& data)
 {
-    std::lock_guard<std::mutex> lock{m_fimSyncMutex};
+    std::shared_lock<std::shared_timed_mutex> lock(m_handlersMutex);
 
     if (!m_stopping)
     {
@@ -173,9 +203,13 @@ void FIMDB::pushMessage(const std::string& data)
 
 void FIMDB::teardown()
 {
+    std::unique_lock<std::shared_timed_mutex> lock(m_handlersMutex);
+
     try
     {
         stopIntegrity();
+        m_rsyncHandler = nullptr;
+        m_dbsyncHandler = nullptr;
     }
     // LCOV_EXCL_START
     catch (const std::exception& ex)

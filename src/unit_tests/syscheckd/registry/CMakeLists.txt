@@ -21,7 +21,9 @@ target_link_libraries(test_registry "-Wl,--wrap=_mdebug2,--wrap=_mdebug1,--wrap=
                                      -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start
                                      -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows
                                      -Wl,--wrap=fim_diff_process_delete_registry,--wrap=fim_diff_process_delete_value
-                                     -Wl,--wrap=registry_key_transaction_callback,--wrap=registry_value_transaction_callback")
+                                     -Wl,--wrap=registry_key_transaction_callback,--wrap=registry_value_transaction_callback \
+                                     -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                                     -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
 
 
 add_test(NAME test_registry COMMAND test_registry)
@@ -36,6 +38,7 @@ target_link_libraries(test_events "-Wl,--wrap=_mdebug2,--wrap=_mdebug1,--wrap=_m
                                    -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows -Wl,--wrap=fim_run_integrity \
                                    -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_transaction_start -Wl,--wrap,fim_db_init \
                                    -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
-                                   -Wl,--wrap=fim_db_file_update -Wl,--wrap,fim_db_get_path -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path")
+                                   -Wl,--wrap=fim_db_file_update -Wl,--wrap,fim_db_get_path -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path \
+                                   -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
 
 add_test(NAME test_events COMMAND test_events)

@@ -981,4 +981,11 @@ int fim_generate_delete_event(const char *file_path,
  */
 void fim_send_sync_state(const char *location, const char* msg);
 
+/**
+ * @brief Get shutdown process flag.
+ *
+ * @return Process shutdown flag.
+ */
+bool fim_shutdown_process_on();
+
 #endif /* SYSCHECK_H */

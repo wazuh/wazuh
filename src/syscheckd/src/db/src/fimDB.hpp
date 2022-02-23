@@ -16,6 +16,7 @@
 #include <condition_variable>
 #include <mutex>
 #include <thread>
+#include <shared_mutex>
 
 #ifdef __cplusplus
 extern "C"
@@ -305,11 +306,6 @@ class FIMDB
         void executeQuery(const nlohmann::json& item, ResultCallbackData callbackData);
 
         /**
-         * @brief Create the loop with the configured interval to do the periodical synchronization
-         */
-        void loopRSync();
-
-        /**
          * @brief Its the function in charge of starting the flow of synchronization
          */
         void registerRSync();
@@ -331,16 +327,18 @@ class FIMDB
          */
         inline void stopIntegrity()
         {
-            {
-                std::lock_guard<std::mutex> lock(m_fimSyncMutex);
-                m_stopping = true;
-            }
+            std::unique_lock<std::mutex> lock(m_fimSyncMutex);
+            m_stopping = true;
 
-            m_cv.notify_all();
-
-            if (m_integrityThread.joinable())
+            if (m_runIntegrity)
             {
-                m_integrityThread.join();
+                m_cv.notify_all();
+                lock.unlock();
+
+                if (m_integrityThread.joinable())
+                {
+                    m_integrityThread.join();
+                }
             }
         };
 
@@ -391,6 +389,7 @@ class FIMDB
         std::function<void(modules_log_level_t, const std::string&)>            m_loggingFunction;
         bool                                                                    m_runIntegrity;
         std::thread                                                             m_integrityThread;
+        std::shared_timed_mutex                                                 m_handlersMutex;
 
         /**
         * @brief Function that executes the synchronization of the databases with the manager

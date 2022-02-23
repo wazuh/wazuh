@@ -129,7 +129,9 @@ else()
                            -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
                            -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
                            -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg \
-                           ${HASH_OP_WRAPPERS} ${DEBUG_OP_WRAPPERS}")
+                           -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                           -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown ${HASH_OP_WRAPPERS} \
+                           ${DEBUG_OP_WRAPPERS}")
     target_link_libraries(test_win_whodata SYSCHECK_EVENT_O ${TEST_EVENT_DEPS})
 
     target_link_libraries(test_win_whodata "${WIN_WHODATA_FLAGS}")

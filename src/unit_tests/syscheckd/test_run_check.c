@@ -74,6 +74,8 @@ time_t __wrap_time(time_t *timer) {
 
 #endif
 
+
+extern bool fim_shutdown_process_on();
 /* Setup/Teardown */
 
 static int setup_group(void ** state) {
@@ -238,8 +240,8 @@ static int teardown_group(void **state) {
 /**
  * @brief This function loads expect and will_return calls for the function send_sync_msg
 */
-static void expect_w_send_sync_msg(const char *msg, const char *locmsg, char location, int ret) {
-    expect_SendMSG_call(msg, locmsg, location, ret);
+static void expect_w_send_sync_msg(const char *msg, const char *locmsg, char location,  bool (*fn_ptr)(), int ret) {
+    expect_SendMSGPredicated_call(msg, locmsg, location, fn_ptr, ret);
 }
 
 static int setup_max_fps(void **state) {
@@ -354,40 +356,6 @@ void test_log_realtime_status(void **state)
     expect_string(__wrap__minfo, formatted_msg, FIM_REALTIME_RESUMED);
     log_realtime_status(1);
 }
-
-/*void test_fim_send_msg(void **state) {
-    (void) state;
-
-    expect_w_send_sync_msg("test", SYSCHECK, SYSCHECK_MQ, 0);
-    fim_send_msg(SYSCHECK_MQ, SYSCHECK, "test");
-}
-
-void test_fim_send_msg_retry(void **state) {
-    (void) state;
-
-    expect_w_send_sync_msg("test", SYSCHECK, SYSCHECK_MQ, -1);
-
-    expect_string(__wrap__merror, formatted_msg, QUEUE_SEND);
-
-    expect_StartMQ_call(DEFAULTQUEUE, WRITE, 0);
-
-    expect_w_send_sync_msg("test", SYSCHECK, SYSCHECK_MQ, -1);
-
-    fim_send_msg(SYSCHECK_MQ, SYSCHECK, "test");
-}
-
-void test_fim_send_msg_retry_error(void **state) {
-    (void) state;
-
-    expect_w_send_sync_msg("test", SYSCHECK, SYSCHECK_MQ, -1);
-    expect_string(__wrap__merror, formatted_msg, QUEUE_SEND);
-
-    expect_StartMQ_call(DEFAULTQUEUE, WRITE, -1);
-
-    expect_string(__wrap__merror_exit, formatted_msg, "(1211): Unable to access queue: 'queue/sockets/queue'. Giving up.");
-
-    expect_assert_failure(fim_send_msg(SYSCHECK_MQ, SYSCHECK, "test"));
-}DEPRECATED_CODE*/
 
 #ifndef TEST_WINAGENT
 
@@ -838,55 +806,6 @@ void test_fim_whodata_initialize_eventchannel(void **state) {
 #endif  // WIN_WHODATA
 #endif
 
-
-/*void test_send_syscheck_msg_10_eps(void ** state) {
-    syscheck.max_eps = 10;
-    cJSON *event = cJSON_CreateObject();
-
-    if (event == NULL) {
-        fail_msg("Failed to create cJSON object");
-    }
-
-    // We must not sleep the first 9 times
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
-    for (int i = 1; i < syscheck.max_eps; i++) {
-        expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: {}");
-        expect_w_send_sync_msg("{}", SYSCHECK, SYSCHECK_MQ, 0);
-        send_syscheck_msg(event);
-    }
-
-#ifndef TEST_WINAGENT
-    expect_value(__wrap_sleep, seconds, 1);
-#else
-    expect_value(wrap_Sleep, dwMilliseconds, 1000);
-#endif
-
-    // After 10 times, sleep one second
-    expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: {}");
-    expect_w_send_sync_msg("{}", SYSCHECK, SYSCHECK_MQ, 0);
-
-    send_syscheck_msg(event);
-
-    cJSON_Delete(event);
-}
-
-void test_send_syscheck_msg_0_eps(void ** state) {
-    syscheck.max_eps = 0;
-    cJSON *event = cJSON_CreateObject();
-
-    if (event == NULL) {
-        fail_msg("Failed to create cJSON object");
-    }
-
-    // We must not sleep
-    expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: {}");
-    expect_w_send_sync_msg("{}", SYSCHECK, SYSCHECK_MQ, 0);
-    send_syscheck_msg(event);
-    cJSON_Delete(event);
-}*/
-
 void test_fim_send_scan_info(void **state) {
     (void) state;
     const char *msg = "{\"type\":\"scan_start\",\"data\":{\"timestamp\":1}}";
@@ -894,7 +813,7 @@ void test_fim_send_scan_info(void **state) {
     will_return(__wrap_time, 1);
 #endif
     expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: {\"type\":\"scan_start\",\"data\":{\"timestamp\":1}}");
-    expect_w_send_sync_msg(msg, SYSCHECK, SYSCHECK_MQ, 0);
+    expect_w_send_sync_msg(msg, SYSCHECK, SYSCHECK_MQ, fim_shutdown_process_on, 0);
     fim_send_scan_info(FIM_SCAN_START);
 }
 
@@ -1128,7 +1047,7 @@ void test_send_sync_state(void **state) {
     snprintf(debug_msg, OS_SIZE_256, FIM_DBSYNC_SEND, event);
 
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
-    expect_SendMSG_call(event, "fim_file", DBSYNC_MQ, 0);
+    expect_w_send_sync_msg(event, "fim_file", DBSYNC_MQ, fim_shutdown_process_on, 0);
 
     fim_send_sync_state("fim_file", event);
 }
@@ -1147,11 +1066,6 @@ int main(void) {
 #endif
 
         cmocka_unit_test(test_log_realtime_status),
-         /*cmocka_unit_test(test_fim_send_msg),
-        cmocka_unit_test(test_fim_send_msg_retry),
-        cmocka_unit_test(test_fim_send_msg_retry_error),
-        cmocka_unit_test(test_send_syscheck_msg_10_eps),
-        cmocka_unit_test(test_send_syscheck_msg_0_eps),*/
         cmocka_unit_test(test_fim_send_scan_info),
         cmocka_unit_test_setup_teardown(test_check_max_fps_no_sleep, setup_max_fps, teardown_max_fps),
         cmocka_unit_test_setup_teardown(test_check_max_fps_sleep, setup_max_fps, teardown_max_fps),
