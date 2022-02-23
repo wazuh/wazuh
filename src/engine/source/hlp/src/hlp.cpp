@@ -22,10 +22,11 @@ static void executeParserList(std::string const &event, ParserList const &parser
     fprintf(stderr, "%30s | %4s | %4s | %4s | %5s\n", "Capture", "type", "comb", "etok", "ret");
     fprintf(stderr, "-------------------------------|------|------|------|-----------\n");
     for (auto const &parser : parsers) {
-        fprintf(stderr, "%-30s | %4i | %4i |  '%*s' | ",
+        fprintf(stderr, "%-30s | %4i | %4i |  '%*.*s' | ",
                parser.name.c_str(),
                parser.parserType,
                parser.combType,
+               1,
                1,
                &parser.endToken);
 
@@ -51,15 +52,15 @@ static void executeParserList(std::string const &event, ParserList const &parser
             case ParserType::URL: {
                 URLResult urlResult;
                 if (parseURL(&eventIt, parser.endToken, urlResult)) {
-                    result["url.domain"] = std::move(urlResult.domain);
-                    result["url.fragment"] = std::move(urlResult.fragment);
-                    result["url.original"] = std::move(urlResult.original);
-                    result["url.password"] = std::move(urlResult.password);
-                    result["url.username"] = std::move(urlResult.username);
-                    result["url.scheme"] = std::move(urlResult.scheme);
-                    result["url.query"] = std::move(urlResult.query);
-                    result["url.path"] = std::move(urlResult.path);
-                    result["url.port"] = std::move(urlResult.port);
+                    result[parser.name + ".domain"] = std::move(urlResult.domain);
+                    result[parser.name + ".fragment"] = std::move(urlResult.fragment);
+                    result[parser.name + ".original"] = std::move(urlResult.original);
+                    result[parser.name + ".password"] = std::move(urlResult.password);
+                    result[parser.name + ".username"] = std::move(urlResult.username);
+                    result[parser.name + ".scheme"] = std::move(urlResult.scheme);
+                    result[parser.name + ".query"] = std::move(urlResult.query);
+                    result[parser.name + ".path"] = std::move(urlResult.path);
+                    result[parser.name + ".port"] = std::move(urlResult.port);
                 }
                 else{
                     error = true;
@@ -98,13 +99,14 @@ static void executeParserList(std::string const &event, ParserList const &parser
             }
             case ParserType::Ts: {
                 TimeStampResult tsr;
-                if (parseTimeStamp(&eventIt, parser.endToken, tsr)) {
-                    result["timestamp.year"] = tsr.year;
-                    result["timestamp.month"] = tsr.month;
-                    result["timestamp.day"] = tsr.day;
-                    result["timestamp.hour"] = tsr.hour;
-                    result["timestamp.minutes"] = tsr.minutes;
-                    result["timestamp.seconds"] = tsr.seconds;
+                if (parseTimeStamp(&eventIt, parser.captureOpts, parser.endToken, tsr)) {
+                    result[parser.name + ".year"] = tsr.year;
+                    result[parser.name + ".month"] = tsr.month;
+                    result[parser.name + ".day"] = tsr.day;
+                    result[parser.name + ".hour"] = tsr.hour;
+                    result[parser.name + ".minutes"] = tsr.minutes;
+                    result[parser.name + ".seconds"] = tsr.seconds;
+                    result[parser.name + ".timezone"] = tsr.timezone;
                 }
                 else {
                     error = true;
