@@ -2,6 +2,9 @@ version: '3.7'
 
 services:
   wazuh-master:
+    profiles:
+      - standalone
+      - cluster
     build:
       context: .
       dockerfile: base/manager/manager.Dockerfile
@@ -17,8 +20,11 @@ services:
       - wazuh-master
       - master-node
       - master
+      - ${ENV_MODE}
 
   wazuh-worker1:
+    profiles:
+      - cluster
     build:
       context: .
       dockerfile: base/manager/manager.Dockerfile
@@ -34,6 +40,8 @@ services:
       - worker
 
   wazuh-worker2:
+    profiles:
+      - cluster
     build:
       context: .
       dockerfile: base/manager/manager.Dockerfile
@@ -49,6 +57,9 @@ services:
       - worker
 
   wazuh-agent1:
+    profiles:
+      - standalone
+      - cluster
     build:
       context: .
       dockerfile: base/agent/new.Dockerfile
@@ -62,11 +73,12 @@ services:
       - nginx-lb
       - wazuh-agent1
     depends_on:
-      - wazuh-worker1
-      - wazuh-worker2
       - nginx-lb
 
   wazuh-agent2:
+    profiles:
+      - standalone
+      - cluster
     build:
       context: .
       dockerfile: base/agent/new.Dockerfile
@@ -80,12 +92,13 @@ services:
       - nginx-lb
       - wazuh-agent2
     depends_on:
-      - wazuh-worker1
-      - wazuh-worker2
       - wazuh-agent1
       - nginx-lb
 
   wazuh-agent3:
+    profiles:
+      - standalone
+      - cluster
     build:
       context: .
       dockerfile: base/agent/new.Dockerfile
@@ -99,12 +112,13 @@ services:
       - nginx-lb
       - wazuh-agent3
     depends_on:
-      - wazuh-worker1
-      - wazuh-worker2
       - wazuh-agent2
       - nginx-lb
 
   wazuh-agent4:
+    profiles:
+      - standalone
+      - cluster
     build:
       context: .
       dockerfile: base/agent/new.Dockerfile
@@ -118,12 +132,13 @@ services:
       - nginx-lb
       - wazuh-agent4
     depends_on:
-      - wazuh-worker1
-      - wazuh-worker2
       - wazuh-agent3
       - nginx-lb
 
   wazuh-agent5:
+    profiles:
+      - standalone
+      - cluster
     build:
       context: .
       dockerfile: base/agent/old.Dockerfile
@@ -138,12 +153,13 @@ services:
       - wazuh-agent5
       - agent_old
     depends_on:
-      - wazuh-worker1
-      - wazuh-worker2
       - wazuh-agent4
       - nginx-lb
 
   wazuh-agent6:
+    profiles:
+      - standalone
+      - cluster
     build:
       context: .
       dockerfile: base/agent/old.Dockerfile
@@ -158,12 +174,13 @@ services:
       - wazuh-agent6
       - agent_old
     depends_on:
-      - wazuh-worker1
-      - wazuh-worker2
       - wazuh-agent5
       - nginx-lb
 
   wazuh-agent7:
+    profiles:
+      - standalone
+      - cluster
     build:
       context: .
       dockerfile: base/agent/old.Dockerfile
@@ -178,12 +195,13 @@ services:
       - wazuh-agent7
       - agent_old
     depends_on:
-      - wazuh-worker1
-      - wazuh-worker2
       - wazuh-agent6
       - nginx-lb
 
   wazuh-agent8:
+    profiles:
+      - standalone
+      - cluster
     build:
       context: .
       dockerfile: base/agent/old.Dockerfile
@@ -198,14 +216,16 @@ services:
       - wazuh-agent8
       - agent_old
     depends_on:
-      - wazuh-worker1
-      - wazuh-worker2
       - wazuh-agent7
       - nginx-lb
 
   nginx-lb:
+    profiles:
+      - standalone
+      - cluster
     build:
       context: ./base/nginx-lb
     image: integration_test_nginx-lb
     entrypoint:
       - /scripts/entrypoint.sh
+      - ${ENV_MODE}
