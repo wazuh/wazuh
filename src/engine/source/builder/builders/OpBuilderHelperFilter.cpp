@@ -485,6 +485,10 @@ types::Lifter opBuilderHelperRegexMatch(const types::DocumentValue & def)
         throw std::invalid_argument("Wrong number of arguments passed");
     }
     std::string regexp = parameters[1];
+    if (regexp.empty())
+    {
+        throw std::invalid_argument("The regular expression can't be empty");
+    }
     auto regex_ptr = std::make_shared<RE2>(regexp);
 
     // Return Lifter
@@ -494,15 +498,20 @@ types::Lifter opBuilderHelperRegexMatch(const types::DocumentValue & def)
         return o.filter(
             [=](types::Event e)
             {
-                auto field_str = e.get("/" + field);
+                const rapidjson::Value * field_str{};
+                try
+                {
+                    field_str = e.get("/" + field);
+                }
+                catch (std::exception & ex)
+                {
+                    // TODO Check exception type
+                    return false;
+                }
                 if (field_str)
                 {
                     return (RE2::PartialMatch(field_str->GetString(), *regex_ptr));
                 }
-                /*                 else
-                                {
-                                    return false;
-                                } */
                 return false;
             });
     };
@@ -519,6 +528,10 @@ types::Lifter opBuilderHelperRegexNotMatch(const types::DocumentValue & def)
         throw std::invalid_argument("Wrong number of arguments passed");
     }
     std::string regexp = parameters[1];
+    if (regexp.empty())
+    {
+        throw std::invalid_argument("The regular expression can't be empty");
+    }
     auto regex_ptr = std::make_shared<RE2>(regexp);
 
     // Return Lifter
@@ -528,7 +541,16 @@ types::Lifter opBuilderHelperRegexNotMatch(const types::DocumentValue & def)
         return o.filter(
             [=](types::Event e)
             {
-                auto field_str = e.get("/" + field);
+                const rapidjson::Value * field_str{};
+                try
+                {
+                    field_str = e.get("/" + field);
+                }
+                catch (std::exception & ex)
+                {
+                    // TODO Check exception type
+                    return false;
+                }
                 if (field_str)
                 {
                     return (!RE2::PartialMatch(field_str->GetString(), *regex_ptr));
