@@ -19,15 +19,15 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
     int __ms_reported = 0;
     int linesgot = 0;
     size_t buffer_size = 0;
-    char str[OS_MAXSTR + 1];
-    char buffer[OS_MAXSTR + 1];
+    char str[OS_MAXSTR - OS_LOG_HEADER];
+    char buffer[OS_MAXSTR - OS_LOG_HEADER];
     int lines = 0;
     int64_t offset = 0;
     int64_t rbytes = 0;
 
     buffer[0] = '\0';
-    buffer[OS_MAXSTR] = '\0';
-    str[OS_MAXSTR] = '\0';
+    buffer[OS_MAXSTR - OS_LOG_HEADER - 1] = '\0';
+    str[OS_MAXSTR - OS_LOG_HEADER - 1] = '\0';
     *rc = 0;
 
     /* Obtain context to calculate hash */
@@ -93,7 +93,13 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
             buffer_size++;
         }
 
-        strncpy(buffer + buffer_size, str, OS_MAXSTR - buffer_size - 2);
+        strncat(buffer, str, OS_MAXSTR - OS_LOG_HEADER - 1 - buffer_size);
+        buffer[OS_MAXSTR - OS_LOG_HEADER - 1] = '\0';
+
+
+        if (OS_MAXSTR - OS_LOG_HEADER - 1 - buffer_size < strlen(str)) {
+            merror("Large message size from file '%s' (length = " FTELL_TT "): '%s'...", lf->file, FTELL_INT64 buffer_size + strlen(str), buffer);
+        }
 
         if (linesgot < lf->linecount) {
             continue;
@@ -118,7 +124,7 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
                 mdebug2("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, FTELL_INT64 rbytes, sample_log_length, str);
             }
 
-            for (offset += rbytes; fgets(str, OS_MAXSTR - 2, lf->fp) != NULL; offset += rbytes) {
+            for (offset += rbytes; fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL; offset += rbytes) {
                 rbytes = w_ftell(lf->fp) - offset;
 
                 /* Flow control */
