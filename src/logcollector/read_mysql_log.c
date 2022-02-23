@@ -22,11 +22,13 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
     size_t str_len = 0;
     int need_clear = 0;
     char *p;
-    char str[OS_MAXSTR + 1];
-    char buffer[OS_MAXSTR + 1];
+    char str[OS_MAXSTR - OS_LOG_HEADER];
+    char buffer[OS_MAXSTR - OS_LOG_HEADER];
     int lines = 0;
+    int bytes_written = 0;
 
-    str[OS_MAXSTR] = '\0';
+    str[OS_MAXSTR - OS_LOG_HEADER - 1] = '\0';
+    buffer[OS_MAXSTR - OS_LOG_HEADER - 1] = '\0';
     *rc = 0;
 
     /* Obtain context to calculate hash */
@@ -102,7 +104,7 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
             }
 
             /* Valid MySQL message */
-            snprintf(buffer, OS_MAXSTR, "MySQL log: %s %s",
+            bytes_written = snprintf(buffer, OS_MAXSTR - OS_LOG_HEADER, "MySQL log: %s %s",
                      __mysql_last_time, p);
         }
 
@@ -155,10 +157,10 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
            }
 
            /* Valid MySQL message */
-           snprintf(buffer, OS_MAXSTR, "MySQL log: %s %s",
+           bytes_written = snprintf(buffer, OS_MAXSTR - OS_LOG_HEADER, "MySQL log: %s %s",
                     __mysql_last_time, p);
        }
-       
+
       /* MySQL 5.7 messages have the following format(in case of utc):
        * YYYY-MM-DDThh:mm:ss.uuuuuuZ XX
        * ref: https://dev.mysql.com/doc/refman/5.7/en/server-system-variables.html#sysvar_log_timestamps
@@ -203,7 +205,7 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
           }
 
           /* Valid MySQL message */
-          snprintf(buffer, OS_MAXSTR, "MySQL log: %s %s",
+          bytes_written = snprintf(buffer, OS_MAXSTR - OS_LOG_HEADER, "MySQL log: %s %s",
                    __mysql_last_time, p);
       }
 
@@ -227,11 +229,16 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
             }
 
             /* Valid MySQL message */
-            snprintf(buffer, OS_MAXSTR, "MySQL log: %s %s",
+            bytes_written = snprintf(buffer, OS_MAXSTR - OS_LOG_HEADER, "MySQL log: %s %s",
                      __mysql_last_time, p);
         } else {
             continue;
         }
+
+        if (bytes_written + 1 > OS_MAXSTR - OS_LOG_HEADER) {
+            merror("Large message size from file '%s' (length = " FTELL_TT "): '%s'...", lf->file, FTELL_INT64 bytes_written, buffer);
+        }
+
 
         mdebug2("Reading mysql messages: '%s'", buffer);
 
