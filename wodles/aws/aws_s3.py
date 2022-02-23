@@ -2144,7 +2144,7 @@ class AWSCustomBucket(AWSBucket):
     def mark_complete(self, aws_account_id, aws_region, log_file):
         AWSBucket.mark_complete(self, self.aws_account_id, aws_region, log_file)
 
-    def db_count_custom(self):
+    def db_count_custom(self, aws_account_id=None):
         """Counts the number of rows in DB for a region
         :param aws_account_id: AWS account ID
         :type aws_account_id: str
@@ -2155,7 +2155,7 @@ class AWSCustomBucket(AWSBucket):
                 self.sql_count_custom.format(
                     table_name=self.db_table_name,
                     bucket_path=self.bucket_path,
-                    aws_account_id=self.aws_account_id,
+                    aws_account_id= aws_account_id if aws_account_id else self.aws_account_id,
                     retain_db_records=self.retain_db_records
                 ))
             return query_count_custom.fetchone()[0]
@@ -2166,14 +2166,14 @@ class AWSCustomBucket(AWSBucket):
                     error_msg=e))
             sys.exit(10)
 
-    def db_maintenance(self, **kwargs):
+    def db_maintenance(self, aws_account_id=None, **kwargs):
         debug("+++ DB Maintenance", 1)
         try:
-            if self.db_count_custom() > self.retain_db_records:
+            if self.db_count_custom(aws_account_id) > self.retain_db_records:
                 self.db_connector.execute(self.sql_db_maintenance.format(
                     table_name=self.db_table_name,
                     bucket_path=self.bucket_path,
-                    aws_account_id=self.aws_account_id,
+                    aws_account_id= aws_account_id if aws_account_id else self.aws_account_id,
                     retain_db_records=self.retain_db_records
                 ))
         except Exception as e:
