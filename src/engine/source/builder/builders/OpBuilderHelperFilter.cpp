@@ -74,6 +74,11 @@ types::Lifter opBuilderHelperNotExists(const types::DocumentValue & def)
     };
 }
 
+
+//*************************************************
+//*           String filters                      *
+//*************************************************
+
 bool opBuilderHelperStringComparison(const std::string key, char op, types::Event & e,
                                                  std::optional<std::string> refExpStr,
                                                  std::optional<std::string> expectedStr) {
@@ -101,7 +106,7 @@ bool opBuilderHelperStringComparison(const std::string key, char op, types::Even
         {
             refValueToCheck = e.get("/" + refExpStr.value());
         }
-        catch (std::exception & e)
+        catch (std::exception & ex)
         {
             // TODO Check exception type
             return false;
@@ -134,6 +139,7 @@ bool opBuilderHelperStringComparison(const std::string key, char op, types::Even
             return std::string{value->GetString()} <= expectedStr.value();
 
         default:
+        // if raise here, then the source code is wrong
             throw std::invalid_argument("Invalid operator: '" + std::string{op} + "' ");
     }
 
@@ -372,5 +378,9 @@ types::Lifter opBuilderHelperString_le(const types::DocumentValue & def)
         });
     };
 }
+
+//*************************************************
+//*               Int filters                     *
+//*************************************************
 
 } // namespace builder::internals::builders
