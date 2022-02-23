@@ -3300,6 +3300,116 @@ static void test_fim_whodata_event_file_missing(void **state) {
     errno = 0;
 }
 
+
+/*
+void test_fim_process_missing_entry_null_directory_configuration(void **state){
+    fim_data_t* fim_data = (fim_data_t*) *state;
+    char *path = fim_data->w_evt->path;
+
+    #ifndef TEST_WINAGENT
+        expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+        expect_function_call_any(__wrap_pthread_rwlock_unlock);
+        expect_function_call_any(__wrap_pthread_mutex_lock);
+        expect_function_call_any(__wrap_pthread_mutex_unlock);
+        expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    #else
+        expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+        expect_function_call_any(__wrap_pthread_rwlock_unlock);
+        expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+        expect_function_call_any(__wrap_pthread_mutex_lock);
+        expect_function_call_any(__wrap_pthread_mutex_unlock);
+    #endif
+
+    fim_process_missing_entry(path, FIM_WHODATA, fim_data->w_evt);
+}
+
+void test_fim_process_missing_entry_path_found(void **state){
+    fim_data_t* fim_data = (fim_data_t*) *state;
+    directory_t mock_dir;
+    char *path = fim_data->w_evt->path;
+
+        #ifndef TEST_WINAGENT
+        expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+        expect_function_call_any(__wrap_pthread_rwlock_unlock);
+        expect_function_call_any(__wrap_pthread_mutex_lock);
+        expect_function_call_any(__wrap_pthread_mutex_unlock);
+        expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    #else
+        expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+        expect_function_call_any(__wrap_pthread_rwlock_unlock);
+        expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+        expect_function_call_any(__wrap_pthread_mutex_lock);
+        expect_function_call_any(__wrap_pthread_mutex_unlock);
+    #endif
+    expect_string(__wrap_fim_configuration_directory, path, path);
+    will_return(__wrap_fim_configuration_directory, &mock_dir);
+
+    expect_string(__wrap_fim_db_get_path, file_path, path);
+    will_return(__wrap_fim_db_get_path, FIMDB_ERR);
+
+    fim_process_missing_entry(path, FIM_WHODATA, fim_data->w_evt);
+}
+
+void test_fim_process_missing_entry_no_whodata_active(void **state){
+    fim_data_t* fim_data = (fim_data_t*) *state;
+    directory_t mock_dir;
+    char *path = fim_data->w_evt->path;
+    mock_dir.options = 00200000;
+
+        #ifndef TEST_WINAGENT
+        expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+        expect_function_call_any(__wrap_pthread_rwlock_unlock);
+        expect_function_call_any(__wrap_pthread_mutex_lock);
+        expect_function_call_any(__wrap_pthread_mutex_unlock);
+        expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    #else
+        expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+        expect_function_call_any(__wrap_pthread_rwlock_unlock);
+        expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+        expect_function_call_any(__wrap_pthread_mutex_lock);
+        expect_function_call_any(__wrap_pthread_mutex_unlock);
+    #endif
+    expect_string(__wrap_fim_configuration_directory, path, path);
+    will_return(__wrap_fim_configuration_directory, &mock_dir);
+
+    expect_string(__wrap_fim_db_get_path, file_path, path);
+    will_return(__wrap_fim_db_get_path, FIMDB_OK);
+
+    fim_process_missing_entry(path, FIM_WHODATA, fim_data->w_evt);
+}
+
+void test_fim_process_missing_entry(void **state){
+    fim_data_t* fim_data = (fim_data_t*) *state;
+    directory_t mock_dir;
+    char *path = fim_data->w_evt->path;
+    mock_dir.options = 00200000;
+    char pattern[PATH_MAX] = {0};
+    snprintf(pattern, PATH_MAX, "%s%c%%", path, PATH_SEP);
+    #ifndef TEST_WINAGENT
+        expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+        expect_function_call_any(__wrap_pthread_rwlock_unlock);
+        expect_function_call_any(__wrap_pthread_mutex_lock);
+        expect_function_call_any(__wrap_pthread_mutex_unlock);
+        expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    #else
+        expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+        expect_function_call_any(__wrap_pthread_rwlock_unlock);
+        expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+        expect_function_call_any(__wrap_pthread_mutex_lock);
+        expect_function_call_any(__wrap_pthread_mutex_unlock);
+    #endif
+    expect_string(__wrap_fim_configuration_directory, path, path);
+    will_return(__wrap_fim_configuration_directory, &mock_dir);
+
+    expect_string(__wrap_fim_db_get_path, file_path, path);
+    will_return(__wrap_fim_db_get_path, FIMDB_OK);
+
+    expect_string(__wrap_fim_db_file_pattern_search, pattern, pattern);
+    will_return(__wrap_fim_db_file_pattern_search, FIMDB_OK);
+
+    fim_process_missing_entry(path, FIM_WHODATA, fim_data->w_evt);
+}*/
+
 static void test_fim_process_missing_entry_no_data(void **state) {
 #ifdef TEST_WINAGENT
     char *path = "C:\\a\\random\\path";
@@ -3911,8 +4021,196 @@ static void test_fim_event_callback(void **state) {
     cJSON_Delete(json_event);
 }
 
+void test_fim_calculate_dbsync_difference_no_attributes(void **state){
+
+    cJSON* output = fim_calculate_dbsync_difference(NULL,
+                                        NULL,
+                                        NULL,
+                                        NULL);
+    assert_null(output);
+}
+
+void test_fim_calculate_dbsync_difference(void **state){
+
+    #ifndef TEST_WINAGENT
+        char* changed_data = "{\"size\":0, \"perm\":\"rw-rw-r--\", \"attributes\":\"NULL\", \"uid\":\"1000\", \"gid\":\"1000\", \
+        \"user_name\":\"root\", \"group_name\":\"root\", \"mtime\":123456789, \"inode\":1, \"hash_md5\":\"0123456789abcdef0123456789abcdef\", \
+        \"hash_sha1\":\"0123456789abcdef0123456789abcdef01234567\", \"hash_sha256\":\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\", \
+        \"checksum\":\"0123456789abcdef0123456789abcdef01234567\" }";
+    #else
+        char* changed_data = "{\"size\":0, \"perm\":\"rw-rw-r--\", \"attributes\":\"NULL\", \"uid\":1000, \"gid\":1000, \
+        \"user_name\":\"root\", \"group_name\":\"root\", \"mtime\":123456789, \"inode\":1, \"hash_md5\":\"0123456789abcdef0123456789abcdef\", \
+        \"hash_sha1\":\"0123456789abcdef0123456789abcdef01234567\", \"hash_sha256\":\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\" \
+        \"attributes\":{}, \"checksum"\:\"0123456789abcdef0123456789abcdef01234567\"}";
+    #endif
+
+    cJSON* changed_data_json = cJSON_Parse(changed_data);
+    cJSON* old_attributes = cJSON_CreateObject();
+    cJSON* changed_attributes = cJSON_CreateArray();
+
+    cJSON* output = fim_calculate_dbsync_difference(&DEFAULT_FILE_DATA,
+                                        changed_data_json,
+                                        old_attributes,
+                                        changed_attributes);
+
+//    assert_non_null(cJSON_GetArrayItem(changed_attributes, "size"));
+    assert_int_equal(cJSON_GetObjectItem(old_attributes, "size")->valueint, 0);
+//    assert_non_null(cJSON_GetArrayItem(old_attributes, "perm"));
+    assert_string_equal(cJSON_GetObjectItem(old_attributes, "perm")->valuestring, "rw-rw-r--");
+    #ifdef TEST_WINAGENT
+    assert_string_equal(cJSON_GetObjectItem(old_attributes, "attributes")->valuestring, "NULL");
+    #endif
+
+   //assert_non_null(cJSON_GetArrayItem(changed_attributes, "uid"));
+    assert_string_equal(cJSON_GetObjectItem(old_attributes, "uid")->valuestring, "1000");
+    //assert_non_null(cJSON_GetArrayItem(changed_attributes, "gid"));
+    assert_string_equal(cJSON_GetObjectItem(old_attributes, "gid")->valuestring, "1000");
+    //assert_non_null(cJSON_GetArrayItem(changed_attributes, "user_name"));
+    assert_string_equal(cJSON_GetObjectItem(old_attributes, "user_name")->valuestring, "root");
+    //assert_non_null(cJSON_GetArrayItem(changed_attributes, "group_name"));
+    assert_string_equal(cJSON_GetObjectItem(old_attributes, "group_name")->valuestring, "root");
+    //assert_non_null(cJSON_GetArrayItem(changed_attributes, "mtime"));
+    assert_int_equal(cJSON_GetObjectItem(old_attributes, "mtime")->valueint, 123456789);
+    //assert_non_null(cJSON_GetArrayItem(changed_attributes, "inode"));
+    assert_int_equal(cJSON_GetObjectItem(old_attributes, "inode")->valueint, 1);
+    //assert_non_null(cJSON_GetArrayItem(changed_attributes, "hash_md5"));
+    assert_string_equal(cJSON_GetObjectItem(old_attributes, "hash_md5")->valuestring, "0123456789abcdef0123456789abcdef");
+    //assert_non_null(cJSON_GetArrayItem(changed_attributes, "hash_sha1"));
+    assert_string_equal(cJSON_GetObjectItem(old_attributes, "hash_sha1")->valuestring, "0123456789abcdef0123456789abcdef01234567");
+    //assert_non_null(cJSON_GetArrayItem(changed_attributes, "hash_256"));
+    assert_string_equal(cJSON_GetObjectItem(old_attributes, "hash_sha256")->valuestring, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
+    //assert_non_null(cJSON_GetArrayItem(changed_attributes, "checksum"));
+    assert_string_equal(cJSON_GetObjectItem(old_attributes, "checksum")->valuestring, "0123456789abcdef0123456789abcdef01234567");
+
+}
+
+void test_fim_calculate_dbsync_difference_no_changed_data(void **state){
+
+    #ifndef TEST_WINAGENT
+        char* changed_data = "{\"size\":0, \"perm\":\"rw-rw-r--\", \"attributes\":\"NULL\", \"uid\":\"1000\", \"gid\":\"1000\", \
+        \"user_name\":\"root\", \"group_name\":\"root\", \"mtime\":123456789, \"inode\":1, \"hash_md5\":\"0123456789abcdef0123456789abcdef\", \
+        \"hash_sha1\":\"0123456789abcdef0123456789abcdef01234567\", \"hash_sha256\":\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\", \
+        \"checksum\":\"0123456789abcdef0123456789abcdef01234567\" }";
+    #else
+        char* changed_data = "{\"size\":0, \"perm\":\"rw-rw-r--\", \"attributes\":\"NULL\", \"uid\":1000, \"gid\":1000, \
+        \"user_name\":\"root\", \"group_name\":\"root\", \"mtime\":123456789, \"inode\":1, \"hash_md5\":\"0123456789abcdef0123456789abcdef\", \
+        \"hash_sha1\":\"0123456789abcdef0123456789abcdef01234567\", \"hash_sha256\":\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\" \
+        \"attributes\":{}, \"checksum"\:\"0123456789abcdef0123456789abcdef01234567\"}";
+    #endif
+
+    cJSON* changed_data_json = NULL;
+    cJSON* old_attributes = cJSON_CreateObject();
+    cJSON* changed_attributes = cJSON_CreateArray();
+
+    cJSON* output = fim_calculate_dbsync_difference(&DEFAULT_FILE_DATA,
+                                        changed_data_json,
+                                        old_attributes,
+                                        changed_attributes);
+
+    //assert_non_null(cJSON_GetArrayItem(changed_attributes, "size"));
+    assert_int_equal(cJSON_GetObjectItem(old_attributes, "size")->valueint, 0);
+    //assert_non_null(cJSON_GetArrayItem(old_attributes, "perm"));
+    assert_string_equal(cJSON_GetObjectItem(old_attributes, "perm")->valuestring, "rw-rw-r--");
+    #ifdef TEST_WINAGENT
+    assert_string_equal(cJSON_GetObjectItem(old_attributes, "attributes")->valuestring, "NULL");
+    #endif
+
+   //assert_non_null(cJSON_GetArrayItem(changed_attributes, "uid"));
+    assert_string_equal(cJSON_GetObjectItem(old_attributes, "uid")->valuestring, "1000");
+    //assert_non_null(cJSON_GetArrayItem(changed_attributes, "gid"));
+    assert_string_equal(cJSON_GetObjectItem(old_attributes, "gid")->valuestring, "1000");
+    //assert_non_null(cJSON_GetArrayItem(changed_attributes, "user_name"));
+    assert_string_equal(cJSON_GetObjectItem(old_attributes, "user_name")->valuestring, "root");
+    //assert_non_null(cJSON_GetArrayItem(changed_attributes, "group_name"));
+    assert_string_equal(cJSON_GetObjectItem(old_attributes, "group_name")->valuestring, "root");
+    //assert_non_null(cJSON_GetArrayItem(changed_attributes, "mtime"));
+    assert_int_equal(cJSON_GetObjectItem(old_attributes, "mtime")->valueint, 123456789);
+    //assert_non_null(cJSON_GetArrayItem(changed_attributes, "inode"));
+    assert_int_equal(cJSON_GetObjectItem(old_attributes, "inode")->valueint, 1);
+    //assert_non_null(cJSON_GetArrayItem(changed_attributes, "hash_md5"));
+    assert_string_equal(cJSON_GetObjectItem(old_attributes, "hash_md5")->valuestring, "0123456789abcdef0123456789abcdef");
+    //assert_non_null(cJSON_GetArrayItem(changed_attributes, "hash_sha1"));
+    assert_string_equal(cJSON_GetObjectItem(old_attributes, "hash_sha1")->valuestring, "0123456789abcdef0123456789abcdef01234567");
+    //assert_non_null(cJSON_GetArrayItem(changed_attributes, "hash_256"));
+    assert_string_equal(cJSON_GetObjectItem(old_attributes, "hash_sha256")->valuestring, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
+    //assert_non_null(cJSON_GetArrayItem(changed_attributes, "checksum"));
+    assert_string_equal(cJSON_GetObjectItem(old_attributes, "checksum")->valuestring, "0123456789abcdef0123456789abcdef01234567");
+}
+
+void test_process_delete_event(void **state){
+    fim_data_t* entry = (fim_data_t*) *state;
+    directory_t config;
+    config.tag = "tag";
+    event_data_t evt;
+    evt.mode = FIM_SCHEDULED;
+    evt.type = FIM_ADD;
+    evt.report_event = 1;
+    get_data_ctx ctx_data;
+    ctx_data.config = &config;
+    ctx_data.event = &evt;
+    entry->fentry->file_entry.path = "path";
+    expect_string(__wrap_fim_db_remove_path, path, entry->fentry->file_entry.path);
+    will_return(__wrap_fim_db_remove_path, 0);
+
+    expect_function_call(__wrap_send_syscheck_msg);
+
+    process_delete_event(entry->fentry, &ctx_data);
+    entry->fentry->file_entry.path = NULL;
+}
+
+void test_create_windows_who_data_events(void **state){
+    fim_data_t* fim_data = (fim_data_t*) *state;
+    char *path = fim_data->w_evt->path;
+
+    #ifndef TEST_WINAGENT
+        expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+        expect_function_call_any(__wrap_pthread_rwlock_unlock);
+        expect_function_call_any(__wrap_pthread_mutex_lock);
+        expect_function_call_any(__wrap_pthread_mutex_unlock);
+        expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    #else
+        expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+        expect_function_call_any(__wrap_pthread_rwlock_unlock);
+        expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+        expect_function_call_any(__wrap_pthread_mutex_lock);
+        expect_function_call_any(__wrap_pthread_mutex_unlock);
+    #endif
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'./test/test.file'");
+    create_windows_who_data_events(path, fim_data->w_evt);
+}
+
+void test_fim_db_remove_entry(void **state){
+    fim_data_t* fim_data = (fim_data_t*) *state;
+    char *path = fim_data->w_evt->path;
+    directory_t config;
+    get_data_ctx get_data;
+    get_data.config = &config;
+
+    expect_string(__wrap_fim_db_get_path, file_path, path);
+    will_return(__wrap_fim_db_get_path, FIMDB_OK);
+    fim_db_remove_entry(path, &get_data);
+}
+
+void test_fim_db_process_missing_entry(void **state){
+    fim_data_t* fim_data = (fim_data_t*) *state;
+    char *path = fim_data->w_evt->path;
+    directory_t config;
+    get_data_ctx get_data;
+    get_data.config = &config;
+
+    fim_db_process_missing_entry(fim_data->fentry, &get_data);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
+        cmocka_unit_test(test_fim_calculate_dbsync_difference_no_attributes),
+        cmocka_unit_test(test_fim_calculate_dbsync_difference),
+        cmocka_unit_test(test_fim_calculate_dbsync_difference_no_changed_data),
+        cmocka_unit_test_setup_teardown(test_create_windows_who_data_events, setup_fim_data, teardown_fim_data),
+        cmocka_unit_test_setup_teardown(test_process_delete_event, setup_fim_entry, teardown_fim_entry),
+        cmocka_unit_test_setup_teardown(test_fim_db_remove_entry, setup_fim_entry, teardown_fim_entry),
+        cmocka_unit_test_setup_teardown(test_fim_db_process_missing_entry, setup_fim_entry, teardown_fim_entry),
         /* fim_json_event */
         cmocka_unit_test_teardown(test_fim_json_event, teardown_delete_json),
         cmocka_unit_test_teardown(test_fim_json_event_whodata, teardown_delete_json),

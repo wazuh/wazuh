@@ -50,4 +50,5 @@ void __wrap_fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler,
                                             void* txn_ctx);
 int __wrap_Start_win32_Syscheck();
 
+void __wrap_fim_generate_delete_event();
 #endif
