@@ -343,7 +343,12 @@ types::Lifter opBuilderHelperIntCalc(const types::DocumentValue & def)
         case '+':
         case '-':
         case '*':
+            break;
         case '%':
+            if (parameters[2] == "0")
+            {
+                throw std::runtime_error("Division by zero");
+            }
             break;
         default:
             throw std::runtime_error("Invalid operator");
