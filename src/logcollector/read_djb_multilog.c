@@ -145,7 +145,7 @@ void *read_djbmultilog(logreader *lf, int *rc, int drop_it) {
                     (p[12] == ':') &&
                     (p[15] == ' ')) {
                 p += 16;
-                snprintf(buffer, OS_MAXSTR - OS_LOG_HEADER, "%s", p);
+                snprintf(buffer, sizeof(buffer), "%s", p);
             } else {
                 /* We will add a proper syslog header */
                 time_t djbtime;
@@ -155,7 +155,7 @@ void *read_djbmultilog(logreader *lf, int *rc, int drop_it) {
                 localtime_r(&djbtime, &tm_result);
 
                 /* Syslog time: Apr 27 14:50:32  */
-                int size = snprintf(buffer, OS_MAXSTR - OS_LOG_HEADER, "%s %02d %02d:%02d:%02d %s %s: %s",
+                int size = snprintf(buffer, sizeof(buffer), "%s %02d %02d:%02d:%02d %s %s: %s",
                          djb_month[tm_result.tm_mon],
                          tm_result.tm_mday,
                          tm_result.tm_hour,
@@ -167,7 +167,7 @@ void *read_djbmultilog(logreader *lf, int *rc, int drop_it) {
 
 
                 if (size + 1 > OS_MAXSTR - OS_LOG_HEADER) {
-                    merror("Large message size from file '%s' (length = " FTELL_TT "): '%s'...", lf->file, FTELL_INT64 size, buffer);
+                    merror("Message size too big on file '%s' (length = " FTELL_TT "): '%s'...", lf->file, FTELL_INT64 size, buffer);
                 }
             }
         }
