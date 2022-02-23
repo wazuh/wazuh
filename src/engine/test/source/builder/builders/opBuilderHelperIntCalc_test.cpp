@@ -511,3 +511,60 @@ TEST(opBuilderHelperIntCalc, Exec_div_ref)
     ASSERT_EQ(expected[7].get("/field_test")->GetInt(),-1);
 
 }
+
+TEST(opBuilderHelperIntCalc, Exec_div_ref_zero)
+{
+    Document doc{R"({
+        "check":
+            {"field_test": "+i_calc/%/$field_src"}
+    })"};
+
+    Observable input = observable<>::create<Event>(
+        [=](auto s)
+        {
+            s.on_next(Event{R"(
+                {"field_test": 0,"field_src":0}
+            )"});
+            s.on_next(Event{R"(
+                {"field_test":9,"field_src":0}
+            )"});
+            s.on_next(Event{R"(
+                {"field_test": 10,"field_src":0}
+            )"});
+            s.on_next(Event{R"(
+                {"field_test":11,"field_src":0}
+            )"});
+            s.on_next(Event{R"(
+                {"field_test": 0,"field_src":0}
+            )"});
+            s.on_next(Event{R"(
+                {"field_test":9,"field_src":0}
+            )"});
+            s.on_next(Event{R"(
+                {"field_test": 10,"field_src":0}
+            )"});
+            s.on_next(Event{R"(
+                {"field_test":11,"field_src":0}
+            )"});
+            s.on_completed();
+        });
+    Lifter lift = opBuilderHelperIntCalc(*doc.get("/check"));
+    Observable output = lift(input);
+    vector<Event> expected;
+    output.subscribe([&](Event e) { expected.push_back(e); });
+
+    auto str2Int = [](std::string s) {
+        return std::stoi(s);
+    };
+
+    ASSERT_EQ(expected.size(), 8);
+    ASSERT_EQ(expected[0].get("/field_test")->GetInt(),0);
+    ASSERT_EQ(expected[1].get("/field_test")->GetInt(),9);
+    ASSERT_EQ(expected[2].get("/field_test")->GetInt(),10);
+    ASSERT_EQ(expected[3].get("/field_test")->GetInt(),11);
+    ASSERT_EQ(expected[4].get("/field_test")->GetInt(),0);
+    ASSERT_EQ(expected[5].get("/field_test")->GetInt(),9);
+    ASSERT_EQ(expected[6].get("/field_test")->GetInt(),10);
+    ASSERT_EQ(expected[7].get("/field_test")->GetInt(),11);
+
+}
