@@ -99,10 +99,10 @@ class WazuhDBConnection:
         if data_size >= MAX_SOCKET_BUFFER_SIZE:
             raise WazuhInternalError(2009)
 
-        if raw:
-            return data
-        elif data[0] == "err":
+        if data[0] == "err":
             raise WazuhError(2003, data[1])
+        elif raw:
+            return data
         else:
             return WazuhDBConnection.loads(data[1])
 
