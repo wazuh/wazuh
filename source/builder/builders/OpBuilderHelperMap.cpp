@@ -489,13 +489,16 @@ types::Lifter opBuilderHelperRegexExtract(const types::DocumentValue & def)
 
             [=](types::Event e)
             {
-                std::string match;
-                if (RE2::PartialMatch(e.get("/" + base_field)->GetString(), *regex_ptr,
-                                      &match))
+                auto field_str = e.get("/" + base_field)->GetString();
+                if (field_str)
                 {
-                    auto aux_string = "{ \"" + map_field + "\": \"" + match + "\"}";
-                    types::Document doc{aux_string.c_str()};
-                    e.set(doc);
+                    std::string match;
+                    if (RE2::PartialMatch(field_str, *regex_ptr, &match))
+                    {
+                        auto aux_string = "{ \"" + map_field + "\": \"" + match + "\"}";
+                        types::Document doc{aux_string.c_str()};
+                        e.set(doc);
+                    }
                 }
 
 } // namespace builder::internals::builders
