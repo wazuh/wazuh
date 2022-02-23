@@ -15,25 +15,25 @@
 
 /* Read snort_full files */
 void *read_snortfull(logreader *lf, int *rc, int drop_it) {
-    int f_msg_size = OS_MAXSTR;
+    int f_msg_size = OS_MAXSTR - OS_LOG_HEADER - 1;
     const char *one = "one";
     const char *two = "two";
     const char *p = NULL;
     char *q;
-    char str[OS_MAXSTR + 1];
-    char f_msg[OS_MAXSTR + 1];
+    char str[OS_MAXSTR - OS_LOG_HEADER];
+    char f_msg[OS_MAXSTR - OS_LOG_HEADER];
     int lines = 0;
 
     *rc = 0;
-    str[OS_MAXSTR] = '\0';
-    f_msg[OS_MAXSTR] = '\0';
+    str[sizeof(str) - 1] = '\0';
+    f_msg[sizeof(f_msg) - 1] = '\0';
 
     /* Obtain context to calculate hash */
     SHA_CTX context;
     int64_t current_position = w_ftell(lf->fp);
     bool is_valid_context_file = w_get_hash_context(lf, &context, current_position);
 
-    while (can_read() && fgets(str, OS_MAXSTR, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
+    while (can_read() && fgets(str, sizeof(str), lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
 
         lines++;
 
@@ -51,8 +51,8 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
         /* First part of the message */
         if (p == NULL) {
             if (strncmp(str, "[**] [", 6) == 0) {
-                strncpy(f_msg, str, OS_MAXSTR);
-                f_msg_size -= strlen(str) + 1;
+                snprintf(f_msg, sizeof(f_msg), "%s", str);
+                f_msg_size -= strlen(str);
                 p = one;
             }
         } else {
@@ -60,12 +60,12 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
                 /* Second line has the [Classification: */
                 if (strncmp(str, "[Classification: ", 16) == 0) {
                     strncat(f_msg, str, f_msg_size);
-                    f_msg_size -= strlen(str) + 1;
+                    f_msg_size -= strlen(str);
                     p = two;
                 } else if (strncmp(str, "[Priority: ", 10) == 0) {
                     strncat(f_msg, "[Classification: Preprocessor] "
                             "[Priority: 3] ", f_msg_size);
-                    f_msg_size -= strlen(str) + 1;
+                    f_msg_size -= strlen("[Classification: Preprocessor] [Priority: 3] ");
                     p = two;
                 }
 
@@ -75,6 +75,7 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
                 else if ((str[2] == '/') && (str[5] == '-') && (q = strchr(str, ' '))) {
                     strncat(f_msg, "[Classification: Preprocessor] "
                             "[Priority: 3] ", f_msg_size);
+                    f_msg_size -= strlen("[Classification: Preprocessor] [Priority: 3] ");
                     strncat(f_msg, ++q, f_msg_size - 40);
 
                     /* Clean for next event */
@@ -86,7 +87,7 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
                     }
 
                     f_msg[0] = '\0';
-                    f_msg_size = OS_MAXSTR;
+                    f_msg_size = OS_MAXSTR - OS_LOG_HEADER - 1;
                     str[0] = '\0';
                 } else {
                     goto file_error;
@@ -103,7 +104,7 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
                     }
 
                     f_msg[0] = '\0';
-                    f_msg_size = OS_MAXSTR;
+                    f_msg_size = OS_MAXSTR - OS_LOG_HEADER - 1;
                     str[0] = '\0';
                 } else {
                     goto file_error;
