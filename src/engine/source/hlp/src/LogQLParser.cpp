@@ -131,7 +131,7 @@ static Parser parseCaptureString(Token token) {
         }
     }
     else{
-        auto it = kECSParserMapper.find(captureParams[0]);
+        auto it = kECSParserMapper.find(parser.name);
         if (it != kECSParserMapper.end()) {
             parser.parserType = it->second;
         }

@@ -371,10 +371,15 @@ TEST(hlpTimestampTests, Unix)
 TEST(hlpTimestampTests, specific_format)
 {
     static const char *logQl =
-        "[<_ansicTs/timestamp/ANSIC>] - [<_unixTs/timestamp/UnixDate>] - "
+        "[<timestamp/RubyDate>] - "
+        "[<_ansicTs/timestamp/ANSIC>] - "
+        "[<_unixTs/timestamp/UnixDate>] - "
         "[<_stampTs/timestamp/Stamp>]";
-    static const char *event = "[Mon Jan 2 15:04:05 2006] - [Mon Jan 2 "
-                               "15:04:05 MST 2006] - [Jan 2 15:04:05]";
+    static const char *event =
+        "[Mon Jan 02 15:04:05 -0700 2006] - "
+        "[Mon Jan 2 15:04:05 2006] - "
+        "[Mon Jan 2 15:04:05 MST 2006] - "
+        "[Jan 2 15:04:05]";
 
     auto parseOp = getParserOp(logQl);
     auto result  = parseOp(event);
@@ -385,6 +390,14 @@ TEST(hlpTimestampTests, specific_format)
     {
         fprintf(stderr, "%30s | %s\n", r.first.c_str(), r.second.c_str());
     }
+
+    ASSERT_EQ("2006", result["timestamp.year"]);
+    ASSERT_EQ("1", result["timestamp.month"]);
+    ASSERT_EQ("2", result["timestamp.day"]);
+    ASSERT_EQ("15", result["timestamp.hour"]);
+    ASSERT_EQ("4", result["timestamp.minutes"]);
+    ASSERT_EQ("5", result["timestamp.seconds"]);
+    ASSERT_EQ("-0700", result["timestamp.timezone"]);
 
     ASSERT_EQ("2006", result["_ansicTs.year"]);
     ASSERT_EQ("1", result["_ansicTs.month"]);
