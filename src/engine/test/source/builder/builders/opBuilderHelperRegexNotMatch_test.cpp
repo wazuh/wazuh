@@ -135,3 +135,33 @@ TEST(opBuilderHelperRegexNotMatch, AdvancedRegexMatch)
     ASSERT_FALSE(
         RE2::PartialMatch(expected[0].get("/field")->GetString(), "([^ @]+)@([^ @]+)"));
 }
+
+TEST(opBuilderHelperRegexExtract, NestedFieldRegexMatch)
+{
+    Document doc{R"~~({
+        "map":
+            {"test/field": "+r_ext/exp"}
+    })~~"};
+
+    Observable input = observable<>::create<Event>(
+        [=](auto s)
+        {
+            s.on_next(Event{R"~~({
+            "test":
+                {"field": "value"}
+            })~~"});
+            s.on_next(Event{R"~~({
+            "test":
+                {"field": "ex-president"}
+            })~~"});
+            s.on_completed();
+        });
+
+    Lifter lift = opBuilderHelperRegexNotMatch(*doc.get("/map"));
+    Observable output = lift(input);
+    vector<Event> expected;
+    output.subscribe([&](Event e) { expected.push_back(e); });
+    ASSERT_EQ(expected.size(), 2);
+    ASSERT_FALSE(RE2::PartialMatch(expected[0].get("/test/field")->GetString(), "exp"));
+    ASSERT_FALSE(RE2::PartialMatch(expected[1].get("/test/field")->GetString(), "exp"));
+}
