@@ -1809,22 +1809,19 @@ TEST_F(DBSyncTest, createTxnCPP2)
         }
     };
 
-    const auto insertionSqlStmt1{ R"(
-        {
-            "table":"processes",
-            "data":
-                [
-                    {"pid":4,"name":"System", "time":100100}
-                ]
-        })"}; // Insert
+    auto syncSqlStmt1 = SyncRowQuery::builder().table("processes")
+                        .data(nlohmann::json::parse(R"({"pid":4,"name":"System", "time":100100})"))
+                        .query();
+    auto syncSqlStmt2 = SyncRowQuery::builder().table("processes")
+                        .data(nlohmann::json::parse(R"({"pid":7,"name":"Guake","time":100101})"))
+                        .query();
 
-    EXPECT_NO_THROW(dbSync->syncRow(nlohmann::json::parse(insertionSqlStmt1), callbackData));  // Expect an insert event
+    EXPECT_NO_THROW(dbSync->syncRow(syncSqlStmt1, callbackData));
 
     std::unique_ptr<DBSyncTxn> dbSyncTxn;
     EXPECT_NO_THROW(dbSyncTxn = std::make_unique<DBSyncTxn>(dbSync->handle(), nlohmann::json::parse(tables), 0, 100, callbackData));
 
-    const auto insertionSqlStmt2{ R"({"table":"processes","data":[{"pid":7,"name":"Guake","time":100101}]})" }; // Insert
-    EXPECT_NO_THROW(dbSyncTxn->syncTxnRow(nlohmann::json::parse(insertionSqlStmt2)));
+    EXPECT_NO_THROW(dbSyncTxn->syncTxnRow(syncSqlStmt2));
 
     EXPECT_NO_THROW(dbSyncTxn->getDeletedRows(callbackData, {}));
 }
@@ -1851,22 +1848,19 @@ TEST_F(DBSyncTest, createTxnCPP3)
         }
     };
 
-    const auto insertionSqlStmt1{ R"(
-        {
-            "table":"processes",
-            "data":
-                [
-                    {"pid":4,"name":"System", "time":100100}
-                ]
-        })"}; // Insert
+    auto syncSqlStmt1 = SyncRowQuery::builder().table("processes")
+                        .data(nlohmann::json::parse(R"({"pid":4,"name":"System", "time":100100})"))
+                        .query();
+    auto syncSqlStmt2 = SyncRowQuery::builder().table("processes")
+                        .data(nlohmann::json::parse(R"({"pid":7,"name":"Guake","time":100101})"))
+                        .query();
 
-    EXPECT_NO_THROW(dbSync->syncRow(nlohmann::json::parse(insertionSqlStmt1), callbackData));  // Expect an insert event
+    EXPECT_NO_THROW(dbSync->syncRow(syncSqlStmt1, callbackData));
 
     std::unique_ptr<DBSyncTxn> dbSyncTxn;
     EXPECT_NO_THROW(dbSyncTxn = std::make_unique<DBSyncTxn>(dbSync->handle(), nlohmann::json::parse(tables), 0, 100, callbackData));
 
-    const auto insertionSqlStmt2{ R"({"table":"processes","data":[{"pid":7,"name":"Guake","time":100101}]})" }; // Insert
-    EXPECT_NO_THROW(dbSyncTxn->syncTxnRow(nlohmann::json::parse(insertionSqlStmt2)));
+    EXPECT_NO_THROW(dbSyncTxn->syncTxnRow(syncSqlStmt2));
 
     EXPECT_NO_THROW(dbSyncTxn->getDeletedRows(callbackData, GetDeletedQuery::builder().allColumns().query()));
 }
