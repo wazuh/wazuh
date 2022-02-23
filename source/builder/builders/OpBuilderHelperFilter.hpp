@@ -151,6 +151,31 @@ types::Lifter opBuilderHelperStringLE(const types::DocumentValue & def);
 //*************************************************
 
 /**
+ * @brief Compares a integer of the event against another integer that may or may not
+ * belong to the event `e`
+ *
+ * @param field The key/path of the field to be compared
+ * @param op The operator to be used for the comparison. Operators are:
+ * - `=`: checks if the field is equal to the value
+ * - `!`: checks if the field is not equal to the value
+ * - `<`: checks if the field is less than the value
+ * - `>`: checks if the field is greater than the value
+ * - `m`: checks if the field is less than or equal to the value
+ * - `n`: checks if the field is greater than or equal to the value
+ * @param e The event containing the field to be compared
+ * @param refValue The key/path of the field to be compared against (optional)
+ * @param value The integer to be compared against (optional)
+ * @return true if the comparison is true
+ * @return false if the comparison is false
+ * @note If `refValue` is not provided, the comparison will be against the value of
+ * `value`
+ */
+inline bool opBuilderHelperIntComparison(const std::string field, char op,
+                                         types::Event & e,
+                                         std::optional<std::string> refValue,
+                                         std::optional<int> value);
+
+/**
  * @brief Builds helper integer equal operation.
  * Checks that the field is equal to an integer or another numeric field
  *
