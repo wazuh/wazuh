@@ -251,10 +251,10 @@ bool parseTimeStamp(const char **it,
 
     std::string tsStr { start, (size_t)((*it) - start) };
 
-    if (opts.size() == 2)
+    if (!opts.empty())
     {
         bool ret = false;
-        auto it  = kTimeStampFormatMapper.find(opts[1]);
+        auto it  = kTimeStampFormatMapper.find(opts[0]);
         if (it != kTimeStampFormatMapper.end())
         {
             ret = parseFormattedTime(it->second, tsStr, tsr);
