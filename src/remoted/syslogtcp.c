@@ -21,7 +21,7 @@
 
 /**
  * @brief Get the offset of the syslog message, discarding the PRI header.
- * 
+ *
  * @param syslog_msg RAW syslog message
  * @return Length of the PRI header, 0 if not present
  */
@@ -53,10 +53,7 @@ static int OS_IPNotAllowed(char *srcip)
 void send_buffer(sockbuffer_t *socket_buffer, char *srcip) {
     char *data_pt = socket_buffer->data;
     int offset;
-    char * buffer_pt = NULL; 
-
-    // ignore syslog PRI header
-    data_pt += w_get_pri_header_len(data_pt);
+    char * buffer_pt = NULL;
 
     buffer_pt = strchr(data_pt, '\n');
 
@@ -65,7 +62,7 @@ void send_buffer(sockbuffer_t *socket_buffer, char *srcip) {
         offset = ((int)(buffer_pt - data_pt));
         *buffer_pt = '\0';
         // Send message to the queue
-        if (SendMSG(logr.m_queue, data_pt, srcip, SYSLOG_MQ) < 0) {
+        if (SendMSG(logr.m_queue, data_pt + w_get_pri_header_len(data_pt), srcip, SYSLOG_MQ) < 0) {
             merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
             if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
@@ -75,8 +72,6 @@ void send_buffer(sockbuffer_t *socket_buffer, char *srcip) {
         // Re-calculate the used size of buffer and remove the message from the buffer
         socket_buffer->data_len = socket_buffer->data_len - (offset + 1);
         data_pt += (offset + 1);
-        // ignore syslog PRI header
-        data_pt += w_get_pri_header_len(data_pt);
         // Find the next '\n'
         buffer_pt = strchr(data_pt, '\n');
     }
