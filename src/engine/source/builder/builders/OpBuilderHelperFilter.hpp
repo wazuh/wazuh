@@ -193,6 +193,15 @@ types::Lifter opBuilderHelperIntEqual(const types::DocumentValue & def);
  */
 types::Lifter opBuilderHelperIntNotEqual(const types::DocumentValue & def);
 
+/**
+ * @brief Builds helper integer less than operation.
+ * Checks that the field is less than to an integer or another numeric field
+ *
+ * @param def Definition of the operation to be built
+ * @return types::Lifter
+ */
+types::Lifter opBuilderHelperIntLessThan(const types::DocumentValue & def);
+
 } // namespace builder::internals::builders
 
 #endif // _OP_BUILDER_HELPER_FILTER_H
