@@ -19,6 +19,8 @@
     CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_MD5SUM | CHECK_SHA1SUM | \
     CHECK_SHA256SUM | CHECK_SEECHANGES | CHECK_TYPE
 
+fim_registry_key DEFAULT_REGISTRY_KEY = { .id = 3, .path = "HKEY_USERS\\Some\\random\\key", .perm_json = NULL, .perm = "", .uid = "110", .gid = "220", .user_name = "user_old_name", .group_name = "group_old_name", .mtime = 1100, .arch = ARCH_64BIT, .scanned = 0, .last_event = 1234, .checksum = "234567890ABCDEF1234567890ABCDEF123456789" };
+fim_registry_value_data DEFAULT_REGISTRY_VALUE = { 3, "key\\path", ARCH_64BIT, "the\\value", REG_SZ, 50, "1234567890ABCDEF1234567890ABCDEF", "1234567890ABCDEF1234567890ABCDEF12345678", "1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF", 0, 10000, "1234567890ABCDEF1234567890ABCDEF12345678", FIM_MODIFICATION };
 typedef struct fim_key_txn_context_s {
     event_data_t *evt_data;
     fim_registry_key *key;
@@ -29,6 +31,48 @@ typedef struct fim_val_txn_context_s {
     fim_registry_value_data *data;
     char* diff;
 } fim_val_txn_context_t;
+
+typedef struct key_difference_s {
+    cJSON *old_data;
+    cJSON *changed_attributes;
+    cJSON *old_attributes;
+} key_difference_t;
+
+static int setup_dbsync_difference(void **state) {
+    key_difference_t *data = calloc(1, sizeof(key_difference_t));
+    if (data == NULL) {
+        return 1;
+    }
+
+    data->old_data = cJSON_CreateObject();
+
+    if (data->old_data == NULL) {
+        return 1;
+    }
+
+    data->changed_attributes = cJSON_CreateArray();
+    if (data->changed_attributes == NULL) {
+        return 1;
+    }
+
+    data->old_attributes = cJSON_CreateObject();
+    if (data->old_attributes == NULL) {
+        return 1;
+    }
+    *state = data;
+    return 0;
+}
+
+static int teardown_dbsync_difference(void **state) {
+    key_difference_t * data = (key_difference_t*) *state;
+
+    cJSON_Delete(data->changed_attributes);
+    cJSON_Delete(data->old_attributes);
+    cJSON_Delete(data->old_data);
+
+    free(data);
+    return 0;
+}
 
 static int teardown_cjson_object(void **state) {
     cJSON *object = *state;
@@ -145,11 +189,234 @@ static void test_fim_registry_compare_value_attrs(void **state){
     }
 }
 
+void test_calculate_dbsync_difference_key_perm_change(void **state) {
+
+    key_difference_t *data = (key_difference_t *) *state;
+    registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
+    cJSON *old_data = data->old_data;
+    cJSON *changed_attributes = data->changed_attributes;
+    cJSON *old_attributes = data->old_attributes;
+
+    cJSON *perm_data = cJSON_Parse("{\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"read_data\",\"read_ea\",\"write_ea\"]},\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-3-0\":{\"name\":\"CREATOR OWNER\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-15-2-1\":{\"name\":\"ALL APPLICATION PACKAGES\",\"allowed\":[\"read_control\",\"read_data\",\"read_ea\",\"write_ea\"]}}");
+    cJSON_AddItemToObject(old_data, "perm", perm_data);
+
+    fim_registry_key registry_data =  DEFAULT_REGISTRY_KEY;
+
+    fim_calculate_dbsync_difference_key(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
+    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"permission\"]");
+}
+
+void test_calculate_dbsync_difference_key_no_change(void **state) {
+
+    key_difference_t *data = (key_difference_t *) *state;
+    registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
+    cJSON *old_data = data->old_data;
+    cJSON *changed_attributes = data->changed_attributes;
+    cJSON *old_attributes = data->old_attributes;
+
+    fim_registry_key registry_data =  DEFAULT_REGISTRY_KEY;
+
+    fim_calculate_dbsync_difference_key(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
+
+    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[]");
+}
+
+void test_calculate_dbsync_difference_key_uid_change(void **state) {
+
+    key_difference_t *data = (key_difference_t *) *state;
+    registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
+    cJSON *old_data = data->old_data;
+    cJSON *changed_attributes = data->changed_attributes;
+    cJSON *old_attributes = data->old_attributes;
+
+    cJSON_AddStringToObject(old_data, "uid", "210");
+
+    fim_registry_key registry_data = DEFAULT_REGISTRY_KEY;
+
+    fim_calculate_dbsync_difference_key(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
+    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"uid\"]");
+}
+
+void test_calculate_dbsync_difference_key_username_change(void **state) {
+    key_difference_t *data = (key_difference_t *) *state;
+    registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
+    cJSON *old_data = data->old_data;
+    cJSON *changed_attributes = data->changed_attributes;
+    cJSON *old_attributes = data->old_attributes;
+
+    cJSON_AddStringToObject(old_data, "user_name", "new_username");
+
+    fim_registry_key registry_data =  DEFAULT_REGISTRY_KEY;
+    fim_calculate_dbsync_difference_key(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
+    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"user_name\"]");
+}
+
+void test_calculate_dbsync_difference_key_username_no_change_empty(void **state) {
+    key_difference_t *data = (key_difference_t *) *state;
+    registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
+    cJSON *old_data = data->old_data;
+    cJSON *changed_attributes = data->changed_attributes;
+    cJSON *old_attributes = data->old_attributes;
+    cJSON_AddStringToObject(old_data, "user_name", "");
+
+    fim_registry_key registry_data = DEFAULT_REGISTRY_KEY;
+    fim_calculate_dbsync_difference_key(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
+    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[]");
+}
+
+
+void test_calculate_dbsync_difference_key_gid_change(void **state) {
+
+    key_difference_t *data = (key_difference_t *) *state;
+    registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
+    cJSON *old_data = data->old_data;
+    cJSON *changed_attributes = data->changed_attributes;
+    cJSON *old_attributes = data->old_attributes;
+
+    cJSON_AddStringToObject(old_data, "gid", "210");
+
+    fim_registry_key registry_data = DEFAULT_REGISTRY_KEY;
+    fim_calculate_dbsync_difference_key(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
+    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"gid\"]");
+}
+
+void test_calculate_dbsync_difference_key_groupname_change(void **state) {
+    key_difference_t *data = (key_difference_t *) *state;
+    registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
+    cJSON *old_data = data->old_data;
+    cJSON *changed_attributes = data->changed_attributes;
+    cJSON *old_attributes = data->old_attributes;
+
+    cJSON_AddStringToObject(old_data, "group_name", "new_groupname");
+
+    fim_registry_key registry_data = DEFAULT_REGISTRY_KEY;
+    fim_calculate_dbsync_difference_key(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
+    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"group_name\"]");
+}
+
+void test_calculate_dbsync_difference_key_mtime_change(void **state) {
+    key_difference_t *data = (key_difference_t *) *state;
+    registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
+    cJSON *old_data = data->old_data;
+    cJSON *changed_attributes = data->changed_attributes;
+    cJSON *old_attributes = data->old_attributes;
+
+    cJSON_AddNumberToObject(old_data, "mtime", 98765432);
+
+    fim_registry_key registry_data = DEFAULT_REGISTRY_KEY;
+    fim_calculate_dbsync_difference_key(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
+    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"mtime\"]");
+}
+
+void test_calculate_dbsync_difference_value_size_change(void **state) {
+    key_difference_t *data = (key_difference_t *) *state;
+    registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
+    cJSON *old_data = data->old_data;
+    cJSON *changed_attributes = data->changed_attributes;
+    cJSON *old_attributes = data->old_attributes;
+
+    cJSON_AddNumberToObject(old_data, "size", 98765432);
+
+    fim_registry_value_data registry_data = DEFAULT_REGISTRY_VALUE;
+
+    fim_calculate_dbsync_difference_value(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
+    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"size\"]");
+}
+
+void test_calculate_dbsync_difference_value_type_change(void **state) {
+    key_difference_t *data = (key_difference_t *) *state;
+    registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
+    cJSON *old_data = data->old_data;
+    cJSON *changed_attributes = data->changed_attributes;
+    cJSON *old_attributes = data->old_attributes;
+
+    cJSON_AddStringToObject(old_data, "value_type", "REG_EXPAND_SZ");
+
+    fim_registry_value_data registry_data = DEFAULT_REGISTRY_VALUE;
+
+    fim_calculate_dbsync_difference_value(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
+    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"value_type\"]");
+}
+
+void test_calculate_dbsync_difference_value_md5_change(void **state) {
+    key_difference_t *data = (key_difference_t *) *state;
+    registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
+    cJSON *old_data = data->old_data;
+    cJSON *changed_attributes = data->changed_attributes;
+    cJSON *old_attributes = data->old_attributes;
+
+    cJSON_AddStringToObject(old_data, "hash_md5", "123456789ABCDEF");
+
+    fim_registry_value_data registry_data = DEFAULT_REGISTRY_VALUE;
+
+    fim_calculate_dbsync_difference_value(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
+    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"md5\"]");
+}
+
+void test_calculate_dbsync_difference_value_sha1_change(void **state) {
+    key_difference_t *data = (key_difference_t *) *state;
+    registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
+    cJSON *old_data = data->old_data;
+    cJSON *changed_attributes = data->changed_attributes;
+    cJSON *old_attributes = data->old_attributes;
+
+    cJSON_AddStringToObject(old_data, "hash_sha1", "123456789ABCDEF");
+
+    fim_registry_value_data registry_data = DEFAULT_REGISTRY_VALUE;
+
+    fim_calculate_dbsync_difference_value(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
+    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"sha1\"]");
+}
+
+
+void test_calculate_dbsync_difference_value_sha256_change(void **state) {
+    key_difference_t *data = (key_difference_t *) *state;
+    registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
+    cJSON *old_data = data->old_data;
+    cJSON *changed_attributes = data->changed_attributes;
+    cJSON *old_attributes = data->old_attributes;
+
+    cJSON_AddStringToObject(old_data, "hash_sha256", "123456789ABCDEF");
+
+    fim_registry_value_data registry_data = DEFAULT_REGISTRY_VALUE;
+
+    fim_calculate_dbsync_difference_value(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
+    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"sha256\"]");
+}
+
+void test_calculate_dbsync_difference_value_no_change(void **state) {
+    key_difference_t *data = (key_difference_t *) *state;
+    registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
+    cJSON *old_data = data->old_data;
+    cJSON *changed_attributes = data->changed_attributes;
+    cJSON *old_attributes = data->old_attributes;
+
+    fim_registry_value_data registry_data = DEFAULT_REGISTRY_VALUE;
+
+    fim_calculate_dbsync_difference_value(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
+    assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[]");
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // tests registry key transaction callback
-        cmocka_unit_test_teardown(test_fim_registry_compare_key_attrs,teardown_cjson_object),
-        cmocka_unit_test_teardown(test_fim_registry_compare_value_attrs,teardown_cjson_object),
+        cmocka_unit_test_teardown(test_fim_registry_compare_key_attrs, teardown_cjson_object),
+        cmocka_unit_test_teardown(test_fim_registry_compare_value_attrs, teardown_cjson_object),
+        cmocka_unit_test_setup_teardown(test_calculate_dbsync_difference_key_perm_change, setup_dbsync_difference, teardown_dbsync_difference),
+        cmocka_unit_test_setup_teardown(test_calculate_dbsync_difference_key_no_change, setup_dbsync_difference, teardown_dbsync_difference),
+        cmocka_unit_test_setup_teardown(test_calculate_dbsync_difference_key_uid_change, setup_dbsync_difference, teardown_dbsync_difference),
+        cmocka_unit_test_setup_teardown(test_calculate_dbsync_difference_key_username_change, setup_dbsync_difference, teardown_dbsync_difference),
+        cmocka_unit_test_setup_teardown(test_calculate_dbsync_difference_key_username_no_change_empty, setup_dbsync_difference, teardown_dbsync_difference),
+        cmocka_unit_test_setup_teardown(test_calculate_dbsync_difference_key_gid_change, setup_dbsync_difference, teardown_dbsync_difference),
+        cmocka_unit_test_setup_teardown(test_calculate_dbsync_difference_key_groupname_change, setup_dbsync_difference, teardown_dbsync_difference),
+        cmocka_unit_test_setup_teardown(test_calculate_dbsync_difference_key_mtime_change, setup_dbsync_difference, teardown_dbsync_difference),
+        cmocka_unit_test_setup_teardown(test_calculate_dbsync_difference_value_size_change, setup_dbsync_difference, teardown_dbsync_difference),
+        cmocka_unit_test_setup_teardown(test_calculate_dbsync_difference_value_type_change, setup_dbsync_difference, teardown_dbsync_difference),
+        cmocka_unit_test_setup_teardown(test_calculate_dbsync_difference_value_md5_change, setup_dbsync_difference, teardown_dbsync_difference),
+        cmocka_unit_test_setup_teardown(test_calculate_dbsync_difference_value_sha1_change, setup_dbsync_difference, teardown_dbsync_difference),
+        cmocka_unit_test_setup_teardown(test_calculate_dbsync_difference_value_sha256_change, setup_dbsync_difference, teardown_dbsync_difference),
+        cmocka_unit_test_setup_teardown(test_calculate_dbsync_difference_value_no_change, setup_dbsync_difference, teardown_dbsync_difference),
+
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

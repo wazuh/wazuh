@@ -4018,7 +4018,7 @@ void test_fim_calculate_dbsync_difference(void **state){
         char* changed_data = "{\"size\":0, \"perm\":\"rw-rw-r--\", \"attributes\":\"NULL\", \"uid\":1000, \"gid\":1000, \
         \"user_name\":\"root\", \"group_name\":\"root\", \"mtime\":123456789, \"inode\":1, \"hash_md5\":\"0123456789abcdef0123456789abcdef\", \
         \"hash_sha1\":\"0123456789abcdef0123456789abcdef01234567\", \"hash_sha256\":\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\" \
-        \"attributes\":{}, \"checksum"\:\"0123456789abcdef0123456789abcdef01234567\"}";
+        \"attributes\":{}, \"checksum\":\"0123456789abcdef0123456789abcdef01234567\"}";
     #endif
 
     cJSON* changed_data_json = cJSON_Parse(changed_data);

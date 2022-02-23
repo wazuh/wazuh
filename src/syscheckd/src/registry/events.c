@@ -38,7 +38,7 @@ void fim_calculate_dbsync_difference_key(const fim_registry_key* registry_data,
                                          cJSON* old_attributes) {
 
     if (old_attributes == NULL || changed_attributes == NULL || !cJSON_IsArray(changed_attributes)) {
-        return;
+        return; //LCOV_EXCL_LINE
     }
     cJSON *aux = NULL;
 
@@ -61,7 +61,6 @@ void fim_calculate_dbsync_difference_key(const fim_registry_key* registry_data,
             cJSON_AddStringToObject(old_attributes, "uid", registry_data->uid);
         }
 
-        aux = cJSON_GetObjectItem(old_data, "user_name");
         if (aux = cJSON_GetObjectItem(old_data, "user_name"), aux != NULL) {
             char *username = cJSON_GetStringValue(aux);
             cJSON_AddStringToObject(old_attributes, "user_name", username);
@@ -111,7 +110,7 @@ void fim_calculate_dbsync_difference_value(const fim_registry_value_data* value_
                                            cJSON* old_attributes) {
     if (value_data == NULL || old_attributes == NULL ||
         changed_attributes == NULL || !cJSON_IsArray(changed_attributes)) {
-        return;
+        return; //LCOV_EXCL_LINE
     }
 
     cJSON *aux = NULL;
@@ -275,6 +274,9 @@ cJSON *fim_registry_compare_value_attrs(const fim_registry_value_data *new_data,
     return changed_attributes;
 }
 
+
+// LCOV_EXCL_START
+// This function is not used for now, as it's ment to be used on event based monitoring.
 /**
  * @brief Generate a registry value event from the provided information.
  *
@@ -340,6 +342,7 @@ cJSON *fim_registry_value_json_event(const fim_entry *new_data,
 
     return json_event;
 }
+// LCOV_EXCL_STOP
 
 /**
  * @brief Create a cJSON object holding the attributes associated with a fim_registry_key according to its
@@ -477,6 +480,9 @@ cJSON *fim_registry_compare_key_attrs(const fim_registry_key *new_data,
     return changed_attributes;
 }
 
+
+// LCOV_EXCL_START
+// These functions are not used for now, as their are ment to be used on event based monitoring.
 /**
  * @brief Generate a registry key event from the provided information.
  *
@@ -571,5 +577,6 @@ cJSON *fim_registry_event(const fim_entry *new,
 
     return json_event;
 }
+// LCOV_EXCL_STOP
 
 #endif
