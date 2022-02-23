@@ -494,10 +494,10 @@ types::Lifter opBuilderHelperRegexMatch(const types::DocumentValue & def)
         return o.filter(
             [=](types::Event e)
             {
-                auto field_str = e.get("/" + field)->GetString();
+                auto field_str = e.get("/" + field);
                 if (field_str)
                 {
-                    return (RE2::PartialMatch(field_str, *regex_ptr));
+                    return (RE2::PartialMatch(field_str->GetString(), *regex_ptr));
                 }
                 /*                 else
                                 {
@@ -528,10 +528,10 @@ types::Lifter opBuilderHelperRegexNotMatch(const types::DocumentValue & def)
         return o.filter(
             [=](types::Event e)
             {
-                auto field_str = e.get("/" + field)->GetString();
+                auto field_str = e.get("/" + field);
                 if (field_str)
                 {
-                    return (!RE2::PartialMatch(field_str, *regex_ptr));
+                    return (!RE2::PartialMatch(field_str->GetString(), *regex_ptr));
                 }
                 return false;
             });
