@@ -146,7 +146,7 @@ TEST(opBuilderHelperRegexMatch, AdvancedRegexMatch)
         RE2::PartialMatch(expected[1].get("/field")->GetString(), "([^ @]+)@([^ @]+)"));
 }
 
-TEST(opBuilderHelperRegexExtract, NestedFieldRegexMatch)
+TEST(opBuilderHelperRegexMatch, NestedFieldRegexMatch)
 {
     Document doc{R"~~({
         "map":
@@ -174,4 +174,31 @@ TEST(opBuilderHelperRegexExtract, NestedFieldRegexMatch)
     ASSERT_EQ(expected.size(), 2);
     ASSERT_TRUE(RE2::PartialMatch(expected[0].get("/test/field")->GetString(), "exp"));
     ASSERT_TRUE(RE2::PartialMatch(expected[1].get("/test/field")->GetString(), "exp"));
+}
+
+TEST(opBuilderHelperRegexMatch, FieldNotExistsRegexMatch)
+{
+    Document doc{R"({
+        "check":
+            {"field2": "+r_match/exp"}
+    })"};
+
+    Observable input = observable<>::create<Event>(
+        [=](auto s)
+        {
+            s.on_next(Event{R"(
+                {"field2":"exp"}
+            )"});
+            s.on_next(Event{R"(
+                {"field":"exp"}
+            )"});
+            s.on_completed();
+        });
+
+    Lifter lift = opBuilderHelperRegexMatch(*doc.get("/check"));
+    Observable output = lift(input);
+    vector<Event> expected;
+    output.subscribe([&](Event e) { expected.push_back(e); });
+    ASSERT_EQ(expected.size(), 1);
+    ASSERT_TRUE(expected[0].exists("/field2"));
 }
