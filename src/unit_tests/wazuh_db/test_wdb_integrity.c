@@ -1209,6 +1209,48 @@ void test_wdbi_get_last_manager_exec_stmt_fail(void **state)
     assert_int_equal (ret_val, OS_INVALID);
 }
 
+// Test wdbi_array_hash
+
+void test_wdbi_array_hash_success(void **state)
+{
+    const char** test_words = NULL;
+    int ret_val = -1;
+    os_sha1 hexdigest;
+
+    os_malloc(6 * sizeof(char*),test_words);
+
+    test_words[0] = "FirstWord";
+    test_words[1] = "SecondWord";
+    test_words[2] = "Word number 3";
+    test_words[3] = "";
+    test_words[4] = " ";
+    test_words[5]= NULL;
+
+    // Using real EVP_DigestUpdate
+    test_mode = 0;
+
+    ret_val = wdbi_array_hash(test_words, hexdigest);
+
+    assert_int_equal (ret_val, 0);
+    assert_string_equal(hexdigest, "159a9a6e19ff891a8560376df65a078e064bd0ce");
+
+    os_free(test_words);
+}
+
+void test_wdbi_array_hash_null(void **state)
+{
+    int ret_val = -1;
+    os_sha1 hexdigest;
+
+    // Using real EVP_DigestUpdate
+    test_mode = 0;
+
+    ret_val = wdbi_array_hash(NULL, hexdigest);
+
+    assert_int_equal (ret_val, 0);
+    assert_string_equal(hexdigest, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+}
+
 // Test wdbi_strings_hash
 
 void test_wdbi_strings_hash_success(void **state)
@@ -1738,6 +1780,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wdbi_get_last_manager_checksum_success, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_get_last_manager_stmt_cache_fail, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_get_last_manager_exec_stmt_fail, setup_wdb_t, teardown_wdb_t),
+
+        //Test wdbi_array_hash
+        cmocka_unit_test_setup_teardown(test_wdbi_array_hash_success, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdbi_array_hash_null, setup_wdb_t, teardown_wdb_t),
 
         //Test wdbi_strings_hash
         cmocka_unit_test_setup_teardown(test_wdbi_strings_hash_success, setup_wdb_t, teardown_wdb_t),

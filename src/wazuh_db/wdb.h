@@ -1573,6 +1573,14 @@ int wdb_journal_wal(sqlite3 *db);
 int wdb_enable_foreign_keys(sqlite3 *db);
 
 /**
+*  @brief Calculates SHA1 hash from a NULL terminated string array.
+*
+* @param [in] strings_to_hash NULL Terminated array with strings to hash
+* @param [out] hexdigest Result
+*/
+ int wdbi_array_hash(const char ** strings_to_hash, os_sha1 hexdigest);
+
+/**
 *  @brief Calculates SHA1 hash from a NULL terminated set of strings.
 *
 * @param [in] ... NULL Terminated list of strings
