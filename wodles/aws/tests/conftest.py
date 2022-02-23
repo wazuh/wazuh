@@ -11,23 +11,39 @@ sys.modules['boto3'] = MagicMock()
 sys.modules['botocore'] = MagicMock()
 
 import aws_s3
-from .data.fixture_parameters import AWS_INTEGRATION_PARAMS, AWS_BUCKET_PARAMS
 
 
-@pytest.fixture(params=deepcopy(AWS_INTEGRATION_PARAMS))
-def wazuh_integration(request):
-    """
-    Return a WazuhIntegration instance.
+AWS_BASE_PARAMS = [
+    [
+        {"access_key": "AAAAAAAAAAAAAAAAAAAA"},
+        {"secret_key": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},
+        {"iam_role_arn": ""},
+    ],
+]
 
-    Parameters
-    ----------
-    request : pytest.fixtures.SubRequest
-        Object that contains information about the current test.
-    """
-    with patch('aws_s3.WazuhIntegration.get_client'), \
-         patch('sqlite3.connect'), \
-         patch('utils.get_wazuh_version'):
-        return aws_s3.WazuhIntegration(**{k: v for i in request.param for k, v in i.items()})
+
+AWS_BUCKET_PARAMS = [
+    AWS_BASE_PARAMS[0] + [
+        {"access_key": "AAAAAAAAAAAAAAAAAAAA"},
+        {"secret_key": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},
+        {"iam_role_arn": ""},
+        {"reparse": False},
+        {"profile": ""},
+        {"bucket": "test_bucket"},
+        {"only_logs_after": ""},
+        {"skip_on_error": False},
+        {"account_alias": ""},
+        {"prefix": ""},
+        {"suffix": ""},
+        {"delete_file": False},
+        {"aws_organization_id": ""},
+        {"region": ""},
+        {"discard_field": ""},
+        {"discard_regex": ""},
+        {"sts_endpoint": ""},
+        {"service_endpoint": ""}
+    ],
+]
 
 
 @pytest.fixture(params=deepcopy(AWS_BUCKET_PARAMS))

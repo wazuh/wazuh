@@ -15,12 +15,11 @@ import pytest
 sys.modules['boto3'] = MagicMock()
 sys.modules['botocore'] = MagicMock()
 
-LOGS_PATH = os.path.join(sys.path[0], 'tests/data/log_files')
-
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 import aws_s3
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
+logs_path = os.path.join(test_data_path, 'log_files')
 wazuh_installation_path = '/var/ossec'
 wazuh_version = 'WAZUH_VERSION'
 
@@ -247,10 +246,10 @@ def test_decompress_file_ko(log_key: str, skip_on_error: bool, expected_exceptio
 
 
 @pytest.mark.parametrize('log_file, skip_on_error', [
-    (f'{LOGS_PATH}/WAF/aws-waf', False),
-    (f'{LOGS_PATH}/WAF/aws-waf', True),
-    (f'{LOGS_PATH}/WAF/aws-waf-invalid-json', True),
-    (f'{LOGS_PATH}/WAF/aws-waf-wrong-structure', True),
+    (f'{logs_path}/WAF/aws-waf', False),
+    (f'{logs_path}/WAF/aws-waf', True),
+    (f'{logs_path}/WAF/aws-waf-invalid-json', True),
+    (f'{logs_path}/WAF/aws-waf-wrong-structure', True),
 ])
 def test_aws_waf_load_information_from_file(log_file: str, aws_waf_bucket: aws_s3.AWSWAFBucket,
                                             skip_on_error: bool):
@@ -273,8 +272,8 @@ def test_aws_waf_load_information_from_file(log_file: str, aws_waf_bucket: aws_s
 
 
 @pytest.mark.parametrize('log_file, skip_on_error, expected_exception', [
-    (f'{LOGS_PATH}/WAF/aws-waf-invalid-json', False, SystemExit),
-    (f'{LOGS_PATH}/WAF/aws-waf-wrong-structure', False, SystemExit),
+    (f'{logs_path}/WAF/aws-waf-invalid-json', False, SystemExit),
+    (f'{logs_path}/WAF/aws-waf-wrong-structure', False, SystemExit),
 ])
 def test_aws_waf_load_information_from_file_ko(
         log_file: str, skip_on_error: bool,
