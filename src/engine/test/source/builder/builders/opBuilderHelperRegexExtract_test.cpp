@@ -43,7 +43,7 @@ TEST(opBuilderHelperRegexExtract, TooManyArgumentsError)
     ASSERT_THROW(opBuilderHelperRegexExtract(*doc.get("/map")), std::invalid_argument);
 }
 
-TEST(opBuilderHelperRegexExtract, StringRegexMatch)
+TEST(opBuilderHelperRegexExtract, StringRegexExtract)
 {
     Document doc{R"~~({
         "map":
@@ -75,7 +75,7 @@ TEST(opBuilderHelperRegexExtract, StringRegexMatch)
     ASSERT_TRUE(RE2::PartialMatch(expected[2].get("/_field")->GetString(), "exp"));
 }
 
-TEST(opBuilderHelperRegexExtract, NumericRegexMatch)
+TEST(opBuilderHelperRegexExtract, NumericRegexExtract)
 {
     Document doc{R"~~({
         "map":
@@ -107,7 +107,7 @@ TEST(opBuilderHelperRegexExtract, NumericRegexMatch)
     ASSERT_TRUE(RE2::PartialMatch(expected[2].get("/_field")->GetString(), "123"));
 }
 
-TEST(opBuilderHelperRegexExtract, AdvancedRegexMatch)
+TEST(opBuilderHelperRegexExtract, AdvancedRegexExtract)
 {
     Document doc{R"~~({
         "map":
@@ -137,7 +137,7 @@ TEST(opBuilderHelperRegexExtract, AdvancedRegexMatch)
         RE2::PartialMatch(expected[1].get("/_field")->GetString(), "engine@wazuh.com"));
 }
 
-TEST(opBuilderHelperRegexExtract, NestedFieldRegexMatch)
+TEST(opBuilderHelperRegexExtract, NestedFieldRegexExtract)
 {
     Document doc{R"~~({
         "map":
@@ -165,4 +165,36 @@ TEST(opBuilderHelperRegexExtract, NestedFieldRegexMatch)
     ASSERT_EQ(expected.size(), 2);
     ASSERT_TRUE(RE2::PartialMatch(expected[0].get("/_field")->GetString(), "exp"));
     ASSERT_TRUE(RE2::PartialMatch(expected[1].get("/_field")->GetString(), "exp"));
+}
+
+TEST(opBuilderHelperRegexExtract, FieldNotExistsRegexExtract)
+{
+    Document doc{R"~~({
+        "map":
+            {"field2": "+r_ext/_field/(exp)/"}
+    })~~"};
+
+    Observable input = observable<>::create<Event>(
+        [=](auto s)
+        {
+            s.on_next(Event{R"(
+                {"field":"exp"}
+            )"});
+            s.on_next(Event{R"(
+                {"field":"expregex"}
+            )"});
+            s.on_next(Event{R"(
+                {"field":"this is a test exp"}
+            )"});
+            s.on_completed();
+        });
+
+    Lifter lift = opBuilderHelperRegexExtract(*doc.get("/map"));
+    Observable output = lift(input);
+    vector<Event> expected;
+    output.subscribe([&](Event e) { expected.push_back(e); });
+    ASSERT_EQ(expected.size(), 3);
+    ASSERT_FALSE(expected[0].exists("/_field"));
+    ASSERT_FALSE(expected[1].exists("/_field"));
+    ASSERT_FALSE(expected[2].exists("/_field"));
 }
