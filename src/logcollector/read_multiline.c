@@ -93,8 +93,8 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
             buffer_size++;
         }
 
-        strncat(buffer, str, OS_MAXSTR - OS_LOG_HEADER - 1 - buffer_size);
-        buffer[OS_MAXSTR - OS_LOG_HEADER - 1] = '\0';
+        strncat(buffer, str, sizeof(buffer) - 1 - buffer_size);
+        buffer[sizeof(buffer) - 1] = '\0';
 
 
         if (OS_MAXSTR - OS_LOG_HEADER - 1 - buffer_size < strlen(str)) {
@@ -124,7 +124,7 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
                 mdebug2("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, FTELL_INT64 rbytes, sample_log_length, str);
             }
 
-            for (offset += rbytes; fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL; offset += rbytes) {
+            for (offset += rbytes; fgets(str, sizeof(str), lf->fp) != NULL; offset += rbytes) {
                 rbytes = w_ftell(lf->fp) - offset;
 
                 /* Flow control */
