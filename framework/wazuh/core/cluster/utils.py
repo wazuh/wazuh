@@ -307,3 +307,37 @@ def process_spawn_sleep(child):
     # Add a delay to force each child process to create its own PID file, preventing multiple calls
     # executed by the same child
     time.sleep(0.1)
+
+
+async def forward_function(func: callable, f_kwargs: dict = None):
+    """Distribute function to master node.
+    Parameters
+    ----------
+    func : callable
+        Function to execute on master node.
+    f_kwargs : dict
+        Function kwargs.
+    Returns
+    -------
+    Return either a dict or `WazuhResult` instance in case the execution did not fail. Return an exception otherwise.
+    """
+    from wazuh.core.cluster import local_client
+    from wazuh.core.cluster.common import WazuhJSONEncoder, as_wazuh_object
+
+    lc = local_client.LocalClient()
+
+    input_json = {
+        'f': func,
+        'from_cluster': False,
+        'wait_for_complete': False
+    }
+
+    f_kwargs and input_json.update({'f_kwargs': f_kwargs})
+
+    # Distribute function to master node
+    response = json.loads(await lc.execute(command=b'dapi',
+                                           data=json.dumps(input_json, cls=WazuhJSONEncoder).encode(),
+                                           wait_for_complete=False),
+                          object_hook=as_wazuh_object)
+
+    return response
