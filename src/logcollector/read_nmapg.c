@@ -141,9 +141,9 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
     int bytes_written = 0;
 
     *rc = 0;
-    str[OS_MAXSTR - OS_LOG_HEADER -1] = '\0';
-    final_msg[OS_MAXSTR - OS_LOG_HEADER - 1] = '\0';
-    buffer[sizeof(port) + sizeof(proto) + 3] = '\0';
+    str[sizeof(str) -1] = '\0';
+    final_msg[sizeof(final_msg) - 1] = '\0';
+    buffer[sizeof(buffer) - 1] = '\0';
 
     port[16] = '\0';
     proto[16] = '\0';
@@ -153,7 +153,7 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
     int64_t current_position = w_ftell(lf->fp);
     bool is_valid_context_file = w_get_hash_context(lf, &context, current_position);
 
-    while (can_read() && fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
+    while (can_read() && fgets(str, sizeof(str), lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
 
         lines++;
 
@@ -220,10 +220,10 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
         }
 
         /* Generate final msg */
-        bytes_written = snprintf(final_msg, OS_MAXSTR - OS_LOG_HEADER, "Host: %s, open ports:",
+        bytes_written = snprintf(final_msg, sizeof(final_msg), "Host: %s, open ports:",
                  ip);
 
-        if (bytes_written < OS_MAXSTR - OS_LOG_HEADER) {
+        if (bytes_written < (int)sizeof(final_msg)) {
             final_msg_s = OS_MAXSTR - OS_LOG_HEADER - 1 - strlen(final_msg);
         }
         else {
