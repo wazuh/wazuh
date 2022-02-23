@@ -390,11 +390,15 @@ TEST_F(DBSyncTest, GetDeletedRowsOnlyPKs)
 {
     const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `euser` TEXT, PRIMARY KEY (`pid`,`name`)) WITHOUT ROWID;"};
     const auto table { R"({"table":"processes"})" };
-    const auto insertionSqlStmt1{ R"({"table":"processes","data":[{"pid":4,"name":"System","euser":"wazuh"}]})"};
-    const auto insertionSqlStmt2{ R"({"table":"processes","data":[{"pid":7,"name":"Guake","euser":"wazuh"}]})"};
+    auto syncSqlStmt1 = SyncRowQuery::builder().table("processes")
+                        .data(nlohmann::json::parse(R"({"pid":4,"name":"System","euser":"wazuh"})"))
+                        .query();
+    auto syncSqlStmt2 = SyncRowQuery::builder().table("processes")
+                        .data(nlohmann::json::parse(R"({"pid":7,"name":"Guake","euser":"wazuh"})"))
+                        .query();
     const std::unique_ptr<cJSON, smartDeleterJson> jsonTables { cJSON_Parse(table) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert1 { cJSON_Parse(insertionSqlStmt1) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert2{ cJSON_Parse(insertionSqlStmt2) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsSync1 { cJSON_Parse(syncSqlStmt1.dump().c_str()) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsSync2{ cJSON_Parse(syncSqlStmt2.dump().c_str()) };
     const std::unique_ptr<DummyContext> dummyCtx { std::make_unique<DummyContext>()};
 
     CallbackMock wrapper;
@@ -407,12 +411,12 @@ TEST_F(DBSyncTest, GetDeletedRowsOnlyPKs)
     dummyCtx->handle = dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql);
     ASSERT_NE(nullptr, dummyCtx->handle);
 
-    EXPECT_EQ(0, dbsync_sync_row(dummyCtx->handle, jsInsert1.get(), callbackData));
+    EXPECT_EQ(0, dbsync_sync_row(dummyCtx->handle, jsSync1.get(), callbackData));
 
     EXPECT_NO_THROW(dummyCtx->txnContext = dbsync_create_txn(dummyCtx->handle, jsonTables.get(), 0, 100, callbackData));
     ASSERT_NE(nullptr, dummyCtx->txnContext);
 
-    EXPECT_EQ(0, dbsync_sync_txn_row(dummyCtx->txnContext, jsInsert2.get()));
+    EXPECT_EQ(0, dbsync_sync_txn_row(dummyCtx->txnContext, jsSync2.get()));
 
     EXPECT_EQ(0, dbsync_get_deleted_rows(dummyCtx->txnContext, callbackData, nullptr));
 }
@@ -421,13 +425,17 @@ TEST_F(DBSyncTest, GetDeletedRowsAllAttributes)
 {
     const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `euser` TEXT, PRIMARY KEY (`pid`,`name`)) WITHOUT ROWID;"};
     const auto table { R"({"table":"processes"})" };
-    const auto insertionSqlStmt1{ R"({"table":"processes","data":[{"pid":4,"name":"System","euser":"wazuh"}]})"};
-    const auto insertionSqlStmt2{ R"({"table":"processes","data":[{"pid":7,"name":"Guake","euser":"wazuh"}]})"};
-    const auto deletedOptions {GetDeletedQuery::builder().allColumns().query().dump()};
-    const std::unique_ptr<cJSON, smartDeleterJson> jsonDeletedOptions { cJSON_Parse(deletedOptions.c_str()) };
+    auto syncSqlStmt1 = SyncRowQuery::builder().table("processes")
+                        .data(nlohmann::json::parse(R"({"pid":4,"name":"System","euser":"wazuh"})"))
+                        .query();
+    auto syncSqlStmt2 = SyncRowQuery::builder().table("processes")
+                        .data(nlohmann::json::parse(R"({"pid":7,"name":"Guake","euser":"wazuh"})"))
+                        .query();
+    const auto deletedOptions = GetDeletedQuery::builder().allColumns().query();
+    const std::unique_ptr<cJSON, smartDeleterJson> jsonDeletedOptions { cJSON_Parse(deletedOptions.dump().c_str()) };
     const std::unique_ptr<cJSON, smartDeleterJson> jsonTables { cJSON_Parse(table) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert1 { cJSON_Parse(insertionSqlStmt1) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert2{ cJSON_Parse(insertionSqlStmt2) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsSync1 { cJSON_Parse(syncSqlStmt1.dump().c_str()) };
+    const std::unique_ptr<cJSON, smartDeleterJson> jsSync2{ cJSON_Parse(syncSqlStmt2.dump().c_str()) };
     const std::unique_ptr<DummyContext> dummyCtx { std::make_unique<DummyContext>()};
 
     CallbackMock wrapper;
@@ -440,12 +448,12 @@ TEST_F(DBSyncTest, GetDeletedRowsAllAttributes)
     dummyCtx->handle = dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql);
     ASSERT_NE(nullptr, dummyCtx->handle);
 
-    EXPECT_EQ(0, dbsync_sync_row(dummyCtx->handle, jsInsert1.get(), callbackData));
+    EXPECT_EQ(0, dbsync_sync_row(dummyCtx->handle, jsSync1.get(), callbackData));
 
     dummyCtx->txnContext = dbsync_create_txn(dummyCtx->handle, jsonTables.get(), 0, 100, callbackData);
     ASSERT_NE(nullptr, dummyCtx->handle);
 
-    EXPECT_EQ(0, dbsync_sync_txn_row(dummyCtx->txnContext, jsInsert2.get()));
+    EXPECT_EQ(0, dbsync_sync_txn_row(dummyCtx->txnContext, jsSync2.get()));
 
     EXPECT_EQ(0, dbsync_get_deleted_rows(dummyCtx->txnContext, callbackData, jsonDeletedOptions.get()));
 }
@@ -1712,7 +1720,7 @@ TEST_F(DBSyncTest, createTxnCPP)
     const auto insertionSqlStmt2{ R"({"table":"processes","data":[{"pid":7,"name":"Guake"}]})" }; // Insert
     EXPECT_NO_THROW(dbSyncTxn->syncTxnRow(nlohmann::json::parse(insertionSqlStmt2)));
 
-    EXPECT_NO_THROW(dbSyncTxn->getDeletedRows(callbackData, {}));
+    EXPECT_NO_THROW(dbSyncTxn->getDeletedRows(callbackData));
 }
 
 
@@ -1783,7 +1791,7 @@ TEST_F(DBSyncTest, createTxnCPP1)
 
     EXPECT_NO_THROW(dbSyncTxn->syncTxnRow(insertionSqlStmt2));
 
-    EXPECT_NO_THROW(dbSyncTxn->getDeletedRows(callbackData, {}));
+    EXPECT_NO_THROW(dbSyncTxn->getDeletedRows(callbackData));
 }
 
 
@@ -1823,7 +1831,7 @@ TEST_F(DBSyncTest, createTxnCPP2)
 
     EXPECT_NO_THROW(dbSyncTxn->syncTxnRow(syncSqlStmt2));
 
-    EXPECT_NO_THROW(dbSyncTxn->getDeletedRows(callbackData, {}));
+    EXPECT_NO_THROW(dbSyncTxn->getDeletedRows(callbackData));
 }
 
 TEST_F(DBSyncTest, createTxnCPP3)

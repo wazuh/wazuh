@@ -209,10 +209,13 @@ public:
      * @brief Gets the deleted rows (diff) from the database.
      *
      * @param callbackData    Result callback(std::function) will be called for each result.
-     * @param options
+     * @param options         Allows different options.
+*                               "all_columns". Type: boolean. Default: false.
+     *                              if `true`, retrieve all columns.
+     *                              if `false`, retrieve only primary key(s).
      *
      */
-    virtual void getDeletedRows(ResultCallbackData callbackData, const nlohmann::json& options);
+    virtual void getDeletedRows(ResultCallbackData callbackData, const nlohmann::json& options = {});
 
     /**
      * @brief Get current dbsync transaction handle in the instance.

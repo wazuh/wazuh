@@ -1009,7 +1009,7 @@ void Syscollector::updateChanges(const std::string& table,
     input["table"] = table;
     input["data"] = values;
     txn.syncTxnRow(input);
-    txn.getDeletedRows(callback, {});
+    txn.getDeletedRows(callback);
 }
 
 Syscollector::Syscollector()
@@ -1433,7 +1433,7 @@ void Syscollector::scanPackages()
                 txn.syncTxnRow(input);
             }
         });
-        txn.getDeletedRows(callback, {});
+        txn.getDeletedRows(callback);
 
         m_logFunction(LOG_DEBUG_VERBOSE, "Ending packages scan");
     }
@@ -1580,7 +1580,7 @@ void Syscollector::scanProcesses()
 
             txn.syncTxnRow(input);
         });
-        txn.getDeletedRows(callback, {});
+        txn.getDeletedRows(callback);
 
         m_logFunction(LOG_DEBUG_VERBOSE, "Ending processes scan");
     }

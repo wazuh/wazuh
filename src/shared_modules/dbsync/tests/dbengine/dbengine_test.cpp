@@ -469,7 +469,7 @@ TEST_F(DBEngineTest, GetRowsToBeDeletedByStatusFieldNoMetadata)
                 createStatement(_, "PRAGMA table_info(dummy);"))
     .WillOnce(Return(ByMove(std::move(mockStatement_2))));
 
-    EXPECT_THROW(spEngine->returnRowsMarkedForDelete({"dummy"}, nullptr, {}), dbengine_error);
+    EXPECT_THROW(spEngine->returnRowsMarkedForDelete({"dummy"}, nullptr), dbengine_error);
 }
 
 TEST_F(DBEngineTest, GetRowsToBeDeletedByStatusField)
@@ -560,7 +560,7 @@ TEST_F(DBEngineTest, GetRowsToBeDeletedByStatusField)
                 createStatement(_, "SELECT PID FROM dummy WHERE db_status_field_dm=0;"))
     .WillOnce(Return(ByMove(std::move(mockStatement_3))));
 
-    EXPECT_NO_THROW(spEngine->returnRowsMarkedForDelete({"dummy"}, [](ReturnTypeCallback, const nlohmann::json&) {}, {}));
+    EXPECT_NO_THROW(spEngine->returnRowsMarkedForDelete({"dummy"}, [](ReturnTypeCallback, const nlohmann::json&) {}));
 }
 
 TEST_F(DBEngineTest, syncTableRowDataWithoutMetadataShouldThrow)

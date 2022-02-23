@@ -50,7 +50,7 @@ namespace DbSync
 
             virtual void returnRowsMarkedForDelete(const nlohmann::json& tableNames,
                                                    const DbSync::ResultCallback callback,
-                                                   const nlohmann::json& options) = 0;
+                                                   const nlohmann::json& options = {}) = 0;
 
             virtual void selectData(const std::string& table,
                                     const nlohmann::json& query,
