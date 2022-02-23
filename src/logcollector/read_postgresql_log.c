@@ -28,14 +28,14 @@ void *read_postgresql_log(logreader *lf, int *rc, int drop_it) {
     size_t str_len = 0;
     int need_clear = 0;
     char *p;
-    char str[OS_MAXSTR + 1];
-    char buffer[OS_MAXSTR + 1];
+    char str[OS_MAXSTR - OS_LOG_HEADER];
+    char buffer[OS_MAXSTR - OS_LOG_HEADER];
     int lines = 0;
 
     /* Zero buffer and str */
     buffer[0] = '\0';
-    buffer[OS_MAXSTR] = '\0';
-    str[OS_MAXSTR] = '\0';
+    buffer[OS_MAXSTR - OS_LOG_HEADER - 1] = '\0';
+    str[OS_MAXSTR - OS_LOG_HEADER - 1] = '\0';
     *rc = 0;
 
     /* Obtain context to calculate hash */
@@ -103,7 +103,7 @@ void *read_postgresql_log(logreader *lf, int *rc, int drop_it) {
 
             /* If the saved message is empty, set it and continue */
             if (buffer[0] == '\0') {
-                strncpy(buffer, str, str_len + 2);
+                snprintf(buffer, OS_MAXSTR - OS_LOG_HEADER, "%s", str);
                 continue;
             }
 
@@ -111,7 +111,7 @@ void *read_postgresql_log(logreader *lf, int *rc, int drop_it) {
             else {
                 __send_pgsql_msg(lf, drop_it, buffer);
                 /* Store current one at the buffer */
-                strncpy(buffer, str, str_len + 2);
+                snprintf(buffer, OS_MAXSTR - OS_LOG_HEADER, "%s", str);
             }
         }
 
@@ -131,7 +131,7 @@ void *read_postgresql_log(logreader *lf, int *rc, int drop_it) {
             }
 
             /* Add additional message to the saved buffer */
-            if (sizeof(buffer) - buffer_len > str_len + 256) {
+            if (sizeof(buffer) - buffer_len > str_len) {
                 /* Here we make sure that the size of the buffer
                  * minus what was used (strlen) is greater than
                  * the length of the received message.
