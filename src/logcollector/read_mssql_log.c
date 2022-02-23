@@ -105,7 +105,7 @@ void *read_mssql_log(logreader *lf, int *rc, int drop_it) {
 
             /* If the saved message is empty, set it and continue */
             if (buffer[0] == '\0') {
-                snprintf(buffer, OS_MAXSTR - OS_LOG_HEADER, "%s", str);
+                snprintf(buffer, sizeof(buffer), "%s", str);
                 continue;
             }
 
@@ -114,7 +114,7 @@ void *read_mssql_log(logreader *lf, int *rc, int drop_it) {
                 __send_mssql_msg(lf, drop_it, buffer);
 
                 /* Store current one at the buffer */
-                snprintf(buffer, OS_MAXSTR - OS_LOG_HEADER, "%s", str);
+                snprintf(buffer, sizeof(buffer), "%s", str);
             }
         }
 
