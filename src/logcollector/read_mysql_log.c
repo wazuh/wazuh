@@ -27,8 +27,8 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
     int lines = 0;
     int bytes_written = 0;
 
-    str[OS_MAXSTR - OS_LOG_HEADER - 1] = '\0';
-    buffer[OS_MAXSTR - OS_LOG_HEADER - 1] = '\0';
+    str[sizeof(str) - 1] = '\0';
+    buffer[sizeof(buffer) - 1] = '\0';
     *rc = 0;
 
     /* Obtain context to calculate hash */
@@ -37,7 +37,7 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
     bool is_valid_context_file = w_get_hash_context(lf, &context, current_position);
 
     /* Get new entry */
-    while (can_read() && fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
+    while (can_read() && fgets(str, sizeof(str), lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
 
         lines++;
         /* Get buffer size */
@@ -104,7 +104,7 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
             }
 
             /* Valid MySQL message */
-            bytes_written = snprintf(buffer, OS_MAXSTR - OS_LOG_HEADER, "MySQL log: %s %s",
+            bytes_written = snprintf(buffer, sizeof(buffer), "MySQL log: %s %s",
                      __mysql_last_time, p);
         }
 
@@ -157,7 +157,7 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
            }
 
            /* Valid MySQL message */
-           bytes_written = snprintf(buffer, OS_MAXSTR - OS_LOG_HEADER, "MySQL log: %s %s",
+           bytes_written = snprintf(buffer, sizeof(buffer), "MySQL log: %s %s",
                     __mysql_last_time, p);
        }
 
@@ -205,7 +205,7 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
           }
 
           /* Valid MySQL message */
-          bytes_written = snprintf(buffer, OS_MAXSTR - OS_LOG_HEADER, "MySQL log: %s %s",
+          bytes_written = snprintf(buffer, sizeof(buffer), "MySQL log: %s %s",
                    __mysql_last_time, p);
       }
 
@@ -229,14 +229,14 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
             }
 
             /* Valid MySQL message */
-            bytes_written = snprintf(buffer, OS_MAXSTR - OS_LOG_HEADER, "MySQL log: %s %s",
+            bytes_written = snprintf(buffer, sizeof(buffer), "MySQL log: %s %s",
                      __mysql_last_time, p);
         } else {
             continue;
         }
 
-        if (bytes_written + 1 > OS_MAXSTR - OS_LOG_HEADER) {
-            merror("Large message size from file '%s' (length = " FTELL_TT "): '%s'...", lf->file, FTELL_INT64 bytes_written, buffer);
+        if (bytes_written > (int)(sizeof(buffer) - 1)) {
+            merror("Message size too big on file '%s' (length = " FTELL_TT "): '%s'...", lf->file, FTELL_INT64 bytes_written, buffer);
         }
 
 
