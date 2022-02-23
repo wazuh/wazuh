@@ -65,7 +65,7 @@ int wm_agent_upgrade_validate_system(const char *platform, const char *os_major,
             return_code = WM_UPGRADE_SUCCESS;
 
             // Blacklist for invalid OS platforms
-            invalid_platforms_len = sizeof(invalid_platforms) / sizeof(invalid_platforms[0]);
+            invalid_platforms_len = array_size(invalid_platforms);
             for(platforms_it = 0; platforms_it < invalid_platforms_len; ++platforms_it) {
                 if(!strcmp(invalid_platforms[platforms_it], platform)) {
                     return_code = WM_UPGRADE_SYSTEM_NOT_SUPPORTED;
@@ -83,7 +83,7 @@ int wm_agent_upgrade_validate_system(const char *platform, const char *os_major,
         }
 
         // Whitelist for OS platforms with 'rolling' version
-        rolling_platforms_len = sizeof(rolling_platforms) / sizeof(rolling_platforms[0]);
+        rolling_platforms_len = array_size(rolling_platforms);
         for(platforms_it = 0; platforms_it < rolling_platforms_len; ++platforms_it) {
             if(!strcmp(rolling_platforms[platforms_it], platform)) {
                 return_code = WM_UPGRADE_SUCCESS;
