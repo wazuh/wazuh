@@ -21,6 +21,7 @@ static const std::unordered_map<std::string_view, ParserType> kECSParserMapper {
 static const std::unordered_map<std::string_view, ParserType> kTempTypeMapper {
     { "JSON", ParserType::JSON },
     { "MAP", ParserType::Map},
+    { "timestamp", ParserType::Ts},
 };
 
 struct Tokenizer {
