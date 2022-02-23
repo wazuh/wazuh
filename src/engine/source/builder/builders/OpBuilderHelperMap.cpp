@@ -479,6 +479,10 @@ types::Lifter opBuilderHelperRegexExtract(const types::DocumentValue & def)
     }
     std::string map_field = parameters[1];
     std::string regexp = parameters[2];
+    if (regexp.empty())
+    {
+        throw std::invalid_argument("The regular expression can't be empty");
+    }
     auto regex_ptr = std::make_shared<RE2>(regexp);
 
     // Return Lifter
@@ -489,12 +493,22 @@ types::Lifter opBuilderHelperRegexExtract(const types::DocumentValue & def)
 
             [=](types::Event e)
             {
-                auto field_str = e.get("/" + base_field);
+                const rapidjson::Value * field_str{};
+                try
+                {
+                    field_str = e.get("/" + base_field);
+                }
+                catch (std::exception & ex)
+                {
+                    // TODO Check exception type
+                    return e;
+                }
                 if (field_str)
                 {
                     std::string match;
                     if (RE2::PartialMatch(field_str->GetString(), *regex_ptr, &match))
                     {
+                        // TODO Implement add member of EventDocument
                         auto aux_string = "{ \"" + map_field + "\": \"" + match + "\"}";
                         types::Document doc{aux_string.c_str()};
                         e.set(doc);
