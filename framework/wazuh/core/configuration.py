@@ -815,13 +815,13 @@ def get_active_configuration(agent_id, component, configuration):
     if agent_id == '000':
         dest_socket = os_path.join(sockets_path, component)
         command = f"getconfig {configuration}"
+        # Verify component configuration
+        if not os.path.exists(dest_socket):
+            raise WazuhError(1121, extra_message=f"please verify that the component '{component}' \
+                is properly configured")
     else:
         dest_socket = os_path.join(sockets_path, "request")
         command = f"{str(agent_id).zfill(3)} {component} getconfig {configuration}"
-
-    # Verify component configuration
-    if not os.path.exists(dest_socket):
-        raise WazuhError(1121, extra_message=f"please verify that the component '{component}' is properly configured")
 
     # Socket connection
     try:

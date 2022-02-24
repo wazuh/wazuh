@@ -362,7 +362,7 @@ def test_get_active_configuration(mock_exists, agent_id, component, config, msg)
 
 @pytest.mark.parametrize("agent_id, component, config", [
     ('000', 'syscheck', 'syscheck'),
-    ('001', 'mail', 'global')
+    ('000', 'mail', 'global')
 ])
 @patch('os.path.exists', return_value=False)
 def test_get_active_configuration_not_configured(mock_exists, agent_id, component, config):
