@@ -1282,7 +1282,8 @@ def test_agent_get_upgrade_result(mock_socket, mock_wdb, mock_client_keys, agent
 @patch('wazuh.core.configuration.WazuhSocket')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_get_agent_config(socket_mock, send_mock, wazuh_socket_mock, agent_list, component, configuration):
+@patch('os.path.exists')
+def test_agent_get_agent_config(mock_exists, socket_mock, send_mock, wazuh_socket_mock, agent_list, component, configuration):
     """Test `get_agent_config` function from agent module.
 
     Parameters

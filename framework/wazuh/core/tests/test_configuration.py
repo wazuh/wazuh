@@ -341,7 +341,8 @@ def test_upload_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh
     ('000', 'agent', 'given', '{"auth": {"use_password": "yes"}}'),
     ('000', 'agent', 'given', '{"auth": {"use_password": "no"}}')
 ])
-def test_get_active_configuration(agent_id, component, config, msg):
+@patch('os.path.exists')
+def test_get_active_configuration(mock_exists, agent_id, component, config, msg):
     """This test checks the propper working of get_active_configuration function."""
     with patch('wazuh.core.configuration.WazuhSocket.__init__', return_value=None):
         with patch('wazuh.core.configuration.WazuhSocket.send', side_effect=None):
@@ -359,6 +360,17 @@ def test_get_active_configuration(agent_id, component, config, msg):
                         assert 'authd.pass' not in result
 
 
+@pytest.mark.parametrize("agent_id, component, config", [
+    ('000', 'syscheck', 'syscheck'),
+    ('001', 'mail', 'global')
+])
+@patch('os.path.exists', return_value=False)
+def test_get_active_configuration_not_configured(mock_exists, agent_id, component, config):
+    """Test the raised exception regarding a non configured component"""
+    with pytest.raises(WazuhError, match=f".* 1121 .* component '{component}'"):
+        configuration.get_active_configuration(agent_id, component, config)
+
+
 @pytest.mark.parametrize("exception_type, agent_id, component, config, exception_", [
     (WazuhError, '000', None, None, 1307),
     (WazuhError, '000', None, 'given', 1307),
@@ -366,7 +378,8 @@ def test_get_active_configuration(agent_id, component, config, msg):
     (WazuhInternalError, '000', 'agent', 'given', 1121),
     (WazuhInternalError, '001', 'agent', 'given', 1121)
 ])
-def test_get_active_configuration_first_exceptions(exception_type, agent_id, component, config, exception_):
+@patch('os.path.exists')
+def test_get_active_configuration_first_exceptions(mock_exists, exception_type, agent_id, component, config, exception_):
     """This test checks the first three exceptions."""
     with patch('wazuh.core.configuration.WazuhSocket.__init__', return_value=Exception):
         with pytest.raises(exception_type, match=f".* {exception_} .*"):
@@ -376,7 +389,8 @@ def test_get_active_configuration_first_exceptions(exception_type, agent_id, com
 @pytest.mark.parametrize("agent_id, component, config, exception_", [
     ('000', 'agent', 'given', 1118)
 ])
-def test_get_active_configuration_second_exceptions(agent_id, component, config, exception_):
+@patch('os.path.exists')
+def test_get_active_configuration_second_exceptions(mock_exists, agent_id, component, config, exception_):
     """This test checks the fourth exception."""
     with patch('wazuh.core.configuration.WazuhSocket.__init__', return_value=None):
         with patch('wazuh.core.configuration.WazuhSocket.send', side_effect=None):
@@ -388,7 +402,8 @@ def test_get_active_configuration_second_exceptions(agent_id, component, config,
 @pytest.mark.parametrize("agent_id, component, config, exception_", [
     ('000', 'agent', 'given', 1116)
 ])
-def test_get_active_configuration_third_exceptions(agent_id, component, config, exception_):
+@patch('os.path.exists')
+def test_get_active_configuration_third_exceptions(mock_exists, agent_id, component, config, exception_):
     """This test checks the last exception."""
     with patch('wazuh.core.configuration.WazuhSocket.__init__', return_value=None):
         with patch('wazuh.core.configuration.WazuhSocket.send', side_effect=None):
@@ -401,7 +416,8 @@ def test_get_active_configuration_third_exceptions(agent_id, component, config, 
 @pytest.mark.parametrize("agent_id, component, config, exception_", [
     ('000', 'agent', 'given', None)
 ])
-def test_get_active_configuration_fourth_exception(agent_id, component, config, exception_):
+@patch('os.path.exists')
+def test_get_active_configuration_fourth_exception(mock_exists, agent_id, component, config, exception_):
     with patch('wazuh.core.configuration.WazuhSocket.__init__', return_value=None):
         with patch('wazuh.core.configuration.WazuhSocket.send', side_effect=None):
             with patch('wazuh.core.configuration.WazuhSocket.receive', return_value=b'ok {"a": "2"}'):
