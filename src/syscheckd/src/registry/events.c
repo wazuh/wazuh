@@ -46,7 +46,7 @@ void fim_calculate_dbsync_difference_key(const fim_registry_key* registry_data,
 
     if (configuration->opts & CHECK_PERM) {
         if (aux = cJSON_GetObjectItem(old_data, "perm"), aux != NULL) {
-            cJSON_AddStringToObject(old_attributes, "perm", cJSON_GetStringValue(aux));
+            cJSON_AddItemToObject(old_attributes, "perm", cJSON_Duplicate(aux, 1));
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("permission"));
         } else {
             cJSON_AddItemToObject(old_attributes, "perm", cJSON_Duplicate(registry_data->perm_json, 1));
@@ -90,7 +90,7 @@ void fim_calculate_dbsync_difference_key(const fim_registry_key* registry_data,
 
     if (configuration->opts & CHECK_MTIME) {
          if (aux = cJSON_GetObjectItem(old_data, "mtime"), aux != NULL) {
-            cJSON_AddStringToObject(old_attributes, "mtime", cJSON_GetStringValue(aux));
+            cJSON_AddNumberToObject(old_attributes, "mtime", aux->valueint);
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("mtime"));
         } else {
             cJSON_AddNumberToObject(old_attributes, "mtime", registry_data->mtime);

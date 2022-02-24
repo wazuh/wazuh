@@ -208,6 +208,7 @@ void test_calculate_dbsync_difference_key_perm_change(void **state) {
 
     key_difference_t *data = (key_difference_t *) *state;
     registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
+    const char* old_entry_str = "{\"type\":\"registry_key\",\"perm\":{\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"read_data\",\"read_ea\",\"write_ea\"]},\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-3-0\":{\"name\":\"CREATOR OWNER\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-15-2-1\":{\"name\":\"ALL APPLICATION PACKAGES\",\"allowed\":[\"read_control\",\"read_data\",\"read_ea\",\"write_ea\"]}},\"uid\":\"110\",\"user_name\":\"user_old_name\",\"gid\":\"110\",\"group_name\":\"group_old_name\",\"mtime\":1100,\"checksum\":\"234567890ABCDEF1234567890ABCDEF123456789\"}";
     cJSON *old_data = data->old_data;
     cJSON *changed_attributes = data->changed_attributes;
     cJSON *old_attributes = data->old_attributes;
@@ -219,6 +220,7 @@ void test_calculate_dbsync_difference_key_perm_change(void **state) {
 
     fim_calculate_dbsync_difference_key(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
     assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"permission\"]");
+    assert_string_equal(cJSON_PrintUnformatted(old_attributes), old_entry_str);
 }
 
 void test_calculate_dbsync_difference_key_no_change(void **state) {
@@ -232,7 +234,6 @@ void test_calculate_dbsync_difference_key_no_change(void **state) {
     fim_registry_key registry_data =  DEFAULT_REGISTRY_KEY;
 
     fim_calculate_dbsync_difference_key(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
-
     assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[]");
 }
 
@@ -240,6 +241,7 @@ void test_calculate_dbsync_difference_key_uid_change(void **state) {
 
     key_difference_t *data = (key_difference_t *) *state;
     registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
+    const char *old_attributes_str = "{\"type\":\"registry_key\",\"uid\":\"210\",\"user_name\":\"user_old_name\",\"gid\":\"110\",\"group_name\":\"group_old_name\",\"mtime\":1100,\"checksum\":\"234567890ABCDEF1234567890ABCDEF123456789\"}";
     cJSON *old_data = data->old_data;
     cJSON *changed_attributes = data->changed_attributes;
     cJSON *old_attributes = data->old_attributes;
@@ -247,23 +249,26 @@ void test_calculate_dbsync_difference_key_uid_change(void **state) {
     cJSON_AddStringToObject(old_data, "uid", "210");
 
     fim_registry_key registry_data = DEFAULT_REGISTRY_KEY;
-
     fim_calculate_dbsync_difference_key(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
+
     assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"uid\"]");
+    assert_string_equal(cJSON_PrintUnformatted(old_attributes), old_attributes_str);
 }
 
 void test_calculate_dbsync_difference_key_username_change(void **state) {
     key_difference_t *data = (key_difference_t *) *state;
     registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
+    const char* old_attributes_str = "{\"type\":\"registry_key\",\"uid\":\"110\",\"user_name\":\"previous_username\",\"gid\":\"110\",\"group_name\":\"group_old_name\",\"mtime\":1100,\"checksum\":\"234567890ABCDEF1234567890ABCDEF123456789\"}";
     cJSON *old_data = data->old_data;
     cJSON *changed_attributes = data->changed_attributes;
     cJSON *old_attributes = data->old_attributes;
 
-    cJSON_AddStringToObject(old_data, "user_name", "new_username");
+    cJSON_AddStringToObject(old_data, "user_name", "previous_username");
 
     fim_registry_key registry_data =  DEFAULT_REGISTRY_KEY;
     fim_calculate_dbsync_difference_key(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
     assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"user_name\"]");
+    assert_string_equal(cJSON_PrintUnformatted(old_attributes), old_attributes_str);
 }
 
 void test_calculate_dbsync_difference_key_username_no_change_empty(void **state) {
@@ -284,6 +289,8 @@ void test_calculate_dbsync_difference_key_gid_change(void **state) {
 
     key_difference_t *data = (key_difference_t *) *state;
     registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
+    const char *old_attributes_str = "{\"type\":\"registry_key\",\"uid\":\"110\",\"user_name\":\"user_old_name\",\"gid\":\"210\",\"group_name\":\"group_old_name\",\"mtime\":1100,\"checksum\":\"234567890ABCDEF1234567890ABCDEF123456789\"}";
+
     cJSON *old_data = data->old_data;
     cJSON *changed_attributes = data->changed_attributes;
     cJSON *old_attributes = data->old_attributes;
@@ -293,24 +300,28 @@ void test_calculate_dbsync_difference_key_gid_change(void **state) {
     fim_registry_key registry_data = DEFAULT_REGISTRY_KEY;
     fim_calculate_dbsync_difference_key(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
     assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"gid\"]");
+    assert_string_equal(cJSON_PrintUnformatted(old_attributes), old_attributes_str);
 }
 
 void test_calculate_dbsync_difference_key_groupname_change(void **state) {
     key_difference_t *data = (key_difference_t *) *state;
     registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
+    const char* old_attributes_str = "{\"type\":\"registry_key\",\"uid\":\"110\",\"user_name\":\"user_old_name\",\"gid\":\"110\",\"group_name\":\"previous_groupname\",\"mtime\":1100,\"checksum\":\"234567890ABCDEF1234567890ABCDEF123456789\"}";
     cJSON *old_data = data->old_data;
     cJSON *changed_attributes = data->changed_attributes;
     cJSON *old_attributes = data->old_attributes;
 
-    cJSON_AddStringToObject(old_data, "group_name", "new_groupname");
+    cJSON_AddStringToObject(old_data, "group_name", "previous_groupname");
 
     fim_registry_key registry_data = DEFAULT_REGISTRY_KEY;
     fim_calculate_dbsync_difference_key(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
     assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"group_name\"]");
+    assert_string_equal(cJSON_PrintUnformatted(old_attributes), old_attributes_str);
 }
 
 void test_calculate_dbsync_difference_key_mtime_change(void **state) {
     key_difference_t *data = (key_difference_t *) *state;
+    const char* old_attributes_str = "{\"type\":\"registry_key\",\"uid\":\"110\",\"user_name\":\"user_old_name\",\"gid\":\"110\",\"group_name\":\"group_old_name\",\"mtime\":98765432,\"checksum\":\"234567890ABCDEF1234567890ABCDEF123456789\"}";
     registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
     cJSON *old_data = data->old_data;
     cJSON *changed_attributes = data->changed_attributes;
@@ -321,10 +332,12 @@ void test_calculate_dbsync_difference_key_mtime_change(void **state) {
     fim_registry_key registry_data = DEFAULT_REGISTRY_KEY;
     fim_calculate_dbsync_difference_key(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
     assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"mtime\"]");
+    assert_string_equal(cJSON_PrintUnformatted(old_attributes), old_attributes_str);
 }
 
 void test_calculate_dbsync_difference_value_size_change(void **state) {
     key_difference_t *data = (key_difference_t *) *state;
+    const char *old_attributes_str = "{\"type\":\"registry_value\",\"size\":98765432,\"value_type\":\"REG_SZ\",\"hash_md5\":\"1234567890ABCDEF1234567890ABCDEF\",\"hash_sha1\":\"1234567890ABCDEF1234567890ABCDEF12345678\",\"hash_sha256\":\"1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF\"}";
     registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
     cJSON *old_data = data->old_data;
     cJSON *changed_attributes = data->changed_attributes;
@@ -336,67 +349,77 @@ void test_calculate_dbsync_difference_value_size_change(void **state) {
 
     fim_calculate_dbsync_difference_value(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
     assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"size\"]");
+    assert_string_equal(cJSON_PrintUnformatted(old_attributes), old_attributes_str);
+
 }
 
 void test_calculate_dbsync_difference_value_type_change(void **state) {
     key_difference_t *data = (key_difference_t *) *state;
+    const char *old_attributes_str = "{\"type\":\"registry_value\",\"size\":50,\"value_type\":\"REG_EXPAND_SZ\",\"hash_md5\":\"1234567890ABCDEF1234567890ABCDEF\",\"hash_sha1\":\"1234567890ABCDEF1234567890ABCDEF12345678\",\"hash_sha256\":\"1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF\"}";
     registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
     cJSON *old_data = data->old_data;
     cJSON *changed_attributes = data->changed_attributes;
     cJSON *old_attributes = data->old_attributes;
 
-    cJSON_AddStringToObject(old_data, "value_type", "REG_EXPAND_SZ");
-
+    cJSON_AddNumberToObject(old_data, "value_type", 2);
     fim_registry_value_data registry_data = DEFAULT_REGISTRY_VALUE;
 
     fim_calculate_dbsync_difference_value(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
     assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"value_type\"]");
+    assert_string_equal(cJSON_PrintUnformatted(old_attributes), old_attributes_str);
 }
 
 void test_calculate_dbsync_difference_value_md5_change(void **state) {
     key_difference_t *data = (key_difference_t *) *state;
+    const char *old_attributes_str = "{\"type\":\"registry_value\",\"size\":50,\"value_type\":\"REG_SZ\",\"hash_md5\":\"FEDCBA0987654321FEDCBA0987654321\",\"hash_sha1\":\"1234567890ABCDEF1234567890ABCDEF12345678\",\"hash_sha256\":\"1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF\"}";
     registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
     cJSON *old_data = data->old_data;
     cJSON *changed_attributes = data->changed_attributes;
     cJSON *old_attributes = data->old_attributes;
 
-    cJSON_AddStringToObject(old_data, "hash_md5", "123456789ABCDEF");
+    cJSON_AddStringToObject(old_data, "hash_md5", "FEDCBA0987654321FEDCBA0987654321");
 
     fim_registry_value_data registry_data = DEFAULT_REGISTRY_VALUE;
 
     fim_calculate_dbsync_difference_value(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
     assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"md5\"]");
+    assert_string_equal(cJSON_PrintUnformatted(old_attributes), old_attributes_str);
 }
 
 void test_calculate_dbsync_difference_value_sha1_change(void **state) {
     key_difference_t *data = (key_difference_t *) *state;
+    const char *old_attributes_str = "{\"type\":\"registry_value\",\"size\":50,\"value_type\":\"REG_SZ\",\"hash_md5\":\"1234567890ABCDEF1234567890ABCDEF\",\"hash_sha1\":\"FEDCBA0987654321FEDCBA0987654321FEDCBA09\",\"hash_sha256\":\"1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF\"}";
     registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
     cJSON *old_data = data->old_data;
     cJSON *changed_attributes = data->changed_attributes;
     cJSON *old_attributes = data->old_attributes;
 
-    cJSON_AddStringToObject(old_data, "hash_sha1", "123456789ABCDEF");
+    cJSON_AddStringToObject(old_data, "hash_sha1", "FEDCBA0987654321FEDCBA0987654321FEDCBA09");
 
     fim_registry_value_data registry_data = DEFAULT_REGISTRY_VALUE;
 
     fim_calculate_dbsync_difference_value(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
     assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"sha1\"]");
+    assert_string_equal(cJSON_PrintUnformatted(old_attributes), old_attributes_str);
 }
 
 
 void test_calculate_dbsync_difference_value_sha256_change(void **state) {
     key_difference_t *data = (key_difference_t *) *state;
+    const char *old_attributes_str = "{\"type\":\"registry_value\",\"size\":50,\"value_type\":\"REG_SZ\",\"hash_md5\":\"1234567890ABCDEF1234567890ABCDEF\",\"hash_sha1\":\"1234567890ABCDEF1234567890ABCDEF12345678\",\"hash_sha256\":\"FEDCBA0987654321FEDCBA0987654321FEDCBA0987654321FEDCBA0987654321\"}";
+
     registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
     cJSON *old_data = data->old_data;
     cJSON *changed_attributes = data->changed_attributes;
     cJSON *old_attributes = data->old_attributes;
 
-    cJSON_AddStringToObject(old_data, "hash_sha256", "123456789ABCDEF");
+    cJSON_AddStringToObject(old_data, "hash_sha256", "FEDCBA0987654321FEDCBA0987654321FEDCBA0987654321FEDCBA0987654321");
 
     fim_registry_value_data registry_data = DEFAULT_REGISTRY_VALUE;
 
     fim_calculate_dbsync_difference_value(&registry_data, &configuration, old_data, changed_attributes, old_attributes);
     assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[\"sha256\"]");
+    assert_string_equal(cJSON_PrintUnformatted(old_attributes), old_attributes_str);
 }
 
 void test_calculate_dbsync_difference_value_no_change(void **state) {
