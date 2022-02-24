@@ -87,14 +87,14 @@ namespace DbSync
                     pushResult(result);
                 }
             }
-            void getDeleted(ResultCallback callback) override
+            void getDeleted(ResultCallback callback, const nlohmann::json& options) override
             {
                 if (m_spDispatchNode)
                 {
                     m_spDispatchNode->rundown();
                 }
 
-                DBSyncImplementation::instance().getDeleted(m_handle, m_txnContext, callback);
+                DBSyncImplementation::instance().getDeleted(m_handle, m_txnContext, callback, options);
             }
         private:
             using SyncResult = std::pair<ReturnTypeCallback, nlohmann::json>;

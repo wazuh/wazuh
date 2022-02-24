@@ -293,8 +293,12 @@ FIMDBErrorCode fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler,
 {
     auto retval {FIMDB_OK};
     callback_data_t cb_data = { .callback = res_callback, .user_data = txn_ctx };
+    const std::unique_ptr<cJSON, CJsonDeleter> jsOptions
+    {
+        cJSON_Parse(GetDeletedQuery::builder().allColumns().query().dump().c_str())
+    };
 
-    if (dbsync_get_deleted_rows(txn_handler, cb_data) != 0)
+    if (dbsync_get_deleted_rows(txn_handler, cb_data, jsOptions.get()) != 0)
     {
         retval = FIMDB_ERR;
     }

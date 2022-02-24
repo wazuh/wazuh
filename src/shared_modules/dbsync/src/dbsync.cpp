@@ -473,7 +473,8 @@ int dbsync_delete_rows(const DBSYNC_HANDLE handle,
 }
 
 int dbsync_get_deleted_rows(const TXN_HANDLE  txn,
-                            callback_data_t   callback_data)
+                            callback_data_t   callback_data,
+                            const cJSON*      js_options)
 {
     auto retVal { -1 };
     std::string error_message;
@@ -486,6 +487,7 @@ int dbsync_get_deleted_rows(const TXN_HANDLE  txn,
     {
         try
         {
+            const std::unique_ptr<char, CJsonDeleter> spJsonBytes{ cJSON_PrintUnformatted(js_options) };
             const auto callbackWrapper
             {
                 [callback_data](ReturnTypeCallback result, const nlohmann::json & jsonResult)
@@ -494,7 +496,8 @@ int dbsync_get_deleted_rows(const TXN_HANDLE  txn,
                     callback_data.callback(result, spJson.get(), callback_data.user_data);
                 }
             };
-            PipelineFactory::instance().pipeline(txn)->getDeleted(callbackWrapper);
+            const auto jsOptions = spJsonBytes.get() ? nlohmann::json::parse(spJsonBytes.get()) : nlohmann::json::object();
+            PipelineFactory::instance().pipeline(txn)->getDeleted(callbackWrapper, jsOptions);
             retVal = 0;
         }
         catch (const DbSync::dbsync_error& ex)
@@ -803,7 +806,7 @@ void DBSyncTxn::syncTxnRow(const nlohmann::json& jsInput)
     PipelineFactory::instance().pipeline(m_txn)->syncRow(jsInput);
 }
 
-void DBSyncTxn::getDeletedRows(ResultCallbackData  callbackData)
+void DBSyncTxn::getDeletedRows(ResultCallbackData  callbackData, const nlohmann::json& options)
 {
     const auto callbackWrapper
     {
@@ -812,7 +815,7 @@ void DBSyncTxn::getDeletedRows(ResultCallbackData  callbackData)
             callbackData(result, jsonResult);
         }
     };
-    PipelineFactory::instance().pipeline(m_txn)->getDeleted(callbackWrapper);
+    PipelineFactory::instance().pipeline(m_txn)->getDeleted(callbackWrapper, options);
 }
 
 SelectQuery& SelectQuery::columnList(const std::vector<std::string>& fields)
@@ -899,3 +902,8 @@ SyncRowQuery& SyncRowQuery::reset()
     return *this;
 }
 
+GetDeletedQuery& GetDeletedQuery::allColumns()
+{
+    m_jsQuery["all_columns"] = true;
+    return *this;
+}

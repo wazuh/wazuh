@@ -230,8 +230,15 @@ static void getCallbackCtx(ReturnTypeCallback /*type*/,
 struct GetDeletedRowsAction final : public IAction
 {
     void execute(std::unique_ptr<TestContext>& ctx,
-                 const nlohmann::json& /*value*/) override
+                 const nlohmann::json& value) override
     {
+        const auto options = value.contains("options") ? value["options"] : nlohmann::json::object();
+        const std::unique_ptr<cJSON, TestDeleters::CJsonDeleter> jsOptions
+        {
+            cJSON_Parse(options.dump().c_str())
+        };
+
+
         std::stringstream oFileName;
         oFileName << "action_" << ctx->currentId << ".json";
         const auto& outputFileName{ ctx->outputPath + "/" + oFileName.str() };
@@ -243,7 +250,7 @@ struct GetDeletedRowsAction final : public IAction
         const auto retVal
         {
             dbsync_get_deleted_rows(ctx->txnContext,
-                                    callbackData)
+                                    callbackData, jsOptions.get())
         };
 
         std::ofstream outputFile{ outputFileName };
@@ -597,12 +604,13 @@ struct AddTableRelationshipCPP final : public IAction
 struct GetDeletedRowsActionCPP final : public IAction
 {
     void execute(std::unique_ptr<TestContext>& ctx,
-                 const nlohmann::json& /*value*/) override
+                 const nlohmann::json& value) override
     {
         std::stringstream oFileName;
         oFileName << "action_" << ctx->currentId << ".json";
         const auto& outputFileNameCallback{ ctx->outputPath + "/" + "callback." + oFileName.str() };
         const auto& loggerContext { std::make_unique<GetCallbackLogger>(outputFileNameCallback) };
+        const auto options { value.contains("options") ? value["options"] : nlohmann::json::object() };
 
         auto callbackDelete
         {
@@ -631,7 +639,7 @@ struct GetDeletedRowsActionCPP final : public IAction
         try
         {
             std::unique_ptr<DBSyncTxn> dbSyncTxn { std::make_unique<DBSyncTxn>(ctx->txnContext) };
-            dbSyncTxn->getDeletedRows(callbackDelete);
+            dbSyncTxn->getDeletedRows(callbackDelete, options);
         }
         catch (const nlohmann::detail::exception& ex)
         {

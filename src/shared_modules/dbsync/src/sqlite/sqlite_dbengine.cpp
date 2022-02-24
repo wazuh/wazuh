@@ -402,8 +402,18 @@ void SQLiteDBEngine::deleteRowsByStatusField(const nlohmann::json& tableNames)
 }
 
 void SQLiteDBEngine::returnRowsMarkedForDelete(const nlohmann::json& tableNames,
-                                               const DbSync::ResultCallback callback)
+                                               const DbSync::ResultCallback callback,
+                                               const nlohmann::json& options)
 {
+    auto allColumns {false};
+
+    const auto itAllColumns {options.find("all_columns")};
+
+    if (options.end() != itAllColumns)
+    {
+        allColumns = itAllColumns->is_boolean() ? itAllColumns.value().get<bool>() : allColumns;
+    }
+
     for (const auto& tableValue : tableNames)
     {
         const auto& table { tableValue.get<std::string>() };
@@ -411,13 +421,18 @@ void SQLiteDBEngine::returnRowsMarkedForDelete(const nlohmann::json& tableNames,
         if (0 != loadTableData(table))
         {
             auto tableFields { m_tableFields[table] };
-            // Remove uneeded fields before looking for the expected ones.
-            tableFields.erase(std::remove_if(tableFields.begin(), tableFields.end(), [](const ColumnData & column)
+
+            if (!allColumns)
             {
-                const auto isNotTxnStatusField { !std::get<TableHeader::TXNStatusField>(column) };
-                const auto isNotPK             { !std::get<TableHeader::PK>(column) };
-                return isNotTxnStatusField && isNotPK;
-            }), tableFields.end());
+                // Remove unneeded fields before looking for the expected ones.
+                tableFields.erase(std::remove_if(tableFields.begin(), tableFields.end(), [](const ColumnData & column)
+                {
+                    const auto isNotTxnStatusField { !std::get<TableHeader::TXNStatusField>(column) };
+                    const auto isNotPK             { !std::get<TableHeader::PK>(column) };
+                    return isNotTxnStatusField && isNotPK;
+                }), tableFields.end());
+            }
+
             const auto& stmt { getStatement(getSelectAllQuery(table, tableFields)) };
 
             while (SQLITE_ROW == stmt->step())
