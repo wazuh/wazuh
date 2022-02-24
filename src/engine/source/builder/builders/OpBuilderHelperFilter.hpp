@@ -220,6 +220,15 @@ types::Lifter opBuilderHelperIntLessThanEqual(const types::DocumentValue & def);
  */
 types::Lifter opBuilderHelperIntGreaterThan(const types::DocumentValue & def);
 
+/**
+ * @brief Builds helper integer greater than equal operation.
+ * Checks that the field is greater than equal to an integer or another numeric field
+ *
+ * @param def Definition of the operation to be built
+ * @return types::Lifter
+ */
+types::Lifter opBuilderHelperIntGreaterThanEqual(const types::DocumentValue & def);
+
 } // namespace builder::internals::builders
 
 #endif // _OP_BUILDER_HELPER_FILTER_H

@@ -236,6 +236,12 @@ add_executable(opBuilderHelperIntGreaterThan_test
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp)
 gtest_discover_tests(opBuilderHelperIntGreaterThan_test)
 
+add_executable(opBuilderHelperIntGreaterThanEqual_test
+  ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntGreaterThanEqual_test.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp)
+gtest_discover_tests(opBuilderHelperIntGreaterThanEqual_test)
+
 add_executable(opBuilderHelperIntCalc_test
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntCalc_test.cpp
