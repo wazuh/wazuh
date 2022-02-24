@@ -19,13 +19,20 @@ static char *_os_get_runps(const char *ps, int mpid)
     char *tmp_str, *nbuf;
     char buf[OS_SIZE_2048 + 1];
     char command[OS_SIZE_1024 + 1];
+    int size = 0;
     FILE *fp;
 
     buf[0] = '\0';
     command[0] = '\0';
     command[OS_SIZE_1024] = '\0';
 
-    snprintf(command, OS_SIZE_1024, "%s -p %d 2> /dev/null", ps, mpid);
+    size = snprintf(command, sizeof(command), "%s -p %d 2> /dev/null", ps, mpid);
+
+    if (size > (int)(sizeof(command) - 1)) {
+        return (NULL);
+    }
+
+
     fp = popen(command, "r");
     if (fp) {
         while (fgets(buf, OS_SIZE_2048, fp) != NULL) {
