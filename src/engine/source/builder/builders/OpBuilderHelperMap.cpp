@@ -20,19 +20,11 @@ namespace builder::internals::builders
 //*************************************************
 //*           String tranform                     *
 //*************************************************
-
+// TODO Rename function, remove `_`
 types::Event opBuilderHelperStringTransformation(const std::string key, char op, types::Event & e,
                                                  std::optional<std::string> refExpStr,
                                                  std::optional<std::string> expectedStr) {
 
-
-    // TODO Remove try catch or if nullptr after fix get method of document class
-
-    // Check if dst field exists
-    // TODO Ignore? or change te field name?
-    if (e.exists("/" + key)) {
-        return e;
-    }
 
     // Get src field
     if (refExpStr.has_value()) {
@@ -75,15 +67,16 @@ types::Event opBuilderHelperStringTransformation(const std::string key, char op,
             throw std::logic_error("Invalid string transformation operator");
             break;
     }
-    
+
 
     // TODO Check if necesary create all json path
     // Create and add string to event
-
-    e.m_doc.AddMember(
-        rapidjson::Value(key.c_str() , e.m_doc.GetAllocator()).Move(),
-        rapidjson::Value(expectedStr.value().c_str(), e.m_doc.GetAllocator()).Move(),
-        e.m_doc.GetAllocator());
+    try {
+        e.set("/" + key, rapidjson::Value(expectedStr.value().c_str(), e.m_doc.GetAllocator()).Move());
+    } catch (std::exception & ex) {
+        // TODO Check exception type
+        return e;
+    }
 
     return e;
 }
