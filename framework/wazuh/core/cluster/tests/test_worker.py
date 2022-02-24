@@ -924,7 +924,7 @@ async def test_worker_handler_process_files_from_master_ok(update_files_mock, se
         def __init__(self):
             self.filename = "path of the zip"
 
-    ko_files = [{"shared": "shared_files", "extra_valid": "extra_valid_files", "missing": "missing_files",
+    ko_files = [{"shared": "shared_files", "TYPE": "extra_valid_files", "missing": "missing_files",
                  "extra": "extra files"},
                 {"shared": "shared_files", "extra_valid": "", "missing": "missing_files",
                  "extra": "extra files"}]
@@ -943,13 +943,12 @@ async def test_worker_handler_process_files_from_master_ok(update_files_mock, se
     send_request_mock.assert_not_called()
     logger_debug_mock.assert_has_calls(
         [call("Worker does not meet integrity checks. Actions required."), call("Updating local files: Start."),
-         call("Updating local files: End."), call("Master requires some worker files.")])
+         call("Updating local files: End.")])
     logger_info_mock.assert_has_calls(
         [call("Starting."),
          call("Files to create: 13 | Files to update: 12 | Files to delete: 11")])
     decompress_files_mock.assert_called_once_with("path of the zip")
     json_dumps_mock.assert_not_called()
-    create_task_mock.assert_called_once()
     wait_mock.assert_called_once_with("something", timeout=1)
     rmtree_mock.assert_called_once_with(zip_path)
 
@@ -969,8 +968,7 @@ async def test_worker_handler_process_files_from_master_ok(update_files_mock, se
         [call("Worker does not meet integrity checks. Actions required."), call("Updating local files: Start."),
          call("Updating local files: End.")])
     logger_info_mock.assert_has_calls([
-        call("Starting."), call("Files to create: 13 | Files to update: 12 | Files to delete: 11"),
-        call("Finished in 0.000s.")])
+        call("Starting."), call("Files to create: 13 | Files to update: 12 | Files to delete: 11")])
     decompress_files_mock.assert_called_once_with("path of the zip")
     json_dumps_mock.assert_not_called()
     create_task_mock.assert_not_called()

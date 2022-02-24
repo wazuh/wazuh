@@ -597,7 +597,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
             await asyncio.sleep(sleep_interval)
 
-    async def sync_extra_valid(self, _: Dict):
+    async def sync_extra_valid(self, extra_valid: Dict):
         """Merge and send files of the worker node that are missing in the master node.
 
         Asynchronous task that is started when the master requests any extra valid files to be synchronized.
@@ -605,7 +605,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
         Parameters
         ----------
-        _ : dict
+        extra_valid : dict
             Keys are paths of files missing in the master node.
         """
         logger = self.task_loggers["Integrity sync"]
@@ -613,22 +613,22 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         try:
             before = datetime.utcnow().timestamp()
             logger.debug("Starting sending TYPE files to master.")
-            TYPE_sync = SyncFiles(cmd=b'syn_e_w_m', logger=logger, manager=self)
+            extra_valid_sync = SyncFiles(cmd=b'syn_e_w_m', logger=logger, manager=self)
 
             # Merge all agent-groups files into one and create metadata dict with it (key->filepath, value->metadata).
             # The 'TYPE' and 'RELATIVE_PATH' strings are placeholders to specify the type of merge we want to perform.
             n_files, merged_file = cluster.merge_info(merge_type='TYPE', node_name=self.name,
-                                                      files=_.keys())
+                                                      files=extra_valid.keys())
             files_to_sync = {merged_file: {'merged': True, 'merge_type': 'TYPE', 'merge_name': merged_file,
                                            'cluster_item_key': 'RELATIVE_PATH'}} if n_files else {}
 
             # Permission is not requested since it was already granted in the 'Integrity check' task.
-            await TYPE_sync.sync(files_to_sync=files_to_sync, files_metadata=files_to_sync)
+            await extra_valid_sync.sync(files_to_sync=files_to_sync, files_metadata=files_to_sync)
             after = datetime.utcnow().timestamp()
             logger.debug(f"Finished sending TYPE files in {(after - before):.3f}s.")
             logger.info(f"Finished in {(after - self.integrity_sync_status['date_start']):.3f}s.")
 
-        # If exception is raised during sync process, notify the master so it removes the file if received.
+        # If exception is raised during sync process, notify the master, so it removes the file if received.
         except exception.WazuhException as e:
             logger.error(f"Error synchronizing TYPE files: {e}")
             await self.send_request(command=b'syn_i_w_m_r',
@@ -698,18 +698,19 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 logger.debug("Updating local files: End.")
 
             # Send extra valid files to the master.
-            if 'TYPE' in ko_files and ko_files['TYPE']:
-                logger.debug("Master requires some worker files.")
-                asyncio.create_task(self.sync_extra_valid(ko_files['TYPE']))
-            else:
+            if 'TYPE' not in ko_files:
                 logger.info(
                     f"Finished in {datetime.utcnow().timestamp() - self.integrity_sync_status['date_start']:.3f}s.")
+            elif ko_files['TYPE']:
+                logger.debug("Master requires some worker files.")
+                asyncio.create_task(self.sync_extra_valid(ko_files['TYPE']))
 
         except exception.WazuhException as e:
             logger.error(f"Error synchronizing extra valid files: {e}")
             await self.send_request(command=b'syn_i_w_m_r',
                                     data=b'None ' + json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
         except Exception as e:
+            print(e)
             logger.error(f"Error synchronizing extra valid files: {e}")
             exc_info = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)),
                                   cls=c_common.WazuhJSONEncoder)

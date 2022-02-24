@@ -346,7 +346,6 @@ async def test_decompress_files_ko(mkdir_with_mode_mock, zipfile_mock, os_path_e
         rmtree_mock.assert_called_once()
 
 
-# @patch('builtins.len', return_value=75000)
 @patch('wazuh.core.cluster.cluster.get_cluster_items')
 @patch('wazuh.core.cluster.cluster.WazuhDBQueryAgents')
 def test_compare_files(wazuh_db_query_mock, mock_get_cluster_items):
