@@ -194,6 +194,7 @@ cJSON *fim_registry_value_attributes_json(const cJSON* dbsync_event, const fim_r
         if (*data->checksum) {
             cJSON_AddStringToObject(attributes, "checksum", data->checksum);
         }
+
     } else {
         cJSON *type, *checksum, *sha256, *md5, *sha1, *size;
 
@@ -208,6 +209,7 @@ cJSON *fim_registry_value_attributes_json(const cJSON* dbsync_event, const fim_r
                 cJSON_AddNumberToObject(attributes, "size", size->valueint);
             }
         }
+
         if (configuration->opts & CHECK_MD5SUM) {
             if (md5 = cJSON_GetObjectItem(dbsync_event, "hash_md5"), md5 != NULL){
                 cJSON_AddStringToObject(attributes, "hash_md5", cJSON_GetStringValue(md5));
@@ -219,6 +221,7 @@ cJSON *fim_registry_value_attributes_json(const cJSON* dbsync_event, const fim_r
                 cJSON_AddStringToObject(attributes, "hash_sha1", cJSON_GetStringValue(sha1));
             }
         }
+
         if (configuration->opts & CHECK_SHA256SUM) {
             if (sha256 = cJSON_GetObjectItem(dbsync_event, "hash_sha256"), sha256 != NULL){
                 cJSON_AddStringToObject(attributes, "hash_sha256", cJSON_GetStringValue(sha256));

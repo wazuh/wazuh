@@ -461,8 +461,8 @@ void test_registry_value_attributes_json_entry(void **state) {
 
 void test_registry_value_attributes_json_dbsync(void **state) {
     json_data_t *data = calloc(1, sizeof(json_data_t));
-    const char* event_str = "{\"type\":\"registry_value\",\"type\":REG_SZ,\"size\":50,\"hash_md5\":\"1234567890ABCDEF1234567890ABCDEF\",\"hash_sha1\":\"1234567890ABCDEF1234567890ABCDEF12345678\",\"hash_sha256\":\"1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF\",\"checksum\":\"1234567890ABCDEF1234567890ABCDEF12345678\"}";
-    cJSON *dbsync_event = cJSON_Parse("{\"arch\":\"[x64]\",\"checksum\":\"1234567890ABCDEF1234567890ABCDEF12345678\",\"hash_md5\":\"1234567890ABCDEF1234567890ABCDEF\",\"hash_sha1\":\"1234567890ABCDEF1234567890ABCDEF12345678\",\"hash_sha256\":\"1234567890ABCDEF1234567890ABCDEF12345678\",\"last_event\":1645700674,\"name\":\"New Value 1\",\"path\":\"HKEY_USERS\\Some\",\"scanned\":0,\"size\":1,\"type\":1}");
+    const char* event_str = "{\"type\":\"registry_value\",\"value_type\":\"REG_SZ\",\"size\":50,\"hash_md5\":\"1234567890ABCDEF1234567890ABCDEF\",\"hash_sha1\":\"1234567890ABCDEF1234567890ABCDEF12345678\",\"hash_sha256\":\"1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF\",\"checksum\":\"1234567890ABCDEF1234567890ABCDEF12345678\"}";
+    cJSON *dbsync_event = cJSON_Parse("{\"arch\":\"[x64]\",\"checksum\":\"1234567890ABCDEF1234567890ABCDEF12345678\",\"hash_md5\":\"1234567890ABCDEF1234567890ABCDEF\",\"hash_sha1\":\"1234567890ABCDEF1234567890ABCDEF12345678\",\"hash_sha256\":\"1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF\",\"last_event\":1645700674,\"name\":\"New Value 1\",\"path\":\"HKEY_USERS\\\\Some\",\"scanned\":0,\"size\":50,\"type\":1}");
     registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
 
 
