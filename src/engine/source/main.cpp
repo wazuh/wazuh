@@ -1,10 +1,20 @@
-
+/* Copyright (C) 2015-2021, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
 
 // TODO: rename files as wazuh style
 // TODO: delete dummy test/benchmarks examples, no longer needed
 // TODO: QoL CMakeLists
-#include "glog/logging.h"
+
+#include <csignal>
 #include <stdexcept>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string>
 #include <thread>
 #include <vector>
@@ -14,6 +24,7 @@
 #include "catalog/storageDriver/disk/DiskStorage.hpp"
 #include "cliParser.hpp"
 #include "engineServer.hpp"
+#include "glog/logging.h"
 #include "graph.hpp"
 #include "json.hpp"
 #include "protocolHandler.hpp"
@@ -21,14 +32,15 @@
 #include "router.hpp"
 #include "threadPool.hpp"
 
-using namespace std;
-
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
+using std::endl;
+using std::exception;
+using std::make_unique;
+using std::string;
+using std::vector;
 
 int main(int argc, char * argv[])
 {
+    signal(SIGINT, [](auto s) { exit(1); });
 
     google::InitGoogleLogging(argv[0]);
     vector<string> serverArgs;
@@ -39,7 +51,7 @@ int main(int argc, char * argv[])
         serverArgs.push_back(cliInput.getEndpointConfig());
         storagePath = cliInput.getStoragePath();
     }
-    catch (const std::exception & e)
+    catch (const exception & e)
     {
         LOG(ERROR) << "Error while parsing arguments: " << e.what() << endl;
         return 1;
@@ -55,7 +67,6 @@ int main(int argc, char * argv[])
         // TODO: implement log with GLOG
         LOG(ERROR) << "Engine error, got exception while configuring server: " << e.what() << endl;
         // TODO: handle if errors on close can happen
-        // server.close();
         return 1;
     }
 
@@ -66,7 +77,7 @@ int main(int argc, char * argv[])
     {
         _catalog.setStorageDriver(make_unique<DiskStorage>(storagePath));
     }
-    catch (const std::exception & e)
+    catch (const exception & e)
     {
         LOG(ERROR) << "Engine error, got exception while configuring catalog: " << e.what() << endl;
         return 1;
@@ -77,7 +88,7 @@ int main(int argc, char * argv[])
     {
         builder::internals::registerBuilders();
     }
-    catch (const std::exception & e)
+    catch (const exception & e)
     {
         LOG(ERROR) << "Engine error, got exception while registering builders: " << e.what() << endl;
         return 1;
@@ -91,27 +102,15 @@ int main(int argc, char * argv[])
 
     try
     {
+        const int nThreads{8};
         // Default route
-        router.add(
-            "test_route",
-            [](auto j)
-            {
-                // TODO: check basic fields are present
-                return true;
-            },
-            "test_environment");
+        router.add("test_route", "test_environment", nThreads);
     }
-    catch (const std::exception & e)
+    catch (const exception & e)
     {
         LOG(ERROR) << "Engine error, got exception while building default route: " << e.what() << endl;
         return 1;
     }
-
-    signal(SIGINT,
-           [](auto s)
-           {
-               exit(1);
-           });
 
     server.run();
 
