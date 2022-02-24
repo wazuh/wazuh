@@ -123,6 +123,16 @@ static void executeParserList(std::string const &event, ParserList const &parser
                     result[parser.name + ".address"] = std::move(domainResult.address);
                 }
             }
+            case ParserType::FilePath: {
+                FilePathResult filePathResult;
+                parseFilePath(&eventIt, parser.endToken, filePathResult);
+                result[parser.name + ".path"] = std::move(filePathResult.path);
+                result[parser.name + ".drive_letter"] = std::move(filePathResult.drive_letter);
+                result[parser.name + ".folder"] = std::move(filePathResult.folder);
+                result[parser.name + ".name"] = std::move(filePathResult.name);
+                result[parser.name + ".extension"] = std::move(filePathResult.extension);
+                break;
+            }
             default: {
                 fprintf(stderr,
                         "Missing implementation for parser type: [%i]\n",
