@@ -1816,8 +1816,7 @@ async def test_agent_groups_update(sleep_mock):
                     master_class.agent_groups_control_workers = {'worker1'}
                     await master_class.agent_groups_update()
                 assert "Starting." in logger_mock._info
-                assert "Finished in 0.000s. " \
-                       "Retrieved out-of-sync group information and global checksum from database." in logger_mock._info
+                assert "Finished in 0.000s." in logger_mock._info
                 assert "Error getting agent-groups from WDB: Stop while true" in logger_mock._error
                 assert master_class.agent_groups_control_workers == set()
                 setup_task_logger_mock.assert_called_once_with('Agent-groups get')
@@ -1826,7 +1825,7 @@ async def test_agent_groups_update(sleep_mock):
                     logger_mock.counter = 0
                     master_class.clients = {}
                     await master_class.agent_groups_update()
-                assert "No clients connected. Skipping agent-groups obtaining task." in logger_mock._info
+                assert "No clients connected. Skipping." in logger_mock._info
 
 
 @pytest.mark.asyncio

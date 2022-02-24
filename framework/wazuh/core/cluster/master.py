@@ -1134,14 +1134,13 @@ class Master(server.AbstractServer):
             try:
                 before = perf_counter()
                 sync_object.logger.info("Starting.")
-                if len(self.agent_groups_control_workers) >= len(self.clients.keys()) and len(self.clients.keys()) > 0:
+                if len(self.agent_groups_control_workers) >= len(self.clients.keys()) > 0:
                     self.agent_groups_control = await sync_object.retrieve_information()
                     self.agent_groups_control_workers.clear()
                     after = perf_counter()
-                    logger.info(f"Finished in {(after - before):.3f}s. "
-                                f"Retrieved out-of-sync group information and global checksum from database.")
+                    logger.info(f"Finished in {(after - before):.3f}s.")
                 elif len(self.clients.keys()) == 0:
-                    logger.info("No clients connected. Skipping agent-groups obtaining task.")
+                    logger.info("No clients connected. Skipping.")
             except Exception as e:
                 sync_object.logger.error(f"Error getting agent-groups from WDB: {e}")
 

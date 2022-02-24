@@ -1147,7 +1147,7 @@ class WazuhCommon:
         raise NotImplementedError
 
     def setup_send_info(self, SendTaskClass: Callable, data: bytes = b''):
-        """Create ReceiveTaskClass object and add it to sync_tasks dict.
+        """Create SendTaskClass object.
 
         Parameters
         ----------

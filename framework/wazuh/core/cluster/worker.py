@@ -449,10 +449,10 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                     f'Checksum comparison failed. '
                     f'Attempt {self.agent_groups_checksum_mismatch_counter}/{self.agent_groups_checksum_mismatch_limit}.')
 
-        if self.agent_groups_checksum_mismatch_counter >= self.agent_groups_checksum_mismatch_limit:
-            await super().send_result_to_manager(b'syn_w_g_c', {})
-            self.agent_groups_checksum_mismatch_counter = 0
-            logger.info('Sent request to obtain all agent-groups information from the master node.')
+            if self.agent_groups_checksum_mismatch_counter >= self.agent_groups_checksum_mismatch_limit:
+                await super().send_result_to_manager(b'syn_w_g_c', {})
+                self.agent_groups_checksum_mismatch_counter = 0
+                logger.info('Sent request to obtain all agent-groups information from the master node.')
 
     async def recv_agent_groups_local_information(self, task_id: bytes, info_type: str):
         """Create a process to receive the master agent-groups information.
