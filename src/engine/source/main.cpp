@@ -32,11 +32,7 @@
 #include "router.hpp"
 #include "threadPool.hpp"
 
-using std::endl;
-using std::exception;
-using std::make_unique;
-using std::string;
-using std::vector;
+using namespace std;
 
 int main(int argc, char * argv[])
 {
@@ -45,11 +41,14 @@ int main(int argc, char * argv[])
     google::InitGoogleLogging(argv[0]);
     vector<string> serverArgs;
     string storagePath;
+    int nThreads;
+
     try
     {
         cliparser::CliParser cliInput(argc, argv);
         serverArgs.push_back(cliInput.getEndpointConfig());
         storagePath = cliInput.getStoragePath();
+        nThreads = cliInput.getThreads();
     }
     catch (const exception & e)
     {
@@ -102,7 +101,6 @@ int main(int argc, char * argv[])
 
     try
     {
-        const int nThreads{8};
         // Default route
         router.add("test_route", "test_environment", nThreads);
     }

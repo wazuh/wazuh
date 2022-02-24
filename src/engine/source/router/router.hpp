@@ -195,14 +195,14 @@ public:
         auto envIn = this->m_environments.at(environment).m_subject.get_subscriber();
 
         auto subscription = this->m_observable.subscribe(
-            [&, envIn](rxcpp::observable<std::string> o)
+            [=](rxcpp::observable<std::string> o)
             {
                 engineserver::ProtocolHandler p;
 
                 o.observe_on(threadPoolW)
-                    .map([&p](std::string s) { return p.parse(s); })
+                    .map([=](std::string s) { return p.parse(s); })
                     .filter(filterFunction)
-                    .subscribe([&envIn](json::Document s) { envIn.on_next(s); });
+                    .subscribe([=](json::Document s) { envIn.on_next(s); });
             });
 
         // Add route to list
