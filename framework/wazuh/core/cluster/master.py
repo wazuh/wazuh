@@ -58,10 +58,12 @@ class ReceiveIntegrityTask(c_common.ReceiveFileTask):
             Synchronization process result.
         """
         super().done_callback(future)
-        # Integrity task is only freed if master is not waiting for Extra valid files. This condition should always take
-        # place
-        if not self.wazuh_common.extra_valid_requested:
-            self.wazuh_common.sync_integrity_free[0] = True
+
+        # Integrity task is only freed if master is not waiting for Extra valid files.
+        # if not self.wazuh_common.extra_valid_requested:
+        #     self.wazuh_common.sync_integrity_free[0] = True
+
+        self.wazuh_common.sync_integrity_free[0] = True
 
 
 class ReceiveExtraValidTask(c_common.ReceiveFileTask):
@@ -772,7 +774,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                                                            files_metadata, self.name)
 
         total_time = (datetime.utcnow() - date_start_master).total_seconds()
-        self.extra_valid_requested = bool(worker_files_ko['TYPE'] if 'TYPE' in worker_files_ko else False)
+        # The 'TYPE' placeholder is replacing the type of files that we could need the worker to forwards to the master.
+        # This file used to the 'extra-valid', which is currently deprecated.
+        # self.extra_valid_requested = bool(worker_files_ko['TYPE'])
+        self.extra_valid_requested = False
         self.integrity_check_status.update({'date_start_master': date_start_master.strftime(decimals_date_format),
                                             'date_end_master': datetime.utcnow().strftime(decimals_date_format)})
 

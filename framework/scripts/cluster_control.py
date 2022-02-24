@@ -147,7 +147,7 @@ async def print_health(config, more, filter_node):
             n_missing = str(node_info['status']['last_sync_integrity']['total_files']["missing"])
             n_extra = str(node_info['status']['last_sync_integrity']['total_files']["extra"])
             msg2 += f"                Synchronized files: Shared: {n_shared} | Missing: {n_missing} | " \
-                    f"Extra: {n_extra}..\n"
+                    f"Extra: {n_extra}.\n"
 
             # Agent info
             total = calculate_seconds(node_info['status']['last_sync_agentinfo']['date_start_master'],

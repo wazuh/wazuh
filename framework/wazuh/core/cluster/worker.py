@@ -698,9 +698,9 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 logger.debug("Updating local files: End.")
 
             # Send extra valid files to the master.
-            if 'extra_valid' in ko_files and ko_files['extra_valid']:
+            if 'TYPE' in ko_files and ko_files['TYPE']:
                 logger.debug("Master requires some worker files.")
-                asyncio.create_task(self.sync_extra_valid(ko_files['extra_valid']))
+                asyncio.create_task(self.sync_extra_valid(ko_files['TYPE']))
             else:
                 logger.info(
                     f"Finished in {datetime.utcnow().timestamp() - self.integrity_sync_status['date_start']:.3f}s.")
