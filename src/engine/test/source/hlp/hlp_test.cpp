@@ -526,4 +526,88 @@ TEST(domain_test, valid_content)
     std::string invalid_label_domain = "www." + invalid_label + ".com";
     result = parseOp(invalid_label_domain);
     ASSERT_TRUE(result.empty());
+TEST(filepath_test, windows_path)
+{
+    const char *logQl ="<_file/FilePath>";
+    ParserFn parseOp = getParserOp(logQl);
+    ParseResult result;
+
+    const char *full_path = "C:\\Users\\Name\\Desktop\\test.txt";
+    result = parseOp(full_path);
+    ASSERT_EQ("C:\\Users\\Name\\Desktop\\test.txt", result["_file.path"]);
+    ASSERT_EQ("C", result["_file.drive_letter"]);
+    ASSERT_EQ("C:\\Users\\Name\\Desktop", result["_file.folder"]);
+    ASSERT_EQ("test.txt", result["_file.name"]);
+    ASSERT_EQ("txt", result["_file.extension"]);
+
+    const char *relative_path = "Desktop\\test.txt";
+    result = parseOp(relative_path);
+    ASSERT_EQ("Desktop\\test.txt", result["_file.path"]);
+    ASSERT_EQ("", result["_file.drive_letter"]);
+    ASSERT_EQ("Desktop", result["_file.folder"]);
+    ASSERT_EQ("test.txt", result["_file.name"]);
+    ASSERT_EQ("txt", result["_file.extension"]);
+
+    const char *file_without_ext = "Desktop\\test";
+    result = parseOp(file_without_ext);
+    ASSERT_EQ("Desktop\\test", result["_file.path"]);
+    ASSERT_EQ("", result["_file.drive_letter"]);
+    ASSERT_EQ("Desktop", result["_file.folder"]);
+    ASSERT_EQ("test", result["_file.name"]);
+    ASSERT_EQ("", result["_file.extension"]);
+
+    const char *only_file = "test.txt";
+    result = parseOp(only_file);
+    ASSERT_EQ("test.txt", result["_file.path"]);
+    ASSERT_EQ("", result["_file.drive_letter"]);
+    ASSERT_EQ("", result["_file.folder"]);
+    ASSERT_EQ("test.txt", result["_file.name"]);
+    ASSERT_EQ("txt", result["_file.extension"]);
+
+    const char *folder_path = "C:\\Users\\Name\\Desktop\\";
+    result = parseOp(folder_path);
+    ASSERT_EQ("C:\\Users\\Name\\Desktop\\", result["_file.path"]);
+    ASSERT_EQ("C", result["_file.drive_letter"]);
+    ASSERT_EQ("C:\\Users\\Name\\Desktop", result["_file.folder"]);
+    ASSERT_EQ("", result["_file.name"]);
+    ASSERT_EQ("", result["_file.extension"]);
+
+    const char *lower_case_drive = "c:\\test.txt";
+    result = parseOp(lower_case_drive);
+    ASSERT_EQ("c:\\test.txt", result["_file.path"]);
+    ASSERT_EQ("C", result["_file.drive_letter"]);
+    ASSERT_EQ("c:", result["_file.folder"]);
+    ASSERT_EQ("test.txt", result["_file.name"]);
+    ASSERT_EQ("txt", result["_file.extension"]);
+}
+
+TEST(filepath_test, unix_path)
+{
+    const char *logQl ="<_file/FilePath>";
+    ParserFn parseOp = getParserOp(logQl);
+    ParseResult result;
+
+    const char *full_path = "/Desktop/test.txt";
+    result = parseOp(full_path);
+    ASSERT_EQ("/Desktop/test.txt", result["_file.path"]);
+    ASSERT_EQ("", result["_file.drive_letter"]);
+    ASSERT_EQ("/Desktop", result["_file.folder"]);
+    ASSERT_EQ("test.txt", result["_file.name"]);
+    ASSERT_EQ("txt", result["_file.extension"]);
+
+    const char *relative_path = "Desktop/test.txt";
+    result = parseOp(relative_path);
+    ASSERT_EQ("Desktop/test.txt", result["_file.path"]);
+    ASSERT_EQ("", result["_file.drive_letter"]);
+    ASSERT_EQ("Desktop", result["_file.folder"]);
+    ASSERT_EQ("test.txt", result["_file.name"]);
+    ASSERT_EQ("txt", result["_file.extension"]);
+
+    const char *folder_path = "/Desktop/";
+    result = parseOp(folder_path);
+    ASSERT_EQ("/Desktop/", result["_file.path"]);
+    ASSERT_EQ("", result["_file.drive_letter"]);
+    ASSERT_EQ("/Desktop", result["_file.folder"]);
+    ASSERT_EQ("", result["_file.name"]);
+    ASSERT_EQ("", result["_file.extension"]);
 }

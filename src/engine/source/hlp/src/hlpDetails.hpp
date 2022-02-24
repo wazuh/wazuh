@@ -18,6 +18,7 @@ enum class ParserType {
     JSON,
     Map,
     Domain,
+    FilePath,
     Invalid,
 };
 
