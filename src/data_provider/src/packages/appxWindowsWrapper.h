@@ -433,13 +433,6 @@ class AppxWindowsWrapper final : public IPackageWrapper
                         publisher = data;
                         break;
                     }
-                    const auto index { data.find("@{") };
-
-                    if (index != 0)
-                    {
-                        publisher = data;
-                        break;
-                    }
                 }
             }
 
