@@ -236,8 +236,6 @@ static bool parseFormattedTime(const char *fmt,
     return false;
 }
 
-//TODO: force an specific format (e.g. <timestamp/APACHE>)
-//TODO: using a format string like get_time.
 bool parseTimeStamp(const char **it,
                     std::vector<std::string> const &opts,
                     char endToken,
@@ -259,6 +257,10 @@ bool parseTimeStamp(const char **it,
         {
             ret = parseFormattedTime(it->second, tsStr, tsr);
         }
+        else
+        {
+            // TODO report error
+        }
         return ret;
     }
     else
@@ -272,6 +274,7 @@ bool parseTimeStamp(const char **it,
         }
     }
 
+    // TODO report error
     return false;
 }
 
