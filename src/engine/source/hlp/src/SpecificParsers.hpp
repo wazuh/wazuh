@@ -2,6 +2,7 @@
 #define _FILE_PATH_PARSER_H
 
 #include <string>
+#include <vector>
 
 struct URLResult{
     std::string domain;   //"url.domain": "keyword",
@@ -13,6 +14,16 @@ struct URLResult{
     std::string query;    //"url.query": "keyword",
     std::string scheme;   //"url.scheme": "keyword",
     std::string username; //"url.username": "keyword",
+};
+
+struct TimeStampResult {
+    std::string year;
+    std::string month;
+    std::string day;
+    std::string hour;
+    std::string minutes;
+    std::string seconds;
+    std::string timezone;
 };
 
 bool parseFilePath(const char **it, char endToken);
@@ -27,7 +38,7 @@ std::string parseMap(const char **it, char endToken, std::vector<std::string> co
 
 std::string parseIPaddress(const char **it, char endToken);
 
-bool parseTimeStamp(char **it, char endToken);
+bool parseTimeStamp(const char **it, std::vector<std::string> const& opts, char endToken, TimeStampResult &tsr);
 
 bool parseURL(const char **it, char endToken, URLResult &result);
 

@@ -10,7 +10,10 @@ static const std::unordered_map<std::string_view, ParserType> kECSParserMapper {
     { "source.ip", ParserType::IP },
     { "server.ip", ParserType::IP },
     { "source.nat.ip", ParserType::IP },
-    { "timestamp", ParserType::Any },
+    { "timestamp", ParserType::Ts },
+    { "threat.indicator.first_seen", ParserType::Ts},
+    { "file.accessed", ParserType::Ts},
+    { "file.created", ParserType::Ts},
     { "url", ParserType::URL},
     { "http.request.method", ParserType::Any },
 };
@@ -18,6 +21,7 @@ static const std::unordered_map<std::string_view, ParserType> kECSParserMapper {
 static const std::unordered_map<std::string_view, ParserType> kTempTypeMapper {
     { "JSON", ParserType::JSON },
     { "MAP", ParserType::Map},
+    { "timestamp", ParserType::Ts},
 };
 
 struct Tokenizer {
@@ -127,7 +131,7 @@ static Parser parseCaptureString(Token token) {
         }
     }
     else{
-        auto it = kECSParserMapper.find(captureParams[0]);
+        auto it = kECSParserMapper.find(parser.name);
         if (it != kECSParserMapper.end()) {
             parser.parserType = it->second;
         }

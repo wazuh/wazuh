@@ -1,22 +1,45 @@
-#include <algorithm>
+#include "SpecificParsers.hpp"
+
+#include <chrono>
 #include <memory>
+#include <sstream>
 #include <stdio.h>
 #include <string>
 #include <string_view>
+#include <unordered_map>
+
+#include "date/date.h"
 
 #include <arpa/inet.h>
 #include <curl/curl.h>
 
 #include "rapidjson/document.h"
 #include "rapidjson/error/en.h"
-#include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
+#include "rapidjson/writer.h"
 
-#include "SpecificParsers.hpp"
+// TODO For all the rfc timestamps there are variations that we don't parse
+// still, this will need a rework on how this list work
+static const std::unordered_map<std::string, const char *>
+    kTimeStampFormatMapper = {
+        { "ANSIC", "%a %b %d %T %Y" },
+        { "APACHE", "%a %b %d %T %Y" }, // need to find the apache ts format
+        { "Kitchen", "%I:%M%p" },       // Not Working
+        { "RFC1123", "%a, %d %b %Y %T %Z" },
+        { "RFC1123Z", "%a, %d %b %Y %T %z" },
+        { "RFC3339", "%FT%TZ%Ez" },
+        { "RFC822", "%d %b %y %R %Z" },
+        { "RFC822Z", "%d %b %y %R %z" },
+        { "RFC850", "%A, %d-%b-%y %T %Z" },
+        { "RubyDate", "%a %b %d %H:%M:%S %z %Y" },
+        { "Stamp", "%b %d %T" },
+        { "UnixDate", "%a %b %d %T %Z %Y" },
+    };
 
 bool parseFilePath(const char **it, char endToken) {
     const char *start = *it;
     while (**it != endToken) { (*it)++; }
+    (void)start;
     return true;
 }
 
@@ -27,7 +50,7 @@ std::string parseAny(const char **it, char endToken) {
 }
 
 bool matchLiteral(const char **it, std::string const& literal) {
-    int i = 0;
+    size_t i = 0;
     for (; (**it) && (i < literal.size());) {
         // Skip over the escaping '\'
         if (**it == '\\') {
@@ -147,8 +170,112 @@ std::string parseIPaddress(const char **it, char endToken) {
     }
 }
 
-bool parseTimeStamp(char **it, char endToken) {
-    return true;
+static bool parseFormattedTime(const char *fmt,
+                               std::string const &time,
+                               TimeStampResult &ret)
+{
+    std::stringstream ss { time };
+    // check in which cases this could be necessary
+    // ss.imbue(std::locale("en_US.UTF-8"));
+    date::fields<std::chrono::nanoseconds> fds {};
+    std::chrono::minutes offset {};
+    std::string abbrev;
+    date::from_stream(ss, fmt, fds, &abbrev, &offset);
+    if (!ss.fail())
+    {
+        if (fds.ymd.year().ok())
+        {
+            ret.year = std::to_string(static_cast<int>(fds.ymd.year()));
+        }
+
+        if (fds.ymd.month().ok())
+        {
+            ret.month = std::to_string(static_cast<unsigned>(fds.ymd.month()));
+        }
+
+        if (fds.ymd.day().ok())
+        {
+            ret.day = std::to_string(static_cast<unsigned>(fds.ymd.day()));
+        }
+
+        if (fds.has_tod && fds.tod.in_conventional_range())
+        {
+            ret.hour    = std::to_string(fds.tod.hours().count());
+            ret.minutes = std::to_string(fds.tod.minutes().count());
+            ret.seconds = std::to_string(fds.tod.seconds().count());
+            auto subsec = fds.tod.subseconds().count();
+            if (subsec > 0)
+            {
+                // TODO check if this is necessary
+                // Remove the 'extra' 0 at the end
+                while ((subsec % 10) == 0)
+                {
+                    subsec /= 10;
+                }
+                ret.seconds += "." + std::to_string(subsec);
+            }
+
+            if (offset.count() != 0)
+            {
+                date::hh_mm_ss<std::chrono::minutes> t { offset };
+                char str[6] = { 0 };
+                snprintf(str,
+                         6,
+                         t.is_negative() ? "-%02lu%02lu" : "%02lu%02lu",
+                         t.hours().count(),
+                         t.minutes().count());
+                ret.timezone = str;
+            }
+            else if (!abbrev.empty())
+            {
+                ret.timezone = std::move(abbrev);
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
+bool parseTimeStamp(const char **it,
+                    std::vector<std::string> const &opts,
+                    char endToken,
+                    TimeStampResult &tsr)
+{
+    const char *start = *it;
+    while (**it != endToken)
+    {
+        (*it)++;
+    }
+
+    std::string tsStr { start, (size_t)((*it) - start) };
+
+    if (!opts.empty())
+    {
+        bool ret = false;
+        auto it  = kTimeStampFormatMapper.find(opts[0]);
+        if (it != kTimeStampFormatMapper.end())
+        {
+            ret = parseFormattedTime(it->second, tsStr, tsr);
+        }
+        else
+        {
+            // TODO report error
+        }
+        return ret;
+    }
+    else
+    {
+        for (auto const &fmt : kTimeStampFormatMapper)
+        {
+            if (parseFormattedTime(fmt.second, tsStr, tsr))
+            {
+                return true;
+            }
+        }
+    }
+
+    // TODO report error
+    return false;
 }
 
 bool parseURL(const char **it, char endToken, URLResult &result) {
