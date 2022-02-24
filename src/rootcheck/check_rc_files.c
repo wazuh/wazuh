@@ -159,17 +159,23 @@ void check_rc_files(const char *basedir, FILE *fp)
             }
             continue;
         }
-
+        int bytes_written = 0;
         // Check if it is a full path
 #ifdef WIN32
         if (strlen(file) > 3 && file[1] == ':' && file[2] == '\\') {
 #else
         if (*file == '/') {
 #endif
-            snprintf(file_path, OS_SIZE_1024, "%s", file);
+            bytes_written = snprintf(file_path, sizeof(file_path), "%s", file);
         } else {
-            snprintf(file_path, OS_SIZE_1024, "%s%c%s", basedir, PATH_SEP, file);
+            bytes_written = snprintf(file_path, sizeof(file_path), "%s%c%s", basedir, PATH_SEP, file);
         }
+
+       if (bytes_written > (int)(sizeof(file_path) - 1)) {
+           // Maybe print a warning in the log file will be a good parctice
+           continue;
+       }
+
 
         if (_file_name = strrchr(file_path, PATH_SEP), !_file_name) {
             continue;
@@ -185,10 +191,11 @@ void check_rc_files(const char *basedir, FILE *fp)
         }
 
         if (is_file(file_path)) {
-            char op_msg[OS_SIZE_2048];
+            int size_msg = strlen(file_path) + strlen(name) + strlen("Rootkit '' detected by the presence of file ''.")  + 1;
+            char op_msg[size_msg];
 
             _errors = 1;
-            snprintf(op_msg, OS_SIZE_2048, "Rootkit '%s' detected "
+            snprintf(op_msg, size_msg, "Rootkit '%s' detected "
                      "by the presence of file '%s'.", name, file_path);
 
             notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
