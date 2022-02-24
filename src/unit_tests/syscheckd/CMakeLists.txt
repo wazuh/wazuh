@@ -197,7 +197,7 @@ if(${TARGET} STREQUAL "agent")
 else()
   if(${TARGET} STREQUAL "winagent")
     list(APPEND syscheckd_tests_flags "${SYSCHECK_CONFIG_BASE_FLAGS} -Wl,--wrap,fim_sync_push_msg \
-                                      -Wl,--wrap=fim_db_get_count_registry_data \ 
+                                      -Wl,--wrap=fim_db_get_count_registry_data \
                                       -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
                                       -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
                                       -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
@@ -250,14 +250,14 @@ set(RUN_CHECK_BASE_FLAGS "-Wl,--wrap,sleep -Wl,--wrap,SendMSGPredicated -Wl,--wr
 
 list(APPEND syscheckd_tests_names "run_check")
 if(${TARGET} STREQUAL "agent")
-  list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=sleep -Wl,--wrap,time")
+  list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=sleep -Wl,--wrap,time -Wl,--wrap=fim_generate_delete_event")
 elseif(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=realtime_start \
                                      -Wl,--wrap,WaitForSingleObjectEx -Wl,--wrap,pthread_rwlock_rdlock \
                                      -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,pthread_rwlock_wrlock \
                                      -Wl,--wrap,fim_sync_push_msg -Wl,--wrap=fim_db_get_count_registry_data \
                                      -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
-                                     -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                                     -Wl,--wrap=fim_generate_delete_event -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
                                      -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
 
   # Create event channel tests for run_check
@@ -273,8 +273,11 @@ elseif(${TARGET} STREQUAL "winagent")
                                                                    -Wl,--wrap=fim_db_get_count_registry_data \
                                                                    -Wl,--wrap=fim_db_get_count_registry_key \
                                                                    -Wl,--wrap=syscom_dispatch \
-                                                                   -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                                                   -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                                                   -Wl,--wrap=fim_generate_delete_event \
+                                                                   -Wl,--wrap=is_fim_shutdown \
+                                                                   -Wl,--wrap=_imp__dbsync_initialize \
+                                                                   -Wl,--wrap=_imp__rsync_initialize \
+                                                                   -Wl,--wrap=fim_db_teardown")
 else()
   list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=sleep,--wrap,time")
 endif()
@@ -342,7 +345,7 @@ set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck
                           -Wl,--wrap,delete_target_file -Wl,--wrap,OS_MD5_SHA1_SHA256_File \
                           -Wl,--wrap,seechanges_addfile -Wl,--wrap,fim_db_delete_not_scanned \
                           -Wl,--wrap,get_group,--wrap,mdebug2 \
-                          -Wl,--wrap,fim_db_process_missing_entry -Wl,--wrap,send_log_msg -Wl,--wrap,IsDir \
+                          -Wl,--wrap,send_log_msg -Wl,--wrap,IsDir \
                           -Wl,--wrap,DirSize -Wl,--wrap,seechanges_get_diff_path -Wl,--wrap,stat \
                           -Wl,--wrap,fim_file_diff -Wl,--wrap,fim_diff_process_delete_file \
                           -Wl,--wrap,fim_db_get_count_entries \
