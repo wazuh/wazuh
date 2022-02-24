@@ -7,12 +7,11 @@ import json
 import operator
 import os
 import shutil
+import time
 from calendar import timegm
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime
-from functools import partial
-from time import time
 from typing import Tuple, Dict, Callable
 from uuid import uuid4
 
@@ -720,9 +719,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                     raise exc_info
 
                 # Send zip file to the worker into chunks.
-                time_to_send = time()
+                time_to_send = time.perf_counter()
                 sent_size = await self.send_file(compressed_data, task_id)
-                time_to_send = time() - time_to_send
+                time_to_send = time.perf_counter() - time_to_send
                 logger.debug("Zip with files to be synced sent to worker.")
 
                 # Notify what is the zip path for the current taskID.
@@ -746,6 +745,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                 await self.send_request(command=b'syn_m_c_r', data=task_id + b' ' + exc_info)
             finally:
                 try:
+                    # Try to remove task ID from the interrupted set.
                     self.interrupted_tasks.remove(task_id)
                     # Decrease max zip size if task was interrupted
                     self.current_zip_limit = max(self.cluster_items['intervals']['communication']['min_zip_size'],

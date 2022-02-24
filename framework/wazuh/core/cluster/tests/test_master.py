@@ -1236,7 +1236,8 @@ async def test_master_handler_sync_integrity_ok(decompress_files_mock, compare_f
                         compare_files_mock.return_value = ({"missing": {"key": "value"}, "shared": {"key": "value"},
                                                             "extra": "1", "extra_valid": "1"}, 0)
                         send_request_mock.return_value = Exception()
-                        master_handler.current_zip_limit = cluster_items['intervals']['communication']['max_zip_size']-1
+                        master_handler.current_zip_limit = \
+                            cluster_items['intervals']['communication']['max_zip_size'] - 1
                         assert await master_handler.sync_integrity("task_id", EventMock()) is None
 
                         decompress_files_mock.assert_called_once_with(TaskMock().filename, 'files_metadata.json')
