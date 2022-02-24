@@ -745,21 +745,26 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                 await self.send_request(command=b'syn_m_c_r', data=task_id + b' ' + exc_info)
             finally:
                 try:
-                    # Try to remove task ID from the interrupted set.
+                    # Decrease max zip size if task was interrupted (otherwise, KeyError exception raised).
                     self.interrupted_tasks.remove(task_id)
-                    # Decrease max zip size if task was interrupted
-                    self.current_zip_limit = max(self.cluster_items['intervals']['communication']['min_zip_size'],
-                                                 sent_size * 0.9)
-                    self.logger.debug(f"Decreasing sync size limit to {self.current_zip_limit / (1024 * 1024):.2f} MB.")
+                    self.current_zip_limit = max(
+                        self.cluster_items['intervals']['communication']['min_zip_size'],
+                        sent_size * (1 - self.cluster_items['intervals']['communication']['zip_limit_tolerance'])
+                    )
+                    self.logger.debug(f"Decreasing sync size limit to {self.current_zip_limit / (1024**2):.2f} MB.")
                 except KeyError:
-                    if self.current_zip_limit < self.cluster_items['intervals']['communication']['max_zip_size'] and \
-                            time_to_send < self.cluster_items['intervals']['communication'][
-                            'timeout_receiving_file'] * 0.8:
-                        # Increase max zip size
-                        self.current_zip_limit = min(self.cluster_items['intervals']['communication']['max_zip_size'],
-                                                     self.current_zip_limit * 1.1)
-                        self.logger.debug(f"Increasing sync size limit to {self.current_zip_limit / (1024 * 1024):.2f}"
-                                          f" MB.")
+                    # Increase max zip size if two conditions are met:
+                    #   1. Current zip limit is lower than default.
+                    #   2. Time to send zip was far under timeout_receiving_file.
+                    if (self.current_zip_limit < self.cluster_items['intervals']['communication']['max_zip_size'] and
+                            time_to_send < self.cluster_items['intervals']['communication']['timeout_receiving_file'] *
+                            (1 - self.cluster_items['intervals']['communication']['zip_limit_tolerance'])):
+                        self.current_zip_limit = min(
+                            self.cluster_items['intervals']['communication']['max_zip_size'],
+                            self.current_zip_limit * (
+                                    1 / (1 - self.cluster_items['intervals']['communication']['zip_limit_tolerance'])
+                            ))
+                        self.logger.debug(f"Increasing sync size limit to {self.current_zip_limit / (1024**2):.2f} MB.")
 
                 # Remove local file.
                 os.unlink(compressed_data)
