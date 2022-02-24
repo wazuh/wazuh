@@ -239,7 +239,7 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType,
         if (json_arch = cJSON_GetObjectItem(dbsync_event, "arch"), json_arch == NULL) {
             goto end;
         }
-        if (json_name = cJSON_GetObjectItem(dbsync_event, "arch"), json_name == NULL) {
+        if (json_name = cJSON_GetObjectItem(dbsync_event, "name"), json_name == NULL) {
             goto end;
         }
         path = cJSON_GetStringValue(json_path);
@@ -903,7 +903,6 @@ void fim_read_values(HKEY key_handle,
     }
 
     fim_registry_free_value_data(new.registry_entry.value);
-    os_free(value_buffer);
     os_free(data_buffer);
 }
 

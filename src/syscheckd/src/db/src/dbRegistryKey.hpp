@@ -54,9 +54,15 @@ class RegistryKey final : public DBItem
             m_arch = fim->registry_entry.key->arch;
             m_gid = std::atoi(fim->registry_entry.key->gid);
             m_uid = std::atoi(fim->registry_entry.key->uid);
-            m_groupname = std::string(fim->registry_entry.key->group_name);
-            m_perm = std::string(fim->registry_entry.key->perm);
-            m_username = std::string(fim->registry_entry.key->user_name);
+
+            m_groupname = fim->registry_entry.key->group_name ? fim->registry_entry.key->group_name : "";
+            m_perm = fim->registry_entry.key->perm ? fim->registry_entry.key->perm : "";
+            m_username = fim->registry_entry.key->user_name ? fim->registry_entry.key->user_name : "";
+#ifdef WIN32
+            m_groupname = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(m_groupname);
+            m_perm = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(m_perm);
+            m_username = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(m_username);
+#endif
             m_time = fim->registry_entry.key->mtime;
             createJSON();
             createFimEntry();

@@ -13,6 +13,9 @@
 #define _DBITEM_HPP
 #include "syscheck.h"
 #include "json.hpp"
+#ifdef WIN32
+#include "encodingWindowsHelper.h"
+#endif
 
 class DBItem
 {
@@ -28,6 +31,9 @@ class DBItem
             , m_checksum( checksum )
             , m_mode( mode )
         {
+#ifdef WIN32
+            m_identifier = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(m_identifier);
+#endif
         }
 
         // LCOV_EXCL_START
