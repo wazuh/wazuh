@@ -7,11 +7,43 @@
  * Foundation.
  */
 
+#include <tuple>
+#include <string>
 #include "OpBuilderHelperFilter.hpp"
 
-#include <string>
+using DocumentValue = builder::internals::types::DocumentValue;
+namespace {
 
-using namespace std;
+using opString = std::optional<std::string>;
+std::tuple<std::string, opString, opString>  getCompOpParameter(const DocumentValue & def)
+{
+    // Get destination path
+    std::string field = def.MemberBegin()->name.GetString();
+    // Get function helper
+    std::string rawValue = def.MemberBegin()->value.GetString();
+
+    // Parse parameters
+    std::vector<std::string> parameters = utils::string::split(rawValue, '/');
+    if (parameters.size() != 2)
+    {
+        throw std::runtime_error("Invalid parameters");
+    }
+
+    std::optional<std::string> refValue;
+    std::optional<std::string> value;
+
+    if (parameters[1][0] == '$')
+    {
+        refValue = parameters[1].substr(1);
+    }
+    else
+    {
+        value = parameters[1];
+    }
+
+    return {field, refValue, value};
+}
+} // namespace
 
 namespace builder::internals::builders
 {
