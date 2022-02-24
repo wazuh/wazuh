@@ -170,8 +170,7 @@ cJSON *fim_registry_value_attributes_json(const cJSON* dbsync_event, const fim_r
 
     cJSON_AddStringToObject(attributes, "type", "registry_value");
 
-    if (data)
-    {
+    if (data) {
         if (configuration->opts & CHECK_TYPE && data->type <= REG_QWORD) {
             cJSON_AddStringToObject(attributes, "value_type", VALUE_TYPE[data->type]);
         }
@@ -195,12 +194,11 @@ cJSON *fim_registry_value_attributes_json(const cJSON* dbsync_event, const fim_r
         if (*data->checksum) {
             cJSON_AddStringToObject(attributes, "checksum", data->checksum);
         }
-    } else
-    {
+    } else {
         cJSON *type, *checksum, *sha256, *md5, *sha1, *size;
 
         if (type = cJSON_GetObjectItem(dbsync_event, "type"), type != NULL) {
-            if (configuration->opts & CHECK_TYPE && type->valueint <= REG_QWORD) {
+            if (configuration->opts & CHECK_TYPE) {
                 cJSON_AddStringToObject(attributes, "value_type", VALUE_TYPE[type->valueint]);
             }
         }
@@ -212,23 +210,23 @@ cJSON *fim_registry_value_attributes_json(const cJSON* dbsync_event, const fim_r
         }
         if (configuration->opts & CHECK_MD5SUM) {
             if (md5 = cJSON_GetObjectItem(dbsync_event, "hash_md5"), md5 != NULL){
-                cJSON_AddStringToObject(attributes, "hash_md5", md5->valuestring);
+                cJSON_AddStringToObject(attributes, "hash_md5", cJSON_GetStringValue(md5));
             }
         }
 
         if (configuration->opts & CHECK_SHA1SUM) {
             if (sha1 = cJSON_GetObjectItem(dbsync_event, "hash_sha1"), sha1 != NULL){
-                cJSON_AddStringToObject(attributes, "hash_sha1", sha1->valuestring);
+                cJSON_AddStringToObject(attributes, "hash_sha1", cJSON_GetStringValue(sha1));
             }
         }
         if (configuration->opts & CHECK_SHA256SUM) {
             if (sha256 = cJSON_GetObjectItem(dbsync_event, "hash_sha256"), sha256 != NULL){
-                cJSON_AddStringToObject(attributes, "hash_sha256", sha256->valuestring);
+                cJSON_AddStringToObject(attributes, "hash_sha256", cJSON_GetStringValue(sha256));
             }
         }
 
         if (checksum = cJSON_GetObjectItem(dbsync_event, "checksum"), checksum != NULL){
-            cJSON_AddStringToObject(attributes, "checksum", checksum->valuestring);
+            cJSON_AddStringToObject(attributes, "checksum", cJSON_GetStringValue(checksum));
         }
 
     }
@@ -357,8 +355,7 @@ cJSON *fim_registry_key_attributes_json(const cJSON* dbsync_event, const fim_reg
 
     cJSON_AddStringToObject(attributes, "type", "registry_key");
 
-    if (data)
-    {
+    if (data) {
         if (configuration->opts & CHECK_PERM) {
             cJSON_AddItemToObject(attributes, "perm", cJSON_Duplicate(data->perm_json, 1));
         }
@@ -386,34 +383,33 @@ cJSON *fim_registry_key_attributes_json(const cJSON* dbsync_event, const fim_reg
         if (*data->checksum) {
             cJSON_AddStringToObject(attributes, "checksum", data->checksum);
         }
-    } else
-    {
+    } else {
         cJSON *perm, *uid, *user_name, *gid, *group_name, *mtime, *checksum;
 
         if (configuration->opts & CHECK_PERM) {
             if (perm = cJSON_GetObjectItem(dbsync_event, "perm"), perm != NULL) {
-                cJSON_AddItemToObject(attributes, "perm", perm);
+                cJSON_AddItemToObject(attributes, "perm", cJSON_Duplicate(perm, 1));
             }
         }
 
         if (configuration->opts & CHECK_OWNER) {
             if (uid = cJSON_GetObjectItem(dbsync_event, "uid"), uid != NULL) {
-                cJSON_AddNumberToObject(attributes, "uid", uid->valueint);
+                cJSON_AddStringToObject(attributes, "uid", cJSON_GetStringValue(uid));
             }
 
             if (user_name = cJSON_GetObjectItem(dbsync_event, "user_name"), user_name != NULL) {
-                cJSON_AddStringToObject(attributes, "user_name", user_name->valuestring);
+                cJSON_AddStringToObject(attributes, "user_name", cJSON_GetStringValue(user_name));
             }
 
         }
 
         if (configuration->opts & CHECK_GROUP) {
             if (gid = cJSON_GetObjectItem(dbsync_event, "gid"), gid != NULL) {
-                cJSON_AddNumberToObject(attributes, "gid", gid->valueint);
+                cJSON_AddStringToObject(attributes, "gid", cJSON_GetStringValue(gid));
             }
 
             if (group_name = cJSON_GetObjectItem(dbsync_event, "group_name"), group_name != NULL) {
-                cJSON_AddStringToObject(attributes, "group_name", group_name->valuestring);
+                cJSON_AddStringToObject(attributes, "group_name", cJSON_GetStringValue(group_name));
             }
 
         }
@@ -425,7 +421,7 @@ cJSON *fim_registry_key_attributes_json(const cJSON* dbsync_event, const fim_reg
         }
 
         if (checksum = cJSON_GetObjectItem(dbsync_event, "checksum"), checksum != NULL) {
-            cJSON_AddStringToObject(attributes, "checksum", checksum->valuestring);
+            cJSON_AddStringToObject(attributes, "checksum", cJSON_GetStringValue(checksum));
         }
 
     }

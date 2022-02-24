@@ -38,6 +38,11 @@ typedef struct key_difference_s {
     cJSON *old_attributes;
 } key_difference_t;
 
+typedef struct json_data_s {
+    cJSON *data1;
+    cJSON *data2;
+} json_data_t;
+
 static int setup_dbsync_difference(void **state) {
     key_difference_t *data = calloc(1, sizeof(key_difference_t));
     if (data == NULL) {
@@ -78,6 +83,16 @@ static int teardown_cjson_object(void **state) {
     cJSON *object = *state;
 
     cJSON_Delete(object);
+
+    return 0;
+}
+
+static int teardown_cjson_data(void **state) {
+    json_data_t *data = *state;
+
+    cJSON_Delete(data->data1);
+    cJSON_Delete(data->data2);
+    free(data);
 
     return 0;
 }
@@ -397,6 +412,69 @@ void test_calculate_dbsync_difference_value_no_change(void **state) {
     assert_string_equal(cJSON_PrintUnformatted(changed_attributes), "[]");
 }
 
+void test_registry_key_attributes_json_entry(void **state) {
+    json_data_t *data = calloc(1, sizeof(json_data_t));
+    cJSON *perm_data = cJSON_Parse("{\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"read_data\",\"read_ea\",\"write_ea\"]},\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-3-0\":{\"name\":\"CREATOR OWNER\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-15-2-1\":{\"name\":\"ALL APPLICATION PACKAGES\",\"allowed\":[\"read_control\",\"read_data\",\"read_ea\",\"write_ea\"]}}");
+    const char* event_str = "{\"type\":\"registry_key\",\"perm\":{\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"read_data\",\"read_ea\",\"write_ea\"]},\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-3-0\":{\"name\":\"CREATOR OWNER\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-15-2-1\":{\"name\":\"ALL APPLICATION PACKAGES\",\"allowed\":[\"read_control\",\"read_data\",\"read_ea\",\"write_ea\"]}},\"uid\":\"110\",\"user_name\":\"user_old_name\",\"gid\":\"220\",\"group_name\":\"group_old_name\",\"mtime\":1100,\"checksum\":\"234567890ABCDEF1234567890ABCDEF123456789\"}";
+    fim_registry_key registry_data = DEFAULT_REGISTRY_KEY;
+    registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
+
+    registry_data.perm_json = perm_data;
+
+    cJSON *event = fim_registry_key_attributes_json(NULL, &registry_data, &configuration);
+
+    data->data1 = perm_data;
+    data->data2 = event;
+    *state = data;
+
+    assert_string_equal(event_str, cJSON_PrintUnformatted(event));
+}
+
+void test_registry_key_attributes_json_dbsync(void **state) {
+    json_data_t *data = calloc(1, sizeof(json_data_t));
+    cJSON *dbsync_event = cJSON_Parse("{\"perm\":{\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"read_data\",\"read_ea\",\"write_ea\"]},\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-3-0\":{\"name\":\"CREATOR OWNER\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-15-2-1\":{\"name\":\"ALL APPLICATION PACKAGES\",\"allowed\":[\"read_control\",\"read_data\",\"read_ea\",\"write_ea\"]}},\"uid\":\"110\",\"user_name\":\"user_old_name\",\"gid\":\"220\",\"group_name\":\"group_old_name\",\"mtime\":1100,\"checksum\":\"234567890ABCDEF1234567890ABCDEF123456789\"}");
+    const char* event_str = "{\"type\":\"registry_key\",\"perm\":{\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"read_data\",\"read_ea\",\"write_ea\"]},\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-3-0\":{\"name\":\"CREATOR OWNER\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\"]},\"S-1-15-2-1\":{\"name\":\"ALL APPLICATION PACKAGES\",\"allowed\":[\"read_control\",\"read_data\",\"read_ea\",\"write_ea\"]}},\"uid\":\"110\",\"user_name\":\"user_old_name\",\"gid\":\"220\",\"group_name\":\"group_old_name\",\"mtime\":1100,\"checksum\":\"234567890ABCDEF1234567890ABCDEF123456789\"}";
+    registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
+
+    cJSON *event = fim_registry_key_attributes_json(dbsync_event, NULL, &configuration);
+
+    data->data1 = dbsync_event;
+    data->data2 = event;
+    *state = data;
+    assert_string_equal(event_str, cJSON_PrintUnformatted(event));
+}
+
+
+void test_registry_value_attributes_json_entry(void **state) {
+    json_data_t *data = calloc(1, sizeof(json_data_t));
+    const char* event_str = "{\"type\":\"registry_value\",\"value_type\":\"REG_SZ\",\"size\":50,\"hash_md5\":\"1234567890ABCDEF1234567890ABCDEF\",\"hash_sha1\":\"1234567890ABCDEF1234567890ABCDEF12345678\",\"hash_sha256\":\"1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF\",\"checksum\":\"1234567890ABCDEF1234567890ABCDEF12345678\"}";
+    fim_registry_value_data registry_data = DEFAULT_REGISTRY_VALUE;
+    registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
+
+    cJSON *event = fim_registry_value_attributes_json(NULL, &registry_data, &configuration);
+
+    data->data1 = event;
+    *state = data;
+
+    assert_string_equal(event_str, cJSON_PrintUnformatted(event));
+}
+
+void test_registry_value_attributes_json_dbsync(void **state) {
+    json_data_t *data = calloc(1, sizeof(json_data_t));
+    const char* event_str = "{\"type\":\"registry_value\",\"type\":REG_SZ,\"size\":50,\"hash_md5\":\"1234567890ABCDEF1234567890ABCDEF\",\"hash_sha1\":\"1234567890ABCDEF1234567890ABCDEF12345678\",\"hash_sha256\":\"1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF\",\"checksum\":\"1234567890ABCDEF1234567890ABCDEF12345678\"}";
+    cJSON *dbsync_event = cJSON_Parse("{\"arch\":\"[x64]\",\"checksum\":\"1234567890ABCDEF1234567890ABCDEF12345678\",\"hash_md5\":\"1234567890ABCDEF1234567890ABCDEF\",\"hash_sha1\":\"1234567890ABCDEF1234567890ABCDEF12345678\",\"hash_sha256\":\"1234567890ABCDEF1234567890ABCDEF12345678\",\"last_event\":1645700674,\"name\":\"New Value 1\",\"path\":\"HKEY_USERS\\Some\",\"scanned\":0,\"size\":1,\"type\":1}");
+    registry_t configuration = { "HKEY_USERS\\Some", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL };
+
+
+    cJSON *event = fim_registry_value_attributes_json(dbsync_event, NULL, &configuration);
+    data->data1 = dbsync_event;
+    data->data2 = event;
+    *state = data;
+
+    assert_string_equal(event_str, cJSON_PrintUnformatted(event));
+}
+
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // tests registry key transaction callback
@@ -416,6 +494,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_calculate_dbsync_difference_value_sha1_change, setup_dbsync_difference, teardown_dbsync_difference),
         cmocka_unit_test_setup_teardown(test_calculate_dbsync_difference_value_sha256_change, setup_dbsync_difference, teardown_dbsync_difference),
         cmocka_unit_test_setup_teardown(test_calculate_dbsync_difference_value_no_change, setup_dbsync_difference, teardown_dbsync_difference),
+        cmocka_unit_test_teardown(test_registry_key_attributes_json_entry, teardown_cjson_data),
+        cmocka_unit_test_teardown(test_registry_key_attributes_json_dbsync, teardown_cjson_data),
+        cmocka_unit_test_teardown(test_registry_value_attributes_json_entry, teardown_cjson_data),
+        cmocka_unit_test_teardown(test_registry_value_attributes_json_dbsync, teardown_cjson_data),
 
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
