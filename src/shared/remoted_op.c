@@ -83,8 +83,7 @@ void parse_uname_string (char *uname,
 
         os_strdup(str_tmp, osd->os_version);
         os_strdup("windows", osd->os_platform);
-    }
-    else {
+    } else {
         if (str_tmp = strstr(uname, " ["), str_tmp) {
             *str_tmp = '\0';
             str_tmp += 2;
@@ -108,6 +107,8 @@ void parse_uname_string (char *uname,
                     match_size = match[1].rm_eo - match[1].rm_so;
                     os_malloc(match_size +1, osd->os_major);
                     snprintf(osd->os_major, match_size + 1, "%.*s", match_size, osd->os_version + match[1].rm_so);
+                } else {
+                    os_strdup("", osd->os_major);
                 }
 
                 // Get os_minor
