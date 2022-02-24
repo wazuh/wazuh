@@ -19,7 +19,6 @@
 #include "stringHelper.h"
 #include "sharedDefs.h"
 
-
 constexpr auto APPLICATION_STORE_REGISTRY        {"SOFTWARE\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\CurrentVersion\\AppModel\\Repository\\Packages"};
 constexpr auto APPLICATION_INSTALL_TIME_REGISTRY {"SOFTWARE\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\CurrentVersion\\AppModel\\Repository\\Families"};
 constexpr auto APPLICATION_VENDOR_REGISTRY       {"SOFTWARE\\Classes"};
@@ -27,6 +26,8 @@ constexpr auto FILE_ASSOCIATIONS_REGISTRY        { "\\Capabilities\\FileAssociat
 constexpr auto URL_ASSOCIATIONS_REGISTRY         { "\\Capabilities\\URLAssociations" };
 constexpr auto CACHE_NAME_REGISTRY               { "SOFTWARE\\Classes\\Local Settings\\MrtCache" };
 constexpr auto STORE_APPLICATION_DATABASE        { "C:\\Program Files\\WindowsApps" };
+constexpr auto PREFIX_LOCALIZATION               { "@{" };
+
 
 class AppxWindowsWrapper final : public IPackageWrapper
 {
@@ -127,42 +128,37 @@ class AppxWindowsWrapper final : public IPackageWrapper
         std::string m_installTime;
         std::set<std::string> m_cacheReg;
 
-        struct attributesAppName
-        {
-            std::string name;
-            std::string version;
-            std::string architecture;
-            std::string uuid;
-        };
-
         bool isRegistryValid()
         {
             Utils::Registry registry(m_key, m_userId + "\\" + APPLICATION_STORE_REGISTRY + "\\" + m_appName, KEY_READ | KEY_ENUMERATE_SUB_KEYS);
 
-            return registry.enumerate().size() != 0 ? true : false;
+            return registry.enumerate().size() != 0;
         }
 
         void getInformationPackages()
         {
             if (isRegistryValid())
             {
-                constexpr auto INDEX_NAME { 0 };
-                constexpr auto INDEX_VERSION { 1 };
-                constexpr auto INDEX_ARCHITECTURE { 2 };
-                constexpr auto INDEX_UUID {4};
+                enum
+                {
+                    INDEX_NAME,
+                    INDEX_VERSION,
+                    INDEX_ARCHITECTURE,
+                    INDEX_VOID,
+                    INDEX_UUID,
+                    INDEX_COUNT
+                };
                 const auto fields { Utils::split(m_appName, '_') }; //The name format is <complete name>_<Version>_<Architecture>_<UUID>
 
-                if (fields.size() >= 5)
+                if (fields.size() >= INDEX_COUNT)
                 {
-                    const struct attributesAppName attributes = {.name = fields.at(INDEX_NAME), .version = fields.at(INDEX_VERSION), .architecture = fields.at(INDEX_ARCHITECTURE), .uuid = fields.at(INDEX_UUID)};
-
                     const Utils::Registry packageReg(m_key, m_userId + "\\" + APPLICATION_STORE_REGISTRY + "\\" + m_appName);
 
-                    m_version = attributes.version;
-                    m_architecture = getArchitecture(attributes.architecture);
+                    m_version = fields.at(INDEX_VERSION);
+                    m_architecture = getArchitecture(fields.at(INDEX_ARCHITECTURE));
                     m_location = getLocation(packageReg);
-                    m_installTime = getInstallTime(attributes);
-                    m_name = getName(attributes.name, packageReg);
+                    m_installTime = getInstallTime(fields.at(INDEX_NAME), fields.at(INDEX_UUID));
+                    m_name = getName(fields.at(INDEX_NAME), packageReg);
                     m_vendor = getVendor(packageReg);
 
                 }
@@ -224,19 +220,19 @@ class AppxWindowsWrapper final : public IPackageWrapper
         }
 
 
-        const std::string getInstallTime(const struct attributesAppName& attributes)
+        const std::string getInstallTime(const std::string& name, const std::string& uuid)
         {
             std::string installTime { UNKNOWN_VALUE };
             unsigned long long int value;
 
             // Name of main registry is: app_Name + _ + app_UUID
-            const std::string mainRegistry {attributes.name + "_" + attributes.uuid};
+            const auto mainRegistry {name + "_" + uuid};
 
             try
             {
                 const Utils::Registry installTimeRegistry {Utils::Registry(m_key, m_userId + "\\" + APPLICATION_INSTALL_TIME_REGISTRY + "\\" + mainRegistry + "\\" + m_appName)};
 
-                if (installTimeRegistry.longint("InstallTime", value))
+                if (installTimeRegistry.qword("InstallTime", value))
                 {
 
                     // Format of value is 18-digit LDAP/FILETIME timestamps.
@@ -275,7 +271,6 @@ class AppxWindowsWrapper final : public IPackageWrapper
              * Microsoft.SkypeApp
              */
             const auto keyName { Utils::split(fullName, '.').back() }; // Will only use the last vector element.
-            constexpr auto INVALID_NAME_APP { "@{" };
 
             try
             {
@@ -287,30 +282,22 @@ class AppxWindowsWrapper final : public IPackageWrapper
                     if (nameReg.string("ApplicationName", value))
                     {
                         name = value;
+                        break;
                     }
+                }
+
+                /*
+                 * If the name starts with "@{" string then we need to look for the name on the cache registry.
+                 * The name obtained is the key for the app name.
+                 */
+                if (Utils::startsWith(name, PREFIX_LOCALIZATION))
+                {
+                    name = searchNameFromCacheRegistry(keyName, name);
                 }
             }
             catch (...)
             {
                 name.clear();
-            }
-
-            const auto pos { name.find(INVALID_NAME_APP) };
-
-            /*
-             * If the name starts with "@{" string then we need to look for the name on the cache registry.
-             * The name obtained is the key for the app name.
-             */
-            if (pos != std::string::npos && pos == 0)
-            {
-                try
-                {
-                    name = searchNameFromCacheRegistry(keyName, name);
-                }
-                catch (...)
-                {
-                    name.clear();
-                }
             }
 
             return name;
@@ -339,6 +326,11 @@ class AppxWindowsWrapper final : public IPackageWrapper
                         const Utils::Registry urlReg(m_key, m_userId + "\\"  + APPLICATION_STORE_REGISTRY + "\\" + m_appName + "\\" + folder + URL_ASSOCIATIONS_REGISTRY, KEY_READ | KEY_QUERY_VALUE);
                         vendor = searchPublisher(urlReg);
                     }
+
+                    if (!vendor.empty())
+                    {
+                        break;
+                    }
                 }
             }
             catch (...)
@@ -361,7 +353,6 @@ class AppxWindowsWrapper final : public IPackageWrapper
         {
             std::string registry;
             std::string name;
-            constexpr auto INVALID_NAME_APP { "@{" };
             auto findCacheName
             {
                 [&appName](const std::string folder)
@@ -383,8 +374,7 @@ class AppxWindowsWrapper final : public IPackageWrapper
                 name = searchKeyOnSubRegistries(m_userId + "\\" + CACHE_NAME_REGISTRY + "\\" + registry, nameKey);
             }
 
-            const auto index { name.find(INVALID_NAME_APP) };
-            return (index != std::string::npos && index == 0) ? "" : name;
+            return Utils::startsWith(name, PREFIX_LOCALIZATION) ? "" : name;
         }
 
         /*
@@ -438,6 +428,11 @@ class AppxWindowsWrapper final : public IPackageWrapper
 
                 if (pubRegistry.string("ApplicationCompany", data))
                 {
+                    if (!Utils::startsWith(data, PREFIX_LOCALIZATION))
+                    {
+                        publisher = data;
+                        break;
+                    }
                     const auto index { data.find("@{") };
 
                     if (index != 0)

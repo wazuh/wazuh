@@ -243,7 +243,7 @@ namespace Utils
             }
 
 
-            bool longint(const std::string& valueName, ULONGLONG& value) const
+            bool qword(const std::string& valueName, ULONGLONG& value) const
             {
                 ULONGLONG valueRegistry;
                 DWORD size {sizeof(ULONGLONG)};

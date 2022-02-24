@@ -822,7 +822,7 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
         [&callback, &set](nlohmann::json & data)
         {
             const std::string key { data.at("name").get_ref<const std::string&>() + data.at("version").get_ref<const std::string&>() };
-            const auto result = set.insert(key);
+            const auto result { set.insert(key) };
 
             if (result.second)
             {
