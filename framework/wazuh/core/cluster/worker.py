@@ -6,7 +6,7 @@ import errno
 import json
 import os
 import shutil
-from datetime import datetime
+from datetime import datetime, timezone
 from time import perf_counter
 from typing import Tuple, Dict, Callable, List
 from typing import Union
@@ -41,7 +41,7 @@ class ReceiveAgentGroupsTask(c_common.ReceiveStringTask):
 
     def set_up_coro(self) -> Callable:
         """Set up the function to be called when the worker sends its Agent groups."""
-        return self.wazuh_common.setup_sync_wazuh_db_information
+        return self.wazuh_common.recv_agent_groups_local_information
 
     def done_callback(self, future=None):
         """Check whether the synchronization process was correct and free its lock.
@@ -187,6 +187,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         self.agent_groups_sync_status = {'date_start': 0.0}
         self.integrity_check_status = {'date_start': 0.0}
         self.integrity_sync_status = {'date_start': 0.0}
+        self.agent_groups_checksum_mismatch_counter = 0
+        self.agent_groups_checksum_mismatch_limit = 10
 
     def connection_result(self, future_result):
         """Callback function called when the master sends a response to the hello command sent by the worker.
@@ -377,8 +379,83 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             f"Sync not required.")
         return b'ok', b'Thanks'
 
-    async def setup_sync_wazuh_db_information(self, task_id: bytes, info_type: str):
-        """Create a process to send to the local wazuh-db the chunks of data received from master.
+    async def compare_agent_groups_checksums(self, master_checksum, logger):
+        """Compare the checksum of the local database with the checksum of the master node to check if these differ.
+
+        If the checksum differs, a counter is incremented which at a certain limit
+        will send a request to the master node asking for all the agent-groups information.
+
+        Parameters
+        ----------
+        master_checksum : str
+            Master node checksum.
+        logger : Logger object
+            Logger to use.
+
+        Returns
+        -------
+        bool
+            True if both checksums are equal, False if these differ or cannot be
+            compared because there are records that need to be synchronized in the local DB.
+        """
+        wdb_conn = WazuhDBConnection()
+        sync_object = c_common.SyncWazuhdb(manager=self, logger=logger, cmd=b'syn_g_m_w',
+                                           data_retriever=wdb_conn.run_wdb_command,
+                                           get_data_command='global sync-agent-groups-get ',
+                                           get_payload={"condition": "sync_status", "get_global_hash": True})
+
+        local_agent_groups = await sync_object.retrieve_information()
+        if not json.loads(local_agent_groups[0])[0]['data']:
+            # There is no syncreq agent-groups so, the checksums should match
+            local_checksum = json.loads(local_agent_groups[0])[0]['hash']
+            logger.debug2('There is no data requiring synchronization in the local database.')
+            ck_equal = master_checksum == json.loads(local_agent_groups[0])[0]['hash']
+            # If there are no records with syncreq and the checksums are different, it means that the worker database
+            # is in an incorrect state. Therefore, all the information will be requested directly to the master node.
+            if not ck_equal:
+                logger.debug(f'The master\'s checksum and the worker\'s checksum are different. '
+                             f'Local checksum: {local_checksum} | Master checksum: {master_checksum}.')
+                self.agent_groups_checksum_mismatch_counter = self.agent_groups_checksum_mismatch_limit
+
+            return ck_equal
+
+        return False
+
+    async def check_agent_groups_checksums(self, data, logger):
+        """Checksum comparison limit controller function for agent-groups.
+
+        This function is in charge of requesting to the master node the information of
+        the database related to agent-groups if the limit of comparative checksums is exceeded.
+
+        Parameters
+        ----------
+        data : dict
+            Dictionary with the data obtained through the task_id.
+        logger : Logger object
+            Logger to use.
+        """
+        master_checksum = json.loads(data['chunks'][0])[0]['hash']
+        same_checksum = await self.compare_agent_groups_checksums(master_checksum=master_checksum, logger=logger)
+        if same_checksum:
+            msg = 'The checksum of both databases match.'
+            if self.agent_groups_checksum_mismatch_counter != 0:
+                msg += ' Reset the attempt counter.'
+            logger.debug(msg)
+            self.agent_groups_checksum_mismatch_counter = 0
+        else:
+            self.agent_groups_checksum_mismatch_counter += 1
+            if self.agent_groups_checksum_mismatch_counter <= self.agent_groups_checksum_mismatch_limit:
+                logger.debug(
+                    f'Checksum comparison failed. '
+                    f'Attempt {self.agent_groups_checksum_mismatch_counter}/{self.agent_groups_checksum_mismatch_limit}.')
+
+            if self.agent_groups_checksum_mismatch_counter >= self.agent_groups_checksum_mismatch_limit:
+                await super().send_result_to_manager(b'syn_w_g_c', {})
+                self.agent_groups_checksum_mismatch_counter = 0
+                logger.info('Sent request to obtain all agent-groups information from the master node.')
+
+    async def recv_agent_groups_local_information(self, task_id: bytes, info_type: str):
+        """Create a process to receive the master agent-groups information.
 
         Parameters
         ----------
@@ -392,20 +469,23 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         result : bytes
             Master's response after finishing the synchronization.
         """
-        # Guess information type
-        logger = ''
-        command = ''
-        error_command = ''
-        timeout = 0
-        if info_type == 'agent-groups':
-            logger = self.task_loggers['Agent-groups recv']
-            command = b'syn_w_g_e'
-            error_command = b'syn_w_g_err'
-            timeout = self.cluster_items['intervals']['worker']['timeout_agent_groups']
+        logger = self.task_loggers['Agent-groups recv']
+        command = b'syn_w_g_e'
+        error_command = b'syn_w_g_err'
+        timeout = self.cluster_items['intervals']['worker']['timeout_agent_groups']
 
-        return await super().sync_wazuh_db_information(
-            task_id=task_id, info_type=info_type, error_command=error_command,
-            logger=logger, command=command, timeout=timeout)
+        logger.info('Starting.')
+        start_time = datetime.utcnow().replace(tzinfo=timezone.utc)
+        data = await super().get_chunks_in_task_id(task_id, error_command)
+        result = await super().update_chunks_wdb(data, info_type, logger, error_command, timeout)
+        response = await super().send_result_to_manager(command, result)
+        await self.check_agent_groups_checksums(data, logger)
+
+        end_time = datetime.utcnow().replace(tzinfo=timezone.utc)
+        logger.info(f'Finished in {(end_time - start_time).total_seconds():.3f}s. '
+                    f'Updated {result["updated_chunks"]} chunks.')
+
+        return response
 
     async def sync_integrity(self):
         """Obtain files status and send it to the master.
@@ -496,7 +576,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             Object in charge of synchronization with the database.
         timer : dict
             Dictionary with initial task time.
-        sleep_interval
+        sleep_interval : int
             Waiting time set between iterations.
         """
         while True:
@@ -507,7 +587,11 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                         sync_object.logger.info("Starting.")
                         timer['date_start'] = start_time
                         chunks = await sync_object.retrieve_information()
-                        await sync_object.sync(start_time=start_time, chunks=chunks)
+                        if chunks != ['[]'] and chunks != ['[{"data":[]}]']:
+                            await sync_object.sync(start_time=start_time, chunks=chunks)
+                        else:
+                            sync_object.logger.debug('There is no agent information that needs '
+                                                     'to be synchronized in the local database. Skipping...')
             except Exception as e:
                 sync_object.logger.error(f"Error synchronizing agent information: {e}")
 

@@ -125,6 +125,48 @@ class InBuffer:
         return data[len_data:]
 
 
+class SendStringTask:
+    """
+    Create an asyncio task that can be identified by a task_id specified in advance.
+    """
+
+    def __init__(self, wazuh_common, logger):
+        """Class constructor.
+
+        Parameters
+        ----------
+        wazuh_common : WazuhCommon object
+            Instance of WazuhCommon.
+        logger : Logger object
+            Logger to use during the receive process.
+        """
+        self.wazuh_common = wazuh_common
+        self.coro = self.set_up_coro()
+        self.task = asyncio.create_task(self.coro())
+        self.task.add_done_callback(self.done_callback)
+        self.logger = logger
+
+    def set_up_coro(self) -> Callable:
+        """Define set_up_coro method. It is implemented differently for master, workers and synchronization types.
+
+        Raises
+        -------
+        NotImplementedError
+            If the method is not implemented.
+        """
+        raise NotImplementedError
+
+    def done_callback(self, future=None):
+        """Function to call when the task is finished.
+
+        Remove string and task_id (if exist) from sync_tasks dict. If task was not cancelled, raise stored exception.
+        """
+        if not self.task.cancelled():
+            task_exc = self.task.exception()
+            if task_exc:
+                self.logger.error(task_exc)
+
+
 class ReceiveStringTask:
     """
     Create an asyncio task that can be identified by a task_id specified in advance.
@@ -1104,6 +1146,26 @@ class WazuhCommon:
         """
         raise NotImplementedError
 
+    def setup_send_info(self, SendTaskClass: Callable, data: bytes = b''):
+        """Create SendTaskClass object.
+
+        Parameters
+        ----------
+        SendTaskClass : Callable
+            Class used to create an object.
+        data : bytes
+            Information used to create the object.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Task ID.
+        """
+        my_task = SendTaskClass(self, self.get_logger(self.logger_tag))
+        return b'ok', str(my_task).encode()
+
     def setup_receive_file(self, ReceiveTaskClass: Callable, data: bytes = b''):
         """Create ReceiveTaskClass object and add it to sync_tasks dict.
 
@@ -1248,7 +1310,7 @@ class SyncWazuhdb(SyncTask):
     Define methods to send information to the master/worker node (wazuh-db) through send_string protocol.
     """
 
-    def __init__(self, manager, logger, cmd: bytes, data_retriever: Callable, get_data_command: str = '',
+    def __init__(self, manager, logger, data_retriever: Callable, cmd: bytes = b'', get_data_command: str = '',
                  set_data_command: str = '', get_payload: dict = None, set_payload: dict = None, pivot_key: str = ''):
         """Class constructor.
 

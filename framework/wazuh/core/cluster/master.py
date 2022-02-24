@@ -172,6 +172,30 @@ class ReceiveAgentGroupsTask(c_common.ReceiveStringTask):
         self.wazuh_common.sync_agent_groups_free = True
 
 
+class SendEntireAgentGroupsTask(c_common.SendStringTask):
+    """
+    Define the process and variables necessary to send the entire agent-groups from the master to the worker.
+
+    This task is created when the worker needs the entire agent-groups information.
+    """
+
+    def __init__(self, *args, **kwargs):
+        """Class constructor.
+
+        Parameters
+        ----------
+        args
+            Positional arguments for parent constructor class.
+        kwargs
+            Keyword arguments for parent constructor class.
+        """
+        super().__init__(*args, **kwargs)
+
+    def set_up_coro(self) -> Callable:
+        """Set up the function to be called when the worker needs the entire agent-groups information."""
+        return self.wazuh_common.send_entire_agent_groups_information
+
+
 class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
     """
     Handle incoming requests and sync processes with a worker.
@@ -257,6 +281,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             return self.get_permission(command)
         elif command == b'syn_i_w_m' or command == b'syn_e_w_m' or command == b'syn_a_w_m' or command == b'syn_g_w_m':
             return self.setup_sync_integrity(command, data)
+        elif command == b'syn_w_g_c':
+            return self.setup_send_info(command)
         elif command == b'syn_i_w_m_e' or command == b'syn_e_w_m_e':
             return self.end_receiving_integrity_checksums(data.decode())
         elif command == b'syn_i_w_m_r':
@@ -377,7 +403,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                              'Integrity sync': self.setup_task_logger('Integrity sync'),
                              'Agent-info sync': self.setup_task_logger('Agent-info sync'),
                              'Agent-groups sync': self.setup_task_logger('Agent-groups sync'),
-                             'Agent-groups send': self.setup_task_logger('Agent-groups send')}
+                             'Agent-groups send': self.setup_task_logger('Agent-groups send'),
+                             'Agent-groups full DB': self.setup_task_logger('Agent-groups full DB')}
 
         # Fill more information and check both name and version are correct.
         self.version, self.cluster_name, self.node_type = version.decode(), cluster_name.decode(), node_type.decode()
@@ -545,6 +572,28 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         return super().setup_receive_file(sync_function, data)
 
+    def setup_send_info(self, sync_type: bytes) -> Tuple[bytes, bytes]:
+        """Start synchronization process.
+
+        Parameters
+        ----------
+        sync_type : bytes
+            Sync process to start.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
+        """
+        if sync_type == b'syn_w_g_c':
+            sync_function = SendEntireAgentGroupsTask
+        else:
+            sync_function = None
+
+        return super().setup_send_info(sync_function)
+
     def process_sync_error_from_worker(self, error_msg: bytes) -> Tuple[bytes, bytes]:
         """Manage error during synchronization process reported by a worker.
 
@@ -619,6 +668,32 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             task_id=task_id, info_type=info_type, error_command=error_command,
             logger=logger, command=command, sync_dict=sync_dict, timeout=timeout)
 
+    async def send_entire_agent_groups_information(self):
+        """Method in charge of sending all the information related to
+        agent-groups from the master node database to the worker node database.
+
+        This method is activated when the worker node requests this information to the master node.
+        """
+        logger = self.task_loggers['Agent-groups full DB']
+        sync_object = c_common.SyncWazuhdb(manager=self, logger=logger,
+                                           data_retriever=WazuhDBConnection().run_wdb_command,
+                                           get_data_command='global sync-agent-groups-get ',
+                                           get_payload={"condition": "all", "set_synced": False,
+                                                        "get_global_hash": True})
+        local_agent_groups_information = await sync_object.retrieve_information()
+
+        sync_object = c_common.SyncWazuhdb(manager=self, logger=logger, cmd=b'syn_g_m_w',
+                                           data_retriever=WazuhDBConnection().run_wdb_command,
+                                           set_data_command='global set-agent-groups',
+                                           set_payload={'mode': 'override', 'sync_status': 'synced'})
+
+        logger.info("Requested entire agent-groups information by the worker node. Starting.")
+        start_time = perf_counter()
+        await sync_object.sync(start_time=start_time, chunks=local_agent_groups_information)
+        logger.info("Sent all agent-groups information from the master node database.")
+
+        return b'ok', b'Sent'
+
     async def send_agent_groups_information(self):
         """Function in charge of sending the group information to the worker node.
         Each time we get data it will be sent.
@@ -629,7 +704,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         sync_object = c_common.SyncWazuhdb(manager=self, logger=logger, cmd=b'syn_g_m_w',
                                            data_retriever=wdb_conn.run_wdb_command,
                                            set_data_command='global set-agent-groups',
-                                           set_payload={'mode': 'overwrite', 'sync_status': 'synced'})
+                                           set_payload={'mode': 'override', 'sync_status': 'synced'})
 
         while True:
             info = self.server.get_agent_groups_info(self.name)
@@ -637,8 +712,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                 try:
                     self.send_agent_groups_status['date_start'] = perf_counter()
                     logger.info("Starting.")
-                    await sync_object.sync(start_time=self.send_agent_groups_status['date_start'],
-                                           chunks=self.server.agent_groups_control)
+                    await sync_object.sync(start_time=self.send_agent_groups_status['date_start'], chunks=info)
                 except Exception as e:
                     logger.error(f'Error sending agent-groups information to {self.cluster_name}: {e}')
 
@@ -1036,9 +1110,6 @@ class Master(server.AbstractServer):
         if client not in self.agent_groups_control_workers:
             result = self.agent_groups_control
             self.agent_groups_control_workers.add(client)
-        elif set(self.clients.keys()).issubset(self.agent_groups_control_workers):
-            self.agent_groups_control = {}
-            self.agent_groups_control_workers.clear()
 
         return result
 
@@ -1051,26 +1122,25 @@ class Master(server.AbstractServer):
         This information will only be sent to the worker nodes when it contains data.
         It looks like this: ['[{"data":[{"id":1,"group":["default","group1"]}]}]'].
         """
-        empty_data = ['[{"data":[]}]']
         logger = self.setup_task_logger('Agent-groups get')
         wdb_conn = WazuhDBConnection()
         sync_object = c_common.SyncWazuhdb(manager=self, logger=logger, cmd=b'syn_g_m_w',
                                            data_retriever=wdb_conn.run_wdb_command,
                                            get_data_command='global sync-agent-groups-get ',
-                                           get_payload={"condition": "sync_status", "set_synced": True})
+                                           get_payload={"condition": "sync_status", "set_synced": True,
+                                                        "get_global_hash": True})
 
         while True:
             try:
                 before = perf_counter()
                 sync_object.logger.info("Starting.")
-                if self.agent_groups_control == {}:
+                if len(self.agent_groups_control_workers) >= len(self.clients.keys()) > 0:
                     self.agent_groups_control = await sync_object.retrieve_information()
+                    self.agent_groups_control_workers.clear()
                     after = perf_counter()
-                    no_need_sync = self.agent_groups_control == empty_data
-                    logger.info(f"Finished in {(after - before):.3f}s. "
-                                f"Agent-group synchronization is {'not ' if no_need_sync else ''}required.")
-                    if no_need_sync:
-                        self.agent_groups_control = {}
+                    logger.info(f"Finished in {(after - before):.3f}s.")
+                elif len(self.clients.keys()) == 0:
+                    logger.info("No clients connected. Skipping.")
             except Exception as e:
                 sync_object.logger.error(f"Error getting agent-groups from WDB: {e}")
 

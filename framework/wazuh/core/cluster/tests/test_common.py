@@ -141,6 +141,66 @@ def test_inbuffer_receive_data():
     assert in_buffer.received == 1028
 
 
+# Test SendStringTask methods
+
+@patch("asyncio.create_task")
+@patch("wazuh.core.cluster.common.SendStringTask.set_up_coro")
+def test_sst_init(setup_coro_mock, create_task_mock):
+    """Test the '__init__' method."""
+
+    class TaskMock:
+
+        def __init__(self):
+            pass
+
+        def add_done_callback(self):
+            pass
+
+    create_task_mock.return_value = TaskMock()
+
+    with patch.object(TaskMock, "add_done_callback") as done_callback_mock:
+        sst_task = cluster_common.SendStringTask(wazuh_common=cluster_common.WazuhCommon(), logger='')
+        assert sst_task.logger == ''
+        assert isinstance(sst_task.wazuh_common, cluster_common.WazuhCommon)
+        setup_coro_mock.assert_called_once()
+        done_callback_mock.assert_called_once()
+
+@patch("asyncio.create_task")
+@patch("wazuh.core.cluster.common.SendStringTask.set_up_coro")
+def test_sst_done_callback(setup_coro_mock, create_task_mock):
+    """Test if this function is properly removing the finished tasks from the queue."""
+
+    class TaskMock:
+
+        def __init__(self):
+            pass
+
+        def add_done_callback(self):
+            pass
+
+        def cancelled(self):
+            return False
+
+        def exception(self):
+            return Exception
+
+    class WazuhCommon:
+
+        def __init__(self):
+            self.in_str = {b"010": b"123456789", b"011": b"123456789"}
+            self.sync_tasks = {b"010": b"123456789", b"011": b"123456789"}
+
+    create_task_mock.return_value = TaskMock()
+    wazuh_common_mock = WazuhCommon()
+
+    with patch.object(TaskMock, "add_done_callback"):
+        logger = logging.getLogger('wazuh')
+        with patch.object(logger, "error") as logger_mock:
+            sst_task = cluster_common.SendStringTask(wazuh_common=wazuh_common_mock, logger=logger)
+            sst_task.done_callback()
+            logger_mock.assert_called_once_with(Exception)
+
+
 # Test ReceiveStringTask methods
 
 @patch("asyncio.create_task")
@@ -1102,6 +1162,23 @@ def test_wazuh_common_get_logger():
         wazuh_common.get_logger()
 
 
+def test_wazuh_common_setup_send_info():
+    """Check if SendTaskClass class is created and returned."""
+
+    class MyTaskMock:
+
+        def __init__(self) -> None:
+            self.task_id = "key"
+
+    my_task = MyTaskMock()
+    mock_object = MagicMock(return_value=my_task)
+
+    with patch('wazuh.core.cluster.common.WazuhCommon.get_logger'):
+        first_output, second_output = wazuh_common.setup_send_info(mock_object)
+        assert first_output == b'ok'
+        assert isinstance(second_output, bytes)
+
+
 def test_wazuh_common_setup_receive_file():
     """Check if ReceiveFileTask class is created and added to the task dictionary."""
 
@@ -1113,7 +1190,7 @@ def test_wazuh_common_setup_receive_file():
     my_task = MyTaskMock()
     mock_object = MagicMock(return_value=my_task)
 
-    with patch('wazuh.core.cluster.common.WazuhCommon.get_logger') as logger_mock:
+    with patch('wazuh.core.cluster.common.WazuhCommon.get_logger'):
         first_output, second_output = wazuh_common.setup_receive_file(mock_object)
         assert first_output == b'ok'
         assert isinstance(second_output, bytes)
