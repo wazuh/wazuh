@@ -15,16 +15,29 @@
 #include <mutex>
 #include <rxcpp/rx.hpp>
 #include <thread>
+#include <sstream>
+#include <cstdlib>
 
 #include "threadPool.hpp"
 
 #define GTEST_COUT std::cout << "[   INFO   ] "
 
-void printsafe(std::string s)
+using threadpool::ThreadPool;
+using namespace std;
+namespace Rx{
+    using namespace rxcpp;
+    using namespace rxcpp::subjects;
+    using namespace rxcpp::schedulers;
+    namespace rxo = rxcpp::operators;
+    namespace rxu = rxcpp::util;
+}
+using namespace Rx;
+
+void printsafe(string s)
 {
-    static std::mutex m;
+    static mutex m;
     m.lock();
-    GTEST_COUT << "[thread " << std::this_thread::get_id() << "] " << s << std::endl;
+    GTEST_COUT << "[thread " << this_thread::get_id() << "] " << s << endl;
     m.unlock();
 }
 
