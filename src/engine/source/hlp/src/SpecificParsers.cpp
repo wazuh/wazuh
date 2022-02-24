@@ -38,13 +38,6 @@ static const std::unordered_map<std::string, const char *>
         { "UnixDate", "%a %b %d %T %Z %Y" },
     };
 
-bool parseFilePath(const char **it, char endToken) {
-    const char *start = *it;
-    while (**it != endToken && **it != '\0') { (*it)++; }
-    (void)start;
-    return true;
-}
-
 std::string parseAny(const char **it, char endToken) {
     const char *start = *it;
     while (**it != endToken && **it != '\0') { (*it)++; }
@@ -68,6 +61,22 @@ bool matchLiteral(const char **it, std::string const& literal) {
     }
 
     return literal[i] == '\0';
+}
+
+void parseFilePath(const char **it, char endToken, FilePathResult &result) {
+    const char *start = *it;
+    while (**it != endToken && **it != '\0') { (*it)++; }
+    std::string_view file_path { start, (size_t)((*it) - start) };
+
+    result.path = file_path;
+    auto folder_end = file_path.find_last_of("/\\");
+    result.folder = folder_end == std::string::npos ? "" : file_path.substr(0, folder_end);
+    result.name = folder_end == std::string::npos ? file_path : file_path.substr(folder_end + 1);
+    auto extension_start = result.name.find_last_of('.');
+    result.extension = extension_start == std::string::npos ? "" : result.name.substr(extension_start + 1);
+    if (file_path[1] == ':' && (file_path[2] == '\\' || file_path[2] == '/')) {
+        result.drive_letter = std::toupper(file_path[0]);
+    }
 }
 
 std::string parseJson(const char **it) {
