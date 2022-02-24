@@ -176,7 +176,7 @@ TEST(map_test, incomplete_map_test)
 
 TEST(hlpTimestampTests, ansic)
 {
-    static const char *logQl   = "[<timestamp>]";
+    static const char *logQl   = "[<timestamp/ANSIC>]";
     static const char *ansicTs = "[Mon Jan 2 15:04:05 2006]";
     static const char *ansimTs = "[Mon Jan 2 15:04:05.123456 2006]";
 
@@ -201,7 +201,7 @@ TEST(hlpTimestampTests, ansic)
 TEST(hlpTimestampTests, kitchen)
 {
 
-    static const char *logQl     = "[<timestamp>]";
+    static const char *logQl     = "[<timestamp/Kitchen>]";
     static const char *kitchenTs = "[3:04a.m.]";
     auto parseOp                 = getParserOp(logQl);
     auto result                  = parseOp(kitchenTs);
@@ -211,7 +211,8 @@ TEST(hlpTimestampTests, kitchen)
 
 TEST(hlpTimestampTests, rfc1123)
 {
-    static const char *logQl      = "[<timestamp>]";
+    static const char *logQl      = "[<timestamp/RFC1123>]";
+    static const char *logQlz      = "[<timestamp/RFC1123Z>]";
     static const char *rfc1123Ts  = "[Mon, 02 Jan 2006 15:04:05 MST]";
     static const char *rfc1123zTs = "[Mon, 02 Jan 2006 15:04:05 -0700]";
 
@@ -224,7 +225,8 @@ TEST(hlpTimestampTests, rfc1123)
     ASSERT_EQ("4", result["timestamp.minutes"]);
     ASSERT_EQ("5", result["timestamp.seconds"]);
 
-    auto resultz = parseOp(rfc1123zTs);
+    auto parseOpz = getParserOp(logQlz);
+    auto resultz = parseOpz(rfc1123zTs);
     ASSERT_EQ("2006", resultz["timestamp.year"]);
     ASSERT_EQ("1", resultz["timestamp.month"]);
     ASSERT_EQ("2", resultz["timestamp.day"]);
@@ -235,7 +237,7 @@ TEST(hlpTimestampTests, rfc1123)
 
 TEST(hlpTimestampTests, rfc3339)
 {
-    static const char *logQl         = "[<timestamp>]";
+    static const char *logQl         = "[<timestamp/RFC3339>]";
     static const char *rfc3339Ts     = "[2006-01-02T15:04:05Z07:00]";
     static const char *rfc3339nanoTs = "[2006-01-02T15:04:05.999999999Z07:00]";
 
@@ -259,7 +261,8 @@ TEST(hlpTimestampTests, rfc3339)
 
 TEST(hlpTimestampTests, rfc822)
 {
-    static const char *logQl     = "[<timestamp>]";
+    static const char *logQl     = "[<timestamp/RFC822>]";
+    static const char *logQlz     = "[<timestamp/RFC822Z>]";
     static const char *rfc822Ts  = "[02 Jan 06 15:04 MST]";
     static const char *rfc822zTs = "[02 Jan 06 15:04 -0700]";
 
@@ -273,7 +276,8 @@ TEST(hlpTimestampTests, rfc822)
     ASSERT_EQ("0", result["timestamp.seconds"]);
     ASSERT_EQ("MST", result["timestamp.timezone"]);
 
-    auto resultz = parseOp(rfc822zTs);
+    auto parseOpz = getParserOp(logQlz);
+    auto resultz = parseOpz(rfc822zTs);
     ASSERT_EQ("2006", resultz["timestamp.year"]);
     ASSERT_EQ("1", resultz["timestamp.month"]);
     ASSERT_EQ("2", resultz["timestamp.day"]);
@@ -285,7 +289,7 @@ TEST(hlpTimestampTests, rfc822)
 
 TEST(hlpTimestampTests, rfc850)
 {
-    static const char *logQl    = "[<timestamp>]";
+    static const char *logQl    = "[<timestamp/RFC850>]";
     static const char *rfc850Ts = "[Monday, 02-Jan-06 15:04:05 MST]";
 
     auto parseOp = getParserOp(logQl);
@@ -301,7 +305,7 @@ TEST(hlpTimestampTests, rfc850)
 
 TEST(hlpTimestampTests, ruby)
 {
-    static const char *logQl  = "[<timestamp>]";
+    static const char *logQl  = "[<timestamp/RubyDate>]";
     static const char *rubyTs = "[Mon Jan 02 15:04:05 -0700 2006]";
 
     auto parseOp = getParserOp(logQl);
@@ -317,7 +321,7 @@ TEST(hlpTimestampTests, ruby)
 
 TEST(hlpTimestampTests, stamp)
 {
-    static const char *logQl        = "[<timestamp>]";
+    static const char *logQl        = "[<timestamp/Stamp>]";
     static const char *stampTs      = "[Jan 2 15:04:05]";
     static const char *stampmilliTs = "[Jan 2 15:04:05.000]";
     static const char *stampmicroTs = "[Jan 2 15:04:05.000000]";
@@ -355,7 +359,7 @@ TEST(hlpTimestampTests, stamp)
 
 TEST(hlpTimestampTests, Unix)
 {
-    static const char *logQl  = "[<timestamp>]";
+    static const char *logQl  = "[<timestamp/UnixDate>]";
     static const char *unixTs = "[Mon Jan 2 15:04:05 MST 2006]";
 
     auto parseOp = getParserOp(logQl);
@@ -371,10 +375,10 @@ TEST(hlpTimestampTests, Unix)
 TEST(hlpTimestampTests, specific_format)
 {
     static const char *logQl =
-        "[<timestamp/RubyDate>] - "
-        "[<_ansicTs/timestamp/ANSIC>] - "
-        "[<_unixTs/timestamp/UnixDate>] - "
-        "[<_stampTs/timestamp/Stamp>]";
+        "[<timestamp>] - "
+        "[<_ansicTs/timestamp>] - "
+        "[<_unixTs/timestamp>] - "
+        "[<_stampTs/timestamp>]";
     static const char *event =
         "[Mon Jan 02 15:04:05 -0700 2006] - "
         "[Mon Jan 2 15:04:05 2006] - "
@@ -383,13 +387,6 @@ TEST(hlpTimestampTests, specific_format)
 
     auto parseOp = getParserOp(logQl);
     auto result  = parseOp(event);
-
-    fprintf(stderr, "\n%30s | %s\n", "Key", "Val");
-    fprintf(stderr, "-------------------------------|------------\n");
-    for (auto const &r : result)
-    {
-        fprintf(stderr, "%30s | %s\n", r.first.c_str(), r.second.c_str());
-    }
 
     ASSERT_EQ("2006", result["timestamp.year"]);
     ASSERT_EQ("1", result["timestamp.month"]);
@@ -419,3 +416,4 @@ TEST(hlpTimestampTests, specific_format)
     ASSERT_EQ("4", result["_stampTs.minutes"]);
     ASSERT_EQ("5", result["_stampTs.seconds"]);
 }
+
