@@ -36,12 +36,19 @@ struct DomainResult{
     std::string registered_domain;
     std::string route;
 };
-
-bool parseFilePath(const char **it, char endToken);
+struct FilePathResult{
+    std::string path;           //"file.path": "keyword",
+    std::string drive_letter;   //"file.drive_letter": "keyword",
+    std::string folder;         //"file.directory": "keyword",
+    std::string name;           //"file.name": "keyword",
+    std::string extension;      //"file.extension": "keyword",
+};
 
 std::string parseAny(const char **it, char endToken);
 
 bool matchLiteral(const char **it, std::string const& literal);
+
+void parseFilePath(const char **it, char endToken, FilePathResult &result);
 
 std::string parseJson(const char **it);
 

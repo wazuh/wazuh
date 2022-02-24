@@ -24,6 +24,7 @@ static const std::unordered_map<std::string_view, ParserType> kTempTypeMapper {
     { "MAP", ParserType::Map},
     { "timestamp", ParserType::Ts},
     { "domain", ParserType::Domain},
+    { "FilePath", ParserType::FilePath},
 };
 
 struct Tokenizer {
