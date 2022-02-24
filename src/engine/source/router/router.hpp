@@ -1,3 +1,12 @@
+/* Copyright (C) 2015-2021, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
 #ifndef _ROUTER_H
 #define _ROUTER_H
 
@@ -134,6 +143,7 @@ template <class Builder> class Router
 
 private:
     using ServerOutputObs = rxcpp::observable<rxcpp::observable<std::string>>;
+
     std::map<std::string, Environment> m_environments;
     std::map<std::string, Route> m_routes;
     ServerOutputObs m_observable;
@@ -158,8 +168,9 @@ public:
      * @param filterFunction Filter function to select forwarded envents
      * @param environment Where events are forwarded
      */
-    void add(const std::string & route, std::function<bool(json::Document)> filterFunction,
-             const std::string & environment)
+    void add(
+        const std::string & route, const std::string & environment, const int & nThreads = 4,
+        const std::function<bool(json::Document)> filterFunction = [](const auto) { return true; })
     {
         // Assert route with same name not exists
         if (this->m_routes.count(route) > 0)
@@ -172,33 +183,27 @@ public:
         {
             Op_t envBuilder = this->m_builder(environment);
             this->m_environments[environment] = Environment(environment, envBuilder);
+
+            // TODO: Are these two lines necessary?
             auto in = this->m_environments.at(environment).m_subject.get_observable();
             auto obs = envBuilder(in);
         }
 
-
-        auto sc = rxcpp::schedulers::make_scheduler<threadpool::ThreadPool>(8);
-        static auto threadPoolW = rxcpp::observe_on_one_worker(sc);
-        engineserver::ProtocolHandler p;
-        static std::atomic<int> control = 0;
+        rxcpp::schedulers::scheduler sc = rxcpp::schedulers::make_scheduler<threadpool::ThreadPool>(nThreads);
+        static rxcpp::observe_on_one_worker threadPoolW(sc); // TODO: Find a way to not to use the static in here
 
         auto envIn = this->m_environments.at(environment).m_subject.get_subscriber();
-        auto subscription = this->m_observable
-        .subscribe([&, p, envIn, filterFunction](rxcpp::observable<std::string> o){
 
-            o
-                .observe_on(threadPoolW)
-                .map([p](std::string s){
-                    return p.parse(s);
-                })
-                .filter(filterFunction)
-                .tap(
-                    [envIn](json::Document s){
-                        //LOG(INFO) << "PARSED " << ++control << std::endl;
-                        envIn.on_next(s);
-                    }
-                ).subscribe();
-        });
+        auto subscription = this->m_observable.subscribe(
+            [&, envIn](rxcpp::observable<std::string> o)
+            {
+                engineserver::ProtocolHandler p;
+
+                o.observe_on(threadPoolW)
+                    .map([&p](std::string s) { return p.parse(s); })
+                    .filter(filterFunction)
+                    .subscribe([&envIn](json::Document s) { envIn.on_next(s); });
+            });
 
         // Add route to list
         this->m_routes[route] = Route(route, environment, filterFunction, subscription);
