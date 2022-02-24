@@ -1920,6 +1920,9 @@ void test_process_multi_groups_fgets_null(void **state)
     expect_any(__wrap_fgets, __stream);
     will_return(__wrap_fgets, NULL);
 
+    expect_value(__wrap_fclose, _File, 100);
+    will_return(__wrap_fclose, 1);
+
     will_return(__wrap_readdir, NULL);
 
     expect_value(__wrap_OSHash_Begin, self, NULL);

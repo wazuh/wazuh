@@ -864,12 +864,8 @@ STATIC void process_multi_groups() {
             // If it's not a multigroup, skip it
             if (!strstr(groups_info, ",")) {
                 fclose(fp);
-                fp = NULL;
                 continue;
             }
-
-            fclose(fp);
-            fp = NULL;
 
             char *endl = strchr(groups_info, '\n');
             if (endl) {
@@ -886,6 +882,8 @@ STATIC void process_multi_groups() {
                 mdebug2("Couldn't add multigroup '%s' to hash table 'm_hash'", groups_info);
             }
         }
+
+        fclose(fp);
     }
 
     for (my_node = OSHash_Begin(m_hash, &i); my_node; my_node = OSHash_Next(m_hash, &i, my_node)) {
