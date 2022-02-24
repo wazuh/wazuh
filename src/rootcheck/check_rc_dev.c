@@ -13,7 +13,7 @@
 #include "rootcheck.h"
 
 /* Prototypes */
-static int read_dev_file(const char *file_name);
+static int read_dev_file(const char *file_name, const size_t size_name);
 static int read_dev_dir(const char *dir_name);
 
 /* Global variables */
@@ -21,7 +21,7 @@ static int _dev_errors;
 static int _dev_total;
 
 
-static int read_dev_file(const char *file_name)
+static int read_dev_file(const char *file_name, const size_t size_name)
 {
     struct stat statbuf;
 
@@ -36,9 +36,9 @@ static int read_dev_file(const char *file_name)
     }
 
     else if (S_ISREG(statbuf.st_mode)) {
-        char op_msg[OS_SIZE_1024 + 1];
+        char op_msg[size_name + strlen("File '' present on /dev. Possible hidden file.")  + 1];
 
-        snprintf(op_msg, OS_SIZE_1024, "File '%s' present on /dev."
+        snprintf(op_msg, sizeof(op_msg), "File '%s' present on /dev."
                  " Possible hidden file.", file_name);
         notify_rk(ALERT_SYSTEM_CRIT, op_msg);
 
@@ -137,7 +137,7 @@ static int read_dev_dir(const char *dir_name)
         }
 
         /* Found a non-ignored entry in the directory, so process it */
-        read_dev_file(f_name);
+        read_dev_file(f_name, sizeof(f_name));
     }
 
     closedir(dp);
