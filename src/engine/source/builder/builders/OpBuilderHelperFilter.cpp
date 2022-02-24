@@ -350,70 +350,34 @@ bool opBuilderHelperIntComparison(const std::string field, char op, types::Event
 
 types::Lifter opBuilderHelperIntEqual(const types::DocumentValue & def) //{field: +int/10} $ref
 {
-    // Get field
-    std::string field = def.MemberBegin()->name.GetString();
-    std::string rawValue = def.MemberBegin()->value.GetString();
 
-    std::vector<std::string> parameters = utils::string::split(rawValue, '/');
+    auto [field, refValue, valuestr] = getCompOpParameter(def);
 
-    if (parameters.size() != 2)
-    {
-        throw std::runtime_error("Invalid parameters");
-    }
-
-    std::optional<std::string> refValue;
-    std::optional<int> value;
-
-    if (parameters[1][0] == '$')
-    {
-        // Check case `+int/$`
-        refValue = parameters[1].substr(1, std::string::npos);
-    }
-    else
-    {
-        value = std::stoi(parameters[1]);
-    }
+    std::optional<int> value = valuestr.has_value()
+                                   ? std::optional<int>{std::stoi(valuestr.value())}
+                                   : std::nullopt;
 
     // Return Lifter
-    return [refValue, value, field](types::Observable o)
+    return [field, refValue, value](types::Observable o)
     {
         // Append rxcpp operation
         return o.filter(
             [=](types::Event e)
-            {
-                return opBuilderHelperIntComparison(field, '=', e, refValue, value);
-            });
+            { return opBuilderHelperIntComparison(field, '=', e, refValue, value); });
     };
 }
 
 types::Lifter opBuilderHelperIntNotEqual(const types::DocumentValue & def)
 {
-    // Get field
-    std::string field = def.MemberBegin()->name.GetString();
-    std::string rawValue = def.MemberBegin()->value.GetString();
 
-    std::vector<std::string> parameters = utils::string::split(rawValue, '/');
+    auto [field, refValue, valuestr] = getCompOpParameter(def);
 
-    if (parameters.size() != 2)
-    {
-        throw std::runtime_error("Invalid parameters");
-    }
-
-    std::optional<std::string> refValue;
-    std::optional<int> value;
-
-    if (parameters[1][0] == '$')
-    {
-        // Check case `+int/$`
-        refValue = parameters[1].substr(1, std::string::npos);
-    }
-    else
-    {
-        value = std::stoi(parameters[1]);
-    }
+    std::optional<int> value = valuestr.has_value()
+                                   ? std::optional<int>{std::stoi(valuestr.value())}
+                                   : std::nullopt;
 
     // Return Lifter
-    return [refValue, value, field](types::Observable o)
+    return [field, refValue, value](types::Observable o)
     {
         // Append rxcpp operation
         return o.filter(
@@ -427,32 +391,15 @@ types::Lifter opBuilderHelperIntNotEqual(const types::DocumentValue & def)
 
 types::Lifter opBuilderHelperIntLessThan(const types::DocumentValue & def)
 {
-    // Get field
-    std::string field = def.MemberBegin()->name.GetString();
-    std::string rawValue = def.MemberBegin()->value.GetString();
 
-    std::vector<std::string> parameters = utils::string::split(rawValue, '/');
+    auto [field, refValue, valuestr] = getCompOpParameter(def);
 
-    if (parameters.size() != 2)
-    {
-        throw std::runtime_error("Invalid parameters");
-    }
-
-    std::optional<std::string> refValue;
-    std::optional<int> value;
-
-    if (parameters[1][0] == '$')
-    {
-        // Check case `+int/$`
-        refValue = parameters[1].substr(1, std::string::npos);
-    }
-    else
-    {
-        value = std::stoi(parameters[1]);
-    }
+    std::optional<int> value = valuestr.has_value()
+                                   ? std::optional<int>{std::stoi(valuestr.value())}
+                                   : std::nullopt;
 
     // Return Lifter
-    return [refValue, value, field](types::Observable o)
+    return [field, refValue, value](types::Observable o)
     {
         // Append rxcpp operation
         return o.filter(
@@ -466,32 +413,15 @@ types::Lifter opBuilderHelperIntLessThan(const types::DocumentValue & def)
 
 types::Lifter opBuilderHelperIntLessThanEqual(const types::DocumentValue & def)
 {
-    // Get field
-    std::string field = def.MemberBegin()->name.GetString();
-    std::string rawValue = def.MemberBegin()->value.GetString();
 
-    std::vector<std::string> parameters = utils::string::split(rawValue, '/');
+    auto [field, refValue, valuestr] = getCompOpParameter(def);
 
-    if (parameters.size() != 2)
-    {
-        throw std::runtime_error("Invalid parameters");
-    }
-
-    std::optional<std::string> refValue;
-    std::optional<int> value;
-
-    if (parameters[1][0] == '$')
-    {
-        // Check case `+int/$`
-        refValue = parameters[1].substr(1, std::string::npos);
-    }
-    else
-    {
-        value = std::stoi(parameters[1]);
-    }
+    std::optional<int> value = valuestr.has_value()
+                                   ? std::optional<int>{std::stoi(valuestr.value())}
+                                   : std::nullopt;
 
     // Return Lifter
-    return [refValue, value, field](types::Observable o)
+    return [field, refValue, value](types::Observable o)
     {
         // Append rxcpp operation
         return o.filter(
@@ -505,32 +435,15 @@ types::Lifter opBuilderHelperIntLessThanEqual(const types::DocumentValue & def)
 
 types::Lifter opBuilderHelperIntGreaterThan(const types::DocumentValue & def)
 {
-    // Get field
-    std::string field = def.MemberBegin()->name.GetString();
-    std::string rawValue = def.MemberBegin()->value.GetString();
 
-    std::vector<std::string> parameters = utils::string::split(rawValue, '/');
+    auto [field, refValue, valuestr] = getCompOpParameter(def);
 
-    if (parameters.size() != 2)
-    {
-        throw std::runtime_error("Invalid parameters");
-    }
-
-    std::optional<std::string> refValue;
-    std::optional<int> value;
-
-    if (parameters[1][0] == '$')
-    {
-        // Check case `+int/$`
-        refValue = parameters[1].substr(1, std::string::npos);
-    }
-    else
-    {
-        value = std::stoi(parameters[1]);
-    }
+    std::optional<int> value = valuestr.has_value()
+                                   ? std::optional<int>{std::stoi(valuestr.value())}
+                                   : std::nullopt;
 
     // Return Lifter
-    return [refValue, value, field](types::Observable o)
+    return [field, refValue, value](types::Observable o)
     {
         // Append rxcpp operation
         return o.filter(
@@ -544,32 +457,15 @@ types::Lifter opBuilderHelperIntGreaterThan(const types::DocumentValue & def)
 
 types::Lifter opBuilderHelperIntGreaterThanEqual(const types::DocumentValue & def)
 {
-    // Get field
-    std::string field = def.MemberBegin()->name.GetString();
-    std::string rawValue = def.MemberBegin()->value.GetString();
 
-    std::vector<std::string> parameters = utils::string::split(rawValue, '/');
+    auto [field, refValue, valuestr] = getCompOpParameter(def);
 
-    if (parameters.size() != 2)
-    {
-        throw std::runtime_error("Invalid parameters");
-    }
-
-    std::optional<std::string> refValue;
-    std::optional<int> value;
-
-    if (parameters[1][0] == '$')
-    {
-        // Check case `+int/$`
-        refValue = parameters[1].substr(1, std::string::npos);
-    }
-    else
-    {
-        value = std::stoi(parameters[1]);
-    }
+    std::optional<int> value = valuestr.has_value()
+                                   ? std::optional<int>{std::stoi(valuestr.value())}
+                                   : std::nullopt;
 
     // Return Lifter
-    return [refValue, value, field](types::Observable o)
+    return [field, refValue, value](types::Observable o)
     {
         // Append rxcpp operation
         return o.filter(
