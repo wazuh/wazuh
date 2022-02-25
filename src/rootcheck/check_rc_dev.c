@@ -13,7 +13,7 @@
 #include "rootcheck.h"
 
 /* Prototypes */
-static int read_dev_file(const char *file_name, const size_t size_name);
+static int read_dev_file(const char *file_name);
 static int read_dev_dir(const char *dir_name);
 
 /* Global variables */
@@ -21,7 +21,7 @@ static int _dev_errors;
 static int _dev_total;
 
 
-static int read_dev_file(const char *file_name, const size_t size_name)
+static int read_dev_file(const char *file_name)
 {
     struct stat statbuf;
 
@@ -36,10 +36,18 @@ static int read_dev_file(const char *file_name, const size_t size_name)
     }
 
     else if (S_ISREG(statbuf.st_mode)) {
-        char op_msg[size_name + strlen("File '' present on /dev. Possible hidden file.")  + 1];
+        char op_msg[OS_SIZE_1024 + 1];
+        const char op_msg_fmt[] = "File '%*s' present on /dev. Possible hidden file.";
 
-        snprintf(op_msg, sizeof(op_msg), "File '%s' present on /dev."
-                 " Possible hidden file.", file_name);
+        int size = snprintf(NULL, 0, op_msg_fmt, (int)strlen(file_name), file_name);
+
+        if (size < (int)sizeof(op_msg)) {
+            snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)strlen(file_name), file_name);
+        }
+        else {
+            snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)(sizeof(op_msg) - strlen(op_msg_fmt) + 2), file_name);
+        }
+
         notify_rk(ALERT_SYSTEM_CRIT, op_msg);
 
         _dev_errors++;
@@ -137,7 +145,7 @@ static int read_dev_dir(const char *dir_name)
         }
 
         /* Found a non-ignored entry in the directory, so process it */
-        read_dev_file(f_name, sizeof(f_name));
+        read_dev_file(f_name);
     }
 
     closedir(dp);
