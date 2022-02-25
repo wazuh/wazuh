@@ -36,13 +36,18 @@ static int read_sys_file(const char *file_name, int do_read)
 #endif
     if (lstat(file_name, &statbuf) < 0) {
 #ifndef WIN32
-        const size_t size_buffer = strlen(file_name) + strlen("Anomaly detected in file ''. Hidden from stats, but showing up on readdir. Possible kernel level rootkit.") + 1;
-        char op_msg[size_buffer];
+        const char op_msg_fmt[] = "Anomaly detected in file '%*s'. Hidden from stats, but showing up on readdir. Possible kernel level rootkit.";
+        char op_msg[OS_SIZE_1024 + 1];
 
-        snprintf(op_msg, size_buffer, "Anomaly detected in file '%s'. "
-                 "Hidden from stats, but showing up on readdir. "
-                 "Possible kernel level rootkit.",
-                 file_name);
+        int size = snprintf(NULL, 0, op_msg_fmt, (int)strlen(file_name), file_name);
+
+        if (size < (int)sizeof(op_msg)) {
+            snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)strlen(file_name), file_name);
+        }
+        else {
+            snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)(sizeof(op_msg) - strlen(op_msg_fmt) + 2), file_name);
+        }
+
         notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
         _sys_errors++;
 #endif
@@ -91,12 +96,18 @@ static int read_sys_file(const char *file_name, int do_read)
                 if ((lstat(file_name, &statbuf2) == 0) &&
                         (total != statbuf2.st_size) &&
                         (statbuf.st_size == statbuf2.st_size)) {
-                    const size_t size_buffer = strlen(file_name) + strlen("Anomaly detected in file ''. File size doesn't match what we found. Possible kernel level rootkit.") + 1;
-                    char op_msg[size_buffer];
-                    snprintf(op_msg, size_buffer, "Anomaly detected in file "
-                             "'%s'. File size doesn't match what we found. "
-                             "Possible kernel level rootkit.",
-                             file_name);
+                    const char op_msg_fmt[] = "Anomaly detected in file '%*s'. File size doesn't match what we found. Possible kernel level rootkit.";
+                    char op_msg[OS_SIZE_1024 + 1];
+
+                    int size = snprintf(NULL, 0, op_msg_fmt, (int)strlen(file_name), file_name);
+
+                    if (size < (int)sizeof(op_msg)) {
+                        snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)strlen(file_name), file_name);
+                    }
+                    else {
+                        snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)(sizeof(op_msg) - strlen(op_msg_fmt) + 2), file_name);
+                    }
+
                     notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
                     _sys_errors++;
                 }
