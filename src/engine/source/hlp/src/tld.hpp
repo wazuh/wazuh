@@ -4,7 +4,7 @@
 // TODO Another approach is using hashes with Gperf
 // TODO Try another containers performance as unordered_set or trigee
 
-std::set<std::string> ccTLDlist = {
+static const std::set<std::string> ccTLDlist = {
     "ac",
     "ad",
     "ae",
@@ -266,7 +266,7 @@ std::set<std::string> ccTLDlist = {
     "zw"
 };
 
-std::set<std::string> popularTLDlist = {
+static const std::set<std::string> popularTLDlist = {
     "com",
     "co",
     "org",
