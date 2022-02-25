@@ -131,16 +131,30 @@ static int read_sys_file(const char *file_name, int do_read)
         }
 
         if (statbuf.st_uid == 0) {
-            int size_buffer = strlen(file_name) + strlen("File '' is: \n          - owned by root,\n          - has write permissions to anyone.")  + 1;
-            char op_msg[size_buffer];
+            int size = 0;
+            char op_msg[OS_SIZE_1024 + 1];
 #ifdef OSSECHIDS
-            snprintf(op_msg, size_buffer, "File '%s' is owned by root "
-                     "and has written permissions to anyone.", file_name);
+            const char op_msg_fmt[] = "File '%*s' is owned by root and has written permissions to anyone.";
+
+            size = snprintf(NULL, 0, op_msg_fmt, (int)strlen(file_name), file_name);
+
+            if (size < (int)sizeof(op_msg)) {
+                snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)strlen(file_name), file_name);
+            }
+            else {
+                snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)(sizeof(op_msg) - strlen(op_msg_fmt) + 2), file_name);
+            }
 #else
-            snprintf(op_msg, size_buffer, "File '%s' is: \n"
-                     "          - owned by root,\n"
-                     "          - has write permissions to anyone.",
-                     file_name);
+            const char op_msg_fmt[] = "File '%*s' is: \n          - owned by root,\n          - has write permissions to anyone.";
+
+            size = snprintf(NULL, 0, op_msg_fmt, (int)strlen(file_name), file_name);
+
+            if (size < (int)sizeof(op_msg)) {
+                snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)strlen(file_name), file_name);
+            }
+            else {
+                snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)(sizeof(op_msg) - strlen(op_msg_fmt) + 2), file_name);
+            }
 #endif
             notify_rk(ALERT_SYSTEM_CRIT, op_msg);
 
