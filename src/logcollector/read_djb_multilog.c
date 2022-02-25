@@ -166,7 +166,7 @@ void *read_djbmultilog(logreader *lf, int *rc, int drop_it) {
                          p);
 
 
-                if (size + 1 > OS_MAXSTR - OS_LOG_HEADER) {
+                if (size + 1 > (int)sizeof(buffer)) {
                     merror("Message size too big on file '%s' (length = " FTELL_TT "): '%s'...", lf->file, FTELL_INT64 size, buffer);
                 }
             }
