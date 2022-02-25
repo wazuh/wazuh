@@ -106,7 +106,6 @@ typedef struct create_json_event_ctx {
 typedef struct fim_txn_context_s {
     event_data_t* evt_data;
     fim_entry* latest_entry;
-    volatile bool db_full;
 } fim_txn_context_t;
 
 #ifdef WIN32
