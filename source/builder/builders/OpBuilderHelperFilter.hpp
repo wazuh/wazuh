@@ -60,15 +60,15 @@ types::Lifter opBuilderHelperNotExists(const types::DocumentValue & def);
  * - `m`: checks if the field is less than or equal to the value
  * - `n`: checks if the field is greater than or equal to the value
  * @param e The event containing the field to be compared
- * @param refExpStr The key/path of the field to be compared against (optional)
- * @param expectedStr The string to be compared against (optional)
+ * @param refValue The key/path of the field to be compared against (optional)
+ * @param value The string to be compared against (optional)
  * @return true if the comparison is true
  * @return false if the comparison is false
  * @note If `refExpStr` is not provided, the comparison will be against the value of `expectedStr`
  */
 inline bool opBuilderHelperStringComparison(const std::string  key, char op, types::Event& e,
-                                                 std::optional<std::string> refExpStr,
-                                                 std::optional<std::string> expectedStr);
+                                                 std::optional<std::string> refValue,
+                                                 std::optional<std::string> value);
 
 /**
  * @brief Create `s_eq` helper function that filters events with a string
