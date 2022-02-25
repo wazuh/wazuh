@@ -17,27 +17,27 @@
 using namespace builder::internals::builders;
 
 // Build ok
-TEST(opBuilderHelperString_up, Builds)
+TEST(opBuilderHelperStringUP, Builds)
 {
     Document doc{R"({
         "check":
             {"field2check": "+s_up/abcd"}
     })"};
-    ASSERT_NO_THROW(opBuilderHelperString_up(*doc.get("/check")));
+    ASSERT_NO_THROW(opBuilderHelperStringUP(*doc.get("/check")));
 }
 
 // Build incorrect number of arguments
-TEST(opBuilderHelperString_up, BuildsIncorrectNumberOfArguments)
+TEST(opBuilderHelperStringUP, BuildsIncorrectNumberOfArguments)
 {
     Document doc{R"({
         "check":
             {"field2check": "+s_up/test_value/test_value2"}
     })"};
-    ASSERT_THROW(opBuilderHelperString_up(*doc.get("/check")), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperStringUP(*doc.get("/check")), std::runtime_error);
 }
 
 // Test ok: static values
-TEST(opBuilderHelperString_up, staticStringOk)
+TEST(opBuilderHelperStringUP, staticStringOk)
 {
     Document doc{R"({
         "check":
@@ -60,7 +60,7 @@ TEST(opBuilderHelperString_up, staticStringOk)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperString_up(*doc.get("/check"));
+    Lifter lift = opBuilderHelperStringUP(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) {expected.push_back(e);});
@@ -71,7 +71,7 @@ TEST(opBuilderHelperString_up, staticStringOk)
 }
 
 // Test ok: dynamic values (string)
-TEST(opBuilderHelperString_up, dynamicsStringOk) {
+TEST(opBuilderHelperStringUP, dynamicsStringOk) {
 
     Document doc{R"({
         "check":
@@ -93,7 +93,7 @@ TEST(opBuilderHelperString_up, dynamicsStringOk) {
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperString_up(*doc.get("/check"));
+    Lifter lift = opBuilderHelperStringUP(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) {expected.push_back(e);});
@@ -103,7 +103,7 @@ TEST(opBuilderHelperString_up, dynamicsStringOk) {
     ASSERT_STREQ(expected[2].get("/fieltToCreate")->GetString(), "ASD");
 }
 
-TEST(opBuilderHelperString_up, multilevelSrc) {
+TEST(opBuilderHelperStringUP, multilevelSrc) {
     Document doc{R"({
         "check":
             {"fieltToCreate": "+s_lo/$a.b.c.srcField"}
@@ -124,7 +124,7 @@ TEST(opBuilderHelperString_up, multilevelSrc) {
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperString_lo(*doc.get("/check"));
+    Lifter lift = opBuilderHelperStringLO(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) {expected.push_back(e);});
@@ -134,7 +134,7 @@ TEST(opBuilderHelperString_up, multilevelSrc) {
     ASSERT_STREQ(expected[2].get("/fieltToCreate")->GetString(), "asd");
 }
 
-TEST(opBuilderHelperString_up, multilevelDst) {
+TEST(opBuilderHelperStringUP, multilevelDst) {
     Document doc{R"({
         "check":
             {"a.b.fieltToCreate.2": "+s_lo/$a.b.c.srcField"}
@@ -155,7 +155,7 @@ TEST(opBuilderHelperString_up, multilevelDst) {
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperString_up(*doc.get("/check"));
+    Lifter lift = opBuilderHelperStringUP(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) {expected.push_back(e);});
@@ -165,7 +165,7 @@ TEST(opBuilderHelperString_up, multilevelDst) {
     ASSERT_STREQ(expected[2].get("/a/b/fieltToCreate/2")->GetString(), "ASD");
 }
 
-TEST(opBuilderHelperString_up, existDst) {
+TEST(opBuilderHelperStringUP, existDst) {
     Document doc{R"({
         "check":
             {"a.b": "+s_lo/$a.b.c.srcField"}
@@ -186,7 +186,7 @@ TEST(opBuilderHelperString_up, existDst) {
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperString_up(*doc.get("/check"));
+    Lifter lift = opBuilderHelperStringUP(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) {expected.push_back(e);});
@@ -196,7 +196,7 @@ TEST(opBuilderHelperString_up, existDst) {
     ASSERT_STREQ(expected[2].get("/a/b")->GetString(), "ASD");
 }
 
-TEST(opBuilderHelperString_up, notExistSrc) {
+TEST(opBuilderHelperStringUP, notExistSrc) {
     Document doc{R"({
     "check":
             {"a.b": "+s_lo/$srcField"}
@@ -214,7 +214,7 @@ TEST(opBuilderHelperString_up, notExistSrc) {
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperString_up(*doc.get("/check"));
+    Lifter lift = opBuilderHelperStringUP(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) {expected.push_back(e);});
@@ -223,7 +223,7 @@ TEST(opBuilderHelperString_up, notExistSrc) {
     ASSERT_FALSE(expected[1].exists("/a/b"));
 }
 
-TEST(opBuilderHelperString_up, srcNotString) {
+TEST(opBuilderHelperStringUP, srcNotString) {
     Document doc{R"({
         "check":
             {"fieltToCreate": "+s_lo/$srcField123"}
@@ -244,7 +244,7 @@ TEST(opBuilderHelperString_up, srcNotString) {
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperString_up(*doc.get("/check"));
+    Lifter lift = opBuilderHelperStringUP(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) {expected.push_back(e);});
