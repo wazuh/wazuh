@@ -373,9 +373,6 @@ def test_compare_files(wazuh_db_query_mock, mock_get_cluster_items):
     assert count["missing"] == 2
     assert count["extra"] == 0
     assert count["shared"] == 0
-    wazuh_db_query_mock.assert_called_once_with(select=['id'], limit=None,
-                                                filters={'rbac_ids': ['PATH']},
-                                                rbac_negate=False)
 
 
 @patch('wazuh.core.cluster.cluster.get_cluster_items')

@@ -612,7 +612,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
         try:
             before = datetime.utcnow().timestamp()
-            logger.debug("Starting sending TYPE files to master.")
+            logger.debug("Starting sending extra valid files to master.")
             extra_valid_sync = SyncFiles(cmd=b'syn_e_w_m', logger=logger, manager=self)
 
             # Merge all agent-groups files into one and create metadata dict with it (key->filepath, value->metadata).
@@ -698,19 +698,17 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 logger.debug("Updating local files: End.")
 
             # Send extra valid files to the master.
-            if 'TYPE' not in ko_files:
-                logger.info(
-                    f"Finished in {datetime.utcnow().timestamp() - self.integrity_sync_status['date_start']:.3f}s.")
-            elif ko_files['TYPE']:
-                logger.debug("Master requires some worker files.")
-                asyncio.create_task(self.sync_extra_valid(ko_files['TYPE']))
+            logger.info(
+                f"Finished in {datetime.utcnow().timestamp() - self.integrity_sync_status['date_start']:.3f}s.")
+            # if 'TYPE' in ko_files and ko_files['TYPE']:
+            #     logger.debug("Master requires some worker files.")
+            #     asyncio.create_task(self.sync_extra_valid(ko_files['TYPE']))
 
         except exception.WazuhException as e:
             logger.error(f"Error synchronizing extra valid files: {e}")
             await self.send_request(command=b'syn_i_w_m_r',
                                     data=b'None ' + json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
         except Exception as e:
-            print(e)
             logger.error(f"Error synchronizing extra valid files: {e}")
             exc_info = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)),
                                   cls=c_common.WazuhJSONEncoder)

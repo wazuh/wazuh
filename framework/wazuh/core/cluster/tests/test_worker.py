@@ -858,7 +858,7 @@ async def test_worker_handler_sync_extra_valid(merge_info_mock, sync_mock, logge
     # Test the try
     with patch.object(logging.getLogger("wazuh.Integrity sync"), "info") as logger_info_mock:
         await worker_handler.sync_extra_valid(extra_valid)
-        logger_debug_mock.assert_has_calls([call("Starting sending TYPE files to master."),
+        logger_debug_mock.assert_has_calls([call("Starting sending extra valid files to master."),
                                             call("Finished sending TYPE files in 0.000s.")])
         logger_info_mock.assert_called_once_with("Finished in 0.000s.")
         merge_info_mock.assert_called_once_with(merge_type='TYPE', node_name="Testing",
@@ -875,7 +875,7 @@ async def test_worker_handler_sync_extra_valid(merge_info_mock, sync_mock, logge
             merge_info_mock.side_effect = exception.WazuhException(1001)
             cls = cluster_common.WazuhJSONEncoder
             await worker_handler.sync_extra_valid(extra_valid)
-            logger_debug_mock.assert_called_with("Starting sending TYPE files to master.")
+            logger_debug_mock.assert_called_with("Starting sending extra valid files to master.")
             logger_error_mock.assert_called_once_with(
                 f"Error synchronizing TYPE files: {exception.WazuhException(1001)}")
             send_request_mock.assert_called_once_with(command=b'syn_i_w_m_r',
@@ -885,7 +885,7 @@ async def test_worker_handler_sync_extra_valid(merge_info_mock, sync_mock, logge
             with patch("json.dumps", return_value="data_to_encode"):
                 merge_info_mock.side_effect = Exception()
                 await worker_handler.sync_extra_valid(extra_valid)
-                logger_debug_mock.assert_called_with("Starting sending TYPE files to master.")
+                logger_debug_mock.assert_called_with("Starting sending extra valid files to master.")
                 logger_error_mock.assert_called_with("Error synchronizing TYPE files: ")
                 send_request_mock.assert_called_with(command=b'syn_i_w_m_r',
                                                      data=b'None ' + "data_to_encode".encode())

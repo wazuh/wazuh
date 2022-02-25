@@ -173,12 +173,12 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
                             # Create dict with metadata for the current file.
                             # The TYPE string is a placeholder to define the type of merge performed.
                             file_metadata = {"mod_time": file_mod_time, 'cluster_item_key': get_cluster_item_key}
-                            if '.merged' in file_:
+                            if '.merged' not in file_:
+                                file_metadata['merged'] = False
+                            else:
                                 file_metadata['merged'] = True
                                 file_metadata['merge_type'] = 'TYPE'
                                 file_metadata['merge_name'] = abs_file_path
-                            else:
-                                file_metadata['merged'] = False
                             if get_md5:
                                 file_metadata['md5'] = md5(abs_file_path)
                             # Use the relative file path as a key to save its metadata dictionary.
@@ -425,15 +425,15 @@ def compare_files(good_files, check_files, node_name):
     # Extra files are the ones present in check files (worker) but not in good files (master). The underscore is used
     # to not change the function, as previously it returned an iterator for the 'extra_valid' files as well, but these
     # are no longer in use.
-    _, extra = split_on_condition(check_files.keys() - good_files.keys(),
+    _extra_valid, extra = split_on_condition(check_files.keys() - good_files.keys(),
                                   lambda x: cluster_items[check_files[x]['cluster_item_key']]['extra_valid'])
     extra_files = {key: check_files[key] for key in extra}
-    _files = {key: check_files[key] for key in _}
+    # extra_valid_files = {key: check_files[key] for key in _extra_valid}
 
     # This condition should never take place. The 'PATH' string is a placeholder to indicate the type of variable that
     # we should place.
-    if _files:
-        check_if_file_correspond_to_agent()
+    # if extra_valid_files:
+    #     check_if_file_correspond_to_agent()
 
     # 'all_shared' files are the ones present in both sets but with different MD5 checksum.
     all_shared = [x for x in check_files.keys() & good_files.keys() if check_files[x]['md5'] != good_files[x]['md5']]
@@ -456,8 +456,8 @@ def compare_files(good_files, check_files, node_name):
     else:
         shared_files = {key: good_files[key] for key in shared}
 
-    files = {'missing': missing_files, 'extra': extra_files, 'shared': shared_files, 'TYPE': _files}
-    count = {'missing': len(missing_files), 'extra': len(extra_files), 'shared': len(all_shared), 'TYPE': len(_files)}
+    files = {'missing': missing_files, 'extra': extra_files, 'shared': shared_files}
+    count = {'missing': len(missing_files), 'extra': len(extra_files), 'shared': len(all_shared)}
 
     return files, count
 
