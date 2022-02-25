@@ -944,7 +944,7 @@ void test_c_multi_group_open_directory_fail(void **state)
 
     will_return(__wrap_strerror, "No such file or directory");
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'etc/shared/multi_group_test': No such file or directory");
+    expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'etc/shared': No such file or directory");
 
     c_multi_group(multi_group, _f_sum, hash_multigroup, true);
 
@@ -1456,7 +1456,7 @@ void test_process_groups_open_directory_fail(void **state)
 
     will_return(__wrap_strerror, "No such file or directory");
     expect_string(__wrap__mdebug1, formatted_msg, "Opening directory: 'etc/shared': No such file or directory");
-    
+
     process_groups();
 }
 
@@ -1821,7 +1821,7 @@ void test_process_multi_groups_open_directory_fail(void **state)
 
     will_return(__wrap_strerror, "No such file or directory");
     expect_string(__wrap__mdebug1, formatted_msg, "Opening directory: 'queue/agent-groups': No such file or directory");
-    
+
     process_multi_groups();
 }
 
@@ -2103,7 +2103,7 @@ void test_process_multi_groups_find_multi_group_null(void **state)
 
     will_return(__wrap_opendir, 0);
     will_return(__wrap_strerror, "No such file or directory");
-    expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'etc/shared/group1': No such file or directory");
+    expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'etc/shared': No such file or directory");
 
     expect_value(__wrap_OSHash_Next, self, m_hash);
     will_return(__wrap_OSHash_Next, NULL);
@@ -2166,7 +2166,7 @@ void test_process_multi_groups_group_changed(void **state)
 
     will_return(__wrap_opendir, 0);
     will_return(__wrap_strerror, "No such file or directory");
-    expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'etc/shared/group1': No such file or directory");
+    expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'etc/shared': No such file or directory");
 
     expect_string(__wrap__mdebug2, formatted_msg, "Multigroup 'group1,group2' has changed.");
 
@@ -2235,7 +2235,7 @@ void test_process_multi_groups_changed_outside(void **state)
 
     will_return(__wrap_opendir, 0);
     will_return(__wrap_strerror, "No such file or directory");
-    expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'etc/shared/group1': No such file or directory");
+    expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'etc/shared': No such file or directory");
 
     expect_string(__wrap__mwarn, formatted_msg, "Multigroup 'group1,group2' was modified from outside, so it was regenerated.");
 

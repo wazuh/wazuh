@@ -656,7 +656,7 @@ STATIC void c_multi_group(char *multi_group, file_sum ***_f_sum, char *hash_mult
             dp = opendir(SHAREDCFG_DIR);
 
             if (!dp) {
-                mdebug2("Opening directory: '%s': %s", dir, strerror(errno));
+                mdebug2("Opening directory: '%s': %s", SHAREDCFG_DIR, strerror(errno));
                 return;
             }
 
