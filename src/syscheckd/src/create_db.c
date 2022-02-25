@@ -69,7 +69,7 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
 
     if (data->options & CHECK_PERM) {
         if (aux = cJSON_GetObjectItem(changed_data, "perm"), aux != NULL) {
-            cJSON_AddStringToObject(old_attributes, "perm", aux->valuestring);
+            cJSON_AddStringToObject(old_attributes, "perm", cJSON_GetStringValue(aux));
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("permission"));
 
         } else {
@@ -83,7 +83,7 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
 
     if (data->options & CHECK_OWNER) {
         if (aux = cJSON_GetObjectItem(changed_data, "uid"), aux != NULL) {
-            cJSON_AddStringToObject(old_attributes, "uid", aux->valuestring);
+            cJSON_AddStringToObject(old_attributes, "uid", cJSON_GetStringValue(aux));
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("uid"));
 
         } else {
@@ -93,7 +93,7 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
 
     if (data->options & CHECK_GROUP) {
         if (aux = cJSON_GetObjectItem(changed_data, "gid"), aux != NULL) {
-            cJSON_AddStringToObject(old_attributes, "gid", aux->valuestring);
+            cJSON_AddStringToObject(old_attributes, "gid", cJSON_GetStringValue(aux));
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("gid"));
 
         } else {
@@ -103,7 +103,7 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
 
     if (data->user_name) {
         if (aux = cJSON_GetObjectItem(changed_data, "user_name"), aux != NULL) {
-            cJSON_AddStringToObject(old_attributes, "user_name", aux->valuestring);
+            cJSON_AddStringToObject(old_attributes, "user_name", cJSON_GetStringValue(aux));
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("user_name"));
 
         } else {
@@ -113,7 +113,7 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
 
     if (data->group_name) {
         if (aux = cJSON_GetObjectItem(changed_data, "group_name"), aux != NULL) {
-            cJSON_AddStringToObject(old_attributes, "group_name", aux->valuestring);
+            cJSON_AddStringToObject(old_attributes, "group_name", cJSON_GetStringValue(aux));
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("group_name"));
 
         } else {
@@ -143,7 +143,7 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
 
     if (data->options & CHECK_MD5SUM) {
         if (aux = cJSON_GetObjectItem(changed_data, "hash_md5"), aux != NULL) {
-            cJSON_AddStringToObject(old_attributes, "hash_md5", aux->valuestring);
+            cJSON_AddStringToObject(old_attributes, "hash_md5", cJSON_GetStringValue(aux));
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("md5"));
 
         } else {
@@ -153,7 +153,7 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
 
     if (data->options & CHECK_SHA1SUM) {
         if (aux = cJSON_GetObjectItem(changed_data, "hash_sha1"), aux != NULL) {
-            cJSON_AddStringToObject(old_attributes, "hash_sha1", aux->valuestring);
+            cJSON_AddStringToObject(old_attributes, "hash_sha1", cJSON_GetStringValue(aux));
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("sha1"));
 
         } else {
@@ -163,7 +163,7 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
 
     if (data->options & CHECK_SHA256SUM) {
         if (aux = cJSON_GetObjectItem(changed_data, "hash_sha256"), aux != NULL) {
-            cJSON_AddStringToObject(old_attributes, "hash_sha256", aux->valuestring);
+            cJSON_AddStringToObject(old_attributes, "hash_sha256", cJSON_GetStringValue(aux));
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("sha256"));
 
         } else {
@@ -174,7 +174,7 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
 #ifdef WIN32
     if (data->options & CHECK_ATTRS) {
         if (aux = cJSON_GetObjectItem(changed_data, "attributes"), aux != NULL) {
-            cJSON_AddStringToObject(old_attributes, "attributes", aux->valuestring);
+            cJSON_AddStringToObject(old_attributes, "attributes", cJSON_GetStringValue(aux));
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("attributes"));
 
         } else {
@@ -185,7 +185,7 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
 
     if (*data->checksum) {
         if (aux = cJSON_GetObjectItem(changed_data, "checksum"), aux != NULL) {
-            cJSON_AddStringToObject(old_attributes, "checksum", aux->valuestring);
+            cJSON_AddStringToObject(old_attributes, "checksum", cJSON_GetStringValue(aux));
         } else {
             cJSON_AddStringToObject(old_attributes, "checksum", data->checksum);
         }
