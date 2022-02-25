@@ -50,6 +50,69 @@ TEST_F(RegistryUtilsTest, RegistryDWORDNoThrow)
     EXPECT_FALSE(result);
 }
 
+TEST_F(RegistryUtilsTest, RegistryQWORD)
+{
+    HKEY handler;
+    const LPCTSTR subkey { TEXT("WazuhTest") };
+    LPCTSTR value { TEXT("Test") };
+    ULONGLONG data { 0xF00000000000000 };
+    ULONGLONG valueRead { 0 };
+
+    auto result { RegCreateKeyEx(HKEY_CURRENT_USER, subkey, 0, nullptr, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, nullptr, &handler, nullptr) };
+
+    if (result != ERROR_SUCCESS)
+    {
+        EXPECT_EQ(ERROR_SUCCESS, result);
+    }
+
+    result = RegSetValueEx(handler, value, 0, REG_QWORD, reinterpret_cast<LPBYTE>(&data), sizeof(ULONGLONG));
+
+    if (result != ERROR_SUCCESS)
+    {
+        EXPECT_EQ(ERROR_SUCCESS, result);
+    }
+
+    Utils::Registry reg(HKEY_CURRENT_USER, "WazuhTest");
+    result = reg.qword("Test", valueRead);
+    EXPECT_TRUE(result);
+    EXPECT_EQ(data, valueRead);
+
+    RegDeleteKeyEx(HKEY_CURRENT_USER, subkey, KEY_WOW64_64KEY, 0);
+    RegCloseKey(handler);
+}
+
+
+TEST_F(RegistryUtilsTest, RegistryQWORDNoThrow)
+{
+    HKEY handler;
+    const LPCTSTR subkey { TEXT("WazuhTest") };
+    LPCTSTR value { TEXT("Test") };
+    ULONGLONG data { 0 };
+    ULONGLONG valueRead { 0 };
+
+    auto result { RegCreateKeyEx(HKEY_CURRENT_USER, subkey, 0, nullptr, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, nullptr, &handler, nullptr) };
+
+    if (result != ERROR_SUCCESS)
+    {
+        EXPECT_EQ(ERROR_SUCCESS, result);
+    }
+
+    result = RegSetValueEx(handler, value, 0, REG_DWORD, reinterpret_cast<LPBYTE>(&data), sizeof(ULONGLONG));
+
+    if (result != ERROR_SUCCESS)
+    {
+        EXPECT_EQ(ERROR_SUCCESS, result);
+    }
+
+    Utils::Registry reg(HKEY_CURRENT_USER, "WazuhTest");
+    result = reg.qword("Test", valueRead);
+    EXPECT_FALSE(result);
+    EXPECT_EQ(0u, valueRead);
+
+    RegDeleteKeyEx(HKEY_CURRENT_USER, subkey, KEY_WOW64_64KEY, 0);
+    RegCloseKey(handler);
+}
+
 TEST_F(RegistryUtilsTest, RegistryEnumerate)
 {
     Utils::Registry reg(HKEY_LOCAL_MACHINE, CENTRAL_PROCESSOR_REGISTRY, KEY_ENUMERATE_SUB_KEYS | KEY_READ);
