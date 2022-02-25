@@ -26,7 +26,7 @@ namespace builder::internals::builders
 //*************************************************
 //*           String tranform                     *
 //*************************************************
-
+// TODO DOCME
 types::Event opBuilderHelperStringTransformation(const std::string key, char op, types::Event & e,
                                                  std::optional<std::string> refExpStr,
                                                  std::optional<std::string> expectedStr);
