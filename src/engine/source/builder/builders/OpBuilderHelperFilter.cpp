@@ -498,6 +498,7 @@ types::Lifter opBuilderHelperRegexMatch(const types::DocumentValue & def)
         return o.filter(
             [=](types::Event e)
             {
+                // TODO Remove try catch
                 const rapidjson::Value * field_str{};
                 try
                 {
@@ -541,6 +542,7 @@ types::Lifter opBuilderHelperRegexNotMatch(const types::DocumentValue & def)
         return o.filter(
             [=](types::Event e)
             {
+                // TODO Remove try catch
                 const rapidjson::Value * field_str{};
                 try
                 {
