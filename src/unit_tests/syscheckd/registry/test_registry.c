@@ -14,6 +14,7 @@
 
 #include "syscheck.h"
 #include "registry/registry.h"
+#include "registry/registry.c"
 
 #include "../../wrappers/common.h"
 #include "../../wrappers/windows/sddl_wrappers.h"
@@ -30,17 +31,6 @@
 #define CHECK_REGISTRY_ALL                                                                             \
     CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_MD5SUM | CHECK_SHA1SUM | \
     CHECK_SHA256SUM | CHECK_SEECHANGES | CHECK_TYPE
-
-typedef struct fim_key_txn_context_s {
-    event_data_t *evt_data;
-    fim_registry_key *key;
-} fim_key_txn_context_t;
-
-typedef struct fim_val_txn_context_s {
-    event_data_t *evt_data;
-    fim_registry_value_data *data;
-    char* diff;
-} fim_val_txn_context_t;
 
 char inv_hKey[50];
 
@@ -79,6 +69,7 @@ int fim_set_root_key(HKEY *root_key_handle, const char *full_key, const char **s
 registry_t *fim_registry_configuration(const char *key, int arch);
 int fim_registry_validate_recursion_level(const char *key_path, const registry_t *configuration);
 int fim_registry_validate_ignore(const char *entry, const registry_t *configuration, int key);
+void fim_registry_free_entry(fim_entry *entry);
 void fim_registry_free_key(fim_registry_key *key);
 void fim_registry_free_value_data(fim_registry_value_data *data);
 fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, const registry_t *configuration);
@@ -865,7 +856,6 @@ static void test_fim_registry_key_transaction_callback_base_line(){
     const cJSON* result_json = NULL;
     fim_key_txn_context_t user_data = {.key = NULL, .evt_data = NULL};
 
-    expect_function_call(__wrap_registry_key_transaction_callback);
     registry_key_transaction_callback(resultType, result_json, &user_data);
 }
 
@@ -876,43 +866,59 @@ static void test_fim_registry_key_transaction_callback_empty_json_array(){
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_key_txn_context_t user_data = {.key = NULL, .evt_data = NULL};
 
-    expect_function_call(__wrap_registry_key_transaction_callback);
+    registry_key_transaction_callback(resultType, result_json, &user_data);
+}
+
+static void test_fim_registry_key_transaction_callback_null_configuration(){
+    _base_line = 1;
+    event_data_t event_data;
+    ReturnTypeCallback resultType = INSERTED;
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x32]\"}";
+    const cJSON* result_json = cJSON_Parse(json_string);
+    fim_key_txn_context_t user_data = {.key = NULL, .evt_data = &event_data};
+
+    // fim_registry_configuration
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+
     registry_key_transaction_callback(resultType, result_json, &user_data);
 }
 
 static void test_fim_registry_key_transaction_callback_insert(){
     _base_line = 1;
-    event_data_t event_data;
+    event_data_t event_data = {.mode = FIM_SCHEDULED};
     ReturnTypeCallback resultType = INSERTED;
-    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\"}";
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\",\"last_event\":12345}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_key_txn_context_t user_data = {.key = NULL, .evt_data = &event_data};
 
-    expect_function_call(__wrap_registry_key_transaction_callback);
+    expect_function_call(__wrap_send_syscheck_msg);
+
     registry_key_transaction_callback(resultType, result_json, &user_data);
 }
 
 static void test_fim_registry_key_transaction_callback_modify(){
     _base_line = 1;
-    event_data_t event_data;
+    event_data_t event_data = {.mode = FIM_SCHEDULED};
     ReturnTypeCallback resultType = MODIFIED;
-    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\"}";
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\",\"last_event\":12345}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_key_txn_context_t user_data = {.key = NULL, .evt_data = &event_data};
 
-    expect_function_call(__wrap_registry_key_transaction_callback);
+    expect_function_call(__wrap_send_syscheck_msg);
+
     registry_key_transaction_callback(resultType, result_json, &user_data);
 }
 
 static void test_fim_registry_key_transaction_callback_delete(){
     _base_line = 1;
-    event_data_t event_data;
+    event_data_t event_data = {.mode = FIM_SCHEDULED};
     ReturnTypeCallback resultType = DELETED;
-    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\"}";
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\",\"last_event\":12345}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_key_txn_context_t user_data = {.key = NULL, .evt_data = &event_data};
 
-    expect_function_call(__wrap_registry_key_transaction_callback);
+    expect_function_call(__wrap_send_syscheck_msg);
+
     registry_key_transaction_callback(resultType, result_json, &user_data);
 }
 
@@ -921,15 +927,16 @@ static void test_fim_registry_key_transaction_callback_max_rows(){
     event_data_t event_data;
     fim_registry_key key;
     key.path = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
+    key.arch = ARCH_64BIT;
     ReturnTypeCallback resultType = MAX_ROWS;
     const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_key_txn_context_t user_data = {.key = &key, .evt_data = &event_data};
 
-    expect_function_call(__wrap_registry_key_transaction_callback);
+    expect_string(__wrap__mdebug1, formatted_msg, "Couldn't insert 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile' entry into DB. The DB is full, please check your configuration.");
+
     registry_key_transaction_callback(resultType, result_json, &user_data);
 }
-
 
 static void test_fim_registry_value_transaction_callback_base_line(){
     _base_line = 0;
@@ -938,7 +945,6 @@ static void test_fim_registry_value_transaction_callback_base_line(){
     const cJSON* result_json = NULL;
     fim_val_txn_context_t user_data = {.data = NULL, .evt_data = &event_data, .diff = NULL};
 
-    expect_function_call(__wrap_registry_value_transaction_callback);
     registry_value_transaction_callback(resultType, result_json, &user_data);
 }
 
@@ -949,57 +955,108 @@ static void test_fim_registry_value_transaction_callback_empty_json_array(){
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_val_txn_context_t user_data = {.data = NULL, .evt_data = NULL, .diff = NULL};
 
-    expect_function_call(__wrap_registry_value_transaction_callback);
+    registry_value_transaction_callback(resultType, result_json, &user_data);
+}
+
+static void test_fim_registry_value_transaction_callback_null_configuration(){
+    _base_line = 1;
+    event_data_t event_data;
+    ReturnTypeCallback resultType = INSERTED;
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x32]\", \"name\":\"mock_name_value\"}";
+    const cJSON* result_json = cJSON_Parse(json_string);
+    fim_val_txn_context_t user_data = {.data = NULL, .evt_data = &event_data, .diff = NULL};
+
+    // fim_registry_configuration
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+
     registry_value_transaction_callback(resultType, result_json, &user_data);
 }
 
 static void test_fim_registry_value_transaction_callback_insert(){
     _base_line = 1;
-    event_data_t event_data;
+    event_data_t event_data = {.mode = FIM_SCHEDULED};
     ReturnTypeCallback resultType = INSERTED;
-    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\", \"name\":\"mock_name_value\"}";
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"arch\":\"[x64]\", \"name\":\"mock_name_value\",\"last_event\":12345}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_val_txn_context_t user_data = {.data = NULL, .evt_data = &event_data, .diff = NULL};
 
-    expect_function_call(__wrap_registry_value_transaction_callback);
+    expect_function_call(__wrap_send_syscheck_msg);
+
     registry_value_transaction_callback(resultType, result_json, &user_data);
 }
 
 static void test_fim_registry_value_transaction_callback_modify(){
     _base_line = 1;
-    event_data_t event_data;
+    event_data_t event_data = {.mode = FIM_SCHEDULED};
     ReturnTypeCallback resultType = MODIFIED;
-    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\", \"name\":\"mock_name_value\"}";
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"arch\":\"[x64]\",\"name\":\"mock_name_value\",\"last_event\":12345}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_val_txn_context_t user_data = {.data = NULL, .evt_data = &event_data, .diff = NULL};
 
-    expect_function_call(__wrap_registry_value_transaction_callback);
+    expect_function_call(__wrap_send_syscheck_msg);
+
     registry_value_transaction_callback(resultType, result_json, &user_data);
 }
 
 static void test_fim_registry_value_transaction_callback_delete(){
     _base_line = 1;
-    event_data_t event_data;
+    event_data_t event_data = {.mode = FIM_SCHEDULED};
     ReturnTypeCallback resultType = DELETED;
-    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\", \"name\":\"mock_name_value\"}";
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\", \"name\":\"mock_name_value\",\"last_event\":12345}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_val_txn_context_t user_data = {.data = NULL, .evt_data = &event_data, .diff = NULL};
 
-    expect_function_call(__wrap_registry_value_transaction_callback);
+    expect_function_call(__wrap_send_syscheck_msg);
+
     registry_value_transaction_callback(resultType, result_json, &user_data);
 }
 
 static void test_fim_registry_value_transaction_callback_max_rows(){
     _base_line = 1;
-    event_data_t event_data;
+    event_data_t event_data = {.mode = FIM_SCHEDULED};
     fim_registry_value_data value;
+    value.path = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
+    value.arch = ARCH_64BIT;
     value.name = "mock_value_name";
     ReturnTypeCallback resultType = MAX_ROWS;
     const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\", \"name\":\"mock_name_value\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_val_txn_context_t user_data = {.data = &value, .evt_data = &event_data, .diff = NULL};
-    expect_function_call(__wrap_registry_value_transaction_callback);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Couldn't insert 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile' entry into DB. The DB is full, please check your configuration.");
+
     registry_value_transaction_callback(resultType, result_json, &user_data);
+}
+
+static void test_fim_registry_free_entry(){
+    fim_entry *entry;
+    os_calloc(1, sizeof(fim_entry), entry);
+
+    fim_registry_key *key;
+    os_calloc(1, sizeof(fim_registry_key), key);
+    key->id = 3;
+    os_strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", key->path);
+    os_strdup("sid (allowed): delete|write_dac|write_data|append_data|write_attributes", key->perm);
+    os_strdup("100", key->uid);
+    os_strdup("200", key->gid);
+    os_strdup("username", key->user_name);
+    os_strdup("groupname", key->group_name);
+    key->arch = 1;
+
+    fim_registry_value_data *value;
+    os_calloc(1, sizeof(fim_registry_value_data), value);
+    value->id = 3;
+    os_strdup("valuename", value->name);
+    strcpy(value->hash_md5, "1234567890ABCDEF1234567890ABCDEF");
+    strcpy(value->hash_sha1, "1234567890ABCDEF1234567890ABCDEF12345678");
+    strcpy(value->hash_sha256, "1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF");
+    strcpy(value->checksum, "1234567890ABCDEF1234567890ABCDEF12345678");
+
+    entry->type = FIM_TYPE_REGISTRY;
+    entry->registry_entry.key = key;
+    entry->registry_entry.value = value;
+
+    fim_registry_free_entry(entry);
 }
 
 int main(void) {
@@ -1053,21 +1110,26 @@ int main(void) {
         cmocka_unit_test(test_fim_registry_scan_RegOpenKeyEx_fail),
         cmocka_unit_test(test_fim_registry_scan_RegQueryInfoKey_fail),
 
-        //fim registry key transaction callback tests
+        /* fim registry key transaction callback tests */
         cmocka_unit_test(test_fim_registry_key_transaction_callback_empty_json_array),
         cmocka_unit_test(test_fim_registry_key_transaction_callback_base_line),
+        cmocka_unit_test(test_fim_registry_key_transaction_callback_null_configuration),
         cmocka_unit_test(test_fim_registry_key_transaction_callback_insert),
         cmocka_unit_test(test_fim_registry_key_transaction_callback_modify),
         cmocka_unit_test(test_fim_registry_key_transaction_callback_delete),
         cmocka_unit_test(test_fim_registry_key_transaction_callback_max_rows),
 
-        //fim registry value transaction callback tests
+        /* fim registry value transaction callback tests */
         cmocka_unit_test(test_fim_registry_value_transaction_callback_empty_json_array),
         cmocka_unit_test(test_fim_registry_value_transaction_callback_base_line),
+        cmocka_unit_test(test_fim_registry_value_transaction_callback_null_configuration),
         cmocka_unit_test(test_fim_registry_value_transaction_callback_insert),
         cmocka_unit_test(test_fim_registry_value_transaction_callback_modify),
         cmocka_unit_test(test_fim_registry_value_transaction_callback_delete),
-        cmocka_unit_test(test_fim_registry_value_transaction_callback_max_rows)
+        cmocka_unit_test(test_fim_registry_value_transaction_callback_max_rows),
+
+        /* fim_registry_free_entry */
+        cmocka_unit_test(test_fim_registry_free_entry)
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
