@@ -14,7 +14,7 @@
 #include "builderTypes.hpp"
 
 /*
- * The helper filter, builds a lifter that will chain rxcpp filter operation
+ * The helper Map (Transformation), builds a lifter that will chain rxcpp map operation
  * Rxcpp transform expects a function that returns event.
  */
 
@@ -26,15 +26,29 @@ namespace builder::internals::builders
 //*************************************************
 //*           String tranform                     *
 //*************************************************
-// TODO DOCME
-types::Event opBuilderHelperStringTransformation(const std::string key, char op, types::Event & e,
-                                                 std::optional<std::string> refExpStr,
-                                                 std::optional<std::string> expectedStr);
 
-types::Lifter opBuilderHelperString_up(const types::DocumentValue & def);
+/**
+ * @brief Transforms a string to uppercase and append or remplace it in the event `e`
+ *
+ * @param def The transformation definition. i.e : `<field>: +s_up/<str>|$<ref>`
+ * @return types::Lifter The lifter with the `uppercase` transformation.
+ */
+types::Lifter opBuilderHelperStringUP(const types::DocumentValue & def);
 
-types::Lifter opBuilderHelperString_lo(const types::DocumentValue & def);
+/**
+ * @brief Transforms a string to lowercase and append or remplace it in the event `e`
+ * 
+ * @param def The transformation definition. i.e : `<field>: +s_lo/<str>|$<ref>`
+ * @return types::Lifter The lifter with the `lowercase` transformation.
+ */
+types::Lifter opBuilderHelperStringLO(const types::DocumentValue & def);
 
+/**
+ * @brief Transforms a string, trim it and append or remplace it in the event `e`
+ * 
+ * @param def The transformation definition. i.e : `<field>: +s_trim/[begin | end | both]/char`
+ * @return types::Lifter The lifter with the `trim` transformation.
+ */
 types::Lifter opBuilderHelperStringTrim(const types::DocumentValue & def);
 
 
