@@ -146,8 +146,7 @@ class SyncFiles(SyncTask):
 
             # Finish the synchronization process and notify where the file corresponding to the taskID is located.
             result = await self.worker.send_request(command=self.cmd + b'_e', data=task_id + b' ' +
-                                                                                   os.path.relpath(compressed_data_path,
-                                                                                                   common.WAZUH_PATH).encode())
+                                                    os.path.relpath(compressed_data_path, common.WAZUH_PATH).encode())
             if isinstance(result, Exception):
                 raise result
             elif result.startswith(b'Error'):
@@ -157,8 +156,7 @@ class SyncFiles(SyncTask):
             # Notify error to master and delete its received file.
             self.logger.error(f"Error sending zip file: {e}")
             await self.worker.send_request(command=self.cmd + b'_r', data=task_id + b' ' +
-                                                                          json.dumps(e,
-                                                                                     cls=c_common.WazuhJSONEncoder).encode())
+                                           json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
         except Exception as e:
             # Notify error to master and delete its received file.
             self.logger.error(f"Error sending zip file: {e}")
@@ -216,7 +214,8 @@ class SyncWazuhdb(SyncTask):
             get_chunks_start_time = datetime.utcnow().timestamp()
             chunks = self.data_retriever(self.get_data_command)
             self.logger.debug(
-                f"Obtained {len(chunks)} chunks of data in {(datetime.utcnow().timestamp() - get_chunks_start_time):.3f}s.")
+                f'Obtained {len(chunks)} chunks of data in '
+                f'{(datetime.utcnow().timestamp() - get_chunks_start_time):.3f}s.')
         except exception.WazuhException as e:
             self.logger.error(f"Error obtaining data from wazuh-db: {e}")
             return
@@ -231,7 +230,7 @@ class SyncWazuhdb(SyncTask):
 
             # Specify under which task_id the JSON can be found in the master.
             await self.worker.send_request(command=self.cmd, data=task_id)
-            self.logger.debug(f"All chunks sent.")
+            self.logger.debug("All chunks sent.")
         else:
             self.logger.info(f"Finished in {(datetime.utcnow().timestamp() - start_time):.3f}s (0 chunks sent).")
         return True
@@ -332,7 +331,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             try:
                 asyncio.create_task(
                     self.manager.local_server.clients[dapi_client.decode()].send_request(command, error_msg))
-            except WazuhClusterError as e:
+            except WazuhClusterError:
                 raise WazuhClusterError(3025)
             return b'ok', b'DAPI error forwarded to worker'
         elif command == b'sendsyn_err':
@@ -340,7 +339,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             try:
                 asyncio.create_task(
                     self.manager.local_server.clients[sendsync_client.decode()].send_request(b'err', error_msg))
-            except WazuhClusterError as e:
+            except WazuhClusterError:
                 raise WazuhClusterError(3025)
             return b'ok', b'SendSync error forwarded to worker'
         elif command == b'dapi':

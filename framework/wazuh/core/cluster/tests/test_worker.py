@@ -300,7 +300,7 @@ async def test_sync_wazuh_db_sync_ok(run_in_pool_mock, json_dumps_mock):
                 send_request_mock.assert_called_once_with(command=b"cmd", data=b"OK")
                 json_dumps_mock.assert_called_with({"set_data_command": "set_command", "chunks": ["get_command"]})
                 logger_debug_mock.assert_has_calls(
-                    [call(f"Obtained {1} chunks of data in 0.000s."), call(f"All chunks sent.")])
+                    [call(f"Obtained {1} chunks of data in 0.000s."), call("All chunks sent.")])
 
             send_string_mock.assert_called_with(b"")
 

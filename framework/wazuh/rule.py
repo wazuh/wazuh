@@ -105,8 +105,9 @@ def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, 
 
 
 @expose_resources(actions=['rules:read'], resources=['rule:file:{filename}'])
-def get_rules_files(status=None, relative_dirname=None, filename=None, offset=0, limit=common.DATABASE_LIMIT, sort_by=None,
-                    sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+def get_rules_files(status=None, relative_dirname=None, filename=None, offset=0, limit=common.DATABASE_LIMIT,
+                    sort_by=None, sort_ascending=True, search_text=None, complementary_search=False,
+                    search_in_fields=None):
     """Gets a list of the rule files.
 
     :param status: Filters by status: enabled, disabled, all.
@@ -139,7 +140,8 @@ def get_rules_files(status=None, relative_dirname=None, filename=None, offset=0,
                                          tags))
     else:
         rules_files = format_rule_decoder_file(ruleset_conf['ruleset'],
-                                               {'status': status, 'relative_dirname': relative_dirname, 'filename': filename},
+                                               {'status': status, 'relative_dirname': relative_dirname,
+                                                'filename': filename},
                                                tags)
 
     data = process_array(rules_files, search_text=search_text, search_in_fields=search_in_fields,

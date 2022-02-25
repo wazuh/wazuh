@@ -152,8 +152,7 @@ def _insert_section(json_dst, section_name, section_data):
     elif section_name in conf_sections and conf_sections[section_name]['type'] == 'last':
         if section_name in json_dst:
             # if the option already exists it is overwritten. But a warning is shown.
-            logger.warning(
-                "There are multiple {} sections in configuration. Using only last section.".format(section_name))
+            logger.warning(f'There are multiple {section_name} sections in configuration. Using only last section.')
         json_dst[section_name] = section_data  # Create
 
 
@@ -607,7 +606,7 @@ def get_file_conf(filename, group_id=None, type_conf=None, return_format=None):
             else:
                 data = types[type_conf](file_path)
         else:
-            raise WazuhError(1104, "{0}. Valid types: {1}".format(type_conf, types.keys()))
+            raise WazuhError(1104, f'{type_conf}. Valid types: {types.keys()}')
     else:
         if filename == "agent.conf":
             data = get_agent_conf(group_id, limit=None, filename=filename, return_format=return_format)
@@ -639,14 +638,12 @@ def parse_internal_options(high_name, low_name):
     # Check if the option exists at local internal options
     if os_path.exists(common.LOCAL_INTERNAL_OPTIONS_CONF):
         try:
-            return get_config(common.LOCAL_INTERNAL_OPTIONS_CONF).get('root',
-                                                                      '{0}.{1}'.format(high_name, low_name))
+            return get_config(common.LOCAL_INTERNAL_OPTIONS_CONF).get('root', f'{high_name}.{low_name}')
         except NoOptionError:
             pass
 
     try:
-        return get_config(common.INTERNAL_OPTIONS_CONF).get('root',
-                                                            '{0}.{1}'.format(high_name, low_name))
+        return get_config(common.INTERNAL_OPTIONS_CONF).get('root', f'{high_name}.{low_name}')
     except NoOptionError as e:
         raise WazuhInternalError(1108, e.args[0])
 
@@ -654,11 +651,11 @@ def parse_internal_options(high_name, low_name):
 def get_internal_options_value(high_name, low_name, max_, min_):
     option = parse_internal_options(high_name, low_name)
     if not option.isdigit():
-        raise WazuhError(1109, 'Option: {}.{}. Value: {}'.format(high_name, low_name, option))
+        raise WazuhError(1109, f'Option: {high_name}.{low_name}. Value: {option}')
 
     option = int(option)
     if option < min_ or option > max_:
-        raise WazuhError(1110, 'Max value: {}. Min value: {}. Found: {}.'.format(max_, min_, option))
+        raise WazuhError(1110, f'Max value: {max_}. Min value: {min_}. Found: {option}.')
 
     return option
 
@@ -823,7 +820,7 @@ def get_active_configuration(agent_id, component, configuration):
         return msg
     else:
         raise WazuhError(1117 if "No such file or directory" in rec_msg or "Cannot send request" in rec_msg else 1116,
-                         extra_message='{0}:{1}'.format(component, configuration))
+                         extra_message=f'{component}:{configuration}')
 
 
 def write_ossec_conf(new_conf: str):

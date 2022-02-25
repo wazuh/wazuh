@@ -273,4 +273,5 @@ def get_filenames_paths(filenames_list, root_directory=common.USER_LISTS_PATH):
     list
         Full path to filenames.
     """
-    return [str(next(Path(root_directory).rglob(file), path.join(common.USER_LISTS_PATH, file))) for file in filenames_list]
+    return [str(next(Path(root_directory).rglob(file), path.join(common.USER_LISTS_PATH, file)))
+            for file in filenames_list]
