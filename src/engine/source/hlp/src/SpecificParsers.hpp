@@ -48,7 +48,7 @@ std::string parseAny(const char **it, char endToken);
 
 bool matchLiteral(const char **it, std::string const& literal);
 
-void parseFilePath(const char **it, char endToken, FilePathResult &result);
+void parseFilePath(const char **it, char endToken, std::vector<std::string> const& captureOpts, FilePathResult &result);
 
 std::string parseJson(const char **it);
 
