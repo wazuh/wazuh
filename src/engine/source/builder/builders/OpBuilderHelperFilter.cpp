@@ -173,9 +173,6 @@ types::Lifter opBuilderHelperString_ne(const DocumentValue & def)
     {
         // Append rxcpp operation
         return o.filter([key, expectedStr, refExpStr](types::Event e) {
-            // Not use a `!` operator, since it must return false if the reference
-            // is not found or they are of different type
-            // try and catche, return false
             return opBuilderHelperStringComparison(key, '!', e, refExpStr, expectedStr);
         });
     };
