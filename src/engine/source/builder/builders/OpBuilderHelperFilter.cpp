@@ -7,29 +7,42 @@
  * Foundation.
  */
 
-#include <tuple>
 #include <string>
+#include <tuple>
 
 #include "OpBuilderHelperFilter.hpp"
 #include "stringUtils.hpp"
 
-
 using DocumentValue = builder::internals::types::DocumentValue;
-namespace {
+namespace
+{
 
 using opString = std::optional<std::string>;
-std::tuple<std::string, opString, opString>  getCompOpParameter(const DocumentValue & def)
+/**
+ * @brief Get the Comparator operator, amd the value to compare 
+ * or the reference to value to compare
+ * 
+ * @param def The JSON definition of the operator
+ * @return std::tuple<std::string, opString, opString> the operator, 
+ * the value to compare and the reference to value to compare (if exists)
+ * @throw std::runtime_error if the number of parameters is not valid
+ * @throw std::logic_error if the json node is not valid definition for helper function
+ */
+std::tuple<std::string, opString, opString> getCompOpParameter(const DocumentValue & def)
 {
     // Get destination path
     std::string field = def.MemberBegin()->name.GetString();
     // Get function helper
+    if (!def.MemberBegin()->value.IsString()) {
+        throw std::logic_error("Invalid operator definition");
+    }
     std::string rawValue = def.MemberBegin()->value.GetString();
 
     // Parse parameters
     std::vector<std::string> parameters = utils::string::split(rawValue, '/');
     if (parameters.size() != 2)
     {
-        throw std::runtime_error("Invalid parameters");
+        throw std::runtime_error("Invalid number of parameters");
     }
 
     std::optional<std::string> refValue;
@@ -77,37 +90,42 @@ types::Lifter opBuilderHelperNotExists(const DocumentValue & def)
     };
 }
 
-
 //*************************************************
 //*           String filters                      *
 //*************************************************
 
 bool opBuilderHelperStringComparison(const std::string key, char op, types::Event & e,
-                                                 std::optional<std::string> refExpStr,
-                                                 std::optional<std::string> expectedStr) {
+                                     std::optional<std::string> refValue,
+                                     std::optional<std::string> value)
+{
 
     // TODO Remove try catch or if nullptr after fix get method of document class
     // Get value to compare
-    const rapidjson::Value * value{};
-    try {
-        value = e.get("/" + key);
-    } catch (std::exception & e) {
+    const rapidjson::Value * fieldToCompare{};
+    try
+    {
+        fieldToCompare = e.get("/" + key);
+    }
+    catch (std::exception & e)
+    {
         // TODO Check exception type
         return false;
     }
 
-    if (value == nullptr || !value->IsString()) {
+    if (fieldToCompare == nullptr || !fieldToCompare->IsString())
+    {
         return false;
     }
 
     // get str to compare
-    if (refExpStr.has_value()) {
+    if (refValue.has_value())
+    {
         // Get reference to json event
         // TODO Remove try catch or if nullptr after fix get method of document class
         const rapidjson::Value * refValueToCheck{};
         try
         {
-            refValueToCheck = e.get("/" + refExpStr.value());
+            refValueToCheck = e.get("/" + refValue.value());
         }
         catch (std::exception & ex)
         {
@@ -119,28 +137,29 @@ bool opBuilderHelperStringComparison(const std::string key, char op, types::Even
         {
             return false;
         }
-        expectedStr = std::string{refValueToCheck->GetString()};
+        value = std::string{refValueToCheck->GetString()};
     }
 
     // String operation
-    switch (op) {
+    switch (op)
+    {
         case '=':
-            return std::string{value->GetString()} == expectedStr.value();
+            return std::string{fieldToCompare->GetString()} == value.value();
         case '!':
-            return std::string{value->GetString()} != expectedStr.value();
+            return std::string{fieldToCompare->GetString()} != value.value();
         case '>':
-            return std::string{value->GetString()} > expectedStr.value();
-        //case '>=':
+            return std::string{fieldToCompare->GetString()} > value.value();
+        // case '>=':
         case 'g':
-            return std::string{value->GetString()} >= expectedStr.value();
+            return std::string{fieldToCompare->GetString()} >= value.value();
         case '<':
-            return std::string{value->GetString()} < expectedStr.value();
-        //case '<=':
+            return std::string{fieldToCompare->GetString()} < value.value();
+        // case '<=':
         case 'l':
-            return std::string{value->GetString()} <= expectedStr.value();
+            return std::string{fieldToCompare->GetString()} <= value.value();
 
         default:
-        // if raise here, then the source code is wrong
+            // if raise here, then the logic is wrong
             throw std::invalid_argument("Invalid operator: '" + std::string{op} + "' ");
     }
 
@@ -150,92 +169,104 @@ bool opBuilderHelperStringComparison(const std::string key, char op, types::Even
 // <field>: s_eq/<value>
 types::Lifter opBuilderHelperString_eq(const DocumentValue & def)
 {
-    auto [key, refExpStr, expectedStr] =  getCompOpParameter(def);
+    auto [key, refValue, value] = getCompOpParameter(def);
 
     // Return Lifter
     return [=](types::Observable o)
     {
         // Append rxcpp operation
-        return o.filter([key, expectedStr, refExpStr](types::Event e) {
-            // try and catche, return false
-            return opBuilderHelperStringComparison(key, '=', e, refExpStr, expectedStr);
-        });
+        return o.filter(
+            [key, refValue, value](types::Event e)
+            {
+                // try and catche, return false
+                return opBuilderHelperStringComparison(key, '=', e,
+                                                       refValue, value);
+            });
     };
 }
 
 // <field>: s_ne/<value>
 types::Lifter opBuilderHelperString_ne(const DocumentValue & def)
 {
-    auto [key, refExpStr, expectedStr] =  getCompOpParameter(def);
+    auto [key, refValue, value] = getCompOpParameter(def);
 
     // Return Lifter
     return [=](types::Observable o)
     {
         // Append rxcpp operation
-        return o.filter([key, expectedStr, refExpStr](types::Event e) {
-            return opBuilderHelperStringComparison(key, '!', e, refExpStr, expectedStr);
-        });
+        return o.filter(
+            [key, refValue, value](types::Event e) {
+                return opBuilderHelperStringComparison(key, '!', e,
+                                                       refValue, value);
+            });
     };
 }
-
 
 // <field>: s_gt/<value>|$<ref>
 types::Lifter opBuilderHelperString_gt(const DocumentValue & def)
 {
-    auto [key, refExpStr, expectedStr] =  getCompOpParameter(def);
+    auto [key, refValue, value] = getCompOpParameter(def);
 
     // Return Lifter
     return [=](types::Observable o)
     {
         // Append rxcpp operation
-        return o.filter([key, expectedStr, refExpStr](types::Event e) {
-            return opBuilderHelperStringComparison(key, '>', e, refExpStr, expectedStr);
-        });
+        return o.filter(
+            [key, refValue, value](types::Event e) {
+                return opBuilderHelperStringComparison(key, '>', e,
+                                                       refValue, value);
+            });
     };
 }
 
 // <field>: s_ge/<value>|$<ref>
 types::Lifter opBuilderHelperString_ge(const DocumentValue & def)
 {
-    auto [key, refExpStr, expectedStr] =  getCompOpParameter(def);
+    auto [key, refValue, value] = getCompOpParameter(def);
 
     // Return Lifter
     return [=](types::Observable o)
     {
         // Append rxcpp operation
-        return o.filter([key, expectedStr, refExpStr](types::Event e) {
-            return opBuilderHelperStringComparison(key, 'g', e, refExpStr, expectedStr);
-        });
+        return o.filter(
+            [key, refValue, value](types::Event e) {
+                return opBuilderHelperStringComparison(key, 'g', e,
+                                                       refValue, value);
+            });
     };
 }
 
 // <field>: s_lt/<value>|$<ref>
 types::Lifter opBuilderHelperString_lt(const DocumentValue & def)
 {
-    auto [key, refExpStr, expectedStr] =  getCompOpParameter(def);
+    auto [key, refValue, value] = getCompOpParameter(def);
 
     // Return Lifter
     return [=](types::Observable o)
     {
         // Append rxcpp operation
-        return o.filter([key, expectedStr, refExpStr](types::Event e) {
-            return opBuilderHelperStringComparison(key, '<', e, refExpStr, expectedStr);
-        });
+        return o.filter(
+            [key, refValue, value](types::Event e) {
+                return opBuilderHelperStringComparison(key, '<', e,
+                                                       refValue, value);
+            });
     };
 }
 
 // <field>: s_le/<value>|$<ref>
 types::Lifter opBuilderHelperString_le(const DocumentValue & def)
 {
-    auto [key, refExpStr, expectedStr] =  getCompOpParameter(def);
+    auto [key, refValue, value] = getCompOpParameter(def);
 
     // Return Lifter
     return [=](types::Observable o)
     {
         // Append rxcpp operation
-        return o.filter([key, expectedStr, refExpStr](types::Event e) {
-            return opBuilderHelperStringComparison(key, 'l', e, refExpStr, expectedStr);
-        });
+        return o.filter(
+            [key, refValue, value](types::Event e) {
+                return opBuilderHelperStringComparison(key, 'l', e,
+                                                       refValue, value);
+            });
     };
 }
 
