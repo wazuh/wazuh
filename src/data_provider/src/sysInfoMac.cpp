@@ -55,7 +55,7 @@ static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_
     jsProcessInfo["pid"]        = std::to_string(pid);
     jsProcessInfo["name"]       = taskInfo.pbsd.pbi_name;
 
-    jsProcessInfo["state"]      = " ";
+    jsProcessInfo["state"]      = UNKNOWN_VALUE;
     jsProcessInfo["ppid"]       = taskInfo.pbsd.pbi_ppid;
 
     const auto eUser { getpwuid(taskInfo.pbsd.pbi_uid) };
