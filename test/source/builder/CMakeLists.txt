@@ -198,6 +198,12 @@ add_executable(opBuilderHelperStringLO_test
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperMap.cpp)
 gtest_discover_tests(opBuilderHelperStringLO_test)
 
+add_executable(opBuilderHelperStringTrim_test
+  ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringTrim_test.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperMap.cpp)
+gtest_discover_tests(opBuilderHelperStringTrim_test)
+
 add_executable(opBuilderConditionTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderConditionTest.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderCondition.cpp
