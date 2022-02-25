@@ -60,7 +60,7 @@ TEST(opBuilderHelperString_ne, staticStringOk)
                 {"otherfield":"test_value"}
             )"});
             s.on_next(Event{R"(
-                {"field2check":"test_value"}
+                {"field2check":"test_value_2"}
             )"});
             s.on_completed();
         });
@@ -69,10 +69,9 @@ TEST(opBuilderHelperString_ne, staticStringOk)
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 3);
+    ASSERT_EQ(expected.size(), 2);
     EXPECT_STRNE(expected[0].get("/field2check")->GetString(), "test_value");
-    EXPECT_EQ(expected[1].get("/field2check"), nullptr);
-    EXPECT_EQ(expected[2].get("/field2check"), nullptr);
+    EXPECT_STRNE(expected[1].get("/field2check")->GetString(), "test_value");
 
 }
 
@@ -114,10 +113,8 @@ TEST(opBuilderHelperString_ne, staticNumberOk)
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 3);
+    ASSERT_EQ(expected.size(), 1);
     EXPECT_STRNE(expected[0].get("/field2check")->GetString(), "11");
-    EXPECT_EQ(expected[1].get("/field2check"), nullptr);
-    EXPECT_EQ(expected[2].get("/field2check"), nullptr);
 
 }
 
@@ -168,10 +165,8 @@ TEST(opBuilderHelperString_ne, dynamicsStringOk) {
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 3);
+    ASSERT_EQ(expected.size(), 1);
     ASSERT_STRNE(expected[0].get("/field2check")->GetString(), expected[0].get("/ref_key")->GetString());
-    ASSERT_EQ(expected[1].get("/field2check"), nullptr);
-    ASSERT_EQ(expected[2].get("/field2check"), nullptr);
 }
 
 
@@ -246,16 +241,10 @@ TEST(opBuilderHelperString_ne, multiLevelDynamicsStringOk) {
     output.subscribe([&](Event e) {
         expected.push_back(e);
     });
-    ASSERT_EQ(expected.size(), 3);
+    ASSERT_EQ(expected.size(), 1);
 
     ASSERT_STRNE(expected[0].get("/parentObjt_1/field2check")->GetString(),
                  expected[0].get("/parentObjt_2/ref_key")->GetString());
-
-    ASSERT_EQ(expected[1].get("/parentObjt_1/field2check"), nullptr);
-    ASSERT_NE(expected[1].get("/parentObjt_2/ref_key"), nullptr);
-
-    ASSERT_NE(expected[2].get("/parentObjt_1/field2check"), nullptr);
-    ASSERT_EQ(expected[2].get("/parentObjt_2/ref_key"), nullptr);
 
 }
 
@@ -307,17 +296,7 @@ TEST(opBuilderHelperString_ne, dynamicsNumberOk) {
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 5);
-    ASSERT_FALSE(expected[0].get("/field2check")->IsString());
-    ASSERT_FALSE(expected[0].get("/ref_key")->IsString());
-
-    ASSERT_TRUE(expected[1].get("/field2check")->IsString());
-    ASSERT_FALSE(expected[1].get("/ref_key")->IsString());
-
-    ASSERT_EQ(expected[2].get("/field2check"), nullptr);
-
-    ASSERT_FALSE(expected[3].get("/field2check")->IsString());
-    ASSERT_TRUE(expected[3].get("/ref_key")->IsString());
+    ASSERT_EQ(expected.size(), 0);
 
 }
 
