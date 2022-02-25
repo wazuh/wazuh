@@ -58,6 +58,8 @@ void fim_link_reload_broken_link(char *path, directory_t *configuration);
 void fim_realtime_delete_watches(const directory_t *configuration);
 #endif
 
+void fim_db_remove_validated_path(void * data, void * ctx);
+
 extern time_t last_time;
 extern unsigned int files_read;
 

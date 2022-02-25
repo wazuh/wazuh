@@ -94,7 +94,9 @@ fim_file_data DEFAULT_FILE_DATA = {
     .hash_md5 = "0123456789abcdef0123456789abcdef",
     .hash_sha1 = "0123456789abcdef0123456789abcdef01234567",
     .hash_sha256 = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-
+    #ifdef TEST_WINAGENT
+    .perm_json = NULL,
+    #endif
     // Options
     .mode = FIM_REALTIME,
     .last_event = 0,
@@ -4015,10 +4017,11 @@ void test_fim_calculate_dbsync_difference(void **state){
         \"hash_sha1\":\"0123456789abcdef0123456789abcdef01234567\", \"hash_sha256\":\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\", \
         \"checksum\":\"0123456789abcdef0123456789abcdef01234567\" }";
     #else
-        char* changed_data = "{\"size\":0, \"perm\":\"rw-rw-r--\", \"attributes\":\"NULL\", \"uid\":1000, \"gid\":1000, \
+        DEFAULT_FILE_DATA.options |= CHECK_ATTRS;
+        char* changed_data = "{\"size\":0, \"perm\":\"rw-rw-r--\", \"attributes\":\"NULL\", \"uid\":\"1000\", \"gid\":\"1000\", \
         \"user_name\":\"root\", \"group_name\":\"root\", \"mtime\":123456789, \"inode\":1, \"hash_md5\":\"0123456789abcdef0123456789abcdef\", \
-        \"hash_sha1\":\"0123456789abcdef0123456789abcdef01234567\", \"hash_sha256\":\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\" \
-        \"attributes\":{}, \"checksum\":\"0123456789abcdef0123456789abcdef01234567\"}";
+        \"hash_sha1\":\"0123456789abcdef0123456789abcdef01234567\", \"hash_sha256\":\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\", \
+        \"checksum\":\"0123456789abcdef0123456789abcdef01234567\" }";
     #endif
 
     cJSON* changed_data_json = cJSON_Parse(changed_data);
@@ -4029,6 +4032,10 @@ void test_fim_calculate_dbsync_difference(void **state){
                                         changed_data_json,
                                         old_attributes,
                                         changed_attributes);
+
+    #ifdef TEST_WINAGENT
+        DEFAULT_FILE_DATA.options &= ~CHECK_ATTRS;
+    #endif
 
 //    assert_non_null(cJSON_GetArrayItem(changed_attributes, "size"));
     assert_int_equal(cJSON_GetObjectItem(old_attributes, "size")->valueint, 0);
@@ -4060,15 +4067,26 @@ void test_fim_calculate_dbsync_difference_no_changed_data(void **state){
     cJSON* old_attributes = cJSON_CreateObject();
     cJSON* changed_attributes = cJSON_CreateArray();
 
+    #ifdef TEST_WINAGENT
+        DEFAULT_FILE_DATA.attributes = "NULL";
+        DEFAULT_FILE_DATA.perm_json = cJSON_CreateObject();
+        DEFAULT_FILE_DATA.options |= CHECK_ATTRS;
+    #endif
+
     fim_calculate_dbsync_difference(&DEFAULT_FILE_DATA,
                                         changed_data_json,
                                         old_attributes,
                                         changed_attributes);
-
-    assert_int_equal(cJSON_GetObjectItem(old_attributes, "size")->valueint, 0);
-    assert_string_equal(cJSON_GetObjectItem(old_attributes, "perm")->valuestring, "rw-rw-r--");
     #ifdef TEST_WINAGENT
-    assert_string_equal(cJSON_GetObjectItem(old_attributes, "attributes")->valuestring, "NULL");
+        DEFAULT_FILE_DATA.options &= ~CHECK_ATTRS;
+        cJSON_Delete(DEFAULT_FILE_DATA.perm_json);
+    #endif
+    assert_int_equal(cJSON_GetObjectItem(old_attributes, "size")->valueint, 0);
+    #ifndef TEST_WINAGENT
+        assert_string_equal(cJSON_GetObjectItem(old_attributes, "perm")->valuestring, "rw-rw-r--");
+    #else
+        assert_non_null(cJSON_GetObjectItem(old_attributes, "perm"));
+        assert_string_equal(cJSON_GetObjectItem(old_attributes, "attributes")->valuestring, "NULL");
     #endif
 
     assert_string_equal(cJSON_GetObjectItem(old_attributes, "uid")->valuestring, "1000");
@@ -4090,6 +4108,7 @@ void test_process_delete_event(void **state){
     directory_t config;
     config.tag = "tag";
     event_data_t evt;
+    evt.w_evt = NULL;
     evt.mode = FIM_SCHEDULED;
     evt.type = FIM_ADD;
     evt.report_event = 1;
@@ -4145,11 +4164,29 @@ void test_fim_db_remove_entry(void **state){
 
 void test_fim_db_process_missing_entry(void **state){
     fim_data_t* fim_data = (fim_data_t*) *state;
+    fim_data->fentry->file_entry.path = "mock_path";
     directory_t config;
     get_data_ctx get_data;
     get_data.config = &config;
 
+    #ifndef TEST_WINAGENT
+        expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+        expect_function_call_any(__wrap_pthread_rwlock_unlock);
+        expect_function_call_any(__wrap_pthread_mutex_lock);
+        expect_function_call_any(__wrap_pthread_mutex_unlock);
+        expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    #else
+        expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+        expect_function_call_any(__wrap_pthread_rwlock_unlock);
+        expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+        expect_function_call_any(__wrap_pthread_mutex_lock);
+        expect_function_call_any(__wrap_pthread_mutex_unlock);
+    #endif
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'mock_path'");
+
     fim_db_process_missing_entry(fim_data->fentry, &get_data);
+    fim_data->fentry->file_entry.path = NULL;
 }
 
 void test_free_entry(void **state){
@@ -4158,7 +4195,18 @@ void test_free_entry(void **state){
     char* path = (char*) malloc(11*sizeof(char));
     fentry->file_entry.data = NULL;
     fentry->file_entry.path = path;
+    fentry->type = FIM_TYPE_FILE;
     free_entry(fentry);
+}
+
+
+void test_free_entry_registry(void **state){
+    fim_entry* fentry = (fim_entry*) malloc(sizeof(fim_entry));
+    fentry->type = FIM_TYPE_REGISTRY;
+    fentry->registry_entry.key = NULL;
+    fentry->registry_entry.value = NULL;
+    free_entry(fentry);
+
 }
 
 int main(void) {
@@ -4170,7 +4218,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_process_delete_event, setup_fim_entry, teardown_fim_entry),
         cmocka_unit_test_setup_teardown(test_fim_db_remove_entry, setup_fim_entry, teardown_fim_entry),
         cmocka_unit_test_setup_teardown(test_fim_db_process_missing_entry, setup_fim_entry, teardown_fim_entry),
-        cmocka_unit_test_setup_teardown(test_free_entry, setup_fim_entry, teardown_fim_entry),
+        cmocka_unit_test(test_free_entry),
+        cmocka_unit_test(test_free_entry_registry),
+
         /* fim_json_event */
         cmocka_unit_test_teardown(test_fim_json_event, teardown_delete_json),
         cmocka_unit_test_teardown(test_fim_json_event_whodata, teardown_delete_json),
@@ -4348,11 +4398,10 @@ int main(void) {
     };
     int retval;
 
-    // retval = cmocka_run_group_tests(tests, setup_group, teardown_group);
-    // retval += cmocka_run_group_tests(root_monitor_tests, setup_root_group, teardown_group);
-    // retval += cmocka_run_group_tests(wildcards_tests, setup_wildcards, teardown_wildcards);
+    retval = cmocka_run_group_tests(tests, setup_group, teardown_group);
+    retval += cmocka_run_group_tests(root_monitor_tests, setup_root_group, teardown_group);
+    retval += cmocka_run_group_tests(wildcards_tests, setup_wildcards, teardown_wildcards);
 
-    // return retval;
+    return retval;
 
-    return 0;
 }
