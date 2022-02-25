@@ -769,7 +769,7 @@ def upload_group_file(group_id, file_data, file_name='agent.conf'):
 
 
 def get_active_configuration(agent_id, component, configuration):
-    """Get active configuration in a specific node.
+    """Get an agent's component active configuration.
 
     Parameters
     ----------
@@ -787,17 +787,19 @@ def get_active_configuration(agent_id, component, configuration):
 
     Raises
     ------
-    WazuhError
+    WazuhError(1307)
         If the component or configuration are not specified.
-    WazuhError
+    WazuhError(1101)
         If the specified component is not valid.
-    WazuhError
+    WazuhError(1121)
         If the component is not properly configured.
-    WazuhInternalError
+    WazuhInternalError(1121)
         If the socket cant be created.
-    WazuhInternalError
+    WazuhInternalError(1118)
         If the socket is not able to receive a response.
-    WazuhError
+    WazuhError(1117)
+        If there's no such file or directory in agent node, or the socket cannot send the request.
+    WazuhError(1116)
         If the reply from the node contains an error.
     """
     if not component or not configuration:

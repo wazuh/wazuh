@@ -360,69 +360,28 @@ def test_get_active_configuration(mock_exists, agent_id, component, config, msg)
                         assert 'authd.pass' not in result
 
 
-@pytest.mark.parametrize("agent_id, component, config", [
-    ('000', 'syscheck', 'syscheck'),
-    ('000', 'mail', 'global')
+@pytest.mark.parametrize('agent_id, component, config, expected_error, expected_id', [
+    ('000', 'test_component', None, WazuhError, 1307),
+    ('000', None, 'test_config', WazuhError, 1307),
+    ('000', 'test_component', 'test_config', WazuhError, 1101),
+    ('000', 'syscheck', 'syscheck', WazuhError, 1121),
+    ('001', 'syscheck', 'syscheck', WazuhInternalError, 1121),
+    ('001', 'syscheck', 'syscheck', WazuhInternalError, 1118),
+    ('001', 'syscheck', 'syscheck', WazuhError, 1116),
+    ('001', 'syscheck', 'syscheck', WazuhError, 1117)
 ])
 @patch('os.path.exists', return_value=False)
-def test_get_active_configuration_not_configured(mock_exists, agent_id, component, config):
-    """Test the raised exception regarding a non configured component"""
-    with pytest.raises(WazuhError, match=f".* 1121 .* component '{component}'"):
-        configuration.get_active_configuration(agent_id, component, config)
-
-
-@pytest.mark.parametrize("exception_type, agent_id, component, config, exception_", [
-    (WazuhError, '000', None, None, 1307),
-    (WazuhError, '000', None, 'given', 1307),
-    (WazuhError, '000', 'given', 'given', 1101),
-    (WazuhInternalError, '000', 'agent', 'given', 1121),
-    (WazuhInternalError, '001', 'agent', 'given', 1121)
-])
-@patch('os.path.exists')
-def test_get_active_configuration_first_exceptions(mock_exists, exception_type, agent_id, component, config, exception_):
-    """This test checks the first three exceptions."""
-    with patch('wazuh.core.configuration.WazuhSocket.__init__', return_value=Exception):
-        with pytest.raises(exception_type, match=f".* {exception_} .*"):
-            configuration.get_active_configuration(agent_id, component, config)
-
-
-@pytest.mark.parametrize("agent_id, component, config, exception_", [
-    ('000', 'agent', 'given', 1118)
-])
-@patch('os.path.exists')
-def test_get_active_configuration_second_exceptions(mock_exists, agent_id, component, config, exception_):
-    """This test checks the fourth exception."""
-    with patch('wazuh.core.configuration.WazuhSocket.__init__', return_value=None):
-        with patch('wazuh.core.configuration.WazuhSocket.send', side_effect=None):
-            with patch('wazuh.core.configuration.WazuhSocket.receive', side_effect=ValueError):
-                with pytest.raises(WazuhInternalError, match=f".* {exception_} .*"):
-                    configuration.get_active_configuration(agent_id, component, config)
-
-
-@pytest.mark.parametrize("agent_id, component, config, exception_", [
-    ('000', 'agent', 'given', 1116)
-])
-@patch('os.path.exists')
-def test_get_active_configuration_third_exceptions(mock_exists, agent_id, component, config, exception_):
-    """This test checks the last exception."""
-    with patch('wazuh.core.configuration.WazuhSocket.__init__', return_value=None):
-        with patch('wazuh.core.configuration.WazuhSocket.send', side_effect=None):
-            with patch('wazuh.core.configuration.WazuhSocket.receive', return_value=b'test 1'):
-                with patch('wazuh.core.configuration.WazuhSocket.close', side_effect=None):
-                    with pytest.raises(WazuhError, match=f".* {exception_} .*"):
+def test_get_active_configuration_ko(mock_exists, agent_id, component, config, expected_error, expected_id):
+    """Test all raised exceptions"""
+    with patch('wazuh.core.configuration.WazuhSocket.__init__', return_value=MagicMock()
+               if expected_id == 1121 else None):
+        with patch('wazuh.core.configuration.WazuhSocket.send'):
+            with patch('wazuh.core.configuration.WazuhSocket.receive',
+                       side_effect=ValueError if expected_id == 1118 else None,
+                       return_value=b'test 1' if expected_id == 1116 else b'test No such file or directory'):
+                with patch('wazuh.core.configuration.WazuhSocket.close'):
+                    with pytest.raises(expected_error, match=f'.* {expected_id} .*'):
                         configuration.get_active_configuration(agent_id, component, config)
-
-
-@pytest.mark.parametrize("agent_id, component, config, exception_", [
-    ('000', 'agent', 'given', None)
-])
-@patch('os.path.exists')
-def test_get_active_configuration_fourth_exception(mock_exists, agent_id, component, config, exception_):
-    with patch('wazuh.core.configuration.WazuhSocket.__init__', return_value=None):
-        with patch('wazuh.core.configuration.WazuhSocket.send', side_effect=None):
-            with patch('wazuh.core.configuration.WazuhSocket.receive', return_value=b'ok {"a": "2"}'):
-                with patch('wazuh.core.configuration.WazuhSocket.close', side_effect=None):
-                    assert {"a": "2"} == configuration.get_active_configuration(agent_id, component, config)
 
 
 def test_write_ossec_conf():
