@@ -906,7 +906,7 @@ void OS_ReadMSG_analysisd(int m_queue)
         os_calloc(1, sizeof(Eventinfo), lf);
         os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
         lf->year = prev_year;
-        snprintf(lf->mon, 4, "%s", prev_month);
+        memcpy(lf->mon, prev_month, sizeof(prev_month));
         lf->day = today;
 
         if (OS_GetLogLocation(today, prev_year, prev_month) < 0) {
@@ -2204,7 +2204,7 @@ void * w_log_rotate_thread(__attribute__((unused)) void * args){
                 }
 
                 today = day;
-                snprintf(prev_month, 4, "%s", mon);
+                memcpy(prev_month, mon, sizeof(mon));
                 prev_year = year;
             }
         }

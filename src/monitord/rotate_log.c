@@ -208,9 +208,9 @@ void remove_old_logs(const char *base_dir, int keep_log_days) {
         }
 
         if (sscanf(dirent->d_name, "%d", &year) > 0) {
-            int size = snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
+            int size = snprintf(path, sizeof(path), "%s/%s", base_dir, dirent->d_name);
 
-            if (size < PATH_MAX) {
+            if (size < (int)sizeof(path)) {
                 remove_old_logs_y(path, year, threshold);
             }
         }
@@ -244,9 +244,9 @@ void remove_old_logs_y(const char * base_dir, int year, time_t threshold) {
             }
         }
 
-        int size = snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
+        int size = snprintf(path, sizeof(path), "%s/%s", base_dir, dirent->d_name);
 
-        if (size < PATH_MAX) {
+        if (size < (int)sizeof(path)) {
             if (month < 12) {
                 remove_old_logs_m(path, year, month, threshold);
             } else {
@@ -290,9 +290,9 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
             tm.tm_mday = day;
 
             if (mktime(&tm) <= threshold) {
-                size = snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
+                size = snprintf(path, sizeof(path), "%s/%s", base_dir, dirent->d_name);
 
-                if (size + 1 <= PATH_MAX) {
+                if (size + 1 <= (int)sizeof(path)) {
                     mdebug2("Removing old log '%s'", path);
                     unlink(path);
                 }
@@ -303,9 +303,9 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
             tm.tm_mday = day;
 
             if (mktime(&tm) <= threshold) {
-                size = snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
+                size = snprintf(path, sizeof(path), "%s/%s", base_dir, dirent->d_name);
 
-                if (size < PATH_MAX) {
+                if (size < (int)sizeof(path)) {
                     mdebug2("Removing old log '%s'", path);
                     unlink(path);
                 }
@@ -316,9 +316,9 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
             tm.tm_mday = day;
 
             if (mktime(&tm) <= threshold) {
-                size = snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
+                size = snprintf(path, sizeof(path), "%s/%s", base_dir, dirent->d_name);
 
-                if (size < PATH_MAX) {
+                if (size < (int)sizeof(path)) {
                     mdebug2("Removing old log '%s'", path);
                     unlink(path);
                 }
@@ -329,9 +329,9 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
             tm.tm_mday = day;
 
             if (mktime(&tm) <= threshold) {
-                size = snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
+                size = snprintf(path, sizeof(path), "%s/%s", base_dir, dirent->d_name);
 
-                if (size < PATH_MAX) {
+                if (size < (int)sizeof(path)) {
                     mdebug2("Removing old log '%s'", path);
                     unlink(path);
                 }
