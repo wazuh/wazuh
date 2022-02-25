@@ -72,7 +72,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   file(GLOB SYSINFO_SRC
       "${CMAKE_SOURCE_DIR}/src/*Win.cpp"
       "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsInfoWin.cpp"
-      "${CMAKE_SOURCE_DIR}/src/network/*Windows.cpp")
+      "${CMAKE_SOURCE_DIR}/src/network/*Windows.cpp"
+      "${CMAKE_SOURCE_DIR}/src/packages/*Windows.cpp")
   add_definitions(-DWIN32=1
                   -D_WIN32_WINNT=0x600
                   -DWIN_EXPORT)
