@@ -59,21 +59,13 @@ TEST_F(RegistryUtilsTest, RegistryQWORD)
     ULONGLONG valueRead { 0 };
 
     auto result { RegCreateKeyEx(HKEY_CURRENT_USER, subkey, 0, nullptr, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, nullptr, &handler, nullptr) };
-
-    if (result != ERROR_SUCCESS)
-    {
-        EXPECT_EQ(ERROR_SUCCESS, result);
-    }
+    EXPECT_EQ(ERROR_SUCCESS, result);
 
     result = RegSetValueEx(handler, value, 0, REG_QWORD, reinterpret_cast<LPBYTE>(&data), sizeof(ULONGLONG));
+    EXPECT_EQ(ERROR_SUCCESS, result);
 
-    if (result != ERROR_SUCCESS)
-    {
-        EXPECT_EQ(ERROR_SUCCESS, result);
-    }
-
-    Utils::Registry reg(HKEY_CURRENT_USER, "WazuhTest");
-    result = reg.qword("Test", valueRead);
+    Utils::Registry reg(HKEY_CURRENT_USER, subkey);
+    result = reg.qword(value, valueRead);
     EXPECT_TRUE(result);
     EXPECT_EQ(data, valueRead);
 
@@ -81,31 +73,22 @@ TEST_F(RegistryUtilsTest, RegistryQWORD)
     RegCloseKey(handler);
 }
 
-
 TEST_F(RegistryUtilsTest, RegistryQWORDNoThrow)
 {
     HKEY handler;
     const LPCTSTR subkey { TEXT("WazuhTest") };
     LPCTSTR value { TEXT("Test") };
-    ULONGLONG data { 0 };
+    DWORD data { 1 };
     ULONGLONG valueRead { 0 };
 
     auto result { RegCreateKeyEx(HKEY_CURRENT_USER, subkey, 0, nullptr, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, nullptr, &handler, nullptr) };
-
-    if (result != ERROR_SUCCESS)
-    {
-        EXPECT_EQ(ERROR_SUCCESS, result);
-    }
+    EXPECT_EQ(ERROR_SUCCESS, result);
 
     result = RegSetValueEx(handler, value, 0, REG_DWORD, reinterpret_cast<LPBYTE>(&data), sizeof(ULONGLONG));
+    EXPECT_EQ(ERROR_SUCCESS, result);
 
-    if (result != ERROR_SUCCESS)
-    {
-        EXPECT_EQ(ERROR_SUCCESS, result);
-    }
-
-    Utils::Registry reg(HKEY_CURRENT_USER, "WazuhTest");
-    result = reg.qword("Test", valueRead);
+    Utils::Registry reg(HKEY_CURRENT_USER, subkey);
+    result = reg.qword(value, valueRead);
     EXPECT_FALSE(result);
     EXPECT_EQ(0u, valueRead);
 
