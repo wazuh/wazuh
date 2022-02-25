@@ -292,7 +292,7 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
             if (mktime(&tm) <= threshold) {
                 size = snprintf(path, sizeof(path), "%s/%s", base_dir, dirent->d_name);
 
-                if (size + 1 <= (int)sizeof(path)) {
+                if (size < (int)sizeof(path)) {
                     mdebug2("Removing old log '%s'", path);
                     unlink(path);
                 }
