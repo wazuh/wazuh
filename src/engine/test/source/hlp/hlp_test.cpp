@@ -611,3 +611,26 @@ TEST(filepath_test, unix_path)
     ASSERT_EQ("", result["_file.name"]);
     ASSERT_EQ("", result["_file.extension"]);
 }
+
+TEST(filepath_test, force_unix_format)
+{
+    const char *logQl ="<_file/FilePath/UNIX>";
+    ParserFn parseOp = getParserOp(logQl);
+    ParseResult result;
+
+    const char *drive_like_file = "C:\\_test.txt";
+    result = parseOp(drive_like_file);
+    ASSERT_EQ("C:\\_test.txt", result["_file.path"]);
+    ASSERT_EQ("", result["_file.drive_letter"]);
+    ASSERT_EQ("", result["_file.folder"]);
+    ASSERT_EQ("C:\\_test.txt", result["_file.name"]);
+    ASSERT_EQ("txt", result["_file.extension"]);
+
+    const char *file_with_back_slash = "/Desktop/test\\1:2.txt";
+    result = parseOp(file_with_back_slash);
+    ASSERT_EQ("/Desktop/test\\1:2.txt", result["_file.path"]);
+    ASSERT_EQ("", result["_file.drive_letter"]);
+    ASSERT_EQ("/Desktop", result["_file.folder"]);
+    ASSERT_EQ("test\\1:2.txt", result["_file.name"]);
+    ASSERT_EQ("txt", result["_file.extension"]);
+}
