@@ -7,7 +7,6 @@
  * Foundation.
  */
 
-
 #include <gtest/gtest.h>
 #include <testUtils.hpp>
 #include <vector>
@@ -113,7 +112,8 @@ TEST(opBuilderHelperString_eq, staticNumberOk)
 }
 
 // Test ok: dynamic values (string)
-TEST(opBuilderHelperString_eq, dynamicsStringOk) {
+TEST(opBuilderHelperString_eq, dynamicsStringOk)
+{
     Document doc{R"({
         "check":
             {"field2check": "+s_eq/$ref_key"}
@@ -165,7 +165,8 @@ TEST(opBuilderHelperString_eq, dynamicsStringOk) {
 }
 
 // Test ok: multilevel dynamic values (string)
-TEST(opBuilderHelperString_eq, multiLevelDynamicsStringOk) {
+TEST(opBuilderHelperString_eq, multiLevelDynamicsStringOk)
+{
     Document doc{R"({
         "check":
             {"parentObjt_1.field2check": "+s_eq/$parentObjt_2.ref_key"}
@@ -219,9 +220,7 @@ TEST(opBuilderHelperString_eq, multiLevelDynamicsStringOk) {
     Lifter lift = opBuilderHelperString_eq(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
-    output.subscribe([&](Event e) {
-        expected.push_back(e);
-    });
+    output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
 
     ASSERT_STREQ(expected[0].get("/parentObjt_1/field2check")->GetString(),
@@ -229,12 +228,11 @@ TEST(opBuilderHelperString_eq, multiLevelDynamicsStringOk) {
 
     ASSERT_STRNE(expected[0].get("/parentObjt_2/field2check")->GetString(), "test_value");
     ASSERT_STRNE(expected[0].get("/parentObjt_1/ref_key")->GetString(), "test_value");
-
 }
 
-
 // Test ok: dynamic values (number)
-TEST(opBuilderHelperString_eq, dynamicsNumberOk) {
+TEST(opBuilderHelperString_eq, dynamicsNumberOk)
+{
     Document doc{R"({
         "check":
             {"field2check": "+s_eq/$ref_key"}
@@ -288,6 +286,3 @@ TEST(opBuilderHelperString_eq, dynamicsNumberOk) {
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 0);
 }
-
-
-
