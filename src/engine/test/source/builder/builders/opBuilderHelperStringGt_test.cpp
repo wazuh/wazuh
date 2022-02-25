@@ -7,7 +7,6 @@
  * Foundation.
  */
 
-
 #include <gtest/gtest.h>
 #include <testUtils.hpp>
 #include <vector>
@@ -93,7 +92,7 @@ TEST(opBuilderHelperString_gt, staticStringOk)
     Lifter lift = opBuilderHelperString_gt(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
-    output.subscribe([&](Event e) {expected.push_back(e);});
+    output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 5);
     ASSERT_STREQ(expected[0].get("/field2check")->GetString(), "ABCDE");
     ASSERT_STREQ(expected[1].get("/field2check")->GetString(), "BBBB");
@@ -140,7 +139,8 @@ TEST(opBuilderHelperString_gt, staticNumberOk)
 }
 
 // Test ok: dynamic values (string)
-TEST(opBuilderHelperString_gt, dynamicsStringOk) {
+TEST(opBuilderHelperString_gt, dynamicsStringOk)
+{
     Document doc{R"({
         "check":
             {"field2check": "+s_gt/$ref_key"}
