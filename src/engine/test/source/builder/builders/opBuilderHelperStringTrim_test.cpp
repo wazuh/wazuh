@@ -7,7 +7,6 @@
  * Foundation.
  */
 
-
 #include <gtest/gtest.h>
 #include <testUtils.hpp>
 #include <vector>
@@ -20,27 +19,27 @@ using namespace builder::internals::builders;
 TEST(opBuilderHelperStringTrim, Builds)
 {
     Document doc{R"({
-        "check":
+        "normalize":
             {"fieldToTranf": "+s_trim/both/t"}
     })"};
-    ASSERT_NO_THROW(opBuilderHelperStringTrim(*doc.get("/check")));
+    ASSERT_NO_THROW(opBuilderHelperStringTrim(*doc.get("/normalize")));
 }
 
 // Build incorrect number of arguments
 TEST(opBuilderHelperStringTrim, BuildsIncorrectNumberOfArguments)
 {
     Document doc{R"({
-        "check":
+        "normalize":
             {"fieldToTranf": "+s_trim/both/t/t"}
     })"};
-    ASSERT_THROW(opBuilderHelperStringTrim(*doc.get("/check")), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperStringTrim(*doc.get("/normalize")), std::runtime_error);
 }
 
 // Test ok: both trim
 TEST(opBuilderHelperStringTrim, bothOk)
 {
     Document doc{R"({
-        "check":
+        "normalize":
             {"fieldToTranf": "+s_trim/both/-"}
     })"};
 
@@ -63,19 +62,20 @@ TEST(opBuilderHelperStringTrim, bothOk)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringTrim(*doc.get("/check"));
+    Lifter lift = opBuilderHelperStringTrim(*doc.get("/normalize"));
     Observable output = lift(input);
     vector<Event> expected;
-    output.subscribe([&](Event e) {expected.push_back(e);});
+    output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 4);
     ASSERT_STREQ(expected[0].get("/fieldToTranf")->GetString(), "hi");
     ASSERT_STREQ(expected[1].get("/fieldToTranf")->GetString(), "hi");
     ASSERT_STREQ(expected[2].get("/fieldToTranf")->GetString(), "hi");
 }
 
-TEST(opBuilderHelperStringTrim, startOk) {
+TEST(opBuilderHelperStringTrim, startOk)
+{
     Document doc{R"({
-        "check":
+        "normalize":
             {"fieldToTranf": "+s_trim/begin/-"}
     })"};
 
@@ -98,10 +98,10 @@ TEST(opBuilderHelperStringTrim, startOk) {
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringTrim(*doc.get("/check"));
+    Lifter lift = opBuilderHelperStringTrim(*doc.get("/normalize"));
     Observable output = lift(input);
     vector<Event> expected;
-    output.subscribe([&](Event e) {expected.push_back(e);});
+    output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 4);
     ASSERT_STREQ(expected[0].get("/fieldToTranf")->GetString(), "hi---");
     ASSERT_STREQ(expected[1].get("/fieldToTranf")->GetString(), "hi---");
@@ -110,10 +110,11 @@ TEST(opBuilderHelperStringTrim, startOk) {
 }
 
 // Test ok: dynamic values (string)
-TEST(opBuilderHelperStringTrim, endOk) {
+TEST(opBuilderHelperStringTrim, endOk)
+{
 
     Document doc{R"({
-        "check":
+        "normalize":
             {"fieldToTranf": "+s_trim/end/-"}
     })"};
 
@@ -136,10 +137,10 @@ TEST(opBuilderHelperStringTrim, endOk) {
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringTrim(*doc.get("/check"));
+    Lifter lift = opBuilderHelperStringTrim(*doc.get("/normalize"));
     Observable output = lift(input);
     vector<Event> expected;
-    output.subscribe([&](Event e) {expected.push_back(e);});
+    output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 4);
     ASSERT_STREQ(expected[0].get("/fieldToTranf")->GetString(), "---hi");
     ASSERT_STREQ(expected[1].get("/fieldToTranf")->GetString(), "hi");
@@ -147,9 +148,10 @@ TEST(opBuilderHelperStringTrim, endOk) {
     ASSERT_STREQ(expected[3].get("/fieldToTranf")->GetString(), "hi");
 }
 
-TEST(opBuilderHelperStringTrim, multilevelSrc) {
+TEST(opBuilderHelperStringTrim, multilevelSrc)
+{
     Document doc{R"({
-        "check":
+        "normalize":
             {"fieldToTranf.a.b": "+s_trim/end/-"}
     })"};
 
@@ -172,23 +174,21 @@ TEST(opBuilderHelperStringTrim, multilevelSrc) {
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringTrim(*doc.get("/check"));
+    Lifter lift = opBuilderHelperStringTrim(*doc.get("/normalize"));
     Observable output = lift(input);
     vector<Event> expected;
-    output.subscribe([&](Event e) {expected.push_back(e);});
+    output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 4);
     ASSERT_STREQ(expected[0].get("/fieldToTranf/a/b")->GetString(), "---hi");
     ASSERT_STREQ(expected[1].get("/fieldToTranf/a/b")->GetString(), "hi");
     ASSERT_STREQ(expected[2].get("/fieldToTranf/a/b")->GetString(), "---hi");
     ASSERT_STREQ(expected[3].get("/fieldToTranf/a/b")->GetString(), "hi");
-
-
 }
 
-
-TEST(opBuilderHelperStringTrim, notExistSrc) {
+TEST(opBuilderHelperStringTrim, notExistSrc)
+{
     Document doc{R"({
-        "check":
+        "normalize":
             {"fieldToTranf": "+s_trim/end/-"}
     })"};
 
@@ -202,17 +202,18 @@ TEST(opBuilderHelperStringTrim, notExistSrc) {
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringTrim(*doc.get("/check"));
+    Lifter lift = opBuilderHelperStringTrim(*doc.get("/normalize"));
     Observable output = lift(input);
     vector<Event> expected;
-    output.subscribe([&](Event e) {expected.push_back(e);});
+    output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
     ASSERT_FALSE(expected[0].exists("/fieldToTranf"));
 }
 
-TEST(opBuilderHelperStringTrim, srcNotString) {
-      Document doc{R"({
-        "check":
+TEST(opBuilderHelperStringTrim, srcNotString)
+{
+    Document doc{R"({
+        "normalize":
             {"fieldToTranf": "+s_trim/end/-"}
     })"};
 
@@ -226,10 +227,10 @@ TEST(opBuilderHelperStringTrim, srcNotString) {
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringTrim(*doc.get("/check"));
+    Lifter lift = opBuilderHelperStringTrim(*doc.get("/normalize"));
     Observable output = lift(input);
     vector<Event> expected;
-    output.subscribe([&](Event e) {expected.push_back(e);});
+    output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
     ASSERT_TRUE(expected[0].exists("/fieldToTranf"));
     ASSERT_EQ(expected[0].get("/fieldToTranf")->GetInt(), 15);
