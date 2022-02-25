@@ -384,7 +384,7 @@ merged.mg\n#\"_agent_ip\":192.168.33.18\n";
     assert_int_equal(OS_SUCCESS, result);
     assert_string_equal("Wazuh v4.3.0", agent_data->version);
     assert_string_equal("Arch Linux", agent_data->osd->os_name);
-    assert_string_equal("", agent_data->osd->os_major);
+    assert_null(agent_data->osd->os_major);
     assert_null(agent_data->osd->os_minor);
     assert_null(agent_data->osd->os_build);
     assert_string_equal("", agent_data->osd->os_version);
