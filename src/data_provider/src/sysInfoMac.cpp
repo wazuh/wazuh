@@ -31,15 +31,6 @@ const std::string MAC_UTILITIES_PATH{"/Applications/Utilities"};
 
 using ProcessTaskInfo = struct proc_taskallinfo;
 
-static const std::map<int, std::string> s_mapTaskInfoState =
-{
-    { 1, "I"},  // Idle
-    { 2, "R"},  // Running
-    { 3, "S"},  // Sleep
-    { 4, "T"},  // Stopped
-    { 5, "Z"}   // Zombie
-};
-
 static const std::vector<int> s_validFDSock =
 {
     {
@@ -64,10 +55,7 @@ static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_
     jsProcessInfo["pid"]        = std::to_string(pid);
     jsProcessInfo["name"]       = taskInfo.pbsd.pbi_name;
 
-    const auto procState { s_mapTaskInfoState.find(taskInfo.pbsd.pbi_status) };
-    jsProcessInfo["state"]      = (procState != s_mapTaskInfoState.end())
-                                  ? procState->second
-                                  : "E";   // Internal error
+    jsProcessInfo["state"]      = UNKNOWN_VALUE;
     jsProcessInfo["ppid"]       = taskInfo.pbsd.pbi_ppid;
 
     const auto eUser { getpwuid(taskInfo.pbsd.pbi_uid) };
