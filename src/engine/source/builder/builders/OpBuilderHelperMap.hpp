@@ -35,7 +35,7 @@ types::Lifter opBuilderHelperString_up(const types::DocumentValue & def);
 
 types::Lifter opBuilderHelperString_lo(const types::DocumentValue & def);
 
-types::Lifter opBuilderHelperString_trim(const types::DocumentValue & def);
+types::Lifter opBuilderHelperStringTrim(const types::DocumentValue & def);
 
 
 
