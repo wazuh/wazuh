@@ -63,18 +63,24 @@ bool matchLiteral(const char **it, std::string const& literal) {
     return literal[i] == '\0';
 }
 
-void parseFilePath(const char **it, char endToken, FilePathResult &result) {
+void parseFilePath(const char **it, char endToken, std::vector<std::string> const& captureOpts, FilePathResult &result) {
     const char *start = *it;
     while (**it != endToken && **it != '\0') { (*it)++; }
     std::string_view file_path { start, (size_t)((*it) - start) };
+    std::string folder_separator = "/\\";
+    bool search_drive_letter = true;
+    if (!captureOpts.empty() && captureOpts[0] == "UNIX") {
+        search_drive_letter = false;
+        folder_separator = "/";
+    }
 
     result.path = file_path;
-    auto folder_end = file_path.find_last_of("/\\");
+    auto folder_end = file_path.find_last_of(folder_separator);
     result.folder = folder_end == std::string::npos ? "" : file_path.substr(0, folder_end);
     result.name = folder_end == std::string::npos ? file_path : file_path.substr(folder_end + 1);
     auto extension_start = result.name.find_last_of('.');
     result.extension = extension_start == std::string::npos ? "" : result.name.substr(extension_start + 1);
-    if (file_path[1] == ':' && (file_path[2] == '\\' || file_path[2] == '/')) {
+    if (search_drive_letter && file_path[1] == ':' && (file_path[2] == '\\' || file_path[2] == '/')) {
         result.drive_letter = std::toupper(file_path[0]);
     }
 }

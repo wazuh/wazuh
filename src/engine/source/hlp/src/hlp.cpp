@@ -125,7 +125,7 @@ static void executeParserList(std::string const &event, ParserList const &parser
             }
             case ParserType::FilePath: {
                 FilePathResult filePathResult;
-                parseFilePath(&eventIt, parser.endToken, filePathResult);
+                parseFilePath(&eventIt, parser.endToken, parser.captureOpts, filePathResult);
                 result[parser.name + ".path"] = std::move(filePathResult.path);
                 result[parser.name + ".drive_letter"] = std::move(filePathResult.drive_letter);
                 result[parser.name + ".folder"] = std::move(filePathResult.folder);
