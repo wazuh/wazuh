@@ -158,5 +158,7 @@ types::Lifter opBuilderHelperString_lo(const types::DocumentValue & def){
     };
 }
 
+// <field>: +s_trim/[begin | end | both]/char
+
 } // namespace builder::internals::builders
 
