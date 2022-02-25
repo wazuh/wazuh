@@ -195,7 +195,7 @@ void check_rc_files(const char *basedir, FILE *fp)
             char op_msg[size_msg];
 
             _errors = 1;
-            snprintf(op_msg, size_msg, "Rootkit '%s' detected "
+            snprintf(op_msg, sizeof(op_msg), "Rootkit '%s' detected "
                      "by the presence of file '%s'.", name, file_path);
 
             notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
