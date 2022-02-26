@@ -225,7 +225,6 @@ TEST_F(FileItemTest, fileItemReportOldData)
             "uid":0, "user_name":"fakeUser"}],"options":{"return_old_data": true, "ignore":["last_event"]}
         }
     )"_json;
-    std::cout << *file->toJSON() << std::endl;
     ASSERT_TRUE(*file->toJSON() == expectedValue);
     delete file;
 }

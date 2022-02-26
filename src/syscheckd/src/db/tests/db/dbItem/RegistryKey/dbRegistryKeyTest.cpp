@@ -128,8 +128,6 @@ TEST_F(RegistryKeyTest, getJSONWithJSONCtrReportOldData)
             }
         )"_json;
     auto key = new RegistryKey(fimEntryTest, true);
-    std::cout << oldDataJson.dump() << std::endl;
-    std::cout << key->toJSON()->dump() << std::endl;
     ASSERT_TRUE(*key->toJSON() == oldDataJson);
     delete key;
 }

@@ -43,5 +43,11 @@ typedef struct
     void *context;
 } callback_context_t;
 
+enum OSType
+{
+    OTHERS,
+    WINDOWS
+};
+
 
 #endif // DB_COMMONDEFS_H

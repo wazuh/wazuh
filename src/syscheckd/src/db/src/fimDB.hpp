@@ -103,152 +103,6 @@ constexpr auto CREATE_REGISTRY_VIEW_STATEMENT
        registry_data.checksum FROM registry_key INNER JOIN registry_data ON registry_key.path=registry_data.path AND registry_key.arch=registry_data.arch;)"
 };
 
-constexpr auto FIM_FILE_SYNC_CONFIG_STATEMENT
-{
-    R"(
-    {
-        "decoder_type":"JSON_RANGE",
-        "table":"file_entry",
-        "component":"fim_file",
-        "index":"path",
-        "checksum_field":"checksum",
-        "no_data_query_json": {
-                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
-                "column_list":["*"],
-                "distinct_opt":false,
-                "order_by_opt":""
-        },
-        "count_range_query_json": {
-                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
-                "count_field_name":"count",
-                "column_list":["count(*) AS count "],
-                "distinct_opt":false,
-                "order_by_opt":""
-        },
-        "row_data_query_json": {
-                "row_filter":"WHERE path ='?'",
-                "column_list":["*"],
-                "distinct_opt":false,
-                "order_by_opt":""
-        },
-        "range_checksum_query_json": {
-                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
-                "column_list":["*"],
-                "distinct_opt":false,
-                "order_by_opt":""
-        }
-    }
-    )"
-};
-
-constexpr auto FIM_REGISTRY_SYNC_CONFIG_STATEMENT
-{
-    R"(
-    {
-        "decoder_type":"JSON_RANGE",
-        "table":"registry_view",
-        "component":"fim_registry",
-        "index":"path",
-        "checksum_field":"checksum",
-        "no_data_query_json": {
-                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
-                "column_list":["*"],
-                "distinct_opt":false,
-                "order_by_opt":""
-        },
-        "count_range_query_json": {
-                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
-                "count_field_name":"count",
-                "column_list":["count(*) AS count "],
-                "distinct_opt":false,
-                "order_by_opt":""
-        },
-        "row_data_query_json": {
-                "row_filter":"WHERE path ='?'",
-                "column_list":["*"],
-                "distinct_opt":false,
-                "order_by_opt":""
-        },
-        "range_checksum_query_json": {
-                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
-                "column_list":["*"],
-                "distinct_opt":false,
-                "order_by_opt":""
-        }
-    }
-    )"
-};
-
-/* Statement related to files items. Defines everything necessary to perform the synchronization loop */
-constexpr auto FIM_FILE_START_CONFIG_STATEMENT
-{
-    R"({"table":"file_entry",
-        "first_query":
-            {
-                "column_list":["path"],
-                "row_filter":" ",
-                "distinct_opt":false,
-                "order_by_opt":"path DESC",
-                "count_opt":1
-            },
-        "last_query":
-            {
-                "column_list":["path"],
-                "row_filter":" ",
-                "distinct_opt":false,
-                "order_by_opt":"path ASC",
-                "count_opt":1
-            },
-        "component":"fim_file",
-        "index":"path",
-        "last_event":"last_event",
-        "checksum_field":"checksum",
-        "range_checksum_query_json":
-            {
-                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
-                "column_list":["path, checksum"],
-                "distinct_opt":false,
-                "order_by_opt":"",
-                "count_opt":100
-            }
-        })"
-};
-
-/* Statement related to registries items. Defines everything necessary to perform the synchronization loop */
-constexpr auto FIM_REGISTRY_START_CONFIG_STATEMENT
-{
-    R"({"table":"registry_view",
-        "first_query":
-            {
-                "column_list":["path"],
-                "row_filter":" ",
-                "distinct_opt":false,
-                "order_by_opt":"path DESC",
-                "count_opt":1
-            },
-        "last_query":
-            {
-                "column_list":["path"],
-                "row_filter":" ",
-                "distinct_opt":false,
-                "order_by_opt":"path ASC",
-                "count_opt":1
-            },
-        "component":"syscheck",
-        "index":"path",
-        "last_event":"last_event",
-        "checksum_field":"checksum",
-        "range_checksum_query_json":
-            {
-                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
-                "column_list":["path, checksum"],
-                "distinct_opt":false,
-                "order_by_opt":"",
-                "count_opt":100
-            }
-        })"
-};
-
 class FIMDB
 {
     public:
@@ -269,7 +123,6 @@ class FIMDB
          * @param rsyncHandler Pointer to a rsync handler.
          * @param fileLimit Maximun number of file entries in database.
          * @param registryLimit Maximun number of registry values entries in database (only for Windows).
-         * @param isWindows True if the OS is Windows.
          */
         void init(unsigned int syncInterval,
                   std::function<void(const std::string&)> callbackSyncFileWrapper,
@@ -278,8 +131,7 @@ class FIMDB
                   std::shared_ptr<DBSync> dbsyncHandler,
                   std::shared_ptr<RemoteSync> rsyncHandler,
                   unsigned int fileLimit,
-                  unsigned int registryLimit = 0,
-                  bool isWindows = false);
+                  unsigned int registryLimit = 0);
 
         /**
          * @brief Remove a given item from the database
@@ -354,18 +206,33 @@ class FIMDB
         }
 
         /**
-         * @brief Function to return the DBSync handle.
+         * @brief Function to return the DBSync handler.
          *
-         * @return DBSYNC_HANDLE Handle to DBSync.
+         * @return std::shared_ptr<DBSync> this a shared_ptr for DBSync.
          */
-        DBSYNC_HANDLE DBSyncHandle()
+        std::shared_ptr<DBSync> DBSyncHandler()
         {
             if (!m_dbsyncHandler)
             {
                 throw std::runtime_error("DBSyncHandler is not initialized");
             }
 
-            return m_dbsyncHandler->handle();
+            return m_dbsyncHandler;
+        }
+
+        /**
+         * @brief Function to return the RSync handler.
+         *
+         * @return std::shared_ptr<RemoteSync> this a shared_ptr for RSync.
+         */
+        std::shared_ptr<RemoteSync> RSyncHandler()
+        {
+            if (!m_rsyncHandler)
+            {
+                throw std::runtime_error("RSyncHandler is not initialized");
+            }
+
+            return m_rsyncHandler;
         }
 
         /**
@@ -375,8 +242,6 @@ class FIMDB
 
     private:
 
-        unsigned int                                                            m_fileLimit;
-        unsigned int                                                            m_registryLimit;
         unsigned int                                                            m_syncInterval;
         bool                                                                    m_stopping;
         bool                                                                    m_isWindows;
@@ -402,20 +267,5 @@ class FIMDB
         ~FIMDB() = default;
         // LCOV_EXCL_STOP
         FIMDB(const FIMDB&) = delete;
-
-        /**
-         * @brief Set the entry limits for the table file_entry
-         */
-        void setFileLimit();
-
-        /**
-         * @brief Set the entry limits for the table registry_key
-         */
-        void setRegistryLimit();
-
-        /**
-         * @brief Set the entry limits for the table registry_data
-         */
-        void setValueLimit();
 };
 #endif //_FIMDB_HPP

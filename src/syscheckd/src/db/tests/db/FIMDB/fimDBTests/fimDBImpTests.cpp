@@ -14,6 +14,7 @@
 
 #include "fimDBImpTests.hpp"
 #include <thread>
+#include "fimDBSpecialization.h"
 
 constexpr auto MOCK_DB_PATH {"temp_fimdb_ut.db"};
 constexpr auto MOCK_DB_MEM {":memory:"};
@@ -77,27 +78,22 @@ class FimDBWinFixture : public ::testing::Test
                 }
             };
 
-            std::unique_ptr<DBSync> dbsyncHandler = std::make_unique<MockDBSyncHandler>(HostType::AGENT, DbEngineType::SQLITE3,
+            std::shared_ptr<DBSync> dbsyncHandler = std::make_unique<MockDBSyncHandler>(HostType::AGENT, DbEngineType::SQLITE3,
                                                                                         MOCK_DB_PATH, MOCK_SQL_STATEMENT);
-            std::unique_ptr<RemoteSync> rsyncHandler = std::make_unique<MockRSyncHandler>();
+            std::shared_ptr<RemoteSync> rsyncHandler = std::make_shared<MockRSyncHandler>();
             mockDBSync = (MockDBSyncHandler*) dbsyncHandler.get();
             mockRSync = (MockRSyncHandler*) rsyncHandler.get();
             mockLog = new MockLoggingCall();
             mockSync = new MockSyncMsg();
-            EXPECT_CALL((*mockDBSync), setTableMaxRow("file_entry", mockMaxRowsFile));
-
-            EXPECT_CALL((*mockDBSync), setTableMaxRow("registry_key", mockMaxRowsReg));
-            EXPECT_CALL((*mockDBSync), setTableMaxRow("registry_data", mockMaxRowsReg));
 
             fimDBMock.init(mockIntervalSync,
                            callbackSyncFileWrapper,
                            callbackSyncRegistryWrapper,
                            callbackLogWrapper,
-                           std::move(dbsyncHandler),
-                           std::move(rsyncHandler),
+                           dbsyncHandler,
+                           rsyncHandler,
                            mockMaxRowsFile,
-                           mockMaxRowsReg,
-                           true);
+                           mockMaxRowsReg);
         }
 
         void TearDown() override
@@ -157,24 +153,28 @@ class FimDBFixture : public ::testing::Test
                 }
             };
 
-            std::unique_ptr<DBSync> dbsyncHandler = std::make_unique<MockDBSyncHandler>(HostType::AGENT, DbEngineType::SQLITE3,
+            std::shared_ptr<DBSync> dbsyncHandler = std::make_unique<MockDBSyncHandler>(HostType::AGENT, DbEngineType::SQLITE3,
                                                                                         MOCK_DB_PATH, MOCK_SQL_STATEMENT);
-            std::unique_ptr<RemoteSync> rsyncHandler = std::make_unique<MockRSyncHandler>();
+            std::shared_ptr<RemoteSync> rsyncHandler = std::make_shared<MockRSyncHandler>();
             mockDBSync = (MockDBSyncHandler*) dbsyncHandler.get();
             mockRSync = (MockRSyncHandler*) rsyncHandler.get();
             mockLog = new MockLoggingCall();
             mockSync = new MockSyncMsg();
             EXPECT_CALL((*mockDBSync), setTableMaxRow("file_entry", mockMaxRowsFile));
 
+            #ifdef WIN32
+            EXPECT_CALL((*mockDBSync), setTableMaxRow("registry_key", mockMaxRowsReg));
+            EXPECT_CALL((*mockDBSync), setTableMaxRow("registry_data", mockMaxRowsReg));
+            #endif
+
             fimDBMock.init(mockIntervalSync,
                            callbackSyncFileWrapper,
                            callbackSyncRegistryWrapper,
                            callbackLogWrapper,
-                           std::move(dbsyncHandler),
-                           std::move(rsyncHandler),
+                           dbsyncHandler,
+                           rsyncHandler,
                            mockMaxRowsFile,
-                           mockMaxRowsReg,
-                           false);
+                           mockMaxRowsReg);
         }
 
         void TearDown() override
@@ -188,40 +188,7 @@ class FimDBFixture : public ::testing::Test
 
 TEST_F(FimDBFixture, dbSyncHandlerInitSuccess)
 {
-    ASSERT_NE(fimDBMock.DBSyncHandle(), nullptr);
-}
-
-TEST_F(FimDBFixture, setFileLimitSuccess)
-{
-    EXPECT_CALL((*mockDBSync), setTableMaxRow("file_entry", mockMaxRowsFile));
-    fimDBMock.setFileLimit();
-}
-
-TEST_F(FimDBFixture, setFileLimitNoTableData)
-{
-    EXPECT_CALL(*mockDBSync, setTableMaxRow("file_entry", mockMaxRowsFile)).
-    WillOnce(testing::Throw(DbSync::dbsync_error(6, "dbEngine: Empty table metadata."))); // EMPTY_TABLE_METADATA
-
-    try
-    {
-        fimDBMock.setFileLimit();
-    }
-    catch (DbSync::dbsync_error& err)
-    {
-        ASSERT_EQ((std::string)(err.what()), "dbEngine: Empty table metadata.");
-    }
-}
-
-TEST_F(FimDBWinFixture, setValueLimitSuccess)
-{
-    EXPECT_CALL(*mockDBSync, setTableMaxRow("registry_data", mockMaxRowsReg));
-    fimDBMock.setValueLimit();
-}
-
-TEST_F(FimDBWinFixture, setRegistryLimitSuccess)
-{
-    EXPECT_CALL(*mockDBSync, setTableMaxRow("registry_key", mockMaxRowsReg));
-    fimDBMock.setRegistryLimit();
+    ASSERT_NE(fimDBMock.DBSyncHandler()->handle(), nullptr);
 }
 
 TEST_F(FimDBFixture, insertItemSuccess)
@@ -247,17 +214,9 @@ TEST_F(FimDBFixture, updateItemSuccess)
     fimDBMock.updateItem(itemJson, callback);
 }
 
-TEST_F(FimDBWinFixture, registerSyncIDSuccess)
-{
-    EXPECT_CALL(*mockRSync, registerSyncID("fim_file", mockDBSync->handle(), nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT), testing::_));
-    EXPECT_CALL(*mockRSync, registerSyncID("fim_registry", mockDBSync->handle(), nlohmann::json::parse(FIM_REGISTRY_SYNC_CONFIG_STATEMENT), testing::_));
-
-    fimDBMock.registerRSync();
-}
-
 TEST_F(FimDBFixture, registerSyncIDSuccess)
 {
-    EXPECT_CALL(*mockRSync, registerSyncID("fim_file", mockDBSync->handle(), nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT), testing::_));
+    EXPECT_CALL(*mockRSync, registerSyncID(testing::_, testing::_, testing::_, testing::_)).Times(testing::AtLeast(1));
 
     fimDBMock.registerRSync();
 
@@ -265,24 +224,9 @@ TEST_F(FimDBFixture, registerSyncIDSuccess)
 
 TEST_F(FimDBFixture, registerSyncIDError)
 {
-    EXPECT_CALL(*mockRSync, registerSyncID("fim_file", mockDBSync->handle(), nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT), testing::_));
+    EXPECT_CALL(*mockRSync, registerSyncID(testing::_, testing::_, testing::_, testing::_)).Times(testing::AtLeast(1));
 
     fimDBMock.registerRSync();
-}
-
-TEST_F(FimDBWinFixture, loopWinRSyncSuccess)
-{
-    std::mutex test_mutex;
-
-    EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "FIM sync module started."));
-    EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Executing FIM sync."));
-    EXPECT_CALL(*mockRSync, startSync(mockDBSync->handle(), nlohmann::json::parse(FIM_FILE_START_CONFIG_STATEMENT), testing::_));
-    EXPECT_CALL(*mockRSync, startSync(mockDBSync->handle(), nlohmann::json::parse(FIM_REGISTRY_START_CONFIG_STATEMENT), testing::_));
-    EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Finished FIM sync."));
-    EXPECT_CALL(*mockRSync, registerSyncID("fim_file", mockDBSync->handle(), nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT), testing::_));
-    EXPECT_CALL(*mockRSync, registerSyncID("fim_registry", mockDBSync->handle(), nlohmann::json::parse(FIM_REGISTRY_SYNC_CONFIG_STATEMENT), testing::_));
-
-    fimDBMock.runIntegrity();
 }
 
 TEST_F(FimDBFixture, loopRSyncSuccess)
@@ -291,9 +235,9 @@ TEST_F(FimDBFixture, loopRSyncSuccess)
 
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "FIM sync module started."));
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Executing FIM sync."));
-    EXPECT_CALL(*mockRSync, startSync(mockDBSync->handle(), nlohmann::json::parse(FIM_FILE_START_CONFIG_STATEMENT), testing::_));
+    EXPECT_CALL(*mockRSync, startSync(testing::_, testing::_, testing::_)).Times(testing::AtLeast(1));
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Finished FIM sync."));
-    EXPECT_CALL(*mockRSync, registerSyncID("fim_file", mockDBSync->handle(), nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT), testing::_));
+    EXPECT_CALL(*mockRSync, registerSyncID(testing::_, testing::_, testing::_, testing::_)).Times(testing::AtLeast(1));
 
     fimDBMock.runIntegrity();
 }
@@ -357,7 +301,7 @@ TEST(FimDB, notInitalizedDbSyncException)
     MockFIMDB fimDBMock;
     EXPECT_THROW(
     {
-        ASSERT_EQ(fimDBMock.DBSyncHandle(), nullptr);
+        ASSERT_EQ(fimDBMock.DBSyncHandler()->handle(), nullptr);
     }, std::runtime_error);
 }
 

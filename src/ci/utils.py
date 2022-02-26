@@ -11,6 +11,7 @@ import re
 import glob
 import subprocess
 from pathlib import Path
+import shutil
 
 
 def printGreen(msg):
@@ -31,6 +32,7 @@ headerDic = {
     'valgrind':         '=================== Running Valgrind    ===================',
     'cppcheck':         '=================== Running cppcheck    ===================',
     'asan':             '=================== Running ASAN        ===================',
+    'winasan':          '=================== Running TESTTOOL for Windows ==========',
     'scanbuild':        '=================== Running Scanbuild   ===================',
     'testtool':         '=================== Running TEST TOOL   ===================',
     'cleanfolder':      '=================== Clean build Folders ===================',
@@ -145,7 +147,9 @@ smokeTestsDic = {
                 '-a atomicFileOperations/SyncRow_1.json,atomicFileOperations/SyncRow_2.json,atomicFileOperations/CountFiles.json,atomicFileOperations/SyncRow_3.json,atomicFileOperations/DeleteFile.json,atomicFileOperations/CountFiles.json,atomicFileOperations/GetFile.json',
                 '-o ./output/AtomicOperations'
             ]
-        },
+        }
+    ],
+    'winsyscheckd': [
         {
             'test_tool_name': 'fimdb_test_tool',
             'smoke_tests_path': 'src/db/smokeTests',
@@ -535,7 +539,7 @@ def configureCMake(moduleName, debugMode, testMode, withAsan):
         raise ValueError(errorString)
 
 
-def runTestTool(moduleName, testToolCommand, element):
+def runTestTool(moduleName, testToolCommand, element, isWindows=False):
     printHeader('TESTTOOL', 'testtool')
     printGreen(testToolCommand)
     cwd = os.getcwd()
@@ -558,6 +562,8 @@ def runTestTool(moduleName, testToolCommand, element):
     os.chdir(cwd)
 
     if out.returncode == 0 and not out.stderr:
+        printGreen('[TestTool: PASSED]')
+    elif isWindows and out.returncode == 0:
         printGreen('[TestTool: PASSED]')
     else:
         print(testToolCommand)
@@ -733,3 +739,33 @@ def deleteLogs(moduleName):
     printHeader(moduleName, 'deletelogs')
     for folder in deleteFolderDic[moduleName]:
         cleanFolder(str(moduleName), folder, folder)
+
+def runTestToolForWindows(moduleName):
+    printHeader(moduleName, 'winasan')
+    cleanAll()
+    cleanExternals()
+    makeDeps('winagent', True)
+    makeTarget('winagent', False, True)
+    winModuleName = "win"+ moduleName
+    module = smokeTestsDic[winModuleName]
+    rootPath = os.path.join(currentDirPathBuild(moduleName), 'bin')
+    if moduleName == 'syscheckd':
+        libgcc = find("libgcc_s_sjlj-1.dll", currentBuildDir.parent)
+        rsync = find("rsync.dll", currentBuildDir.parent)
+        dbsync = find("dbsync.dll", currentBuildDir.parent)
+        shutil.copyfile(libgcc, os.path.join(rootPath, "libgcc_s_sjlj-1.dll"))
+        shutil.copyfile(rsync, os.path.join(rootPath, "rsync.dll"))
+        shutil.copyfile(dbsync, os.path.join(rootPath, "dbsync.dll"))
+
+    for element in module:
+        path = os.path.join(rootPath, element['test_tool_name'])
+        args = ' '.join(element['args'])
+        testToolCommand = f'WINEPATH="/usr/i686-w64-mingw32/lib;{currentBuildDir.parent}" WINEARCH=win32 wine {path}.exe {args}'
+        runTestTool(str(moduleName), testToolCommand, element, True)
+
+    printGreen(f'<{moduleName}>[ASAN for Windows: PASSED]<{moduleName}>')
+
+def find(name, path):
+    for root, dirs, files in os.walk(path):
+        if name in files:
+            return os.path.join(root, name)

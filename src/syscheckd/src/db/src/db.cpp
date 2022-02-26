@@ -19,6 +19,7 @@
 #include "dbFileItem.hpp"
 #include "dbRegistryKey.hpp"
 #include "dbRegistryValue.hpp"
+#include "fimDBSpecialization.h"
 
 
 struct CJsonDeleter
@@ -33,41 +34,19 @@ struct CJsonDeleter
     }
 };
 
-/**
- * @brief Create the statement string to create the dbsync schema.
- *
- * @param isWindows True if the system is windows.
- *
- * @return std::string Contains the dbsync's schema for FIM db.
- */
-std::string DB::CreateStatement(const bool isWindows)
-{
-
-    std::string ret = CREATE_FILE_DB_STATEMENT;
-
-    if (isWindows)
-    {
-        ret += CREATE_REGISTRY_KEY_DB_STATEMENT;
-        ret += CREATE_REGISTRY_VALUE_DB_STATEMENT;
-        ret += CREATE_REGISTRY_VIEW_STATEMENT;
-    }
-
-    return ret;
-}
-
 void DB::init(const int storage,
               const int syncInterval,
               std::function<void(const std::string&)> callbackSyncFileWrapper,
               std::function<void(const std::string&)> callbackSyncRegistryWrapper,
               std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,
               const int fileLimit,
-              const int valueLimit,
-              const bool isWindows)
+              const int valueLimit)
 {
     auto path { storage == FIM_DB_MEMORY ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH };
     auto dbsyncHandler
     {
-        std::make_shared<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, path, CreateStatement(isWindows))
+        std::make_shared<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, path,
+                                 FIMDBCreator<OS_TYPE>::CreateStatement())
     };
 
     auto rsyncHandler { std::make_shared<RemoteSync>() };
@@ -79,8 +58,7 @@ void DB::init(const int storage,
                            dbsyncHandler,
                            rsyncHandler,
                            fileLimit,
-                           valueLimit,
-                           isWindows);
+                           valueLimit);
 }
 
 void DB::runIntegrity()
@@ -95,7 +73,7 @@ void DB::pushMessage(const std::string& message)
 
 DBSYNC_HANDLE DB::DBSyncHandle()
 {
-    return FIMDB::instance().DBSyncHandle();
+    return FIMDB::instance().DBSyncHandler()->handle();
 }
 
 void DB::teardown()
@@ -148,8 +126,7 @@ void fim_db_init(int storage,
                  fim_sync_callback_t sync_callback,
                  logging_callback_t log_callback,
                  int file_limit,
-                 int value_limit,
-                 bool is_windows)
+                 int value_limit)
 {
     try
     {
@@ -193,8 +170,7 @@ void fim_db_init(int storage,
                             callbackSyncRegistryWrapper,
                             callbackLogWrapper,
                             file_limit,
-                            value_limit,
-                            is_windows);
+                            value_limit);
 
     }
     // LCOV_EXCL_START

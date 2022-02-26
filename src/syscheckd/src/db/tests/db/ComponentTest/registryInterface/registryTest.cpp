@@ -50,7 +50,7 @@ void transaction_callback( __attribute__((unused)) ReturnTypeCallback resultType
                            __attribute__((unused)) const cJSON* result_json,
                            __attribute__((unused)) void* user_data){}
 
-TEST_F(DBTestWinFixture, TestFimDBGetCountRegistryEntry)
+TEST_F(DBTestFixture, TestFimDBGetCountRegistryEntry)
 {
     EXPECT_NO_THROW(
     {
@@ -102,7 +102,7 @@ TEST_F(DBTestWinFixture, TestFimDBGetCountRegistryEntry)
     });
 }
 
-TEST_F(DBTestWinFixture, TestFimDBGetCountRegistryValueEntry)
+TEST_F(DBTestFixture, TestFimDBGetCountRegistryValueEntry)
 {
     EXPECT_NO_THROW(
     {
