@@ -59,6 +59,7 @@ void FIMDB::init(unsigned int syncInterval,
     m_loggingFunction = callbackLogWrapper;
     m_stopping = false;
     m_runIntegrity = false;
+    std::shared_lock<std::shared_timed_mutex> lock(m_handlersMutex);
     FIMDBCreator<OS_TYPE>::setLimits(m_dbsyncHandler, fileLimit, registryLimit);
 }
 
