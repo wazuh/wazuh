@@ -1229,7 +1229,8 @@ def test_agent_unset_single_group_agent_ko(socket_mock, send_mock):
 @patch('wazuh.core.configuration.WazuhSocket')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_getconfig(socket_mock, send_mock, mock_wazuh_socket):
+@patch('os.path.exists')
+def test_agent_getconfig(mock_exists, socket_mock, send_mock, mock_wazuh_socket):
     """Test getconfig method returns expected message."""
     agent = Agent('001')
     mock_wazuh_socket.return_value.receive.return_value = b'ok {"test": "conf"}'
