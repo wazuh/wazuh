@@ -13,6 +13,7 @@
 #define _DBITEM_HPP
 #include "syscheck.h"
 #include "json.hpp"
+#include "fimDBSpecialization.h"
 
 class DBItem
 {
@@ -28,6 +29,7 @@ class DBItem
             , m_checksum( checksum )
             , m_mode( mode )
         {
+            FIMDBCreator<OS_TYPE>::encodeString(m_identifier);
         }
 
         // LCOV_EXCL_START

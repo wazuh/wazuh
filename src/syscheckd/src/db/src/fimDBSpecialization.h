@@ -13,6 +13,7 @@
 
 #include "fimDB.hpp"
 #include "fimCommonDefs.h"
+#include "encodingWindowsHelper.h"
 
 
 constexpr auto FIM_FILE_SYNC_CONFIG_STATEMENT
@@ -201,7 +202,15 @@ class FIMDBCreator final
         {
             throw std::runtime_error
             {
-                "Error running synchronization ."
+                "Error running synchronization."
+            };
+        }
+
+        static void encodeString(std::string& stringToEncode)
+        {
+            throw std::runtime_error
+            {
+                "Error encoding strings."
             };
         }
 };
@@ -256,6 +265,13 @@ class FIMDBCreator<OSType::WINDOWS> final
                                     nlohmann::json::parse(FIM_REGISTRY_START_CONFIG_STATEMENT),
                                     syncRegistryMessageFunction);
         }
+
+        static void encodeString(__attribute__((unused)) std::string& stringToEncode)
+        {
+#ifdef WIN32
+            stringToEncode = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(stringToEncode);
+#endif
+        }
 };
 
 template <>
@@ -294,6 +310,8 @@ class FIMDBCreator<OSType::OTHERS> final
                                     nlohmann::json::parse(FIM_FILE_START_CONFIG_STATEMENT),
                                     syncFileMessageFunction);
         }
+
+        static void encodeString(__attribute__((unused)) std::string& stringToEncode){}
 };
 
 #endif // _FIMDB_OS_SPECIALIZATION_H

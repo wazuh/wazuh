@@ -13,6 +13,7 @@
 #define _REGISTRYKEY_HPP
 #include "json.hpp"
 #include "dbItem.hpp"
+#include "fimDBSpecialization.h"
 
 struct FimRegistryKeyDeleter
 {
@@ -54,9 +55,15 @@ class RegistryKey final : public DBItem
             m_arch = fim->registry_entry.key->arch;
             m_gid = std::atoi(fim->registry_entry.key->gid);
             m_uid = std::atoi(fim->registry_entry.key->uid);
-            m_groupname = std::string(fim->registry_entry.key->group_name);
-            m_perm = std::string(fim->registry_entry.key->perm);
-            m_username = std::string(fim->registry_entry.key->user_name);
+
+            m_groupname = fim->registry_entry.key->group_name ? fim->registry_entry.key->group_name : "";
+            m_perm = fim->registry_entry.key->perm ? fim->registry_entry.key->perm : "";
+            m_username = fim->registry_entry.key->user_name ? fim->registry_entry.key->user_name : "";
+
+            FIMDBCreator<OS_TYPE>::encodeString(m_groupname);
+            FIMDBCreator<OS_TYPE>::encodeString(m_perm);
+            FIMDBCreator<OS_TYPE>::encodeString(m_username);
+
             m_time = fim->registry_entry.key->mtime;
             createJSON();
             createFimEntry();
