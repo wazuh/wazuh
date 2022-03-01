@@ -44,7 +44,6 @@ static const char *FIM_EVENT_MODE[] = {
     "whodata"
 };
 
-
 cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
                                         const cJSON* changed_data,
                                         cJSON* old_attributes,

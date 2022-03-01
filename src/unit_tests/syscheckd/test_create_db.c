@@ -3307,197 +3307,149 @@ static void test_fim_whodata_event_file_missing(void **state) {
     errno = 0;
 }
 
+/* fim_process_missing_entry */
 
-void test_fim_process_missing_entry_path_found(void **state){
-    fim_data_t* fim_data = (fim_data_t*) *state;
+static void test_fim_process_missing_entry_null_configuration(void **state) {
+#ifdef TEST_WINAGENT
+    char *path = "C:\\a\\random\\path";
+#else
+    char *path = "/a/random/path";
+#endif
+
+    char buff[OS_SIZE_128] = {0};
+    snprintf(buff, OS_SIZE_128, "%s%c%%", path, PATH_SEP);
+    char debug_msg[70];
+    sprintf(debug_msg,"(6319): No configuration found for (file):'%s'", path);
+
+#ifndef TEST_WINAGENT
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+#else
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+#endif
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+
+    fim_process_missing_entry(path, FIM_REALTIME, NULL);
+}
+
+static void test_fim_process_missing_entry_data_exists(void **state) {
+    fim_data_t *fim_data = (fim_data_t*) *state;
     free(fim_data->w_evt->path);
-    fim_data->w_evt->path = "/etc/test.txt";
+#ifdef TEST_WINAGENT
+    char *aux_path = "%WINDIR%\\SysNative\\drivers\\etc";
+    char path[OS_MAXSTR];
 
-    #ifndef TEST_WINAGENT
-        expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-        expect_function_call_any(__wrap_pthread_rwlock_unlock);
-        expect_function_call_any(__wrap_pthread_mutex_lock);
-        expect_function_call_any(__wrap_pthread_mutex_unlock);
-        expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    #else
-        expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-        expect_function_call_any(__wrap_pthread_rwlock_unlock);
-        expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-        expect_function_call_any(__wrap_pthread_mutex_lock);
-        expect_function_call_any(__wrap_pthread_mutex_unlock);
-    #endif
+    if(!ExpandEnvironmentStrings(aux_path, path, OS_MAXSTR))
+        fail();
+
+    str_lowercase(path);
+    fim_data->w_evt->path = strdup(path);
+#else
+    fim_data->w_evt->path = strdup("/media/test.txt");
+#endif
+
+#ifndef TEST_WINAGENT
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+#else
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+#endif
 
     expect_string(__wrap_fim_db_get_path, file_path, fim_data->w_evt->path);
     will_return(__wrap_fim_db_get_path, FIMDB_OK);
 
     fim_process_missing_entry(fim_data->w_evt->path, FIM_WHODATA, fim_data->w_evt);
-    fim_data->w_evt->path = NULL;
 }
-void test_fim_process_missing_entry_no_whodata_active(void **state){
-    fim_data_t* fim_data = (fim_data_t*) *state;
-    free(fim_data->w_evt->path);
-    fim_data->w_evt->path = "/media/test.txt";
 
-    #ifndef TEST_WINAGENT
-        expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-        expect_function_call_any(__wrap_pthread_rwlock_unlock);
-        expect_function_call_any(__wrap_pthread_mutex_lock);
-        expect_function_call_any(__wrap_pthread_mutex_unlock);
-        expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    #else
-        expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-        expect_function_call_any(__wrap_pthread_rwlock_unlock);
-        expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-        expect_function_call_any(__wrap_pthread_mutex_lock);
-        expect_function_call_any(__wrap_pthread_mutex_unlock);
-    #endif
+void test_fim_process_missing_entry_whodata_disabled(void **state){
+    fim_data_t *fim_data = (fim_data_t*) *state;
+    free(fim_data->w_evt->path);
+#ifdef TEST_WINAGENT
+    char *aux_path = "%WINDIR%\\SysNative\\drivers\\etc";
+    char path[OS_MAXSTR];
+
+    if(!ExpandEnvironmentStrings(aux_path, path, OS_MAXSTR))
+        fail();
+
+    str_lowercase(path);
+    fim_data->w_evt->path = strdup(path);
+#else
+    fim_data->w_evt->path = strdup("/media/test.txt");
+#endif
+
+#ifndef TEST_WINAGENT
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+#else
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+#endif
 
     expect_string(__wrap_fim_db_get_path, file_path, fim_data->w_evt->path);
     will_return(__wrap_fim_db_get_path, FIMDB_ERR);
 
     fim_process_missing_entry(fim_data->w_evt->path, FIM_WHODATA, fim_data->w_evt);
-    fim_data->w_evt->path = NULL;
 }
 
 void test_fim_process_missing_entry(void **state){
-    fim_data_t* fim_data = (fim_data_t*) *state;
+    fim_data_t *fim_data = (fim_data_t*) *state;
     free(fim_data->w_evt->path);
-    fim_data->w_evt->path = "/etc/test.txt";
+#ifdef TEST_WINAGENT
+    char *aux_path = "%WINDIR%\\SysNative\\drivers\\etc";
+    char path[OS_MAXSTR];
+
+    if(!ExpandEnvironmentStrings(aux_path, path, OS_MAXSTR))
+        fail();
+
+    str_lowercase(path);
+    fim_data->w_evt->path = strdup(path);
+#else
+    fim_data->w_evt->path = strdup("/etc/test.txt");
+#endif
+
     char pattern[PATH_MAX] = {0};
     snprintf(pattern, PATH_MAX, "%s%c%%", fim_data->w_evt->path, PATH_SEP);
 
-    #ifndef TEST_WINAGENT
-        expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-        expect_function_call_any(__wrap_pthread_rwlock_unlock);
-        expect_function_call_any(__wrap_pthread_mutex_lock);
-        expect_function_call_any(__wrap_pthread_mutex_unlock);
-        expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    #else
-        expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-        expect_function_call_any(__wrap_pthread_rwlock_unlock);
-        expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-        expect_function_call_any(__wrap_pthread_mutex_lock);
-        expect_function_call_any(__wrap_pthread_mutex_unlock);
-    #endif
+#ifndef TEST_WINAGENT
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+#else
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+#endif
 
     expect_string(__wrap_fim_db_get_path, file_path, fim_data->w_evt->path);
     will_return(__wrap_fim_db_get_path, FIMDB_ERR);
     expect_string(__wrap_fim_db_file_pattern_search, pattern, pattern);
     will_return(__wrap_fim_db_file_pattern_search, FIMDB_OK);
 
-    fim_process_missing_entry(fim_data->w_evt->path, FIM_WHODATA, fim_data->w_evt);
-    fim_data->w_evt->path = NULL;
-}
-
-static void test_fim_process_missing_entry_no_data(void **state) {
-#ifdef TEST_WINAGENT
-    char *path = "C:\\a\\random\\path";
-#else
-    char *path = "/a/random/path";
-#endif
-
-    char buff[OS_SIZE_128] = {0};
-    snprintf(buff, OS_SIZE_128, "%s%c%%", path, PATH_SEP);
-    char debug_msg[70];
-    sprintf(debug_msg,"(6319): No configuration found for (file):'%s'", path);
-
-#ifndef TEST_WINAGENT
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-#else
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-#endif
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
-
-    fim_process_missing_entry(path, FIM_REALTIME, NULL);
-}
-
-static void test_fim_process_missing_entry_failure(void **state) {
-    fim_tmp_file *file = calloc(1, sizeof(fim_tmp_file));
-    file->elements = 1;
-
-#ifdef TEST_WINAGENT
-    char *path = "C:\\a\\random\\path";
-#else
-    char *path = "/a/random/path";
-#endif
-    char buff[OS_SIZE_128] = {0};
-    char error_msg[OS_SIZE_256] = {0};
-    char debug_msg[70];
-    sprintf(debug_msg,"(6319): No configuration found for (file):'%s'", path);
-#ifndef TEST_WINAGENT
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-#else
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-#endif
-    snprintf(buff, OS_SIZE_128, "%s%c%%", path, PATH_SEP);
-    snprintf(error_msg, OS_SIZE_256, FIM_DB_ERROR_RM_PATTERN, buff);
-
-    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
-
-    fim_process_missing_entry(path, FIM_REALTIME, NULL);
-
-    free(file);
-}
-
-static void test_fim_process_missing_entry_data_exists(void **state) {
-
-    fim_data_t *fim_data = *state;
-
-    fim_data->fentry->file_entry.path = strdup("file");
-    fim_data->fentry->file_entry.data = fim_data->local_data;
-
-    fim_data->local_data->size = 1500;
-    fim_data->local_data->perm = strdup("0664");
-    fim_data->local_data->attributes = strdup("r--r--r--");
-    fim_data->local_data->uid = strdup("100");
-    fim_data->local_data->gid = strdup("1000");
-    fim_data->local_data->user_name = strdup("test");
-    fim_data->local_data->group_name = strdup("testing");
-    fim_data->local_data->mtime = 1570184223;
-    fim_data->local_data->inode = 606060;
-    strcpy(fim_data->local_data->hash_md5, "3691689a513ace7e508297b583d7050d");
-    strcpy(fim_data->local_data->hash_sha1, "07f05add1049244e7e71ad0f54f24d8094cd8f8b");
-    strcpy(fim_data->local_data->hash_sha256, "672a8ceaea40a441f0268ca9bbb33e99f9643c6262667b61fbe57694df224d40");
-    fim_data->local_data->mode = FIM_REALTIME;
-    fim_data->local_data->last_event = 1570184220;
-    fim_data->local_data->dev = 12345678;
-    fim_data->local_data->scanned = 123456;
-    fim_data->local_data->options = 511;
-    strcpy(fim_data->local_data->checksum, "");
-
-#ifndef TEST_WINAGENT
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-#else
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-#endif
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/test'");
-
-    fim_process_missing_entry("/test", FIM_WHODATA, fim_data->w_evt);
+    fim_process_missing_entry(fim_data->w_evt->path, FIM_SCHEDULED, fim_data->w_evt);
 }
 
 static void test_fim_process_wildcard_removed_no_data(void **state) {
@@ -4067,27 +4019,27 @@ void test_fim_calculate_dbsync_difference_no_changed_data(void **state){
     cJSON* old_attributes = cJSON_CreateObject();
     cJSON* changed_attributes = cJSON_CreateArray();
 
-    #ifdef TEST_WINAGENT
-        DEFAULT_FILE_DATA.attributes = "NULL";
-        DEFAULT_FILE_DATA.perm_json = cJSON_CreateObject();
-        DEFAULT_FILE_DATA.options |= CHECK_ATTRS;
-    #endif
+#ifdef TEST_WINAGENT
+    DEFAULT_FILE_DATA.attributes = "NULL";
+    DEFAULT_FILE_DATA.perm_json = cJSON_CreateObject();
+    DEFAULT_FILE_DATA.options |= CHECK_ATTRS;
+#endif
 
     fim_calculate_dbsync_difference(&DEFAULT_FILE_DATA,
                                         changed_data_json,
                                         old_attributes,
                                         changed_attributes);
-    #ifdef TEST_WINAGENT
-        DEFAULT_FILE_DATA.options &= ~CHECK_ATTRS;
-        cJSON_Delete(DEFAULT_FILE_DATA.perm_json);
-    #endif
+#ifdef TEST_WINAGENT
+    DEFAULT_FILE_DATA.options &= ~CHECK_ATTRS;
+    cJSON_Delete(DEFAULT_FILE_DATA.perm_json);
+#endif
     assert_int_equal(cJSON_GetObjectItem(old_attributes, "size")->valueint, 0);
-    #ifndef TEST_WINAGENT
-        assert_string_equal(cJSON_GetObjectItem(old_attributes, "perm")->valuestring, "rw-rw-r--");
-    #else
-        assert_non_null(cJSON_GetObjectItem(old_attributes, "perm"));
-        assert_string_equal(cJSON_GetObjectItem(old_attributes, "attributes")->valuestring, "NULL");
-    #endif
+#ifndef TEST_WINAGENT
+    assert_string_equal(cJSON_GetObjectItem(old_attributes, "perm")->valuestring, "rw-rw-r--");
+#else
+    assert_non_null(cJSON_GetObjectItem(old_attributes, "perm"));
+    assert_string_equal(cJSON_GetObjectItem(old_attributes, "attributes")->valuestring, "NULL");
+#endif
 
     assert_string_equal(cJSON_GetObjectItem(old_attributes, "uid")->valuestring, "1000");
     assert_string_equal(cJSON_GetObjectItem(old_attributes, "gid")->valuestring, "1000");
@@ -4098,7 +4050,7 @@ void test_fim_calculate_dbsync_difference_no_changed_data(void **state){
     assert_string_equal(cJSON_GetObjectItem(old_attributes, "hash_md5")->valuestring, "0123456789abcdef0123456789abcdef");
     assert_string_equal(cJSON_GetObjectItem(old_attributes, "hash_sha1")->valuestring, "0123456789abcdef0123456789abcdef01234567");
     assert_string_equal(cJSON_GetObjectItem(old_attributes, "hash_sha256")->valuestring, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
-    assert_string_equal(cJSON_GetObjectItem(old_attributes, "checksum")->valuestring, "0123456789abcdef0123456789abcdef01234567");
+    assert_string_equal(cJSON_GetObjectItem(old_attributes, "checksum")->valuestring, "98e039efc1b8490965e7e1247a9dc31cf7379051");
     cJSON_Delete(old_attributes);
     cJSON_Delete(changed_attributes);
 }
@@ -4211,16 +4163,6 @@ void test_free_entry_registry(void **state){
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(test_fim_calculate_dbsync_difference_no_attributes),
-        cmocka_unit_test(test_fim_calculate_dbsync_difference),
-        cmocka_unit_test(test_fim_calculate_dbsync_difference_no_changed_data),
-        cmocka_unit_test_setup_teardown(test_create_windows_who_data_events, setup_fim_data, teardown_fim_data),
-        cmocka_unit_test_setup_teardown(test_process_delete_event, setup_fim_entry, teardown_fim_entry),
-        cmocka_unit_test_setup_teardown(test_fim_db_remove_entry, setup_fim_entry, teardown_fim_entry),
-        cmocka_unit_test_setup_teardown(test_fim_db_process_missing_entry, setup_fim_entry, teardown_fim_entry),
-        cmocka_unit_test(test_free_entry),
-        cmocka_unit_test(test_free_entry_registry),
-
         /* fim_json_event */
         cmocka_unit_test_teardown(test_fim_json_event, teardown_delete_json),
         cmocka_unit_test_teardown(test_fim_json_event_whodata, teardown_delete_json),
@@ -4331,8 +4273,7 @@ int main(void) {
         cmocka_unit_test(test_fim_checker_fim_regular_restrict),
         cmocka_unit_test_setup_teardown(test_fim_checker_fim_directory, setup_struct_dirent, teardown_struct_dirent),
 #ifndef TEST_WINAGENT
-        cmocka_unit_test_setup_teardown(test_fim_checker_fim_directory_on_max_recursion_level, setup_struct_dirent,
-                                        teardown_struct_dirent),
+        cmocka_unit_test_setup_teardown(test_fim_checker_fim_directory_on_max_recursion_level, setup_struct_dirent, teardown_struct_dirent),
 #endif
 
         /* fim_directory */
@@ -4358,12 +4299,10 @@ int main(void) {
         cmocka_unit_test(test_fim_whodata_event_file_missing),
 
         /* fim_process_missing_entry */
-        cmocka_unit_test(test_fim_process_missing_entry_no_data),
-        cmocka_unit_test(test_fim_process_missing_entry_failure),
-        cmocka_unit_test_setup_teardown(test_fim_process_missing_entry_data_exists, setup_fim_entry, teardown_fim_entry),
-        cmocka_unit_test_setup_teardown(test_fim_process_missing_entry_path_found, setup_fim_data, teardown_fim_data),
-        cmocka_unit_test_setup_teardown(test_fim_process_missing_entry_no_whodata_active, setup_fim_data, teardown_fim_data),
-        cmocka_unit_test_setup_teardown(test_fim_process_missing_entry, setup_fim_data, teardown_fim_data),
+        cmocka_unit_test(test_fim_process_missing_entry_null_configuration),
+        cmocka_unit_test_setup_teardown(test_fim_process_missing_entry_data_exists, setup_fim_data, teardown_fim_data),
+        cmocka_unit_test_setup_teardown(test_fim_process_missing_entry_whodata_disabled, setup_fim_data, teardown_fim_data),
+        cmocka_unit_test_setup_teardown(test_fim_process_missing_entry, setup_fim_entry, teardown_fim_entry),
 
         /* fim_process_wildcard_removed */
         cmocka_unit_test(test_fim_process_wildcard_removed_no_data),
@@ -4384,6 +4323,16 @@ int main(void) {
 
         /* fim_event_callback */
         cmocka_unit_test(test_fim_event_callback),
+
+        cmocka_unit_test(test_fim_calculate_dbsync_difference_no_attributes),
+        cmocka_unit_test(test_fim_calculate_dbsync_difference),
+        cmocka_unit_test(test_fim_calculate_dbsync_difference_no_changed_data),
+        cmocka_unit_test_setup_teardown(test_create_windows_who_data_events, setup_fim_data, teardown_fim_data),
+        cmocka_unit_test_setup_teardown(test_process_delete_event, setup_fim_entry, teardown_fim_entry),
+        cmocka_unit_test_setup_teardown(test_fim_db_remove_entry, setup_fim_entry, teardown_fim_entry),
+        cmocka_unit_test_setup_teardown(test_fim_db_process_missing_entry, setup_fim_entry, teardown_fim_entry),
+        cmocka_unit_test(test_free_entry),
+        cmocka_unit_test(test_free_entry_registry),
     };
 
     const struct CMUnitTest root_monitor_tests[] = {
