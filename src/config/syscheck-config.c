@@ -115,8 +115,6 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->prefilter_cmd                   = NULL;
     syscheck->sync_interval                   = 300;
     syscheck->max_sync_interval               = 3600;
-    syscheck->sync_response_timeout           = 30;
-    syscheck->sync_queue_size                 = 16384;
     syscheck->sync_max_eps                    = 10;
     syscheck->max_eps                         = 100;
     syscheck->max_files_per_second            = 0;
@@ -1212,7 +1210,7 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
             if (t == -1) {
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             } else {
-                syscheck->sync_response_timeout = t;
+                mwarn("This configuration variable has been deprecated. It will have no effect.");
             }
         } else if (strcmp(node[i]->element, xml_sync_queue_size) == 0) {
             char * end;
@@ -1221,7 +1219,7 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
             if (value < 2 || value > 1000000 || *end) {
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             } else {
-                syscheck->sync_queue_size = value;
+                mwarn("This configuration variable has been deprecated. It will have no effect.");
             }
         } else if (strcmp(node[i]->element, xml_max_eps) == 0) {
             char * end;

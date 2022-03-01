@@ -138,8 +138,6 @@ void test_Read_Syscheck_Config_success(void **state)
     assert_int_equal(syscheck.allow_remote_prefilter_cmd, true);
     assert_non_null(syscheck.prefilter_cmd);    // It should be a valid binary absolute path
     assert_int_equal(syscheck.sync_interval, 600);
-    assert_int_equal(syscheck.sync_response_timeout, 30);
-    assert_int_equal(syscheck.sync_queue_size, 64);
     assert_int_equal(syscheck.max_eps, 200);
     assert_int_equal(syscheck.disk_quota_enabled, true);
     assert_int_equal(syscheck.disk_quota_limit, 1024 * 1024);
@@ -207,8 +205,6 @@ void test_Read_Syscheck_Config_undefined(void **state)
     assert_int_equal(syscheck.allow_remote_prefilter_cmd, false);
     assert_null(syscheck.prefilter_cmd);
     assert_int_equal(syscheck.sync_interval, 600);
-    assert_int_equal(syscheck.sync_response_timeout, 30);
-    assert_int_equal(syscheck.sync_queue_size, 64);
     assert_int_equal(syscheck.max_eps, 200);
     assert_int_equal(syscheck.disk_quota_enabled, true);
     assert_int_equal(syscheck.disk_quota_limit, 2 * 1024 * 1024);
@@ -262,8 +258,6 @@ void test_Read_Syscheck_Config_unparsed(void **state)
     assert_int_equal(syscheck.allow_remote_prefilter_cmd, false);
     assert_null(syscheck.prefilter_cmd);
     assert_int_equal(syscheck.sync_interval, 300);
-    assert_int_equal(syscheck.sync_response_timeout, 30);
-    assert_int_equal(syscheck.sync_queue_size, 16384);
     assert_int_equal(syscheck.max_eps, 100);
     assert_int_equal(syscheck.disk_quota_enabled, true);
     assert_int_equal(syscheck.disk_quota_limit, 1024 * 1024);
