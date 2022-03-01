@@ -232,12 +232,13 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             }
         } else {
             /* Update message */
+            mdebug2("save_controlmsg(): inserting '%s'", msg);
+
             os_free(data->message);
             os_free(data->group);
+            memset(&data->merged_sum, 0, sizeof(os_md5));
 
             os_strdup(msg, data->message);
-
-            memset(&data->merged_sum, 0, sizeof(os_md5));
 
             if (OS_SUCCESS == lookfor_agent_group(key->id, data->message, &data->group)) {
                 file_sum **f_sum = NULL;
@@ -273,6 +274,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 
             // Appending system labels
             os_calloc(HOST_NAME_MAX, sizeof(char), agent_data->manager_host);
+
             if (gethostname(agent_data->manager_host, HOST_NAME_MAX) < 0) {
                 mwarn("Unable to get hostname due to: '%s'", strerror(errno));
             } else {
@@ -302,7 +304,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 
             w_mutex_lock(&lastmsg_mutex);
 
-            if (!agent_data->merged_sum || (strcmp(data->merged_sum, agent_data->merged_sum) != 0)) {
+            if (data->merged_sum[0] && (!agent_data->merged_sum || (strcmp(data->merged_sum, agent_data->merged_sum) != 0))) {
                 /* Mark data as changed and insert into queue */
                 if (!data->changed) {
                     char *id;
@@ -1160,7 +1162,10 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
 
     /* Should never leave this loop */
     while (1) {
-        char * group = NULL;
+        char *group = NULL;
+        os_md5 merged_sum;
+
+        memset(&merged_sum, 0, sizeof(os_md5));
 
         /* Pop data from queue */
         char *agent_id = linked_queue_pop_ex(pending_queue);
@@ -1169,6 +1174,7 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
 
         if (data = OSHash_Get(pending_data, agent_id), data) {
             w_strdup(data->group, group);
+            memcpy(merged_sum, data->merged_sum, sizeof(os_md5));
         } else {
             merror("Couldn't get pending data from hash table for agent ID '%s'.", agent_id);
             os_free(agent_id);
@@ -1177,7 +1183,7 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
 
         w_mutex_unlock(&lastmsg_mutex);
 
-        if (agent_id && group && data->merged_sum) {
+        if (agent_id && group && merged_sum[0]) {
             mdebug1("Sending file '%s/%s' to agent '%s'.", group, SHAREDCFG_FILENAME, agent_id);
 
             /* If the agent has multi group, change the shared path */
@@ -1190,7 +1196,7 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
                 strcpy(sharedcfg_dir, SHAREDCFG_DIR);
             }
 
-            if (send_file_toagent(agent_id, group, SHAREDCFG_FILENAME, data->merged_sum, sharedcfg_dir) < 0) {
+            if (send_file_toagent(agent_id, group, SHAREDCFG_FILENAME, merged_sum, sharedcfg_dir) < 0) {
                 mwarn(SHARED_ERROR, SHAREDCFG_FILENAME, agent_id);
             }
 
