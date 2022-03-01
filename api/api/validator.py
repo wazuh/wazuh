@@ -222,7 +222,7 @@ def allowed_fields(filters: Dict) -> List:
     return [field for field in filters]
 
 
-def is_safe_path(path: str, basedir: str = common.wazuh_path, relative: bool = True) -> bool:
+def is_safe_path(path: str, basedir: str = common.WAZUH_PATH, relative: bool = True) -> bool:
     """Check if a path is correct.
     
     Parameters

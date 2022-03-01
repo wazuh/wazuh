@@ -70,8 +70,8 @@ def test_check_status(status, expected_result):
     ('0350-amazon_rules.xml', 'tests/data/rules', 'enabled', None),
     ('noexists.xml', 'tests/data/rules', 'enabled', WazuhError(1201))
 ])
-@patch("wazuh.core.common.wazuh_path", new=parent_directory)
-@patch("wazuh.core.common.ruleset_rules_path", new=data_path)
+@patch("wazuh.core.common.WAZUH_PATH", new=parent_directory)
+@patch("wazuh.core.common.RULES_PATH", new=data_path)
 def test_load_rules_from_file(rule_file, rule_path, rule_status, exception):
     """Test set_groups rule core function."""
     try:
@@ -84,8 +84,8 @@ def test_load_rules_from_file(rule_file, rule_path, rule_status, exception):
         assert e.code == exception.code
 
 
-@patch("wazuh.core.common.wazuh_path", new=parent_directory)
-@patch("wazuh.core.common.ruleset_rules_path", new=data_path)
+@patch("wazuh.core.common.WAZUH_PATH", new=parent_directory)
+@patch("wazuh.core.common.RULES_PATH", new=data_path)
 def test_load_rules_from_file_details():
     """Test set_groups rule core function."""
     rule_file = '9999-rules_regex_test.xml'

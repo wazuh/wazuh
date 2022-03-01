@@ -45,10 +45,10 @@ class Wazuh:
         :return:
         """
 
-        self.version = common.wazuh_version
-        self.installation_date = common.installation_date
-        self.type = common.install_type
-        self.path = common.wazuh_path
+        self.version = common.WAZUH_VERSION
+        self.installation_date = common.WAZUH_INSTALLATION_DATE
+        self.type = common.WAZUH_INSTALL_TYPE
+        self.path = common.WAZUH_PATH
         self.max_agents = 'unlimited'
         self.openssl_support = 'N/A'
         self.tz_offset = None

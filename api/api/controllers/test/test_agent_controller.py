@@ -26,7 +26,7 @@ with patch('wazuh.common.wazuh_uid'):
             put_upgrade_custom_agents, reconnect_agents, restart_agent,
             restart_agents, restart_agents_by_group, restart_agents_by_node)
         from wazuh import agent, stats
-        from wazuh.core.common import database_limit
+        from wazuh.core.common import DATABASE_LIMIT
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
@@ -88,7 +88,7 @@ async def test_get_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp
     result = await get_agents(request=mock_request)
     f_kwargs = {'agent_list': None,
                 'offset': 0,
-                'limit': database_limit,
+                'limit': DATABASE_LIMIT,
                 'sort': None,
                 'search': None,
                 'select': None,
@@ -747,7 +747,7 @@ async def test_get_agents_in_group(mock_exc, mock_dapi, mock_remove, mock_dfunc,
                                        group_id='001')
     f_kwargs = {'group_list': ['001'],
                 'offset': 0,
-                'limit': database_limit,
+                'limit': DATABASE_LIMIT,
                 'sort': None,
                 'search': None,
                 'select': None,
@@ -806,7 +806,7 @@ async def test_get_group_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
                                     group_id='001')
     f_kwargs = {'group_list': ['001'],
                 'offset': 0,
-                'limit': database_limit
+                'limit': DATABASE_LIMIT
                 }
     mock_dapi.assert_called_once_with(f=agent.get_agent_conf,
                                       f_kwargs=mock_remove.return_value,
@@ -1028,7 +1028,7 @@ async def test_get_agent_no_group(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
     """Verify 'get_agent_no_group' endpoint is working as expected."""
     result = await get_agent_no_group(request=mock_request)
     f_kwargs = {'offset': 0,
-                'limit': database_limit,
+                'limit': DATABASE_LIMIT,
                 'select': None,
                 'sort': None,
                 'search': None,
@@ -1057,7 +1057,7 @@ async def test_get_agent_outdated(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
     """Verify 'get_agent_outdated' endpoint is working as expected."""
     result = await get_agent_outdated(request=mock_request)
     f_kwargs = {'offset': 0,
-                'limit': database_limit,
+                'limit': DATABASE_LIMIT,
                 'sort': None,
                 'search': None,
                 'q': None
@@ -1085,7 +1085,7 @@ async def test_get_agent_fields(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
     """Verify 'get_agent_fields' endpoint is working as expected."""
     result = await get_agent_fields(request=mock_request)
     f_kwargs = {'offset': 0,
-                'limit': database_limit,
+                'limit': DATABASE_LIMIT,
                 'sort': None,
                 'search': None,
                 'fields': None,

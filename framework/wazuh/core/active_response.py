@@ -147,7 +147,7 @@ def get_commands() -> list:
         List with the available commands.
     """
     commands = list()
-    with open(common.ar_conf_path) as f:
+    with open(common.AR_CONF) as f:
         for line in f:
             cmd = line.split(" - ")[0]
             commands.append(cmd)

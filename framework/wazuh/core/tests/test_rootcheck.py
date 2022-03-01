@@ -11,7 +11,7 @@ from unittest.mock import patch, ANY
 import pytest
 
 from api.util import remove_nones_to_dict
-from wazuh.core.common import date_format
+from wazuh.core.common import DATE_FORMAT
 from wazuh.core.exception import WazuhException
 
 with patch('wazuh.core.common.wazuh_uid'):
@@ -163,8 +163,8 @@ def test_WazuhDBQueryRootcheck_format_data_into_dictionary(mock_info, mock_backe
     test._data = [{'log': 'Testing', 'date_first': 1603645251, 'status': 'solved', 'date_last': 1603648851,
                    'cis': '2.3 Debian Linux', 'pci_dss': '4.1'}]
     result = test._format_data_into_dictionary()
-    assert result['items'][0]['date_first'] == datetime.utcfromtimestamp(1603645251).strftime(date_format) and \
-           result['items'][0]['date_last'] == datetime.utcfromtimestamp(1603648851).strftime(date_format)
+    assert result['items'][0]['date_first'] == datetime.utcfromtimestamp(1603645251).strftime(DATE_FORMAT) and \
+           result['items'][0]['date_last'] == datetime.utcfromtimestamp(1603648851).strftime(DATE_FORMAT)
 
 
 @patch('wazuh.core.agent.Agent.get_basic_information')

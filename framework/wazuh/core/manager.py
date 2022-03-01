@@ -58,13 +58,13 @@ def get_ossec_logs(limit=2000):
     """
     logs = []
 
-    for line in tail(common.ossec_log, limit):
+    for line in tail(common.OSSEC_LOG, limit):
         log_fields = get_ossec_log_fields(line)
         if log_fields:
             date, tag, level, description = log_fields
 
             # We transform local time (ossec.log) to UTC with ISO8601 maintaining time integrity
-            log_line = {'timestamp': date.strftime(common.date_format), 'tag': tag,
+            log_line = {'timestamp': date.strftime(common.DATE_FORMAT), 'tag': tag,
                         'level': level, 'description': description}
             logs.append(log_line)
 

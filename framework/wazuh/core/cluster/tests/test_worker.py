@@ -206,7 +206,7 @@ async def test_sync_files_sync_ok(compress_files_mock, unlink_mock, relpath_mock
                 compress_files_mock.assert_called_once_with(name="Testing", list_path=files_to_sync,
                                                             cluster_control_json=files_metadata)
                 unlink_mock.assert_called_once_with("files/path/")
-                relpath_mock.assert_called_once_with('files/path/', core_common.wazuh_path)
+                relpath_mock.assert_called_once_with('files/path/', core_common.WAZUH_PATH)
                 assert json_dumps_mock.call_count == 2
 
                 # Reset all mocks
@@ -227,7 +227,7 @@ async def test_sync_files_sync_ok(compress_files_mock, unlink_mock, relpath_mock
                 compress_files_mock.assert_called_once_with(name="Testing", list_path=files_to_sync,
                                                             cluster_control_json=files_metadata)
                 unlink_mock.assert_called_once_with("files/path/")
-                relpath_mock.assert_called_once_with('files/path/', core_common.wazuh_path)
+                relpath_mock.assert_called_once_with('files/path/', core_common.WAZUH_PATH)
                 json_dumps_mock.assert_called_once()
 
                 # Reset all mocks
@@ -246,7 +246,7 @@ async def test_sync_files_sync_ok(compress_files_mock, unlink_mock, relpath_mock
             compress_files_mock.assert_called_once_with(name="Testing", list_path=files_to_sync,
                                                         cluster_control_json=files_metadata)
             unlink_mock.assert_called_once_with("files/path/")
-            relpath_mock.assert_called_once_with('files/path/', core_common.wazuh_path)
+            relpath_mock.assert_called_once_with('files/path/', core_common.WAZUH_PATH)
 
 
 @pytest.mark.asyncio
@@ -300,7 +300,7 @@ async def test_sync_wazuh_db_sync_ok(run_in_pool_mock, json_dumps_mock):
                 send_request_mock.assert_called_once_with(command=b"cmd", data=b"OK")
                 json_dumps_mock.assert_called_with({"set_data_command": "set_command", "chunks": ["get_command"]})
                 logger_debug_mock.assert_has_calls(
-                    [call(f"Obtained {1} chunks of data in 0.000s."), call(f"All chunks sent.")])
+                    [call(f"Obtained {1} chunks of data in 0.000s."), call("All chunks sent.")])
 
             send_string_mock.assert_called_with(b"")
 
@@ -368,7 +368,7 @@ def test_worker_handler_connection_result(connection_result_mock, join_mock, mkd
 
     worker_handler.connected = True
     worker_handler.connection_result("something")
-    join_mock.assert_called_once_with(core_common.wazuh_path, "queue", "cluster", "Testing")
+    join_mock.assert_called_once_with(core_common.WAZUH_PATH, "queue", "cluster", "Testing")
     exists_mock.assert_called_once_with("/some/path")
     mkdir_with_mode_mock.assert_called_once_with("/some/path")
     connection_result_mock.assert_called_once()
@@ -949,11 +949,11 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
                             [call("Processing file filename1"),
                              call("Processing file filename1"),
                              call("Remove file: 'filename3'")])
-                        path_join_mock.assert_has_calls([call(core_common.wazuh_path, 'filename1'),
-                                                         call(core_common.wazuh_path, 'name'),
-                                                         call(core_common.wazuh_path, 'filename1'),
+                        path_join_mock.assert_has_calls([call(core_common.WAZUH_PATH, 'filename1'),
+                                                         call(core_common.WAZUH_PATH, 'name'),
+                                                         call(core_common.WAZUH_PATH, 'filename1'),
                                                          call('/zip/path', 'filename1'),
-                                                         call(core_common.wazuh_path, 'filename3')])
+                                                         call(core_common.WAZUH_PATH, 'filename3')])
                         wazuh_uid_mock.assert_called_with()
                         wazuh_gid_mock.assert_called_with()
                         mkdir_with_mode_mock.assert_any_call("queue/agent-groups")
@@ -988,9 +988,9 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
                      call("Processing file filename2"),
                      call("Remove file: 'filename3'"),
                      call("File filename3 doesn't exist.")])
-                path_join_mock.assert_has_calls([call(core_common.wazuh_path, "filename1"),
-                                                 call(core_common.wazuh_path, "filename2"),
-                                                 call(core_common.wazuh_path, "filename3")])
+                path_join_mock.assert_has_calls([call(core_common.WAZUH_PATH, "filename1"),
+                                                 call(core_common.WAZUH_PATH, "filename2"),
+                                                 call(core_common.WAZUH_PATH, "filename3")])
                 wazuh_uid_mock.assert_not_called()
                 wazuh_gid_mock.assert_not_called()
                 mkdir_with_mode_mock.assert_not_called()
@@ -1037,9 +1037,9 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
                      call("Remove file: 'filename3'"),
                      call("Error removing file 'filename3': [Errno 2] No such file or directory: "
                           "'queue/agent-groups_mock/'")])
-                path_join_mock.assert_has_calls([call(core_common.wazuh_path, "filename1"),
-                                                 call(core_common.wazuh_path, "filename2"),
-                                                 call(core_common.wazuh_path, "filename3")])
+                path_join_mock.assert_has_calls([call(core_common.WAZUH_PATH, "filename1"),
+                                                 call(core_common.WAZUH_PATH, "filename2"),
+                                                 call(core_common.WAZUH_PATH, "filename3")])
                 wazuh_uid_mock.assert_not_called()
                 wazuh_gid_mock.assert_not_called()
                 mkdir_with_mode_mock.assert_not_called()
@@ -1096,8 +1096,8 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
                              call("Remove file: 'filename3'"),
                              call("Error removing file 'filename3': [Errno 2] No such file or directory: "
                                   "'queue/agent-groups_mock/'")])
-                        path_join_mock.assert_has_calls([call(core_common.wazuh_path, "filename3"),
-                                                         call(core_common.wazuh_path, "")])
+                        path_join_mock.assert_has_calls([call(core_common.WAZUH_PATH, "filename3"),
+                                                         call(core_common.WAZUH_PATH, "")])
                         wazuh_uid_mock.assert_not_called()
                         wazuh_gid_mock.assert_not_called()
                         mkdir_with_mode_mock.assert_not_called()
@@ -1151,8 +1151,8 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
                           "'queue/agent-groups_mock/'"),
                      call("Error removing directory '': [Errno 2] No such file or directory: "
                           "'queue/agent-groups_mock/'")])
-                path_join_mock.assert_has_calls([call(core_common.wazuh_path, "filename3"),
-                                                 call(core_common.wazuh_path, "")])
+                path_join_mock.assert_has_calls([call(core_common.WAZUH_PATH, "filename3"),
+                                                 call(core_common.WAZUH_PATH, "")])
                 wazuh_uid_mock.assert_not_called()
                 wazuh_gid_mock.assert_not_called()
                 mkdir_with_mode_mock.assert_not_called()

@@ -39,7 +39,7 @@ def run_command(agent_list: list = None, command: str = '', arguments: list = No
                                       none_msg='AR command was not sent to any agent'
                                       )
     if agent_list:
-        with WazuhQueue(common.ARQUEUE) as wq:
+        with WazuhQueue(common.AR_SOCKET) as wq:
             system_agents = get_agents_info()
             for agent_id in agent_list:
                 try:

@@ -23,7 +23,7 @@ from wazuh.core.cluster.utils import get_cluster_items, read_config
 from wazuh.core.utils import md5, mkdir_with_mode
 
 logger = logging.getLogger('wazuh')
-agent_groups_path = os.path.relpath(common.groups_path, common.wazuh_path)
+agent_groups_path = os.path.relpath(common.GROUPS_PATH, common.WAZUH_PATH)
 
 
 #
@@ -148,7 +148,7 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
         previous_status = {}
     walk_files = {}
 
-    full_dirname = path.join(common.wazuh_path, dirname)
+    full_dirname = path.join(common.WAZUH_PATH, dirname)
     # Get list of all files and directories inside 'full_dirname'.
     try:
         for root_, _, files_ in walk(full_dirname, topdown=True):
@@ -161,7 +161,7 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
                     try:
                         #  If 'all' files have been requested or entry is in the specified files list.
                         if files == ['all'] or file_ in files:
-                            relative_file_path = path.join(path.relpath(root_, common.wazuh_path), file_)
+                            relative_file_path = path.join(path.relpath(root_, common.WAZUH_PATH), file_)
                             abs_file_path = path.join(root_, file_)
                             file_mod_time = path.getmtime(abs_file_path)
                             try:
@@ -271,7 +271,7 @@ def compress_files(name, list_path, cluster_control_json=None):
         Path where the zip file has been saved.
     """
     failed_files = list()
-    zip_file_path = path.join(common.wazuh_path, 'queue', 'cluster', name,
+    zip_file_path = path.join(common.WAZUH_PATH, 'queue', 'cluster', name,
                               f'{name}-{datetime.utcnow().timestamp()}-{uuid4().hex}.zip')
     if not path.exists(path.dirname(zip_file_path)):
         mkdir_with_mode(path.dirname(zip_file_path))
@@ -280,7 +280,7 @@ def compress_files(name, list_path, cluster_control_json=None):
         if list_path:
             for f in list_path:
                 try:
-                    zf.write(filename=path.join(common.wazuh_path, f), arcname=f)
+                    zf.write(filename=path.join(common.WAZUH_PATH, f), arcname=f)
                 except zipfile.LargeZipFile as e:
                     raise WazuhError(3001, str(e))
                 except Exception as e:
@@ -492,7 +492,7 @@ def clean_up(node_name=""):
                 continue
 
     try:
-        rm_path = path.join(common.wazuh_path, 'queue', 'cluster', node_name)
+        rm_path = path.join(common.WAZUH_PATH, 'queue', 'cluster', node_name)
         logger.debug(f"Removing '{rm_path}'.")
         remove_directory_contents(rm_path)
         logger.debug(f"Removed '{rm_path}'.")
@@ -527,12 +527,12 @@ def merge_info(merge_type, node_name, files=None, file_type=""):
     output_file : str
         Path to the created merged file.
     """
-    merge_path = path.join(common.wazuh_path, 'queue', merge_type)
+    merge_path = path.join(common.WAZUH_PATH, 'queue', merge_type)
     output_file = path.join('queue', 'cluster', node_name, merge_type + file_type + '.merged')
     files_to_send = 0
     files = "all" if files is None else {path.basename(f) for f in files}
 
-    with open(path.join(common.wazuh_path, output_file), 'wb') as o_f:
+    with open(path.join(common.WAZUH_PATH, output_file), 'wb') as o_f:
         for filename in listdir(merge_path):
             if files != "all" and filename not in files:
                 continue

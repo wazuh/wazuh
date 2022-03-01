@@ -25,10 +25,10 @@ from wazuh.core.wazuh_socket import create_wazuh_socket_message
 from wazuh.core.wlogging import WazuhLogger
 
 logger = logging.getLogger('wazuh')
-execq_lockfile = join(common.wazuh_path, "var/run/.api_execq_lock")
+execq_lockfile = join(common.WAZUH_PATH, "var/run/.api_execq_lock")
 
 
-def read_cluster_config(config_file=common.ossec_conf, from_import=False) -> typing.Dict:
+def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typing.Dict:
     """Read cluster configuration from ossec.conf.
 
     If some fields are missing in the ossec.conf cluster configuration, they are replaced
@@ -108,7 +108,7 @@ def get_manager_status(cache=False) -> typing.Dict:
                  'wazuh-execd', 'wazuh-integratord', 'wazuh-logcollector', 'wazuh-maild', 'wazuh-remoted',
                  'wazuh-reportd', 'wazuh-syscheckd', 'wazuh-clusterd', 'wazuh-modulesd', 'wazuh-db', 'wazuh-apid']
 
-    data, pidfile_regex, run_dir = {}, re.compile(r'.+\-(\d+)\.pid$'), join(common.wazuh_path, 'var/run')
+    data, pidfile_regex, run_dir = {}, re.compile(r'.+\-(\d+)\.pid$'), join(common.WAZUH_PATH, 'var/run')
     for process in processes:
         pidfile = glob(join(run_dir, f"{process}-*.pid"))
         if exists(join(run_dir, f'{process}.failed')):
@@ -148,7 +148,7 @@ def get_cluster_status() -> typing.Dict:
 def manager_restart() -> WazuhResult:
     """Restart Wazuh manager.
 
-    Send JSON message with the 'restart-wazuh' command to common.EXECQ socket.
+    Send JSON message with the 'restart-wazuh' command to common.EXECQ_SOCKET socket.
 
     Raises
     ------
@@ -168,7 +168,7 @@ def manager_restart() -> WazuhResult:
     fcntl.lockf(lock_file, fcntl.LOCK_EX)
     try:
         # execq socket path
-        socket_path = common.EXECQ
+        socket_path = common.EXECQ_SOCKET
         # json msg for restarting Wazuh manager
         msg = json.dumps(create_wazuh_socket_message(origin={'module': common.origin_module.get()},
                                                      command=common.RESTART_WAZUH_COMMAND,
@@ -207,7 +207,7 @@ def get_cluster_items():
     """
     try:
         here = os.path.abspath(os.path.dirname(__file__))
-        with open(os.path.join(common.wazuh_path, here, 'cluster.json')) as f:
+        with open(os.path.join(common.WAZUH_PATH, here, 'cluster.json')) as f:
             cluster_items = json.load(f)
         # Rebase permissions.
         list(map(lambda x: setitem(x, 'permissions', int(x['permissions'], base=0)),
@@ -218,7 +218,7 @@ def get_cluster_items():
 
 
 @lru_cache()
-def read_config(config_file=common.ossec_conf):
+def read_config(config_file=common.OSSEC_CONF):
     """Get the cluster configuration.
 
     Parameters

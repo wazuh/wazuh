@@ -12,7 +12,7 @@ from wazuh.core.exception import WazuhError, WazuhClusterError
 from wazuh.core.utils import filter_array_by_query
 
 
-async def get_nodes(lc: local_client.LocalClient, filter_node=None, offset=0, limit=common.database_limit,
+async def get_nodes(lc: local_client.LocalClient, filter_node=None, offset=0, limit=common.DATABASE_LIMIT,
                     sort=None, search=None, select=None, filter_type='all', q=''):
     """Get basic information of each of the cluster nodes.
 
@@ -44,7 +44,7 @@ async def get_nodes(lc: local_client.LocalClient, filter_node=None, offset=0, li
     """
     if q:
         # If exists q parameter, apply limit and offset after filtering by q.
-        arguments = {'filter_node': filter_node, 'offset': 0, 'limit': common.database_limit, 'sort': sort,
+        arguments = {'filter_node': filter_node, 'offset': 0, 'limit': common.DATABASE_LIMIT, 'sort': sort,
                      'search': search, 'select': select, 'filter_type': filter_type}
     else:
         arguments = {'filter_node': filter_node, 'offset': offset, 'limit': limit, 'sort': sort, 'search': search,
@@ -87,7 +87,7 @@ async def get_node(lc: local_client.LocalClient, filter_node=None, select=None):
     result : dict
         Data of the node.
     """
-    arguments = {'filter_node': filter_node, 'offset': 0, 'limit': common.database_limit, 'sort': None, 'search': None,
+    arguments = {'filter_node': filter_node, 'offset': 0, 'limit': common.DATABASE_LIMIT, 'sort': None, 'search': None,
                  'select': select, 'filter_type': 'all'}
 
     response = await lc.execute(command=b'get_nodes', data=json.dumps(arguments).encode(),

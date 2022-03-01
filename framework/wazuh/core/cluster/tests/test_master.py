@@ -549,7 +549,7 @@ def test_master_handler_hello_ok(super_hello_mock, mkdir_with_mode_mock, join_mo
 
     super_hello_mock.assert_called_once_with(b"name")
     mkdir_with_mode_mock.assert_called_once_with("/some/path")
-    join_mock.assert_called_once_with(common.wazuh_path, "queue", "cluster", None)
+    join_mock.assert_called_once_with(common.WAZUH_PATH, "queue", "cluster", None)
     path_exists_mock.assert_called_once_with("/some/path")
 
     assert "Integrity check" in master_handler.task_loggers
@@ -1432,7 +1432,7 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, basenam
                                                       timeout=timeout)
 
     basename_mock.assert_called_once_with('data')
-    path_join_mock.assert_called_once_with(common.wazuh_path, "data")
+    path_join_mock.assert_called_once_with(common.WAZUH_PATH, "data")
     assert result == {'total_updated': 0, 'errors_per_folder': defaultdict(list), 'generic_errors':
         ["Error updating worker files (extra valid): 'Error 3007 - Client.keys file received in master node'."]}
 
@@ -1451,9 +1451,9 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, basenam
                                                                   timeout=timeout)
 
                 basename_mock.assert_has_calls([call('data'), call('/file/path')])
-                path_join_mock.assert_has_calls([call(common.wazuh_path, 'data'),
-                                                 call(common.wazuh_path, '/file/path'),
-                                                 call(common.wazuh_path, 'queue', 'cluster', 'wazuh',
+                path_join_mock.assert_has_calls([call(common.WAZUH_PATH, 'data'),
+                                                 call(common.WAZUH_PATH, '/file/path'),
+                                                 call(common.WAZUH_PATH, 'queue', 'cluster', 'wazuh',
                                                       '/os/path/basename')])
                 unmerge_info_mock.assert_called_once_with('type', decompressed_files_path, 'name')
                 assert result == {'total_updated': 0, 'errors_per_folder': defaultdict(list), 'generic_errors': []}
@@ -1472,9 +1472,9 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, basenam
                                                                   timeout=timeout)
 
                 basename_mock.assert_has_calls([call('data'), call('/file/path')])
-                path_join_mock.assert_has_calls([call(common.wazuh_path, 'data'),
-                                                 call(common.wazuh_path, '/file/path'),
-                                                 call(common.wazuh_path, 'queue', 'cluster', 'wazuh',
+                path_join_mock.assert_has_calls([call(common.WAZUH_PATH, 'data'),
+                                                 call(common.WAZUH_PATH, '/file/path'),
+                                                 call(common.WAZUH_PATH, 'queue', 'cluster', 'wazuh',
                                                       '/os/path/basename')])
                 unmerge_info_mock.assert_called_once_with('type', decompressed_files_path, 'name')
                 assert result == {'total_updated': 0, 'errors_per_folder': defaultdict(list), 'generic_errors': []}
@@ -1497,9 +1497,9 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, basenam
 
                 assert result == {'total_updated': 1, 'errors_per_folder': defaultdict(list), 'generic_errors': []}
                 basename_mock.assert_has_calls([call('data'), call('/file/path')])
-                path_join_mock.assert_has_calls([call(common.wazuh_path, 'data'),
-                                                 call(common.wazuh_path, '/file/path'),
-                                                 call(common.wazuh_path, 'queue', 'cluster', 'wazuh',
+                path_join_mock.assert_has_calls([call(common.WAZUH_PATH, 'data'),
+                                                 call(common.WAZUH_PATH, '/file/path'),
+                                                 call(common.WAZUH_PATH, 'queue', 'cluster', 'wazuh',
                                                       '/os/path/basename')])
                 unmerge_info_mock.assert_called_once_with('type', decompressed_files_path, 'name')
                 isfile_mock.assert_called_once_with(path_join_mock.return_value)
@@ -1543,7 +1543,7 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, basenam
                                                       timeout=timeout)
 
     assert result == {'total_updated': 0, 'errors_per_folder': defaultdict(list), 'generic_errors': []}
-    path_join_mock.assert_has_calls([call(common.wazuh_path, 'data'),
+    path_join_mock.assert_has_calls([call(common.WAZUH_PATH, 'data'),
                                      call(decompressed_files_path, 'data')])
 
     safe_move_mock.side_effect = TimeoutError
