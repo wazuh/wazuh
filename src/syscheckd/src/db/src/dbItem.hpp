@@ -13,9 +13,7 @@
 #define _DBITEM_HPP
 #include "syscheck.h"
 #include "json.hpp"
-#ifdef WIN32
-#include "encodingWindowsHelper.h"
-#endif
+#include "fimDBSpecialization.h"
 
 class DBItem
 {
@@ -31,9 +29,7 @@ class DBItem
             , m_checksum( checksum )
             , m_mode( mode )
         {
-#ifdef WIN32
-            m_identifier = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(m_identifier);
-#endif
+            FIMDBCreator<OS_TYPE>::encodeString(m_identifier);
         }
 
         // LCOV_EXCL_START

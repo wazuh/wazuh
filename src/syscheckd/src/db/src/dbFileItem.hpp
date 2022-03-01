@@ -14,9 +14,7 @@
 #include "json.hpp"
 #include "dbItem.hpp"
 #include "fimCommonDefs.h"
-#ifdef WIN32
-#include "encodingWindowsHelper.h"
-#endif
+#include "fimDBSpecialization.h"
 
 struct FimFileDataDeleter
 {
@@ -60,16 +58,17 @@ class FileItem final : public DBItem
             m_size = fim->file_entry.data->size;
             m_dev = fim->file_entry.data->dev;
             m_inode = fim->file_entry.data->inode;
+
             m_attributes = fim->file_entry.data->attributes == NULL ? "" : fim->file_entry.data->attributes;
             m_username = fim->file_entry.data->user_name == NULL ? "" : fim->file_entry.data->user_name;
             m_groupname = fim->file_entry.data->group_name == NULL ? "" : fim->file_entry.data->group_name;
             m_perm = fim->file_entry.data->perm == NULL ? "" : fim->file_entry.data->perm;
-#ifdef WIN32
-            m_attributes = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(m_attributes);
-            m_username = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(m_username);
-            m_groupname = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(m_groupname);
-            m_perm = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(m_perm);
-#endif
+
+            FIMDBCreator<OS_TYPE>::encodeString(m_attributes);
+            FIMDBCreator<OS_TYPE>::encodeString(m_username);
+            FIMDBCreator<OS_TYPE>::encodeString(m_groupname);
+            FIMDBCreator<OS_TYPE>::encodeString(m_perm);
+
             m_md5 = fim->file_entry.data->hash_md5[0] == '\0' ? "" : fim->file_entry.data->hash_md5;
             m_sha1 = fim->file_entry.data->hash_sha1[0] == '\0' ? "" : fim->file_entry.data->hash_sha1;
             m_sha256 = fim->file_entry.data->hash_sha256[0] == '\0' ? "" : fim->file_entry.data->hash_sha256;

@@ -14,6 +14,7 @@
 
 #include "json.hpp"
 #include "dbItem.hpp"
+#include "fimDBSpecialization.h"
 
 struct FimRegistryValueDeleter
 {
@@ -43,9 +44,7 @@ class RegistryValue final : public DBItem
         {
             m_oldData = oldData;
             m_path = fim->registry_entry.value->path ? fim->registry_entry.value->path : "";
-#ifdef WIN32
-            m_path = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(m_path);
-#endif
+            FIMDBCreator<OS_TYPE>::encodeString(m_path);
             m_arch = fim->registry_entry.value->arch;
             m_size = fim->registry_entry.value->size;
             m_type = fim->registry_entry.value->type;
