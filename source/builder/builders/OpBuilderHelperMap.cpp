@@ -314,6 +314,77 @@ types::Lifter opBuilderHelperStringTrim(const types::DocumentValue & def)
 //*           Int tranform                        *
 //*************************************************
 
+types::Event opBuilderHelperIntTransformation(const std::string field, std::string op,
+                                              types::Event & e,
+                                              std::optional<std::string> refValue,
+                                              std::optional<int> value)
+{
+    auto fieldToCheck = e.getObject().FindMember(field.c_str());
+    if (fieldToCheck->value.IsInt())
+    {
+        if (refValue.has_value())
+        {
+            // Get reference to json event
+            // TODO Remove try catch or if nullptr after fix get method of document class
+            const rapidjson::Value * refValueToCheck{};
+            try
+            {
+                refValueToCheck = e.get("/" + refValue.value());
+            }
+            catch (std::exception & ex)
+            {
+                // TODO Check exception type
+                return e;
+            }
+
+            if (refValueToCheck == nullptr || !refValueToCheck->IsInt())
+            {
+                return e;
+            }
+            value = refValueToCheck->GetInt();
+        }
+
+        // Operation
+        if (op == "sum")
+        {
+            value = fieldToCheck->value.GetInt() + value.value();
+        }
+        else if (op == "sub")
+        {
+            value = fieldToCheck->value.GetInt() - value.value();
+        }
+        else if (op == "mul")
+        {
+            value = fieldToCheck->value.GetInt() * value.value();
+        }
+        else if (op == "div")
+        {
+            if (value.value() == 0)
+            {
+                return e;
+            }
+            value = fieldToCheck->value.GetInt() / value.value();
+        }
+        else
+        {
+            return e;
+        }
+
+        // Create and add string to event
+        try
+        {
+            e.set("/" + field, rapidjson::Value(value.value()));
+        }
+        catch (std::exception & ex)
+        {
+            // TODO Check exception type
+            return e;
+        }
+    }
+    return e;
+}
+
+// field: +i_calc/[+|-|*|/]/val|$ref/
 types::Lifter opBuilderHelperIntCalc(const types::DocumentValue & def)
 {
     // Get field
@@ -329,29 +400,19 @@ types::Lifter opBuilderHelperIntCalc(const types::DocumentValue & def)
 
     std::optional<std::string> refValue;
     std::optional<int> value;
+    std::string op = parameters[1];
 
-    // Take operator parameter
-    if (parameters[1].size() != 1)
+    if (op != "sum" && op != "sub" && op != "mul" && op != "div")
     {
         throw std::runtime_error("Invalid operator");
     }
 
-    char op = parameters[1][0];
-
-    switch (op)
+    if (op == "div")
     {
-        case '+':
-        case '-':
-        case '*':
-            break;
-        case '%':
-            if (parameters[2] == "0")
-            {
-                throw std::runtime_error("Division by zero");
-            }
-            break;
-        default:
-            throw std::runtime_error("Invalid operator");
+        if (parameters[2] == "0")
+        {
+            throw std::runtime_error("Division by zero");
+        }
     }
 
     if (parameters[2][0] == '$')
@@ -365,81 +426,14 @@ types::Lifter opBuilderHelperIntCalc(const types::DocumentValue & def)
     }
 
     // Return Lifter
-    return [op, refValue, value, field](types::Observable o)
+    return [field, op, refValue, value](types::Observable o)
     {
         // Append rxcpp operation
         return o.map(
             [=](types::Event e)
             {
-                if (e.exists("/" + field))
-                {
-                    auto fieldToCheck = e.getObject().FindMember(field.c_str());
-                    if (fieldToCheck->value.IsInt())
-                    {
-                        if (value.has_value())
-                        {
-                            switch (op)
-                            {
-                                case '+':
-                                    fieldToCheck->value.SetInt(
-                                        fieldToCheck->value.GetInt() + value.value());
-                                    return e;
-                                case '-':
-                                    fieldToCheck->value.SetInt(
-                                        fieldToCheck->value.GetInt() - value.value());
-                                    return e;
-                                case '*':
-                                    fieldToCheck->value.SetInt(
-                                        fieldToCheck->value.GetInt() * value.value());
-                                    return e;
-                                case '%': // TODO: Check if this is correct
-                                    if (value.value() != 0)
-                                    {
-                                        fieldToCheck->value.SetInt(
-                                            fieldToCheck->value.GetInt() / value.value());
-                                    }
-                                    return e;
-                                default:
-                                    throw std::runtime_error("Invalid operator");
-                            }
-                            return e;
-                        }
-                        auto refValueToCheck =
-                            e.getObject().FindMember(refValue.value().c_str());
-                        if (refValueToCheck->value.IsInt())
-                        {
-                            switch (op)
-                            {
-                                case '+':
-                                    fieldToCheck->value.SetInt(
-                                        fieldToCheck->value.GetInt() +
-                                        refValueToCheck->value.GetInt());
-                                    return e;
-                                case '-':
-                                    fieldToCheck->value.SetInt(
-                                        fieldToCheck->value.GetInt() -
-                                        refValueToCheck->value.GetInt());
-                                    return e;
-                                case '*':
-                                    fieldToCheck->value.SetInt(
-                                        fieldToCheck->value.GetInt() *
-                                        refValueToCheck->value.GetInt());
-                                    return e;
-                                case '%': // TODO: divide by zero
-                                    if (refValueToCheck->value.GetInt() != 0)
-                                    {
-                                        fieldToCheck->value.SetInt(
-                                            fieldToCheck->value.GetInt() /
-                                            refValueToCheck->value.GetInt());
-                                    }
-                                    return e;
-                                default:
-                                    throw std::runtime_error("Invalid operator");
-                            }
-                        }
-                    }
-                }
-                return e;
+                return opBuilderHelperIntTransformation(field, op, e, refValue,
+                                                        value);
             });
     };
 }
