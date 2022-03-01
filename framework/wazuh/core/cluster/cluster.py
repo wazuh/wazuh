@@ -6,7 +6,6 @@ import itertools
 import json
 import logging
 import os.path
-import random
 import shutil
 import zlib
 from asyncio import wait_for
@@ -14,7 +13,6 @@ from datetime import datetime
 from functools import partial
 from operator import eq
 from os import listdir, path, remove, stat, walk
-from shutil import rmtree
 from uuid import uuid4
 
 from wazuh import WazuhError, WazuhException, WazuhInternalError
@@ -392,8 +390,8 @@ def decompress_files(compress_path, ko_files_name="files_metadata.json"):
                 compressed_data += new_data
                 files = compressed_data.split(FILE_SEP.encode())
                 if new_data:
-                    # If 'files' list contains only 1 item, it is probably incomplete so it is not used.
-                    compressed_data, files = (files[-1], files[:-1]) if len(files) > 1 else (files[0], [])
+                    # If 'files' list contains only 1 item, it is probably incomplete, so it is not used.
+                    compressed_data = files.pop(-1)
 
                 for file in files:
                     filepath, content = file.split(PATH_SEP.encode(), 1)
