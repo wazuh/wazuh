@@ -617,12 +617,7 @@ class AWSBucket(WazuhIntegration):
         raise NotImplementedError
 
     def mark_complete(self, aws_account_id, aws_region, log_file):
-        if self.reparse:
-            if self.already_processed(log_file['Key'], aws_account_id, aws_region):
-                debug(
-                    '+++ File already marked complete, but reparse flag set: {log_key}'.format(log_key=log_file['Key']),
-                    2)
-        else:
+        if not self.reparse:
             try:
                 self.db_connector.execute(self.sql_mark_complete.format(
                     bucket_path=self.bucket_path,
@@ -964,6 +959,8 @@ class AWSBucket(WazuhIntegration):
     def iter_files_in_bucket(self, aws_account_id=None, aws_region=None):
         try:
             bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region))
+            if self.reparse:
+                debug('++ Reparse mode enabled', 2)
 
             while True:
                 if 'Contents' not in bucket_files:
