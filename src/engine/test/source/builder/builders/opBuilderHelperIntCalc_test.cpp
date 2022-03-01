@@ -20,7 +20,7 @@ TEST(opBuilderHelperIntCalc, Builds)
 {
     Document doc{R"({
         "check":
-            {"field_test": "+i_calc/+/10"}
+            {"field_test": "+i_calc/sum/10"}
     })"};
     ASSERT_NO_THROW(opBuilderHelperIntCalc(*doc.get("/check")));
 }
@@ -67,7 +67,7 @@ TEST(opBuilderHelperIntCalc, Builds_error_zero_division)
 {
     Document doc{R"({
         "check":
-            {"field_test": "+i_calc/%/0"}
+            {"field_test": "+i_calc/div/0"}
     })"};
     ASSERT_THROW(opBuilderHelperIntCalc(*doc.get("/check")), std::runtime_error);
 }
@@ -76,7 +76,7 @@ TEST(opBuilderHelperIntCalc, Exec_equal_ok)
 {
     Document doc{R"({
         "check":
-            {"field_test": "+i_calc/+/10"}
+            {"field_test": "+i_calc/sum/10"}
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -112,7 +112,7 @@ TEST(opBuilderHelperIntCalc, Exec_sum_int)
 {
     Document doc{R"({
         "check":
-            {"field_test": "+i_calc/+/10"}
+            {"field_test": "+i_calc/sum/10"}
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -156,7 +156,7 @@ TEST(opBuilderHelperIntCalc, Exec_sub_int)
 {
     Document doc{R"({
         "check":
-            {"field_test": "+i_calc/-/10"}
+            {"field_test": "+i_calc/sub/10"}
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -200,7 +200,7 @@ TEST(opBuilderHelperIntCalc, Exec_mult_int)
 {
     Document doc{R"({
         "check":
-            {"field_test": "+i_calc/*/10"}
+            {"field_test": "+i_calc/mul/10"}
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -244,7 +244,7 @@ TEST(opBuilderHelperIntCalc, Exec_div_int)
 {
     Document doc{R"({
         "check":
-            {"field_test": "+i_calc/%/10"}
+            {"field_test": "+i_calc/div/10"}
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -288,7 +288,7 @@ TEST(opBuilderHelperIntCalc, Exec_sum_ref)
 {
     Document doc{R"({
         "check":
-            {"field_test": "+i_calc/+/$field_src"}
+            {"field_test": "+i_calc/sum/$field_src"}
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -345,7 +345,7 @@ TEST(opBuilderHelperIntCalc, Exec_sub_ref)
 {
     Document doc{R"({
         "check":
-            {"field_test": "+i_calc/-/$field_src"}
+            {"field_test": "+i_calc/sub/$field_src"}
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -402,7 +402,7 @@ TEST(opBuilderHelperIntCalc, Exec_mult_ref)
 {
     Document doc{R"({
         "check":
-            {"field_test": "+i_calc/*/$field_src"}
+            {"field_test": "+i_calc/mul/$field_src"}
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -459,7 +459,7 @@ TEST(opBuilderHelperIntCalc, Exec_div_ref)
 {
     Document doc{R"({
         "check":
-            {"field_test": "+i_calc/%/$field_src"}
+            {"field_test": "+i_calc/div/$field_src"}
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -516,7 +516,7 @@ TEST(opBuilderHelperIntCalc, Exec_div_ref_zero)
 {
     Document doc{R"({
         "check":
-            {"field_test": "+i_calc/%/$field_src"}
+            {"field_test": "+i_calc/div/$field_src"}
     })"};
 
     Observable input = observable<>::create<Event>(
