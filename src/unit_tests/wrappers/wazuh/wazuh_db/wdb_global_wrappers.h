@@ -35,7 +35,8 @@ int __wrap_wdb_global_update_agent_version(wdb_t *wdb,
                                            const char *node_name,
                                            const char *agent_ip,
                                            const char *connection_status,
-                                           const char *sync_status);
+                                           const char *sync_status,
+                                           const char *group_config_status);
 
 cJSON* __wrap_wdb_global_get_agent_labels(wdb_t *wdb, int id);
 
