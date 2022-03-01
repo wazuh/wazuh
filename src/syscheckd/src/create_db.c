@@ -260,12 +260,10 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
             }
 
             txn_context->evt_data->type = FIM_DELETE;
-            txn_context->db_full = false;
 
             break;
 
         case MAX_ROWS:
-            txn_context->db_full = true;
             mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.", path);
 
         // Fallthrough
@@ -382,7 +380,7 @@ time_t fim_scan() {
     OSListNode *node_it;
     directory_t *dir_it;
     event_data_t evt_data = { .report_event = true, .mode = FIM_SCHEDULED, .w_evt = NULL };
-    fim_txn_context_t txn_ctx = { .evt_data = &evt_data, .latest_entry = NULL, .db_full = false };
+    fim_txn_context_t txn_ctx = { .evt_data = &evt_data, .latest_entry = NULL };
 
     static fim_state_db _files_db_state = FIM_STATE_DB_EMPTY;
 #ifdef WIN32
@@ -443,10 +441,6 @@ time_t fim_scan() {
 
         w_rwlock_rdlock(&syscheck.directories_lock);
         OSList_foreach(node_it, syscheck.directories) {
-            if (txn_ctx.db_full == true) {
-                break;
-            }
-
             dir_it = node_it->data;
             char *path;
             event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = true, .w_evt = NULL };

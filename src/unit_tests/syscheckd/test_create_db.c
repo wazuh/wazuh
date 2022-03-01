@@ -3821,7 +3821,6 @@ static void test_transaction_callback_delete_full_db(void **state) {
 #endif
 
     fim_txn_context_t *txn_context = data->txn_context;
-    txn_context->db_full = true;
     data->dbsync_event = result;
 
     // These functions are called every time transaction_callback calls fim_configuration_directory
@@ -3843,7 +3842,6 @@ static void test_transaction_callback_delete_full_db(void **state) {
 
     transaction_callback(DELETED, result, txn_context);
     assert_int_equal(txn_context->evt_data->type, FIM_DELETE);
-    assert_int_equal(txn_context->db_full, false);
 }
 
 static void test_transaction_callback_full_db(void **state) {
@@ -3860,7 +3858,6 @@ static void test_transaction_callback_full_db(void **state) {
     fim_txn_context_t *txn_context = data->txn_context;
     fim_entry entry = {.type = FIM_TYPE_FILE, .file_entry.path = path, .file_entry.data=&DEFAULT_FILE_DATA};
 
-    txn_context->db_full = true;
     txn_context->latest_entry = &entry;
     data->dbsync_event = result;
 
@@ -3883,7 +3880,6 @@ static void test_transaction_callback_full_db(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, debug_msg);
 
     transaction_callback(MAX_ROWS, result, txn_context);
-    assert_int_equal(txn_context->db_full, true);
 }
 
 static void test_fim_event_callback(void **state) {
