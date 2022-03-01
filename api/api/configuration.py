@@ -16,6 +16,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 from jsonschema import validate, ValidationError
 
+import wazuh.core.utils as core_utils
 from api.api_exception import APIError
 from api.constants import CONFIG_FILE_PATH, SECURITY_CONFIG_PATH, API_SSL_PATH
 from api.validator import api_config_schema, security_config_schema
@@ -203,8 +204,8 @@ def generate_self_signed_certificate(private_key, certificate_path):
     ).not_valid_before(
         datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
     ).not_valid_after(
-        # Our certificate will be valid for 10 days
-        datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
+        # Our certificate will be valid for one year
+        core_utils.get_utc_now() + datetime.timedelta(days=365)
     ).add_extension(
         x509.SubjectAlternativeName([x509.DNSName(u"localhost")]),
         critical=False,

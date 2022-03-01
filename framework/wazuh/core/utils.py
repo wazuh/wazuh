@@ -1888,8 +1888,7 @@ class Timeout:
 
 
 def get_date_from_timestamp(timestamp):
-    """
-    Function to return the date in datetime format and UTC timezone.
+    """Function to return the date in datetime format and UTC timezone.
 
     Parameters
     ----------
@@ -1901,9 +1900,7 @@ def get_date_from_timestamp(timestamp):
     date: datetime
         The default date.
     """
-
-    date = datetime.utcfromtimestamp(timestamp).replace(tzinfo=timezone.utc)
-    return date
+    return datetime.utcfromtimestamp(timestamp).replace(tzinfo=timezone.utc)
 
 
 def get_utc_now():
@@ -1914,9 +1911,7 @@ def get_utc_now():
     date: datetime
         The current date
     """
-
-    date = datetime.utcnow().replace(tzinfo=timezone.utc)
-    return date
+    return datetime.utcnow().replace(tzinfo=timezone.utc)
 
 
 def get_utc_strptime(date, datetime_format):
@@ -1927,6 +1922,4 @@ def get_utc_strptime(date, datetime_format):
     date: datetime
         The current date
     """
-
-    date = datetime.strptime(date, datetime_format).replace(tzinfo=timezone.utc)
-    return date
+    return datetime.strptime(date, datetime_format).replace(tzinfo=timezone.utc)

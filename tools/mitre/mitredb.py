@@ -16,13 +16,13 @@ import json
 import os
 import pwd
 import sys
-from datetime import datetime, timezone
 
 from sqlalchemy import create_engine, Column, DateTime, String, ForeignKey, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 
 import const
+import wazuh.core.utils as core_utils
 
 Base = declarative_base()
 
@@ -403,11 +403,9 @@ def parse_table(function, data_object):
         row[const.DESCRIPTION_t] = data_object[const.DESCRIPTION_t]
 
     if const.CREATED_j in data_object:
-        row[const.CREATED_t] = datetime.strptime(data_object[const.CREATED_j], const.TIME_FORMAT).replace(
-            tzinfo=timezone.utc)
+        row[const.CREATED_t] = core_utils.get_utc_strptime(data_object[const.CREATED_j], const.TIME_FORMAT)
     if const.MODIFIED_j in data_object:
-        row[const.MODIFIED_t] = datetime.strptime(data_object[const.MODIFIED_j], const.TIME_FORMAT).replace(
-            tzinfo=timezone.utc)
+        row[const.MODIFIED_t] = core_utils.get_utc_strptime(data_object[const.MODIFIED_j], const.TIME_FORMAT)
     if function.__name__ == 'Tactic':
         if const.SHORT_NAME_j in data_object:
             row[const.SHORT_NAME_t] = data_object[const.SHORT_NAME_j]
@@ -432,11 +430,9 @@ def parse_json_techniques(technique_json, phases_table):
     if technique_json.get(const.DESCRIPTION_t):
         row[const.DESCRIPTION_t] = technique_json[const.DESCRIPTION_t]
     if technique_json.get(const.CREATED_j):
-        row[const.CREATED_t] = datetime.strptime(technique_json[const.CREATED_j], const.TIME_FORMAT).replace(
-            tzinfo=timezone.utc)
+        row[const.CREATED_t] = core_utils.get_utc_strptime(technique_json[const.CREATED_j], const.TIME_FORMAT)
     if technique_json.get(const.MODIFIED_j):
-        row[const.MODIFIED_t] = datetime.strptime(technique_json[const.MODIFIED_j], const.TIME_FORMAT).replace(
-            tzinfo=timezone.utc)
+        row[const.MODIFIED_t] = core_utils.get_utc_strptime(technique_json[const.MODIFIED_j], const.TIME_FORMAT)
     if technique_json.get(const.MITRE_VERSION_j):
         row[const.MITRE_VERSION_t] = technique_json[const.MITRE_VERSION_j]
     if technique_json.get(const.MITRE_DETECTION_j):
@@ -503,11 +499,9 @@ def parse_json_mitigate_use(data_object):
     if data_object.get(const.DESCRIPTION_t):
         row[const.DESCRIPTION_t] = data_object[const.DESCRIPTION_t]
     if data_object.get(const.CREATED_j):
-        row[const.CREATED_t] = datetime.strptime(data_object[const.CREATED_j], const.TIME_FORMAT).replace(
-            tzinfo=timezone.utc)
+        row[const.CREATED_t] = core_utils.get_utc_strptime(data_object[const.CREATED_j], const.TIME_FORMAT)
     if data_object.get(const.MODIFIED_j):
-        row[const.MODIFIED_t] = datetime.strptime(data_object[const.MODIFIED_j], const.TIME_FORMAT).replace(
-            tzinfo=timezone.utc)
+        row[const.MODIFIED_t] = core_utils.get_utc_strptime(data_object[const.MODIFIED_j], const.TIME_FORMAT)
 
     return row
 

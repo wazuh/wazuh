@@ -235,12 +235,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             return cmd, json.dumps(res).encode()
         elif command == b'get_health':
             cmd, res = self.get_health(json.loads(data))
-            return cmd, json.dumps(res,
-                                   default=lambda o: "n/a" if isinstance(o,
-                                                                         datetime) and o == utils.get_date_from_timestamp(
-                                       0)
-                                   else (o.__str__() if isinstance(o, datetime) else None)
-                                   ).encode()
+            return cmd, json.dumps(
+                res, default=lambda o: "n/a" if isinstance(o, datetime) and o == utils.get_date_from_timestamp(0) else
+                (o.__str__() if isinstance(o, datetime) else None)).encode()
         elif command == b'sendsync':
             self.server.sendsync.add_request(self.name.encode() + b'*' + data)
             return b'ok', b'Added request to SendSync requests queue'
