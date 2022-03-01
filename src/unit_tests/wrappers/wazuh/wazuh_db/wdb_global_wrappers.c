@@ -59,7 +59,8 @@ int __wrap_wdb_global_update_agent_version(__attribute__((unused)) wdb_t *wdb,
                                            const char *node_name,
                                            const char *agent_ip,
                                            const char *connection_status,
-                                           const char *sync_status) {
+                                           const char *sync_status,
+                                           const char *group_config_status) {
     check_expected(id);
     check_expected(os_name);
     check_expected(os_version);
@@ -78,6 +79,7 @@ int __wrap_wdb_global_update_agent_version(__attribute__((unused)) wdb_t *wdb,
     check_expected(agent_ip);
     check_expected(connection_status);
     check_expected(sync_status);
+    check_expected(group_config_status);
 
     return mock();
 }
