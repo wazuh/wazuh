@@ -95,3 +95,7 @@ int __wrap_Start_win32_Syscheck() {
     function_called();
     return mock();
 }
+
+void __wrap_fim_generate_delete_event(){
+    function_called();
+}

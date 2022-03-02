@@ -38,7 +38,7 @@ void fim_calculate_dbsync_difference_key(const fim_registry_key* registry_data,
                                          cJSON* old_attributes) {
 
     if (old_attributes == NULL || changed_attributes == NULL || !cJSON_IsArray(changed_attributes)) {
-        return;
+        return; //LCOV_EXCL_LINE
     }
     cJSON *aux = NULL;
 
@@ -46,7 +46,7 @@ void fim_calculate_dbsync_difference_key(const fim_registry_key* registry_data,
 
     if (configuration->opts & CHECK_PERM) {
         if (aux = cJSON_GetObjectItem(old_data, "perm"), aux != NULL) {
-            cJSON_AddStringToObject(old_attributes, "perm", cJSON_GetStringValue(aux));
+            cJSON_AddItemToObject(old_attributes, "perm", cJSON_Duplicate(aux, 1));
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("permission"));
         } else {
             cJSON_AddItemToObject(old_attributes, "perm", cJSON_Duplicate(registry_data->perm_json, 1));
@@ -61,7 +61,6 @@ void fim_calculate_dbsync_difference_key(const fim_registry_key* registry_data,
             cJSON_AddStringToObject(old_attributes, "uid", registry_data->uid);
         }
 
-        aux = cJSON_GetObjectItem(old_data, "user_name");
         if (aux = cJSON_GetObjectItem(old_data, "user_name"), aux != NULL) {
             char *username = cJSON_GetStringValue(aux);
             cJSON_AddStringToObject(old_attributes, "user_name", username);
@@ -91,7 +90,7 @@ void fim_calculate_dbsync_difference_key(const fim_registry_key* registry_data,
 
     if (configuration->opts & CHECK_MTIME) {
          if (aux = cJSON_GetObjectItem(old_data, "mtime"), aux != NULL) {
-            cJSON_AddStringToObject(old_attributes, "mtime", cJSON_GetStringValue(aux));
+            cJSON_AddNumberToObject(old_attributes, "mtime", aux->valueint);
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("mtime"));
         } else {
             cJSON_AddNumberToObject(old_attributes, "mtime", registry_data->mtime);
@@ -111,7 +110,7 @@ void fim_calculate_dbsync_difference_value(const fim_registry_value_data* value_
                                            cJSON* old_attributes) {
     if (value_data == NULL || old_attributes == NULL ||
         changed_attributes == NULL || !cJSON_IsArray(changed_attributes)) {
-        return;
+        return; //LCOV_EXCL_LINE
     }
 
     cJSON *aux = NULL;
@@ -171,8 +170,7 @@ cJSON *fim_registry_value_attributes_json(const cJSON* dbsync_event, const fim_r
 
     cJSON_AddStringToObject(attributes, "type", "registry_value");
 
-    if (data)
-    {
+    if (data) {
         if (configuration->opts & CHECK_TYPE && data->type <= REG_QWORD) {
             cJSON_AddStringToObject(attributes, "value_type", VALUE_TYPE[data->type]);
         }
@@ -196,12 +194,12 @@ cJSON *fim_registry_value_attributes_json(const cJSON* dbsync_event, const fim_r
         if (*data->checksum) {
             cJSON_AddStringToObject(attributes, "checksum", data->checksum);
         }
-    } else
-    {
+
+    } else {
         cJSON *type, *checksum, *sha256, *md5, *sha1, *size;
 
         if (type = cJSON_GetObjectItem(dbsync_event, "type"), type != NULL) {
-            if (configuration->opts & CHECK_TYPE && type->valueint <= REG_QWORD) {
+            if (configuration->opts & CHECK_TYPE) {
                 cJSON_AddStringToObject(attributes, "value_type", VALUE_TYPE[type->valueint]);
             }
         }
@@ -211,25 +209,27 @@ cJSON *fim_registry_value_attributes_json(const cJSON* dbsync_event, const fim_r
                 cJSON_AddNumberToObject(attributes, "size", size->valueint);
             }
         }
+
         if (configuration->opts & CHECK_MD5SUM) {
             if (md5 = cJSON_GetObjectItem(dbsync_event, "hash_md5"), md5 != NULL){
-                cJSON_AddStringToObject(attributes, "hash_md5", md5->valuestring);
+                cJSON_AddStringToObject(attributes, "hash_md5", cJSON_GetStringValue(md5));
             }
         }
 
         if (configuration->opts & CHECK_SHA1SUM) {
             if (sha1 = cJSON_GetObjectItem(dbsync_event, "hash_sha1"), sha1 != NULL){
-                cJSON_AddStringToObject(attributes, "hash_sha1", sha1->valuestring);
+                cJSON_AddStringToObject(attributes, "hash_sha1", cJSON_GetStringValue(sha1));
             }
         }
+
         if (configuration->opts & CHECK_SHA256SUM) {
             if (sha256 = cJSON_GetObjectItem(dbsync_event, "hash_sha256"), sha256 != NULL){
-                cJSON_AddStringToObject(attributes, "hash_sha256", sha256->valuestring);
+                cJSON_AddStringToObject(attributes, "hash_sha256", cJSON_GetStringValue(sha256));
             }
         }
 
         if (checksum = cJSON_GetObjectItem(dbsync_event, "checksum"), checksum != NULL){
-            cJSON_AddStringToObject(attributes, "checksum", checksum->valuestring);
+            cJSON_AddStringToObject(attributes, "checksum", cJSON_GetStringValue(checksum));
         }
 
     }
@@ -275,6 +275,9 @@ cJSON *fim_registry_compare_value_attrs(const fim_registry_value_data *new_data,
     return changed_attributes;
 }
 
+
+// LCOV_EXCL_START
+// This function is not used for now, as it's ment to be used on event based monitoring.
 /**
  * @brief Generate a registry value event from the provided information.
  *
@@ -340,6 +343,7 @@ cJSON *fim_registry_value_json_event(const fim_entry *new_data,
 
     return json_event;
 }
+// LCOV_EXCL_STOP
 
 /**
  * @brief Create a cJSON object holding the attributes associated with a fim_registry_key according to its
@@ -354,8 +358,7 @@ cJSON *fim_registry_key_attributes_json(const cJSON* dbsync_event, const fim_reg
 
     cJSON_AddStringToObject(attributes, "type", "registry_key");
 
-    if (data)
-    {
+    if (data) {
         if (configuration->opts & CHECK_PERM) {
             cJSON_AddItemToObject(attributes, "perm", cJSON_Duplicate(data->perm_json, 1));
         }
@@ -383,34 +386,33 @@ cJSON *fim_registry_key_attributes_json(const cJSON* dbsync_event, const fim_reg
         if (*data->checksum) {
             cJSON_AddStringToObject(attributes, "checksum", data->checksum);
         }
-    } else
-    {
+    } else {
         cJSON *perm, *uid, *user_name, *gid, *group_name, *mtime, *checksum;
 
         if (configuration->opts & CHECK_PERM) {
             if (perm = cJSON_GetObjectItem(dbsync_event, "perm"), perm != NULL) {
-                cJSON_AddItemToObject(attributes, "perm", perm);
+                cJSON_AddItemToObject(attributes, "perm", cJSON_Duplicate(perm, 1));
             }
         }
 
         if (configuration->opts & CHECK_OWNER) {
             if (uid = cJSON_GetObjectItem(dbsync_event, "uid"), uid != NULL) {
-                cJSON_AddNumberToObject(attributes, "uid", uid->valueint);
+                cJSON_AddStringToObject(attributes, "uid", cJSON_GetStringValue(uid));
             }
 
             if (user_name = cJSON_GetObjectItem(dbsync_event, "user_name"), user_name != NULL) {
-                cJSON_AddStringToObject(attributes, "user_name", user_name->valuestring);
+                cJSON_AddStringToObject(attributes, "user_name", cJSON_GetStringValue(user_name));
             }
 
         }
 
         if (configuration->opts & CHECK_GROUP) {
             if (gid = cJSON_GetObjectItem(dbsync_event, "gid"), gid != NULL) {
-                cJSON_AddNumberToObject(attributes, "gid", gid->valueint);
+                cJSON_AddStringToObject(attributes, "gid", cJSON_GetStringValue(gid));
             }
 
             if (group_name = cJSON_GetObjectItem(dbsync_event, "group_name"), group_name != NULL) {
-                cJSON_AddStringToObject(attributes, "group_name", group_name->valuestring);
+                cJSON_AddStringToObject(attributes, "group_name", cJSON_GetStringValue(group_name));
             }
 
         }
@@ -422,7 +424,7 @@ cJSON *fim_registry_key_attributes_json(const cJSON* dbsync_event, const fim_reg
         }
 
         if (checksum = cJSON_GetObjectItem(dbsync_event, "checksum"), checksum != NULL) {
-            cJSON_AddStringToObject(attributes, "checksum", checksum->valuestring);
+            cJSON_AddStringToObject(attributes, "checksum", cJSON_GetStringValue(checksum));
         }
 
     }
@@ -477,6 +479,9 @@ cJSON *fim_registry_compare_key_attrs(const fim_registry_key *new_data,
     return changed_attributes;
 }
 
+
+// LCOV_EXCL_START
+// These functions are not used for now, as their are ment to be used on event based monitoring.
 /**
  * @brief Generate a registry key event from the provided information.
  *
@@ -571,5 +576,6 @@ cJSON *fim_registry_event(const fim_entry *new,
 
     return json_event;
 }
+// LCOV_EXCL_STOP
 
 #endif

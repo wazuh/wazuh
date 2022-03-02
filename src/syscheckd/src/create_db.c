@@ -44,7 +44,6 @@ static const char *FIM_EVENT_MODE[] = {
     "whodata"
 };
 
-// LCOV_EXCL_START
 cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
                                         const cJSON* changed_data,
                                         cJSON* old_attributes,
@@ -193,7 +192,6 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
 
     return old_attributes;
 }
-// LCOV_EXCL_STOP
 
 /**
  * @brief Function to calculate the `attributes` field using the information returned by dbsync.

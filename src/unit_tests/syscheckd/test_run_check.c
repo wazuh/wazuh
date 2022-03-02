@@ -58,6 +58,8 @@ void fim_link_reload_broken_link(char *path, directory_t *configuration);
 void fim_realtime_delete_watches(const directory_t *configuration);
 #endif
 
+void fim_db_remove_validated_path(void * data, void * ctx);
+
 extern time_t last_time;
 extern unsigned int files_read;
 
@@ -1052,6 +1054,19 @@ void test_send_sync_state(void **state) {
     fim_send_sync_state("fim_file", event);
 }
 
+void test_fim_db_remove_validated_path(void **state){
+
+    char* path = "path";
+    directory_t mock_config;
+    get_data_ctx mock_data;
+    mock_data.config = &mock_config;
+
+    expect_fim_configuration_directory_call(path, &mock_config);
+    expect_function_call(__wrap_fim_generate_delete_event);
+
+    fim_db_remove_validated_path(path, &mock_data);
+}
+
 int main(void) {
 #ifndef WIN_WHODATA
     const struct CMUnitTest tests[] = {
@@ -1066,6 +1081,7 @@ int main(void) {
 #endif
 
         cmocka_unit_test(test_log_realtime_status),
+        cmocka_unit_test(test_fim_db_remove_validated_path),
         cmocka_unit_test(test_fim_send_scan_info),
         cmocka_unit_test_setup_teardown(test_check_max_fps_no_sleep, setup_max_fps, teardown_max_fps),
         cmocka_unit_test_setup_teardown(test_check_max_fps_sleep, setup_max_fps, teardown_max_fps),

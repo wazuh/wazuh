@@ -15,6 +15,4 @@ void __wrap_fim_registry_scan();
 
 cJSON* __wrap_fim_dbsync_registry_value_json_event();
 
-void __wrap_fim_diff_process_delete_registry();
-
 #endif

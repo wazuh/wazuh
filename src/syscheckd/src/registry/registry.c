@@ -135,12 +135,9 @@ static void registry_key_transaction_callback(ReturnTypeCallback resultType,
             break;
 
         case MAX_ROWS:
-            if (configuration->opts & CHECK_SEECHANGES) {
-                mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.",
-                        key->path);
-                goto end;
-            }
-            break;
+            mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.", path);
+
+        // Fallthrough
         default:
             goto end;
             break;
@@ -273,12 +270,9 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType,
             break;
 
         case MAX_ROWS:
-            if (configuration->opts & CHECK_SEECHANGES) {
-                mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.",
-                        value->path);
-                goto end;
-            }
-            break;
+            mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.", path);
+
+        // Fallthrough
         default:
             goto end;
             break;
@@ -804,7 +798,7 @@ void fim_registry_free_entry(fim_entry *entry) {
     if (entry) {
         fim_registry_free_key(entry->registry_entry.key);
         fim_registry_free_value_data(entry->registry_entry.value);
-        free(entry);
+        os_free(entry);
     }
 }
 
