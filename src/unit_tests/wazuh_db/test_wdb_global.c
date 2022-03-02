@@ -1239,7 +1239,7 @@ void test_wdb_global_sync_agent_groups_get_exec_fail_get_hash_true_success(void 
     result = wdb_global_sync_agent_groups_get(data->wdb, condition, last_agent_id, set_synced, get_hash, agent_registration_delta, &j_output);
 
     char *output = cJSON_PrintUnformatted(j_output);
-    assert_string_equal(output, "[{\"data\":[],\"hash\":\"\"}]");
+    assert_string_equal(output, "[{\"data\":[],\"hash\":null}]");
     os_free(output);
     assert_int_equal(result, WDBC_OK);
     __real_cJSON_Delete(j_output);

@@ -661,8 +661,9 @@ int wdb_get_global_group_hash(wdb_t * wdb, os_sha1 hexdigest) {
             mdebug2("New global group hash calculated and stored in cache.");
             return OS_SUCCESS;
         } else {
+            hexdigest[0] = 0;
             mdebug2("No group hash was found to calculate the global group hash.");
-            return OS_INVALID;
+            return OS_SUCCESS;
         }
     }
 }
