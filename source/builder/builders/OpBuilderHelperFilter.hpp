@@ -26,9 +26,7 @@ namespace builder::internals::builders
  * @brief Create `exists` helper function that filters events that contains specified field.
  *
  * The filter checks if a field exists in the JSON event `e`.
- * For example: if def = `{wazuh: +exists}` only events containing `wazuh` field
- * will continue on the rxcpp pipeline.
- * @param def The filter definition. i.e : `{wazuh: +exists}`
+ * @param def The filter definition.
  * @return types::Lifter The lifter with the `exists` filter.
  */
 types::Lifter opBuilderHelperExists(const types::DocumentValue & def);
@@ -37,10 +35,8 @@ types::Lifter opBuilderHelperExists(const types::DocumentValue & def);
  * @brief Create `not_exists` helper function that filters events that not contains specified field.
  *
  * The filter checks if a field not exists in the JSON event `e`.
- * For example: if def = `{wazuh: +not_exists}` only events not containing `wazuh`
- * field will continue on the rxcpp pipeline.
- * @param def The filter definition. i.e : `{wazuh: +exists}`
- * @return types::Lifter The lifter with the `exists` filter.
+ * @param def The filter definition.
+ * @return types::Lifter The lifter with the `not_exists` filter.
  */
 types::Lifter opBuilderHelperNotExists(const types::DocumentValue & def);
 
@@ -74,25 +70,25 @@ inline bool opBuilderHelperStringComparison(const std::string  key, char op, typ
  * @brief Create `s_eq` helper function that filters events with a string
  * field equals to a value.
  *
- * The filter checks if a field in the JSON event `wazuh` is equal to a value.
+ * The filter checks if a field in the JSON event is equal to a value.
  * Only pass events if the fields are equal (case sensitive) and the values are a string.
- * @param def The filter definition. i.e : `{wazuh: +s_eq/value}`
+ * @param def The filter definition.
  * @return types::Lifter The lifter with the `s_eq` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
-types::Lifter opBuilderHelperString_eq(const types::DocumentValue & def);
+types::Lifter opBuilderHelperStringEQ(const types::DocumentValue & def);
 
 /**
  * @brief Create `s_ne` helper function that filters events with a string
  * field not equals to a value.
  *
- * The filter checks if a field in the JSON event `wazuh` is not  equal to a value.
+ * The filter checks if a field in the JSON event is not  equal to a value.
  * Only do not pass events if the fields are equal (case sensitive) and the values are a string.
- * @param def The filter definition. i.e : `{wazuh: +s_ne/value}`
+ * @param def The filter definition.
  * @return types::Lifter The lifter with the `s_ne` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
-types::Lifter opBuilderHelperString_ne(const types::DocumentValue & def);
+types::Lifter opBuilderHelperStringNE(const types::DocumentValue & def);
 
 /**
  * @brief Create `s_gt` helper function that filters events with a string
@@ -101,12 +97,11 @@ types::Lifter opBuilderHelperString_ne(const types::DocumentValue & def);
  * The filter checks if the JSON event field <field> is greater than a <value>
  * or another field <$ref>. Only pass the filter if the event has both fields
  * of type string and passes the condition.
- * use: `<field>: s_gt/<value>|$<ref>`
- * @param def The filter definition. i.e : `{wazuh: +s_gt/value}`
+ * @param def The filter definition.
  * @return types::Lifter The lifter with the `s_gt` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
-types::Lifter opBuilderHelperString_gt(const types::DocumentValue & def);
+types::Lifter opBuilderHelperStringGT(const types::DocumentValue & def);
 
 
 /**
@@ -116,12 +111,11 @@ types::Lifter opBuilderHelperString_gt(const types::DocumentValue & def);
  * The filter checks if the JSON event field <field> is greater or equals than a <value>
  * or another field <$ref>. Only pass the filter if the event has both fields
  * of type string and passes the condition.
- * use: `<field>: s_ge/<value>|$<ref>`
- * @param def The filter definition. i.e : `{wazuh: +s_ge/value}`
+ * @param def The filter definition.
  * @return types::Lifter The lifter with the `s_ge` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
-types::Lifter opBuilderHelperString_ge(const types::DocumentValue & def);
+types::Lifter opBuilderHelperStringGE(const types::DocumentValue & def);
 
 
 /**
@@ -131,12 +125,11 @@ types::Lifter opBuilderHelperString_ge(const types::DocumentValue & def);
  * The filter checks if the JSON event field <field> is less than a <value>
  * or another field <$ref>. Only pass the filter if the event has both fields
  * of type string and passes the condition.
- * use: `<field>: s_lt/<value>|$<ref>`
- * @param def The filter definition. i.e : `{wazuh: +s_lt/value}`
+ * @param def The filter definition.
  * @return types::Lifter The lifter with the `s_lt` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
-types::Lifter opBuilderHelperString_lt(const types::DocumentValue & def);
+types::Lifter opBuilderHelperStringLT(const types::DocumentValue & def);
 
 
 /**
@@ -146,12 +139,11 @@ types::Lifter opBuilderHelperString_lt(const types::DocumentValue & def);
  * The filter checks if the JSON event field <field> is less or equals than a <value>
  * or another field <$ref>. Only pass the filter if the event has both fields
  * of type string and passes the condition.
- * use: `<field>: s_le/<value>|$<ref>`
- * @param def The filter definition. i.e : `{wazuh: +s_le/value}`
+ * @param def The filter definition.
  * @return types::Lifter The lifter with the `s_le` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
-types::Lifter opBuilderHelperString_le(const types::DocumentValue & def);
+types::Lifter opBuilderHelperStringLE(const types::DocumentValue & def);
 
 //*************************************************
 //*              Int filters                      *
@@ -165,7 +157,6 @@ types::Lifter opBuilderHelperString_le(const types::DocumentValue & def);
  * @return types::Lifter
  */
 types::Lifter opBuilderHelperIntEqual(const types::DocumentValue & def);
-
 
 } // namespace builder::internals::builders
 
