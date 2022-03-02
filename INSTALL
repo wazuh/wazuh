@@ -65,6 +65,8 @@ To compile everything by yourself the following dependencies need to be installe
 
 - CentOS 8
    $> yum install make gcc gcc-c++ python3 python3-policycoreutils automake autoconf libtool
+   $> dnf --enablerepo=powertools install libstdc++-static
+   $> chmod -R 777 wazuh-master
    $> rpm -i http://mirror.centos.org/centos/8/PowerTools/x86_64/os/Packages/libstdc++-static-8.3.1-5.1.el8.x86_64.rpm
 
 - Debian/Ubuntu
