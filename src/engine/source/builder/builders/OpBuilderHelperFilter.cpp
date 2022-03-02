@@ -265,6 +265,75 @@ types::Lifter opBuilderHelperStringLE(const DocumentValue & def)
 //*************************************************
 //*               Int filters                     *
 //*************************************************
+uint32_t IPToUInt(const std::string ip)
+{
+    int a, b, c, d;
+    uint32_t addr = 0;
+
+    if (sscanf(ip.c_str(), "%d.%d.%d.%d", &a, &b, &c, &d) != 4)
+        return 0;
+
+    addr = a << 24;
+    addr |= b << 16;
+    addr |= c << 8;
+    addr |= d;
+    return addr;
+}
+
+types::Lifter opBuilderHelperIPCIDR(const types::DocumentValue & def)
+{
+    // Get field
+    std::string field = def.MemberBegin()->name.GetString();
+    std::string value = def.MemberBegin()->value.GetString();
+    std::vector<std::string> parameters = utils::string::split(value, '/');
+    if (parameters.size() != 3)
+    {
+        throw std::invalid_argument("Wrong number of arguments passed");
+    }
+    std::string cidr = parameters[1];
+    if (cidr.empty())
+    {
+        throw std::invalid_argument("The cidr can't be empty");
+    }
+    std::string maskstr = parameters[2];
+    if (maskstr.empty())
+    {
+        throw std::invalid_argument("The cidr can't be empty");
+    }
+
+    uint32_t network = IPToUInt(cidr);
+    uint32_t mask = IPToUInt(maskstr);
+
+    uint32_t net_lower = (network & mask);
+    uint32_t net_upper = (net_lower | (~mask));
+
+    // Return Lifter
+    return [=](types::Observable o)
+    {
+        // Append rxcpp operations
+        return o.filter(
+            [=](types::Event e)
+            {
+                // TODO Remove try catch
+                const rapidjson::Value * field_str{};
+                try
+                {
+                    field_str = e.get("/" + field);
+                }
+                catch (std::exception & ex)
+                {
+                    // TODO Check exception type
+                    return false;
+                }
+                if (field_str)
+                {
+                    uint32_t ip = IPToUInt(field_str->GetString());
+                    return ((ip >= net_lower && ip <= net_upper));
+                }
+                return false;
+            });
+    };
+}
 
 bool opBuilderHelperIntComparison(const std::string field, char op, types::Event & e,
                                   std::optional<std::string> refValue,
