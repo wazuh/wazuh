@@ -26,7 +26,7 @@ TEST(opBuilderHelperStringLO, Builds)
 }
 
 // Build incorrect number of arguments
-TEST(opBuilderHelperStringLO, BuildsIncorrectNumberOfArguments)
+TEST(opBuilderHelperStringLO, Builds_incorrect_number_of_arguments)
 {
     Document doc{R"({
         "normalize":
@@ -36,7 +36,7 @@ TEST(opBuilderHelperStringLO, BuildsIncorrectNumberOfArguments)
 }
 
 // Test ok: static values
-TEST(opBuilderHelperStringLO, staticStringOk)
+TEST(opBuilderHelperStringLO, Static_string_ok)
 {
     Document doc{R"({
         "normalize":
@@ -55,7 +55,6 @@ TEST(opBuilderHelperStringLO, staticStringOk)
             s.on_next(Event{R"(
                 {"not_fieltToCreate": "ASD"}
             )"});
-
             s.on_completed();
         });
 
@@ -70,9 +69,8 @@ TEST(opBuilderHelperStringLO, staticStringOk)
 }
 
 // Test ok: dynamic values (string)
-TEST(opBuilderHelperStringLO, dynamicsStringOk)
+TEST(opBuilderHelperStringLO, Dynamics_string_ok)
 {
-
     Document doc{R"({
         "normalize":
             {"fieltToCreate": "+s_lo/$srcField"}
@@ -103,39 +101,7 @@ TEST(opBuilderHelperStringLO, dynamicsStringOk)
     ASSERT_STREQ(expected[2].get("/fieltToCreate")->GetString(), "asd");
 }
 
-TEST(opBuilderHelperStringLO, multilevelSrc)
-{
-    Document doc{R"({
-        "normalize":
-            {"fieltToCreate": "+s_lo/$a.b.c.srcField"}
-    })"};
-
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(Event{R"(
-                {"a": {"b": {"c": {"srcField": "qwe"}}}}
-            )"});
-            s.on_next(Event{R"(
-                {"a": {"b": {"c": {"srcField": "ASD123asd"}}}}
-            )"});
-            s.on_next(Event{R"(
-                {"a": {"b": {"c": {"srcField": "ASD"}}}}
-            )"});
-            s.on_completed();
-        });
-
-    Lifter lift = opBuilderHelperStringLO(*doc.get("/normalize"));
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 3);
-    ASSERT_STREQ(expected[0].get("/fieltToCreate")->GetString(), "qwe");
-    ASSERT_STREQ(expected[1].get("/fieltToCreate")->GetString(), "asd123asd");
-    ASSERT_STREQ(expected[2].get("/fieltToCreate")->GetString(), "asd");
-}
-
-TEST(opBuilderHelperStringLO, multilevelDst)
+TEST(opBuilderHelperStringLO, Multilevel_dst)
 {
     Document doc{R"({
         "normalize":
@@ -167,7 +133,7 @@ TEST(opBuilderHelperStringLO, multilevelDst)
     ASSERT_STREQ(expected[2].get("/a/b/fieltToCreate/2")->GetString(), "asd");
 }
 
-TEST(opBuilderHelperStringLO, existDst)
+TEST(opBuilderHelperStringLO, Exist_dst)
 {
     Document doc{R"({
         "normalize":
@@ -199,7 +165,7 @@ TEST(opBuilderHelperStringLO, existDst)
     ASSERT_STREQ(expected[2].get("/a/b")->GetString(), "asd");
 }
 
-TEST(opBuilderHelperStringLO, notExistSrc)
+TEST(opBuilderHelperStringLO, Not_exist_src)
 {
     Document doc{R"({
     "normalize":
@@ -227,7 +193,7 @@ TEST(opBuilderHelperStringLO, notExistSrc)
     ASSERT_FALSE(expected[1].exists("/a/b"));
 }
 
-TEST(opBuilderHelperStringLO, srcNotString)
+TEST(opBuilderHelperStringLO, Src_not_string)
 {
     Document doc{R"({
         "normalize":
@@ -257,4 +223,68 @@ TEST(opBuilderHelperStringLO, srcNotString)
     ASSERT_FALSE(expected[0].exists("/fieltToCreate"));
     ASSERT_FALSE(expected[1].exists("/fieltToCreate"));
     ASSERT_FALSE(expected[2].exists("/fieltToCreate"));
+}
+
+TEST(opBuilderHelperStringLO, Multilevel_src)
+{
+    Document doc{R"({
+        "normalize":
+            {"fieltToCreate": "+s_lo/$a.b.c.srcField"}
+    })"};
+
+    Observable input = observable<>::create<Event>(
+        [=](auto s)
+        {
+            s.on_next(Event{R"(
+                {"a": {"b": {"c": {"srcField": "qwe"}}}}
+            )"});
+            s.on_next(Event{R"(
+                {"a": {"b": {"c": {"srcField": "ASD123asd"}}}}
+            )"});
+            s.on_next(Event{R"(
+                {"a": {"b": {"c": {"srcField": "ASD"}}}}
+            )"});
+            s.on_completed();
+        });
+
+    Lifter lift = opBuilderHelperStringLO(*doc.get("/normalize"));
+    Observable output = lift(input);
+    vector<Event> expected;
+    output.subscribe([&](Event e) { expected.push_back(e); });
+    ASSERT_EQ(expected.size(), 3);
+    ASSERT_STREQ(expected[0].get("/fieltToCreate")->GetString(), "qwe");
+    ASSERT_STREQ(expected[1].get("/fieltToCreate")->GetString(), "asd123asd");
+    ASSERT_STREQ(expected[2].get("/fieltToCreate")->GetString(), "asd");
+}
+
+TEST(opBuilderHelperStringLO, MultiLevel_dst)
+{
+    Document doc{R"({
+        "normalize":
+            {"a.b": "+s_lo/$a.b.c.srcField"}
+    })"};
+
+    Observable input = observable<>::create<Event>(
+        [=](auto s)
+        {
+            s.on_next(Event{R"(
+                {"a": {"b": {"c": {"srcField": "qwe"}}}}
+            )"});
+            s.on_next(Event{R"(
+                {"a": {"b": {"c": {"srcField": "ASD123asd"}}}}
+            )"});
+            s.on_next(Event{R"(
+                {"a": {"b": {"c": {"srcField": "ASD"}}}}
+            )"});
+            s.on_completed();
+        });
+
+    Lifter lift = opBuilderHelperStringLO(*doc.get("/normalize"));
+    Observable output = lift(input);
+    vector<Event> expected;
+    output.subscribe([&](Event e) { expected.push_back(e); });
+    ASSERT_EQ(expected.size(), 3);
+    ASSERT_STREQ(expected[0].get("/a/b")->GetString(), "qwe");
+    ASSERT_STREQ(expected[1].get("/a/b")->GetString(), "asd123asd");
+    ASSERT_STREQ(expected[2].get("/a/b")->GetString(), "asd");
 }

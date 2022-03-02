@@ -16,27 +16,27 @@
 using namespace builder::internals::builders;
 
 // Build ok
-TEST(opBuilderHelperString_ne, Builds)
+TEST(opBuilderHelperStringNE, Builds)
 {
     Document doc{R"({
         "check":
             {"field2check": "+s_ne/test_value"}
     })"};
-    ASSERT_NO_THROW(opBuilderHelperString_ne(*doc.get("/check")));
+    ASSERT_NO_THROW(opBuilderHelperStringNE(*doc.get("/check")));
 }
 
 // Build incorrect number of arguments
-TEST(opBuilderHelperString_ne, BuildsIncorrectNumberOfArguments)
+TEST(opBuilderHelperStringNE, Builds_incorrect_number_of_arguments)
 {
     Document doc{R"({
         "check":
             {"field2check": "+s_ne/test_value/test_value2"}
     })"};
-    ASSERT_THROW(opBuilderHelperString_ne(*doc.get("/check")), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperStringNE(*doc.get("/check")), std::runtime_error);
 }
 
 // Test ok: static values
-TEST(opBuilderHelperString_ne, staticStringOk)
+TEST(opBuilderHelperStringNE, Static_string_ok)
 {
     Document doc{R"({
         "check":
@@ -64,7 +64,7 @@ TEST(opBuilderHelperString_ne, staticStringOk)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperString_ne(*doc.get("/check"));
+    Lifter lift = opBuilderHelperStringNE(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -74,7 +74,7 @@ TEST(opBuilderHelperString_ne, staticStringOk)
 }
 
 // Test ok: static values (numbers, compare as string)
-TEST(opBuilderHelperString_ne, staticNumberOk)
+TEST(opBuilderHelperStringNE, Static_number_ok)
 {
     Document doc{R"({
         "check":
@@ -107,7 +107,7 @@ TEST(opBuilderHelperString_ne, staticNumberOk)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperString_ne(*doc.get("/check"));
+    Lifter lift = opBuilderHelperStringNE(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -116,7 +116,7 @@ TEST(opBuilderHelperString_ne, staticNumberOk)
 }
 
 // Test ok: dynamic values (string)
-TEST(opBuilderHelperString_ne, dynamicsStringOk)
+TEST(opBuilderHelperStringNE, Dynamics_string_ok)
 {
     Document doc{R"({
         "check":
@@ -159,7 +159,7 @@ TEST(opBuilderHelperString_ne, dynamicsStringOk)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperString_ne(*doc.get("/check"));
+    Lifter lift = opBuilderHelperStringNE(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -169,7 +169,7 @@ TEST(opBuilderHelperString_ne, dynamicsStringOk)
 }
 
 // Test ok: multilevel dynamic values (string)
-TEST(opBuilderHelperString_ne, multiLevelDynamicsStringOk)
+TEST(opBuilderHelperStringNE, Multilevel_dynamics_string_ok)
 {
     Document doc{R"({
         "check":
@@ -234,18 +234,17 @@ TEST(opBuilderHelperString_ne, multiLevelDynamicsStringOk)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperString_ne(*doc.get("/check"));
+    Lifter lift = opBuilderHelperStringNE(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
-
     ASSERT_STRNE(expected[0].get("/parentObjt_1/field2check")->GetString(),
                  expected[0].get("/parentObjt_2/ref_key")->GetString());
 }
 
 // Test ok: dynamic values (number)
-TEST(opBuilderHelperString_ne, dynamicsNumberOk)
+TEST(opBuilderHelperStringNE, Dynamics_number_ok)
 {
     Document doc{R"({
         "check":
@@ -288,7 +287,7 @@ TEST(opBuilderHelperString_ne, dynamicsNumberOk)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperString_ne(*doc.get("/check"));
+    Lifter lift = opBuilderHelperStringNE(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });

@@ -16,27 +16,27 @@
 using namespace builder::internals::builders;
 
 // Build ok
-TEST(opBuilderHelperString_ge, Builds)
+TEST(opBuilderHelperStringGE, Builds)
 {
     Document doc{R"({
         "check":
             {"field2check": "+s_ge/abcd"}
     })"};
-    ASSERT_NO_THROW(opBuilderHelperString_ge(*doc.get("/check")));
+    ASSERT_NO_THROW(opBuilderHelperStringGE(*doc.get("/check")));
 }
 
 // Build incorrect number of arguments
-TEST(opBuilderHelperString_ge, BuildsIncorrectNumberOfArguments)
+TEST(opBuilderHelperStringGE, Builds_incorrect_number_of_arguments)
 {
     Document doc{R"({
         "check":
             {"field2check": "+s_ge/test_value/test_value2"}
     })"};
-    ASSERT_THROW(opBuilderHelperString_ge(*doc.get("/check")), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperStringGE(*doc.get("/check")), std::runtime_error);
 }
 
 // Test ok: static values
-TEST(opBuilderHelperString_ge, staticStringOk)
+TEST(opBuilderHelperStringGE, Static_string_ok)
 {
     Document doc{R"({
         "check":
@@ -58,7 +58,6 @@ TEST(opBuilderHelperString_ge, staticStringOk)
             s.on_next(Event{R"(
                 {"field2check":"ABCDE"}
             )"});
-
             // Greater with different case
             s.on_next(Event{R"(
                 {"field2check":"BBBB"}
@@ -67,7 +66,6 @@ TEST(opBuilderHelperString_ge, staticStringOk)
             s.on_next(Event{R"(
                 {"field2check":"AABCD"}
             )"});
-
             // lower case are greater
             s.on_next(Event{R"(
                 {"field2check":"abc"}
@@ -78,7 +76,6 @@ TEST(opBuilderHelperString_ge, staticStringOk)
             s.on_next(Event{R"(
                 {"field2check":"abcde"}
             )"});
-
             // Other fields will be ignored
             s.on_next(Event{R"(
                 {"otherfield":"abcd"}
@@ -89,7 +86,7 @@ TEST(opBuilderHelperString_ge, staticStringOk)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperString_ge(*doc.get("/check"));
+    Lifter lift = opBuilderHelperStringGE(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -103,9 +100,8 @@ TEST(opBuilderHelperString_ge, staticStringOk)
 }
 
 // Test ok: static values (numbers, compare as string)
-TEST(opBuilderHelperString_ge, staticNumberOk)
+TEST(opBuilderHelperStringGE, Static_number_ok)
 {
-
     Document doc{R"({
         "check":
             {"field2check": "+s_ge/AA"}
@@ -131,7 +127,7 @@ TEST(opBuilderHelperString_ge, staticNumberOk)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperString_ge(*doc.get("/check"));
+    Lifter lift = opBuilderHelperStringGE(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -141,7 +137,7 @@ TEST(opBuilderHelperString_ge, staticNumberOk)
 }
 
 // Test ok: dynamic values (string)
-TEST(opBuilderHelperString_ge, dynamicsStringOk)
+TEST(opBuilderHelperStringGE, Dynamics_string_ok)
 {
     Document doc{R"({
         "check":
@@ -175,7 +171,7 @@ TEST(opBuilderHelperString_ge, dynamicsStringOk)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperString_ge(*doc.get("/check"));
+    Lifter lift = opBuilderHelperStringGE(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
