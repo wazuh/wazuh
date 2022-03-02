@@ -526,6 +526,8 @@ TEST(domain_test, valid_content)
     std::string invalid_label_domain = "www." + invalid_label + ".com";
     result = parseOp(invalid_label_domain);
     ASSERT_TRUE(result.empty());
+}
+
 TEST(filepath_test, windows_path)
 {
     const char *logQl ="<_file/FilePath>";
