@@ -730,6 +730,8 @@ def runReadyToReview(moduleName, clean=False):
     runAStyleCheck(str(moduleName))
     if str(moduleName) != 'shared_modules/utils':
         runASAN(moduleName)
+    if str(moduleName) == 'syscheckd':
+        runTestToolForWindows(moduleName)
 
     printGreen(f'<{moduleName}>[RTR: PASSED]<{moduleName}>')
     if clean:
@@ -760,7 +762,7 @@ def runTestToolForWindows(moduleName):
     for element in module:
         path = os.path.join(rootPath, element['test_tool_name'])
         args = ' '.join(element['args'])
-        testToolCommand = f'WINEPATH="/usr/i686-w64-mingw32/lib;{currentBuildDir.parent}" WINEARCH=win32 wine {path}.exe {args}'
+        testToolCommand = f'WINEPATH="/usr/i686-w64-mingw32/lib;{currentBuildDir.parent}" WINEARCH=win64 /usr/bin/wine {path}.exe {args}'
         runTestTool(str(moduleName), testToolCommand, element, True)
 
     printGreen(f'<{moduleName}>[ASAN for Windows: PASSED]<{moduleName}>')
