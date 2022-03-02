@@ -288,8 +288,8 @@ def test_compress_files_ok(mock_path_exists, mock_path_dirname, mock_mkdir_with_
 
     with patch('builtins.open', mock_open(read_data='test_content')) as open_mock:
         assert isinstance(cluster.compress_files('some_name', ['some/path', 'another/path'], {'ko_file': 'file'}), str)
-        assert open_mock.call_args_list == [call(ANY, 'ab'), call(os.path.join(common.wazuh_path, 'some/path'), 'rb'),
-                                            call(os.path.join(common.wazuh_path, 'another/path'), 'rb')]
+        assert open_mock.call_args_list == [call(ANY, 'ab'), call(os.path.join(common.WAZUH_PATH, 'some/path'), 'rb'),
+                                            call(os.path.join(common.WAZUH_PATH, 'another/path'), 'rb')]
         assert open_mock.return_value.write.call_args_list == [
             call(f'some/path{cluster.PATH_SEP}compressed_test_content{cluster.FILE_SEP}'.encode()),
             call(f'another/path{cluster.PATH_SEP}compressed_test_content{cluster.FILE_SEP}'.encode()),
@@ -309,7 +309,7 @@ def test_compress_files_ko(mock_path_exists, mock_path_dirname, mock_mkdir_with_
         with patch.object(wazuh.core.cluster.cluster.logger, 'warning') as warning_logger:
                 cluster.compress_files('some_name', ['some/path'], {'missing': {}, 'shared': {}})
                 warning_logger.assert_called_with(f'File too large to be synced: '
-                                                  f'{os.path.join(common.wazuh_path, "some/path")}')
+                                                  f'{os.path.join(common.WAZUH_PATH, "some/path")}')
 
         mock_get_cluster_items.return_value = {'intervals': {'communication': {'max_zip_size': 15, 'compress_level': 0}}
                                                }

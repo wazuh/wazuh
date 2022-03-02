@@ -286,9 +286,8 @@ def compress_files(name, list_path, cluster_control_json):
     zip_size = 0
     exceeded_size = False
     max_zip_size = get_cluster_items()['intervals']['communication']['max_zip_size']
-
     compress_level = get_cluster_items()['intervals']['communication']['compress_level']
-    zip_file_path = path.join(common.wazuh_path, 'queue', 'cluster', name,
+    zip_file_path = path.join(common.WAZUH_PATH, 'queue', 'cluster', name,
                               f'{name}-{datetime.utcnow().timestamp()}-{uuid4().hex}.zip')
 
     if not path.exists(path.dirname(zip_file_path)):
@@ -301,10 +300,10 @@ def compress_files(name, list_path, cluster_control_json):
                 continue
 
             try:
-                with open(path.join(common.wazuh_path, file), 'rb') as rf:
+                with open(path.join(common.WAZUH_PATH, file), 'rb') as rf:
                     new_file = rf.read()
                     if len(new_file) > max_zip_size:
-                        logger.warning(f'File too large to be synced: {path.join(common.wazuh_path, file)}')
+                        logger.warning(f'File too large to be synced: {path.join(common.WAZUH_PATH, file)}')
                         update_cluster_control(file, cluster_control_json)
                         continue
                     # Compress the content of each file and surrounds it with separators.
