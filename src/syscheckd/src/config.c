@@ -467,11 +467,6 @@ cJSON *getSyscheckConfig(void) {
 
     cJSON * synchronization = cJSON_CreateObject();
     cJSON_AddStringToObject(synchronization, "enabled", syscheck.enable_synchronization ? "yes" : "no");
-#ifdef WIN32
-    cJSON_AddStringToObject(synchronization, "registry_enabled",
-                            syscheck.enable_registry_synchronization ? "yes" : "no");
-#endif
-    cJSON_AddNumberToObject(synchronization, "max_interval", syscheck.max_sync_interval);
     cJSON_AddNumberToObject(synchronization, "interval", syscheck.sync_interval);
     cJSON_AddNumberToObject(synchronization, "max_eps", syscheck.sync_max_eps);
     cJSON_AddItemToObject(syscfg, "synchronization", synchronization);

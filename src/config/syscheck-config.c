@@ -114,7 +114,6 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
 #endif
     syscheck->prefilter_cmd                   = NULL;
     syscheck->sync_interval                   = 300;
-    syscheck->max_sync_interval               = 3600;
     syscheck->sync_max_eps                    = 10;
     syscheck->max_eps                         = 100;
     syscheck->max_files_per_second            = 0;
@@ -1197,30 +1196,11 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
                 syscheck->sync_interval = t;
             }
         } else if (strcmp(node[i]->element, xml_max_sync_interval) == 0) {
-            long t = w_parse_time(node[i]->content);
-
-            if (t <= 0) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            } else {
-                syscheck->max_sync_interval = t;
-            }
+            mdebug1("'%s' has been deprecated. This setting is skipped.", xml_max_sync_interval);
         } else if (strcmp(node[i]->element, xml_response_timeout) == 0) {
-            long t = w_parse_time(node[i]->content);
-
-            if (t == -1) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            } else {
-                mwarn("This configuration variable has been deprecated. It will have no effect.");
-            }
+            mdebug1("'%s' has been deprecated. This setting is skipped.", xml_response_timeout);
         } else if (strcmp(node[i]->element, xml_sync_queue_size) == 0) {
-            char * end;
-            long value = strtol(node[i]->content, &end, 10);
-
-            if (value < 2 || value > 1000000 || *end) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            } else {
-                mwarn("This configuration variable has been deprecated. It will have no effect.");
-            }
+            mdebug1("'%s' has been deprecated. This setting is skipped.", xml_sync_queue_size);
         } else if (strcmp(node[i]->element, xml_max_eps) == 0) {
             char * end;
             long value = strtol(node[i]->content, &end, 10);
@@ -1231,15 +1211,7 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
                 syscheck->sync_max_eps = value;
             }
         } else if (strcmp(node[i]->element, xml_registry_enabled) == 0) {
-#ifdef WIN32
-            int r = w_parse_bool(node[i]->content);
-
-            if (r < 0) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            } else {
-                syscheck->enable_registry_synchronization = r;
-            }
-#endif
+            mdebug1("'%s' has been deprecated. This setting is skipped.", xml_registry_enabled);
         } else {
             mwarn(XML_INVELEM, node[i]->element);
         }
