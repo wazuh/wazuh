@@ -11,21 +11,20 @@ from wazuh.core.wdb import WazuhDBConnection
 
 class WazuhDBQuerySyscheck(WazuhDBQuery):
     nested_fields = ['value']
+    date_fields = {'start', 'end', 'mtime', 'date'}
 
     def __init__(self, agent_id, nested=False, default_sort_field='mtime', min_select_fields=None, *args,
                  **kwargs):
         if min_select_fields is None:
             min_select_fields = set()
         super().__init__(backend=WazuhDBBackend(agent_id), default_sort_field=default_sort_field,
-                         min_select_fields=min_select_fields, count=True, get_data=True, date_fields={'mtime', 'date'},
+                         min_select_fields=min_select_fields, count=True, get_data=True, date_fields=self.date_fields,
                          *args, **kwargs)
         self.nested = nested
 
     def _format_data_into_dictionary(self):
         def format_fields(field_name, value):
-            if field_name == 'mtime' or field_name == 'date':
-                return get_date_from_timestamp(value)
-            elif field_name == 'end' or field_name == 'start':
+            if field_name in self.date_fields:
                 return None if not value else get_date_from_timestamp(value)
             elif field_name == 'perm':
                 try:
