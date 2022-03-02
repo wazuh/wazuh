@@ -181,7 +181,7 @@ nlohmann::json DB::createJsonEvent(const nlohmann::json& fileJson, const nlohman
             if (old_data.contains("perm"))
             {
                 jsonEvent["data"]["old_attributes"]["perm"] = old_data["perm"];
-                changed_attributes.push_back("perm");
+                changed_attributes.push_back("permission");
             }
             else
             {
@@ -272,7 +272,7 @@ nlohmann::json DB::createJsonEvent(const nlohmann::json& fileJson, const nlohman
             if (old_data.contains("hash_md5"))
             {
                 jsonEvent["data"]["old_attributes"]["hash_md5"] = old_data["hash_md5"];
-                changed_attributes.push_back("hash_md5");
+                changed_attributes.push_back("md5");
             }
             else
             {
@@ -285,7 +285,7 @@ nlohmann::json DB::createJsonEvent(const nlohmann::json& fileJson, const nlohman
             if (old_data.contains("hash_sha1"))
             {
                 jsonEvent["data"]["old_attributes"]["hash_sha1"] = old_data["hash_sha1"];
-                changed_attributes.push_back("hash_sha1");
+                changed_attributes.push_back("sha1");
             }
             else
             {
@@ -298,7 +298,7 @@ nlohmann::json DB::createJsonEvent(const nlohmann::json& fileJson, const nlohman
             if (old_data.contains("hash_sha256"))
             {
                 jsonEvent["data"]["old_attributes"]["hash_sha256"] = old_data["hash_sha256"];
-                changed_attributes.push_back("hash_sha256");
+                changed_attributes.push_back("sha256");
             }
             else
             {
@@ -324,7 +324,6 @@ nlohmann::json DB::createJsonEvent(const nlohmann::json& fileJson, const nlohman
             if (old_data.contains("checksum"))
             {
                 jsonEvent["data"]["old_attributes"]["checksum"] = old_data["checksum"];
-                changed_attributes.push_back("checksum");
             }
             else
             {

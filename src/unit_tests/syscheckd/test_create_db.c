@@ -50,6 +50,8 @@ void create_windows_who_data_events(void * data, void * ctx);
 void fim_db_remove_entry(void * data, void * ctx);
 void process_delete_event(void * data, void * ctx);
 void fim_db_process_missing_entry(void * data, void * ctx);
+void dbsync_attributes_json(const cJSON *dbsync_event, const directory_t *configuration, cJSON *attributes);
+
 /* auxiliary structs */
 typedef struct __fim_data_s {
     event_data_t *evt_data;
@@ -69,6 +71,11 @@ typedef struct _txn_data_s {
     char *diff;
     cJSON *dbsync_event;
 } txn_data_t;
+
+typedef struct _json_struct_s {
+    cJSON *json1;
+    cJSON *json2;
+} json_struct_t;
 
 const struct stat DEFAULT_STATBUF = { .st_mode = S_IFREG | 00444,
                                       .st_size = 1000,
@@ -585,6 +592,28 @@ static int teardown_transaction_callback(void **state) {
     free(txn_data);
     return 0;
 }
+
+static int setup_json_event_attributes(void **state) {
+    json_struct_t *data = calloc(1, sizeof(json_struct_t));
+    if (data == NULL) {
+        return 1;
+    }
+
+    *state = data;
+    return 0;
+}
+
+static int teardown_json_event_attributes(void **state) {
+    json_struct_t *data = *state;
+
+    cJSON_Delete(data->json1);
+    cJSON_Delete(data->json2);
+
+    free(data);
+
+    return 0;
+}
+
 /* Auxiliar functions */
 void expect_get_data (char *user, char *group, char *file_path, int calculate_checksums) {
 #ifndef TEST_WINAGENT
@@ -3961,6 +3990,7 @@ void test_fim_calculate_dbsync_difference_no_attributes(void **state){
     assert_null(output);
 }
 
+/* fim_calculate_dbsync_difference */
 void test_fim_calculate_dbsync_difference(void **state){
 
     #ifndef TEST_WINAGENT
@@ -4151,14 +4181,37 @@ void test_free_entry(void **state){
     free_entry(fentry);
 }
 
-
 void test_free_entry_registry(void **state){
     fim_entry* fentry = (fim_entry*) malloc(sizeof(fim_entry));
     fentry->type = FIM_TYPE_REGISTRY;
     fentry->registry_entry.key = NULL;
     fentry->registry_entry.value = NULL;
     free_entry(fentry);
+}
 
+static void test_dbsync_attributes_json(void **state) {
+    directory_t configuration = { .options = -1, .tag = "tag_name" };
+    json_struct_t *data = *state;
+#ifndef TEST_WINAGENT
+    const char *result_str = "{\"type\":\"file\",\"size\":11,\"perm\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"user_name\":\"root\",\"group_name\":\"root\",\"inode\":271017,\"mtime\":1646124392,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"c0edc82c463da5f4ab8dd420a778a9688a923a72\"}";
+    cJSON *dbsync_event = cJSON_Parse("{\"attributes\":\"\",\"checksum\":\"c0edc82c463da5f4ab8dd420a778a9688a923a72\",\"dev\":64768,\"gid\":0,\"group_name\":\"root\",\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"inode\":271017,\"last_event\":1646124394,\"mode\":0,\"mtime\":1646124392,\"options\":131583,\"path\":\"/etc/testfile\",\"perm\":\"rw-r--r--\",\"scanned\":1,\"size\":11,\"uid\":0,\"user_name\":\"root\"}");
+#else
+    cJSON *perms = cJSON_Parse("{\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]},\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]},\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]}}");
+    cJSON *dbsync_event = cJSON_Parse("{\"attributes\":\"ARCHIVE\",\"checksum\":\"ac962fef86e12e656b882fc88170fff24bf10a77\",\"dev\":2,\"gid\":0,\"group_name\":\"\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"inode\":0,\"last_event\":1646145214,\"mode\":0,\"mtime\":1646145212,\"options\":135679,\"path\":\"c:\\test\\testfile\",\"scanned\":1,\"size\":0,\"uid\":0,\"user_name\":\"Administrators\"}");
+    cJSON_AddItemToObject(dbsync_event, "perm", perms);
+
+    char *result_str = "{\"type\":\"file\",\"size\":0,\"perm\":{\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]},\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]},\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]}},\"uid\":\"0\",\"gid\":\"0\",\"user_name\":\"Administrators\",\"group_name\":\"\",\"inode\":0,\"mtime\":1646145212,\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"attributes\":\"ARCHIVE\",\"checksum\":\"ac962fef86e12e656b882fc88170fff24bf10a77\"}";
+#endif
+    cJSON *attributes = cJSON_CreateObject();
+
+    data->json1 = dbsync_event;
+    data->json2 = attributes;
+
+    dbsync_attributes_json(dbsync_event, &configuration, attributes);
+    char * json_attributes_str = cJSON_PrintUnformatted(attributes);
+
+    assert_string_equal(json_attributes_str, result_str);
+    free(json_attributes_str);
 }
 
 int main(void) {
@@ -4333,6 +4386,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_process_missing_entry, setup_fim_entry, teardown_fim_entry),
         cmocka_unit_test(test_free_entry),
         cmocka_unit_test(test_free_entry_registry),
+    
+        /* dbsync_attributes_json */
+        cmocka_unit_test_setup_teardown(test_dbsync_attributes_json, setup_json_event_attributes, teardown_json_event_attributes),
     };
 
     const struct CMUnitTest root_monitor_tests[] = {
