@@ -43,6 +43,24 @@ typedef enum FILE_SEARCH_TYPE
 
 using SearchData = std::tuple<FILE_SEARCH_TYPE, std::string, std::string, std::string>;
 
+class no_entry_found : public std::exception
+{
+    public:
+        __attribute__((__returns_nonnull__))
+        const char* what() const noexcept override
+        {
+            return m_error.what();
+        }
+
+        explicit no_entry_found(const std::string& whatArg)
+            : m_error{ whatArg }
+        {}
+
+    private:
+        /// an exception object as storage for error messages
+        std::runtime_error m_error;
+};
+
 class EXPORTED DB final
 {
     public:
