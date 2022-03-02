@@ -36,6 +36,9 @@ if(FSANITIZE)
   set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address,leak,undefined")
 else()
  set(CMAKE_CXX_FLAGS_DEBUG "-g")
+ if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+  set(CMAKE_C_FLAGS_DEBUG "-g --coverage")
+ endif(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
    set(CMAKE_CXX_FLAGS_RELEASE "-O3")
  else()
@@ -62,9 +65,9 @@ endif(APPLE)
 add_subdirectory("src/db")
 
 file(GLOB SYSCHECKD_SRC
-      "${CMAKE_SOURCE_DIR}/src/*.c"
-      "${CMAKE_SOURCE_DIR}/src/registry/*.c"
-      "${CMAKE_SOURCE_DIR}/src/whodata/*.c")
+     "${CMAKE_SOURCE_DIR}/src/*.c"
+     "${CMAKE_SOURCE_DIR}/src/registry/*.c"
+     "${CMAKE_SOURCE_DIR}/src/whodata/*.c")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     add_library(wazuh-syscheckd STATIC ${SYSCHECKD_SRC})
