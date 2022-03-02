@@ -1211,7 +1211,15 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
                 syscheck->sync_max_eps = value;
             }
         } else if (strcmp(node[i]->element, xml_registry_enabled) == 0) {
-            mdebug1("'%s' has been deprecated. This setting is skipped.", xml_registry_enabled);
+#ifdef WIN32
+            int r = w_parse_bool(node[i]->content);
+
+            if (r < 0) {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            } else {
+                syscheck->enable_registry_synchronization = r;
+            }
+#endif
         } else {
             mwarn(XML_INVELEM, node[i]->element);
         }
