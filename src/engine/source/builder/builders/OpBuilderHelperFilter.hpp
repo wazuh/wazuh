@@ -263,6 +263,9 @@ types::Lifter opBuilderHelperRegexMatch(const types::DocumentValue & def);
  */
 types::Lifter opBuilderHelperRegexNotMatch(const types::DocumentValue & def);
 
+// TODO: add description
+types::Lifter opBuilderHelperIPCIDR(const types::DocumentValue & def);
+
 } // namespace builder::internals::builders
 
 #endif // _OP_BUILDER_HELPER_FILTER_H
