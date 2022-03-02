@@ -31,7 +31,8 @@ TEST(opBuilderHelperIntLessThanEqual, Builds_error_bad_parameter)
         "check":
             {"field_test": "+i_lt/test"}
     })"};
-    ASSERT_THROW(opBuilderHelperIntLessThanEqual(*doc.get("/check")), std::invalid_argument);
+    ASSERT_THROW(opBuilderHelperIntLessThanEqual(*doc.get("/check")),
+                 std::invalid_argument);
 }
 
 TEST(opBuilderHelperIntLessThanEqual, Builds_error_more_parameters)
@@ -72,10 +73,9 @@ TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_ok)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_LE(expected[0].get("/field_test")->GetInt(),10);
-    ASSERT_LE(expected[1].get("/field_test")->GetInt(),10);
-    ASSERT_LE(expected[2].get("/field_test")->GetInt(),10);
-
+    ASSERT_LE(expected[0].get("/field_test")->GetInt(), 10);
+    ASSERT_LE(expected[1].get("/field_test")->GetInt(), 10);
+    ASSERT_LE(expected[2].get("/field_test")->GetInt(), 10);
 }
 
 TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_true)
@@ -110,7 +110,6 @@ TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_true)
     ASSERT_LE(expected[0].get("/field_test")->GetInt(), 10);
     ASSERT_LE(expected[1].get("/field_test")->GetInt(), 10);
     ASSERT_LE(expected[2].get("/field_test")->GetInt(), 10);
-
 }
 
 TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_false)
@@ -142,7 +141,6 @@ TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_false)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 0);
-
 }
 
 TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_ref_true)
@@ -186,9 +184,7 @@ TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_ref_true)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
 
-    auto str2Int = [](std::string s) {
-        return std::stoi(s);
-    };
+    auto str2Int = [](std::string s) { return std::stoi(s); };
 
     ASSERT_EQ(expected.size(), 3);
     ASSERT_LE(expected[0].get("/field_test")->GetInt(),
@@ -197,7 +193,6 @@ TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_ref_true)
               expected[1].get("/field_src")->GetInt());
     ASSERT_LE(expected[2].get("/field_test")->GetInt(),
               expected[2].get("/field_src")->GetInt());
-
 }
 
 TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_ref_false)
@@ -241,10 +236,129 @@ TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_ref_false)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
 
-    auto str2Int = [](std::string s) {
-        return std::stoi(s);
-    };
+    auto str2Int = [](std::string s) { return std::stoi(s); };
 
     ASSERT_EQ(expected.size(), 0);
+}
 
+TEST(opBuilderHelperIntLessThanEqual, Exec_dynamics_int_ok)
+{
+    Document doc{R"({
+        "check":
+            {"field2check": "+i_eq/$ref_key"}
+    })"};
+
+    Observable input = observable<>::create<Event>(
+        [=](auto s)
+        {
+            // Greater
+            s.on_next(Event{R"(
+                {
+                    "field2check":11,
+                    "ref_key":10
+                }
+            )"});
+            // Equal
+            s.on_next(Event{R"(
+                {
+                    "field2check":10,
+                    "ref_key":10
+                }
+            )"});
+            // Less
+            s.on_next(Event{R"(
+                {
+                    "field2check":10,
+                    "ref_key":11
+                }
+            )"});
+            s.on_completed();
+        });
+
+    Lifter lift = opBuilderHelperIntLessThanEqual(*doc.get("/check"));
+    Observable output = lift(input);
+    vector<Event> expected;
+    output.subscribe([&](Event e) { expected.push_back(e); });
+
+    ASSERT_EQ(expected.size(), 2);
+    ASSERT_LE(expected[0].get("/field2check")->GetInt(),
+              expected[0].get("/ref_key")->GetInt());
+    ASSERT_LE(expected[1].get("/field2check")->GetInt(),
+              expected[1].get("/ref_key")->GetInt());
+}
+
+TEST(opBuilderHelperIntLessThanEqual, Exec_multilevel_dynamics_int_ok)
+{
+    Document doc{R"({
+        "check":
+            {"parentObjt_1.field2check": "+i_eq/$parentObjt_2.ref_key"}
+    })"};
+
+    Observable input = observable<>::create<Event>(
+        [=](auto s)
+        {
+            s.on_next(Event{R"(
+                {
+                    "parentObjt_2": {
+                        "field2check": 10,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "field2check": 9,
+                        "ref_key": 9
+                    }
+                }
+            )"});
+
+            s.on_next(Event{R"(
+                {
+                    "parentObjt_2": {
+                        "field2check": 9,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "field2check": 10,
+                        "ref_key": 9
+                    }
+                }
+            )"});
+
+            s.on_next(Event{R"(
+                {
+                    "parentObjt_2": {
+                        "field2check":10,
+                        "ref_key":10
+                    },
+                    "parentObjt_1": {
+                        "otherfield":12,
+                        "ref_key":9
+                    }
+                }
+            )"});
+
+            s.on_next(Event{R"(
+                {
+                    "parentObjt_2": {
+                        "field2check":10,
+                        "otherfield":10
+                    },
+                    "parentObjt_1": {
+                        "field2check":12,
+                        "ref_key":9
+                    }
+                }
+            )"});
+            s.on_completed();
+        });
+
+    Lifter lift = opBuilderHelperIntLessThanEqual(*doc.get("/check"));
+    Observable output = lift(input);
+    vector<Event> expected;
+    output.subscribe([&](Event e) { expected.push_back(e); });
+
+    ASSERT_EQ(expected.size(), 2);
+    ASSERT_LE(expected[0].get("/parentObjt_1/field2check")->GetInt(),
+              expected[0].get("/parentObjt_2/ref_key")->GetInt());
+    ASSERT_LE(expected[1].get("/parentObjt_1/field2check")->GetInt(),
+              expected[1].get("/parentObjt_2/ref_key")->GetInt());
 }

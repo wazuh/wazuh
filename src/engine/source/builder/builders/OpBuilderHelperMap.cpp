@@ -319,67 +319,81 @@ types::Event opBuilderHelperIntTransformation(const std::string field, std::stri
                                               std::optional<std::string> refValue,
                                               std::optional<int> value)
 {
-    auto fieldToCheck = e.getObject().FindMember(field.c_str());
-    if (fieldToCheck->value.IsInt())
+    // TODO Remove try catch or if nullptr after fix get method of document class
+    // Get value to compare
+    const rapidjson::Value * fieldValue{};
+    try
     {
-        if (refValue.has_value())
-        {
-            // Get reference to json event
-            // TODO Remove try catch or if nullptr after fix get method of document class
-            const rapidjson::Value * refValueToCheck{};
-            try
-            {
-                refValueToCheck = e.get("/" + refValue.value());
-            }
-            catch (std::exception & ex)
-            {
-                // TODO Check exception type
-                return e;
-            }
+        fieldValue = e.get("/" + field);
+    }
+    catch (std::exception & ex)
+    {
+        // TODO Check exception type
+        return e;
+    }
 
-            if (refValueToCheck == nullptr || !refValueToCheck->IsInt())
-            {
-                return e;
-            }
-            value = refValueToCheck->GetInt();
-        }
+    if (fieldValue == nullptr || !fieldValue->IsInt())
+    {
+        return e;
+    }
 
-        // Operation
-        if (op == "sum")
-        {
-            value = fieldToCheck->value.GetInt() + value.value();
-        }
-        else if (op == "sub")
-        {
-            value = fieldToCheck->value.GetInt() - value.value();
-        }
-        else if (op == "mul")
-        {
-            value = fieldToCheck->value.GetInt() * value.value();
-        }
-        else if (op == "div")
-        {
-            if (value.value() == 0)
-            {
-                return e;
-            }
-            value = fieldToCheck->value.GetInt() / value.value();
-        }
-        else
-        {
-            return e;
-        }
-
-        // Create and add string to event
+    if (refValue.has_value())
+    {
+        // Get reference to json event
+        // TODO Remove try catch or if nullptr after fix get method of document class
+        const rapidjson::Value * refValueToCheck{};
         try
         {
-            e.set("/" + field, rapidjson::Value(value.value()));
+            refValueToCheck = e.get("/" + refValue.value());
         }
         catch (std::exception & ex)
         {
             // TODO Check exception type
             return e;
         }
+
+        if (refValueToCheck == nullptr || !refValueToCheck->IsInt())
+        {
+            return e;
+        }
+        value = refValueToCheck->GetInt();
+    }
+
+    // Operation
+    if (op == "sum")
+    {
+        value = fieldValue->GetInt() + value.value();
+    }
+    else if (op == "sub")
+    {
+        value = fieldValue->GetInt() - value.value();
+    }
+    else if (op == "mul")
+    {
+        value = fieldValue->GetInt() * value.value();
+    }
+    else if (op == "div")
+    {
+        if (value.value() == 0)
+        {
+            return e;
+        }
+        value = fieldValue->GetInt() / value.value();
+    }
+    else
+    {
+        return e;
+    }
+
+    // Create and add string to event
+    try
+    {
+        e.set("/" + field, rapidjson::Value(value.value()));
+    }
+    catch (std::exception & ex)
+    {
+        // TODO Check exception type
+        return e;
     }
     return e;
 }
