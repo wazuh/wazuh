@@ -9,11 +9,11 @@ int main(int argc, char * argv[])
     std::vector<std::string> logql_expressions = {};
     std::vector<std::string> events = {};
     if (argc < 2) {
-        std::cout << "Usage:" << std::endl;
-        std::cout << " "<< argv[0] << " \"FILENAME\"" << std::endl;
-        std::cout << " "<< argv[0] << " \"LOGQL_EXPRESSION\" \"EVENT\"" << std::endl;
+        printf("Usage:\n");
+        printf(" %s  \"FILENAME\"\n", argv[0]);
+        printf(" %s  \"LOGQL_EXPRESSION\" \"EVENT\"", argv[0]);
     }
-    else if (argc < 3) {
+    else if (argc == 2) {
         try {
             YAML::Node inputs = YAML::LoadFile(argv[1]);
             for(auto input : inputs){
@@ -22,13 +22,16 @@ int main(int argc, char * argv[])
             }
         }
         catch (const std::exception & e) {
-            std::cout << "Error reading file " << argv[1] << ".Error: " << e.what() << std::endl;
+            printf("Error reading file %s. Error: %s\n", argv[1], e.what());
             return 0;
         }
     }
-    else if (argc >= 3) {
+    else if (argc == 3) {
         logql_expressions.emplace_back(argv[1]);
         events.emplace_back(argv[2]);
+    }
+    else {
+        printf("Error, too many arguments\n");
     }
 
     auto exp_it = logql_expressions.begin();
@@ -37,17 +40,19 @@ int main(int argc, char * argv[])
         auto parseOp = getParserOp(exp_it->c_str());
         auto result = parseOp(event_it->c_str());
 
-        std::cout << "----------" << std::endl;
-        std::cout << "LOGQL_EXPRESSION:" << std::endl;
-        std::cout << *exp_it << std::endl;
-        std::cout << "EVENT:" << std::endl;
-        std::cout << *event_it << std::endl;
-        std::cout << "RESULT:" << std::endl;
-        for(auto it = result.cbegin(); it != result.cend(); ++it)
+        printf("----------\n");
+        printf("LOGQL_EXPRESSION:\n");
+        printf("%s\n", exp_it->c_str());
+        printf("EVENT:\n");
+        printf("%s\n", event_it->c_str());
+        printf("RESULT:\n");
+        printf("%30s | %s\n", "Key", "Val");
+        printf("-------------------------------|------------\n");
+        for (auto const &r : result)
         {
-            std::cout << it->first << " " << it->second << std::endl;
+            printf("%30s | %s\n", r.first.c_str(), r.second.c_str());
         }
-        std::cout << "----------" << std::endl << std::endl;
+        printf("\n\n");
         exp_it++;
         event_it++;
     }
