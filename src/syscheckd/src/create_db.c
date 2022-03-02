@@ -193,6 +193,7 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
 
     return old_attributes;
 }
+// LCOV_EXCL_STOP
 
 /**
  * @brief Function to calculate the `attributes` field using the information returned by dbsync.
@@ -220,6 +221,7 @@ static void dbsync_attributes_json(const cJSON *dbsync_event, const directory_t 
 #ifndef WIN32
             cJSON_AddStringToObject(attributes, "perm", cJSON_GetStringValue(aux));
 #else
+
             cJSON_AddItemToObject(attributes, "perm", cJSON_Duplicate(aux, 1));
 #endif
         }
@@ -231,6 +233,7 @@ static void dbsync_attributes_json(const cJSON *dbsync_event, const directory_t 
             os_malloc(OS_SIZE_64, buffer);
             snprintf(buffer, OS_SIZE_64, "%d", aux->valueint);
             cJSON_AddStringToObject(attributes, "uid", buffer);
+            os_free(buffer);
         }
     }
 
@@ -241,6 +244,7 @@ static void dbsync_attributes_json(const cJSON *dbsync_event, const directory_t 
             snprintf(buffer, OS_SIZE_64, "%d", aux->valueint);
 
             cJSON_AddStringToObject(attributes, "gid", buffer);
+            os_free(buffer)
         }
     }
 
@@ -297,8 +301,6 @@ static void dbsync_attributes_json(const cJSON *dbsync_event, const directory_t 
     }
 }
 
-// LCOV_EXCL_STOP
-
 static void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data) {
     char *path = NULL;
     char *diff = NULL;
@@ -307,6 +309,7 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
     cJSON* old_attributes = NULL;
     cJSON* changed_attributes = NULL;
     cJSON* old_data = NULL;
+    cJSON *attributes = NULL;
     const cJSON *dbsync_event = NULL;
     cJSON* timestamp = NULL;
     directory_t *configuration = NULL;
@@ -398,7 +401,7 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
 
     if (resultType == DELETED || txn_context->latest_entry == NULL) {
         // We need to add the `type` field to the attributes JSON. This avoid modifying the dbsync event.
-        cJSON *attributes = cJSON_CreateObject();
+        attributes = cJSON_CreateObject();
         dbsync_attributes_json(dbsync_event, configuration, attributes);
         cJSON_AddItemToObject(data, "attributes", attributes);
     } else {
