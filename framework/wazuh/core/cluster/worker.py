@@ -405,11 +405,16 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                                            get_payload={"condition": "sync_status", "get_global_hash": True})
 
         local_agent_groups = await sync_object.retrieve_information()
-        if not json.loads(local_agent_groups[0])[0]['data']:
-            # There is no syncreq agent-groups so, the checksums should match
-            local_checksum = json.loads(local_agent_groups[0])[0]['hash']
+        local_agent_groups = json.loads(local_agent_groups[0])
+        if not local_agent_groups[0]['data']:
             logger.debug2('There is no data requiring synchronization in the local database.')
-            ck_equal = master_checksum == json.loads(local_agent_groups[0])[0]['hash']
+            try:
+                # There is no syncreq agent-groups so, the checksums should match
+                local_checksum = local_agent_groups[-1]['hash']
+                ck_equal = master_checksum == local_checksum
+            except KeyError:
+                local_checksum = 'UNABLE TO COLLECT FROM DB'
+                ck_equal = False
             # If there are no records with syncreq and the checksums are different, it means that the worker database
             # is in an incorrect state. Therefore, all the information will be requested directly to the master node.
             if not ck_equal:
@@ -434,7 +439,11 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         logger : Logger object
             Logger to use.
         """
-        master_checksum = json.loads(data['chunks'][0])[0]['hash']
+        try:
+            master_checksum = json.loads(data['chunks'][-1])[0]['hash']
+        except KeyError:
+            return
+
         same_checksum = await self.compare_agent_groups_checksums(master_checksum=master_checksum, logger=logger)
         if same_checksum:
             msg = 'The checksum of both databases match.'
