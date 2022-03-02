@@ -21,8 +21,6 @@
 namespace builder::internals::builders
 {
 
-
-
 //*************************************************
 //*           String tranform                     *
 //*************************************************
@@ -37,7 +35,7 @@ types::Lifter opBuilderHelperStringUP(const types::DocumentValue & def);
 
 /**
  * @brief Transforms a string to lowercase and append or remplace it in the event `e`
- * 
+ *
  * @param def The transformation definition. i.e : `<field>: +s_lo/<str>|$<ref>`
  * @return types::Lifter The lifter with the `lowercase` transformation.
  */
@@ -45,13 +43,11 @@ types::Lifter opBuilderHelperStringLO(const types::DocumentValue & def);
 
 /**
  * @brief Transforms a string, trim it and append or remplace it in the event `e`
- * 
+ *
  * @param def The transformation definition. i.e : `<field>: +s_trim/[begin | end | both]/char`
  * @return types::Lifter The lifter with the `trim` transformation.
  */
 types::Lifter opBuilderHelperStringTrim(const types::DocumentValue & def);
-
-
 
 } // namespace builder::internals::builders
 

@@ -26,7 +26,7 @@ TEST(opBuilderHelperStringTrim, Builds)
 }
 
 // Build incorrect number of arguments
-TEST(opBuilderHelperStringTrim, BuildsIncorrectNumberOfArguments)
+TEST(opBuilderHelperStringTrim, Builds_incorrect_number_of_arguments)
 {
     Document doc{R"({
         "normalize":
@@ -36,7 +36,7 @@ TEST(opBuilderHelperStringTrim, BuildsIncorrectNumberOfArguments)
 }
 
 // Test ok: both trim
-TEST(opBuilderHelperStringTrim, bothOk)
+TEST(opBuilderHelperStringTrim, BothOk)
 {
     Document doc{R"({
         "normalize":
@@ -58,7 +58,6 @@ TEST(opBuilderHelperStringTrim, bothOk)
             s.on_next(Event{R"(
                 {"fieldToTranf": "hi"}
             )"});
-
             s.on_completed();
         });
 
@@ -72,7 +71,7 @@ TEST(opBuilderHelperStringTrim, bothOk)
     ASSERT_STREQ(expected[2].get("/fieldToTranf")->GetString(), "hi");
 }
 
-TEST(opBuilderHelperStringTrim, startOk)
+TEST(opBuilderHelperStringTrim, Start_ok)
 {
     Document doc{R"({
         "normalize":
@@ -94,7 +93,6 @@ TEST(opBuilderHelperStringTrim, startOk)
             s.on_next(Event{R"(
                 {"fieldToTranf": "hi"}
             )"});
-
             s.on_completed();
         });
 
@@ -110,9 +108,8 @@ TEST(opBuilderHelperStringTrim, startOk)
 }
 
 // Test ok: dynamic values (string)
-TEST(opBuilderHelperStringTrim, endOk)
+TEST(opBuilderHelperStringTrim, End_ok)
 {
-
     Document doc{R"({
         "normalize":
             {"fieldToTranf": "+s_trim/end/-"}
@@ -133,7 +130,6 @@ TEST(opBuilderHelperStringTrim, endOk)
             s.on_next(Event{R"(
                 {"fieldToTranf": "hi"}
             )"});
-
             s.on_completed();
         });
 
@@ -148,7 +144,7 @@ TEST(opBuilderHelperStringTrim, endOk)
     ASSERT_STREQ(expected[3].get("/fieldToTranf")->GetString(), "hi");
 }
 
-TEST(opBuilderHelperStringTrim, multilevelSrc)
+TEST(opBuilderHelperStringTrim, Multilevel_src)
 {
     Document doc{R"({
         "normalize":
@@ -170,7 +166,6 @@ TEST(opBuilderHelperStringTrim, multilevelSrc)
             s.on_next(Event{R"(
                 {"fieldToTranf": {"a": {"b": "hi"}}}
             )"});
-
             s.on_completed();
         });
 
@@ -185,7 +180,7 @@ TEST(opBuilderHelperStringTrim, multilevelSrc)
     ASSERT_STREQ(expected[3].get("/fieldToTranf/a/b")->GetString(), "hi");
 }
 
-TEST(opBuilderHelperStringTrim, notExistSrc)
+TEST(opBuilderHelperStringTrim, Not_exist_src)
 {
     Document doc{R"({
         "normalize":
@@ -198,7 +193,6 @@ TEST(opBuilderHelperStringTrim, notExistSrc)
             s.on_next(Event{R"(
                 {"not_ext": "---hi---"}
             )"});
-
             s.on_completed();
         });
 
@@ -210,7 +204,7 @@ TEST(opBuilderHelperStringTrim, notExistSrc)
     ASSERT_FALSE(expected[0].exists("/fieldToTranf"));
 }
 
-TEST(opBuilderHelperStringTrim, srcNotString)
+TEST(opBuilderHelperStringTrim, Src_not_string)
 {
     Document doc{R"({
         "normalize":
@@ -223,7 +217,6 @@ TEST(opBuilderHelperStringTrim, srcNotString)
             s.on_next(Event{R"(
                 {"fieldToTranf": 15}
             )"});
-
             s.on_completed();
         });
 
@@ -234,4 +227,40 @@ TEST(opBuilderHelperStringTrim, srcNotString)
     ASSERT_EQ(expected.size(), 1);
     ASSERT_TRUE(expected[0].exists("/fieldToTranf"));
     ASSERT_EQ(expected[0].get("/fieldToTranf")->GetInt(), 15);
+}
+
+TEST(opBuilderHelperStringTrim, Multilevel)
+{
+    Document doc{R"({
+        "normalize":
+            {"fieldToTranf.a.b": "+s_trim/end/-"}
+    })"};
+
+    Observable input = observable<>::create<Event>(
+        [=](auto s)
+        {
+            s.on_next(Event{R"(
+                {"fieldToTranf": {"a": {"b": "---hi---"}}}
+            )"});
+            s.on_next(Event{R"(
+                {"fieldToTranf": {"a": {"b": "hi---"}}}
+            )"});
+            s.on_next(Event{R"(
+                {"fieldToTranf": {"a": {"b": "---hi"}}}
+            )"});
+            s.on_next(Event{R"(
+                {"fieldToTranf": {"a": {"b": "hi"}}}
+            )"});
+            s.on_completed();
+        });
+
+    Lifter lift = opBuilderHelperStringTrim(*doc.get("/normalize"));
+    Observable output = lift(input);
+    vector<Event> expected;
+    output.subscribe([&](Event e) { expected.push_back(e); });
+    ASSERT_EQ(expected.size(), 4);
+    ASSERT_STREQ(expected[0].get("/fieldToTranf/a/b")->GetString(), "---hi");
+    ASSERT_STREQ(expected[1].get("/fieldToTranf/a/b")->GetString(), "hi");
+    ASSERT_STREQ(expected[2].get("/fieldToTranf/a/b")->GetString(), "---hi");
+    ASSERT_STREQ(expected[3].get("/fieldToTranf/a/b")->GetString(), "hi");
 }
