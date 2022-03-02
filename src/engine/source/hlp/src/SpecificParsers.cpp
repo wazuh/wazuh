@@ -18,6 +18,8 @@
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"
 
+#include "tld.hpp"
+
 // TODO For all the rfc timestamps there are variations that we don't parse
 // still, this will need a rework on how this list work
 static const std::unordered_map<std::string, const char *>
@@ -38,14 +40,14 @@ static const std::unordered_map<std::string, const char *>
 
 bool parseFilePath(const char **it, char endToken) {
     const char *start = *it;
-    while (**it != endToken) { (*it)++; }
+    while (**it != endToken && **it != '\0') { (*it)++; }
     (void)start;
     return true;
 }
 
 std::string parseAny(const char **it, char endToken) {
     const char *start = *it;
-    while (**it != endToken) { (*it)++; }
+    while (**it != endToken && **it != '\0') { (*it)++; }
     return { start, *it };
 }
 
@@ -242,11 +244,7 @@ bool parseTimeStamp(const char **it,
                     TimeStampResult &tsr)
 {
     const char *start = *it;
-    while (**it != endToken)
-    {
-        (*it)++;
-    }
-
+    while (**it != endToken && **it != '\0') { (*it)++; }
     std::string tsStr { start, (size_t)((*it) - start) };
 
     if (!opts.empty())
@@ -281,7 +279,7 @@ bool parseTimeStamp(const char **it,
 bool parseURL(const char **it, char endToken, URLResult &result) {
     const char *start = *it;
     // TODO Check how to handle if the URL contains the endToken
-    while (**it != endToken) { (*it)++; }
+    while (**it != endToken && **it != '\0') { (*it)++; }
 
     auto urlCleanup = [](auto *url) { curl_url_cleanup(url); };
     std::unique_ptr<CURLU, decltype(urlCleanup)> url { curl_url(), urlCleanup };
@@ -373,6 +371,120 @@ bool parseURL(const char **it, char endToken, URLResult &result) {
     }
     result.fragment = str;
     curl_free(str);
+
+    return true;
+}
+
+static bool isAsciiNum(char c){ return (c <= '9' && c >= '0');}
+static bool isAsciiUpp(char c){ return (c <= 'Z' && c >= 'A');}
+static bool isAsciiLow(char c){ return (c <= 'z' && c >= 'a');}
+static bool isDomainValidChar(char c) {
+    return ( isAsciiNum(c) || isAsciiUpp(c) || isAsciiLow(c) || c == '-' || c == '_' || c == '.' );
+}
+
+bool parseDomain(const char **it, char endToken, std::vector<std::string> const& captureOpts, DomainResult &result) {
+    constexpr int DOMAIN_MAX_SIZE = 253;
+    constexpr int LABEL_MAX_SIZE = 63;
+    const bool validate_FQDN = (!captureOpts.empty() && captureOpts[0] == "FQDN");
+
+    const char *start = *it;
+    while (**it != endToken && **it != '\0') { (*it)++; }
+    std::string_view str { start, (size_t)((*it) - start) };
+
+    size_t protocol_end = str.find("://");
+    size_t domain_start = 0;
+    // Protocol
+    if (std::string::npos != protocol_end) {
+        result.protocol = str.substr(0, protocol_end);
+        domain_start = protocol_end + 3;
+    }
+    size_t domain_end = str.find("/", protocol_end + 3);
+    // Domain
+    result.domain = str.substr(domain_start, domain_end - domain_start);
+    // Domain length check
+    if (result.domain.empty() || result.domain.length() > DOMAIN_MAX_SIZE){
+        //TODO Log domain size error
+        return false;
+    }
+    // Domain valid characters check
+    for (char const &c: result.domain) {
+        if (!isDomainValidChar(c)) {
+            //TODO Log invalid char error
+            return false;
+        }
+    }
+    // Route
+    if (std::string::npos != domain_end) {
+        result.route = str.substr(domain_end+1);
+    }
+
+    // TODO We can avoid the string duplication by using string_view. This will require to change the logic to avoid deleting the used labels.
+    std::vector<std::string> labels;
+    size_t start_label = 0;
+    size_t end_label = 0;
+    while (end_label != std::string::npos) {
+        end_label = result.domain.find('.', start_label);
+        // TODO: Avoid String duplication here.
+        labels.emplace_back(result.domain.substr(start_label, end_label - start_label));
+        if (labels.back().empty() || labels.back().length() > LABEL_MAX_SIZE) {
+            //TODO Log label size error
+            return false;
+        }
+        start_label = end_label + 1;
+    }
+
+    // Guess the TLD
+    if (ccTLDlist.find(labels.back()) != ccTLDlist.end()) {
+        result.top_level_domain = labels.back();
+        labels.pop_back();
+    }
+    if (popularTLDlist.find(labels.back()) != popularTLDlist.end()) {
+        if (result.top_level_domain.empty()) {
+            result.top_level_domain = labels.back();
+        }
+        else {
+            result.top_level_domain = labels.back() + "." + result.top_level_domain;
+        }
+        labels.pop_back();
+    }
+
+    // Registered domain
+    if (result.top_level_domain.empty()) {
+        result.registered_domain = labels.back();
+    }
+    else {
+        result.registered_domain = labels.back() + "." + result.top_level_domain;
+    }
+    labels.pop_back();
+
+    // Subdomain
+    for (auto label : labels) {
+        if (result.subdomain.empty()) {
+            result.subdomain = label;
+        }
+        else {
+            result.subdomain = result.subdomain + "." + label;
+        }
+    }
+
+    // Address
+    result.address = result.domain;
+
+    // Validate if all fields are complete to identify a Fully Qualified Domain Name
+    if (validate_FQDN) {
+        if (result.top_level_domain.empty()) {
+            //TODO log error
+            return false;
+        }
+        if (result.registered_domain.empty()) {
+            //TODO log error. One for each missing field?
+            return false;
+        }
+        if (result.subdomain.empty()) {
+            //TODO log error. One for each missing field?
+            return false;
+        }
+    }
 
     return true;
 }
