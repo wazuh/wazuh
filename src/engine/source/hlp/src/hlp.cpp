@@ -122,6 +122,10 @@ static void executeParserList(std::string const &event, ParserList const &parser
                     result[parser.name + ".top_level_domain"] = std::move(domainResult.top_level_domain);
                     result[parser.name + ".address"] = std::move(domainResult.address);
                 }
+                else {
+                    error = true;
+                }
+                break;
             }
             case ParserType::FilePath: {
                 FilePathResult filePathResult;
