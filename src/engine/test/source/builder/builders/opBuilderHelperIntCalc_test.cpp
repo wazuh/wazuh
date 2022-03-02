@@ -568,3 +568,199 @@ TEST(opBuilderHelperIntCalc, Exec_div_ref_zero)
     ASSERT_EQ(expected[7].get("/field_test")->GetInt(),11);
 
 }
+
+TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_sum)
+{
+    Document doc{R"({
+        "check":
+            {"parentObjt_1.field2check": "+i_calc/sum/$parentObjt_2.ref_key"}
+    })"};
+
+    Observable input = observable<>::create<Event>(
+        [=](auto s)
+        {
+            // sorted
+            s.on_next(Event{R"(
+                {
+                    "parentObjt_1": {
+                        "field2check": 10,
+                        "ref_key": 10
+                    },
+                    "parentObjt_2": {
+                        "field2check": 11,
+                        "ref_key": 11
+                    }
+                }
+            )"});
+            // not sorted
+            s.on_next(Event{R"(
+                {
+                    "parentObjt_2": {
+                        "field2check": 11,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "field2check": 10,
+                        "ref_key": 11
+                    }
+                }
+            )"});
+            s.on_completed();
+        });
+
+    Lifter lift = opBuilderHelperIntCalc(*doc.get("/check"));
+    Observable output = lift(input);
+    vector<Event> expected;
+    output.subscribe([&](Event e) { expected.push_back(e); });
+
+    ASSERT_EQ(expected.size(), 2);
+    ASSERT_EQ(expected[0].get("/parentObjt_1/field2check")->GetInt(), 21);
+    ASSERT_EQ(expected[1].get("/parentObjt_1/field2check")->GetInt(), 20);
+}
+
+TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_sub)
+{
+    Document doc{R"({
+        "check":
+            {"parentObjt_1.field2check": "+i_calc/sub/$parentObjt_2.ref_key"}
+    })"};
+
+    Observable input = observable<>::create<Event>(
+        [=](auto s)
+        {
+            // sorted
+            s.on_next(Event{R"(
+                {
+                    "parentObjt_1": {
+                        "field2check": 10,
+                        "ref_key": 10
+                    },
+                    "parentObjt_2": {
+                        "field2check": 11,
+                        "ref_key": 11
+                    }
+                }
+            )"});
+            // not sorted
+            s.on_next(Event{R"(
+                {
+                    "parentObjt_2": {
+                        "field2check": 11,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "field2check": 10,
+                        "ref_key": 11
+                    }
+                }
+            )"});
+            s.on_completed();
+        });
+
+    Lifter lift = opBuilderHelperIntCalc(*doc.get("/check"));
+    Observable output = lift(input);
+    vector<Event> expected;
+    output.subscribe([&](Event e) { expected.push_back(e); });
+
+    ASSERT_EQ(expected.size(), 2);
+    ASSERT_EQ(expected[0].get("/parentObjt_1/field2check")->GetInt(), -1);
+    ASSERT_EQ(expected[1].get("/parentObjt_1/field2check")->GetInt(), 0);
+}
+
+TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_mul)
+{
+    Document doc{R"({
+        "check":
+            {"parentObjt_1.field2check": "+i_calc/mul/$parentObjt_2.ref_key"}
+    })"};
+
+    Observable input = observable<>::create<Event>(
+        [=](auto s)
+        {
+            // sorted
+            s.on_next(Event{R"(
+                {
+                    "parentObjt_1": {
+                        "field2check": 10,
+                        "ref_key": 10
+                    },
+                    "parentObjt_2": {
+                        "field2check": 11,
+                        "ref_key": 11
+                    }
+                }
+            )"});
+            // not sorted
+            s.on_next(Event{R"(
+                {
+                    "parentObjt_2": {
+                        "field2check": 11,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "field2check": 10,
+                        "ref_key": 11
+                    }
+                }
+            )"});
+            s.on_completed();
+        });
+
+    Lifter lift = opBuilderHelperIntCalc(*doc.get("/check"));
+    Observable output = lift(input);
+    vector<Event> expected;
+    output.subscribe([&](Event e) { expected.push_back(e); });
+
+    ASSERT_EQ(expected.size(), 2);
+    ASSERT_EQ(expected[0].get("/parentObjt_1/field2check")->GetInt(), 110);
+    ASSERT_EQ(expected[1].get("/parentObjt_1/field2check")->GetInt(), 100);
+}
+
+TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_div)
+{
+    Document doc{R"({
+        "check":
+            {"parentObjt_1.field2check": "+i_calc/div/$parentObjt_2.ref_key"}
+    })"};
+
+    Observable input = observable<>::create<Event>(
+        [=](auto s)
+        {
+            // sorted
+            s.on_next(Event{R"(
+                {
+                    "parentObjt_1": {
+                        "field2check": 10,
+                        "ref_key": 10
+                    },
+                    "parentObjt_2": {
+                        "field2check": 11,
+                        "ref_key": 11
+                    }
+                }
+            )"});
+            // not sorted
+            s.on_next(Event{R"(
+                {
+                    "parentObjt_2": {
+                        "field2check": 11,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "field2check": 10,
+                        "ref_key": 11
+                    }
+                }
+            )"});
+            s.on_completed();
+        });
+
+    Lifter lift = opBuilderHelperIntCalc(*doc.get("/check"));
+    Observable output = lift(input);
+    vector<Event> expected;
+    output.subscribe([&](Event e) { expected.push_back(e); });
+
+    ASSERT_EQ(expected.size(), 2);
+    ASSERT_EQ(expected[0].get("/parentObjt_1/field2check")->GetInt(), 0);
+    ASSERT_EQ(expected[1].get("/parentObjt_1/field2check")->GetInt(), 1);
+}
