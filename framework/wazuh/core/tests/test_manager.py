@@ -52,7 +52,7 @@ def get_logs():
     'restarting',
     'starting'
 ])
-@patch('wazuh.core.cluster.utils.exists')
+@patch('os.path.exists')
 @patch('wazuh.core.cluster.utils.glob')
 def test_get_status(manager_glob, manager_exists, test_manager, process_status):
     """Tests core.manager.status()

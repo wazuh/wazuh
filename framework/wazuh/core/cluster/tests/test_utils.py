@@ -126,7 +126,7 @@ def test_manager_restart():
             with pytest.raises(WazuhInternalError, match='.* 1901 .*'):
                 utils.manager_restart()
 
-            with patch('wazuh.core.cluster.utils.exists', return_value=True):
+            with patch('os.path.exists', return_value=True):
                 with pytest.raises(WazuhInternalError, match='.* 1902 .*'):
                     utils.manager_restart()
 
