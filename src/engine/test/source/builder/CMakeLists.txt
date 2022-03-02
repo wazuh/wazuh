@@ -156,11 +156,11 @@ add_executable(opBuilderHelperStringEq_test
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp)
 gtest_discover_tests(opBuilderHelperStringEq_test)
 
-add_executable(opBuilderHelperStringNeq_test
+add_executable(opBuilderHelperStringNe_test
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringNeq_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringNe_test.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp)
-gtest_discover_tests(opBuilderHelperStringNeq_test)
+gtest_discover_tests(opBuilderHelperStringNe_test)
 
 add_executable(opBuilderHelperStringGt_test
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp

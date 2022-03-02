@@ -26,7 +26,7 @@ TEST(opBuilderHelperStringUP, Builds)
 }
 
 // Build incorrect number of arguments
-TEST(opBuilderHelperStringUP, BuildsIncorrectNumberOfArguments)
+TEST(opBuilderHelperStringUP, Builds_incorrect_number_of_arguments)
 {
     Document doc{R"({
         "normalize":
@@ -36,7 +36,7 @@ TEST(opBuilderHelperStringUP, BuildsIncorrectNumberOfArguments)
 }
 
 // Test ok: static values
-TEST(opBuilderHelperStringUP, staticStringOk)
+TEST(opBuilderHelperStringUP, Static_string_ok)
 {
     Document doc{R"({
         "normalize":
@@ -55,7 +55,6 @@ TEST(opBuilderHelperStringUP, staticStringOk)
             s.on_next(Event{R"(
                 {"not_fieltToCreate": "ASD"}
             )"});
-
             s.on_completed();
         });
 
@@ -70,7 +69,7 @@ TEST(opBuilderHelperStringUP, staticStringOk)
 }
 
 // Test ok: dynamic values (string)
-TEST(opBuilderHelperStringUP, dynamicsStringOk)
+TEST(opBuilderHelperStringUP, Dynamics_string_ok)
 {
 
     Document doc{R"({
@@ -103,7 +102,7 @@ TEST(opBuilderHelperStringUP, dynamicsStringOk)
     ASSERT_STREQ(expected[2].get("/fieltToCreate")->GetString(), "ASD");
 }
 
-TEST(opBuilderHelperStringUP, multilevelSrc)
+TEST(opBuilderHelperStringUP, Multilevel_src)
 {
     Document doc{R"({
         "normalize":
@@ -135,7 +134,7 @@ TEST(opBuilderHelperStringUP, multilevelSrc)
     ASSERT_STREQ(expected[2].get("/fieltToCreate")->GetString(), "asd");
 }
 
-TEST(opBuilderHelperStringUP, multilevelDst)
+TEST(opBuilderHelperStringUP, Multilevel_dst)
 {
     Document doc{R"({
         "normalize":
@@ -167,7 +166,7 @@ TEST(opBuilderHelperStringUP, multilevelDst)
     ASSERT_STREQ(expected[2].get("/a/b/fieltToCreate/2")->GetString(), "ASD");
 }
 
-TEST(opBuilderHelperStringUP, existDst)
+TEST(opBuilderHelperStringUP, Exist_dst)
 {
     Document doc{R"({
         "normalize":
@@ -199,7 +198,7 @@ TEST(opBuilderHelperStringUP, existDst)
     ASSERT_STREQ(expected[2].get("/a/b")->GetString(), "ASD");
 }
 
-TEST(opBuilderHelperStringUP, notExistSrc)
+TEST(opBuilderHelperStringUP, Not_exist_src)
 {
     Document doc{R"({
     "normalize":
@@ -227,7 +226,7 @@ TEST(opBuilderHelperStringUP, notExistSrc)
     ASSERT_FALSE(expected[1].exists("/a/b"));
 }
 
-TEST(opBuilderHelperStringUP, srcNotString)
+TEST(opBuilderHelperStringUP, Src_not_string)
 {
     Document doc{R"({
         "normalize":

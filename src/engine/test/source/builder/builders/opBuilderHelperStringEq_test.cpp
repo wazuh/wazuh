@@ -16,27 +16,27 @@
 using namespace builder::internals::builders;
 
 // Build ok
-TEST(opBuilderHelperString_eq, Builds)
+TEST(opBuilderHelperStringEQ, Builds)
 {
     Document doc{R"({
         "check":
             {"field2check": "+s_eq/test_value"}
     })"};
-    ASSERT_NO_THROW(opBuilderHelperString_eq(*doc.get("/check")));
+    ASSERT_NO_THROW(opBuilderHelperStringEQ(*doc.get("/check")));
 }
 
 // Build incorrect number of arguments
-TEST(opBuilderHelperString_eq, BuildsIncorrectNumberOfArguments)
+TEST(opBuilderHelperStringEQ, Builds_incorrect_number_of_arguments)
 {
     Document doc{R"({
         "check":
             {"field2check": "+s_eq/test_value/test_value2"}
     })"};
-    ASSERT_THROW(opBuilderHelperString_eq(*doc.get("/check")), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperStringEQ(*doc.get("/check")), std::runtime_error);
 }
 
 // Test ok: static values
-TEST(opBuilderHelperString_eq, staticStringOk)
+TEST(opBuilderHelperStringEQ, Static_string_ok)
 {
     Document doc{R"({
         "check":
@@ -64,7 +64,7 @@ TEST(opBuilderHelperString_eq, staticStringOk)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperString_eq(*doc.get("/check"));
+    Lifter lift = opBuilderHelperStringEQ(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -74,7 +74,7 @@ TEST(opBuilderHelperString_eq, staticStringOk)
 }
 
 // Test ok: static values (numbers, compare as string)
-TEST(opBuilderHelperString_eq, staticNumberOk)
+TEST(opBuilderHelperStringEQ, Static_number_ok)
 {
     Document doc{R"({
         "check":
@@ -102,7 +102,7 @@ TEST(opBuilderHelperString_eq, staticNumberOk)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperString_eq(*doc.get("/check"));
+    Lifter lift = opBuilderHelperStringEQ(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -112,7 +112,7 @@ TEST(opBuilderHelperString_eq, staticNumberOk)
 }
 
 // Test ok: dynamic values (string)
-TEST(opBuilderHelperString_eq, dynamicsStringOk)
+TEST(opBuilderHelperStringEQ, Dynamics_string_ok)
 {
     Document doc{R"({
         "check":
@@ -155,7 +155,7 @@ TEST(opBuilderHelperString_eq, dynamicsStringOk)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperString_eq(*doc.get("/check"));
+    Lifter lift = opBuilderHelperStringEQ(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -165,7 +165,7 @@ TEST(opBuilderHelperString_eq, dynamicsStringOk)
 }
 
 // Test ok: multilevel dynamic values (string)
-TEST(opBuilderHelperString_eq, multiLevelDynamicsStringOk)
+TEST(opBuilderHelperStringEQ, MultiLevel_dynamics_string_ok)
 {
     Document doc{R"({
         "check":
@@ -217,7 +217,7 @@ TEST(opBuilderHelperString_eq, multiLevelDynamicsStringOk)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperString_eq(*doc.get("/check"));
+    Lifter lift = opBuilderHelperStringEQ(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -231,7 +231,7 @@ TEST(opBuilderHelperString_eq, multiLevelDynamicsStringOk)
 }
 
 // Test ok: dynamic values (number)
-TEST(opBuilderHelperString_eq, dynamicsNumberOk)
+TEST(opBuilderHelperStringEQ, Dynamics_number_ok)
 {
     Document doc{R"({
         "check":
@@ -280,7 +280,7 @@ TEST(opBuilderHelperString_eq, dynamicsNumberOk)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperString_eq(*doc.get("/check"));
+    Lifter lift = opBuilderHelperStringEQ(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
