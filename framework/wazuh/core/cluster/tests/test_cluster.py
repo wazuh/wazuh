@@ -276,6 +276,7 @@ def test_update_cluster_control(failed_item, exists, expected_result):
     assert ko_files == expected_result
 
 
+
 @patch('zlib.compress', return_value=b'compressed_test_content')
 @patch('wazuh.core.cluster.cluster.get_cluster_items')
 @patch('wazuh.core.cluster.cluster.mkdir_with_mode')
@@ -303,7 +304,6 @@ def test_compress_files_ok(mock_path_exists, mock_path_dirname, mock_mkdir_with_
 @patch('wazuh.core.cluster.cluster.path.exists', return_value=False)
 def test_compress_files_ko(mock_path_exists, mock_path_dirname, mock_mkdir_with_mode, mock_get_cluster_items):
     """Check if the compressing function is raising every exception."""
-
     with patch('builtins.open', mock_open(read_data='test_content')):
         mock_get_cluster_items.return_value = {'intervals': {'communication': {'max_zip_size': 5,'compress_level': 0}}}
         with patch.object(wazuh.core.cluster.cluster.logger, 'warning') as warning_logger:

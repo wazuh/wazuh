@@ -263,8 +263,8 @@ def update_cluster_control(failed_file, ko_files, exists=True):
         pass
 
 
-def compress_files(name, list_path, cluster_control_json):
-    """Create a compress file with cluster_control.json and the files listed in list_path.
+def compress_files(name, list_path, cluster_control_json=None, max_zip_size=None):
+    """Create a zip with cluster_control.json and the files listed in list_path.
 
     Iterate the list of files and groups them in a compressed file. If a file does not
     exist, the cluster_control_json dictionary is updated.
@@ -277,6 +277,8 @@ def compress_files(name, list_path, cluster_control_json):
         File paths to be zipped.
     cluster_control_json : dict
         KO files (path-metadata) to be compressed as a json.
+    max_zip_size : int
+        Maximum size from which no new files should be added to the zip.
 
     Returns
     -------
@@ -285,8 +287,9 @@ def compress_files(name, list_path, cluster_control_json):
     """
     zip_size = 0
     exceeded_size = False
-    max_zip_size = get_cluster_items()['intervals']['communication']['max_zip_size']
     compress_level = get_cluster_items()['intervals']['communication']['compress_level']
+    if max_zip_size is None:
+        max_zip_size = get_cluster_items()['intervals']['communication']['max_zip_size']
     zip_file_path = path.join(common.WAZUH_PATH, 'queue', 'cluster', name,
                               f'{name}-{datetime.utcnow().timestamp()}-{uuid4().hex}.zip')
 
