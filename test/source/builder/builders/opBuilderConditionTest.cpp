@@ -8,7 +8,7 @@
  */
 
 #include <gtest/gtest.h>
-#include <testUtils.hpp>
+#include "testUtils.hpp"
 
 #include "opBuilderCondition.hpp"
 #include "opBuilderConditionReference.hpp"
