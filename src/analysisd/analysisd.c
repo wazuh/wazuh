@@ -906,7 +906,7 @@ void OS_ReadMSG_analysisd(int m_queue)
         os_calloc(1, sizeof(Eventinfo), lf);
         os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
         lf->year = prev_year;
-        memcpy(lf->mon, prev_month, sizeof(prev_month));
+        memset(lf->mon, 0, sizeof(lf->mon));
         lf->day = today;
 
         if (OS_GetLogLocation(today, prev_year, prev_month) < 0) {

@@ -69,9 +69,9 @@ int ReadExecConfig()
         tmp_str += 3;
 
         /* Set the name */
-        int bytes_written = snprintf(exec_names[exec_size], sizeof(exec_names[exec_size]), "%s", str_pt);
+        const int bytes_written = snprintf(exec_names[exec_size], sizeof(exec_names[exec_size]), "%s", str_pt);
 
-        if ((size_t)bytes_written + 1 > sizeof(exec_names[exec_size])) {
+        if (bytes_written >= 0 && (size_t)bytes_written >= sizeof(exec_names[exec_size])) {
             merror(EXEC_BAD_NAME, exec_names[exec_size]);
         }
 

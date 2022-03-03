@@ -331,9 +331,9 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
             } else if (strlen(env_path) >= OS_SIZE_6144) {
                 merror("at wm_exec(): PATH environment variable too large.");
             } else {
-                int bytes_written = snprintf(new_path, OS_SIZE_6144, "%s:%s", add_path, env_path);
+                const int bytes_written = snprintf(new_path, OS_SIZE_6144, "%s:%s", add_path, env_path);
 
-                if (bytes_written + 1 > OS_SIZE_6144) {
+                if (bytes_written >= 0 && bytes_written >= OS_SIZE_6144) {
                     merror("at wm_exec(): New environment variable too large.");
                 }
             }

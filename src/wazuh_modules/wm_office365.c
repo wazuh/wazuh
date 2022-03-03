@@ -428,7 +428,7 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
                             if ((next_page == NULL) || (strlen(next_page) >= OS_SIZE_8192)) {
                                 scan_finished = 1;
                             } else {
-                                snprintf(url, OS_SIZE_8192, "%s", next_page);
+                                snprintf(url, sizeof(url), "%s", next_page);
                                 os_free(next_page);
                             }
                         }

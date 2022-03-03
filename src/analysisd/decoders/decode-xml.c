@@ -893,7 +893,7 @@ char *_loadmemory(char *at, char *str, OSList* log_msg)
             smerror(log_msg, SIZE_ERROR, str);
             return (NULL);
         }
-        at = (char *) realloc(at, (finalsize + 1) * sizeof(char));
+        at = (char *) realloc(at, finalsize * sizeof(char));
         if (at == NULL) {
             merror(MEM_ERROR, errno, strerror(errno));
             return (NULL);

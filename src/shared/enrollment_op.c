@@ -39,7 +39,7 @@ static int w_enrollment_process_response(SSL *ssl);
 /* Auxiliary */
 static void w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_cert, const char *hostname);
 static void w_enrollment_concat_group(char *buff, const char* centralized_group);
-static int w_enrollment_concat_src_ip(char *buff, const size_t size_buff, const char* sender_ip, const int use_src_ip);
+static int w_enrollment_concat_src_ip(char *buff, const size_t remain_size, const char* sender_ip, const int use_src_ip);
 static void w_enrollment_concat_key(char *buff, keyentry* key);
 static int w_enrollment_process_agent_key(char *buffer);
 static int w_enrollment_store_key_entry(const char* keys);
@@ -531,11 +531,12 @@ static void w_enrollment_concat_group(char *buff, const char* centralized_group)
  *
  * @param buff buffer where the IP section will be concatenated
  * @param sender_ip Sender IP, if null it will be filled with "src"
+ * @param remain_size Remain size of buffer. It is buffer_size - strlen(buffer)
  * @return return code
  * @retval 0 on success
  * @retval -1 if ip is invalid
  */
-static int w_enrollment_concat_src_ip(char *buff, const size_t size_buff, const char* sender_ip, const int use_src_ip) {
+static int w_enrollment_concat_src_ip(char *buff, const size_t remain_size, const char* sender_ip, const int use_src_ip) {
     assert(buff != NULL); // buff should not be NULL.
 
     if(sender_ip && !use_src_ip) { // Force an IP
@@ -543,7 +544,7 @@ static int w_enrollment_concat_src_ip(char *buff, const size_t size_buff, const 
         if (OS_IsValidIP(sender_ip, NULL)) {
             char opt_buf[256] = {0};
             snprintf(opt_buf,254," IP:'%s'",sender_ip);
-            strncat(buff,opt_buf, size_buff - 1);
+            strncat(buff,opt_buf, remain_size - 1);
         } else {
             merror("Invalid IP address provided for sender IP.");
             return -1;

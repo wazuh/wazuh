@@ -304,7 +304,7 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                             if ((next_page == NULL) || (strlen(next_page) >= OS_SIZE_8192)) {
                                 scan_finished = 1;
                             } else {
-                                snprintf(url, OS_SIZE_8192, "%s", next_page);
+                                snprintf(url, sizeof(url), "%s", next_page);
                                 os_free(next_page);
                             }
                         } else {

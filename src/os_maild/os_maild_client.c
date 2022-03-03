@@ -330,7 +330,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail, MailMsg
                  al_data->rule,
                  al_data->comment);
 
-        snprintf(msg_sms_tmp->body, BODY_SIZE, "%.128s", logs);
+        snprintf(msg_sms_tmp->body, BODY_SIZE, "%.127s", logs);
         *msg_sms = msg_sms_tmp;
     }
 
@@ -691,9 +691,7 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
                  rule_id,
                  alert_desc);
 
-
-        strncpy(msg_sms_tmp->body, logs, BODY_SIZE - 1);
-        msg_sms_tmp->body[127] = '\0';
+        snprintf(msg_sms_tmp->body, BODY_SIZE, "%.127s", logs);
         *msg_sms = msg_sms_tmp;
     }
 
@@ -743,16 +741,8 @@ void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int cou
         log_size = strlen(key) + strlen(tab) + strlen(item->string) + strlen(delimitator) + strlen(endline);
 
         if (body_size > log_size) {
-            strncat(printed, tab, body_size);
-            body_size -= strlen(tab);
-            strncat(printed, item->string, body_size);
-            body_size -= strlen(item->string);
-            strncat(printed, delimitator,body_size);
-            body_size -= strlen(delimitator);
-            strncat(printed, key, body_size);
-            body_size -= strlen(key);
-            strncat(printed, endline, body_size);
-            body_size -= strlen(endline);
+            snprintf(printed + strlen(printed), body_size, "%s%s%s%s%s", tab, item->string, delimitator, key, endline);
+            body_size -= strlen(tab) + strlen(item->string) + strlen(delimitator) + strlen(key) + strlen(endline);
         }
 
         free(key);
@@ -765,12 +755,8 @@ void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int cou
 
         if(body_size > log_size){
             item->string[0] = toupper(item->string[0]);
-            strncat(printed, tab, body_size);
-            body_size -= strlen(tab);
-            strncat(printed, item->string, body_size);
-            body_size -= strlen(item->string);
-            strncat(printed, delimitator, body_size);
-            body_size -= strlen(delimitator);
+            snprintf(printed + strlen(printed), body_size, "%s%s%s", tab, item->string, delimitator);
+            body_size -= strlen(tab) + strlen(item->string) + strlen(delimitator);
         }
 
         while(json_array = cJSON_GetArrayItem(item, i), json_array){
@@ -778,10 +764,8 @@ void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int cou
             log_size = strlen(key) + strlen(space);
 
             if(body_size > log_size){
-                strncat(printed, json_array->valuestring, body_size);
-                body_size -= strlen(json_array->valuestring);
-                strncat(printed, space,body_size);
-                body_size -= strlen(space);
+                snprintf(printed + strlen(printed), body_size, "%s%s", json_array->valuestring, space);
+                body_size -= strlen(json_array->valuestring) + strlen(space);
             }
 
             free(key);
@@ -803,12 +787,8 @@ void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int cou
 
                 if (body_size > log_size) {
                     item->string[0] = toupper(item->string[0]);
-                    strncat(printed, tab, body_size);
-                    body_size -= strlen(tab);
-                    strncat(printed, item->string, body_size);
-                    body_size -= strlen(item->string);
-                    strncat(printed, endline, body_size);
-                    body_size -= strlen(endline);
+                    snprintf(printed + strlen(printed), body_size, "%s%s%s", tab, item->string, endline);
+                    body_size -= strlen(tab) + strlen(item->string) + strlen(endline);
                 }
             }
             /*Cannot be tabulated more than 6 times in the message */
