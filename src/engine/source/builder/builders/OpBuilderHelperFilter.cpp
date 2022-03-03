@@ -14,6 +14,7 @@
 
 #include "OpBuilderHelperFilter.hpp"
 #include "stringUtils.hpp"
+#include "ipUtils.hpp"
 
 using DocumentValue = builder::internals::types::DocumentValue;
 namespace
@@ -287,8 +288,8 @@ types::Lifter opBuilderHelperIPCIDR(const types::DocumentValue & def)
     }
 
     // TODO Add Try and catch
-    uint32_t network = utils::string::IPv4ToUInt(parameters[1]);
-    uint32_t mask = utils::string::IPv4MaskUInt(parameters[2]);
+    uint32_t network = utils::ip::IPv4ToUInt(parameters[1]);
+    uint32_t mask = utils::ip::IPv4MaskUInt(parameters[2]);
 
     uint32_t net_lower = (network & mask);
     uint32_t net_upper = (net_lower | (~mask));
@@ -314,7 +315,7 @@ types::Lifter opBuilderHelperIPCIDR(const types::DocumentValue & def)
                 if (field_str)
                 {
                     // TODO Add Try and catch
-                    uint32_t ip = utils::string::IPv4ToUInt(field_str->GetString());
+                    uint32_t ip = utils::ip::IPv4ToUInt(field_str->GetString());
                     return ((ip >= net_lower && ip <= net_upper));
                 }
                 return false;
