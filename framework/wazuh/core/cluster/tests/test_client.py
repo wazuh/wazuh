@@ -76,10 +76,10 @@ def test_acm_init():
     assert abstract_client_manager.configuration == configuration
     assert abstract_client_manager.cluster_items == cluster_items
     assert abstract_client_manager.ssl is True
-    assert abstract_client_manager.performance_test is 10
-    assert abstract_client_manager.concurrency_test is 10
-    assert abstract_client_manager.file is "/file/path"
-    assert abstract_client_manager.string is 1000
+    assert abstract_client_manager.performance_test == 10
+    assert abstract_client_manager.concurrency_test == 10
+    assert abstract_client_manager.file == "/file/path"
+    assert abstract_client_manager.string == 1000
     assert abstract_client_manager.logger == logging.getLogger("wazuh")
     assert abstract_client_manager.tag == "Client Manager"
     assert abstract_client_manager.tasks == []
