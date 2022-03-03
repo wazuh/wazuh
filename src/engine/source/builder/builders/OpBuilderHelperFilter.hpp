@@ -263,7 +263,14 @@ types::Lifter opBuilderHelperRegexMatch(const types::DocumentValue & def);
  */
 types::Lifter opBuilderHelperRegexNotMatch(const types::DocumentValue & def);
 
-// TODO: add description
+/**
+ * @brief Create `ip_cidr` helper function that filters events if the field
+ * is in the specified CIDR range.
+ *
+ * @param def The filter definition.
+ * @return types::Lifter The lifter with the `ip_cidr` filter.
+ * @throw  std::runtime_error if the parameter is not a cidr.
+ */
 types::Lifter opBuilderHelperIPCIDR(const types::DocumentValue & def);
 
 } // namespace builder::internals::builders

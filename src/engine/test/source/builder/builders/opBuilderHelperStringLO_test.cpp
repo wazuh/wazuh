@@ -8,9 +8,9 @@
  */
 
 #include <gtest/gtest.h>
-#include "testUtils.hpp"
 #include <vector>
 
+#include "testUtils.hpp"
 #include "OpBuilderHelperMap.hpp"
 
 using namespace builder::internals::builders;
