@@ -943,7 +943,7 @@ async def test_manager_handler_send_entire_agent_groups_information(WazuhDBConne
         """Auxiliary class."""
 
         def __init__(self, manager, logger, data_retriever, get_data_command='',
-                     get_payload='', set_data_command='', set_payload='', cmd=''):
+                     get_payload='', set_data_command='', set_payload='', cmd='', pivot_key=''):
             self.counter = 0
             self.logger = logger
 
@@ -1028,6 +1028,7 @@ async def test_manager_handler_send_agent_groups_information(WazuhDBConnection_m
         return 'testing'
 
     master_handler = get_master_handler()
+    master_handler.name = 'worker_test'
     master_handler.server.agent_groups_control = 'testing'
     master_handler.task_loggers["Agent-groups send"] = LoggerMock()
     master_handler.server.get_agent_groups_info = get_agent_groups_info.__get__(master_handler.server)
@@ -1039,7 +1040,7 @@ async def test_manager_handler_send_agent_groups_information(WazuhDBConnection_m
 
     assert master_handler.task_loggers["Agent-groups send"]._info == ['Starting.', 'Starting.']
     assert master_handler.task_loggers["Agent-groups send"]._error == [f'Error sending agent-groups information to '
-                                                                       f'{master_handler.cluster_name}: Stop while True']
+                                                                       f'{master_handler.name}: Stop while True']
 
 
 @pytest.mark.asyncio

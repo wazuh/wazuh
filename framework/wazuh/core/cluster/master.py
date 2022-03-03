@@ -710,8 +710,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             info = self.server.get_agent_groups_info(self.name)
             if info != {}:
                 try:
-                    self.send_agent_groups_status['date_start'] = perf_counter()
                     logger.info("Starting.")
+                    self.send_agent_groups_status['date_start'] = perf_counter()
                     await sync_object.sync(start_time=self.send_agent_groups_status['date_start'], chunks=info)
                 except Exception as e:
                     logger.error(f'Error sending agent-groups information to {self.name}: {e}')

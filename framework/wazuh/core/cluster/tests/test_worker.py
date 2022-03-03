@@ -532,8 +532,8 @@ def test_worker_handler_sync_integrity_ok_from_master(logger_mock):
 
 @pytest.mark.asyncio
 @patch("wazuh.core.wdb.socket.socket")
-async def test_worker_compare_agent_groups_checksum(socket_mock):
-    """Check all the possible cases in the checksum comparison."""
+async def test_worker_compare_agent_groups_checksums(socket_mock):
+    """Check all the possible cases in the checksums comparison."""
 
     class LoggerMock:
         """Auxiliary class."""
