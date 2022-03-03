@@ -32,11 +32,11 @@ static int connect_to_port(int proto, int port)
     struct sockaddr_in server;
 
     if (proto == IPPROTO_UDP) {
-        if ((ossock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
+        if ((ossock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
             return (0);
         }
     } else if (proto == IPPROTO_TCP) {
-        if ((ossock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+        if ((ossock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
             return (0);
         }
     } else {
@@ -46,7 +46,7 @@ static int connect_to_port(int proto, int port)
     memset(&server, 0, sizeof(server));
     server.sin_family      = AF_INET;
     server.sin_port        = htons(port);
-    server.sin_addr.s_addr = inet_addr("127.0.0.1");
+    server.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
     if (connect(ossock, (struct sockaddr *)&server, sizeof(server)) == 0) {
         rc = 1;

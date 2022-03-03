@@ -24,7 +24,7 @@ void __wrap_nb_close(__attribute__((unused)) netbuffer_t * buffer, int sock) {
     check_expected(sock);
 }
 
-void __wrap_nb_open(__attribute__((unused)) netbuffer_t * buffer, int sock, const struct sockaddr_in * peer_info) {
+void __wrap_nb_open(__attribute__((unused)) netbuffer_t * buffer, int sock, const struct sockaddr_storage * peer_info) {
     check_expected(sock);
     check_expected_ptr(peer_info);
 }

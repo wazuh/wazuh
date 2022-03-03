@@ -27,6 +27,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
 {
     size_t loglen;
     char *pieces;
+    char *arrow = NULL;
     struct tm p = { .tm_sec = 0 };
     struct timespec local_c_timespec;
 
@@ -37,8 +38,15 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     /* Ignore the id of the message in here */
     msg += 2;
 
-    /* Set pieces as the message */
-    pieces = strchr(msg, ':');
+    /* Avoid ipv6 ':', msg that include "[" have an "->" after the ip */
+    if (*msg == '[') {
+        if (!(arrow = strstr(msg, "->"))) {
+            merror(FORMAT_ERROR);
+            return (-1);
+        }
+    }
+
+    pieces = strchr(arrow ? arrow : msg, ':');
     if (!pieces) {
         merror(FORMAT_ERROR);
         return (-1);

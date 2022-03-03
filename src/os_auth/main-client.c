@@ -136,7 +136,11 @@ int main(int argc, char **argv)
                 if (!optarg) {
                     merror_exit("-%c needs an argument", c);
                 }
-                server_address = optarg;
+                server_address = strdup(optarg);
+                if (strchr(server_address, ':') != NULL) {
+                    os_realloc(server_address, IPSIZE + 1, server_address);
+                    OS_ExpandIPv6(server_address, IPSIZE);
+                }
                 break;
             case 'A':
                 if (!optarg) {
@@ -197,6 +201,10 @@ int main(int argc, char **argv)
                     merror_exit("-%c needs an argument",c);
                 }
                 target_cfg->sender_ip = strdup(optarg);
+                if (strchr(target_cfg->sender_ip, ':') != NULL) {
+                    os_realloc(target_cfg->sender_ip, IPSIZE + 1, target_cfg->sender_ip);
+                    OS_ExpandIPv6(target_cfg->sender_ip, IPSIZE);
+                }
                 break;
             case 'i':
                 target_cfg->use_src_ip = 1;
@@ -287,6 +295,7 @@ int main(int argc, char **argv)
     w_enrollment_cert_destroy(cert_cfg);
     w_enrollment_destroy(cfg);
     OS_FreeKeys(&agent_keys);
+    os_free(server_address);
 
     exit((ret == 0) ? 0 : 1);
 }

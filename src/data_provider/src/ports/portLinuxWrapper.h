@@ -85,7 +85,7 @@ class LinuxPortWrapper final : public IPortWrapper
             in_addr addr;
             ss << std::hex << hexRawAddress;
             ss >> addr.s_addr;
-            return inet_ntoa(addr);
+            return Utils::NetworkHelper::IAddressToBinary(AF_INET, &addr);
         }
 
         static std::string IPv6Address(const std::string& hexRawAddress)
@@ -97,7 +97,6 @@ class LinuxPortWrapper final : public IPortWrapper
             if (hexAddressLength == IPV6_ADDRESS_HEX_SIZE)
             {
                 in6_addr sin6 {};
-                char address[INET6_ADDRSTRLEN] { 0 };
                 auto index { 0l };
 
                 for (auto i = 0ull; i < hexAddressLength; i += CHAR_BIT)
@@ -108,7 +107,7 @@ class LinuxPortWrapper final : public IPortWrapper
                     ++index;
                 }
 
-                retVal = inet_ntop(AF_INET6, &sin6, address, sizeof(address));
+                retVal =  Utils::NetworkHelper::IAddressToBinary(AF_INET6, &sin6);
             }
 
             return retVal;

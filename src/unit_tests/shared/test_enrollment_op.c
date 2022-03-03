@@ -505,7 +505,7 @@ void test_w_enrollment_connect_socket_error(void **state) {
     expect_value(__wrap_OS_ConnectTCP, ipv6, 0);
     will_return(__wrap_OS_ConnectTCP, -1);
 
-    expect_string(__wrap__merror, formatted_msg, "(1208): Unable to connect to the Auth service at '127.0.0.1:1234'.");
+    expect_string(__wrap__merror, formatted_msg, "(1208): Unable to connect to enrollment service at '[127.0.0.1]:1234'");
     int ret = w_enrollment_connect(cfg, cfg->target_cfg->manager_name);
     assert_int_equal(ret, ENROLLMENT_CONNECTION_FAILURE);
 }
@@ -574,7 +574,7 @@ void test_w_enrollment_connect_success(void **state) {
     will_return(__wrap_SSL_new, cfg->ssl);
     will_return(__wrap_SSL_connect, 1);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(1209): Connected to the Auth service at '127.0.0.1:1234'.");
+    expect_string(__wrap__mdebug1, formatted_msg, "(1209): Connected to enrollment service at '[127.0.0.1]:1234'");
 
     // verify_ca_certificate
     expect_value(__wrap_check_x509_cert, ssl, cfg->ssl);
@@ -1022,7 +1022,7 @@ void test_w_enrollment_request_key(void **state) {
         will_return(__wrap_SSL_new, cfg->ssl);
         will_return(__wrap_SSL_connect, 1);
 
-        expect_string(__wrap__mdebug1, formatted_msg, "(1209): Connected to the Auth service at '192.168.1.1:1234'.");
+        expect_string(__wrap__mdebug1, formatted_msg, "(1209): Connected to enrollment service at '[192.168.1.1]:1234'");
 
         // verify_ca_certificate
         expect_value(__wrap_check_x509_cert, ssl, cfg->ssl);

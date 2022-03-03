@@ -5,7 +5,7 @@
     <scan_on_start>yes</scan_on_start>
     <hardware>no</hardware>
     <os>yes</os>
-    <network>no</network>
+    <network>yes</network>
     <packages>yes</packages>
     <ports all="no">no</ports>
     <processes>no</processes>
@@ -15,4 +15,4 @@
       <max_eps>10</max_eps>
     </synchronization>
   </wodle>
- 
+

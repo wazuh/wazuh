@@ -396,17 +396,20 @@ char *get_agent_ip()
                         }
                         cJSON *gateway = cJSON_GetObjectItem(element, "gateway");
                         if(gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring, " ")) {
-                            const cJSON *ipv4 = cJSON_GetObjectItem(element, "IPv4");
-                            if (!ipv4) {
-                                continue;
-                            }
-                            const int size_proto_interfaces = cJSON_GetArraySize(ipv4);
-                            for (int j = 0; j < size_proto_interfaces; ++j) {
-                                const cJSON *element_ipv4 = cJSON_GetArrayItem(ipv4, j);
-                                if(!element_ipv4) {
+                            const cJSON *ip = cJSON_GetObjectItem(element, "IPv6");
+                            if (!ip) {
+                                ip = cJSON_GetObjectItem(element, "IPv4");
+                                if (!ip) {
                                     continue;
                                 }
-                                cJSON *address = cJSON_GetObjectItem(element_ipv4, "address");
+                            }
+                            const int size_proto_interfaces = cJSON_GetArraySize(ip);
+                            for (int j = 0; j < size_proto_interfaces; ++j) {
+                                const cJSON *element_ip = cJSON_GetArrayItem(ip, j);
+                                if(!element_ip) {
+                                    continue;
+                                }
+                                cJSON *address = cJSON_GetObjectItem(element_ip, "address");
                                 if (address && cJSON_GetStringValue(address))
                                 {
                                     strncpy(agent_ip, address->valuestring, IPSIZE);
@@ -425,6 +428,10 @@ char *get_agent_ip()
         else {
             merror("Unable to get system network information. Error code: %d.", error_code);
         }
+    }
+
+    if (strchr(agent_ip, ':') != NULL) {
+        OS_ExpandIPv6(agent_ip, IPSIZE);
     }
 
     return strdup(agent_ip);

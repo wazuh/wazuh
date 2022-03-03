@@ -18,7 +18,7 @@ extern wnotify_t * notify;
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-void nb_open(netbuffer_t * buffer, int sock, const struct sockaddr_in * peer_info) {
+void nb_open(netbuffer_t * buffer, int sock, const struct sockaddr_storage * peer_info) {
     w_mutex_lock(&mutex);
 
     if (sock >= buffer->max_fd) {
@@ -27,7 +27,7 @@ void nb_open(netbuffer_t * buffer, int sock, const struct sockaddr_in * peer_inf
     }
 
     memset(buffer->buffers + sock, 0, sizeof(sockbuffer_t));
-    memcpy(&buffer->buffers[sock].peer_info, peer_info, sizeof(struct sockaddr_in));
+    memcpy(&buffer->buffers[sock].peer_info, peer_info, sizeof(struct sockaddr_storage));
 
     buffer->buffers[sock].bqueue = bqueue_init(send_buffer_size, BQUEUE_SHRINK);
 

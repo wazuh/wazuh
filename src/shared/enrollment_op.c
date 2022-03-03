@@ -192,15 +192,15 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
     char *ip_address = NULL;
     char *tmp_str = strchr(server_address, '/');
     if (tmp_str) {
-        // server_address comes in {hostname}/{ip} fomat
+        // server_address comes in {hostname}/{ip} format
         ip_address = strdup(++tmp_str);
     }
-    if(!ip_address){
+    if (!ip_address) {
         // server_address is either a host or a ip
         ip_address = OS_GetHost(server_address, 3);
     }
 
-    /* Translate hostname to an ip_adress */
+    /* Translate hostname to an ip_address */
     if (!ip_address) {
         merror("Could not resolve hostname: %s\n", server_address);
         return ENROLLMENT_WRONG_CONFIGURATION;
@@ -216,9 +216,9 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
     }
 
     /* Connect via TCP */
-    int sock = OS_ConnectTCP((u_int16_t) cfg->target_cfg->port, ip_address, 0);
+    int sock = OS_ConnectTCP((u_int16_t) cfg->target_cfg->port, ip_address, strchr(ip_address, ':') != NULL);
     if (sock < 0) {
-        merror(AUTH_CONN_ERROR, ip_address, cfg->target_cfg->port);
+        merror(ENROLL_CONN_ERROR, ip_address, cfg->target_cfg->port);
         os_free(ip_address);
         SSL_CTX_free(ctx);
         return ENROLLMENT_CONNECTION_FAILURE;
@@ -240,7 +240,7 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
         return ENROLLMENT_CONNECTION_FAILURE;
     }
 
-    mdebug1(AUTH_CONNECTED, ip_address, cfg->target_cfg->port);
+    mdebug1(ENROLL_CONNECTED, ip_address, cfg->target_cfg->port);
 
     w_enrollment_verify_ca_certificate(cfg->ssl, cfg->cert_cfg->ca_cert, server_address);
 
@@ -540,8 +540,7 @@ static int w_enrollment_concat_src_ip(char *buff, const char* sender_ip, const i
 
     if(sender_ip && !use_src_ip) { // Force an IP
         /* Check if this is strictly an IP address using a regex */
-        if (OS_IsValidIP(sender_ip, NULL))
-        {
+        if (OS_IsValidIP(sender_ip, NULL)) {
             char opt_buf[256] = {0};
             snprintf(opt_buf,254," IP:'%s'",sender_ip);
             strncat(buff,opt_buf,254);
