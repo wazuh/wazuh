@@ -35,23 +35,23 @@ using opString = std::optional<std::string>;
 std::tuple<std::string, opString, opString> getCompOpParameter(const DocumentValue & def)
 {
     // Get destination path
-    std::string field = def.MemberBegin()->name.GetString();
+    std::string field {def.MemberBegin()->name.GetString()};
     // Get function helper
     if (!def.MemberBegin()->value.IsString())
     {
         throw std::logic_error("Invalid operator definition");
     }
-    std::string rawValue = def.MemberBegin()->value.GetString();
+    std::string rawValue {def.MemberBegin()->value.GetString()};
 
     // Parse parameters
-    std::vector<std::string> parameters = utils::string::split(rawValue, '/');
+    std::vector<std::string> parameters {utils::string::split(rawValue, '/')};
     if (parameters.size() != 2)
     {
         throw std::runtime_error("Invalid number of parameters");
     }
 
-    std::optional<std::string> refValue;
-    std::optional<std::string> value;
+    std::optional<std::string> refValue {};
+    std::optional<std::string> value {};
 
     if (parameters[1][0] == '$')
     {
@@ -71,7 +71,7 @@ namespace builder::internals::builders
 types::Lifter opBuilderHelperExists(const DocumentValue & def)
 {
     // Get field
-    std::string field = def.MemberBegin()->name.GetString();
+    std::string field {def.MemberBegin()->name.GetString()};
 
     // Return Lifter
     return [=](types::Observable o)
@@ -84,7 +84,7 @@ types::Lifter opBuilderHelperExists(const DocumentValue & def)
 types::Lifter opBuilderHelperNotExists(const DocumentValue & def)
 {
     // Get field
-    std::string field = def.MemberBegin()->name.GetString();
+    std::string field {def.MemberBegin()->name.GetString()};
 
     // Return Lifter
     return [=](types::Observable o)
@@ -172,7 +172,7 @@ bool opBuilderHelperStringComparison(const std::string key, char op, types::Even
 // <field>: s_eq/<value>
 types::Lifter opBuilderHelperStringEQ(const DocumentValue & def)
 {
-    auto [key, refValue, value] = getCompOpParameter(def);
+    auto [key, refValue, value] {getCompOpParameter(def)};
 
     // Return Lifter
     return [=](types::Observable o)
@@ -190,7 +190,7 @@ types::Lifter opBuilderHelperStringEQ(const DocumentValue & def)
 // <field>: s_ne/<value>
 types::Lifter opBuilderHelperStringNE(const DocumentValue & def)
 {
-    auto [key, refValue, value] = getCompOpParameter(def);
+    auto [key, refValue, value] {getCompOpParameter(def)};
 
     // Return Lifter
     return [=](types::Observable o)
@@ -205,7 +205,7 @@ types::Lifter opBuilderHelperStringNE(const DocumentValue & def)
 // <field>: s_gt/<value>|$<ref>
 types::Lifter opBuilderHelperStringGT(const DocumentValue & def)
 {
-    auto [key, refValue, value] = getCompOpParameter(def);
+    auto [key, refValue, value] {getCompOpParameter(def)};
 
     // Return Lifter
     return [=](types::Observable o)
@@ -220,7 +220,7 @@ types::Lifter opBuilderHelperStringGT(const DocumentValue & def)
 // <field>: s_ge/<value>|$<ref>
 types::Lifter opBuilderHelperStringGE(const DocumentValue & def)
 {
-    auto [key, refValue, value] = getCompOpParameter(def);
+    auto [key, refValue, value] {getCompOpParameter(def)};
 
     // Return Lifter
     return [=](types::Observable o)
@@ -235,7 +235,7 @@ types::Lifter opBuilderHelperStringGE(const DocumentValue & def)
 // <field>: s_lt/<value>|$<ref>
 types::Lifter opBuilderHelperStringLT(const DocumentValue & def)
 {
-    auto [key, refValue, value] = getCompOpParameter(def);
+    auto [key, refValue, value] {getCompOpParameter(def)};
 
     // Return Lifter
     return [=](types::Observable o)
@@ -250,7 +250,7 @@ types::Lifter opBuilderHelperStringLT(const DocumentValue & def)
 // <field>: s_le/<value>|$<ref>
 types::Lifter opBuilderHelperStringLE(const DocumentValue & def)
 {
-    auto [key, refValue, value] = getCompOpParameter(def);
+    auto [key, refValue, value] {getCompOpParameter(def)};
 
     // Return Lifter
     return [=](types::Observable o)
@@ -266,7 +266,13 @@ types::Lifter opBuilderHelperStringLE(const DocumentValue & def)
 //*               Int filters                     *
 //*************************************************
 
-// { path_to_ip: +ip_cidr/192.168.0.0/16 }
+//*************************************************
+//*               IP filters                     *
+//*************************************************
+
+
+// path_to_ip: +ip_cidr/192.168.0.0/16
+// path_to_ip: +ip_cidr/192.168.0.0/255.255.0.0
 types::Lifter opBuilderHelperIPCIDR(const types::DocumentValue & def)
 {
     // Get Field path to check
@@ -275,6 +281,7 @@ types::Lifter opBuilderHelperIPCIDR(const types::DocumentValue & def)
     std::string rawValue = def.MemberBegin()->value.GetString();
     std::vector<std::string> parameters = utils::string::split(rawValue, '/');
 
+    // Check parameters
     if (parameters.size() != 3)
     {
         throw std::runtime_error("Invalid number of parameters");
@@ -288,11 +295,24 @@ types::Lifter opBuilderHelperIPCIDR(const types::DocumentValue & def)
     }
 
     // TODO Add Try and catch
-    uint32_t network = utils::ip::IPv4ToUInt(parameters[1]);
-    uint32_t mask = utils::ip::IPv4MaskUInt(parameters[2]);
+    uint32_t network {};
+    uint32_t mask {};
+    try {
+        network = utils::ip::IPv4ToUInt(parameters[1]);
+    } catch (std::exception & e)
+    {
+        throw std::runtime_error("Invalid IPv4 address: " + network);
+    }
 
-    uint32_t net_lower = (network & mask);
-    uint32_t net_upper = (net_lower | (~mask));
+    try {
+        mask = utils::ip::IPv4MaskUInt(parameters[2]);
+    } catch (std::exception & e)
+    {
+       throw std::runtime_error("Invalid IPv4 mask: " + mask);
+    }
+
+    uint32_t net_lower {network & mask};
+    uint32_t net_upper {net_lower | (~mask)};
 
     // Return Lifter
     return [=](types::Observable o)
@@ -309,14 +329,21 @@ types::Lifter opBuilderHelperIPCIDR(const types::DocumentValue & def)
                 }
                 catch (std::exception & ex)
                 {
-                    // TODO Check exception type
                     return false;
                 }
-                if (field_str)
+                if (field_str != nullptr && field_str->IsString())
                 {
-                    // TODO Add Try and catch
-                    uint32_t ip = utils::ip::IPv4ToUInt(field_str->GetString());
-                    return ((ip >= net_lower && ip <= net_upper));
+                    // TODO Remove try catch
+                    uint32_t ip {};
+                    try
+                    {
+                        ip = utils::ip::IPv4ToUInt(field_str->GetString());
+                    }
+                    catch (std::exception & ex)
+                    {
+                        return false;
+                    }
+                    return (ip >= net_lower && ip <= net_upper);
                 }
                 return false;
             });
