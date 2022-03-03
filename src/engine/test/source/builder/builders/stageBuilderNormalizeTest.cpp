@@ -8,7 +8,7 @@
  */
 
 #include <gtest/gtest.h>
-#include <testUtils.hpp>
+#include "testUtils.hpp"
 
 #include "combinatorBuilderChain.hpp"
 #include "opBuilderMap.hpp"
