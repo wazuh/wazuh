@@ -8,17 +8,17 @@
  */
 
 #include <algorithm>
-#include <string>
 #include <optional>
+#include <string>
 
 #include "OpBuilderHelperMap.hpp"
 #include "stringUtils.hpp"
 
-using namespace std;
-namespace {
+namespace
+{
 
-    using DocumentValue = builder::internals::types::DocumentValue;
-    using Event = builder::internals::types::Event;
+using DocumentValue = builder::internals::types::DocumentValue;
+using Event = builder::internals::types::Event;
 
 /**
  * @brief Tranform the string in `field` path in the event `e` according to the
@@ -34,10 +34,9 @@ namespace {
  * @return types::Event The event with the field transformed
  * @throw std::logic_error if the `op` is not valid
  */
-Event opBuilderHelperStringTransformation(const std::string field, char op,
-                                                 Event & e,
-                                                 std::optional<std::string> refValue,
-                                                 std::optional<std::string> value)
+Event opBuilderHelperStringTransformation(const std::string field, char op, Event & e,
+                                          std::optional<std::string> refValue,
+                                          std::optional<std::string> value)
 {
 
     // Get src field
@@ -86,9 +85,8 @@ Event opBuilderHelperStringTransformation(const std::string field, char op,
     // Create and add string to event
     try
     {
-        e.set(
-            "/" + field,
-            rapidjson::Value(value.value().c_str(), e.m_doc.GetAllocator()).Move());
+        e.set("/" + field,
+              rapidjson::Value(value.value().c_str(), e.m_doc.GetAllocator()).Move());
     }
     catch (std::exception & ex)
     {
@@ -98,7 +96,107 @@ Event opBuilderHelperStringTransformation(const std::string field, char op,
 
     return e;
 }
+
+/**
+ * @brief Tranform the int in `field` path in the event `e` according to the
+ * `op` definition and the `value` or the `refValue`
+ *
+ * @param field The field path to transform
+ * @param op The operator to use:
+ * - `sum`: Sum
+ * - `sub`: Subtract
+ * - `mul`: Multiply
+ * - `div`: Divide
+ * @param e The event that contains the field to transform
+ * @param refValue The reference to the value user as source of the transformation
+ * @param value The value to use as source of the transformation
+ * @return types::Event The event with the field transformed
+ * @throw std::logic_error if the `op` is not valid
+ */
+Event opBuilderHelperIntTransformation(const std::string field, std::string op, Event & e,
+                                       std::optional<std::string> refValue,
+                                       std::optional<int> value)
+{
+    // TODO Remove try catch or if nullptr after fix get method of document class
+    // Get value to compare
+    const rapidjson::Value * fieldValue{};
+    try
+    {
+        fieldValue = e.get("/" + field);
+    }
+    catch (std::exception & ex)
+    {
+        // TODO Check exception type
+        return e;
+    }
+
+    if (fieldValue == nullptr || !fieldValue->IsInt())
+    {
+        return e;
+    }
+
+    if (refValue.has_value())
+    {
+        // Get reference to json event
+        // TODO Remove try catch or if nullptr after fix get method of document class
+        const rapidjson::Value * refValueToCheck {};
+        try
+        {
+            refValueToCheck = e.get("/" + refValue.value());
+        }
+        catch (std::exception & ex)
+        {
+            // TODO Check exception type
+            return e;
+        }
+
+        if (refValueToCheck == nullptr || !refValueToCheck->IsInt())
+        {
+            return e;
+        }
+        value = refValueToCheck->GetInt();
+    }
+
+    // Operation
+    if (op == "sum")
+    {
+        value = fieldValue->GetInt() + value.value();
+    }
+    else if (op == "sub")
+    {
+        value = fieldValue->GetInt() - value.value();
+    }
+    else if (op == "mul")
+    {
+        value = fieldValue->GetInt() * value.value();
+    }
+    else if (op == "div")
+    {
+        if (value.value() == 0)
+        {
+            return e;
+        }
+        value = fieldValue->GetInt() / value.value();
+    }
+    else
+    {
+        return e;
+    }
+
+    // Create and add string to event
+    try
+    {
+        e.set("/" + field, rapidjson::Value(value.value()));
+    }
+    catch (std::exception & ex)
+    {
+        // TODO Check exception type
+        return e;
+    }
+    return e;
 }
+
+} // namespace
 
 namespace builder::internals::builders
 {
@@ -112,7 +210,7 @@ types::Lifter opBuilderHelperStringUP(const types::DocumentValue & def)
 {
 
     // Get field key to check
-    std::string key{def.MemberBegin()->name.GetString()};
+    std::string key {def.MemberBegin()->name.GetString()};
 
     // Get the raw value of parameter
     if (!def.MemberBegin()->value.IsString())
@@ -122,15 +220,15 @@ types::Lifter opBuilderHelperStringUP(const types::DocumentValue & def)
     }
 
     // Parse parameters
-    std::string parm{def.MemberBegin()->value.GetString()};
-    auto parametersArr = utils::string::split(parm, '/');
+    std::string parm {def.MemberBegin()->value.GetString()};
+    auto parametersArr {utils::string::split(parm, '/')};
     if (parametersArr.size() != 2)
     {
         throw std::runtime_error("Invalid number of parameters for s_up operator");
     }
 
-    std::optional<std::string> refExpStr{};
-    std::optional<std::string> expectedStr{};
+    std::optional<std::string> refExpStr {};
+    std::optional<std::string> expectedStr {};
 
     // Check if is a reference to json event
     if (parametersArr[1][0] == '$')
@@ -159,7 +257,7 @@ types::Lifter opBuilderHelperStringLO(const types::DocumentValue & def)
 {
 
     // Get field key to check
-    std::string key{def.MemberBegin()->name.GetString()};
+    std::string key {def.MemberBegin()->name.GetString()};
 
     // Get the raw value of parameter
     if (!def.MemberBegin()->value.IsString())
@@ -169,8 +267,8 @@ types::Lifter opBuilderHelperStringLO(const types::DocumentValue & def)
     }
 
     // Parse parameters
-    std::string parm{def.MemberBegin()->value.GetString()};
-    auto parametersArr = utils::string::split(parm, '/');
+    std::string parm {def.MemberBegin()->value.GetString()};
+    auto parametersArr {utils::string::split(parm, '/')};
     if (parametersArr.size() != 2)
     {
         throw std::runtime_error("Invalid number of parameters for s_lo operator");
@@ -206,7 +304,7 @@ types::Lifter opBuilderHelperStringTrim(const types::DocumentValue & def)
 {
 
     // Get field path to trim
-    std::string field{def.MemberBegin()->name.GetString()};
+    std::string field {def.MemberBegin()->name.GetString()};
 
     // Get the raw value of parameter
     if (!def.MemberBegin()->value.IsString())
@@ -217,8 +315,8 @@ types::Lifter opBuilderHelperStringTrim(const types::DocumentValue & def)
     }
 
     // Parse parameters
-    std::string parm{def.MemberBegin()->value.GetString()};
-    auto parametersArr = utils::string::split(parm, '/');
+    std::string parm {def.MemberBegin()->value.GetString()};
+    auto parametersArr {utils::string::split(parm, '/')};
     if (parametersArr.size() != 3)
     {
         throw std::runtime_error("Invalid number of parameters for s_trim operator");
@@ -314,96 +412,12 @@ types::Lifter opBuilderHelperStringTrim(const types::DocumentValue & def)
 //*           Int tranform                        *
 //*************************************************
 
-types::Event opBuilderHelperIntTransformation(const std::string field, std::string op,
-                                              types::Event & e,
-                                              std::optional<std::string> refValue,
-                                              std::optional<int> value)
-{
-    // TODO Remove try catch or if nullptr after fix get method of document class
-    // Get value to compare
-    const rapidjson::Value * fieldValue{};
-    try
-    {
-        fieldValue = e.get("/" + field);
-    }
-    catch (std::exception & ex)
-    {
-        // TODO Check exception type
-        return e;
-    }
-
-    if (fieldValue == nullptr || !fieldValue->IsInt())
-    {
-        return e;
-    }
-
-    if (refValue.has_value())
-    {
-        // Get reference to json event
-        // TODO Remove try catch or if nullptr after fix get method of document class
-        const rapidjson::Value * refValueToCheck{};
-        try
-        {
-            refValueToCheck = e.get("/" + refValue.value());
-        }
-        catch (std::exception & ex)
-        {
-            // TODO Check exception type
-            return e;
-        }
-
-        if (refValueToCheck == nullptr || !refValueToCheck->IsInt())
-        {
-            return e;
-        }
-        value = refValueToCheck->GetInt();
-    }
-
-    // Operation
-    if (op == "sum")
-    {
-        value = fieldValue->GetInt() + value.value();
-    }
-    else if (op == "sub")
-    {
-        value = fieldValue->GetInt() - value.value();
-    }
-    else if (op == "mul")
-    {
-        value = fieldValue->GetInt() * value.value();
-    }
-    else if (op == "div")
-    {
-        if (value.value() == 0)
-        {
-            return e;
-        }
-        value = fieldValue->GetInt() / value.value();
-    }
-    else
-    {
-        return e;
-    }
-
-    // Create and add string to event
-    try
-    {
-        e.set("/" + field, rapidjson::Value(value.value()));
-    }
-    catch (std::exception & ex)
-    {
-        // TODO Check exception type
-        return e;
-    }
-    return e;
-}
-
 // field: +i_calc/[+|-|*|/]/val|$ref/
 types::Lifter opBuilderHelperIntCalc(const types::DocumentValue & def)
 {
     // Get field
-    std::string field = def.MemberBegin()->name.GetString();
-    std::string rawValue = def.MemberBegin()->value.GetString();
+    std::string field {def.MemberBegin()->name.GetString()};
+    std::string rawValue {def.MemberBegin()->value.GetString()};
 
     std::vector<std::string> parameters = utils::string::split(rawValue, '/');
 
@@ -412,9 +426,9 @@ types::Lifter opBuilderHelperIntCalc(const types::DocumentValue & def)
         throw std::runtime_error("Invalid parameters");
     }
 
-    std::optional<std::string> refValue;
-    std::optional<int> value;
-    std::string op = parameters[1];
+    std::optional<std::string> refValue {};
+    std::optional<int> value {};
+    std::string op {parameters[1]};
 
     if (op != "sum" && op != "sub" && op != "mul" && op != "div")
     {
@@ -445,10 +459,7 @@ types::Lifter opBuilderHelperIntCalc(const types::DocumentValue & def)
         // Append rxcpp operation
         return o.map(
             [=](types::Event e)
-            {
-                return opBuilderHelperIntTransformation(field, op, e, refValue,
-                                                        value);
-            });
+            { return opBuilderHelperIntTransformation(field, op, e, refValue, value); });
     };
 }
 
