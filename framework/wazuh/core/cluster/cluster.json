@@ -116,6 +116,7 @@
             "timeout_receiving_file": 120,
             "max_zip_size": 1073741824,
             "min_zip_size": 31457280,
+            "compress_level": 1,
             "zip_limit_tolerance": 0.2
         }
     },
