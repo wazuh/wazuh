@@ -45,3 +45,10 @@ add_executable(stringUtils_test
 )
 target_link_libraries(stringUtils_test glog::glog)
 gtest_discover_tests(stringUtils_test)
+
+add_executable(ipUtils_test
+  ${SHARED_TEST_SOURCE_DIR}/ipUtils_test.cpp
+  ${SHARED_ENGINE_SOURCE_DIR}/ipUtils.cpp
+)
+target_link_libraries(ipUtils_test glog::glog)
+gtest_discover_tests(ipUtils_test)
