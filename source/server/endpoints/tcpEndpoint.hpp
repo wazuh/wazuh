@@ -10,6 +10,7 @@
 #ifndef _TCP_ENDPOINT_H_
 #define _TCP_ENDPOINT_H_
 
+#include <cstring>
 #include <functional>
 #include <iostream>
 #include <mutex>
@@ -19,10 +20,13 @@
 #include <uvw/timer.hpp>
 
 #include "baseEndpoint.hpp"
+#include "glog/logging.h"
 #include "protocolHandler.hpp"
 
 namespace engineserver::endpoints
 {
+
+#define CONNECTION_TIMEOUT_MSEC 5000
 
 /**
  * @brief Implements tcp server endpoint using uvw library.
@@ -37,7 +41,7 @@ private:
     std::shared_ptr<uvw::Loop> m_loop;
     std::shared_ptr<uvw::TCPHandle> m_server;
 
-    BaseEndpoint::ConnectionObs connectionHandler(const uvw::ListenEvent & event, uvw::TCPHandle & srv);
+    void connectionHandler(uvw::TCPHandle & server);
 
 public:
     /**
