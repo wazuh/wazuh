@@ -1,8 +1,9 @@
 #include "gtest/gtest.h"
+
 #include <hlp/hlp.hpp>
 
 
-// Test: Parsing different options with logQL expressions
+// Test: Parsing logQL expressions
 TEST(hlpTests_logQL, logQL_general)
 {
     const char *logQl =
@@ -222,7 +223,7 @@ TEST(hlpTests_json, failed_not_string)
     ASSERT_TRUE(result["_json2"].empty());
 }
 
-// Test: maps parsing
+// Test: parsing maps objects
 TEST(hlpTests_map, success_test)
 {
     const char *logQl ="<_map/MAP/ /=>-<_dummy>";
@@ -267,7 +268,7 @@ TEST(hlpTests_map, incomplete_map_test)
     ASSERT_TRUE(result3.empty());
 }
 
-// Test: timestamp parsing
+// Test: timestamps parsing
 TEST(hlpTests_Timestamp, ansic)
 {
     static const char *logQl   = "[<timestamp/ANSIC>]";
@@ -493,6 +494,18 @@ TEST(hlpTests_Timestamp, Unix)
     ASSERT_EQ("5", result["timestamp.seconds"]);
 }
 
+TEST(hlpTests_Timestamp, Unix_fail)
+{
+    static const char *logQl  = "[<timestamp/UnixDate>]";
+    static const char *unixTs = "[Mon Jan 2 15:04:05 MST 1960]";
+
+    auto parseOp = getParserOp(logQl);
+    auto result  = parseOp(unixTs);
+
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
+    ASSERT_TRUE(result.empty());
+}
+
 TEST(hlpTests_Timestamp, specific_format)
 {
     static const char *logQl =
@@ -707,11 +720,11 @@ TEST(hlpTests_filepath, windows_path)
     ASSERT_EQ("test.txt", result["_file.name"]);
     ASSERT_EQ("txt", result["_file.extension"]);
 
-    const char *folder_path = "C:\\Users\\Name\\Desktop\\";
+    const char *folder_path = "D:\\Users\\Name\\Desktop\\";
     result = parseOp(folder_path);
-    ASSERT_EQ("C:\\Users\\Name\\Desktop\\", result["_file.path"]);
-    ASSERT_EQ("C", result["_file.drive_letter"]);
-    ASSERT_EQ("C:\\Users\\Name\\Desktop", result["_file.folder"]);
+    ASSERT_EQ("D:\\Users\\Name\\Desktop\\", result["_file.path"]);
+    ASSERT_EQ("D", result["_file.drive_letter"]);
+    ASSERT_EQ("D:\\Users\\Name\\Desktop", result["_file.folder"]);
     ASSERT_EQ("", result["_file.name"]);
     ASSERT_EQ("", result["_file.extension"]);
 
