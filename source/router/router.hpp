@@ -17,8 +17,6 @@
 #include <type_traits>
 
 #include "json.hpp"
-#include "protocolHandler.hpp"
-#include "threadPool.hpp"
 
 namespace router
 {
@@ -146,30 +144,29 @@ private:
 
     std::map<std::string, Environment> m_environments;
     std::map<std::string, Route> m_routes;
-    ServerOutputObs m_observable;
+    rxcpp::subjects::subject<json::Document> m_subj;
+    rxcpp::subscriber<json::Document> m_input;
     Builder m_builder;
 
 public:
     /**
      * @brief Construct a new Router object
      *
-     * @param serverOutput Observable that emits items received by server
      * @param builder Injected Builder object
      */
-    Router(const ServerOutputObs & serverOutput, const Builder & builder) noexcept
-        : m_observable{serverOutput}, m_builder{builder}
+    Router(const Builder & builder) noexcept : m_builder{builder}, m_input{m_subj.get_subscriber()}
     {
     }
 
     /**
      * @brief Add a route
      *
-     * @param route Name of the route
-     * @param filterFunction Filter function to select forwarded envents
      * @param environment Where events are forwarded
+     * @param route Name of the route
+     * @param filterFunction Filter function to select forwarded envent
      */
     void add(
-        const std::string & route, const std::string & environment, const int & nThreads = 4,
+        const std::string & route, const std::string & environment,
         const std::function<bool(json::Document)> filterFunction = [](const auto) { return true; })
     {
         // Assert route with same name not exists
@@ -184,26 +181,16 @@ public:
             Op_t envBuilder = this->m_builder(environment);
             this->m_environments[environment] = Environment(environment, envBuilder);
 
-            // TODO: Are these two lines necessary?
+            // Build enviroment
+            // TODO: handle errors/recovery, obs may be needed
             auto in = this->m_environments.at(environment).m_subject.get_observable();
             auto obs = envBuilder(in);
         }
 
-        rxcpp::schedulers::scheduler sc = rxcpp::schedulers::make_scheduler<threadpool::ThreadPool>(nThreads);
-        static rxcpp::observe_on_one_worker threadPoolW(sc); // TODO: Find a way to not to use the static in here
-
-        auto envIn = this->m_environments.at(environment).m_subject.get_subscriber();
-
-        auto subscription = this->m_observable.subscribe(
-            [=](rxcpp::observable<std::string> o)
-            {
-                engineserver::ProtocolHandler p;
-
-                o.observe_on(threadPoolW)
-                    .map([=](std::string s) { return p.parse(s); })
-                    .filter(filterFunction)
-                    .subscribe([=](json::Document s) { envIn.on_next(s); });
-            });
+        // Route filtered events to enviroment, Router subject implements multicasting (we need to
+        // call get_observable for each filter added)
+        auto envInput = this->m_environments.at(environment).m_subject.get_subscriber();
+        auto subscription = this->m_subj.get_observable().filter(filterFunction).subscribe(envInput);
 
         // Add route to list
         this->m_routes[route] = Route(route, environment, filterFunction, subscription);
@@ -231,6 +218,16 @@ public:
         {
             this->m_environments.erase(environment);
         }
+    }
+
+    /**
+     * @brief Obtain Router subscriber to inject events.
+     *
+     * @return const rxcpp::subscriber<json::Document>&
+     */
+    const rxcpp::subscriber<json::Document> & input() const
+    {
+        return this->m_input;
     }
 
     /**
