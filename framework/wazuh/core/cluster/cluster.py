@@ -12,10 +12,7 @@ from datetime import datetime
 from functools import partial
 from operator import eq
 from os import listdir, path, remove, stat, walk
-from random import random
-from shutil import rmtree
-from subprocess import check_output
-from time import time
+from uuid import uuid4
 
 from wazuh import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core import common
@@ -36,17 +33,6 @@ agent_groups_path = os.path.relpath(common.groups_path, common.wazuh_path)
 #
 
 
-def get_localhost_ips():
-    """Get all localhost IPs addresses.
-
-    Returns
-    -------
-    set
-        All IP addresses.
-    """
-    return set(str(check_output(['hostname', '--all-ip-addresses']).decode()).split(" ")[:-1])
-
-
 def check_cluster_config(config):
     """Verify that cluster configuration is correct.
 
@@ -54,6 +40,7 @@ def check_cluster_config(config):
         - Cluster config block is not empty.
         - len(key) == 32 and only alphanumeric characters are used.
         - node_type is 'master' or 'worker'.
+        - Port is an int type.
         - 1024 < port < 65535.
         - Only 1 node is specified.
         - Reserved IPs are not used.
@@ -73,11 +60,15 @@ def check_cluster_config(config):
 
     if len(config['key']) == 0:
         raise WazuhError(3004, 'Unspecified key')
+
     elif not iv.check_name(config['key']) or not iv.check_length(config['key'], 32, eq):
         raise WazuhError(3004, 'Key must be 32 characters long and only have alphanumeric characters')
 
     elif config['node_type'] != 'master' and config['node_type'] != 'worker':
         raise WazuhError(3004, f'Invalid node type {config["node_type"]}. Correct values are master and worker')
+
+    elif not isinstance(config['port'], int):
+        raise WazuhError(3004, "Port has to be an integer.")
 
     elif not 1024 < config['port'] < 65535:
         raise WazuhError(3004, "Port must be higher than 1024 and lower than 65535.")
@@ -85,45 +76,12 @@ def check_cluster_config(config):
     if len(config['nodes']) > 1:
         logger.warning(
             "Found more than one node in configuration. Only master node should be specified. Using {} as master.".
-            format(config['nodes'][0]))
+                format(config['nodes'][0]))
 
     invalid_elements = list(reservated_ips & set(config['nodes']))
 
     if len(invalid_elements) != 0:
         raise WazuhError(3004, f"Invalid elements in node fields: {', '.join(invalid_elements)}.")
-
-
-def get_cluster_items_master_intervals():
-    """Get master's time intervals specified in cluster.json file.
-
-    Returns
-    -------
-    dict
-        Master's time intervals specified in cluster.json file.
-    """
-    return get_cluster_items()['intervals']['master']
-
-
-def get_cluster_items_communication_intervals():
-    """Get communication's time intervals specified in cluster.json file.
-
-    Returns
-    -------
-    dict
-        Communication's time intervals specified in cluster.json file.
-    """
-    return get_cluster_items()['intervals']['communication']
-
-
-def get_cluster_items_worker_intervals():
-    """Get worker's time intervals specified in cluster.json file.
-
-    Returns
-    -------
-    dict
-        Worker's time intervals specified in cluster.json file.
-    """
-    return get_cluster_items()['intervals']['worker']
 
 
 def get_node():
@@ -326,7 +284,7 @@ def update_cluster_control_with_failed(failed_files, ko_files):
             ko_files['shared'].pop(f, None)
 
 
-def compress_files(name, list_path, cluster_control_json=None):
+def compress_files(name, list_path, cluster_control_json=None, max_zip_size=None):
     """Create a zip with cluster_control.json and the files listed in list_path.
 
     Iterate the list of files and groups them in the zip. If a file does not
@@ -337,19 +295,26 @@ def compress_files(name, list_path, cluster_control_json=None):
     name : str
         Name of the node to which the zip will be sent.
     list_path : list
-        List of file paths to be zipped.
+        File paths to be zipped.
     cluster_control_json : dict
         KO files (path-metadata) to be zipped as a json.
+    max_zip_size : int
+        Maximum size from which no new files should be added to the zip.
 
     Returns
     -------
     zip_file_path : str
         Path where the zip file has been saved.
     """
+    if max_zip_size is None:
+        max_zip_size = get_cluster_items()['intervals']['communication']['max_zip_size']
     failed_files = list()
-    zip_file_path = path.join(common.wazuh_path, 'queue', 'cluster', name, f'{name}-{time()}-{str(random())[2:]}.zip')
+    zip_file_path = path.join(common.WAZUH_PATH, 'queue', 'cluster', name,
+                              f'{name}-{datetime.utcnow().timestamp()}-{uuid4().hex}.zip')
+
     if not path.exists(path.dirname(zip_file_path)):
         mkdir_with_mode(path.dirname(zip_file_path))
+
     with zipfile.ZipFile(zip_file_path, 'x') as zf:
         # write files
         if list_path:
@@ -559,7 +524,7 @@ def clean_up(node_name=""):
             f_path = path.join(local_rm_path, f)
             try:
                 if path.isdir(f_path):
-                    rmtree(f_path)
+                    shutil.rmtree(f_path)
                 else:
                     remove(f_path)
             except Exception as err:

@@ -7,11 +7,11 @@ import json
 import operator
 import os
 import shutil
+import time
 from calendar import timegm
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime
-from time import time
 from typing import Tuple, Dict, Callable
 from uuid import uuid4
 
@@ -173,6 +173,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         # Dictionary to save loggers for each sync task.
         self.task_loggers = {}
         context_tag.set(self.tag)
+        self.current_zip_limit = self.cluster_items['intervals']['communication']['max_zip_size']
 
     def to_dict(self):
         """Get worker healthcheck information.
@@ -537,7 +538,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         result = {'updated_chunks': 0, 'error_messages': {'chunks': [], 'others': []}, 'time_spent': 0}
         wdb_conn = WazuhDBConnection()
-        before = time()
+        before = time.time()
 
         try:
             with utils.Timeout(timeout):
@@ -545,7 +546,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                     try:
                         wdb_conn.send(f"{data['set_data_command']} {chunk}", raw=True)
                         result['updated_chunks'] += 1
-                    except TimeoutError:
+                    except TimeoutError as e:
                         raise e
                     except Exception as e:
                         result['error_messages']['chunks'].append((i, str(e)))
@@ -554,7 +555,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         except Exception as e:
             result['error_messages']['others'].append(f'Error while processing agent-info chunks: {e}')
 
-        result['time_spent'] = time() - before
+        result['time_spent'] = time.time() - before
         wdb_conn.close()
         return result
 
@@ -702,7 +703,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             master_files_paths = worker_files_ko['shared'].keys() | worker_files_ko['missing'].keys()
             compressed_data = await cluster.run_in_pool(self.loop, self.server.task_pool,
                                                         wazuh.core.cluster.cluster.compress_files, self.name,
-                                                        master_files_paths, worker_files_ko)
+                                                        master_files_paths, worker_files_ko, self.current_zip_limit)
+
+            time_to_send = 0
+            sent_size = 0
 
             try:
                 # Start the synchronization process with the worker and get a taskID.
@@ -714,7 +718,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                     raise exc_info
 
                 # Send zip file to the worker into chunks.
-                await self.send_file(compressed_data, task_id)
+                time_to_send = time.perf_counter()
+                sent_size = await self.send_file(compressed_data, task_id)
+                time_to_send = time.perf_counter() - time_to_send
                 logger.debug("Zip with files to be synced sent to worker.")
 
                 # Finish the synchronization process and notify where the file corresponding to the taskID is located.
@@ -737,10 +743,30 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                       cls=c_common.WazuhJSONEncoder).encode()
                 await self.send_request(command=b'syn_m_c_r', data=task_id + b' ' + exc_info)
             finally:
+                try:
+                    # Decrease max zip size if task was interrupted (otherwise, KeyError exception raised).
+                    self.interrupted_tasks.remove(task_id)
+                    self.current_zip_limit = max(
+                        self.cluster_items['intervals']['communication']['min_zip_size'],
+                        sent_size * (1 - self.cluster_items['intervals']['communication']['zip_limit_tolerance'])
+                    )
+                    self.logger.debug(f"Decreasing sync size limit to {self.current_zip_limit / (1024**2):.2f} MB.")
+                except KeyError:
+                    # Increase max zip size if two conditions are met:
+                    #   1. Current zip limit is lower than default.
+                    #   2. Time to send zip was far under timeout_receiving_file.
+                    if (self.current_zip_limit < self.cluster_items['intervals']['communication']['max_zip_size'] and
+                            time_to_send < self.cluster_items['intervals']['communication']['timeout_receiving_file'] *
+                            (1 - self.cluster_items['intervals']['communication']['zip_limit_tolerance'])):
+                        self.current_zip_limit = min(
+                            self.cluster_items['intervals']['communication']['max_zip_size'],
+                            self.current_zip_limit * (
+                                    1 / (1 - self.cluster_items['intervals']['communication']['zip_limit_tolerance'])
+                            ))
+                        self.logger.debug(f"Increasing sync size limit to {self.current_zip_limit / (1024**2):.2f} MB.")
+
                 # Remove local file.
                 os.unlink(compressed_data)
-                # In case task was interrupted, remove its ID from the interrupted set.
-                self.interrupted_tasks.discard(task_id)
                 logger.debug("Finished sending files to worker.")
                 # Log 'Finished in' message only if there are no extra_valid files to sync.
                 if not self.extra_valid_requested:

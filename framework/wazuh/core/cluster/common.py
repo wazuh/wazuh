@@ -477,7 +477,7 @@ class Handler(asyncio.Protocol):
             return b'Error sending request: timeout expired.'
         return response_data
 
-    async def send_file(self, filename: str, task_id: bytes = None) -> bytes:
+    async def send_file(self, filename: str, task_id: bytes = None) -> int:
         """Send a file to peer, slicing it into chunks.
 
         Parameters
@@ -489,14 +489,16 @@ class Handler(asyncio.Protocol):
 
         Returns
         -------
-        bytes
-            Response message.
+        sent_size : int
+            Number of bytes that were successfully sent.
         """
         if not os.path.exists(filename):
             raise exception.WazuhClusterError(3034, extra_message=filename)
 
+        sent_size = 0
         filename = filename.encode()
         relative_path = filename.replace(common.wazuh_path.encode(), b'')
+
         # Tell to the destination node where (inside wazuh_path) the file has to be written.
         await self.send_request(command=b'new_file', data=relative_path)
 
@@ -506,13 +508,14 @@ class Handler(asyncio.Protocol):
             for chunk in iter(lambda: f.read(self.request_chunk - len(relative_path) - 1), b''):
                 await self.send_request(command=b'file_upd', data=relative_path + b' ' + chunk)
                 file_hash.update(chunk)
+                sent_size += len(chunk)
                 if task_id in self.interrupted_tasks:
                     break
 
         # Close the destination file descriptor so the file in memory is dumped to disk.
         await self.send_request(command=b'file_end', data=relative_path + b' ' + file_hash.digest())
 
-        return b'File sent'
+        return sent_size
 
     async def send_string(self, my_str: bytes) -> bytes:
         """Send a large string to peer, slicing it into chunks.
@@ -1021,7 +1024,7 @@ class WazuhCommon:
         """
         task_id, filename = task_and_file_names.split(' ', 1)
         if task_id not in self.sync_tasks:
-            # Remove filename if task_id does not exists, before raising exception.
+            # Remove filename if task_id does not exist, before raising exception.
             if os.path.exists(os.path.join(common.wazuh_path, filename)):
                 try:
                     os.remove(os.path.join(common.wazuh_path, filename))
