@@ -19,6 +19,7 @@ enum class ParserType {
     Map,
     Domain,
     FilePath,
+    UserAgent,
     Invalid,
 };
 
