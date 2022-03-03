@@ -16,6 +16,10 @@ target_sources(main PRIVATE
     ${SHARED_ENGINE_SOURCE_DIR}/stringUtils.cpp
 )
 
+target_sources(main PRIVATE
+    ${SHARED_ENGINE_SOURCE_DIR}/ipUtils.cpp
+)
+
 target_include_directories(main PUBLIC
     ${SHARED_ENGINE_SOURCE_DIR}
 )
