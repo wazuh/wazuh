@@ -13,10 +13,11 @@ namespace utils::ip {
 
 uint32_t IPv4ToUInt(const std::string ipStr)
 {
-    int a, b, c, d;
+    int a, b, c, d {};
+    char z {}; // Character after IP
     uint32_t ipUInt = 0;
 
-    if (sscanf(ipStr.c_str(), "%d.%d.%d.%d", &a, &b, &c, &d) != 4) {
+    if (sscanf(ipStr.c_str(), "%d.%d.%d.%d%c", &a, &b, &c, &d, &z) != 4) {
         throw std::invalid_argument("Invalid IPv4 address");
     }
     else if (a < 0 || a > 255 || b < 0 || b > 255 || c < 0 || c > 255 || d < 0 || d > 255) {

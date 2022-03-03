@@ -13,7 +13,7 @@
 
 #include "stringUtils.hpp"
 
-TEST(split, notDelimiter)
+TEST(split, not_delimiter)
 {
     std::string test = "test";
     std::vector<std::string> expected = {"test"};
@@ -21,7 +21,7 @@ TEST(split, notDelimiter)
     ASSERT_EQ(result, expected);
 }
 
-TEST(split, middleDelimiter)
+TEST(split, middle_delimiter)
 {
     std::string test = "value1/value2";
     std::vector<std::string> expected = {"value1","value2"};
@@ -29,7 +29,7 @@ TEST(split, middleDelimiter)
     ASSERT_EQ(result, expected);
 }
 
-TEST(split, firstDelimiter)
+TEST(split, first_delimiter)
 {
     std::string test = "/value1/value2";
     std::vector<std::string> expected = {"","value1","value2"};
@@ -37,7 +37,7 @@ TEST(split, firstDelimiter)
     ASSERT_EQ(result, expected);
 }
 
-TEST(split, finalDelimiter)
+TEST(split, final_delimiter)
 {
     std::string test = "value1/value2/";
     std::vector<std::string> expected = {"value1","value2"};
@@ -45,7 +45,7 @@ TEST(split, finalDelimiter)
     ASSERT_EQ(result, expected);
 }
 
-TEST(split, dobleDelimiter)
+TEST(split, doble_delimiter)
 {
     std::string test = "value1//value2";
     std::vector<std::string> expected = {"value1","","value2"};
@@ -53,7 +53,7 @@ TEST(split, dobleDelimiter)
     ASSERT_EQ(result, expected);
 }
 
-TEST(split, okDelimiter)
+TEST(split, ok_delimiter)
 {
     std::string test = "value1/value2/value3";
     std::vector<std::string> expected = {"value1","value2","value3"};
