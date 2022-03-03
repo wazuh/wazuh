@@ -28,6 +28,7 @@
 #include "graph.hpp"
 #include "json.hpp"
 #include "protocolHandler.hpp"
+// #include "queue.hpp"
 #include "register.hpp"
 #include "router.hpp"
 #include "threadPool.hpp"
@@ -94,22 +95,48 @@ int main(int argc, char * argv[])
     }
     builder::Builder<catalog::Catalog> _builder(_catalog);
 
-    // Build router
-    // TODO: Integrate filter creation with builder and default route with catalog
 
-    router::Router<builder::Builder<catalog::Catalog>> router{server.output(), _builder};
-
-    try
+    // Router is built in each thread
+    for (auto i = 0; i < nThreads; ++i)
     {
-        // Default route
-        router.add("test_route", "test_environment", nThreads);
-    }
-    catch (const exception & e)
-    {
-        LOG(ERROR) << "Engine error, got exception while building default route: " << e.what() << endl;
-        return 1;
+        std::thread t{[=]()
+        {
+            router::Router<builder::Builder<catalog::Catalog>> router{_builder};
+
+            try
+            {
+                // Default route
+                router.add("test_route", "test_environment");
+            }
+            catch (const exception & e)
+            {
+                LOG(ERROR) << "Engine error, got exception while building default route: " << e.what()
+                            << endl;
+                return 1;
+            }
+
+            engineserver::ProtocolHandler p;
+            // Start thread loop
+            while(true){
+                std::string event;
+                threadpool::queue2.wait_dequeue(event);
+                // threadpool::queue;
+                router.input().on_next(p.parse(event));
+            }
+        }};
+
+        t.detach();
     }
 
+    // Start main loop
+    // server.output()
+    //     .subscribe(
+    //         [](std::string raw){
+    //             threadpool::queue2.enqueue(std::move(raw));
+    //         },
+    //         [](auto eptr){},
+    //         [](){}
+    //     );
     server.run();
 
     return 0;

@@ -14,7 +14,7 @@
 #include <string>
 
 #include "baseEndpoint.hpp"
-#include "socketEndpoint.hpp"
+//#include "socketEndpoint.hpp"
 #include "tcpEndpoint.hpp"
 
 using namespace std;
@@ -28,10 +28,10 @@ EndpointType stringToEndpoint(const string & endpointName)
     {
         return TCP;
     }
-    else if (endpointName == "socket")
-    {
-        return SOCKET;
-    }
+    // else if (endpointName == "socket")
+    // {
+    //     return SOCKET;
+    // }
     else
     {
         throw invalid_argument("Error, endpoint " + endpointName + " not supported");
@@ -46,9 +46,9 @@ unique_ptr<BaseEndpoint> create(const string & type, const string & config)
         case TCP:
             return make_unique<TCPEndpoint>(config);
             break;
-        case SOCKET:
-            return make_unique<SocketEndpoint>(config);
-            break;
+        // case SOCKET:
+        //     return make_unique<SocketEndpoint>(config);
+        //     break;
         default:
             throw runtime_error("Error, endpoint type " + to_string(endpointType) +
                                 " not implemented by factory Endpoint builder");

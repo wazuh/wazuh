@@ -29,22 +29,23 @@ bool ProtocolHandler::hasHeader()
     return false;
 }
 
-void ProtocolHandler::send(const rxcpp::subscriber<rxcpp::observable<std::string>> s)
+void ProtocolHandler::send()
 {
     std::string evt;
     try
     {
         evt = std::string(m_buff.begin() + sizeof(int), m_buff.end());
         m_buff.clear();
+        while(!threadpool::queue2.try_enqueue(evt)){
+            std::this_thread::sleep_for(std::chrono::microseconds(10));
+        }
     }
     catch (std::exception & e)
     {
         LOG(ERROR) << e.what() << std::endl;
-        s.on_error(std::current_exception());
         return;
     }
 
-    s.on_next(rxcpp::observable<>::just(evt));
 }
 
 json::Document ProtocolHandler::parse(const std::string & event) const
@@ -95,8 +96,7 @@ json::Document ProtocolHandler::parse(const std::string & event) const
     return doc;
 }
 
-bool ProtocolHandler::process(char * data, std::size_t length,
-                              const rxcpp::subscriber<rxcpp::observable<std::string>> s)
+bool ProtocolHandler::process(char * data, std::size_t length)
 {
     for (std::size_t i = 0; i < length; i++)
     {
@@ -125,7 +125,7 @@ bool ProtocolHandler::process(char * data, std::size_t length,
                 m_pending--;
                 if (m_pending == 0)
                 {
-                    send(s);
+                    send();
                     m_stage = 0;
                 }
                 break;
