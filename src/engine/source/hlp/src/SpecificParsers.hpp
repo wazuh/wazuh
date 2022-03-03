@@ -49,8 +49,6 @@ struct UserAgentResult
     std::string original;
 };
 
-bool parseFilePath(const char **it, char endToken);
-
 std::string parseAny(const char **it, char endToken);
 
 bool matchLiteral(const char **it, std::string const& literal);

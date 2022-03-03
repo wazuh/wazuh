@@ -824,7 +824,7 @@ TEST(hlpTests_filepath, force_unix_format)
     ASSERT_EQ("txt", result["_file.extension"]);
 }
 
-TEST(userAgentTests, user_agent_firefox)
+TEST(hlpTests_UserAgent, user_agent_firefox)
 {
     const char *logQl = "[<userAgent>] <_>";
     const char *userAgent =
@@ -839,7 +839,7 @@ TEST(userAgentTests, user_agent_firefox)
               "rv:42.0) Gecko/20100101 Firefox/42.0");
 }
 
-TEST(userAgentTests, user_agent_chrome)
+TEST(hlpTests_UserAgent, user_agent_chrome)
 {
     const char *logQl = "[<userAgent>] <_>";
     const char *userAgent =
@@ -854,7 +854,7 @@ TEST(userAgentTests, user_agent_chrome)
               "Gecko) Chrome/51.0.2704.103 Safari/537.36");
 }
 
-TEST(userAgentTests, user_agent_edge)
+TEST(hlpTests_UserAgent, user_agent_edge)
 {
     const char *logQl = "[<userAgent>] <_>";
     const char *userAgent =
@@ -871,7 +871,7 @@ TEST(userAgentTests, user_agent_edge)
         "like Gecko) Chrome/91.0.4472.124 Safari/537.36 Edg/91.0.864.59");
 }
 
-TEST(userAgentTests, user_agent_opera)
+TEST(hlpTests_UserAgent, user_agent_opera)
 {
     const char *logQl = "[<userAgent>] <_>";
     const char *userAgent =
@@ -887,7 +887,7 @@ TEST(userAgentTests, user_agent_opera)
               "Gecko) Chrome/51.0.2704.106 Safari/537.36 OPR/38.0.2220.41");
 }
 
-TEST(userAgentTests, user_agent_safari)
+TEST(hlpTests_UserAgent, user_agent_safari)
 {
     const char *logQl = "[<userAgent>] <_>";
     const char *userAgent =

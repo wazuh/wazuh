@@ -84,14 +84,14 @@ void parseFilePath(const char **it,
 
     std::string_view file_path {start, (size_t)((*it) - start)};
     std::string folder_separator = "/\\";
-    bool search_drive_letter     = true;
+    bool search_drive_letter = true;
     if(!captureOpts.empty() && captureOpts[0] == "UNIX")
     {
         search_drive_letter = false;
-        folder_separator    = "/";
+        folder_separator = "/";
     }
 
-    result.path     = file_path;
+    result.path = file_path;
     auto folder_end = file_path.find_last_of(folder_separator);
 
     result.folder = (folder_end == std::string::npos)
@@ -103,9 +103,9 @@ void parseFilePath(const char **it,
                       : file_path.substr(folder_end + 1);
 
     auto extension_start = result.name.find_last_of('.');
-    result.extension     = (extension_start == std::string::npos)
-                               ? ""
-                               : result.name.substr(extension_start + 1);
+    result.extension = (extension_start == std::string::npos)
+                           ? ""
+                           : result.name.substr(extension_start + 1);
 
     if(search_drive_letter && file_path[1] == ':' &&
        (file_path[2] == '\\' || file_path[2] == '/'))
@@ -143,17 +143,17 @@ std::string parseMap(const char **it,
     size_t opts_size = captureOpts.size();
     if(opts_size < 2)
     {
-        //TODO report error
+        // TODO report error
         return {};
     }
 
-    char tuples_separator  = captureOpts[0][0];
-    char values_separator  = captureOpts[1][0];
-    char map_finalizer     = endToken;
+    char tuples_separator = captureOpts[0][0];
+    char values_separator = captureOpts[1][0];
+    char map_finalizer = endToken;
     bool has_map_finalizer = false;
     if(opts_size > 2)
     {
-        map_finalizer     = captureOpts[2][0];
+        map_finalizer = captureOpts[2][0];
         has_map_finalizer = true;
     }
 
@@ -174,7 +174,7 @@ std::string parseMap(const char **it,
     auto &allocator = output_doc.GetAllocator();
 
     size_t tuple_start_pos = 0;
-    bool done              = false;
+    bool done = false;
     while(!done)
     {
         size_t separator_pos = map_str.find(values_separator, tuple_start_pos);
@@ -272,7 +272,7 @@ static bool parseFormattedTime(const char *fmt,
 
         if(fds.has_tod && fds.tod.in_conventional_range())
         {
-            ret.hour    = std::to_string(fds.tod.hours().count());
+            ret.hour = std::to_string(fds.tod.hours().count());
             ret.minutes = std::to_string(fds.tod.minutes().count());
             ret.seconds = std::to_string(fds.tod.seconds().count());
             auto subsec = fds.tod.subseconds().count();
@@ -323,7 +323,7 @@ bool parseTimeStamp(const char **it,
     if(!opts.empty())
     {
         bool ret = false;
-        auto it  = kTimeStampFormatMapper.find(opts[0]);
+        auto it = kTimeStampFormatMapper.find(opts[0]);
         if(it != kTimeStampFormatMapper.end())
         {
             ret = parseFormattedTime(it->second, tsStr, tsr);
@@ -492,7 +492,7 @@ bool parseDomain(const char **it,
                  DomainResult &result)
 {
     constexpr int DOMAIN_MAX_SIZE = 253;
-    constexpr int LABEL_MAX_SIZE  = 63;
+    constexpr int LABEL_MAX_SIZE = 63;
     const bool validate_FQDN =
         (!captureOpts.empty() && captureOpts[0] == "FQDN");
 
@@ -509,7 +509,7 @@ bool parseDomain(const char **it,
     if(std::string::npos != protocol_end)
     {
         result.protocol = str.substr(0, protocol_end);
-        domain_start    = protocol_end + 3;
+        domain_start = protocol_end + 3;
     }
     size_t domain_end = str.find("/", protocol_end + 3);
     // Domain
@@ -539,7 +539,7 @@ bool parseDomain(const char **it,
     // require to change the logic to avoid deleting the used labels.
     std::vector<std::string> labels;
     size_t start_label = 0;
-    size_t end_label   = 0;
+    size_t end_label = 0;
     while(end_label != std::string::npos)
     {
         end_label = result.domain.find('.', start_label);
@@ -639,10 +639,11 @@ bool parseUserAgent(const char **it, char endToken, UserAgentResult &ret)
 
     // NOTE: This will try to validate 'some' part of the user-agent standard as
     // is defined in https://datatracker.ietf.org/doc/html/rfc7231#section-5.5.3
-    // it will accept as valid only user agents with the form of - token/token
+    // it will accept as valid only User agents with the form of - token/token
     // (comment) token/token - or - token/token token/token - Other ~valid~
-    // formats of user agents like:
-    //     - Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko
+    // formats of User agents like:
+    //     - Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like
+    //     Gecko
     //     - product1/version1 product2/version2 product3
     //     - product/version (comment, (nested comment))
     // are not considered valid because it would be impossible to differentiate
@@ -650,7 +651,7 @@ bool parseUserAgent(const char **it, char endToken, UserAgentResult &ret)
 
     bool done = false;
     UAState state = UAState::Product;
-    const char* lastValid = ev;
+    const char *lastValid = ev;
     while(!done)
     {
         switch(state)
