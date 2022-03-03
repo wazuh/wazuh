@@ -639,7 +639,7 @@ bool parseUserAgent(const char **it, char endToken, UserAgentResult &ret)
 
     // NOTE: This will try to validate 'some' part of the user-agent standard as
     // is defined in https://datatracker.ietf.org/doc/html/rfc7231#section-5.5.3
-    // it will accept as valid only User agents with the form of - token/token
+    // It will accept as valid only User agents with the form of - token/token
     // (comment) token/token - or - token/token token/token - Other ~valid~
     // formats of User agents like:
     //     - Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like
