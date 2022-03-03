@@ -1562,9 +1562,13 @@ wdbc_result wdb_global_sync_agent_groups_get(wdb_t *wdb, wdb_groups_sync_conditi
             if (get_hash) {
                 size_t hash_len = strlen("hash:\"\"")+sizeof(os_sha1);
                 if (response_size+hash_len+1 < WDB_MAX_RESPONSE_SIZE) {
-                    os_sha1 hash = "";
+                    os_sha1 hash = {0};
                     if (OS_SUCCESS == wdb_get_global_group_hash(wdb, hash)) {
-                        cJSON_AddStringToObject(j_response, "hash", hash);
+                        if (hash[0] == 0) {
+                            cJSON_AddItemToObject(j_response, "hash", cJSON_CreateNull());
+                        } else {
+                            cJSON_AddStringToObject(j_response, "hash", hash);
+                        }
                         status = WDBC_OK;
                     } else {
                         merror("Cannot obtain the global group hash");

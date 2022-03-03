@@ -82,7 +82,7 @@ void test_Read_WazuhDB_attribute_NULL(void **state)
     OS_ReadXMLString(test_config, &xml);
     nodes = OS_GetElementsbyNode(&xml, NULL);
 
-    expect_string(__wrap__merror, formatted_msg, "(1243): Invalid attribute '' in the configuration: 'backup'.");
+    expect_string(__wrap__merror, formatted_msg, "(1233): Invalid attribute '' in the configuration: 'backup'.");
 
     int ret = Read_WazuhDB(&xml, nodes);
     assert_int_equal(ret, OS_INVALID);
@@ -102,7 +102,7 @@ void test_Read_WazuhDB_attribute_invalid(void **state)
     OS_ReadXMLString(test_config, &xml);
     nodes = OS_GetElementsbyNode(&xml, NULL);
 
-    expect_string(__wrap__merror, formatted_msg, "(1243): Invalid attribute 'invalid' in the configuration: 'backup'.");
+    expect_string(__wrap__merror, formatted_msg, "(1233): Invalid attribute 'invalid' in the configuration: 'backup'.");
 
     int ret = Read_WazuhDB(&xml, nodes);
     assert_int_equal(ret, OS_INVALID);

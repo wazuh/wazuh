@@ -1658,7 +1658,7 @@ void wdb_get_global_group_hash_invalid_statement(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
-void wdb_get_global_group_hash_calculate_fail(void **state)
+void wdb_get_global_group_hash_calculate_success_no_group_hash_information(void **state)
 {
     wdb_t * data = *state;
     os_sha1 hexdigest;
@@ -1677,7 +1677,7 @@ void wdb_get_global_group_hash_calculate_fail(void **state)
 
     ret = wdb_get_global_group_hash(data, hexdigest);
 
-    assert_int_equal(ret, OS_INVALID);
+    assert_int_equal(ret, OS_SUCCESS);
 }
 
 void wdb_get_global_group_hash_calculate_success(void **state)
@@ -1813,7 +1813,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(wdb_get_global_group_hash_read_success, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(wdb_get_global_group_hash_invalid_db_structure, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(wdb_get_global_group_hash_invalid_statement, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(wdb_get_global_group_hash_calculate_fail, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(wdb_get_global_group_hash_calculate_success_no_group_hash_information, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(wdb_get_global_group_hash_calculate_success, setup_wdb_t, teardown_wdb_t),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
