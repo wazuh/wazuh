@@ -60,6 +60,7 @@ set(EXTERNAL_DEPS ${EXTERNAL_DEPS} PARENT_SCOPE)
 target_sources(main PRIVATE
   ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
+  ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderBroadcast.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderOutputs.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderChain.cpp
