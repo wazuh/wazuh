@@ -1,10 +1,11 @@
+#include "LogQLParser.hpp"
+#include "hlpDetails.hpp"
+
 #include <stdio.h>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
-#include "LogQLParser.hpp"
-#include "hlpDetails.hpp"
 
 static const std::unordered_map<std::string_view, ParserType> kECSParserMapper {
     { "source.ip", ParserType::IP },
@@ -16,7 +17,8 @@ static const std::unordered_map<std::string_view, ParserType> kECSParserMapper {
     { "file.created", ParserType::Ts},
     { "url", ParserType::URL},
     { "http.request.method", ParserType::Any },
-    { "client", ParserType::Domain}
+    { "client", ParserType::Domain},
+    { "userAgent", ParserType::UserAgent },
 };
 
 static const std::unordered_map<std::string_view, ParserType> kTempTypeMapper {
