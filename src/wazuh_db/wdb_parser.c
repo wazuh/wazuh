@@ -5382,7 +5382,7 @@ int wdb_parse_global_sync_agent_groups_get(wdb_t* wdb, char* input, char* output
             } else if (0 == strcmp(j_sync_condition->valuestring, "all")) {
                 condition = WDB_GROUP_ALL;
             }
-            if (cJSON_IsNumber(j_last_id)){
+            if (j_last_id && cJSON_IsNumber(j_last_id)){
                 last_id = j_last_id->valueint;
             }
             if (cJSON_IsTrue(j_set_synced)) {
@@ -5391,7 +5391,7 @@ int wdb_parse_global_sync_agent_groups_get(wdb_t* wdb, char* input, char* output
             if (cJSON_IsTrue(j_get_hash)) {
                 get_hash = true;
             }
-            if (cJSON_IsNumber(j_agent_registration_delta)){
+            if (j_agent_registration_delta && cJSON_IsNumber(j_agent_registration_delta)){
                 agent_registration_delta = j_agent_registration_delta->valueint;
             }
 
