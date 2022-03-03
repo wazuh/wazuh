@@ -5356,8 +5356,21 @@ int wdb_parse_global_sync_agent_groups_get(wdb_t* wdb, char* input, char* output
         cJSON *j_set_synced = cJSON_GetObjectItem(args, "set_synced");
         cJSON *j_get_hash = cJSON_GetObjectItem(args, "get_global_hash");
         cJSON *j_agent_registration_delta = cJSON_GetObjectItem(args, "agent_registration_delta");
-        // Mandatory fields
-        if (cJSON_IsString(j_sync_condition)) {
+        // Checking the existence of mandatory parameters
+        if (!cJSON_IsString(j_sync_condition)) {
+            mdebug1("Missing mandatory 'condition' field in sync-agent-groups-get command.");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, missing required 'condition' field");
+            ret = OS_INVALID;
+        }
+        // Checking data types of alternative parameters in case they would have been sent in the input JSON.
+        else if ((j_last_id && !cJSON_IsNumber(j_last_id)) ||
+            (j_set_synced && !cJSON_IsBool(j_set_synced)) ||
+            (j_get_hash && !cJSON_IsBool(j_get_hash)) ||
+            (j_agent_registration_delta && !cJSON_IsNumber(j_agent_registration_delta))) {
+            mdebug1("Invalid alternative fields data type in sync-agent-groups-get command.");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, invalid alternative fields data type");
+            ret = OS_INVALID;
+        } else {
             wdb_groups_sync_condition_t condition = WDB_GROUP_INVALID_CONDITION;
             int last_id = 0;
             bool set_synced = false;
@@ -5369,7 +5382,7 @@ int wdb_parse_global_sync_agent_groups_get(wdb_t* wdb, char* input, char* output
             } else if (0 == strcmp(j_sync_condition->valuestring, "all")) {
                 condition = WDB_GROUP_ALL;
             }
-            if (cJSON_IsNumber(j_last_id)){
+            if (j_last_id) {
                 last_id = j_last_id->valueint;
             }
             if (cJSON_IsTrue(j_set_synced)) {
@@ -5378,7 +5391,7 @@ int wdb_parse_global_sync_agent_groups_get(wdb_t* wdb, char* input, char* output
             if (cJSON_IsTrue(j_get_hash)) {
                 get_hash = true;
             }
-            if (cJSON_IsNumber(j_agent_registration_delta)){
+            if (j_agent_registration_delta) {
                 agent_registration_delta = j_agent_registration_delta->valueint;
             }
 
@@ -5398,10 +5411,6 @@ int wdb_parse_global_sync_agent_groups_get(wdb_t* wdb, char* input, char* output
                 snprintf(output, OS_MAXSTR + 1, "err %s", "Could not obtain a response from wdb_global_sync_agent_groups_get");
                 ret = OS_INVALID;
             }
-        } else {
-            mdebug1("Missing mandatory fields in sync-agent-groups-get command.");
-            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, missing required fields");
-            ret = OS_INVALID;
         }
         cJSON_Delete(args);
     } else {
