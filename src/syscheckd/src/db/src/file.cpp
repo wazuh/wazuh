@@ -404,7 +404,7 @@ void DB::getFile(const std::string& path, std::function<void(const nlohmann::jso
     }
     else
     {
-        throw std::runtime_error{ "There are more or 0 rows" };
+        throw no_entry_found { "No entry found for " + path};
     }
 }
 
@@ -493,6 +493,10 @@ FIMDBErrorCode fim_db_get_path(const char* file_path, callback_context_t callbac
                 callback.callback(file->toFimEntry(), callback.context);
             });
             retVal = FIMDB_OK;
+        }
+        catch (const no_entry_found& err)
+        {
+            FIMDB::instance().logFunction(LOG_DEBUG_VERBOSE, err.what());
         }
         catch (const std::exception& err)
         {
