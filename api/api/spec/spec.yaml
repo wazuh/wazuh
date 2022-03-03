@@ -4591,7 +4591,7 @@ components:
       description: "Filter by agents version"
       schema:
         type: string
-        format: alphanumeric
+        format: wazuh_version
     cve_version:
       in: query
       name: version
@@ -5324,7 +5324,7 @@ components:
       description: "Wazuh version to upgrade to"
       schema:
         type: string
-        format: wazuh_version
+        format: wazuh_upgrade_version
     force:
       in: query
       name: force

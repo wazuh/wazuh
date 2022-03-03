@@ -34,7 +34,8 @@ _names = re.compile(r'^[\w\-.%]+$')
 _numbers = re.compile(r'^\d+$')
 _numbers_or_all = re.compile(r'^(\d+|all)$')
 _wazuh_key = re.compile(r'[a-zA-Z0-9]+$')
-_wazuh_version = re.compile(r'^v?\d+\.\d+\.\d+$')
+_wazuh_upgrade_version = re.compile(r'^v?\d+\.\d+\.\d+$')
+_wazuh_version = re.compile(r'^(?:wazuh |)v?\d+\.\d+\.\d+$', re.IGNORECASE)
 _paths = re.compile(r'^[\w\-.\\/:]+$')
 _cdb_filename_path = re.compile(r'^[\-\w]+$')
 _xml_filename_path = re.compile(r'^[\w\-]+\.xml$')
@@ -355,6 +356,11 @@ def format_wazuh_key(value):
 @draft4_format_checker.checks("wazuh_version")
 def format_wazuh_version(value):
     return check_exp(value, _wazuh_version)
+
+
+@draft4_format_checker.checks("wazuh_upgrade_version")
+def format_wazuh_upgrade_version(value):
+    return check_exp(value, _wazuh_upgrade_version)
 
 
 @draft4_format_checker.checks("date")

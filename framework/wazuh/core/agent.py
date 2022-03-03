@@ -41,6 +41,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
                  remove_extra_fields=True, distinct=False, rbac_negate=True):
         if filters is None:
             filters = {}
+        unify_wazuh_version_format(filters)
         if min_select_fields is None:
             min_select_fields = {'id'}
         backend = WazuhDBBackend(query_format='global')
@@ -914,6 +915,22 @@ class Agent:
             raise WazuhInternalError(1735, extra_message="Minimum required version is " + str(required_version))
 
         return stats.get_daemons_stats_from_socket(self.id, component)
+
+
+def unify_wazuh_version_format(filters):
+    """Verify and format the specified wazuh version, into the 'wazuh vX.Y.Z' standard.
+
+    Parameters
+    ----------
+    filters : dict
+        Dictionary field filters required by the user.
+    """
+    wv = filters.get('version')
+    if wv is not None:
+        if re.match(r'^v?\d+\.\d+\.\d+$', wv, re.IGNORECASE):
+            filters['version'] = f"wazuh {'v' if 'v' not in wv else ''}{wv}"
+        elif re.match(r'^wazuh \d+\.\d+\.\d+$', wv, re.IGNORECASE):
+            filters['version'] = f"{wv.replace(' ', ' v')}"
 
 
 def format_fields(field_name, value):
