@@ -17,11 +17,13 @@ from bucket import WazuhGCloudBucket
 
 class GCSAccessLogs(WazuhGCloudBucket):
     """Class for getting Google Cloud Storage Access Logs logs"""
-    def __init__(self, credentials_file: str, logger: logging.Logger, **kwargs):
+    def __init__(self, reparse, credentials_file: str, logger: logging.Logger, **kwargs):
         """Class constructor.
 
         Parameters
         ----------
+        reparse : bool
+            Whether to parse already parsed logs or not.
         credentials_file : str
             Path to credentials file.
         logger : logging.Logger
@@ -30,7 +32,7 @@ class GCSAccessLogs(WazuhGCloudBucket):
             Additional named arguments for WazuhGCloudBucket.
         """
         self.db_table_name = "access_logs"
-        super().__init__(credentials_file, logger, **kwargs)
+        super().__init__(reparse, credentials_file, logger, **kwargs)
 
     def load_information_from_file(self, msg: str):
         """Load the contents of an Access Logs blob and process them.

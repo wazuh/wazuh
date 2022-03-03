@@ -29,12 +29,14 @@ from integration import WazuhGCloudIntegration
 class WazuhGCloudBucket(WazuhGCloudIntegration):
     """Class for getting Google Cloud Storage Bucket logs"""
 
-    def __init__(self, credentials_file: str, logger: logging.Logger, bucket_name: str, prefix: str = None,
+    def __init__(self, reparse, credentials_file: str, logger: logging.Logger, bucket_name: str, prefix: str = None,
                  delete_file: bool = False, only_logs_after: datetime = None):
         """Class constructor.
 
         Parameters
         ----------
+        reparse : bool 
+            Whether to parse already parsed logs or not.
         credentials_file : str
             Path to credentials file.
         logger : logging.Logger
@@ -51,6 +53,7 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         super().__init__(logger)
         self.bucket_name = bucket_name
         self.bucket = None
+        self.reparse = reparse
         self.client = storage.client.Client.from_service_account_json(credentials_file)
         self.project_id = self.client.project
         self.prefix = prefix if not prefix or prefix[-1] == '/' else f'{prefix}/'
@@ -245,6 +248,12 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
                             new_creation_time = current_creation_time
 
                         processed_files.append(blob)
+
+                    elif self.reparse:
+                        self.logger.info(f'File previously processed, but reparse flag set: {blob.name}')
+                        processed_messages += self.process_blob(blob)
+                        processed_files.append(blob)
+
                     else:
                         self.logger.info(f'Skipping previously processed file: {blob.name}')
                 else:
