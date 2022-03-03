@@ -8531,7 +8531,6 @@ paths:
                         synchronization:
                           enabled: yes
                           interval: "5m"
-                          max_interval: "1h"
                           max_eps: 10
                       command:
                         - name: disable-account
