@@ -45,8 +45,13 @@ static const int RETURN_NOT_FOUND = 0;
 static const int RETURN_FOUND = 1;
 static const int RETURN_INVALID = 2;
 
+#ifdef WIN32
+static DWORD WINAPI wm_sca_main(void *arg);         // Module main function. It won't return
+static DWORD WINAPI wm_sca_destroy(void *data);     // Destroy data
+#else
 static void * wm_sca_main(wm_sca_t * data);   // Module main function. It won't return
 static void wm_sca_destroy(wm_sca_t * data);  // Destroy data
+#endif
 static int wm_sca_start(wm_sca_t * data);  // Start
 static cJSON *wm_sca_build_event(const cJSON * const check, const cJSON * const policy, char **p_alert_msg, int id, const char * const result, const char * const reason);
 static int wm_sca_send_event_check(wm_sca_t * data,cJSON *event);  // Send check event
@@ -135,7 +140,12 @@ cJSON **last_summary_json = NULL;
 static pthread_rwlock_t dump_rwlock;
 
 // Module main function. It won't return
+#ifdef WIN32
+DWORD WINAPI wm_sca_main(void *arg) {
+    wm_sca_t *data = (wm_sca_t *)arg;
+#else
 void * wm_sca_main(wm_sca_t * data) {
+#endif
     // If module is disabled, exit
     if (data->enabled) {
         minfo("Module started.");
@@ -240,7 +250,11 @@ void * wm_sca_main(wm_sca_t * data) {
 
     wm_sca_start(data);
 
+#ifdef WIN32
+    return 0;
+#else
     return NULL;
+#endif
 }
 
 static int wm_sca_send_alert(wm_sca_t * data,cJSON *json_alert)
@@ -2052,10 +2066,18 @@ static int wm_sca_check_process_is_running(OSList *p_list, char *value, char **r
 }
 
 // Destroy data
+#ifdef WIN32
+DWORD WINAPI wm_sca_destroy(void *data)
+{
+    os_free(data);
+    return 0;
+}
+#else
 void wm_sca_destroy(wm_sca_t * data)
 {
     os_free(data);
 }
+#endif
 
 #ifdef WIN32
 

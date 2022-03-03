@@ -11,8 +11,13 @@
 
 #include "wmodules.h"
 
+#ifdef WIN32
+static DWORD WINAPI wm_oscap_main(wm_oscap *arg);       // Module main function. It won't return
+static DWORD WINAPI wm_oscap_destroy(void *oscap);      // Destroy data
+#else
 static void* wm_oscap_main(wm_oscap *oscap);        // Module main function. It won't return
 static void wm_oscap_destroy(wm_oscap *oscap);      // Destroy data
+#endif
 cJSON *wm_oscap_dump(const wm_oscap *oscap);
 
 // OpenSCAP module context definition
@@ -289,9 +294,9 @@ void wm_oscap_info() {
 
 #else
 
-void* wm_oscap_main(__attribute__((unused)) wm_oscap *oscap) {
+DWORD WINAPI wm_oscap_main(__attribute__((unused)) wm_oscap *arg) {
     mtinfo(WM_OSCAP_LOGTAG, "OPEN-SCAP module not compatible with Windows.");
-    return NULL;
+    return 0;
 }
 #endif
 
@@ -341,6 +346,39 @@ cJSON *wm_oscap_dump(const wm_oscap *oscap) {
 
 // Destroy data
 
+#ifdef WIN32
+DWORD WINAPI wm_oscap_destroy(void *oscap) {
+    wm_oscap *oscap_ptr = (wm_oscap *)oscap;
+    wm_oscap_eval *cur_eval;
+    wm_oscap_eval *next_eval;
+    wm_oscap_profile *cur_profile;
+    wm_oscap_profile *next_profile;
+
+    // Delete evals
+
+    for (cur_eval = oscap_ptr->evals; cur_eval; cur_eval = next_eval) {
+
+        // Delete profiles
+
+        for (cur_profile = cur_eval->profiles; cur_profile; cur_profile = next_profile) {
+            next_profile = cur_profile->next;
+            free(cur_profile->name);
+            free(cur_profile);
+        }
+
+        next_eval = cur_eval->next;
+        free(cur_eval->path);
+        free(cur_eval->xccdf_id);
+        free(cur_eval->oval_id);
+        free(cur_eval->ds_id);
+        free(cur_eval->cpe);
+        free(cur_eval);
+    }
+
+    free(oscap_ptr);
+    return 0;
+}
+#else
 void wm_oscap_destroy(wm_oscap *oscap) {
     wm_oscap_eval *cur_eval;
     wm_oscap_eval *next_eval;
@@ -370,3 +408,4 @@ void wm_oscap_destroy(wm_oscap *oscap) {
 
     free(oscap);
 }
+#endif

@@ -30,8 +30,13 @@
 #endif
 #endif
 
+#ifdef WIN32
+STATIC DWORD WINAPI wm_office365_main(void *arg);                   // Module main function. It won't return
+STATIC DWORD WINAPI wm_office365_destroy(void *office365_config);
+#else
 STATIC void* wm_office365_main(wm_office365* office365_config);    // Module main function. It won't return
 STATIC void wm_office365_destroy(wm_office365* office365_config);
+#endif
 STATIC void wm_office365_auth_destroy(wm_office365_auth* office365_auth);
 STATIC void wm_office365_subscription_destroy(wm_office365_subscription* office365_subscription);
 STATIC void wm_office365_fail_destroy(wm_office365_fail* office365_fails);
@@ -112,8 +117,12 @@ const wm_context WM_OFFICE365_CONTEXT = {
     NULL
 };
 
+#ifdef WIN32
+STATIC DWORD WINAPI wm_office365_main(void *arg) {
+    wm_office365* office365_config = (wm_office365 *)arg;
+#else
 void * wm_office365_main(wm_office365* office365_config) {
-
+#endif
     if (office365_config->enabled) {
         mtinfo(WM_OFFICE365_LOGTAG, "Module Office365 started.");
 
@@ -140,9 +149,25 @@ void * wm_office365_main(wm_office365* office365_config) {
         mtinfo(WM_OFFICE365_LOGTAG, "Module Office365 disabled.");
     }
 
+#ifdef WIN32
+    return 0;
+#else
     return NULL;
+#endif
 }
 
+#ifdef WIN32
+STATIC DWORD WINAPI wm_office365_destroy(void *office365_config) {
+    wm_office365 *office365_config_ptr = (wm_office365 *)office365_config;
+
+    mtinfo(WM_OFFICE365_LOGTAG, "Module Office365 finished.");
+    wm_office365_auth_destroy(office365_config_ptr->auth);
+    wm_office365_subscription_destroy(office365_config_ptr->subscription);
+    wm_office365_fail_destroy(office365_config_ptr->fails);
+    os_free(office365_config_ptr);
+    return 0;
+}
+#else
 void wm_office365_destroy(wm_office365* office365_config) {
     mtinfo(WM_OFFICE365_LOGTAG, "Module Office365 finished.");
     wm_office365_auth_destroy(office365_config->auth);
@@ -150,6 +175,7 @@ void wm_office365_destroy(wm_office365* office365_config) {
     wm_office365_fail_destroy(office365_config->fails);
     os_free(office365_config);
 }
+#endif
 
 void wm_office365_auth_destroy(wm_office365_auth* office365_auth) {
     wm_office365_auth* current = office365_auth;

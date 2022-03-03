@@ -19,13 +19,17 @@
 #endif
 
 static wm_aws *aws_config;                              // Pointer to aws_configuration
-
+#ifdef WIN32
+static DWORD WINAPI wm_aws_main(void *arg);             // Module main function. It won't return
+static DWORD WINAPI wm_aws_destroy(void *aws_config);   // Destroy data
+#else
 static void* wm_aws_main(wm_aws *aws_config);           // Module main function. It won't return
+static void wm_aws_destroy(wm_aws *aws_config);         // Destroy data
+#endif
 static void wm_aws_setup(wm_aws *_aws_config);          // Setup module
 static void wm_aws_check();                             // Check configuration, disable flag
 static void wm_aws_run_s3(wm_aws *aws_config, wm_aws_bucket *bucket);       // Run a s3 bucket
 static void wm_aws_run_service(wm_aws *aws_config, wm_aws_service *service);// Run a AWS service such as Inspector
-static void wm_aws_destroy(wm_aws *aws_config);         // Destroy data
 cJSON *wm_aws_dump(const wm_aws *aws_config);
 
 // Command module context definition
@@ -40,8 +44,12 @@ const wm_context WM_AWS_CONTEXT = {
 };
 
 // Module module main function. It won't return.
-
+#ifdef WIN32
+DWORD WINAPI wm_aws_main(void *arg) {
+    wm_aws *aws_config = (wm_aws *)arg;
+#else
 void* wm_aws_main(wm_aws *aws_config) {
+#endif
     wm_aws_bucket *cur_bucket;
     wm_aws_service *cur_service;
     char *log_info;
@@ -167,7 +175,11 @@ void* wm_aws_main(wm_aws *aws_config) {
 
     } while (FOREVER());
 
+#ifdef WIN32
+    return 0;
+#else
     return NULL;
+#endif
 }
 
 
@@ -250,10 +262,16 @@ cJSON *wm_aws_dump(const wm_aws *aws_config) {
 
 
 // Destroy data
-
+#ifdef WIN32
+DWORD WINAPI wm_aws_destroy(void *aws_config) {         // Destroy data
+    free(aws_config);
+    return 0;
+}
+#else
 void wm_aws_destroy(wm_aws *aws_config) {
     free(aws_config);
 }
+#endif
 
 // Setup module
 

@@ -18,7 +18,13 @@ static wm_rule_data *head;                            // Pointer to head of rule
 static int queue_fd;                                // Output queue file descriptor
 #endif
 
+#ifdef WIN32
+static DWORD WINAPI wm_ciscat_main(void *arg);                  // Module main function. It won't return
+static DWORD WINAPI wm_ciscat_destroy(void *ciscat);            // Destroy data
+#else
 static void* wm_ciscat_main(wm_ciscat *ciscat);        // Module main function. It won't return
+static void wm_ciscat_destroy(wm_ciscat *ciscat);      // Destroy data
+#endif
 static void wm_ciscat_setup(wm_ciscat *_ciscat);       // Setup module
 static void wm_ciscat_check();                       // Check configuration, disable flag
 static void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_path);      // Run a CIS-CAT policy
@@ -34,7 +40,6 @@ static void wm_ciscat_info();                        // Show module info
 #ifndef WIN32
 static void wm_ciscat_cleanup();                     // Cleanup function, doesn't overwrite wm_cleanup
 #endif
-static void wm_ciscat_destroy(wm_ciscat *ciscat);      // Destroy data
 cJSON *wm_ciscat_dump(const wm_ciscat *ciscat);
 
 const char *WM_CISCAT_LOCATION = "wodle_cis-cat";  // Location field for event sending
@@ -51,8 +56,12 @@ const wm_context WM_CISCAT_CONTEXT = {
 };
 
 // CIS-CAT module main function. It won't return.
-
+#ifdef WIN32
+DWORD WINAPI wm_ciscat_main(void *arg) {
+    wm_ciscat *ciscat = (wm_ciscat *)arg;
+#else
 void* wm_ciscat_main(wm_ciscat *ciscat) {
+#endif
     wm_ciscat_eval *eval;
     int skip_java = 0;
     char *cis_path = NULL;
@@ -223,9 +232,10 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
     free(cis_path);
 #ifdef WIN32
     free(current);
-#endif
-
+    return 0;
+#else
     return NULL;
+#endif
 }
 
 // Setup module
@@ -1499,7 +1509,27 @@ cJSON *wm_ciscat_dump(const wm_ciscat * ciscat) {
 
 
 // Destroy data
+#ifdef WIN32
+DWORD WINAPI wm_ciscat_destroy(void *ciscat) {
 
+    wm_ciscat_eval *cur_eval;
+    wm_ciscat_eval *next_eval;
+    wm_ciscat *ptr_ciscat = (wm_ciscat *)ciscat;
+
+    // Delete evals
+
+    for (cur_eval = ptr_ciscat->evals; cur_eval; cur_eval = next_eval) {
+
+        next_eval = cur_eval->next;
+        free(cur_eval->path);
+        free(cur_eval->profile);
+        free(cur_eval);
+    }
+
+    free(ptr_ciscat);
+    return 0;
+}
+#else
 void wm_ciscat_destroy(wm_ciscat *ciscat) {
 
     wm_ciscat_eval *cur_eval;
@@ -1517,4 +1547,6 @@ void wm_ciscat_destroy(wm_ciscat *ciscat) {
 
     free(ciscat);
 }
+#endif
+
 #endif
