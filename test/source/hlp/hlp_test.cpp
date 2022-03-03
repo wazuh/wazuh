@@ -1,62 +1,62 @@
 #include "gtest/gtest.h"
-
 #include <hlp/hlp.hpp>
 
-static const char *logQl =
-    "<source.address> - <json> - [<timestamp/APACHE>] \"<http.request.method> <url> HTTP/<http.version>\" "
+
+// Test: Parsing different options with logQL expressions
+TEST(hlpTests_logQL, logQL_general)
+{
+    const char *logQl =
+    "<source.address> - <_json/JSON> - [<timestamp/RFC1123>] \"<http.request.method> <url> HTTP/<http.version>\" "
     "<http.response.status_code> <http.response.body.bytes> \"-\" \"<user_agent.original>\"";
-static const char *event =
-    "monitoring-server - {\"data\":\"this is a json\"} - [29/May/2017:19:02:48 +0000] \"GET "
+    const char *event =
+    "monitoring-server - {\"data\":\"this is a json\"} - [Mon, 02 Jan 2006 15:04:05 MST] \"GET "
     "https://user:password@wazuh.com:8080/status?query=%22a%20query%20with%20a%20space%22#fragment "
     "HTTP/1.1\" 200 612 \"-\" \"Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 "
     "Firefox/15.0a2\"";
 
-static const char *logQl2 = "<source.ip> - - [<timestamp/APACHE>] \"-\" "
+    auto parseOp = getParserOp(logQl);
+    auto result = parseOp(event);
+
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
+    ASSERT_EQ("{\"data\":\"this is a json\"}", result["_json"]);
+    ASSERT_EQ("2006", result["timestamp.year"]);
+    ASSERT_EQ("1", result["timestamp.month"]);
+    ASSERT_EQ("2", result["timestamp.day"]);
+    ASSERT_EQ("15", result["timestamp.hour"]);
+    ASSERT_EQ("4", result["timestamp.minutes"]);
+    ASSERT_EQ("5", result["timestamp.seconds"]);
+    ASSERT_EQ("wazuh.com", result["url.domain"]);
+    ASSERT_EQ("fragment", result["url.fragment"]);
+    ASSERT_EQ("password", result["url.password"]);
+    ASSERT_EQ("/status", result["url.path"]);
+    ASSERT_EQ("8080", result["url.port"]);
+    ASSERT_EQ("query=%22a%20query%20with%20a%20space%22", result["url.query"]);
+    ASSERT_EQ("https", result["url.scheme"]);
+    ASSERT_EQ("user", result["url.username"]);
+
+}
+
+TEST(hlpTests_logQL, logQL_general2)
+{
+    const char *logQl = "<source.ip> - - [<timestamp/RFC822Z>] \"-\" "
                             "<http.response.status_code> <http.response.body.bytes> \"-\" \"-\"";
-static const char *event2 = "127.0.0.1 - - [02/Feb/2019:05:38:45 +0100] \"-\" 408 152 \"-\" \"-\"";
-
-// Test: An asset that fails the check against the schema
-TEST(hlpTests, general)
-{
-    fprintf(stderr, "\n\n---HLP Test---\n");
+    const char *event = "127.0.0.1 - - [02 Jan 06 15:04 -0700] \"-\" 408 152 \"-\" \"-\"";
 
     auto parseOp = getParserOp(logQl);
     auto result = parseOp(event);
-    fprintf(stderr, "\n%30s | %s\n", "Key", "Val");
-    fprintf(stderr, "-------------------------------|------------\n");
-    for (auto const &r : result) { fprintf(stderr, "%30s | %s\n", r.first.c_str(), r.second.c_str()); }
 
-    auto parseOp2 = getParserOp(logQl2);
-    auto result2 = parseOp2(event2);
-    fprintf(stderr, "\n%30s | %s\n", "Key", "Val");
-    fprintf(stderr, "-------------------------------|------------\n");
-    for (auto const &r : result2) { fprintf(stderr, "%30s | %s\n", r.first.c_str(), r.second.c_str()); }
-
-    fprintf(stderr, "\n--------------\n\n");
-}
-
-// Test: parsing succesfully three different IP addresses
-TEST(hlpTests, IP_Parser)
-{
-    const char *logQl = "<source.ip> - <server.ip> -- <source.nat.ip> \"-\" \"-\"";
-    const char *event = "127.0.0.1 - 2001:db8:3333:4444:CCCC:DDDD:EEEE:FFFF -- 0:db8:0:4:CCCC:0:EEEE:FFFF \"-\" \"-\"";
-
-    fprintf(stderr, "\n\n---HLP IP parser Test---\n");
-
-    auto parseOp = getParserOp(logQl);
-    auto result = parseOp(event);
-    fprintf(stderr, "\n%30s | %s\n", "Key", "Val");
-    fprintf(stderr, "-------------------------------|------------\n");
-    for (auto const &r : result) { fprintf(stderr, "%30s | %s\n", r.first.c_str(), r.second.c_str()); }
-
-    fprintf(stderr, "\n--------------\n\n");
-
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
     ASSERT_EQ("127.0.0.1", result["source.ip"]);
-    ASSERT_EQ("2001:db8:3333:4444:CCCC:DDDD:EEEE:FFFF", result["server.ip"]);
-    ASSERT_EQ("0:db8:0:4:CCCC:0:EEEE:FFFF", result["source.nat.ip"]);
+    ASSERT_EQ("2006", result["timestamp.year"]);
+    ASSERT_EQ("1", result["timestamp.month"]);
+    ASSERT_EQ("2", result["timestamp.day"]);
+    ASSERT_EQ("15", result["timestamp.hour"]);
+    ASSERT_EQ("4", result["timestamp.minutes"]);
+    ASSERT_EQ("0", result["timestamp.seconds"]);
+    ASSERT_EQ("-0700", result["timestamp.timezone"]);
 }
 
-TEST(hlpTests, invalid_logql)
+TEST(hlpTests_logQL, invalid_logql)
 {
     const char *logQl = "<source.ip><invalid>";
     auto invalidFunc = getParserOp(logQl);
@@ -71,7 +71,7 @@ TEST(hlpTests, invalid_logql)
     ASSERT_EQ(false, static_cast<bool>(invalidFunc3));
 }
 
-TEST(hlpTests, optional_Or)
+TEST(hlpTests_logQL, optional_Or)
 {
     static const char *logQl = "this won't match an url <url>?<source.ip> but will match ip";
     static const char *event = "this won't match an url 127.0.0.1 but will match ip";
@@ -79,12 +79,11 @@ TEST(hlpTests, optional_Or)
     auto parseOp = getParserOp(logQl);
     auto result = parseOp(event);
 
-    fprintf(stderr, "Matched: [%s]\n", result["source.ip"].c_str());
-
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
     ASSERT_EQ("127.0.0.1", result["source.ip"]);
 }
 
-TEST(hlpTests, options_parsing)
+TEST(hlpTests_logQL, options_parsing)
 {
     static const char *logQl = "<_> <_temp> <_temp1/type> <_temp2/type/type2>";
     static const char *event = "one temp temp1 temp2";
@@ -92,12 +91,13 @@ TEST(hlpTests, options_parsing)
     auto parseOp = getParserOp(logQl);
     auto result = parseOp(event);
 
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
     ASSERT_EQ("temp", result["_temp"]);
     ASSERT_EQ("temp1", result["_temp1"]);
     ASSERT_EQ("temp2", result["_temp2"]);
 }
 
-TEST(hlpTests, url_parsing)
+TEST(hlpTests_logQL, url_parsing)
 {
     static const char *logQl = "this is an url <url> in text";
     static const char *event = "this is an url "
@@ -109,6 +109,7 @@ TEST(hlpTests, url_parsing)
 
     std::string url = "https://user:password@wazuh.com:8080/"
                       "path?query=%22a%20query%20with%20a%20space%22#fragment";
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
     ASSERT_EQ(url, result["url.original"]);
     ASSERT_EQ("wazuh.com", result["url.domain"]);
     ASSERT_EQ("fragment", result["url.fragment"]);
@@ -120,7 +121,59 @@ TEST(hlpTests, url_parsing)
     ASSERT_EQ("user", result["url.username"]);
 }
 
-TEST(json_test, dummy_test)
+// Test: parsing IP addresses
+TEST(hlpTests_IPaddress, IPaddress_success)
+{
+    const char *logQl = "<source.ip> - <server.ip> -- <source.nat.ip> \"-\" \"-\"";
+    const char *event = "127.0.0.1 - 2001:db8:3333:4444:CCCC:DDDD:EEEE:FFFF -- 0:db8:0:4:CCCC:0:EEEE:FFFF \"-\" \"-\"";
+
+    auto parseOp = getParserOp(logQl);
+    auto result = parseOp(event);
+
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
+    ASSERT_EQ("127.0.0.1", result["source.ip"]);
+    ASSERT_EQ("2001:db8:3333:4444:CCCC:DDDD:EEEE:FFFF", result["server.ip"]);
+    ASSERT_EQ("0:db8:0:4:CCCC:0:EEEE:FFFF", result["source.nat.ip"]);
+}
+
+TEST(hlpTests_IPaddress, IPaddress_failed)
+{
+    const char *logQl = "<server.ip> -";
+    const char *event = ":::DDDD:EEEE: -";
+
+    auto parseOp = getParserOp(logQl);
+    auto result = parseOp(event);
+
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
+    ASSERT_EQ("", result["server.ip"]);
+}
+
+TEST(hlpTests_IPaddress, IPaddress_success_IPV6)
+{
+    const char *logQl = " - <source.nat.ip>";
+    const char *event = " - 2001:db8:3333:AB45:1111:00A:4:1";
+
+    auto parseOp = getParserOp(logQl);
+    auto result = parseOp(event);
+
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
+    ASSERT_EQ("2001:db8:3333:AB45:1111:00A:4:1", result["source.nat.ip"]);
+}
+
+TEST(hlpTests_IPaddress, IPaddress_failed_IPV6)
+{
+    const char *logQl = "<server.ip>";
+    const char *event = "2001:db8:#:$:CCCC:DDDD:EEEE:FFFF";
+
+    auto parseOp = getParserOp(logQl);
+    auto result = parseOp(event);
+
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
+    ASSERT_EQ("", result["server.ip"]);
+}
+
+// Test: parsing JSON objects
+TEST(hlpTests_json, success_1)
 {
     const char *logQl = "<_json1/JSON> - <_json2/JSON>";
     const char *event = "{\"String\":\"This is a string\"} - {\"String\":\"This is another string\"}";
@@ -128,11 +181,49 @@ TEST(json_test, dummy_test)
     auto parseOp = getParserOp(logQl);
     auto result = parseOp(event);
 
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
     ASSERT_EQ("{\"String\":\"This is a string\"}", result["_json1"]);
     ASSERT_EQ("{\"String\":\"This is another string\"}", result["_json2"]);
 }
 
-TEST(map_test, success_test)
+TEST(hlpTests_json, failed)
+{
+    const char *logQl = "<_json1/JSON>";
+    const char *event = "{\"String\":{\"This is a string\"}";
+
+    auto parseOp = getParserOp(logQl);
+    auto result = parseOp(event);
+
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
+    ASSERT_TRUE(result["_json1"].empty());
+}
+
+TEST(hlpTests_json, success_array)
+{
+    const char *logQl = "<_json1/JSON>";
+    const char *event = "{\"String\": [ {\"SecondString\":\"This is a string\"}, {\"ThirdString\":\"This is a string\"} ] }";
+
+    auto parseOp = getParserOp(logQl);
+    auto result = parseOp(event);
+
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
+    ASSERT_EQ("{\"String\":[{\"SecondString\":\"This is a string\"},{\"ThirdString\":\"This is a string\"}]}", result["_json1"]);
+}
+
+TEST(hlpTests_json, failed_not_string)
+{
+    const char *logQl = "<_json2/JSON>";
+    const char *event = "{somestring}, {\"String\":\"This is another string\"}";
+
+    auto parseOp = getParserOp(logQl);
+    auto result = parseOp(event);
+
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
+    ASSERT_TRUE(result["_json2"].empty());
+}
+
+// Test: maps parsing
+TEST(hlpTests_map, success_test)
 {
     const char *logQl ="<_map/MAP/ /=>-<_dummy>";
     const char *event ="key1=Value1 Key2=Value2-dummy";
@@ -140,12 +231,12 @@ TEST(map_test, success_test)
     ParserFn parseOp = getParserOp(logQl);
     auto result = parseOp(event);
 
-
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
     ASSERT_EQ("{\"key1\":\"Value1\",\"Key2\":\"Value2\"}", result["_map"]);
     ASSERT_EQ("dummy", result["_dummy"]);
 }
 
-TEST(map_test, end_mark_test)
+TEST(hlpTests_map, end_mark_test)
 {
     const char *logQl ="<_map/MAP/ /=/.> <_dummy>";
     const char *event ="key1=Value1 Key2=Value2. dummy";
@@ -153,11 +244,12 @@ TEST(map_test, end_mark_test)
     ParserFn parseOp = getParserOp(logQl);
     auto result = parseOp(event);
 
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
     ASSERT_EQ("{\"key1\":\"Value1\",\"Key2\":\"Value2\"}", result["_map"]);
     ASSERT_EQ("dummy", result["_dummy"]);
 }
 
-TEST(map_test, incomplete_map_test)
+TEST(hlpTests_map, incomplete_map_test)
 {
     const char *logQl ="<_map/MAP/ /=>";
     const char *event1 ="key1=Value1 Key2=";
@@ -169,12 +261,14 @@ TEST(map_test, incomplete_map_test)
     auto result2 = parseOp(event2);
     auto result3 = parseOp(event3);
 
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
     ASSERT_TRUE(result1.empty());
     ASSERT_TRUE(result2.empty());
     ASSERT_TRUE(result3.empty());
 }
 
-TEST(hlpTimestampTests, ansic)
+// Test: timestamp parsing
+TEST(hlpTests_Timestamp, ansic)
 {
     static const char *logQl   = "[<timestamp/ANSIC>]";
     static const char *ansicTs = "[Mon Jan 2 15:04:05 2006]";
@@ -182,6 +276,8 @@ TEST(hlpTimestampTests, ansic)
 
     auto parseOp = getParserOp(logQl);
     auto result  = parseOp(ansicTs);
+
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
     ASSERT_EQ("2006", result["timestamp.year"]);
     ASSERT_EQ("1", result["timestamp.month"]);
     ASSERT_EQ("2", result["timestamp.day"]);
@@ -198,18 +294,24 @@ TEST(hlpTimestampTests, ansic)
     ASSERT_EQ("5.123456", resultMillis["timestamp.seconds"]);
 }
 
-TEST(hlpTimestampTests, kitchen)
+TEST(hlpTests_Timestamp, apache)
 {
+    static const char *logQl   = "[<timestamp/APACHE>]";
+    static const char *apacheTs = "[Tue Feb 11 15:04:05 2020]";
 
-    static const char *logQl     = "[<timestamp/Kitchen>]";
-    static const char *kitchenTs = "[3:04a.m.]";
-    auto parseOp                 = getParserOp(logQl);
-    auto result                  = parseOp(kitchenTs);
-    ASSERT_EQ("3", result["timestamp.hour"]);
+    auto parseOp = getParserOp(logQl);
+    auto result  = parseOp(apacheTs);
+
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
+    ASSERT_EQ("2020", result["timestamp.year"]);
+    ASSERT_EQ("2", result["timestamp.month"]);
+    ASSERT_EQ("11", result["timestamp.day"]);
+    ASSERT_EQ("15", result["timestamp.hour"]);
     ASSERT_EQ("4", result["timestamp.minutes"]);
+    ASSERT_EQ("5", result["timestamp.seconds"]);
 }
 
-TEST(hlpTimestampTests, rfc1123)
+TEST(hlpTests_Timestamp, rfc1123)
 {
     static const char *logQl      = "[<timestamp/RFC1123>]";
     static const char *logQlz      = "[<timestamp/RFC1123Z>]";
@@ -218,6 +320,8 @@ TEST(hlpTimestampTests, rfc1123)
 
     auto parseOp = getParserOp(logQl);
     auto result  = parseOp(rfc1123Ts);
+
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
     ASSERT_EQ("2006", result["timestamp.year"]);
     ASSERT_EQ("1", result["timestamp.month"]);
     ASSERT_EQ("2", result["timestamp.day"]);
@@ -227,6 +331,8 @@ TEST(hlpTimestampTests, rfc1123)
 
     auto parseOpz = getParserOp(logQlz);
     auto resultz = parseOpz(rfc1123zTs);
+
+    ASSERT_EQ(true, static_cast<bool>(parseOpz));
     ASSERT_EQ("2006", resultz["timestamp.year"]);
     ASSERT_EQ("1", resultz["timestamp.month"]);
     ASSERT_EQ("2", resultz["timestamp.day"]);
@@ -235,7 +341,7 @@ TEST(hlpTimestampTests, rfc1123)
     ASSERT_EQ("5", resultz["timestamp.seconds"]);
 }
 
-TEST(hlpTimestampTests, rfc3339)
+TEST(hlpTests_Timestamp, rfc3339)
 {
     static const char *logQl         = "[<timestamp/RFC3339>]";
     static const char *rfc3339Ts     = "[2006-01-02T15:04:05Z07:00]";
@@ -243,6 +349,8 @@ TEST(hlpTimestampTests, rfc3339)
 
     auto parseOp = getParserOp(logQl);
     auto result  = parseOp(rfc3339Ts);
+
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
     ASSERT_EQ("2006", result["timestamp.year"]);
     ASSERT_EQ("1", result["timestamp.month"]);
     ASSERT_EQ("2", result["timestamp.day"]);
@@ -251,6 +359,7 @@ TEST(hlpTimestampTests, rfc3339)
     ASSERT_EQ("5", result["timestamp.seconds"]);
 
     auto resultNano = parseOp(rfc3339nanoTs);
+
     ASSERT_EQ("2006", resultNano["timestamp.year"]);
     ASSERT_EQ("1", resultNano["timestamp.month"]);
     ASSERT_EQ("2", resultNano["timestamp.day"]);
@@ -259,7 +368,7 @@ TEST(hlpTimestampTests, rfc3339)
     ASSERT_EQ("5.999999999", resultNano["timestamp.seconds"]);
 }
 
-TEST(hlpTimestampTests, rfc822)
+TEST(hlpTests_Timestamp, rfc822)
 {
     static const char *logQl     = "[<timestamp/RFC822>]";
     static const char *logQlz     = "[<timestamp/RFC822Z>]";
@@ -268,6 +377,8 @@ TEST(hlpTimestampTests, rfc822)
 
     auto parseOp = getParserOp(logQl);
     auto result  = parseOp(rfc822Ts);
+
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
     ASSERT_EQ("2006", result["timestamp.year"]);
     ASSERT_EQ("1", result["timestamp.month"]);
     ASSERT_EQ("2", result["timestamp.day"]);
@@ -278,6 +389,8 @@ TEST(hlpTimestampTests, rfc822)
 
     auto parseOpz = getParserOp(logQlz);
     auto resultz = parseOpz(rfc822zTs);
+
+    ASSERT_EQ(true, static_cast<bool>(parseOpz));
     ASSERT_EQ("2006", resultz["timestamp.year"]);
     ASSERT_EQ("1", resultz["timestamp.month"]);
     ASSERT_EQ("2", resultz["timestamp.day"]);
@@ -287,13 +400,15 @@ TEST(hlpTimestampTests, rfc822)
     ASSERT_EQ("-0700", resultz["timestamp.timezone"]);
 }
 
-TEST(hlpTimestampTests, rfc850)
+TEST(hlpTests_Timestamp, rfc850)
 {
     static const char *logQl    = "[<timestamp/RFC850>]";
     static const char *rfc850Ts = "[Monday, 02-Jan-06 15:04:05 MST]";
 
     auto parseOp = getParserOp(logQl);
     auto result  = parseOp(rfc850Ts);
+
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
     ASSERT_EQ("2006", result["timestamp.year"]);
     ASSERT_EQ("1", result["timestamp.month"]);
     ASSERT_EQ("2", result["timestamp.day"]);
@@ -303,13 +418,15 @@ TEST(hlpTimestampTests, rfc850)
     ASSERT_EQ("MST", result["timestamp.timezone"]);
 }
 
-TEST(hlpTimestampTests, ruby)
+TEST(hlpTests_Timestamp, ruby)
 {
     static const char *logQl  = "[<timestamp/RubyDate>]";
     static const char *rubyTs = "[Mon Jan 02 15:04:05 -0700 2006]";
 
     auto parseOp = getParserOp(logQl);
     auto result  = parseOp(rubyTs);
+
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
     ASSERT_EQ("2006", result["timestamp.year"]);
     ASSERT_EQ("1", result["timestamp.month"]);
     ASSERT_EQ("2", result["timestamp.day"]);
@@ -319,7 +436,7 @@ TEST(hlpTimestampTests, ruby)
     ASSERT_EQ("-0700", result["timestamp.timezone"]);
 }
 
-TEST(hlpTimestampTests, stamp)
+TEST(hlpTests_Timestamp, stamp)
 {
     static const char *logQl        = "[<timestamp/Stamp>]";
     static const char *stampTs      = "[Jan 2 15:04:05]";
@@ -329,6 +446,8 @@ TEST(hlpTimestampTests, stamp)
 
     auto parseOp = getParserOp(logQl);
     auto result  = parseOp(stampTs);
+
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
     ASSERT_EQ("1", result["timestamp.month"]);
     ASSERT_EQ("2", result["timestamp.day"]);
     ASSERT_EQ("15", result["timestamp.hour"]);
@@ -357,13 +476,15 @@ TEST(hlpTimestampTests, stamp)
     ASSERT_EQ("5", resultNanos["timestamp.seconds"]);
 }
 
-TEST(hlpTimestampTests, Unix)
+TEST(hlpTests_Timestamp, Unix)
 {
     static const char *logQl  = "[<timestamp/UnixDate>]";
     static const char *unixTs = "[Mon Jan 2 15:04:05 MST 2006]";
 
     auto parseOp = getParserOp(logQl);
     auto result  = parseOp(unixTs);
+
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
     ASSERT_EQ("2006", result["timestamp.year"]);
     ASSERT_EQ("1", result["timestamp.month"]);
     ASSERT_EQ("2", result["timestamp.day"]);
@@ -372,7 +493,7 @@ TEST(hlpTimestampTests, Unix)
     ASSERT_EQ("5", result["timestamp.seconds"]);
 }
 
-TEST(hlpTimestampTests, specific_format)
+TEST(hlpTests_Timestamp, specific_format)
 {
     static const char *logQl =
         "[<timestamp>] - "
@@ -388,6 +509,7 @@ TEST(hlpTimestampTests, specific_format)
     auto parseOp = getParserOp(logQl);
     auto result  = parseOp(event);
 
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
     ASSERT_EQ("2006", result["timestamp.year"]);
     ASSERT_EQ("1", result["timestamp.month"]);
     ASSERT_EQ("2", result["timestamp.day"]);
@@ -417,12 +539,26 @@ TEST(hlpTimestampTests, specific_format)
     ASSERT_EQ("5", result["_stampTs.seconds"]);
 }
 
-TEST(domain_test, success)
+TEST(hlpTests_Timestamp, kitchen)
+{
+    static const char *logQl     = "[<timestamp/Kitchen>]";
+    static const char *kitchenTs = "[3:04a.m.]";
+    auto parseOp                 = getParserOp(logQl);
+    auto result                  = parseOp(kitchenTs);
+
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
+    ASSERT_EQ("3", result["timestamp.hour"]);
+    ASSERT_EQ("4", result["timestamp.minutes"]);
+}
+
+// Test: domain parsing
+TEST(hlpTests_domain, success)
 {
     const char *logQl ="<_my_domain/domain>";
     ParserFn parseOp = getParserOp(logQl);
     ParseResult result;
 
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
     // Single TLD
     const char *event1 ="www.wazuh.com";
     result = parseOp(event1);
@@ -466,12 +602,13 @@ TEST(domain_test, success)
     ASSERT_EQ("", result["_my_domain.top_level_domain"]);
 }
 
-TEST(domain_test, FQDN_validation)
+TEST(hlpTests_domain, FQDN_validation)
 {
     const char *logQl ="<_my_domain/domain/FQDN>";
     ParserFn parseOp = getParserOp(logQl);
     ParseResult result;
 
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
     // Single TLD
     const char *event1 ="www.wazuh.com";
     result = parseOp(event1);
@@ -495,11 +632,12 @@ TEST(domain_test, FQDN_validation)
     ASSERT_TRUE(result.empty());
 }
 
-TEST(domain_test, host_route)
+TEST(hlpTests_domain, host_route)
 {
     const char *logQl ="<_my_domain/domain>";
     ParserFn parseOp = getParserOp(logQl);
 
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
     const char *event1 ="ftp://www.wazuh.com/route.txt";
     auto result = parseOp(event1);
     // TODO protocol and route aren´t part of the result. We only extract it from the event
@@ -508,12 +646,13 @@ TEST(domain_test, host_route)
     ASSERT_EQ("com", result["_my_domain.top_level_domain"]);
 }
 
-TEST(domain_test, valid_content)
+TEST(hlpTests_domain, valid_content)
 {
     const char *logQl ="<_my_domain/domain>";
     ParserFn parseOp = getParserOp(logQl);
     ParseResult result;
 
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
     std::string big_domain(254, 'w');
     result = parseOp(big_domain.c_str());
     ASSERT_TRUE(result.empty());
@@ -528,12 +667,14 @@ TEST(domain_test, valid_content)
     ASSERT_TRUE(result.empty());
 }
 
-TEST(filepath_test, windows_path)
+// Test: filepath parsing
+TEST(hlpTests_filepath, windows_path)
 {
     const char *logQl ="<_file/FilePath>";
     ParserFn parseOp = getParserOp(logQl);
     ParseResult result;
 
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
     const char *full_path = "C:\\Users\\Name\\Desktop\\test.txt";
     result = parseOp(full_path);
     ASSERT_EQ("C:\\Users\\Name\\Desktop\\test.txt", result["_file.path"]);
@@ -583,12 +724,13 @@ TEST(filepath_test, windows_path)
     ASSERT_EQ("txt", result["_file.extension"]);
 }
 
-TEST(filepath_test, unix_path)
+TEST(hlpTests_filepath, unix_path)
 {
     const char *logQl ="<_file/FilePath>";
     ParserFn parseOp = getParserOp(logQl);
     ParseResult result;
 
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
     const char *full_path = "/Desktop/test.txt";
     result = parseOp(full_path);
     ASSERT_EQ("/Desktop/test.txt", result["_file.path"]);
@@ -614,12 +756,13 @@ TEST(filepath_test, unix_path)
     ASSERT_EQ("", result["_file.extension"]);
 }
 
-TEST(filepath_test, force_unix_format)
+TEST(hlpTests_filepath, force_unix_format)
 {
     const char *logQl ="<_file/FilePath/UNIX>";
     ParserFn parseOp = getParserOp(logQl);
     ParseResult result;
 
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
     const char *drive_like_file = "C:\\_test.txt";
     result = parseOp(drive_like_file);
     ASSERT_EQ("C:\\_test.txt", result["_file.path"]);
