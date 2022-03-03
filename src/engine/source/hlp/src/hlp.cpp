@@ -137,6 +137,18 @@ static void executeParserList(std::string const &event, ParserList const &parser
                 result[parser.name + ".extension"] = std::move(filePathResult.extension);
                 break;
             }
+            case ParserType::UserAgent:
+            {
+                UserAgentResult userAgent;
+                if(parseUserAgent(&eventIt,
+                                  parser.endToken,
+                                  userAgent))
+                {
+                    result[parser.name + ".original"] =
+                        std::move(userAgent.original);
+                }
+                break;
+            }
             default: {
                 fprintf(stderr,
                         "Missing implementation for parser type: [%i]\n",
