@@ -17,7 +17,7 @@ void TCPEndpoint::connectionHandler(uvw::TCPHandle & server)
     auto client = server.loop().resource<uvw::TCPHandle>();
     auto timer = client->loop().resource<uvw::TimerHandle>();
 
-    // auto ph = std::make_shared<ProtocolHandler>();
+    auto ph = std::make_shared<ProtocolHandler>();
 
     client->on<uvw::ErrorEvent>(
         [](const uvw::ErrorEvent & event, uvw::TCPHandle & client)
@@ -36,16 +36,16 @@ void TCPEndpoint::connectionHandler(uvw::TCPHandle & server)
         });
 
     client->on<uvw::DataEvent>(
-        [timer](const uvw::DataEvent & event, uvw::TCPHandle & client)
+        [timer, ph](const uvw::DataEvent & event, uvw::TCPHandle & client)
         {
             timer->again();
 
-            // if (!ph->process(event.data.get(), event.length, s))
-            // {
-            //     LOG(ERROR) << "TCP DataEvent: Error processing data" << std::endl;
-            //     timer->close();
-            //     client.close();
-            // }
+            if (!ph->process(event.data.get(), event.length))
+            {
+                LOG(ERROR) << "TCP DataEvent: Error processing data" << std::endl;
+                timer->close();
+                client.close();
+            }
         });
 
     client->on<uvw::EndEvent>(
