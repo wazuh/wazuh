@@ -42,6 +42,8 @@ add_library(hlp STATIC
     ${ENGINE_HLP_SOURCE_DIR}/SpecificParsers.hpp
     ${ENGINE_HLP_SOURCE_DIR}/SpecificParsers.cpp
     ${ENGINE_HLP_SOURCE_DIR}/date/date.h
+    ${ENGINE_HLP_SOURCE_DIR}/MapParser.cpp
+    ${ENGINE_HLP_SOURCE_DIR}/MapParser.hpp
 )
 
 target_link_libraries(hlp PRIVATE CURL::libcurl)

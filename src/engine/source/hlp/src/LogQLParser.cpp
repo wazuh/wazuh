@@ -6,26 +6,7 @@
 #include "LogQLParser.hpp"
 #include "hlpDetails.hpp"
 
-static const std::unordered_map<std::string_view, ParserType> kECSParserMapper {
-    { "source.ip", ParserType::IP },
-    { "server.ip", ParserType::IP },
-    { "source.nat.ip", ParserType::IP },
-    { "timestamp", ParserType::Ts },
-    { "threat.indicator.first_seen", ParserType::Ts},
-    { "file.accessed", ParserType::Ts},
-    { "file.created", ParserType::Ts},
-    { "url", ParserType::URL},
-    { "http.request.method", ParserType::Any },
-    { "client", ParserType::Domain}
-};
-
-static const std::unordered_map<std::string_view, ParserType> kTempTypeMapper {
-    { "JSON", ParserType::JSON },
-    { "MAP", ParserType::Map},
-    { "timestamp", ParserType::Ts},
-    { "domain", ParserType::Domain},
-    { "FilePath", ParserType::FilePath},
-};
+using namespace LogQL;
 
 struct Tokenizer {
     const char *stream;
@@ -101,50 +82,39 @@ static std::vector<std::string> splitSlashSeparatedField(std::string_view str){
     return ret;
 }
 
-static Parser parseCaptureString(Token token) {
+static Element parseField(Token token) {
     // TODO assert token type
     // TODO report errors
-    std::vector<std::string> captureParams;
+    //std::vector<std::string> captureParams;
 
     // We could be parsing:
     //      '<_>'
     //      '<_name>'
     //      '<_name/type>'
     //      '<_name/type/type2>'
-    captureParams = splitSlashSeparatedField({ token.text, token.len });
-    Parser parser;
-    parser.combType = CombType::Null;
-    parser.endToken = 0;
-    parser.name = captureParams[0];
-    captureParams.erase(captureParams.begin());
-    parser.parserType = ParserType::Any;
+    std::string parameters = { token.text, token.len };
+    auto pos = parameters.find('/');
+    Element element;
+    element.combType = Comb::Null;
+    element.endToken = 0;
+    element.name = parameters.substr(0, pos);
+    element.opts = parameters.substr(pos+1);
+    element.type = Type::field;
     if (token.text[0] == '_') {
-        if (token.len != 1) {
-            // We have a temp capture with the format <_temp/type/typeN>
-            // we need to take the first parameter after the name and set the type from it
-            if(!captureParams.empty()){
-                auto it = kTempTypeMapper.find(captureParams[0]);
-                if(it != kTempTypeMapper.end()){
-                    parser.parserType = it->second;
-                }
-                // erase the type from the list so we are
-                // consistent with the non temp case
-                captureParams.erase(captureParams.begin());
-            }
-        }
+        element.isTemp = true;
+        auto pos = element.opts.find('/');
+        element.parser = element.opts.substr(0, pos);
+        element.opts = element.opts.substr(pos+1);
     }
-    else{
-        auto it = kECSParserMapper.find(parser.name);
-        if (it != kECSParserMapper.end()) {
-            parser.parserType = it->second;
-        }
+    else {
+        element.parser = element.name;
     }
-    parser.captureOpts = std::move(captureParams);
 
-    return parser;
+    return element;
 }
 
-static bool parseCapture(Tokenizer &tk, ParserList &parsers) {
+
+static bool parseCapture(Tokenizer &tk, ElementList &elements) {
     //<name> || <?name> || <name1>?<name2>
     Token token = getToken(tk);
     bool optional = false;
@@ -154,7 +124,7 @@ static bool parseCapture(Tokenizer &tk, ParserList &parsers) {
     }
 
     if (token.type == TokenType::Literal) {
-        parsers.emplace_back(parseCaptureString(token));
+        elements.emplace_back(parseField(token));
 
         if (!requireToken(tk, TokenType::CloseAngle)) {
             // TODO report parsing error
@@ -163,7 +133,7 @@ static bool parseCapture(Tokenizer &tk, ParserList &parsers) {
 
         // TODO check if there's a better way to do this
         if (optional) {
-            parsers.back().combType = CombType::Optional;
+            elements.back().combType = Comb::Optional;
         }
 
         if (peekToken(tk).type == TokenType::QuestionMark) {
@@ -176,12 +146,12 @@ static bool parseCapture(Tokenizer &tk, ParserList &parsers) {
                 return false;
             }
             // Fix up the combType of the previous capture as this is now an OR
-            auto &prevCapture = parsers.back();
-            prevCapture.combType = CombType::Or;
+            auto &prevCapture = elements.back();
+            prevCapture.combType = Comb::Or;
 
-            parsers.emplace_back(parseCaptureString(getToken(tk)));
-            auto &currentCapture = parsers.back();
-            currentCapture.combType = CombType::OrEnd;
+            elements.emplace_back(parseField(getToken(tk)));
+            auto &currentCapture = elements.back();
+            currentCapture.combType = Comb::OrEnd;
 
             if (!requireToken(tk, TokenType::CloseAngle)) {
                 // TODO report error
@@ -194,7 +164,7 @@ static bool parseCapture(Tokenizer &tk, ParserList &parsers) {
         }
         else {
             // TODO Check if there's a better way to do this
-            parsers.back().endToken = peekChar(tk);
+            elements.back().endToken = peekChar(tk);
         }
     }
     else {
@@ -205,8 +175,8 @@ static bool parseCapture(Tokenizer &tk, ParserList &parsers) {
     return true;
 }
 
-ParserList parseLogQlExpr(std::string const &expr) {
-    std::vector<Parser> parsers;
+ElementList LogQL::parseExpr(std::string const &expr) {
+    ElementList elements;
     Tokenizer tokenizer { expr.c_str() };
 
     bool done = false;
@@ -216,10 +186,10 @@ ParserList parseLogQlExpr(std::string const &expr) {
             case TokenType::OpenAngle: {
                 const char *prev = tokenizer.stream - 1;
 
-                if (!parseCapture(tokenizer, parsers)) {
+                if (!parseCapture(tokenizer, elements)) {
                     // TODO report error
                     //  Reset the parser list to signify an error occurred
-                    parsers.clear();
+                    elements.clear();
                     done = true;
                 }
 
@@ -233,17 +203,20 @@ ParserList parseLogQlExpr(std::string const &expr) {
                             (int)(end - prev),
                             prev);
                     // Reset the parser list to signify an error occurred
-                    parsers.clear();
+                    elements.clear();
                     done = true;
                 }
                 break;
             }
+
             case TokenType::Literal: {
-                parsers.push_back({ {},
+                elements.push_back({ {},
                                     { token.text, token.text + token.len },
-                                    ParserType::Literal,
-                                    CombType::Null,
-                                    0 });
+                                    {},
+                                    Type::Literal,
+                                    Comb::Null,
+                                    0,
+                                    false });
                 break;
             }
             case TokenType::EndOfExpr: {
@@ -257,5 +230,5 @@ ParserList parseLogQlExpr(std::string const &expr) {
         }
     }
 
-    return parsers;
+    return elements;
 }

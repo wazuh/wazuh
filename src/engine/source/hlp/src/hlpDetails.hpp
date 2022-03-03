@@ -1,32 +1,13 @@
+#ifndef _HLP_DETAILS_H
+#define _HLP_DETAILS_H
+
 #include <string>
 #include <vector>
+#include <functional>
+#include "rapidjson/document.h"
 
-enum class CombType {
-    Null,
-    Optional,
-    Or,
-    OrEnd,
-    Invalid,
-};
 
-enum class ParserType {
-    Any,
-    Literal,
-    IP,
-    Ts,
-    URL,
-    JSON,
-    Map,
-    Domain,
-    FilePath,
-    Invalid,
-};
 
-struct Parser {
-    std::vector<std::string> captureOpts; // TODO The options are split on a list for now
-                                          // This is probably not the best way but works so far
-    std::string name;
-    ParserType parserType;
-    CombType combType;
-    char endToken;
-};
+
+
+#endif

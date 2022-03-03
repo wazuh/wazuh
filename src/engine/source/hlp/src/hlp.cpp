@@ -9,10 +9,34 @@
 #include "LogQLParser.hpp"
 #include "SpecificParsers.hpp"
 #include "hlpDetails.hpp"
+#include "MapParser.hpp"
 
 #include <hlp/hlp.hpp>
+/*
+static const std::unordered_map<std::string_view, ParserType> kECSParserMapper {
+    { "source.ip", ParserType::IP },
+    { "server.ip", ParserType::IP },
+    { "source.nat.ip", ParserType::IP },
+    { "timestamp", ParserType::Ts },
+    { "threat.indicator.first_seen", ParserType::Ts},
+    { "file.accessed", ParserType::Ts},
+    { "file.created", ParserType::Ts},
+    { "url", ParserType::URL},
+    { "http.request.method", ParserType::Any },
+    { "client", ParserType::Domain}
+};
 
-static void executeParserList(std::string const &event, ParserList const &parsers, ParseResult &result) {
+static const std::unordered_map<std::string_view, ParserType> kTempTypeMapper {
+    { "JSON", ParserType::JSON },
+    { "MAP", ParserType::Map},
+    { "timestamp", ParserType::Ts},
+    { "domain", ParserType::Domain},
+    { "FilePath", ParserType::FilePath},
+};
+*/
+
+/*
+static void executeParserList(std::string const &event, ParserList const &parsers, ParseResultold &result) {
     const char *eventIt = event.c_str();
 
     // TODO This implementation is super simple for the POC
@@ -22,14 +46,6 @@ static void executeParserList(std::string const &event, ParserList const &parser
     fprintf(stderr, "%30s | %4s | %4s | %4s | %5s\n", "Capture", "type", "comb", "etok", "ret");
     fprintf(stderr, "-------------------------------|------|------|------|-----------\n");
     for (auto const &parser : parsers) {
-        fprintf(stderr, "%-30s | %4i | %4i |  '%*.*s' | ",
-               parser.name.c_str(),
-               parser.parserType,
-               parser.combType,
-               1,
-               1,
-               &parser.endToken);
-
         const char* prevIt = eventIt;
         switch (parser.parserType) {
             case ParserType::Any: {
@@ -158,24 +174,69 @@ static void executeParserList(std::string const &event, ParserList const &parser
         }
     }
 }
-
-ParserFn getParserOp(std::string const &logQl) {
+*/
+/*
+ParserFnold getParserOpold(std::string const &logQl) {
     if(logQl.empty()){
         //TODO report error - empty logQl expresion string
         return {};
     }
 
-    ParserList parserList = parseLogQlExpr(logQl);
+    LogQL::ElementList parserList = parseLogQlExpr(logQl);
     if(parserList.empty()){
         //TODO some error occured while parsing the logQl expr
         return {};
     }
 
-    ParserFn parseFn = [expr = logQl, parserList = std::move(parserList)](std::string const &event) {
+    ParserFnold parseFn = [expr = logQl, parserList = std::move(parserList)](std::string const &event) {
         fprintf(stderr, "event:\n\t%s\n\t%s\n\n", event.c_str(), expr.c_str());
-        ParseResult result;
+        ParseResultold result;
         executeParserList(event, parserList, result);
         return result;
+    };
+
+    return parseFn;
+}
+*/
+
+ParserFnList Create_parser_list(LogQL::ElementList elements){
+    ParserFnList parserList;
+    for (auto const &element : elements) {
+        switch (element.type) {
+            case LogQL::Type::field: {
+                //TODO JJP: Check the parser name / the op`tional fields to decide the parser to use.
+                parserList.emplace_back(MapParser(element.name, element.endToken, element.opts));
+                break;
+                //TODO JJP: parserList must contain the combination too.
+            }
+        }
+    }
+    return parserList;
+}
+
+ParserOp getParserOp(std::string const &logQl) {
+    if(logQl.empty()){
+        //TODO report error - empty logQl expresion string
+        return {};
+    }
+
+    LogQL::ElementList elementList = LogQL::parseExpr(logQl);
+    if(elementList.empty()){
+        //TODO some error occured while parsing the logQl expr
+        return {};
+    }
+
+    ParserFnList parserCombination = Create_parser_list(elementList);
+
+    ParserOp parseFn = [parserCombination = std::move(parserCombination)](std::string const &event, ParserResult& result) {
+        bool success = true; //TODO JJP: Control this
+        for (auto const &parser : parserCombination) {
+            const char *eventIt = event.c_str();
+            bool success = parser(&eventIt, result);
+            //printf("%s", result);
+            //TODO JJP: Insert result into json
+        }
+        return success;
     };
 
     return parseFn;
