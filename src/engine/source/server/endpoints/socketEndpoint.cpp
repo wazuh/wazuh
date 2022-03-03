@@ -42,11 +42,11 @@ BaseEndpoint::ConnectionObs SocketEndpoint::connection(const uvw::ListenEvent & 
             client->on<uvw::DataEvent>(
                 [s, timer, ph](const uvw::DataEvent & event, uvw::PipeHandle & client)
                 {
-                    if (!ph->process(event.data.get(), event.length, s))
-                    {
-                        timer->close();
-                        client.close();
-                    }
+                    // if (!ph->process(event.data.get(), event.length, s))
+                    // {
+                    //     timer->close();
+                    //     client.close();
+                    // }
                 });
 
             client->on<uvw::EndEvent>(
