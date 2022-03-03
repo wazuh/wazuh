@@ -251,6 +251,8 @@ async def test_sync_files_sync_ok(compress_files_mock, unlink_mock, relpath_mock
 
             assert worker_mock.interrupted_tasks == {b'abcd'}
 
+            assert worker_mock.interrupted_tasks == {b'abcd'}
+
 
 @pytest.mark.asyncio
 @patch("wazuh.core.cluster.worker.WorkerHandler.send_request", return_value=Exception())

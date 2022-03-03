@@ -528,7 +528,7 @@ async def test_handler_send_file_ok(send_request_mock, os_path_exists_mock):
     handler.interrupted_tasks.add(b'abcd')
 
     with patch('hashlib.sha256', return_value=MockHash()):
-        assert (await handler.send_file('some_file.txt', task_id=b'abcd') == b'File sent')
+        assert (await handler.send_file('some_file.txt', task_id=b'abcd') == 3)
         send_request_mock.assert_has_calls([call(command=b'file_upd', data=b'some_file.txt chu'),
                                             call(command=b'file_end', data=b'some_file.txt ')])
         assert send_request_mock.call_count == 3

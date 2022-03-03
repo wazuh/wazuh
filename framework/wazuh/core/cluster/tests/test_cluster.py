@@ -263,22 +263,28 @@ def test_update_cluster_control_with_failed():
                         'extra': {'/test_file2': 'test', '/test_file1': 'test'}}
 
 
+@patch('wazuh.core.cluster.cluster.get_cluster_items')
 @patch('wazuh.core.cluster.cluster.mkdir_with_mode')
 @patch('wazuh.core.cluster.cluster.path.dirname', return_value='/some/path')
 @patch('wazuh.core.cluster.cluster.path.exists', return_value=False)
-def test_compress_files_ok(mock_path_exists, mock_path_dirname, mock_mkdir_with_mode):
+def test_compress_files_ok(mock_path_exists, mock_path_dirname, mock_mkdir_with_mode, mock_get_cluster_items):
     """Check if the compressing function is working properly."""
+    mock_get_cluster_items.return_value = {'intervals': {'communication': {'max_zip_size': 10000}}}
+
     with patch("zipfile.ZipFile.write"):
         with patch('zipfile.ZipFile', return_value=zipfile.ZipFile(io.BytesIO(b"Testing"), 'x')):
             assert isinstance(cluster.compress_files("some_name", ["some/path", "another/path"],
                                                      {"ko_file": "file"}), str)
 
 
+@patch('wazuh.core.cluster.cluster.get_cluster_items')
 @patch('wazuh.core.cluster.cluster.mkdir_with_mode')
 @patch('wazuh.core.cluster.cluster.path.dirname', return_value='/some/path')
 @patch('wazuh.core.cluster.cluster.path.exists', return_value=False)
-def test_compress_files_ko(mock_path_exists, mock_path_dirname, mock_mkdir_with_mode):
+def test_compress_files_ko(mock_path_exists, mock_path_dirname, mock_mkdir_with_mode, mock_get_cluster_items):
     """Check if the compressing function is raising every exception."""
+    mock_get_cluster_items.return_value = {'intervals': {'communication': {'max_zip_size': 10000}}}
+
     with patch("zipfile.ZipFile.write", side_effect=Exception):
         with patch('zipfile.ZipFile', return_value=zipfile.ZipFile(io.BytesIO(b"Testing"), 'x')):
             with patch.object(wazuh.core.cluster.cluster.logger, "debug") as mock_logger:
@@ -419,7 +425,7 @@ def test_clean_up_ok():
                 with patch('wazuh.core.cluster.cluster.listdir',
                            return_value=["c-internal.sock", "other_file.txt"]):
                     with patch('os.path.isdir', return_value=True) as is_dir_mock:
-                        with patch('wazuh.core.cluster.cluster.rmtree'):
+                        with patch('shutil.rmtree'):
                             cluster.clean_up("worker1")
                             mock_logger.assert_any_call("Removing 'some/path/'.")
                             mock_logger.assert_called_with("Removed 'some/path/'.")
@@ -448,7 +454,7 @@ def test_clean_up_ko():
                 with patch('os.path.exists', return_value=True):
                     with patch('wazuh.core.cluster.cluster.listdir',
                                return_value=["c-internal.sock", "other_file.txt"]):
-                        with patch('wazuh.core.cluster.cluster.rmtree', side_effect=Exception):
+                        with patch('shutil.rmtree', side_effect=Exception):
                             cluster.clean_up("worker1")
                             mock_debug_logger.assert_any_call(f"Removing '{Exception}'.")
                             mock_error_logger.assert_any_call(error_removing)
