@@ -14,6 +14,7 @@
 #include <string>
 
 #include <json.hpp>
+#include "queue.hpp"
 
 namespace engineserver
 {
@@ -46,7 +47,7 @@ private:
      *
      * @param s a subscriber of this connection.
      */
-    void send(const rxcpp::subscriber<rxcpp::observable<std::string>> s);
+    void send();
 
 public:
     /**
@@ -66,7 +67,7 @@ public:
      * @return true no errors
      * @return false errors in processing
      */
-    bool process(char * data, std::size_t length, const rxcpp::subscriber<rxcpp::observable<std::string>> dst);
+    bool process(char * data, std::size_t length);
 };
 
 } // namespace engineserver
