@@ -105,6 +105,10 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define GROUPGLOBAL     "wazuh"
 #endif
 
+#ifndef ROOTGROUP
+#define ROOTGROUP     "root"
+#endif
+
 // Wazuh home environment variable
 #define WAZUH_HOME_ENV  "WAZUH_HOME"
 
