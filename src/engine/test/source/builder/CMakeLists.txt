@@ -78,7 +78,6 @@ add_executable(builderTest
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${BUILDER_TEST_SOURCE_DIR}/builderTest.cpp
   ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
-  ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderBroadcast.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderOutputs.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderChain.cpp
@@ -111,7 +110,6 @@ add_executable(registerTest
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${BUILDER_TEST_SOURCE_DIR}/registerTest.cpp
   ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
-  ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderBroadcast.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderOutputs.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderChain.cpp
@@ -206,6 +204,7 @@ add_executable(opBuilderHelperStringTrim_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringTrim_test.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperMap.cpp)
 gtest_discover_tests(opBuilderHelperStringTrim_test)
+
 add_executable(opBuilderHelperIntEqual_test
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntEqual_test.cpp
@@ -273,7 +272,6 @@ add_executable(opBuilderMapTest
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMap.cpp
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
-  ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapValue.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapReference.cpp)
 gtest_discover_tests(opBuilderMapTest)
@@ -288,7 +286,6 @@ add_executable(stageBuilderCheckTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/stageBuilderCheckTest.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderCheck.cpp
   ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
-  ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderCondition.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionValue.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionReference.cpp
@@ -301,7 +298,6 @@ add_executable(stageBuilderNormalizeTest
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderNormalize.cpp
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
-  ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMap.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapValue.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapReference.cpp
@@ -313,7 +309,6 @@ add_executable(assetBuilderDecoderTest
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderDecoder.cpp
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
-  ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderNormalize.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMap.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapValue.cpp
@@ -331,7 +326,6 @@ add_executable(assetBuilderRuleTest
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderRule.cpp
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
-  ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderNormalize.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMap.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapValue.cpp
@@ -349,7 +343,6 @@ add_executable(assetBuilderFilterTest
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderFilter.cpp
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
-  ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderChain.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderCheck.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderCondition.cpp

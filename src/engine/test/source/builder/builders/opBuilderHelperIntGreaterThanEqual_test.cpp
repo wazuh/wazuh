@@ -8,10 +8,9 @@
  */
 
 #include <gtest/gtest.h>
-#include <testUtils.hpp>
-
 #include <vector>
 
+#include "testUtils.hpp"
 #include "OpBuilderHelperFilter.hpp"
 
 using namespace builder::internals::builders;
@@ -22,6 +21,7 @@ TEST(opBuilderHelperIntGreaterThanEqual, Builds)
         "check":
             {"field_test": "+i_lt/10"}
     })"};
+
     ASSERT_NO_THROW(opBuilderHelperIntGreaterThanEqual(*doc.get("/check")));
 }
 
@@ -31,6 +31,7 @@ TEST(opBuilderHelperIntGreaterThanEqual, Builds_error_bad_parameter)
         "check":
             {"field_test": "+i_lt/test"}
     })"};
+
     ASSERT_THROW(opBuilderHelperIntGreaterThanEqual(*doc.get("/check")),
                  std::invalid_argument);
 }
@@ -41,6 +42,7 @@ TEST(opBuilderHelperIntGreaterThanEqual, Builds_error_more_parameters)
         "check":
             {"field_test": "+i_lt/10/10"}
     })"};
+
     ASSERT_THROW(opBuilderHelperIntGreaterThanEqual(*doc.get("/check")),
                  std::runtime_error);
 }
@@ -72,7 +74,9 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_greater_than_equal_ok)
     Lifter lift = opBuilderHelperIntGreaterThanEqual(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
+
     output.subscribe([&](Event e) { expected.push_back(e); });
+
     ASSERT_EQ(expected.size(), 3);
     ASSERT_GE(expected[0].get("/field_test")->GetInt(), 10);
     ASSERT_GE(expected[1].get("/field_test")->GetInt(), 10);
@@ -106,7 +110,9 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_greater_than_equal_true)
     Lifter lift = opBuilderHelperIntGreaterThanEqual(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
+
     output.subscribe([&](Event e) { expected.push_back(e); });
+
     ASSERT_EQ(expected.size(), 3);
     ASSERT_GE(expected[0].get("/field_test")->GetInt(), 10);
     ASSERT_GE(expected[1].get("/field_test")->GetInt(), 10);
@@ -140,7 +146,9 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_greater_than_equal_false)
     Lifter lift = opBuilderHelperIntGreaterThanEqual(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
+
     output.subscribe([&](Event e) { expected.push_back(e); });
+
     ASSERT_EQ(expected.size(), 0);
 }
 
@@ -183,9 +191,8 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_greater_than_equal_ref_true)
     Lifter lift = opBuilderHelperIntGreaterThanEqual(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
 
-    auto str2Int = [](std::string s) { return std::stoi(s); };
+    output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 3);
     ASSERT_GE(expected[0].get("/field_test")->GetInt(),
@@ -233,9 +240,8 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_greater_than_equal_ref_false)
     Lifter lift = opBuilderHelperIntGreaterThanEqual(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
 
-    auto str2Int = [](std::string s) { return std::stoi(s); };
+    output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 0);
 }
@@ -277,6 +283,7 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_dynamics_int_ok)
     Lifter lift = opBuilderHelperIntGreaterThanEqual(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
+
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
@@ -353,6 +360,7 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_multilevel_dynamics_int_ok)
     Lifter lift = opBuilderHelperIntGreaterThanEqual(*doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
+
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
