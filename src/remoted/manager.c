@@ -1341,21 +1341,14 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
     char buf[OS_SIZE_1024 + 1];
     FILE *fp;
     os_sha256 multi_group_hash;
-    char *multi_group_hash_pt = NULL;
     int protocol = -1; // Agent client net protocol
 
     /* Check if it is multigroup */
     if (strchr(group, MULTIGROUP_SEPARATOR)) {
-        if (multi_group_hash_pt = OSHash_Get(m_hash, group), multi_group_hash_pt) {
-            mdebug1("At send_file_toagent(): Hash is '%s'", multi_group_hash_pt);
-            snprintf(file, OS_SIZE_1024, "%s/%s/%s", sharedcfg_dir, multi_group_hash_pt, name);
-        } else {
-            OS_SHA256_String(group, multi_group_hash);
-            char _hash[9] = {0};
-            strncpy(_hash, multi_group_hash, 8);
-            OSHash_Add_ex(m_hash, group, strdup(_hash));
-            snprintf(file, OS_SIZE_1024, "%s/%s/%s", sharedcfg_dir, _hash, name);
-        }
+        OS_SHA256_String(group, multi_group_hash);
+        char _hash[9] = {0};
+        strncpy(_hash, multi_group_hash, 8);
+        snprintf(file, OS_SIZE_1024, "%s/%s/%s", sharedcfg_dir, _hash, name);
     } else {
         snprintf(file, OS_SIZE_1024, "%s/%s/%s", sharedcfg_dir, group, name);
     }
