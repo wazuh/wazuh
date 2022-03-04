@@ -24,50 +24,23 @@ using namespace engineserver::endpoints;
 
 namespace engineserver
 {
+
+EngineServer::EngineServer(const size_t & bufferSize) : m_eventBuffer{bufferSize}
+{
+}
+
 void EngineServer::configure(const vector<string> & config)
 {
-    vector<BaseEndpoint::EndpointObs> tmpObs;
-
-    // <EnpointType>:<config_string> tcp:localhost:5054 socket:path/to/socket
     for (auto endpointConf : config)
     {
         auto pos = endpointConf.find(":");
 
-        this->m_endpoints[endpointConf] = endpoints::create(endpointConf.substr(0, pos), endpointConf.substr(pos + 1));
-
-        tmpObs.push_back(this->m_endpoints[endpointConf]->output());
+        this->m_endpoints[endpointConf] =
+            endpoints::create(endpointConf.substr(0, pos), endpointConf.substr(pos + 1), m_eventBuffer);
     }
-
-    // Emits connections
-    BaseEndpoint::EndpointObs tcpServerObs = tmpObs[0];
-
-    // Emits eventObservables
-    BaseEndpoint::ConnectionObs tcpConnectionObs = tcpServerObs.flat_map(
-        [&](BaseEndpoint::ConnectionObs o)
-        {
-            // This flat_map internally merges
-            // on_error/on_completed emited by ConnectionObs o
-            return o.on_error_resume_next(
-                [&](auto eptr)
-                {
-                    LOG(INFO) << "Recovering from: " << rxcpp::util::what(eptr) << std::endl;
-                    return rxcpp::observable<>::empty<BaseEndpoint::EventObs>();
-                });
-        });
-
-    this->m_output = tcpConnectionObs;
 }
 
-// EngineServer::EngineServer(const vector<string> & config)
-// {
-//     this->configure(config, );
-// }
-
- BaseEndpoint::ConnectionObs EngineServer::output(void) const
-{
-    return this->m_output;
-}
-
+// TODO: fix, only runs first endpoint because run is blocking
 void EngineServer::run(void)
 {
     for (auto it = this->m_endpoints.begin(); it != this->m_endpoints.end(); ++it)
@@ -83,4 +56,10 @@ void EngineServer::close(void)
         it->second->close();
     }
 }
+
+moodycamel::BlockingConcurrentQueue<std::string> & EngineServer::output()
+{
+    return m_eventBuffer;
+}
+
 } // namespace engineserver

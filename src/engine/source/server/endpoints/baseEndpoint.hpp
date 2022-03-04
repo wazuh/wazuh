@@ -12,8 +12,7 @@
 
 #include <rxcpp/rx.hpp>
 #include <string>
-
-#include "json.hpp"
+#include <blockingconcurrentqueue.h>
 
 /**
  * @brief Contains all endpoint related functionality
@@ -28,17 +27,13 @@ namespace engineserver::endpoints
  */
 class BaseEndpoint
 {
-public:
-    using Event = std::string;
-    using EventObs = rxcpp::observable<Event>;
-    using ConnectionObs = rxcpp::observable<EventObs>;
-    using EndpointObs = rxcpp::observable<ConnectionObs>;
-
 protected:
-    std::string m_path;
-    EndpointObs m_out;
+    using ServerOutput = moodycamel::BlockingConcurrentQueue<std::string>;
 
-    explicit BaseEndpoint(const std::string & path);
+    std::string m_path;
+    ServerOutput & m_out;
+
+    BaseEndpoint(const std::string & path, ServerOutput & out);
 
 public:
     /**
@@ -52,7 +47,7 @@ public:
      *
      * @return auto Observable object
      */
-    EndpointObs output(void) const;
+    const ServerOutput & output(void) const;
 
     /**
      * @brief Start endpoint.
