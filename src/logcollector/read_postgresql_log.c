@@ -28,8 +28,8 @@ void *read_postgresql_log(logreader *lf, int *rc, int drop_it) {
     size_t str_len = 0;
     int need_clear = 0;
     char *p;
-    char str[OS_MAXSTR - OS_LOG_HEADER];
-    char buffer[OS_MAXSTR - OS_LOG_HEADER];
+    char str[OS_MAX_LOG_SIZE];
+    char buffer[OS_MAX_LOG_SIZE];
     int lines = 0;
 
     /* Zero buffer and str */
