@@ -682,8 +682,10 @@ DWORD WINAPI wm_osquery_monitor_destroy(void *osquery_monitor)
         for (i = 0; osquery_monitor_ptr->packs[i]; ++i) {
             free(osquery_monitor_ptr->packs[i]->name);
             free(osquery_monitor_ptr->packs[i]->path);
+            free(osquery_monitor_ptr->packs[i]);
         }
 
+        free(osquery_monitor_ptr->packs);
         free(osquery_monitor_ptr);
     }
 
