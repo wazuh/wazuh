@@ -7,19 +7,16 @@
  * Foundation
  */
 
-
+#include "sha256_op_wrappers.h"
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
-#include "shared_download_wrappers.h"
 
-agent_group * __wrap_w_parser_get_agent(const char * name) {
-    check_expected(name);
-    return mock_type(agent_group *);
-}
+int __wrap_OS_SHA256_String(const char *str, os_sha256 output) {
+    check_expected(str);
 
-remote_files_group * __wrap_w_parser_get_group(const char * name) {
-    check_expected(name);
-    return mock_type(remote_files_group *);
+    snprintf(output, 65, "%s", mock_type(char *));
+
+    return 0;
 }

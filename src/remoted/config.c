@@ -18,7 +18,6 @@
 /* Global variables */
 int pass_empty_keyfile;
 int timeout;
-int group_data_flush;
 unsigned receive_chunk;
 unsigned send_chunk;
 unsigned send_buffer_size;
@@ -152,7 +151,6 @@ cJSON *getRemoteInternalConfig(void) {
     cJSON_AddNumberToObject(remoted,"rlimit_nofile",nofile);
     cJSON_AddNumberToObject(remoted,"merge_shared",logr.nocmerged);
     cJSON_AddNumberToObject(remoted,"guess_agent_group",guess_agent_group);
-    cJSON_AddNumberToObject(remoted,"group_data_flush",group_data_flush);
     cJSON_AddNumberToObject(remoted,"receive_chunk",receive_chunk);
     cJSON_AddNumberToObject(remoted,"send_chunk",send_chunk);
     cJSON_AddNumberToObject(remoted,"buffer_relax",buffer_relax);
