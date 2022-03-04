@@ -15,13 +15,13 @@
 
 /* Read snort_full files */
 void *read_snortfull(logreader *lf, int *rc, int drop_it) {
-    int f_msg_size = OS_MAXSTR - OS_LOG_HEADER - 1;
+    int f_msg_size = OS_MAX_LOG_SIZE - 1;
     const char *one = "one";
     const char *two = "two";
     const char *p = NULL;
     char *q;
-    char str[OS_MAXSTR - OS_LOG_HEADER];
-    char f_msg[OS_MAXSTR - OS_LOG_HEADER];
+    char str[OS_MAX_LOG_SIZE];
+    char f_msg[OS_MAX_LOG_SIZE];
     int lines = 0;
 
     *rc = 0;
@@ -87,7 +87,7 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
                     }
 
                     f_msg[0] = '\0';
-                    f_msg_size = OS_MAXSTR - OS_LOG_HEADER - 1;
+                    f_msg_size = OS_MAX_LOG_SIZE - 1;
                     str[0] = '\0';
                 } else {
                     goto file_error;
@@ -104,7 +104,7 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
                     }
 
                     f_msg[0] = '\0';
-                    f_msg_size = OS_MAXSTR - OS_LOG_HEADER - 1;
+                    f_msg_size = OS_MAX_LOG_SIZE - 1;
                     str[0] = '\0';
                 } else {
                     goto file_error;
