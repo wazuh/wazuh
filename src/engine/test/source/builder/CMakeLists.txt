@@ -267,7 +267,6 @@ add_executable(opBuilderConditionTest
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderCondition.cpp
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
-  ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionValue.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionReference.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp)
@@ -292,17 +291,17 @@ add_executable(opBuilderMapTest
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapReference.cpp)
 gtest_discover_tests(opBuilderMapTest)
 
-add_executable(opBuilderHelperRegexMatchTest
+add_executable(opBuilderHelperRegexMatch_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperRegexMatch_test.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp)
-gtest_discover_tests(opBuilderHelperRegexMatchTest)
+gtest_discover_tests(opBuilderHelperRegexMatch_test)
 
-add_executable(opBuilderHelperRegexNotMatchTest
+add_executable(opBuilderHelperRegexNotMatch_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperRegexNotMatch_test.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp)
-gtest_discover_tests(opBuilderHelperRegexNotMatchTest)
+gtest_discover_tests(opBuilderHelperRegexNotMatch_test)
 
 # add_executable(combinatorBuilderChainTest)
 # gtest_discover_tests(combinatorBuilderChainTest)
@@ -387,7 +386,6 @@ gtest_discover_tests(opBuilderFileOutputTest)
 
 add_executable(stageBuilderOutputsTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/stageBuilderOutputsTest.cpp
-  ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderBroadcast.cpp
