@@ -28,13 +28,13 @@ void *read_mssql_log(logreader *lf, int *rc, int drop_it) {
     size_t str_len = 0;
     int need_clear = 0;
     char *p;
-    char str[OS_MAXSTR - OS_LOG_HEADER];
-    char buffer[OS_MAXSTR - OS_LOG_HEADER];
+    char str[OS_MAX_LOG_SIZE];
+    char buffer[OS_MAX_LOG_SIZE];
     int lines = 0;
     /* Zero buffer and str */
     buffer[0] = '\0';
-    buffer[OS_MAXSTR - OS_LOG_HEADER - 1] = '\0';
-    str[OS_MAXSTR - OS_LOG_HEADER - 1] = '\0';
+    buffer[OS_MAX_LOG_SIZE - 1] = '\0';
+    str[OS_MAX_LOG_SIZE - 1] = '\0';
     *rc = 0;
 
     /* Obtain context to calculate hash */
@@ -43,7 +43,7 @@ void *read_mssql_log(logreader *lf, int *rc, int drop_it) {
     bool is_valid_context_file = w_get_hash_context(lf, &context, current_position);
 
     /* Get new entry */
-    while (can_read() && fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
+    while (can_read() && fgets(str, OS_MAX_LOG_SIZE, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
 
         lines++;
         /* Get buffer size */
