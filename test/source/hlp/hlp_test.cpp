@@ -59,16 +59,35 @@ TEST(hlpTests_logQL, invalid_logql_expression)
     ASSERT_EQ(false, static_cast<bool>(invalidFunc3));
 }
 
-TEST(hlpTests_logQL, optional_Or)
+TEST(hlpTests_logQL, optional_Field_Not_Found)
 {
-    static const char *logQl = "this won't match an url <url>?<source.ip> but will match ip";
-    static const char *event = "this won't match an url 127.0.0.1 but will match ip";
+    static const char *logQl = "this won't match an IP address <?source.ip>";
+    static const char *event = "this won't match an IP address 02 Jan 06 15:04 -0700";
 
     auto parseOp = getParserOp(logQl);
     auto result = parseOp(event);
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
+    ASSERT_TRUE(result["source.ip"].empty());
+}
+
+TEST(hlpTests_logQL, optional_Or)
+{
+    static const char *logQl = "<url>?<source.ip>";
+    static const char *eventIP = "127.0.0.1";
+    static const char *eventURL = "https://user:password@wazuh.com:8080/path"
+                                "?query=%22a%20query%20with%20a%20space%22#fragment";
+
+    auto parseOp = getParserOp(logQl);
+    auto result = parseOp(eventIP);
+
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
     ASSERT_EQ("127.0.0.1", result["source.ip"]);
+
+    auto resultURL = parseOp(eventURL);
+    std::string url = "https://user:password@wazuh.com:8080/"
+                      "path?query=%22a%20query%20with%20a%20space%22#fragment";
+    ASSERT_EQ(url, resultURL["url.original"]);
 }
 
 TEST(hlpTests_logQL, options_parsing)
@@ -111,7 +130,7 @@ TEST(hlpTests_URL, url_parsing)
 }
 
 // Test: parsing IP addresses
-TEST(hlpTests_IPaddress, IPaddress_IPV4_success)
+TEST(hlpTests_IPaddress, IPV4_success)
 {
     const char *logQl = "<source.ip> - <server.ip> -- <source.nat.ip> \"-\" \"-\"";
     const char *event = "127.0.0.1 - 192.168.100.25 -- 255.255.255.0 \"-\" \"-\"";
@@ -125,7 +144,7 @@ TEST(hlpTests_IPaddress, IPaddress_IPV4_success)
     ASSERT_EQ("255.255.255.0", result["source.nat.ip"]);
 }
 
-TEST(hlpTests_IPaddress, IPaddress_IPV4_failed)
+TEST(hlpTests_IPaddress, IPV4_failed)
 {
     const char *logQl = "<server.ip> -";
     const char *event = "..100.25 -";
@@ -137,7 +156,7 @@ TEST(hlpTests_IPaddress, IPaddress_IPV4_failed)
     ASSERT_EQ("", result["server.ip"]);
 }
 
-TEST(hlpTests_IPaddress, IPaddress_IPV6_success)
+TEST(hlpTests_IPaddress, IPV6_success)
 {
     const char *logQl = " - <source.nat.ip>";
     const char *event = " - 2001:db8:3333:AB45:1111:00A:4:1";
@@ -149,7 +168,7 @@ TEST(hlpTests_IPaddress, IPaddress_IPV6_success)
     ASSERT_EQ("2001:db8:3333:AB45:1111:00A:4:1", result["source.nat.ip"]);
 }
 
-TEST(hlpTests_IPaddress, IPaddress_IPV6_failed)
+TEST(hlpTests_IPaddress, IPV6_failed)
 {
     const char *logQl = "<server.ip>";
     const char *event = "2001:db8:#:$:CCCC:DDDD:EEEE:FFFF";
