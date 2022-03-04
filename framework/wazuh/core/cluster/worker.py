@@ -405,6 +405,9 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                                            get_payload={"condition": "sync_status", "get_global_hash": True})
 
         local_agent_groups = await sync_object.retrieve_information()
+        if not local_agent_groups:
+            return False
+
         local_agent_groups = json.loads(local_agent_groups[0])
         if not local_agent_groups[0]['data']:
             logger.debug2('There is no data requiring synchronization in the local database.')
