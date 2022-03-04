@@ -334,11 +334,9 @@ stages:
       params:
         version: 'TestVersion'
     response:
-      status_code: 200
+      status_code: 400
       json:
-        error: !anyint
-        data:
-          <<: *affected_empty_answer
+        <<: *error_spec
 
   - name: Try to show agents using an invalid version
     request:
