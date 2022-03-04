@@ -1281,6 +1281,30 @@ def test_agent_get_stats_ko(socket_mock, send_mock, mock_wazuh_socket):
         agent.get_stats('logcollector')
 
 
+@pytest.mark.parametrize('upgrade_version', [
+    '4.4.0',
+    'v4.4.0',
+    'wazuh 4.4.0',
+    'wazuh v4.4.0'
+])
+def test_unify_wazuh_upgrade_version_format(upgrade_version):
+    """Test that unify_wazuh_upgrade_version_format is properly working."""
+    assert unify_wazuh_upgrade_version_format(upgrade_version) == 'v4.4.0'
+
+
+@pytest.mark.parametrize('version', [
+    'v4.4.0',
+    '4.4.0',
+    'wazuh v4.4.0',
+    'wazuh 4.4.0'
+])
+def test_unify_wazuh_version_format(version):
+    """Test that unify_wazuh_version_format is properly working."""
+    dkt = {'version': version}
+    unify_wazuh_version_format(dkt)
+    assert dkt['version'] == 'wazuh v4.4.0'
+
+
 @pytest.mark.parametrize('agents_list, versions_list', [
     (['001', '002', '003', '004'],
      [{'version': ver} for ver in ['Wazuh v4.2.0', 'Wazuh v4.0.0', 'Wazuh v4.2.1', 'Wazuh v3.13.2']])
