@@ -18,6 +18,7 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <atomic>
 
 #include "Catalog.hpp"
 #include "builder.hpp"
@@ -31,19 +32,36 @@
 #include "register.hpp"
 #include "router.hpp"
 
+#define WAIT_DEQUEUE_TIMEOUT_USEC 1 * 1000000
+
 using namespace std;
+
+static std::atomic<bool> gs_doRun = true;
+static std::vector<std::thread> gs_threadList;
+
+static void sigint_handler(const int signum)
+{
+    // Inform threads that they should exit
+    gs_doRun = false;
+
+    for (auto & t : gs_threadList)
+    {
+        t.join();
+    };
+
+    exit(0);
+}
 
 int main(int argc, char * argv[])
 {
-    // TODO: proper delete all structures and threads
-    signal(SIGINT, [](auto s) { exit(1); });
+    signal(SIGINT, sigint_handler);
 
     // Configure
     google::InitGoogleLogging(argv[0]);
     vector<string> serverArgs;
     string storagePath;
     int nThreads;
-    int queueSize;
+    size_t queueSize;
 
     try
     {
@@ -123,16 +141,19 @@ int main(int argc, char * argv[])
                           // TODO: This should be a method
                           engineserver::ProtocolHandler p;
 
-                          // Start thread loop
-                          // TODO: implement finalization
+                          // Thread loop
                           std::string event;
-                          while (true)
+                          while (gs_doRun)
                           {
-                              eventBuffer.wait_dequeue(event);
-                              router.input().on_next(p.parse(event));
+                              if (eventBuffer.wait_dequeue_timed(event, WAIT_DEQUEUE_TIMEOUT_USEC))
+                              {
+                                  router.input().on_next(p.parse(event));
+                              }
                           }
+                          return 0;
                       }};
-        t.detach();
+
+        gs_threadList.push_back(std::move(t));
     }
 
     // Server loop
