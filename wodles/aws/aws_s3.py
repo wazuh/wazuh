@@ -2617,7 +2617,7 @@ class AWSService(WazuhIntegration):
         # reparse
         self.reparse = reparse
 
-        WazuhIntegration.__init__(self, reparse=reparse, access_key=access_key, secret_key=secret_key,
+        WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
                                   aws_profile=aws_profile, iam_role_arn=iam_role_arn,
                                   service_name=service_name, region=region, discard_field=discard_field,
                                   discard_regex=discard_regex, sts_endpoint=sts_endpoint,
