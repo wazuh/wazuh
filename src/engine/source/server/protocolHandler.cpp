@@ -29,25 +29,6 @@ bool ProtocolHandler::hasHeader()
     return false;
 }
 
-void ProtocolHandler::send()
-{
-    std::string evt;
-    try
-    {
-        evt = std::string(m_buff.begin() + sizeof(int), m_buff.end());
-        m_buff.clear();
-        while(!threadpool::queue2.try_enqueue(evt)){
-            std::this_thread::sleep_for(std::chrono::microseconds(10));
-        }
-    }
-    catch (std::exception & e)
-    {
-        LOG(ERROR) << e.what() << std::endl;
-        return;
-    }
-
-}
-
 json::Document ProtocolHandler::parse(const std::string & event) const
 {
     json::Document doc;
@@ -96,8 +77,9 @@ json::Document ProtocolHandler::parse(const std::string & event) const
     return doc;
 }
 
-bool ProtocolHandler::process(char * data, std::size_t length)
+std::optional<std::vector<std::string>> ProtocolHandler::process(char * data, std::size_t length)
 {
+    std::vector<std::string> events;
     for (std::size_t i = 0; i < length; i++)
     {
 
@@ -115,8 +97,7 @@ bool ProtocolHandler::process(char * data, std::size_t length)
                 }
                 catch (...)
                 {
-                    // s.on_error(std::current_exception());
-                    return false;
+                    return std::nullopt;
                 }
                 break;
             // payload
@@ -125,12 +106,21 @@ bool ProtocolHandler::process(char * data, std::size_t length)
                 m_pending--;
                 if (m_pending == 0)
                 {
-                    send();
+                    try
+                    {
+                        events.push_back(std::string(m_buff.begin() + sizeof(int), m_buff.end()));
+                        m_buff.clear();
+                    }
+                    catch (std::exception & e)
+                    {
+                        LOG(ERROR) << e.what() << std::endl;
+                        return std::nullopt;
+                    }
                     m_stage = 0;
                 }
                 break;
         }
     }
-    return true;
+    return std::optional<std::vector<std::string>>(std::move(events));
 }
 } // namespace engineserver

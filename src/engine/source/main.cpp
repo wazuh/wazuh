@@ -28,28 +28,31 @@
 #include "graph.hpp"
 #include "json.hpp"
 #include "protocolHandler.hpp"
-// #include "queue.hpp"
 #include "register.hpp"
 #include "router.hpp"
-#include "threadPool.hpp"
 
 using namespace std;
 
 int main(int argc, char * argv[])
 {
+    // TODO: proper delete all structures and threads
     signal(SIGINT, [](auto s) { exit(1); });
 
+    // Configure
     google::InitGoogleLogging(argv[0]);
     vector<string> serverArgs;
     string storagePath;
     int nThreads;
+    int queueSize;
 
     try
     {
+        // TODO: Add and check cliInput missing tests
         cliparser::CliParser cliInput(argc, argv);
         serverArgs.push_back(cliInput.getEndpointConfig());
         storagePath = cliInput.getStoragePath();
         nThreads = cliInput.getThreads();
+        queueSize = cliInput.getQueueSize();
     }
     catch (const exception & e)
     {
@@ -57,21 +60,22 @@ int main(int argc, char * argv[])
         return 1;
     }
 
-    engineserver::EngineServer server;
+    // Server
+    // TODO: Integrate configure and constructor
+    engineserver::EngineServer server{queueSize};
     try
     {
         server.configure(serverArgs);
     }
     catch (const exception & e)
     {
-        // TODO: implement log with GLOG
         LOG(ERROR) << "Engine error, got exception while configuring server: " << e.what() << endl;
         // TODO: handle if errors on close can happen
         return 1;
     }
 
-    // hardcoded catalog storage driver
-    // TODO: use argparse module
+    // Catalog
+    // TODO: Integrate configure and constructor
     catalog::Catalog _catalog;
     try
     {
@@ -93,50 +97,45 @@ int main(int argc, char * argv[])
         LOG(ERROR) << "Engine error, got exception while registering builders: " << e.what() << endl;
         return 1;
     }
+    // TODO: Handle errors on construction
     builder::Builder<catalog::Catalog> _builder(_catalog);
 
-
-    // Router is built in each thread
+    // Processing Workers (Router), Router is replicated in each thread
+    // TODO: handle hot modification of routes
     for (auto i = 0; i < nThreads; ++i)
     {
-        std::thread t{[=]()
-        {
-            router::Router<builder::Builder<catalog::Catalog>> router{_builder};
+        std::thread t{[=, &eventBuffer = server.output()]()
+                      {
+                          router::Router<builder::Builder<catalog::Catalog>> router{_builder};
 
-            try
-            {
-                // Default route
-                router.add("test_route", "test_environment");
-            }
-            catch (const exception & e)
-            {
-                LOG(ERROR) << "Engine error, got exception while building default route: " << e.what()
-                            << endl;
-                return 1;
-            }
+                          try
+                          {
+                              // Default route
+                              router.add("test_route", "test_environment");
+                          }
+                          catch (const exception & e)
+                          {
+                              LOG(ERROR) << "Engine error, got exception while building default route: " << e.what()
+                                         << endl;
+                              return 1;
+                          }
 
-            engineserver::ProtocolHandler p;
-            // Start thread loop
-            while(true){
-                std::string event;
-                threadpool::queue2.wait_dequeue(event);
-                // threadpool::queue;
-                router.input().on_next(p.parse(event));
-            }
-        }};
+                          // TODO: This should be a method
+                          engineserver::ProtocolHandler p;
 
+                          // Start thread loop
+                          // TODO: implement finalization
+                          std::string event;
+                          while (true)
+                          {
+                              eventBuffer.wait_dequeue(event);
+                              router.input().on_next(p.parse(event));
+                          }
+                      }};
         t.detach();
     }
 
-    // Start main loop
-    // server.output()
-    //     .subscribe(
-    //         [](std::string raw){
-    //             threadpool::queue2.enqueue(std::move(raw));
-    //         },
-    //         [](auto eptr){},
-    //         [](){}
-    //     );
+    // Server loop
     server.run();
 
     return 0;

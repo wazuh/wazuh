@@ -14,6 +14,7 @@
 #include <memory>
 #include <rxcpp/rx.hpp>
 
+#include "blockingconcurrentqueue.h"
 #include "endpoints/baseEndpoint.hpp"
 #include "json.hpp"
 
@@ -32,21 +33,21 @@ class EngineServer
 {
 private:
     std::map<std::string, std::unique_ptr<endpoints::BaseEndpoint>> m_endpoints;
-    endpoints::BaseEndpoint::ConnectionObs m_output;
+    moodycamel::BlockingConcurrentQueue<std::string> m_eventBuffer;
 
 public:
     /**
-     * @brief Construct a new Engine Server object.
+     * @brief Construct a new Engine Server object
      *
+     * @param bufferSize
      */
+    explicit EngineServer(const size_t & bufferSize);
 
-    EngineServer() = default;
     /**
      * @brief Construct a new Engine Server object
      *
      * @param config <type>:<config> string describing endpoint type with it associated configuration.
      */
-    // explicit EngineServer(const std::vector<std::string> & config);
 
     /**
      * @brief Set up endpoints and internal structures.
@@ -54,13 +55,6 @@ public:
      * @param config <type>:<config> string describing endpoint type with it associated configuration.
      */
     void configure(const std::vector<std::string> & config);
-
-    /**
-     * @brief Server rxcpp endpoint, all events ingested come through here.
-     *
-     * @return rxcpp::observable<json::Document>
-     */
-    endpoints::BaseEndpoint::ConnectionObs output() const;
 
     /**
      * @brief Start server.
@@ -73,6 +67,13 @@ public:
      *
      */
     void close(void);
+
+    /**
+     * @brief Get server output queue
+     *
+     * @return const moodycamel::BlockingConcurrentQueue&
+     */
+    moodycamel::BlockingConcurrentQueue<std::string>& output();
 };
 
 } // namespace engineserver

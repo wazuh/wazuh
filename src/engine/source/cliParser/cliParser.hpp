@@ -32,9 +32,10 @@ class CliParser
 {
 
 private:
-    std::string m_endpoint_config;
-    std::string m_storage_path;
+    std::string m_endpointConfig;
+    std::string m_storagePath;
     int m_threads;
+    int m_queueSize;
 
 public:
     /**
@@ -58,21 +59,28 @@ public:
      *
      * @return std::string m_endpoint_config
      */
-    std::string getEndpointConfig();
+    std::string getEndpointConfig() const;
 
     /**
      * @brief Returns the storage path that has been previously parsed
      *
      * @return std::string m_storage_path
      */
-    std::string getStoragePath();
+    std::string getStoragePath() const;
 
     /**
      * @brief Get the Threads object
      *
      * @return int
      */
-    int getThreads();
+    int getThreads() const;
+
+    /**
+     * @brief Get the Queue size
+     *
+     * @return size_t
+     */
+    int getQueueSize() const;
 };
 
 } // namespace cliparser

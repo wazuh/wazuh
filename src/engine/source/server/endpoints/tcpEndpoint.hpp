@@ -45,11 +45,12 @@ private:
 
 public:
     /**
-     * @brief Construct a new TCPEndpoint object.
+     * @brief Construct a new TCPEndpoint object
      *
-     * @param config <ip>:<port> string with allowed ip mask and port to listen.
+     * @param config
+     * @param eventBuffer
      */
-    explicit TCPEndpoint(const std::string & config);
+    explicit TCPEndpoint(const std::string & config, moodycamel::BlockingConcurrentQueue<std::string> & eventBuffer);
     ~TCPEndpoint();
 
     void run() override;

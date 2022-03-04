@@ -77,6 +77,15 @@ CPMAddPackage(
       "WITH_GFLAGS OFF"
       "WITH_UNWIND OFF"
 )
+
+# Concurrent Queue
+CPMAddPackage(
+  NAME CameronQueue
+  GITHUB_REPOSITORY cameron314/concurrentqueue
+  GIT_TAG v1.0.3
+  VERSION 1.0.3
+)
+
 list(APPEND EXTERNAL_DEPS "glog::glog")
 
 ####################################################################################################
@@ -84,18 +93,19 @@ list(APPEND EXTERNAL_DEPS "glog::glog")
 ####################################################################################################
 # Build main
 add_executable(main ${ENGINE_SOURCE_DIR}/main.cpp)
+
+include_directories(main PUBLIC
+  ${CameronQueue_SOURCE_DIR}
+)
+
 add_subdirectory(${ENGINE_SOURCE_DIR}/shared)
 add_subdirectory(${ENGINE_SOURCE_DIR}/catalog)
-add_subdirectory(${ENGINE_SOURCE_DIR}/threadPool)
 add_subdirectory(${ENGINE_SOURCE_DIR}/server)
 add_subdirectory(${ENGINE_SOURCE_DIR}/router)
-# TODO dependent
 add_subdirectory(${ENGINE_SOURCE_DIR}/graph)
 add_subdirectory(${ENGINE_SOURCE_DIR}/json)
 add_subdirectory(${ENGINE_SOURCE_DIR}/builder)
 add_subdirectory(${ENGINE_SOURCE_DIR}/cliParser)
-
-
 
 target_link_libraries(main  ${EXTERNAL_DEPS})
 

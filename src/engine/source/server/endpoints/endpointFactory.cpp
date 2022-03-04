@@ -38,13 +38,14 @@ EndpointType stringToEndpoint(const string & endpointName)
     }
 }
 
-unique_ptr<BaseEndpoint> create(const string & type, const string & config)
+unique_ptr<BaseEndpoint> create(const string & type, const string & config,
+                                moodycamel::BlockingConcurrentQueue<std::string> & eventBuffer)
 {
     auto endpointType = stringToEndpoint(type);
     switch (endpointType)
     {
         case TCP:
-            return make_unique<TCPEndpoint>(config);
+            return make_unique<TCPEndpoint>(config, eventBuffer);
             break;
         // case SOCKET:
         //     return make_unique<SocketEndpoint>(config);
