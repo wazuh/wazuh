@@ -43,13 +43,14 @@ TEST(opBuilderHelperRegexMatch, TooManyArgumentsError)
     ASSERT_THROW(opBuilderHelperRegexMatch(*doc.get("/check")), std::invalid_argument);
 }
 
-TEST(opBuilderHelperRegexMatch, RegularExpresionEmptyError)
+TEST(opBuilderHelperRegexMatch, InvalidRegex)
 {
     Document doc{R"({
-        "map":
-            {"field": "+r_match//"}
+        "check":
+            {"field": "+r_match/(\\w{"}
     })"};
-    ASSERT_THROW(opBuilderHelperRegexMatch(*doc.get("/map")), std::invalid_argument);
+
+    ASSERT_THROW(opBuilderHelperRegexMatch(*doc.get("/check")), std::invalid_argument);
 }
 
 TEST(opBuilderHelperRegexMatch, StringRegexMatch)
