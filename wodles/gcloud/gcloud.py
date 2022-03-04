@@ -31,9 +31,11 @@ try:
 
     if arguments.integration_type == "pubsub":
         if arguments.subscription_id is None:
-            raise Exception(f'A subscription ID is required. Use -s <SUBSCRIPTION ID> to specify it.')
+            logger.error('A subscription ID is required. Use -s <SUBSCRIPTION ID> to specify it.')
+            exit(1)
         if arguments.project is None:
-            raise Exception(f'A project ID is required. Use -p <PROJECT ID> to specify it.')
+            logger.error('A project ID is required. Use -p <PROJECT ID> to specify it.')
+            exit(1)
 
         project = arguments.project
         subscription_id = arguments.subscription_id
@@ -73,10 +75,11 @@ try:
 
     elif arguments.integration_type == "access_logs":
         if arguments.n_threads != tools.min_num_threads:
-            logger.error(f'The parameter -t/--num_threads only works with the Pub/Sub module.')
+            logger.error('The parameter -t/--num_threads only works with the Pub/Sub module.')
             exit(1)
         if arguments.bucket_name is None:
-            raise Exception(f'The name of the bucket is required. Use -b <BUCKET_NAME> to specify it.')
+            logger.error('The name of the bucket is required. Use -b <BUCKET_NAME> to specify it.')
+            exit(1)
 
         f_kwargs = {"bucket_name": arguments.bucket_name,
                     "prefix": arguments.prefix,
@@ -88,11 +91,15 @@ try:
         num_processed_messages = integration.process_data()
 
     else:
-        raise Exception(f'Unsupported gcloud integration type: {arguments.integration_type}')
+        logger.error('Unsupported gcloud integration type: '
+                     f'"{arguments.integration_type}". The supported types are'
+                     f' {*tools.valid_types,}')
+        exit(1)
 
 
-except Exception as e:
-    logger.critical(f'An exception happened while running the wodle: {e}')
+except Exception:
+    logger.critical('An exception happened while running the wodle',
+                    exc_info=True)
     exit(1)
 
 else:

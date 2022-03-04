@@ -11,7 +11,7 @@ import pytz
 import sqlite3
 from sys import exit, path
 from datetime import datetime, timezone
-from json import dumps
+from json import dumps, JSONDecodeError
 from os.path import join, dirname, realpath
 
 try:
@@ -24,7 +24,7 @@ from google.api_core import exceptions as google_exceptions
 path.append(join(dirname(realpath(__file__)), '..', '..'))  # noqa: E501
 import utils
 from integration import WazuhGCloudIntegration
-
+from exceptions import GCloudCredentialsStructureError, GCloudCredentialsNotFoundError
 
 class WazuhGCloudBucket(WazuhGCloudIntegration):
     """Class for getting Google Cloud Storage Bucket logs"""
@@ -53,7 +53,12 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         super().__init__(logger)
         self.bucket_name = bucket_name
         self.bucket = None
-        self.client = storage.client.Client.from_service_account_json(credentials_file)
+        try:
+            self.client = storage.client.Client.from_service_account_json(credentials_file)
+        except JSONDecodeError as error:
+            raise GCloudCredentialsStructureError(credentials_file=credentials_file) from error
+        except FileNotFoundError as error:
+            raise GCloudCredentialsNotFoundError(credentials_file=credentials_file) from error
         self.project_id = self.client.project
         self.prefix = prefix if not prefix or prefix[-1] == '/' else f'{prefix}/'
         self.delete_file = delete_file

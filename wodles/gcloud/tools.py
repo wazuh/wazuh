@@ -28,6 +28,7 @@ log_levels = {0: logging.NOTSET,
 logging_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
 min_num_threads = 1
 min_num_messages = 1
+valid_types = ['pubsub', 'access_logs']
 
 
 def get_script_arguments():
@@ -43,7 +44,7 @@ def get_script_arguments():
                                      formatter_class=argparse.RawTextHelpFormatter)
 
     parser.add_argument('-T', '--integration_type', dest='integration_type',
-                        help='Supported integration types: pubsub, access_logs', required=True)
+                        help=f'Supported integration types: {*valid_types,}', required=True)
 
     parser.add_argument('-p', '--project', dest='project',
                         help='Project ID')

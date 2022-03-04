@@ -9,9 +9,11 @@ import logging
 import google.api_core.exceptions
 from os.path import abspath, dirname
 from sys import path
+from json import JSONDecodeError
 
 path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
 from integration import WazuhGCloudIntegration
+from exceptions import GCloudCredentialsStructureError, GCloudCredentialsNotFoundError
 
 
 try:
@@ -40,8 +42,13 @@ class WazuhGCloudSubscriber(WazuhGCloudIntegration):
         super().__init__(logger)
 
         # get subscriber
-        self.subscriber = self.get_subscriber_client(credentials_file)
-        self.subscription_path = self.get_subscription_path(project, subscription_id)
+        try:
+            self.subscriber = self.get_subscriber_client(credentials_file)
+            self.subscription_path = self.get_subscription_path(project, subscription_id)
+        except JSONDecodeError as error:
+            raise GCloudCredentialsStructureError(credentials_file=credentials_file) from error
+        except FileNotFoundError as error:
+            raise GCloudCredentialsNotFoundError(credentials_file=credentials_file) from error
 
     @staticmethod
     def get_subscriber_client(credentials_file: str) -> pubsub.subscriber.Client:
