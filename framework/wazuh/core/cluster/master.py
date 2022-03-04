@@ -679,7 +679,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                            data_retriever=WazuhDBConnection().run_wdb_command,
                                            get_data_command='global sync-agent-groups-get ',
                                            get_payload={"condition": "all", "set_synced": False,
-                                                        "get_global_hash": True})
+                                                        "get_global_hash": True, "last_id": 0}, pivot_key='last_id')
         local_agent_groups_information = await sync_object.retrieve_information()
 
         sync_object = c_common.SyncWazuhdb(manager=self, logger=logger, cmd=b'syn_g_m_w',
@@ -710,11 +710,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             info = self.server.get_agent_groups_info(self.name)
             if info != {}:
                 try:
-                    self.send_agent_groups_status['date_start'] = perf_counter()
                     logger.info("Starting.")
+                    self.send_agent_groups_status['date_start'] = perf_counter()
                     await sync_object.sync(start_time=self.send_agent_groups_status['date_start'], chunks=info)
                 except Exception as e:
-                    logger.error(f'Error sending agent-groups information to {self.cluster_name}: {e}')
+                    logger.error(f'Error sending agent-groups information to {self.name}: {e}')
 
             await asyncio.sleep(1)
 
@@ -1107,7 +1107,7 @@ class Master(server.AbstractServer):
             Updated data on agent-groups.
         """
         result = {}
-        if client not in self.agent_groups_control_workers:
+        if client in self.clients.keys() and client not in self.agent_groups_control_workers:
             result = self.agent_groups_control
             self.agent_groups_control_workers.add(client)
 

@@ -1504,7 +1504,7 @@ def send_data_to_wdb(data, timeout, info_type='agent-info'):
                         wdb_conn.send(f"{data['set_data_command']} {chunk}", raw=True)
                     elif info_type == 'agent-groups':
                         data['payload']['data'] = json.loads(chunk)[0]['data']
-                        wdb_conn.send(f"{data['set_data_command']} {json.dumps(data['payload'])}", raw=True)
+                        wdb_conn.send(f"{data['set_data_command']} {json.dumps(data['payload'], separators=(',', ':'))}", raw=True)
                     result['updated_chunks'] += 1
                 except TimeoutError as e:
                     raise e
