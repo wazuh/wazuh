@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <optional>
 #include <string>
+#include <re2/re2.h>
 
 #include "OpBuilderHelperMap.hpp"
 #include "stringUtils.hpp"
@@ -467,53 +468,70 @@ types::Lifter opBuilderHelperIntCalc(const types::DocumentValue & def)
 //*           Regex tranform                      *
 //*************************************************
 
+// field: +r_ext/_field/regexp/
 types::Lifter opBuilderHelperRegexExtract(const types::DocumentValue & def)
 {
     // Get fields
-    std::string base_field = def.MemberBegin()->name.GetString();
+    std::string field = def.MemberBegin()->name.GetString();
     std::string value = def.MemberBegin()->value.GetString();
+
     std::vector<std::string> parameters = utils::string::split(value, '/');
     if (parameters.size() != 3)
     {
-        throw std::invalid_argument("Wrong number of arguments passed");
+        throw std::runtime_error("Invalid number of parameters");
     }
+
     std::string map_field = parameters[1];
-    std::string regexp = parameters[2];
-    if (regexp.empty())
+
+    auto regex_ptr = std::make_shared<RE2>(parameters[2]);
+    if (!regex_ptr->ok())
     {
-        throw std::invalid_argument("The regular expression can't be empty");
+        const std::string err = "Error compiling regex '" + parameters[2] + "'. "
+                                + regex_ptr->error();
+        throw std::runtime_error(err);
     }
-    auto regex_ptr = std::make_shared<RE2>(regexp);
 
     // Return Lifter
-    return [=](types::Observable o)
+    return [field, regex_ptr, map_field](types::Observable o)
     {
         // Append rxcpp operation
         return o.map(
-
             [=](types::Event e)
             {
                 // TODO Remove try catch
                 const rapidjson::Value * field_str{};
                 try
                 {
-                    field_str = e.get("/" + base_field);
+                    field_str = e.get("/" + field);
                 }
                 catch (std::exception & ex)
                 {
                     // TODO Check exception type
                     return e;
                 }
-                if (field_str)
+                if (field_str != nullptr && field_str->IsString())
                 {
                     std::string match;
                     if (RE2::PartialMatch(field_str->GetString(), *regex_ptr, &match))
                     {
-                        // TODO Implement add member of EventDocument
-                        auto aux_string = "{ \"" + map_field + "\": \"" + match + "\"}";
-                        types::Document doc{aux_string.c_str()};
-                        e.set(doc);
+                        // Create and add string to event
+                        try
+                        {
+                            e.set("/" + map_field,
+                                rapidjson::Value(match.c_str(), e.m_doc.GetAllocator()).Move());
+                        }
+                        catch (std::exception & ex)
+                        {
+                            // TODO Check exception type
+                            return e;
+                        }
+
+                        return e;
                     }
                 }
+                return e;
+            });
+    };
+}
 
 } // namespace builder::internals::builders

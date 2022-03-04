@@ -61,7 +61,7 @@ types::Lifter opBuilderHelperStringTrim(const types::DocumentValue & def);
  *
  * @param def The transformation definition.
  * i.e : `<field>: +icalcm/[sum|sub|mul|div]/[value|$<ref>]`
- * @return types::Lifter
+ * @return types::Lifter The lifter with the `mathematical operation` transformation.
  * @throw std::runtime_error if the parameter is not a integer.
  */
 types::Lifter opBuilderHelperIntCalc(const types::DocumentValue & def);
@@ -75,7 +75,8 @@ types::Lifter opBuilderHelperIntCalc(const types::DocumentValue & def);
  * Maps into an auxiliary field the part of the field value that matches a regexp
  *
  * @param def Definition of the operation to be built
- * @return types::Lifter
+ * @return types::Lifter The lifter with the `regex extract` transformation.
+ * @throw std::runtime_error if the parameter is the regex is invalid.
  */
 types::Lifter opBuilderHelperRegexExtract(const types::DocumentValue & def);
 
