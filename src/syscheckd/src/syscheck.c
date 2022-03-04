@@ -83,14 +83,16 @@ void fim_initialize() {
                 fim_send_sync_state,
                 loggingFunction,
                 syscheck.db_entry_file_limit,
-                0);
+                0,
+                false);
 #else
     fim_db_init(syscheck.database_store,
                 syscheck.sync_interval,
                 fim_send_sync_state,
                 loggingFunction,
                 syscheck.db_entry_file_limit,
-                syscheck.db_entry_registry_limit);
+                syscheck.db_entry_registry_limit,
+                syscheck.enable_registry_synchronization);
 #endif
 
     w_rwlock_init(&syscheck.directories_lock, NULL);

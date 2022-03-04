@@ -187,7 +187,8 @@ class FIMDBCreator final
         static void registerRsync(std::shared_ptr<RemoteSync> RSyncHandler,
                                   const RSYNC_HANDLE& handle,
                                   std::function<void(const std::string&)> syncFileMessageFunction,
-                                  __attribute__((unused)) std::function<void(const std::string&)> syncRegistryMessageFunction)
+                                  __attribute__((unused)) std::function<void(const std::string&)> syncRegistryMessageFunction,
+                                  const bool syncRegistryEnabled)
         {
             throw std::runtime_error
             {
@@ -241,29 +242,41 @@ class FIMDBCreator<OSType::WINDOWS> final
         static void registerRsync(std::shared_ptr<RemoteSync> RSyncHandler,
                                   const RSYNC_HANDLE& handle,
                                   std::function<void(const std::string&)> syncFileMessageFunction,
-                                  __attribute__((unused)) std::function<void(const std::string&)> syncRegistryMessageFunction)
+                                  __attribute__((unused)) std::function<void(const std::string&)> syncRegistryMessageFunction,
+                                  const bool syncRegistryEnabled)
         {
             RSyncHandler->registerSyncID(FIM_COMPONENT_FILE,
-                                         handle,
-                                         nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT),
-                                         syncFileMessageFunction);
-            RSyncHandler->registerSyncID(FIM_COMPONENT_REGISTRY,
-                                         handle,
-                                         nlohmann::json::parse(FIM_REGISTRY_SYNC_CONFIG_STATEMENT),
-                                         syncRegistryMessageFunction);
+                                        handle,
+                                        nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT),
+                                        syncFileMessageFunction);
+
+            if (syncRegistryEnabled)
+            {
+
+                RSyncHandler->registerSyncID(FIM_COMPONENT_REGISTRY,
+                                            handle,
+                                            nlohmann::json::parse(FIM_REGISTRY_SYNC_CONFIG_STATEMENT),
+                                            syncRegistryMessageFunction);
+            }
+
         }
 
         static void sync(std::shared_ptr<RemoteSync> RSyncHandler,
                          const DBSYNC_HANDLE& handle,
                          std::function<void(const std::string&)> syncFileMessageFunction,
-                         __attribute__((unused)) std::function<void(const std::string&)> syncRegistryMessageFunction)
+                         __attribute__((unused)) std::function<void(const std::string&)> syncRegistryMessageFunction,
+                         const bool syncRegistryEnabled)
         {
             RSyncHandler->startSync(handle,
                                     nlohmann::json::parse(FIM_FILE_START_CONFIG_STATEMENT),
                                     syncFileMessageFunction);
-            RSyncHandler->startSync(handle,
-                                    nlohmann::json::parse(FIM_REGISTRY_START_CONFIG_STATEMENT),
-                                    syncRegistryMessageFunction);
+
+            if (syncRegistryEnabled)
+            {
+                RSyncHandler->startSync(handle,
+                                        nlohmann::json::parse(FIM_REGISTRY_START_CONFIG_STATEMENT),
+                                        syncRegistryMessageFunction);
+            }
         }
 
         static void encodeString(__attribute__((unused)) std::string& stringToEncode)
@@ -293,18 +306,20 @@ class FIMDBCreator<OSType::OTHERS> final
         static void registerRsync(std::shared_ptr<RemoteSync> RSyncHandler,
                                   const RSYNC_HANDLE& handle,
                                   std::function<void(const std::string&)> syncFileMessageFunction,
-                                  __attribute__((unused)) std::function<void(const std::string&)> syncRegistryMessageFunction)
+                                  __attribute__((unused)) std::function<void(const std::string&)> syncRegistryMessageFunction,
+                                  __attribute__((unused)) const bool syncRegistryEnabled)
         {
             RSyncHandler->registerSyncID(FIM_COMPONENT_FILE,
-                                         handle,
-                                         nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT),
-                                         syncFileMessageFunction);
+                                        handle,
+                                        nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT),
+                                        syncFileMessageFunction);
         }
 
         static void sync(std::shared_ptr<RemoteSync> RSyncHandler,
                          const DBSYNC_HANDLE& handle,
                          std::function<void(const std::string&)> syncFileMessageFunction,
-                         __attribute__((unused)) std::function<void(const std::string&)> syncRegistryMessageFunction)
+                         __attribute__((unused)) std::function<void(const std::string&)> syncRegistryMessageFunction,
+                         __attribute__((unused)) const bool syncRegistryEnabled)
         {
             RSyncHandler->startSync(handle,
                                     nlohmann::json::parse(FIM_FILE_START_CONFIG_STATEMENT),

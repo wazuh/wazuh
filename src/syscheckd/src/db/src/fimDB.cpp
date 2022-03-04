@@ -23,7 +23,8 @@ void FIMDB::registerRSync()
         FIMDBCreator<OS_TYPE>::registerRsync(m_rsyncHandler,
                                              m_dbsyncHandler->handle(),
                                              m_syncFileMessageFunction,
-                                             m_syncRegistryMessageFunction);
+                                             m_syncRegistryMessageFunction,
+                                             m_syncRegistryEnabled);
     }
 }
 
@@ -37,7 +38,8 @@ void FIMDB::sync()
         FIMDBCreator<OS_TYPE>::sync(m_rsyncHandler,
                                     m_dbsyncHandler->handle(),
                                     m_syncFileMessageFunction,
-                                    m_syncRegistryMessageFunction);
+                                    m_syncRegistryMessageFunction,
+                                    m_syncRegistryEnabled);
         m_loggingFunction(LOG_INFO, "Finished FIM sync.");
     }
 }
@@ -49,7 +51,8 @@ void FIMDB::init(unsigned int syncInterval,
                  std::shared_ptr<DBSync> dbsyncHandler,
                  std::shared_ptr<RemoteSync> rsyncHandler,
                  unsigned int fileLimit,
-                 unsigned int registryLimit)
+                 unsigned int registryLimit,
+                 bool syncRegistryEnabled)
 {
     m_syncInterval = syncInterval;
     m_dbsyncHandler = dbsyncHandler;
@@ -61,6 +64,7 @@ void FIMDB::init(unsigned int syncInterval,
     m_runIntegrity = false;
     std::shared_lock<std::shared_timed_mutex> lock(m_handlersMutex);
     FIMDBCreator<OS_TYPE>::setLimits(m_dbsyncHandler, fileLimit, registryLimit);
+    m_syncRegistryEnabled = syncRegistryEnabled;
 }
 
 void FIMDB::removeItem(const nlohmann::json& item)

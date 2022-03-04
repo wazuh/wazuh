@@ -80,6 +80,7 @@ class EXPORTED DB final
         * @param callbackLogWrapper Callback to log lines.
         * @param fileLimit File limit.
         * @param valueLimit Registry value limit.
+        * @param syncRegistryEnabled Flag to enable/disable the registry sync mechanism.
         */
         void init(const int storage,
                   const int syncInterval,
@@ -87,7 +88,8 @@ class EXPORTED DB final
                   std::function<void(const std::string&)> callbackSyncRegistryWrapper,
                   std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,
                   int fileLimit,
-                  int valueLimit);
+                  int valueLimit,
+                  bool syncRegistryEnabled);
 
         /**
         * @brief runIntegrity Execute the integrity mechanism.
