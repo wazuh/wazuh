@@ -44,6 +44,11 @@ struct FilePathResult{
     std::string extension;      //"file.extension": "keyword",
 };
 
+struct UserAgentResult
+{
+    std::string original;
+};
+
 std::string parseAny(const char **it, char endToken);
 
 bool matchLiteral(const char **it, std::string const& literal);
@@ -61,5 +66,7 @@ bool parseTimeStamp(const char **it, std::vector<std::string> const& opts, char 
 bool parseURL(const char **it, char endToken, URLResult &result);
 
 bool parseDomain(const char **it, char endToken, std::vector<std::string> const& captureOpts, DomainResult &result);
+
+bool parseUserAgent(const char** it, char endToken, UserAgentResult& ret);
 
 #endif //_FILE_PATH_PARSER_H
