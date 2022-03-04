@@ -124,13 +124,6 @@ typedef struct fim_txn_context_s {
 /** Function Prototypes **/
 
 /**
- * @brief Check the integrity of the files against the saved database
- *
- */
-void run_check(void);
-
-
-/**
  * @brief Start the file integrity monitoring daemon
  *
  */
@@ -350,13 +343,6 @@ cJSON *fim_json_event(const fim_entry *new_data,
 void free_file_data(fim_file_data *data);
 
 /**
- * @brief Deallocates fim_entry struct.
- *
- * @param entry Entry to be deallocated.
- */
-void free_entry(fim_entry * entry);
-
-/**
  * @brief Start real time monitoring
  *
  * @return 0 on success, -1 on error
@@ -414,13 +400,6 @@ void fim_realtime_print_watches();
  *
  */
 void realtime_process(void);
-
-/**
- * @brief Delete data form dir_tb hash table
- *
- * @param [out] data
- */
-void free_syscheck_dirtb_data(char *data);
 
 /**
  * @brief Deletes subdirectories watches when a folder changes its name
@@ -777,40 +756,6 @@ unsigned int get_realtime_watches();
 #endif
 
 /**
- * @brief Calculates the checksum of the FIM entry files and sends it to the database for integrity checking
- *
- * @param type Must be FIM_TYPE_FILE or FIM_TYPE_REGISTRY.
- * @param mutex A mutex associated with the DB tables to be synchronized.
- */
-void fim_sync_checksum(fim_type type, pthread_mutex_t *mutex);
-
-/**
- * @brief Calculates the checksum of the FIM entry files starting from `start` letter and finishing at `top` letter
- * It also sends it to the database for integrity checking
- *
- * @param start The letter to start checking from
- * @param top The letter to finish checking to
- * @param id
- */
-void fim_sync_checksum_split(const char *start, const char *top, long id);
-
-// TODO
-/**
- * @brief
- *
- * @param start
- * @param top
- */
-void fim_sync_send_list(const char *start, const char *top);
-
-/**
- * @brief Dispatches a message coming to the syscheck queue
- *
- * @param payload The message to dispatch
- */
-void fim_sync_dispatch(char *payload);
-
-/**
  * @brief Create file attribute set JSON from a FIM entry structure
  *
  * Format:
@@ -835,39 +780,6 @@ void fim_sync_dispatch(char *payload);
  * @return Pointer to cJSON structure.
  */
 cJSON * fim_attributes_json(const fim_file_data * data);
-
-/**
- * @brief Create file entry JSON from a FIM entry structure
- *
- * Format:
- * {
- *   path:              string
- *   timestamp:         number
- *   attributes: {
- *     type:            "file"|"registry"
- *     size:            number
- *     perm:            string
- *     user_name:       string
- *     group_name:      string
- *     uid:             string
- *     gid:             string
- *     inode:           number
- *     mtime:           number
- *     hash_md5:        string
- *     hash_sha1:       string
- *     hash_sha256:     string
- *     win_attributes:  string
- *     symlink_path:    string
- *     checksum:        string
- *   }
- * }
- *
- * @param key Pointer to the key used in the manager fim_entry DB.
- * @param entry Pointer to a FIM entry structure.
- * @pre entry is mutex-blocked.
- * @return Pointer to cJSON structure.
- */
-cJSON *fim_entry_json(const char *key, fim_entry *entry);
 
 /**
  * @brief Create file attribute comparison JSON object

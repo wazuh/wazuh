@@ -1660,26 +1660,6 @@ void free_file_data(fim_file_data * data) {
     os_free(data);
 }
 
-
-void free_entry(fim_entry * entry) {
-    if (entry) {
-#ifndef WIN32
-        os_free(entry->file_entry.path);
-        free_file_data(entry->file_entry.data);
-        free(entry);
-#else
-        if (entry->type == FIM_TYPE_FILE) {
-            os_free(entry->file_entry.path);
-            free_file_data(entry->file_entry.data);
-            free(entry);
-        } else {
-            fim_registry_free_entry(entry);
-        }
-#endif
-    }
-}
-
-
 void fim_diff_folder_size() {
     char *diff_local;
 

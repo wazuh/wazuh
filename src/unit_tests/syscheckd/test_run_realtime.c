@@ -579,29 +579,6 @@ void test_realtime_adddir_realtime_update_failure(void **state) {
     assert_int_equal(ret, -1);
 }
 
-
-void test_free_syscheck_dirtb_data(void **state)
-{
-    (void) state;
-    char *data = strdup("test");
-
-    free_syscheck_dirtb_data(data);
-
-    assert_non_null(data);
-}
-
-
-void test_free_syscheck_dirtb_data_null(void **state)
-{
-    (void) state;
-    char *data = NULL;
-
-    free_syscheck_dirtb_data(data);
-
-    assert_null(data);
-}
-
-
 void test_realtime_process(void **state) {
 
     syscheck.realtime->fd = 1;
@@ -1967,10 +1944,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_realtime_adddir_realtime_add_hash_failure, setup_OSHash, teardown_OSHash),
         cmocka_unit_test_setup_teardown(test_realtime_adddir_realtime_update, setup_OSHash, teardown_OSHash),
         cmocka_unit_test_setup_teardown(test_realtime_adddir_realtime_update_failure, setup_OSHash, teardown_OSHash),
-
-        /* free_syscheck_dirtb_data */
-        cmocka_unit_test(test_free_syscheck_dirtb_data),
-        cmocka_unit_test(test_free_syscheck_dirtb_data_null),
 
         /* realtime_process */
         cmocka_unit_test(test_realtime_process),

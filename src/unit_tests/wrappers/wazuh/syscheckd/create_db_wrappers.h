@@ -17,9 +17,6 @@ void __wrap_fim_checker(const char *path, event_data_t *evt_data, const director
 
 directory_t *__wrap_fim_configuration_directory(const char *path);
 
-cJSON *__wrap_fim_entry_json(const char * path,
-                             fim_file_data * data);
-
 cJSON *__wrap_fim_json_event();
 
 void __wrap_fim_realtime_event(char *file);

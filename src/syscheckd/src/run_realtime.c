@@ -351,10 +351,6 @@ int realtime_update_watch(const char *wd, const char *dir) {
     return 0;
 }
 
-void free_syscheck_dirtb_data(char *data) {
-    free(data);
-}
-
 void delete_subdirectories_watches(char *dir) {
     OSHashNode *hash_node;
     char *data;
