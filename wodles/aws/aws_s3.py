@@ -2617,7 +2617,7 @@ class AWSService(WazuhIntegration):
         # reparse
         self.reparse = reparse
 
-        WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
+        WazuhIntegration.__init__(self, reparse=reparse, access_key=access_key, secret_key=secret_key,
                                   aws_profile=aws_profile, iam_role_arn=iam_role_arn,
                                   service_name=service_name, region=region, discard_field=discard_field,
                                   discard_regex=discard_regex, sts_endpoint=sts_endpoint,
@@ -2737,7 +2737,7 @@ class AWSInspector(AWSService):
         self.service_name = 'inspector'
         self.inspector_region = region
 
-        AWSService.__init__(self, access_key=access_key, secret_key=secret_key,
+        AWSService.__init__(self, reparse=reparse, access_key=access_key, secret_key=secret_key,
                             aws_profile=aws_profile, iam_role_arn=iam_role_arn, only_logs_after=only_logs_after,
                             service_name=self.service_name, region=region, aws_log_groups=aws_log_groups,
                             remove_log_streams=remove_log_streams, discard_field=discard_field,
@@ -2949,7 +2949,7 @@ class AWSCloudWatchLogs(AWSService):
                                 aws_log_group='{aws_log_group}' AND
                                 aws_log_stream='{aws_log_stream}';"""
 
-        AWSService.__init__(self, reparse, access_key=access_key, secret_key=secret_key,
+        AWSService.__init__(self, reparse=reparse, access_key=access_key, secret_key=secret_key,
                             aws_profile=aws_profile, iam_role_arn=iam_role_arn, only_logs_after=only_logs_after,
                             region=region, aws_log_groups=aws_log_groups, remove_log_streams=remove_log_streams,
                             service_name='cloudwatchlogs', discard_field=discard_field, discard_regex=discard_regex,

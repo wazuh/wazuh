@@ -29,14 +29,12 @@ from integration import WazuhGCloudIntegration
 class WazuhGCloudBucket(WazuhGCloudIntegration):
     """Class for getting Google Cloud Storage Bucket logs"""
 
-    def __init__(self, reparse, credentials_file: str, logger: logging.Logger, bucket_name: str, prefix: str = None,
-                 delete_file: bool = False, only_logs_after: datetime = None):
+    def __init__(self, credentials_file: str, logger: logging.Logger, bucket_name: str, prefix: str = None,
+            delete_file: bool = False, only_logs_after: datetime = None, reparse : bool = False):
         """Class constructor.
 
         Parameters
         ----------
-        reparse : bool 
-            Whether to parse already parsed logs or not.
         credentials_file : str
             Path to credentials file.
         logger : logging.Logger
@@ -49,11 +47,12 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
             Indicate whether blobs should be deleted after being processed.
         only_logs_after : datetime
             Date after which obtain logs.
+        reparse : bool
+            Whether to parse already parsed logs or not
         """
         super().__init__(logger)
         self.bucket_name = bucket_name
         self.bucket = None
-        self.reparse = reparse
         self.client = storage.client.Client.from_service_account_json(credentials_file)
         self.project_id = self.client.project
         self.prefix = prefix if not prefix or prefix[-1] == '/' else f'{prefix}/'
@@ -63,6 +62,7 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         self.db_path = join(utils.find_wazuh_path(), "wodles/gcloud/gcloud.db")
         self.db_connector = None
         self.datetime_format = "%Y-%m-%d %H:%M:%S.%f%z"
+        self.reparse = reparse
 
         self.sql_create_table = """
                             CREATE TABLE

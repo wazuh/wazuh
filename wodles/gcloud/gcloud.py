@@ -81,8 +81,9 @@ try:
         f_kwargs = {"bucket_name": arguments.bucket_name,
                     "prefix": arguments.prefix,
                     "delete_file": arguments.delete_file,
-                    "only_logs_after": arguments.only_logs_after}
-        integration = GCSAccessLogs(arguments.reparse, arguments.credentials_file, logger, **f_kwargs)
+                    "only_logs_after": arguments.only_logs_after,
+                    "reparse": arguments.reparse}
+        integration = GCSAccessLogs(arguments.credentials_file, logger, **f_kwargs)
         integration.check_permissions()
         num_processed_messages = integration.process_data()
 
