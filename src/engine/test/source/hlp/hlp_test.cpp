@@ -2,7 +2,6 @@
 
 #include <hlp/hlp.hpp>
 
-
 // Test: Parsing logQL expressions
 TEST(hlpTests_logQL, logQL_expression)
 {
@@ -41,21 +40,20 @@ TEST(hlpTests_logQL, logQL_expression)
     ASSERT_EQ("4", result["file.created.minutes"]);
     ASSERT_EQ("0", result["file.created.seconds"]);
     ASSERT_EQ("-0700", result["file.created.timezone"]);
-
 }
 
 TEST(hlpTests_logQL, invalid_logql_expression)
 {
     const char *logQl = "<source.ip><invalid>";
-    auto invalidFunc = getParserOp(logQl);
+    auto invalidFunc  = getParserOp(logQl);
     ASSERT_EQ(false, static_cast<bool>(invalidFunc));
 
     const char *logQl2 = "invalid capture <source.ip><invalid> between strings";
-    auto invalidFunc2 = getParserOp(logQl2);
+    auto invalidFunc2  = getParserOp(logQl2);
     ASSERT_EQ(false, static_cast<bool>(invalidFunc2));
 
     const char *logQl3 = "invalid capture <source.ip between strings";
-    auto invalidFunc3 = getParserOp(logQl3);
+    auto invalidFunc3  = getParserOp(logQl3);
     ASSERT_EQ(false, static_cast<bool>(invalidFunc3));
 }
 
@@ -96,7 +94,7 @@ TEST(hlpTests_logQL, options_parsing)
     static const char *event = "one temp temp1 temp2";
 
     auto parseOp = getParserOp(logQl);
-    auto result = parseOp(event);
+    auto result  = parseOp(event);
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
     ASSERT_EQ("temp", result["_temp"]);
@@ -108,12 +106,13 @@ TEST(hlpTests_logQL, options_parsing)
 TEST(hlpTests_URL, url_parsing)
 {
     static const char *logQl = "this is an url <url> in text";
-    static const char *event = "this is an url "
-                               "https://user:password@wazuh.com:8080/"
-                               "path?query=%22a%20query%20with%20a%20space%22#fragment in text";
+    static const char *event =
+        "this is an url "
+        "https://user:password@wazuh.com:8080/"
+        "path?query=%22a%20query%20with%20a%20space%22#fragment in text";
 
     auto parseOp = getParserOp(logQl);
-    auto result = parseOp(event);
+    auto result  = parseOp(event);
 
     std::string url = "https://user:password@wazuh.com:8080/"
                       "path?query=%22a%20query%20with%20a%20space%22#fragment";
@@ -187,7 +186,7 @@ TEST(hlpTests_json, success_parsing)
     const char *event = "{\"String\":\"This is a string\"} - {\"String\":\"This is another string\"}";
 
     auto parseOp = getParserOp(logQl);
-    auto result = parseOp(event);
+    auto result  = parseOp(event);
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
     ASSERT_EQ("{\"String\":\"This is a string\"}", result["_field1"]);
@@ -233,8 +232,8 @@ TEST(hlpTests_json, failed_not_string)
 // Test: parsing maps objects
 TEST(hlpTests_map, success_test)
 {
-    const char *logQl ="<_map/MAP/ /=>-<_dummy>";
-    const char *event ="key1=Value1 Key2=Value2-dummy";
+    const char *logQl = "<_map/MAP/ /=>-<_dummy>";
+    const char *event = "key1=Value1 Key2=Value2-dummy";
 
     ParserFn parseOp = getParserOp(logQl);
     auto result = parseOp(event);
@@ -246,11 +245,11 @@ TEST(hlpTests_map, success_test)
 
 TEST(hlpTests_map, end_mark_test)
 {
-    const char *logQl ="<_map/MAP/ /=/.> <_dummy>";
-    const char *event ="key1=Value1 Key2=Value2. dummy";
+    const char *logQl = "<_map/MAP/ /=/.> <_dummy>";
+    const char *event = "key1=Value1 Key2=Value2. dummy";
 
     ParserFn parseOp = getParserOp(logQl);
-    auto result = parseOp(event);
+    auto result      = parseOp(event);
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
     ASSERT_EQ("{\"key1\":\"Value1\",\"Key2\":\"Value2\"}", result["_map"]);
@@ -259,15 +258,15 @@ TEST(hlpTests_map, end_mark_test)
 
 TEST(hlpTests_map, incomplete_map_test)
 {
-    const char *logQl ="<_map/MAP/ /=>";
-    const char *event1 ="key1=Value1 Key2=";
-    const char *event2 ="key1=Value1 Key2";
-    const char *event3 ="key1=Value1 =Value2";
+    const char *logQl  = "<_map/MAP/ /=>";
+    const char *event1 = "key1=Value1 Key2=";
+    const char *event2 = "key1=Value1 Key2";
+    const char *event3 = "key1=Value1 =Value2";
 
     ParserFn parseOp = getParserOp(logQl);
-    auto result1 = parseOp(event1);
-    auto result2 = parseOp(event2);
-    auto result3 = parseOp(event3);
+    auto result1     = parseOp(event1);
+    auto result2     = parseOp(event2);
+    auto result3     = parseOp(event3);
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
     ASSERT_TRUE(result1.empty());
@@ -322,7 +321,7 @@ TEST(hlpTests_Timestamp, apache)
 TEST(hlpTests_Timestamp, rfc1123)
 {
     static const char *logQl      = "[<timestamp/RFC1123>]";
-    static const char *logQlz      = "[<timestamp/RFC1123Z>]";
+    static const char *logQlz     = "[<timestamp/RFC1123Z>]";
     static const char *rfc1123Ts  = "[Mon, 02 Jan 2006 15:04:05 MST]";
     static const char *rfc1123zTs = "[Mon, 02 Jan 2006 15:04:05 -0700]";
 
@@ -379,7 +378,7 @@ TEST(hlpTests_Timestamp, rfc3339)
 TEST(hlpTests_Timestamp, rfc822)
 {
     static const char *logQl     = "[<timestamp/RFC822>]";
-    static const char *logQlz     = "[<timestamp/RFC822Z>]";
+    static const char *logQlz    = "[<timestamp/RFC822Z>]";
     static const char *rfc822Ts  = "[02 Jan 06 15:04 MST]";
     static const char *rfc822zTs = "[02 Jan 06 15:04 -0700]";
 
@@ -515,16 +514,14 @@ TEST(hlpTests_Timestamp, Unix_fail)
 
 TEST(hlpTests_Timestamp, specific_format)
 {
-    static const char *logQl =
-        "[<timestamp>] - "
-        "[<_ansicTs/timestamp>] - "
-        "[<_unixTs/timestamp>] - "
-        "[<_stampTs/timestamp>]";
-    static const char *event =
-        "[Mon Jan 02 15:04:05 -0700 2006] - "
-        "[Mon Jan 2 15:04:05 2006] - "
-        "[Mon Jan 2 15:04:05 MST 2006] - "
-        "[Jan 2 15:04:05]";
+    static const char *logQl = "[<timestamp>] - "
+                               "[<_ansicTs/timestamp>] - "
+                               "[<_unixTs/timestamp>] - "
+                               "[<_stampTs/timestamp>]";
+    static const char *event = "[Mon Jan 02 15:04:05 -0700 2006] - "
+                               "[Mon Jan 2 15:04:05 2006] - "
+                               "[Mon Jan 2 15:04:05 MST 2006] - "
+                               "[Jan 2 15:04:05]";
 
     auto parseOp = getParserOp(logQl);
     auto result  = parseOp(event);
@@ -575,49 +572,49 @@ TEST(hlpTests_Timestamp, kitchen)
 // Test: domain parsing
 TEST(hlpTests_domain, success)
 {
-    const char *logQl ="<_my_domain/domain>";
-    ParserFn parseOp = getParserOp(logQl);
+    const char *logQl = "<_my_domain/domain>";
+    ParserFn parseOp  = getParserOp(logQl);
     ParseResult result;
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
     // Single TLD
-    const char *event1 ="www.wazuh.com";
-    result = parseOp(event1);
+    const char *event1 = "www.wazuh.com";
+    result             = parseOp(event1);
     ASSERT_EQ("www", result["_my_domain.subdomain"]);
     ASSERT_EQ("wazuh.com", result["_my_domain.registered_domain"]);
     ASSERT_EQ("com", result["_my_domain.top_level_domain"]);
 
     // Dual TLD
-    const char *event2 ="www.wazuh.com.ar";
-    result = parseOp(event2);
+    const char *event2 = "www.wazuh.com.ar";
+    result             = parseOp(event2);
     ASSERT_EQ("www", result["_my_domain.subdomain"]);
     ASSERT_EQ("wazuh.com.ar", result["_my_domain.registered_domain"]);
     ASSERT_EQ("com.ar", result["_my_domain.top_level_domain"]);
 
     // Multiple subdomains
-    const char *event3 ="www.subdomain1.wazuh.com.ar";
-    result = parseOp(event3);
+    const char *event3 = "www.subdomain1.wazuh.com.ar";
+    result             = parseOp(event3);
     ASSERT_EQ("www.subdomain1", result["_my_domain.subdomain"]);
     ASSERT_EQ("wazuh.com.ar", result["_my_domain.registered_domain"]);
     ASSERT_EQ("com.ar", result["_my_domain.top_level_domain"]);
 
     // No subdomains
-    const char *event4 ="wazuh.com.ar";
-    result = parseOp(event4);
+    const char *event4 = "wazuh.com.ar";
+    result             = parseOp(event4);
     ASSERT_EQ("", result["_my_domain.subdomain"]);
     ASSERT_EQ("wazuh.com.ar", result["_my_domain.registered_domain"]);
     ASSERT_EQ("com.ar", result["_my_domain.top_level_domain"]);
 
     // No TLD
-    const char *event5 ="www.wazuh";
-    result = parseOp(event5);
+    const char *event5 = "www.wazuh";
+    result             = parseOp(event5);
     ASSERT_EQ("www", result["_my_domain.subdomain"]);
     ASSERT_EQ("wazuh", result["_my_domain.registered_domain"]);
     ASSERT_EQ("", result["_my_domain.top_level_domain"]);
 
     // Only Host
-    const char *event6 ="wazuh";
-    result = parseOp(event6);
+    const char *event6 = "wazuh";
+    result             = parseOp(event6);
     ASSERT_EQ("", result["_my_domain.subdomain"]);
     ASSERT_EQ("wazuh", result["_my_domain.registered_domain"]);
     ASSERT_EQ("", result["_my_domain.top_level_domain"]);
@@ -625,38 +622,38 @@ TEST(hlpTests_domain, success)
 
 TEST(hlpTests_domain, FQDN_validation)
 {
-    const char *logQl ="<_my_domain/domain/FQDN>";
-    ParserFn parseOp = getParserOp(logQl);
+    const char *logQl = "<_my_domain/domain/FQDN>";
+    ParserFn parseOp  = getParserOp(logQl);
     ParseResult result;
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
     // Single TLD
-    const char *event1 ="www.wazuh.com";
-    result = parseOp(event1);
+    const char *event1 = "www.wazuh.com";
+    result             = parseOp(event1);
     ASSERT_EQ("www", result["_my_domain.subdomain"]);
     ASSERT_EQ("wazuh.com", result["_my_domain.registered_domain"]);
     ASSERT_EQ("com", result["_my_domain.top_level_domain"]);
 
     // No subdomains
-    const char *event2 ="wazuh.com";
-    result = parseOp(event2);
+    const char *event2 = "wazuh.com";
+    result             = parseOp(event2);
     ASSERT_TRUE(result.empty());
 
     // No TLD
-    const char *event3 ="www.wazuh";
-    result = parseOp(event3);
+    const char *event3 = "www.wazuh";
+    result             = parseOp(event3);
     ASSERT_TRUE(result.empty());
 
     // Only Host
-    const char *event4 ="wazuh";
-    result = parseOp(event4);
+    const char *event4 = "wazuh";
+    result             = parseOp(event4);
     ASSERT_TRUE(result.empty());
 }
 
 TEST(hlpTests_domain, host_route)
 {
-    const char *logQl ="<_my_domain/domain>";
-    ParserFn parseOp = getParserOp(logQl);
+    const char *logQl = "<_my_domain/domain>";
+    ParserFn parseOp  = getParserOp(logQl);
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
     const char *event1 ="ftp://www.wazuh.com/route.txt";
@@ -669,8 +666,8 @@ TEST(hlpTests_domain, host_route)
 
 TEST(hlpTests_domain, valid_content)
 {
-    const char *logQl ="<_my_domain/domain>";
-    ParserFn parseOp = getParserOp(logQl);
+    const char *logQl = "<_my_domain/domain>";
+    ParserFn parseOp  = getParserOp(logQl);
     ParseResult result;
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
@@ -679,25 +676,25 @@ TEST(hlpTests_domain, valid_content)
     ASSERT_TRUE(result.empty());
 
     const char *invalid_character_domain = "www.wazuh?.com";
-    result = parseOp(invalid_character_domain);
+    result                               = parseOp(invalid_character_domain);
     ASSERT_TRUE(result.empty());
 
     std::string invalid_label(64, 'w');
     std::string invalid_label_domain = "www." + invalid_label + ".com";
-    result = parseOp(invalid_label_domain);
+    result                           = parseOp(invalid_label_domain);
     ASSERT_TRUE(result.empty());
 }
 
 // Test: filepath parsing
 TEST(hlpTests_filepath, windows_path)
 {
-    const char *logQl ="<_file/FilePath>";
-    ParserFn parseOp = getParserOp(logQl);
+    const char *logQl = "<_file/FilePath>";
+    ParserFn parseOp  = getParserOp(logQl);
     ParseResult result;
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
     const char *full_path = "C:\\Users\\Name\\Desktop\\test.txt";
-    result = parseOp(full_path);
+    result                = parseOp(full_path);
     ASSERT_EQ("C:\\Users\\Name\\Desktop\\test.txt", result["_file.path"]);
     ASSERT_EQ("C", result["_file.drive_letter"]);
     ASSERT_EQ("C:\\Users\\Name\\Desktop", result["_file.folder"]);
@@ -705,7 +702,7 @@ TEST(hlpTests_filepath, windows_path)
     ASSERT_EQ("txt", result["_file.extension"]);
 
     const char *relative_path = "Desktop\\test.txt";
-    result = parseOp(relative_path);
+    result                    = parseOp(relative_path);
     ASSERT_EQ("Desktop\\test.txt", result["_file.path"]);
     ASSERT_EQ("", result["_file.drive_letter"]);
     ASSERT_EQ("Desktop", result["_file.folder"]);
@@ -713,7 +710,7 @@ TEST(hlpTests_filepath, windows_path)
     ASSERT_EQ("txt", result["_file.extension"]);
 
     const char *file_without_ext = "Desktop\\test";
-    result = parseOp(file_without_ext);
+    result                       = parseOp(file_without_ext);
     ASSERT_EQ("Desktop\\test", result["_file.path"]);
     ASSERT_EQ("", result["_file.drive_letter"]);
     ASSERT_EQ("Desktop", result["_file.folder"]);
@@ -721,7 +718,7 @@ TEST(hlpTests_filepath, windows_path)
     ASSERT_EQ("", result["_file.extension"]);
 
     const char *only_file = "test.txt";
-    result = parseOp(only_file);
+    result                = parseOp(only_file);
     ASSERT_EQ("test.txt", result["_file.path"]);
     ASSERT_EQ("", result["_file.drive_letter"]);
     ASSERT_EQ("", result["_file.folder"]);
@@ -737,7 +734,7 @@ TEST(hlpTests_filepath, windows_path)
     ASSERT_EQ("", result["_file.extension"]);
 
     const char *lower_case_drive = "c:\\test.txt";
-    result = parseOp(lower_case_drive);
+    result                       = parseOp(lower_case_drive);
     ASSERT_EQ("c:\\test.txt", result["_file.path"]);
     ASSERT_EQ("C", result["_file.drive_letter"]);
     ASSERT_EQ("c:", result["_file.folder"]);
@@ -747,13 +744,13 @@ TEST(hlpTests_filepath, windows_path)
 
 TEST(hlpTests_filepath, unix_path)
 {
-    const char *logQl ="<_file/FilePath>";
-    ParserFn parseOp = getParserOp(logQl);
+    const char *logQl = "<_file/FilePath>";
+    ParserFn parseOp  = getParserOp(logQl);
     ParseResult result;
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
     const char *full_path = "/Desktop/test.txt";
-    result = parseOp(full_path);
+    result                = parseOp(full_path);
     ASSERT_EQ("/Desktop/test.txt", result["_file.path"]);
     ASSERT_EQ("", result["_file.drive_letter"]);
     ASSERT_EQ("/Desktop", result["_file.folder"]);
@@ -761,7 +758,7 @@ TEST(hlpTests_filepath, unix_path)
     ASSERT_EQ("txt", result["_file.extension"]);
 
     const char *relative_path = "Desktop/test.txt";
-    result = parseOp(relative_path);
+    result                    = parseOp(relative_path);
     ASSERT_EQ("Desktop/test.txt", result["_file.path"]);
     ASSERT_EQ("", result["_file.drive_letter"]);
     ASSERT_EQ("Desktop", result["_file.folder"]);
@@ -769,7 +766,7 @@ TEST(hlpTests_filepath, unix_path)
     ASSERT_EQ("txt", result["_file.extension"]);
 
     const char *folder_path = "/Desktop/";
-    result = parseOp(folder_path);
+    result                  = parseOp(folder_path);
     ASSERT_EQ("/Desktop/", result["_file.path"]);
     ASSERT_EQ("", result["_file.drive_letter"]);
     ASSERT_EQ("/Desktop", result["_file.folder"]);
@@ -779,8 +776,8 @@ TEST(hlpTests_filepath, unix_path)
 
 TEST(hlpTests_filepath, force_unix_format)
 {
-    const char *logQl ="<_file/FilePath/UNIX>";
-    ParserFn parseOp = getParserOp(logQl);
+    const char *logQl = "<_file/FilePath/UNIX>";
+    ParserFn parseOp  = getParserOp(logQl);
     ParseResult result;
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
@@ -799,4 +796,83 @@ TEST(hlpTests_filepath, force_unix_format)
     ASSERT_EQ("/Desktop", result["_file.folder"]);
     ASSERT_EQ("test\\1:2.txt", result["_file.name"]);
     ASSERT_EQ("txt", result["_file.extension"]);
+}
+
+TEST(hlpTests_UserAgent, user_agent_firefox)
+{
+    const char *logQl     = "[<userAgent>] <_>";
+    const char *userAgent = "[Mozilla/5.0 (Macintosh; Intel Mac OS X x.y; "
+                            "rv:42.0) Gecko/20100101 Firefox/42.0] the rest of the log";
+
+    ParserFn parseOp = getParserOp(logQl);
+    auto result      = parseOp(userAgent);
+
+    ASSERT_EQ(result["userAgent.original"],
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X x.y; "
+              "rv:42.0) Gecko/20100101 Firefox/42.0");
+}
+
+TEST(hlpTests_UserAgent, user_agent_chrome)
+{
+    const char *logQl = "[<userAgent>] <_>";
+    const char *userAgent =
+        "[Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like "
+        "Gecko) Chrome/51.0.2704.103 Safari/537.36] the rest of the log";
+
+    ParserFn parseOp     = getParserOp(logQl);
+    auto result          = parseOp(userAgent);
+
+    ASSERT_EQ(result["userAgent.original"],
+              "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like "
+              "Gecko) Chrome/51.0.2704.103 Safari/537.36");
+}
+
+TEST(hlpTests_UserAgent, user_agent_edge)
+{
+    const char *logQl = "[<userAgent>] <_>";
+    const char *userAgent =
+        "[Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, "
+        "like Gecko) Chrome/91.0.4472.124 Safari/537.36 Edg/91.0.864.59] the "
+        "rest of the log";
+
+    ParserFn parseOp = getParserOp(logQl);
+    auto result      = parseOp(userAgent);
+
+    ASSERT_EQ(
+        result["userAgent.original"],
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, "
+        "like Gecko) Chrome/91.0.4472.124 Safari/537.36 Edg/91.0.864.59");
+}
+
+TEST(hlpTests_UserAgent, user_agent_opera)
+{
+    const char *logQl = "[<userAgent>] <_>";
+    const char *userAgent =
+        "[Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like "
+        "Gecko) Chrome/51.0.2704.106 Safari/537.36 OPR/38.0.2220.41] the rest "
+        "of the log";
+
+    ParserFn parseOp     = getParserOp(logQl);
+    auto result          = parseOp(userAgent);
+
+    ASSERT_EQ(result["userAgent.original"],
+              "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like "
+              "Gecko) Chrome/51.0.2704.106 Safari/537.36 OPR/38.0.2220.41");
+}
+
+TEST(hlpTests_UserAgent, user_agent_safari)
+{
+    const char *logQl = "[<userAgent>] <_>";
+    const char *userAgent =
+        "[Mozilla/5.0 (iPhone; CPU iPhone OS 13_5_1 like Mac OS X) "
+        "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1.1 Mobile/15E148 "
+        "Safari/604.1] the rest of the log";
+
+    ParserFn parseOp     = getParserOp(logQl);
+    auto result          = parseOp(userAgent);
+
+    ASSERT_EQ(result["userAgent.original"],
+              "Mozilla/5.0 (iPhone; CPU iPhone OS 13_5_1 like Mac OS X) "
+              "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1.1 "
+              "Mobile/15E148 Safari/604.1");
 }
