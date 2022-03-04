@@ -127,8 +127,8 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
     int final_msg_s;
     int need_clear = 0;
 
-    char str[OS_MAXSTR - OS_LOG_HEADER];
-    char final_msg[OS_MAXSTR - OS_LOG_HEADER];
+    char str[OS_MAX_LOG_SIZE];
+    char final_msg[OS_MAX_LOG_SIZE];
     char port[17];
     char proto[17];
     char buffer[sizeof(port) + sizeof(proto) + 4];
@@ -224,7 +224,7 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
                  ip);
 
         if (bytes_written < (int)sizeof(final_msg)) {
-            final_msg_s = OS_MAXSTR - OS_LOG_HEADER - 1 - strlen(final_msg);
+            final_msg_s = OS_MAX_LOG_SIZE - 1 - strlen(final_msg);
         }
         else {
             final_msg_s = 0;
