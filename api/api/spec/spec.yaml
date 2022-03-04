@@ -5324,7 +5324,7 @@ components:
       description: "Wazuh version to upgrade to"
       schema:
         type: string
-        format: wazuh_upgrade_version
+        format: wazuh_version
     force:
       in: query
       name: force

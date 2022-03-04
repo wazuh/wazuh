@@ -917,8 +917,26 @@ class Agent:
         return stats.get_daemons_stats_from_socket(self.id, component)
 
 
+def unify_wazuh_upgrade_version_format(upgrade_version):
+    """Format the specified upgrade version into the 'vX.Y.Z' standard.
+
+    Parameters
+    ----------
+    upgrade_version : str
+        String with the specified upgrade version.
+
+    Returns
+    -------
+    str
+        Formatted upgrade version.
+    """
+    if upgrade_version:
+        upgrade_version = re.findall(r'\d+\.\d+\.\d+$', upgrade_version, re.IGNORECASE)[0]
+        return f'v{upgrade_version}'
+
+
 def unify_wazuh_version_format(filters):
-    """Verify and format the specified wazuh version, into the 'wazuh vX.Y.Z' standard.
+    """Verify and format the specified wazuh version into the 'wazuh vX.Y.Z' standard.
 
     Parameters
     ----------
@@ -1098,7 +1116,7 @@ def core_upgrade_agents(agents_chunk, command='upgrade_result', wpk_repo=None, v
                                       command=command,
                                       parameters={
                                           'agents': agents_chunk,
-                                          'version': version,
+                                          'version': unify_wazuh_upgrade_version_format(version),
                                           'force_upgrade': force,
                                           'use_http': use_http,
                                           'wpk_repo': wpk_repo,
