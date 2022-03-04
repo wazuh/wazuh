@@ -40,7 +40,8 @@ void DB::init(const int storage,
               std::function<void(const std::string&)> callbackSyncRegistryWrapper,
               std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,
               const int fileLimit,
-              const int valueLimit)
+              const int valueLimit,
+              bool syncRegistryEnabled)
 {
     auto path { storage == FIM_DB_MEMORY ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH };
     auto dbsyncHandler
@@ -58,7 +59,8 @@ void DB::init(const int storage,
                            dbsyncHandler,
                            rsyncHandler,
                            fileLimit,
-                           valueLimit);
+                           valueLimit,
+                           syncRegistryEnabled);
 }
 
 void DB::runIntegrity()
@@ -126,7 +128,8 @@ void fim_db_init(int storage,
                  fim_sync_callback_t sync_callback,
                  logging_callback_t log_callback,
                  int file_limit,
-                 int value_limit)
+                 int value_limit,
+                 bool sync_registry_enabled)
 {
     try
     {
@@ -170,7 +173,8 @@ void fim_db_init(int storage,
                             callbackSyncRegistryWrapper,
                             callbackLogWrapper,
                             file_limit,
-                            value_limit);
+                            value_limit,
+                            sync_registry_enabled);
 
     }
     // LCOV_EXCL_START

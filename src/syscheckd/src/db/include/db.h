@@ -37,13 +37,15 @@ extern "C" {
  * @param log_callback Callback to perform logging operations.
  * @param file_limit Maximum number of files to be monitored
  * @param value_limit Maximum number of registry values to be monitored.
+ * @param sync_registry_enable Flag to enable the registry synchronization.
  */
 void fim_db_init(int storage,
                  int sync_interval,
                  fim_sync_callback_t sync_callback,
                  logging_callback_t log_callback,
                  int file_limit,
-                 int value_limit);
+                 int value_limit,
+                 bool sync_registry_enabled);
 
 /**
  * @brief Get entry data using path.

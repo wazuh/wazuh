@@ -131,7 +131,8 @@ class FIMDB
                   std::shared_ptr<DBSync> dbsyncHandler,
                   std::shared_ptr<RemoteSync> rsyncHandler,
                   unsigned int fileLimit,
-                  unsigned int registryLimit = 0);
+                  unsigned int registryLimit = 0,
+                  bool syncRegistryEnabled = true);
 
         /**
          * @brief Remove a given item from the database
@@ -255,6 +256,7 @@ class FIMDB
         bool                                                                    m_runIntegrity;
         std::thread                                                             m_integrityThread;
         std::shared_timed_mutex                                                 m_handlersMutex;
+        bool                                                                    m_syncRegistryEnabled;
 
         /**
         * @brief Function that executes the synchronization of the databases with the manager
