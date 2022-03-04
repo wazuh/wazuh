@@ -10,6 +10,7 @@
 #include <optional>
 #include <string>
 #include <tuple>
+#include <re2/re2.h>
 
 #include "OpBuilderHelperFilter.hpp"
 #include "stringUtils.hpp"
@@ -484,19 +485,19 @@ types::Lifter opBuilderHelperRegexMatch(const types::DocumentValue & def)
     // Get field
     std::string field = def.MemberBegin()->name.GetString();
     std::string value = def.MemberBegin()->value.GetString();
+
     std::vector<std::string> parameters = utils::string::split(value, '/');
     if (parameters.size() != 2)
     {
         throw std::invalid_argument("Wrong number of arguments passed");
     }
 
-    std::string regexp = parameters[1];
-
-    auto regex_ptr = std::make_shared<RE2>(regexp);
-
+    auto regex_ptr = std::make_shared<RE2>(parameters[1], RE2::Quiet);
     if (!regex_ptr->ok())
     {
-        throw std::runtime_error("Invalid regular expression");
+        const std::string err = "Error compiling regex '" + parameters[1] + "'. "
+                          + regex_ptr->error();
+        throw std::runtime_error(err);
     }
 
     // Return Lifter
@@ -517,7 +518,7 @@ types::Lifter opBuilderHelperRegexMatch(const types::DocumentValue & def)
                     // TODO Check exception type
                     return false;
                 }
-                if (field_str)
+                if (field_str != nullptr && field_str->IsString())
                 {
                     return (RE2::PartialMatch(field_str->GetString(), *regex_ptr));
                 }
@@ -532,19 +533,19 @@ types::Lifter opBuilderHelperRegexNotMatch(const types::DocumentValue & def)
     // Get field
     std::string field = def.MemberBegin()->name.GetString();
     std::string value = def.MemberBegin()->value.GetString();
+
     std::vector<std::string> parameters = utils::string::split(value, '/');
     if (parameters.size() != 2)
     {
         throw std::runtime_error("Invalid number of parameters");
     }
 
-    std::string regexp = parameters[1];
-
-    auto regex_ptr = std::make_shared<RE2>(regexp);
-
+    auto regex_ptr = std::make_shared<RE2>(parameters[1], RE2::Quiet);
     if (!regex_ptr->ok())
     {
-        throw std::runtime_error("Invalid regular expression");
+        const std::string err = "Error compiling regex '" + parameters[1] + "'. "
+                          + regex_ptr->error();
+        throw std::runtime_error(err);
     }
 
     // Return Lifter
@@ -565,7 +566,7 @@ types::Lifter opBuilderHelperRegexNotMatch(const types::DocumentValue & def)
                     // TODO Check exception type
                     return false;
                 }
-                if (field_str)
+                if (field_str != nullptr && field_str->IsString())
                 {
                     return (!RE2::PartialMatch(field_str->GetString(), *regex_ptr));
                 }
