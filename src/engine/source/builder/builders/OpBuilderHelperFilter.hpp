@@ -10,8 +10,6 @@
 #ifndef _OP_BUILDER_HELPER_FILTER_H
 #define _OP_BUILDER_HELPER_FILTER_H
 
-#include <re2/re2.h>
-
 #include "builderTypes.hpp"
 #include "stringUtils.hpp"
 
@@ -252,7 +250,7 @@ types::Lifter opBuilderHelperIntGreaterThanEqual(const types::DocumentValue & de
  * Checks that the field value matches a regular expression
  *
  * @param def Definition of the operation to be built
- * @return types::Lifter
+ * @return types::Lifter The lifter with the `regex` filter.
  */
 types::Lifter opBuilderHelperRegexMatch(const types::DocumentValue & def);
 
@@ -261,7 +259,7 @@ types::Lifter opBuilderHelperRegexMatch(const types::DocumentValue & def);
  * Checks that the field value doesn't match a regular expression
  *
  * @param def Definition of the operation to be built
- * @return types::Lifter
+ * @return types::Lifter The lifter with the `regex_not` filter.
  */
 types::Lifter opBuilderHelperRegexNotMatch(const types::DocumentValue & def);
 
