@@ -44,9 +44,9 @@ char *_rkcl_getrootdir(char *root_dir, int dir_size)
     tmp = strchr(final_file, '\\');
     if (tmp) {
         *tmp = '\0';
-        int bytes_written = snprintf(root_dir, dir_size, "%s", final_file);
+        const int bytes_written = snprintf(root_dir, dir_size, "%s", final_file);
 
-        if (bytes_written + 1 > dir_size) {
+        if (bytes_written < 0 || bytes_written >= dir_size) {
             return (NULL);
         }
 
