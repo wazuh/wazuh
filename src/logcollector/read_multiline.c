@@ -19,15 +19,15 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
     int __ms_reported = 0;
     int linesgot = 0;
     size_t buffer_size = 0;
-    char str[OS_MAXSTR - OS_LOG_HEADER];
-    char buffer[OS_MAXSTR - OS_LOG_HEADER];
+    char str[OS_MAX_LOG_SIZE];
+    char buffer[OS_MAX_LOG_SIZE];
     int lines = 0;
     int64_t offset = 0;
     int64_t rbytes = 0;
 
     buffer[0] = '\0';
-    buffer[OS_MAXSTR - OS_LOG_HEADER - 1] = '\0';
-    str[OS_MAXSTR - OS_LOG_HEADER - 1] = '\0';
+    buffer[OS_MAX_LOG_SIZE - 1] = '\0';
+    str[OS_MAX_LOG_SIZE - 1] = '\0';
     *rc = 0;
 
     /* Obtain context to calculate hash */
@@ -35,7 +35,7 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
     int64_t current_position = w_ftell(lf->fp);
     bool is_valid_context_file = w_get_hash_context(lf, &context, current_position);
 
-    for (offset = w_ftell(lf->fp); can_read() && fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
+    for (offset = w_ftell(lf->fp); can_read() && fgets(str, OS_MAX_LOG_SIZE, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;
         lines++;
         linesgot++;
@@ -62,7 +62,7 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
         /* If we didn't get the new line, because the
          * size is large, send what we got so far.
          */
-        else if (rbytes == OS_MAXSTR - OS_LOG_HEADER - 1) {
+        else if (rbytes == OS_MAX_LOG_SIZE - 1) {
             /* Message size > maximum allowed */
             if (is_valid_context_file) {
                 OS_SHA1_Stream(&context, NULL, str);
@@ -97,7 +97,7 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
         buffer[sizeof(buffer) - 1] = '\0';
 
 
-        if (OS_MAXSTR - OS_LOG_HEADER - 1 - buffer_size < strlen(str)) {
+        if (OS_MAX_LOG_SIZE - 1 - buffer_size < strlen(str)) {
             merror("Large message size from file '%s' (length = " FTELL_TT "): '%s'...", lf->file, FTELL_INT64 buffer_size + strlen(str), buffer);
         }
 
