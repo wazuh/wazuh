@@ -104,7 +104,7 @@ bool opBuilderHelperStringComparison(const std::string key, char op, types::Even
 
     // TODO Remove try catch or if nullptr after fix get method of document class
     // Get value to compare
-    const rapidjson::Value * fieldToCompare{};
+    const rapidjson::Value * fieldToCompare {};
     try
     {
         fieldToCompare = e.get("/" + key);
@@ -125,7 +125,7 @@ bool opBuilderHelperStringComparison(const std::string key, char op, types::Even
     {
         // Get reference to json event
         // TODO Remove try catch or if nullptr after fix get method of document class
-        const rapidjson::Value * refValueToCheck{};
+        const rapidjson::Value * refValueToCheck {};
         try
         {
             refValueToCheck = e.get("/" + refValue.value());
@@ -272,7 +272,7 @@ bool opBuilderHelperIntComparison(const std::string field, char op, types::Event
 
     // TODO Remove try catch or if nullptr after fix get method of document class
     // Get value to compare
-    const rapidjson::Value * fieldValue{};
+    const rapidjson::Value * fieldValue {};
     try
     {
         fieldValue = e.get("/" + field);
@@ -293,7 +293,7 @@ bool opBuilderHelperIntComparison(const std::string field, char op, types::Event
     {
         // Get reference to json event
         // TODO Remove try catch or if nullptr after fix get method of document class
-        const rapidjson::Value * refValueToCheck{};
+        const rapidjson::Value * refValueToCheck {};
         try
         {
             refValueToCheck = e.get("/" + refValue.value());
@@ -343,10 +343,10 @@ bool opBuilderHelperIntComparison(const std::string field, char op, types::Event
 types::Lifter opBuilderHelperIntEqual(const types::DocumentValue & def)
 {
 
-    auto [field, refValue, valuestr]{getCompOpParameter(def)};
+    auto [field, refValue, valuestr] {getCompOpParameter(def)};
 
     std::optional<int> value = valuestr.has_value()
-                                   ? std::optional<int>{std::stoi(valuestr.value())}
+                                   ? std::optional<int> {std::stoi(valuestr.value())}
                                    : std::nullopt;
 
     // Return Lifter
@@ -363,7 +363,7 @@ types::Lifter opBuilderHelperIntEqual(const types::DocumentValue & def)
 types::Lifter opBuilderHelperIntNotEqual(const types::DocumentValue & def)
 {
 
-    auto [field, refValue, valuestr]{getCompOpParameter(def)};
+    auto [field, refValue, valuestr] {getCompOpParameter(def)};
 
     std::optional<int> value = valuestr.has_value()
                                    ? std::optional<int>{std::stoi(valuestr.value())}
@@ -386,7 +386,7 @@ types::Lifter opBuilderHelperIntNotEqual(const types::DocumentValue & def)
 types::Lifter opBuilderHelperIntLessThan(const types::DocumentValue & def)
 {
 
-    auto [field, refValue, valuestr]{getCompOpParameter(def)};
+    auto [field, refValue, valuestr] {getCompOpParameter(def)};
 
     std::optional<int> value = valuestr.has_value()
                                    ? std::optional<int>{std::stoi(valuestr.value())}
@@ -409,7 +409,7 @@ types::Lifter opBuilderHelperIntLessThan(const types::DocumentValue & def)
 types::Lifter opBuilderHelperIntLessThanEqual(const types::DocumentValue & def)
 {
 
-    auto [field, refValue, valuestr]{getCompOpParameter(def)};
+    auto [field, refValue, valuestr] {getCompOpParameter(def)};
 
     std::optional<int> value = valuestr.has_value()
                                    ? std::optional<int>{std::stoi(valuestr.value())}
@@ -432,7 +432,7 @@ types::Lifter opBuilderHelperIntLessThanEqual(const types::DocumentValue & def)
 types::Lifter opBuilderHelperIntGreaterThan(const types::DocumentValue & def)
 {
 
-    auto [field, refValue, valuestr]{getCompOpParameter(def)};
+    auto [field, refValue, valuestr] {getCompOpParameter(def)};
 
     std::optional<int> value = valuestr.has_value()
                                    ? std::optional<int>{std::stoi(valuestr.value())}
@@ -455,7 +455,7 @@ types::Lifter opBuilderHelperIntGreaterThan(const types::DocumentValue & def)
 types::Lifter opBuilderHelperIntGreaterThanEqual(const types::DocumentValue & def)
 {
 
-    auto [field, refValue, valuestr]{getCompOpParameter(def)};
+    auto [field, refValue, valuestr] {getCompOpParameter(def)};
 
     std::optional<int> value = valuestr.has_value()
                                    ? std::optional<int>{std::stoi(valuestr.value())}
@@ -473,6 +473,10 @@ types::Lifter opBuilderHelperIntGreaterThanEqual(const types::DocumentValue & de
             });
     };
 }
+
+//*************************************************
+//*               Regex filters                   *
+//*************************************************
 
 types::Lifter opBuilderHelperRegexMatch(const types::DocumentValue & def)
 {
@@ -499,7 +503,7 @@ types::Lifter opBuilderHelperRegexMatch(const types::DocumentValue & def)
             [=](types::Event e)
             {
                 // TODO Remove try catch
-                const rapidjson::Value * field_str{};
+                const rapidjson::Value * field_str {};
                 try
                 {
                     field_str = e.get("/" + field);
@@ -543,7 +547,7 @@ types::Lifter opBuilderHelperRegexNotMatch(const types::DocumentValue & def)
             [=](types::Event e)
             {
                 // TODO Remove try catch
-                const rapidjson::Value * field_str{};
+                const rapidjson::Value * field_str {};
                 try
                 {
                     field_str = e.get("/" + field);
