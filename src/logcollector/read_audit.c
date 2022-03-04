@@ -19,7 +19,7 @@ static void audit_send_msg(char **cache, int top, const char *file, int drop_it,
     int i;
     size_t n = 0;
     size_t z;
-    char message[OS_MAXSTR - OS_LOG_HEADER] = {0};
+    char message[OS_MAX_LOG_SIZE] = {0};
 
     for (i = 0; i < top; i++) {
         z = strlen(cache[i]);
@@ -28,7 +28,7 @@ static void audit_send_msg(char **cache, int top, const char *file, int drop_it,
             if (n > 0)
                 message[n++] = ' ';
 
-            strncat(message, cache[i], OS_MAXSTR - OS_LOG_HEADER - 1 - n);
+            strncat(message, cache[i], OS_MAX_LOG_SIZE - 1 - n);
             n += z;
         }
 
