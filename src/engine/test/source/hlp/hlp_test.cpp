@@ -61,33 +61,43 @@ TEST(hlpTests_logQL, invalid_logql_expression)
 
 TEST(hlpTests_logQL, optional_Field_Not_Found)
 {
-    static const char *logQl = "this won't match an IP address <?source.ip>";
-    static const char *event = "this won't match an IP address 02 Jan 06 15:04 -0700";
+    static const char *logQl = "this won't match an IP address -<timestamp/UnixDate>- <?url> <_field/JSON>";
+    static const char *event = "this won't match an IP address -Mon Jan 2 15:04:05 MST 2006-  {\"String\":\"SomeValue\"}";
 
     auto parseOp = getParserOp(logQl);
     auto result = parseOp(event);
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
-    ASSERT_TRUE(result["source.ip"].empty());
+    ASSERT_TRUE(result["url.original"].empty());
+    ASSERT_EQ("2006", result["timestamp.year"]);
+    ASSERT_EQ("1", result["timestamp.month"]);
+    ASSERT_EQ("2", result["timestamp.day"]);
+    ASSERT_EQ("15", result["timestamp.hour"]);
+    ASSERT_EQ("4", result["timestamp.minutes"]);
+    ASSERT_EQ("5", result["timestamp.seconds"]);
+    ASSERT_EQ("{\"String\":\"SomeValue\"}", result["_field"]);
 }
 
 TEST(hlpTests_logQL, optional_Or)
 {
-    static const char *logQl = "<url>?<source.ip>";
-    static const char *eventIP = "127.0.0.1";
+    static const char *logQl = "<url>?<_field/JSON>";
+    static const char *eventJSON = "{\"String\":\"SomeValue\"}";
     static const char *eventURL = "https://user:password@wazuh.com:8080/path"
                                 "?query=%22a%20query%20with%20a%20space%22#fragment";
+    static const char *eventNone = "Mon Jan 2 15:04:05 MST 2006";
 
     auto parseOp = getParserOp(logQl);
-    auto result = parseOp(eventIP);
-
+    auto resultJSON = parseOp(eventJSON);
     ASSERT_EQ(true, static_cast<bool>(parseOp));
-    ASSERT_EQ("127.0.0.1", result["source.ip"]);
+    ASSERT_EQ("{\"String\":\"SomeValue\"}", resultJSON["_field"]);
 
     auto resultURL = parseOp(eventURL);
     std::string url = "https://user:password@wazuh.com:8080/"
                       "path?query=%22a%20query%20with%20a%20space%22#fragment";
     ASSERT_EQ(url, resultURL["url.original"]);
+
+    auto resultEmpty = parseOp(eventNone);
+    ASSERT_TRUE(resultEmpty.empty());
 }
 
 TEST(hlpTests_logQL, options_parsing)
