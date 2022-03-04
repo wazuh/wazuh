@@ -12,9 +12,9 @@
 
 #include <iostream>
 #include <string>
+#include <optional>
 
 #include <json.hpp>
-#include "queue.hpp"
 
 namespace engineserver
 {
@@ -31,8 +31,6 @@ private:
     int m_pending{0};
     int m_stage{0};
 
-
-
     /**
      * @brief Update pending value and return true if we have enough data
      * to calculate the message size.
@@ -42,13 +40,6 @@ private:
      */
     bool hasHeader();
 
-    /**
-     * @brief Process a message, parsing it and sending it to s
-     *
-     * @param s a subscriber of this connection.
-     */
-    void send();
-
 public:
     /**
      * @brief generate a json::Document from internal state
@@ -56,6 +47,7 @@ public:
      * @return json::Document
      */
     json::Document parse(const std::string & event) const;
+
     /**
      * @brief process the chunk of data and send messages to dst when. Return
      * true if all data was processed correctly, or false in case of error.
@@ -64,10 +56,10 @@ public:
      * @param data
      * @param length
      * @param dst destination subscriber
-     * @return true no errors
-     * @return false errors in processing
+     * @return true and vector of strings if no errors
+     * @return false if errors in processing
      */
-    bool process(char * data, std::size_t length);
+    std::optional<std::vector<std::string>> process(char * data, std::size_t length);
 };
 
 } // namespace engineserver

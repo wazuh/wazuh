@@ -13,16 +13,14 @@
 #include <rxcpp/rx.hpp>
 #include <filesystem>
 #include <fstream>
+#include <glog/logging.h>
 #include <iostream>
-#include <string>
 #include <mutex>
+#include <string>
 #include "json.hpp"
-
 
 namespace builder::internals::outputs
 {
-
-std::mutex lock;
 
 /**
  * @brief implements a subscriber which will save all received events
@@ -68,9 +66,7 @@ public:
      */
     void write(const json::Document & e)
     {
-        lock.lock();
         this->m_os << e.str() << std::endl;
-        lock.unlock();
     }
 };
 

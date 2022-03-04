@@ -36,11 +36,17 @@ void TCPEndpoint::connectionHandler(uvw::TCPHandle & server)
         });
 
     client->on<uvw::DataEvent>(
-        [timer, ph](const uvw::DataEvent & event, uvw::TCPHandle & client)
+        [&, timer, ph](const uvw::DataEvent & event, uvw::TCPHandle & client)
         {
             timer->again();
-
-            if (!ph->process(event.data.get(), event.length))
+            auto result = ph->process(event.data.get(), event.length);
+            if (result)
+            {
+                auto events = result.value().data();
+                while (!this->m_out.try_enqueue_bulk(events, result.value().size()))
+                    ;
+            }
+            else
             {
                 LOG(ERROR) << "TCP DataEvent: Error processing data" << std::endl;
                 timer->close();
@@ -67,7 +73,8 @@ void TCPEndpoint::connectionHandler(uvw::TCPHandle & server)
     client->read();
 }
 
-TCPEndpoint::TCPEndpoint(const std::string & config) : BaseEndpoint{config}
+TCPEndpoint::TCPEndpoint(const std::string & config, moodycamel::BlockingConcurrentQueue<std::string> & eventBuffer)
+    : BaseEndpoint{config, eventBuffer}
 {
     auto pos = config.find(":");
     this->m_ip = config.substr(0, pos);
