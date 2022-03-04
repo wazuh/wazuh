@@ -4171,24 +4171,6 @@ void test_fim_db_process_missing_entry(void **state){
     fim_data->fentry->file_entry.path = NULL;
 }
 
-void test_free_entry(void **state){
-    fim_entry* fentry = (fim_entry*) malloc(sizeof(fim_entry));
-
-    char* path = (char*) malloc(11*sizeof(char));
-    fentry->file_entry.data = NULL;
-    fentry->file_entry.path = path;
-    fentry->type = FIM_TYPE_FILE;
-    free_entry(fentry);
-}
-
-void test_free_entry_registry(void **state){
-    fim_entry* fentry = (fim_entry*) malloc(sizeof(fim_entry));
-    fentry->type = FIM_TYPE_REGISTRY;
-    fentry->registry_entry.key = NULL;
-    fentry->registry_entry.value = NULL;
-    free_entry(fentry);
-}
-
 static void test_dbsync_attributes_json(void **state) {
     directory_t configuration = { .options = -1, .tag = "tag_name" };
     json_struct_t *data = *state;
@@ -4384,9 +4366,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_process_delete_event, setup_fim_entry, teardown_fim_entry),
         cmocka_unit_test_setup_teardown(test_fim_db_remove_entry, setup_fim_entry, teardown_fim_entry),
         cmocka_unit_test_setup_teardown(test_fim_db_process_missing_entry, setup_fim_entry, teardown_fim_entry),
-        cmocka_unit_test(test_free_entry),
-        cmocka_unit_test(test_free_entry_registry),
-    
+
         /* dbsync_attributes_json */
         cmocka_unit_test_setup_teardown(test_dbsync_attributes_json, setup_json_event_attributes, teardown_json_event_attributes),
     };

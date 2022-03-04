@@ -794,14 +794,6 @@ STATIC void fim_link_delete_range(directory_t *configuration) {
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .report_event = false, .w_evt = NULL, .type = FIM_DELETE };
     char pattern[PATH_MAX] = {0};
 
-    if((evt_data.mode == FIM_REALTIME && !(configuration->options & REALTIME_ACTIVE)) ||
-      (evt_data.mode == FIM_WHODATA && !(configuration->options & WHODATA_ACTIVE)))
-    {
-        /* Don't send alert if received mode and mode in configuration aren't the same.
-        Scheduled mode events must always be processed to preserve the state of the agent's DB.
-        */
-        return;
-    }
     get_data_ctx ctx = {
         .event = (event_data_t *)&evt_data,
         .config = configuration,

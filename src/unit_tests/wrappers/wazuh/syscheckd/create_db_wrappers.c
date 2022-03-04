@@ -24,12 +24,6 @@ directory_t *__wrap_fim_configuration_directory(const char *path) {
     return mock_type(directory_t *);
 }
 
-cJSON *__wrap_fim_entry_json(const char * path,
-                             __attribute__((unused)) fim_file_data * data) {
-    check_expected(path);
-    return mock_type(cJSON*);
-}
-
 cJSON *__wrap_fim_json_event() {
     return mock_type(cJSON *);
 }
