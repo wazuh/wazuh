@@ -266,90 +266,6 @@ types::Lifter opBuilderHelperStringLE(const DocumentValue & def)
 //*               Int filters                     *
 //*************************************************
 
-//*************************************************
-//*               IP filters                     *
-//*************************************************
-
-
-// path_to_ip: +ip_cidr/192.168.0.0/16
-// path_to_ip: +ip_cidr/192.168.0.0/255.255.0.0
-types::Lifter opBuilderHelperIPCIDR(const types::DocumentValue & def)
-{
-    // Get Field path to check
-    std::string field = def.MemberBegin()->name.GetString();
-    // Get function helper
-    std::string rawValue = def.MemberBegin()->value.GetString();
-    std::vector<std::string> parameters = utils::string::split(rawValue, '/');
-
-    // Check parameters
-    if (parameters.size() != 3)
-    {
-        throw std::runtime_error("Invalid number of parameters");
-    } else if (parameters[2].empty())
-    {
-        throw std::runtime_error("The network can't be empty");
-    }
-    else if (parameters[1].empty())
-    {
-        throw std::runtime_error("The cidr can't be empty");
-    }
-
-    // TODO Add Try and catch
-    uint32_t network {};
-    uint32_t mask {};
-    try {
-        network = utils::ip::IPv4ToUInt(parameters[1]);
-    } catch (std::exception & e)
-    {
-        throw std::runtime_error("Invalid IPv4 address: " + network);
-    }
-
-    try {
-        mask = utils::ip::IPv4MaskUInt(parameters[2]);
-    } catch (std::exception & e)
-    {
-       throw std::runtime_error("Invalid IPv4 mask: " + mask);
-    }
-
-    uint32_t net_lower {network & mask};
-    uint32_t net_upper {net_lower | (~mask)};
-
-    // Return Lifter
-    return [=](types::Observable o)
-    {
-        // Append rxcpp operations
-        return o.filter(
-            [=](types::Event e)
-            {
-                // TODO Remove try catch
-                const rapidjson::Value * field_str{};
-                try
-                {
-                    field_str = e.get("/" + field);
-                }
-                catch (std::exception & ex)
-                {
-                    return false;
-                }
-                if (field_str != nullptr && field_str->IsString())
-                {
-                    // TODO Remove try catch
-                    uint32_t ip {};
-                    try
-                    {
-                        ip = utils::ip::IPv4ToUInt(field_str->GetString());
-                    }
-                    catch (std::exception & ex)
-                    {
-                        return false;
-                    }
-                    return (ip >= net_lower && ip <= net_upper);
-                }
-                return false;
-            });
-    };
-}
-
 bool opBuilderHelperIntComparison(const std::string field, char op, types::Event & e,
                                   std::optional<std::string> refValue,
                                   std::optional<int> value)
@@ -653,6 +569,88 @@ types::Lifter opBuilderHelperRegexNotMatch(const types::DocumentValue & def)
                 if (field_str != nullptr && field_str->IsString())
                 {
                     return (!RE2::PartialMatch(field_str->GetString(), *regex_ptr));
+                }
+                return false;
+            });
+    };
+}
+
+
+//*************************************************
+//*               IP filters                     *
+//*************************************************
+
+
+// path_to_ip: +ip_cidr/192.168.0.0/16
+// path_to_ip: +ip_cidr/192.168.0.0/255.255.0.0
+types::Lifter opBuilderHelperIPCIDR(const types::DocumentValue & def)
+{
+    // Get Field path to check
+    std::string field = def.MemberBegin()->name.GetString();
+    // Get function helper
+    std::string rawValue = def.MemberBegin()->value.GetString();
+
+    std::vector<std::string> parameters = utils::string::split(rawValue, '/');
+    if (parameters.size() != 3)
+    {
+        throw std::runtime_error("Invalid number of parameters");
+    } else if (parameters[2].empty())
+    {
+        throw std::runtime_error("The network can't be empty");
+    }
+    else if (parameters[1].empty())
+    {
+        throw std::runtime_error("The cidr can't be empty");
+    }
+
+    uint32_t network {};
+    try {
+        network = utils::ip::IPv4ToUInt(parameters[1]);
+    } catch (std::exception & e)
+    {
+        throw std::runtime_error("Invalid IPv4 address: " + network);
+    }
+
+    uint32_t mask {};
+    try {
+        mask = utils::ip::IPv4MaskUInt(parameters[2]);
+    } catch (std::exception & e)
+    {
+       throw std::runtime_error("Invalid IPv4 mask: " + mask);
+    }
+
+    uint32_t net_lower {network & mask};
+    uint32_t net_upper {net_lower | (~mask)};
+
+    // Return Lifter
+    return [field, net_lower, net_upper](types::Observable o)
+    {
+        // Append rxcpp operations
+        return o.filter(
+            [=](types::Event e)
+            {
+                // TODO Remove try catch
+                const rapidjson::Value * field_str{};
+                try
+                {
+                    field_str = e.get("/" + field);
+                }
+                catch (std::exception & ex)
+                {
+                    return false;
+                }
+                if (field_str != nullptr && field_str->IsString())
+                {
+                    uint32_t ip {};
+                    try
+                    {
+                        ip = utils::ip::IPv4ToUInt(field_str->GetString());
+                    }
+                    catch (std::exception & ex)
+                    {
+                        return false;
+                    }
+                    return (ip >= net_lower && ip <= net_upper);
                 }
                 return false;
             });

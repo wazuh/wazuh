@@ -23,6 +23,7 @@ TEST(opBuilderHelperIPCIDR, Builds)
         "check":
             {"field2check": "+ip_cidr/192.168.0.0/255.255.0.0"}
     })"};
+
     ASSERT_NO_THROW(opBuilderHelperIPCIDR(*doc.get("/check")));
     ASSERT_NO_THROW(opBuilderHelperIPCIDR(*doc2.get("/check")));
 }
@@ -33,6 +34,7 @@ TEST(opBuilderHelperIPCIDR, Builds_incorrect_number_of_arguments)
         "check":
             {"field2check": "+ip_cidr/192.168.0.0/255.255.0.0/123"}
     })"};
+
     ASSERT_THROW(opBuilderHelperIPCIDR(*doc.get("/check")), std::runtime_error);
 }
 
@@ -42,18 +44,21 @@ TEST(opBuilderHelperIPCIDR, Builds_invalid_arguments)
         "check":
             {"field2check": "+ip_cidr/192.168.0.0/256.255.0.0"}
     })"};
+
     ASSERT_THROW(opBuilderHelperIPCIDR(*doc.get("/check")), std::runtime_error);
 
     Document doc2{R"({
         "check":
             {"field2check": "+ip_cidr/192.168.0.-1/255.255.0.0.1"}
     })"};
+
     ASSERT_THROW(opBuilderHelperIPCIDR(*doc2.get("/check")), std::runtime_error);
 
     Document doc3{R"({
         "check":
             {"field2check": "+ip_cidr/192.168.0.1/33"}
     })"};
+
     ASSERT_THROW(opBuilderHelperIPCIDR(*doc3.get("/check")), std::runtime_error);
 }
 
