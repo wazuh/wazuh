@@ -21,6 +21,7 @@
  *
  * Warning: this function never should throw an exception.
  */
+
 namespace builder::internals::builders
 {
 
