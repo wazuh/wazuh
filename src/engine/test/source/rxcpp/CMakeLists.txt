@@ -53,15 +53,15 @@ target_link_libraries(rxcpp_test gtest_main benchmark::benchmark_main rxcpp)
 gtest_discover_tests(rxcpp_test)
 
 # Configuration to test the thread pool
-add_executable(rxcppThreadingTest
-    ${THREAD_POOL_SOURCE_DIR}/threadPool.cpp
-    ${TEST_SOURCE_DIR}/rxcpp/threadingTest.cpp
-)
-target_include_directories(rxcppThreadingTest PRIVATE
-    ${TEST_SOURCE_DIR}/rxcpp/
-    ${THREAD_POOL_SOURCE_DIR}
-    ${uvw_SOURCE_DIR}/src/
-    ${uvw_SOURCE_DIR}/src/uvw/
-)
-target_link_libraries(rxcppThreadingTest gtest_main rxcpp uv)
-gtest_discover_tests(rxcppThreadingTest)
+# add_executable(rxcppThreadingTest
+#     ${THREAD_POOL_SOURCE_DIR}/threadPool.cpp
+#     ${TEST_SOURCE_DIR}/rxcpp/threadingTest.cpp
+# )
+# target_include_directories(rxcppThreadingTest PRIVATE
+#     ${TEST_SOURCE_DIR}/rxcpp/
+#     ${THREAD_POOL_SOURCE_DIR}
+#     ${uvw_SOURCE_DIR}/src/
+#     ${uvw_SOURCE_DIR}/src/uvw/
+# )
+# target_link_libraries(rxcppThreadingTest gtest_main rxcpp uv)
+# gtest_discover_tests(rxcppThreadingTest)
