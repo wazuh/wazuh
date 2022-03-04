@@ -52,7 +52,6 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
 /**
  * @brief Process group, update file sum structure and create merged.mg file
  * @param group Group name
- * @param files Group files
  * @param _f_sum File sum structure to update
  * @param sharedcfg_dir Group directory
  * @param create_merged Flag indicating if merged.mg needs to be created
@@ -162,13 +161,12 @@ static int purge_group(char *group);
  * @param src_path Source path of the files to validate
  * @param group Group name
  * @param merged_tmp Name of temporal merged.mg file
- * @param _f_sum File sum structure to update
  * @param f_sum File sum structure to update
  * @param f_size File size variable to update
  * @param create_merged Flag indicating if merged.mg needs to be created
  * @param path_offset Variable that indicates the necessary offset for the MergeAppendFile function
  */
-STATIC void validate_shared_files(const char *src_path, const char *group, const char *merged_tmp, file_sum ***_f_sum, file_sum ***f_sum, unsigned int *f_size, bool create_merged, int path_offset);
+STATIC void validate_shared_files(const char *src_path, const char *group, const char *merged_tmp, file_sum ***f_sum, unsigned int *f_size, bool create_merged, int path_offset);
 
 /**
  * @brief Copy the contents of one directory to another
@@ -439,6 +437,7 @@ STATIC void c_group(const char *group, file_sum ***_f_sum, char * sharedcfg_dir,
     file_sum **f_sum;
     char merged_tmp[PATH_MAX + 1];
     char merged[PATH_MAX + 1];
+    char group_path[PATH_MAX + 1];
     remote_files_group *r_group = NULL;
 
     *merged_tmp = '\0';
@@ -528,7 +527,6 @@ STATIC void c_group(const char *group, file_sum ***_f_sum, char * sharedcfg_dir,
         f_sum[f_size] = NULL;
     } else {
         // Merge ar.conf always
-        char group_path[PATH_MAX + 1];
 
         if (create_merged) {
             snprintf(merged_tmp, PATH_MAX + 1, "%s/%s/%s.tmp", sharedcfg_dir, group, SHAREDCFG_FILENAME);
@@ -553,9 +551,8 @@ STATIC void c_group(const char *group, file_sum ***_f_sum, char * sharedcfg_dir,
 
         snprintf(group_path, PATH_MAX + 1, "%s/%s", sharedcfg_dir, group);
 
-        validate_shared_files(group_path, group, merged_tmp, _f_sum, &f_sum, &f_size, create_merged, -1);
-
-        f_sum[f_size] = NULL;
+        validate_shared_files(group_path, group, merged_tmp, &f_sum, &f_size, create_merged, -1);
+        *_f_sum = f_sum;
 
         if (create_merged) {
             OS_MoveFile(merged_tmp, merged);
@@ -975,7 +972,7 @@ STATIC void process_deleted_multi_groups() {
     }
 }
 
-STATIC void validate_shared_files(const char *src_path, const char *group, const char *merged_tmp, file_sum ***_f_sum, file_sum ***f_sum, unsigned int *f_size, bool create_merged, int path_offset) {
+STATIC void validate_shared_files(const char *src_path, const char *group, const char *merged_tmp, file_sum ***f_sum, unsigned int *f_size, bool create_merged, int path_offset) {
     char ** files;
     char file[PATH_MAX + 1];
     unsigned int i;
@@ -1070,7 +1067,6 @@ STATIC void validate_shared_files(const char *src_path, const char *group, const
 
             if (!ignored) {
                 os_realloc(*f_sum, ((*f_size) + 2) * sizeof(file_sum *), *f_sum);
-                *_f_sum = *f_sum;
                 os_calloc(1, sizeof(file_sum), (*f_sum)[(*f_size)]);
                 strncpy((*f_sum)[(*f_size)]->sum, md5sum, 32);
                 os_strdup(files[i], (*f_sum)[(*f_size)]->name);
@@ -1083,9 +1079,10 @@ STATIC void validate_shared_files(const char *src_path, const char *group, const
             }
         } else {
             closedir(dir);
-            validate_shared_files(file, group, merged_tmp, _f_sum, f_sum, f_size, create_merged, path_offset);
+            validate_shared_files(file, group, merged_tmp, f_sum, f_size, create_merged, path_offset);
         }
     }
+    (*f_sum)[*f_size] = NULL;
     free_strarray(files);
     return;
 }
@@ -1161,6 +1158,7 @@ STATIC void copy_directory(const char *src_path, const char *dst_path, const cha
         }
     }
     free_strarray(files);
+    return;
 }
 
 STATIC group_t* find_group(const char *group) {
