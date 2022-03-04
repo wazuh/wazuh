@@ -8,11 +8,11 @@
  */
 
 #include <gtest/gtest.h>
-#include <testUtils.hpp>
-
 #include <vector>
+#include <re2/re2.h>
 
 #include "OpBuilderHelperMap.hpp"
+#include "testUtils.hpp"
 
 using namespace builder::internals::builders;
 
@@ -22,6 +22,7 @@ TEST(opBuilderHelperRegexExtract, Builds)
         "map":
             {"field": "+r_ext/_field/regexp/"}
     })"};
+
     ASSERT_NO_THROW(opBuilderHelperRegexExtract(*doc.get("/map")));
 }
 
@@ -31,7 +32,8 @@ TEST(opBuilderHelperRegexExtract, NotEnoughArgumentsError)
         "map":
             {"field": "+r_ext/_field/"}
     })"};
-    ASSERT_THROW(opBuilderHelperRegexExtract(*doc.get("/map")), std::invalid_argument);
+
+    ASSERT_THROW(opBuilderHelperRegexExtract(*doc.get("/map")), std::runtime_error);
 }
 
 TEST(opBuilderHelperRegexExtract, TooManyArgumentsError)
@@ -40,16 +42,8 @@ TEST(opBuilderHelperRegexExtract, TooManyArgumentsError)
         "map":
             {"field": "+r_ext/_field/regexp/arg/"}
     })"};
-    ASSERT_THROW(opBuilderHelperRegexExtract(*doc.get("/map")), std::invalid_argument);
-}
 
-TEST(opBuilderHelperRegexExtract, RegularExpresionEmptyError)
-{
-    Document doc{R"({
-        "map":
-            {"field": "+r_ext/_field//"}
-    })"};
-    ASSERT_THROW(opBuilderHelperRegexExtract(*doc.get("/map")), std::invalid_argument);
+    ASSERT_THROW(opBuilderHelperRegexExtract(*doc.get("/map")), std::runtime_error);
 }
 
 TEST(opBuilderHelperRegexExtract, StringRegexExtract)
@@ -78,6 +72,7 @@ TEST(opBuilderHelperRegexExtract, StringRegexExtract)
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
+
     ASSERT_EQ(expected.size(), 3);
     ASSERT_TRUE(RE2::PartialMatch(expected[0].get("/_field")->GetString(), "exp"));
     ASSERT_TRUE(RE2::PartialMatch(expected[1].get("/_field")->GetString(), "exp"));
@@ -110,6 +105,7 @@ TEST(opBuilderHelperRegexExtract, NumericRegexExtract)
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
+
     ASSERT_EQ(expected.size(), 3);
     ASSERT_TRUE(RE2::PartialMatch(expected[0].get("/_field")->GetString(), "123"));
     ASSERT_TRUE(RE2::PartialMatch(expected[1].get("/_field")->GetString(), "123"));
@@ -139,6 +135,7 @@ TEST(opBuilderHelperRegexExtract, AdvancedRegexExtract)
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
+
     ASSERT_EQ(expected.size(), 2);
     ASSERT_TRUE(
         RE2::PartialMatch(expected[0].get("/_field")->GetString(), "client@wazuh.com"));
@@ -171,6 +168,7 @@ TEST(opBuilderHelperRegexExtract, NestedFieldRegexExtract)
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
+
     ASSERT_EQ(expected.size(), 2);
     ASSERT_TRUE(RE2::PartialMatch(expected[0].get("/_field")->GetString(), "exp"));
     ASSERT_TRUE(RE2::PartialMatch(expected[1].get("/_field")->GetString(), "exp"));
@@ -202,8 +200,71 @@ TEST(opBuilderHelperRegexExtract, FieldNotExistsRegexExtract)
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
+
     ASSERT_EQ(expected.size(), 3);
     ASSERT_FALSE(expected[0].exists("/_field"));
     ASSERT_FALSE(expected[1].exists("/_field"));
     ASSERT_FALSE(expected[2].exists("/_field"));
+}
+
+TEST(opBuilderHelperRegexExtract, MultilevelFieldRegexExtract)
+{
+    Document doc{R"~~({
+        "map":
+            {"test.field": "+r_ext/_field/(exp)/"}
+    })~~"};
+
+    Observable input = observable<>::create<Event>(
+        [=](auto s)
+        {
+            s.on_next(Event{R"~~({
+            "test":
+                {"field": "exp"}
+            })~~"});
+            s.on_next(Event{R"~~({
+            "test":
+                {"field": "this is a test exp"}
+            })~~"});
+            s.on_completed();
+        });
+
+    Lifter lift = opBuilderHelperRegexExtract(*doc.get("/map"));
+    Observable output = lift(input);
+    vector<Event> expected;
+    output.subscribe([&](Event e) { expected.push_back(e); });
+
+    ASSERT_EQ(expected.size(), 2);
+    ASSERT_TRUE(RE2::PartialMatch(expected[0].get("/_field")->GetString(), "exp"));
+    ASSERT_TRUE(RE2::PartialMatch(expected[1].get("/_field")->GetString(), "exp"));
+}
+
+TEST(opBuilderHelperRegexExtract, MultilevelFieldDstRegexExtract)
+{
+    Document doc{R"~~({
+        "map":
+            {"test.field": "+r_ext/parent._field/(exp)/"}
+    })~~"};
+
+    Observable input = observable<>::create<Event>(
+        [=](auto s)
+        {
+            s.on_next(Event{R"~~({
+            "test":
+                {"field": "exp"}
+            })~~"});
+            s.on_next(Event{R"~~({
+            "test":
+                {"field": "this is a test exp"}
+            })~~"});
+            s.on_completed();
+        });
+
+    Lifter lift = opBuilderHelperRegexExtract(*doc.get("/map"));
+    Observable output = lift(input);
+    vector<Event> expected;
+    output.subscribe([&](Event e) { expected.push_back(e); });
+
+    ASSERT_EQ(expected.size(), 2);
+    ASSERT_TRUE(RE2::PartialMatch(expected[0].get("/parent/_field")->GetString(), "exp"));
+    ASSERT_TRUE(RE2::PartialMatch(expected[1].get("/parent/_field")->GetString(), "exp"));
 }
