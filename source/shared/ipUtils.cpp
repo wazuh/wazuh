@@ -31,6 +31,7 @@ uint32_t IPv4ToUInt(const std::string ipStr)
     ipUInt |= b << 16;
     ipUInt |= c << 8;
     ipUInt |= d;
+
     return ipUInt;
 }
 
