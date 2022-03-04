@@ -478,6 +478,7 @@ types::Lifter opBuilderHelperIntGreaterThanEqual(const types::DocumentValue & de
 //*               Regex filters                   *
 //*************************************************
 
+// field: +r_match/regexp
 types::Lifter opBuilderHelperRegexMatch(const types::DocumentValue & def)
 {
     // Get field
@@ -488,15 +489,18 @@ types::Lifter opBuilderHelperRegexMatch(const types::DocumentValue & def)
     {
         throw std::invalid_argument("Wrong number of arguments passed");
     }
+
     std::string regexp = parameters[1];
-    if (regexp.empty())
-    {
-        throw std::invalid_argument("The regular expression can't be empty");
-    }
+
     auto regex_ptr = std::make_shared<RE2>(regexp);
 
+    if (!regex_ptr->ok())
+    {
+        throw std::runtime_error("Invalid regular expression");
+    }
+
     // Return Lifter
-    return [=](types::Observable o)
+    return [field, regex_ptr](types::Observable o)
     {
         // Append rxcpp operations
         return o.filter(
@@ -522,6 +526,7 @@ types::Lifter opBuilderHelperRegexMatch(const types::DocumentValue & def)
     };
 }
 
+// field: +r_not_match/regexp
 types::Lifter opBuilderHelperRegexNotMatch(const types::DocumentValue & def)
 {
     // Get field
@@ -530,17 +535,20 @@ types::Lifter opBuilderHelperRegexNotMatch(const types::DocumentValue & def)
     std::vector<std::string> parameters = utils::string::split(value, '/');
     if (parameters.size() != 2)
     {
-        throw std::invalid_argument("Wrong number of arguments passed");
+        throw std::runtime_error("Invalid number of parameters");
     }
+
     std::string regexp = parameters[1];
-    if (regexp.empty())
-    {
-        throw std::invalid_argument("The regular expression can't be empty");
-    }
+
     auto regex_ptr = std::make_shared<RE2>(regexp);
 
+    if (!regex_ptr->ok())
+    {
+        throw std::runtime_error("Invalid regular expression");
+    }
+
     // Return Lifter
-    return [=](types::Observable o)
+    return [field, regex_ptr](types::Observable o)
     {
         // Append rxcpp operations
         return o.filter(
