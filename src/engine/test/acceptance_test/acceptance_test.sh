@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # Copyright (C) 2015-2022, Wazuh Inc.
 #
 # This program is free software; you can redistribute it
@@ -7,15 +9,18 @@
 
 # ------------------------ Tests configuration section ------------------------
 
-# Useful variables
+DO_TEST_ANALYSISD=false
+DO_TEST_ENGINE=true
 
+# Useful variables
 STATS_MONITOR_POLL_TIME_SECS=0.1
 
 # Benchmark configuration
-BT_TIME=360
+BT_TIME=5
 BT_RATE=0
 BT_INPUT=./utils/test_logs.txt
 
+# Engine Configurations
 ENGINE_BUILD_ABSOLUTE_PATH=/root/repos/wazuh/src/engine/build
 ENGINE_LISTEN_PORT=6000
 ENGINE_N_THREADS=8
@@ -31,106 +36,147 @@ DECODERS_SRC_DIR=./analysisd/ruleset/decoders
 RULES_DST_DIR=/var/ossec/etc/test/rules
 DECODERS_DST_DIR=/var/ossec/etc/test/decoders
 
+# ---------------------------- Tests set-up section ----------------------------
+
+if ! $DO_TEST_ANALYSISD;
+then
+    if ! $DO_TEST_ENGINE;
+    then
+        echo "No test selected"
+        exit 0
+    fi
+fi
+
 # Save the working directory and change to the directory where the script is
 OLD_PWD=`pwd`
-cd $(dirname $(readlink -f $0))
-# echo "change working directory to... `pwd`"
+SCRIPT_DIR=$(dirname $(readlink -f $0))
+cd $SCRIPT_DIR
 
 # --------------------------- Analysisd test section ---------------------------
 
-TEST_NAME=analysisd-test
+if $DO_TEST_ANALYSISD;
+then
+    echo "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX  9"
 
-# Stop Wazuh manager
+    TEST_NAME="analysisd-test-${RANDOM}"
 
-systemctl stop wazuh-manager.service
+    # Stop Wazuh manager
 
-# Backup Wazuh files
+    systemctl stop wazuh-manager.service
 
-mkdir -p $CONFIG_BACKUP_DIR
-# mkdir -p $LOGS_BACKUP_DIR
-mv $CONFIG_DST_DIR/ossec.conf $CONFIG_BACKUP_DIR
-mv $CONFIG_DST_DIR/local_internal_options.conf $CONFIG_BACKUP_DIR
-# cp -rp $LOGS_DIR/* $LOGS_BACKUP_DIR
+    # Backup Wazuh files
 
-# Copy test files
+    mkdir -p $CONFIG_BACKUP_DIR
+    # mkdir -p $LOGS_BACKUP_DIR
+    mv $CONFIG_DST_DIR/ossec.conf $CONFIG_BACKUP_DIR
+    mv $CONFIG_DST_DIR/local_internal_options.conf $CONFIG_BACKUP_DIR
+    # cp -rp $LOGS_DIR/* $LOGS_BACKUP_DIR
 
-cp $CONFIG_SRC_DIR/* $CONFIG_DST_DIR
-chgrp wazuh $CONFIG_DST_DIR/ossec.conf
-chgrp wazuh $CONFIG_DST_DIR/local_internal_options.conf
+    # Copy test files
 
-mkdir -p $RULES_DST_DIR
-mkdir -p $DECODERS_DST_DIR
-cp $RULES_SRC_DIR/* $RULES_DST_DIR
-cp $DECODERS_SRC_DIR/* $DECODERS_DST_DIR
-chown -R root:wazuh $RULES_DST_DIR
-chown -R root:wazuh $DECODERS_DST_DIR
+    cp $CONFIG_SRC_DIR/* $CONFIG_DST_DIR
+    chgrp wazuh $CONFIG_DST_DIR/ossec.conf
+    chgrp wazuh $CONFIG_DST_DIR/local_internal_options.conf
 
-# Start Wazuh
+    mkdir -p $RULES_DST_DIR
+    mkdir -p $DECODERS_DST_DIR
+    cp $RULES_SRC_DIR/* $RULES_DST_DIR
+    cp $DECODERS_SRC_DIR/* $DECODERS_DST_DIR
+    chown -R root:wazuh $RULES_DST_DIR
+    chown -R root:wazuh $DECODERS_DST_DIR
 
-systemctl start wazuh-manager.service
+    # Start Wazuh
 
-# Sleep to wait for wazuh-analysisd to start up
-sleep 5
+    systemctl start wazuh-manager.service
 
-# Run stats collector script
+    # Sleep to wait for wazuh-analysisd to start up
+    sleep 5
 
-python3 ./utils/monitor.py -s $STATS_MONITOR_POLL_TIME_SECS -b wazuh-analysisd -n $TEST_NAME&
+    # Run stats collector script
 
-MONITOR_PID=$!
+    python3 ./utils/monitor.py -s $STATS_MONITOR_POLL_TIME_SECS -b wazuh-analysisd -n $TEST_NAME &
 
-# Test script
+    MONITOR_PID=$!
 
-# Run the benchmark
-# -t <Estimated benchmark duration>
-# -r <Events per seconds. Use 0 for maximum rate allowed>
-# -i <Source of logs>
-# -T Truncate the alerts.json file to calculate the processed events after benchark
+    # Test script
 
-go run ./utils/benchmark_tool.go -t $BT_TIME -r $BT_RATE -i $BT_INPUT -T
+    # Run the benchmark
+    # -t <Estimated benchmark duration>
+    # -r <Events per seconds. Use 0 for maximum rate allowed>
+    # -i <Source of logs>
+    # -T Truncate the alerts.json file to calculate the processed events after benchark
 
-# Stop stats collector script
+    go run ./utils/benchmark_tool.go -t $BT_TIME -r $BT_RATE -i $BT_INPUT -T
 
-kill -INT $MONITOR_PID
+    # Stop stats collector script
 
-# Stop Wazuh manager
+    kill -INT $MONITOR_PID
 
-systemctl stop wazuh-manager.service
+    # Stop Wazuh manager
 
-# Restore Wazuh files
+    systemctl stop wazuh-manager.service
 
-mv $CONFIG_BACKUP_DIR/* $CONFIG_DST_DIR
-# cp -rp $LOGS_BACKUP_DIR/* $LOGS_DIR
+    # Restore Wazuh files
 
-# Remove test ruleset
+    mv $CONFIG_BACKUP_DIR/* $CONFIG_DST_DIR
 
-rm -rf $RULES_DST_DIR
-rm -rf $DECODER_DST_DIR
+    # Remove test ruleset
+
+    rm -rf $RULES_DST_DIR
+    rm -rf $DECODER_DST_DIR
+
+    ANALYSISD_FILE="monitor-${TEST_NAME}.csv"
+    echo "Output file: ${ANALYSISD_FILE}"
+fi
 
 # ---------------------------- Engine test section ----------------------------
 
-TEST_NAME=engine-test
+if $DO_TEST_ENGINE;
+then
 
-cd $ENGINE_BUILD_ABSOLUTE_PATH
+    TEST_NAME="engine-test-${RANDOM}"
 
-GLOG_logtostderr=1 ./main --file_storage ../test/assets/ --endpoint tcp:localhost:$ENGINE_LISTEN_PORT --threads $ENGINE_N_THREADS&
+    cd $ENGINE_BUILD_ABSOLUTE_PATH
 
-ENGINE_PID=$!
+    GLOG_logtostderr=1 ./main --file_storage ../test/assets/ --endpoint tcp:localhost:$ENGINE_LISTEN_PORT --threads $ENGINE_N_THREADS &
 
-sleep 1
+    ENGINE_PID=$!
 
-python3 ./utils/monitor.py -s $STATS_MONITOR_POLL_TIME_SECS -b main -n $TEST_NAME&
+    sleep 2
 
-MONITOR_PID=$!
+    cd $SCRIPT_DIR
 
-go run ./utils/benchmark_tool.go -t $BT_TIME -r $BT_RATE -i $BT_INPUT -T -p tcp -s localhost:$ENGINE_LISTEN_PORT
+    python3 ./utils/monitor.py -s $STATS_MONITOR_POLL_TIME_SECS -b main -n $TEST_NAME &
 
-kill -INT $MONITOR_PID
-kill -INT $ENGINE_PID
+    MONITOR_PID=$!
+
+    go run ./utils/benchmark_tool.go -t $BT_TIME -r $BT_RATE -i $BT_INPUT -T -p tcp -s localhost:$ENGINE_LISTEN_PORT
+
+    kill -INT $MONITOR_PID
+    kill -INT $ENGINE_PID
+
+    ENGINE_FILE="monitor-${TEST_NAME}.csv"
+    echo "Output file: ${ENGINE_FILE}"
+fi
 
 # ---------------------------- Test output section ----------------------------
 
 sleep 1
 
-python3 ./utils/process_stats.py
+args=""
+if $DO_TEST_ANALYSISD;
+then
+    if $DO_TEST_ENGINE;
+    then
+        args="-a ${ANALYSISD_FILE} -e ${ENGINE_FILE}"
+    else
+        args="-a ${ANALYSISD_FILE}"
+    fi
+elif $DO_TEST_ENGINE;
+then
+    args="-e ${ENGINE_FILE}"
+fi
+
+python3 ./utils/process_stats.py $args
 
 cd "${OLD_PWD}"
