@@ -8,7 +8,11 @@
  */
 
 #include "protocolHandler.hpp"
-#include "glog/logging.h"
+
+using std::optional;
+using std::string;
+using std::throw_with_nested;
+using std::vector;
 
 namespace engineserver
 {
@@ -18,7 +22,7 @@ bool ProtocolHandler::hasHeader()
     if (m_buff.size() == sizeof(int))
     {
         // TODO: make this safe
-        std::memcpy(&m_pending, m_buff.data(), sizeof(int));
+        memcpy(&m_pending, m_buff.data(), sizeof(int));
         // TODO: Max message size config option
         if (m_pending > 1 << 20)
         {
@@ -29,13 +33,11 @@ bool ProtocolHandler::hasHeader()
     return false;
 }
 
-json::Document ProtocolHandler::parse(const std::string & event)
+json::Document ProtocolHandler::parse(const string & event)
 {
     json::Document doc;
     doc.m_doc.SetObject();
     rapidjson::Document::AllocatorType & allocator = doc.getAllocator();
-
-    // auto event = std::string(m_buff.begin() + sizeof(int), m_buff.end());
 
     auto queuePos = event.find(":");
     try
@@ -46,41 +48,42 @@ json::Document ProtocolHandler::parse(const std::string & event)
     // std::out_of_range and std::invalid_argument
     catch (...)
     {
-        std::throw_with_nested(std::invalid_argument("Error parsing queue id"));
+        throw_with_nested(std::invalid_argument("Error parsing queue id"));
     }
 
     auto locPos = event.find(":", queuePos + 1);
     try
     {
         rapidjson::Value loc;
-        std::string location = event.substr(queuePos, locPos);
+        string location = event.substr(queuePos, locPos);
         loc.SetString(location.c_str(), location.length(), allocator);
         doc.m_doc.AddMember("location", loc, allocator);
     }
     catch (std::out_of_range & e)
     {
-        std::throw_with_nested(("Error parsing location using token sep :" + event));
+        throw_with_nested(("Error parsing location using token sep :" + event));
     }
 
     try
     {
         rapidjson::Value msg;
-        std::string message = event.substr(locPos + 1, std::string::npos);
+        string message = event.substr(locPos + 1, string::npos);
         msg.SetString(message.c_str(), message.length(), allocator);
         doc.m_doc.AddMember("message", msg, allocator);
     }
     catch (std::out_of_range & e)
     {
-        std::throw_with_nested(("Error parsing location using token sep :" + event));
+        throw_with_nested(("Error parsing location using token sep :" + event));
     }
 
     return doc;
 }
 
-std::optional<std::vector<std::string>> ProtocolHandler::process(char * data, std::size_t length)
+optional<vector<string>> ProtocolHandler::process(char * data, size_t length)
 {
-    std::vector<std::string> events;
-    for (std::size_t i = 0; i < length; i++)
+    vector<string> events;
+
+    for (size_t i = 0; i < length; i++)
     {
 
         switch (m_stage)
@@ -97,9 +100,11 @@ std::optional<std::vector<std::string>> ProtocolHandler::process(char * data, st
                 }
                 catch (...)
                 {
+                    // TODO: improve this try-catch
                     return std::nullopt;
                 }
                 break;
+
             // payload
             case 1:
                 m_buff.push_back(data[i]);
@@ -108,7 +113,7 @@ std::optional<std::vector<std::string>> ProtocolHandler::process(char * data, st
                 {
                     try
                     {
-                        events.push_back(std::string(m_buff.begin() + sizeof(int), m_buff.end()));
+                        events.push_back(string(m_buff.begin() + sizeof(int), m_buff.end()));
                         m_buff.clear();
                     }
                     catch (std::exception & e)
@@ -119,8 +124,14 @@ std::optional<std::vector<std::string>> ProtocolHandler::process(char * data, st
                     m_stage = 0;
                 }
                 break;
+
+            default:
+                LOG(ERROR) << "Invalid stage value." << std::endl;
+                return std::nullopt;
         }
     }
-    return std::optional<std::vector<std::string>>(std::move(events));
+
+    return optional<vector<string>>(std::move(events));
 }
+
 } // namespace engineserver
