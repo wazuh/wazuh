@@ -131,18 +131,32 @@ def test_query_lower_private(send_mock, connect_mock):
 
 @patch("socket.socket.connect")
 def test_run_wdb_command(connect_mock):
-    with patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=[['due', 'chunk1']]):
-        mywdb = WazuhDBConnection()
-        result = mywdb.run_wdb_command("global sync-agent-info-get ")
-        assert result == ('due', 'chunk1')
+    """Test `WazuhDBConnection.run_wdb_command` method."""
+    send_result = ('status', '["data"]')
+    command = "any wdb command"
+
+    wdb_con = WazuhDBConnection()
+    with patch('wazuh.core.wdb.WazuhDBConnection._send', return_value=send_result) as wdb_send_mock:
+        result = wdb_con.run_wdb_command(command)
+        wdb_send_mock.assert_called_once_with(command, raw=True)
+
+    assert result == send_result, 'Expected command response does not match'
 
 
+@pytest.mark.parametrize('wdb_response', [
+    ('err', 'Extra custom test message'),
+    ('err', )
+])
 @patch("socket.socket.connect")
-def test_run_wdb_command_ko(connect_mock):
-    with patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=[['err', 'chunk2']]):
-        mywdb = WazuhDBConnection()
-        with pytest.raises(exception.WazuhInternalError, match=".* 2007 .* chunk2"):
-            mywdb.run_wdb_command("global sync-agent-info-get ")
+def test_run_wdb_command_ko(connect_mock, wdb_response):
+    """Test `WazuhDBConnection.run_wdb_command` method expected exceptions."""
+    with patch('wazuh.core.wdb.WazuhDBConnection._send', return_value=wdb_response):
+        wdb_con = WazuhDBConnection()
+        with pytest.raises(exception.WazuhInternalError, match=".* 2007 .*") as expected_exc:
+            wdb_con.run_wdb_command("global sync-agent-info-get ")
+
+        if len(wdb_response) > 1:
+            assert wdb_response[1] in expected_exc.value.message, 'Extra message was not added to exception'
 
 
 @patch("socket.socket.connect")
