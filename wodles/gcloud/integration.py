@@ -13,6 +13,7 @@ import socket
 from sys import path
 from os.path import dirname, abspath
 path.insert(0, dirname(dirname(abspath(__file__))))
+import exceptions
 from utils import ANALYSISD
 
 
@@ -69,13 +70,10 @@ class WazuhGCloudIntegration:
             self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
             self.socket.connect(ANALYSISD)
             return self.socket
-        except OSError as e:
-            if e.errno == 111:
-                self.logger.critical('Wazuh must be running')
-                raise e
-            else:
-                self.logger.critical(f'Error initializing {ANALYSISD} socket')
-                raise e
+        except ConnectionRefusedError:
+            raise exceptions.GCloudWazuhNotRunning
+        except OSError:
+            raise exceptions.GCloudSocketError(ANALYSISD)
 
     def process_data(self):
         raise NotImplementedError
@@ -97,6 +95,5 @@ class WazuhGCloudIntegration:
         self.logger.debug(f'Sending msg to analysisd: "{event_json}"')
         try:
             self.socket.send(event_json)
-        except OSError as e:
-            self.logger.critical('Error sending event to Wazuh')
-            raise e
+        except OSError:
+            raise exceptions.GCloudSocketSendError

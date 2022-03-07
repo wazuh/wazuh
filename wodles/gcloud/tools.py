@@ -61,7 +61,7 @@ def get_script_arguments():
     parser.add_argument('-l', '--log_level', dest='log_level', type=int,
                         help='Log level', required=False, default=3)
 
-    parser.add_argument('-b', '--bucket_name', dest='bucket_name',
+    parser.add_argument('-b', '--bucket_name', dest='bucket_name', type=str,
                         help='The name of the bucket to read the logs from')
 
     parser.add_argument('-P', '--prefix', dest='prefix', help='The relative path to the logs', default='')
@@ -161,3 +161,16 @@ def arg_valid_date(arg_string: str) -> datetime:
         return datetime.strptime(arg_string, "%Y-%b-%d").replace(tzinfo=UTC)
     except ValueError:
         raise argparse.ArgumentTypeError(f"Argument not a valid date in format YYYY-MMM-DD: '{arg_string}'.")
+
+
+def import_error(package: str):
+    """
+    Function to use when a required package could not be found.
+
+    Parameters
+    ----------
+    package : str
+        Package that could not be imported.
+    """
+    get_stdout_logger(logger_name).error(f"The '{package}' module is required")
+    exit(1)

@@ -7,24 +7,25 @@
 # it and/or modify it under the terms of GPLv2
 
 import logging
-import pytz
 import sqlite3
 from sys import exit, path
 from datetime import datetime, timezone
 from json import dumps, JSONDecodeError
 from os.path import join, dirname, realpath
 
-try:
-    from google.cloud import storage
-except ImportError:
-    print('ERROR: google-cloud-storage module is required.')
-    exit(1)
-from google.api_core import exceptions as google_exceptions
-
 path.append(join(dirname(realpath(__file__)), '..', '..'))  # noqa: E501
 import utils
+import exceptions
+import tools
 from integration import WazuhGCloudIntegration
-from exceptions import GCloudCredentialsStructureError, GCloudCredentialsNotFoundError
+
+try:
+    from google.cloud import storage
+    from google.api_core import exceptions as google_exceptions
+    import pytz
+except ImportError as e:
+    tools.import_error(e.name)
+
 
 class WazuhGCloudBucket(WazuhGCloudIntegration):
     """Class for getting Google Cloud Storage Bucket logs"""
@@ -56,9 +57,9 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         try:
             self.client = storage.client.Client.from_service_account_json(credentials_file)
         except JSONDecodeError as error:
-            raise GCloudCredentialsStructureError(credentials_file=credentials_file) from error
+            raise exceptions.GCloudCredentialsStructureError(credentials_file=credentials_file) from error
         except FileNotFoundError as error:
-            raise GCloudCredentialsNotFoundError(credentials_file=credentials_file) from error
+            raise exceptions.GCloudCredentialsNotFoundError(credentials_file=credentials_file) from error
         self.project_id = self.client.project
         self.prefix = prefix if not prefix or prefix[-1] == '/' else f'{prefix}/'
         self.delete_file = delete_file
@@ -165,7 +166,6 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
                                                                                 prefix=self.prefix,
                                                                                 blob_name=blob.name,
                                                                                 creation_time=blob.time_created))
-    processed_files = list()
 
     def _get_last_creation_time(self):
         """Get the latest creation time value stored in the database for the given project, bucket_name and
@@ -194,10 +194,10 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         try:
             self.bucket = self.client.get_bucket(self.bucket_name)
         except google_exceptions.NotFound:
-            raise Exception(f'The bucket "{self.bucket_name}" does not exist.')
+            raise exceptions.GCloudBucketNotFound(self.bucket_name)
         except google_exceptions.Forbidden:
-            raise Exception(f'The Service Account provided does not have "storage.buckets.get" access to the '
-                            f'Google Cloud Storage bucket.')
+            raise exceptions.GCloudBucketForbidden(self.bucket_name,
+                                                   "storage.buckets.get")
 
     def init_db(self):
         """Connect to the database and try to access the table. The database file and the table will be created if they

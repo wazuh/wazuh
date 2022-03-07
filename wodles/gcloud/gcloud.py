@@ -9,11 +9,13 @@
 """This module processes events from Google Cloud PubSub service and GCS Buckets."""
 
 import tools
+import exceptions
 from sys import exit
 from os import cpu_count
 from buckets.access_logs import GCSAccessLogs
 from pubsub.subscriber import WazuhGCloudSubscriber
 from concurrent.futures import ThreadPoolExecutor
+
 
 try:
     max_threads = cpu_count() * 5
@@ -31,11 +33,9 @@ try:
 
     if arguments.integration_type == "pubsub":
         if arguments.subscription_id is None:
-            logger.error('A subscription ID is required. Use -s <SUBSCRIPTION ID> to specify it.')
-            exit(1)
+            raise exceptions.GCloudPubSubNoSubscriptionID
         if arguments.project is None:
-            logger.error('A project ID is required. Use -p <PROJECT ID> to specify it.')
-            exit(1)
+            raise exceptions.GCloudPubSubNoProjectID
 
         project = arguments.project
         subscription_id = arguments.subscription_id
@@ -46,11 +46,9 @@ try:
             n_threads = max_threads
             logger.warning(f'Reached maximum number of threads. Truncating to {max_threads}.')
         if n_threads < tools.min_num_threads:
-            logger.error(f'The minimum number of threads is {tools.min_num_threads}. Please check your configuration.')
-            exit(1)
+            raise exceptions.GCloudPubSubNumThreadsError
         if max_messages < tools.min_num_messages:
-            logger.error(f'The minimum number of messages is {tools.min_num_messages}. Please check your configuration.')
-            exit(1)
+            raise exceptions.GCloudPubSubNumMessagesError
 
         logger.debug(f"Setting {n_threads} thread{'s' if n_threads > 1 else ''} to pull {max_messages}"
                      f" message{'s' if max_messages > 1 else ''} in total")
@@ -75,11 +73,9 @@ try:
 
     elif arguments.integration_type == "access_logs":
         if arguments.n_threads != tools.min_num_threads:
-            logger.error('The parameter -t/--num_threads only works with the Pub/Sub module.')
-            exit(1)
-        if arguments.bucket_name is None:
-            logger.error('The name of the bucket is required. Use -b <BUCKET_NAME> to specify it.')
-            exit(1)
+            raise exceptions.GCloudBucketNumThreadsError
+        if not arguments.bucket_name:
+            raise exceptions.GCloudBucketNameError
 
         f_kwargs = {"bucket_name": arguments.bucket_name,
                     "prefix": arguments.prefix,
@@ -91,16 +87,19 @@ try:
         num_processed_messages = integration.process_data()
 
     else:
-        logger.error('Unsupported gcloud integration type: '
-                     f'"{arguments.integration_type}". The supported types are'
-                     f' {*tools.valid_types,}')
-        exit(1)
+        raise exceptions.GCloudIntegrationTypeError(arguments.integration_type)
 
+except exceptions.GCloudException as gcloud_exception:
+    logging_func = logger.critical if \
+        isinstance(gcloud_exception, exceptions.GCloudCriticalError) else \
+        logger.error
+
+    logging_func('An exception happened while running the wodle: '
+                 f'{gcloud_exception}', exc_info=log_level == 1)
 
 except Exception:
     logger.critical('An exception happened while running the wodle',
                     exc_info=True)
-    exit(1)
 
 else:
     logger.info(f'Received {"and acknowledged " if arguments.integration_type == "pubsub" else ""}'

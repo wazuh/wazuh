@@ -6,20 +6,21 @@
 # This program is free software; you can redistribute
 # it and/or modify it under the terms of GPLv2
 import logging
-import google.api_core.exceptions
 from os.path import abspath, dirname
 from sys import path
 from json import JSONDecodeError
 
 path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
+import tools
+import exceptions
 from integration import WazuhGCloudIntegration
-from exceptions import GCloudCredentialsStructureError, GCloudCredentialsNotFoundError
 
 
 try:
     from google.cloud import pubsub_v1 as pubsub
-except ImportError:
-    raise Exception('ERROR: google-cloud-pubsub module is required.')
+    import google.api_core.exceptions
+except ImportError as e:
+    tools.import_error(e.name)
 
 
 class WazuhGCloudSubscriber(WazuhGCloudIntegration):
@@ -46,9 +47,9 @@ class WazuhGCloudSubscriber(WazuhGCloudIntegration):
             self.subscriber = self.get_subscriber_client(credentials_file)
             self.subscription_path = self.get_subscription_path(project, subscription_id)
         except JSONDecodeError as error:
-            raise GCloudCredentialsStructureError(credentials_file=credentials_file) from error
+            raise exceptions.GCloudCredentialsStructureError(credentials_file=credentials_file) from error
         except FileNotFoundError as error:
-            raise GCloudCredentialsNotFoundError(credentials_file=credentials_file) from error
+            raise exceptions.GCloudCredentialsNotFoundError(credentials_file=credentials_file) from error
 
     @staticmethod
     def get_subscriber_client(credentials_file: str) -> pubsub.subscriber.Client:
@@ -86,11 +87,21 @@ class WazuhGCloudSubscriber(WazuhGCloudIntegration):
     def check_permissions(self):
         """Check if permissions are OK for executing the wodle."""
         required_permissions = {'pubsub.subscriptions.consume'}
-        response = self.subscriber.test_iam_permissions(request={'resource': self.subscription_path,
-                                                                 'permissions': required_permissions})
+        try:
+            response = self.subscriber.test_iam_permissions(
+                request={'resource': self.subscription_path,
+                         'permissions': required_permissions})
+
+        except google.api_core.exceptions.NotFound as e:
+            if 'project not found or user does not have access' in e.message:
+                raise exceptions.GCloudPubSubSubscriptionError(
+                    self.subscription_path.split('/')[1])
+            else:
+                raise exceptions.GCloudPubSubProjectError(
+                    self.subscription_path.split('/')[-1])
+
         if required_permissions.difference(response.permissions) != set():
-            error_message = 'ERROR: No permissions for executing the wodle from this subscription'
-            raise Exception(error_message)
+            raise exceptions.GCloudPubSubForbidden()
 
     def pull_request(self, max_messages: int) -> int:
         """Make request for pulling messages from the subscription and acknowledge them.
