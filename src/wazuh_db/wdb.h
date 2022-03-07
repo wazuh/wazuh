@@ -54,7 +54,6 @@
 #define VULN_CVES_STATUS_VALID              "VALID"
 #define VULN_CVES_STATUS_PENDING            "PENDING"
 #define VULN_CVES_STATUS_OBSOLETE           "OBSOLETE"
-#define VULN_CVES_STATUS_SOLVED             "SOLVED"
 #define VULN_CVES_STATUS_SOLVED_LOWERCASE   "Solved"
 
 #define VULN_CVES_TYPE_OS         "OS"
