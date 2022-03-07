@@ -171,7 +171,7 @@ void check_rc_files(const char *basedir, FILE *fp)
             bytes_written = snprintf(file_path, sizeof(file_path), "%s%c%s", basedir, PATH_SEP, file);
         }
 
-       if (bytes_written > (int)(sizeof(file_path) - 1)) {
+       if (bytes_written < 0 || (size_t)bytes_written > (sizeof(file_path) - 1)) {
            // Maybe print a warning in the log file will be a good parctice
            continue;
        }
