@@ -9,6 +9,9 @@
 
 #include "tcpEndpoint.hpp"
 
+using std::endl;
+using std::string;
+
 namespace engineserver::endpoints
 {
 
@@ -24,13 +27,13 @@ void TCPEndpoint::connectionHandler(uvw::TCPHandle & server)
         {
             LOG(ERROR) << "TCP ErrorEvent: endpoint (" << client.sock().ip.c_str() << ":" << client.sock().port
                        << ") error: code=" << event.code() << "; name=" << event.name() << "; message=" << event.what()
-                       << std::endl;
+                       << endl;
         });
 
     timer->on<uvw::TimerEvent>(
         [client](const auto &, auto & handler)
         {
-            LOG(INFO) << "TCP TimerEvent: Time out for connection" << std::endl;
+            LOG(INFO) << "TCP TimerEvent: Time out for connection" << endl;
             client->close();
             handler.close();
         });
@@ -39,16 +42,16 @@ void TCPEndpoint::connectionHandler(uvw::TCPHandle & server)
         [&, timer, ph](const uvw::DataEvent & event, uvw::TCPHandle & client)
         {
             timer->again();
-            auto result = ph->process(event.data.get(), event.length);
+            const auto result = ph->process(event.data.get(), event.length);
             if (result)
             {
-                auto events = result.value().data();
+                const auto events = result.value().data();
                 while (!this->m_out.try_enqueue_bulk(events, result.value().size()))
                     ;
             }
             else
             {
-                LOG(ERROR) << "TCP DataEvent: Error processing data" << std::endl;
+                LOG(ERROR) << "TCP DataEvent: Error processing data" << endl;
                 timer->close();
                 client.close();
             }
@@ -57,26 +60,25 @@ void TCPEndpoint::connectionHandler(uvw::TCPHandle & server)
     client->on<uvw::EndEvent>(
         [timer](const uvw::EndEvent &, uvw::TCPHandle & client)
         {
-            LOG(INFO) << "TCP EndEvent: Terminating connection" << std::endl;
+            LOG(INFO) << "TCP EndEvent: Terminating connection" << endl;
             timer->close();
             client.close();
         });
 
     client->on<uvw::CloseEvent>([](const uvw::CloseEvent & event, uvw::TCPHandle & client)
-                                { LOG(INFO) << "TCP CloseEvent: Connection closed" << std::endl; });
+                                { LOG(INFO) << "TCP CloseEvent: Connection closed" << endl; });
 
     server.accept(*client);
-    LOG(INFO) << "TCP ListenEvent: Client accepted" << std::endl;
+    LOG(INFO) << "TCP ListenEvent: Client accepted" << endl;
 
     timer->start(uvw::TimerHandle::Time{CONNECTION_TIMEOUT_MSEC}, uvw::TimerHandle::Time{CONNECTION_TIMEOUT_MSEC});
 
     client->read();
 }
 
-TCPEndpoint::TCPEndpoint(const std::string & config, moodycamel::BlockingConcurrentQueue<std::string> & eventBuffer)
-    : BaseEndpoint{config, eventBuffer}
+TCPEndpoint::TCPEndpoint(const string & config, ServerOutput & eventBuffer) : BaseEndpoint{config, eventBuffer}
 {
-    auto pos = config.find(":");
+    const auto pos = config.find(":");
     this->m_ip = config.substr(0, pos);
     this->m_port = stoi(config.substr(pos + 1));
 
@@ -86,7 +88,7 @@ TCPEndpoint::TCPEndpoint(const std::string & config, moodycamel::BlockingConcurr
     this->m_server->on<uvw::ListenEvent>(
         [this](const uvw::ListenEvent & event, uvw::TCPHandle & server)
         {
-            LOG(INFO) << "TCP ListenEvent: stablishing new connection" << std::endl;
+            LOG(INFO) << "TCP ListenEvent: stablishing new connection" << endl;
             this->connectionHandler(server);
         });
 
@@ -95,13 +97,13 @@ TCPEndpoint::TCPEndpoint(const std::string & config, moodycamel::BlockingConcurr
         {
             LOG(ERROR) << "TCP ErrorEvent: endpoint(" << client.sock().ip.c_str() << ":" << client.sock().port
                        << ") error: code=" << event.code() << "; name=" << event.name() << "; message=" << event.what()
-                       << std::endl;
+                       << endl;
         });
 
     this->m_server->on<uvw::CloseEvent>([](const uvw::CloseEvent & event, uvw::TCPHandle & client)
-                                        { LOG(INFO) << "TCP CloseEvent" << std::endl; });
+                                        { LOG(INFO) << "TCP CloseEvent" << endl; });
 
-    LOG(INFO) << "TCP endpoint configured: " << config << std::endl;
+    LOG(INFO) << "TCP endpoint configured: " << config << endl;
 }
 
 void TCPEndpoint::run()
