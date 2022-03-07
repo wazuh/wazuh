@@ -1569,6 +1569,9 @@ class WazuhJSONEncoder(json.JSONEncoder):
             return result
         elif isinstance(obj, (datetime.datetime, datetime.date)):
             return {'__wazuh_datetime__': obj.isoformat()}
+        elif isinstance(obj, Exception):
+            return {'__unhandled_exc__': {'__class__': obj.__class__.__name__,
+                                          '__args__': obj.args}}
 
         return json.JSONEncoder.default(self, obj)
 
@@ -1600,6 +1603,9 @@ def as_wazuh_object(dct: Dict):
             return getattr(wresults, wazuh_result['__class__']).decode_json(wazuh_result['__object__'])
         elif '__wazuh_datetime__' in dct:
             return datetime.datetime.fromisoformat(dct['__wazuh_datetime__'])
+        elif '__unhandled_exc__' in dct:
+            exc_data = dct['__unhandled_exc__']
+            return eval(exc_data['__class__'])(*exc_data['__args__'])
         return dct
 
     except (KeyError, AttributeError):

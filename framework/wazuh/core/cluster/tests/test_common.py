@@ -165,6 +165,7 @@ def test_sst_init(setup_coro_mock, create_task_mock):
         setup_coro_mock.assert_called_once()
         done_callback_mock.assert_called_once()
 
+
 @patch("asyncio.create_task")
 @patch("wazuh.core.cluster.common.SendStringTask.set_up_coro")
 def test_sst_done_callback(setup_coro_mock, create_task_mock):
@@ -640,7 +641,8 @@ async def test_handler_update_chunks_wdb(send_request_mock):
                         data={'chunks': [0, 1, 2, 3, 4]}, info_type='info',
                         logger=logger, error_command=b'ERROR', timeout=10) == {'error_messages': [0, 1],
                                                                                'errors_per_folder': {'key': 'value'},
-                                                                               'generic_errors': ['ERR'], 'time_spent': 6,
+                                                                               'generic_errors': ['ERR'],
+                                                                               'time_spent': 6,
                                                                                'total_updated': 0, 'updated_chunks': 2}
                     logger_debug_mock.assert_has_calls([call('2/5 chunks updated in wazuh-db in 6.000000s.')])
                     logger_debug2_mock.assert_has_calls([call('Chunk 1/5: 0'), call('Chunk 2/5: 1')])
@@ -693,7 +695,8 @@ async def test_handler_sync_wazuh_db_information(get_chunks_in_task_id_mock, upd
     sync_dict = {'date_start_master': 0, 'date_end_master': 0, 'n_synced_chunks': 0}
     handler = cluster_common.Handler(fernet_key, cluster_items)
     with patch.object(LoggerMock, "info") as logger_info_mock:
-        assert await handler.sync_wazuh_db_information(task_id=b'1', info_type='info', logger=logger, command=b'command',
+        assert await handler.sync_wazuh_db_information(task_id=b'1', info_type='info', logger=logger,
+                                                       command=b'command',
                                                        error_command=b'error_command', sync_dict=sync_dict,
                                                        timeout=10) == b'ok'
         logger_info_mock.assert_has_calls([call('Finished in 0.000s. Updated 1 chunks.')])
@@ -1334,6 +1337,7 @@ async def test_sync_wazuh_db_retrieve_information(socket_mock):
     """Check the proper functionality of the function in charge of
     obtaining the information from the database of the manager nodes."""
     counter = 0
+
     def data_generator(command):
         nonlocal counter
         counter += 1
@@ -1371,7 +1375,8 @@ async def test_sync_wazuh_db_retrieve_information(socket_mock):
     with patch.object(sync_object, 'data_retriever', side_effect=exception.WazuhException(1000)):
         with patch.object(sync_object.logger, 'error') as logger_error_mock:
             assert await sync_object.retrieve_information() == []
-            logger_error_mock.assert_called_with('Error obtaining data from wazuh-db: Error 1000 - Wazuh Internal Error')
+            logger_error_mock.assert_called_with(
+                'Error obtaining data from wazuh-db: Error 1000 - Wazuh Internal Error')
 
 
 @pytest.mark.asyncio
@@ -1417,7 +1422,7 @@ def test_end_sending_agent_information(perf_counter_mock, json_loads_mock):
 
     logger = logging.getLogger('testing')
     with patch.object(logger, "info") as logger_info_mock:
-        assert cluster_common.end_sending_agent_information(logger, 0,"response") == (b'ok', b'Thanks')
+        assert cluster_common.end_sending_agent_information(logger, 0, "response") == (b'ok', b'Thanks')
         json_loads_mock.assert_called_once_with("response")
         logger_info_mock.assert_called_once_with("Finished in 0.000s (10 chunks updated).")
 
@@ -1551,6 +1556,12 @@ def test_wazuh_json_encoder_default():
         assert isinstance(wazuh_encoder.default(date), dict)
         assert wazuh_encoder.default(date) == {'__wazuh_datetime__': '2021-10-15T00:00:00'}
 
+        # Test fifth condition
+        exc = ValueError('test')
+        assert isinstance(wazuh_encoder.default(exc), dict)
+        assert wazuh_encoder.default(exc) == {'__unhandled_exc__': {'__class__': 'ValueError',
+                                                                    '__args__': ('test',)}}
+
         # Test simple return
         with pytest.raises(TypeError):
             wazuh_encoder.default({"key": "value"})
@@ -1583,6 +1594,11 @@ def test_as_wazuh_object_ok():
     # Test the fourth condition
     assert isinstance(cluster_common.as_wazuh_object({"__wazuh_datetime__": "2021-10-14"}), datetime)
     assert cluster_common.as_wazuh_object({"__wazuh_datetime__": "2021-10-14"}) == datetime(2021, 10, 14)
+
+    # Test the fifth condition
+    result = cluster_common.as_wazuh_object({'__unhandled_exc__': {'__class__': 'ValueError',
+                                                                   '__args__': ('test',)}})
+    assert isinstance(result, ValueError)
 
     # No condition fulfilled
     assert isinstance(cluster_common.as_wazuh_object({"__wazuh_datetime_bad__": "2021-10-14"}), dict)
