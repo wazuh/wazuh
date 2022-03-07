@@ -56,6 +56,7 @@ include_directories(
   ${ENGINE_SOURCE_DIR}
   ${BUILDER_ENGINE_SOURCE_DIR}
   ${BUILDER_ENGINE_SOURCE_DIR}/builders
+  ${BUILDER_ENGINE_SOURCE_DIR}/outputs
   ${BUILDER_TEST_SOURCE_DIR}
   ${ENGINE_SOURCE_DIR}/json
   ${ENGINE_SOURCE_DIR}/graph
@@ -63,6 +64,7 @@ include_directories(
 )
 
 link_libraries(
+  glog::glog
   gtest_main
   rxcpp
 )
@@ -71,46 +73,203 @@ link_libraries(
 # Builder targets
 ####################################################################################################
 # Builder test
-add_executable(builderTest ${BUILDER_TEST_SOURCE_DIR}/builderTest.cpp)
+add_executable(builderTest
+  ${BUILDER_TEST_SOURCE_DIR}/builderTest.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderBroadcast.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderOutputs.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderChain.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderCheck.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderCondition.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionValue.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionReference.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperExists.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderOutput.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderFileOutput.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderNormalize.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMap.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapValue.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapReference.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderFilter.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderRule.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderDecoder.cpp
+)
+target_link_libraries(builderTest glog::glog)
 gtest_discover_tests(builderTest)
+
+# Registry test
+add_executable(registryTest ${BUILDER_TEST_SOURCE_DIR}/registryTest.cpp ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp)
+target_link_libraries(registryTest glog::glog)
+gtest_discover_tests(registryTest)
+
+# Register test
+add_executable(registerTest
+  ${BUILDER_TEST_SOURCE_DIR}/registerTest.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderBroadcast.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderOutputs.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderChain.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderCheck.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderCondition.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionValue.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionReference.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperExists.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderOutput.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderFileOutput.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderNormalize.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMap.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapValue.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapReference.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderFilter.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderRule.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderDecoder.cpp
+  )
+target_link_libraries(registerTest glog::glog)
+gtest_discover_tests(registerTest)
 
 ####################################################################################################
 # Builders targets
 ####################################################################################################
 
-add_executable(buildCheckTest ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/buildCheckTest.cpp)
-gtest_discover_tests(buildCheckTest)
+add_executable(opBuilderConditionValueTest
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderConditionValueTest.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionValue.cpp)
+gtest_discover_tests(opBuilderConditionValueTest)
 
-add_executable(buildMapTest ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/buildMapTest.cpp)
-gtest_discover_tests(buildMapTest)
+add_executable(opBuilderConditionReferenceTest
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderConditionReferenceTest.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionReference.cpp)
+gtest_discover_tests(opBuilderConditionReferenceTest)
 
-add_executable(checkStageTest ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/checkStageTest.cpp)
-gtest_discover_tests(checkStageTest)
+add_executable(opBuilderHelperExistsTest
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperExistsTest.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperExists.cpp)
+gtest_discover_tests(opBuilderHelperExistsTest)
 
-add_executable(checkValTest ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/checkValTest.cpp)
-gtest_discover_tests(checkValTest)
+add_executable(opBuilderConditionTest
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderConditionTest.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderCondition.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionValue.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionReference.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperExists.cpp)
+gtest_discover_tests(opBuilderConditionTest)
 
-add_executable(decoderTest ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/decoderTest.cpp)
-gtest_discover_tests(decoderTest)
+add_executable(opBuilderMapValueTest
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderMapValueTest.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapValue.cpp)
+gtest_discover_tests(opBuilderMapValueTest)
 
-add_executable(fileOutputTest ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/fileOutputTest.cpp)
-gtest_discover_tests(fileOutputTest)
+add_executable(opBuilderMapReferenceTest
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderMapReferenceTest.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapReference.cpp)
+gtest_discover_tests(opBuilderMapReferenceTest)
 
-add_executable(filterTest ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/filterTest.cpp)
-gtest_discover_tests(filterTest)
+add_executable(opBuilderMapTest
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderMapTest.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMap.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapValue.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapReference.cpp)
+gtest_discover_tests(opBuilderMapTest)
 
-add_executable(mapRefTest ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/mapRefTest.cpp)
-gtest_discover_tests(mapRefTest)
+# add_executable(combinatorBuilderChainTest)
+# gtest_discover_tests(combinatorBuilderChainTest)
+# add_executable(combinatorBuilderBroadcastTest)
+# gtest_discover_tests(combinatorBuilderBroadcastTest)
 
-add_executable(mapValTest ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/mapValTest.cpp)
-gtest_discover_tests(mapValTest)
+add_executable(stageBuilderCheckTest
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/stageBuilderCheckTest.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderCheck.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderCondition.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionValue.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionReference.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperExists.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderChain.cpp)
+gtest_discover_tests(stageBuilderCheckTest)
 
-add_executable(outputTest ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/outputTest.cpp)
-gtest_discover_tests(outputTest)
+add_executable(stageBuilderNormalizeTest
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/stageBuilderNormalizeTest.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderNormalize.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMap.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapValue.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapReference.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderChain.cpp)
+gtest_discover_tests(stageBuilderNormalizeTest)
 
-add_executable(ruleTest ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/ruleTest.cpp)
-gtest_discover_tests(ruleTest)
+add_executable(assetBuilderDecoderTest
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/assetBuilderDecoderTest.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderDecoder.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderNormalize.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMap.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapValue.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapReference.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderChain.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderCheck.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderCondition.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionValue.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionReference.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperExists.cpp)
+gtest_discover_tests(assetBuilderDecoderTest)
 
+add_executable(assetBuilderRuleTest
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/assetBuilderRuleTest.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderRule.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderNormalize.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMap.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapValue.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapReference.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderChain.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderCheck.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderCondition.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionValue.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionReference.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperExists.cpp)
+gtest_discover_tests(assetBuilderRuleTest)
+
+add_executable(assetBuilderFilterTest
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/assetBuilderFilterTest.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderFilter.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderChain.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderCheck.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderCondition.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionValue.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionReference.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperExists.cpp)
+gtest_discover_tests(assetBuilderFilterTest)
+
+add_executable(opBuilderFileOutputTest
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderFileOutputTest.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderFileOutput.cpp)
+gtest_discover_tests(opBuilderFileOutputTest)
+
+add_executable(stageBuilderOutputsTest
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/stageBuilderOutputsTest.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderBroadcast.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderOutputs.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderFileOutput.cpp)
+gtest_discover_tests(stageBuilderOutputsTest)
+
+add_executable(assetBuilderOutputTest
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/assetBuilderOutputTest.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderBroadcast.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderOutputs.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderChain.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderCheck.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderCondition.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionValue.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionReference.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperExists.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderOutput.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderFileOutput.cpp)
+gtest_discover_tests(assetBuilderOutputTest)
 
 ####################################################################################################
 # Output targets

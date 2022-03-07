@@ -14,15 +14,11 @@
 #include <vector>
 
 #include <gtest/gtest.h>
-
-#include <nlohmann/json.hpp>
-
 #include <rxcpp/rx.hpp>
-
 #include <uvw/pipe.hpp>
 #include <uvw/tcp.hpp>
 #include <uvw/udp.hpp>
 
-#include "engineServer.hpp"
+#include "server/engineServer.hpp"
 
 #endif // _TEST_ENGINE_SERVER_H_
