@@ -126,10 +126,7 @@ void wm_help()
 
 void wm_setup()
 {
-    gid_t gid;
     struct sigaction action = { .sa_handler = wm_handler };
-    const char *group = ROOTGROUP;
-
     // Read XML settings and internal options
 
     if (wm_config() < 0) {
@@ -146,12 +143,8 @@ void wm_setup()
     // Set group
 
 
-    if (gid = Privsep_GetGroup(group), gid == (gid_t) -1) {
-        merror_exit(USER_ERROR, "", group, strerror(errno), errno);
-    }
-
-    if (Privsep_SetGroup(gid) < 0) {
-        merror_exit(SETGID_ERROR, group, errno, strerror(errno));
+    if (Privsep_SetGroup(ROOT_GID) < 0) {
+        merror_exit(SETGID_ERROR, "0", errno, strerror(errno));
     }
 
     if (wm_check() < 0) {

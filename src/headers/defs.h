@@ -105,8 +105,18 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define GROUPGLOBAL     "wazuh"
 #endif
 
-#ifndef ROOTGROUP
-#define ROOTGROUP     "root"
+/*
+ * The root user does not always have the name "root" so sometimes it's better to use the UID.
+ */
+#ifndef ROOT_UID
+#define ROOT_UID     (0)
+#endif
+
+/*
+ * The root group does not always have the name "root" so sometimes it's better to use the GID.
+ */
+#ifndef ROOT_GID
+#define ROOT_GID     (0)
 #endif
 
 // Wazuh home environment variable
