@@ -54,4 +54,8 @@ int __wrap_get_ipv4_numeric(const char *address, struct in_addr *addr);
 
 int __wrap_get_ipv6_numeric(const char *address, struct in6_addr *addr6);
 
+int __wrap_get_ipv4_string(struct in_addr addr, char *address, size_t address_size);
+
+int __wrap_get_ipv6_string(struct in6_addr addr6, char *address, size_t address_size);
+
 #endif

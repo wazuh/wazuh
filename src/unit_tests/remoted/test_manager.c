@@ -2716,6 +2716,160 @@ void test_save_controlmsg_update_msg_unable_to_update_information(void **state)
     os_free(data);
 }
 
+void test_save_controlmsg_startup(void **state)
+{
+    test_mode = true;
+    char r_msg[OS_SIZE_128] = {0};
+    strcpy(r_msg, HC_STARTUP);
+    keyentry key;
+    keyentry_init(&key, "NEW_AGENT", "001", "10.2.2.5", NULL);
+    key.peer_info.ss_family = 0;
+    size_t msg_length = sizeof(r_msg);
+    int *wdb_sock = NULL;
+
+    expect_string(__wrap_send_msg, msg, "001");
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Agent NEW_AGENT sent HC_STARTUP from ''");
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, 1);
+    pending_data = OSHash_Create();
+
+    pending_data_t data;
+    char * message = strdup("startup message \n");
+    data.changed = false;
+    data.message = message;
+
+    expect_value(__wrap_OSHash_Get, self, pending_data);
+    expect_string(__wrap_OSHash_Get, key, "001");
+    will_return(__wrap_OSHash_Get, &data);
+
+    expect_value(__wrap_wdb_update_agent_keepalive, id, 1);
+    expect_string(__wrap_wdb_update_agent_keepalive, connection_status, AGENT_CS_PENDING);
+    expect_string(__wrap_wdb_update_agent_keepalive, sync_status, "synced");
+    will_return(__wrap_wdb_update_agent_keepalive, OS_INVALID);
+
+    expect_string(__wrap__mwarn, formatted_msg, "Unable to save last keepalive and set connection status as pending for agent: 001");
+
+    save_controlmsg(&key, r_msg, msg_length, wdb_sock);
+
+    free_keyentry(&key);
+    os_free(message);
+}
+
+void test_save_controlmsg_shutdown(void **state)
+{
+    test_mode = true;
+    char r_msg[OS_SIZE_128] = {0};
+    strcpy(r_msg, HC_SHUTDOWN);
+    keyentry key;
+    keyentry_init(&key, "NEW_AGENT", "001", "10.2.2.5", NULL);
+    memset(&key.peer_info, 0, sizeof(struct sockaddr_storage));
+    key.peer_info.ss_family = AF_INET;
+
+    size_t msg_length = sizeof(r_msg);
+    int *wdb_sock = NULL;
+
+    expect_string(__wrap_send_msg, msg, "001");
+
+    expect_any(__wrap_get_ipv4_string, address);
+    expect_any(__wrap_get_ipv4_string, address_size);
+    will_return(__wrap_get_ipv4_string, OS_INVALID);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Agent NEW_AGENT sent HC_SHUTDOWN from ''");
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, 1);
+    pending_data = OSHash_Create();
+
+    pending_data_t data;
+    char * message = strdup("shutdown message \n");
+    data.changed = false;
+    data.message = message;
+
+    expect_value(__wrap_OSHash_Get, self, pending_data);
+    expect_string(__wrap_OSHash_Get, key, "001");
+    will_return(__wrap_OSHash_Get, &data);
+
+    expect_value(__wrap_wdb_update_agent_connection_status, id, 1);
+    expect_string(__wrap_wdb_update_agent_connection_status, connection_status, AGENT_CS_DISCONNECTED);
+    expect_string(__wrap_wdb_update_agent_connection_status, sync_status, "synced");
+    will_return(__wrap_wdb_update_agent_connection_status, OS_SUCCESS);
+
+    expect_string(__wrap_SendMSG, message, "1:wazuh-remoted:ossec: Agent stopped: 'NEW_AGENT->10.2.2.5'.");
+    expect_string(__wrap_SendMSG, locmsg, "[001] (NEW_AGENT) 10.2.2.5");
+    expect_any(__wrap_SendMSG, loc);
+    will_return(__wrap_SendMSG, -1);
+
+    will_return(__wrap_strerror, "fail");
+    expect_string(__wrap__merror, formatted_msg, "(1210): Queue 'queue/sockets/queue' not accessible: 'fail'");
+
+    expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
+    expect_value(__wrap_StartMQ, type, WRITE);
+    will_return(__wrap_StartMQ, -1);
+
+    expect_string(__wrap__minfo, formatted_msg, "Successfully reconnected to 'queue/sockets/queue'");
+
+    expect_string(__wrap_SendMSG, message, "1:wazuh-remoted:ossec: Agent stopped: 'NEW_AGENT->10.2.2.5'.");
+    expect_string(__wrap_SendMSG, locmsg, "[001] (NEW_AGENT) 10.2.2.5");
+    expect_any(__wrap_SendMSG, loc);
+    will_return(__wrap_SendMSG, -1);
+
+    will_return(__wrap_strerror, "fail");
+    expect_string(__wrap__merror, formatted_msg, "(1210): Queue 'queue/sockets/queue' not accessible: 'fail'");
+
+    save_controlmsg(&key, r_msg, msg_length, wdb_sock);
+
+    free_keyentry(&key);
+    os_free(message);
+}
+
+void test_save_controlmsg_shutdown_wdb_fail(void **state)
+{
+    test_mode = true;
+    char r_msg[OS_SIZE_128] = {0};
+    strcpy(r_msg, HC_SHUTDOWN);
+    keyentry key;
+    keyentry_init(&key, "NEW_AGENT", "001", "10.2.2.5", NULL);
+    memset(&key.peer_info, 0, sizeof(struct sockaddr_storage));
+    key.peer_info.ss_family = AF_INET6;
+    size_t msg_length = sizeof(r_msg);
+    int *wdb_sock = NULL;
+
+    expect_string(__wrap_send_msg, msg, "001");
+
+    expect_any(__wrap_get_ipv6_string, address);
+    expect_any(__wrap_get_ipv6_string, address_size);
+    will_return(__wrap_get_ipv6_string, OS_INVALID);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Agent NEW_AGENT sent HC_SHUTDOWN from ''");
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, 1);
+    pending_data = OSHash_Create();
+
+    pending_data_t data;
+    char * message = strdup("shutdown message \n");
+    data.changed = false;
+    data.message = message;
+
+    expect_value(__wrap_OSHash_Get, self, pending_data);
+    expect_string(__wrap_OSHash_Get, key, "001");
+    will_return(__wrap_OSHash_Get, &data);
+
+    expect_value(__wrap_wdb_update_agent_connection_status, id, 1);
+    expect_string(__wrap_wdb_update_agent_connection_status, connection_status, AGENT_CS_DISCONNECTED);
+    expect_string(__wrap_wdb_update_agent_connection_status, sync_status, "synced");
+    will_return(__wrap_wdb_update_agent_connection_status, OS_INVALID);
+
+    expect_string(__wrap__mwarn, formatted_msg, "Unable to set connection status as disconnected for agent: 001");
+
+    save_controlmsg(&key, r_msg, msg_length, wdb_sock);
+
+    free_keyentry(&key);
+    os_free(message);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -2804,6 +2958,9 @@ int main(void)
         cmocka_unit_test(test_save_controlmsg_unable_to_save_last_keepalive),
         cmocka_unit_test(test_save_controlmsg_update_msg_error_parsing),
         cmocka_unit_test(test_save_controlmsg_update_msg_unable_to_update_information),
+        cmocka_unit_test(test_save_controlmsg_startup),
+        cmocka_unit_test(test_save_controlmsg_shutdown),
+        cmocka_unit_test(test_save_controlmsg_shutdown_wdb_fail),
     };
     return cmocka_run_group_tests(tests, test_setup_group, test_teardown_group);
 }

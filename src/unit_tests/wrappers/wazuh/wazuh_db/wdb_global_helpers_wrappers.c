@@ -56,3 +56,10 @@ int __wrap_wdb_update_agent_data(agent_info_data *agent_data, __attribute__((unu
     check_expected(agent_data);
     return mock();
 }
+
+int __wrap_wdb_update_agent_connection_status(int id, const char *connection_status, const char *sync_status, __attribute__((unused)) int *sock) {
+    check_expected(id);
+    check_expected(connection_status);
+    check_expected(sync_status);
+    return mock();
+}

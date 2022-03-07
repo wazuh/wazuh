@@ -152,3 +152,17 @@ int __wrap_get_ipv6_numeric(__attribute__((unused)) const char *address,
 
     return ret;
 }
+
+int __wrap_get_ipv4_string(__attribute__((unused)) struct in_addr addr,
+                            char *address, size_t address_size) {
+    check_expected(address);
+    check_expected(address_size);
+    return mock();
+}
+
+int __wrap_get_ipv6_string(__attribute__((unused)) struct in6_addr addr6,
+                            char *address, size_t address_size) {
+    check_expected(address);
+    check_expected(address_size);
+    return mock();
+}
