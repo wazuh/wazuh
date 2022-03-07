@@ -47,7 +47,7 @@ public:
      *
      * @param bufferSize Events queue buffer size.
      */
-    explicit EngineServer(const std::vector<std::string> & config, const size_t & bufferSize = DEFAULT_BUFFER_SIZE);
+    explicit EngineServer(const std::vector<std::string> & config, size_t bufferSize = DEFAULT_BUFFER_SIZE);
 
     /**
      * @brief Start server.
@@ -67,7 +67,7 @@ public:
      * @return true
      * @return false
      */
-    bool isConfigured(void) { return m_isConfigured; };
+    bool isConfigured(void) const { return m_isConfigured; };
 
     /**
      * @brief Get server output queue

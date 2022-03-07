@@ -16,7 +16,7 @@ using std::vector;
 namespace engineserver
 {
 
-EngineServer::EngineServer(const vector<string> & config, const size_t & bufferSize)
+EngineServer::EngineServer(const vector<string> & config, size_t bufferSize)
     : m_eventBuffer{bufferSize}, m_isConfigured{false}
 {
     try

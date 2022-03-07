@@ -41,6 +41,7 @@ void TCPEndpoint::connectionHandler(uvw::TCPHandle & server)
     client->on<uvw::DataEvent>(
         [&, timer, ph](const uvw::DataEvent & event, uvw::TCPHandle & client)
         {
+            // TODO: Are we moving the buffer? we should.
             timer->again();
             const auto result = ph->process(event.data.get(), event.length);
             if (result)
