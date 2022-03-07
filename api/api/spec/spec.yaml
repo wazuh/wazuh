@@ -4588,7 +4588,7 @@ components:
     version:
       in: query
       name: version
-      description: "Filter by agents version"
+      description: "Filter by agents version using one of the following formats: 'X.Y.Z', 'vX.Y.Z', 'wazuh X.Y.Z' or 'wazuh vX.Y.Z'. For example: '4.4.0'"
       schema:
         type: string
         format: alphanumeric
