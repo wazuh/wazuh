@@ -578,8 +578,7 @@ stages:
         error: !anyint
         data:
           affected_items: &processes_response_004
-            - cmd: !anystr
-              egroup: !anystr
+            - egroup: !anystr
               euser: !anystr
               fgroup: !anystr
               name: !anystr
@@ -902,7 +901,6 @@ stages:
             - <<: *processes_response_004
       save:
         json:
-          offset_test_cmd: data.affected_items[1].cmd
           offset_test_egroup: data.affected_items[1].egroup
           offset_test_euser: data.affected_items[1].euser
           offset_test_fgroup: data.affected_items[1].fgroup
@@ -946,8 +944,7 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - cmd: "{offset_test_cmd}"
-              egroup: "{offset_test_egroup}"
+            - egroup: "{offset_test_egroup}"
               euser: "{offset_test_euser}"
               fgroup: "{offset_test_fgroup}"
               name: "{offset_test_name}"
