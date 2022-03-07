@@ -12,7 +12,7 @@
 #include <string>
 #include <re2/re2.h>
 
-#include "OpBuilderHelperMap.hpp"
+#include "opBuilderHelperMap.hpp"
 #include "syntax.hpp"
 #include "stringUtils.hpp"
 

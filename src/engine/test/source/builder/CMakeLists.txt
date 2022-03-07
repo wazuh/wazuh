@@ -101,8 +101,8 @@ add_executable(builderTest
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderCondition.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionValue.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionReference.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperMap.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperFilter.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperMap.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderOutput.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderFileOutput.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderNormalize.cpp
@@ -135,8 +135,8 @@ add_executable(registerTest
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderCondition.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionValue.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionReference.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperMap.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperFilter.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperMap.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderOutput.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderFileOutput.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderNormalize.cpp
@@ -168,145 +168,145 @@ add_executable(opBuilderHelperExists_test
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperExists_test.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp)
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperFilter.cpp)
 gtest_discover_tests(opBuilderHelperExists_test)
 
 add_executable(opBuilderHelperNotExists_test
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperNotExists_test.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp)
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperFilter.cpp)
 gtest_discover_tests(opBuilderHelperNotExists_test)
 
 add_executable(opBuilderHelperStringEq_test
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringEq_test.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp)
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperFilter.cpp)
 gtest_discover_tests(opBuilderHelperStringEq_test)
 
 add_executable(opBuilderHelperStringNe_test
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringNe_test.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp)
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperFilter.cpp)
 gtest_discover_tests(opBuilderHelperStringNe_test)
 
 add_executable(opBuilderHelperStringGt_test
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringGt_test.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp)
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperFilter.cpp)
 gtest_discover_tests(opBuilderHelperStringGt_test)
 
 add_executable(opBuilderHelperStringGe_test
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringGe_test.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp)
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperFilter.cpp)
 gtest_discover_tests(opBuilderHelperStringGe_test)
 
 add_executable(opBuilderHelperStringLt_test
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringLt_test.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp)
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperFilter.cpp)
 gtest_discover_tests(opBuilderHelperStringLt_test)
 
 add_executable(opBuilderHelperStringLe_test
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringLe_test.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp)
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperFilter.cpp)
 gtest_discover_tests(opBuilderHelperStringLe_test)
 
 add_executable(opBuilderHelperStringUP_test
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringUP_test.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperMap.cpp)
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperMap.cpp)
 gtest_discover_tests(opBuilderHelperStringUP_test)
 
 add_executable(opBuilderHelperStringLO_test
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringLO_test.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperMap.cpp)
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperMap.cpp)
 gtest_discover_tests(opBuilderHelperStringLO_test)
 
 add_executable(opBuilderHelperStringTrim_test
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringTrim_test.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperMap.cpp)
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperMap.cpp)
 gtest_discover_tests(opBuilderHelperStringTrim_test)
 
 add_executable(opBuilderHelperIntEqual_test
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntEqual_test.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp)
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperFilter.cpp)
 gtest_discover_tests(opBuilderHelperIntEqual_test)
 
 add_executable(opBuilderHelperIntNotEqual_test
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntNotEqual_test.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp)
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperFilter.cpp)
 gtest_discover_tests(opBuilderHelperIntNotEqual_test)
 
 add_executable(opBuilderHelperIntLessThan_test
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntLessThan_test.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp)
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperFilter.cpp)
 gtest_discover_tests(opBuilderHelperIntLessThan_test)
 
 add_executable(opBuilderHelperIntLessThanEqual_test
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntLessThanEqual_test.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp)
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperFilter.cpp)
 gtest_discover_tests(opBuilderHelperIntLessThanEqual_test)
 
 add_executable(opBuilderHelperIntGreaterThan_test
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntGreaterThan_test.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp)
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperFilter.cpp)
 gtest_discover_tests(opBuilderHelperIntGreaterThan_test)
 
 add_executable(opBuilderHelperIntGreaterThanEqual_test
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntGreaterThanEqual_test.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp)
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperFilter.cpp)
 gtest_discover_tests(opBuilderHelperIntGreaterThanEqual_test)
 
 add_executable(opBuilderHelperIntCalc_test
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntCalc_test.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperMap.cpp)
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperMap.cpp)
 gtest_discover_tests(opBuilderHelperIntCalc_test)
 
 add_executable(opBuilderHelperRegexMatch_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperRegexMatch_test.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperFilter.cpp
   ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp)
 gtest_discover_tests(opBuilderHelperRegexMatch_test)
 
 add_executable(opBuilderHelperRegexNotMatch_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperRegexNotMatch_test.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperFilter.cpp
   ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp)
 gtest_discover_tests(opBuilderHelperRegexNotMatch_test)
 
 add_executable(opBuilderHelperRegexExtract_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperRegexExtract_test.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperMap.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperMap.cpp
   ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp)
 gtest_discover_tests(opBuilderHelperRegexExtract_test)
@@ -315,7 +315,7 @@ add_executable(opBuilderHelperIPCIDRCheck_test
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIPCIDRCheck_test.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp)
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperFilter.cpp)
 gtest_discover_tests(opBuilderHelperIPCIDRCheck_test)
 
 add_executable(opBuilderConditionTest
@@ -326,7 +326,7 @@ add_executable(opBuilderConditionTest
   ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionValue.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionReference.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp)
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperFilter.cpp)
 gtest_discover_tests(opBuilderConditionTest)
 
 add_executable(opBuilderMapValueTest
@@ -363,7 +363,7 @@ add_executable(stageBuilderCheckTest
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderCondition.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionValue.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionReference.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperFilter.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderChain.cpp)
 gtest_discover_tests(stageBuilderCheckTest)
 
@@ -394,7 +394,7 @@ add_executable(assetBuilderDecoderTest
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderCondition.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionValue.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionReference.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp)
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperFilter.cpp)
 gtest_discover_tests(assetBuilderDecoderTest)
 
 add_executable(assetBuilderRuleTest
@@ -412,7 +412,7 @@ add_executable(assetBuilderRuleTest
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderCondition.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionValue.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionReference.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp)
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperFilter.cpp)
 gtest_discover_tests(assetBuilderRuleTest)
 
 add_executable(assetBuilderFilterTest
@@ -426,7 +426,7 @@ add_executable(assetBuilderFilterTest
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderCondition.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionValue.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionReference.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp)
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperFilter.cpp)
 gtest_discover_tests(assetBuilderFilterTest)
 
 add_executable(opBuilderFileOutputTest
@@ -458,7 +458,7 @@ add_executable(assetBuilderOutputTest
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderCondition.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionValue.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionReference.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperFilter.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderOutput.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderFileOutput.cpp)
 gtest_discover_tests(assetBuilderOutputTest)
