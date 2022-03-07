@@ -25,7 +25,7 @@ TEST(opBuilderHelperRegexMatch, Builds)
     ASSERT_NO_THROW(opBuilderHelperRegexMatch(*doc.get("/check")));
 }
 
-TEST(opBuilderHelperRegexMatch, NotEnoughArgumentsError)
+TEST(opBuilderHelperRegexMatch, Not_enough_arguments_error)
 {
     Document doc{R"({
         "check":
@@ -34,7 +34,7 @@ TEST(opBuilderHelperRegexMatch, NotEnoughArgumentsError)
     ASSERT_THROW(opBuilderHelperRegexMatch(*doc.get("/check")), std::invalid_argument);
 }
 
-TEST(opBuilderHelperRegexMatch, TooManyArgumentsError)
+TEST(opBuilderHelperRegexMatch, Too_many_arguments_error)
 {
     Document doc{R"({
         "check":
@@ -43,7 +43,7 @@ TEST(opBuilderHelperRegexMatch, TooManyArgumentsError)
     ASSERT_THROW(opBuilderHelperRegexMatch(*doc.get("/check")), std::invalid_argument);
 }
 
-TEST(opBuilderHelperRegexMatch, InvalidRegex)
+TEST(opBuilderHelperRegexMatch, Invalid_regex)
 {
     Document doc{R"({
         "check":
@@ -53,7 +53,7 @@ TEST(opBuilderHelperRegexMatch, InvalidRegex)
     ASSERT_THROW(opBuilderHelperRegexMatch(*doc.get("/check")), std::runtime_error);
 }
 
-TEST(opBuilderHelperRegexMatch, InvalidSrcType)
+TEST(opBuilderHelperRegexMatch, Invalid_src_type)
 {
     Document doc{R"({
         "check":
@@ -90,7 +90,7 @@ TEST(opBuilderHelperRegexMatch, InvalidSrcType)
     ASSERT_EQ(expected.size(), 0);
 }
 
-TEST(opBuilderHelperRegexMatch, StringRegexMatch)
+TEST(opBuilderHelperRegexMatch, String_regex_match)
 {
     Document doc{R"({
         "check":
@@ -126,7 +126,7 @@ TEST(opBuilderHelperRegexMatch, StringRegexMatch)
     ASSERT_TRUE(RE2::PartialMatch(expected[2].get("/field")->GetString(), "exp"));
 }
 
-TEST(opBuilderHelperRegexMatch, NumericRegexMatch)
+TEST(opBuilderHelperRegexMatch, Numeric_regex_match)
 {
     Document doc{R"({
         "check":
@@ -162,7 +162,7 @@ TEST(opBuilderHelperRegexMatch, NumericRegexMatch)
     ASSERT_TRUE(RE2::PartialMatch(expected[2].get("/field")->GetString(), "123"));
 }
 
-TEST(opBuilderHelperRegexMatch, AdvancedRegexMatch)
+TEST(opBuilderHelperRegexMatch, Advanced_regex_match)
 {
     Document doc{R"~~({
         "check":
@@ -196,7 +196,7 @@ TEST(opBuilderHelperRegexMatch, AdvancedRegexMatch)
                                   "([^ @]+)@([^ @]+)"));
 }
 
-TEST(opBuilderHelperRegexMatch, NestedFieldRegexMatch)
+TEST(opBuilderHelperRegexMatch, Nested_field_regex_match)
 {
     Document doc{R"~~({
         "map":
@@ -227,7 +227,7 @@ TEST(opBuilderHelperRegexMatch, NestedFieldRegexMatch)
     ASSERT_TRUE(RE2::PartialMatch(expected[1].get("/test/field")->GetString(), "exp"));
 }
 
-TEST(opBuilderHelperRegexMatch, FieldNotExistsRegexMatch)
+TEST(opBuilderHelperRegexMatch, Field_not_exists_regex_match)
 {
     Document doc{R"({
         "check":
