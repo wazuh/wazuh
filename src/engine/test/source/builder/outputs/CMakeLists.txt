@@ -6,16 +6,17 @@ CPMAddPackage(
   VERSION 4.1.1
 )
 # Configuration router test
-add_executable(file_output_test
+add_executable(fileOutputTest
   ${ENGINE_SOURCE_DIR}/builder/outputs/file.hpp
   ${TEST_SOURCE_DIR}/builder/outputs/fileOutputTest.cpp
 )
 
-target_include_directories(file_output_test PUBLIC
-    ${ENGINE_SOURCE_DIR}/
+target_include_directories(fileOutputTest PUBLIC
     ${ENGINE_SOURCE_DIR}/json
-    ${RapidJSON_SOURCE_DIR}/include/
+    ${ENGINE_SOURCE_DIR}/builder
+    ${RapidJSON_SOURCE_DIR}/include
+    ${RxCpp_SOURCE_DIR}/Rx/v2/src
 )
 
-target_link_libraries(file_output_test gtest_main rxcpp)
-gtest_discover_tests(file_output_test)
+target_link_libraries(fileOutputTest gtest_main)
+gtest_discover_tests(fileOutputTest)
