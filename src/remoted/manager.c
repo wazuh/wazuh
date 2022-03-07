@@ -392,6 +392,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 
             if (OS_SUCCESS != result) {
                 merror("Error parsing message for agent '%s'", key->id);
+                wdb_free_agent_info_data(agent_data);
                 os_free(clean);
                 return;
             }
