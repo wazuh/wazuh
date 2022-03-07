@@ -13,6 +13,7 @@
 #include <re2/re2.h>
 
 #include "OpBuilderHelperMap.hpp"
+#include "syntax.hpp"
 #include "stringUtils.hpp"
 
 namespace
@@ -202,6 +203,7 @@ Event opBuilderHelperIntTransformation(const std::string field, std::string op, 
 namespace builder::internals::builders
 {
 
+using builder::internals::syntax::REFERENCE_ANCHOR;
 //*************************************************
 //*           String tranform                     *
 //*************************************************
@@ -209,7 +211,6 @@ namespace builder::internals::builders
 // <field>: +s_up/<str>|$<ref>
 types::Lifter opBuilderHelperStringUP(const types::DocumentValue & def)
 {
-
     // Get field key to check
     std::string key {def.MemberBegin()->name.GetString()};
 
@@ -232,7 +233,7 @@ types::Lifter opBuilderHelperStringUP(const types::DocumentValue & def)
     std::optional<std::string> expectedStr {};
 
     // Check if is a reference to json event
-    if (parametersArr[1][0] == '$')
+    if (parametersArr[1][0] == REFERENCE_ANCHOR)
     {
         refExpStr = parametersArr[1].substr(1);
     }
@@ -279,7 +280,7 @@ types::Lifter opBuilderHelperStringLO(const types::DocumentValue & def)
     std::optional<std::string> expectedStr{};
 
     // Check if is a reference to json event
-    if (parametersArr[1][0] == '$')
+    if (parametersArr[1][0] == REFERENCE_ANCHOR)
     {
         refExpStr = parametersArr[1].substr(1);
     }
@@ -444,7 +445,7 @@ types::Lifter opBuilderHelperIntCalc(const types::DocumentValue & def)
         }
     }
 
-    if (parameters[2][0] == '$')
+    if (parameters[2][0] == REFERENCE_ANCHOR)
     {
         // Check case `+i_calc/op/$`
         refValue = parameters[2].substr(1, std::string::npos);
