@@ -390,7 +390,7 @@ if __name__ == "__main__":
     arg_parser.add_argument("-l", "--list", action='store_true', dest="list", help="List the groups.")
     arg_parser.add_argument("-c", "--list-files", action='store_true', dest="list_files",
                             help="List the group's configuration files.")
-    arg_parser.add_argument("-a", "--add", action='store_true', dest="add", help="List the groups.")
+    arg_parser.add_argument("-a", "--add", action='store_true', dest="add", help="Add new group or new agent to group.")
     arg_parser.add_argument("-f", "--force", action='store_true', dest="force", help="Force single group.")
     arg_parser.add_argument("-s", "--show-group", action='store_true', dest="show_group", help="Show group of agent.")
     arg_parser.add_argument("-S", "--show-sync", action='store_true', dest="show_sync",
