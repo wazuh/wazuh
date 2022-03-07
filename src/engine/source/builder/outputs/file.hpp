@@ -15,9 +15,9 @@
 #include <fstream>
 #include <glog/logging.h>
 #include <iostream>
-#include <mutex>
 #include <string>
 #include "json.hpp"
+#include "builderTypes.hpp"
 
 namespace builder::internals::outputs
 {
@@ -64,7 +64,7 @@ public:
      *
      * @param e
      */
-    void write(const json::Document & e)
+    void write(const types::Event & e)
     {
         this->m_os << e.str() << std::endl;
     }
