@@ -20,9 +20,8 @@
  */
 namespace builder::internals::syntax
 {
-
-const int REFERENCE_ANCHOR('$');
-const int FUNCTION_HELPER_ANCHOR('+');
+constexpr int REFERENCE_ANCHOR('$');
+constexpr int FUNCTION_HELPER_ANCHOR('+');
 
 } // namespace builder::internals::syntax
 
