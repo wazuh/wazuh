@@ -299,3 +299,34 @@ def test_aws_waf_load_information_from_file_ko(
          pytest.raises(expected_exception):
         aws_waf_bucket.client.get_object.return_value.__getitem__.return_value = f
         aws_waf_bucket.load_information_from_file(log_file)
+
+
+@pytest.mark.parametrize('date, expected_date', [
+    ('2021/1/19','20210119'),
+    ('2021/1/1', '20210101'),
+    ('2021/01/01', '20210101'),
+    ('2000/2/12', '20000212'),
+    ('2022/02/1', '20220201')
+])
+def test_config_format_created_date(date: str, expected_date: str):
+    """
+    Test AWSConfigBucket's format_created_date method.
+
+    Parameters
+    ----------
+    date : str
+        The date introduced.
+    expected_date : str
+        The date that the method should return.
+    """
+    with patch('aws_s3.AWSConfigBucket.get_client'), \
+        patch('aws_s3.AWSConfigBucket.get_sts_client'), \
+        patch('sqlite3.connect'):
+        bucket = aws_s3.AWSConfigBucket(**{'reparse': False, 'access_key': None, 'secret_key': None,
+                        'profile': None, 'iam_role_arn': None, 'bucket': 'test',
+                        'only_logs_after': '19700101', 'skip_on_error': True,
+                        'account_alias': None, 'prefix': 'test',
+                        'delete_file': False, 'aws_organization_id': None,
+                        'region': None, 'suffix': '', 'discard_field': None,
+                        'discard_regex': None, 'sts_endpoint': None, 'service_endpoint': None})
+    assert bucket._format_created_date(date) == expected_date

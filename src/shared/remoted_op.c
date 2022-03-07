@@ -83,8 +83,7 @@ void parse_uname_string (char *uname,
 
         os_strdup(str_tmp, osd->os_version);
         os_strdup("windows", osd->os_platform);
-    }
-    else {
+    } else {
         if (str_tmp = strstr(uname, " ["), str_tmp) {
             *str_tmp = '\0';
             str_tmp += 2;

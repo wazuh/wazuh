@@ -21,6 +21,7 @@ All notable changes to this project will be documented in this file.
   - The manager will only deliver alerts when new vulnerabilities are detected in agents or when they stop applying.
 - Added a mechanism to ensure the worker synchronization permissions is reset after a fixed period of time. ([#11031](https://github.com/wazuh/wazuh/pull/11031))
 - Included mechanism to create and handle PID files for each child process of the API and cluster. ([#11799](https://github.com/wazuh/wazuh/pull/11799))
+- Added support for Windows 11 in Vulnerability Detector. ([#12446](https://github.com/wazuh/wazuh/pull/12446))
 
 #### Changed
 
@@ -62,6 +63,7 @@ All notable changes to this project will be documented in this file.
   - The cluster's file compression task in the master node is carried out in a parallel separate process. ([#11328](https://github.com/wazuh/wazuh/pull/11328))
   - Now the processing of Integrity files in worker nodes is carried out in a parallel separate process ([#11364](https://github.com/wazuh/wazuh/pull/11364))
   - Use cluster and API single processing when the wazuh user doesn't have permissions to access `/dev/shm`. ([#11386](https://github.com/wazuh/wazuh/pull/11386))
+- Changed the Ubuntu OVAL feed URL to security-metadata.canonical.com. ([#12491](https://github.com/wazuh/wazuh/pull/12491))
 
 #### Fixed
 
@@ -104,6 +106,8 @@ All notable changes to this project will be documented in this file.
   - RHSA items containing no CVEs.
   - Unused RHSA data member when parsing Debian feeds.
 - Fixed an integer overflow hazard in `wazuh-remoted` that caused it to drop incoming data after receiving 2^31 messages. ([#11974](https://github.com/wazuh/wazuh/pull/11974))
+- Prevented Authd from exiting due to a pipe signal if Wazuh DB gets closed. ([#12368](https://github.com/wazuh/wazuh/pull/12368))
+- Fixed a buffer handling bug in Remoted that left the syslog TCP server stuck. ([#12415](https://github.com/wazuh/wazuh/pull/12415))
 
 #### Removed
 
@@ -193,6 +197,7 @@ All notable changes to this project will be documented in this file.
 - Fixed error "Unable to set server IP address" on the Windows agent. ([#11736](https://github.com/wazuh/wazuh/pull/11736))
 - Fixed reparse option in the AWS VPCFlow and Config integrations. ([#11608](https://github.com/wazuh/wazuh/pull/11608))
 - Removed unnecessary calls to the AWS API made by the VPCFlow and Config integration modules. ([#11644](https://github.com/wazuh/wazuh/pull/11644))
+- Fixed how the AWS Config module parses the dates used to request logs from AWS. ([#12324](https://github.com/wazuh/wazuh/pull/12324))
 
 #### Removed
 - Removed oscap module files as it was already deprecated since v4.0.0. ([#10900](https://github.com/wazuh/wazuh/pull/10900))

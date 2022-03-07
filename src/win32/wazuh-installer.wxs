@@ -93,11 +93,6 @@
         <CustomAction Id="SetCustomActionDataValue" Return="check" Property="CustomAction_InstallerScripts" Value="&quot;[APPLICATIONFOLDER]&quot;,&quot;[WAZUH_MANAGER]&quot;,&quot;[WAZUH_MANAGER_PORT]&quot;,&quot;[WAZUH_PROTOCOL]&quot;,&quot;[NOTIFY_TIME]&quot;,&quot;[WAZUH_REGISTRATION_SERVER]&quot;,&quot;[WAZUH_REGISTRATION_PORT]&quot;,&quot;[WAZUH_REGISTRATION_PASSWORD]&quot;,&quot;[WAZUH_KEEP_ALIVE_INTERVAL]&quot;,&quot;[WAZUH_TIME_RECONNECT]&quot;,&quot;[WAZUH_REGISTRATION_CA]&quot;,&quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot;,&quot;[WAZUH_REGISTRATION_KEY]&quot;,&quot;[WAZUH_AGENT_NAME]&quot;,&quot;[WAZUH_AGENT_GROUP]&quot;,&quot;[ENROLLMENT_DELAY]&quot;" />
         <CustomAction Id="CustomAction_InstallerScripts" BinaryKey="InstallerScripts" VBScriptCall="config" Return="check" Execute="commit" Impersonate="no"/>
 
-        <CustomAction Id="StartWinService_cmd" Property="WixQuietExecCmdLine" Value='"NET" START &quot;WazuhSvc&quot;' />
-        <CustomAction Id="StartWinService" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="immediate" Return="check" Impersonate="no"/>
-        <CustomAction Id="DepStartWinService_cmd" Property="WixQuietExecCmdLine" Value='"NET" START &quot;WazuhSvc&quot;' />
-        <CustomAction Id="DepStartWinService" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="immediate" Return="check" Impersonate="no"/>
-
         <!-- Explicitely stopping and deleting the OSSEC service to install new Wazuh service -->
         <CustomAction Id="StopOssecService" Directory="APPLICATIONFOLDER" ExeCommand="NET STOP OssecSvc" Execute="deferred" Impersonate="no" Return="ignore" />
         <CustomAction Id="DeleteOssecService" Directory="APPLICATIONFOLDER" ExeCommand="SC DELETE OssecSvc" Execute="deferred" Impersonate="no" Return="ignore" />
@@ -136,11 +131,6 @@
             <!-- Stop the service as soon as possible on uninstall, and only on uninstall, in order to unlock the files and folders that must be deleted. -->
             <Custom Action="SetRemoveAllDataValue" Before="InstallFinalize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
             <Custom Action="CustomAction_RemoveAllScript" After="SetRemoveAllDataValue">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
-
-            <Custom Action="StartWinService_cmd" After="StartWinService"/>
-            <Custom Action="StartWinService" After="InstallFinalize">NOT Installed AND WAZUH_REGISTRATION_SERVER &lt;&gt; ""</Custom>
-            <Custom Action="DepStartWinService_cmd" Before="DepStartWinService"/>
-            <Custom Action="DepStartWinService" After="InstallFinalize">NOT Installed AND AUTHD_SERVER &lt;&gt; ""</Custom>
 
         </InstallExecuteSequence>
 
