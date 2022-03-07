@@ -26,7 +26,7 @@ TEST(opBuilderHelperRegexExtract, Builds)
     ASSERT_NO_THROW(opBuilderHelperRegexExtract(*doc.get("/map")));
 }
 
-TEST(opBuilderHelperRegexExtract, NotEnoughArgumentsError)
+TEST(opBuilderHelperRegexExtract, Not_enough_arguments_error)
 {
     Document doc{R"({
         "map":
@@ -36,7 +36,7 @@ TEST(opBuilderHelperRegexExtract, NotEnoughArgumentsError)
     ASSERT_THROW(opBuilderHelperRegexExtract(*doc.get("/map")), std::runtime_error);
 }
 
-TEST(opBuilderHelperRegexExtract, TooManyArgumentsError)
+TEST(opBuilderHelperRegexExtract, Too_many_arguments_error)
 {
     Document doc{R"({
         "map":
@@ -46,7 +46,7 @@ TEST(opBuilderHelperRegexExtract, TooManyArgumentsError)
     ASSERT_THROW(opBuilderHelperRegexExtract(*doc.get("/map")), std::runtime_error);
 }
 
-TEST(opBuilderHelperRegexExtract, StringRegexExtract)
+TEST(opBuilderHelperRegexExtract, String_regex_extract)
 {
     Document doc{R"~~({
         "map":
@@ -79,7 +79,7 @@ TEST(opBuilderHelperRegexExtract, StringRegexExtract)
     ASSERT_TRUE(RE2::PartialMatch(expected[2].get("/_field")->GetString(), "exp"));
 }
 
-TEST(opBuilderHelperRegexExtract, NumericRegexExtract)
+TEST(opBuilderHelperRegexExtract, Numeric_regex_extract)
 {
     Document doc{R"~~({
         "map":
@@ -112,7 +112,7 @@ TEST(opBuilderHelperRegexExtract, NumericRegexExtract)
     ASSERT_TRUE(RE2::PartialMatch(expected[2].get("/_field")->GetString(), "123"));
 }
 
-TEST(opBuilderHelperRegexExtract, AdvancedRegexExtract)
+TEST(opBuilderHelperRegexExtract, Advanced_regex_extract)
 {
     Document doc{R"~~({
         "map":
@@ -143,7 +143,7 @@ TEST(opBuilderHelperRegexExtract, AdvancedRegexExtract)
         RE2::PartialMatch(expected[1].get("/_field")->GetString(), "engine@wazuh.com"));
 }
 
-TEST(opBuilderHelperRegexExtract, NestedFieldRegexExtract)
+TEST(opBuilderHelperRegexExtract, Nested_field_regex_extract)
 {
     Document doc{R"~~({
         "map":
@@ -174,7 +174,7 @@ TEST(opBuilderHelperRegexExtract, NestedFieldRegexExtract)
     ASSERT_TRUE(RE2::PartialMatch(expected[1].get("/_field")->GetString(), "exp"));
 }
 
-TEST(opBuilderHelperRegexExtract, FieldNotExistsRegexExtract)
+TEST(opBuilderHelperRegexExtract, Field_not_exists_regex_extract)
 {
     Document doc{R"~~({
         "map":
@@ -207,7 +207,7 @@ TEST(opBuilderHelperRegexExtract, FieldNotExistsRegexExtract)
     ASSERT_FALSE(expected[2].exists("/_field"));
 }
 
-TEST(opBuilderHelperRegexExtract, MultilevelFieldRegexExtract)
+TEST(opBuilderHelperRegexExtract, Multilevel_field_regex_extract)
 {
     Document doc{R"~~({
         "map":
@@ -238,7 +238,7 @@ TEST(opBuilderHelperRegexExtract, MultilevelFieldRegexExtract)
     ASSERT_TRUE(RE2::PartialMatch(expected[1].get("/_field")->GetString(), "exp"));
 }
 
-TEST(opBuilderHelperRegexExtract, MultilevelFieldDstRegexExtract)
+TEST(opBuilderHelperRegexExtract, Multilevel_field_dst_regex_extract)
 {
     Document doc{R"~~({
         "map":
