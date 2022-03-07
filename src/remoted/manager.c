@@ -1038,7 +1038,6 @@ STATIC void process_deleted_groups() {
 
 STATIC void process_deleted_multi_groups() {
     char multi_path[PATH_MAX] = {0};
-    char _hash[9] = {0};
     os_sha256 multi_group_hash;
     bool update = 0;
     unsigned int i;
@@ -1071,8 +1070,7 @@ STATIC void process_deleted_multi_groups() {
                 multi_groups_size++;
             } else {
                 OS_SHA256_String(old_multi_groups[i]->name, multi_group_hash);
-                strncpy(_hash, multi_group_hash, 8);
-                snprintf(multi_path, PATH_MAX,"%s/%s", MULTIGROUPS_DIR, _hash);
+                snprintf(multi_path, PATH_MAX,"%s/%.8s", MULTIGROUPS_DIR, multi_group_hash);
                 rmdir_ex(multi_path);
                 free_file_sum(old_multi_groups[i]->f_sum);
                 os_free(old_multi_groups[i]->name);
@@ -1329,7 +1327,8 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
         } else {
             OS_SHA256_String(group, multi_group_hash);
             char _hash[9] = {0};
-            strncpy(_hash, multi_group_hash, 8);
+            strncpy(_hash, multi_group_hash, sizeof(_hash));
+            _hash[sizeof(_hash) - 1] = '\0';
             OSHash_Add_ex(m_hash, group, strdup(_hash));
             snprintf(file, OS_SIZE_1024, "%s/%s/%s", sharedcfg_dir, _hash, name);
         }
