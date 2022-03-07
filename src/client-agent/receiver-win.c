@@ -163,16 +163,10 @@ void *receiver_thread(__attribute__((unused)) void *none)
                 }
 
                 /* Restart syscheck */
-                else if (strncmp(tmp_msg, HC_SK, strlen(HC_SK)) == 0) {
-                    ag_send_syscheck(tmp_msg + strlen(HC_SK));
-                    continue;
-                }
-                else if (strncmp(tmp_msg, HC_FIM_FILE, strlen(HC_FIM_FILE)) == 0) {
-                    ag_send_syscheck(tmp_msg + strlen(HC_FIM_FILE));
-                    continue;
-                }
-                else if (strncmp(tmp_msg, HC_FIM_REGISTRY, strlen(HC_FIM_REGISTRY)) == 0) {
-                    ag_send_syscheck(tmp_msg + strlen(HC_FIM_REGISTRY));
+                else if (strncmp(tmp_msg, HC_SK, strlen(HC_SK)) == 0
+                        || strncmp(tmp_msg, HC_FIM_FILE, strlen(HC_FIM_FILE)) == 0
+                        || strncmp(tmp_msg, HC_FIM_REGISTRY, strlen(HC_FIM_REGISTRY)) == 0) {
+                    ag_send_syscheck(tmp_msg);
                     continue;
                 }
 

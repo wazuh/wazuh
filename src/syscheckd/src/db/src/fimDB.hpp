@@ -1,6 +1,6 @@
 /*
  * Wazuh Syscheck
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2021, Wazuh Inc.
  * September 23, 2021.
  *
  * This program is free software; you can redistribute it
@@ -13,6 +13,7 @@
 #define _FIMDB_HPP
 #include "dbsync.hpp"
 #include "rsync.hpp"
+#include "stringHelper.h"
 #include <condition_variable>
 #include <mutex>
 #include <thread>
@@ -96,11 +97,41 @@ constexpr auto CREATE_REGISTRY_VALUE_DB_STATEMENT
 
 constexpr auto CREATE_REGISTRY_VIEW_STATEMENT
 {
-    R"(CREATE VIEW IF NOT EXISTS registry_view (path, checksum) AS
-       SELECT registry_key.arch || ' ' || replace(replace(registry_key.path, '\', '\\'), ':', '\:'), checksum FROM registry_key
+    R"(CREATE VIEW IF NOT EXISTS registry_view (path, checksum, type, last_event, value_type, size, hash_md5, hash_sha1, hash_sha256, uid, gid, user_name, group_name, mtime, perm) AS
+       SELECT registry_key.arch || ' ' || replace(replace(registry_key.path, '\', '\\'), ':', '\:'),
+              checksum,
+              0,
+              last_event,
+              NULL,
+              NULL,
+              NULL,
+              NULL,
+              NULL,
+              uid,
+              gid,
+              user_name,
+              group_name,
+              mtime,
+              perm
+       FROM registry_key
+
        UNION ALL
        SELECT registry_key.arch || ' ' || replace(replace(registry_key.path, '\', '\\'), ':', '\:') || ':' || replace(replace(name, '\', '\\'), ':', '\:'),
-       registry_data.checksum FROM registry_key INNER JOIN registry_data ON registry_key.path=registry_data.path AND registry_key.arch=registry_data.arch;)"
+              registry_data.checksum,
+              1,
+              registry_data.last_event,
+              registry_data.type,
+              registry_data.size,
+              registry_data.hash_md5,
+              registry_data.hash_sha1,
+              registry_data.hash_sha256,
+              NULL,
+              NULL,
+              NULL,
+              NULL,
+              NULL,
+              NULL
+       FROM registry_key INNER JOIN registry_data ON registry_key.path=registry_data.path AND registry_key.arch=registry_data.arch;)"
 };
 
 class FIMDB

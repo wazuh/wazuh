@@ -134,6 +134,7 @@ void FIMDB::pushMessage(const std::string& data)
     if (!m_stopping)
     {
         auto rawData{data};
+        Utils::replaceFirst(rawData, "dbsync ", "");
         const auto buff{reinterpret_cast<const uint8_t*>(rawData.c_str())};
 
         try

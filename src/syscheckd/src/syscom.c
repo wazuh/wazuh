@@ -24,43 +24,6 @@ extern void mock_assert(const int result, const char* const expression,
     mock_assert((int)(expression), #expression, __FILE__, __LINE__);
 #endif
 
-size_t syscom_dispatch(char * command, char ** output){
-    assert(command != NULL);
-    assert(output != NULL);
-
-    char *rcv_comm = command;
-    char *rcv_args = NULL;
-
-    if ((rcv_args = strchr(rcv_comm, ' '))){
-        *rcv_args = '\0';
-        rcv_args++;
-    }
-
-    if (strcmp(rcv_comm, "getconfig") == 0){
-        // getconfig section
-        if (!rcv_args){
-            mdebug1(FIM_SYSCOM_ARGUMENTS, "getconfig");
-            os_strdup("err SYSCOM getconfig needs arguments", *output);
-            return strlen(*output);
-        }
-        return syscom_getconfig(rcv_args, output);
-    } else if (strcmp(rcv_comm, "dbsync") == 0) {
-        if (rcv_args == NULL) {
-            mdebug1(FIM_SYSCOM_ARGUMENTS, "dbsync");
-        } else {
-            fim_sync_push_msg(rcv_args);
-        }
-
-        return 0;
-    } else if (strcmp(rcv_comm, "restart") == 0) {
-        os_set_restart_syscheck();
-        return 0;
-    } else {
-        mdebug1(FIM_SYSCOM_UNRECOGNIZED_COMMAND, rcv_comm);
-        os_strdup("err Unrecognized command", *output);
-        return strlen(*output);
-    }
-}
 
 size_t syscom_getconfig(const char * section, char ** output) {
     assert(section != NULL);
@@ -108,6 +71,43 @@ size_t syscom_getconfig(const char * section, char ** output) {
 error:
     mdebug1(FIM_SYSCOM_FAIL_GETCONFIG, section);
     os_strdup("err Could not get requested section", *output);
+    return strlen(*output);
+}
+
+size_t syscom_dispatch(char * command, char ** output){
+    assert(command != NULL);
+    assert(output != NULL);
+
+    if (strncmp(command, HC_FIM_FILE, strlen(HC_FIM_FILE)) == 0
+        || strncmp(command, HC_FIM_REGISTRY, strlen(HC_FIM_REGISTRY)) == 0) {
+
+        fim_sync_push_msg(command);
+        return 0;
+    } else if (strncmp(command, HC_SK, strlen(HC_SK)) == 0) {
+        char *rcv_comm = command + strlen(HC_SK);
+        char *rcv_args = NULL;
+
+        if ((rcv_args = strchr(rcv_comm, ' '))){
+            *rcv_args = '\0';
+            rcv_args++;
+        }
+
+        if (strcmp(rcv_comm, "getconfig") == 0){
+            // getconfig section
+            if (!rcv_args){
+                mdebug1(FIM_SYSCOM_ARGUMENTS, "getconfig");
+                os_strdup("err SYSCOM getconfig needs arguments", *output);
+                return strlen(*output);
+            }
+            return syscom_getconfig(rcv_args, output);
+        } else if (strcmp(rcv_comm, "restart") == 0) {
+            os_set_restart_syscheck();
+            return 0;
+        }
+    }
+
+    mdebug1(FIM_SYSCOM_UNRECOGNIZED_COMMAND, command);
+    os_strdup("err Unrecognized command", *output);
     return strlen(*output);
 }
 

@@ -29,12 +29,17 @@ file(GLOB DBSYNC_IMP_SRC
          "${SRC_FOLDER}/shared_modules/dbsync/src/*.cpp"
          "${SRC_FOLDER}/shared_modules/dbsync/src/sqlite/*.cpp")
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    file(GLOB WINDOWS_REGISTRY_SRC "${SRC_FOLDER}/syscheckd/src/db/src/fimDBSpecializationWindows.cpp")
+endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+
 add_executable(fim_registry_interface_test
     ${REGISTRY_UNIT_TEST_SRC}
     ${REGISTRY_SRC}
     ${FIMDB_SRC}
     ${RSYNC_IMP_SRC}
-    ${DBSYNC_IMP_SRC})
+    ${DBSYNC_IMP_SRC}
+    ${WINDOWS_REGISTRY_SRC})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_link_libraries(fim_registry_interface_test

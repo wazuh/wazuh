@@ -26,6 +26,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_definitions(-DOS_TYPE=OSType::WINDOWS)
   add_library(fimdb STATIC ${DB_SRC}
                            ${CMAKE_SOURCE_DIR}/src/db/src/registry.cpp
+                           ${CMAKE_SOURCE_DIR}/src/db/src/fimDBSpecializationWindows.cpp
                            )
 else()
   add_definitions(-DOS_TYPE=OSType::OTHERS)

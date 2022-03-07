@@ -39,7 +39,7 @@ void test_syscom_dispatch_getconfig(void **state)
     (void) state;
     size_t ret;
 
-    char command[] = "getconfig args";
+    char command[] = "syscheck getconfig args";
     char * output;
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6283): At SYSCOM getconfig: Could not get 'args' section.");
@@ -57,7 +57,7 @@ void test_syscom_dispatch_getconfig_noargs(void **state)
     (void) state;
     size_t ret;
 
-    char command[] = "getconfig";
+    char command[] = "syscheck getconfig";
     char * output;
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6281): SYSCOM getconfig needs arguments.");
@@ -75,10 +75,10 @@ void test_syscom_dispatch_dbsync(void **state)
     (void) state;
     size_t ret;
 
-    char command[] = "dbsync args";
+    char command[] = "fim_file dbsync args";
     char *output;
 
-    expect_string(__wrap_fim_sync_push_msg, msg, "args");
+    expect_string(__wrap_fim_sync_push_msg, msg, "fim_file dbsync args");
 
     ret = syscom_dispatch(command, &output);
 
@@ -91,10 +91,10 @@ void test_syscom_dispatch_dbsync_noargs(void **state)
     (void) state;
     size_t ret;
 
-    char command[] = "dbsync";
+    char command[] = "fim_file dbsync";
     char *output;
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6281): SYSCOM dbsync needs arguments.");
+    expect_string(__wrap_fim_sync_push_msg, msg, "fim_file dbsync");
 
     ret = syscom_dispatch(command, &output);
 
@@ -107,7 +107,7 @@ void test_syscom_dispatch_restart(void **state)
     (void) state;
     size_t ret;
 
-    char command[] = "restart";
+    char command[] = "syscheck restart";
     char *output;
 
     ret = syscom_dispatch(command, &output);
