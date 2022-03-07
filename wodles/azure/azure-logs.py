@@ -398,15 +398,17 @@ def get_log_analytics_events(url: str, body: dict, headers: dict, md5_hash: str)
 
             if len(rows) == 0:
                 logging.info("Log Analytics: There are no new results")
-            elif time_position := get_time_position(columns):
-                iter_log_analytics_events(columns, rows)
-                update_dates_json(new_min=rows[0][time_position],
-                                  new_max=rows[len(rows) - 1][time_position],
-                                  service_name="log_analytics",
-                                  md5_hash=md5_hash)
-                save_dates_json(dates_json)
             else:
-                logging.error("Error: No TimeGenerated field was found")
+                time_position = get_time_position(columns)
+                if time_position:
+                    iter_log_analytics_events(columns, rows)
+                    update_dates_json(new_min=rows[0][time_position],
+                                      new_max=rows[len(rows) - 1][time_position],
+                                      service_name="log_analytics",
+                                      md5_hash=md5_hash)
+                    save_dates_json(dates_json)
+                else:
+                    logging.error("Error: No TimeGenerated field was found")
 
         except KeyError as e:
             logging.error(f"Error: It was not possible to obtain the columns and rows from the event: '{e}'.")
@@ -581,8 +583,8 @@ def get_graph_events(url: str, headers: dict, md5_hash: str):
 
         if len(values_json) == 0:
             logging.info("Graph: There are no new results")
-
-        if next_url := response_json.get('@odata.nextLink'):
+        next_url = response_json.get('@odata.nextLink')
+        if next_url:
             get_graph_events(url=next_url, headers=headers, md5_hash=md5_hash)
     elif response.status_code == 400:
         logging.error(f"Bad Request for url: {response.url}")
