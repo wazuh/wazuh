@@ -45,6 +45,7 @@ target_include_directories(routerTest PUBLIC
   ${ENGINE_SOURCE_DIR}/json
   ${rapidjson_headers}/include
   ${ENGINE_SOURCE_DIR}/router
+  ${RxCpp_SOURCE_DIR}/Rx/v2/src
 )
-target_link_libraries(routerTest gtest_main rxcpp)
+target_link_libraries(routerTest gtest_main)
 gtest_discover_tests(routerTest)
