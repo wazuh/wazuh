@@ -134,9 +134,6 @@ stages:
 ---
 test_name: GET /experimental/syscollector/hardware
 
-marks:
-  - xfail # https://github.com/wazuh/wazuh-jenkins/issues/2415
-
 stages:
 
   - name: Request
@@ -154,7 +151,6 @@ stages:
           affected_items:
             - &hardware_response
               agent_id: !anystr
-              board_serial: !anystr
               cpu:
                 cores: !anyint
                 mhz: !anything
