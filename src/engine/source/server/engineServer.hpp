@@ -14,7 +14,6 @@
 #include <memory>
 #include <rxcpp/rx.hpp>
 
-#include "blockingconcurrentqueue.h"
 #include "endpoints/baseEndpoint.hpp"
 #include "json.hpp"
 
