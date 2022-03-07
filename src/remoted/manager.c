@@ -1035,11 +1035,11 @@ STATIC void validate_shared_files(const char *src_path, const char *group, const
                     *modify_time = last_modify;
                     if (checkBinaryFile(file)) {
                         OSHash_Set(invalid_files, file, modify_time);
-                        mdebug1("File '%s' in group '%s' modified but still invalid.", files[i], group);
+                        mdebug1("File '%s' in group '%s' modified but still invalid.", file, group);
                     } else {
                         os_free(modify_time);
                         OSHash_Delete(invalid_files, file);
-                        minfo("File '%s' in group '%s' is valid after last modification.", files[i], group);
+                        minfo("File '%s' in group '%s' is valid after last modification.", file, group);
                         ignored = 0;
                     }
                 }
@@ -1051,16 +1051,17 @@ STATIC void validate_shared_files(const char *src_path, const char *group, const
 
                     stat(file, &attrib);
                     *modify_time = attrib.st_mtime;
+                    ignored = 1;
+
                     int ret_val;
 
                     if (ret_val = OSHash_Add(invalid_files, file, modify_time), ret_val != 2) {
                         os_free(modify_time);
                         if (ret_val == 0) {
-                            merror("Unable to add file '%s' to hash table of invalid files.", files[i]);
+                            merror("Unable to add file '%s' to hash table of invalid files.", file);
                         }
                     } else {
-                        ignored = 1;
-                        merror("Invalid shared file '%s' in group '%s'. Ignoring it.", files[i], group);
+                        merror("Invalid shared file '%s' in group '%s'. Ignoring it.", file, group);
                     }
                 }
             }
