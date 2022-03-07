@@ -728,8 +728,7 @@ def test_agent_delete_groups_other_exceptions(mock_get_groups, group_list, expec
 
 @pytest.mark.parametrize('group_list, agent_list, num_failed', [
     (['group-1'], ['001'], 0),
-    (['group-1'], ['001', '002', '003'], 1),
-    (['group-1'], ['001', '002', '003', '100'], 2)
+    (['group-1'], ['001', '002', '003', '100'], 1)
 ])
 @patch('wazuh.agent.Agent.add_group_to_agent')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
