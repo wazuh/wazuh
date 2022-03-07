@@ -45,27 +45,6 @@ CPMAddPackage(
         # "RAPIDJSON_BUILD_CXX17 ON"
 )
 
-# google logging
-CPMAddPackage(
-  NAME glog
-  GITHUB_REPOSITORY google/glog
-  GIT_TAG v0.5.0
-  VERSION 0.5.0
-  OPTIONS
-      "WITH_GTEST OFF"
-      "BUILD_SHARED_LIBS OFF"
-      "WITH_GFLAGS OFF"
-      "WITH_UNWIND OFF"
-)
-
-# ReactiveX/RxCpp
-CPMAddPackage(
-  NAME RxCpp
-  GITHUB_REPOSITORY ReactiveX/RxCpp
-  GIT_TAG v4.1.1
-  VERSION 4.1.1
-)
-
 include_directories(
     ${RapidJSON_SOURCE_DIR}/include/
     ${ENGINE_SOURCE_DIR}
@@ -75,7 +54,6 @@ include_directories(
     ${SERVER_TEST_SOURCE_DIR}/endpoints/
     ${uvw_SOURCE_DIR}/src/
     ${uvw_SOURCE_DIR}/src/uvw/
-    ${RxCpp_SOURCE_DIR}/Rx/v2/src/
     ${ENGINE_SOURCE_DIR}/json
 )
 
