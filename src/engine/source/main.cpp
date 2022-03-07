@@ -7,8 +7,6 @@
  * Foundation.
  */
 
-// TODO: rename files as wazuh style
-// TODO: delete dummy test/benchmarks examples, no longer needed
 // TODO: QoL CMakeLists
 
 #include "main.hpp"
@@ -62,7 +60,7 @@ int main(int argc, char * argv[])
     EngineServer server{serverArgs, queueSize};
 
     // Check if the server was correctly configured
-    if(!server.isConfigured())
+    if (!server.isConfigured())
     {
         return 1;
     }
@@ -123,6 +121,7 @@ int main(int argc, char * argv[])
                          }
                      }
 
+                     router.input().on_completed();
                      return 0;
                  }};
 
