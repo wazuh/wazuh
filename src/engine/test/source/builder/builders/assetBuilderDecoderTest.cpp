@@ -16,7 +16,7 @@
 #include "opBuilderCondition.hpp"
 #include "opBuilderConditionReference.hpp"
 #include "opBuilderConditionValue.hpp"
-#include "OpBuilderHelperFilter.hpp"
+#include "opBuilderHelperFilter.hpp"
 #include "stageBuilderCheck.hpp"
 
 #include "opBuilderMap.hpp"

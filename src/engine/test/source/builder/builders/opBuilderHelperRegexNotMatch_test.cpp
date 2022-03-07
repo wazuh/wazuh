@@ -11,7 +11,7 @@
 #include <re2/re2.h>
 #include <vector>
 
-#include "OpBuilderHelperFilter.hpp"
+#include "opBuilderHelperFilter.hpp"
 #include "testUtils.hpp"
 
 using namespace builder::internals::builders;

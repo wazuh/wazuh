@@ -11,7 +11,7 @@
 #include <vector>
 
 #include "testUtils.hpp"
-#include "OpBuilderHelperMap.hpp"
+#include "opBuilderHelperMap.hpp"
 
 using namespace builder::internals::builders;
 

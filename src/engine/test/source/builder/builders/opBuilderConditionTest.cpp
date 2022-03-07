@@ -13,7 +13,7 @@
 #include "opBuilderCondition.hpp"
 #include "opBuilderConditionReference.hpp"
 #include "opBuilderConditionValue.hpp"
-#include "OpBuilderHelperFilter.hpp"
+#include "opBuilderHelperFilter.hpp"
 
 using namespace builder::internals::builders;
 

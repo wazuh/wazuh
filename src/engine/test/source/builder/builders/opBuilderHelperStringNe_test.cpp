@@ -11,7 +11,7 @@
 #include "testUtils.hpp"
 #include <vector>
 
-#include "OpBuilderHelperFilter.hpp"
+#include "opBuilderHelperFilter.hpp"
 
 using namespace builder::internals::builders;
 
