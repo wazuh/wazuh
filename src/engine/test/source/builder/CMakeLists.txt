@@ -163,12 +163,19 @@ add_executable(opBuilderConditionReferenceTest
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionReference.cpp)
 gtest_discover_tests(opBuilderConditionReferenceTest)
 
-add_executable(opBuilderHelperExistsTest
+add_executable(opBuilderHelperExists_test
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
   ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperExistsTest.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperExists_test.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp)
-gtest_discover_tests(opBuilderHelperExistsTest)
+gtest_discover_tests(opBuilderHelperExists_test)
+
+add_executable(opBuilderHelperNotExists_test
+  ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
+  ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperNotExists_test.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/OpBuilderHelperFilter.cpp)
+gtest_discover_tests(opBuilderHelperNotExists_test)
 
 add_executable(opBuilderHelperStringEq_test
   ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp

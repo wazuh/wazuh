@@ -68,26 +68,44 @@ std::tuple<std::string, opString, opString> getCompOpParameter(const DocumentVal
 
 namespace builder::internals::builders
 {
+
+// <field>: exists
 types::Lifter opBuilderHelperExists(const DocumentValue & def)
 {
     // Get field
     std::string field {def.MemberBegin()->name.GetString()};
 
+    //Check parameters
+    std::vector<std::string> parameters =
+        utils::string::split(def.MemberBegin()->value.GetString(), '/');
+    if (parameters.size() != 1)
+    {
+        throw std::runtime_error("Invalid number of parameters");
+    }
+
     // Return Lifter
-    return [=](types::Observable o)
+    return [field](types::Observable o)
     {
         // Append rxcpp operation
         return o.filter([=](types::Event e) { return e.exists("/" + field); });
     };
 }
 
+// <field>: not_exists
 types::Lifter opBuilderHelperNotExists(const DocumentValue & def)
 {
     // Get field
     std::string field {def.MemberBegin()->name.GetString()};
 
+    std::vector<std::string> parameters =
+        utils::string::split(def.MemberBegin()->value.GetString(), '/');
+    if (parameters.size() != 1)
+    {
+        throw std::runtime_error("Invalid number of parameters");
+    }
+
     // Return Lifter
-    return [=](types::Observable o)
+    return [field](types::Observable o)
     {
         // Append rxcpp operation
         return o.filter([=](types::Event e) { return !e.exists("/" + field); });
