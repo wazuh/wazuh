@@ -113,6 +113,7 @@ optional<vector<string>> ProtocolHandler::process(char * data, size_t length)
                 {
                     try
                     {
+                        // TODO: Are we moving the buffer? we should
                         events.push_back(string(m_buff.begin() + sizeof(int), m_buff.end()));
                         m_buff.clear();
                     }
