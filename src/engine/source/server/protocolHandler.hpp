@@ -46,7 +46,7 @@ public:
      *
      * @return json::Document
      */
-    json::Document parse(const std::string & event) const;
+    static json::Document parse(const std::string & event);
 
     /**
      * @brief process the chunk of data and send messages to dst when. Return

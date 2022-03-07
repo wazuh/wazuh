@@ -29,7 +29,7 @@ bool ProtocolHandler::hasHeader()
     return false;
 }
 
-json::Document ProtocolHandler::parse(const std::string & event) const
+json::Document ProtocolHandler::parse(const std::string & event)
 {
     json::Document doc;
     doc.m_doc.SetObject();
