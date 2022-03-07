@@ -10,9 +10,9 @@
 #ifndef _BASE_ENDPOINT_H_
 #define _BASE_ENDPOINT_H_
 
+#include <blockingconcurrentqueue.h>
 #include <rxcpp/rx.hpp>
 #include <string>
-#include <blockingconcurrentqueue.h>
 
 /**
  * @brief Contains all endpoint related functionality
