@@ -1,8 +1,13 @@
-# ----------------------------- Analysisd section -----------------------------
+# Copyright (C) 2015-2021, Wazuh Inc.
+#
+# This program is free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation.
+
+# ------------------------ Tests configuration section ------------------------
 
 # Useful variables
-
-TEST_NAME=test
 
 STATS_MONITOR_POLL_TIME_SECS=0.1
 
@@ -10,6 +15,10 @@ STATS_MONITOR_POLL_TIME_SECS=0.1
 BT_TIME=360
 BT_RATE=0
 BT_INPUT=./utils/test_logs.txt
+
+ENGINE_BUILD_ABSOLUTE_PATH=/root/repos/wazuh/src/engine/build
+ENGINE_LISTEN_PORT=6000
+ENGINE_N_THREADS=8
 
 # Constants for the test
 CONFIG_SRC_DIR=./analysisd/config
@@ -26,6 +35,10 @@ DECODERS_DST_DIR=/var/ossec/etc/test/decoders
 OLD_PWD=`pwd`
 cd $(dirname $(readlink -f $0))
 # echo "change working directory to... `pwd`"
+
+# --------------------------- Analysisd test section ---------------------------
+
+TEST_NAME=analysisd-test
 
 # Stop Wazuh manager
 
@@ -79,10 +92,6 @@ go run ./utils/benchmark_tool.go -t $BT_TIME -r $BT_RATE -i $BT_INPUT -T
 
 kill -INT $MONITOR_PID
 
-sleep 1
-
-python3 ./utils/process_stats.py
-
 # Stop Wazuh manager
 
 systemctl stop wazuh-manager.service
@@ -96,5 +105,32 @@ mv $CONFIG_BACKUP_DIR/* $CONFIG_DST_DIR
 
 rm -rf $RULES_DST_DIR
 rm -rf $DECODER_DST_DIR
+
+# ---------------------------- Engine test section ----------------------------
+
+TEST_NAME=engine-test
+
+cd $ENGINE_BUILD_ABSOLUTE_PATH
+
+GLOG_logtostderr=1 ./main --file_storage ../test/assets/ --endpoint tcp:localhost:$ENGINE_LISTEN_PORT --threads $ENGINE_N_THREADS&
+
+ENGINE_PID=$!
+
+sleep 1
+
+python3 ./utils/monitor.py -s $STATS_MONITOR_POLL_TIME_SECS -b main -n $TEST_NAME&
+
+MONITOR_PID=$!
+
+go run ./utils/benchmark_tool.go -t $BT_TIME -r $BT_RATE -i $BT_INPUT -T -p tcp -s localhost:$ENGINE_LISTEN_PORT
+
+kill -INT $MONITOR_PID
+kill -INT $ENGINE_PID
+
+# ---------------------------- Test output section ----------------------------
+
+sleep 1
+
+python3 ./utils/process_stats.py
 
 cd "${OLD_PWD}"
