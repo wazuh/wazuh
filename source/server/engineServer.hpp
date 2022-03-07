@@ -10,12 +10,14 @@
 #ifndef _ENGINE_SERVER_H_
 #define _ENGINE_SERVER_H_
 
+#include <glog/logging.h>
 #include <map>
 #include <memory>
 #include <rxcpp/rx.hpp>
+#include <vector>
 
 #include "endpoints/baseEndpoint.hpp"
-#include "json.hpp"
+#include "endpoints/endpointFactory.hpp"
 
 /**
  * @brief Defines all related server functionality.
@@ -23,6 +25,8 @@
  */
 namespace engineserver
 {
+
+#define DEFAULT_BUFFER_SIZE 1024
 
 /**
  * @brief Class that handles all endpoints and exposes Server functionality.
@@ -33,27 +37,17 @@ class EngineServer
 private:
     std::map<std::string, std::unique_ptr<endpoints::BaseEndpoint>> m_endpoints;
     moodycamel::BlockingConcurrentQueue<std::string> m_eventBuffer;
+    bool m_isConfigured;
 
 public:
     /**
      * @brief Construct a new Engine Server object
      *
-     * @param bufferSize
-     */
-    explicit EngineServer(const size_t & bufferSize);
-
-    /**
-     * @brief Construct a new Engine Server object
-     *
      * @param config <type>:<config> string describing endpoint type with it associated configuration.
-     */
-
-    /**
-     * @brief Set up endpoints and internal structures.
      *
-     * @param config <type>:<config> string describing endpoint type with it associated configuration.
+     * @param bufferSize Events queue buffer size.
      */
-    void configure(const std::vector<std::string> & config);
+    explicit EngineServer(const std::vector<std::string> & config, const size_t & bufferSize = DEFAULT_BUFFER_SIZE);
 
     /**
      * @brief Start server.
@@ -68,11 +62,19 @@ public:
     void close(void);
 
     /**
+     * @brief Returns the current configuration state of the server.
+     *
+     * @return true
+     * @return false
+     */
+    bool isConfigured(void) { return m_isConfigured; };
+
+    /**
      * @brief Get server output queue
      *
      * @return const moodycamel::BlockingConcurrentQueue&
      */
-    moodycamel::BlockingConcurrentQueue<std::string>& output();
+    moodycamel::BlockingConcurrentQueue<std::string> & output();
 };
 
 } // namespace engineserver

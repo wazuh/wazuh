@@ -59,16 +59,11 @@ int main(int argc, char * argv[])
     }
 
     // Server
-    // TODO: Integrate configure and constructor
-    EngineServer server{queueSize};
-    try
+    EngineServer server{serverArgs, queueSize};
+
+    // Check if the server was correctly configured
+    if(!server.isConfigured())
     {
-        server.configure(serverArgs);
-    }
-    catch (const exception & e)
-    {
-        LOG(ERROR) << "Engine error, got exception while configuring server: " << e.what() << endl;
-        // TODO: handle if errors on close can happen
         return 1;
     }
 
