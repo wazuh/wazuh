@@ -2312,29 +2312,38 @@ static int wm_sca_winreg_querykey(HKEY hKey, const char *full_key_name, char *re
                     int size_available;
 
                 case REG_SZ:
-                case REG_EXPAND_SZ:
+                case REG_EXPAND_SZ: {
                     snprintf(var_storage, MAX_VALUE_NAME, "%s", data_buffer);
-                    break;
-                case REG_MULTI_SZ:
+                }
+                break;
+
+                case REG_MULTI_SZ: {
                     /* Printing multiple strings */
-                    size_available = MAX_VALUE_NAME - 3;
+                    char size_data = 0;
+                    size_available = MAX_VALUE_NAME;
                     mt_data = data_buffer;
 
                     while (*mt_data) {
-                        if (size_available > 2) {
+                        size_data = strlen(mt_data) + strlen(" ");
+
+                        if (size_available >= size_data) {
                             strncat(var_storage, mt_data, size_available);
-                            strncat(var_storage, " ", 2);
-                            size_available = MAX_VALUE_NAME -
-                                             (strlen(var_storage) + 2);
+                            size_available -= strlen(mt_data);
+                            strncat(var_storage, " ", size_available);
+                            size_available -= strlen(" ");
                         }
                         mt_data += strlen(mt_data) + 1;
                     }
 
-                    break;
-                case REG_DWORD:
+                }
+                break;
+
+                case REG_DWORD: {
                     snprintf(var_storage, MAX_VALUE_NAME, "%u", *((uint32_t*)data_buffer));
-                    break;
-                default:
+                }
+                break;
+
+                default: {
                     size_available = MAX_VALUE_NAME - 2;
                     for (j = 0; j < data_size; j++) {
                         char tmp_c[12];
@@ -2348,7 +2357,8 @@ static int wm_sca_winreg_querykey(HKEY hKey, const char *full_key_name, char *re
                                              (strlen(var_storage) + 2);
                         }
                     }
-                    break;
+                }
+                break;
             }
 
             mdebug2("Checking value data '%s' with rule '%s'", var_storage, reg_value);
