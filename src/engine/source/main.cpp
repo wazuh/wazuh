@@ -11,37 +11,17 @@
 // TODO: delete dummy test/benchmarks examples, no longer needed
 // TODO: QoL CMakeLists
 
-#include <csignal>
-#include <stdexcept>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string>
-#include <thread>
-#include <vector>
-#include <atomic>
+#include "main.hpp"
 
-#include "Catalog.hpp"
-#include "builder.hpp"
-#include "catalog/storageDriver/disk/DiskStorage.hpp"
-#include "cliParser.hpp"
-#include "engineServer.hpp"
-#include "glog/logging.h"
-#include "graph.hpp"
-#include "json.hpp"
-#include "protocolHandler.hpp"
-#include "register.hpp"
-#include "router.hpp"
+using namespace engineserver;
 
-#define WAIT_DEQUEUE_TIMEOUT_USEC 1 * 1000000
-
-using namespace std;
-
-static std::atomic<bool> gs_doRun = true;
-static std::vector<std::thread> gs_threadList;
+// Static global variables for handling threads
+static atomic<bool> gs_doRun = true;
+static vector<thread> gs_threadList;
 
 static void sigint_handler(const int signum)
 {
-    // Inform threads that they should exit
+    // Inform threads that they must exit
     gs_doRun = false;
 
     for (auto & t : gs_threadList)
@@ -80,7 +60,7 @@ int main(int argc, char * argv[])
 
     // Server
     // TODO: Integrate configure and constructor
-    engineserver::EngineServer server{queueSize};
+    EngineServer server{queueSize};
     try
     {
         server.configure(serverArgs);
@@ -122,36 +102,34 @@ int main(int argc, char * argv[])
     // TODO: handle hot modification of routes
     for (auto i = 0; i < nThreads; ++i)
     {
-        std::thread t{[=, &eventBuffer = server.output()]()
-                      {
-                          router::Router<builder::Builder<catalog::Catalog>> router{_builder};
+        thread t{[=, &eventBuffer = server.output()]()
+                 {
+                     router::Router<builder::Builder<catalog::Catalog>> router{_builder};
 
-                          try
-                          {
-                              // Default route
-                              router.add("test_route", "test_environment");
-                          }
-                          catch (const exception & e)
-                          {
-                              LOG(ERROR) << "Engine error, got exception while building default route: " << e.what()
-                                         << endl;
-                              return 1;
-                          }
+                     try
+                     {
+                         // Default route
+                         router.add("test_route", "test_environment");
+                     }
+                     catch (const exception & e)
+                     {
+                         LOG(ERROR) << "Engine error, got exception while building default route: " << e.what() << endl;
+                         return 1;
+                     }
 
-                          // TODO: This should be a method
-                          engineserver::ProtocolHandler p;
+                     // Thread loop
+                     while (gs_doRun)
+                     {
+                         string event;
 
-                          // Thread loop
-                          std::string event;
-                          while (gs_doRun)
-                          {
-                              if (eventBuffer.wait_dequeue_timed(event, WAIT_DEQUEUE_TIMEOUT_USEC))
-                              {
-                                  router.input().on_next(p.parse(event));
-                              }
-                          }
-                          return 0;
-                      }};
+                         if (eventBuffer.wait_dequeue_timed(event, WAIT_DEQUEUE_TIMEOUT_USEC))
+                         {
+                             router.input().on_next(ProtocolHandler::parse(event));
+                         }
+                     }
+
+                     return 0;
+                 }};
 
         gs_threadList.push_back(std::move(t));
     }
