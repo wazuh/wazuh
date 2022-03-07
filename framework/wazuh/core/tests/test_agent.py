@@ -1099,10 +1099,10 @@ def test_agent_set_agent_group_relationship(socket_connect_mock, wdb_command_moc
                                                                   'relationship'
 
 
-@patch('socket.socket.connect')
+@patch('socket.socket.connect', side_effect=PermissionError)
 def test_agent_set_agent_group_relationship_ko(socket_connect_mock):
     """Test if set_agent_group_relationship() raises expected exception."""
-    with pytest.raises(WazuhInternalError, match='.* 1005 .*'):
+    with pytest.raises(WazuhInternalError, match='.* 2005 .*'):
         Agent.set_agent_group_relationship('002', 'test_group')
 
 

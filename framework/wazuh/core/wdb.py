@@ -28,8 +28,8 @@ class WazuhDBConnection:
         self.socket_path = common.wdb_socket_path
         self.request_slice = request_slice
         self.max_size = max_size
-        self.__conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
+            self.__conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             self.__conn.connect(self.socket_path)
         except OSError as e:
             raise WazuhInternalError(2005, e)

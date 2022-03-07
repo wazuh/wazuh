@@ -819,8 +819,6 @@ class Agent:
         wdb = WazuhDBConnection()
         try:
             wdb.run_wdb_command(command)
-        except Exception as e:
-            raise WazuhInternalError(1005, extra_message=str(e))
         finally:
             wdb.close()
 
