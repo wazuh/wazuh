@@ -12,6 +12,7 @@
 
 #include <cstring>
 #include <functional>
+#include <glog/logging.h>
 #include <iostream>
 #include <mutex>
 #include <stdexcept>
@@ -20,7 +21,6 @@
 #include <uvw/timer.hpp>
 
 #include "baseEndpoint.hpp"
-#include "glog/logging.h"
 #include "protocolHandler.hpp"
 
 namespace engineserver::endpoints
