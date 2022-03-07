@@ -10,7 +10,6 @@
 #ifndef _ENDPOINT_FACTORY_H
 #define _ENDPOINT_FACTORY_H
 
-#include <blockingconcurrentqueue.h>
 #include <memory>
 #include <string>
 
