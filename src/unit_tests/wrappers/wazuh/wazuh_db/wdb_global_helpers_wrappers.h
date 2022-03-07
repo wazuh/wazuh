@@ -19,5 +19,7 @@ int* __wrap_wdb_disconnect_agents(int keepalive, const char *sync_status, __attr
 cJSON* __wrap_wdb_get_agent_info(int id,  __attribute__((unused)) int *sock);
 int* __wrap_wdb_get_agents_by_connection_status(const char* status, __attribute__((unused)) int *sock);
 int* __wrap_wdb_get_all_agents(bool include_manager, int *sock);
+int __wrap_wdb_update_agent_keepalive(int id, const char *connection_status, const char *sync_status, __attribute__((unused)) int *sock);
+int __wrap_wdb_update_agent_data(agent_info_data *agent_data, __attribute__((unused)) int *sock);
 
 #endif
