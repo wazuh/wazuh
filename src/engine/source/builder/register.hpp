@@ -25,6 +25,7 @@
 #include "opBuilderConditionValue.hpp"
 #include "opBuilderFileOutput.hpp"
 #include "OpBuilderHelperFilter.hpp"
+#include "OpBuilderHelperMap.hpp"
 #include "opBuilderMap.hpp"
 #include "opBuilderMapReference.hpp"
 #include "opBuilderMapValue.hpp"
@@ -47,8 +48,29 @@ void registerBuilders()
     Registry::registerBuilder("condition", builders::opBuilderCondition);
     Registry::registerBuilder("map", builders::opBuilderMap);
     // Helpers
+    // TODO : Separate helpers in filters and maps
     Registry::registerBuilder("helper.exists", builders::opBuilderHelperExists);
     Registry::registerBuilder("helper.not_exists", builders::opBuilderHelperNotExists);
+    Registry::registerBuilder("helper.s_le", builders::opBuilderHelperStringLE);
+    Registry::registerBuilder("helper.s_lt", builders::opBuilderHelperStringLT);
+    Registry::registerBuilder("helper.s_ge", builders::opBuilderHelperStringGE);
+    Registry::registerBuilder("helper.s_gt", builders::opBuilderHelperStringGT);
+    Registry::registerBuilder("helper.s_eq", builders::opBuilderHelperStringEQ);
+    Registry::registerBuilder("helper.s_ne", builders::opBuilderHelperStringNE);
+    Registry::registerBuilder("helper.s_up", builders::opBuilderHelperStringUP);
+    Registry::registerBuilder("helper.s_lo", builders::opBuilderHelperStringLO);
+    Registry::registerBuilder("helper.s_trim", builders::opBuilderHelperStringTrim);
+    Registry::registerBuilder("helper.i_le", builders::opBuilderHelperIntLessThanEqual);
+    Registry::registerBuilder("helper.i_lt", builders::opBuilderHelperIntLessThan);
+    Registry::registerBuilder("helper.i_ge", builders::opBuilderHelperIntGreaterThanEqual);
+    Registry::registerBuilder("helper.i_gt", builders::opBuilderHelperIntGreaterThan);
+    Registry::registerBuilder("helper.i_eq", builders::opBuilderHelperIntEqual);
+    Registry::registerBuilder("helper.i_ne", builders::opBuilderHelperIntNotEqual);
+    Registry::registerBuilder("helper.i_calc", builders::opBuilderHelperIntCalc);
+    Registry::registerBuilder("helper.r_match", builders::opBuilderHelperRegexMatch);
+    Registry::registerBuilder("helper.r_not_match", builders::opBuilderHelperRegexNotMatch);
+    Registry::registerBuilder("helper.r_ext", builders::opBuilderHelperRegexExtract);
+    Registry::registerBuilder("helper.ip_cidr", builders::opBuilderHelperIPCIDR);
     // Combinators
     Registry::registerBuilder("combinator.chain", builders::combinatorBuilderChain);
     Registry::registerBuilder("combinator.broadcast", builders::combinatorBuilderBroadcast);
