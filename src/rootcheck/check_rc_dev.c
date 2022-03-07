@@ -49,10 +49,9 @@ static int read_dev_file(const char *file_name)
                 const unsigned int surplus = size - sizeof(op_msg) + 1;
                 snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)(strlen(file_name) - surplus), file_name);
             }
+
+            notify_rk(ALERT_SYSTEM_CRIT, op_msg);
         }
-
-        notify_rk(ALERT_SYSTEM_CRIT, op_msg);
-
         _dev_errors++;
     }
 
