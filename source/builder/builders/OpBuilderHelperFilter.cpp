@@ -15,12 +15,14 @@
 #include "OpBuilderHelperFilter.hpp"
 #include "stringUtils.hpp"
 #include "ipUtils.hpp"
+#include "syntax.hpp"
 
 using DocumentValue = builder::internals::types::DocumentValue;
 namespace
 {
 
 using opString = std::optional<std::string>;
+using builder::internals::syntax::REFERENCE_ANCHOR;
 /**
  * @brief Get the Comparator operator, and the value to compare
  * or the reference to value to compare
@@ -53,7 +55,7 @@ std::tuple<std::string, opString, opString> getCompOpParameter(const DocumentVal
     std::optional<std::string> refValue {};
     std::optional<std::string> value {};
 
-    if (parameters[1][0] == '$')
+    if (parameters[1][0] == REFERENCE_ANCHOR)
     {
         refValue = parameters[1].substr(1);
     }
