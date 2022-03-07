@@ -12,7 +12,7 @@
 #include <tuple>
 #include <re2/re2.h>
 
-#include "OpBuilderHelperFilter.hpp"
+#include "opBuilderHelperFilter.hpp"
 #include "stringUtils.hpp"
 #include "ipUtils.hpp"
 #include "syntax.hpp"

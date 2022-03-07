@@ -22,7 +22,7 @@
 #include "opBuilderConditionReference.hpp"
 #include "opBuilderConditionValue.hpp"
 #include "opBuilderFileOutput.hpp"
-#include "OpBuilderHelperFilter.hpp"
+#include "opBuilderHelperFilter.hpp"
 #include "stageBuilderCheck.hpp"
 #include "stageBuilderOutputs.hpp"
 

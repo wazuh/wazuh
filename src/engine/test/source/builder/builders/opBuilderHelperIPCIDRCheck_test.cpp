@@ -7,7 +7,7 @@
  * Foundation.
  */
 
-#include "OpBuilderHelperFilter.hpp"
+#include "opBuilderHelperFilter.hpp"
 #include "testUtils.hpp"
 #include <gtest/gtest.h>
 
