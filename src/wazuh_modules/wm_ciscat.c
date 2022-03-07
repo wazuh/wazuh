@@ -117,11 +117,13 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
 
     if (ciscat->ciscat_path) {
         switch (wm_relative_path(ciscat->ciscat_path)) {
-            case 0:
+            case 0: {
                 // Full path
                 snprintf(cis_path, OS_MAXSTR - 1, "%s", ciscat->ciscat_path);
-                break;
-            case 1:
+            }
+            break;
+
+            case 1: {
                 // Relative path
             #ifdef WIN32
                 if (*current) {
@@ -137,10 +139,13 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
                     os_snprintf(cis_path, OS_MAXSTR - 1, "%s/%s", pwd, ciscat->ciscat_path);
                 }
             #endif
-                break;
-            default:
+            }
+            break;
+
+            default: {
                 mterror(WM_CISCAT_LOGTAG, "Defined CIS-CAT path is not valid.");
                 ciscat->flags.error = 1;
+            }
         }
     } else {
     #ifdef WIN32
