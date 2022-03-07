@@ -2317,18 +2317,15 @@ static int wm_sca_winreg_querykey(HKEY hKey, const char *full_key_name, char *re
                     break;
                 case REG_MULTI_SZ:
                     /* Printing multiple strings */
-                    size_available = MAX_VALUE_NAME;
+                    size_available = MAX_VALUE_NAME - 3;
                     mt_data = data_buffer;
-                    int size_data = 0;
 
                     while (*mt_data) {
-                        size_data = strlen(mt_data) + strlen(" ");
-
-                        if (size_available > size_data) {
+                        if (size_available > 2) {
                             strncat(var_storage, mt_data, size_available);
-                            size_available -= strlen(mt_data);
                             strncat(var_storage, " ", 2);
-                            size_available -= 1;
+                            size_available = MAX_VALUE_NAME -
+                                             (strlen(var_storage) + 2);
                         }
                         mt_data += strlen(mt_data) + 1;
                     }
