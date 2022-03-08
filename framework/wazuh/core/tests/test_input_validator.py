@@ -37,8 +37,14 @@ class TestInputValidator(TestCase):
         result = InputValidator().group(['test1', 'test2'])
         self.assertEqual(result, True)
 
-        result = InputValidator().group('test')
+        result = InputValidator().group('TesT')
         self.assertEqual(result, True)
 
-        result = InputValidator().group(['test1', 'test2'])
+        result = InputValidator().group(['teSt1', '.test2', '..Test3', '.....'])
         self.assertEqual(result, True)
+
+        result = InputValidator().group(['.'])
+        self.assertEqual(result, False)
+
+        result = InputValidator().group(['..'])
+        self.assertEqual(result, False)
