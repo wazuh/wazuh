@@ -176,7 +176,7 @@ async def test_get_stats_weekly(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
 async def test_get_stats_analysisd(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     """Verify 'get_stats_analysisd' endpoint is working as expected."""
     result = await get_stats_analysisd(request=mock_request)
-    f_kwargs = {'filename': common.analysisd_stats
+    f_kwargs = {'filename': common.ANALYSISD_STATS
                 }
     mock_dapi.assert_called_once_with(f=stats.get_daemons_stats,
                                       f_kwargs=mock_remove.return_value,
@@ -199,7 +199,7 @@ async def test_get_stats_analysisd(mock_exc, mock_dapi, mock_remove, mock_dfunc,
 async def test_get_stats_remoted(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
     """Verify 'get_stats_remoted' endpoint is working as expected."""
     result = await get_stats_remoted(request=mock_request)
-    f_kwargs = {'filename': common.remoted_stats
+    f_kwargs = {'filename': common.REMOTED_STATS
                 }
     mock_dapi.assert_called_once_with(f=stats.get_daemons_stats,
                                       f_kwargs=mock_remove.return_value,

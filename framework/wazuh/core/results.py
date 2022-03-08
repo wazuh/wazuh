@@ -11,7 +11,7 @@ from numbers import Number
 
 import wazuh.core.exception as wexception
 from wazuh.core import utils
-from wazuh.core.common import database_limit
+from wazuh.core.common import DATABASE_LIMIT
 
 current_module = sys.modules[__name__]
 
@@ -153,13 +153,13 @@ class AbstractWazuhResult(collections.abc.MutableMapping):
         """
         raise NotImplemented
 
-    def limit(self, limit=database_limit, offset=0):
+    def limit(self, limit=DATABASE_LIMIT, offset=0):
         """
         Should take the first `limit` results starting from `offset`
 
         To be redefined in WazuhResult subclasses.
 
-        :param limit: integer. Default the value specified in wazuh.common.database_limit
+        :param limit: integer. Default the value specified in wazuh.common.DATABASE_LIMIT
         :param offset: integer. Default 0.
         :return: filtered AbstractWazuhResult
         """

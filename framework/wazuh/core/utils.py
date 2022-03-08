@@ -28,7 +28,7 @@ from defusedxml.minidom import parseString
 import wazuh.core.results as results
 from api import configuration
 from wazuh.core import common
-from wazuh.core.common import pidfiles_path
+from wazuh.core.common import OSSEC_PIDFILE_PATH
 from wazuh.core.database import Connection
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.wdb import WazuhDBConnection
@@ -50,13 +50,13 @@ def clean_pid_files(daemon):
         Daemon's name.
     """
     regex = rf'{daemon}[\w_]*-(\d+).pid'
-    for pid_file in os.listdir(pidfiles_path):
+    for pid_file in os.listdir(OSSEC_PIDFILE_PATH):
         if match := re.match(regex, pid_file):
             try:
                 os.kill(int(match.group(1)), 0)
             except OSError:
                 print(f'{daemon}: Process {match.group(1)} not used by Wazuh, removing...')
-                os.remove(path.join(pidfiles_path, pid_file))
+                os.remove(path.join(OSSEC_PIDFILE_PATH, pid_file))
 
 
 def find_nth(string, substring, n):
@@ -171,7 +171,7 @@ def process_array(array, search_text=None, complementary_search=False, search_in
     return {'items': cut_array(array, offset=offset, limit=limit), 'totalItems': len(array)}
 
 
-def cut_array(array, offset=0, limit=common.database_limit):
+def cut_array(array, offset=0, limit=common.DATABASE_LIMIT):
     """Returns a part of the array: from offset to offset + limit.
 
     :param array: Array to cut.
@@ -181,7 +181,7 @@ def cut_array(array, offset=0, limit=common.database_limit):
     """
 
     if limit is not None:
-        if limit > common.maximum_database_limit:
+        if limit > common.MAXIMUM_DATABASE_LIMIT:
             raise WazuhError(1405, extra_message=str(limit))
         elif limit == 0:
             raise WazuhError(1406)
@@ -540,7 +540,7 @@ def delete_wazuh_file(full_path):
     bool
         True if success.
     """
-    if not full_path.startswith(common.wazuh_path) or '..' in full_path:
+    if not full_path.startswith(common.WAZUH_PATH) or '..' in full_path:
         raise WazuhError(1907)
 
     if path.exists(full_path):
@@ -1237,7 +1237,7 @@ class WazuhDBQuery(object):
 
     def _add_limit_to_query(self):
         if self.limit:
-            if self.limit > common.maximum_database_limit:
+            if self.limit > common.MAXIMUM_DATABASE_LIMIT:
                 raise WazuhError(1405, extra_message=str(self.limit))
             self.query += ' LIMIT :limit OFFSET :offset'
             self.request['offset'] = self.offset
@@ -1597,7 +1597,7 @@ def expand_rules():
     -------
     set
     """
-    folders = [common.ruleset_rules_path, common.user_rules_path]
+    folders = [common.RULES_PATH, common.USER_RULES_PATH]
     rules = set()
     for folder in folders:
         for _, _, files in walk(folder):
@@ -1615,7 +1615,7 @@ def expand_decoders():
     -------
     set
     """
-    folders = [common.ruleset_decoders_path, common.user_decoders_path]
+    folders = [common.DECODERS_PATH, common.USER_DECODERS_PATH]
     decoders = set()
     for folder in folders:
         for _, _, files in walk(folder):
@@ -1633,7 +1633,7 @@ def expand_lists():
     -------
     set
     """
-    folders = [common.ruleset_lists_path, common.user_lists_path]
+    folders = [common.LISTS_PATH, common.USER_LISTS_PATH]
     lists = set()
     for folder in folders:
         for _, _, files in walk(folder):
@@ -1750,7 +1750,7 @@ def upload_file(content, file_path, check_xml_formula_values=True):
         return xml_string
 
     # Path of temporary files for parsing xml input
-    handle, tmp_file_path = tempfile.mkstemp(prefix='api_tmp_file_', suffix='.tmp', dir=common.tmp_path)
+    handle, tmp_file_path = tempfile.mkstemp(prefix='api_tmp_file_', suffix='.tmp', dir=common.OSSEC_TMP_PATH)
     try:
         with open(handle, 'w') as tmp_file:
             final_file = escape_formula_values(content) if check_xml_formula_values else content
@@ -1761,7 +1761,7 @@ def upload_file(content, file_path, check_xml_formula_values=True):
 
     # Move temporary file to group folder
     try:
-        new_conf_path = path.join(common.wazuh_path, file_path)
+        new_conf_path = path.join(common.WAZUH_PATH, file_path)
         safe_move(tmp_file_path, new_conf_path, ownership=(common.wazuh_uid(), common.wazuh_gid()), permissions=0o660)
     except Error:
         raise WazuhInternalError(1016)
@@ -1801,7 +1801,7 @@ def replace_in_comments(original_content, to_be_replaced, replacement):
     return original_content
 
 
-def to_relative_path(full_path: str, prefix: str = common.wazuh_path):
+def to_relative_path(full_path: str, prefix: str = common.WAZUH_PATH):
     """Return a relative path from the Wazuh base directory.
 
     Parameters
@@ -1809,7 +1809,7 @@ def to_relative_path(full_path: str, prefix: str = common.wazuh_path):
     full_path : str
         Absolute path.
     prefix : str, opt
-        Prefix to strip from the absolute path. Default `common.wazuh_path`
+        Prefix to strip from the absolute path. Default `common.WAZUH_PATH`
 
     Returns
     -------

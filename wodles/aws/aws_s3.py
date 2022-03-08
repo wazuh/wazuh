@@ -537,6 +537,7 @@ class AWSBucket(WazuhIntegration):
         self.prefix_regex= re.compile("^\d{12}$")
         self.check_prefix = False
         self.date_format = "%Y/%m/%d"
+        self.db_date_format = "%Y%m%d"
 
     def _same_prefix(self, match_start: int or None, aws_account_id: str, aws_region: str) -> bool:
         """
@@ -617,12 +618,7 @@ class AWSBucket(WazuhIntegration):
         raise NotImplementedError
 
     def mark_complete(self, aws_account_id, aws_region, log_file):
-        if self.reparse:
-            if self.already_processed(log_file['Key'], aws_account_id, aws_region):
-                debug(
-                    '+++ File already marked complete, but reparse flag set: {log_key}'.format(log_key=log_file['Key']),
-                    2)
-        else:
+        if not self.reparse:
             try:
                 self.db_connector.execute(self.sql_mark_complete.format(
                     bucket_path=self.bucket_path,
@@ -859,7 +855,9 @@ class AWSBucket(WazuhIntegration):
             zipfile_object = zipfile.ZipFile(raw_object, compression=zipfile.ZIP_DEFLATED)
             return io.TextIOWrapper(zipfile_object.open(zipfile_object.namelist()[0]))
         elif log_key[-7:] == '.snappy':
-            raise TypeError("Snappy compression is not supported yet.")
+            print(f"ERROR: couldn't decompress the {log_key} file, snappy compression is not supported.")
+            if not self.skip_on_error:
+                sys.exit(8)
         else:
             return io.TextIOWrapper(raw_object)
 
@@ -962,6 +960,8 @@ class AWSBucket(WazuhIntegration):
     def iter_files_in_bucket(self, aws_account_id=None, aws_region=None):
         try:
             bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region))
+            if self.reparse:
+                debug('++ Reparse mode enabled', 2)
 
             while True:
                 if 'Contents' not in bucket_files:
@@ -1008,8 +1008,6 @@ class AWSBucket(WazuhIntegration):
                 else:
                     break
 
-        except SystemExit:
-            raise
         except Exception as err:
             if hasattr(err, 'message'):
                 debug(f"+++ Unexpected error: {err.message}", 2)
@@ -1217,11 +1215,21 @@ class AWSConfigBucket(AWSLogsBucket):
                     self.iter_files_in_bucket(aws_account_id, aws_region, date)
                 self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
 
-    def add_zero_to_day(self, date):
-        # add zero to days with one digit
-        aux = datetime.strptime(date.replace('/', ''), '%Y%m%d')
+    def _format_created_date(self, date: str) -> str:
+        """
+        Return a date with the format used by the created_date field of the database.
 
-        return datetime.strftime(aux, '%Y%m%d')
+        Parameters
+        ----------
+        date : str
+            Date in the "%Y/%m/%d" format.
+
+        Returns
+        -------
+        str
+            Date with the format used by the database.
+        """
+        return datetime.strftime(datetime.strptime(date, self.date_format), self.db_date_format)
 
     def _remove_padding_zeros_from_marker(self, marker: str) -> str:
         """Remove the leading zeros from the month and day of a given marker.
@@ -1297,7 +1305,7 @@ class AWSConfigBucket(AWSLogsBucket):
         if self.reparse:
             filter_marker = self.marker_custom_date(aws_region, aws_account_id, datetime.strptime(date, self.date_format))
         else:
-            created_date = self.add_zero_to_day(date)
+            created_date = self._format_created_date(date)
             query_last_key_of_day = self.db_connector.execute(
                 self.sql_find_last_key_processed_of_day.format(table_name=self.db_table_name,
                                                                bucket_path=self.bucket_path,
@@ -1404,8 +1412,7 @@ class AWSConfigBucket(AWSLogsBucket):
                         debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
                         self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                     self.mark_complete(aws_account_id, aws_region, bucket_file)
-        except SystemExit:
-            raise
+
         except Exception as err:
             if hasattr(err, 'message'):
                 debug("+++ Unexpected error: {}".format(err.message), 2)
@@ -1884,8 +1891,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                         debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
                         self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                     self.mark_complete(aws_account_id, aws_region, bucket_file, flow_log_id)
-        except SystemExit:
-            raise
+
         except Exception as err:
             if hasattr(err, 'message'):
                 debug("+++ Unexpected error: {}".format(err.message), 2)
@@ -2144,7 +2150,7 @@ class AWSCustomBucket(AWSBucket):
     def mark_complete(self, aws_account_id, aws_region, log_file):
         AWSBucket.mark_complete(self, self.aws_account_id, aws_region, log_file)
 
-    def db_count_custom(self):
+    def db_count_custom(self, aws_account_id=None):
         """Counts the number of rows in DB for a region
         :param aws_account_id: AWS account ID
         :type aws_account_id: str
@@ -2155,7 +2161,7 @@ class AWSCustomBucket(AWSBucket):
                 self.sql_count_custom.format(
                     table_name=self.db_table_name,
                     bucket_path=self.bucket_path,
-                    aws_account_id=self.aws_account_id,
+                    aws_account_id= aws_account_id if aws_account_id else self.aws_account_id,
                     retain_db_records=self.retain_db_records
                 ))
             return query_count_custom.fetchone()[0]
@@ -2166,14 +2172,14 @@ class AWSCustomBucket(AWSBucket):
                     error_msg=e))
             sys.exit(10)
 
-    def db_maintenance(self, **kwargs):
+    def db_maintenance(self, aws_account_id=None, **kwargs):
         debug("+++ DB Maintenance", 1)
         try:
-            if self.db_count_custom() > self.retain_db_records:
+            if self.db_count_custom(aws_account_id) > self.retain_db_records:
                 self.db_connector.execute(self.sql_db_maintenance.format(
                     table_name=self.db_table_name,
                     bucket_path=self.bucket_path,
-                    aws_account_id=self.aws_account_id,
+                    aws_account_id= aws_account_id if aws_account_id else self.aws_account_id,
                     retain_db_records=self.retain_db_records
                 ))
         except Exception as e:
@@ -2302,11 +2308,15 @@ class AWSWAFBucket(AWSCustomBucket):
                                     headers[name] = element["value"]
                             event['httpRequest']['headers'] = headers
                         except (KeyError, TypeError):
-                            pass
+                            print(f"ERROR: the {log_key} file doesn't have the expected structure.")
+                            if not self.skip_on_error:
+                                sys.exit(9)
                         content.append(event)
+
                 except json.JSONDecodeError:
                     print("ERROR: Events from {} file could not be loaded.".format(log_key.split('/')[-1]))
-                    sys.exit(9)
+                    if not self.skip_on_error:
+                        sys.exit(9)
 
         return json.loads(json.dumps(content))
 
@@ -2510,8 +2520,6 @@ class AWSServerAccess(AWSCustomBucket):
                 else:
                     break
 
-        except SystemExit:
-            raise
         except Exception as err:
             if hasattr(err, 'message'):
                 debug(f"+++ Unexpected error: {err.message}", 2)
@@ -3421,7 +3429,7 @@ def get_script_arguments():
     parser.add_argument('-r', '--regions', dest='regions', help='Comma delimited list of AWS regions to parse logs',
                         default='', type=arg_valid_regions)
     parser.add_argument('-e', '--skip_on_error', action='store_true', dest='skip_on_error',
-                        help='If fail to parse a file, error out instead of skipping the file', default=True)
+                        help='If fail to parse a file, error out instead of skipping the file')
     parser.add_argument('-o', '--reparse', action='store_true', dest='reparse',
                         help='Parse the log file, even if its been parsed before', default=False)
     parser.add_argument('-t', '--type', dest='type', type=str, help='Bucket type.', default='cloudtrail')

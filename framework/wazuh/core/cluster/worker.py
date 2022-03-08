@@ -121,6 +121,12 @@ class SyncFiles(SyncTask):
         bool
             True if files were correctly sent to the master node, None otherwise.
         """
+        self.logger.debug(
+            f"Compressing {'files and ' if files_to_sync else ''}'files_metadata.json' of {len(files_metadata)} files."
+        )
+        compressed_data_path = cluster.compress_files(name=self.worker.name, list_path=files_to_sync,
+                                                      cluster_control_json=files_metadata)
+
         # Start the synchronization process with the master and get a taskID.
         task_id = await self.worker.send_request(command=self.cmd, data=b'')
         if isinstance(task_id, Exception):
@@ -132,22 +138,15 @@ class SyncFiles(SyncTask):
             await self.worker.send_request(command=self.cmd + b'_r', data=b'None ' + exc_info)
             return
 
-        self.logger.debug(
-            f"Compressing {'files and ' if files_to_sync else ''}'files_metadata.json' of {len(files_metadata)} files."
-        )
-        compressed_data_path = cluster.compress_files(name=self.worker.name, list_path=files_to_sync,
-                                                      cluster_control_json=files_metadata)
-
         try:
             # Send zip file to the master into chunks.
             self.logger.debug("Sending zip file to master.")
-            await self.worker.send_file(filename=compressed_data_path)
+            await self.worker.send_file(filename=compressed_data_path, task_id=task_id)
             self.logger.debug("Zip file sent to master.")
 
             # Finish the synchronization process and notify where the file corresponding to the taskID is located.
             result = await self.worker.send_request(command=self.cmd + b'_e', data=task_id + b' ' +
-                                                                                   os.path.relpath(compressed_data_path,
-                                                                                                   common.wazuh_path).encode())
+                                                    os.path.relpath(compressed_data_path, common.WAZUH_PATH).encode())
             if isinstance(result, Exception):
                 raise result
             elif result.startswith(b'Error'):
@@ -157,8 +156,7 @@ class SyncFiles(SyncTask):
             # Notify error to master and delete its received file.
             self.logger.error(f"Error sending zip file: {e}")
             await self.worker.send_request(command=self.cmd + b'_r', data=task_id + b' ' +
-                                                                          json.dumps(e,
-                                                                                     cls=c_common.WazuhJSONEncoder).encode())
+                                           json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
         except Exception as e:
             # Notify error to master and delete its received file.
             self.logger.error(f"Error sending zip file: {e}")
@@ -167,6 +165,8 @@ class SyncFiles(SyncTask):
             await self.worker.send_request(command=self.cmd + b'_r', data=task_id + b' ' + exc_info)
         finally:
             os.unlink(compressed_data_path)
+            # In case task was interrupted, remove its ID from the interrupted set.
+            self.worker.interrupted_tasks.discard(task_id)
 
 
 class SyncWazuhdb(SyncTask):
@@ -216,7 +216,8 @@ class SyncWazuhdb(SyncTask):
             get_chunks_start_time = datetime.utcnow().timestamp()
             chunks = self.data_retriever(self.get_data_command)
             self.logger.debug(
-                f"Obtained {len(chunks)} chunks of data in {(datetime.utcnow().timestamp() - get_chunks_start_time):.3f}s.")
+                f'Obtained {len(chunks)} chunks of data in '
+                f'{(datetime.utcnow().timestamp() - get_chunks_start_time):.3f}s.')
         except exception.WazuhException as e:
             self.logger.error(f"Error obtaining data from wazuh-db: {e}")
             return
@@ -231,7 +232,7 @@ class SyncWazuhdb(SyncTask):
 
             # Specify under which task_id the JSON can be found in the master.
             await self.worker.send_request(command=self.cmd, data=task_id)
-            self.logger.debug(f"All chunks sent.")
+            self.logger.debug("All chunks sent.")
         else:
             self.logger.info(f"Finished in {(datetime.utcnow().timestamp() - start_time):.3f}s (0 chunks sent).")
         return True
@@ -287,7 +288,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         super().connection_result(future_result)
         if self.connected:
             # create directory for temporary files
-            worker_tmp_files = os.path.join(common.wazuh_path, 'queue', 'cluster', self.name)
+            worker_tmp_files = os.path.join(common.WAZUH_PATH, 'queue', 'cluster', self.name)
             if not os.path.exists(worker_tmp_files):
                 utils.mkdir_with_mode(worker_tmp_files)
 
@@ -332,7 +333,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             try:
                 asyncio.create_task(
                     self.manager.local_server.clients[dapi_client.decode()].send_request(command, error_msg))
-            except WazuhClusterError as e:
+            except WazuhClusterError:
                 raise WazuhClusterError(3025)
             return b'ok', b'DAPI error forwarded to worker'
         elif command == b'sendsyn_err':
@@ -340,7 +341,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             try:
                 asyncio.create_task(
                     self.manager.local_server.clients[sendsync_client.decode()].send_request(b'err', error_msg))
-            except WazuhClusterError as e:
+            except WazuhClusterError:
                 raise WazuhClusterError(3025)
             return b'ok', b'SendSync error forwarded to worker'
         elif command == b'dapi':
@@ -604,10 +605,11 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             await asyncio.wait_for(file_received.wait(),
                                    timeout=self.cluster_items['intervals']['communication']['timeout_receiving_file'])
         except Exception:
+            # Notify the sending node to stop its task.
             await self.send_request(
-                command=b'syn_i_w_m_r',
-                data=b'None ' + json.dumps(timeout_exc := WazuhClusterError(
-                    3039, extra_message=f'Integrity sync at {self.name}'), cls=c_common.WazuhJSONEncoder).encode())
+                command=b'cancel_task',
+                data=name.encode() + b' ' + json.dumps(timeout_exc := WazuhClusterError(3039),
+                                                       cls=c_common.WazuhJSONEncoder).encode())
             raise timeout_exc
 
         if isinstance(self.sync_tasks[name].filename, Exception):
@@ -653,11 +655,11 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                     f"Finished in {datetime.utcnow().timestamp() - self.integrity_sync_status['date_start']:.3f}s.")
 
         except exception.WazuhException as e:
-            logger.error(f"Error synchronizing extra valid files: {e}")
+            logger.error(f"Error synchronizing files: {e}")
             await self.send_request(command=b'syn_i_w_m_r',
                                     data=b'None ' + json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
         except Exception as e:
-            logger.error(f"Error synchronizing extra valid files: {e}")
+            logger.error(f"Error synchronizing files: {e}")
             exc_info = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)),
                                   cls=c_common.WazuhJSONEncoder)
             await self.send_request(command=b'syn_i_w_m_r', data=b'None ' + exc_info.encode())
@@ -694,13 +696,13 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             data : dict
                 File metadata such as modification time, whether it's a merged file or not, etc.
             """
-            full_filename_path = os.path.join(common.wazuh_path, filename)
+            full_filename_path = os.path.join(common.WAZUH_PATH, filename)
 
             if data['merged']:  # worker nodes can only receive agent-groups files
                 # Split merged file into individual files inside zipdir (directory containing unzipped files),
                 # and then move each one to the destination directory (<wazuh_path>/filename).
                 for name, content, _ in cluster.unmerge_info('agent-groups', zip_path, filename):
-                    full_unmerged_name = os.path.join(common.wazuh_path, name)
+                    full_unmerged_name = os.path.join(common.WAZUH_PATH, name)
                     tmp_unmerged_path = full_unmerged_name + '.tmp'
                     with open(tmp_unmerged_path, 'wb') as f:
                         f.write(content)
@@ -737,7 +739,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 for file_to_remove in files:
                     try:
                         logger.debug2(f"Remove file: '{file_to_remove}'")
-                        file_path = os.path.join(common.wazuh_path, file_to_remove)
+                        file_path = os.path.join(common.WAZUH_PATH, file_to_remove)
                         try:
                             os.remove(file_path)
                         except OSError as e:
@@ -756,7 +758,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                                 if cluster_items['files'][data['cluster_item_key']]['remove_subdirs_if_empty'])
         for directory in directories_to_check:
             try:
-                full_path = os.path.join(common.wazuh_path, directory)
+                full_path = os.path.join(common.WAZUH_PATH, directory)
                 dir_files = set(os.listdir(full_path))
                 if not dir_files or dir_files.issubset(set(cluster_items['files']['excluded_files'])):
                     shutil.rmtree(full_path)

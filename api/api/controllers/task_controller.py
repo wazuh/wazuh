@@ -9,13 +9,13 @@ from aiohttp import web
 from api.encoder import dumps, prettify
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.core.common import database_limit
+from wazuh.core.common import DATABASE_LIMIT
 from wazuh.task import get_task_status
 
 logger = logging.getLogger('wazuh')
 
 
-async def get_tasks_status(request, pretty=False, wait_for_complete=False, offset=0, limit=database_limit,
+async def get_tasks_status(request, pretty=False, wait_for_complete=False, offset=0, limit=DATABASE_LIMIT,
                            tasks_list=None, agents_list=None, command=None, node=None, module=None, status=None, q=None,
                            search=None, select=None, sort=None):
     """Check the status of the specified tasks

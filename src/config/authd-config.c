@@ -25,6 +25,7 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
     /* XML Definitions */
     static const char *xml_disabled = "disabled";
     static const char *xml_port = "port";
+    static const char *xml_ipv6 = "ipv6";
     static const char *xml_use_source_ip = "use_source_ip";
     static const char *xml_force_insert = "force_insert";       // Deprecated since 4.3.0
     static const char *xml_force_time = "force_time";           // Deprecated since 4.3.0
@@ -93,6 +94,15 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
             config->port = (unsigned short)atoi(node[i]->content);
 
             if (!config->port) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return OS_INVALID;
+            }
+        } else if (!strcmp(node[i]->element, xml_ipv6)) {
+            if (strcasecmp(node[i]->content, "yes") == 0) {
+                config->ipv6 = true;
+            } else if (strcasecmp(node[i]->content, "no") == 0) {
+                config->ipv6 = false;
+            } else {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return OS_INVALID;
             }

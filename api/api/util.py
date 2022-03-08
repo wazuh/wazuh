@@ -5,11 +5,12 @@
 import datetime
 import os
 import typing
+from functools import wraps
 
 import six
 from connexion import ProblemException
 
-from wazuh.core.common import wazuh_path as WAZUH_PATH
+from wazuh.core.common import WAZUH_PATH
 from wazuh.core.exception import WazuhException, WazuhInternalError, WazuhError, WazuhPermissionError, \
     WazuhResourceNotFound, WazuhTooManyRequests, WazuhNotAcceptable
 
@@ -323,3 +324,27 @@ def get_invalid_keys(original_dict, des_dict):
                 invalid_keys.add(key)
 
     return invalid_keys
+
+
+def deprecate_endpoint(link: str = ''):
+    """Decorator to add deprecation headers to API response.
+
+    Parameters
+    ----------
+    link : str
+        Documentation related with this deprecation.
+    """
+    def add_deprecation_headers(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            api_response = await func(*args, **kwargs)
+
+            api_response.headers['Deprecated'] = 'true'
+            if link:
+                api_response.headers['Link'] = f'<{link}>; rel="Deprecated"'
+
+            return api_response
+
+        return wrapper
+
+    return add_deprecation_headers

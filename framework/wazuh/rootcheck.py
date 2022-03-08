@@ -47,7 +47,7 @@ def run(agent_list: Union[list, None] = None) -> AffectedItemsWazuhResult:
         id_=agent['id'],
         error=WazuhError(1707)) for agent in non_eligible_agents]
 
-    with WazuhQueue(common.ARQUEUE) as wq:
+    with WazuhQueue(common.AR_SOCKET) as wq:
         eligible_agents = agent_list - not_found_agents - {d['id'] for d in non_eligible_agents}
         for agent_id in eligible_agents:
             try:
@@ -125,7 +125,7 @@ def get_last_scan(agent_list):
 
 
 @expose_resources(actions=["rootcheck:read"], resources=["agent:id:{agent_list}"])
-def get_rootcheck_agent(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None,
+def get_rootcheck_agent(agent_list=None, offset=0, limit=common.DATABASE_LIMIT, sort=None, search=None, select=None,
                         filters=None, q='', distinct=None):
     """Return a list of events from the rootcheck database.
 

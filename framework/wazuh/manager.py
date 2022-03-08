@@ -42,7 +42,7 @@ def get_status():
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-def ossec_log(level=None, tag=None, offset=0, limit=common.database_limit, sort_by=None,
+def ossec_log(level=None, tag=None, offset=0, limit=common.DATABASE_LIMIT, sort_by=None,
               sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None, q=''):
     """Gets logs from ossec.log.
 
@@ -245,7 +245,7 @@ def read_ossec_conf(section=None, field=None, raw=False):
 
     try:
         if raw:
-            with open(common.ossec_conf) as f:
+            with open(common.OSSEC_CONF) as f:
                 return f.read()
         result.affected_items.append(get_ossec_conf(section=section, field=field))
     except WazuhError as e:
@@ -295,7 +295,7 @@ def update_ossec_conf(new_conf=None):
                                       none_msg=f"Could not update configuration"
                                                f"{' in specified node' if node_id != 'manager' else ''}"
                                       )
-    backup_file = f'{common.ossec_conf}.backup'
+    backup_file = f'{common.OSSEC_CONF}.backup'
     try:
         # Check a configuration has been provided
         if not new_conf:
@@ -306,7 +306,7 @@ def update_ossec_conf(new_conf=None):
 
         # Create a backup of the current configuration before attempting to replace it
         try:
-            full_copy(common.ossec_conf, backup_file)
+            full_copy(common.OSSEC_CONF, backup_file)
         except IOError:
             raise WazuhError(1019)
 
@@ -322,7 +322,7 @@ def update_ossec_conf(new_conf=None):
     except WazuhError as e:
         result.add_failed_item(id_=node_id, error=e)
     finally:
-        exists(backup_file) and safe_move(backup_file, common.ossec_conf)
+        exists(backup_file) and safe_move(backup_file, common.OSSEC_CONF)
 
     result.total_affected_items = len(result.affected_items)
     return result

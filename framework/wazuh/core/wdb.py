@@ -25,7 +25,7 @@ class WazuhDBConnection:
         """
         Constructor
         """
-        self.socket_path = common.wdb_socket_path
+        self.socket_path = common.WDB_SOCKET
         self.request_slice = request_slice
         self.max_size = max_size
         self.__conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)

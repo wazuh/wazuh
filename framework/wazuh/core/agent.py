@@ -16,7 +16,7 @@ from time import time
 from wazuh.core import common, configuration, stats
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
-from wazuh.core.common import AGENT_COMPONENT_STATS_REQUIRED_VERSION, date_format
+from wazuh.core.common import AGENT_COMPONENT_STATS_REQUIRED_VERSION, DATE_FORMAT
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.utils import WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
     WazuhDBQueryDistinct, WazuhDBQueryGroupBy, WazuhDBBackend, safe_move
@@ -36,7 +36,7 @@ agent_regex = re.compile(r"^(\d{3,}) [^!].* .* .*$", re.MULTILINE)
 
 class WazuhDBQueryAgents(WazuhDBQuery):
 
-    def __init__(self, offset=0, limit=common.database_limit, sort=None, search=None, select=None, count=True,
+    def __init__(self, offset=0, limit=common.DATABASE_LIMIT, sort=None, search=None, select=None, count=True,
                  get_data=True, query='', filters=None, default_sort_field='id', min_select_fields=None,
                  remove_extra_fields=True, distinct=False, rbac_negate=True):
         if filters is None:
@@ -169,7 +169,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
 
 class WazuhDBQueryGroup(WazuhDBQuery):
-    def __init__(self, offset=0, limit=common.database_limit, sort=None, search=None, select=None,
+    def __init__(self, offset=0, limit=common.DATABASE_LIMIT, sort=None, search=None, select=None,
                  get_data=True, query='', filters=None, count=True, default_sort_field='name', min_select_fields=None,
                  remove_extra_fields=True, rbac_negate=True):
         if filters is None:
@@ -642,8 +642,8 @@ class Agent:
         :return: Confirmation message.
         """
         # Delete group directory (move it to a backup)
-        group_path = path.join(common.shared_path, group_id)
-        group_backup = path.join(common.backup_path, 'groups', "{0}_{1}".format(group_id, int(time())))
+        group_path = path.join(common.SHARED_PATH, group_id)
+        group_backup = path.join(common.BACKUP_PATH, 'groups', "{0}_{1}".format(group_id, int(time())))
         if path.exists(group_path):
             safe_move(group_path, group_backup, permissions=0o660)
 
@@ -662,7 +662,7 @@ class Agent:
             return 'null'
 
     @staticmethod
-    def get_agents_overview(offset=0, limit=common.database_limit, sort=None, search=None, select=None,
+    def get_agents_overview(offset=0, limit=common.DATABASE_LIMIT, sort=None, search=None, select=None,
                             filters=None, q=""):
         """Gets a list of available agents with basic attributes.
 
@@ -718,7 +718,7 @@ class Agent:
                 raise WazuhResourceNotFound(1710)
 
         # Get agent's group
-        group_path = path.join(common.groups_path, agent_id)
+        group_path = path.join(common.GROUPS_PATH, agent_id)
         try:
             with open(group_path) as f:
                 multigroup_name = f.read().strip()
@@ -743,7 +743,7 @@ class Agent:
             multigroup_name = f'{multigroup_name}{"," if multigroup_name else ""}{group_id}'
 
         # Check multigroup limit
-        if len(agent_groups) > common.max_groups_per_multigroup:
+        if len(agent_groups) > common.MAX_GROUPS_PER_MULTIGROUP:
             raise WazuhError(1737)
 
         # Update group file
@@ -791,14 +791,14 @@ class Agent:
         if not InputValidator().group(group_id):
             raise WazuhError(1722)
 
-        if path.exists(path.join(common.shared_path, group_id)):
+        if path.exists(path.join(common.SHARED_PATH, group_id)):
             return True
         else:
             return False
 
     @staticmethod
     def get_agents_group_file(agent_id):
-        group_path = path.join(common.groups_path, agent_id)
+        group_path = path.join(common.GROUPS_PATH, agent_id)
         if path.exists(group_path):
             with open(group_path) as f:
                 group_name = f.read().strip()
@@ -809,7 +809,7 @@ class Agent:
     @staticmethod
     def set_agent_group_file(agent_id, group_id):
         try:
-            agent_group_path = path.join(common.groups_path, agent_id)
+            agent_group_path = path.join(common.GROUPS_PATH, agent_id)
             new_file = not path.exists(agent_group_path)
 
             with open(agent_group_path, 'w') as f_group:
@@ -957,7 +957,7 @@ def send_restart_command(agent_id: str = '', agent_version: str = '', wq: WazuhQ
 @common.context_cached('system_agents')
 def get_agents_info():
     """Get all agent IDs in the system."""
-    with open(common.client_keys, 'r') as f:
+    with open(common.CLIENT_KEYS, 'r') as f:
         file_content = f.read()
 
     result = set(agent_regex.findall(file_content))
@@ -973,8 +973,8 @@ def get_groups():
     :return: List of group names
     """
     groups = set()
-    for shared_file in listdir(common.shared_path):
-        path.isdir(path.join(common.shared_path, shared_file)) and groups.add(shared_file)
+    for shared_file in listdir(common.SHARED_PATH):
+        path.isdir(path.join(common.SHARED_PATH, shared_file)) and groups.add(shared_file)
 
     return groups
 
@@ -988,17 +988,17 @@ def expand_group(group_name):
     """
     agents_ids = set()
     if group_name == '*':
-        for file in listdir(common.groups_path):
+        for file in listdir(common.GROUPS_PATH):
             try:
-                if path.getsize(path.join(common.groups_path, file)) > 0:
+                if path.getsize(path.join(common.GROUPS_PATH, file)) > 0:
                     agents_ids.add(file)
             except FileNotFoundError:
                 # Agent group removed while running through listed dir
                 pass
     else:
-        for file in listdir(common.groups_path):
+        for file in listdir(common.GROUPS_PATH):
             try:
-                with open(path.join(common.groups_path, file), 'r') as f:
+                with open(path.join(common.GROUPS_PATH, file), 'r') as f:
                     file_content = f.readlines()
                 len(file_content) == 1 and group_name in file_content[0].strip().split(',') and agents_ids.add(file)
             except FileNotFoundError:
@@ -1098,7 +1098,7 @@ def core_upgrade_agents(agents_chunk, command='upgrade_result', wpk_repo=None, v
     # Receive upgrade information from socket
     data = loads(s.receive().decode())
     s.close()
-    [agent_info.update((k, datetime.strptime(v, "%Y/%m/%d %H:%M:%S").strftime(date_format))
+    [agent_info.update((k, datetime.strptime(v, "%Y/%m/%d %H:%M:%S").strftime(DATE_FORMAT))
                        for k, v in agent_info.items() if k in {'create_time', 'update_time'})
      for agent_info in data['data']]
 

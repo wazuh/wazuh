@@ -59,7 +59,7 @@ def pyDaemon():
 
 
 def create_pid(name, pid):
-    filename = path.join(common.wazuh_path, common.os_pidfile, f'{name}-{pid}.pid')
+    filename = path.join(common.WAZUH_PATH, common.OS_PIDFILE_PATH, f'{name}-{pid}.pid')
 
     with open(filename, 'a') as fp:
         try:
@@ -70,7 +70,7 @@ def create_pid(name, pid):
 
 
 def delete_pid(name, pid):
-    filename = path.join(common.wazuh_path, common.os_pidfile, f'{name}-{pid}.pid')
+    filename = path.join(common.WAZUH_PATH, common.OS_PIDFILE_PATH, f'{name}-{pid}.pid')
 
     try:
         if path.exists(filename):
@@ -80,7 +80,7 @@ def delete_pid(name, pid):
 
 
 def delete_child_pids(name, ppid, logger):
-    filenames = glob.glob(path.join(common.wazuh_path, common.os_pidfile, f'{name}*.pid'))
+    filenames = glob.glob(path.join(common.WAZUH_PATH, common.OS_PIDFILE_PATH, f'{name}*.pid'))
 
     for process in psutil.Process(ppid).children(recursive=True):
         try:

@@ -1196,13 +1196,10 @@ endif
 
 # Agent dependencies
 EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist pacman libarchive popt rpm
-ifeq (${TARGET},server)
-	EXTERNAL_RES += jemalloc
-endif
 ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
 	# Manager extra dependency
-	EXTERNAL_RES += $(CPYTHON)
+	EXTERNAL_RES += $(CPYTHON) jemalloc
 endif
 endif
 EXTERNAL_DIR := $(EXTERNAL_RES:%=external/%)
@@ -1293,7 +1290,7 @@ os_net_c := $(wildcard os_net/*.c)
 os_net_o := $(os_net_c:.c=.o)
 
 os_net/%.o: os_net/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -c $^ -o $@
 
 #### Shared ##########
 # Unit tests wrappers
@@ -1794,7 +1791,11 @@ active_response_programs = default-firewall-drop pf npf ipfw firewalld-drop disa
 $(active_response_programs): ${WAZUH_LIB} ${WAZUHEXT_LIB}
 
 # Minimal dependencies for building active responses programs
-AR_PROGRAMS_DEPS = shared/validate_op.o shared/regex_op.o shared/string_op.o shared/exec_op.o shared/file_op_proc.o shared/debug_op_proc.o shared/time_op.o shared/privsep_op.o shared/version_op.o os_xml/os_xml.o os_xml/os_xml_access.o os_regex/os_regex_strbreak.o
+AR_PROGRAMS_DEPS = os_regex/os_regex.o os_regex/os_regex_free_pattern.o os_regex/os_regex_compile.o os_regex/os_match_free_pattern.o os_regex/os_regex_maps.o os_regex/os_regex_execute.o os_regex/os_regex_free_pattern.o os_regex/os_match_execute.o os_regex/os_match_compile.o shared/expression.o shared/randombytes.o shared/validate_op.o shared/regex_op.o shared/string_op.o shared/exec_op.o shared/file_op_proc.o shared/debug_op_proc.o shared/time_op.o shared/privsep_op.o shared/version_op.o os_xml/os_xml.o os_xml/os_xml_access.o os_regex/os_regex_strbreak.o os_net/os_net.o
+
+ifneq (,$(filter ${TEST},YES yes y Y 1))
+AR_PROGRAMS_DEPS += unit_tests/wrappers/externals/pcre2/pcre2_wrappers.o
+endif
 
 ifeq (${TARGET}, winagent)
 ifneq (,$(filter ${TEST},YES yes y Y 1))

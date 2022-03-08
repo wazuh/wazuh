@@ -256,7 +256,7 @@ class AbstractServer:
         task_logger.addFilter(ClusterFilter(tag=self.tag, subtag=task_tag))
         return task_logger
 
-    def get_connected_nodes(self, filter_node: str = None, offset: int = 0, limit: int = common.database_limit,
+    def get_connected_nodes(self, filter_node: str = None, offset: int = 0, limit: int = common.DATABASE_LIMIT,
                             sort: Dict = None, search: Dict = None, select: Dict = None,
                             filter_type: str = 'all') -> Dict:
         """Get all connected nodes, including the master node.
@@ -384,8 +384,8 @@ class AbstractServer:
 
         if self.enable_ssl:
             ssl_context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
-            ssl_context.load_cert_chain(certfile=os.path.join(common.wazuh_path, 'etc', 'sslmanager.cert'),
-                                        keyfile=os.path.join(common.wazuh_path, 'etc', 'sslmanager.key'))
+            ssl_context.load_cert_chain(certfile=os.path.join(common.WAZUH_PATH, 'etc', 'sslmanager.cert'),
+                                        keyfile=os.path.join(common.WAZUH_PATH, 'etc', 'sslmanager.key'))
         else:
             ssl_context = None
 

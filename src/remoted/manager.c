@@ -259,12 +259,25 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
     char * clean = w_utf8_filter(r_msg, true);
     r_msg = clean;
 
-    if (strcmp(r_msg, HC_STARTUP) == 0) {
-        mdebug1("Agent %s sent HC_STARTUP from %s.", key->name, inet_ntoa(key->peer_info.sin_addr));
-        is_startup = 1;
-    } else if (strcmp(r_msg, HC_SHUTDOWN) == 0) {
-        mdebug1("Agent %s sent HC_SHUTDOWN from %s.", key->name, inet_ntoa(key->peer_info.sin_addr));
-        is_shutdown = 1;
+    if ((strcmp(r_msg, HC_STARTUP) == 0) || (strcmp(r_msg, HC_SHUTDOWN) == 0)) {
+        char aux_ip[IPSIZE + 1] = {0};
+        switch (key->peer_info.ss_family) {
+        case AF_INET:
+            get_ipv4_string(((struct sockaddr_in *)&(key->peer_info))->sin_addr, aux_ip, IPSIZE);
+            break;
+        case AF_INET6:
+            get_ipv6_string(((struct sockaddr_in6 *)&(key->peer_info))->sin6_addr, aux_ip, IPSIZE);
+            break;
+        default:
+            break;
+        }
+        if (strcmp(r_msg, HC_STARTUP) == 0) {
+            mdebug1("Agent %s sent HC_STARTUP from '%s'", key->name, aux_ip);
+            is_startup = 1;
+        } else {
+            mdebug1("Agent %s sent HC_SHUTDOWN from '%s'", key->name, aux_ip);
+            is_shutdown = 1;
+        }
     } else {
         /* Clean msg and shared files (remove random string) */
         msg = r_msg;

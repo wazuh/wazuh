@@ -33,12 +33,10 @@
 #define FILE_ERROR    "(1117): Error handling file '%s'."
 #define FSTAT_ERROR   "(1118): Could not retrieve information of file '%s' due to [(%d)-(%s)]."
 #define FGETS_ERROR   "(1119): Invalid line on file '%s': %s."
-//#define PIPE_ERROR    "%s(1120): ERROR: Pipe error."
 #define GLOB_ERROR    "(1121): Glob error. Invalid pattern: '%s'."
 #define GLOB_NFOUND   "(1122): No file found by pattern: '%s'."
 #define UNLINK_ERROR  "(1123): Unable to delete file: '%s' due to [(%d)-(%s)]."
 #define RENAME_ERROR  "(1124): Could not rename file '%s' to '%s' due to [(%d)-(%s)]."
-//#define INT_ERROR     "%s(1125): ERROR: Internal error (undefined)."
 #define OPEN_ERROR    "(1126): Unable to open file '%s' due to [(%d)-(%s)]."
 #define CHMOD_ERROR   "(1127): Could not chmod object '%s' due to [(%d)-(%s)]."
 #define MKSTEMP_ERROR "(1128): Could not create temporary file '%s' due to [(%d)-(%s)]."
@@ -59,7 +57,6 @@
 #define RMDIR_ERROR     "(1143): Unable to delete folder '%s' due to [(%d)-(%s)]."
 #define ATEXIT_ERROR    "(1144): Unable to set exit function"
 
-
 /* COMMON ERRORS */
 #define CONN_ERROR      "(1201): No remote connection configured."
 #define CONFIG_ERROR    "(1202): Configuration error at '%s'."
@@ -68,21 +65,21 @@
 #define PORT_ERROR      "(1205): Invalid port number: '%d'."
 #define BIND_ERROR      "(1206): Unable to Bind port '%d' due to [(%d)-(%s)]"
 #define RCONFIG_ERROR   "(1207): %s remote configuration in '%s' is corrupted."
-#define AUTH_CONN_ERROR "(1208): Unable to connect to the Auth service at '%s:%d'."
-#define AUTH_CONNECTED  "(1209): Connected to the Auth service at '%s:%d'."
+#define ENROLL_CONN_ERROR "(1208): Unable to connect to enrollment service at '[%s]:%d'"
+#define ENROLL_CONNECTED  "(1209): Connected to enrollment service at '[%s]:%d'"
 #define QUEUE_ERROR     "(1210): Queue '%s' not accessible: '%s'"
 #define QUEUE_FATAL     "(1211): Unable to access queue: '%s'. Giving up."
 #define PID_ERROR       "(1212): Unable to create PID file."
 #define DENYIP_WARN     "(1213): Message from '%s' not allowed. Cannot find the ID of the agent."
 #define MSG_ERROR       "(1214): Problem receiving message from '%s'."
 #define CLIENT_ERROR    "(1215): No client configured. Exiting."
-#define CONNS_ERROR     "(1216): Unable to connect to '%s:%d/%s': '%s'."
-#define UNABLE_CONN     "(1242): Unable to connect to server. Exhausted all options."
+#define CONNS_ERROR     "(1216): Unable to connect to '[%s]:%d/%s': '%s'."
 #define SEC_ERROR       "(1217): Error creating encrypted message."
 #define SEND_ERROR      "(1218): Unable to send message to '%s': %s"
 #define RULESLOAD_ERROR "(1219): Unable to access the rules directory."
 #define RULES_ERROR     "(1220): Error loading the rules: '%s'."
 #define LISTS_ERROR     "(1221): Error loading the list: '%s'."
+#define IMSG_ERROR      "(1222): Invalid msg: %s"
 #define QUEUE_SEND      "(1224): Error sending message to queue."
 #define SIGNAL_RECV     "(1225): SIGNAL [(%d)-(%s)] Received. Exit Cleaning..."
 #define XML_ERROR       "(1226): Error reading XML file '%s': %s (line %d)."
@@ -90,9 +87,9 @@
 #define XML_NO_ELEM     "(1228): Element '%s' without any option."
 #define XML_INVALID     "(1229): Invalid element '%s' on the '%s' config."
 #define XML_INVELEM     "(1230): Invalid element in the configuration: '%s'."
-#define XML_INVATTR     "(1243): Invalid attribute '%s' in the configuration: '%s'."
 #define XML_ELEMNULL    "(1231): Invalid NULL element in the configuration."
 #define XML_READ_ERROR  "(1232): Error reading XML. Unknown cause."
+#define XML_INVATTR     "(1233): Invalid attribute '%s' in the configuration: '%s'."
 #define XML_VALUENULL   "(1234): Invalid NULL content for element: %s."
 #define XML_VALUEERR    "(1235): Invalid value for element '%s': %s."
 #define XML_MAXREACHED  "(1236): Maximum number of elements reached for: %s."
@@ -111,19 +108,19 @@
 #define CONN_REF        "(1249): Unable to send message. Connection with remote server refused."
 #define ACCESS_ERROR    "(1250): Error trying to execute \"%s\": %s (%d)."
 
-#define MAILQ_ERROR     "(1221): No Mail queue at %s"
-#define IMSG_ERROR      "(1222): Invalid msg: %s"
-#define SNDMAIL_ERROR   "(1223): Error Sending email to %s (smtp server)"
-#define XML_INV_GRAN_MAIL "(1224): Invalid 'email_alerts' config (missing parameters)."
+/* Mail errors */
 #define CHLDWAIT_ERROR  "(1261): Waiting for child process. (status: %d)."
 #define TOOMANY_WAIT_ERROR "(1262): Too many errors waiting for child process(es)."
+#define SNDMAIL_ERROR   "(1263): Error Sending email to %s (smtp server)"
+#define XML_INV_GRAN_MAIL "(1264): Invalid 'email_alerts' config (missing parameters)."
+#define INVALID_SMTP    "(1265): Invalid SMTP Server: %s"
 
 /* rootcheck */
-#define MAX_RK_MSG        "(1250): Maximum number of global files reached: %d"
 #define INVALID_RKCL_NAME  "(1251): Invalid rk configuration name: '%s'."
 #define INVALID_RKCL_VALUE "(1252): Invalid rk configuration value: '%s'."
 #define INVALID_ROOTDIR    "(1253): Invalid rootdir (unable to retrieve)."
 #define INVALID_RKCL_VAR   "(1254): Invalid rk variable: '%s'."
+#define MAX_RK_MSG        "(1255): Maximum number of global files reached: %d"
 
 /* syscheck */
 #define SK_INV_REG      "(1757): Invalid syscheck registry entry: '%s'."
@@ -161,8 +158,6 @@
 #define NO_CLIENT_KEYS  "(1751): File client.keys not found or empty."
 
 #define REMOTED_NET_PROTOCOL_NOT_SET  "(1752): Network protocol is not set."
-
-/* 1760 - 1769 -- reserved for maild */
 
 /* Active Response */
 #define AR_CMD_MISS     "(1280): Missing command options. " \
@@ -257,10 +252,6 @@
 #define REGEX_SUBS      "(1451): Missing sub_strings on regex: '%s'."
 #define REGEX_SYNTAX    "(1452): Syntax error on regex: '%s'"
 
-/* Mail errors */
-#define INVALID_SMTP    "(1501): Invalid SMTP Server: %s"
-#define INVALID_MAIL    "(1502): Invalid Email Address: %s"
-
 /* Decoders */
 #define PPLUGIN_INV     "(2101): Parent decoder name invalid: '%s'."
 #define PDUP_INV        "(2102): Duplicated decoder with prematch: '%s'."
@@ -289,7 +280,7 @@
 
 /* Agent errors */
 #define AG_WAIT_SERVER  "(4101): Waiting for server reply (not started). Tried: '%s'."
-#define AG_CONNECTED    "(4102): Connected to the server (%s:%d/%s)."
+#define AG_CONNECTED    "(4102): Connected to the server ([%s]:%d/%s)."
 #define AG_USINGIP      "(4103): Server IP address already set. Trying that before the hostname."
 #define AG_INV_HOST     "(4104): Invalid hostname: '%s'."
 #define AG_INV_IP       "(4105): No valid server IP found."

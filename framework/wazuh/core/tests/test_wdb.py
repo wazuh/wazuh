@@ -21,7 +21,7 @@ def test_failed_connection():
     Tests an exception is properly raised when it's not possible to connect to wdb
     """
     # tests the socket path doesn't exists
-    with patch('wazuh.core.common.wdb_socket_path', '/this/path/doesnt/exist'):
+    with patch('wazuh.core.common.WDB_SOCKET', '/this/path/doesnt/exist'):
         with pytest.raises(exception.WazuhException, match=".* 2005 .*"):
             WazuhDBConnection()
     # tests an exception is properly raised when a connection error is raised

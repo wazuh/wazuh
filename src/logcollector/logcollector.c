@@ -144,11 +144,13 @@ void LogCollectorStart()
     IT_control duplicates_removed = 0;
     logreader *current;
 
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
     w_sysinfo_helpers_t * sysinfo = NULL;
     os_calloc(1, sizeof(w_sysinfo_helpers_t), sysinfo);
     if (!w_sysinfo_init(sysinfo)) {
         merror(SYSINFO_DYNAMIC_INIT_ERROR);
     }
+#endif
 
     /* Create store data */
     excluded_files = OSHash_Create();

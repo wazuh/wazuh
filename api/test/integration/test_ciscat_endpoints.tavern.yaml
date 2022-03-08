@@ -5,7 +5,7 @@ stages:
 
   # GET /ciscat/001/results
   - name: Try to get ciscat results for agent 001
-    request: &get_ciscat_results_001
+    request:
       verify: False
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/ciscat/001/results"

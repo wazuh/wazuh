@@ -254,7 +254,7 @@ void wm_check_agents() {
 void wm_sync_agents() {
     unsigned int i;
     char * group;
-    char cidr[20];
+    char cidr[IPSIZE + 1];
     keystore keys = KEYSTORE_INITIALIZER;
     keyentry *entry;
     int *agents;
@@ -287,7 +287,7 @@ void wm_sync_agents() {
             *group = 0;
         }
 
-        if (wdb_insert_agent(id, entry->name, NULL, OS_CIDRtoStr(entry->ip, cidr, 20) ?
+        if (wdb_insert_agent(id, entry->name, NULL, OS_CIDRtoStr(entry->ip, cidr, IPSIZE) ?
                              entry->ip->ip : cidr, entry->raw_key, *group ? group : NULL,1, &wdb_wmdb_sock)) {
             // The agent already exists, update group only.
             wm_sync_agent_group(id, entry->id);

@@ -67,7 +67,7 @@ test_result = [
                                         {'id': '003', 'status': ['disconnected']}]}],
      ['active', 'disconnected', 'disconnected'], test_result[2]),
 ])
-@patch('wazuh.core.common.client_keys', new=os.path.join(test_agent_data_path, 'client.keys'))
+@patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_data_path, 'client.keys'))
 @patch('wazuh.syscheck.WazuhDBQueryAgents.__exit__')
 @patch('wazuh.syscheck.WazuhDBQueryAgents.__init__', return_value=None)
 @patch('wazuh.syscheck.WazuhQueue._connect')
@@ -207,7 +207,7 @@ def test_syscheck_last_scan(socket_mock, wdb_conn_mock, is_file_mock, db_mock, a
     """
     with patch('wazuh.syscheck.Agent.get_basic_information', return_value=wazuh_version):
         with patch('wazuh.syscheck.glob',
-                   return_value=[os.path.join(common.database_path_agents, '{}.db'.format(agent_id[0]))]):
+                   return_value=[os.path.join(common.DATABASE_PATH_AGENTS, '{}.db'.format(agent_id[0]))]):
             result = last_scan(agent_id)
             assert isinstance(result, AffectedItemsWazuhResult)
             assert isinstance(result.affected_items, list)
@@ -253,7 +253,7 @@ def test_syscheck_last_scan_internal_error(glob_mock, version):
      {'file': 'HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Services\\W32Time\\SecureTimeLimits\\RunTime'}, True)
 ])
 @patch('socket.socket.connect')
-@patch('wazuh.core.common.wdb_path', new=test_data_path)
+@patch('wazuh.core.common.WDB_PATH', new=test_data_path)
 def test_syscheck_files(socket_mock, agent_id, select, filters, distinct):
     """Test function `files` from syscheck module.
 

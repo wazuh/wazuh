@@ -63,7 +63,7 @@ log_builder_t * log_builder_init(bool update) {
         log_builder_update(builder);
     } else {
         strncpy(builder->host_name, "localhost", LOG_BUILDER_HOSTNAME_LEN - 1);
-        strncpy(builder->host_ip, "0.0.0.0", INET6_ADDRSTRLEN - 1);
+        strncpy(builder->host_ip, "0.0.0.0", IPSIZE - 1);
     }
 
     return builder;

@@ -11,7 +11,7 @@ with patch('wazuh.common.wazuh_uid'):
         import wazuh.rbac.decorators
         from api.controllers.task_controller import get_tasks_status
         from wazuh import task
-        from wazuh.core.common import database_limit
+        from wazuh.core.common import DATABASE_LIMIT
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         del sys.modules['wazuh.rbac.orm']
@@ -28,7 +28,7 @@ async def test_get_tasks_status(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
     f_kwargs = {'select': None,
                 'search': None,
                 'offset': 0,
-                'limit': database_limit,
+                'limit': DATABASE_LIMIT,
                 'filters': {
                     'task_list': None,
                     'agent_list': None,
