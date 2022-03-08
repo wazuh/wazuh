@@ -49,7 +49,7 @@ Event opBuilderHelperStringTransformation(const std::string field, char op, Even
         const rapidjson::Value * refValueToCheck{};
         try
         {
-            refValueToCheck = e->get("/" + refValue.value());
+            refValueToCheck = e->get(refValue.value());
         }
         catch (std::exception & ex)
         {
@@ -87,7 +87,7 @@ Event opBuilderHelperStringTransformation(const std::string field, char op, Even
     // Create and add string to event
     try
     {
-        e->set("/" + field,
+        e->set(field,
               rapidjson::Value(value.value().c_str(), e->m_doc.GetAllocator()).Move());
     }
     catch (std::exception & ex)
@@ -121,10 +121,10 @@ Event opBuilderHelperIntTransformation(const std::string field, std::string op, 
 {
     // TODO Remove try catch or if nullptr after fix get method of document class
     // Get value to compare
-    const rapidjson::Value * fieldValue{};
+    const rapidjson::Value * fieldValue {};
     try
     {
-        fieldValue = e->get("/" + field);
+        fieldValue = e->get(field);
     }
     catch (std::exception & ex)
     {
@@ -144,7 +144,7 @@ Event opBuilderHelperIntTransformation(const std::string field, std::string op, 
         const rapidjson::Value * refValueToCheck {};
         try
         {
-            refValueToCheck = e->get("/" + refValue.value());
+            refValueToCheck = e->get(refValue.value());
         }
         catch (std::exception & ex)
         {
@@ -160,6 +160,7 @@ Event opBuilderHelperIntTransformation(const std::string field, std::string op, 
     }
 
     // Operation
+    // TODO: change to switch for performance
     if (op == "sum")
     {
         value = fieldValue->GetInt() + value.value();
@@ -188,7 +189,7 @@ Event opBuilderHelperIntTransformation(const std::string field, std::string op, 
     // Create and add string to event
     try
     {
-        e->set("/" + field, rapidjson::Value(value.value()));
+        e->set(field, rapidjson::Value(value.value()));
     }
     catch (std::exception & ex)
     {
@@ -212,7 +213,8 @@ using builder::internals::syntax::REFERENCE_ANCHOR;
 types::Lifter opBuilderHelperStringUP(const types::DocumentValue & def)
 {
     // Get field key to check
-    std::string key {def.MemberBegin()->name.GetString()};
+
+    std::string key {json::Document::preparePath(def.MemberBegin()->name.GetString())};
 
     // Get the raw value of parameter
     if (!def.MemberBegin()->value.IsString())
@@ -235,7 +237,7 @@ types::Lifter opBuilderHelperStringUP(const types::DocumentValue & def)
     // Check if is a reference to json event
     if (parametersArr[1][0] == REFERENCE_ANCHOR)
     {
-        refExpStr = parametersArr[1].substr(1);
+        refExpStr = json::Document::preparePath(parametersArr[1].substr(1));
     }
     else
     {
@@ -259,7 +261,7 @@ types::Lifter opBuilderHelperStringLO(const types::DocumentValue & def)
 {
 
     // Get field key to check
-    std::string key {def.MemberBegin()->name.GetString()};
+    std::string key {json::Document::preparePath(def.MemberBegin()->name.GetString())};
 
     // Get the raw value of parameter
     if (!def.MemberBegin()->value.IsString())
@@ -282,7 +284,7 @@ types::Lifter opBuilderHelperStringLO(const types::DocumentValue & def)
     // Check if is a reference to json event
     if (parametersArr[1][0] == REFERENCE_ANCHOR)
     {
-        refExpStr = parametersArr[1].substr(1);
+        refExpStr = json::Document::preparePath(parametersArr[1].substr(1));
     }
     else
     {
@@ -306,7 +308,7 @@ types::Lifter opBuilderHelperStringTrim(const types::DocumentValue & def)
 {
 
     // Get field path to trim
-    std::string field {def.MemberBegin()->name.GetString()};
+    std::string field {json::Document::preparePath(def.MemberBegin()->name.GetString())};
 
     // Get the raw value of parameter
     if (!def.MemberBegin()->value.IsString())
@@ -353,7 +355,7 @@ types::Lifter opBuilderHelperStringTrim(const types::DocumentValue & def)
                 const rapidjson::Value * fieldValue;
                 try
                 {
-                    fieldValue = e->get("/" + field);
+                    fieldValue = e->get(field);
                 }
                 catch (std::exception & ex)
                 {
@@ -395,7 +397,7 @@ types::Lifter opBuilderHelperStringTrim(const types::DocumentValue & def)
                 // Update event
                 try
                 {
-                    e->set("/" + field,
+                    e->set(field,
                           rapidjson::Value(strToTrim.c_str(), e->m_doc.GetAllocator())
                               .Move());
                 }
@@ -418,10 +420,10 @@ types::Lifter opBuilderHelperStringTrim(const types::DocumentValue & def)
 types::Lifter opBuilderHelperIntCalc(const types::DocumentValue & def)
 {
     // Get field
-    std::string field {def.MemberBegin()->name.GetString()};
+    std::string field {json::Document::preparePath(def.MemberBegin()->name.GetString())};
     std::string rawValue {def.MemberBegin()->value.GetString()};
 
-    std::vector<std::string> parameters = utils::string::split(rawValue, '/');
+    std::vector<std::string> parameters {utils::string::split(rawValue, '/')};
 
     if (parameters.size() != 3)
     {
@@ -432,6 +434,7 @@ types::Lifter opBuilderHelperIntCalc(const types::DocumentValue & def)
     std::optional<int> value {};
     std::string op {parameters[1]};
 
+    // TODO Parametrize this
     if (op != "sum" && op != "sub" && op != "mul" && op != "div")
     {
         throw std::runtime_error("Invalid operator");
@@ -448,7 +451,7 @@ types::Lifter opBuilderHelperIntCalc(const types::DocumentValue & def)
     if (parameters[2][0] == REFERENCE_ANCHOR)
     {
         // Check case `+i_calc/op/$`
-        refValue = parameters[2].substr(1, std::string::npos);
+        refValue = json::Document::preparePath(parameters[2].substr(1, std::string::npos));
     }
     else
     {
@@ -473,18 +476,18 @@ types::Lifter opBuilderHelperIntCalc(const types::DocumentValue & def)
 types::Lifter opBuilderHelperRegexExtract(const types::DocumentValue & def)
 {
     // Get fields
-    std::string field = def.MemberBegin()->name.GetString();
-    std::string value = def.MemberBegin()->value.GetString();
+    std::string field {json::Document::preparePath(def.MemberBegin()->name.GetString())};
+    std::string value {def.MemberBegin()->value.GetString()};
 
-    std::vector<std::string> parameters = utils::string::split(value, '/');
+    std::vector<std::string> parameters {utils::string::split(value, '/')};
     if (parameters.size() != 3)
     {
         throw std::runtime_error("Invalid number of parameters");
     }
 
-    std::string map_field = parameters[1];
+    std::string map_field {json::Document::preparePath(parameters[1])};
 
-    auto regex_ptr = std::make_shared<RE2>(parameters[2]);
+    auto regex_ptr {std::make_shared<RE2>(parameters[2])};
     if (!regex_ptr->ok())
     {
         const std::string err = "Error compiling regex '" + parameters[2] + "'. "
@@ -503,7 +506,7 @@ types::Lifter opBuilderHelperRegexExtract(const types::DocumentValue & def)
                 const rapidjson::Value * field_str{};
                 try
                 {
-                    field_str = e->get("/" + field);
+                    field_str = e->get(field);
                 }
                 catch (std::exception & ex)
                 {
@@ -518,7 +521,7 @@ types::Lifter opBuilderHelperRegexExtract(const types::DocumentValue & def)
                         // Create and add string to event
                         try
                         {
-                            e->set("/" + map_field,
+                            e->set(map_field,
                                 rapidjson::Value(match.c_str(), e->m_doc.GetAllocator()).Move());
                         }
                         catch (std::exception & ex)
