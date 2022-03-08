@@ -69,8 +69,8 @@ TEST(opBuilderHelperStringNE, Static_string_ok)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 2);
-    EXPECT_STRNE(expected[0].get("/field2check")->GetString(), "test_value");
-    EXPECT_STRNE(expected[1].get("/field2check")->GetString(), "test_value");
+    EXPECT_STRNE(expected[0]->get("/field2check")->GetString(), "test_value");
+    EXPECT_STRNE(expected[1]->get("/field2check")->GetString(), "test_value");
 }
 
 // Test ok: static values (numbers, compare as string)
@@ -112,7 +112,7 @@ TEST(opBuilderHelperStringNE, Static_number_ok)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
-    EXPECT_STRNE(expected[0].get("/field2check")->GetString(), "11");
+    EXPECT_STRNE(expected[0]->get("/field2check")->GetString(), "11");
 }
 
 // Test ok: dynamic values (string)
@@ -164,8 +164,8 @@ TEST(opBuilderHelperStringNE, Dynamics_string_ok)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_STRNE(expected[0].get("/field2check")->GetString(),
-                 expected[0].get("/ref_key")->GetString());
+    ASSERT_STRNE(expected[0]->get("/field2check")->GetString(),
+                 expected[0]->get("/ref_key")->GetString());
 }
 
 // Test ok: multilevel dynamic values (string)
@@ -239,8 +239,8 @@ TEST(opBuilderHelperStringNE, Multilevel_dynamics_string_ok)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_STRNE(expected[0].get("/parentObjt_1/field2check")->GetString(),
-                 expected[0].get("/parentObjt_2/ref_key")->GetString());
+    ASSERT_STRNE(expected[0]->get("/parentObjt_1/field2check")->GetString(),
+                 expected[0]->get("/parentObjt_2/ref_key")->GetString());
 }
 
 // Test ok: dynamic values (number)

@@ -66,9 +66,9 @@ TEST(opBuilderHelperStringTrim, BothOk)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 4);
-    ASSERT_STREQ(expected[0].get("/fieldToTranf")->GetString(), "hi");
-    ASSERT_STREQ(expected[1].get("/fieldToTranf")->GetString(), "hi");
-    ASSERT_STREQ(expected[2].get("/fieldToTranf")->GetString(), "hi");
+    ASSERT_STREQ(expected[0]->get("/fieldToTranf")->GetString(), "hi");
+    ASSERT_STREQ(expected[1]->get("/fieldToTranf")->GetString(), "hi");
+    ASSERT_STREQ(expected[2]->get("/fieldToTranf")->GetString(), "hi");
 }
 
 TEST(opBuilderHelperStringTrim, Start_ok)
@@ -101,10 +101,10 @@ TEST(opBuilderHelperStringTrim, Start_ok)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 4);
-    ASSERT_STREQ(expected[0].get("/fieldToTranf")->GetString(), "hi---");
-    ASSERT_STREQ(expected[1].get("/fieldToTranf")->GetString(), "hi---");
-    ASSERT_STREQ(expected[2].get("/fieldToTranf")->GetString(), "hi");
-    ASSERT_STREQ(expected[3].get("/fieldToTranf")->GetString(), "hi");
+    ASSERT_STREQ(expected[0]->get("/fieldToTranf")->GetString(), "hi---");
+    ASSERT_STREQ(expected[1]->get("/fieldToTranf")->GetString(), "hi---");
+    ASSERT_STREQ(expected[2]->get("/fieldToTranf")->GetString(), "hi");
+    ASSERT_STREQ(expected[3]->get("/fieldToTranf")->GetString(), "hi");
 }
 
 // Test ok: dynamic values (string)
@@ -138,10 +138,10 @@ TEST(opBuilderHelperStringTrim, End_ok)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 4);
-    ASSERT_STREQ(expected[0].get("/fieldToTranf")->GetString(), "---hi");
-    ASSERT_STREQ(expected[1].get("/fieldToTranf")->GetString(), "hi");
-    ASSERT_STREQ(expected[2].get("/fieldToTranf")->GetString(), "---hi");
-    ASSERT_STREQ(expected[3].get("/fieldToTranf")->GetString(), "hi");
+    ASSERT_STREQ(expected[0]->get("/fieldToTranf")->GetString(), "---hi");
+    ASSERT_STREQ(expected[1]->get("/fieldToTranf")->GetString(), "hi");
+    ASSERT_STREQ(expected[2]->get("/fieldToTranf")->GetString(), "---hi");
+    ASSERT_STREQ(expected[3]->get("/fieldToTranf")->GetString(), "hi");
 }
 
 TEST(opBuilderHelperStringTrim, Multilevel_src)
@@ -174,10 +174,10 @@ TEST(opBuilderHelperStringTrim, Multilevel_src)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 4);
-    ASSERT_STREQ(expected[0].get("/fieldToTranf/a/b")->GetString(), "---hi");
-    ASSERT_STREQ(expected[1].get("/fieldToTranf/a/b")->GetString(), "hi");
-    ASSERT_STREQ(expected[2].get("/fieldToTranf/a/b")->GetString(), "---hi");
-    ASSERT_STREQ(expected[3].get("/fieldToTranf/a/b")->GetString(), "hi");
+    ASSERT_STREQ(expected[0]->get("/fieldToTranf/a/b")->GetString(), "---hi");
+    ASSERT_STREQ(expected[1]->get("/fieldToTranf/a/b")->GetString(), "hi");
+    ASSERT_STREQ(expected[2]->get("/fieldToTranf/a/b")->GetString(), "---hi");
+    ASSERT_STREQ(expected[3]->get("/fieldToTranf/a/b")->GetString(), "hi");
 }
 
 TEST(opBuilderHelperStringTrim, Not_exist_src)
@@ -226,7 +226,7 @@ TEST(opBuilderHelperStringTrim, Src_not_string)
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
     ASSERT_TRUE(expected[0].exists("/fieldToTranf"));
-    ASSERT_EQ(expected[0].get("/fieldToTranf")->GetInt(), 15);
+    ASSERT_EQ(expected[0]->get("/fieldToTranf")->GetInt(), 15);
 }
 
 TEST(opBuilderHelperStringTrim, Multilevel)
@@ -259,8 +259,8 @@ TEST(opBuilderHelperStringTrim, Multilevel)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 4);
-    ASSERT_STREQ(expected[0].get("/fieldToTranf/a/b")->GetString(), "---hi");
-    ASSERT_STREQ(expected[1].get("/fieldToTranf/a/b")->GetString(), "hi");
-    ASSERT_STREQ(expected[2].get("/fieldToTranf/a/b")->GetString(), "---hi");
-    ASSERT_STREQ(expected[3].get("/fieldToTranf/a/b")->GetString(), "hi");
+    ASSERT_STREQ(expected[0]->get("/fieldToTranf/a/b")->GetString(), "---hi");
+    ASSERT_STREQ(expected[1]->get("/fieldToTranf/a/b")->GetString(), "hi");
+    ASSERT_STREQ(expected[2]->get("/fieldToTranf/a/b")->GetString(), "---hi");
+    ASSERT_STREQ(expected[3]->get("/fieldToTranf/a/b")->GetString(), "hi");
 }

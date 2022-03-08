@@ -77,7 +77,7 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_ok)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_GT(expected[0].get("/field_test")->GetInt(), 10);
+    ASSERT_GT(expected[0]->get("/field_test")->GetInt(), 10);
 }
 
 TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_true)
@@ -111,7 +111,7 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_true)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_GT(expected[0].get("/field_test")->GetInt(), 10);
+    ASSERT_GT(expected[0]->get("/field_test")->GetInt(), 10);
 }
 
 TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_false)
@@ -190,10 +190,10 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_ref_true)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_GT(expected[0].get("/field_test")->GetInt(),
-              expected[0].get("/field_src")->GetInt());
-    ASSERT_GT(expected[1].get("/field_test")->GetInt(),
-              expected[1].get("/field_src")->GetInt());
+    ASSERT_GT(expected[0]->get("/field_test")->GetInt(),
+              expected[0]->get("/field_src")->GetInt());
+    ASSERT_GT(expected[1]->get("/field_test")->GetInt(),
+              expected[1]->get("/field_src")->GetInt());
 }
 
 TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_ref_false)
@@ -282,8 +282,8 @@ TEST(opBuilderHelperIntGreaterThan, Exec_dynamics_int_ok)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_GT(expected[0].get("/field2check")->GetInt(),
-              expected[0].get("/ref_key")->GetInt());
+    ASSERT_GT(expected[0]->get("/field2check")->GetInt(),
+              expected[0]->get("/ref_key")->GetInt());
 }
 
 TEST(opBuilderHelperIntGreaterThan, Exec_multilevel_dynamics_int_ok)
@@ -357,6 +357,6 @@ TEST(opBuilderHelperIntGreaterThan, Exec_multilevel_dynamics_int_ok)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_GT(expected[0].get("/parentObjt_1/field2check")->GetInt(),
-              expected[0].get("/parentObjt_2/ref_key")->GetInt());
+    ASSERT_GT(expected[0]->get("/parentObjt_1/field2check")->GetInt(),
+              expected[0]->get("/parentObjt_2/ref_key")->GetInt());
 }

@@ -69,8 +69,8 @@ TEST(opBuilderHelperStringEQ, Static_string_ok)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_STREQ(expected[0].get("/field2check")->GetString(), "test_value");
-    ASSERT_STREQ(expected[1].get("/field2check")->GetString(), "test_value");
+    ASSERT_STREQ(expected[0]->get("/field2check")->GetString(), "test_value");
+    ASSERT_STREQ(expected[1]->get("/field2check")->GetString(), "test_value");
 }
 
 // Test ok: static values (numbers, compare as string)
@@ -107,8 +107,8 @@ TEST(opBuilderHelperStringEQ, Static_number_ok)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_STREQ(expected[0].get("/field2check")->GetString(), "11");
-    ASSERT_STREQ(expected[1].get("/field2check")->GetString(), "11");
+    ASSERT_STREQ(expected[0]->get("/field2check")->GetString(), "11");
+    ASSERT_STREQ(expected[1]->get("/field2check")->GetString(), "11");
 }
 
 // Test ok: dynamic values (string)
@@ -160,8 +160,8 @@ TEST(opBuilderHelperStringEQ, Dynamics_string_ok)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_STREQ(expected[0].get("/field2check")->GetString(), "test_value");
-    ASSERT_STREQ(expected[1].get("/field2check")->GetString(), "test_value");
+    ASSERT_STREQ(expected[0]->get("/field2check")->GetString(), "test_value");
+    ASSERT_STREQ(expected[1]->get("/field2check")->GetString(), "test_value");
 }
 
 // Test ok: multilevel dynamic values (string)
@@ -223,11 +223,11 @@ TEST(opBuilderHelperStringEQ, MultiLevel_dynamics_string_ok)
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
 
-    ASSERT_STREQ(expected[0].get("/parentObjt_1/field2check")->GetString(),
-                 expected[0].get("/parentObjt_2/ref_key")->GetString());
+    ASSERT_STREQ(expected[0]->get("/parentObjt_1/field2check")->GetString(),
+                 expected[0]->get("/parentObjt_2/ref_key")->GetString());
 
-    ASSERT_STRNE(expected[0].get("/parentObjt_2/field2check")->GetString(), "test_value");
-    ASSERT_STRNE(expected[0].get("/parentObjt_1/ref_key")->GetString(), "test_value");
+    ASSERT_STRNE(expected[0]->get("/parentObjt_2/field2check")->GetString(), "test_value");
+    ASSERT_STRNE(expected[0]->get("/parentObjt_1/ref_key")->GetString(), "test_value");
 }
 
 // Test ok: dynamic values (number)

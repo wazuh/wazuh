@@ -63,9 +63,9 @@ TEST(opBuilderHelperStringLO, Static_string_ok)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_STREQ(expected[0].get("/fieltToCreate")->GetString(), "asd123asd");
-    ASSERT_STREQ(expected[1].get("/fieltToCreate")->GetString(), "asd123asd");
-    ASSERT_STREQ(expected[2].get("/fieltToCreate")->GetString(), "asd123asd");
+    ASSERT_STREQ(expected[0]->get("/fieltToCreate")->GetString(), "asd123asd");
+    ASSERT_STREQ(expected[1]->get("/fieltToCreate")->GetString(), "asd123asd");
+    ASSERT_STREQ(expected[2]->get("/fieltToCreate")->GetString(), "asd123asd");
 }
 
 // Test ok: dynamic values (string)
@@ -96,9 +96,9 @@ TEST(opBuilderHelperStringLO, Dynamics_string_ok)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_STREQ(expected[0].get("/fieltToCreate")->GetString(), "qwe");
-    ASSERT_STREQ(expected[1].get("/fieltToCreate")->GetString(), "asd123asd");
-    ASSERT_STREQ(expected[2].get("/fieltToCreate")->GetString(), "asd");
+    ASSERT_STREQ(expected[0]->get("/fieltToCreate")->GetString(), "qwe");
+    ASSERT_STREQ(expected[1]->get("/fieltToCreate")->GetString(), "asd123asd");
+    ASSERT_STREQ(expected[2]->get("/fieltToCreate")->GetString(), "asd");
 }
 
 TEST(opBuilderHelperStringLO, Multilevel_dst)
@@ -128,9 +128,9 @@ TEST(opBuilderHelperStringLO, Multilevel_dst)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_STREQ(expected[0].get("/a/b/fieltToCreate/2")->GetString(), "qwe");
-    ASSERT_STREQ(expected[1].get("/a/b/fieltToCreate/2")->GetString(), "asd123asd");
-    ASSERT_STREQ(expected[2].get("/a/b/fieltToCreate/2")->GetString(), "asd");
+    ASSERT_STREQ(expected[0]->get("/a/b/fieltToCreate/2")->GetString(), "qwe");
+    ASSERT_STREQ(expected[1]->get("/a/b/fieltToCreate/2")->GetString(), "asd123asd");
+    ASSERT_STREQ(expected[2]->get("/a/b/fieltToCreate/2")->GetString(), "asd");
 }
 
 TEST(opBuilderHelperStringLO, Exist_dst)
@@ -160,9 +160,9 @@ TEST(opBuilderHelperStringLO, Exist_dst)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_STREQ(expected[0].get("/a/b")->GetString(), "qwe");
-    ASSERT_STREQ(expected[1].get("/a/b")->GetString(), "asd123asd");
-    ASSERT_STREQ(expected[2].get("/a/b")->GetString(), "asd");
+    ASSERT_STREQ(expected[0]->get("/a/b")->GetString(), "qwe");
+    ASSERT_STREQ(expected[1]->get("/a/b")->GetString(), "asd123asd");
+    ASSERT_STREQ(expected[2]->get("/a/b")->GetString(), "asd");
 }
 
 TEST(opBuilderHelperStringLO, Not_exist_src)
@@ -189,7 +189,7 @@ TEST(opBuilderHelperStringLO, Not_exist_src)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_STREQ(expected[0].get("/a/b")->GetString(), "QWE");
+    ASSERT_STREQ(expected[0]->get("/a/b")->GetString(), "QWE");
     ASSERT_FALSE(expected[1].exists("/a/b"));
 }
 
@@ -252,9 +252,9 @@ TEST(opBuilderHelperStringLO, Multilevel_src)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_STREQ(expected[0].get("/fieltToCreate")->GetString(), "qwe");
-    ASSERT_STREQ(expected[1].get("/fieltToCreate")->GetString(), "asd123asd");
-    ASSERT_STREQ(expected[2].get("/fieltToCreate")->GetString(), "asd");
+    ASSERT_STREQ(expected[0]->get("/fieltToCreate")->GetString(), "qwe");
+    ASSERT_STREQ(expected[1]->get("/fieltToCreate")->GetString(), "asd123asd");
+    ASSERT_STREQ(expected[2]->get("/fieltToCreate")->GetString(), "asd");
 }
 
 TEST(opBuilderHelperStringLO, MultiLevel_dst)
@@ -284,7 +284,7 @@ TEST(opBuilderHelperStringLO, MultiLevel_dst)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_STREQ(expected[0].get("/a/b")->GetString(), "qwe");
-    ASSERT_STREQ(expected[1].get("/a/b")->GetString(), "asd123asd");
-    ASSERT_STREQ(expected[2].get("/a/b")->GetString(), "asd");
+    ASSERT_STREQ(expected[0]->get("/a/b")->GetString(), "qwe");
+    ASSERT_STREQ(expected[1]->get("/a/b")->GetString(), "asd123asd");
+    ASSERT_STREQ(expected[2]->get("/a/b")->GetString(), "asd");
 }

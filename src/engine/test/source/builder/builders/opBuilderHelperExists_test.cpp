@@ -73,9 +73,9 @@ TEST(opBuilderHelperExists, Exec_exists_ok)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_TRUE(expected[0].exists("/field2check"));
-    ASSERT_TRUE(expected[1].exists("/field2check"));
-    ASSERT_TRUE(expected[2].exists("/field2check"));
+    ASSERT_TRUE(expected[0]->exists("/field2check"));
+    ASSERT_TRUE(expected[1]->exists("/field2check"));
+    ASSERT_TRUE(expected[2]->exists("/field2check"));
 }
 
 TEST(opBuilderHelperExists, Exec_multilevel_ok)
@@ -150,7 +150,7 @@ TEST(opBuilderHelperExists, Exec_multilevel_ok)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_TRUE(expected[0].get("/parentObjt_1/field2check"));
-    ASSERT_TRUE(expected[1].get("/parentObjt_1/field2check"));
-    ASSERT_TRUE(expected[2].get("/parentObjt_1/field2check"));
+    ASSERT_TRUE(expected[0]->get("/parentObjt_1/field2check"));
+    ASSERT_TRUE(expected[1]->get("/parentObjt_1/field2check"));
+    ASSERT_TRUE(expected[2]->get("/parentObjt_1/field2check"));
 }
