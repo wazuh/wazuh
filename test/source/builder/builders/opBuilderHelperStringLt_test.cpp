@@ -91,8 +91,8 @@ TEST(opBuilderHelperStringLT, Static_string_ok)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_STREQ(expected[0].get("/field2check")->GetString(), "ABC");
-    ASSERT_STREQ(expected[1].get("/field2check")->GetString(), "AABCD");
+    ASSERT_STREQ(expected[0]->get("/field2check")->GetString(), "ABC");
+    ASSERT_STREQ(expected[1]->get("/field2check")->GetString(), "AABCD");
 }
 
 // Test ok: static values (numbers, compare as string)
@@ -126,7 +126,7 @@ TEST(opBuilderHelperStringLT, Static_number_ok)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_STREQ(expected[0].get("/field2check")->GetString(), "499");
+    ASSERT_STREQ(expected[0]->get("/field2check")->GetString(), "499");
 }
 
 // Test ok: dynamic values (string)
@@ -169,5 +169,5 @@ TEST(opBuilderHelperStringLT, Dynamics_string_ok)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_STREQ(expected[0].get("/field2check")->GetString(), "ABCD");
+    ASSERT_STREQ(expected[0]->get("/field2check")->GetString(), "ABCD");
 }

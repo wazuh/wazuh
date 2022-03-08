@@ -105,8 +105,8 @@ TEST(opBuilderHelperIPCIDR, chack_ip_range)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 4);
-    ASSERT_STREQ(expected[0].get("/field2check")->GetString(), "192.168.0.0");
-    ASSERT_STREQ(expected[1].get("/field2check")->GetString(), "192.168.0.1");
-    ASSERT_STREQ(expected[2].get("/field2check")->GetString(), "192.168.255.254");
-    ASSERT_STREQ(expected[3].get("/field2check")->GetString(), "192.168.255.255");
+    ASSERT_STREQ(expected[0]->get("/field2check")->GetString(), "192.168.0.0");
+    ASSERT_STREQ(expected[1]->get("/field2check")->GetString(), "192.168.0.1");
+    ASSERT_STREQ(expected[2]->get("/field2check")->GetString(), "192.168.255.254");
+    ASSERT_STREQ(expected[3]->get("/field2check")->GetString(), "192.168.255.255");
 }

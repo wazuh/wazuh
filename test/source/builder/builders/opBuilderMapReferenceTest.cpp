@@ -53,5 +53,5 @@ TEST(opBuilderMapReference, BuildsOperates)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_STREQ(expected[0].get("/field")->GetString(), "referenced");
+    ASSERT_STREQ(expected[0]->get("/field")->GetString(), "referenced");
 }

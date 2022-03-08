@@ -29,7 +29,7 @@ struct Route
 {
     std::string m_name;
     std::string m_to;
-    std::function<bool(json::Document)> m_from;
+    std::function<bool(std::shared_ptr<json::Document>)> m_from;
     rxcpp::composite_subscription m_subscription;
 
     Route() = default;
@@ -45,7 +45,7 @@ struct Route
      * @param subscription Subscription to handle status
      */
     Route(const std::string & name, const std::string & environment,
-          std::function<bool(json::Document)> filter_function, rxcpp::composite_subscription subscription) noexcept
+          std::function<bool(std::shared_ptr<json::Document>)> filter_function, rxcpp::composite_subscription subscription) noexcept
         : m_name(name), m_to(environment), m_from(filter_function), m_subscription(subscription)
     {
     }
@@ -91,11 +91,11 @@ struct Route
  */
 struct Environment
 {
-    using Obs_t = rxcpp::observable<json::Document>;
+    using Obs_t = rxcpp::observable<std::shared_ptr<json::Document>>;
     using Op_t = std::function<Obs_t(Obs_t)>;
 
     std::string m_name;
-    rxcpp::subjects::subject<json::Document> m_subject;
+    rxcpp::subjects::subject<std::shared_ptr<json::Document>> m_subject;
     Op_t m_build;
 
     Environment() = default;
@@ -131,7 +131,7 @@ struct Environment
  */
 template <class Builder> class Router
 {
-    using Obs_t = rxcpp::observable<json::Document>;
+    using Obs_t = rxcpp::observable<std::shared_ptr<json::Document>>;
     using Op_t = std::function<Obs_t(Obs_t)>;
 
     // Check Builder class is as expected
@@ -144,8 +144,8 @@ private:
 
     std::map<std::string, Environment> m_environments;
     std::map<std::string, Route> m_routes;
-    rxcpp::subjects::subject<json::Document> m_subj;
-    rxcpp::subscriber<json::Document> m_input;
+    rxcpp::subjects::subject<std::shared_ptr<json::Document>> m_subj;
+    rxcpp::subscriber<std::shared_ptr<json::Document>> m_input;
     Builder m_builder;
 
 public:
@@ -167,7 +167,7 @@ public:
      */
     void add(
         const std::string & route, const std::string & environment,
-        const std::function<bool(json::Document)> filterFunction = [](const auto) { return true; })
+        const std::function<bool(std::shared_ptr<json::Document>)> filterFunction = [](const auto) { return true; })
     {
         // Assert route with same name not exists
         if (this->m_routes.count(route) > 0)
@@ -225,7 +225,7 @@ public:
      *
      * @return const rxcpp::subscriber<json::Document>&
      */
-    const rxcpp::subscriber<json::Document> & input() const
+    const rxcpp::subscriber<std::shared_ptr<json::Document>> & input() const
     {
         return this->m_input;
     }

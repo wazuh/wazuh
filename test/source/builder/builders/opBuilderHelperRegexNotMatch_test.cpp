@@ -125,8 +125,8 @@ TEST(opBuilderHelperRegexNotMatch, StringRegexMatch)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_FALSE(RE2::PartialMatch(expected[0].get("/field")->GetString(), "exp"));
-    ASSERT_FALSE(RE2::PartialMatch(expected[1].get("/field")->GetString(), "exp"));
+    ASSERT_FALSE(RE2::PartialMatch(expected[0]->get("/field")->GetString(), "exp"));
+    ASSERT_FALSE(RE2::PartialMatch(expected[1]->get("/field")->GetString(), "exp"));
 }
 
 TEST(opBuilderHelperRegexNotMatch, NumericRegexMatch)
@@ -157,8 +157,8 @@ TEST(opBuilderHelperRegexNotMatch, NumericRegexMatch)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_FALSE(RE2::PartialMatch(expected[0].get("/field")->GetString(), "123"));
-    ASSERT_FALSE(RE2::PartialMatch(expected[1].get("/field")->GetString(), "123"));
+    ASSERT_FALSE(RE2::PartialMatch(expected[0]->get("/field")->GetString(), "123"));
+    ASSERT_FALSE(RE2::PartialMatch(expected[1]->get("/field")->GetString(), "123"));
 }
 
 TEST(opBuilderHelperRegexNotMatch, AdvancedRegexMatch)
@@ -186,7 +186,7 @@ TEST(opBuilderHelperRegexNotMatch, AdvancedRegexMatch)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_FALSE(RE2::PartialMatch(expected[0].get("/field")->GetString(),
+    ASSERT_FALSE(RE2::PartialMatch(expected[0]->get("/field")->GetString(),
                                    "([^ @]+)@([^ @]+)")
     );
 }
@@ -218,8 +218,8 @@ TEST(opBuilderHelperRegexNotMatch, NestedFieldRegexMatch)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_FALSE(RE2::PartialMatch(expected[0].get("/test/field")->GetString(), "exp"));
-    ASSERT_FALSE(RE2::PartialMatch(expected[1].get("/test/field")->GetString(), "exp"));
+    ASSERT_FALSE(RE2::PartialMatch(expected[0]->get("/test/field")->GetString(), "exp"));
+    ASSERT_FALSE(RE2::PartialMatch(expected[1]->get("/test/field")->GetString(), "exp"));
 }
 
 TEST(opBuilderHelperRegexNotMatch, FieldNotExistsRegexNotMatch)
