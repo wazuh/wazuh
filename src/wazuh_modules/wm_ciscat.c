@@ -117,21 +117,20 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
 
     if (ciscat->ciscat_path) {
         switch (wm_relative_path(ciscat->ciscat_path)) {
-            case 0: {
+        #ifndef WIN32
+            char pwd[PATH_MAX];
+        #endif
+            case 0:
                 // Full path
                 snprintf(cis_path, OS_MAXSTR - 1, "%s", ciscat->ciscat_path);
-            }
-            break;
-
-            case 1: {
+                break;
+            case 1:
                 // Relative path
             #ifdef WIN32
                 if (*current) {
                     snprintf(cis_path, OS_MAXSTR - 1, "%s\\%s", current, ciscat->ciscat_path);
                 }
             #else
-                char pwd[PATH_MAX];
-
                 if (getcwd(pwd, sizeof(pwd)) == NULL) {
                     mterror(WM_CISCAT_LOGTAG, "Could not get the current working directory: %s (%d)", strerror(errno), errno);
                     ciscat->flags.error = 1;
@@ -139,13 +138,10 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
                     os_snprintf(cis_path, OS_MAXSTR - 1, "%s/%s", pwd, ciscat->ciscat_path);
                 }
             #endif
-            }
-            break;
-
-            default: {
+                break;
+            default:
                 mterror(WM_CISCAT_LOGTAG, "Defined CIS-CAT path is not valid.");
                 ciscat->flags.error = 1;
-            }
         }
     } else {
     #ifdef WIN32
