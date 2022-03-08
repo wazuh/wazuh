@@ -166,8 +166,7 @@ void *read_djbmultilog(logreader *lf, int *rc, int drop_it) {
 
                 if (size < 0) {
                     merror("Error %d (%s) while reading message: '%s' (length = " FTELL_TT "): '%s'...", errno, strerror(errno), lf->file, FTELL_INT64 size, buffer);
-                }
-                else if ((size_t)size >= sizeof(buffer)) {
+                } else if ((size_t)size >= sizeof(buffer)) {
                     merror("Message size too big on file '%s' (length = " FTELL_TT "): '%s'...", lf->file, FTELL_INT64 size, buffer);
                 }
             }
