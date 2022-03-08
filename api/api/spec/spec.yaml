@@ -6677,9 +6677,10 @@ paths:
               type: object
               properties:
                 group_id:
-                  description: "Group name"
+                  description: "Group name. It can contain any of the characters between a-z, A-Z, 0-9, '_', '-' and '.'. Names '.' and '..' are restricted."
                   type: string
                   format: group_names
+                  maxLength: 128
               required:
                 - group_id
             example:
