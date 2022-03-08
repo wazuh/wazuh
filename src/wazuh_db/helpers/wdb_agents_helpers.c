@@ -102,6 +102,11 @@ cJSON* wdb_insert_vuln_cves(int id,
                             const char *reference,
                             const char *type,
                             const char *status,
+                            char **external_references,
+                            const char *condition,
+                            const char *title,
+                            const char *published,
+                            const char *updated,
                             bool check_pkg_existence,
                             int *sock) {
     cJSON *data_in = NULL;
@@ -126,7 +131,20 @@ cJSON* wdb_insert_vuln_cves(int id,
     cJSON_AddStringToObject(data_in, "reference", reference);
     cJSON_AddStringToObject(data_in, "type", type);
     cJSON_AddStringToObject(data_in, "status", status);
+    cJSON_AddStringToObject(data_in, "condition", condition);
+    cJSON_AddStringToObject(data_in, "title", title);
+    cJSON_AddStringToObject(data_in, "published", published);
+    cJSON_AddStringToObject(data_in, "updated", updated);
     cJSON_AddBoolToObject(data_in, "check_pkg_existence", check_pkg_existence);
+
+    cJSON *j_cvs_references = cJSON_CreateArray();
+    int refcount;
+    for (refcount = 0; external_references[refcount]; ++refcount)
+    {
+        cJSON *j_ref_item = cJSON_CreateString(external_references[refcount]);
+        cJSON_AddItemToArray(j_cvs_references, j_ref_item);
+    }
+    cJSON_AddItemToObject(data_in, "external_references", j_cvs_references);
 
     data_in_str = cJSON_PrintUnformatted(data_in);
     os_malloc(WDBQUERY_SIZE, wdbquery);
