@@ -22,7 +22,7 @@
 
 /* Prototypes */
 static int _oscomment(OS_XML *_lxml) __attribute__((nonnull));
-static int _writecontent(const char *str, size_t size, unsigned int parent, OS_XML *_lxml) __attribute__((nonnull));
+static int _writecontent(const char *str, __attribute__((unused)) size_t size, unsigned int parent, OS_XML *_lxml) __attribute__((nonnull));
 static int _writememory(const char *str, XML_TYPE type, size_t size,
                         unsigned int parent, OS_XML *_lxml) __attribute__((nonnull));
 static int _xml_fgetc(FILE *fp, OS_XML *_lxml) __attribute__((nonnull));
@@ -500,9 +500,9 @@ fail:
     return (-1);
 }
 
-static int _writecontent(const char *str, size_t size, unsigned int parent, OS_XML *_lxml)
+static int _writecontent(const char *str, __attribute__((unused)) size_t size, unsigned int parent, OS_XML *_lxml)
 {
-    _lxml->ct[parent] = strndup(str, size);
+    _lxml->ct[parent] = strdup(str);
 
     if ( _lxml->ct[parent] == NULL) {
         snprintf(_lxml->err, XML_ERR_LENGTH, "XMLERR: Memory error.");
