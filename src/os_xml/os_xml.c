@@ -507,9 +507,8 @@ static int _writecontent(const char *str, size_t size, unsigned int parent, OS_X
         snprintf(_lxml->err, XML_ERR_LENGTH, "XMLERR: Memory error.");
         return (-1);
     }
-    strncpy(_lxml->ct[parent], str, size);
-    _lxml->ct[parent][size] = '\0';
 
+    snprintf(_lxml->ct[parent], size + 1, "%s", str);
     return (0);
 }
 

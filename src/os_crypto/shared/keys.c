@@ -251,8 +251,11 @@ void OS_ReadKeys(keystore *keys, key_mode_t key_mode, int save_removed)
             tmp_str++;
             const int bytes_written = snprintf(id, sizeof(id), "%s", valid_str);
 
-            if (bytes_written >= 0 && (size_t)bytes_written >= (int)sizeof(id)) {
+            if ((size_t)bytes_written >= sizeof(id)) {
                 merror(INVALID_KEY, id);
+            }
+            else if (bytes_written < 0) {
+                merror("Error %d (%s).", errno, strerror(errno));
             }
 
             /* Update counter */

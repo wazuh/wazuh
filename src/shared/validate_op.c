@@ -735,7 +735,7 @@ static const char *__gethour(const char *str, char *ossec_hour, const size_t oss
             if (chour == 12) chour = 0;
             const int bytes_written = snprintf(ossec_hour, ossec_hour_len, "%02d:%02d", chour, cmin);
 
-            if (bytes_written >= 0 && (size_t)bytes_written >= ossec_hour_len) {
+            if (bytes_written < 0 || (size_t)bytes_written >= ossec_hour_len) {
                 return (NULL);
             }
 
@@ -756,7 +756,7 @@ static const char *__gethour(const char *str, char *ossec_hour, const size_t oss
 
             const int bytes_written = snprintf(ossec_hour, ossec_hour_len, "%02d:%02d", chour, cmin);
 
-            if (bytes_written >= 0 && (size_t)bytes_written >= ossec_hour_len) {
+            if (bytes_written < 0 || (size_t)bytes_written >= ossec_hour_len) {
                 return (NULL);
             }
 

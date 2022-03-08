@@ -742,7 +742,7 @@ void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int cou
 
         if (body_size > log_size) {
             snprintf(printed + strlen(printed), body_size, "%s%s%s%s%s", tab, item->string, delimitator, key, endline);
-            body_size -= strlen(tab) + strlen(item->string) + strlen(delimitator) + strlen(key) + strlen(endline);
+            body_size -= log_size;
         }
 
         free(key);
@@ -756,7 +756,7 @@ void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int cou
         if(body_size > log_size){
             item->string[0] = toupper(item->string[0]);
             snprintf(printed + strlen(printed), body_size, "%s%s%s", tab, item->string, delimitator);
-            body_size -= strlen(tab) + strlen(item->string) + strlen(delimitator);
+            body_size -= log_size;
         }
 
         while(json_array = cJSON_GetArrayItem(item, i), json_array){
@@ -764,8 +764,8 @@ void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int cou
             log_size = strlen(key) + strlen(space);
 
             if(body_size > log_size){
-                snprintf(printed + strlen(printed), body_size, "%s%s", json_array->valuestring, space);
-                body_size -= strlen(json_array->valuestring) + strlen(space);
+                snprintf(printed + strlen(printed), body_size, "%s%s", key, space);
+                body_size -= log_size;
             }
 
             free(key);
@@ -788,7 +788,7 @@ void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int cou
                 if (body_size > log_size) {
                     item->string[0] = toupper(item->string[0]);
                     snprintf(printed + strlen(printed), body_size, "%s%s%s", tab, item->string, endline);
-                    body_size -= strlen(tab) + strlen(item->string) + strlen(endline);
+                    body_size -= log_size;
                 }
             }
             /*Cannot be tabulated more than 6 times in the message */

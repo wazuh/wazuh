@@ -266,7 +266,6 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
     time_t now = time(NULL);
     struct tm tm = { .tm_sec = 0 };
     int counter;
-    int size = 0;
     localtime_r(&now, &tm);
 
     tm.tm_year = year - 1900;
@@ -290,7 +289,7 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
             tm.tm_mday = day;
 
             if (mktime(&tm) <= threshold) {
-                size = snprintf(path, sizeof(path), "%s/%s", base_dir, dirent->d_name);
+                const int size = snprintf(path, sizeof(path), "%s/%s", base_dir, dirent->d_name);
 
                 if (size >= 0 && (size_t)size < sizeof(path)) {
                     mdebug2("Removing old log '%s'", path);
@@ -303,7 +302,7 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
             tm.tm_mday = day;
 
             if (mktime(&tm) <= threshold) {
-                size = snprintf(path, sizeof(path), "%s/%s", base_dir, dirent->d_name);
+                const int size = snprintf(path, sizeof(path), "%s/%s", base_dir, dirent->d_name);
 
                 if (size >= 0 && (size_t)size < sizeof(path)) {
                     mdebug2("Removing old log '%s'", path);
@@ -316,7 +315,7 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
             tm.tm_mday = day;
 
             if (mktime(&tm) <= threshold) {
-                size = snprintf(path, sizeof(path), "%s/%s", base_dir, dirent->d_name);
+                const int size = snprintf(path, sizeof(path), "%s/%s", base_dir, dirent->d_name);
 
                 if (size >= 0 && (size_t)size < sizeof(path)) {
                     mdebug2("Removing old log '%s'", path);
@@ -329,7 +328,7 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
             tm.tm_mday = day;
 
             if (mktime(&tm) <= threshold) {
-                size = snprintf(path, sizeof(path), "%s/%s", base_dir, dirent->d_name);
+                const int size = snprintf(path, sizeof(path), "%s/%s", base_dir, dirent->d_name);
 
                 if (size >= 0 && (size_t)size < sizeof(path)) {
                     mdebug2("Removing old log '%s'", path);
