@@ -683,7 +683,7 @@ def delete_groups(group_list=None):
 @expose_resources(actions=["group:modify_assignments"], resources=['group:id:{replace_list}'], post_proc_func=None)
 @expose_resources(actions=["group:modify_assignments"], resources=['group:id:{group_list}'], post_proc_func=None)
 @expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1751, 1752, 1753]})
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1751, 1752]})
 def assign_agents_to_group(group_list=None, agent_list=None, replace=False, replace_list=None):
     """Assign a list of agents to a group.
 
@@ -704,8 +704,7 @@ def assign_agents_to_group(group_list=None, agent_list=None, replace=False, repl
     if not Agent.group_exists(group_id):
         raise WazuhResourceNotFound(1710)
 
-    with WazuhDBQueryAgents(limit=None, select=['id', 'status']) as db_query:
-        system_agents_with_status = {agent['id']: agent['status'] for agent in db_query.run()['items']}
+    system_agents = get_agents_info()
 
     # Check agent '000'
     if '000' in agent_list:
@@ -715,20 +714,11 @@ def assign_agents_to_group(group_list=None, agent_list=None, replace=False, repl
     agent_list = set(agent_list)
 
     # Check for non-existing agents
-    not_found_agents = agent_list - set(system_agents_with_status.keys())
+    not_found_agents = agent_list - system_agents
     for agent_id in not_found_agents:
         result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
 
     agent_list -= not_found_agents
-
-    # Check for never_connected agents
-    never_connected_agents = {nc_agent_id for nc_agent_id, status in {agent_id: system_agents_with_status[agent_id]
-                                                                      for agent_id in agent_list}.items()
-                              if status == 'never_connected'}
-    for agent_id in never_connected_agents:
-        result.add_failed_item(id_=agent_id, error=WazuhError(1753))
-
-    agent_list -= never_connected_agents
 
     for agent_id in agent_list:
         try:
