@@ -103,9 +103,9 @@ TEST(StageBuilderNormalize, BuildsOperates)
     ASSERT_EQ(expected.size(), 2);
     for (auto e : expected)
     {
-        ASSERT_STREQ(e.get("/mapped/field1")->GetString(), "value");
-        ASSERT_EQ(e.get("/mapped/field2")->GetInt(), 2);
-        ASSERT_STREQ(e.get("/mapped/field3")->GetString(), "value");
-        ASSERT_TRUE(e.get("/mapped/field4")->GetBool());
+        ASSERT_STREQ(e->get("/mapped/field1")->GetString(), "value");
+        ASSERT_EQ(e->get("/mapped/field2")->GetInt(), 2);
+        ASSERT_STREQ(e->get("/mapped/field3")->GetString(), "value");
+        ASSERT_TRUE(e->get("/mapped/field4")->GetBool());
     }
 }

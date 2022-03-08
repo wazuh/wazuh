@@ -49,7 +49,7 @@ Event opBuilderHelperStringTransformation(const std::string field, char op, Even
         const rapidjson::Value * refValueToCheck{};
         try
         {
-            refValueToCheck = e.get("/" + refValue.value());
+            refValueToCheck = e->get("/" + refValue.value());
         }
         catch (std::exception & ex)
         {
@@ -87,8 +87,8 @@ Event opBuilderHelperStringTransformation(const std::string field, char op, Even
     // Create and add string to event
     try
     {
-        e.set("/" + field,
-              rapidjson::Value(value.value().c_str(), e.m_doc.GetAllocator()).Move());
+        e->set("/" + field,
+              rapidjson::Value(value.value().c_str(), e->m_doc.GetAllocator()).Move());
     }
     catch (std::exception & ex)
     {
@@ -124,7 +124,7 @@ Event opBuilderHelperIntTransformation(const std::string field, std::string op, 
     const rapidjson::Value * fieldValue{};
     try
     {
-        fieldValue = e.get("/" + field);
+        fieldValue = e->get("/" + field);
     }
     catch (std::exception & ex)
     {
@@ -144,7 +144,7 @@ Event opBuilderHelperIntTransformation(const std::string field, std::string op, 
         const rapidjson::Value * refValueToCheck {};
         try
         {
-            refValueToCheck = e.get("/" + refValue.value());
+            refValueToCheck = e->get("/" + refValue.value());
         }
         catch (std::exception & ex)
         {
@@ -188,7 +188,7 @@ Event opBuilderHelperIntTransformation(const std::string field, std::string op, 
     // Create and add string to event
     try
     {
-        e.set("/" + field, rapidjson::Value(value.value()));
+        e->set("/" + field, rapidjson::Value(value.value()));
     }
     catch (std::exception & ex)
     {
@@ -353,7 +353,7 @@ types::Lifter opBuilderHelperStringTrim(const types::DocumentValue & def)
                 const rapidjson::Value * fieldValue;
                 try
                 {
-                    fieldValue = e.get("/" + field);
+                    fieldValue = e->get("/" + field);
                 }
                 catch (std::exception & ex)
                 {
@@ -395,8 +395,8 @@ types::Lifter opBuilderHelperStringTrim(const types::DocumentValue & def)
                 // Update event
                 try
                 {
-                    e.set("/" + field,
-                          rapidjson::Value(strToTrim.c_str(), e.m_doc.GetAllocator())
+                    e->set("/" + field,
+                          rapidjson::Value(strToTrim.c_str(), e->m_doc.GetAllocator())
                               .Move());
                 }
                 catch (std::exception & ex)
@@ -503,7 +503,7 @@ types::Lifter opBuilderHelperRegexExtract(const types::DocumentValue & def)
                 const rapidjson::Value * field_str{};
                 try
                 {
-                    field_str = e.get("/" + field);
+                    field_str = e->get("/" + field);
                 }
                 catch (std::exception & ex)
                 {
@@ -518,8 +518,8 @@ types::Lifter opBuilderHelperRegexExtract(const types::DocumentValue & def)
                         // Create and add string to event
                         try
                         {
-                            e.set("/" + map_field,
-                                rapidjson::Value(match.c_str(), e.m_doc.GetAllocator()).Move());
+                            e->set("/" + map_field,
+                                rapidjson::Value(match.c_str(), e->m_doc.GetAllocator()).Move());
                         }
                         catch (std::exception & ex)
                         {

@@ -121,9 +121,9 @@ TEST(opBuilderHelperRegexMatch, String_regex_match)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_TRUE(RE2::PartialMatch(expected[0].get("/field")->GetString(), "exp"));
-    ASSERT_TRUE(RE2::PartialMatch(expected[1].get("/field")->GetString(), "exp"));
-    ASSERT_TRUE(RE2::PartialMatch(expected[2].get("/field")->GetString(), "exp"));
+    ASSERT_TRUE(RE2::PartialMatch(expected[0]->get("/field")->GetString(), "exp"));
+    ASSERT_TRUE(RE2::PartialMatch(expected[1]->get("/field")->GetString(), "exp"));
+    ASSERT_TRUE(RE2::PartialMatch(expected[2]->get("/field")->GetString(), "exp"));
 }
 
 TEST(opBuilderHelperRegexMatch, Numeric_regex_match)
@@ -157,9 +157,9 @@ TEST(opBuilderHelperRegexMatch, Numeric_regex_match)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_TRUE(RE2::PartialMatch(expected[0].get("/field")->GetString(), "123"));
-    ASSERT_TRUE(RE2::PartialMatch(expected[1].get("/field")->GetString(), "123"));
-    ASSERT_TRUE(RE2::PartialMatch(expected[2].get("/field")->GetString(), "123"));
+    ASSERT_TRUE(RE2::PartialMatch(expected[0]->get("/field")->GetString(), "123"));
+    ASSERT_TRUE(RE2::PartialMatch(expected[1]->get("/field")->GetString(), "123"));
+    ASSERT_TRUE(RE2::PartialMatch(expected[2]->get("/field")->GetString(), "123"));
 }
 
 TEST(opBuilderHelperRegexMatch, Advanced_regex_match)
@@ -190,9 +190,9 @@ TEST(opBuilderHelperRegexMatch, Advanced_regex_match)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_TRUE(RE2::PartialMatch(expected[0].get("/field")->GetString(),
+    ASSERT_TRUE(RE2::PartialMatch(expected[0]->get("/field")->GetString(),
                                   "([^ @]+)@([^ @]+)"));
-    ASSERT_TRUE(RE2::PartialMatch(expected[1].get("/field")->GetString(),
+    ASSERT_TRUE(RE2::PartialMatch(expected[1]->get("/field")->GetString(),
                                   "([^ @]+)@([^ @]+)"));
 }
 
@@ -223,8 +223,8 @@ TEST(opBuilderHelperRegexMatch, Nested_field_regex_match)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_TRUE(RE2::PartialMatch(expected[0].get("/test/field")->GetString(), "exp"));
-    ASSERT_TRUE(RE2::PartialMatch(expected[1].get("/test/field")->GetString(), "exp"));
+    ASSERT_TRUE(RE2::PartialMatch(expected[0]->get("/test/field")->GetString(), "exp"));
+    ASSERT_TRUE(RE2::PartialMatch(expected[1]->get("/test/field")->GetString(), "exp"));
 }
 
 TEST(opBuilderHelperRegexMatch, Field_not_exists_regex_match)

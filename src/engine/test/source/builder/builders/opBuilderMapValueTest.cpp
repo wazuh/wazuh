@@ -69,9 +69,9 @@ TEST(opBuilderMapValue, BuildsOperates)
     ASSERT_EQ(expected.size(), 4);
     for (auto got : expected)
     {
-        ASSERT_STREQ(got.get("/mapped/string")->GetString(), "value");
-        ASSERT_EQ(got.get("/mapped/int")->GetInt(), 1);
-        ASSERT_TRUE(got.get("/mapped/bool")->GetBool());
+        ASSERT_STREQ(got->get("/mapped/string")->GetString(), "value");
+        ASSERT_EQ(got->get("/mapped/int")->GetInt(), 1);
+        ASSERT_TRUE(got->get("/mapped/bool")->GetBool());
     }
 }
 

@@ -33,17 +33,18 @@ bool ProtocolHandler::hasHeader()
     return false;
 }
 
-json::Document ProtocolHandler::parse(const string & event)
+std::shared_ptr<json::Document> ProtocolHandler::parse(const string & event)
 {
-    json::Document doc;
-    doc.m_doc.SetObject();
-    rapidjson::Document::AllocatorType & allocator = doc.getAllocator();
+
+    auto doc = std::make_shared<json::Document>();
+    doc->m_doc.SetObject();
+    rapidjson::Document::AllocatorType & allocator = doc->getAllocator();
 
     auto queuePos = event.find(":");
     try
     {
         int queue = std::stoi(event.substr(0, queuePos));
-        doc.m_doc.AddMember("queue", queue, allocator);
+        doc->m_doc.AddMember("queue", queue, allocator);
     }
     // std::out_of_range and std::invalid_argument
     catch (...)
@@ -57,7 +58,7 @@ json::Document ProtocolHandler::parse(const string & event)
         rapidjson::Value loc;
         string location = event.substr(queuePos, locPos);
         loc.SetString(location.c_str(), location.length(), allocator);
-        doc.m_doc.AddMember("location", loc, allocator);
+        doc->m_doc.AddMember("location", loc, allocator);
     }
     catch (std::out_of_range & e)
     {
@@ -69,7 +70,7 @@ json::Document ProtocolHandler::parse(const string & event)
         rapidjson::Value msg;
         string message = event.substr(locPos + 1, string::npos);
         msg.SetString(message.c_str(), message.length(), allocator);
-        doc.m_doc.AddMember("message", msg, allocator);
+        doc->m_doc.AddMember("message", msg, allocator);
     }
     catch (std::out_of_range & e)
     {

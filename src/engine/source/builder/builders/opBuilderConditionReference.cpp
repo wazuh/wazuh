@@ -32,8 +32,8 @@ types::Lifter opBuilderConditionReference(const types::DocumentValue & def)
             [=](types::Event e)
             {
                 //TODO: implemente proper json check reference
-                auto v = e.get("/" + reference);
-                return e.check("/" + field, v);
+                auto v = e->get("/" + reference);
+                return e->check("/" + field, v);
             });
     };
 }

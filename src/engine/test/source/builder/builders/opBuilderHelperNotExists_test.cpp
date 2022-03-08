@@ -153,8 +153,8 @@ TEST(opBuilderHelperNotExists, Exec_multilevel_ok)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_FALSE(expected[0].get("/parentObjt_1/field2check"));
-    ASSERT_FALSE(expected[1].get("/parentObjt_1/field2check"));
-    ASSERT_FALSE(expected[2].get("/parentObjt_1/field2check"));
+    ASSERT_FALSE(expected[0]->get("/parentObjt_1/field2check"));
+    ASSERT_FALSE(expected[1]->get("/parentObjt_1/field2check"));
+    ASSERT_FALSE(expected[2]->get("/parentObjt_1/field2check"));
 }
 
