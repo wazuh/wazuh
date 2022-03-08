@@ -25,7 +25,7 @@
 namespace builder::internals::types
 {
 
-using Event = json::Document;
+using Event = std::shared_ptr<json::Document>;
 using Document = json::Document;
 using DocumentValue = json::Value;
 using Observable = rxcpp::observable<Event>;

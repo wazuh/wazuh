@@ -76,8 +76,8 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_ok)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_EQ(expected[0].get("/field_test")->GetInt(), 9);
-    ASSERT_EQ(expected[1].get("/field_test")->GetInt(), 11);
+    ASSERT_EQ(expected[0]->get("/field_test")->GetInt(), 9);
+    ASSERT_EQ(expected[1]->get("/field_test")->GetInt(), 11);
 }
 
 TEST(opBuilderHelperIntNotEqual, Exec_not_equal_true)
@@ -111,8 +111,8 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_true)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_EQ(expected[0].get("/field_test")->GetInt(), 9);
-    ASSERT_EQ(expected[1].get("/field_test")->GetInt(), 11);
+    ASSERT_EQ(expected[0]->get("/field_test")->GetInt(), 9);
+    ASSERT_EQ(expected[1]->get("/field_test")->GetInt(), 11);
 }
 
 TEST(opBuilderHelperIntNotEqual, Exec_not_equal_false)
@@ -191,10 +191,10 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_ref_true)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_NE(expected[0].get("/field_test")->GetInt(),
-              expected[0].get("/field_src")->GetInt());
-    ASSERT_NE(expected[1].get("/field_test")->GetInt(),
-              expected[1].get("/field_src")->GetInt());
+    ASSERT_NE(expected[0]->get("/field_test")->GetInt(),
+              expected[0]->get("/field_src")->GetInt());
+    ASSERT_NE(expected[1]->get("/field_test")->GetInt(),
+              expected[1]->get("/field_src")->GetInt());
 }
 
 TEST(opBuilderHelperIntNotEqual, Exec_not_equal_ref_false)
@@ -283,10 +283,10 @@ TEST(opBuilderHelperIntNotEqual, Exec_dynamics_int_ok)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_NE(expected[0].get("/field2check")->GetInt(),
-              expected[0].get("/ref_key")->GetInt());
-    ASSERT_NE(expected[1].get("/field2check")->GetInt(),
-              expected[1].get("/ref_key")->GetInt());
+    ASSERT_NE(expected[0]->get("/field2check")->GetInt(),
+              expected[0]->get("/ref_key")->GetInt());
+    ASSERT_NE(expected[1]->get("/field2check")->GetInt(),
+              expected[1]->get("/ref_key")->GetInt());
 }
 
 TEST(opBuilderHelperIntNotEqual, Exec_multilevel_dynamics_int_ok)
@@ -360,6 +360,6 @@ TEST(opBuilderHelperIntNotEqual, Exec_multilevel_dynamics_int_ok)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_NE(expected[0].get("/parentObjt_1/field2check")->GetInt(),
-              expected[0].get("/parentObjt_2/ref_key")->GetInt());
+    ASSERT_NE(expected[0]->get("/parentObjt_1/field2check")->GetInt(),
+              expected[0]->get("/parentObjt_2/ref_key")->GetInt());
 }

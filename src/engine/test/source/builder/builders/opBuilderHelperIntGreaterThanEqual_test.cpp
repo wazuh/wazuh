@@ -78,9 +78,9 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_greater_than_equal_ok)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_GE(expected[0].get("/field_test")->GetInt(), 10);
-    ASSERT_GE(expected[1].get("/field_test")->GetInt(), 10);
-    ASSERT_GE(expected[2].get("/field_test")->GetInt(), 10);
+    ASSERT_GE(expected[0]->get("/field_test")->GetInt(), 10);
+    ASSERT_GE(expected[1]->get("/field_test")->GetInt(), 10);
+    ASSERT_GE(expected[2]->get("/field_test")->GetInt(), 10);
 }
 
 TEST(opBuilderHelperIntGreaterThanEqual, Exec_greater_than_equal_true)
@@ -114,9 +114,9 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_greater_than_equal_true)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_GE(expected[0].get("/field_test")->GetInt(), 10);
-    ASSERT_GE(expected[1].get("/field_test")->GetInt(), 10);
-    ASSERT_GE(expected[2].get("/field_test")->GetInt(), 11);
+    ASSERT_GE(expected[0]->get("/field_test")->GetInt(), 10);
+    ASSERT_GE(expected[1]->get("/field_test")->GetInt(), 10);
+    ASSERT_GE(expected[2]->get("/field_test")->GetInt(), 11);
 }
 
 TEST(opBuilderHelperIntGreaterThanEqual, Exec_greater_than_equal_false)
@@ -195,10 +195,10 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_greater_than_equal_ref_true)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_GE(expected[0].get("/field_test")->GetInt(),
-              expected[0].get("/field_src")->GetInt());
-    ASSERT_GE(expected[1].get("/field_test")->GetInt(),
-              expected[1].get("/field_src")->GetInt());
+    ASSERT_GE(expected[0]->get("/field_test")->GetInt(),
+              expected[0]->get("/field_src")->GetInt());
+    ASSERT_GE(expected[1]->get("/field_test")->GetInt(),
+              expected[1]->get("/field_src")->GetInt());
 }
 
 TEST(opBuilderHelperIntGreaterThanEqual, Exec_greater_than_equal_ref_false)
@@ -287,10 +287,10 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_dynamics_int_ok)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_GE(expected[0].get("/field2check")->GetInt(),
-              expected[0].get("/ref_key")->GetInt());
-    ASSERT_GE(expected[1].get("/field2check")->GetInt(),
-              expected[1].get("/ref_key")->GetInt());
+    ASSERT_GE(expected[0]->get("/field2check")->GetInt(),
+              expected[0]->get("/ref_key")->GetInt());
+    ASSERT_GE(expected[1]->get("/field2check")->GetInt(),
+              expected[1]->get("/ref_key")->GetInt());
 }
 
 TEST(opBuilderHelperIntGreaterThanEqual, Exec_multilevel_dynamics_int_ok)
@@ -364,8 +364,8 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_multilevel_dynamics_int_ok)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_GE(expected[0].get("/parentObjt_1/field2check")->GetInt(),
-              expected[0].get("/parentObjt_2/ref_key")->GetInt());
-    ASSERT_GE(expected[1].get("/parentObjt_1/field2check")->GetInt(),
-              expected[1].get("/parentObjt_2/ref_key")->GetInt());
+    ASSERT_GE(expected[0]->get("/parentObjt_1/field2check")->GetInt(),
+              expected[0]->get("/parentObjt_2/ref_key")->GetInt());
+    ASSERT_GE(expected[1]->get("/parentObjt_1/field2check")->GetInt(),
+              expected[1]->get("/parentObjt_2/ref_key")->GetInt());
 }

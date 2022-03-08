@@ -23,7 +23,7 @@ types::Lifter opBuilderConditionValue(const types::DocumentValue & def)
     return [=](types::Observable o)
     {
         // Append rxcpp operation
-        return o.filter([=](types::Event e) { return e.check(doc); });
+        return o.filter([=](types::Event e) { return e->check(doc); });
     };
 }
 
