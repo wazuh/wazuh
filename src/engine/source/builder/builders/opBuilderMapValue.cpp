@@ -26,7 +26,7 @@ types::Lifter opBuilderMapValue(const types::DocumentValue & def)
         return o.map(
             [=](types::Event e)
             {
-                e.set(doc);
+                e->set(doc);
                 return e;
             });
     };

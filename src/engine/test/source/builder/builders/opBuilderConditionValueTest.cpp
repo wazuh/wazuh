@@ -61,7 +61,7 @@ TEST(opBuilderConditionValue, BuildsOperatesString)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_STREQ(expected[0].get("/field")->GetString(), doc.get("/check")->MemberBegin()->value.GetString());
+    ASSERT_STREQ(expected[0]->get("/field")->GetString(), doc.get("/check")->MemberBegin()->value.GetString());
 }
 
 //TODO: Add rest of use cases (int, bool, null)
