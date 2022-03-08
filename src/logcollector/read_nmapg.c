@@ -127,11 +127,11 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
     int final_msg_s;
     int need_clear = 0;
 
-    char str[OS_MAX_LOG_SIZE];
-    char final_msg[OS_MAX_LOG_SIZE];
-    char port[17];
-    char proto[17];
-    char buffer[sizeof(port) + sizeof(proto) + 4];
+    char str[OS_MAX_LOG_SIZE] = {0};
+    char final_msg[OS_MAX_LOG_SIZE] = {0};
+    char port[17] = {0};
+    char proto[17] = {0};
+    char buffer[sizeof(port) + sizeof(proto) + 4] = {0};
 
     char *ip = NULL;
     char *p;
@@ -141,12 +141,6 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
     int bytes_written = 0;
 
     *rc = 0;
-    str[sizeof(str) -1] = '\0';
-    final_msg[sizeof(final_msg) - 1] = '\0';
-    buffer[sizeof(buffer) - 1] = '\0';
-
-    port[16] = '\0';
-    proto[16] = '\0';
 
     /* Obtain context to calculate hash */
     SHA_CTX context;
