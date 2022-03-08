@@ -27,7 +27,7 @@ static char *_os_get_runps(const char *ps, int mpid)
 
     const int size = snprintf(command, sizeof(command), "%s -p %d 2> /dev/null", ps, mpid);
 
-    if (size > (int)(sizeof(command) - 1)) {
+    if (size < 0 || (size_t)size >= sizeof(command)) {
         return (NULL);
     }
 
