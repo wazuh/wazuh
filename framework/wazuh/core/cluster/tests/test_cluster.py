@@ -456,20 +456,20 @@ def test_merge_info(stat_mock, listdir_mock):
     stat_mock.return_value.st_size = len(agent_groups)
 
     with patch('builtins.open', mock_open(read_data=agent_groups)) as open_mock:
-        files_to_send, output_file = cluster.merge_info('agent-groups', 'worker1', file_type='-shared')
-        open_mock.assert_any_call(common.wazuh_path + '/queue/cluster/worker1/agent-groups-shared.merged', 'wb')
-        open_mock.assert_any_call(common.wazuh_path + '/queue/agent-groups/005', 'rb')
-        open_mock.assert_any_call(common.wazuh_path + '/queue/agent-groups/006', 'rb')
+        files_to_send, output_file = cluster.merge_info('testing', 'worker1', file_type='-shared')
+        open_mock.assert_any_call(common.wazuh_path + '/queue/cluster/worker1/testing-shared.merged', 'wb')
+        open_mock.assert_any_call(common.wazuh_path + '/queue/testing/005', 'rb')
+        open_mock.assert_any_call(common.wazuh_path + '/queue/testing/006', 'rb')
 
         assert files_to_send == 2
-        assert output_file == "queue/cluster/worker1/agent-groups-shared.merged"
+        assert output_file == "queue/cluster/worker1/testing-shared.merged"
 
         handle = open_mock()
         expected = f'{len(agent_groups)} 005 ' \
                    f'{datetime.utcfromtimestamp(stat_mock.return_value.st_mtime)}\n'.encode() + agent_groups
         handle.write.assert_any_call(expected)
 
-        files_to_send, output_file = cluster.merge_info('agent-groups', 'worker1', files=["one", "two"],
+        files_to_send, output_file = cluster.merge_info('testing', 'worker1', files=["one", "two"],
                                                         file_type='-shared')
 
         assert files_to_send == 0

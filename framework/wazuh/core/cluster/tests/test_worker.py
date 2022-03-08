@@ -1060,7 +1060,7 @@ async def test_worker_handler_process_files_from_master_ko(send_request_mock, js
 @patch("os.path.exists", return_value=False)
 @patch("wazuh.core.cluster.worker.safe_move")
 @patch("wazuh.core.cluster.worker.utils.mkdir_with_mode")
-@patch("os.path.join", return_value="queue/agent-groups/")
+@patch("os.path.join", return_value="queue/testing/")
 @patch("wazuh.core.common.wazuh_uid", return_value="wazuh_uid")
 @patch("wazuh.core.common.wazuh_gid", return_value="wazuh_gid")
 def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_uid_mock, path_join_mock,
@@ -1107,7 +1107,7 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
                                 "extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, zip_path="/zip/path",
                             cluster_items=cluster_items, logger=LoggerMock())
 
-                        os_remove_mock.assert_any_call("queue/agent-groups/")
+                        os_remove_mock.assert_any_call("queue/testing/")
                         logger_error_mock.assert_not_called()
                         logger_debug_mock.assert_has_calls(
                             [call("Received 1 shared files to update from master."),
@@ -1123,7 +1123,7 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
                                                          call(core_common.wazuh_path, 'filename3')])
                         wazuh_uid_mock.assert_called_with()
                         wazuh_gid_mock.assert_called_with()
-                        mkdir_with_mode_mock.assert_any_call("queue/agent-groups")
+                        mkdir_with_mode_mock.assert_any_call("queue/testing")
                         assert safe_move_mock.call_count == 2
                         open_mock.assert_called_once()
                         path_exists_mock.assert_called_once()
@@ -1171,7 +1171,7 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
 
                 # Test the first for: for -> if -> for -> except AND for -> elif -> for -> try -> except -> else AND
                 # for -> elif -> for -> except
-                path_join_mock.return_value = "queue/agent-groups_mock/"
+                path_join_mock.return_value = "queue/testing_mock/"
                 worker_handler.update_master_files_in_worker(
                     {"shared": {"filename1": "data1"}, "missing": {"filename2": "data2"},
                      "extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, "/zip/path",
@@ -1183,7 +1183,7 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
                      call("Found errors: 1 overwriting, 1 creating and 0 removing"),
                      call("Error processing shared file 'filename1': string indices must be integers"),
                      call("Error processing missing file 'filename2': string indices must be integers"),
-                     call("Found errors: 1 overwriting, 1 creating and 1 removing")])
+                     call("Found errors: 1 overwriting, 1 creating and 0 removing")])
                 logger_debug_mock.assert_has_calls(
                     [call("Received 1 shared files to update from master."),
                      call("Received 1 missing files to update from master."),
@@ -1202,8 +1202,7 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
                      call("Processing file filename1"),
                      call("Processing file filename2"),
                      call("Remove file: 'filename3'"),
-                     call("Error removing file 'filename3': [Errno 2] No such file or directory: "
-                          "'queue/agent-groups_mock/'")])
+                     call("File filename3 doesn't exist.")])
                 path_join_mock.assert_has_calls([call(core_common.wazuh_path, "filename1"),
                                                  call(core_common.wazuh_path, "filename2"),
                                                  call(core_common.wazuh_path, "filename3")])
@@ -1238,8 +1237,7 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
                              call("Found errors: 1 overwriting, 1 creating and 0 removing"),
                              call("Error processing shared file 'filename1': string indices must be integers"),
                              call("Error processing missing file 'filename2': string indices must be integers"),
-                             call("Found errors: 1 overwriting, 1 creating and 1 removing"),
-                             call("Found errors: 0 overwriting, 0 creating and 1 removing")])
+                             call("Found errors: 1 overwriting, 1 creating and 0 removing")])
                         logger_debug_mock.assert_has_calls(
                             [call("Received 1 shared files to update from master."),
                              call("Received 1 missing files to update from master."),
@@ -1258,11 +1256,9 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
                              call("Processing file filename1"),
                              call("Processing file filename2"),
                              call("Remove file: 'filename3'"),
-                             call("Error removing file 'filename3': [Errno 2] No such file or directory: "
-                                  "'queue/agent-groups_mock/'"),
+                             call("File filename3 doesn't exist."),
                              call("Remove file: 'filename3'"),
-                             call("Error removing file 'filename3': [Errno 2] No such file or directory: "
-                                  "'queue/agent-groups_mock/'")])
+                             call("File filename3 doesn't exist.")])
                         path_join_mock.assert_has_calls([call(core_common.wazuh_path, "filename3"),
                                                          call(core_common.wazuh_path, "")])
                         wazuh_uid_mock.assert_not_called()
@@ -1287,9 +1283,8 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
                      call("Found errors: 1 overwriting, 1 creating and 0 removing"),
                      call("Error processing shared file 'filename1': string indices must be integers"),
                      call("Error processing missing file 'filename2': string indices must be integers"),
-                     call("Found errors: 1 overwriting, 1 creating and 1 removing"),
-                     call("Found errors: 0 overwriting, 0 creating and 1 removing"),
-                     call("Found errors: 0 overwriting, 0 creating and 2 removing")])
+                     call("Found errors: 1 overwriting, 1 creating and 0 removing"),
+                     call("Found errors: 0 overwriting, 0 creating and 1 removing")])
                 logger_debug_mock.assert_has_calls(
                     [call("Received 1 shared files to update from master."),
                      call("Received 1 missing files to update from master."),
@@ -1308,16 +1303,12 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
                      call("Processing file filename1"),
                      call("Processing file filename2"),
                      call("Remove file: 'filename3'"),
-                     call("Error removing file 'filename3': [Errno 2] No such file or directory: "
-                          "'queue/agent-groups_mock/'"),
+                     call("File filename3 doesn't exist."),
                      call("Remove file: 'filename3'"),
-                     call("Error removing file 'filename3': [Errno 2] No such file or directory: "
-                          "'queue/agent-groups_mock/'"),
+                     call("File filename3 doesn't exist."),
                      call("Remove file: 'filename3'"),
-                     call("Error removing file 'filename3': [Errno 2] No such file or directory: "
-                          "'queue/agent-groups_mock/'"),
-                     call("Error removing directory '': [Errno 2] No such file or directory: "
-                          "'queue/agent-groups_mock/'")])
+                     call("File filename3 doesn't exist."),
+                     call("Error removing directory '': [Errno 2] No such file or directory: 'queue/testing_mock/'")])
                 path_join_mock.assert_has_calls([call(core_common.wazuh_path, "filename3"),
                                                  call(core_common.wazuh_path, "")])
                 wazuh_uid_mock.assert_not_called()
