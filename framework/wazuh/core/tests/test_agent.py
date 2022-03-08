@@ -977,6 +977,8 @@ def test_agent_add_group_to_agent(set_agent_group_mock, agent_groups_mock, agent
 @patch('wazuh.core.agent.Agent.get_agent_groups', return_value=['default'])
 def test_agent_add_group_to_agent_ko(agent_groups_mock):
     """Test if add_group_to_agent() raises expected exceptions"""
+    max_groups_number = 128
+
     # Error getting agent groups
     with patch('wazuh.core.agent.Agent.get_agent_groups', side_effect=WazuhError(2003)):
         with pytest.raises(WazuhInternalError, match='.* 2007 .*'):
@@ -990,7 +992,8 @@ def test_agent_add_group_to_agent_ko(agent_groups_mock):
     with pytest.raises(WazuhError, match='.* 1751 .*'):
         Agent.add_group_to_agent('default', '002')
 
-    with patch('wazuh.core.common.max_groups_per_multigroup', new=0):
+    with patch('wazuh.core.agent.Agent.get_agent_groups',
+               return_value=[f'group_{i}' for i in range(max_groups_number)]):
         # Multigroup limit exceeded.
         with pytest.raises(WazuhError, match='.* 1737 .*'):
             Agent.add_group_to_agent('test_group', '002')
