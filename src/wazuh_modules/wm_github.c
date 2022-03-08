@@ -117,25 +117,22 @@ void * wm_github_main(wm_github* github_config) {
     return NULL;
 #endif
 }
+
 #ifdef WIN32
-STATIC DWORD WINAPI wm_github_destroy(void* github_config) {
-    wm_github *ptr = (wm_github *)github_config;
-    mtinfo(WM_GITHUB_LOGTAG, "Module GitHub finished.");
-    wm_github_auth_destroy(ptr->auth);
-    wm_github_fail_destroy(ptr->fails);
-    os_free(ptr->event_type);
-    os_free(github_config);
-    return 0;
-}
+STATIC DWORD WINAPI wm_github_destroy(void* ptr_github_config) {
+    wm_github *github_config = (wm_github *)ptr_github_config;
 #else
 void wm_github_destroy(wm_github* github_config) {
+#endif
     mtinfo(WM_GITHUB_LOGTAG, "Module GitHub finished.");
     wm_github_auth_destroy(github_config->auth);
     wm_github_fail_destroy(github_config->fails);
     os_free(github_config->event_type);
     os_free(github_config);
+    #ifdef WIN32
+    return 0;
+    #endif
 }
-#endif
 
 void wm_github_auth_destroy(wm_github_auth* github_auth)
 {

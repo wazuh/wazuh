@@ -266,20 +266,16 @@ cJSON *wm_command_dump(const wm_command_t * command) {
 
 // Destroy data
 #ifdef WIN32
-DWORD WINAPI wm_command_destroy(void *command) {
-    wm_command_t * ptr_command = (wm_command_t *)command;
-
-    free(ptr_command->tag);
-    free(ptr_command->command);
-    free(ptr_command->full_command);
-    free(ptr_command);
-    return 0;
-}
+DWORD WINAPI wm_command_destroy(void *ptr_command) {
+    wm_command_t * command = (wm_command_t *)ptr_command;
 #else
 void wm_command_destroy(wm_command_t * command) {
+#endif
     free(command->tag);
     free(command->command);
     free(command->full_command);
     free(command);
+    #ifdef WIN32
+    return 0;
+    #endif
 }
-#endif

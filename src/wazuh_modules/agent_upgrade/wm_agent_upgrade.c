@@ -67,25 +67,20 @@ STATIC void *wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config) {
 }
 
 #ifdef WIN32
-STATIC DWORD WINAPI wm_agent_upgrade_destroy(void* upgrade_config) {
-    wm_agent_upgrade *ptr = (wm_agent_upgrade *)upgrade_config;
-
-    mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_MODULE_FINISHED);
-    #ifndef CLIENT
-    os_free(ptr->manager_config.wpk_repository);
-    #endif
-    os_free(ptr);
-    return 0;
-}
+STATIC DWORD WINAPI wm_agent_upgrade_destroy(void* upgrade_config_ptr) {
+    wm_agent_upgrade *upgrade_config = (wm_agent_upgrade *)upgrade_config_ptr;
 #else
 STATIC void wm_agent_upgrade_destroy(wm_agent_upgrade* upgrade_config) {
+#endif
     mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_MODULE_FINISHED);
     #ifndef CLIENT
     os_free(upgrade_config->manager_config.wpk_repository);
     #endif
     os_free(upgrade_config);
+    #ifdef WIN32
+    return 0;
+    #endif
 }
- #endif
 
 STATIC cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config){
     cJSON *root = cJSON_CreateObject();

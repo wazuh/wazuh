@@ -2067,17 +2067,15 @@ static int wm_sca_check_process_is_running(OSList *p_list, char *value, char **r
 
 // Destroy data
 #ifdef WIN32
-DWORD WINAPI wm_sca_destroy(void *data)
-{
-    os_free(data);
-    return 0;
-}
+DWORD WINAPI wm_sca_destroy(void *data) {
 #else
-void wm_sca_destroy(wm_sca_t * data)
-{
-    os_free(data);
-}
+void wm_sca_destroy(wm_sca_t * data) {
 #endif
+    os_free(data);
+    #ifdef WIN32
+    return 0;
+    #endif
+}
 
 #ifdef WIN32
 

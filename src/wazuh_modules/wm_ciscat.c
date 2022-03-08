@@ -1507,34 +1507,15 @@ cJSON *wm_ciscat_dump(const wm_ciscat * ciscat) {
     return root;
 }
 
-
 // Destroy data
 #ifdef WIN32
-DWORD WINAPI wm_ciscat_destroy(void *ciscat) {
-
-    wm_ciscat_eval *cur_eval;
-    wm_ciscat_eval *next_eval;
-    wm_ciscat *ptr_ciscat = (wm_ciscat *)ciscat;
-
-    // Delete evals
-
-    for (cur_eval = ptr_ciscat->evals; cur_eval; cur_eval = next_eval) {
-
-        next_eval = cur_eval->next;
-        free(cur_eval->path);
-        free(cur_eval->profile);
-        free(cur_eval);
-    }
-
-    free(ptr_ciscat);
-    return 0;
-}
+DWORD WINAPI wm_ciscat_destroy(void *ptr_ciscat) {
+    wm_ciscat *ciscat = (wm_ciscat *)ptr_ciscat;
 #else
 void wm_ciscat_destroy(wm_ciscat *ciscat) {
-
+#endif
     wm_ciscat_eval *cur_eval;
     wm_ciscat_eval *next_eval;
-
     // Delete evals
 
     for (cur_eval = ciscat->evals; cur_eval; cur_eval = next_eval) {
@@ -1546,7 +1527,9 @@ void wm_ciscat_destroy(wm_ciscat *ciscat) {
     }
 
     free(ciscat);
+    #ifdef WIN32
+    return 0;
+    #endif
 }
 #endif
 
-#endif

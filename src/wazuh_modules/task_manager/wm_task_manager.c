@@ -221,16 +221,15 @@ STATIC void* wm_task_manager_main(wm_task_manager* task_config) {
 
 #ifdef WIN32
 STATIC DWORD WINAPI wm_task_manager_destroy(void* task_config) {
-    mtinfo(WM_TASK_MANAGER_LOGTAG, MOD_TASK_FINISH);
-    os_free(task_config);
-    return 0;
-}
 #else
 STATIC void wm_task_manager_destroy(wm_task_manager* task_config) {
+#endif
     mtinfo(WM_TASK_MANAGER_LOGTAG, MOD_TASK_FINISH);
     os_free(task_config);
+    #ifdef WIN32
+    return 0;
+    #endif
 }
-#endif
 
 STATIC cJSON* wm_task_manager_dump(const wm_task_manager* task_config){
     cJSON *root = cJSON_CreateObject();

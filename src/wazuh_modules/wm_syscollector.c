@@ -211,14 +211,14 @@ void* wm_sys_main(wm_sys_t *sys) {
 
 #ifdef WIN32
 DWORD WINAPI wm_sys_destroy(void *data) {
-    free(data);
-    return 0;
-}
 #else
 void wm_sys_destroy(wm_sys_t *data) {
-    free(data);
-}
 #endif
+    free(data);
+#ifdef WIN32
+    return 0;
+#endif
+}
 
 void wm_sys_stop(__attribute__((unused))wm_sys_t *data) {
     mtinfo(WM_SYS_LOGTAG, "Stop received for Syscollector.");

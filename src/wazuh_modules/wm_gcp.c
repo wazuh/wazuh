@@ -519,44 +519,28 @@ void wm_gcp_bucket_run(const wm_gcp_bucket_base *data, wm_gcp_bucket *exec_bucke
 
     os_free(output);
 }
+
 #ifdef WIN32
 DWORD WINAPI wm_gcp_pubsub_destroy(void *gcp_config) {
     wm_gcp_pubsub *data = (wm_gcp_pubsub *)gcp_config;
-
-    if (data->project_id) os_free(data->project_id);
-    if (data->subscription_name) os_free(data->subscription_name);
-    if (data->credentials_file) os_free(data->credentials_file);
-    os_free(data);
-    return 0;
-}
-
-DWORD WINAPI wm_gcp_bucket_destroy(void *gcp_config) {
-    wm_gcp_bucket *cur_bucket;
-    wm_gcp_bucket_base * data = (wm_gcp_bucket_base *)gcp_config;
-    wm_gcp_bucket *next_bucket = data->buckets;
-
-    while(next_bucket){
-        cur_bucket = next_bucket;
-        next_bucket = next_bucket->next;
-        if (cur_bucket->bucket) os_free(cur_bucket->bucket);
-        if (cur_bucket->type) os_free(cur_bucket->type);
-        if (cur_bucket->credentials_file) os_free(cur_bucket->credentials_file);
-        if (cur_bucket->prefix) os_free(cur_bucket->prefix);
-        if (cur_bucket->only_logs_after) os_free(cur_bucket->only_logs_after);
-        os_free(cur_bucket);
-    }
-    os_free(data);
-    return 0;
-}
 #else
 void wm_gcp_pubsub_destroy(wm_gcp_pubsub * data) {
+#endif
     if (data->project_id) os_free(data->project_id);
     if (data->subscription_name) os_free(data->subscription_name);
     if (data->credentials_file) os_free(data->credentials_file);
     os_free(data);
+    #ifdef WIN32
+    return 0;
+    #endif
 }
 
+#ifdef WIN32
+DWORD WINAPI wm_gcp_bucket_destroy(void *gcp_config) {
+    wm_gcp_bucket_base * data = (wm_gcp_bucket_base *)gcp_config;
+#else
 void wm_gcp_bucket_destroy(wm_gcp_bucket_base * data) {
+#endif
     wm_gcp_bucket *cur_bucket;
     wm_gcp_bucket *next_bucket = data->buckets;
     while(next_bucket){
@@ -570,8 +554,10 @@ void wm_gcp_bucket_destroy(wm_gcp_bucket_base * data) {
         os_free(cur_bucket);
     }
     os_free(data);
+    #ifdef WIN32
+    return 0;
+    #endif
 }
-#endif
 
 cJSON *wm_gcp_pubsub_dump(const wm_gcp_pubsub *data) {
     cJSON *root = cJSON_CreateObject();

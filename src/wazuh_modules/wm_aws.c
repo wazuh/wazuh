@@ -264,14 +264,14 @@ cJSON *wm_aws_dump(const wm_aws *aws_config) {
 // Destroy data
 #ifdef WIN32
 DWORD WINAPI wm_aws_destroy(void *aws_config) {         // Destroy data
-    free(aws_config);
-    return 0;
-}
 #else
 void wm_aws_destroy(wm_aws *aws_config) {
-    free(aws_config);
-}
 #endif
+    free(aws_config);
+    #ifdef WIN32
+    return 0;
+    #endif
+}
 
 // Setup module
 

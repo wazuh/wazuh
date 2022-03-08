@@ -157,25 +157,20 @@ void * wm_office365_main(wm_office365* office365_config) {
 }
 
 #ifdef WIN32
-STATIC DWORD WINAPI wm_office365_destroy(void *office365_config) {
-    wm_office365 *office365_config_ptr = (wm_office365 *)office365_config;
-
-    mtinfo(WM_OFFICE365_LOGTAG, "Module Office365 finished.");
-    wm_office365_auth_destroy(office365_config_ptr->auth);
-    wm_office365_subscription_destroy(office365_config_ptr->subscription);
-    wm_office365_fail_destroy(office365_config_ptr->fails);
-    os_free(office365_config_ptr);
-    return 0;
-}
+STATIC DWORD WINAPI wm_office365_destroy(void *office365_config_ptr) {
+    wm_office365 *office365_config = (wm_office365 *)office365_config_ptr;
 #else
 void wm_office365_destroy(wm_office365* office365_config) {
+#endif
     mtinfo(WM_OFFICE365_LOGTAG, "Module Office365 finished.");
     wm_office365_auth_destroy(office365_config->auth);
     wm_office365_subscription_destroy(office365_config->subscription);
     wm_office365_fail_destroy(office365_config->fails);
     os_free(office365_config);
+    #ifdef WIN32
+    return 0;
+    #endif
 }
-#endif
 
 void wm_office365_auth_destroy(wm_office365_auth* office365_auth) {
     wm_office365_auth* current = office365_auth;

@@ -668,32 +668,11 @@ void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery) {
 }
 
 #ifdef WIN32
-DWORD WINAPI wm_osquery_monitor_destroy(void *osquery_monitor)
-{
-    int i;
-    wm_osquery_monitor_t *osquery_monitor_ptr = (wm_osquery_monitor_t *)osquery_monitor;
-
-    if (osquery_monitor_ptr)
-    {
-        free(osquery_monitor_ptr->bin_path);
-        free(osquery_monitor_ptr->log_path);
-        free(osquery_monitor_ptr->config_path);
-
-        for (i = 0; osquery_monitor_ptr->packs[i]; ++i) {
-            free(osquery_monitor_ptr->packs[i]->name);
-            free(osquery_monitor_ptr->packs[i]->path);
-            free(osquery_monitor_ptr->packs[i]);
-        }
-
-        free(osquery_monitor_ptr->packs);
-        free(osquery_monitor_ptr);
-    }
-
-    return 0;
-}
+DWORD WINAPI wm_osquery_monitor_destroy(void *osquery_monitor_ptr) {
+    wm_osquery_monitor_t *osquery_monitor = (wm_osquery_monitor_t *)osquery_monitor_ptr;
 #else
-void wm_osquery_monitor_destroy(wm_osquery_monitor_t *osquery_monitor)
-{
+void wm_osquery_monitor_destroy(wm_osquery_monitor_t *osquery_monitor) {
+#endif
     int i;
 
     if (osquery_monitor)
@@ -711,9 +690,10 @@ void wm_osquery_monitor_destroy(wm_osquery_monitor_t *osquery_monitor)
         free(osquery_monitor->packs);
         free(osquery_monitor);
     }
+    #ifdef WIN32
+    return 0;
+    #endif
 }
-#endif
-
 
 // Get read data
 cJSON *wm_osquery_dump(const wm_osquery_monitor_t *osquery_monitor) {
