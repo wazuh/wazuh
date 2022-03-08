@@ -116,9 +116,10 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
     // Define path where CIS-CAT is installed
 
     if (ciscat->ciscat_path) {
-        char pwd[PATH_MAX];
-
         switch (wm_relative_path(ciscat->ciscat_path)) {
+        #ifndef WIN32
+            char pwd[PATH_MAX];
+        #endif
             case 0:
                 // Full path
                 snprintf(cis_path, OS_MAXSTR - 1, "%s", ciscat->ciscat_path);
