@@ -154,7 +154,7 @@ void *read_djbmultilog(logreader *lf, int *rc, int drop_it) {
                 localtime_r(&djbtime, &tm_result);
 
                 /* Syslog time: Apr 27 14:50:32  */
-                int size = snprintf(buffer, sizeof(buffer), "%s %02d %02d:%02d:%02d %s %s: %s",
+                const int size = snprintf(buffer, sizeof(buffer), "%s %02d %02d:%02d:%02d %s %s: %s",
                          djb_month[tm_result.tm_mon],
                          tm_result.tm_mday,
                          tm_result.tm_hour,
@@ -164,8 +164,10 @@ void *read_djbmultilog(logreader *lf, int *rc, int drop_it) {
                          lf->djb_program_name,
                          p);
 
-
-                if (size + 1 > (int)sizeof(buffer)) {
+                if (size < 0) {
+                    merror("Error %d (%s) while reading message: '%s' (length = " FTELL_TT "): '%s'...", errno, strerror(errno), lf->file, FTELL_INT64 size, buffer);
+                }
+                else if ((size_t)size >= sizeof(buffer)) {
                     merror("Message size too big on file '%s' (length = " FTELL_TT "): '%s'...", lf->file, FTELL_INT64 size, buffer);
                 }
             }
