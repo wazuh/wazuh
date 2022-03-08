@@ -87,6 +87,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/shared)
 add_subdirectory(${ENGINE_SOURCE_DIR}/catalog)
 add_subdirectory(${ENGINE_SOURCE_DIR}/server)
 add_subdirectory(${ENGINE_SOURCE_DIR}/router)
+add_subdirectory(${ENGINE_SOURCE_DIR}/cdb)
 # TODO dependent
 add_subdirectory(${ENGINE_SOURCE_DIR}/graph)
 add_subdirectory(${ENGINE_SOURCE_DIR}/json)
