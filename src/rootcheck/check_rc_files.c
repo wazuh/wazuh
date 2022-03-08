@@ -191,7 +191,7 @@ void check_rc_files(const char *basedir, FILE *fp)
         }
 
         if (is_file(file_path)) {
-            int size_msg = strlen(file_path) + strlen(name) + strlen("Rootkit '' detected by the presence of file ''.")  + 1;
+            int size_msg = strlen(file_path) + strlen(name) + sizeof("Rootkit '' detected by the presence of file ''.");
             char op_msg[size_msg];
 
             _errors = 1;
