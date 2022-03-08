@@ -20,13 +20,11 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
     const char *two = "two";
     const char *p = NULL;
     char *q;
-    char str[OS_MAX_LOG_SIZE];
-    char f_msg[OS_MAX_LOG_SIZE];
+    char str[OS_MAX_LOG_SIZE] = {0};
+    char f_msg[OS_MAX_LOG_SIZE] = {0};
     int lines = 0;
 
     *rc = 0;
-    str[sizeof(str) - 1] = '\0';
-    f_msg[sizeof(f_msg) - 1] = '\0';
 
     /* Obtain context to calculate hash */
     SHA_CTX context;
@@ -65,7 +63,7 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
                 } else if (strncmp(str, "[Priority: ", 10) == 0) {
                     strncat(f_msg, "[Classification: Preprocessor] "
                             "[Priority: 3] ", f_msg_size);
-                    f_msg_size -= strlen("[Classification: Preprocessor] [Priority: 3] ");
+                    f_msg_size -= sizeof("[Classification: Preprocessor] [Priority: 3] ") - 1;
                     p = two;
                 }
 
@@ -75,7 +73,7 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
                 else if ((str[2] == '/') && (str[5] == '-') && (q = strchr(str, ' '))) {
                     strncat(f_msg, "[Classification: Preprocessor] "
                             "[Priority: 3] ", f_msg_size);
-                    f_msg_size -= strlen("[Classification: Preprocessor] [Priority: 3] ");
+                    f_msg_size -= sizeof("[Classification: Preprocessor] [Priority: 3] ") - 1;
                     strncat(f_msg, ++q, f_msg_size - 40);
 
                     /* Clean for next event */
