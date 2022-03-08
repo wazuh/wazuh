@@ -2309,7 +2309,8 @@ static int wm_sca_winreg_querykey(HKEY hKey, const char *full_key_name, char *re
 
             /* Write value into a string */
             switch (data_type) {
-                    int size_available;
+                int size_available;
+                size_t size_data = 0;
 
                 case REG_SZ:
                 case REG_EXPAND_SZ:
@@ -2317,19 +2318,20 @@ static int wm_sca_winreg_querykey(HKEY hKey, const char *full_key_name, char *re
                     break;
                 case REG_MULTI_SZ:
                     /* Printing multiple strings */
-                    size_available = MAX_VALUE_NAME - 3;
+                    size_available = MAX_VALUE_NAME;
                     mt_data = data_buffer;
 
                     while (*mt_data) {
-                        if (size_available > 2) {
+                        size_data = strlen(mt_data) + strlen(" ");
+
+                        if (size_available >= size_data) {
                             strncat(var_storage, mt_data, size_available);
-                            strncat(var_storage, " ", 2);
-                            size_available = MAX_VALUE_NAME -
-                                             (strlen(var_storage) + 2);
+                            size_available -= strlen(mt_data);
+                            strncat(var_storage, " ", size_available);
+                            size_available -= strlen(" ");
                         }
                         mt_data += strlen(mt_data) + 1;
                     }
-
                     break;
                 case REG_DWORD:
                     snprintf(var_storage, MAX_VALUE_NAME, "%u", *((uint32_t*)data_buffer));
