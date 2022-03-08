@@ -2716,6 +2716,83 @@ void test_save_controlmsg_update_msg_unable_to_update_information(void **state)
     os_free(data);
 }
 
+void test_save_controlmsg_update_msg_lookfor_agent_group_fail(void **state)
+{
+    test_mode = true;
+
+    char r_msg[OS_SIZE_128] = {0};
+    strcpy(r_msg, "valid message \n with enter");
+
+    keyentry key;
+    keyentry_init(&key, "NEW_AGENT", "001", "10.2.2.5", NULL);
+
+    size_t msg_length = sizeof(r_msg);
+    int *wdb_sock = NULL;
+
+    expect_string(__wrap_send_msg, msg, "001");
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, 1);
+    pending_data = OSHash_Create();
+
+    pending_data_t *data;
+    os_calloc(1, sizeof(struct pending_data_t), data);
+    char * message = strdup("different message");
+    data->changed = false;
+    data->message = message;
+
+    expect_value(__wrap_OSHash_Get, self, pending_data);
+    expect_string(__wrap_OSHash_Get, key, "001");
+    will_return(__wrap_OSHash_Get, data);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "save_controlmsg(): inserting 'valid message \n'");
+
+    agent_group *agt_group;
+    os_calloc(1, sizeof(agent_group), agt_group);
+    os_strdup("test_group", agt_group->group);
+
+    expect_string(__wrap_w_parser_get_agent, name, "001");
+    will_return(__wrap_w_parser_get_agent, NULL);
+
+    expect_string(__wrap_get_agent_group, id, "001");
+    will_return(__wrap_get_agent_group, "");
+    will_return(__wrap_get_agent_group, -1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' group is ''");
+
+    expect_string(__wrap__merror, formatted_msg, "Error getting group for agent '001'");
+
+    agent_info_data *agent_data;
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+    agent_data->id = 1;
+    os_strdup("manager_host", agent_data->manager_host);
+    os_strdup("10.2.2.2", agent_data->agent_ip);
+    os_strdup("version 4.3", agent_data->version);
+    os_strdup("112358", agent_data->merged_sum);
+
+    expect_string(__wrap_parse_agent_update_msg, msg, "valid message \n");
+    will_return(__wrap_parse_agent_update_msg, agent_data);
+    will_return(__wrap_parse_agent_update_msg, OS_SUCCESS);
+
+    expect_any(__wrap_wdb_update_agent_data, agent_data);
+    will_return(__wrap_wdb_update_agent_data, OS_INVALID);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Unable to update information in global.db for agent: 001");
+
+    save_controlmsg(&key, r_msg, msg_length, wdb_sock);
+
+    os_free(agent_data->manager_host);
+    os_free(agent_data);
+
+    os_free(agt_group->group);
+    os_free(agt_group);
+
+    free_keyentry(&key);
+    os_free(data->message);
+    os_free(data->group);
+    os_free(data);
+}
+
 void test_save_controlmsg_startup(void **state)
 {
     test_mode = true;
@@ -2958,6 +3035,7 @@ int main(void)
         cmocka_unit_test(test_save_controlmsg_unable_to_save_last_keepalive),
         cmocka_unit_test(test_save_controlmsg_update_msg_error_parsing),
         cmocka_unit_test(test_save_controlmsg_update_msg_unable_to_update_information),
+        cmocka_unit_test(test_save_controlmsg_update_msg_lookfor_agent_group_fail),
         cmocka_unit_test(test_save_controlmsg_startup),
         cmocka_unit_test(test_save_controlmsg_shutdown),
         cmocka_unit_test(test_save_controlmsg_shutdown_wdb_fail),
