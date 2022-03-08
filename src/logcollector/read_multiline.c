@@ -19,15 +19,12 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
     int __ms_reported = 0;
     int linesgot = 0;
     size_t buffer_size = 0;
-    char str[OS_MAX_LOG_SIZE];
-    char buffer[OS_MAX_LOG_SIZE];
+    char str[OS_MAX_LOG_SIZE] = {0};
+    char buffer[OS_MAX_LOG_SIZE] = {0};
     int lines = 0;
     int64_t offset = 0;
     int64_t rbytes = 0;
 
-    buffer[0] = '\0';
-    buffer[OS_MAX_LOG_SIZE - 1] = '\0';
-    str[OS_MAX_LOG_SIZE - 1] = '\0';
     *rc = 0;
 
     /* Obtain context to calculate hash */
