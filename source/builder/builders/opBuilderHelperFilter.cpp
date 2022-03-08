@@ -37,7 +37,7 @@ using builder::internals::syntax::REFERENCE_ANCHOR;
 std::tuple<std::string, opString, opString> getCompOpParameter(const DocumentValue & def)
 {
     // Get destination path
-    std::string field {def.MemberBegin()->name.GetString()};
+    std::string field {json::Document::preparePath(def.MemberBegin()->name.GetString())};
     // Get function helper
     if (!def.MemberBegin()->value.IsString())
     {
@@ -57,7 +57,7 @@ std::tuple<std::string, opString, opString> getCompOpParameter(const DocumentVal
 
     if (parameters[1][0] == REFERENCE_ANCHOR)
     {
-        refValue = parameters[1].substr(1);
+        refValue = json::Document::preparePath(parameters[1].substr(1));
     }
     else
     {
@@ -128,7 +128,7 @@ bool opBuilderHelperStringComparison(const std::string key, char op, types::Even
     const rapidjson::Value * fieldToCompare {};
     try
     {
-        fieldToCompare = e->get("/" + key);
+        fieldToCompare = e->get(key);
     }
     catch (std::exception & ex)
     {
@@ -149,7 +149,7 @@ bool opBuilderHelperStringComparison(const std::string key, char op, types::Even
         const rapidjson::Value * refValueToCheck {};
         try
         {
-            refValueToCheck = e->get("/" + refValue.value());
+            refValueToCheck = e->get(refValue.value());
         }
         catch (std::exception & ex)
         {
@@ -296,7 +296,7 @@ bool opBuilderHelperIntComparison(const std::string field, char op, types::Event
     const rapidjson::Value * fieldValue {};
     try
     {
-        fieldValue = e->get("/" + field);
+        fieldValue = e->get(field);
     }
     catch (std::exception & ex)
     {
@@ -317,7 +317,7 @@ bool opBuilderHelperIntComparison(const std::string field, char op, types::Event
         const rapidjson::Value * refValueToCheck {};
         try
         {
-            refValueToCheck = e->get("/" + refValue.value());
+            refValueToCheck = e->get(refValue.value());
         }
         catch (std::exception & ex)
         {
@@ -503,10 +503,10 @@ types::Lifter opBuilderHelperIntGreaterThanEqual(const types::DocumentValue & de
 types::Lifter opBuilderHelperRegexMatch(const types::DocumentValue & def)
 {
     // Get field
-    std::string field = def.MemberBegin()->name.GetString();
-    std::string value = def.MemberBegin()->value.GetString();
+    std::string field {json::Document::preparePath(def.MemberBegin()->name.GetString())};
+    std::string value {def.MemberBegin()->value.GetString()};
 
-    std::vector<std::string> parameters = utils::string::split(value, '/');
+    std::vector<std::string> parameters {utils::string::split(value, '/')};
     if (parameters.size() != 2)
     {
         throw std::invalid_argument("Wrong number of arguments passed");
@@ -531,7 +531,7 @@ types::Lifter opBuilderHelperRegexMatch(const types::DocumentValue & def)
                 const rapidjson::Value * field_str {};
                 try
                 {
-                    field_str = e->get("/" + field);
+                    field_str = e->get(field);
                 }
                 catch (std::exception & ex)
                 {
@@ -551,7 +551,7 @@ types::Lifter opBuilderHelperRegexMatch(const types::DocumentValue & def)
 types::Lifter opBuilderHelperRegexNotMatch(const types::DocumentValue & def)
 {
     // Get field
-    std::string field = def.MemberBegin()->name.GetString();
+    std::string field {json::Document::preparePath(def.MemberBegin()->name.GetString())};
     std::string value = def.MemberBegin()->value.GetString();
 
     std::vector<std::string> parameters = utils::string::split(value, '/');
@@ -579,7 +579,7 @@ types::Lifter opBuilderHelperRegexNotMatch(const types::DocumentValue & def)
                 const rapidjson::Value * field_str {};
                 try
                 {
-                    field_str = e->get("/" + field);
+                    field_str = e->get(field);
                 }
                 catch (std::exception & ex)
                 {
@@ -606,7 +606,7 @@ types::Lifter opBuilderHelperRegexNotMatch(const types::DocumentValue & def)
 types::Lifter opBuilderHelperIPCIDR(const types::DocumentValue & def)
 {
     // Get Field path to check
-    std::string field = def.MemberBegin()->name.GetString();
+    std::string field {json::Document::preparePath(def.MemberBegin()->name.GetString())};
     // Get function helper
     std::string rawValue = def.MemberBegin()->value.GetString();
 
@@ -653,7 +653,7 @@ types::Lifter opBuilderHelperIPCIDR(const types::DocumentValue & def)
                 const rapidjson::Value * field_str{};
                 try
                 {
-                    field_str = e->get("/" + field);
+                    field_str = e->get(field);
                 }
                 catch (std::exception & ex)
                 {

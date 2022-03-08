@@ -16,12 +16,18 @@ using namespace std;
 namespace builder::internals::builders
 {
 
+// TODO Add test for this
 types::Lifter opBuilderMapReference(const types::DocumentValue & def)
 {
     // Make deep copy of value
-    std::string field = "/" + string(def.MemberBegin()->name.GetString());
-    std::string reference = def.MemberBegin()->value.GetString();
-    reference = "/" + reference.substr(1, std::string::npos);
+    std::string field {json::Document::preparePath((def.MemberBegin()->name.GetString()))};
+    if (!def.MemberBegin()->value.IsString())
+    {
+        throw std::runtime_error("The value of the field '" + field + "' must be a string.");
+    }
+    std::string reference {def.MemberBegin()->value.GetString()};
+    // TODO Should start with a `$` to reference a field (Adds test, doc and handle the invalid reference)
+    reference = json::Document::preparePath(reference.substr(1, std::string::npos));
 
     // Return Lifter
     return [=](types::Observable o)

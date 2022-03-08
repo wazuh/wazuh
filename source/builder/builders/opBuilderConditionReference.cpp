@@ -20,9 +20,16 @@ namespace builder::internals::builders
 types::Lifter opBuilderConditionReference(const types::DocumentValue & def)
 {
     // Estract field and reference
-    std::string field = def.MemberBegin()->name.GetString();
-    std::string reference = def.MemberBegin()->value.GetString();
-    reference = reference.substr(1, std::string::npos);
+    // TODO Add test for this
+    std::string field {json::Document::preparePath(def.MemberBegin()->name.GetString())};
+
+    if (!def.MemberBegin()->value.IsString())
+    {
+        throw std::runtime_error("The value of the field '" + field + "' must be a string.");
+    }
+    std::string reference {def.MemberBegin()->value.GetString()};
+    // Delete the `$` at the beginning of the reference (Adds test, doc and handle the invalid reference)
+    reference = json::Document::preparePath(reference.substr(1, std::string::npos));
 
     // Return Lifter
     return [=](types::Observable o)
@@ -32,8 +39,8 @@ types::Lifter opBuilderConditionReference(const types::DocumentValue & def)
             [=](types::Event e)
             {
                 //TODO: implemente proper json check reference
-                auto v = e->get("/" + reference);
-                return e->check("/" + field, v);
+                auto v = e->get(reference);
+                return e->check(field, v);
             });
     };
 }
