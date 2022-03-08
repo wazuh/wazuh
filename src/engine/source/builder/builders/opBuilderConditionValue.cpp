@@ -17,6 +17,7 @@ namespace builder::internals::builders
 types::Lifter opBuilderConditionValue(const types::DocumentValue & def)
 {
     // Make deep copy of value
+    // TODO Should separete document to be checked, in order of build the path before check teh value
     types::Document doc{def};
 
     // Return Lifter
