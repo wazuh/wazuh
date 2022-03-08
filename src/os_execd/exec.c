@@ -122,8 +122,7 @@ int ReadExecConfig()
         for (j = 0; j < exec_size; j++) {
             if (strcmp(exec_names[j], exec_names[exec_size]) == 0) {
                 if (exec_cmd[j][0] == '\0') {
-                    strncpy(exec_cmd[j], exec_cmd[exec_size], OS_FLSIZE);
-                    exec_cmd[j][OS_FLSIZE] = '\0';
+                    snprintf(exec_cmd[j], sizeof(exec_cmd[j]), "%s", exec_cmd[exec_size]);
                     dup_entry = 1;
                     break;
                 } else if (exec_cmd[exec_size][0] == '\0') {
