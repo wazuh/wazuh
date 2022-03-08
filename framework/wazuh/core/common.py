@@ -71,7 +71,6 @@ local_internal_options = os.path.join(wazuh_path, 'etc', 'local_internal_options
 ossec_log = os.path.join(wazuh_path, 'logs', 'ossec.log')
 client_keys = os.path.join(wazuh_path, 'etc', 'client.keys')
 stats_path = os.path.join(wazuh_path, 'stats')
-groups_path = os.path.join(wazuh_path, 'queue', 'agent-groups')
 multi_groups_path = os.path.join(wazuh_path, 'var', 'multigroups')
 shared_path = os.path.join(wazuh_path, 'etc', 'shared')
 backup_path = os.path.join(wazuh_path, 'backup')
@@ -173,7 +172,7 @@ def wazuh_gid():
 
 
 # Multigroup variables
-max_groups_per_multigroup = 256
+max_groups_per_multigroup = 128
 
 # Context variables
 rbac: ContextVar[Dict] = ContextVar('rbac', default={'rbac_mode': 'black'})

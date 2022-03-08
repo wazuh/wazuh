@@ -683,7 +683,7 @@ def delete_groups(group_list=None):
 @expose_resources(actions=["group:modify_assignments"], resources=['group:id:{replace_list}'], post_proc_func=None)
 @expose_resources(actions=["group:modify_assignments"], resources=['group:id:{group_list}'], post_proc_func=None)
 @expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1751, 1752, 1753]})
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1751, 1752]})
 def assign_agents_to_group(group_list=None, agent_list=None, replace=False, replace_list=None):
     """Assign a list of agents to a group.
 
@@ -703,14 +703,26 @@ def assign_agents_to_group(group_list=None, agent_list=None, replace=False, repl
     # Check if the group exists
     if not Agent.group_exists(group_id):
         raise WazuhResourceNotFound(1710)
+
     system_agents = get_agents_info()
+
+    # Check agent '000'
+    if '000' in agent_list:
+        agent_list.remove('000')
+        result.add_failed_item(id_='000', error=WazuhError(1703))
+
+    agent_list = set(agent_list)
+
+    # Check for non-existing agents
+    not_found_agents = agent_list - system_agents
+    for agent_id in not_found_agents:
+        result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
+
+    agent_list -= not_found_agents
+
     for agent_id in agent_list:
         try:
-            if agent_id not in system_agents:
-                raise WazuhResourceNotFound(1701)
-            if agent_id == "000":
-                raise WazuhError(1703)
-            Agent.add_group_to_agent(group_id, agent_id, force=True, replace=replace, replace_list=replace_list)
+            Agent.add_group_to_agent(group_id, agent_id, replace=replace, replace_list=replace_list)
             result.affected_items.append(agent_id)
         except WazuhException as e:
             result.add_failed_item(id_=agent_id, error=e)
@@ -1095,7 +1107,7 @@ def get_agent_config(agent_list=None, component=None, config=None):
     if my_agent.status != "active":
         raise WazuhError(1740)
 
-    return WazuhResult({'data': my_agent.getconfig(component=component, config=config, agent_version=my_agent.version)})
+    return WazuhResult({'data': my_agent.get_config(component=component, config=config, agent_version=my_agent.version)})
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
