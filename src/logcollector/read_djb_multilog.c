@@ -81,10 +81,9 @@ void *read_djbmultilog(logreader *lf, int *rc, int drop_it) {
     size_t str_len = 0;
     int need_clear = 0;
     char *p;
-    char str[OS_MAX_LOG_SIZE];
-    char buffer[OS_MAX_LOG_SIZE];
+    char str[OS_MAX_LOG_SIZE] = {0};
+    char buffer[OS_MAX_LOG_SIZE] = {0};
     int lines = 0;
-    str[OS_MAX_LOG_SIZE -1] = '\0';
     *rc = 0;
 
     /* Must have a valid program name */
