@@ -807,7 +807,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                         try:
                             os.remove(file_path)
                         except OSError as e:
-                            if e.errno == errno.ENOENT and 'queue/agent-groups/' in file_path:
+                            if e.errno == errno.ENOENT:
                                 logger.debug2(f"File {file_to_remove} doesn't exist.")
                                 continue
                             else:
