@@ -514,10 +514,8 @@ STATIC void c_group(const char *group, char ** files, file_sum ***_f_sum, char *
         if (OS_MD5_File(merged, md5sum, OS_TEXT) != 0) {
             f_sum[0]->sum[0] = '\0';
             merror("Accessing file '%s'", merged);
-        }
-        else{
-            strncpy(f_sum[0]->sum, md5sum, sizeof(f_sum[0]->sum));
-            f_sum[0]->sum[sizeof(f_sum[0]->sum) - 1] = '\0';
+        } else{
+            snprintf(f_sum[0]->sum, sizeof(f_sum[0]->sum), "%s", md5sum);
             os_strdup(SHAREDCFG_FILENAME, f_sum[0]->name);
         }
 
@@ -534,8 +532,7 @@ STATIC void c_group(const char *group, char ** files, file_sum ***_f_sum, char *
             os_realloc(f_sum, (f_size + 2) * sizeof(file_sum *), f_sum);
             *_f_sum = f_sum;
             os_calloc(1, sizeof(file_sum), f_sum[f_size]);
-            strncpy(f_sum[f_size]->sum, md5sum, sizeof(f_sum[f_size]->sum));
-            f_sum[f_size]->sum[sizeof(f_sum[f_size]->sum) - 1] = '\0';
+            snprintf(f_sum[f_size]->sum, sizeof(f_sum[f_size]->sum), "%s", md5sum);
             os_strdup(DEFAULTAR_FILE, f_sum[f_size]->name);
             f_sum[f_size + 1] = NULL;
 
@@ -610,8 +607,7 @@ STATIC void c_group(const char *group, char ** files, file_sum ***_f_sum, char *
                 os_realloc(f_sum, (f_size + 2) * sizeof(file_sum *), f_sum);
                 *_f_sum = f_sum;
                 os_calloc(1, sizeof(file_sum), f_sum[f_size]);
-                strncpy(f_sum[f_size]->sum, md5sum, sizeof(f_sum[f_size]->sum));
-                f_sum[f_size]->sum[sizeof(f_sum[f_size]->sum) - 1] = '\0';
+                snprintf(f_sum[f_size]->sum, sizeof(f_sum[f_size]->sum), "%s", md5sum);
                 os_strdup(files[i], f_sum[f_size]->name);
 
                 if (create_merged) {
@@ -636,8 +632,7 @@ STATIC void c_group(const char *group, char ** files, file_sum ***_f_sum, char *
             f_sum[0]->sum[0] = '\0';
         }
 
-        strncpy(f_sum[0]->sum, md5sum,sizeof(f_sum[0]->sum));
-        f_sum[0]->sum[sizeof(f_sum[0]->sum) - 1] = '\0';
+        snprintf(f_sum[0]->sum, sizeof(f_sum[0]->sum), "%s", md5sum);
         os_strdup(SHAREDCFG_FILENAME, f_sum[0]->name);
     }
 }
@@ -1325,11 +1320,8 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
             snprintf(file, OS_SIZE_1024, "%s/%s/%s", sharedcfg_dir, multi_group_hash_pt, name);
         } else {
             OS_SHA256_String(group, multi_group_hash);
-            char _hash[9] = {0};
-            strncpy(_hash, multi_group_hash, sizeof(_hash));
-            _hash[sizeof(_hash) - 1] = '\0';
-            OSHash_Add_ex(m_hash, group, strdup(_hash));
-            snprintf(file, OS_SIZE_1024, "%s/%s/%s", sharedcfg_dir, _hash, name);
+            OSHash_Add_ex(m_hash, group, strndup(multi_group_hash, 8));
+            snprintf(file, OS_SIZE_1024, "%s/%.8s/%s", sharedcfg_dir, multi_group_hash, name);
         }
     } else {
         snprintf(file, OS_SIZE_1024, "%s/%s/%s", sharedcfg_dir, group, name);
