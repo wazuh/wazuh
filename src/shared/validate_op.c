@@ -767,7 +767,7 @@ static const char *__gethour(const char *str, char *ossec_hour, const size_t oss
     } else {
         const int bytes_written = snprintf(ossec_hour, ossec_hour_len, "%02d:%02d", chour, cmin);
 
-        if (bytes_written >= 0 && (size_t)bytes_written >= ossec_hour_len) {
+        if (bytes_written < 0 || (size_t)bytes_written >= ossec_hour_len) {
             return (NULL);
         }
 

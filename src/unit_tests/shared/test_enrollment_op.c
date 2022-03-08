@@ -23,7 +23,7 @@
 #define NEW_IP1         "192.0.0.0"
 #define RAW_KEY         "6dd186d1740f6c80d4d380ebe72c8061db175881e07e809eb44404c836a7ef96"
 
-extern int w_enrollment_concat_src_ip(char *buff, const size_t size_buff, const char* sender_ip, const int use_src_ip);
+extern int w_enrollment_concat_src_ip(char *buff, const size_t remain_size, const char* sender_ip, const int use_src_ip);
 extern void w_enrollment_concat_group(char *buff, const char* centralized_group);
 extern void w_enrollment_concat_key(char *buff, keyentry* key_entry);
 extern void w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_cert, const char *hostname);

@@ -1118,8 +1118,7 @@ STATIC group_t* find_group_from_file(const char * file, const char * md5, char g
         if (f_sum) {
             for (j = 0; f_sum[j]; j++) {
                 if (!(strcmp(f_sum[j]->name, file) || strcmp(f_sum[j]->sum, md5))) {
-                    strncpy(group, groups[i]->name, OS_SIZE_65536 - 1);
-                    group[OS_SIZE_65536 - 1] = '\0';
+                    snprintf(group, OS_SIZE_65536, "%s", groups[i]->name);
                     return groups[i];
                 }
             }

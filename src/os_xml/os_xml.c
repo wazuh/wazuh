@@ -502,13 +502,13 @@ fail:
 
 static int _writecontent(const char *str, size_t size, unsigned int parent, OS_XML *_lxml)
 {
-    _lxml->ct[parent] = (char *)calloc(size + 1, sizeof(char));
+    _lxml->ct[parent] = strndup(str, size);
+
     if ( _lxml->ct[parent] == NULL) {
         snprintf(_lxml->err, XML_ERR_LENGTH, "XMLERR: Memory error.");
         return (-1);
     }
 
-    snprintf(_lxml->ct[parent], size + 1, "%s", str);
     return (0);
 }
 
