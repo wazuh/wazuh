@@ -15,27 +15,6 @@ from wazuh.core.exception import WazuhException, WazuhInternalError, WazuhError,
     WazuhResourceNotFound, WazuhTooManyRequests, WazuhNotAcceptable
 
 
-def generate_deprecation_headers(link: str = '') -> dict:
-    """Generate a dictionary with deprecation related entries.
-
-    Parameters
-    ----------
-    link : str, optional
-        Documentation related with this deprecation.
-
-    Returns
-    -------
-    dict
-        Deprecation related entries.
-    """
-    headers = {'Deprecated': 'true'
-               }
-    if link:
-        headers['Link'] = f'<{link}>; rel="Deprecated"'
-
-    return headers
-
-
 def serialize(item):
     try:
         if isinstance(item, datetime.datetime):

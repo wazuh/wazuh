@@ -14,8 +14,8 @@ from api.models.configuration_model import SecurityConfigurationModel
 from api.models.security_model import (CreateUserModel, PolicyModel, RoleModel,
                                        RuleModel, UpdateUserModel)
 from api.models.security_token_response_model import TokenResponseModel
-from api.util import (generate_deprecation_headers, parse_api_param,
-                      raise_if_exc, remove_nones_to_dict)
+from api.util import (deprecate_endpoint, parse_api_param, raise_if_exc,
+                      remove_nones_to_dict)
 from wazuh import security
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -29,13 +29,14 @@ logger = logging.getLogger('wazuh-api')
 auth_re = re.compile(r'basic (.*)', re.IGNORECASE)
 
 
-async def login_user(request, user: str, raw: bool = False) -> web.Response:
+@deprecate_endpoint(link=f'https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/reference.html#'
+                         f'operation/api.controllers.security_controller.login_user')
+async def login_user_(user: str, raw: bool = False) -> web.Response:
     """User/password authentication to get an access token.
     This method should be called to get an API token. This token will expire at some time. # noqa: E501
 
     Parameters
     ----------
-    request : connexion.request
     user : str
         Name of the user who wants to be authenticated.
     raw : bool, optional
@@ -62,17 +63,44 @@ async def login_user(request, user: str, raw: bool = False) -> web.Response:
     except WazuhException as e:
         raise_if_exc(e)
 
-    response = web.Response(text=token, content_type='text/plain', status=200) if raw \
+    return web.Response(text=token, content_type='text/plain', status=200) if raw \
         else web.json_response(data=WazuhResult({'data': TokenResponseModel(token=token)}), status=200, dumps=dumps)
 
-    if request.method == 'GET':
-        response.headers.update(generate_deprecation_headers('https://documentation.wazuh.com/'
-                                                             f'{WAZUH_VERSION}/user-manual/api/reference.html#'
-                                                             'operation/api.controllers.security_controller.login_user'
-                                                             )
-                                )
 
-    return response
+async def login_user(user: str, raw: bool = False) -> web.Response:
+    """User/password authentication to get an access token.
+    This method should be called to get an API token. This token will expire at some time. # noqa: E501
+
+    Parameters
+    ----------
+    user : str
+        Name of the user who wants to be authenticated.
+    raw : bool, optional
+        Respond in raw format. Default `False`
+
+    Returns
+    -------
+    web.Response
+        Raw or JSON response with the generated access token.
+    """
+    f_kwargs = {'user_id': user}
+
+    dapi = DistributedAPI(f=preprocessor.get_permissions,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          logger=logger
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    token = None
+    try:
+        token = generate_token(user_id=user, data=data.dikt)
+    except WazuhException as e:
+        raise_if_exc(e)
+
+    return web.Response(text=token, content_type='text/plain', status=200) if raw \
+        else web.json_response(data=WazuhResult({'data': TokenResponseModel(token=token)}), status=200, dumps=dumps)
 
 
 async def run_as_login(request, user: str, raw: bool = False) -> web.Response:
