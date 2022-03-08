@@ -51,8 +51,11 @@ static int read_dev_file(const char *file_name)
             }
 
             notify_rk(ALERT_SYSTEM_CRIT, op_msg);
-            _dev_errors++;
+        } else {
+            mtdebug2(ARGV0, "Error %d (%s) with snprintf with file %s\n", errno, strerror(errno), file_name);
         }
+
+        _dev_errors++;
     }
 
     return (0);

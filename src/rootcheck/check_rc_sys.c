@@ -39,20 +39,22 @@ static int read_sys_file(const char *file_name, int do_read)
         const char op_msg_fmt[] = "Anomaly detected in file '%*s'. Hidden from stats, but showing up on readdir. Possible kernel level rootkit.";
         char op_msg[OS_SIZE_1024 + 1];
 
-        int size = snprintf(NULL, 0, op_msg_fmt, (int)strlen(file_name), file_name);
+        const int size = snprintf(NULL, 0, op_msg_fmt, (int)strlen(file_name), file_name);
 
         if (size >= 0) {
             if ((size_t)size < sizeof(op_msg)) {
                 snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)strlen(file_name), file_name);
-            }
-            else {
+            } else {
                 const unsigned int surplus = size - sizeof(op_msg) + 1;
                 snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)(strlen(file_name) - surplus), file_name);
             }
 
             notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
-            _sys_errors++;
+        } else {
+            mtdebug2(ARGV0, "Error %d (%s) with snprintf with file %s", errno, strerror(errno), file_name);
         }
+
+        _sys_errors++;
 #endif
         return (-1);
     }
@@ -102,20 +104,22 @@ static int read_sys_file(const char *file_name, int do_read)
                     const char op_msg_fmt[] = "Anomaly detected in file '%*s'. File size doesn't match what we found. Possible kernel level rootkit.";
                     char op_msg[OS_SIZE_1024 + 1];
 
-                    int size = snprintf(NULL, 0, op_msg_fmt, (int)strlen(file_name), file_name);
+                    const int size = snprintf(NULL, 0, op_msg_fmt, (int)strlen(file_name), file_name);
 
                     if (size >= 0) {
                         if ((size_t)size < sizeof(op_msg)) {
                             snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)strlen(file_name), file_name);
-                        }
-                        else {
+                        } else {
                             const unsigned int surplus = size - sizeof(op_msg) + 1;
                             snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)(strlen(file_name) - surplus), file_name);
                         }
 
                         notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
-                        _sys_errors++;
+                    } else {
+                        mtdebug2(ARGV0, "Error %d (%s) with snprintf with file %s", errno, strerror(errno), file_name);
                     }
+
+                    _sys_errors++;
                 }
             }
         }
@@ -137,42 +141,46 @@ static int read_sys_file(const char *file_name, int do_read)
         }
 
         if (statbuf.st_uid == 0) {
-            int size = 0;
             char op_msg[OS_SIZE_1024 + 1];
 #ifdef OSSECHIDS
             const char op_msg_fmt[] = "File '%*s' is owned by root and has written permissions to anyone.";
 
-            size = snprintf(NULL, 0, op_msg_fmt, (int)strlen(file_name), file_name);
+            const int size = snprintf(NULL, 0, op_msg_fmt, (int)strlen(file_name), file_name);
 
             if (size >= 0) {
                 if ((size_t)size < sizeof(op_msg)) {
                     snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)strlen(file_name), file_name);
-                }
-                else {
+                } else {
                     const unsigned int surplus = size - sizeof(op_msg) + 1;
                     snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)(strlen(file_name) - surplus), file_name);
                 }
 
                 notify_rk(ALERT_SYSTEM_CRIT, op_msg);
-                _sys_errors++;
+            } else {
+                mtdebug2(ARGV0, "Error %d (%s) with snprintf with file %s", errno, strerror(errno), file_name);
             }
+
+            _sys_errors++;
+
 #else
             const char op_msg_fmt[] = "File '%*s' is: \n          - owned by root,\n          - has write permissions to anyone.";
 
-            size = snprintf(NULL, 0, op_msg_fmt, (int)strlen(file_name), file_name);
+            const int size = snprintf(NULL, 0, op_msg_fmt, (int)strlen(file_name), file_name);
 
             if (size >= 0) {
                 if ((size_t)size < sizeof(op_msg)) {
                     snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)strlen(file_name), file_name);
-                }
-                else {
+                } else {
                     const unsigned int surplus = size - sizeof(op_msg) + 1;
                     snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)(strlen(file_name) - surplus), file_name);
                 }
 
                 notify_rk(ALERT_SYSTEM_CRIT, op_msg);
-                _sys_errors++;
+            } else {
+                mtdebug2(ARGV0, "Error %d (%s) with snprintf with file %s", errno, strerror(errno), file_name);
             }
+
+            _sys_errors++;
 #endif
         }
     } else if ((statbuf.st_mode & S_ISUID) == S_ISUID) {
