@@ -223,7 +223,11 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
         bytes_written = snprintf(final_msg, sizeof(final_msg), "Host: %s, open ports:",
                  ip);
 
-        if (bytes_written < (int)sizeof(final_msg)) {
+        if (bytes_written < 0) {
+            final_msg_s = 0;
+            merror("Error %d (%s) formatting string from file '%s' (length = " FTELL_TT "): '%s'...", errno, strerror(errno), lf->file, FTELL_INT64 bytes_written, final_msg);
+        }
+        else if ((size_t)bytes_written < sizeof(final_msg)) {
             final_msg_s = OS_MAX_LOG_SIZE - 1 - strlen(final_msg);
         }
         else {
