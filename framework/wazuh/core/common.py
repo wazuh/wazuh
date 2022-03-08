@@ -172,7 +172,7 @@ def wazuh_gid():
 
 
 # Multigroup variables
-max_groups_per_multigroup = 256
+max_groups_per_multigroup = 128
 
 # Context variables
 rbac: ContextVar[Dict] = ContextVar('rbac', default={'rbac_mode': 'black'})
