@@ -218,7 +218,7 @@ static int test_c_files_setup(void ** state) {
 static int test_c_group_teardown(void ** state) {
     int i;
     int j;
-    file_sum **f_sum;
+    file_sum **f_sum = NULL;
 
     if (groups) {
         for (i = 0; groups[i]; i++) {
@@ -236,7 +236,7 @@ static int test_c_group_teardown(void ** state) {
 static int test_c_multi_group_teardown(void ** state) {
     int i;
     int j;
-    file_sum **f_sum;
+    file_sum **f_sum = NULL;
 
     if (multi_groups) {
         for (i = 0; multi_groups[i]; i++) {
@@ -289,7 +289,7 @@ static int test_process_multi_group_check_group_changed_teardown(void ** state) 
 static int test_c_files_teardown(void ** state) {
     int i;
     int j;
-    file_sum **f_sum;
+    file_sum **f_sum = NULL;
 
     if (groups) {
         for (i = 0; groups[i]; i++) {
@@ -2097,7 +2097,7 @@ void test_c_files(void **state)
 
 void test_validate_shared_files_files_null(void **state)
 {
-    file_sum **f_sum;
+    file_sum **f_sum = NULL;
     unsigned int f_size = 0;
 
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
@@ -2116,7 +2116,7 @@ void test_validate_shared_files_files_null(void **state)
 
 void test_validate_shared_files_hidden_file(void **state)
 {
-    file_sum **f_sum;
+    file_sum **f_sum = NULL;
     unsigned int f_size = 0;
     os_calloc(2, sizeof(file_sum *), f_sum);
 
@@ -2142,7 +2142,7 @@ void test_validate_shared_files_hidden_file(void **state)
 
 void test_validate_shared_files_merged_file(void **state)
 {
-    file_sum **f_sum;
+    file_sum **f_sum = NULL;
     unsigned int f_size = 0;
     os_calloc(2, sizeof(file_sum *), f_sum);
 
@@ -2168,7 +2168,7 @@ void test_validate_shared_files_merged_file(void **state)
 
 void test_validate_shared_files_md5_fail(void **state)
 {
-    file_sum **f_sum;
+    file_sum **f_sum = NULL;
     unsigned int f_size = 0;
     os_calloc(2, sizeof(file_sum *), f_sum);
 
@@ -2181,7 +2181,10 @@ void test_validate_shared_files_md5_fail(void **state)
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
     will_return(__wrap_wreaddir, files);
 
-    will_return(__wrap_opendir, 0);
+    struct stat stat_buf = { .st_mode = S_IFREG };
+    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-file");
+    will_return(__wrap_stat, &stat_buf);
+    will_return(__wrap_stat, 0);
 
     expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/test-file");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
@@ -2202,7 +2205,7 @@ void test_validate_shared_files_md5_fail(void **state)
 
 void test_validate_shared_files_still_invalid(void **state)
 {
-    file_sum **f_sum;
+    file_sum **f_sum = NULL;
     unsigned int f_size = 0;
     os_calloc(2, sizeof(file_sum *), f_sum);
 
@@ -2215,7 +2218,10 @@ void test_validate_shared_files_still_invalid(void **state)
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
     will_return(__wrap_wreaddir, files);
 
-    will_return(__wrap_opendir, 0);
+    struct stat stat_buf = { .st_mode = S_IFREG };
+    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-file");
+    will_return(__wrap_stat, &stat_buf);
+    will_return(__wrap_stat, 0);
 
     expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/test-file");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
@@ -2233,11 +2239,6 @@ void test_validate_shared_files_still_invalid(void **state)
     expect_any(__wrap_OSHash_Get, self);
     expect_string(__wrap_OSHash_Get, key, "etc/shared/test_default/test-file");
     will_return(__wrap_OSHash_Get, last_modify);
-
-    struct stat stat_buf = { .st_mode = 0040000 };
-    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-file");
-    will_return(__wrap_stat, &stat_buf);
-    will_return(__wrap_stat, 0);
 
     expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test-file");
     will_return(__wrap_checkBinaryFile, 1);
@@ -2263,7 +2264,7 @@ void test_validate_shared_files_still_invalid(void **state)
 
 void test_validate_shared_files_valid_now(void **state)
 {
-    file_sum **f_sum;
+    file_sum **f_sum = NULL;
     unsigned int f_size = 0;
     os_calloc(2, sizeof(file_sum *), f_sum);
 
@@ -2276,7 +2277,10 @@ void test_validate_shared_files_valid_now(void **state)
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
     will_return(__wrap_wreaddir, files);
 
-    will_return(__wrap_opendir, 0);
+    struct stat stat_buf = { .st_mode = S_IFREG };
+    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-file");
+    will_return(__wrap_stat, &stat_buf);
+    will_return(__wrap_stat, 0);
 
     expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/test-file");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
@@ -2295,11 +2299,6 @@ void test_validate_shared_files_valid_now(void **state)
     expect_string(__wrap_OSHash_Get, key, "etc/shared/test_default/test-file");
     will_return(__wrap_OSHash_Get, last_modify);
 
-    struct stat stat_buf = { .st_mode = 0040000 };
-    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-file");
-    will_return(__wrap_stat, &stat_buf);
-    will_return(__wrap_stat, 0);
-
     expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test-file");
     will_return(__wrap_checkBinaryFile, 0);
 
@@ -2316,7 +2315,7 @@ void test_validate_shared_files_valid_now(void **state)
     assert_string_equal(groups[0]->name, "test_default");
     assert_non_null(groups[0]->f_sum);
     assert_non_null(groups[0]->f_sum[0]);
-    assert_string_equal(groups[0]->f_sum[0]->name, "test-file");
+    assert_string_equal(groups[0]->f_sum[0]->name, "etc/shared/test_default/test-file");
     assert_null(groups[0]->f_sum[1]);
     assert_null(groups[1]);
     assert_int_equal(f_size, 1);
@@ -2324,7 +2323,7 @@ void test_validate_shared_files_valid_now(void **state)
 
 void test_validate_shared_files_valid_file(void **state)
 {
-    file_sum **f_sum;
+    file_sum **f_sum = NULL;
     unsigned int f_size = 0;
     os_calloc(2, sizeof(file_sum *), f_sum);
 
@@ -2337,7 +2336,10 @@ void test_validate_shared_files_valid_file(void **state)
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
     will_return(__wrap_wreaddir, files);
 
-    will_return(__wrap_opendir, 0);
+    struct stat stat_buf = { .st_mode = S_IFREG };
+    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-file");
+    will_return(__wrap_stat, &stat_buf);
+    will_return(__wrap_stat, 0);
 
     expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/test-file");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
@@ -2362,7 +2364,7 @@ void test_validate_shared_files_valid_file(void **state)
     assert_string_equal(groups[0]->name, "test_default");
     assert_non_null(groups[0]->f_sum);
     assert_non_null(groups[0]->f_sum[0]);
-    assert_string_equal(groups[0]->f_sum[0]->name, "test-file");
+    assert_string_equal(groups[0]->f_sum[0]->name, "etc/shared/test_default/test-file");
     assert_string_equal((char *)groups[0]->f_sum[0]->sum, "md5_test");
     assert_null(groups[0]->f_sum[1]);
     assert_null(groups[1]);
@@ -2371,7 +2373,7 @@ void test_validate_shared_files_valid_file(void **state)
 
 void test_validate_shared_files_merge_file(void **state)
 {
-    file_sum **f_sum;
+    file_sum **f_sum = NULL;
     unsigned int f_size = 0;
     os_calloc(2, sizeof(file_sum *), f_sum);
 
@@ -2384,7 +2386,10 @@ void test_validate_shared_files_merge_file(void **state)
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
     will_return(__wrap_wreaddir, files);
 
-    will_return(__wrap_opendir, 0);
+    struct stat stat_buf = { .st_mode = S_IFREG };
+    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-file");
+    will_return(__wrap_stat, &stat_buf);
+    will_return(__wrap_stat, 0);
 
     expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/test-file");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
@@ -2413,7 +2418,7 @@ void test_validate_shared_files_merge_file(void **state)
     assert_string_equal(groups[0]->name, "test_default");
     assert_non_null(groups[0]->f_sum);
     assert_non_null(groups[0]->f_sum[0]);
-    assert_string_equal(groups[0]->f_sum[0]->name, "test-file");
+    assert_string_equal(groups[0]->f_sum[0]->name, "etc/shared/test_default/test-file");
     assert_string_equal((char *)groups[0]->f_sum[0]->sum, "md5_test");
     assert_null(groups[0]->f_sum[1]);
     assert_null(groups[1]);
@@ -2422,7 +2427,7 @@ void test_validate_shared_files_merge_file(void **state)
 
 void test_validate_shared_files_fail_add(void **state)
 {
-    file_sum **f_sum;
+    file_sum **f_sum = NULL;
     unsigned int f_size = 0;
     os_calloc(2, sizeof(file_sum *), f_sum);
 
@@ -2435,7 +2440,10 @@ void test_validate_shared_files_fail_add(void **state)
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
     will_return(__wrap_wreaddir, files);
 
-    will_return(__wrap_opendir, 0);
+    struct stat stat_buf = { .st_mode = S_IFREG };
+    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-file");
+    will_return(__wrap_stat, &stat_buf);
+    will_return(__wrap_stat, 0);
 
     expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/test-file");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
@@ -2452,11 +2460,6 @@ void test_validate_shared_files_fail_add(void **state)
 
     expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test-file");
     will_return(__wrap_checkBinaryFile, 1);
-
-    struct stat stat_buf = { .st_mode = 0040000 };
-    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-file");
-    will_return(__wrap_stat, &stat_buf);
-    will_return(__wrap_stat, 0);
 
     expect_string(__wrap_OSHash_Add, key, "etc/shared/test_default/test-file");
     will_return(__wrap_OSHash_Add, 0);
@@ -2476,7 +2479,7 @@ void test_validate_shared_files_fail_add(void **state)
 
 void test_validate_shared_files_subfolder_empty(void **state)
 {
-    file_sum **f_sum;
+    file_sum **f_sum = NULL;
     unsigned int f_size = 0;
     os_calloc(2, sizeof(file_sum *), f_sum);
 
@@ -2489,7 +2492,10 @@ void test_validate_shared_files_subfolder_empty(void **state)
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
     will_return(__wrap_wreaddir, files);
 
-    will_return(__wrap_opendir, 1);
+    struct stat stat_buf = { .st_mode = 0040000 };
+    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-subfolder");
+    will_return(__wrap_stat, &stat_buf);
+    will_return(__wrap_stat, 0);
 
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default/test-subfolder");
     will_return(__wrap_wreaddir, NULL);
@@ -2509,7 +2515,7 @@ void test_validate_shared_files_subfolder_empty(void **state)
 
 void test_validate_shared_files_valid_file_subfolder_empty(void **state)
 {
-    file_sum **f_sum;
+    file_sum **f_sum = NULL;
     unsigned int f_size = 0;
     os_calloc(2, sizeof(file_sum *), f_sum);
 
@@ -2523,7 +2529,10 @@ void test_validate_shared_files_valid_file_subfolder_empty(void **state)
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
     will_return(__wrap_wreaddir, files);
 
-    will_return(__wrap_opendir, 0);
+    struct stat stat_buf = { .st_mode = S_IFREG };
+    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-file");
+    will_return(__wrap_stat, &stat_buf);
+    will_return(__wrap_stat, 0);
 
     expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/test-file");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
@@ -2541,7 +2550,10 @@ void test_validate_shared_files_valid_file_subfolder_empty(void **state)
     expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test-file");
     will_return(__wrap_checkBinaryFile, 0);
 
-    will_return(__wrap_opendir, 1);
+    struct stat stat_buf_2 = { .st_mode = S_IFDIR };
+    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-subfolder");
+    will_return(__wrap_stat, &stat_buf_2);
+    will_return(__wrap_stat, 0);
 
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default/test-subfolder");
     will_return(__wrap_wreaddir, NULL);
@@ -2556,7 +2568,7 @@ void test_validate_shared_files_valid_file_subfolder_empty(void **state)
     assert_string_equal(groups[0]->name, "test_default");
     assert_non_null(groups[0]->f_sum);
     assert_non_null(groups[0]->f_sum[0]);
-    assert_string_equal(groups[0]->f_sum[0]->name, "test-file");
+    assert_string_equal(groups[0]->f_sum[0]->name, "etc/shared/test_default/test-file");
     assert_string_equal((char *)groups[0]->f_sum[0]->sum, "md5_test");
     assert_null(groups[0]->f_sum[1]);
     assert_null(groups[1]);
@@ -2565,7 +2577,7 @@ void test_validate_shared_files_valid_file_subfolder_empty(void **state)
 
 void test_validate_shared_files_subfolder_valid_file(void **state)
 {
-    file_sum **f_sum;
+    file_sum **f_sum = NULL;
     unsigned int f_size = 0;
     os_calloc(2, sizeof(file_sum *), f_sum);
 
@@ -2578,7 +2590,10 @@ void test_validate_shared_files_subfolder_valid_file(void **state)
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
     will_return(__wrap_wreaddir, files);
 
-    will_return(__wrap_opendir, 1);
+    struct stat stat_buf = { .st_mode = S_IFDIR };
+    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-subfolder");
+    will_return(__wrap_stat, &stat_buf);
+    will_return(__wrap_stat, 0);
 
     // Initialize files structure
     char ** files2 = NULL;
@@ -2589,7 +2604,10 @@ void test_validate_shared_files_subfolder_valid_file(void **state)
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default/test-subfolder");
     will_return(__wrap_wreaddir, files2);
 
-    will_return(__wrap_opendir, 0);
+    struct stat stat_buf_2 = { .st_mode = S_IFREG };
+    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-subfolder/test-file");
+    will_return(__wrap_stat, &stat_buf_2);
+    will_return(__wrap_stat, 0);
 
     expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/test-subfolder/test-file");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
@@ -2614,7 +2632,7 @@ void test_validate_shared_files_subfolder_valid_file(void **state)
     assert_string_equal(groups[0]->name, "test_default");
     assert_non_null(groups[0]->f_sum);
     assert_non_null(groups[0]->f_sum[0]);
-    assert_string_equal(groups[0]->f_sum[0]->name, "test-file");
+    assert_string_equal(groups[0]->f_sum[0]->name, "etc/shared/test_default/test-subfolder/test-file");
     assert_string_equal((char *)groups[0]->f_sum[0]->sum, "md5_test");
     assert_null(groups[0]->f_sum[1]);
     assert_null(groups[1]);
@@ -2623,7 +2641,7 @@ void test_validate_shared_files_subfolder_valid_file(void **state)
 
 void test_validate_shared_files_valid_file_subfolder_valid_file(void **state)
 {
-    file_sum **f_sum;
+    file_sum **f_sum = NULL;
     unsigned int f_size = 0;
     os_calloc(2, sizeof(file_sum *), f_sum);
 
@@ -2637,7 +2655,10 @@ void test_validate_shared_files_valid_file_subfolder_valid_file(void **state)
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
     will_return(__wrap_wreaddir, files);
 
-    will_return(__wrap_opendir, 1);
+    struct stat stat_buf = { .st_mode = S_IFDIR };
+    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-subfolder");
+    will_return(__wrap_stat, &stat_buf);
+    will_return(__wrap_stat, 0);
 
     // Initialize files structure
     char ** files2 = NULL;
@@ -2648,7 +2669,10 @@ void test_validate_shared_files_valid_file_subfolder_valid_file(void **state)
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default/test-subfolder");
     will_return(__wrap_wreaddir, files2);
 
-    will_return(__wrap_opendir, 0);
+    struct stat stat_buf_2 = { .st_mode = S_IFREG };
+    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-subfolder/test-file");
+    will_return(__wrap_stat, &stat_buf_2);
+    will_return(__wrap_stat, 0);
 
     expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/test-subfolder/test-file");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
@@ -2666,7 +2690,10 @@ void test_validate_shared_files_valid_file_subfolder_valid_file(void **state)
     expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test-subfolder/test-file");
     will_return(__wrap_checkBinaryFile, 0);
 
-    will_return(__wrap_opendir, 0);
+    struct stat stat_buf_3 = { .st_mode = S_IFREG };
+    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-file-main-folder");
+    will_return(__wrap_stat, &stat_buf_3);
+    will_return(__wrap_stat, 0);
 
     expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/test-file-main-folder");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
@@ -2691,9 +2718,9 @@ void test_validate_shared_files_valid_file_subfolder_valid_file(void **state)
     assert_string_equal(groups[0]->name, "test_default");
     assert_non_null(groups[0]->f_sum);
     assert_non_null(groups[0]->f_sum[0]);
-    assert_string_equal(groups[0]->f_sum[0]->name, "test-file");
+    assert_string_equal(groups[0]->f_sum[0]->name, "etc/shared/test_default/test-subfolder/test-file");
     assert_string_equal((char *)groups[0]->f_sum[0]->sum, "md5_test");
-    assert_string_equal(groups[0]->f_sum[1]->name, "test-file-main-folder");
+    assert_string_equal(groups[0]->f_sum[1]->name, "etc/shared/test_default/test-file-main-folder");
     assert_string_equal((char *)groups[0]->f_sum[1]->sum, "md5_file_main");
     assert_null(groups[0]->f_sum[2]);
     assert_null(groups[1]);
@@ -2702,7 +2729,7 @@ void test_validate_shared_files_valid_file_subfolder_valid_file(void **state)
 
 void test_validate_shared_files_sub_subfolder_valid_file(void **state)
 {
-    file_sum **f_sum;
+    file_sum **f_sum = NULL;
     unsigned int f_size = 0;
     os_calloc(2, sizeof(file_sum *), f_sum);
 
@@ -2715,7 +2742,10 @@ void test_validate_shared_files_sub_subfolder_valid_file(void **state)
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
     will_return(__wrap_wreaddir, files);
 
-    will_return(__wrap_opendir, 1);
+    struct stat stat_buf = { .st_mode = S_IFDIR };
+    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-subfolder");
+    will_return(__wrap_stat, &stat_buf);
+    will_return(__wrap_stat, 0);
 
     // Initialize files structure
     char ** files2 = NULL;
@@ -2726,7 +2756,10 @@ void test_validate_shared_files_sub_subfolder_valid_file(void **state)
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default/test-subfolder");
     will_return(__wrap_wreaddir, files2);
 
-    will_return(__wrap_opendir, 1);
+    struct stat stat_buf_2 = { .st_mode = S_IFDIR };
+    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-subfolder/test-subfolder2");
+    will_return(__wrap_stat, &stat_buf_2);
+    will_return(__wrap_stat, 0);
 
     // Initialize files structure
     char ** files3 = NULL;
@@ -2737,7 +2770,10 @@ void test_validate_shared_files_sub_subfolder_valid_file(void **state)
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default/test-subfolder/test-subfolder2");
     will_return(__wrap_wreaddir, files3);
 
-    will_return(__wrap_opendir, 0);
+    struct stat stat_buf_3 = { .st_mode = S_IFREG };
+    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-subfolder/test-subfolder2/test-file");
+    will_return(__wrap_stat, &stat_buf_3);
+    will_return(__wrap_stat, 0);
 
     expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/test-subfolder/test-subfolder2/test-file");
     expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
@@ -2762,7 +2798,7 @@ void test_validate_shared_files_sub_subfolder_valid_file(void **state)
     assert_string_equal(groups[0]->name, "test_default");
     assert_non_null(groups[0]->f_sum);
     assert_non_null(groups[0]->f_sum[0]);
-    assert_string_equal(groups[0]->f_sum[0]->name, "test-file");
+    assert_string_equal(groups[0]->f_sum[0]->name, "etc/shared/test_default/test-subfolder/test-subfolder2/test-file");
     assert_string_equal((char *)groups[0]->f_sum[0]->sum, "md5_test");
     assert_null(groups[0]->f_sum[1]);
     assert_null(groups[1]);
