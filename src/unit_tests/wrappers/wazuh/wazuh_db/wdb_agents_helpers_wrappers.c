@@ -43,7 +43,11 @@ cJSON* __wrap_wdb_insert_vuln_cves(int id,
     check_expected(reference);
     check_expected(type);
     check_expected(status);
-    check_expected(external_references);
+
+    char* external_references_concatenated = w_strcat_list(external_references, ',');
+    check_expected(external_references_concatenated);
+    os_free(external_references_concatenated);
+
     check_expected(condition);
     check_expected(title);
     check_expected(published);
