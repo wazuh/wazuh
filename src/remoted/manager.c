@@ -434,7 +434,6 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 STATIC void c_group(const char *group, file_sum ***_f_sum, char * sharedcfg_dir, bool create_merged) {
     os_md5 md5sum;
     unsigned int f_size = 0;
-    file_sum **f_sum;
     char merged_tmp[PATH_MAX + 1];
     char merged[PATH_MAX + 1];
     char group_path[PATH_MAX + 1];
@@ -443,12 +442,11 @@ STATIC void c_group(const char *group, file_sum ***_f_sum, char * sharedcfg_dir,
     *merged_tmp = '\0';
 
     /* Create merged file */
-    os_calloc(2, sizeof(file_sum *), f_sum);
-    os_calloc(1, sizeof(file_sum), f_sum[f_size]);
-    *_f_sum = f_sum;
+    os_calloc(2, sizeof(file_sum *), (*_f_sum));
+    os_calloc(1, sizeof(file_sum), (*_f_sum)[f_size]);
 
-    f_sum[f_size]->name = NULL;
-    f_sum[f_size]->sum[0] = '\0';
+    (*_f_sum)[f_size]->name = NULL;
+    (*_f_sum)[f_size]->sum[0] = '\0';
 
     snprintf(merged, PATH_MAX + 1, "%s/%s/%s", sharedcfg_dir, group, SHAREDCFG_FILENAME);
 
@@ -517,14 +515,14 @@ STATIC void c_group(const char *group, file_sum ***_f_sum, char * sharedcfg_dir,
     if (r_group && r_group->merged_is_downloaded) {
         // Validate the file
         if (OS_MD5_File(merged, md5sum, OS_TEXT) != 0) {
-            f_sum[0]->sum[0] = '\0';
+            (*_f_sum)[0]->sum[0] = '\0';
             merror("Accessing file '%s'", merged);
         } else {
-            strncpy(f_sum[0]->sum, md5sum, 32);
-            os_strdup(SHAREDCFG_FILENAME, f_sum[0]->name);
+            strncpy((*_f_sum)[0]->sum, md5sum, 32);
+            os_strdup(SHAREDCFG_FILENAME, (*_f_sum)[0]->name);
         }
 
-        f_sum[f_size] = NULL;
+        (*_f_sum)[f_size] = NULL;
     } else {
         // Merge ar.conf always
 
@@ -535,12 +533,11 @@ STATIC void c_group(const char *group, file_sum ***_f_sum, char * sharedcfg_dir,
         }
 
         if (OS_MD5_File(DEFAULTAR, md5sum, OS_TEXT) == 0) {
-            os_realloc(f_sum, (f_size + 2) * sizeof(file_sum *), f_sum);
-            *_f_sum = f_sum;
-            os_calloc(1, sizeof(file_sum), f_sum[f_size]);
-            strncpy(f_sum[f_size]->sum, md5sum, 32);
-            os_strdup(DEFAULTAR_FILE, f_sum[f_size]->name);
-            f_sum[f_size + 1] = NULL;
+            os_realloc((*_f_sum), (f_size + 2) * sizeof(file_sum *), (*_f_sum));
+            os_calloc(1, sizeof(file_sum), (*_f_sum)[f_size]);
+            strncpy((*_f_sum)[f_size]->sum, md5sum, 32);
+            os_strdup(DEFAULTAR_FILE, (*_f_sum)[f_size]->name);
+            (*_f_sum)[f_size + 1] = NULL;
 
             if (create_merged) {
                 MergeAppendFile(merged_tmp, DEFAULTAR, NULL, -1);
@@ -551,8 +548,7 @@ STATIC void c_group(const char *group, file_sum ***_f_sum, char * sharedcfg_dir,
 
         snprintf(group_path, PATH_MAX + 1, "%s/%s", sharedcfg_dir, group);
 
-        validate_shared_files(group_path, group, merged_tmp, &f_sum, &f_size, create_merged, -1);
-        *_f_sum = f_sum;
+        validate_shared_files(group_path, group, merged_tmp, _f_sum, &f_size, create_merged, -1);
 
         if (create_merged) {
             OS_MoveFile(merged_tmp, merged);
@@ -563,11 +559,11 @@ STATIC void c_group(const char *group, file_sum ***_f_sum, char * sharedcfg_dir,
                 merror("Accessing file '%s'", merged);
             }
 
-            f_sum[0]->sum[0] = '\0';
+            (*_f_sum)[0]->sum[0] = '\0';
         }
 
-        strncpy(f_sum[0]->sum, md5sum, 32);
-        os_strdup(SHAREDCFG_FILENAME, f_sum[0]->name);
+        strncpy((*_f_sum)[0]->sum, md5sum, 32);
+        os_strdup(SHAREDCFG_FILENAME, (*_f_sum)[0]->name);
     }
 }
 
@@ -977,7 +973,6 @@ STATIC void validate_shared_files(const char *src_path, const char *group, const
     char file[PATH_MAX + 1];
     unsigned int i;
     os_md5 md5sum;
-    DIR *dir;
 
     // Try to open directory, avoid TOCTOU hazard
     if (files = wreaddir(src_path), !files) {
@@ -1016,18 +1011,21 @@ STATIC void validate_shared_files(const char *src_path, const char *group, const
             }
         }
 
-        /* Is a file */
-        if (dir = opendir(file), !dir) {
+        struct stat attrib;
+
+        stat(file, &attrib);
+        if (S_ISDIR(attrib.st_mode)) {
+            validate_shared_files(file, group, merged_tmp, f_sum, f_size, create_merged, path_offset);
+        } else {
+            // Is a file
             if (OS_MD5_File(file, md5sum, OS_TEXT) != 0) {
                 merror("Accessing file '%s'", file);
                 continue;
             }
 
             if (modify_time = (time_t*) OSHash_Get(invalid_files, file), modify_time != NULL) {
-                struct stat attrib;
                 time_t last_modify;
 
-                stat(file, &attrib);
                 last_modify = attrib.st_mtime;
                 ignored = 1;
 
@@ -1045,11 +1043,9 @@ STATIC void validate_shared_files(const char *src_path, const char *group, const
                 }
             } else {
                 if (checkBinaryFile(file)) {
-                    struct stat attrib;
 
                     os_calloc(1, sizeof(time_t), modify_time);
 
-                    stat(file, &attrib);
                     *modify_time = attrib.st_mtime;
                     ignored = 1;
 
@@ -1070,7 +1066,7 @@ STATIC void validate_shared_files(const char *src_path, const char *group, const
                 os_realloc(*f_sum, ((*f_size) + 2) * sizeof(file_sum *), *f_sum);
                 os_calloc(1, sizeof(file_sum), (*f_sum)[(*f_size)]);
                 strncpy((*f_sum)[(*f_size)]->sum, md5sum, 32);
-                os_strdup(files[i], (*f_sum)[(*f_size)]->name);
+                os_strdup(file, (*f_sum)[(*f_size)]->name);
 
                 if (create_merged) {
                     MergeAppendFile(merged_tmp, file, NULL, path_offset);
@@ -1078,9 +1074,6 @@ STATIC void validate_shared_files(const char *src_path, const char *group, const
 
                 (*f_size) = (*f_size) + 1;
             }
-        } else {
-            closedir(dir);
-            validate_shared_files(file, group, merged_tmp, f_sum, f_size, create_merged, path_offset);
         }
     }
     (*f_sum)[*f_size] = NULL;
@@ -1098,8 +1091,8 @@ STATIC void copy_directory(const char *src_path, const char *dst_path, const cha
     if (files = wreaddir(src_path), !files) {
         if (errno != ENOTDIR) {
             mwarn("Could not open directory '%s'. Group folder was deleted.", src_path);
-            return;
         }
+        return;
     }
 
     for (i = 0; files[i]; ++i) {
