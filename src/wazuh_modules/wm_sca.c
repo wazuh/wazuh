@@ -2330,7 +2330,7 @@ static int wm_sca_winreg_querykey(HKEY hKey, const char *full_key_name, char *re
             /* Write value into a string */
             switch (data_type) {
                 int size_available;
-                size_t size_data = 0;
+                size_t size_data;
 
                 case REG_SZ:
                 case REG_EXPAND_SZ:
@@ -2344,7 +2344,7 @@ static int wm_sca_winreg_querykey(HKEY hKey, const char *full_key_name, char *re
                     while (*mt_data) {
                         size_data = strlen(mt_data) + strlen(" ");
 
-                        if (size_available >= size_data) {
+                        if ((size_t)size_available >= size_data) {
                             strncat(var_storage, mt_data, size_available);
                             size_available -= strlen(mt_data);
                             strncat(var_storage, " ", size_available);
