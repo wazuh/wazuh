@@ -28,6 +28,7 @@ set(EXTERNAL_DEPS ${EXTERNAL_DEPS} PARENT_SCOPE)
 add_library(hlp STATIC
     ${ENGINE_HLP_SOURCE_DIR}/hlp.cpp
     ${ENGINE_HLP_SOURCE_DIR}/hlpDetails.hpp
+    ${ENGINE_HLP_SOURCE_DIR}/hlpDetails.cpp
     ${ENGINE_HLP_SOURCE_DIR}/LogQLParser.cpp
     ${ENGINE_HLP_SOURCE_DIR}/LogQLParser.hpp
     ${ENGINE_HLP_SOURCE_DIR}/SpecificParsers.hpp
