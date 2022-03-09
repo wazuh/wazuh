@@ -12,187 +12,225 @@
 
 #include <hlp/hlp.hpp>
 
-static void executeParserList(std::string const &event, ParserList const &parsers, ParseResult &result) {
+using ParserList = std::vector<Parser>;
+
+static const std::unordered_map<std::string_view, ParserType> kECSParserMapper {
+    {"source.ip", ParserType::IP},
+    {"server.ip", ParserType::IP},
+    {"source.nat.ip", ParserType::IP},
+    {"timestamp", ParserType::Ts},
+    {"threat.indicator.first_seen", ParserType::Ts},
+    {"file.accessed", ParserType::Ts},
+    {"file.created", ParserType::Ts},
+    {"url", ParserType::URL},
+    {"http.request.method", ParserType::Any},
+    {"client", ParserType::Domain},
+    {"userAgent", ParserType::UserAgent},
+};
+
+static const std::unordered_map<std::string_view, ParserType> kTempTypeMapper {
+    {"JSON", ParserType::JSON},
+    {"MAP", ParserType::Map},
+    {"timestamp", ParserType::Ts},
+    {"domain", ParserType::Domain},
+    {"FilePath", ParserType::FilePath},
+    {"userAgent", ParserType::UserAgent},
+};
+
+// NOTE: This function requires that the original string live for the duration
+// that you need each piece as the vector refers to the original string
+static std::vector<std::string_view>
+splitSlashSeparatedField(std::string_view str)
+{
+    std::vector<std::string_view> ret;
+    while(true)
+    {
+        auto pos = str.find('/');
+        if(pos == str.npos)
+        {
+            break;
+        }
+        ret.emplace_back(str.substr(0, pos));
+        str = str.substr(pos + 1);
+    }
+
+    if(!str.empty())
+    {
+        ret.emplace_back(str);
+    }
+
+    return ret;
+}
+
+static bool setParserOptions(Parser &parser,
+                             std::vector<std::string_view> const &args)
+{
+    auto config = kParsersConfig[static_cast<int>(parser.type)];
+    if(config)
+    {
+        return config(parser, args);
+    }
+
+    return false;
+}
+
+Parser createParserFromExpresion(Expresion const& exp)
+{
+    // We could be parsing:
+    //      '<_>'
+    //      '<_name>'
+    //      '<_name/type>'
+    //      '<_name/type/type2>'
+    auto args = splitSlashSeparatedField(exp.text);
+    Parser parser;
+    parser.expType = exp.type;
+    parser.endToken = exp.endToken;
+    parser.name = args[0];
+    args.erase(args.begin());
+    parser.type = ParserType::Any;
+    if(parser.name[0] == '_')
+    {
+        if(parser.name.size() != 1)
+        {
+            // We have a temp capture with the format <_temp/type/typeN>
+            // we need to take the first parameter after the name and set the
+            // type from it
+            if(!args.empty())
+            {
+                auto it = kTempTypeMapper.find(args[0]);
+                if(it != kTempTypeMapper.end())
+                {
+                    parser.type = it->second;
+                }
+                // erase the type from the list so we are
+                // consistent with the non temp case
+                args.erase(args.begin());
+            }
+        }
+    }
+    else
+    {
+        auto it = kECSParserMapper.find(parser.name);
+        if(it != kECSParserMapper.end())
+        {
+            parser.type = it->second;
+        }
+    }
+
+    setParserOptions(parser, args);
+
+    return parser;
+}
+
+std::vector<Parser> getParserList(ExpresionList const &expresions)
+{
+    std::vector<Parser> parsers;
+
+    for(auto const &expresion : expresions)
+    {
+        switch(expresion.type)
+        {
+            case ExpresionType::Capture:
+            case ExpresionType::OptionalCapture:
+            case ExpresionType::OrCapture:
+            {
+                parsers.push_back(createParserFromExpresion(expresion));
+                break;
+            }
+            case ExpresionType::Literal:
+            {
+                Parser p;
+                p.name = expresion.text;
+                p.type = ParserType::Literal;
+                p.expType = ExpresionType::Literal;
+                p.endToken = expresion.endToken;
+                parsers.push_back(p);
+                break;
+            }
+            default:
+            {
+                // TODO report error
+                break;
+            }
+        }
+    }
+
+    return parsers;
+}
+
+static bool executeParserList(std::string const &event,
+                              ParserList const &parsers,
+                              ParseResult &result)
+{
     const char *eventIt = event.c_str();
 
     // TODO This implementation is super simple for the POC
     // but we will want to re-do it or revise it to implement
     // better parser combinations
-    bool error = false;
-    fprintf(stderr, "%30s | %4s | %4s | %4s | %5s\n", "Capture", "type", "comb", "etok", "ret");
-    fprintf(stderr, "-------------------------------|------|------|------|-----------\n");
-    for (auto const &parser : parsers) {
-        fprintf(stderr, "%-30s | %4i | %4i |  '%*.*s' | ",
-               parser.name.c_str(),
-               parser.parserType,
-               parser.combType,
-               1,
-               1,
-               &parser.endToken);
+    bool isOk = false;
+    for(auto const &parser : parsers)
+    {
+        const char *prevIt = eventIt;
+        auto parseFunc = kAvailableParsers[static_cast<int>(parser.type)];
+        if(parseFunc != nullptr)
+        {
+            isOk = parseFunc(&eventIt, parser, result);
+        }
+        else
+        {
+            isOk = false;
+            fprintf(stderr,
+                    "Missing implementation for parser type: [%i]\n",
+                    parser.type);
+            break;
+        }
 
-        const char* prevIt = eventIt;
-        switch (parser.parserType) {
-            case ParserType::Any: {
-                auto ret = parseAny(&eventIt, parser.endToken);
-                if (!ret.empty()) {
-                    result[parser.name] = std::move(ret);
-                }
-                else {
-                    error = true;
-                }
-                break;
-            }
-            case ParserType::Literal: {
-                if (!matchLiteral(&eventIt, parser.name)) {
-                    fprintf(stderr, "Failed matching literal string\n");
-                    error = true;
-                }
-                break;
-            }
-            case ParserType::URL: {
-                URLResult urlResult;
-                if (parseURL(&eventIt, parser.endToken, urlResult)) {
-                    result[parser.name + ".domain"] = std::move(urlResult.domain);
-                    result[parser.name + ".fragment"] = std::move(urlResult.fragment);
-                    result[parser.name + ".original"] = std::move(urlResult.original);
-                    result[parser.name + ".password"] = std::move(urlResult.password);
-                    result[parser.name + ".username"] = std::move(urlResult.username);
-                    result[parser.name + ".scheme"] = std::move(urlResult.scheme);
-                    result[parser.name + ".query"] = std::move(urlResult.query);
-                    result[parser.name + ".path"] = std::move(urlResult.path);
-                    result[parser.name + ".port"] = std::move(urlResult.port);
-                }
-                else{
-                    error = true;
-                }
-                break;
-            }
-            case ParserType::IP: {
-                auto ret = parseIPaddress(&eventIt, parser.endToken);
-                if (!ret.empty()) {
-                    result[parser.name] = std::move(ret);
-                }
-                else {
-                    error = true;
-                }
-                break;
-            }
-            case ParserType::JSON: {
-                auto ret = parseJson(&eventIt);
-                if (!ret.empty()) {
-                    result[parser.name] = ret;
-                }
-                else {
-                    error = true;
-                }
-                break;
-            }
-            case ParserType::Map: {
-                auto ret = parseMap(&eventIt, parser.endToken, parser.captureOpts);
-                if (!ret.empty()) {
-                    result[parser.name] = ret;
-                }
-                else {
-                    error = true;
-                }
-                break;
-            }
-            case ParserType::Ts: {
-                TimeStampResult tsr;
-                if (parseTimeStamp(&eventIt, parser.captureOpts, parser.endToken, tsr)) {
-                    result[parser.name + ".year"] = tsr.year;
-                    result[parser.name + ".month"] = tsr.month;
-                    result[parser.name + ".day"] = tsr.day;
-                    result[parser.name + ".hour"] = tsr.hour;
-                    result[parser.name + ".minutes"] = tsr.minutes;
-                    result[parser.name + ".seconds"] = tsr.seconds;
-                    result[parser.name + ".timezone"] = tsr.timezone;
-                }
-                else {
-                    error = true;
-                }
-                break;
-            }
-            case ParserType::Domain: {
-                DomainResult domainResult;
-                if (parseDomain(&eventIt, parser.endToken, parser.captureOpts, domainResult)){
-                    result[parser.name + ".domain"] = std::move(domainResult.domain);
-                    result[parser.name + ".subdomain"] = std::move(domainResult.subdomain);
-                    result[parser.name + ".registered_domain"] = std::move(domainResult.registered_domain);
-                    result[parser.name + ".top_level_domain"] = std::move(domainResult.top_level_domain);
-                    result[parser.name + ".address"] = std::move(domainResult.address);
-                }
-                else {
-                    error = true;
-                }
-                break;
-            }
-            case ParserType::FilePath: {
-                FilePathResult filePathResult;
-                parseFilePath(&eventIt, parser.endToken, parser.captureOpts, filePathResult);
-                result[parser.name + ".path"] = std::move(filePathResult.path);
-                result[parser.name + ".drive_letter"] = std::move(filePathResult.drive_letter);
-                result[parser.name + ".folder"] = std::move(filePathResult.folder);
-                result[parser.name + ".name"] = std::move(filePathResult.name);
-                result[parser.name + ".extension"] = std::move(filePathResult.extension);
-                break;
-            }
-            case ParserType::UserAgent:
+        if(!isOk)
+        {
+            if(parser.expType == ExpresionType::OptionalCapture ||
+               parser.expType == ExpresionType::OrCapture)
             {
-                UserAgentResult userAgent;
-                if(parseUserAgent(&eventIt,
-                                  parser.endToken,
-                                  userAgent))
-                {
-                    result[parser.name + ".original"] =
-                        std::move(userAgent.original);
-                }
-                break;
-            }
-            default: {
-                fprintf(stderr,
-                        "Missing implementation for parser type: [%i]\n",
-                        parser.parserType);
-                break;
-            }
-        }
-
-        if (error) {
-            if(parser.combType == CombType::Optional || parser.combType == CombType::Or){
-                //We need to test the second part of the 'OR' capture
-                fprintf(stderr, "Optional [%s] didn't match\n", parser.name.c_str());
+                // We need to test the second part of the 'OR' capture
                 eventIt = prevIt;
-                error = false;
+                isOk = false;
             }
-            else {
+            else
+            {
                 // TODO report error
-                fprintf(stderr, "Capture [%s] failed validation\n", parser.name.c_str());
-                break;
+                return false;
             }
-        }
-        else {
-            fprintf(stderr, "\xE2\x9C\x94\n");
         }
     }
+
+    return true;
 }
 
-ParserFn getParserOp(std::string const &logQl) {
-    if(logQl.empty()){
-        //TODO report error - empty logQl expresion string
+ParserFn getParserOp(std::string const &logQl)
+{
+    if(logQl.empty())
+    {
+        // TODO report error - empty logQl expresion string
         return {};
     }
 
-    ParserList parserList = parseLogQlExpr(logQl);
-    if(parserList.empty()){
-        //TODO some error occured while parsing the logQl expr
+    ExpresionList expresions = parseLogQlExpr(logQl);
+    if(expresions.empty())
+    {
+        // TODO some error occured while parsing the logQl expr
         return {};
     }
 
-    ParserFn parseFn = [expr = logQl, parserList = std::move(parserList)](std::string const &event) {
-        fprintf(stderr, "event:\n\t%s\n\t%s\n\n", event.c_str(), expr.c_str());
-        ParseResult result;
-        executeParserList(event, parserList, result);
-        return result;
+    auto parserList = getParserList(expresions);
+    if(parserList.empty())
+    {
+        // TODO some error occured while parsing the logQl expr
+        return {};
+    }
+
+    ParserFn parseFn = [expr = logQl, parserList = std::move(parserList)](
+                           std::string const &event, ParseResult &result)
+    {
+        return executeParserList(event, parserList, result);
     };
 
     return parseFn;
