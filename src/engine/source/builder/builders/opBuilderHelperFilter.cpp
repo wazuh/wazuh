@@ -78,8 +78,8 @@ types::Lifter opBuilderHelperExists(const DocumentValue & def)
     std::string field {json::Document::preparePath(def.MemberBegin()->name.GetString())};
 
     //Check parameters
-    std::vector<std::string> parameters =
-        utils::string::split(def.MemberBegin()->value.GetString(), '/');
+    std::vector<std::string> parameters {
+        utils::string::split(def.MemberBegin()->value.GetString(), '/')};
     if (parameters.size() != 1)
     {
         throw std::runtime_error("Invalid number of parameters");

@@ -46,21 +46,21 @@ TEST(opBuilderHelperStringNE, Static_string_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field2check":"not_test_value"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field2check":"test_value"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"otherfield":"value"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"otherfield":"test_value"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field2check":"test_value_2"}
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -85,25 +85,25 @@ TEST(opBuilderHelperStringNE, Static_number_ok)
         [=](auto s)
         {
             // yes
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field2check":"not_11"}
-            )"});
+            )"));
             // no
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field2check":"11"}
-            )"});
+            )"));
             // yes
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"otherfield":"11"}
-            )"});
+            )"));
             // yes
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"otherfield":11}
-            )"});
+            )"));
             // no
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field2check":"11"}
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -126,36 +126,36 @@ TEST(opBuilderHelperStringNE, Dynamics_string_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "field2check":"not_test_value",
                     "ref_key":"test_value"
                 }
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "field2check":"test_value",
                     "ref_key":"test_value"
                 }
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "otherfield":"value",
                     "ref_key":"test_value"
                 }
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "otherfield":"test_value",
                     "ref_key":"test_value"
                 }
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "field2check":"test_value",
                     "ref_key":"test_value"
                 }
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -180,7 +180,7 @@ TEST(opBuilderHelperStringNE, Multilevel_dynamics_string_ok)
         [=](auto s)
         {
             // yes
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "parentObjt_2": {
                         "field2check": "test_value",
@@ -191,9 +191,9 @@ TEST(opBuilderHelperStringNE, Multilevel_dynamics_string_ok)
                         "ref_key": "123_not_test_value"
                     }
                 }
-            )"});
+            )"));
             // no
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "parentObjt_2": {
                         "field2check": "not_test_value",
@@ -204,9 +204,9 @@ TEST(opBuilderHelperStringNE, Multilevel_dynamics_string_ok)
                         "ref_key": "not_test_value"
                     }
                 }
-            )"});
+            )"));
             // yes
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "parentObjt_2": {
                         "field2check":"test_value",
@@ -217,9 +217,9 @@ TEST(opBuilderHelperStringNE, Multilevel_dynamics_string_ok)
                         "ref_key":"not_test_value"
                     }
                 }
-            )"});
+            )"));
             // yes
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "parentObjt_2": {
                         "field2check":"test_value",
@@ -230,7 +230,7 @@ TEST(opBuilderHelperStringNE, Multilevel_dynamics_string_ok)
                         "ref_key":"not_test_value"
                     }
                 }
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -254,36 +254,36 @@ TEST(opBuilderHelperStringNE, Dynamics_number_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "field2check":11,
                     "ref_key":11
                 }
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "field2check":"11",
                     "ref_key":11
                 }
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "otherfield":11,
                     "ref_key":11
                 }
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "field2check":11,
                     "ref_key":"11"
                 }
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "field2check":"11",
                     "not_ref_key":"11"
                 }
-            )"});
+            )"));
             s.on_completed();
         });
 

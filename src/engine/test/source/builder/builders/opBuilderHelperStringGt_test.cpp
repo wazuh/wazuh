@@ -47,42 +47,42 @@ TEST(opBuilderHelperStringGT, Static_string_ok)
         [=](auto s)
         {
             // less
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field2check":"ABC"}
-            )"});
+            )"));
             // Equal
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field2check":"ABCD"}
-            )"});
+            )"));
             // Greater
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field2check":"ABCDE"}
-            )"});
+            )"));
             // Greater with different case
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field2check":"BBBB"}
-            )"});
+            )"));
             // Less with different case
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field2check":"AABCD"}
-            )"});
+            )"));
             // lower case are greater
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field2check":"abc"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field2check":"abcd"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field2check":"abcde"}
-            )"});
+            )"));
             // Other fields will be ignored
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"otherfield":"abcd"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"otherfield":"abcd"}
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -110,19 +110,19 @@ TEST(opBuilderHelperStringGT, Static_number_ok)
         [=](auto s)
         {
             // Equal
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field2check":"AA"}
-            )"});
+            )"));
             // Greater
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field2check":"BB"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"otherfield":"aa"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"otherfield": "bb"}
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -146,26 +146,26 @@ TEST(opBuilderHelperStringGT, Dynamics_string_ok)
         [=](auto s)
         {
             // Greater
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "field2check":"abcd",
                     "ref_key":"ABCD"
                 }
-            )"});
+            )"));
             // Equal
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "field2check":"ABCD",
                     "ref_key":"ABCD"
                 }
-            )"});
+            )"));
             // Less
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "otherfield":"AABCD",
                     "ref_key":"ABCD"
                 }
-            )"});
+            )"));
             s.on_completed();
         });
 

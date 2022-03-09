@@ -157,7 +157,7 @@ public:
         Graph_t filters;
         json::Document asset = m_catalog.getAsset("environment", name);
 
-        this->assetBuilder(g, "decoder", asset.get(".decoders"),
+        this->assetBuilder(g, "decoder", asset.get("/decoders"),
                            std::get<internals::types::AssetBuilder>(internals::Registry::getBuilder("decoder")));
         this->connectGraph(g, internals::types::ConnectableT("DECODERS_INPUT"),
                            internals::types::ConnectableT("DECODERS_OUTPUT"));
@@ -165,7 +165,7 @@ public:
         g.addNode(internals::types::ConnectableT("RULES_INPUT"));
         g.addEdge(internals::types::ConnectableT("DECODERS_OUTPUT"), internals::types::ConnectableT("RULES_INPUT"));
 
-        this->assetBuilder(g, "rule", asset.get(".rules"),
+        this->assetBuilder(g, "rule", asset.get("/rules"),
                            std::get<internals::types::AssetBuilder>(internals::Registry::getBuilder("rule")));
         this->connectGraph(g, internals::types::ConnectableT("RULES_INPUT"),
                            internals::types::ConnectableT("RULES_OUTPUT"));
@@ -174,12 +174,12 @@ public:
         g.addEdge(internals::types::ConnectableT("DECODERS_OUTPUT"), internals::types::ConnectableT("OUTPUTS_INPUT"));
         g.addEdge(internals::types::ConnectableT("RULES_OUTPUT"), internals::types::ConnectableT("OUTPUTS_INPUT"));
 
-        this->assetBuilder(g, "output", asset.get(".outputs"),
+        this->assetBuilder(g, "output", asset.get("/outputs"),
                            std::get<internals::types::AssetBuilder>(internals::Registry::getBuilder("output")));
         this->connectGraph(g, internals::types::ConnectableT("OUTPUTS_INPUT"),
                            internals::types::ConnectableT("OUTPUTS_OUTPUT"));
 
-        this->assetBuilder(filters, "filter", asset.get(".filters"),
+        this->assetBuilder(filters, "filter", asset.get("/filters"),
                            std::get<internals::types::AssetBuilder>(internals::Registry::getBuilder("filter")));
         this->filterGraph(g, filters);
 

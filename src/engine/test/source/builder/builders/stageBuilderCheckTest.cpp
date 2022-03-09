@@ -82,27 +82,27 @@ TEST(StageBuilderCheck, BuildsOperates)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"({
+            s.on_next(std::make_shared<json::Document>(R"({
                 "field1": "value",
                 "field2": 2,
                 "field3": "value",
                 "field4": true,
                 "field5": "+exists"
-            })"});
-            s.on_next(Event{R"(
+            })"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"values"}
-            )"});
-            s.on_next(Event{R"({
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"({
                 "field1": "value",
                 "field2": 2,
                 "field3": "value",
                 "field4": true,
                 "field5": "+exists",
                 "field6": "+exists"
-            })"});
-            s.on_next(Event{R"(
+            })"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"otherfield":1}
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -111,10 +111,10 @@ TEST(StageBuilderCheck, BuildsOperates)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_STREQ(expected[0].get("/field1")->GetString(), "value");
-    ASSERT_EQ(expected[0].get("/field2")->GetInt(), 2);
-    ASSERT_STREQ(expected[0].get("/field3")->GetString(), "value");
-    ASSERT_TRUE(expected[0].get("/field4")->GetBool());
-    ASSERT_NO_THROW(expected[0].get("/field5"));
-    ASSERT_EQ(expected[0].get("/field6"), nullptr);
+    ASSERT_STREQ(expected[0]->get("/field1")->GetString(), "value");
+    ASSERT_EQ(expected[0]->get("/field2")->GetInt(), 2);
+    ASSERT_STREQ(expected[0]->get("/field3")->GetString(), "value");
+    ASSERT_TRUE(expected[0]->get("/field4")->GetBool());
+    ASSERT_NO_THROW(expected[0]->get("/field5"));
+    ASSERT_EQ(expected[0]->get("/field6"), nullptr);
 }

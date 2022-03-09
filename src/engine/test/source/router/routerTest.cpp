@@ -19,7 +19,7 @@
 using namespace std;
 using namespace rxcpp;
 using namespace router;
-using document_t = json::Document;
+using document_t = std::shared_ptr<json::Document>;
 using documents_t = vector<document_t>;
 
 struct FakeServer
@@ -32,7 +32,7 @@ struct FakeServer
                   {
                       if (verbose)
                       {
-                          GTEST_COUT << "FakeServer emits " << document.str() << endl;
+                          GTEST_COUT << "FakeServer emits " << document->str() << endl;
                       }
                       s.on_next(document);
                   }
@@ -57,7 +57,7 @@ struct FakeBuilder
         if (verbose)
         {
             this->m_subj.get_observable().subscribe([](auto j)
-                                                    { GTEST_COUT << "FakeBuilder got " << j.str() << endl; });
+                                                    { GTEST_COUT << "FakeBuilder got " << j->str() << endl; });
         }
     }
 
@@ -114,13 +114,13 @@ TEST(RouterTest, RemoveNonExistentRoute)
 TEST(RouterTest, PassThroughSingleRoute)
 {
     documents_t input{
-        document_t(R"({
+        std::make_shared<json::Document>(R"({
         "event": 1
     })"),
-        document_t(R"({
+        std::make_shared<json::Document>(R"({
         "event": 2
     })"),
-        document_t(R"({
+        std::make_shared<json::Document>(R"({
         "event": 3
     })"),
     };
@@ -137,6 +137,6 @@ TEST(RouterTest, PassThroughSingleRoute)
     ASSERT_EQ(expected.size(), 3);
     for (auto i = 0; i < 3; ++i)
     {
-        ASSERT_EQ(input[i].str(), expected[i].str());
+        ASSERT_EQ(input[i]->str(), expected[i]->str());
     }
 }

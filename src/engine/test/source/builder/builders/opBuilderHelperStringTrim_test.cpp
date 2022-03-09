@@ -46,18 +46,18 @@ TEST(opBuilderHelperStringTrim, BothOk)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"fieldToTranf": "---hi---"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"fieldToTranf": "hi---"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"fieldToTranf": "---hi"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"fieldToTranf": "hi"}
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -81,18 +81,18 @@ TEST(opBuilderHelperStringTrim, Start_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"fieldToTranf": "---hi---"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"fieldToTranf": "hi---"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"fieldToTranf": "---hi"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"fieldToTranf": "hi"}
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -118,18 +118,18 @@ TEST(opBuilderHelperStringTrim, End_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"fieldToTranf": "---hi---"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"fieldToTranf": "hi---"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"fieldToTranf": "---hi"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"fieldToTranf": "hi"}
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -154,18 +154,18 @@ TEST(opBuilderHelperStringTrim, Multilevel_src)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"fieldToTranf": {"a": {"b": "---hi---"}}}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"fieldToTranf": {"a": {"b": "hi---"}}}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"fieldToTranf": {"a": {"b": "---hi"}}}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"fieldToTranf": {"a": {"b": "hi"}}}
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -190,9 +190,9 @@ TEST(opBuilderHelperStringTrim, Not_exist_src)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"not_ext": "---hi---"}
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -201,7 +201,7 @@ TEST(opBuilderHelperStringTrim, Not_exist_src)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_FALSE(expected[0].exists("/fieldToTranf"));
+    ASSERT_FALSE(expected[0]->exists("/fieldToTranf"));
 }
 
 TEST(opBuilderHelperStringTrim, Src_not_string)
@@ -214,9 +214,9 @@ TEST(opBuilderHelperStringTrim, Src_not_string)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"fieldToTranf": 15}
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -225,7 +225,7 @@ TEST(opBuilderHelperStringTrim, Src_not_string)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_TRUE(expected[0].exists("/fieldToTranf"));
+    ASSERT_TRUE(expected[0]->exists("/fieldToTranf"));
     ASSERT_EQ(expected[0]->get("/fieldToTranf")->GetInt(), 15);
 }
 
@@ -239,18 +239,18 @@ TEST(opBuilderHelperStringTrim, Multilevel)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"fieldToTranf": {"a": {"b": "---hi---"}}}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"fieldToTranf": {"a": {"b": "hi---"}}}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"fieldToTranf": {"a": {"b": "---hi"}}}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"fieldToTranf": {"a": {"b": "hi"}}}
-            )"});
+            )"));
             s.on_completed();
         });
 

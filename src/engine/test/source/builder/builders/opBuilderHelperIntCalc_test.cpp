@@ -86,18 +86,18 @@ TEST(opBuilderHelperIntCalc, Exec_equal_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":9}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":11}
-            )"});
+            )"));
             s.on_completed();
         });
     Lifter lift = opBuilderHelperIntCalc(*doc.get("/normalice"));
@@ -124,24 +124,24 @@ TEST(opBuilderHelperIntCalc, Exec_sum_int)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":0}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":9}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":11}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":100}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":-100}
-            )"});
+            )"));
             s.on_completed();
         });
     Lifter lift = opBuilderHelperIntCalc(*doc.get("/normalice"));
@@ -170,24 +170,24 @@ TEST(opBuilderHelperIntCalc, Exec_sub_int)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":0}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":9}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":11}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":100}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":-100}
-            )"});
+            )"));
             s.on_completed();
         });
     Lifter lift = opBuilderHelperIntCalc(*doc.get("/normalice"));
@@ -216,24 +216,24 @@ TEST(opBuilderHelperIntCalc, Exec_mult_int)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":0}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":9}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":11}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":100}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":-100}
-            )"});
+            )"));
             s.on_completed();
         });
     Lifter lift = opBuilderHelperIntCalc(*doc.get("/normalice"));
@@ -262,24 +262,24 @@ TEST(opBuilderHelperIntCalc, Exec_div_int)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":0}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":9}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":11}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":100}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":-100}
-            )"});
+            )"));
             s.on_completed();
         });
     Lifter lift = opBuilderHelperIntCalc(*doc.get("/normalice"));
@@ -308,30 +308,30 @@ TEST(opBuilderHelperIntCalc, Exec_sum_ref)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test": 0,"field_src":10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":9,"field_src":10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test": 10,"field_src":10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":11,"field_src":10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test": 0,"field_src":-10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":9,"field_src":-10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test": 10,"field_src":-10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":11,"field_src":-10}
-            )"});
+            )"));
             s.on_completed();
         });
     Lifter lift = opBuilderHelperIntCalc(*doc.get("/normalice"));
@@ -362,30 +362,30 @@ TEST(opBuilderHelperIntCalc, Exec_sub_ref)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test": 0,"field_src":10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":9,"field_src":10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test": 10,"field_src":10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":11,"field_src":10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test": 0,"field_src":-10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":9,"field_src":-10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test": 10,"field_src":-10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":11,"field_src":-10}
-            )"});
+            )"));
             s.on_completed();
         });
     Lifter lift = opBuilderHelperIntCalc(*doc.get("/normalice"));
@@ -416,30 +416,30 @@ TEST(opBuilderHelperIntCalc, Exec_mult_ref)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test": 0,"field_src":10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":9,"field_src":10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test": 10,"field_src":10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":11,"field_src":10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test": 0,"field_src":-10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":9,"field_src":-10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test": 10,"field_src":-10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":11,"field_src":-10}
-            )"});
+            )"));
             s.on_completed();
         });
     Lifter lift = opBuilderHelperIntCalc(*doc.get("/normalice"));
@@ -470,30 +470,30 @@ TEST(opBuilderHelperIntCalc, Exec_div_ref)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test": 0,"field_src":10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":9,"field_src":10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test": 10,"field_src":10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":11,"field_src":10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test": 0,"field_src":-10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":9,"field_src":-10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test": 10,"field_src":-10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":11,"field_src":-10}
-            )"});
+            )"));
             s.on_completed();
         });
     Lifter lift = opBuilderHelperIntCalc(*doc.get("/normalice"));
@@ -524,30 +524,30 @@ TEST(opBuilderHelperIntCalc, Exec_div_ref_zero)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test": 0,"field_src":0}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":9,"field_src":0}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test": 10,"field_src":0}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":11,"field_src":0}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test": 0,"field_src":0}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":9,"field_src":0}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test": 10,"field_src":0}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":11,"field_src":0}
-            )"});
+            )"));
             s.on_completed();
         });
     Lifter lift = opBuilderHelperIntCalc(*doc.get("/normalice"));
@@ -579,7 +579,7 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_sum)
         [=](auto s)
         {
             // sorted
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "parentObjt_1": {
                         "field2check": 10,
@@ -590,9 +590,9 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_sum)
                         "ref_key": 11
                     }
                 }
-            )"});
+            )"));
             // not sorted
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "parentObjt_2": {
                         "field2check": 11,
@@ -603,7 +603,7 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_sum)
                         "ref_key": 11
                     }
                 }
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -629,7 +629,7 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_sub)
         [=](auto s)
         {
             // sorted
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "parentObjt_1": {
                         "field2check": 10,
@@ -640,9 +640,9 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_sub)
                         "ref_key": 11
                     }
                 }
-            )"});
+            )"));
             // not sorted
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "parentObjt_2": {
                         "field2check": 11,
@@ -653,7 +653,7 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_sub)
                         "ref_key": 11
                     }
                 }
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -679,7 +679,7 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_mul)
         [=](auto s)
         {
             // sorted
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "parentObjt_1": {
                         "field2check": 10,
@@ -690,9 +690,9 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_mul)
                         "ref_key": 11
                     }
                 }
-            )"});
+            )"));
             // not sorted
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "parentObjt_2": {
                         "field2check": 11,
@@ -703,7 +703,7 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_mul)
                         "ref_key": 11
                     }
                 }
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -729,7 +729,7 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_div)
         [=](auto s)
         {
             // sorted
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "parentObjt_1": {
                         "field2check": 10,
@@ -740,9 +740,9 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_div)
                         "ref_key": 11
                     }
                 }
-            )"});
+            )"));
             // not sorted
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "parentObjt_2": {
                         "field2check": 11,
@@ -753,7 +753,7 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_div)
                         "ref_key": 11
                     }
                 }
-            )"});
+            )"));
             s.on_completed();
         });
 

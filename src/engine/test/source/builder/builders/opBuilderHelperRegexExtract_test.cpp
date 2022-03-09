@@ -56,15 +56,15 @@ TEST(opBuilderHelperRegexExtract, String_regex_extract)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"exp"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"expregex"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"this is a test exp"}
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -89,15 +89,15 @@ TEST(opBuilderHelperRegexExtract, Numeric_regex_extract)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"123"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"123"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"123"}
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -122,12 +122,12 @@ TEST(opBuilderHelperRegexExtract, Advanced_regex_extract)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"client@wazuh.com"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"engine@wazuh.com"}
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -153,14 +153,14 @@ TEST(opBuilderHelperRegexExtract, Nested_field_regex_extract)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"~~({
+            s.on_next(std::make_shared<json::Document>(R"~~({
             "test":
                 {"field": "exp"}
-            })~~"});
-            s.on_next(Event{R"~~({
+            })~~"));
+            s.on_next(std::make_shared<json::Document>(R"~~({
             "test":
                 {"field": "this is a test exp"}
-            })~~"});
+            })~~"));
             s.on_completed();
         });
 
@@ -184,15 +184,15 @@ TEST(opBuilderHelperRegexExtract, Field_not_exists_regex_extract)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"exp"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"expregex"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"this is a test exp"}
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -202,9 +202,9 @@ TEST(opBuilderHelperRegexExtract, Field_not_exists_regex_extract)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_FALSE(expected[0].exists("/_field"));
-    ASSERT_FALSE(expected[1].exists("/_field"));
-    ASSERT_FALSE(expected[2].exists("/_field"));
+    ASSERT_FALSE(expected[0]->exists("/_field"));
+    ASSERT_FALSE(expected[1]->exists("/_field"));
+    ASSERT_FALSE(expected[2]->exists("/_field"));
 }
 
 TEST(opBuilderHelperRegexExtract, Multilevel_field_regex_extract)
@@ -217,14 +217,14 @@ TEST(opBuilderHelperRegexExtract, Multilevel_field_regex_extract)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"~~({
+            s.on_next(std::make_shared<json::Document>(R"~~({
             "test":
                 {"field": "exp"}
-            })~~"});
-            s.on_next(Event{R"~~({
+            })~~"));
+            s.on_next(std::make_shared<json::Document>(R"~~({
             "test":
                 {"field": "this is a test exp"}
-            })~~"});
+            })~~"));
             s.on_completed();
         });
 
@@ -248,14 +248,14 @@ TEST(opBuilderHelperRegexExtract, Multilevel_field_dst_regex_extract)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"~~({
+            s.on_next(std::make_shared<json::Document>(R"~~({
             "test":
                 {"field": "exp"}
-            })~~"});
-            s.on_next(Event{R"~~({
+            })~~"));
+            s.on_next(std::make_shared<json::Document>(R"~~({
             "test":
                 {"field": "this is a test exp"}
-            })~~"});
+            })~~"));
             s.on_completed();
         });
 
