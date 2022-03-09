@@ -12,6 +12,7 @@
 #include "logcollector.h"
 #include "os_crypto/sha1/sha1_op.h"
 
+#define LABEL_PREPROCÉSSOR_MESSAGE  "[Classification: Preprocessor] [Priority: 3] "
 
 /* Read snort_full files */
 void *read_snortfull(logreader *lf, int *rc, int drop_it) {
@@ -61,9 +62,8 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
                     f_msg_size -= strlen(str);
                     p = two;
                 } else if (strncmp(str, "[Priority: ", 10) == 0) {
-                    strncat(f_msg, "[Classification: Preprocessor] "
-                            "[Priority: 3] ", f_msg_size);
-                    f_msg_size -= sizeof("[Classification: Preprocessor] [Priority: 3] ") - 1;
+                    strncat(f_msg, LABEL_PREPROCÉSSOR_MESSAGE, f_msg_size);
+                    f_msg_size -= sizeof(LABEL_PREPROCÉSSOR_MESSAGE) - 1;
                     p = two;
                 }
 
@@ -71,9 +71,8 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
                  * the classification.
                  */
                 else if ((str[2] == '/') && (str[5] == '-') && (q = strchr(str, ' '))) {
-                    strncat(f_msg, "[Classification: Preprocessor] "
-                            "[Priority: 3] ", f_msg_size);
-                    f_msg_size -= sizeof("[Classification: Preprocessor] [Priority: 3] ") - 1;
+                    strncat(f_msg, LABEL_PREPROCÉSSOR_MESSAGE, f_msg_size);
+                    f_msg_size -= sizeof(LABEL_PREPROCÉSSOR_MESSAGE) - 1;
                     strncat(f_msg, ++q, f_msg_size - 40);
 
                     /* Clean for next event */
