@@ -90,8 +90,8 @@ def test_read_configuration(read_config):
             assert configuration[k] == read_config['cluster'][k]
 
         # values not present in the read user configuration will be filled with default values
-        if 'disabled' not in read_config and read_config != {}:
-            default_cluster_configuration['disabled'] = 'no'
+        if read_config != {} and 'disabled' not in read_config.get('cluster', {}):
+            default_cluster_configuration['disabled'] = 'yes'
         for k in default_cluster_configuration.keys() - read_config.keys():
             assert configuration[k] == default_cluster_configuration[k]
 
