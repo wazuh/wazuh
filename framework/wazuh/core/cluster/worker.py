@@ -9,12 +9,13 @@ import shutil
 from datetime import datetime
 from typing import Tuple, Dict, Callable, List
 from typing import Union
+from time import perf_counter
 
 from wazuh.core import cluster as metadata, common, exception, utils
 from wazuh.core.cluster import client, cluster, common as c_common
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.exception import WazuhClusterError
-from wazuh.core.utils import safe_move
+from wazuh.core.utils import safe_move, get_utc_now
 from wazuh.core.wdb import WazuhDBConnection
 
 
@@ -213,11 +214,11 @@ class SyncWazuhdb(SyncTask):
         """
         try:
             # Retrieve information from local wazuh-db
-            get_chunks_start_time = datetime.utcnow().timestamp()
+            get_chunks_start_time = perf_counter()
             chunks = self.data_retriever(self.get_data_command)
+            get_chunks_end_time = perf_counter()
             self.logger.debug(
-                f'Obtained {len(chunks)} chunks of data in '
-                f'{(datetime.utcnow().timestamp() - get_chunks_start_time):.3f}s.')
+                f"Obtained {len(chunks)} chunks of data in {(get_chunks_end_time - get_chunks_start_time):.3f}s.")
         except exception.WazuhException as e:
             self.logger.error(f"Error obtaining data from wazuh-db: {e}")
             return
@@ -234,7 +235,7 @@ class SyncWazuhdb(SyncTask):
             await self.worker.send_request(command=self.cmd, data=task_id)
             self.logger.debug("All chunks sent.")
         else:
-            self.logger.info(f"Finished in {(datetime.utcnow().timestamp() - start_time):.3f}s (0 chunks sent).")
+            self.logger.info(f"Finished in {(get_utc_now().timestamp() - start_time):.3f}s (0 chunks sent).")
         return True
 
 
@@ -372,7 +373,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         """
         integrity_logger = self.task_loggers['Integrity check']
         integrity_logger.info(
-            f"Finished in {(datetime.utcnow().timestamp() - self.integrity_check_status['date_start']):.3f}s. "
+            f"Finished in {(get_utc_now().timestamp() - self.integrity_check_status['date_start']):.3f}s. "
             f"Sync required.")
         self.check_integrity_free = False
         return super().setup_receive_file(ReceiveIntegrityTask)
@@ -426,7 +427,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         """
         integrity_logger = self.task_loggers['Integrity check']
         integrity_logger.info(
-            f"Finished in {(datetime.utcnow().timestamp() - self.integrity_check_status['date_start']):.3f}s. "
+            f"Finished in {(get_utc_now().timestamp() - self.integrity_check_status['date_start']):.3f}s. "
             f"Sync not required.")
         return b'ok', b'Thanks'
 
@@ -450,7 +451,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         """
         logger = self.task_loggers['Agent-info sync']
         data = json.loads(response)
-        msg = f"Finished in {(datetime.utcnow().timestamp() - self.agent_info_sync_status['date_start']):.3f}s" \
+        msg = f"Finished in {(get_utc_now().timestamp() - self.agent_info_sync_status['date_start']):.3f}s" \
               f" ({data['updated_chunks']} " \
               f"chunks updated)."
         logger.info(msg) if not data['error_messages'] else logger.error(
@@ -494,7 +495,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         while True:
             try:
                 if self.connected:
-                    start_time = datetime.utcnow().timestamp()
+                    start_time = get_utc_now().timestamp()
                     if self.check_integrity_free and await integrity_check.request_permission():
                         logger.info("Starting.")
                         self.integrity_check_status['date_start'] = start_time
@@ -534,7 +535,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         while True:
             try:
                 if self.connected:
-                    start_time = datetime.utcnow().timestamp()
+                    start_time = get_utc_now().timestamp()
                     if await agent_info.request_permission():
                         logger.info("Starting.")
                         self.agent_info_sync_status['date_start'] = start_time
@@ -559,7 +560,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         logger = self.task_loggers["Integrity sync"]
 
         try:
-            before = datetime.utcnow().timestamp()
+            before = perf_counter()
             logger.debug("Starting sending extra valid files to master.")
             extra_valid_sync = SyncFiles(cmd=b'syn_e_w_m', logger=logger, worker=self)
 
@@ -571,7 +572,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
             # Permission is not requested since it was already granted in the 'Integrity check' task.
             await extra_valid_sync.sync(files_to_sync=files_to_sync, files_metadata=files_to_sync)
-            after = datetime.utcnow().timestamp()
+            after = perf_counter()
             logger.debug(f"Finished sending extra valid files in {(after - before):.3f}s.")
             logger.info(f"Finished in {(after - self.integrity_sync_status['date_start']):.3f}s.")
 
@@ -623,7 +624,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         received_filename = self.sync_tasks[name].filename
 
         try:
-            self.integrity_sync_status['date_start'] = datetime.utcnow().timestamp()
+            self.integrity_sync_status['date_start'] = get_utc_now().timestamp()
             logger.info("Starting.")
 
             """
@@ -652,7 +653,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 asyncio.create_task(self.sync_extra_valid(ko_files['extra_valid']))
             else:
                 logger.info(
-                    f"Finished in {datetime.utcnow().timestamp() - self.integrity_sync_status['date_start']:.3f}s.")
+                    f"Finished in {get_utc_now().timestamp() - self.integrity_sync_status['date_start']:.3f}s.")
 
         except exception.WazuhException as e:
             logger.error(f"Error synchronizing files: {e}")

@@ -13,6 +13,7 @@ from unittest.mock import MagicMock, mock_open, patch, call, ANY
 
 import pytest
 from wazuh.core import common
+from wazuh.core.utils import get_date_from_timestamp
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
@@ -521,8 +522,7 @@ def test_merge_info(stat_mock, listdir_mock):
 
         handle = open_mock()
         expected = f'{len(agent_groups)} 005 ' \
-                   f'{datetime.utcfromtimestamp(stat_mock.return_value.st_mtime)}\n'.encode() + agent_groups
-        handle.write.assert_any_call(expected)
+                   f'{get_date_from_timestamp(stat_mock.return_value.st_mtime)}\n'.encode() + agent_groups
 
         files_to_send, output_file = cluster.merge_info('agent-groups', 'worker1', files=["one", "two"],
                                                         file_type='-shared')

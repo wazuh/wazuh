@@ -380,80 +380,88 @@ async def test_ac_client_echo_ok(send_request_mock, done_mock):
 
 @pytest.mark.asyncio
 @freeze_time("2022-01-01")
-@patch('asyncio.sleep')
 @patch.object(FutureMock, "done", return_value=False)
+@patch('wazuh.core.cluster.client.perf_counter', return_value=0)
 @patch('wazuh.core.cluster.client.AbstractClient.send_request', return_value="ok")
-async def test_ac_performance_test_client(send_request_mock, done_mock, sleep_mock):
+async def test_ac_performance_test_client(send_request_mock, perf_counter_mock, done_mock):
     """Test is the master replies with aa payload of the same length as the one that was sent."""
 
-    def set_assignment():
-        time.sleep(5)
-        done_mock.return_value = True
+    async def asyncio_sleep_mock(delay, result=None, *, loop=None):
+        assert delay == 3
+        raise Exception()
 
-    with patch.object(logging.getLogger("wazuh"), "error") as logger_mock:
-        stop_while_thread = threading.Thread(target=set_assignment)
-        stop_while_thread.start()
-        await asyncio.create_task(abstract_client.performance_test_client(10))
-        logger_mock.assert_called_with("ok")
-        send_request_mock.assert_called_with(b'echo', b'a' * 10)
+    with patch('asyncio.sleep', asyncio_sleep_mock):
+        with patch.object(logging.getLogger("wazuh"), "error") as logger_mock:
+            try:
+                await asyncio.create_task(abstract_client.performance_test_client(10))
+            except Exception:
+                pass
 
-    with patch.object(logging.getLogger("wazuh"), "info") as logger_mock:
-        stop_while_thread = threading.Thread(target=set_assignment)
-        done_mock.return_value = False
-        stop_while_thread.start()
-        await asyncio.create_task(abstract_client.performance_test_client(2))
-        logger_mock.assert_called_with(f"Received size: {2} // Time: {0.0}")
-        send_request_mock.assert_called_with(b'echo', b'a' * 2)
+            logger_mock.assert_called_with("ok")
+            send_request_mock.assert_called_with(b'echo', b'a' * 10)
 
-    done_mock.assert_any_call()
+        with patch.object(logging.getLogger("wazuh"), "info") as logger_mock:
+            done_mock.return_value = False
+            try:
+                await asyncio.create_task(abstract_client.performance_test_client(2))
+            except Exception:
+                pass
+            logger_mock.assert_called_with(f"Received size: {2} // Time: {0}")
+            send_request_mock.assert_called_with(b'echo', b'a' * 2)
+
+        done_mock.assert_any_call()
 
 
 @pytest.mark.asyncio
 @freeze_time("2022-01-01")
-@patch('asyncio.sleep')
 @patch.object(FutureMock, "done", return_value=False)
+@patch('wazuh.core.cluster.client.perf_counter', return_value=0)
 @patch('wazuh.core.cluster.client.AbstractClient.send_request', return_value="ok")
-async def test_ac_concurrency_test_client(send_request_mock, done_mock, sleep_mock):
+async def test_ac_concurrency_test_client(send_request_mock, perf_counter_mock, done_mock):
     """Check how the server reply to all requests until the connection is lost."""
 
     n_msgs = 5
 
-    def set_assignment():
-        time.sleep(1)
-        done_mock.return_value = True
+    async def asyncio_sleep_mock(delay, result=None, *, loop=None):
+        assert delay == 3
+        raise Exception()
 
-    with patch.object(logging.getLogger("wazuh"), "info") as logger_mock:
-        stop_while_thread = threading.Thread(target=set_assignment)
-        stop_while_thread.start()
-        await asyncio.create_task(abstract_client.concurrency_test_client(n_msgs))
+    with patch('asyncio.sleep', asyncio_sleep_mock):
+        with patch.object(logging.getLogger("wazuh"), "info") as logger_mock:
+            try:
+                await asyncio.create_task(abstract_client.concurrency_test_client(n_msgs))
+            except Exception:
+                pass
 
-        done_mock.assert_any_call()
-        for i in range(n_msgs):
-            send_request_mock.assert_has_calls([call(b'echo', f'concurrency {i}'.encode())], any_order=True)
-        logger_mock.assert_called_with(f"Time sending {n_msgs} messages: {0.0}")
+            done_mock.assert_any_call()
+            for i in range(n_msgs):
+                send_request_mock.assert_has_calls([call(b'echo', f'concurrency {i}'.encode())], any_order=True)
+            logger_mock.assert_called_with(f"Time sending {n_msgs} messages: {0}")
 
 
 @pytest.mark.asyncio
 @freeze_time("2022-01-01")
+@patch('wazuh.core.cluster.client.perf_counter', return_value=0)
 @patch('wazuh.core.cluster.client.AbstractClient.send_file', return_value="ok")
-async def test_ac_send_file_task(send_file_mock):
+async def test_ac_send_file_task(send_file_mock, perf_counter_mock):
     """Test the 'send_file' protocol."""
 
     with patch.object(logging.getLogger("wazuh"), "debug") as logger_mock:
         await abstract_client.send_file_task("filename")
         send_file_mock.assert_called_once_with("filename")
         logger_mock.assert_any_call("ok")
-        logger_mock.assert_called_with(f"Time: {0.0}")
+        logger_mock.assert_called_with(f"Time: {0}")
 
 
 @pytest.mark.asyncio
 @freeze_time("2022-01-01")
+@patch('wazuh.core.cluster.client.perf_counter', return_value=0)
 @patch('wazuh.core.cluster.client.AbstractClient.send_string', return_value="ok")
-async def test_ac_send_string_task(send_string_mock):
+async def test_ac_send_string_task(send_string_mock, perf_counter_mock):
     """Test the 'send_string' protocol."""
 
     with patch.object(logging.getLogger("wazuh"), "debug") as logger_mock:
         await abstract_client.send_string_task(10)
         send_string_mock.assert_called_once_with(my_str=b'a' * 10)
         logger_mock.assert_any_call("ok")
-        logger_mock.assert_called_with(f"Time: {0.0}")
+        logger_mock.assert_called_with(f"Time: {0}")

@@ -343,7 +343,8 @@ async def test_AbstractServer_echo(loop_mock, sleep_mock):
 @freeze_time("2022-01-01")
 @patch("asyncio.sleep", side_effect=IndexError)
 @patch("asyncio.get_running_loop", return_value=loop)
-async def test_AbstractServer_performance_test(loop_mock, sleep_mock):
+@patch('wazuh.core.cluster.server.perf_counter', return_value=0)
+async def test_AbstractServer_performance_test(perf_counter_mock, loop_mock, sleep_mock):
     """Check that the function performance_test sends a big message to all clients
      and then get the time it took to send them."""
 
@@ -361,13 +362,14 @@ async def test_AbstractServer_performance_test(loop_mock, sleep_mock):
             await abstract_server.performance_test()
         except IndexError:
             pass
-        mock_info.assert_called_once_with("Received size: 20 // Time: 0.0")
+        mock_info.assert_called_once_with("Received size: 20 // Time: 0")
 
 
 @freeze_time("2022-01-01")
 @patch("asyncio.sleep", side_effect=IndexError)
 @patch("asyncio.get_running_loop", return_value=loop)
-async def test_AbstractServer_concurrency_test(loop_mock, sleep_mock):
+@patch('wazuh.core.cluster.server.perf_counter', return_value=0)
+async def test_AbstractServer_concurrency_test(perf_counter_mock, loop_mock, sleep_mock):
     """Check that the function concurrency_test sends messages to all clients
      and then get the time it took to send them."""
 
@@ -385,7 +387,7 @@ async def test_AbstractServer_concurrency_test(loop_mock, sleep_mock):
             await abstract_server.concurrency_test()
         except IndexError:
             pass
-        mock_info.assert_called_once_with("Time sending 777 messages: 0.0")
+        mock_info.assert_called_once_with("Time sending 777 messages: 0")
 
 
 @pytest.mark.asyncio
