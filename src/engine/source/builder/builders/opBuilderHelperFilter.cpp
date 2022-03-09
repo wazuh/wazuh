@@ -74,8 +74,8 @@ namespace builder::internals::builders
 // <field>: exists
 types::Lifter opBuilderHelperExists(const DocumentValue & def)
 {
-    // Get field
-    std::string field {def.MemberBegin()->name.GetString()};
+    // Get Field path to check
+    std::string field {json::Document::preparePath(def.MemberBegin()->name.GetString())};
 
     //Check parameters
     std::vector<std::string> parameters =
@@ -89,15 +89,15 @@ types::Lifter opBuilderHelperExists(const DocumentValue & def)
     return [field](types::Observable o)
     {
         // Append rxcpp operation
-        return o.filter([=](types::Event e) { return e->exists("/" + field); });
+        return o.filter([=](types::Event e) { return e->exists(field); });
     };
 }
 
 // <field>: not_exists
 types::Lifter opBuilderHelperNotExists(const DocumentValue & def)
 {
-    // Get field
-    std::string field {def.MemberBegin()->name.GetString()};
+    // Get Field path to check
+    std::string field {json::Document::preparePath(def.MemberBegin()->name.GetString())};
 
     std::vector<std::string> parameters =
         utils::string::split(def.MemberBegin()->value.GetString(), '/');
@@ -110,7 +110,7 @@ types::Lifter opBuilderHelperNotExists(const DocumentValue & def)
     return [field](types::Observable o)
     {
         // Append rxcpp operation
-        return o.filter([=](types::Event e) { return !e->exists("/" + field); });
+        return o.filter([=](types::Event e) { return !e->exists(field); });
     };
 }
 
