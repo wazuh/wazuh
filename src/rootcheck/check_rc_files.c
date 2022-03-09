@@ -172,7 +172,6 @@ void check_rc_files(const char *basedir, FILE *fp)
         }
 
        if (bytes_written < 0 || (size_t)bytes_written > (sizeof(file_path) - 1)) {
-           // Maybe print a warning in the log file will be a good parctice
            continue;
        }
 
@@ -191,7 +190,7 @@ void check_rc_files(const char *basedir, FILE *fp)
         }
 
         if (is_file(file_path)) {
-            int size_msg = strlen(file_path) + strlen(name) + sizeof("Rootkit '' detected by the presence of file ''.");
+            const int size_msg = strlen(file_path) + strlen(name) + sizeof("Rootkit '' detected by the presence of file ''.");
             char op_msg[size_msg];
 
             _errors = 1;
