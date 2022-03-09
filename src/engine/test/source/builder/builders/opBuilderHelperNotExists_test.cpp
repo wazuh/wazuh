@@ -46,26 +46,26 @@ TEST(opBuilderHelperNotExists, Exec_not_exists_ok)
         [=](auto s)
         {
             // Greater
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "field2check2":11,
                     "ref_key":10
                 }
-            )"});
+            )"));
             // Equal
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "field":10,
                     "ref_key":10
                 }
-            )"});
+            )"));
             // Less
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "fieldcheck":10,
                     "ref_key":11
                 }
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -76,9 +76,9 @@ TEST(opBuilderHelperNotExists, Exec_not_exists_ok)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_FALSE(expected[0].exists("/field2check"));
-    ASSERT_FALSE(expected[1].exists("/field2check"));
-    ASSERT_FALSE(expected[2].exists("/field2check"));
+    ASSERT_FALSE(expected[0]->exists("/field2check"));
+    ASSERT_FALSE(expected[1]->exists("/field2check"));
+    ASSERT_FALSE(expected[2]->exists("/field2check"));
 }
 
 TEST(opBuilderHelperNotExists, Exec_multilevel_ok)
@@ -91,7 +91,7 @@ TEST(opBuilderHelperNotExists, Exec_multilevel_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "parentObjt_2": {
                         "field2check": 10,
@@ -102,9 +102,9 @@ TEST(opBuilderHelperNotExists, Exec_multilevel_ok)
                         "ref_key": 11
                     }
                 }
-            )"});
+            )"));
 
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "parentObjt_2": {
                         "field2check": 11,
@@ -115,9 +115,9 @@ TEST(opBuilderHelperNotExists, Exec_multilevel_ok)
                         "ref_key": 11
                     }
                 }
-            )"});
+            )"));
 
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "parentObjt_2": {
                         "field2check":10,
@@ -128,10 +128,10 @@ TEST(opBuilderHelperNotExists, Exec_multilevel_ok)
                         "ref_key":11
                     }
                 }
-            )"});
+            )"));
 
             // true
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "parentObjt_2": {
                         "field2check":10,
@@ -142,7 +142,7 @@ TEST(opBuilderHelperNotExists, Exec_multilevel_ok)
                         "ref_key":11
                     }
                 }
-            )"});
+            )"));
             s.on_completed();
         });
 

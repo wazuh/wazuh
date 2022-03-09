@@ -77,17 +77,17 @@ TEST(AssetBuilderFilter, BuildsOperates)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"({
+            s.on_next(std::make_shared<json::Document>(R"({
                 "field1": "value",
                 "field2": 2,
                 "field3": "value",
                 "field4": true,
                 "field5": "+exists"
-            })"});
-            s.on_next(Event{R"(
+            })"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"value"}
-            )"});
-            s.on_next(Event{R"({
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"({
                 "field":"value",
                 "field1": "value",
                 "field2": 2,
@@ -95,10 +95,10 @@ TEST(AssetBuilderFilter, BuildsOperates)
                 "field4": true,
                 "field5": "+exists",
                 "field6": "+exists"
-            })"});
-            s.on_next(Event{R"(
+            })"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"otherfield":1}
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -109,6 +109,6 @@ TEST(AssetBuilderFilter, BuildsOperates)
     ASSERT_EQ(expected.size(), 2);
     for (auto e : expected)
     {
-        ASSERT_STREQ(e.get("/field")->GetString(), "value");
+        ASSERT_STREQ(e->get("/field")->GetString(), "value");
     }
 }
