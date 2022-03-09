@@ -8,13 +8,13 @@
 import sys
 import os
 import pytest
-import runpy
 from unittest.mock import patch
 from argparse import Namespace
 
 sys.path.append(os.path.join(os.path.dirname(
-    os.path.realpath(__file__)), '..'))
+    os.path.realpath(__file__)), '..', '..'))
 import exceptions
+import gcloud
 
 
 @pytest.mark.parametrize('parameters, exception', [
@@ -35,12 +35,6 @@ import exceptions
       'only_logs_after': None, 'n_threads': 1},
      exceptions.GCloudPubSubNumMessagesError),
 
-    ({'integration_type': 'pubsub', 'subscription_id': 'subscription_id',
-      'project': 'project', 'credentials_file': None, 'max_messages': 1,
-      'log_level': 1, 'prefix': '', 'store_true': False, 'delete_file': False,
-      'only_logs_after': None, 'n_threads': 1},
-     SystemExit),
-
     ({'integration_type': 'access_logs', 'credentials_file': None,
       'max_messages': 1, 'bucket_name': '', 'log_level': 1,
       'prefix': '', 'store_true': False, 'only_logs_after': None,
@@ -53,14 +47,8 @@ import exceptions
       'delete_file': False, 'n_threads': 2},
      exceptions.GCloudBucketNumThreadsError),
 
-    ({'integration_type': 'access_logs', 'credentials_file': None,
-      'max_messages': 1, 'bucket_name': 'bucket', 'log_level': 1,
-      'prefix': '', 'store_true': False,
-      'only_logs_after': None, 'delete_file': False,
-      'n_threads': 1},
-     SystemExit),
 ])
-def test_gcloud_ko(parameters, exception):
+def test_gcloud_ko(parameters, exception, caplog):
     """
     Test that the module will abort its execution when called
     with invalid parameters.
@@ -72,9 +60,11 @@ def test_gcloud_ko(parameters, exception):
         been introduced by the user.
     exception : Exception
         Exception that should be raised by the module.
+    caplog : pytest.logging.LogCaptureFixture
+        Fixture that captures the logging records and allows to interact
+        with the logger.
     """
-    with pytest.raises(exception), \
-         patch('tools.get_script_arguments',
+    with patch('tools.get_script_arguments',
                return_value=Namespace(**parameters)), \
          patch('pubsub.subscriber.pubsub.subscriber.Client.from_service_account_file'), \
          patch('pubsub.subscriber.WazuhGCloudSubscriber.check_permissions'), \
@@ -82,4 +72,6 @@ def test_gcloud_ko(parameters, exception):
          patch('buckets.bucket.storage.client.Client.from_service_account_json'), \
          patch('buckets.access_logs.GCSAccessLogs.process_data',
                return_value=0):
-        runpy.run_module('gcloud.py')
+        gcloud.main()
+
+        assert exception.__name__ in caplog.text

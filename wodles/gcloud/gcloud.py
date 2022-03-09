@@ -22,86 +22,93 @@ try:
 except TypeError:
     max_threads = 5
 
-try:
-    # get script arguments
-    arguments = tools.get_script_arguments()
-    logger = tools.get_stdout_logger(tools.logger_name, arguments.log_level)
-    credentials_file = arguments.credentials_file
-    max_messages = arguments.max_messages
-    log_level = arguments.log_level
-    num_processed_messages = 0
 
-    if arguments.integration_type == "pubsub":
-        if arguments.subscription_id is None:
-            raise exceptions.GCloudPubSubNoSubscriptionID
-        if arguments.project is None:
-            raise exceptions.GCloudPubSubNoProjectID
+def main():
 
-        project = arguments.project
-        subscription_id = arguments.subscription_id
+    try:
+        # get script arguments
+        arguments = tools.get_script_arguments()
+        logger = tools.get_stdout_logger(tools.logger_name, arguments.log_level)
+        credentials_file = arguments.credentials_file
         max_messages = arguments.max_messages
-        n_threads = arguments.n_threads
+        log_level = arguments.log_level
+        num_processed_messages = 0
 
-        if n_threads > max_threads:
-            n_threads = max_threads
-            logger.warning(f'Reached maximum number of threads. Truncating to {max_threads}.')
-        if n_threads < tools.min_num_threads:
-            raise exceptions.GCloudPubSubNumThreadsError
-        if max_messages < tools.min_num_messages:
-            raise exceptions.GCloudPubSubNumMessagesError
+        if arguments.integration_type == "pubsub":
+            if arguments.subscription_id is None:
+                raise exceptions.GCloudPubSubNoSubscriptionID
+            if arguments.project is None:
+                raise exceptions.GCloudPubSubNoProjectID
 
-        logger.debug(f"Setting {n_threads} thread{'s' if n_threads > 1 else ''} to pull {max_messages}"
-                     f" message{'s' if max_messages > 1 else ''} in total")
+            project = arguments.project
+            subscription_id = arguments.subscription_id
+            max_messages = arguments.max_messages
+            n_threads = arguments.n_threads
 
-        # process messages
-        with ThreadPoolExecutor() as executor:
-            futures = []
+            if n_threads > max_threads:
+                n_threads = max_threads
+                logger.warning(f'Reached maximum number of threads. Truncating to {max_threads}.')
+            if n_threads < tools.min_num_threads:
+                raise exceptions.GCloudPubSubNumThreadsError
+            if max_messages < tools.min_num_messages:
+                raise exceptions.GCloudPubSubNumMessagesError
 
-            # check permissions
-            subscriber_client = WazuhGCloudSubscriber(credentials_file, project, logger, subscription_id)
-            subscriber_client.check_permissions()
-            messages_per_thread = max_messages // n_threads
-            remaining_messages = max_messages % n_threads
-            futures.append(executor.submit(subscriber_client.process_messages, messages_per_thread + remaining_messages))
+            logger.debug(f"Setting {n_threads} thread{'s' if n_threads > 1 else ''} to pull {max_messages}"
+                         f" message{'s' if max_messages > 1 else ''} in total")
 
-            if messages_per_thread > 0:
-                for _ in range(n_threads - 1):
-                    client = WazuhGCloudSubscriber(credentials_file, project, logger, subscription_id)
-                    futures.append(executor.submit(client.process_messages, messages_per_thread))
+            # process messages
+            with ThreadPoolExecutor() as executor:
+                futures = []
 
-        num_processed_messages = sum([future.result() for future in futures])
+                # check permissions
+                subscriber_client = WazuhGCloudSubscriber(credentials_file, project, logger, subscription_id)
+                subscriber_client.check_permissions()
+                messages_per_thread = max_messages // n_threads
+                remaining_messages = max_messages % n_threads
+                futures.append(executor.submit(subscriber_client.process_messages, messages_per_thread + remaining_messages))
 
-    elif arguments.integration_type == "access_logs":
-        if arguments.n_threads != tools.min_num_threads:
-            raise exceptions.GCloudBucketNumThreadsError
-        if not arguments.bucket_name:
-            raise exceptions.GCloudBucketNameError
+                if messages_per_thread > 0:
+                    for _ in range(n_threads - 1):
+                        client = WazuhGCloudSubscriber(credentials_file, project, logger, subscription_id)
+                        futures.append(executor.submit(client.process_messages, messages_per_thread))
 
-        f_kwargs = {"bucket_name": arguments.bucket_name,
-                    "prefix": arguments.prefix,
-                    "delete_file": arguments.delete_file,
-                    "only_logs_after": arguments.only_logs_after,
-                    "reparse": arguments.reparse}
-        integration = GCSAccessLogs(arguments.credentials_file, logger, **f_kwargs)
-        integration.check_permissions()
-        num_processed_messages = integration.process_data()
+            num_processed_messages = sum([future.result() for future in futures])
+
+        elif arguments.integration_type == "access_logs":
+            if arguments.n_threads != tools.min_num_threads:
+                raise exceptions.GCloudBucketNumThreadsError
+            if not arguments.bucket_name:
+                raise exceptions.GCloudBucketNameError
+
+            f_kwargs = {"bucket_name": arguments.bucket_name,
+                        "prefix": arguments.prefix,
+                        "delete_file": arguments.delete_file,
+                        "only_logs_after": arguments.only_logs_after,
+                        "reparse": arguments.reparse}
+            integration = GCSAccessLogs(arguments.credentials_file, logger, **f_kwargs)
+            integration.check_permissions()
+            num_processed_messages = integration.process_data()
+
+        else:
+            raise exceptions.GCloudIntegrationTypeError(arguments.integration_type)
+
+    except exceptions.GCloudException as gcloud_exception:
+        logging_func = logger.critical if \
+            isinstance(gcloud_exception, exceptions.GCloudCriticalError) else \
+            logger.error
+
+        logging_func('An exception happened while running the wodle: '
+                     f'{gcloud_exception}', exc_info=log_level == 1)
+
+    except Exception:
+        logger.critical('An exception happened while running the wodle',
+                        exc_info=True)
 
     else:
-        raise exceptions.GCloudIntegrationTypeError(arguments.integration_type)
+        logger.info(f'Received {"and acknowledged " if arguments.integration_type == "pubsub" else ""}'
+                    f'{num_processed_messages} message{"s" if num_processed_messages != 1 else ""}')
+        exit(0)
 
-except exceptions.GCloudException as gcloud_exception:
-    logging_func = logger.critical if \
-        isinstance(gcloud_exception, exceptions.GCloudCriticalError) else \
-        logger.error
 
-    logging_func('An exception happened while running the wodle: '
-                 f'{gcloud_exception}', exc_info=log_level == 1)
-
-except Exception:
-    logger.critical('An exception happened while running the wodle',
-                    exc_info=True)
-
-else:
-    logger.info(f'Received {"and acknowledged " if arguments.integration_type == "pubsub" else ""}'
-                f'{num_processed_messages} message{"s" if num_processed_messages != 1 else ""}')
-    exit(0)
+if __name__ == "__main__":
+    main()
