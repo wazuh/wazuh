@@ -74,28 +74,28 @@ TEST(opBuilderHelperIPCIDR, chack_ip_range)
         [=](auto s)
         {
             // Network address
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field2check":"192.168.0.0"}
-            )"});
+            )"));
             // First address
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field2check":"192.168.0.1"}
-            )"});
+            )"));
             // Last address
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field2check":"192.168.255.254"}
-            )"});
+            )"));
             // Broadcast address
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field2check":"192.168.255.255"}
-            )"});
+            )"));
             // Address out of cidr range
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field2check":"10.0.0.1"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field2check":"127.0.0.1"}
-            )"});
+            )"));
             s.on_completed();
         });
 

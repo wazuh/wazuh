@@ -109,24 +109,24 @@ TEST(AssetBuilderOutput, BuildsOperates)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"value"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field1":"value"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"value"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"value1"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"value"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"value"}
-            )"});
+            )"));
             s.on_completed();
         });
     ConnectableT conn = assetBuilderOutput(doc);

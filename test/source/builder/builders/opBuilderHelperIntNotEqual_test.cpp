@@ -55,18 +55,18 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":9}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":11}
-            )"});
+            )"));
             s.on_completed();
         });
     Lifter lift = opBuilderHelperIntNotEqual(*doc.get("/check"));
@@ -90,18 +90,18 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_true)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":9}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":11}
-            )"});
+            )"));
             s.on_completed();
         });
     Lifter lift = opBuilderHelperIntNotEqual(*doc.get("/check"));
@@ -125,18 +125,18 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_false)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test2":9}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test3":11}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":10}
-            )"});
+            )"));
             s.on_completed();
         });
     Lifter lift = opBuilderHelperIntNotEqual(*doc.get("/check"));
@@ -158,30 +158,30 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_ref_true)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test": 9,"field_src": 10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":10,"field_src":11}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":10,"field_src":10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":10,"field_src":"10"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":"10","field_src":10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":"10","field_src":"10"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":11,"field_src":"10"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":10,"field_src":"test"}
-            )"});
+            )"));
             s.on_completed();
         });
     Lifter lift = opBuilderHelperIntNotEqual(*doc.get("/check"));
@@ -207,30 +207,30 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_ref_false)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test2":9,"field_src":10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":10,"field_src3":10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":10,"field_src4":10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test5":10,"field_src":"10"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test6":"10","field_src2":10}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_":"10","field_src":"10"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test":11,"field_src2":"10"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field_test2":10,"field_src2":"test"}
-            )"});
+            )"));
             s.on_completed();
         });
     Lifter lift = opBuilderHelperIntNotEqual(*doc.get("/check"));
@@ -253,26 +253,26 @@ TEST(opBuilderHelperIntNotEqual, Exec_dynamics_int_ok)
         [=](auto s)
         {
             // Greater
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "field2check":11,
                     "ref_key":10
                 }
-            )"});
+            )"));
             // Equal
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "field2check":10,
                     "ref_key":10
                 }
-            )"});
+            )"));
             // Less
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "field2check":10,
                     "ref_key":11
                 }
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -299,7 +299,7 @@ TEST(opBuilderHelperIntNotEqual, Exec_multilevel_dynamics_int_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "parentObjt_2": {
                         "field2check": 10,
@@ -310,9 +310,9 @@ TEST(opBuilderHelperIntNotEqual, Exec_multilevel_dynamics_int_ok)
                         "ref_key": 11
                     }
                 }
-            )"});
+            )"));
 
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "parentObjt_2": {
                         "field2check": 11,
@@ -323,9 +323,9 @@ TEST(opBuilderHelperIntNotEqual, Exec_multilevel_dynamics_int_ok)
                         "ref_key": 11
                     }
                 }
-            )"});
+            )"));
 
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "parentObjt_2": {
                         "field2check":10,
@@ -336,9 +336,9 @@ TEST(opBuilderHelperIntNotEqual, Exec_multilevel_dynamics_int_ok)
                         "ref_key":11
                     }
                 }
-            )"});
+            )"));
 
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {
                     "parentObjt_2": {
                         "field2check":10,
@@ -349,7 +349,7 @@ TEST(opBuilderHelperIntNotEqual, Exec_multilevel_dynamics_int_ok)
                         "ref_key":11
                     }
                 }
-            )"});
+            )"));
             s.on_completed();
         });
 

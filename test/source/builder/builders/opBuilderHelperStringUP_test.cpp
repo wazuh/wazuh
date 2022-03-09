@@ -46,15 +46,15 @@ TEST(opBuilderHelperStringUP, Static_string_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"not_fieltToCreate": "qwe"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"not_fieltToCreate": "ASD123asd"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"not_fieltToCreate": "ASD"}
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -80,15 +80,15 @@ TEST(opBuilderHelperStringUP, Dynamics_string_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"srcField": "qwe"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"srcField": "ASD123asd"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"srcField": "ASD"}
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -112,15 +112,15 @@ TEST(opBuilderHelperStringUP, Multilevel_src)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"a": {"b": {"c": {"srcField": "qwe"}}}}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"a": {"b": {"c": {"srcField": "ASD123asd"}}}}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"a": {"b": {"c": {"srcField": "ASD"}}}}
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -144,15 +144,15 @@ TEST(opBuilderHelperStringUP, Multilevel_dst)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"a": {"b": {"c": {"srcField": "qwe"}}}}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"a": {"b": {"c": {"srcField": "ASD123asd"}}}}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"a": {"b": {"c": {"srcField": "ASD"}}}}
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -176,15 +176,15 @@ TEST(opBuilderHelperStringUP, Exist_dst)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"a": {"b": {"c": {"srcField": "qwe"}}}}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"a": {"b": {"c": {"srcField": "ASD123asd"}}}}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"a": {"b": {"c": {"srcField": "ASD"}}}}
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -208,12 +208,12 @@ TEST(opBuilderHelperStringUP, Not_exist_src)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"a": {"b": "QWE"}}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"c": {"d": "QWE123"}}
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -223,7 +223,7 @@ TEST(opBuilderHelperStringUP, Not_exist_src)
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 2);
     ASSERT_STREQ(expected[0]->get("/a/b")->GetString(), "QWE");
-    ASSERT_FALSE(expected[1].exists("/a/b"));
+    ASSERT_FALSE(expected[1]->exists("/a/b"));
 }
 
 TEST(opBuilderHelperStringUP, Src_not_string)
@@ -236,15 +236,15 @@ TEST(opBuilderHelperStringUP, Src_not_string)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"srcField": "qwe"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"srcField": "ASD123asd"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"srcField": "ASD"}
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -253,7 +253,7 @@ TEST(opBuilderHelperStringUP, Src_not_string)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_FALSE(expected[0].exists("/fieltToCreate"));
-    ASSERT_FALSE(expected[1].exists("/fieltToCreate"));
-    ASSERT_FALSE(expected[2].exists("/fieltToCreate"));
+    ASSERT_FALSE(expected[0]->exists("/fieltToCreate"));
+    ASSERT_FALSE(expected[1]->exists("/fieltToCreate"));
+    ASSERT_FALSE(expected[2]->exists("/fieltToCreate"));
 }
