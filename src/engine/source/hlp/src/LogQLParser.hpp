@@ -4,9 +4,22 @@
 #include <string>
 #include <vector>
 
-struct Parser;
-using ParserList = std::vector<Parser>;
+enum class ExpresionType
+{
+    Capture,
+    OptionalCapture,
+    OrCapture,
+    Literal,
+};
 
-ParserList parseLogQlExpr(std::string const &expr);
+struct Expresion
+{
+    std::string_view text;
+    ExpresionType type;
+    char endToken;
+};
+
+using ExpresionList = std::vector<Expresion>;
+ExpresionList parseLogQlExpr(std::string const &expr);
 
 #endif //_LOGQL_PARSER_H

@@ -5,7 +5,7 @@
 #include <unordered_map>
 
 using ParseResult = std::unordered_map<std::string, std::string>;
-using ParserFn = std::function<ParseResult(std::string)>;
+using ParserFn = std::function<bool(std::string, ParseResult& result)>;
 
 ParserFn getParserOp(std::string const &logQl);
 
