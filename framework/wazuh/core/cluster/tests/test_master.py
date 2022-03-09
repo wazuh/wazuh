@@ -1864,7 +1864,7 @@ async def test_agent_groups_update(sleep_mock):
                 assert "Finished in 0.000s." in logger_mock._info
                 assert "Error getting agent-groups from WDB: Stop while true" in logger_mock._error
                 assert master_class.agent_groups_control_workers == set()
-                setup_task_logger_mock.assert_called_once_with('Agent-groups get')
+                setup_task_logger_mock.assert_called_once_with('Local agent-groups')
 
                 with pytest.raises(Exception, match='Stop while true'):
                     logger_mock.counter = 0
