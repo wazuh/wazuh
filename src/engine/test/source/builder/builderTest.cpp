@@ -84,9 +84,9 @@ void visit(Obs_t<Value> source, Con_t<Value> root, std::map<Con_t<Value>, std::s
 
 TEST(RXCPP, DecoderManualConnectExample)
 {
-    using Event_t = json::Document;
-    using Obs_t = rxcpp::observable<json::Document>;
-    using Sub_t = rxcpp::subscriber<json::Document>;
+    using Event_t = std::shared_ptr<json::Document>;
+    using Obs_t = rxcpp::observable<std::shared_ptr<json::Document>>;
+    using Sub_t = rxcpp::subscriber<std::shared_ptr<json::Document>>;
     using Con_t = builder::internals::Connectable<Obs_t>;
 
     int expected = 2;
@@ -96,9 +96,9 @@ TEST(RXCPP, DecoderManualConnectExample)
                           for (int i = 0; i < expected; i++)
                           {
                               if (i % 2 == 0)
-                                  s.on_next(Event_t(R"({"type": "int", "field": "odd", "value": 0})"));
+                                  s.on_next(std::make_shared<json::Document>(R"({"type": "int", "field": "odd", "value": 0})"));
                               else
-                                  s.on_next(Event_t(R"({"type": "int", "field": "even", "value": 1})"));
+                                  s.on_next(std::make_shared<json::Document>(R"({"type": "int", "field": "even", "value": 1})"));
                           }
                           s.on_completed();
                       })
@@ -106,7 +106,7 @@ TEST(RXCPP, DecoderManualConnectExample)
 
     auto sub = rxcpp::subjects::subject<Event_t>();
 
-    auto subscriber = rxcpp::make_subscriber<Event_t>([](Event_t v) { GTEST_COUT << "Got " << v.str() << std::endl; },
+    auto subscriber = rxcpp::make_subscriber<Event_t>([](Event_t v) { GTEST_COUT << "Got " << v->str() << std::endl; },
                                                       []() { GTEST_COUT << "OnCompleted" << std::endl; });
 
     builder::Builder<FakeCatalog> b{FakeCatalog()};
@@ -136,5 +136,5 @@ TEST(RXCPP, DecoderManualConnectExample)
     std::string gotContent((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
 
     std::filesystem::remove(file);
-    ASSERT_TRUE(expectedContents == gotContent);
+    ASSERT_EQ(expectedContents, gotContent);
 }

@@ -73,10 +73,10 @@ TEST(JsonTest, Operates)
     json::Document e(message);
 
     // Testing set and get
-    e.set(".module.name", Value("changed"));
+    e.set("/module/name", Value("changed"));
 
-    ASSERT_EQ(*(e.get(".module.name")), Value("changed"));
+    ASSERT_EQ(*(e.get("/module/name")), Value("changed"));
 
     auto expected = Value("changed");
-    ASSERT_TRUE(e.check(".module.name", &expected));
+    ASSERT_TRUE(e.check("/module/name", &expected));
 }

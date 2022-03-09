@@ -36,15 +36,15 @@ TEST(opBuilderMapReference, BuildsOperates)
         [=](auto s)
         {
             // TODO: Fix json to return false instead of throw
-            // s.on_next(Event{R"(
+            // s.on_next(std::make_shared<json::Document>(R"(
             //     {"field":"value"}
-            // )"});
-            // s.on_next(Event{R"(
+            // )"));
+            // s.on_next(std::make_shared<json::Document>(R"(
             //     {"field":"values"}
-            // )"});
-            s.on_next(Event{R"(
+            // )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"other_field":"referenced"}
-            )"});
+            )"));
             s.on_completed();
         });
     Lifter lift1 = opBuilderMapReference(*doc.get("/normalize"));
