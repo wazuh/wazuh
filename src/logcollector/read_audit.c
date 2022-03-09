@@ -28,7 +28,7 @@ static void audit_send_msg(char **cache, int top, const char *file, int drop_it,
             if (n > 0)
                 message[n++] = ' ';
 
-            strncat(message, cache[i], OS_MAX_LOG_SIZE - 1 - n);
+            strncat(message + n, cache[i], OS_MAX_LOG_SIZE - 1 - n);
             n += z;
         }
 
