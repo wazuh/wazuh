@@ -847,6 +847,7 @@ get_rbac_actions:
         related_endpoints:
           - GET /vulnerability/{agent_id}
           - GET /vulnerability/{agent_id}/last_scan
+          - GET /vulnerability/{agent_id}/severity/summary
 
 
 get_rbac_resources:
