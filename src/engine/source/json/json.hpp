@@ -222,7 +222,7 @@ public:
     bool exists(const std::string& path) const
     {
 
-        auto ptr = rapidjson::Pointer(preparePath(path).c_str());
+        auto ptr = rapidjson::Pointer(path.c_str());
         if (ptr.IsValid() && ptr.Get(this->m_doc))
         {
             return true;
