@@ -44,8 +44,7 @@ static int read_dev_file(const char *file_name)
         if (size >= 0) {
             if ((size_t)size < sizeof(op_msg)) {
                 snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)strlen(file_name), file_name);
-            }
-            else {
+            } else {
                 const unsigned int surplus = size - sizeof(op_msg) + 1;
                 snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)(strlen(file_name) - surplus), file_name);
             }
