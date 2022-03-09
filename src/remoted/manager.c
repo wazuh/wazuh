@@ -1013,7 +1013,11 @@ STATIC void validate_shared_files(const char *src_path, const char *group, const
 
         struct stat attrib;
 
-        stat(file, &attrib);
+        if (stat(file, &attrib) != 0 ) {
+            merror("At validate_shared_files(): Unable to get entry attributes '%s'", file);
+            continue;
+        }
+
         if (S_ISDIR(attrib.st_mode)) {
             validate_shared_files(file, group, merged_tmp, f_sum, f_size, create_merged, path_offset);
         } else {
