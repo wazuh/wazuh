@@ -73,8 +73,7 @@ int ReadExecConfig()
 
         if (bytes_written < 0) {
             merror(EXEC_BAD_NAME " Error %d (%s).", exec_names[exec_size], errno, strerror(errno));
-        }
-        else if ((size_t)bytes_written >= sizeof(exec_names[exec_size])) {
+        } else if ((size_t)bytes_written >= sizeof(exec_names[exec_size])) {
             merror(EXEC_BAD_NAME, exec_names[exec_size]);
         }
 
