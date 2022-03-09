@@ -16857,6 +16857,45 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
+  /vulnerability/{agent_id}/severity/summary:
+    get:
+      tags:
+        - Vulnerability
+      summary: "Get agent vulnerabilities' severity summary"
+      description: "Return a summary of the vulnerabilities' severity of an agent"
+      operationId: api.controllers.vulnerability_controller.get_vulnerabilities_severity_summary
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/vulnerability:read'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+      responses:
+        '200':
+          description: "Get agent vulnerabilities"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  critical: 8
+                  high: 0
+                  medium: 3
+                  low: 0
+                  total: 11
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
 externalDocs:
   description: "Find more about Wazuh API usage"
   url: 'https://documentation.wazuh.com/4.3/user-manual/api/index.html'
