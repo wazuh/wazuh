@@ -278,7 +278,7 @@ typedef struct fim_file_data {
     char * user_name;
     char * group_name;
     unsigned int mtime;
-    unsigned long int inode;
+    unsigned long long int inode;
     os_md5 hash_md5;
     os_sha1 hash_sha1;
     os_sha256 hash_sha256;
