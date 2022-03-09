@@ -90,9 +90,7 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
             buffer_size++;
         }
 
-        strncat(buffer, str, sizeof(buffer) - 1 - buffer_size);
-        buffer[sizeof(buffer) - 1] = '\0';
-
+        snprintf(buffer + buffer_size, sizeof(buffer) - buffer_size, "%s", str);
 
         if (OS_MAX_LOG_SIZE - 1 - buffer_size < strlen(str)) {
             merror("Large message size from file '%s' (length = " FTELL_TT "): '%s'...", lf->file, FTELL_INT64 buffer_size + strlen(str), buffer);
