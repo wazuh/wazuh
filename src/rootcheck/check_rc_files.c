@@ -172,7 +172,8 @@ void check_rc_files(const char *basedir, FILE *fp)
         }
 
        if (bytes_written < 0 || (size_t)bytes_written > (sizeof(file_path) - 1)) {
-           continue;
+            mtdebug2(ARGV0, "Path file was truncated (%s)\n", file_path);
+            continue;
        }
 
 
@@ -190,16 +191,27 @@ void check_rc_files(const char *basedir, FILE *fp)
         }
 
         if (is_file(file_path)) {
-            const int size_msg = strlen(file_path) + strlen(name) + sizeof("Rootkit '' detected by the presence of file ''.");
-            char op_msg[size_msg];
+            const char op_msg_fmt[] = "Rootkit '%s' detected by the presence of file '%*s'.";
+            char op_msg[OS_SIZE_2048];
+
+            const int size = snprintf(NULL, 0, op_msg_fmt, name, (int)strlen(file_path), file_path);
+
+            if (size >= 0) {
+                if ((size_t)size < sizeof(op_msg)) {
+                    snprintf(op_msg, sizeof(op_msg), op_msg_fmt, name, (int)strlen(file_path), file_path);
+                }
+                else {
+                    const unsigned int surplus = size - sizeof(op_msg) + 1;
+                    snprintf(op_msg, sizeof(op_msg), op_msg_fmt, name, (int)(strlen(file_path) - surplus), file_path);
+                }
+
+                notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
+            } else {
+                mtdebug2(ARGV0, "Error %d (%s) with snprintf with file %s", errno, strerror(errno), file_path);
+            }
 
             _errors = 1;
-            snprintf(op_msg, sizeof(op_msg), "Rootkit '%s' detected "
-                     "by the presence of file '%s'.", name, file_path);
-
-            notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
         }
-
 newline:
         continue;
     }
