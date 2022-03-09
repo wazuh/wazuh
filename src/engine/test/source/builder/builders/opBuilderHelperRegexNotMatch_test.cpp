@@ -68,21 +68,21 @@ TEST(opBuilderHelperRegexNotMatch, InvalidSrcType)
         [=](auto s)
         {
             // Object
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"fieldSrc": { "fieldSrc" : "child value"} }
-            )"});
+            )"));
             // Number
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"fieldSrc":55}
-            )"});
+            )"));
             // Array
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"fieldSrc":[123]}
-            )"});
+            )"));
             // Not existing field
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"fieldSrc not exist"}
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -104,18 +104,18 @@ TEST(opBuilderHelperRegexNotMatch, StringRegexMatch)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"value"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"ex-president"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"this is a test exp"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"exp"}
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -139,15 +139,15 @@ TEST(opBuilderHelperRegexNotMatch, NumericRegexMatch)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"1023"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"19"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"0.123"}
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -171,12 +171,12 @@ TEST(opBuilderHelperRegexNotMatch, AdvancedRegexMatch)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"wazuh.com"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"client@wazuh.com"}
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -201,14 +201,14 @@ TEST(opBuilderHelperRegexNotMatch, NestedFieldRegexMatch)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"~~({
+            s.on_next(std::make_shared<json::Document>(R"~~({
             "test":
                 {"field": "value"}
-            })~~"});
-            s.on_next(Event{R"~~({
+            })~~"));
+            s.on_next(std::make_shared<json::Document>(R"~~({
             "test":
                 {"field": "ex-president"}
-            })~~"});
+            })~~"));
             s.on_completed();
         });
 
@@ -232,12 +232,12 @@ TEST(opBuilderHelperRegexNotMatch, FieldNotExistsRegexNotMatch)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field2":"value"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"value"}
-            )"});
+            )"));
             s.on_completed();
         });
 
@@ -247,5 +247,5 @@ TEST(opBuilderHelperRegexNotMatch, FieldNotExistsRegexNotMatch)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_TRUE(expected[0].exists("/field2"));
+    ASSERT_TRUE(expected[0]->exists("/field2"));
 }

@@ -42,18 +42,18 @@ TEST(opBuilderConditionValue, BuildsOperatesString)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(Event{R"(
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"value"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"values"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"otherfield":"value"}
-            )"});
-            s.on_next(Event{R"(
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
                 {"otherfield":1}
-            )"});
+            )"));
             s.on_completed();
         });
     Lifter lift = opBuilderConditionValue(*doc.get("/check"));

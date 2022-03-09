@@ -17,7 +17,7 @@
 
 using namespace builder::internals;
 
-auto message = R"({
+auto messageStr = R"({
     "event": {
         "original": "::1 - - [26/Dec/2016:16:16:29 +0200] \"GET /favicon.ico HTTP/1.1\" 404 209\n"
     },
@@ -69,11 +69,10 @@ TEST(FileOutput, Unknown_path)
 
 TEST(FileOutput, Write)
 {
-    using event_t = json::Document;
     auto filepath = "/tmp/file";
-
+    auto msg = std::make_shared<json::Document>(messageStr);
     auto output = outputs::FileOutput(filepath);
-    output.write(event_t(message));
+    output.write(msg);
 
     std::ifstream ifs(filepath);
     std::stringstream buffer;
