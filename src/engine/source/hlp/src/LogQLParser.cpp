@@ -1,5 +1,4 @@
 #include "LogQLParser.hpp"
-#include "hlpDetails.hpp"
 
 #include <stdio.h>
 #include <string>
@@ -7,34 +6,15 @@
 #include <unordered_map>
 #include <vector>
 
-static const std::unordered_map<std::string_view, ParserType> kECSParserMapper {
-    { "source.ip", ParserType::IP },
-    { "server.ip", ParserType::IP },
-    { "source.nat.ip", ParserType::IP },
-    { "timestamp", ParserType::Ts },
-    { "threat.indicator.first_seen", ParserType::Ts},
-    { "file.accessed", ParserType::Ts},
-    { "file.created", ParserType::Ts},
-    { "url", ParserType::URL},
-    { "http.request.method", ParserType::Any },
-    { "client", ParserType::Domain},
-    { "userAgent", ParserType::UserAgent },
-};
-
-static const std::unordered_map<std::string_view, ParserType> kTempTypeMapper {
-    { "JSON", ParserType::JSON },
-    { "MAP", ParserType::Map},
-    { "timestamp", ParserType::Ts},
-    { "domain", ParserType::Domain},
-    { "FilePath", ParserType::FilePath},
-    { "userAgent", ParserType::UserAgent},
-};
-
-struct Tokenizer {
+namespace
+{
+struct Tokenizer
+{
     const char *stream;
 };
 
-enum class TokenType {
+enum class TokenType
+{
     _EndOfAscii = 256,
     OpenAngle,
     CloseAngle,
@@ -45,44 +25,53 @@ enum class TokenType {
     Error,
 };
 
-struct Token {
+struct Token
+{
     const char *text;
     size_t len;
     TokenType type;
 };
+} // namespace
 
-static Token getToken(Tokenizer &tk) {
+static Token getToken(Tokenizer &tk)
+{
     const char *c = tk.stream++;
 
-    switch (c[0]) {
-        case '<': return { "<", 1, TokenType::OpenAngle };
-        case '>': return { ">", 1, TokenType::CloseAngle };
-        case '?': return { "?", 1, TokenType::QuestionMark };
-        case '\0': return { 0, 0, TokenType::EndOfExpr };
-        default: {
+    switch(c[0])
+    {
+        case '<': return {"<", 1, TokenType::OpenAngle};
+        case '>': return {">", 1, TokenType::CloseAngle};
+        case '?': return {"?", 1, TokenType::QuestionMark};
+        case '\0': return {0, 0, TokenType::EndOfExpr};
+        default:
+        {
             bool escaped = false;
-            while (tk.stream[0] && (escaped || (tk.stream[0] != '<' && tk.stream[0] != '>'))) {
+            while(tk.stream[0] &&
+                  (escaped || (tk.stream[0] != '<' && tk.stream[0] != '>')))
+            {
                 tk.stream++;
                 escaped = tk.stream[0] == '\\';
             }
-            return { c, static_cast<size_t>(tk.stream - c), TokenType::Literal };
+            return {c, static_cast<size_t>(tk.stream - c), TokenType::Literal};
         }
     }
 
     // TODO unreachable
-    return { 0, 0, TokenType::Unknown };
+    return {0, 0, TokenType::Unknown};
 }
 
 static bool requireToken(Tokenizer &tk, TokenType req) {
     return getToken(tk).type == req;
 }
 
-static Token peekToken(Tokenizer const &tk) {
-    Tokenizer tmp { tk.stream };
+static Token peekToken(Tokenizer const &tk)
+{
+    Tokenizer tmp {tk.stream};
     return getToken(tmp);
 }
 
-static char peekChar(Tokenizer const &tk) {
+static char peekChar(Tokenizer const &tk)
+{
     return tk.stream[0];
 }
 
@@ -104,104 +93,71 @@ static std::vector<std::string> splitSlashSeparatedField(std::string_view str){
     return ret;
 }
 
-static Parser parseCaptureString(Token token) {
-    // TODO assert token type
-    // TODO report errors
-    std::vector<std::string> captureParams;
-
-    // We could be parsing:
-    //      '<_>'
-    //      '<_name>'
-    //      '<_name/type>'
-    //      '<_name/type/type2>'
-    captureParams = splitSlashSeparatedField({ token.text, token.len });
-    Parser parser;
-    parser.combType = CombType::Null;
-    parser.endToken = 0;
-    parser.name = captureParams[0];
-    captureParams.erase(captureParams.begin());
-
-    parser.parserType = ParserType::Any;
-    if (token.text[0] == '_') {
-        if (token.len != 1) {
-            // We have a temp capture with the format <_temp/type/typeN>
-            // we need to take the first parameter after the name and set the type from it
-            if(!captureParams.empty()){
-                auto it = kTempTypeMapper.find(captureParams[0]);
-                if(it != kTempTypeMapper.end()){
-                    parser.parserType = it->second;
-                }
-                // erase the type from the list so we are
-                // consistent with the non temp case
-                captureParams.erase(captureParams.begin());
-            }
-        }
-    }
-    else{
-        auto it = kECSParserMapper.find(parser.name);
-        if (it != kECSParserMapper.end()) {
-            parser.parserType = it->second;
-        }
-    }
-    parser.captureOpts = std::move(captureParams);
-
-    return parser;
-}
-
-static bool parseCapture(Tokenizer &tk, ParserList &parsers) {
+static bool parseCapture(Tokenizer &tk, ExpresionList &expresions)
+{
     //<name> || <?name> || <name1>?<name2>
     Token token = getToken(tk);
     bool optional = false;
-    if (token.type == TokenType::QuestionMark) {
+    if(token.type == TokenType::QuestionMark)
+    {
         optional = true;
         token = getToken(tk);
     }
 
-    if (token.type == TokenType::Literal) {
-        parsers.emplace_back(parseCaptureString(token));
+    if(token.type == TokenType::Literal)
+    {
+        expresions.push_back({{token.text, token.len}, ExpresionType::Capture});
 
-        if (!requireToken(tk, TokenType::CloseAngle)) {
+        if(!requireToken(tk, TokenType::CloseAngle))
+        {
             // TODO report parsing error
             return false;
         }
 
         // TODO check if there's a better way to do this
-        if (optional) {
-            parsers.back().combType = CombType::Optional;
+        if(optional)
+        {
+            expresions.back().type = ExpresionType::OptionalCapture;
         }
 
-        if (peekToken(tk).type == TokenType::QuestionMark) {
+        if(peekToken(tk).type == TokenType::QuestionMark)
+        {
             // We are parsing <name1>?<name2>
             // Discard the peeked '?'
             getToken(tk);
 
-            if (!requireToken(tk, TokenType::OpenAngle)) {
+            if(!requireToken(tk, TokenType::OpenAngle))
+            {
                 // TODO report error
                 return false;
             }
             // Fix up the combType of the previous capture as this is now an OR
-            auto &prevCapture = parsers.back();
-            prevCapture.combType = CombType::Or;
+            auto &prevCapture = expresions.back();
+            prevCapture.type = ExpresionType::OrCapture;
 
-            parsers.emplace_back(parseCaptureString(getToken(tk)));
-            auto &currentCapture = parsers.back();
-            currentCapture.combType = CombType::OrEnd;
+            Token orEnd = getToken(tk);
+            expresions.push_back(
+                {{orEnd.text, orEnd.len}, ExpresionType::Capture});
 
-            if (!requireToken(tk, TokenType::CloseAngle)) {
+            if(!requireToken(tk, TokenType::CloseAngle))
+            {
                 // TODO report error
                 return false;
             }
 
             char endToken = peekChar(tk);
+            auto &currentCapture = expresions.back();
             currentCapture.endToken = endToken;
             prevCapture.endToken = endToken;
         }
-        else {
+        else
+        {
             // TODO Check if there's a better way to do this
-            parsers.back().endToken = peekChar(tk);
+            expresions.back().endToken = peekChar(tk);
         }
     }
-    else {
+    else
+    {
         // TODO error
         return false;
     }
@@ -209,57 +165,66 @@ static bool parseCapture(Tokenizer &tk, ParserList &parsers) {
     return true;
 }
 
-ParserList parseLogQlExpr(std::string const &expr) {
-    std::vector<Parser> parsers;
-    Tokenizer tokenizer { expr.c_str() };
+ExpresionList parseLogQlExpr(std::string const &expr)
+{
+    ExpresionList expresions;
+    Tokenizer tokenizer {expr.c_str()};
 
     bool done = false;
-    while (!done) {
+    while(!done)
+    {
         Token token = getToken(tokenizer);
-        switch (token.type) {
-            case TokenType::OpenAngle: {
+        switch(token.type)
+        {
+            case TokenType::OpenAngle:
+            {
                 const char *prev = tokenizer.stream - 1;
 
-                if (!parseCapture(tokenizer, parsers)) {
+                if(!parseCapture(tokenizer, expresions))
+                {
                     // TODO report error
                     //  Reset the parser list to signify an error occurred
-                    parsers.clear();
+                    expresions.clear();
                     done = true;
                 }
 
-                if (peekToken(tokenizer).type == TokenType::OpenAngle) {
+                if(peekToken(tokenizer).type == TokenType::OpenAngle)
+                {
                     // TODO report error. Can't have two captures back to back
                     const char *end = tokenizer.stream;
-                    while (*end++ != '>') {};
+                    while(*end++ != '>')
+                    {
+                    };
                     fprintf(stderr,
-                            "Invalid capture expression detected [%.*s]. Can't have back to back "
+                            "Invalid capture expression detected [%.*s]. Can't "
+                            "have back to back "
                             "captures.\n",
                             (int)(end - prev),
                             prev);
                     // Reset the parser list to signify an error occurred
-                    parsers.clear();
+                    expresions.clear();
                     done = true;
                 }
                 break;
             }
-            case TokenType::Literal: {
-                parsers.push_back({ {},
-                                    { token.text, token.text + token.len },
-                                    ParserType::Literal,
-                                    CombType::Null,
-                                    0 });
+            case TokenType::Literal:
+            {
+                expresions.push_back(
+                    {{token.text, token.len}, ExpresionType::Literal});
                 break;
             }
-            case TokenType::EndOfExpr: {
+            case TokenType::EndOfExpr:
+            {
                 done = true;
                 break;
             }
-            default: {
+            default:
+            {
                 // TODO
                 break;
             }
         }
     }
 
-    return parsers;
+    return expresions;
 }
