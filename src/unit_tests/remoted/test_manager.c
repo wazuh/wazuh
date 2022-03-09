@@ -2371,6 +2371,64 @@ void test_validate_shared_files_valid_file(void **state)
     assert_int_equal(f_size, 1);
 }
 
+void test_validate_shared_files_stat_error(void **state)
+{
+    file_sum **f_sum = NULL;
+    unsigned int f_size = 0;
+    os_calloc(2, sizeof(file_sum *), f_sum);
+
+    // Initialize files structure
+    char ** files = NULL;
+    os_malloc((3) * sizeof(char *), files);
+    files[0] = strdup("stat-error-file");
+    files[1] = strdup("test-file");
+    files[2] = NULL;
+
+    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
+    will_return(__wrap_wreaddir, files);
+
+    struct stat stat_buf_err = { .st_mode = S_IFREG };
+    expect_string(__wrap_stat, __file, "etc/shared/test_default/stat-error-file");
+    will_return(__wrap_stat, &stat_buf_err);
+    will_return(__wrap_stat, -1);
+
+    expect_string(__wrap__merror, formatted_msg, "At validate_shared_files(): Unable to get entry attributes 'etc/shared/test_default/stat-error-file'");
+
+    struct stat stat_buf = { .st_mode = S_IFREG };
+    expect_string(__wrap_stat, __file, "etc/shared/test_default/test-file");
+    will_return(__wrap_stat, &stat_buf);
+    will_return(__wrap_stat, 0);
+
+    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/test-file");
+    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
+    will_return(__wrap_OS_MD5_File, "md5_test");
+    will_return(__wrap_OS_MD5_File, 0);
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, 10);
+    invalid_files = OSHash_Create();
+
+    expect_any(__wrap_OSHash_Get, self);
+    expect_string(__wrap_OSHash_Get, key, "etc/shared/test_default/test-file");
+    will_return(__wrap_OSHash_Get, NULL);
+
+    expect_string(__wrap_checkBinaryFile, f_name, "etc/shared/test_default/test-file");
+    will_return(__wrap_checkBinaryFile, 0);
+
+    validate_shared_files("etc/shared/test_default", "test_default", "merged_tmp", &f_sum, &f_size, false, -1);
+    groups[0]->f_sum = f_sum;
+
+    assert_non_null(groups[0]);
+    assert_string_equal(groups[0]->name, "test_default");
+    assert_non_null(groups[0]->f_sum);
+    assert_non_null(groups[0]->f_sum[0]);
+    assert_string_equal(groups[0]->f_sum[0]->name, "etc/shared/test_default/test-file");
+    assert_string_equal((char *)groups[0]->f_sum[0]->sum, "md5_test");
+    assert_null(groups[0]->f_sum[1]);
+    assert_null(groups[1]);
+    assert_int_equal(f_size, 1);
+}
+
 void test_validate_shared_files_merge_file(void **state)
 {
     file_sum **f_sum = NULL;
@@ -3218,6 +3276,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_validate_shared_files_valid_now, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_validate_shared_files_valid_file, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_validate_shared_files_fail_add, test_c_group_setup, test_c_group_teardown),
+        cmocka_unit_test_setup_teardown(test_validate_shared_files_stat_error, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_validate_shared_files_merge_file, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_validate_shared_files_subfolder_empty, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_validate_shared_files_valid_file_subfolder_empty, test_c_group_setup, test_c_group_teardown),
