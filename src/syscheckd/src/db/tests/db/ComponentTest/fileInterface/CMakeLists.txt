@@ -31,13 +31,18 @@ file(GLOB DBSYNC_IMP_SRC
 file(GLOB REGISTRY_SRC
     "${SRC_FOLDER}/syscheckd/src/db/src/dbRegistry*.cpp")
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    file(GLOB WINDOWS_FILE_SRC "${SRC_FOLDER}/syscheckd/src/db/src/fimDBSpecializationWindows.cpp")
+endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+
 add_executable(fim_file_interface_test
     ${FILE_UNIT_TEST_SRC}
     ${FILE_SRC}
     ${REGISTRY_SRC}
     ${FIMDB_SRC}
     ${RSYNC_IMP_SRC}
-    ${DBSYNC_IMP_SRC})
+    ${DBSYNC_IMP_SRC}
+    ${WINDOWS_FILE_SRC})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_link_libraries(fim_file_interface_test

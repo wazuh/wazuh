@@ -502,6 +502,11 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
 
     json_path = cJSON_GetObjectItem(data, "path");
 
+    // Fallback for RSync format.
+    if (!json_path) {
+        json_path = cJSON_GetObjectItem(data, "index");
+    }
+
     if (!json_path) {
         merror("DB(%s) fim/save request with no file path argument.", wdb->id);
         return -1;

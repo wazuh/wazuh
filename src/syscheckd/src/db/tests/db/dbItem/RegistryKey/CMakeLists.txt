@@ -9,9 +9,14 @@ file(GLOB registrykey_UNIT_TEST_SRC
 
 file(GLOB REGISTRYKEY_SRC "${SRC_FOLDER}/syscheckd/src/db/src/dbRegistryKey.cpp")
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    file(GLOB WINDOWS_REGISTRYKEY_SRC "${SRC_FOLDER}/syscheckd/src/db/src/fimDBSpecializationWindows.cpp")
+endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+
 add_executable(registrykey_unit_test
     ${registrykey_UNIT_TEST_SRC}
-    ${REGISTRYKEY_SRC})
+    ${REGISTRYKEY_SRC}
+    ${WINDOWS_REGISTRYKEY_SRC})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_link_libraries(registrykey_unit_test

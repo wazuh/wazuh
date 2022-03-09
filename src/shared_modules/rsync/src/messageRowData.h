@@ -43,7 +43,7 @@ namespace RSync
 
                 nlohmann::json outputData;
                 outputData["index"] = data.at(config.at("index").get_ref<const std::string&>());
-                const auto lastEvent{config.find("last_event")};
+                const auto lastEvent = config.find("last_event");
                 outputData["timestamp"] = (lastEvent != config.end()) ? data.at(lastEvent->get_ref<const std::string&>()) : "";
                 outputData["attributes"] = data;
 

@@ -9,9 +9,14 @@ file(GLOB fileitem_UNIT_TEST_SRC
 
 file(GLOB FILEITEM_SRC "${SRC_FOLDER}/syscheckd/src/db/src/dbFileItem.cpp")
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    file(GLOB WINDOWS_FILEITEM_SRC "${SRC_FOLDER}/syscheckd/src/db/src/fimDBSpecializationWindows.cpp")
+endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+
 add_executable(fileitem_unit_test
     ${fileitem_UNIT_TEST_SRC}
-    ${FILEITEM_SRC})
+    ${FILEITEM_SRC}
+    ${WINDOWS_FILEITEM_SRC})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_link_libraries(fileitem_unit_test

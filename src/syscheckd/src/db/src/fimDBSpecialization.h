@@ -1,11 +1,12 @@
-/* Copyright (C) 2015, Wazuh Inc.
- * Copyright (C) 2009 Trend Micro Inc.
- * All right reserved.
+/*
+ * Wazuh Syscheck
+ * Copyright (C) 2021, Wazuh Inc.
+ * September 23, 2021.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
- * Foundation
+ * Foundation.
  */
 
 #ifndef _FIMDB_OS_SPECIALIZATION_H
@@ -14,6 +15,7 @@
 #include "fimDB.hpp"
 #include "fimCommonDefs.h"
 #include "encodingWindowsHelper.h"
+#include "fimDBSpecializationWindows.hpp"
 
 
 constexpr auto FIM_FILE_SYNC_CONFIG_STATEMENT
@@ -25,6 +27,7 @@ constexpr auto FIM_FILE_SYNC_CONFIG_STATEMENT
         "component":"fim_file",
         "index":"path",
         "checksum_field":"checksum",
+        "last_event":"last_event",
         "no_data_query_json": {
                 "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
                 "column_list":["*"],
@@ -62,6 +65,7 @@ constexpr auto FIM_REGISTRY_SYNC_CONFIG_STATEMENT
         "table":"registry_view",
         "component":"fim_registry",
         "index":"path",
+        "last_event":"last_event",
         "checksum_field":"checksum",
         "no_data_query_json": {
                 "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
@@ -147,7 +151,7 @@ constexpr auto FIM_REGISTRY_START_CONFIG_STATEMENT
                 "order_by_opt":"path ASC",
                 "count_opt":1
             },
-        "component":"syscheck",
+        "component":"fim_registry",
         "index":"path",
         "last_event":"last_event",
         "checksum_field":"checksum",
@@ -289,9 +293,7 @@ class FIMDBCreator<OSType::WINDOWS> final
 
         static void encodeString(__attribute__((unused)) std::string& stringToEncode)
         {
-#ifdef WIN32
-            stringToEncode = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(stringToEncode);
-#endif
+            WindowsSpecialization::encodeString(stringToEncode);
         }
 };
 
@@ -338,6 +340,27 @@ class FIMDBCreator<OSType::OTHERS> final
         }
 
         static void encodeString(__attribute__((unused)) std::string& stringToEncode){}
+};
+
+template <OSType osType>
+class RegistryTypes final
+{
+    public:
+        // LCOV_EXCL_START
+        static const std::string typeText(__attribute__((unused))const int32_t type)
+        {
+            throw std::runtime_error { "Invalid call for this operating system"};
+        };
+        // LCOV_EXCL_STOP
+};
+template <>
+class RegistryTypes<OSType::WINDOWS> final
+{
+    public:
+        static const std::string typeText(const int32_t type)
+        {
+            return WindowsSpecialization::registryTypeToText(type);
+        };
 };
 
 #endif // _FIMDB_OS_SPECIALIZATION_H

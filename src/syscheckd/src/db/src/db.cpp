@@ -20,6 +20,7 @@
 #include "dbRegistryKey.hpp"
 #include "dbRegistryValue.hpp"
 #include "fimDBSpecialization.h"
+#include "stringHelper.h"
 
 
 struct CJsonDeleter
@@ -122,7 +123,6 @@ int DB::countEntries(const std::string& tableName, const COUNT_SELECT_TYPE selec
 #ifdef __cplusplus
 extern "C" {
 #endif
-
 void fim_db_init(int storage,
                  int sync_interval,
                  fim_sync_callback_t sync_callback,
@@ -140,7 +140,25 @@ void fim_db_init(int storage,
             {
                 if (sync_callback)
                 {
-                    sync_callback(FIM_COMPONENT_FILE, msg.c_str());
+                    auto json = nlohmann::json::parse(msg);
+
+                    if (json.at("type") == "state")
+                    {
+                        json["data"]["attributes"]["type"] = "file";
+                        json["data"]["attributes"].erase("dev");
+                        json["data"]["attributes"].erase("last_event");
+                        json["data"]["attributes"].erase("mode");
+                        json["data"]["attributes"].erase("options");
+                        json["data"]["attributes"].erase("path");
+                        json["data"]["attributes"].erase("scanned");
+                        // Type different from server.
+                        json["data"]["attributes"]["gid"] = std::to_string(json.at("data").at("attributes").at("gid")
+                                                                           .get<int>());
+                        json["data"]["attributes"]["uid"] = std::to_string(json.at("data").at("attributes").at("uid")
+                                                                           .get<int>());
+                    }
+
+                    sync_callback(FIM_COMPONENT_FILE, json.dump().c_str());
                 }
             }
         };
@@ -151,7 +169,44 @@ void fim_db_init(int storage,
             {
                 if (sync_callback)
                 {
-                    sync_callback(FIM_COMPONENT_REGISTRY, msg.c_str());
+                    auto json = nlohmann::json::parse(msg);
+
+                    if (json.at("type") == "state")
+                    {
+                        enum REG_TYPE { REG_KEY, REG_VALUE };
+                        const auto fullPath { json.at("data").at("index").get_ref<const std::string&>() };
+                        const std::string arch { Utils::startsWith(fullPath, "[x32]") ? "[x32]" : "[x64]" };
+                        const auto rawKeyValue { fullPath.substr(arch.size() + 1) };
+                        const auto keyValue { Utils::splitKeyValueNonEscapedDelimiter(rawKeyValue, ':', '\\') };
+
+                        const auto type { json.at("data").at("attributes").at("type").get<uint32_t>() };
+
+                        if (type == REG_VALUE)
+                        {
+                            const auto registryType { json.at("data").at("attributes").at("value_type").get<uint32_t>() };
+                            json["data"]["value_name"] = keyValue.second;
+                            json["data"]["attributes"]["value_type"] = RegistryTypes<OS_TYPE>::typeText(registryType);
+                            json["data"]["attributes"]["type"] = "registry_value";
+                        }
+                        else
+                        {
+                            json["data"]["attributes"]["type"] = "registry_key";
+                            json["data"]["attributes"]["gid"] = std::to_string(json.at("data").at("attributes").at("gid")
+                                                                               .get<uint32_t>());
+                            json["data"]["attributes"]["uid"] = std::to_string(json.at("data").at("attributes").at("uid")
+                                                                               .get<uint32_t>());
+                        }
+
+                        json["data"]["attributes"].erase("path");
+                        json["data"]["attributes"].erase("last_event");
+                        json["data"]["arch"] = arch;
+                        json["data"]["version"] = 2;
+                        auto key = keyValue.first;
+                        Utils::replaceAll(key, "\\\\", "\\");
+                        json["data"]["index"] = key;
+                    }
+
+                    sync_callback(FIM_COMPONENT_REGISTRY, json.dump().c_str());
                 }
             }
         };
