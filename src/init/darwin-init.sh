@@ -14,10 +14,10 @@ STARTUP_SCRIPT=/Library/StartupItems/WAZUH/WAZUH
 
 launchctl unload /Library/LaunchDaemons/com.wazuh.agent.plist 2> /dev/null
 mkdir -p /Library/StartupItems/WAZUH
-chown root:wheel /Library/StartupItems/WAZUH
+chown 0:0 /Library/StartupItems/WAZUH
 rm -f $STARTUP $STARTUP_SCRIPT $SERVICE
 echo > $LAUNCHER_SCRIPT
-chown root:wheel $LAUNCHER_SCRIPT
+chown 0:0 $LAUNCHER_SCRIPT
 chmod u=rxw-,g=rx-,o=r-- $LAUNCHER_SCRIPT
 
 echo '<?xml version="1.0" encoding="UTF-8"?>
@@ -35,7 +35,7 @@ echo '<?xml version="1.0" encoding="UTF-8"?>
      </dict>
  </plist>' > $SERVICE
 
-chown root:wheel $SERVICE
+chown 0:0 $SERVICE
 chmod u=rw-,go=r-- $SERVICE
 launchctl load $SERVICE
 
@@ -58,7 +58,7 @@ RestartService ()
 RunService "$1"
 ' > $STARTUP_SCRIPT
 
-chown root:wheel $STARTUP_SCRIPT
+chown 0:0 $STARTUP_SCRIPT
 chmod u=rwx,go=r-x $STARTUP_SCRIPT
 
 echo '
@@ -88,7 +88,7 @@ www.apple.com/DTDs/PropertyList-1.0.dtd">
 </plist>
 ' > $STARTUP
 
-chown root:wheel $STARTUP
+chown 0:0 $STARTUP
 chmod u=rw-,go=r-- $STARTUP
 
 echo '#!/bin/sh

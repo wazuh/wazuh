@@ -49,8 +49,8 @@ static void help_dbd(char *home_path)
     print_out("                to increase the debug level.");
     print_out("    -t          Test configuration");
     print_out("    -f          Run in foreground");
-    print_out("    -u <user>   User to run as (default: %s)", USER);
-    print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
+    print_out("    -u <user>   User to run as (default: root)");
+    print_out("    -g <group>  Group to run as (default: root group)");
     print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
     print_out("    -D <dir>    Directory to chroot and chdir into (default: %s)", home_path);
     print_out(" ");
@@ -68,8 +68,8 @@ int main (int argc, char **argv) {
     unsigned int d;
 
     /* Use USER (read only) */
-    const char *user = USER;
-    const char *group = GROUPGLOBAL;
+    const char *user = NULL;
+    const char *group = NULL;
     const char *cfg = OSSECCONF;
     char *home_path = w_homedir(argv[0]);
 
@@ -138,9 +138,10 @@ int main (int argc, char **argv) {
     /* Setup random */
     srandom_init();
 
+    /* Use superuser and root/wheel/gid=0 by default. */
+    uid = user ? Privsep_GetUser(user) : 0;
+    gid = group ? Privsep_GetGroup(group) : 0;
     /* Check if the user/group given are valid */
-    uid = Privsep_GetUser(user);
-    gid = Privsep_GetGroup(group);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
         merror_exit(USER_ERROR, user, group, strerror(errno), errno);
     }

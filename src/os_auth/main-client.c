@@ -45,7 +45,7 @@ static void help_agent_auth(char * home_path)
     print_out("                to increase the debug level.");
     print_out("    -t          Test configuration.");
 #ifndef WIN32
-    print_out("    -g <group>  Group to run as (default: %s).", GROUPGLOBAL);
+    print_out("    -g <group>  Group to run as (default: root group).");
     print_out("    -D <dir>    Directory to chroot and chdir into (default: %s).", home_path);
 #endif
     print_out("    -m <addr>   Manager IP address.");
@@ -71,7 +71,7 @@ int main(int argc, char **argv)
     int test_config = 0;
 #ifndef WIN32
     gid_t gid = 0;
-    const char *group = GROUPGLOBAL;
+    const char *group = NULL;
 #endif
     w_enrollment_target *target_cfg = w_enrollment_target_init();
     w_enrollment_cert *cert_cfg = w_enrollment_cert_init();
@@ -240,6 +240,7 @@ int main(int argc, char **argv)
     }
 
 #ifndef WIN32
+    gid = group ? Privsep_GetGroup(group) : 0;
     /* Check if the user/group given are valid */
     gid = Privsep_GetGroup(group);
     if (gid == (gid_t) - 1) {

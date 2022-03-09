@@ -46,8 +46,8 @@ int main(int argc, char **argv)
     /* Highly recommended not to run as root. However, some integrations
      * may require it. */
     char *home_path = w_homedir(argv[0]);
-    char *user = USER;
-    char *group = GROUPGLOBAL;
+    char *user = NULL;
+    char *group = NULL;
     char *cfg = OSSECCONF;
 
     integrator_config = NULL;
@@ -105,9 +105,10 @@ int main(int argc, char **argv)
         }
     }
 
+    /* Use superuser and root/wheel/gid=0 by default. */
+    uid = user ? Privsep_GetUser(user) : 0;
+    gid = group ? Privsep_GetGroup(group) : 0;
     /* Check if the user/group given are valid */
-    uid = Privsep_GetUser(user);
-    gid = Privsep_GetGroup(group);
     if((uid < 0)||(gid < 0))
     {
         merror_exit(USER_ERROR, user, group, strerror(errno), errno);

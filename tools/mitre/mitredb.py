@@ -765,9 +765,7 @@ def main(database=None):
 
     # User and group permissions
     os.chmod(database, 0o660)
-    uid = pwd.getpwnam("root").pw_uid
-    gid = grp.getgrnam("wazuh").gr_gid
-    os.chown(database, uid, gid)
+    os.chown(database, 0, 0)
 
 
 if __name__ == '__main__':

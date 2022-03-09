@@ -304,13 +304,7 @@ if __name__ == '__main__':
     else:
         print(f"Starting API in foreground")
 
-    # Drop privileges to wazuh
-    if not args.root:
-        if api_conf['drop_privileges']:
-            os.setgid(common.wazuh_gid())
-            os.setuid(common.wazuh_uid())
-    else:
-        print(f"Starting API as root")
+    print(f"Starting API as root")
 
     pid = os.getpid()
     pyDaemonModule.create_pid(API_MAIN_PROCESS, pid)

@@ -421,10 +421,7 @@ int create_multigroup_dir(const char * multigroup) {
             merror("At create_multigroup_dir(): Error in chmod setting permissions for path: %s",path);
         }
 
-        uid_t uid = Privsep_GetUser(USER);
-        gid_t gid = Privsep_GetGroup(GROUPGLOBAL);
-
-        if (chown(path, uid, gid) == -1) {
+        if (chown(path, 0, 0) == -1) {
             merror(CHOWN_ERROR, path, errno, strerror(errno));
             return -1;
         }

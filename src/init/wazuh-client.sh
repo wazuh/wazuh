@@ -133,7 +133,7 @@ check_folders()
 
     if [ ! -d $ALERTS_FOLDER ]
     then
-        if rm -rf $ALERTS_FOLDER && mkdir -p $ALERTS_FOLDER && chown wazuh:wazuh $ALERTS_FOLDER && chmod 770 $ALERTS_FOLDER
+        if rm -rf $ALERTS_FOLDER && mkdir -p $ALERTS_FOLDER && chown 0:0 $ALERTS_FOLDER && chmod 770 $ALERTS_FOLDER
         then
             echo "WARNING: missing folder 'queue/alerts'. Restored back."
         else

@@ -50,8 +50,8 @@ int main(int argc, char **argv)
     int debug_level = 0;
     char *home_path = w_homedir(argv[0]);
 
-    const char *user = USER;
-    const char *group = GROUPGLOBAL;
+    const char *user = NULL;
+    const char *group = NULL;
     const char *cfg = OSSECCONF;
 
     uid_t uid;
@@ -166,9 +166,10 @@ int main(int argc, char **argv)
         minfo("Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)", agt->notify_time, agt->max_time_reconnect_try);
     }
 
+    /* Use superuser and root/wheel/gid=0 by default. */
+    uid = user ? Privsep_GetUser(user) : 0;
+    gid = group ? Privsep_GetGroup(group) : 0;
     /* Check if the user/group given are valid */
-    uid = Privsep_GetUser(user);
-    gid = Privsep_GetGroup(group);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
         merror_exit(USER_ERROR, user, group, strerror(errno), errno);
     }

@@ -44,7 +44,7 @@ int main(int argc, char **argv)
     int test_config = 0, run_foreground = 0;
     const char *cfg = OSSECCONF;
     gid_t gid;
-    const char *group = GROUPGLOBAL;
+    const char *group = NULL;
     directory_t *dir_it = NULL;
     int start_realtime = 0;
 
@@ -92,7 +92,7 @@ int main(int argc, char **argv)
     os_free(home_path);
 
     /* Check if the group given is valid */
-    gid = Privsep_GetGroup(group);
+    gid = group ? Privsep_GetGroup(group) : 0;
     if (gid == (gid_t) - 1) {
         merror_exit(USER_ERROR, "", group, strerror(errno), errno);
     }

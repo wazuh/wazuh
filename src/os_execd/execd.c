@@ -56,7 +56,7 @@ static void help_execd(char * home_path)
     print_out("                to increase the debug level.");
     print_out("    -t          Test configuration");
     print_out("    -f          Run in foreground");
-    print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
+    print_out("    -g <group>  Group to run as (default: gid 0)");
     print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
     print_out(" ");
     os_free(home_path);
@@ -119,7 +119,7 @@ int main(int argc, char **argv)
         merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
 
-    const char *group = GROUPGLOBAL;
+    const char *group = NULL;
     const char *cfg = OSSECCONF;
 
 
@@ -172,7 +172,7 @@ int main(int argc, char **argv)
     os_free(home_path);
 
     /* Check if the group given is valid */
-    gid = Privsep_GetGroup(group);
+    gid = group ? Privsep_GetGroup(group) : 0;
     if (gid == (gid_t) - 1) {
         merror_exit(USER_ERROR, "", group, strerror(errno), errno);
     }

@@ -142,7 +142,6 @@ void wm_setup()
 
     // Set group
 
-
     if (Privsep_SetGroup(ROOT_GID) < 0) {
         merror_exit(SETGID_ERROR, "0", errno, strerror(errno));
     }

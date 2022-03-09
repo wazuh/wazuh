@@ -63,7 +63,7 @@ int main(int argc, char **argv)
 
     const char *cfg = OSSECCONF;
     gid_t gid;
-    const char *group = GROUPGLOBAL;
+    const char *group = NULL;
     lc_debug_level = getDefine_Int("logcollector", "debug", 0, 2);
 
     /* Setup random */
@@ -100,8 +100,9 @@ int main(int argc, char **argv)
 
     }
 
+    // Use root/wheel/gid=0 by default.
+    gid = group ? Privsep_GetGroup(group) : 0;
     /* Check if the group given is valid */
-    gid = Privsep_GetGroup(group);
     if (gid == (gid_t) - 1) {
         merror_exit(USER_ERROR, "", group, strerror(errno), errno);
     }

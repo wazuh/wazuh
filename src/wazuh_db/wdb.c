@@ -698,8 +698,6 @@ int wdb_create_file(const char *path, const char *source) {
     sqlite3 *db;
     sqlite3_stmt *stmt;
     int result;
-    uid_t uid;
-    gid_t gid;
 
     if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL)) {
         mdebug1("Couldn't create SQLite database '%s': %s", path, sqlite3_errmsg(db));
@@ -740,15 +738,8 @@ int wdb_create_file(const char *path, const char *source) {
         return OS_INVALID;
 
     case 0:
-        uid = Privsep_GetUser(ROOT);
-        gid = Privsep_GetGroup(GROUPGLOBAL);
 
-        if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-            merror(USER_ERROR, ROOT, GROUPGLOBAL, strerror(errno), errno);
-            return OS_INVALID;
-        }
-
-        if (chown(path, uid, gid) < 0) {
+        if (chown(path, 0, 0) < 0) {
             merror(CHOWN_ERROR, path, errno, strerror(errno));
             return OS_INVALID;
         }

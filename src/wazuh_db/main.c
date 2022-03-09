@@ -130,8 +130,9 @@ int main(int argc, char ** argv)
     // Set user and group
 
     {
-        uid_t uid = Privsep_GetUser(USER);
-        gid_t gid = Privsep_GetGroup(GROUPGLOBAL);
+        /* Use superuser and root/wheel/gid=0. */
+        uid_t uid = 0;
+        gid_t gid = 0;
 
         if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
             merror_exit(USER_ERROR, USER, GROUPGLOBAL, strerror(errno), errno);

@@ -22,13 +22,13 @@ if [ "$3" != "master" ]; then
 fi
 
 cp -rf /tmp/configuration_files/config/* /var/ossec/
-chown root:wazuh /var/ossec/etc/client.keys
-chown -R wazuh:wazuh /var/ossec/queue/agent-groups
-chown -R wazuh:wazuh /var/ossec/queue/db
-chown -R wazuh:wazuh /var/ossec/etc/shared
+chown 0:0 /var/ossec/etc/client.keys
+chown -R 0:0 /var/ossec/queue/agent-groups
+chown -R 0:0 /var/ossec/queue/db
+chown -R 0:0 /var/ossec/etc/shared
 chmod --reference=/var/ossec/etc/shared/default /var/ossec/etc/shared/group*
 cd /var/ossec/etc/shared && find -name merged.mg -exec chown wazuh:wazuh {} \; && cd /
-chown root:wazuh /var/ossec/etc/shared/ar.conf
+chown 0:0 /var/ossec/etc/shared/ar.conf
 
 sleep 1
 

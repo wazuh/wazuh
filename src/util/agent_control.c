@@ -184,9 +184,10 @@ int main(int argc, char **argv)
 
     srandom_init();
 
+    /* Use superuser and root/wheel/gid=0 by default. */
+    uid = user ? Privsep_GetUser(user) : 0;
+    gid = group ? Privsep_GetGroup(group) : 0;
     /* Get the group name */
-    gid = Privsep_GetGroup(group);
-    uid = Privsep_GetUser(user);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
         merror_exit(USER_ERROR, user, group, strerror(errno), errno);
     }

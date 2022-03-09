@@ -55,8 +55,8 @@ int main(int argc, char **argv)
     char * home_path = w_homedir(argv[0]);
 
     const char *cfg = OSSECCONF;
-    const char *user = USER;
-    const char *group = GROUPGLOBAL;
+    const char *user = NULL;
+    const char *group = NULL;
 
     while ((c = getopt(argc, argv, "Vdthfu:g:c:D:m")) != -1) {
         switch (c) {
@@ -171,9 +171,10 @@ int main(int argc, char **argv)
         OS_PassEmptyKeyfile();
     }
 
+    /* Use superuser and root/wheel/gid=0 by default. */
+    uid = user ? Privsep_GetUser(user) : 0;
+    gid = group ? Privsep_GetGroup(group) : 0;
     /* Check if the user and group given are valid */
-    uid = Privsep_GetUser(user);
-    gid = Privsep_GetGroup(group);
     if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
         merror_exit(USER_ERROR, user, group, strerror(errno), errno);
     }

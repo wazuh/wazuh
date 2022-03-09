@@ -106,7 +106,7 @@ WazuhUpgrade()
         cp $PREINSTALLEDDIR/var/db/global.db $PREINSTALLEDDIR/queue/db/
         if [ -f "$PREINSTALLEDDIR/queue/db/global.db" ]; then
             chmod 640 $PREINSTALLEDDIR/queue/db/global.db
-            chown wazuh:wazuh $PREINSTALLEDDIR/queue/db/global.db
+            chown 0:0 $PREINSTALLEDDIR/queue/db/global.db
             rm -f $PREINSTALLEDDIR/var/db/global.db*
         else
             echo "Unable to move global.db during the upgrade"
@@ -209,8 +209,8 @@ WazuhUpgrade()
     # Replace and delete ossec group along with ossec users
     OSSEC_GROUP=ossec
     if (grep "^ossec:" /etc/group > /dev/null 2>&1) || (dscl . -read /Groups/ossec > /dev/null 2>&1)  ; then
-        find $PREINSTALLEDDIR -group $OSSEC_GROUP -user root -exec chown root:wazuh {} \;
-        find $PREINSTALLEDDIR -group $OSSEC_GROUP -exec chown wazuh:wazuh {} \;
+        find $PREINSTALLEDDIR -group $OSSEC_GROUP -user root -exec chown 0:0 {} \;
+        find $PREINSTALLEDDIR -group $OSSEC_GROUP -exec chown 0:0 {} \;
     fi
     ./src/init/delete-oldusers.sh $OSSEC_GROUP
 

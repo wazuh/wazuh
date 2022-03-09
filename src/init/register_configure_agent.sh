@@ -310,7 +310,7 @@ main () {
         if [ ! -f ${INSTALLDIR}/logs/ossec.log ]; then
             touch -f ${INSTALLDIR}/logs/ossec.log
             chmod 660 ${INSTALLDIR}/logs/ossec.log
-            chown root:wazuh ${INSTALLDIR}/logs/ossec.log
+            chown 0:0 ${INSTALLDIR}/logs/ossec.log
         fi
 
         # Check if multiples IPs are defined in variable WAZUH_MANAGER
