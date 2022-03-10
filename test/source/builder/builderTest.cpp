@@ -120,10 +120,6 @@ TEST(RXCPP, DecoderManualConnectExample)
     std::string expectedContents =
         R"({"type":"int","field":"odd","value":0,"new_dec_field0":"new_dec_value0","new_dec_field1":"new_dec_value1","new_dec_field3":"new_dec_value3"}
 {"type":"int","field":"odd","value":0,"new_dec_field0":"new_dec_value0","new_dec_field1":"new_dec_value1","new_dec_field3":"new_dec_value3","new_rule_field":"new_rule_value"}
-{"type":"int","field":"odd","value":0,"new_dec_field0":"new_dec_value0","new_dec_field2":"new_dec_value2","new_dec_field3":"new_dec_value3"}
-{"type":"int","field":"odd","value":0,"new_dec_field0":"new_dec_value0","new_dec_field2":"new_dec_value2","new_dec_field3":"new_dec_value3","new_rule_field":"new_rule_value"}
-{"type":"int","field":"even","value":1,"new_dec_field0":"new_dec_value0","new_dec_field1":"new_dec_value1","new_dec_field3":"new_dec_value3"}
-{"type":"int","field":"even","value":1,"new_dec_field0":"new_dec_value0","new_dec_field1":"new_dec_value1","new_dec_field3":"new_dec_value3","new_rule_field":"new_rule_value"}
 {"type":"int","field":"even","value":1,"new_dec_field0":"new_dec_value0","new_dec_field2":"new_dec_value2","new_dec_field3":"new_dec_value3"}
 {"type":"int","field":"even","value":1,"new_dec_field0":"new_dec_value0","new_dec_field2":"new_dec_value2","new_dec_field3":"new_dec_value3","new_rule_field":"new_rule_value"}
 )";
@@ -135,6 +131,6 @@ TEST(RXCPP, DecoderManualConnectExample)
     std::ifstream ifs(file);
     std::string gotContent((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
 
-    std::filesystem::remove(file);
-    ASSERT_EQ(expectedContents, gotContent);
+   std::filesystem::remove(file);
+   ASSERT_EQ(expectedContents, gotContent);
 }

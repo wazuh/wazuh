@@ -24,7 +24,7 @@ std::map<std::string, std::string> decoders = {{"decoder_0", R"(
                         "decoder_0"
                     ],
                     "check": [
-                        {"type": "int"}
+                        {"field": "odd"}
                     ],
                     "normalize": [
                         { "new_dec_field1": "new_dec_value1" }
@@ -38,7 +38,7 @@ std::map<std::string, std::string> decoders = {{"decoder_0", R"(
                         "decoder_0"
                     ],
                     "check": [
-                        {"type": "int"}
+                        {"field": "even"}
                     ],
                     "normalize": [
                         { "new_dec_field2": "new_dec_value2" }
