@@ -7,6 +7,13 @@
 using ParseResult = std::unordered_map<std::string, std::string>;
 using ParserFn = std::function<bool(std::string, ParseResult& result)>;
 
+/**
+ * @brief Gets a parser operator from a logQL expression.
+ *        This method parse a complete logQL expression to create and bind all the different specific parsers capables
+ *        to resolve an event matching with that expression.
+ *
+* @return ParserFn A Parser Function capable to parse an event.
+ */
 ParserFn getParserOp(std::string const &logQl);
 
 #endif // _HLP_H

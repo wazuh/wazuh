@@ -38,8 +38,14 @@ static const std::unordered_map<std::string_view, ParserType> kTempTypeMapper {
     {"url", ParserType::URL},
 };
 
-// NOTE: This function requires that the original string live for the duration
-// that you need each piece as the vector refers to the original string
+/**
+ * @brief Creates an options vector from a slash-separated string.
+ *
+ * @param str slash-separated string with all the options
+ * @return std::vector with all the options in the string expression.
+ * @note This function requires that the original string live for the duration
+ *       that you need each piece as the vector refers to the original string
+ */
 static std::vector<std::string_view>
 splitSlashSeparatedField(std::string_view str)
 {

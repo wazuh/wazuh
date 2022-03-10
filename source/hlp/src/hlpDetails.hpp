@@ -2,6 +2,10 @@
 #include <vector>
 #include <unordered_map>
 
+
+/**
+ * @brief Parsers enum type
+ */
 enum class ParserType
 {
     Any,
@@ -19,6 +23,9 @@ enum class ParserType
 
 enum class ExpressionType;
 
+/**
+ * @brief Parser struct
+ */
 struct Parser
 {
     std::vector<std::string> options;
@@ -37,5 +44,12 @@ using parserFuncPtr =
 using parserConfigFuncPtr =
     bool (*)(Parser &parser, std::vector<std::string_view> const& args);
 
+/**
+ * @brief List with the available parser functions
+ */
 extern const parserFuncPtr kAvailableParsers[];
+
+/**
+ * @brief List with the configuration functions of the available parsers
+ */
 extern const parserConfigFuncPtr kParsersConfig[];
