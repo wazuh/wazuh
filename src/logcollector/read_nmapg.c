@@ -16,6 +16,7 @@
 #define NMAPG_PORT  "Ports:"
 #define NMAPG_OPEN  "open/"
 #define NMAPG_STAT  "Status:"
+#define PORT_PROTO  " %s(%s)"
 
 /* Prototypes */
 static char *__go_after(char *x, const char *y);
@@ -131,7 +132,7 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
     char final_msg[OS_MAX_LOG_SIZE] = {0};
     char port[17] = {0};
     char proto[17] = {0};
-    char buffer[sizeof(port) + sizeof(proto) + 4] = {0};
+    char buffer[sizeof(port) + sizeof(proto) + sizeof(PORT_PROTO)] = {0};
 
     char *ip = NULL;
     char *p;
@@ -246,7 +247,7 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
             }
 
             /* Add ports */
-            snprintf(buffer, sizeof(buffer), " %s(%s)", port, proto);
+            snprintf(buffer, sizeof(buffer), PORT_PROTO, port, proto);
             strncat(final_msg, buffer, final_msg_s);
             final_msg_s -= strlen(buffer);
 
