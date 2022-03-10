@@ -2,6 +2,7 @@ import json
 from unittest.mock import patch
 
 import pytest
+
 from api.models.configuration_model import HTTPSModel
 
 with patch('wazuh.common.wazuh_uid'):
@@ -23,13 +24,13 @@ def custom_hook(dct):
                                WazuhResult({'k1': 'v1'}, str_priority='v2')
                                ]
                          )
-def test_wazuhjsonencoder_dumps(o):
-    """Test dumps method from API encoder using WazuhJSONEncoder."""
+def test_encoder_dumps(o):
+    """Test dumps method from API encoder using WazuhAPIJSONEncoder."""
     encoded = dumps(o)
     decoded = json.loads(encoded, object_hook=custom_hook)
     assert decoded == o
 
 
-def test_wazuhjsonencoder_prettify():
-    """Test prettify method from API encoder using WazuhJSONEncoder."""
+def test_encoder_prettify():
+    """Test prettify method from API encoder using WazuhAPIJSONEncoder."""
     assert prettify({'k1': 'v1'}) == '{\n   "k1": "v1"\n}'
