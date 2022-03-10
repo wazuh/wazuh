@@ -5373,6 +5373,29 @@ components:
       schema:
         type: string
         format: alphanumeric
+    vulnerability_field:
+      in: path
+      name: field
+      description: "Vulnerability inventory field"
+      required: true
+      schema:
+        type: string
+        enum:
+        - cve
+        - name
+        - version
+        - architecture
+        - detection_time
+        - severity
+        - cvss2_score
+        - cvss3_score
+        - references
+        - type
+        - status
+        - condition
+        - title
+        - published
+        - updated
     xml_filename:
       in: query
       name: filename
@@ -16857,33 +16880,35 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /vulnerability/{agent_id}/severity/summary:
+  /vulnerability/{agent_id}/summary/{field}:
     get:
       tags:
         - Vulnerability
-      summary: "Get agent vulnerabilities' severity summary"
-      description: "Return a summary of the vulnerabilities' severity of an agent"
-      operationId: api.controllers.vulnerability_controller.get_vulnerabilities_severity_summary
+      summary: "Get agent vulnerabilities' field summary"
+      description: "Return a summary of the vulnerabilities' field of an agent"
+      operationId: api.controllers.vulnerability_controller.get_vulnerabilities_field_summary
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/vulnerability:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/vulnerability_field'
+        - $ref: '#/components/parameters/limit'
       responses:
         '200':
-          description: "Get agent vulnerabilities"
+          description: "Get agent vulnerabilities' field summary"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 data:
-                  critical: 8
-                  high: 0
-                  medium: 3
-                  low: 0
-                  total: 11
+                  severity:
+                    critical: 8
+                    high: 0
+                    medium: 3
+                    low: 0
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
