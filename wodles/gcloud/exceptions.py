@@ -10,241 +10,108 @@
 import tools
 
 
+UNKNOWN_ERROR_ERRCODE = 901
+
+
 class GCloudException(Exception):
-    """Class that represents a exception of the GCloud package."""
-    pass
-
-
-class GCloudCriticalError(GCloudException):
-    """Class that represents a critical exception."""
-    pass
-
-
-class GCloudWazuhNotRunning(GCloudCriticalError):
-    """
-    Exception that indicates that Wazuh is not running.
-    """
-    def __init__(self):
-        super().__init__('Wazuh must be running')
-
-
-class GCloudSocketError(GCloudCriticalError):
-    """
-    Exception that indicates that there was an error occurred
-    when initializing the analysid socket.
+    """Class that represents an exception of the GCloud package.
 
     Parameters
     ----------
-    socket_path : str
-        Path of the analysisd socket.
+    error : str
+        Error key.
+    kwargs : str
+        Values of the error message that should be substituted.
     """
-    def __init__(self, socket_path: str):
-        super().__init__(f'Error initializing {socket_path} socket')
+    def __init__(self, errcode: str, **kwargs):
+        self._errcode = errcode
+        info = self.__class__.ERRORS[errcode]
+        self._message = info['message'].format(**kwargs) if kwargs else \
+            info['message']
+        self._key = info['key']
+        super().__init__(f'{self.key}: {self.message}')
+
+    @property
+    def errcode(self):
+        return self._errcode
+
+    @property
+    def key(self):
+        return self._key
+
+    @property
+    def message(self):
+        return self._message
 
 
-class GCloudSocketSendError(GCloudCriticalError):
-    """
-    Exception that indicates that there was an error occurred
-    when trying to send a log to the analysid socket.
-    """
-    def __init__(self, socket_path: str):
-        super().__init__('Error sending event to Wazuh')
+class GCloudError(GCloudException):
+    """Class that represents an error of the GCloud package."""
+    ERRORS = {
+        # 1-99 General errors
+        1: {
+            'key': 'GCloudCredentialsStructureError',
+            'message': "The '{credentials_file}' credentials file doesn't have the required structure"},
+        2: {
+            'key': 'GCloudCredentialsNotFoundError',
+            'message': "The '{credentials_file}' file doesn't exist"},
+        3: {
+            'key': 'GCloudIntegrationTypeError',
+            'message': 'Unsupported gcloud integration type: "{integration_type}".' f'The supported types are {*tools.valid_types,}'},
+        4: {
+            'key': 'GCloudImportError',
+            'message': "The '{package}' module is required"},
+        # 100-199 -> GCP Bucket errors
+        100: {
+            'key': 'GCloudBucketNotFound',
+            'message': "The bucket '{bucket_name}' does not exist"},
+        101: {
+            'key': 'GCloudBucketForbidden',
+            'message': "The Service Account provided does not have {permissions} permissions to access the '{resource_name}' bucket or it does not exist in the account"},
+        102: {
+            'key': 'GCloudBucketNumThreadsError',
+            'message': 'The parameter -t/--num_threads only works with the Pub/Sub module.'},
+        103: {
+            'key': 'GCloudBucketNameError',
+            'message': 'The name of the bucket is required. Use -b <BUCKET_NAME> to specify it.'},
+        # 200-299 -> Pub/Sub errors
+        200: {
+            'key': 'GCloudPubSubNoSubscriptionID',
+            'message': 'A subscription ID is required. Use -s <SUBSCRIPTION ID> to specify it.'},
+        201: {
+            'key': 'GCloudPubSubNoProjectID',
+            'message': 'A project ID is required. Use -p <PROJECT ID> to specify it.'},
+        202: {
+            'key': 'GCloudPubSubNumThreadsError',
+            'message': f'The minimum number of threads is {tools.min_num_threads}. Please check your configuration.'},
+        203: {
+            'key':
+            'GCloudPubSubNumMessagesError', 'message': f'The minimum number of messages is {tools.min_num_messages}. Please check your configuration.'},
+        204: {
+            'key': 'GCloudPubSubSubscriptionError',
+            'message': "The '{subscription}' subscription is incorrect or the user credentials are not valid"},
+        205: {
+            'key': 'GCloudPubSubProjectError',
+            'message': "The '{project}' project ID is incorrect or the user does not have permissions to access to it"},
+        206: {
+            'key': 'GCloudPubSubForbidden',
+            'message': "The client does not have the {permissions} required permissions}"}
+    }
 
 
-class GCloudCredentialsStructureError(GCloudException):
-    """
-    Exception that indicates that the credentials file used doesn't have
-    the required structure.
-
-    Parameters
-    ----------
-    credentials_file : str
-        Path of the credentials file.
-    """
-    def __init__(self, credentials_file: str = ''):
-        message = f"The '{credentials_file}' credentials file doesn't have"\
-                   "the required structure"
-        super().__init__(message)
-
-
-class GCloudCredentialsNotFoundError(GCloudException):
-    """
-    Exception that indicates that the credentials file passed doesn't exist.
-
-    Parameters
-    ----------
-    credentials_file : str
-        Path of the credentials file.
-    """
-    def __init__(self, credentials_file: str = ''):
-        message = f"The '{credentials_file}' file doesn't exist"
-        super().__init__(message)
-
-
-class GCloudIntegrationTypeError(GCloudException):
-    """
-    Exception that indicates that the module was called
-    specifying an unsupported integration_type.
-
-    Parameters
-    ----------
-    integration_type : str
-        Integration type specified by the user.
-    """
-    def __init__(self, integration_type: str):
-        message = ('Unsupported gcloud integration type: '
-                   f'"{integration_type}". The supported types are'
-                   f' {*tools.valid_types,}')
-        super().__init__(message)
-
-
-class GCloudBucketNotFound(GCloudException):
-    """
-    Exception that indicates that the required bucket doesn't exist.
-
-    Parameters
-    ----------
-    bucket_name : str
-        Bucket that wasn't found.
-    """
-    def __init__(self, bucket_name: str = ''):
-        message = f"The bucket '{bucket_name}' does not exist"
-        super().__init__(message)
-
-
-class GCloudBucketForbidden(GCloudException):
-    """
-    Exception that indicates that the client doesn't have permissions
-    to access the designated resource.
-
-    Parameters
-    ----------
-    resource_name : str
-        Resource that was being accessed.
-    permissions : str
-        Permissions that the client must have.
-    """
-    def __init__(self, resource_name: str, permissions: str = ''):
-        message = 'The Service Account provided does not have '\
-                  f"""{"'" + permissions + "' " if permissions else ""}""" \
-                  f"permissions to access the '{resource_name}' bucket " \
-                  "or it does not exist in the account"
-        super().__init__(message)
-
-
-class GCloudBucketNumThreadsError(GCloudException):
-    """
-    Exception that indicates that the Access Logs module was executed
-    specifying a number of threads different than 1.
-    """
-    def __init__(self):
-        message = 'The parameter -t/--num_threads only works with the '\
-                  'Pub/Sub module.'
-        super().__init__(message)
-
-
-class GCloudBucketNameError(GCloudException):
-    """
-    Exception that indicates that the Access Logs module was executed
-    specifying a number of threads different than 1.
-    """
-    def __init__(self):
-        message = 'The name of the bucket is required. Use -b <BUCKET_NAME> '\
-                  'to specify it.'
-        super().__init__(message)
-
-
-class GCloudPubSubNoSubscriptionID(GCloudException):
-    """
-    Exception that indicates that the Pub/Sub module was executed
-    without specifying a subscription ID.
-    """
-    def __init__(self):
-        message = 'A subscription ID is required. Use -s '\
-            '<SUBSCRIPTION ID> to specify it.'
-        super().__init__(message)
-
-
-class GCloudPubSubNoProjectID(GCloudException):
-    """
-    Exception that indicates that the Pub/Sub module was executed
-    without specifying a project ID.
-    """
-    def __init__(self):
-        message = 'A project ID is required. Use -p <PROJECT ID> to '\
-            'specify it.'
-        super().__init__(message)
-
-
-class GCloudPubSubNumThreadsError(GCloudException):
-    """
-    Exception that indicates that the Pub/Sub module was executed
-    scecifying a wrong number of threads.
-    """
-    def __init__(self):
-        message = f'The minimum number of threads is {tools.min_num_threads}.'\
-            ' Please check your configuration.'
-        super().__init__(message)
-
-
-class GCloudPubSubNumMessagesError(GCloudException):
-    """
-    Exception that indicates that the Pub/Sub module was executed
-    scecifying a wrong number of threads.
-    """
-    def __init__(self):
-        message = 'The minimum number of messages is '\
-                  f'{tools.min_num_messages}. Please check your configuration.'
-        super().__init__(message)
-
-
-class GCloudPubSubForbidden(GCloudException):
-    """
-    Exception that indicates that the client doesn't have the
-    permissions required to consume PubSub logs.
-
-    Parameters
-    ----------
-    permissions : str
-        The permissions that the client should have.
-    """
-    def __init__(self, permissions: str = ''):
-        if permissions:
-            message = f"The client does not have the '{permissions}' "\
-                "required permissions"
-        else:
-            message = 'No permissions for executing the wodle from this '\
-                'subscription'
-        super().__init__(message)
-
-
-class GCloudPubSubSubscriptionError(GCloudException):
-    """
-    Exception that indicates that the subscription ID passed
-    to the Pub/Sub module might have an error.
-
-    Parameters
-    ----------
-    subscription : str
-        The subscription specified.
-    """
-    def __init__(self, subscription: str):
-        message = f"The '{subscription}' subscription is incorrect or the "\
-            "user credentials are not valid"
-        super().__init__(message)
-
-
-class GCloudPubSubProjectError(GCloudException):
-    """
-    Exception that indicates that the project ID passed
-    to the Pub/Sub module might have an error.
-
-    Parameters
-    ----------
-    project_id : str
-        The project specified.
-    """
-    def __init__(self, project: str):
-        message = f"The '{project}' project ID is incorrect or the "\
-            "user does not have permissions to access to it"
-        super().__init__(message)
+class GCloudInternalError(GCloudException):
+    """Class that represents a critical exception of the GCloud package."""
+    ERRORS = {
+        # 800-899 -> Internal errors
+        800: {
+            'key': 'GCloudWazuhNotRunning',
+            'message': 'Wazuh must be running'
+        },
+        801: {
+            'key': 'GCloudSocketError',
+            'message': 'Error initializing {socket_path} socket'
+        },
+        802: {
+            'key': 'GCloudSocketSendError',
+            'message': 'Error sending event to Wazuh'
+        },
+    }

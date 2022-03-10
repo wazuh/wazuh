@@ -58,14 +58,15 @@ def test_format_msg():
     assert type(formatted_message) is str
 
 
-@pytest.mark.parametrize('raised_exception, expected_exception', [
-    (ConnectionRefusedError, exceptions.GCloudWazuhNotRunning),
-    (OSError, exceptions.GCloudSocketError)
+@pytest.mark.parametrize('raised_exception, expected_exception, errcode', [
+    (ConnectionRefusedError, exceptions.GCloudInternalError, 800),
+    (OSError, exceptions.GCloudInternalError, 801)
 ])
 def test_initialize_socket_ko(
         raised_exception: Exception,
         expected_exception: exceptions.GCloudException,
-        gcloud_subscriber: WazuhGCloudSubscriber):
+        gcloud_subscriber: WazuhGCloudSubscriber,
+        errcode: int):
     """
     Test that the WazuhGCloudIntegration's initialize_socket properly handles
     exceptions.
@@ -79,7 +80,10 @@ def test_initialize_socket_ko(
         raised_exception.
     gcloud_subscriber : WazuhGCloudSubscriber
         GCP client.
+    errcode : int
+        The code of the raised exception.
     """
     with patch('socket.socket', side_effect=raised_exception),\
-         pytest.raises(expected_exception):
+         pytest.raises(expected_exception) as e:
         gcloud_subscriber.initialize_socket()
+        assert errcode == e.errcode

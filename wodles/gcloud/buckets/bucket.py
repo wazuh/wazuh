@@ -24,7 +24,7 @@ try:
     from google.api_core import exceptions as google_exceptions
     import pytz
 except ImportError as e:
-    tools.import_error(e.name)
+    raise exceptions.GCloudException(errcode=4, package=e.name)
 
 
 class WazuhGCloudBucket(WazuhGCloudIntegration):
@@ -50,6 +50,12 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
             Date after which obtain logs.
         reparse : bool
             Whether to parse already parsed logs or not
+
+        Raises
+        ------
+        GCloudError
+            If the credentials file doesn't exist or doesn't have the required
+            structure.
         """
         super().__init__(logger)
         self.bucket_name = bucket_name
@@ -57,9 +63,9 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         try:
             self.client = storage.client.Client.from_service_account_json(credentials_file)
         except JSONDecodeError as error:
-            raise exceptions.GCloudCredentialsStructureError(credentials_file=credentials_file) from error
+            raise exceptions.GCloudError(1, credentials_file=credentials_file) from error
         except FileNotFoundError as error:
-            raise exceptions.GCloudCredentialsNotFoundError(credentials_file=credentials_file) from error
+            raise exceptions.GCloudError(2, credentials_file=credentials_file) from error
         self.project_id = self.client.project
         self.prefix = prefix if not prefix or prefix[-1] == '/' else f'{prefix}/'
         self.delete_file = delete_file
@@ -190,14 +196,22 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         return creation_time
 
     def check_permissions(self):
-        """Check if the Service Account has access to the bucket."""
+        """
+        Check if the Service Account has access to the bucket.
+
+        Raises
+        ------
+        GCloudError
+            If the specified bucket doesn't exist or the client doesn't
+            have permissions to access it.
+        """
         try:
             self.bucket = self.client.get_bucket(self.bucket_name)
         except google_exceptions.NotFound:
-            raise exceptions.GCloudBucketNotFound(self.bucket_name)
+            raise exceptions.GCloudError(100, bucket_name=self.bucket_name)
         except google_exceptions.Forbidden:
-            raise exceptions.GCloudBucketForbidden(self.bucket_name,
-                                                   "storage.buckets.get")
+            raise exceptions.GCloudError(101, permissions='storage.buckets.get',
+                                         resource_name=self.bucket_name)
 
     def init_db(self):
         """Connect to the database and try to access the table. The database file and the table will be created if they
@@ -261,7 +275,7 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
                         processed_messages += self.process_blob(blob)
                         processed_files.append(blob)
 
-                    else: 
+                    else:
                         self.logger.info(f'Skipping previously processed file: {blob.name}')
 
                 else:

@@ -17,38 +17,38 @@ import exceptions
 import gcloud
 
 
-@pytest.mark.parametrize('parameters, exception', [
+@pytest.mark.parametrize('parameters, exception, errcode', [
     ({'integration_type': 'type', 'credentials_file': None, 'max_messages': 1,
       'log_level': 1, 'prefix': '', 'store_true': False, 'delete_file': False,
       'only_logs_after': None, 'n_threads': 1},
-     exceptions.GCloudIntegrationTypeError),
+     exceptions.GCloudError, 3),
 
     ({'integration_type': 'pubsub', 'subscription_id': 'subscription_id',
       'project': 'project', 'credentials_file': None, 'max_messages': 1,
       'log_level': 1, 'prefix': '', 'store_true': False, 'delete_file': False,
       'only_logs_after': None, 'n_threads': 0},
-     exceptions.GCloudPubSubNumThreadsError),
+     exceptions.GCloudError, 202),
 
     ({'integration_type': 'pubsub', 'subscription_id': 'subscription_id',
       'project': 'project', 'credentials_file': None, 'max_messages': 0,
       'log_level': 1, 'prefix': '', 'store_true': False, 'delete_file': False,
       'only_logs_after': None, 'n_threads': 1},
-     exceptions.GCloudPubSubNumMessagesError),
+     exceptions.GCloudError, 203),
 
     ({'integration_type': 'access_logs', 'credentials_file': None,
       'max_messages': 1, 'bucket_name': '', 'log_level': 1,
       'prefix': '', 'store_true': False, 'only_logs_after': None,
       'delete_file': False, 'n_threads': 1},
-     exceptions.GCloudBucketNameError),
+     exceptions.GCloudError, 103),
 
     ({'integration_type': 'access_logs', 'credentials_file': None,
       'max_messages': 1, 'bucket_name': 'bucket', 'log_level': 1,
       'prefix': '', 'store_true': False, 'only_logs_after': None,
       'delete_file': False, 'n_threads': 2},
-     exceptions.GCloudBucketNumThreadsError),
+     exceptions.GCloudError, 102),
 
 ])
-def test_gcloud_ko(parameters, exception, caplog):
+def test_gcloud_ko(parameters, exception, errcode, caplog):
     """
     Test that the module will abort its execution when called
     with invalid parameters.
@@ -70,8 +70,9 @@ def test_gcloud_ko(parameters, exception, caplog):
          patch('pubsub.subscriber.WazuhGCloudSubscriber.check_permissions'), \
          patch('pubsub.subscriber.WazuhGCloudSubscriber.process_messages'), \
          patch('buckets.bucket.storage.client.Client.from_service_account_json'), \
-         patch('buckets.access_logs.GCSAccessLogs.process_data',
-               return_value=0):
+         patch('buckets.access_logs.GCSAccessLogs.process_data', \
+               return_value=0), \
+         pytest.raises(SystemExit):
         gcloud.main()
 
-        assert exception.__name__ in caplog.text
+        assert exception.ERRORS[errcode]['key'] in caplog.text

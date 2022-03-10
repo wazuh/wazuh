@@ -11,7 +11,6 @@ from sys import path
 from json import JSONDecodeError
 
 path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
-import tools
 import exceptions
 from integration import WazuhGCloudIntegration
 
@@ -20,7 +19,7 @@ try:
     from google.cloud import pubsub_v1 as pubsub
     import google.api_core.exceptions
 except ImportError as e:
-    tools.import_error(e.name)
+    raise exceptions.GCloudException(errcode=4, package=e.name)
 
 
 class WazuhGCloudSubscriber(WazuhGCloudIntegration):
@@ -39,6 +38,11 @@ class WazuhGCloudSubscriber(WazuhGCloudIntegration):
             Subscription ID.
         logger: logging.Logger
             The logger that will be used to send messages to stdout.
+
+        Raises
+        ------
+        GCloudError
+            If the credentials file doesn't exist or have a wrong structure.
         """
         super().__init__(logger)
 
@@ -47,9 +51,9 @@ class WazuhGCloudSubscriber(WazuhGCloudIntegration):
             self.subscriber = self.get_subscriber_client(credentials_file)
             self.subscription_path = self.get_subscription_path(project, subscription_id)
         except JSONDecodeError as error:
-            raise exceptions.GCloudCredentialsStructureError(credentials_file=credentials_file) from error
+            raise exceptions.GCloudError(1, credentials_file=credentials_file) from error
         except FileNotFoundError as error:
-            raise exceptions.GCloudCredentialsNotFoundError(credentials_file=credentials_file) from error
+            raise exceptions.GCloudError(2, credentials_file=credentials_file) from error
 
     @staticmethod
     def get_subscriber_client(credentials_file: str) -> pubsub.subscriber.Client:
@@ -85,7 +89,14 @@ class WazuhGCloudSubscriber(WazuhGCloudIntegration):
         return self.subscriber.subscription_path(project, subscription_id)
 
     def check_permissions(self):
-        """Check if permissions are OK for executing the wodle."""
+        """
+        Check if permissions are OK for executing the wodle.
+
+        Raises
+        ------
+        GCloudError
+            If the parameters or credentials are invalid.
+        """
         required_permissions = {'pubsub.subscriptions.consume'}
         try:
             response = self.subscriber.test_iam_permissions(
@@ -94,14 +105,12 @@ class WazuhGCloudSubscriber(WazuhGCloudIntegration):
 
         except google.api_core.exceptions.NotFound as e:
             if 'project not found or user does not have access' in e.message:
-                raise exceptions.GCloudPubSubSubscriptionError(
-                    self.subscription_path.split('/')[1])
+                raise exceptions.GCloudError(204, subscription=self.subscription_path.split('/')[1])
             else:
-                raise exceptions.GCloudPubSubProjectError(
-                    self.subscription_path.split('/')[-1])
+                raise exceptions.GCloudError(205, project=self.subscription_path.split('/')[-1])
 
         if required_permissions.difference(response.permissions) != set():
-            raise exceptions.GCloudPubSubForbidden()
+            raise exceptions.GCloudError(206)
 
     def pull_request(self, max_messages: int) -> int:
         """Make request for pulling messages from the subscription and acknowledge them.

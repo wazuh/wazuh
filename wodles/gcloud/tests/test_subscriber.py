@@ -29,18 +29,20 @@ def test_get_subscriber(gcloud_subscriber):
 
 
 @pytest.mark.parametrize(
-    'credentials_file,logger,project,subscription_id, exception', [
+    'credentials_file,logger,project,subscription_id, exception, '
+    'exception_name', [
         ('unexistent_file',
          None, 'test_project', 'test_subscription',
-         exceptions.GCloudCredentialsNotFoundError),
+         exceptions.GCloudError, 'GCloudCredentialsNotFoundError'),
 
         ('invalid_credentials_file.json',
          None, 'test_project', 'test_subscription',
-         exceptions.GCloudCredentialsStructureError)
+         exceptions.GCloudError, 'GCloudCredentialsStructureError')
     ])
 def test_subscription_ko(credentials_file: str, logger: Logger,
                          project: str, subscription_id: str,
                          exception: exceptions.GCloudException,
+                         exception_name: str,
                          test_data_path: str):
     """
     Check that the appropriate exceptions are raised
@@ -59,10 +61,13 @@ def test_subscription_ko(credentials_file: str, logger: Logger,
         ID of the subscription.
     exception : exceptions.GCloudException
         Exception that should be raised by the module.
+    exception_name : str
+        Key of the exception in the exceptions.py file.
     test_data_path : str
         Path where the data folder is.
     """
-    with pytest.raises(exception):
+    with pytest.raises(exception) as e:
         WazuhGCloudSubscriber(
             credentials_file=test_data_path + credentials_file,
             logger=logger, project=project, subscription_id=subscription_id)
+    assert e.value.key == exception_name

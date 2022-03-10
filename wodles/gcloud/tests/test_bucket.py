@@ -31,19 +31,18 @@ def test_get_bucket(gcloud_bucket: WazuhGCloudBucket):
         assert hasattr(gcloud_bucket, attribute)
 
 
-@pytest.mark.parametrize('credentials_file,logger,bucket_name,exception', [
+@pytest.mark.parametrize('credentials_file,logger,bucket_name,exception,errcode', [
     ('unexistent_file',
      None,
-     'test_bucket',
-     exceptions.GCloudCredentialsNotFoundError),
+     'test_bucket', exceptions.GCloudError, 2),
     ('invalid_credentials_file.json',
      None,
      'test_bucket',
-     exceptions.GCloudCredentialsStructureError)
+     exceptions.GCloudError, 1)
 ])
 def test_bucket_ko(credentials_file: str, logger: Logger,
                    bucket_name: str, exception: exceptions.GCloudException,
-                   test_data_path: str):
+                   test_data_path: str, errcode: int):
     """
     Check that the appropriate exceptions are raised
     when the WazuhGCloudBucket constructor is called with
@@ -61,7 +60,10 @@ def test_bucket_ko(credentials_file: str, logger: Logger,
         Exception that should be raised by the module.
     test_data_path : str
         Path where the data folder is.
+    errcode : int
+        Error code of the exception raised.
     """
-    with pytest.raises(exception):
+    with pytest.raises(exception) as e:
         WazuhGCloudBucket(credentials_file=test_data_path + credentials_file,
                           logger=logger, bucket_name=bucket_name)
+        assert e.errcode == errcode
