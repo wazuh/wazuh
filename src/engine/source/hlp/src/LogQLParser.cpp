@@ -93,7 +93,7 @@ static std::vector<std::string> splitSlashSeparatedField(std::string_view str){
     return ret;
 }
 
-static bool parseCapture(Tokenizer &tk, ExpresionList &expresions)
+static bool parseCapture(Tokenizer &tk, ExpressionList &expresions)
 {
     //<name> || <?name> || <name1>?<name2>
     Token token = getToken(tk);
@@ -106,7 +106,7 @@ static bool parseCapture(Tokenizer &tk, ExpresionList &expresions)
 
     if(token.type == TokenType::Literal)
     {
-        expresions.push_back({{token.text, token.len}, ExpresionType::Capture});
+        expresions.push_back({{token.text, token.len}, ExpressionType::Capture});
 
         if(!requireToken(tk, TokenType::CloseAngle))
         {
@@ -117,7 +117,7 @@ static bool parseCapture(Tokenizer &tk, ExpresionList &expresions)
         // TODO check if there's a better way to do this
         if(optional)
         {
-            expresions.back().type = ExpresionType::OptionalCapture;
+            expresions.back().type = ExpressionType::OptionalCapture;
         }
 
         if(peekToken(tk).type == TokenType::QuestionMark)
@@ -133,11 +133,11 @@ static bool parseCapture(Tokenizer &tk, ExpresionList &expresions)
             }
             // Fix up the combType of the previous capture as this is now an OR
             auto &prevCapture = expresions.back();
-            prevCapture.type = ExpresionType::OrCapture;
+            prevCapture.type = ExpressionType::OrCapture;
 
             Token orEnd = getToken(tk);
             expresions.push_back(
-                {{orEnd.text, orEnd.len}, ExpresionType::Capture});
+                {{orEnd.text, orEnd.len}, ExpressionType::Capture});
 
             if(!requireToken(tk, TokenType::CloseAngle))
             {
@@ -165,9 +165,9 @@ static bool parseCapture(Tokenizer &tk, ExpresionList &expresions)
     return true;
 }
 
-ExpresionList parseLogQlExpr(std::string const &expr)
+ExpressionList parseLogQlExpr(std::string const &expr)
 {
-    ExpresionList expresions;
+    ExpressionList expresions;
     Tokenizer tokenizer {expr.c_str()};
 
     bool done = false;
@@ -210,7 +210,7 @@ ExpresionList parseLogQlExpr(std::string const &expr)
             case TokenType::Literal:
             {
                 expresions.push_back(
-                    {{token.text, token.len}, ExpresionType::Literal});
+                    {{token.text, token.len}, ExpressionType::Literal});
                 break;
             }
             case TokenType::EndOfExpr:

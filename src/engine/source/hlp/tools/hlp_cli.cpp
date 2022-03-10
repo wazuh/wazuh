@@ -38,7 +38,8 @@ int main(int argc, char * argv[])
     auto event_it = events.begin();
     while(exp_it != logql_expressions.end() && event_it != events.end()) {
         auto parseOp = getParserOp(exp_it->c_str());
-        auto result = parseOp(event_it->c_str());
+        ParseResult result;
+        bool ret = parseOp(event_it->c_str(), result);
 
         printf("----------\n");
         printf("LOGQL_EXPRESSION:\n");
