@@ -59,7 +59,9 @@ class SysInfoProcess final
               m_hProcess{ processHandle },
               m_creationTime{},
               m_kernelModeTime{},
-              m_userModeTime{}
+              m_userModeTime{},
+              m_pageFileUsage{},
+              m_virtualSize{}
         {
             setProcessTimes();
             setProcessMemInfo();
