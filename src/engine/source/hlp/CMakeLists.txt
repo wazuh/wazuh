@@ -1,12 +1,3 @@
-# Minimum 3.14 required by googletest discover tests
-cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
-
-# Set c++17
-set(CMAKE_CXX_STANDARD 17)
-
-# Project Settings
-project(wazuh-engine)
-
 set(ENGINE_HLP_SOURCE_DIR ${ENGINE_SOURCE_DIR}/hlp/src)
 set(ENGINE_HLP_INCLUDE_DIR ${ENGINE_SOURCE_DIR}/hlp/include)
 set(ENGINE_HLP_TOOLS_DIR ${ENGINE_SOURCE_DIR}/hlp/tools)

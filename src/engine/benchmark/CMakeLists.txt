@@ -13,3 +13,5 @@ CPMAddPackage(
   OPTIONS
    "BENCHMARK_ENABLE_TESTING Off"
 )
+
+add_subdirectory(${BENCHMARK_SOURCE_DIR}/hlp)
