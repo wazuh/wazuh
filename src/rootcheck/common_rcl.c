@@ -273,8 +273,10 @@ int rkcl_get_entry(FILE *fp, const char *msg, OSList *p_list)
     int type = 0, condition = 0;
     char *nbuf;
     char buf[OS_SIZE_1024 + 2] = {0};
+#ifdef WIN32
     char root_dir[OS_SIZE_1024 + 2] = {0};
     char final_file[2048 + 1] = {0};
+#endif
     char ref[255 + 1] = {0};
     char *value;
     char *name = NULL;
