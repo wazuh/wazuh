@@ -126,13 +126,13 @@ static char *__go_after(char *x, const char *y)
 /* Read Nmap grepable files */
 void *read_nmapg(logreader *lf, int *rc, int drop_it) {
     int final_msg_s;
+    int index = 0;
     int need_clear = 0;
 
     char str[OS_MAX_LOG_SIZE] = {0};
     char final_msg[OS_MAX_LOG_SIZE] = {0};
     char port[17] = {0};
     char proto[17] = {0};
-    char buffer[sizeof(port) + sizeof(proto) + sizeof(PORT_PROTO)] = {0};
 
     char *ip = NULL;
     char *p;
@@ -222,7 +222,7 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
             final_msg_s = 0;
             merror("Error %d (%s) formatting string from file '%s' (length = " FTELL_TT "): '%s'...", errno, strerror(errno), lf->file, FTELL_INT64 bytes_written, final_msg);
         } else if ((size_t)bytes_written < sizeof(final_msg)) {
-            final_msg_s = OS_MAX_LOG_SIZE - 1 - strlen(final_msg);
+            final_msg_s = OS_MAX_LOG_SIZE - strlen(final_msg);
         } else {
             final_msg_s = 0;
             merror("Large message size from file '%s' (length = " FTELL_TT "): '%s'...", lf->file, FTELL_INT64 bytes_written, final_msg);
@@ -247,9 +247,9 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
             }
 
             /* Add ports */
-            snprintf(buffer, sizeof(buffer), PORT_PROTO, port, proto);
-            strncat(final_msg, buffer, final_msg_s);
-            final_msg_s -= strlen(buffer);
+            index = strlen(final_msg);
+            index = snprintf((final_msg + index), final_msg_s, PORT_PROTO, port, proto);
+            final_msg_s -= index;
 
         } while (*p == ',' && (p++));
 
