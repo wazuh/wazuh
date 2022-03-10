@@ -89,9 +89,8 @@ int main (int argc, char **argv) {
 
         // Checking if iptables is present
         if (access(iptables_tmp, F_OK) < 0) {
-            char iptables_path[COMMANDSIZE_4096];
-            memset(iptables_path, '\0', COMMANDSIZE_4096);
-            snprintf(iptables_path, COMMANDSIZE_4096 - 1, "/usr%s", iptables_tmp);
+            char iptables_path[COMMANDSIZE_4096] = {0};
+            snprintf(iptables_path, sizeof(iptables_path), "/usr%s", iptables_tmp);
             if (access(iptables_path, F_OK) < 0) {
                 memset(log_msg, '\0', OS_MAXSTR);
                 snprintf(log_msg, OS_MAXSTR -1, "The iptables file '%s' is not accessible: %s (%d)", iptables_path, strerror(errno), errno);
@@ -99,13 +98,12 @@ int main (int argc, char **argv) {
                 cJSON_Delete(input_json);
                 return OS_SUCCESS;
             }
-            strncpy(iptables, iptables_path, COMMANDSIZE_4096 - 1);
+            snprintf(iptables, sizeof(iptables), "%s", iptables_path);
         } else {
             strncpy(iptables, iptables_tmp, COMMANDSIZE_4096 - 1);
         }
 
-        char arg[3];
-        memset(arg, '\0', 3);
+        char arg[3] = {0};
         if (action == ADD_COMMAND) {
             strcpy(arg, "-I");
         } else {

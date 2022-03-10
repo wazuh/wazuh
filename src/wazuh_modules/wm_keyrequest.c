@@ -381,7 +381,7 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
             return -1;
         }
 
-        authd_force_options_t authd_force_options = {0};
+        authd_force_options_t authd_force_options = {.enabled = 0};
         if(data->force_insert) {
             authd_force_options.enabled = true;
         }
