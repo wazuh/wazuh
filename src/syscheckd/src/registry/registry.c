@@ -896,7 +896,7 @@ void fim_read_values(HKEY key_handle,
         }
     }
 
-    fim_registry_free_value_data(new.registry_entry.value);
+    os_free(value_data.name);
     os_free(data_buffer);
 }
 
