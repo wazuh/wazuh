@@ -17,7 +17,6 @@ CPMAddPackage(
         "RAPIDJSON_BUILD_DOC OFF"
         "RAPIDJSON_BUILD_EXAMPLES OFF"
         "RAPIDJSON_BUILD_TESTS OFF"
-        "RAPIDJSON_HAS_STDSTRING ON"
 )
 
 # Add this dependencies to parent CMakeLists scope

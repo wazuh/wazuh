@@ -2,9 +2,6 @@
 
 #include <benchmark/benchmark.h>
 
-// Including this private header directly to be able to
-// benchmark individual parsers.
-// Regular users of the library should NOT do this
 #include "src/SpecificParsers.hpp"
 #include <hlp/hlp.hpp>
 
@@ -65,19 +62,18 @@ static std::string getRandomCapExpr(int len){
     return ret;
 }
 
-static std::string createRandomFilepath(int len, bool unixFormat = false, int length = 5)
+static std::string createRandomFilepath(int folder_name_length, bool unixFormat = false, int folders_qtty = 5)
 {
     std::string ret, folder_separator;
     if(unixFormat){
         folder_separator = '/';
-        ret += getRandomString(len);
     }
     else {
         folder_separator = '\\';
         ret += "C:\\";
     }
-    for(int i = 0; i < length; i++){
-        ret += getRandomString(len) + folder_separator ;
+    for(int i = 0; i < folders_qtty; i++){
+        ret += getRandomString(folder_name_length) + folder_separator ;
     }
 
     return ret;
@@ -113,15 +109,7 @@ static std::string createMap(int len)
     return ret;
 }
 
-// TODO Probably need a way to mix-match a variable number of all our parsers
-static const char *logQL_expression = "<source.address> - <JSON> - [<timestamp/APACHE>] \"<http.request.method> "
-    "<url> HTTP/<http.version>\" <http.response.status_code> <http.response.body.bytes> \"-\" "
-    "\"<user_agent.original>\"";
-static const char *event = "monitoring-server - {\"data\":\"this is a json\"} - [29/May/2017:19:02:48 +0000] "
-    "\"GET https://user:password@wazuh.com:8080/status?query=%22a%20query%20with%20a%20space%22#fragment "
-    "HTTP/1.1\" 200 612 \"-\" \"Mozilla/5.0 (Windows NT 6.1; rv:15.0) Gecko/20120716 Firefox/15.0a2\"";
-
-static void capture_expr_parse(benchmark::State &state)
+static void getting_parser_from_expression(benchmark::State &state)
 {
     auto expr = getRandomCapExpr(state.range(0));
     for (auto _ : state)
@@ -132,9 +120,9 @@ static void capture_expr_parse(benchmark::State &state)
         }
     }
 }
-BENCHMARK(capture_expr_parse)->Range(8, 8 << 10);
+BENCHMARK(getting_parser_from_expression)->Range(8, 8 << 10);
 
-static void capture_var_expr_parse(benchmark::State &state)
+static void getting_parser_from_variable_length_expression(benchmark::State &state)
 {
     auto expr = getRandomCapExprVariable(state.range(0));
     for (auto _ : state)
@@ -145,7 +133,7 @@ static void capture_var_expr_parse(benchmark::State &state)
         }
     }
 }
-BENCHMARK(capture_var_expr_parse)->Range(8, 8 << 10);
+BENCHMARK(getting_parser_from_variable_length_expression)->Range(8, 8 << 10);
 
 static void match_literal_range(benchmark::State &state)
 {
@@ -161,25 +149,46 @@ static void match_literal_range(benchmark::State &state)
 }
 BENCHMARK(match_literal_range)->Range(8, 8 << 11);
 
-static void execute_parsers(benchmark::State &state)
+static void getting_result_from_defined_parser(benchmark::State &state)
 {
+    // TODO Probably need a way to mix-match a variable number of all our parsers
+    const char *logQL_expression = "<source.address> - <JSON> - [<timestamp/APACHE>]"
+                                   " \"<http.request.method> <url> HTTP/<http.version>\" "
+                                   "<http.response.status_code> <http.response.body.bytes> \"-\" "
+                                   "\"<user_agent.original>\"";
+    const char *event = "monitoring-server - {\"data\":\"this is a json\"} - "
+                        "[29/May/2017:19:02:48 +0000] \"GET https://user:password@wazuh.com"
+                        ":8080/status?query=%22a%20query%20with%20a%20space%22#fragment "
+                        "HTTP/1.1\" 200 612 \"-\" \"Mozilla/5.0 (Windows NT 6.1; rv:15.0)"
+                        " Gecko/20120716 Firefox/15.0a2\"";
+
     auto parseOp = getParserOp(logQL_expression);
     for (auto _ : state)
     {
         auto result = parseOp(event);
     }
 }
-BENCHMARK(execute_parsers);
+BENCHMARK(getting_result_from_defined_parser);
 
-static void full_pass(benchmark::State &state)
+static void getting_result_from_defined_expression(benchmark::State &state)
 {
+    const char *logQL_expression = "<source.address> - <JSON> - [<timestamp/APACHE>]"
+                                   " \"<http.request.method> <url> HTTP/<http.version>\" "
+                                   "<http.response.status_code> <http.response.body.bytes> \"-\" "
+                                   "\"<user_agent.original>\"";
+    const char *event = "monitoring-server - {\"data\":\"this is a json\"} - "
+                        "[29/May/2017:19:02:48 +0000] \"GET https://user:password@wazuh.com"
+                        ":8080/status?query=%22a%20query%20with%20a%20space%22#fragment "
+                        "HTTP/1.1\" 200 612 \"-\" \"Mozilla/5.0 (Windows NT 6.1; rv:15.0)"
+                        " Gecko/20120716 Firefox/15.0a2\"";
+
     for (auto _ : state)
     {
         auto parseOp = getParserOp(logQL_expression);
         auto result = parseOp(event);
     }
 }
-BENCHMARK(full_pass);
+BENCHMARK(getting_result_from_defined_expression);
 
 // Url parsing
 static void url_parse(benchmark::State &state)
@@ -265,7 +274,6 @@ static void timestamp_specific_format_parse(benchmark::State &state)
     for (auto _ : state) {
         TimeStampResult tsr;
         std::vector<std::string> const opts = {"RubyDate"};
-        // TODO: does it add any value if I create a random date generator?
         const char *it = "Mon Jan 02 15:04:05 -0700 2006";
         if(!parseTimeStamp(&it, opts, 0, tsr)) {
             state.SkipWithError("Parser Failed");
