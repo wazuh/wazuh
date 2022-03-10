@@ -25,6 +25,7 @@ from api.configuration import security_conf
 from api.constants import SECURITY_PATH
 from wazuh.core.common import wazuh_uid, wazuh_gid
 from wazuh.rbac.utils import clear_cache
+from wazuh.core.utils import get_utc_now
 
 # Max reserved ID value
 max_id_reserved = 99
@@ -107,7 +108,7 @@ class RolesRules(_Base):
     id = Column('id', Integer, primary_key=True)
     role_id = Column('role_id', Integer, ForeignKey("roles.id", ondelete='CASCADE'))
     rule_id = Column('rule_id', Integer, ForeignKey("rules.id", ondelete='CASCADE'))
-    created_at = Column('created_at', DateTime, default=datetime.utcnow())
+    created_at = Column('created_at', DateTime, default=get_utc_now())
     __table_args__ = (UniqueConstraint('role_id', 'rule_id', name='role_rule'),
                       )
 
@@ -133,7 +134,7 @@ class RolesPolicies(_Base):
     role_id = Column('role_id', Integer, ForeignKey("roles.id", ondelete='CASCADE'))
     policy_id = Column('policy_id', Integer, ForeignKey("policies.id", ondelete='CASCADE'))
     level = Column('level', Integer, default=0)
-    created_at = Column('created_at', DateTime, default=datetime.utcnow())
+    created_at = Column('created_at', DateTime, default=get_utc_now())
     __table_args__ = (UniqueConstraint('role_id', 'policy_id', name='role_policy'),
                       )
 
@@ -158,7 +159,7 @@ class UserRoles(_Base):
     user_id = Column('user_id', Integer, ForeignKey("users.id", ondelete='CASCADE'))
     role_id = Column('role_id', Integer, ForeignKey("roles.id", ondelete='CASCADE'))
     level = Column('level', Integer, default=0)
-    created_at = Column('created_at', DateTime, default=datetime.utcnow())
+    created_at = Column('created_at', DateTime, default=get_utc_now())
     __table_args__ = (UniqueConstraint('user_id', 'role_id', name='user_role'),
                       )
 
@@ -270,7 +271,7 @@ class User(_Base):
     username = Column(String(32), nullable=False)
     password = Column(String(256), nullable=False)
     allow_run_as = Column(Boolean, default=False, nullable=False)
-    created_at = Column('created_at', DateTime, default=datetime.utcnow())
+    created_at = Column('created_at', DateTime, default=get_utc_now())
     __table_args__ = (UniqueConstraint('username', name='username_restriction'),)
 
     # Relations
@@ -281,7 +282,7 @@ class User(_Base):
         self.username = username
         self.password = password
         self.allow_run_as = allow_run_as
-        self.created_at = datetime.utcnow()
+        self.created_at = get_utc_now()
 
     def __repr__(self):
         return f"<User(user={self.username})"
@@ -333,7 +334,7 @@ class Roles(_Base):
     # Schema
     id = Column('id', Integer, primary_key=True)
     name = Column('name', String(20), nullable=False)
-    created_at = Column('created_at', DateTime, default=datetime.utcnow())
+    created_at = Column('created_at', DateTime, default=get_utc_now())
     __table_args__ = (UniqueConstraint('name', name='name_role'),)
 
     # Relations
@@ -345,7 +346,7 @@ class Roles(_Base):
     def __init__(self, name, role_id=None):
         self.id = role_id
         self.name = name
-        self.created_at = datetime.utcnow()
+        self.created_at = get_utc_now()
 
     def get_role(self):
         """Role's getter
@@ -388,7 +389,7 @@ class Rules(_Base):
     id = Column('id', Integer, primary_key=True)
     name = Column('name', String(20), nullable=False)
     rule = Column('rule', TEXT, nullable=False)
-    created_at = Column('created_at', DateTime, default=datetime.utcnow())
+    created_at = Column('created_at', DateTime, default=get_utc_now())
     __table_args__ = (UniqueConstraint('name', name='rule_name'),)
 
     # Relations
@@ -398,7 +399,7 @@ class Rules(_Base):
         self.id = rule_id
         self.name = name
         self.rule = rule
-        self.created_at = datetime.utcnow()
+        self.created_at = get_utc_now()
 
     def get_rule(self):
         """Rule getter
@@ -435,7 +436,7 @@ class Policies(_Base):
     id = Column('id', Integer, primary_key=True)
     name = Column('name', String(20), nullable=False)
     policy = Column('policy', TEXT, nullable=False)
-    created_at = Column('created_at', DateTime, default=datetime.utcnow())
+    created_at = Column('created_at', DateTime, default=get_utc_now())
     __table_args__ = (UniqueConstraint('name', name='name_policy'),
                       UniqueConstraint('policy', name='policy_definition'))
 
@@ -447,7 +448,7 @@ class Policies(_Base):
         self.id = policy_id
         self.name = name
         self.policy = policy
-        self.created_at = datetime.utcnow()
+        self.created_at = get_utc_now()
 
     def get_policy(self):
         """Policy's getter

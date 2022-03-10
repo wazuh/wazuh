@@ -357,6 +357,9 @@ class WazuhException(Exception):
                'remediation': 'Please, check if the file content is valid UTF-8'},
         1912: {'message': 'Body is empty',
                'remediation': 'Please, check the content of the file to be uploaded'},
+        1913: {'message': 'Error getting manager status, directory /proc is not found or permissions to see its status '
+                          'are not granted',
+               'remediation': 'Please, ensure /proc exists and permissions are granted'},
 
         # Database:
         2000: {'message': 'No such database file'},

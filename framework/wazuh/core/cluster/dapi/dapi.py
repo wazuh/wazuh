@@ -305,8 +305,8 @@ class DistributedAPI:
             return json.dumps(e, cls=c_common.WazuhJSONEncoder)
         except exception.WazuhInternalError as e:
             e.dapi_errors = self.get_error_info(e)
-            # Avoid exception info if it is an asyncio timeout or JSONDecodeError
-            self.logger.error(f"{e.message}", exc_info=e.code not in {3021, 3036})
+            # Avoid exception info if it is an asyncio timeout error, JSONDecodeError or /proc availability error
+            self.logger.error(f"{e.message}", exc_info=e.code not in {3021, 3036, 1913})
             if self.debug:
                 raise
             return json.dumps(e, cls=c_common.WazuhJSONEncoder)

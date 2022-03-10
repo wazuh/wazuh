@@ -686,8 +686,9 @@ async def test_worker_handler_sync_agent_info(request_permission_mock, logger_er
 @freeze_time('1970-01-01')
 @patch.object(logging.getLogger("wazuh.Integrity sync"), "debug")
 @patch("wazuh.core.cluster.worker.SyncFiles.sync", return_value=True)
+@patch('wazuh.core.cluster.worker.perf_counter', return_value=0)
 @patch("wazuh.core.cluster.cluster.merge_info", return_value=("n_files", "merged_file"))
-async def test_wazuh_handler_sync_extra_valid(merge_info_mock, sync_mock, logger_debug_mock):
+async def test_wazuh_handler_sync_extra_valid(merge_info_mock, perf_counter_mock, sync_mock, logger_debug_mock):
     """Test the 'sync_extra_valid' method."""
 
     extra_valid = {"/missing/path": 0, "missing/path2": 1}
@@ -718,7 +719,7 @@ async def test_wazuh_handler_sync_extra_valid(merge_info_mock, sync_mock, logger
                                                       data=b'None ' + json.dumps(exception.WazuhException(1001),
                                                                                  cls=cls).encode())
             # Test second exception
-            with patch("json.dumps", return_value="data_to_encode") as json_mock:
+            with patch("json.dumps", return_value="data_to_encode"):
                 merge_info_mock.side_effect = Exception()
                 await worker_handler.sync_extra_valid(extra_valid)
                 logger_debug_mock.assert_called_with("Starting sending extra valid files to master.")

@@ -69,8 +69,13 @@ int ReadExecConfig()
         tmp_str += 3;
 
         /* Set the name */
-        strncpy(exec_names[exec_size], str_pt, OS_FLSIZE);
-        exec_names[exec_size][OS_FLSIZE] = '\0';
+        const int bytes_written = snprintf(exec_names[exec_size], sizeof(exec_names[exec_size]), "%s", str_pt);
+
+        if (bytes_written < 0) {
+            merror(EXEC_BAD_NAME " Error %d (%s).", exec_names[exec_size], errno, strerror(errno));
+        } else if ((size_t)bytes_written >= sizeof(exec_names[exec_size])) {
+            merror(EXEC_BAD_NAME, exec_names[exec_size]);
+        }
 
         str_pt = tmp_str;
 

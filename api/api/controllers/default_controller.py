@@ -13,6 +13,7 @@ from api.models.basic_info_model import BasicInfo
 from wazuh.core.common import DATE_FORMAT
 from wazuh.core.results import WazuhResult
 from wazuh.core.security import load_spec
+from wazuh.core.utils import get_utc_now
 
 logger = logging.getLogger('wazuh-api')
 
@@ -32,7 +33,7 @@ async def default_info(pretty=False):
         'license_name': info_data['info']['license']['name'],
         'license_url': info_data['info']['license']['url'],
         'hostname': socket.gethostname(),
-        'timestamp': datetime.utcnow().strftime(DATE_FORMAT)
+        'timestamp': get_utc_now().strftime(DATE_FORMAT)
     }
     response = WazuhResult({'data': BasicInfo.from_dict(data)})
 

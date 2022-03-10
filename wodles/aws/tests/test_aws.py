@@ -299,3 +299,26 @@ def test_aws_waf_load_information_from_file_ko(
          pytest.raises(expected_exception):
         aws_waf_bucket.client.get_object.return_value.__getitem__.return_value = f
         aws_waf_bucket.load_information_from_file(log_file)
+
+
+@pytest.mark.parametrize('date, expected_date', [
+    ('2021/1/19', '20210119'),
+    ('2021/1/1', '20210101'),
+    ('2021/01/01', '20210101'),
+    ('2000/2/12', '20000212'),
+    ('2022/02/1', '20220201')
+])
+def test_config_format_created_date(date: str, expected_date: str, aws_config_bucket):
+    """
+    Test AWSConfigBucket's format_created_date method.
+
+    Parameters
+    ----------
+    date : str
+        The date introduced.
+    expected_date : str
+        The date that the method should return.
+    aws_config_bucket : aws_s3.AWSConfigBucket
+        Instance of the AWSConfigBucket class.
+    """
+    assert aws_config_bucket._format_created_date(date) == expected_date

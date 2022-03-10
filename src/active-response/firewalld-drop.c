@@ -82,24 +82,20 @@ int main (int argc, char **argv) {
     }
 
     if (!strcmp("Linux", uname_buffer.sysname)) {
-        char arg1[COMMANDSIZE_4096];
-        char fw_cmd[COMMANDSIZE_4096];
+        char arg1[COMMANDSIZE_4096] = {0};
+        char fw_cmd[COMMANDSIZE_4096] = {0};
         char fw_cmd_tmp[COMMANDSIZE_4096 - 5] = DEFAULT_FW_CMD;
 
-        memset(arg1, '\0', COMMANDSIZE_4096);
         if (action == ADD_COMMAND) {
             strcpy(arg1, "--add-rich-rule");
         } else {
             strcpy(arg1, "--remove-rich-rule");
         }
 
-        memset(fw_cmd, '\0', COMMANDSIZE_4096);
-
         // Checking if firewall-cmd is present
         if (access(fw_cmd_tmp, F_OK) < 0) {
-            char fw_cmd_path[COMMANDSIZE_4096];
-            memset(fw_cmd_path, '\0', COMMANDSIZE_4096);
-            snprintf(fw_cmd_path, COMMANDSIZE_4096 - 1, "/usr%s", fw_cmd_tmp);
+            char fw_cmd_path[COMMANDSIZE_4096] = {0};
+            snprintf(fw_cmd_path, sizeof(fw_cmd_path), "/usr%s", fw_cmd_tmp);
             if (access(fw_cmd_path, F_OK) < 0) {
                 memset(log_msg, '\0', OS_MAXSTR);
                 snprintf(log_msg, OS_MAXSTR -1, "The firewall-cmd file '%s' is not accessible: %s (%d)", fw_cmd_path, strerror(errno), errno);
@@ -107,7 +103,7 @@ int main (int argc, char **argv) {
                 cJSON_Delete(input_json);
                 return OS_INVALID;
             }
-            strncpy(fw_cmd, fw_cmd_path, COMMANDSIZE_4096 - 1);
+            snprintf(fw_cmd, sizeof(fw_cmd), "%s", fw_cmd_path);
         } else {
             strncpy(fw_cmd, fw_cmd_tmp, COMMANDSIZE_4096 - 1);
         }

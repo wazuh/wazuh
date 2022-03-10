@@ -7,7 +7,6 @@ import json
 import re
 import socket
 from collections import OrderedDict
-from datetime import datetime
 from os.path import exists, join
 from typing import Dict
 
@@ -15,7 +14,7 @@ from api import configuration
 from wazuh import WazuhInternalError, WazuhError, WazuhException
 from wazuh.core import common
 from wazuh.core.cluster.utils import get_manager_status
-from wazuh.core.utils import tail
+from wazuh.core.utils import tail, get_utc_strptime
 from wazuh.core.wazuh_socket import WazuhSocket
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
@@ -45,7 +44,7 @@ def get_ossec_log_fields(log):
     else:
         return None
 
-    return datetime.strptime(date, '%Y/%m/%d %H:%M:%S'), tag, level.lower(), description
+    return get_utc_strptime(date, '%Y/%m/%d %H:%M:%S'), tag, level.lower(), description
 
 
 def get_ossec_logs(limit=2000):

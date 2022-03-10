@@ -10,6 +10,7 @@ import pytest
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         from wazuh.core import syscheck
+        from wazuh.core.utils import get_date_from_timestamp
 
 
 @pytest.mark.parametrize('agent', ['002', '080'])
@@ -50,11 +51,11 @@ def test_wazuh_db_syscheck_format_data_into_dictionary(mock_backend, data, is_js
     test._data = [data]
     result = test._format_data_into_dictionary()
 
-    assert result['items'][0]['end'] == datetime.utcfromtimestamp(data['end'])
-    assert result['items'][0]['start'] == datetime.utcfromtimestamp(data['start'])
+    assert result['items'][0]['end'] == get_date_from_timestamp(data['end'])
+    assert result['items'][0]['start'] == get_date_from_timestamp(data['start'])
     assert result['items'][0]['module'] == data['module']
-    assert result['items'][0]['date'] == datetime.utcfromtimestamp(data['date'])
-    assert result['items'][0]['mtime'] == datetime.utcfromtimestamp(data['mtime'])
+    assert result['items'][0]['date'] == get_date_from_timestamp(data['date'])
+    assert result['items'][0]['mtime'] == get_date_from_timestamp(data['mtime'])
     if is_json:
         assert isinstance(result['items'][0]['perm'], dict)
         assert result['items'][0]['perm'] == loads(data['perm'])

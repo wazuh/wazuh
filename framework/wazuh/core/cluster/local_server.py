@@ -17,6 +17,7 @@ from wazuh.core.cluster import common as c_common, server, client
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag
 from wazuh.core.exception import WazuhClusterError
+from wazuh.core.utils import get_date_from_timestamp
 
 
 class LocalServerHandler(server.AbstractServerHandler):
@@ -291,7 +292,7 @@ class LocalServerHandlerMaster(LocalServerHandler):
         """
         return b'ok', json.dumps(self.server.node.get_health(json.loads(filter_nodes)),
                                  default=lambda o: "n/a" if
-                                 isinstance(o, datetime) and o == datetime.utcfromtimestamp(0)
+                                 isinstance(o, datetime) and o == get_date_from_timestamp(0)
                                  else (o.__str__() if isinstance(o, datetime) else None)).encode()
 
     def send_file_request(self, path, node_name):

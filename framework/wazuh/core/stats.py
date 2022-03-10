@@ -4,9 +4,8 @@
 import json
 import os
 import re
-from datetime import datetime
 
-from wazuh.core import common
+from wazuh.core import common, utils
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.wazuh_socket import WazuhSocket
 
@@ -71,7 +70,7 @@ def weekly_():
     return weekly_results
 
 
-def totals_(date=datetime.utcnow()):
+def totals_(date=utils.get_utc_now()):
     """Compute statistical information for the current or specified date.
 
     Parameters
@@ -202,7 +201,7 @@ def get_daemons_stats_from_socket(agent_id, daemon):
     # Format response
     try:
         data = json.loads(rec_msg)['data']
-        data.update((k, datetime.strptime(data[k], "%Y-%m-%d %H:%M:%S").strftime(common.DATE_FORMAT))
+        data.update((k, utils.get_utc_strptime(data[k], "%Y-%m-%d %H:%M:%S").strftime(common.DATE_FORMAT))
                     for k, v in data.items() if k in {'last_keepalive', 'last_ack'})
         return data
     except Exception:

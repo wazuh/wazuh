@@ -2,6 +2,7 @@
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+import datetime
 import glob
 import os
 from collections.abc import KeysView
@@ -13,6 +14,7 @@ from xml.etree.ElementTree import Element
 from defusedxml.ElementTree import parse
 
 import pytest
+from freezegun import freeze_time
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
@@ -1727,3 +1729,30 @@ def test_full_copy_ko():
     """Test `full_copy` function using mutation testing."""
     with pytest.raises(AssertionError):
         test_full_copy()
+
+
+@freeze_time('1970-01-01')
+def test_get_date_from_timestamp():
+    """Test if the result is the expected date."""
+
+    date = utils.get_date_from_timestamp(0)
+    assert date == datetime.datetime(1970, 1, 1, 0, 0, tzinfo=datetime.timezone.utc)
+
+
+@freeze_time('1970-01-01')
+def test_get_utc_now():
+    """Test if the result is the expected date."""
+
+    date = utils.get_utc_now()
+    assert date == datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
+
+
+@freeze_time('1970-01-01')
+def test_get_utc_now():
+    """Test if the result is the expected date."""
+    mock_date = '1970-01-01'
+    default_format = '%Y-%M-%d'
+
+    date = utils.get_utc_strptime(mock_date, default_format)
+    assert isinstance(date, datetime.datetime)
+    assert date == datetime.datetime(1970, 1, 1, 0, 1, tzinfo=datetime.timezone.utc)

@@ -405,6 +405,9 @@ int main(int argc, char **argv)
         sigaction(SIGTERM, &action, NULL);
         sigaction(SIGHUP, &action, NULL);
         sigaction(SIGINT, &action, NULL);
+
+        action.sa_handler = SIG_IGN;
+        sigaction(SIGPIPE, &action, NULL);
     }
 
     /* Create PID files */

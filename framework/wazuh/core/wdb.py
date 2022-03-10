@@ -122,7 +122,7 @@ class WazuhDBConnection:
             if v == "(null)":
                 continue
             if isinstance(v, str) and DATE_FORMAT.match(v):
-                result[k] = datetime.datetime.strptime(v, '%Y/%m/%d %H:%M:%S')
+                result[k] = datetime.datetime.strptime(v, '%Y/%m/%d %H:%M:%S').replace(tzinfo=datetime.timezone.utc)
             else:
                 result[k] = v
 

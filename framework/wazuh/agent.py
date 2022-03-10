@@ -939,9 +939,6 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
             )
         )) for ag in non_eligible_agents]
 
-        if version and not version.startswith('v'):
-            version = f'v{version}'
-
         eligible_agents = agent_list - not_found_agents - non_active_agents - non_eligible_agents
 
         # Transform the format of the agent ids to the general format

@@ -1275,7 +1275,7 @@ int wdb_parse_syscheck(wdb_t * wdb, wdb_component_t component, char * input, cha
             size_t unsc_size = strlen(unsc_checksum);
             size_t mark_size = strlen(mark);
             os_realloc(unsc_checksum, unsc_size + mark_size + 1, unsc_checksum);
-            strncpy(unsc_checksum + unsc_size, mark, mark_size);
+            strncpy(unsc_checksum + unsc_size, mark, mark_size + 1);
             unsc_checksum[unsc_size + mark_size] = '\0';
         }
 
