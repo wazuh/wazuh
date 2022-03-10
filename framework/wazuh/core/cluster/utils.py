@@ -14,7 +14,6 @@ from contextvars import ContextVar
 from functools import lru_cache
 from glob import glob
 from operator import setitem
-from os.path import join, exists
 
 from wazuh.core import common, pyDaemonModule
 from wazuh.core.configuration import get_ossec_conf
@@ -25,7 +24,7 @@ from wazuh.core.wazuh_socket import create_wazuh_socket_message
 from wazuh.core.wlogging import WazuhLogger
 
 logger = logging.getLogger('wazuh')
-execq_lockfile = join(common.WAZUH_PATH, "var/run/.api_execq_lock")
+execq_lockfile = os.path.join(common.WAZUH_PATH, "var", "run", ".api_execq_lock")
 
 
 def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typing.Dict:
@@ -99,23 +98,35 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
 def get_manager_status(cache=False) -> typing.Dict:
     """Get the current status of each process of the manager.
 
+    Raises
+    ------
+    WazuhInternalError(1913)
+        If /proc directory is not found or permissions to see its status are not granted.
+
     Returns
     -------
     data : dict
         Dict whose keys are daemons and the values are the status.
     """
+    # Check /proc directory availability
+    proc_path = "/proc"
+    try:
+        os.stat(proc_path)
+    except (PermissionError, FileNotFoundError) as e:
+        raise WazuhInternalError(1913, extra_message=str(e))
+
     processes = ['wazuh-agentlessd', 'wazuh-analysisd', 'wazuh-authd', 'wazuh-csyslogd', 'wazuh-dbd', 'wazuh-monitord',
                  'wazuh-execd', 'wazuh-integratord', 'wazuh-logcollector', 'wazuh-maild', 'wazuh-remoted',
                  'wazuh-reportd', 'wazuh-syscheckd', 'wazuh-clusterd', 'wazuh-modulesd', 'wazuh-db', 'wazuh-apid']
 
-    data, pidfile_regex, run_dir = {}, re.compile(r'.+\-(\d+)\.pid$'), join(common.WAZUH_PATH, 'var/run')
+    data, pidfile_regex, run_dir = {}, re.compile(r'.+\-(\d+)\.pid$'), os.path.join(common.WAZUH_PATH, "var", "run")
     for process in processes:
-        pidfile = glob(join(run_dir, f"{process}-*.pid"))
-        if exists(join(run_dir, f'{process}.failed')):
+        pidfile = glob(os.path.join(run_dir, f"{process}-*.pid"))
+        if os.path.exists(os.path.join(run_dir, f"{process}.failed")):
             data[process] = 'failed'
-        elif exists(join(run_dir, f'.restart')):
+        elif os.path.exists(os.path.join(run_dir, f".restart")):
             data[process] = 'restarting'
-        elif exists(join(run_dir, f'{process}.start')):
+        elif os.path.exists(os.path.join(run_dir, f"{process}.start")):
             data[process] = 'starting'
         elif pidfile:
             # Iterate on pidfiles looking for the pidfile which has his pid in /proc,
@@ -123,7 +134,7 @@ def get_manager_status(cache=False) -> typing.Dict:
             # it means each process crashed and was not able to remove its own pidfile.
             data[process] = 'failed'
             for pid in pidfile:
-                if exists(join('/proc', pidfile_regex.match(pid).group(1))):
+                if os.path.exists(os.path.join(proc_path, pidfile_regex.match(pid).group(1))):
                     data[process] = 'running'
                     break
 
@@ -141,8 +152,13 @@ def get_cluster_status() -> typing.Dict:
     dict
         Cluster status.
     """
-    return {"enabled": "no" if read_cluster_config()['disabled'] else "yes",
-            "running": "yes" if get_manager_status()['wazuh-clusterd'] == 'running' else "no"}
+    cluster_status = {"enabled": "no" if read_cluster_config()['disabled'] else "yes"}
+    try:
+        cluster_status |= {"running": "yes" if get_manager_status()['wazuh-clusterd'] == 'running' else "no"}
+    except WazuhInternalError:
+        cluster_status |= {"running": "no"}
+
+    return cluster_status
 
 
 def manager_restart() -> WazuhResult:
@@ -174,7 +190,7 @@ def manager_restart() -> WazuhResult:
                                                      command=common.RESTART_WAZUH_COMMAND,
                                                      parameters={'extra_args': [], 'alert': {}}))
         # initialize socket
-        if exists(socket_path):
+        if os.path.exists(socket_path):
             try:
                 conn = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
                 conn.connect(socket_path)
