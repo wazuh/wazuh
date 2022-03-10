@@ -139,7 +139,7 @@ TEST(hlpTests_URL, url_wrong_format)
     ParseResult result;
     bool ret = parseOp(event, result);
 
-    ASSERT_EQ(result.cend(), result.find("_temp"));
+    ASSERT_FALSE(ret);
 }
 
 TEST(hlpTests_URL, url_success)
