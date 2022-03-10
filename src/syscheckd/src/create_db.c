@@ -683,8 +683,9 @@ void fim_checker(const char *path,
             {
                 fim_diff_process_delete_file(path);
             }
-            return;
         }
+
+        return;
     }
 
 #ifdef WIN_WHODATA
