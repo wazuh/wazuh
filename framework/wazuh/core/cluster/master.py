@@ -1126,7 +1126,7 @@ class Master(server.AbstractServer):
         This information will only be sent to the worker nodes when it contains data.
         It looks like this: ['[{"data":[{"id":1,"group":["default","group1"]}]}]'].
         """
-        logger = self.setup_task_logger('Agent-groups get')
+        logger = self.setup_task_logger('Local agent-groups')
         wdb_conn = WazuhDBConnection()
         sync_object = c_common.SyncWazuhdb(manager=self, logger=logger, cmd=b'syn_g_m_w',
                                            data_retriever=wdb_conn.run_wdb_command,
