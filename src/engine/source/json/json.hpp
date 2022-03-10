@@ -76,7 +76,6 @@ public:
      */
     void set(std::string path, const rapidjson::Value & v)
     {
-        //std::replace(std::begin(path), std::end(path), '.', '/');
         auto ptr = rapidjson::Pointer(path.c_str());
         if (ptr.IsValid())
         {
@@ -111,10 +110,7 @@ public:
         }
     }
 
-    /**
-     * @brief -----
-     * @param v 
-     */
+    // TODO: Doc this
     void setReference(const Document & v)
     {
         // TODO: Write a test and doc for this method and check if it works
@@ -198,7 +194,6 @@ public:
     bool contains(const std::string & field) const
     {
         // TODO DOC THIS
-        //auto ptr = rapidjson::Pointer(preparePath(field).c_str());
         auto ptr = rapidjson::Pointer(field.c_str());
         if (ptr.IsValid())
         {

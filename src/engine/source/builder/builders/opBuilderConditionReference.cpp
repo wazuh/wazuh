@@ -28,7 +28,7 @@ types::Lifter opBuilderConditionReference(const types::DocumentValue & def)
         throw std::runtime_error("The value of the field '" + field + "' must be a string.");
     }
     std::string reference {def.MemberBegin()->value.GetString()};
-    // Delete the `$` at the beginning of the reference (Adds test, doc and handle the invalid reference)
+    // TODO: Delete the `$` at the beginning of the reference (Adds test, doc and handle the invalid reference)
     reference = json::Document::preparePath(reference.substr(1, std::string::npos));
 
     // Return Lifter
@@ -38,9 +38,17 @@ types::Lifter opBuilderConditionReference(const types::DocumentValue & def)
         return o.filter(
             [=](types::Event e)
             {
-                //TODO: implemente proper json check reference
-                auto v = e->get(reference);
-                return e->check(field, v);
+                // TODO: implemente proper json check reference
+                // TODO: remove try and catch
+                try
+                {
+                    auto v = e->get(reference);
+                    return v != nullptr && e->check(field, v);
+                }
+                catch (std::exception & ex)
+                {
+                    return false;
+                }
             });
     };
 }
