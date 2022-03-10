@@ -35,6 +35,7 @@ static const std::unordered_map<std::string_view, ParserType> kTempTypeMapper {
     {"domain", ParserType::Domain},
     {"FilePath", ParserType::FilePath},
     {"userAgent", ParserType::UserAgent},
+    {"url", ParserType::URL},
 };
 
 // NOTE: This function requires that the original string live for the duration
@@ -74,7 +75,7 @@ static bool setParserOptions(Parser &parser,
     return false;
 }
 
-Parser createParserFromExpresion(Expresion const& exp)
+Parser createParserFromExpresion(Expression const& exp)
 {
     // We could be parsing:
     //      '<_>'
@@ -122,7 +123,7 @@ Parser createParserFromExpresion(Expresion const& exp)
     return parser;
 }
 
-std::vector<Parser> getParserList(ExpresionList const &expresions)
+std::vector<Parser> getParserList(ExpressionList const &expresions)
 {
     std::vector<Parser> parsers;
 
@@ -130,19 +131,19 @@ std::vector<Parser> getParserList(ExpresionList const &expresions)
     {
         switch(expresion.type)
         {
-            case ExpresionType::Capture:
-            case ExpresionType::OptionalCapture:
-            case ExpresionType::OrCapture:
+            case ExpressionType::Capture:
+            case ExpressionType::OptionalCapture:
+            case ExpressionType::OrCapture:
             {
                 parsers.push_back(createParserFromExpresion(expresion));
                 break;
             }
-            case ExpresionType::Literal:
+            case ExpressionType::Literal:
             {
                 Parser p;
                 p.name = expresion.text;
                 p.type = ParserType::Literal;
-                p.expType = ExpresionType::Literal;
+                p.expType = ExpressionType::Literal;
                 p.endToken = expresion.endToken;
                 parsers.push_back(p);
                 break;
@@ -167,7 +168,7 @@ static bool executeParserList(std::string const &event,
     // TODO This implementation is super simple for the POC
     // but we will want to re-do it or revise it to implement
     // better parser combinations
-    bool isOk = false;
+    bool isOk = true;
     for(auto const &parser : parsers)
     {
         const char *prevIt = eventIt;
@@ -178,21 +179,18 @@ static bool executeParserList(std::string const &event,
         }
         else
         {
-            isOk = false;
-            fprintf(stderr,
-                    "Missing implementation for parser type: [%i]\n",
-                    parser.type);
-            break;
+            //ASSERT here we are missing an implementation
+            return false;
         }
 
         if(!isOk)
         {
-            if(parser.expType == ExpresionType::OptionalCapture ||
-               parser.expType == ExpresionType::OrCapture)
+            if(parser.expType == ExpressionType::OptionalCapture ||
+               parser.expType == ExpressionType::OrCapture)
             {
                 // We need to test the second part of the 'OR' capture
                 eventIt = prevIt;
-                isOk = false;
+                isOk = true; //Not strictly necessary
             }
             else
             {
@@ -209,21 +207,21 @@ ParserFn getParserOp(std::string const &logQl)
 {
     if(logQl.empty())
     {
-        // TODO report error - empty logQl expresion string
+        // TODO report error - empty logQl expression string
         return {};
     }
 
-    ExpresionList expresions = parseLogQlExpr(logQl);
+    ExpressionList expresions = parseLogQlExpr(logQl);
     if(expresions.empty())
     {
-        // TODO some error occured while parsing the logQl expr
+        // TODO some error occurred while parsing the logQl expr
         return {};
     }
 
     auto parserList = getParserList(expresions);
     if(parserList.empty())
     {
-        // TODO some error occured while parsing the logQl expr
+        // TODO some error occurred while parsing the logQl expr
         return {};
     }
 

@@ -17,14 +17,14 @@ enum class ParserType
     Invalid,
 };
 
-enum class ExpresionType;
+enum class ExpressionType;
 
 struct Parser
 {
     std::vector<std::string> options;
     std::string name;
     ParserType type;
-    ExpresionType expType;
+    ExpressionType expType;
     char endToken;
 };
 
