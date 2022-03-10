@@ -36,14 +36,14 @@ TEST(opBuilderMapReference, BuildsOperates)
         [=](auto s)
         {
             // TODO: Fix json to return false instead of throw
-            // s.on_next(std::make_shared<json::Document>(R"(
-            //     {"field":"value"}
-            // )"));
-            // s.on_next(std::make_shared<json::Document>(R"(
-            //     {"field":"values"}
-            // )"));
             s.on_next(std::make_shared<json::Document>(R"(
                 {"other_field":"referenced"}
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
+                {"field":"value"}
+            )"));
+            s.on_next(std::make_shared<json::Document>(R"(
+                {"field":"values"}
             )"));
             s.on_completed();
         });
@@ -52,6 +52,6 @@ TEST(opBuilderMapReference, BuildsOperates)
     Observable output = lift1(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 1);
+    ASSERT_EQ(expected.size(), 3);
     ASSERT_STREQ(expected[0]->get("/field")->GetString(), "referenced");
 }

@@ -131,6 +131,6 @@ TEST(RXCPP, DecoderManualConnectExample)
     std::ifstream ifs(file);
     std::string gotContent((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
 
-   std::filesystem::remove(file);
-   ASSERT_EQ(expectedContents, gotContent);
+    std::filesystem::remove(file);
+    ASSERT_EQ(expectedContents, gotContent);
 }

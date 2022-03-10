@@ -156,7 +156,7 @@ public:
         Graph_t g;
         Graph_t filters;
         json::Document asset = m_catalog.getAsset("environment", name);
-
+        // TODO: Parametrize - define constextp string
         this->assetBuilder(g, "decoder", asset.get("/decoders"),
                            std::get<internals::types::AssetBuilder>(internals::Registry::getBuilder("decoder")));
         this->connectGraph(g, internals::types::ConnectableT("DECODERS_INPUT"),

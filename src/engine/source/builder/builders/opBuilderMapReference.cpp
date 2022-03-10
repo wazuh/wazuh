@@ -36,8 +36,15 @@ types::Lifter opBuilderMapReference(const types::DocumentValue & def)
         return o.map(
             [=](types::Event e)
             {
-                auto v = e->get(reference);
-                e->set(field, *v);
+                // TODO TEst
+                try {
+                    auto v = e->get(reference);
+                    if (v != nullptr) {
+                        e->set(field, *v);
+                    }
+                } catch (std::exception & ex) {
+                    return e;
+                }
                 return e;
             });
     };
