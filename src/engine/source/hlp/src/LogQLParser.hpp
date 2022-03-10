@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-enum class ExpresionType
+enum class ExpressionType
 {
     Capture,
     OptionalCapture,
@@ -12,14 +12,14 @@ enum class ExpresionType
     Literal,
 };
 
-struct Expresion
+struct Expression
 {
     std::string_view text;
-    ExpresionType type;
+    ExpressionType type;
     char endToken;
 };
 
-using ExpresionList = std::vector<Expresion>;
-ExpresionList parseLogQlExpr(std::string const &expr);
+using ExpressionList = std::vector<Expression>;
+ExpressionList parseLogQlExpr(std::string const &expr);
 
 #endif //_LOGQL_PARSER_H
