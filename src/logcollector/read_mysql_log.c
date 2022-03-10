@@ -233,10 +233,11 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
             continue;
         }
 
-        if (bytes_written > (int)(sizeof(buffer) - 1)) {
+        if (bytes_written < 0) {
+            merror("Error %d (%s) while reading message: '%s' (length = " FTELL_TT "): '%s'...", errno, strerror(errno), lf->file, FTELL_INT64 bytes_written, buffer);
+        } else if ((size_t)bytes_written >= sizeof(buffer)) {
             merror("Message size too big on file '%s' (length = " FTELL_TT "): '%s'...", lf->file, FTELL_INT64 bytes_written, buffer);
         }
-
 
         mdebug2("Reading mysql messages: '%s'", buffer);
 
