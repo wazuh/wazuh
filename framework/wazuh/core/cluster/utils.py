@@ -309,7 +309,7 @@ def process_spawn_sleep(child):
     time.sleep(0.1)
 
 
-async def forward_function(func: callable, f_kwargs: dict = None):
+async def forward_function(func: callable, f_kwargs: dict = None, type: str = 'local_master'):
     """Distribute function to master node.
     Parameters
     ----------
@@ -317,27 +317,18 @@ async def forward_function(func: callable, f_kwargs: dict = None):
         Function to execute on master node.
     f_kwargs : dict
         Function kwargs.
+    type : str
+        Request type.
+
     Returns
     -------
     Return either a dict or `WazuhResult` instance in case the execution did not fail. Return an exception otherwise.
     """
-    from wazuh.core.cluster import local_client
-    from wazuh.core.cluster.common import WazuhJSONEncoder, as_wazuh_object
 
-    lc = local_client.LocalClient()
-
-    input_json = {
-        'f': func,
-        'from_cluster': False,
-        'wait_for_complete': False
-    }
-
-    f_kwargs and input_json.update({'f_kwargs': f_kwargs})
-
-    # Distribute function to master node
-    response = json.loads(await lc.execute(command=b'dapi',
-                                           data=json.dumps(input_json, cls=WazuhJSONEncoder).encode(),
-                                           wait_for_complete=False),
-                          object_hook=as_wazuh_object)
-
-    return response
+    import concurrent
+    from asyncio import run
+    from wazuh.core.cluster.dapi.dapi import DistributedAPI
+    dapi = DistributedAPI(f=func, f_kwargs=f_kwargs, request_type=type,
+                          is_async=False, wait_for_complete=True, logger=logger)
+    pool = concurrent.futures.ThreadPoolExecutor()
+    return pool.submit(run, dapi.distribute_function()).result()
