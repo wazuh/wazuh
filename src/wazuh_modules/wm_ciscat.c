@@ -126,9 +126,6 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
 
     if (ciscat->ciscat_path) {
         switch (wm_relative_path(ciscat->ciscat_path)) {
-        #ifndef WIN32
-            char pwd[PATH_MAX];
-        #endif
             case 0:
                 // Full path
                 snprintf(cis_path, OS_MAXSTR - 1, "%s", ciscat->ciscat_path);
