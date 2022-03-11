@@ -478,14 +478,12 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storag
             int id = OS_IsAllowedID(&keys, buffer + 1);
 
             if (id < 0) {
-                strncpy(agname, "unknown", sizeof(agname));
+                snprintf(agname, sizeof(agname), "unknown");
             } else {
-                strncpy(agname, keys.keyentries[id]->name, sizeof(agname));
+                snprintf(agname, sizeof(agname), "%s", keys.keyentries[id]->name);
             }
 
             key_unlock();
-
-            agname[sizeof(agname) - 1] = '\0';
 
             mwarn(ENC_IP_ERROR, buffer + 1, srcip, agname);
 

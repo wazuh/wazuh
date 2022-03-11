@@ -12,9 +12,9 @@ from api.validator import (check_exp, check_xml, _alphanumeric_param,
                            _array_numbers, _array_names, _boolean, _dates, _empty_boolean, _hashes,
                            _ips, _names, _numbers, _wazuh_key, _paths, _query_param, _ranges, _search_param,
                            _sort_param, _timeframe_type, _type_format, _yes_no_boolean, _get_dirnames_path,
-                           allowed_fields, is_safe_path, _wazuh_version, _symbols_alphanumeric_param, _base64,
-                           _group_names, _group_names_or_all, _iso8601_date, _iso8601_date_time, _numbers_or_all,
-                           _cdb_filename_path, _xml_filename_path, _xml_filename)
+                           allowed_fields, is_safe_path, _wazuh_version,
+                           _symbols_alphanumeric_param, _base64, _group_names, _group_names_or_all, _iso8601_date,
+                           _iso8601_date_time, _numbers_or_all, _cdb_filename_path, _xml_filename_path, _xml_filename)
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
@@ -77,6 +77,8 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
     # version
     ('v4.3.0', _wazuh_version),
     ('4.3.0', _wazuh_version),
+    ('wazuh 4.3.0', _wazuh_version),
+    ('wazuh v4.3.0', _wazuh_version),
     # miscellaneous
     ('aHR0cHM6Ly9zdGFja2FidXNlLmNvbS90YWcvamF2YS8=', _base64)
 ])
@@ -136,10 +138,10 @@ def test_validation_check_exp_ok(exp, regex_name):
     ('../ossec', _get_dirnames_path),
     ('etc/rules/../../../dir', _get_dirnames_path),
     # version
-    ('4.3', _wazuh_version),
     ('v4.3', _wazuh_version),
-    ('Wazuh 4.3.0', _wazuh_version),
-    ('Wazuh v4.3.0', _wazuh_version),
+    ('4.3', _wazuh_version),
+    ('wazuh 4.3', _wazuh_version),
+    ('wazuh v4.3', _wazuh_version),
     # miscellaneous
     ('aDhjasdh3=', _base64)
 ])

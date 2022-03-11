@@ -625,12 +625,16 @@ def test_agent_remove(mock_remove_authd):
         mock_remove_authd.assert_called_once_with(False), 'Not expected params'
 
 
-@patch('wazuh.core.agent.Agent._remove_authd', return_value='Agent was successfully deleted')
-def test_agent_remove_ko(mock_remove_authd):
+def test_agent_remove_ko():
     """Tests if method remove() raises expected exception"""
     with pytest.raises(WazuhError, match='.* 1726 .*'):
         agent = Agent(0)
         agent.remove()
+
+    with patch('wazuh.core.agent.get_manager_status', side_effect=WazuhInternalError(1913)):
+        with pytest.raises(WazuhError, match='.* 1726 .*'):
+            agent = Agent(0)
+            agent.remove()
 
 
 @patch('wazuh.core.agent.WazuhSocketJSON')
@@ -680,7 +684,7 @@ def test_agent_add(mock_add_authd, authd_status, ip, id, key, force):
 
 
 @patch('wazuh.core.agent.get_manager_status', return_value={'wazuh-authd': 'stopped'})
-def test_agent_add_ko(mock_maganer_status):
+def test_agent_add_ko(mock_manager_status):
     """Test if _add() method raises expected exception."""
     agent = Agent(1)
 
@@ -692,6 +696,10 @@ def test_agent_add_ko(mock_maganer_status):
 
     with pytest.raises(WazuhError, match='.* 1726 .*'):
         agent._add('test_name', '192.168.0.0')
+
+    with patch('wazuh.core.agent.get_manager_status', side_effect=WazuhInternalError(1913)):
+        with pytest.raises(WazuhError, match='.* 1726 .*'):
+            agent._add('test_name', '192.168.0.0')
 
 
 @pytest.mark.parametrize("name, ip, id, key, force", [
@@ -1279,6 +1287,30 @@ def test_agent_get_stats_ko(socket_mock, send_mock, mock_wazuh_socket):
     agent = Agent('002')
     with pytest.raises(WazuhInternalError, match=r'\b1735\b'):
         agent.get_stats('logcollector')
+
+
+@pytest.mark.parametrize('upgrade_version', [
+    '4.4.0',
+    'v4.4.0',
+    'wazuh 4.4.0',
+    'wazuh v4.4.0'
+])
+def test_unify_wazuh_upgrade_version_format(upgrade_version):
+    """Test that unify_wazuh_upgrade_version_format is properly working."""
+    assert unify_wazuh_upgrade_version_format(upgrade_version) == 'v4.4.0'
+
+
+@pytest.mark.parametrize('version', [
+    'v4.4.0',
+    '4.4.0',
+    'wazuh v4.4.0',
+    'wazuh 4.4.0'
+])
+def test_unify_wazuh_version_format(version):
+    """Test that unify_wazuh_version_format is properly working."""
+    dkt = {'version': version}
+    unify_wazuh_version_format(dkt)
+    assert dkt['version'] == 'wazuh v4.4.0'
 
 
 @pytest.mark.parametrize('agents_list, versions_list', [

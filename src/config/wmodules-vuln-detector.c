@@ -46,7 +46,7 @@ static int wm_vuldet_provider_os_list(xml_node **node, vu_os_feed **feeds, char 
 static void wm_vuldet_set_port_to_url(char **url, int port);
 static int wm_vuldet_add_allow_os(update_node *update, char *os_tags);
 static int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_provider, provider_options *options);
-static char wm_vuldet_provider_type(char *pr_name);
+static int wm_vuldet_provider_type(char *pr_name);
 static void wm_vuldet_remove_os_feed(vu_os_feed *feed, char full_r);
 static void wm_vuldet_remove_os_feed_list(vu_os_feed *feeds);
 static void wm_vuldet_init_provider_options(provider_options *options);
@@ -516,7 +516,7 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
     char *pr_name = NULL;
     vu_os_feed *os_list = NULL;
     int result;
-    char multi_provider;
+    int multi_provider;
     provider_options p_options = { .multi_path = 0 };
     int retval = OS_INVALID;
 
@@ -990,7 +990,7 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
     return 0;
 }
 
-char wm_vuldet_provider_type(char *pr_name) {
+int wm_vuldet_provider_type(char *pr_name) {
     if (strcasestr(pr_name, vu_feed_tag[FEED_CANONICAL]) ||
         strcasestr(pr_name, vu_feed_tag[FEED_DEBIAN]) ||
         strcasestr(pr_name, vu_feed_tag[FEED_ALAS]) ||

@@ -184,10 +184,11 @@ int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_siz
     int retval = -1;
     int header_size = sizeof(uint32_t);
     char data[msg_size + header_size];
+    const uint32_t bytes = wnet_order(msg_size);
 
     memcpy((data + header_size), crypt_msg, msg_size);
     // Add header at begining, first 4 bytes, it is message msg_size
-    *(uint32_t *)(data) = wnet_order(msg_size);
+    memcpy(data, &bytes, header_size);
 
     w_mutex_lock(&mutex);
 

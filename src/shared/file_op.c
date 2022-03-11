@@ -1887,7 +1887,7 @@ const char *getuname()
                                 snprintf(__wp,  sizeof(__wp), " [Ver: %d.%d.%s]", (unsigned int)winMajor, (unsigned int)winMinor, wincomp);
                             }
                             else {
-                                snprintf(__wp,  sizeof(__wp), " [Ver: %d.%d.%s.%d]", (unsigned int)winMajor, (unsigned int)winMinor, wincomp, buildRevision);
+                                snprintf(__wp,  sizeof(__wp), " [Ver: %d.%d.%s.%lu]", (unsigned int)winMajor, (unsigned int)winMinor, wincomp, buildRevision);
                             }
 
                             char *endptr = NULL, *osVersion = NULL;
@@ -1923,7 +1923,7 @@ const char *getuname()
                                 snprintf(__wp, sizeof(__wp), " [Ver: %s.%s]", winver,wincomp);
                             }
                             else {
-                                snprintf(__wp, sizeof(__wp), " [Ver: %s.%s.%d]", winver, wincomp, buildRevision);
+                                snprintf(__wp, sizeof(__wp), " [Ver: %s.%s.%lu]", winver, wincomp, buildRevision);
                             }
                         }
                     }

@@ -646,9 +646,9 @@ int main(int argc, char **argv)
                 printf("%s",cJSON_PrintUnformatted(root));
                 cJSON_Delete(root);
             } else if (agent_id) {
-                printf("\n** Unable to run active response on all agents.\n");
-            } else {
                 printf("\n** Unable to run active response on agent: %s\n", agent_id);
+            } else {
+                printf("\n** Unable to run active response on all agents.\n");
             }
 
             exit(1);

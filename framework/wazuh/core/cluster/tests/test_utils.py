@@ -75,8 +75,10 @@ def test_read_cluster_config():
 
 
 def test_get_manager_status():
-    """Check that get_manager function returns the manager status,
-    for this test, the status can be stopped or failed."""
+    """Check that get_manager_status function returns the manager status.
+
+    For this test, the status can be stopped or failed.
+    """
     status = utils.get_manager_status()
     for value in status.values():
         assert value == 'stopped'
@@ -88,10 +90,33 @@ def test_get_manager_status():
                 assert value == 'failed'
 
 
+@pytest.mark.parametrize('exc', [
+    PermissionError,
+    FileNotFoundError
+])
+@patch('os.stat')
+def test_get_manager_status_ko(mock_stat, exc):
+    """Check that get_manager_status function correctly handles expected exceptions.
+
+    Parameters
+    ----------
+    exc : Exception
+        Expected exception to be handled.
+    """
+    mock_stat.side_effect = exc
+    with pytest.raises(WazuhInternalError, match='.* 1913 .*'):
+        utils.get_manager_status()
+
+
 def test_get_cluster_status():
-    """Check if cluster is enabled and if is running."""
+    """Check if cluster is enabled and running. Also check that cluster is shown as not running when a
+    WazuhInternalError is raised."""
     status = utils.get_cluster_status()
     assert {'enabled': 'no', 'running': 'no'} == status
+
+    with patch('wazuh.core.cluster.utils.get_manager_status', side_effect=WazuhInternalError(1913)):
+        status = utils.get_cluster_status()
+        assert {'enabled': 'no', 'running': 'no'} == status
 
 
 def test_manager_restart():
@@ -101,7 +126,7 @@ def test_manager_restart():
             with pytest.raises(WazuhInternalError, match='.* 1901 .*'):
                 utils.manager_restart()
 
-            with patch('wazuh.core.cluster.utils.exists', return_value=True):
+            with patch('os.path.exists', return_value=True):
                 with pytest.raises(WazuhInternalError, match='.* 1902 .*'):
                     utils.manager_restart()
 

@@ -531,7 +531,7 @@ STATIC void c_group(const char *group, file_sum ***_f_sum, char * sharedcfg_dir,
             (*_f_sum)[0]->sum[0] = '\0';
             merror("Accessing file '%s'", merged);
         } else {
-            strncpy((*_f_sum)[0]->sum, md5sum, 32);
+            snprintf((*_f_sum)[0]->sum, sizeof((*_f_sum)[0]->sum), "%s", md5sum);
             os_strdup(SHAREDCFG_FILENAME, (*_f_sum)[0]->name);
         }
 
@@ -548,7 +548,7 @@ STATIC void c_group(const char *group, file_sum ***_f_sum, char * sharedcfg_dir,
         if (OS_MD5_File(DEFAULTAR, md5sum, OS_TEXT) == 0) {
             os_realloc((*_f_sum), (f_size + 2) * sizeof(file_sum *), (*_f_sum));
             os_calloc(1, sizeof(file_sum), (*_f_sum)[f_size]);
-            strncpy((*_f_sum)[f_size]->sum, md5sum, 32);
+            snprintf((*_f_sum)[f_size]->sum, sizeof((*_f_sum)[f_size]->sum), "%s", md5sum);
             os_strdup(DEFAULTAR_FILE, (*_f_sum)[f_size]->name);
             (*_f_sum)[f_size + 1] = NULL;
 
@@ -575,7 +575,7 @@ STATIC void c_group(const char *group, file_sum ***_f_sum, char * sharedcfg_dir,
             (*_f_sum)[0]->sum[0] = '\0';
         }
 
-        strncpy((*_f_sum)[0]->sum, md5sum, 32);
+        snprintf((*_f_sum)[0]->sum, sizeof((*_f_sum)[0]->sum), "%s", md5sum);
         os_strdup(SHAREDCFG_FILENAME, (*_f_sum)[0]->name);
     }
 }
@@ -931,7 +931,6 @@ STATIC void process_deleted_groups() {
 
 STATIC void process_deleted_multi_groups() {
     char multi_path[PATH_MAX] = {0};
-    char _hash[9] = {0};
     os_sha256 multi_group_hash;
     bool update = 0;
     unsigned int i;
@@ -964,8 +963,7 @@ STATIC void process_deleted_multi_groups() {
                 multi_groups_size++;
             } else {
                 OS_SHA256_String(old_multi_groups[i]->name, multi_group_hash);
-                strncpy(_hash, multi_group_hash, 8);
-                snprintf(multi_path, PATH_MAX,"%s/%s", MULTIGROUPS_DIR, _hash);
+                snprintf(multi_path, PATH_MAX,"%s/%.8s", MULTIGROUPS_DIR, multi_group_hash);
                 rmdir_ex(multi_path);
                 free_file_sum(old_multi_groups[i]->f_sum);
                 os_free(old_multi_groups[i]->name);
@@ -1085,7 +1083,7 @@ STATIC void validate_shared_files(const char *src_path, const char *group, const
             if (!ignored) {
                 os_realloc(*f_sum, ((*f_size) + 2) * sizeof(file_sum *), *f_sum);
                 os_calloc(1, sizeof(file_sum), (*f_sum)[(*f_size)]);
-                strncpy((*f_sum)[(*f_size)]->sum, md5sum, 32);
+                snprintf((*f_sum)[*f_size]->sum, sizeof((*f_sum)[*f_size]->sum), "%s", md5sum);
                 os_strdup(file, (*f_sum)[(*f_size)]->name);
 
                 if (create_merged) {
@@ -1210,7 +1208,7 @@ STATIC group_t* find_group_from_file(const char * file, const char * md5, char g
         if (f_sum) {
             for (j = 0; f_sum[j]; j++) {
                 if (!(strcmp(f_sum[j]->name, file) || strcmp(f_sum[j]->sum, md5))) {
-                    strncpy(group, groups[i]->name, OS_SIZE_65536);
+                    snprintf(group, OS_SIZE_65536, "%s", groups[i]->name);
                     return groups[i];
                 }
             }
@@ -1229,7 +1227,7 @@ STATIC group_t* find_multi_group_from_file(const char * file, const char * md5, 
         if (f_sum) {
             for (j = 0; f_sum[j]; j++) {
                 if (!(strcmp(f_sum[j]->name, file) || strcmp(f_sum[j]->sum, md5))) {
-                    strncpy(multigroup, multi_groups[i]->name, OS_SIZE_65536);
+                    snprintf(multigroup, OS_SIZE_65536, "%s", multi_groups[i]->name);
                     return multi_groups[i];
                 }
             }
@@ -1417,10 +1415,8 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
             snprintf(file, OS_SIZE_1024, "%s/%s/%s", sharedcfg_dir, multi_group_hash_pt, name);
         } else {
             OS_SHA256_String(group, multi_group_hash);
-            char _hash[9] = {0};
-            strncpy(_hash, multi_group_hash, 8);
-            OSHash_Add_ex(m_hash, group, strdup(_hash));
-            snprintf(file, OS_SIZE_1024, "%s/%s/%s", sharedcfg_dir, _hash, name);
+            OSHash_Add_ex(m_hash, group, strndup(multi_group_hash, 8));
+            snprintf(file, OS_SIZE_1024, "%s/%.8s/%s", sharedcfg_dir, multi_group_hash, name);
         }
     } else {
         snprintf(file, OS_SIZE_1024, "%s/%s/%s", sharedcfg_dir, group, name);

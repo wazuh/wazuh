@@ -2,10 +2,10 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
-from datetime import datetime
 from json import loads, JSONDecodeError
 
-from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend, get_fields_to_nest, plain_dict_to_nested_dict
+from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend, get_fields_to_nest, plain_dict_to_nested_dict, \
+    get_date_from_timestamp
 from wazuh.core.wdb import WazuhDBConnection
 
 
@@ -24,9 +24,9 @@ class WazuhDBQuerySyscheck(WazuhDBQuery):
     def _format_data_into_dictionary(self):
         def format_fields(field_name, value):
             if field_name == 'mtime' or field_name == 'date':
-                return datetime.utcfromtimestamp(value)
+                return get_date_from_timestamp(value)
             elif field_name == 'end' or field_name == 'start':
-                return None if not value else datetime.utcfromtimestamp(value)
+                return None if not value else get_date_from_timestamp(value)
             elif field_name == 'perm':
                 try:
                     return loads(value)
