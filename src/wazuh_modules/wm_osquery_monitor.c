@@ -37,8 +37,13 @@
 #define mdebug1(msg, ...) _mtdebug1(WM_OSQUERYMONITOR_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define mdebug2(msg, ...) _mtdebug2(WM_OSQUERYMONITOR_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 
+#ifdef WIN32
+static DWORD WINAPI wm_osquery_monitor_main(void *arg);
+static DWORD WINAPI wm_osquery_monitor_destroy(void *osquery_monitor);
+#else
 static void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery_monitor);
 static void wm_osquery_monitor_destroy(wm_osquery_monitor_t *osquery_monitor);
+#endif
 static int wm_osquery_check_logfile(const char * path, FILE * fp);
 static int wm_osquery_packs(wm_osquery_monitor_t *osquery);
 static char * wm_osquery_already_running(char * text);
@@ -587,14 +592,22 @@ int wm_osquery_packs(wm_osquery_monitor_t *osquery)
     return retval;
 }
 
-void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery)
-{
+#ifdef WIN32
+DWORD WINAPI wm_osquery_monitor_main(void *arg) {
+    wm_osquery_monitor_t *osquery = (wm_osquery_monitor_t *)arg;
+#else
+void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery) {
+#endif
     pthread_t tlauncher = 0;
     pthread_t treader = 0;
 
     if (osquery->disable) {
         minfo("Module disabled. Exiting...");
+#ifdef WIN32
+        return 0;
+#else
         return NULL;
+#endif
     }
 
     minfo("Module started.");
@@ -613,19 +626,31 @@ void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery)
 
     if( pthread_create(&treader, NULL, (void *)&Read_Log, osquery) != 0){
         merror("Error while creating Read_Log thread.");
+#ifdef WIN32
+        return 0;
+#else
         return NULL;
+#endif
     }
 
     if (osquery->run_daemon) {
         // Handle configuration
 
         if (wm_osquery_packs(osquery) < 0 || wm_osquery_decorators(osquery) < 0) {
+#ifdef WIN32
+            return 0;
+#else
             return NULL;
+#endif
         }
 
         if( pthread_create(&tlauncher, NULL, (void *)&Execute_Osquery, osquery) != 0){
             merror("Error while creating Execute_Osquery thread.");
+#ifdef WIN32
+            return 0;
+#else
             return NULL;
+#endif
         }
         pthread_join(tlauncher, NULL);
     } else {
@@ -635,12 +660,19 @@ void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery)
     pthread_join(treader, NULL);
 
     minfo("Closing module.");
+#ifdef WIN32
+    return 0;
+#else
     return NULL;
+#endif
 }
 
-
-void wm_osquery_monitor_destroy(wm_osquery_monitor_t *osquery_monitor)
-{
+#ifdef WIN32
+DWORD WINAPI wm_osquery_monitor_destroy(void *osquery_monitor_ptr) {
+    wm_osquery_monitor_t *osquery_monitor = (wm_osquery_monitor_t *)osquery_monitor_ptr;
+#else
+void wm_osquery_monitor_destroy(wm_osquery_monitor_t *osquery_monitor) {
+#endif
     int i;
 
     if (osquery_monitor)
@@ -652,12 +684,16 @@ void wm_osquery_monitor_destroy(wm_osquery_monitor_t *osquery_monitor)
         for (i = 0; osquery_monitor->packs[i]; ++i) {
             free(osquery_monitor->packs[i]->name);
             free(osquery_monitor->packs[i]->path);
+            free(osquery_monitor->packs[i]);
         }
 
+        free(osquery_monitor->packs);
         free(osquery_monitor);
     }
+    #ifdef WIN32
+    return 0;
+    #endif
 }
-
 
 // Get read data
 cJSON *wm_osquery_dump(const wm_osquery_monitor_t *osquery_monitor) {

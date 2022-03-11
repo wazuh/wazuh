@@ -29,12 +29,19 @@ sysinfo_free_result_func sysinfo_free_result_ptr = NULL;
 int Start_win32_Syscheck();
 
 /* syscheck main thread */
+#ifdef WIN32
+DWORD WINAPI skthread(__attribute__((unused)) LPVOID arg)
+#else
 void *skthread()
+#endif
 {
 
     Start_win32_Syscheck();
-
+#ifdef WIN32
+    return 0;
+#else
     return (NULL);
+#endif
 }
 
 void stop_wmodules()
@@ -195,7 +202,7 @@ int local_start()
         buffer_init();
         w_create_thread(NULL,
                          0,
-                         (LPTHREAD_START_ROUTINE)dispatch_buffer,
+                         dispatch_buffer,
                          NULL,
                          0,
                          (LPDWORD)&threadID);
@@ -207,7 +214,7 @@ int local_start()
     w_agentd_state_init();
     w_create_thread(NULL,
                      0,
-                     (LPTHREAD_START_ROUTINE)state_main,
+                     state_main,
                      NULL,
                      0,
                      (LPDWORD)&threadID);
@@ -224,7 +231,7 @@ int local_start()
     /* Start syscheck thread */
     w_create_thread(NULL,
                      0,
-                     (LPTHREAD_START_ROUTINE)skthread,
+                     skthread,
                      NULL,
                      0,
                      (LPDWORD)&threadID);
@@ -234,7 +241,7 @@ int local_start()
     if (rotate_log) {
         w_create_thread(NULL,
                         0,
-                        (LPTHREAD_START_ROUTINE)w_rotate_log_thread,
+                        w_rotate_log_thread,
                         NULL,
                         0,
                         (LPDWORD)&threadID);
@@ -251,7 +258,7 @@ int local_start()
     /* Start receiver thread */
     w_create_thread(NULL,
                      0,
-                     (LPTHREAD_START_ROUTINE)receiver_thread,
+                     receiver_thread,
                      NULL,
                      0,
                      (LPDWORD)&threadID2);
@@ -259,7 +266,7 @@ int local_start()
     /* Start request receiver thread */
     w_create_thread(NULL,
                      0,
-                     (LPTHREAD_START_ROUTINE)req_receiver,
+                     req_receiver,
                      NULL,
                      0,
                      (LPDWORD)&threadID2);
@@ -272,7 +279,7 @@ int local_start()
         for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
             w_create_thread(NULL,
                             0,
-                            (LPTHREAD_START_ROUTINE)cur_module->context->start,
+                            cur_module->context->start,
                             cur_module->data,
                             0,
                             (LPDWORD)&threadID2);
