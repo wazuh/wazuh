@@ -1232,6 +1232,15 @@ int wdb_parse_syscheck(wdb_t * wdb, wdb_component_t component, char * input, cha
         }
 
         return result;
+    } else if (strcmp(curr, "delete_registry") == 0) {
+        if (result = wdb_fim_delete_registry(wdb, next), result < 0) {
+            mdebug1("DB(%s) Cannot delete FIM registry key entry.", wdb->id);
+            snprintf(output, OS_MAXSTR + 1, "err Cannot delete Syscheck");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
     } else if (strcmp(curr, "save") == 0) {
         curr = next;
 
