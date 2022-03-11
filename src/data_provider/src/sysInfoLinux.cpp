@@ -201,7 +201,7 @@ int SysInfo::getCpuMHz() const
         constexpr auto CPU_FREQ_DIRNAME_PATTERN {"cpu[0-9]+"};
         const std::regex cpuDirectoryRegex {CPU_FREQ_DIRNAME_PATTERN};
 
-        for (const auto cpu : cpusInfo)
+        for (const auto& cpu : cpusInfo)
         {
             if (std::regex_match(cpu, cpuDirectoryRegex))
             {
