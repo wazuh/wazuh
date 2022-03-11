@@ -2614,7 +2614,6 @@ class AWSService(WazuhIntegration):
         self.db_name = 'aws_services'
         # table name
         self.db_table_name = 'aws_services'
-        # reparse
         self.reparse = reparse
 
         WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
@@ -2980,6 +2979,9 @@ class AWSCloudWatchLogs(AWSService):
         """
         self.init_db(self.sql_cloudwatch_create_table.format(table_name=self.db_table_name))
 
+        if self.reparse:
+            debug('Reparse mode ON', 1)
+
         try:
             for log_group in self.log_group_list:
                 for log_stream in self.get_log_streams(log_group=log_group):
@@ -2996,7 +2998,6 @@ class AWSCloudWatchLogs(AWSService):
 
                     if db_values:
                         if self.reparse: 
-                            debug('Reparse mode ON', 1)
                             result_before = self.get_alerts_within_range(log_group=log_group, log_stream=log_stream,
                                                                          token=None, start_time=start_time, 
                                                                          end_time=None)

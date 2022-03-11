@@ -229,6 +229,9 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
             last_creation_time = self._get_last_creation_time()
             previous_processed_files = self._get_last_processed_files()
 
+            if self.reparse:
+                self.logger.info('Reparse Mode ON')
+
             for blob in bucket_contents:
                 # Skip folders
                 if blob.name.endswith('/'):
@@ -254,8 +257,6 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
                         processed_messages += self.process_blob(blob)
                         processed_files.append(blob)
 
-                    else:
-                        self.logger.info(f'Skipping previously processed file: {blob.name}')
                 else:
                     self.logger.info(f'The creation time of {blob.name} is older than {comparison_date}. '
                                      f'Skipping it...')
