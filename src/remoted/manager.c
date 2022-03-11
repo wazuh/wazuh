@@ -970,7 +970,7 @@ STATIC void process_deleted_multi_groups() {
 
 STATIC void validate_shared_files(const char *src_path, const char *group, const char *merged_tmp, file_sum ***f_sum, unsigned int *f_size, bool create_merged, int path_offset) {
     char ** files;
-    char file[PATH_MAX + 1];
+    char file[MAX_SHARED_PATH + 1];
     unsigned int i;
     os_md5 md5sum;
 
@@ -993,10 +993,13 @@ STATIC void validate_shared_files(const char *src_path, const char *group, const
         int ignored = 0;
         time_t *modify_time = NULL;
 
-        snprintf(file, PATH_MAX + 1, "%s/%s", src_path, files[i]);
+        if (snprintf(file, MAX_SHARED_PATH + 1, "%s/%s", src_path, files[i]) > MAX_SHARED_PATH) {
+            mdebug2("At validate_shared_files(): path too long '%s'", file);
+            continue;
+        }
 
         if (path_offset < 0) {
-            char filename[PATH_MAX];
+            char filename[MAX_SHARED_PATH];
             char * basedir;
 
             // Create default basedir
@@ -1107,17 +1110,25 @@ STATIC void copy_directory(const char *src_path, const char *dst_path, const cha
             continue;
         }
 
-        char source_path[PATH_MAX + 1] = {0};
-        snprintf(source_path, PATH_MAX + 1, "%s/%s", src_path, files[i]);
+        char source_path[MAX_SHARED_PATH + 1] = {0};
+        char destination_path[MAX_SHARED_PATH + 1] = {0};
+
+        if (snprintf(source_path, MAX_SHARED_PATH + 1, "%s/%s", src_path, files[i]) > MAX_SHARED_PATH ) {
+            mdebug2("At copy_directory(): source path too long '%s'", source_path);
+            continue;
+        }
+
+        if (snprintf(destination_path, MAX_SHARED_PATH + 1, "%s/%s", dst_path, files[i]) > MAX_SHARED_PATH) {
+            mdebug2("At copy_directory(): destination path too long '%s'", destination_path);
+            continue;
+        }
 
         /* Is a file */
         if (dir = opendir(source_path), !dir) {
             ignored = 0;
 
-            char destination_path[PATH_MAX + 1] = {0};
             char agent_conf_chunck_message[PATH_MAX + 1]= {0};
 
-            snprintf(destination_path, PATH_MAX + 1, "%s/%s", dst_path, files[i]);
             if (modify_time = (time_t*) OSHash_Get(invalid_files, source_path), modify_time != NULL) {
                 ignored = 1;
             }
@@ -1132,26 +1143,21 @@ STATIC void copy_directory(const char *src_path, const char *dst_path, const cha
             }
         } else {
             /* Is a directory */
-            char new_src_path[PATH_MAX + 1] = {0};
-            char new_dst_path[PATH_MAX + 1] = {0};
             mdebug2("Making new directory: %s", files[i]);
 
-            snprintf(new_src_path, PATH_MAX + 1, "%s/%s", src_path, files[i]);
-            snprintf(new_dst_path, PATH_MAX + 1, "%s/%s", dst_path, files[i]);
-
             int oldmask = umask(0006);
-            int retval = mkdir(new_dst_path, 0770);
+            int retval = mkdir(destination_path, 0770);
             umask(oldmask);
 
             if (retval < 0) {
                 if (errno != EEXIST) {
-                    merror("Cannot create directory '%s': %s (%d)", new_dst_path, strerror(errno), errno);
+                    merror("Cannot create directory '%s': %s (%d)", destination_path, strerror(errno), errno);
                     closedir(dir);
                     continue;
                 }
             }
 
-            copy_directory(new_src_path, new_dst_path, group);
+            copy_directory(source_path, destination_path, group);
             closedir(dir);
         }
     }
