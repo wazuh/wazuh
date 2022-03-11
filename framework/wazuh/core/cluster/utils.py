@@ -309,15 +309,16 @@ def process_spawn_sleep(child):
     time.sleep(0.1)
 
 
-async def forward_function(func: callable, f_kwargs: dict = None, type: str = 'local_master'):
+async def forward_function(func: callable, f_kwargs: dict = None, request_type: str = 'local_master'):
     """Distribute function to master node.
+
     Parameters
     ----------
     func : callable
         Function to execute on master node.
     f_kwargs : dict
         Function kwargs.
-    type : str
+    request_type : str
         Request type.
 
     Returns
@@ -328,7 +329,7 @@ async def forward_function(func: callable, f_kwargs: dict = None, type: str = 'l
     import concurrent
     from asyncio import run
     from wazuh.core.cluster.dapi.dapi import DistributedAPI
-    dapi = DistributedAPI(f=func, f_kwargs=f_kwargs, request_type=type,
+    dapi = DistributedAPI(f=func, f_kwargs=f_kwargs, request_type=request_type,
                           is_async=False, wait_for_complete=True, logger=logger)
     pool = concurrent.futures.ThreadPoolExecutor()
     return pool.submit(run, dapi.distribute_function()).result()

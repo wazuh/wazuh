@@ -227,7 +227,7 @@ def test_process_spawn_sleep(pyDaemon_create_pid_mock, get_pid_mock):
 @patch('concurrent.futures.ThreadPoolExecutor')
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI')
 async def test_forward_function(distributed_api_mock, concurrent_mock):
-    """Check is the function is correctly distributed to the master node."""
+    """Check if the function is correctly distributed to the master node."""
 
     class ThreadPoolExecutorMock:
         """Auxiliary class."""
