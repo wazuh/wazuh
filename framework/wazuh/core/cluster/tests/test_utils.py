@@ -241,10 +241,46 @@ def test_ClusterLogger():
 
 @patch('os.getpid', return_value=0000)
 @patch('wazuh.core.cluster.utils.pyDaemonModule.create_pid')
-def test_process_spawm_sleep(pyDaemon_create_pid_mock, get_pid_mock):
+def test_process_spawn_sleep(pyDaemon_create_pid_mock, get_pid_mock):
     """Check if the cluster pool is properly spawned."""
 
     child = 1
     utils.process_spawn_sleep(child)
 
     pyDaemon_create_pid_mock.assert_called_once_with(f'wazuh-clusterd_child_{child}', get_pid_mock.return_value)
+
+
+@pytest.mark.asyncio
+@patch('concurrent.futures.ThreadPoolExecutor')
+@patch('wazuh.core.cluster.dapi.dapi.DistributedAPI')
+async def test_forward_function(distributed_api_mock, concurrent_mock):
+    """Check if the function is correctly distributed to the master node."""
+
+    class ThreadPoolExecutorMock:
+        """Auxiliary class."""
+
+        def submit(self, run, function):
+            return DAPIMock()
+
+    class DAPIMock:
+        """Auxiliary class."""
+
+        def __init__(self):
+            pass
+
+        def distribute_function(self):
+            pass
+
+        @staticmethod
+        def result():
+            return 'mock'
+
+    def auxiliary_func():
+        """Auxiliary function."""
+        pass
+
+    distributed_api_mock.return_value = DAPIMock()
+    concurrent_mock.return_value = ThreadPoolExecutorMock()
+    assert await utils.forward_function(auxiliary_func) == DAPIMock().result()
+    distributed_api_mock.assert_called_once()
+    concurrent_mock.assert_called_once()
