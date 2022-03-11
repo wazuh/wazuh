@@ -83,7 +83,7 @@ def aws_waf_bucket(request):
 def aws_config_bucket(request):
     """
     Return a AWSConfigBucket instance.
-
+    
     Parameters
     ----------
     request : pytest.fixtures.SubRequest
@@ -94,3 +94,20 @@ def aws_config_bucket(request):
          patch('sqlite3.connect'), \
          patch('utils.get_wazuh_version'):
         return aws_s3.AWSConfigBucket(**{k: v for i in request.param for k, v in i.items()})
+
+
+@pytest.fixture(params=deepcopy(AWS_BUCKET_PARAMS))
+def aws_custom_bucket(request):
+    """
+    Return a AWSCustomBucket instance.
+
+    Parameters
+    ----------
+    request : pytest.fixtures.SubRequest
+        Object that contains information about the current test.
+    """
+    with patch('aws_s3.AWSCustomBucket.get_client'), \
+         patch('aws_s3.AWSCustomBucket.get_sts_client'), \
+         patch('sqlite3.connect'), \
+         patch('utils.get_wazuh_version'):
+        return aws_s3.AWSCustomBucket(**{k: v for i in request.param for k, v in i.items()})   

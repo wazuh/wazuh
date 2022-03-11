@@ -2078,7 +2078,7 @@ class AWSCustomBucket(AWSBucket):
 
     def get_creation_date(self, log_file):
         # The Amazon S3 object name follows the pattern DeliveryStreamName-DeliveryStreamVersion-YYYY-MM-DD-HH-MM-SS-RandomString
-        name_regex = re.match(r".+\/(\d\d\d\d[\/\-]\d\d[\/\-]\d\d)\/.+", log_file['Key'])
+        name_regex = re.match(r".*(\d\d\d\d[\/\-]\d\d[\/\-]\d\d).*", log_file['Key'])
         if name_regex is None:
             return log_file['LastModified'].strftime('%Y%m%d')
         else:
