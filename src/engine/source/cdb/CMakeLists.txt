@@ -47,8 +47,6 @@ ExternalProject_Add(rocksdb
     INSTALL_COMMAND $(MAKE) install DESTDIR=${ENGINE_ROCKSDB_DIR}
     )
 
-list(APPEND EXTERNAL_DEPS "RocksDB")
-
 # Add this dependencies to parent CMakeLists scope
 set(EXTERNAL_DEPS ${EXTERNAL_DEPS} PARENT_SCOPE)
 
