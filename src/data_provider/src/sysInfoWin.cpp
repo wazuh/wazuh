@@ -46,6 +46,13 @@ const std::string UNINSTALL_REGISTRY{"SOFTWARE\\Microsoft\\Windows\\CurrentVersi
 constexpr auto SYSTEM_IDLE_PROCESS_NAME {"System Idle Process"};
 constexpr auto SYSTEM_PROCESS_NAME {"System"};
 
+static const std::map<std::string, DWORD> gs_firmwareTableProviderSignature
+{
+    {"ACPI", 0x41435049},
+    {"FIRM", 0x4649524D},
+    {"RSMB", 0x52534D42}
+};
+
 class SysInfoProcess final
 {
     public:
@@ -54,7 +61,9 @@ class SysInfoProcess final
               m_hProcess{ processHandle },
               m_creationTime{},
               m_kernelModeTime{},
-              m_userModeTime{}
+              m_userModeTime{},
+              m_pageFileUsage{},
+              m_virtualSize{}
         {
             setProcessTimes();
             setProcessMemInfo();
@@ -496,7 +505,7 @@ std::string SysInfo::getSerialNumber() const
 
         if (pfnGetSystemFirmwareTable)
         {
-            const auto size {pfnGetSystemFirmwareTable('RSMB', 0, nullptr, 0)};
+            const auto size {pfnGetSystemFirmwareTable(gs_firmwareTableProviderSignature.at("RSMB"), 0, nullptr, 0)};
 
             if (size)
             {
@@ -505,7 +514,7 @@ std::string SysInfo::getSerialNumber() const
                 if (spBuff)
                 {
                     // Get raw SMBIOS firmware table
-                    if (pfnGetSystemFirmwareTable('RSMB', 0, spBuff.get(), size) == size)
+                    if (pfnGetSystemFirmwareTable(gs_firmwareTableProviderSignature.at("RSMB"), 0, spBuff.get(), size) == size)
                     {
                         PRawSMBIOSData smbios{reinterpret_cast<PRawSMBIOSData>(spBuff.get())};
                         // Parse SMBIOS structures
