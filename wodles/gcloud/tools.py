@@ -18,13 +18,9 @@ from pytz import UTC
 
 logger_name = 'gcloud_wodle'
 logger = logging.getLogger(logger_name)
-log_levels = {0: logging.NOTSET,
-              1: logging.DEBUG,
-              2: logging.INFO,
-              3: logging.WARNING,
-              4: logging.ERROR,
-              5: logging.CRITICAL,
-              }
+log_levels = {0: logging.WARNING,
+              1: logging.INFO,
+              2: logging.DEBUG}
 logging_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
 min_num_threads = 1
 min_num_messages = 1
@@ -59,7 +55,7 @@ def get_script_arguments():
                         help='Number of maximum messages pulled in each iteration', default=100)
 
     parser.add_argument('-l', '--log_level', dest='log_level', type=int,
-                        help='Log level', required=False, default=3)
+                        help='Log level', required=False, default=0)
 
     parser.add_argument('-b', '--bucket_name', dest='bucket_name', type=str,
                         help='The name of the bucket to read the logs from')

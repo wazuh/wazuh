@@ -69,7 +69,6 @@ int wm_gcp_pubsub_read(xml_node **nodes, wmodule *module) {
         gcp->subscription_name = NULL;
         gcp->credentials_file = NULL;
         gcp->pull_on_start = 1;
-        gcp->logging = 2;
         module->context = &WM_GCP_PUBSUB_CONTEXT;
         module->tag = strdup(module->context->name);
         module->data = gcp;
@@ -185,25 +184,7 @@ int wm_gcp_pubsub_read(xml_node **nodes, wmodule *module) {
             gcp->pull_on_start = pull_on_start;
         }
         else if (!strcmp(nodes[i]->element, XML_LOGGING)) {
-            if (!strcmp(nodes[i]->content, "disabled")) {
-                gcp->logging = 0;
-            } else if (!strcmp(nodes[i]->content, "debug")) {
-                gcp->logging = 1;
-            } else if (!strcmp(nodes[i]->content, "info")) {
-                gcp->logging = 2;
-            } else if (!strcmp(nodes[i]->content, "warning")) {
-                gcp->logging = 3;
-            } else if (!strcmp(nodes[i]->content, "error")) {
-                gcp->logging = 4;
-            } else if (!strcmp(nodes[i]->content, "critical")) {
-                gcp->logging = 5;
-            } else if (strlen(nodes[i]->content) == 0) {
-                merror("Empty content for tag '%s'", XML_LOGGING);
-                return OS_INVALID;
-            } else {
-                merror("Invalid content for tag '%s'", XML_LOGGING);
-                return OS_INVALID;
-            }
+            mdebug1("Tag '%s' from the '%s' module is deprecated. This setting will be skipped.", XML_LOGGING, WM_GCP_PUBSUB_CONTEXT.name);
         }
         else if (is_sched_tag(nodes[i]->element)) {
             // Do nothing
@@ -248,7 +229,6 @@ int wm_gcp_bucket_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
         sched_scan_init(&(gcp->scan_config));
         gcp->scan_config.interval = WM_GCP_DEF_INTERVAL;
         gcp->run_on_start = 1;
-        gcp->logging = 2;
         module->context = &WM_GCP_BUCKET_CONTEXT;
         module->tag = strdup(module->context->name);
         module->data = gcp;
@@ -287,26 +267,9 @@ int wm_gcp_bucket_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
             gcp->run_on_start = run_on_start;
         }
         else if (!strcmp(nodes[i]->element, XML_LOGGING)) {
-            if (!strcmp(nodes[i]->content, "disabled")) {
-                gcp->logging = 0;
-            } else if (!strcmp(nodes[i]->content, "debug")) {
-                gcp->logging = 1;
-            } else if (!strcmp(nodes[i]->content, "info")) {
-                gcp->logging = 2;
-            } else if (!strcmp(nodes[i]->content, "warning")) {
-                gcp->logging = 3;
-            } else if (!strcmp(nodes[i]->content, "error")) {
-                gcp->logging = 4;
-            } else if (!strcmp(nodes[i]->content, "critical")) {
-                gcp->logging = 5;
-            } else if (strlen(nodes[i]->content) == 0) {
-                merror("Empty content for tag '%s'", XML_LOGGING);
-                return OS_INVALID;
-            } else {
-                merror("Invalid content for tag '%s'", XML_LOGGING);
-                return OS_INVALID;
-            }
-        } else if (!strcmp(nodes[i]->element, XML_BUCKET)) {
+	    mdebug1("Tag '%s' from the '%s' module is deprecated. This setting will be skipped.", XML_LOGGING, WM_GCP_BUCKET_CONTEXT.name);
+	}
+        else if (!strcmp(nodes[i]->element, XML_BUCKET)) {
             mtdebug2(WM_GCP_BUCKET_LOGTAG, "Found a bucket tag");
             // Create bucket node
             if (cur_bucket) {

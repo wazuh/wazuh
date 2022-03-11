@@ -21,7 +21,6 @@
 typedef struct wm_gcp_pubsub {
     int enabled;
     int pull_on_start;
-    int logging;
     int max_messages;
     int num_threads;
     time_t next_time;
@@ -44,7 +43,6 @@ typedef struct wm_gcp_bucket {
 typedef struct wm_gcp_bucket_base {
     unsigned int enabled:1;
     unsigned int run_on_start:1;
-    int logging;
     sched_scan_config scan_config;
     time_t next_time;                   // Absolute time for next scan
     wm_gcp_bucket *buckets;             // buckets (linked list)
