@@ -384,6 +384,11 @@ CREATE TABLE IF NOT EXISTS vuln_cves (
     reference TEXT DEFAULT '' NOT NULL,
     type TEXT DEFAULT '' NOT NULL CHECK (type IN ('OS', 'PACKAGE')),
     status TEXT DEFAULT 'PENDING' NOT NULL CHECK (status IN ('VALID', 'PENDING', 'OBSOLETE')),
+    external_references TEXT DEFAULT '',
+    condition TEXT DEFAULT '',
+    title TEXT DEFAULT '',
+    published TEXT '',
+    updated TEXT '',
     PRIMARY KEY (reference, cve)
 );
 CREATE INDEX IF NOT EXISTS packages_id ON vuln_cves (name);
