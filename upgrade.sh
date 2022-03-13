@@ -16,7 +16,17 @@ if [ "X${WAZUH_VERSION}" = "X" ] ; then
     fi
 fi
 
+
+filename="${WAZUH_HOME}/etc/local_internal_options.conf"
+
+if grep -q remote_commands=1 "$filename" ;
+
+then
+   :
+else
+
 printf "\n#Toggles Logcollector to accept remote commands from the manager or not.\n" >> ${WAZUH_HOME}/etc/local_internal_options.conf
+
 
 printf "\nlogcollector.remote_commands=1\n" >> ${WAZUH_HOME}/etc/local_internal_options.conf
 
@@ -27,6 +37,6 @@ printf "\nsca.remote_commands=1\n" >> ${WAZUH_HOME}/etc/local_internal_options.c
 printf "\n#Toggles whether Command Module should accept commands defined in the shared configuration or not.\n" >> ${WAZUH_HOME}/etc/local_internal_options.conf
 
 printf "\nwazuh_command.remote_commands=1\n" >> ${WAZUH_HOME}/etc/local_internal_options.conf
-
+fi
 
 (sleep 5 && chmod +x ${WAZUH_HOME}/var/upgrade/src/init/*.sh && ${WAZUH_HOME}/var/upgrade/src/init/pkg_installer.sh ${WAZUH_HOME} ${WAZUH_VERSION} && find ${WAZUH_HOME}/var/upgrade/* -not -name upgrade_result -delete) >/dev/null 2>&1 &
