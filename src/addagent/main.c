@@ -237,11 +237,6 @@ int main(int argc, char **argv)
         shost[sizeof(shost) - 1] = '\0';
     }
 
-    /* Set the group */
-    if (Privsep_SetGroup(0) < 0) {
-        merror_exit(SETGID_ERROR, group, errno, strerror(errno));
-    }
-
     /* Chroot to the default directory */
     if (Privsep_Chroot(home_path) < 0) {
         merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
