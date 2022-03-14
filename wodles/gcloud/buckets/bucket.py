@@ -253,9 +253,11 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
                         processed_files.append(blob)
 
                     elif self.reparse:
-                        self.logger.info(f'File previously processed, but reparse flag set: {blob.name}')
                         processed_messages += self.process_blob(blob)
                         processed_files.append(blob)
+
+                    else: 
+                        self.logger.info(f'Skipping previously processed file: {blob.name}')
 
                 else:
                     self.logger.info(f'The creation time of {blob.name} is older than {comparison_date}. '
