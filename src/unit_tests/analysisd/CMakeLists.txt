@@ -123,7 +123,7 @@ LIST(APPEND analysisd_flags "-Wl,--wrap,OSMatch_FreePattern")
 
 LIST(APPEND analysisd_names "test_rule_list")
 LIST(APPEND analysisd_flags "-Wl,--wrap,OSMatch_FreePattern -Wl,--wrap,OSRegex_FreePattern -Wl,--wrap,os_remove_cdbrules \
-                            -Wl,--wrap,_os_analysisd_add_logmsg")
+                            -Wl,--wrap,_os_analysisd_add_logmsg -Wl,--wrap,OS_IsValidIP")
 
 LIST(APPEND analysisd_names "test_eventinfo_list")
 LIST(APPEND analysisd_flags "-Wl,--wrap,Free_Eventinfo")

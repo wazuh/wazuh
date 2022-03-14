@@ -138,7 +138,7 @@ if __name__ == '__main__':
     parser.add_argument('-r', help="Run as root", action='store_true', dest='root')
     parser.add_argument('-t', help="Test configuration", action='store_true', dest='test_config')
     parser.add_argument('-c', help="Configuration file to use", type=str, metavar='config', dest='config_file',
-                        default=common.ossec_conf)
+                        default=common.OSSEC_CONF)
     args = parser.parse_args()
 
     if args.version:
@@ -152,9 +152,9 @@ if __name__ == '__main__':
         debug_mode = 0
 
     # set correct permissions on cluster.log file
-    if os.path.exists('{0}/logs/cluster.log'.format(common.wazuh_path)):
-        os.chown('{0}/logs/cluster.log'.format(common.wazuh_path), common.wazuh_uid(), common.wazuh_gid())
-        os.chmod('{0}/logs/cluster.log'.format(common.wazuh_path), 0o660)
+    if os.path.exists('{0}/logs/cluster.log'.format(common.WAZUH_PATH)):
+        os.chown('{0}/logs/cluster.log'.format(common.WAZUH_PATH), common.wazuh_uid(), common.wazuh_gid())
+        os.chmod('{0}/logs/cluster.log'.format(common.WAZUH_PATH), 0o660)
 
     main_logger = set_logging(foreground_mode=args.foreground, debug_mode=debug_mode)
 

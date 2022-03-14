@@ -5,6 +5,7 @@
 
 import os
 from unittest.mock import patch
+from datetime import timezone, datetime
 
 import pytest
 
@@ -52,7 +53,7 @@ def get_logs():
     'restarting',
     'starting'
 ])
-@patch('wazuh.core.cluster.utils.exists')
+@patch('os.path.exists')
 @patch('wazuh.core.cluster.utils.glob')
 def test_get_status(manager_glob, manager_exists, test_manager, process_status):
     """Tests core.manager.status()
@@ -94,7 +95,7 @@ def test_get_ossec_log_fields():
     """Test get_ossec_log_fields() method returns a tuple"""
     result = get_ossec_log_fields('2020/07/14 06:10:40 rootcheck: INFO: Ending rootcheck scan.')
     assert isinstance(result, tuple), 'The result is not a tuple'
-    assert result[0] == datetime(2020, 7, 14, 6, 10, 40)
+    assert result[0] == datetime(2020, 7, 14, 6, 10, 40, tzinfo=timezone.utc)
     assert result[1] == 'wazuh-rootcheck'
     assert result[2] == 'info'
     assert result[3] == ' Ending rootcheck scan.'
@@ -136,7 +137,7 @@ def test_validate_ossec_conf(mock_wazuhsocket, mock_exists):
         result = validate_ossec_conf()
 
         assert result == {'status': 'OK'}
-        mock_exists.assert_called_with(join(common.wazuh_path, 'queue', 'sockets', 'com'))
+        mock_exists.assert_called_with(join(common.WAZUH_PATH, 'queue', 'sockets', 'com'))
 
 
 @patch("wazuh.core.manager.exists", return_value=True)

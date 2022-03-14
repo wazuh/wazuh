@@ -363,6 +363,7 @@ cJSON* local_add(const char *id,
     cJSON *response = NULL;
     int ierror;
     char* str_result = NULL;
+    char _ip[IPSIZE + 1] = {0};
 
     mdebug2("add(%s)", name);
     w_mutex_lock(&mutex_keys);
@@ -388,15 +389,30 @@ cJSON* local_add(const char *id,
 
     /* Check for duplicate IP */
     if (strcmp(ip, "any")) {
-        if (index = OS_IsAllowedIP(&keys, ip), index >= 0) {
-        if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result)) {
-            minfo("Duplicate IP '%s'. %s", ip, str_result);
-        } else {
-            mwarn("Duplicate IP '%s', rejecting enrollment. %s", ip, str_result);
-            ierror = EDUPIP;
+        os_ip *aux_ip;
+        os_calloc(1, sizeof(os_ip), aux_ip);
+
+        if (!OS_IsValidIP(ip, aux_ip)) {
+            mwarn("Not valid IP '%s'", ip);
+            w_free_os_ip(aux_ip);
+            ierror = ENOIP;
             goto fail;
         }
+
+        strncpy(_ip, aux_ip->ip, IPSIZE);
+        w_free_os_ip(aux_ip);
+
+        if (index = OS_IsAllowedIP(&keys, _ip), index >= 0) {
+            if (OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result)) {
+                minfo("Duplicate IP '%s'. %s", _ip, str_result);
+            } else {
+                mwarn("Duplicate IP '%s', rejecting enrollment. %s", _ip, str_result);
+                ierror = EDUPIP;
+                goto fail;
+            }
         }
+    } else {
+        strncpy(_ip, ip, IPSIZE);
     }
 
     /* Check whether the agent name is the same as the manager */
@@ -416,7 +432,7 @@ cJSON* local_add(const char *id,
         }
     }
 
-    if (index = OS_AddNewAgent(&keys, id, name, ip, key), index < 0) {
+    if (index = OS_AddNewAgent(&keys, id, name, _ip, key), index < 0) {
         ierror = EKEY;
         goto fail;
     }
@@ -426,7 +442,7 @@ cJSON* local_add(const char *id,
     write_pending = 1;
     w_cond_signal(&cond_pending);
 
-    response = local_create_agent_response(keys.keyentries[index]->id, name, ip, keys.keyentries[index]->raw_key);
+    response = local_create_agent_response(keys.keyentries[index]->id, name, _ip, keys.keyentries[index]->raw_key);
     w_mutex_unlock(&mutex_keys);
 
     minfo("Agent key generated for agent '%s' (requested locally)", name);

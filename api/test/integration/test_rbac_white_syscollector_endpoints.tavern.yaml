@@ -326,8 +326,7 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - cmd: !anystr
-              egroup: !anystr
+            - egroup: !anystr
               euser: !anystr
               fgroup: !anystr
               name: !anystr

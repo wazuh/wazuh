@@ -95,6 +95,11 @@ static int teardown_add_agent(void **state) {
 static void test_w_auth_add_agent(void **state) {
     char response[2048] = {0};
     w_err_t err;
+
+    expect_any(__wrap_OS_IsValidIP, ip_address);
+    expect_any(__wrap_OS_IsValidIP, final_ip);
+    will_return(__wrap_OS_IsValidIP, -1);
+
     /* Successful new agent */
     err = w_auth_add_agent(response, "192.0.0.0", "agent1", &new_id, &new_key);
     assert_int_equal(err, OS_SUCCESS);

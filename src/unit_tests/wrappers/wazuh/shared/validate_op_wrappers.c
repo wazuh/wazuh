@@ -7,11 +7,11 @@
  * Foundation
  */
 
-#include "validate_op_wrappers.h"
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include "validate_op_wrappers.h"
 
 int __wrap_getDefine_Int(__attribute__((unused)) const char *high_name,
                          __attribute__((unused)) const char *low_name,
@@ -34,5 +34,27 @@ int __wrap_OS_IsValidIP(const char *ip_address, os_ip *final_ip) {
     check_expected(ip_address);
     check_expected(final_ip);
 
-    return mock_type(int);
+    int ret = mock();
+    if(ret < 0){
+        ret *= (-1);
+        os_strdup(ip_address, final_ip->ip);
+        if (ret == 2) {
+            os_calloc(1, sizeof(os_ipv4), final_ip->ipv4);
+            ret = 1;
+        }
+    }
+
+    return ret;
+}
+
+int __wrap_OS_GetIPv4FromIPv6(char *ip_address, size_t size) {
+    check_expected(ip_address);
+    check_expected(size);
+    return mock();
+}
+
+int __wrap_OS_ExpandIPv6(char *ip_address, size_t size) {
+    check_expected(ip_address);
+    check_expected(size);
+    return mock();
 }

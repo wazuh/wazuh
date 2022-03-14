@@ -280,12 +280,12 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
                         if (GatewayFileFields::Size == fields.size() &&
                                 fields.at(GatewayFileFields::Iface).compare(ifName) == 0)
                         {
-                            const auto address { static_cast<uint32_t>(std::stol(fields.at(GatewayFileFields::Gateway), 0, 16)) };
+                            auto address { static_cast<uint32_t>(std::stol(fields.at(GatewayFileFields::Gateway), 0, 16)) };
                             m_metrics = fields.at(GatewayFileFields::Metric);
 
                             if (address)
                             {
-                                m_gateway = std::string(inet_ntoa({ address }));
+                                m_gateway = Utils::NetworkHelper::IAddressToBinary(AF_INET, reinterpret_cast<in_addr*>(&address));
                                 break;
                             }
                         }

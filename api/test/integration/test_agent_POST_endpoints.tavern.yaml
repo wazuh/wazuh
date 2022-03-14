@@ -1,16 +1,106 @@
 ---
-test_name: POST /agents
+test_name: POST /agents (IPV6)
 
 stages:
 
     # POST /agents
-  - name: Try to create a new agent without body
+  - name: Create a new agent with a valid IPV6
     request: &agent_request
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
+      json:
+        name: "NewIPV6Agent"
+        ip: "fdb9:8d4a:1fc2:12a0:11aa:22ff:33eb:99cd"
+    response:
+      status_code: 200
+      json: &agent_create_response
+        error: 0
+        data:
+          id: !anystr
+          key: !anystr
+      save:
+        json:
+          agent1_id_ipv6: data.id
+
+    # POST /agents
+  - name: Create a new agent with a compressed IPV6
+    request:
+      verify: False
+      <<: *agent_request
+      json:
+        name: "NewCompressedIPV6Agent"
+        ip: "fdb9::99cd"
+    response:
+      status_code: 200
+      json:
+        <<: *agent_create_response
+      save:
+        json:
+          agent2_id_ipv6: data.id
+
+    # POST /agents
+  - name: Create a new agent with an invalid IPV6
+    request:
+      verify: False
+      <<: *agent_request
+      json:
+        name: "InvalidIPV6Agent"
+        ip: "fdb9:8d4a:1fc2:12a0:11aa:22ff:33eb:99gh"
+    response:
+      status_code: 400
+      json:
+        error: 1706
+
+    # POST /agents
+  - name: Create a new agent with an invalid compressed IPV6
+    request:
+      verify: False
+      <<: *agent_request
+      json:
+        name: "InvalidIPV6Agent"
+        ip: "fdb9::99gh"
+    response:
+      status_code: 400
+      json:
+        error: 1706
+    delay_after: !float "{global_db_delay}"
+
+    # GET /agents
+  - name: Check all registered IPV6 agents
+    request: &agent_list_request
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "{agent1_id_ipv6:s},{agent2_id_ipv6:s}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: "{agent1_id_ipv6:s}"
+              registerIP: !anystr
+              ip: !anystr
+            - id: "{agent2_id_ipv6:s}"
+              registerIP: !anystr
+              ip: !anystr
+
+---
+test_name: POST /agents
+
+stages:
+
+    # POST /agents
+  - name: Try to create a new agent without body
+    request:
+      verify: False
+      <<: *agent_request
     response:
       status_code: 400
       json: &error_spec
@@ -27,11 +117,8 @@ stages:
         ip: "any"
     response:
       status_code: 200
-      json: &agent_create_response
-        error: !anyint
-        data:
-          id: !anystr
-          key: !anystr
+      json:
+        <<: *agent_create_response
     delay_after: !float "{global_db_delay}"
 
     # POST /agents
@@ -190,16 +277,13 @@ stages:
   - name: Check that this agent has the IP 'any'
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *agent_list_request
       params:
         agents_list: "{agent_id_no_ip:s}"
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: "{agent_id_no_ip:s}"
@@ -512,7 +596,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           id: !anystr
           key: !anystr

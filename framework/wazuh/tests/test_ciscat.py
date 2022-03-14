@@ -30,7 +30,7 @@ db_file = 'schema_ciscat_test.sql'
 @pytest.mark.parametrize('limit', [
     1, None
 ])
-@patch('wazuh.core.common.wdb_path', new=test_data_path)
+@patch('wazuh.core.common.WDB_PATH', new=test_data_path)
 @patch('socket.socket.connect')
 @patch('wazuh.ciscat.get_agents_info', return_value=['001'])
 def test_get_ciscat_results(agents_info_mock, socket_mock, limit):
@@ -49,7 +49,7 @@ def test_get_ciscat_results(agents_info_mock, socket_mock, limit):
         assert len(result['failed_items']) == 0 and result['total_failed_items'] == 0
 
 
-@patch('wazuh.core.common.wdb_path', new=test_data_path)
+@patch('wazuh.core.common.WDB_PATH', new=test_data_path)
 @patch('socket.socket.connect')
 @patch('wazuh.ciscat.get_agents_info', return_value=['001'])
 def test_get_ciscat_results_ko(agents_info_mock, socket_mock):
@@ -63,7 +63,7 @@ def test_get_ciscat_results_ko(agents_info_mock, socket_mock):
 @pytest.mark.parametrize('select', [
     ['scan.id'], ['score'], ['profile', 'benchmark'], ['notchecked', 'scan.time', 'unknown'], ['fail', 'error'], None
 ])
-@patch('wazuh.core.common.wdb_path', new=test_data_path)
+@patch('wazuh.core.common.WDB_PATH', new=test_data_path)
 @patch('socket.socket.connect')
 @patch('wazuh.ciscat.get_agents_info', return_value=['001'])
 def test_get_ciscat_results_select(agents_info_mock, socket_mock, select):
@@ -93,7 +93,7 @@ def test_get_ciscat_results_select(agents_info_mock, socket_mock, select):
                 assert key in valid_fields if key != 'agent_id' else True
 
 
-@patch('wazuh.core.common.wdb_path', new=test_data_path)
+@patch('wazuh.core.common.WDB_PATH', new=test_data_path)
 @patch('socket.socket.connect')
 @patch('wazuh.ciscat.get_agents_info', return_value=['001'])
 def test_get_ciscat_results_select_ko(agents_info_mock, socket_mock):
@@ -110,7 +110,7 @@ def test_get_ciscat_results_select_ko(agents_info_mock, socket_mock):
     ('CIS', 2),
     ('random', 0),
 ])
-@patch('wazuh.core.common.wdb_path', new=test_data_path)
+@patch('wazuh.core.common.WDB_PATH', new=test_data_path)
 @patch('socket.socket.connect')
 @patch('wazuh.ciscat.get_agents_info', return_value=['001'])
 def test_get_ciscat_results_search(agents_info_mock, socket_mock, search, total_expected_items):
@@ -138,7 +138,7 @@ def test_get_ciscat_results_search(agents_info_mock, socket_mock, search, total_
     ('pass>90,fail<60', 2, [1, 2]),
     ('(pass>90,fail<60);profile~workstation', 1, [2]),
 ])
-@patch('wazuh.core.common.wdb_path', new=test_data_path)
+@patch('wazuh.core.common.WDB_PATH', new=test_data_path)
 @patch('socket.socket.connect')
 @patch('wazuh.ciscat.get_agents_info', return_value=['001'])
 def test_get_ciscat_results_query(agents_info_mock, socket_mock, query, total_expected_items, expected_scan_id):
@@ -167,7 +167,7 @@ def test_get_ciscat_results_query(agents_info_mock, socket_mock, query, total_ex
     ('-pass', 2),
     ('+pass', 1),
 ])
-@patch('wazuh.core.common.wdb_path', new=test_data_path)
+@patch('wazuh.core.common.WDB_PATH', new=test_data_path)
 @patch('socket.socket.connect')
 @patch('wazuh.ciscat.get_agents_info', return_value=['001'])
 def test_get_ciscat_results_sort(agents_info_mock, socket_mock, sort, first_item):
@@ -196,7 +196,7 @@ def test_get_ciscat_results_sort(agents_info_mock, socket_mock, sort, first_item
     ({'pass': 96, 'fail': 53, 'error': 0}, [2]),
     ({'notchecked': 67, 'unknown': 0, 'score': 61}, [1]),
 ])
-@patch('wazuh.core.common.wdb_path', new=test_data_path)
+@patch('wazuh.core.common.WDB_PATH', new=test_data_path)
 @patch('socket.socket.connect')
 @patch('wazuh.ciscat.get_agents_info', return_value=['001'])
 def test_get_ciscat_results_filters(agents_info_mock, socket_mock, filters, expected_scan_id):

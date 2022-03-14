@@ -6,6 +6,7 @@
 
 import os
 import sys
+import json
 from sqlite3 import connect
 from unittest.mock import patch, MagicMock
 import pytest
@@ -18,6 +19,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 import aws_s3
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
+logs_path = os.path.join(test_data_path, 'log_files')
 wazuh_installation_path = '/var/ossec'
 wazuh_version = 'WAZUH_VERSION'
 
@@ -172,3 +174,151 @@ def test_db_maintenance(class_, sql_file, db_name):
         last_log_key_after = query.fetchone()[0]
 
         assert(last_log_key_before == last_log_key_after)
+
+
+@pytest.mark.parametrize('log_key, decompression_function', [
+    ('test.gz', 'gzip.open'),
+    ('test.zip', 'zipfile.ZipFile'),
+])
+def test_decompress_file_gz(log_key: str, decompression_function: str,
+                            aws_bucket: aws_s3.AWSBucket):
+    """
+    Test that the decompress_file method uses the proper function depending
+    on the compression algorithm.
+
+    Parameters
+    ----------
+    log_key : str
+        File that should be decompressed.
+    decompression_function : str
+        Function that should be used to decompress the file.
+    aws_bucket : aws_s3.AWSBucket
+        Instance of the AWSBucket class.
+    """
+    with patch(decompression_function) as mock_decompression, \
+         patch('io.BytesIO') as mock_io:
+        aws_bucket.decompress_file(log_key)
+        mock_decompression.assert_called_once()
+        mock_io.assert_called_once()
+
+
+@pytest.mark.parametrize('log_key', ['test.snappy'])
+def test_decompress_file_snappy_skip(log_key: str, aws_bucket: aws_s3.AWSBucket):
+    """
+    Test that the decompress_file function doesn't raise an exception when
+    used with snappy files and skip_on_error is set to False.
+
+    Parameters
+    ----------
+    log_key : str
+        File that should be decompressed.
+    aws_bucket : aws_s3.AWSBucket
+        Instance of the AWSBucket class.
+    """
+    aws_bucket.skip_on_error = True
+    with patch('io.BytesIO'):
+        aws_bucket.decompress_file(log_key)
+
+
+@pytest.mark.parametrize('log_key, skip_on_error, expected_exception', [
+    ('test.snappy', False, SystemExit),
+])
+def test_decompress_file_ko(log_key: str, skip_on_error: bool, expected_exception: Exception,
+                            aws_bucket: aws_s3.AWSBucket):
+    """
+    Test that the decompress_file method raises an exception when used with
+    invalid arguments.
+
+    Parameters
+    ----------
+    log_key : str
+        File that should be decompressed.
+    skip_on_error : bool
+        If the skip_on_error is disabled or not.
+    expected_exception : Exception
+        Exception that should be raised.
+    aws_bucket : aws_s3.AWSBucket
+        Instance of the AWSBucket class.
+    """
+    aws_bucket.skip_on_error = skip_on_error
+    with patch('io.BytesIO'), pytest.raises(expected_exception):
+        aws_bucket.decompress_file(log_key)
+
+
+@pytest.mark.parametrize('log_file, skip_on_error', [
+    (f'{logs_path}/WAF/aws-waf', False),
+    (f'{logs_path}/WAF/aws-waf', True),
+    (f'{logs_path}/WAF/aws-waf-invalid-json', True),
+    (f'{logs_path}/WAF/aws-waf-wrong-structure', True),
+])
+def test_aws_waf_load_information_from_file(log_file: str, aws_waf_bucket: aws_s3.AWSWAFBucket,
+                                            skip_on_error: bool):
+    """
+    Test AWSWAFBucket's implementation of the load_information_from_file method.
+
+    Parameters
+    ----------
+    log_file : str
+        File that should be decompressed.
+    aws_waf_bucket : aws_s3.AWSWAFBucket
+        Instance of the AWSWAFBucket class.
+    skip_on_error : bool
+        If the skip_on_error is disabled or not.
+    """
+    aws_waf_bucket.skip_on_error = skip_on_error
+    with open(log_file, 'rb') as f:
+        aws_waf_bucket.client.get_object.return_value.__getitem__.return_value = f
+        aws_waf_bucket.load_information_from_file(log_file)
+
+
+@pytest.mark.parametrize('log_file, skip_on_error, expected_exception', [
+    (f'{logs_path}/WAF/aws-waf-invalid-json', False, SystemExit),
+    (f'{logs_path}/WAF/aws-waf-wrong-structure', False, SystemExit),
+])
+def test_aws_waf_load_information_from_file_ko(
+        log_file: str, skip_on_error: bool,
+        expected_exception: Exception,
+        aws_waf_bucket: aws_s3.AWSWAFBucket):
+    """
+    Test that AWSWAFBucket's implementation of the load_information_from_file method raises
+    an exception when called with invalid arguments.
+
+    Parameters
+    ----------
+    log_file : str
+        File that should be decompressed.
+    skip_on_error : bool
+        If the skip_on_error is disabled or not.
+    expected_exception : Exception
+        Exception that should be raised.
+    aws_waf_bucket : aws_s3.AWSWAFBucket
+        Instance of the AWSWAFBucket class.
+    """
+    aws_waf_bucket.skip_on_error = skip_on_error
+    with open(log_file, 'rb') as f, \
+         pytest.raises(expected_exception):
+        aws_waf_bucket.client.get_object.return_value.__getitem__.return_value = f
+        aws_waf_bucket.load_information_from_file(log_file)
+
+
+@pytest.mark.parametrize('date, expected_date', [
+    ('2021/1/19', '20210119'),
+    ('2021/1/1', '20210101'),
+    ('2021/01/01', '20210101'),
+    ('2000/2/12', '20000212'),
+    ('2022/02/1', '20220201')
+])
+def test_config_format_created_date(date: str, expected_date: str, aws_config_bucket):
+    """
+    Test AWSConfigBucket's format_created_date method.
+
+    Parameters
+    ----------
+    date : str
+        The date introduced.
+    expected_date : str
+        The date that the method should return.
+    aws_config_bucket : aws_s3.AWSConfigBucket
+        Instance of the AWSConfigBucket class.
+    """
+    assert aws_config_bucket._format_created_date(date) == expected_date

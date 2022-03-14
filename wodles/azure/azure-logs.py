@@ -47,26 +47,25 @@ url_graph = 'https://graph.microsoft.com'
 
 socket_header = '1:Azure:'
 
+# Logger parameters
+logging_msg_format = '%(asctime)s azure: %(levelname)s: %(message)s'
+logging_date_format = '%Y/%m/%d %I:%M:%S'
+log_levels = {0: logging.WARNING,
+              1: logging.INFO,
+              2: logging.DEBUG}
+
 
 def set_logger():
     """Set the logger configuration."""
-    if args.verbose:
-        logging.basicConfig(level=logging.DEBUG,
-                            format='%(asctime)s %(levelname)s: AZURE %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
-        logging.getLogger('azure').setLevel(logging.DEBUG)
-
-    else:
-        log_path = f"{find_wazuh_path()}/logs/azure_logs.log"
-        logging.basicConfig(filename=log_path, level=logging.DEBUG,
-                            format='%(asctime)s %(levelname)s: AZURE %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
-        logging.getLogger('azure').setLevel(logging.ERROR)
-        logging.getLogger('urllib3').setLevel(logging.ERROR)
+    logging.basicConfig(level=log_levels.get(args.debug_level, logging.WARNING), format=logging_msg_format,
+                        datefmt=logging_date_format)
+    logging.getLogger('azure').setLevel(log_levels.get(args.debug_level, logging.WARNING))
+    logging.getLogger('urllib3').setLevel(logging.ERROR)
 
 
 def get_script_arguments():
     """Read and parse arguments."""
     parser = ArgumentParser()
-    parser.add_argument("-v", "--verbose", action='store_true', required=False, help="Debug mode.")
 
     # only one must be present (log_analytics, graph or storage)
     group = parser.add_mutually_exclusive_group(required=True)
@@ -133,6 +132,8 @@ def get_script_arguments():
     # General parameters #
     parser.add_argument('--reparse', action='store_true', dest='reparse',
                         help='Parse the log, even if its been parsed before', default=False)
+    parser.add_argument('-d', '--debug', action='store', type=int, dest='debug_level', default=0,
+                        help='Specify debug level. Admits values from 0 to 2.')
 
     return parser.parse_args()
 

@@ -86,7 +86,6 @@ int main(int argc, char ** argv)
 
     // Read internal options
 
-    wconfig.sock_queue_size = getDefine_Int("wazuh_db", "sock_queue_size", 1, 1024);
     wconfig.worker_pool_size = getDefine_Int("wazuh_db", "worker_pool_size", 1, 32);
     wconfig.commit_time_min = getDefine_Int("wazuh_db", "commit_time_min", 1, 3600);
     wconfig.commit_time_max = getDefine_Int("wazuh_db", "commit_time_max", 1, 3600);

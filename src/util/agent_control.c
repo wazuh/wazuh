@@ -348,11 +348,7 @@ int main(int argc, char **argv)
 
     /* Print information from an agent */
     if (info_agent) {
-        char final_ip[128 + 1];
-        char final_mask[128 + 1];
         agent_info *agt_info;
-        final_ip[128] = '\0';
-        final_mask[128] = '\0';
         cJSON *json_data = cJSON_CreateObject();
 
         if (!csv_output && !json_output) {
@@ -366,26 +362,21 @@ int main(int argc, char **argv)
                 exit(0);
             }
 
-            /* Get netmask from IP */
-            getNetmask(keys.keyentries[agt_id]->ip->netmask, final_mask, 128);
-            snprintf(final_ip, sizeof(final_ip), "%s%s", keys.keyentries[agt_id]->ip->ip,
-                     final_mask);
-
             if (!csv_output && !json_output) {
                 printf("\n   Agent ID:   %s\n", keys.keyentries[agt_id]->id);
                 printf("   Agent Name: %s\n", keys.keyentries[agt_id]->name);
-                printf("   IP address: %s\n", final_ip);
+                printf("   IP address: %s\n", keys.keyentries[agt_id]->ip->ip);
                 printf("   Status:     %s\n\n", print_agent_status(agt_info->connection_status));
             } else if (json_output) {
                 cJSON_AddStringToObject(json_data, "id", keys.keyentries[agt_id]->id);
                 cJSON_AddStringToObject(json_data, "name", keys.keyentries[agt_id]->name);
-                cJSON_AddStringToObject(json_data, "ip", final_ip);
+                cJSON_AddStringToObject(json_data, "ip", keys.keyentries[agt_id]->ip->ip);
                 cJSON_AddStringToObject(json_data, "status", print_agent_status(agt_info->connection_status));
             } else {
                 printf("%s,%s,%s,%s,",
                        keys.keyentries[agt_id]->id,
                        keys.keyentries[agt_id]->name,
-                       final_ip,
+                       keys.keyentries[agt_id]->ip->ip,
                        print_agent_status(agt_info->connection_status));
             }
         } else {
@@ -655,9 +646,9 @@ int main(int argc, char **argv)
                 printf("%s",cJSON_PrintUnformatted(root));
                 cJSON_Delete(root);
             } else if (agent_id) {
-                printf("\n** Unable to run active response on all agents.\n");
-            } else {
                 printf("\n** Unable to run active response on agent: %s\n", agent_id);
+            } else {
+                printf("\n** Unable to run active response on all agents.\n");
             }
 
             exit(1);

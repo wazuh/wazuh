@@ -510,10 +510,12 @@ void wstr_split(char *str, char *delim, char *replace_delim, int occurrences, ch
 
             for (count = 0, new_term_it = (*splitted_str)[splitted_count]; count < occurrences; count++) {
                 if (count) {
-                    strncpy(new_term_it, new_delim, new_delim_size);
+                    strncpy(new_term_it, new_delim, term_size);
+                    term_size -= new_delim_size;
                     new_term_it += new_delim_size;
                 }
-                strncpy(new_term_it, acc_strs[count], strlen(acc_strs[count]));
+                strncpy(new_term_it, acc_strs[count], term_size);
+                term_size -= strlen(acc_strs[count]);
                 new_term_it += strlen(acc_strs[count]);
                 os_free(acc_strs[count]);
             }

@@ -24,8 +24,23 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
 # Generate remoted tests
 list(APPEND remoted_names "test_manager")
-list(APPEND remoted_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,wdb_get_agent_group \
--Wl,--wrap,wdb_set_agent_groups_csv -Wl,--wrap,_merror -Wl,--wrap,w_is_single_node")
+list(APPEND remoted_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,w_parser_get_agent \
+                            -Wl,--wrap,get_agent_group -Wl,--wrap,set_agent_group -Wl,--wrap,_merror \
+                            -Wl,--wrap,MergeAppendFile -Wl,--wrap,OS_MoveFile -Wl,--wrap,w_parser_get_group \
+                            -Wl,--wrap,wurl_request -Wl,--wrap,TestUnmergeFiles -Wl,--wrap,OS_MD5_File \
+                            -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap,OSHash_Delete -Wl,--wrap,OSHash_Get \
+                            -Wl,--wrap,OSHash_Get_ex -Wl,--wrap,OSHash_Next -Wl,--wrap,OSHash_SetFreeDataPointer \
+                            -Wl,--wrap,OSHash_Update_ex -Wl,--wrap,OSHash_Update -Wl,--wrap,OSHash_Get_Elem_ex \
+                            -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Add -Wl,--wrap,OSHash_Add_ex \
+                            -Wl,--wrap,checkBinaryFile -Wl,--wrap,OSHash_Set -Wl,--wrap,_minfo \
+                            -Wl,--wrap,opendir -Wl,--wrap,cldir_ex -Wl,--wrap,wreaddir -Wl,--wrap=_mwarn \
+                            -Wl,--wrap,closedir -Wl,--wrap,OSHash_Clean -Wl,--wrap,rmdir_ex \
+                            -Wl,--wrap,OS_SHA256_String -Wl,--wrap,readdir -Wl,--wrap,strerror \
+                            -Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,fclose -Wl,--wrap,remove \
+                            -Wl,--wrap,fgets -Wl,--wrap,fflush -Wl,--wrap,fseek -Wl,--wrap,fgetpos -Wl,--wrap=fgetc \
+                            -Wl,--wrap,w_copy_file -Wl,--wrap,OSHash_Begin \
+                            -Wl,--wrap,wdb_get_agent_group \
+                            -Wl,--wrap,wdb_set_agent_groups_csv -Wl,--wrap,w_is_single_node")
 
 list(APPEND remoted_names "test_secure")
 list(APPEND remoted_flags "-Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,fclose -Wl,--wrap,remove \
@@ -36,7 +51,7 @@ list(APPEND remoted_flags "-Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fwrite -
                             -Wl,--wrap=rem_inc_tcp -Wl,--wrap=rem_dec_tcp -Wl,--wrap=close -Wl,--wrap=accept \
                             -Wl,--wrap=wnotify_add -Wl,--wrap,fcntl -Wl,--wrap,_merror -Wl,--wrap=nb_open -Wl,--wrap=recvfrom \
                             -Wl,--wrap=rem_msgpush -Wl,--wrap=rem_add_recv -Wl,--wrap=nb_recv -Wl,--wrap=nb_send \
-                            -Wl,--wrap=rem_add_send ${DEBUG_OP_WRAPPERS}")
+                            -Wl,--wrap=rem_add_send -Wl,--wrap=OS_IsAllowedIP ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND remoted_names "test_netbuffer")
 list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,wnet_order -Wl,--wrap,wnotify_modify \

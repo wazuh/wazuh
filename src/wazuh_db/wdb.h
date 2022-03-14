@@ -345,7 +345,6 @@ typedef struct wdb_backup_settings_node {
 } wdb_backup_settings_node;
 
 typedef struct wdb_config {
-    int sock_queue_size;
     int worker_pool_size;
     int commit_time_min;
     int commit_time_max;

@@ -25,7 +25,7 @@ class WazuhDBConnection:
         """
         Constructor
         """
-        self.socket_path = common.wdb_socket_path
+        self.socket_path = common.WDB_SOCKET
         self.request_slice = request_slice
         self.max_size = max_size
         self.__conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -122,7 +122,7 @@ class WazuhDBConnection:
             if v == "(null)":
                 continue
             if isinstance(v, str) and DATE_FORMAT.match(v):
-                result[k] = datetime.datetime.strptime(v, '%Y/%m/%d %H:%M:%S')
+                result[k] = datetime.datetime.strptime(v, '%Y/%m/%d %H:%M:%S').replace(tzinfo=datetime.timezone.utc)
             else:
                 result[k] = v
 

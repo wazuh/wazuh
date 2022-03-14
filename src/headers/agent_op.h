@@ -57,11 +57,6 @@ char *os_read_agent_profile(void);
 int os_write_agent_info(const char *agent_name, const char *agent_ip, const char *agent_id,
                         const char *cfg_profile_name) __attribute__((nonnull(1, 3)));
 
-#ifndef CLIENT
-int set_agent_multigroup(char * group);
-
-#endif
-
 /* Validates the group name
  * @params response must be a 2048 buffer or NULL
  * Returns 0 on success or  -x on failure

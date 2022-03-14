@@ -2,6 +2,7 @@
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+import datetime
 import glob
 import os
 from collections.abc import KeysView
@@ -13,13 +14,14 @@ from xml.etree.ElementTree import Element
 from defusedxml.ElementTree import parse
 
 import pytest
+from freezegun import freeze_time
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         from wazuh import WazuhException
         from wazuh.core.agent import WazuhDBQueryAgents
         from wazuh.core import utils, exception
-        from wazuh.core.common import wazuh_path, agent_name_len_limit
+        from wazuh.core.common import WAZUH_PATH, AGENT_NAME_LEN_LIMIT
 
 # all necessary params
 
@@ -186,7 +188,7 @@ def test_find_nth(string, substring, n, expected_index):
     ([], None),
     ([], 1)
 ])
-@patch('wazuh.core.utils.common.maximum_database_limit', new=10)
+@patch('wazuh.core.utils.common.MAXIMUM_DATABASE_LIMIT', new=10)
 def test_cut_array(array, limit):
     """Test cut_array function."""
     result = utils.cut_array(array=array, limit=limit, offset=0)
@@ -200,13 +202,13 @@ def test_cut_array(array, limit):
     (5, -1, 1400),
     (-1, 0, 1401)
 ])
-@patch('wazuh.core.utils.common.maximum_database_limit', new=10)
+@patch('wazuh.core.utils.common.MAXIMUM_DATABASE_LIMIT', new=10)
 def test_cut_array_ko(limit, offset, expected_exception):
     """Test cut_array function for all exceptions.
 
     Cases:
 
-        * Limit is greater than maximum_database_limit
+        * Limit is greater than MAXIMUM_DATABASE_LIMIT
         * Limit is equal to 0
         * Offset is less than 0
         * Limit is less than 0
@@ -379,7 +381,7 @@ def test_chown_r(mock_chown):
         mock_chown.assert_any_call(os.path.join(tmp_dirname, tmp_file.name), 'test_user', 'test_group')
 
 
-@patch('wazuh.core.utils.common.wazuh_path', new='/test/path')
+@patch('wazuh.core.utils.common.WAZUH_PATH', new='/test/path')
 @patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('wazuh.core.utils.remove')
 def test_delete_wazuh_file(mock_remove, mock_exists):
@@ -388,7 +390,7 @@ def test_delete_wazuh_file(mock_remove, mock_exists):
     mock_remove.assert_called_once_with('/test/path/etc/file')
 
 
-@patch('wazuh.core.utils.common.wazuh_path', new='/test/path')
+@patch('wazuh.core.utils.common.WAZUH_PATH', new='/test/path')
 def test_delete_wazuh_file_ko():
     """Check delete_file calls functions with expected params"""
     with pytest.raises(utils.WazuhError, match=r'\b1907\b'):
@@ -526,7 +528,7 @@ def test_get_hash_str():
     result = utils.get_hash_str('test')
 
     assert isinstance(result, str)
-    assert all(ord(char) < agent_name_len_limit for char in result)
+    assert all(ord(char) < AGENT_NAME_LEN_LIMIT for char in result)
 
 
 def test_get_fields_to_nest():
@@ -713,7 +715,7 @@ def test_WazuhDBQuery__init__(mock_socket_conn, mock_isfile, mock_sqli_conn, val
                                search=None, select=None, filters=None,
                                fields={'1': None, '2': None}, default_sort_field=None,
                                default_sort_order='ASC', query=None,
-                               backend=utils.SQLiteBackend(utils.common.database_path),
+                               backend=utils.SQLiteBackend(utils.common.DATABASE_PATH),
                                min_select_fields=1, count=5, get_data=None,
                                date_fields={'lastKeepAlive', 'dateAdd'},
                                extra_fields={'internal_key'})
@@ -727,7 +729,7 @@ def test_WazuhDBQuery__init__(mock_socket_conn, mock_isfile, mock_sqli_conn, val
                                    fields={'1': None, '2': None},
                                    default_sort_field=None, default_sort_order='ASC',
                                    query=None, get_data=None,
-                                   backend=utils.SQLiteBackend(utils.common.database_path),
+                                   backend=utils.SQLiteBackend(utils.common.DATABASE_PATH),
                                    min_select_fields=1, count=5,
                                    date_fields={'lastKeepAlive', 'dateAdd'},
                                    extra_fields={'internal_key'})
@@ -742,7 +744,7 @@ def test_WazuhDBQuery__init__(mock_socket_conn, mock_isfile, mock_sqli_conn, val
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch("wazuh.core.database.isfile", return_value=True)
 @patch('socket.socket.connect')
-@patch('wazuh.core.utils.common.maximum_database_limit', new=10)
+@patch('wazuh.core.utils.common.MAXIMUM_DATABASE_LIMIT', new=10)
 def test_WazuhDBQuery_protected_clean_filter(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob, query_filter,
                                              expected_query_filter, expected_wef):
     """Test WazuhDBQuery._clean_filter function."""
@@ -767,7 +769,7 @@ def test_WazuhDBQuery_protected_clean_filter(mock_socket_conn, mock_isfile, mock
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch("wazuh.core.database.isfile", return_value=True)
 @patch('socket.socket.connect')
-@patch('wazuh.core.utils.common.maximum_database_limit', new=10)
+@patch('wazuh.core.utils.common.MAXIMUM_DATABASE_LIMIT', new=10)
 def test_WazuhDBQuery_protected_add_limit_to_query(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob, limit, error,
                                                    expected_exception):
     """Test WazuhDBQuery._add_limit_to_query function."""
@@ -1107,7 +1109,7 @@ def test_WazuhDBQuery_protected_get_data(mock_socket_conn, mock_isfile, mock_sql
                                search=None, select={'fields': set(['os.name'])},
                                fields={'os.name': 'ubuntu', 'os.version': '18.04'},
                                default_sort_field=None, query=None,
-                               backend=utils.SQLiteBackend(utils.common.database_path), count=5,
+                               backend=utils.SQLiteBackend(utils.common.DATABASE_PATH), count=5,
                                get_data=None, min_select_fields=set(['os.version']))
 
     query.backend._get_data()
@@ -1605,7 +1607,7 @@ def test_add_dynamic_detail(detail, value, attribs, details):
 
 
 @patch('wazuh.core.utils.check_remote_commands')
-@patch('wazuh.core.manager.common.wazuh_path', new=test_files_path)
+@patch('wazuh.core.manager.common.WAZUH_PATH', new=test_files_path)
 def test_validate_wazuh_xml(mock_remote_commands):
     """Test validate_wazuh_xml method works and methods inside are called with expected parameters"""
 
@@ -1665,29 +1667,29 @@ def test_delete_file_with_backup_ko(mock_copyfile):
 def test_to_relative_path():
     """Test to_relative_path function."""
     path = 'etc/ossec.conf'
-    assert utils.to_relative_path(os.path.join(wazuh_path, path)) == path
+    assert utils.to_relative_path(os.path.join(WAZUH_PATH, path)) == path
 
     assert utils.to_relative_path(path, prefix='etc') == os.path.basename(path)
 
 
-@patch('wazuh.core.utils.common.ruleset_rules_path', new=test_files_path)
-@patch('wazuh.core.utils.common.user_rules_path', new=test_files_path)
+@patch('wazuh.core.utils.common.RULES_PATH', new=test_files_path)
+@patch('wazuh.core.utils.common.USER_RULES_PATH', new=test_files_path)
 def test_expand_rules():
     rules = utils.expand_rules()
     assert rules == set(map(os.path.basename, glob.glob(os.path.join(test_files_path,
                                                                      f'*{utils.common.RULES_EXTENSION}'))))
 
 
-@patch('wazuh.core.utils.common.ruleset_decoders_path', new=test_files_path)
-@patch('wazuh.core.utils.common.user_decoders_path', new=test_files_path)
+@patch('wazuh.core.utils.common.DECODERS_PATH', new=test_files_path)
+@patch('wazuh.core.utils.common.USER_DECODERS_PATH', new=test_files_path)
 def test_expand_decoders():
     decoders = utils.expand_decoders()
     assert decoders == set(map(os.path.basename, glob.glob(os.path.join(test_files_path,
                                                                         f'*{utils.common.DECODERS_EXTENSION}'))))
 
 
-@patch('wazuh.core.utils.common.ruleset_lists_path', new=test_files_path)
-@patch('wazuh.core.utils.common.user_lists_path', new=test_files_path)
+@patch('wazuh.core.utils.common.LISTS_PATH', new=test_files_path)
+@patch('wazuh.core.utils.common.USER_LISTS_PATH', new=test_files_path)
 def test_expand_lists():
     lists = utils.expand_lists()
     assert lists == set(filter(lambda x: len(x.split('.')) == 1, map(os.path.basename, glob.glob(os.path.join(
@@ -1727,3 +1729,30 @@ def test_full_copy_ko():
     """Test `full_copy` function using mutation testing."""
     with pytest.raises(AssertionError):
         test_full_copy()
+
+
+@freeze_time('1970-01-01')
+def test_get_date_from_timestamp():
+    """Test if the result is the expected date."""
+
+    date = utils.get_date_from_timestamp(0)
+    assert date == datetime.datetime(1970, 1, 1, 0, 0, tzinfo=datetime.timezone.utc)
+
+
+@freeze_time('1970-01-01')
+def test_get_utc_now():
+    """Test if the result is the expected date."""
+
+    date = utils.get_utc_now()
+    assert date == datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
+
+
+@freeze_time('1970-01-01')
+def test_get_utc_now():
+    """Test if the result is the expected date."""
+    mock_date = '1970-01-01'
+    default_format = '%Y-%M-%d'
+
+    date = utils.get_utc_strptime(mock_date, default_format)
+    assert isinstance(date, datetime.datetime)
+    assert date == datetime.datetime(1970, 1, 1, 0, 1, tzinfo=datetime.timezone.utc)

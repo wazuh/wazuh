@@ -135,8 +135,6 @@
 #define REMOTED_INV_VALUE_IGNORE                "(9001): Ignored invalid value '%s' for '%s'."
 #define REMOTED_NET_PROTOCOL_ONLY_SECURE        "(9002): Only secure connection supports TCP and UDP at the same time."\
                                                 " Default value (%s) will be used."
-#define REMOTED_INET6_SECURE_CONNNECTION        "(9003): Secure connection does not support IPv6. "\
-                                                "IPv4 will be used instead."
 #define REMOTED_INV_VALUE_DEFAULT               "(9004): Invalid value '%s' in '%s' option. " \
                                                 "Default value will be used."
 #endif /* WARN_MESSAGES_H */

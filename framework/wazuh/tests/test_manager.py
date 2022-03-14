@@ -29,7 +29,7 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
 
 @pytest.fixture(scope='module', autouse=True)
 def mock_wazuh_path():
-    with patch('wazuh.core.common.wazuh_path', new=test_data_path):
+    with patch('wazuh.core.common.WAZUH_PATH', new=test_data_path):
         yield
 
 
@@ -190,8 +190,8 @@ def test_get_api_config():
 @patch('socket.socket')
 @patch('wazuh.core.cluster.utils.fcntl')
 @patch('wazuh.core.cluster.utils.open')
-@patch("wazuh.core.cluster.utils.exists", return_value=True)
-def test_restart_ok(mock_exist, mock_path, mock_fcntl, mock_socket):
+@patch('os.path.exists', return_value=True)
+def test_restart_ok(mock_exists, mock_path, mock_fcntl, mock_socket):
     """Tests restarting a manager"""
     result = restart()
 
@@ -202,8 +202,8 @@ def test_restart_ok(mock_exist, mock_path, mock_fcntl, mock_socket):
 
 @patch('wazuh.core.cluster.utils.open')
 @patch('wazuh.core.cluster.utils.fcntl')
-@patch('wazuh.core.cluster.utils.exists', return_value=False)
-def test_restart_ko_socket(mock_exist, mock_fcntl, mock_open):
+@patch('os.path.exists', return_value=False)
+def test_restart_ko_socket(mock_exists, mock_fcntl, mock_open):
     """Tests restarting a manager exceptions"""
 
     # Socket path not exists
@@ -211,7 +211,7 @@ def test_restart_ko_socket(mock_exist, mock_fcntl, mock_open):
         restart()
 
     # Socket error
-    with patch("wazuh.core.cluster.utils.exists", return_value=True):
+    with patch("os.path.exists", return_value=True):
         with patch('socket.socket', side_effect=socket.error):
             with pytest.raises(WazuhInternalError, match='.* 1902 .*'):
                 restart()

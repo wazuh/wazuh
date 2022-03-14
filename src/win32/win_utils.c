@@ -29,12 +29,19 @@ sysinfo_free_result_func sysinfo_free_result_ptr = NULL;
 int Start_win32_Syscheck();
 
 /* syscheck main thread */
+#ifdef WIN32
+DWORD WINAPI skthread(__attribute__((unused)) LPVOID arg)
+#else
 void *skthread()
+#endif
 {
 
     Start_win32_Syscheck();
-
+#ifdef WIN32
+    return 0;
+#else
     return (NULL);
+#endif
 }
 
 void stop_wmodules()
@@ -195,7 +202,7 @@ int local_start()
         buffer_init();
         w_create_thread(NULL,
                          0,
-                         (LPTHREAD_START_ROUTINE)dispatch_buffer,
+                         dispatch_buffer,
                          NULL,
                          0,
                          (LPDWORD)&threadID);
@@ -207,7 +214,7 @@ int local_start()
     w_agentd_state_init();
     w_create_thread(NULL,
                      0,
-                     (LPTHREAD_START_ROUTINE)state_main,
+                     state_main,
                      NULL,
                      0,
                      (LPDWORD)&threadID);
@@ -224,7 +231,7 @@ int local_start()
     /* Start syscheck thread */
     w_create_thread(NULL,
                      0,
-                     (LPTHREAD_START_ROUTINE)skthread,
+                     skthread,
                      NULL,
                      0,
                      (LPDWORD)&threadID);
@@ -234,7 +241,7 @@ int local_start()
     if (rotate_log) {
         w_create_thread(NULL,
                         0,
-                        (LPTHREAD_START_ROUTINE)w_rotate_log_thread,
+                        w_rotate_log_thread,
                         NULL,
                         0,
                         (LPDWORD)&threadID);
@@ -251,7 +258,7 @@ int local_start()
     /* Start receiver thread */
     w_create_thread(NULL,
                      0,
-                     (LPTHREAD_START_ROUTINE)receiver_thread,
+                     receiver_thread,
                      NULL,
                      0,
                      (LPDWORD)&threadID2);
@@ -259,7 +266,7 @@ int local_start()
     /* Start request receiver thread */
     w_create_thread(NULL,
                      0,
-                     (LPTHREAD_START_ROUTINE)req_receiver,
+                     req_receiver,
                      NULL,
                      0,
                      (LPDWORD)&threadID2);
@@ -272,7 +279,7 @@ int local_start()
         for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
             w_create_thread(NULL,
                             0,
-                            (LPTHREAD_START_ROUTINE)cur_module->context->start,
+                            cur_module->context->start,
                             cur_module->data,
                             0,
                             (LPDWORD)&threadID2);
@@ -396,17 +403,20 @@ char *get_agent_ip()
                         }
                         cJSON *gateway = cJSON_GetObjectItem(element, "gateway");
                         if(gateway && cJSON_GetStringValue(gateway) && 0 != strcmp(gateway->valuestring, " ")) {
-                            const cJSON *ipv4 = cJSON_GetObjectItem(element, "IPv4");
-                            if (!ipv4) {
-                                continue;
-                            }
-                            const int size_proto_interfaces = cJSON_GetArraySize(ipv4);
-                            for (int j = 0; j < size_proto_interfaces; ++j) {
-                                const cJSON *element_ipv4 = cJSON_GetArrayItem(ipv4, j);
-                                if(!element_ipv4) {
+                            const cJSON *ip = cJSON_GetObjectItem(element, "IPv6");
+                            if (!ip) {
+                                ip = cJSON_GetObjectItem(element, "IPv4");
+                                if (!ip) {
                                     continue;
                                 }
-                                cJSON *address = cJSON_GetObjectItem(element_ipv4, "address");
+                            }
+                            const int size_proto_interfaces = cJSON_GetArraySize(ip);
+                            for (int j = 0; j < size_proto_interfaces; ++j) {
+                                const cJSON *element_ip = cJSON_GetArrayItem(ip, j);
+                                if(!element_ip) {
+                                    continue;
+                                }
+                                cJSON *address = cJSON_GetObjectItem(element_ip, "address");
                                 if (address && cJSON_GetStringValue(address))
                                 {
                                     strncpy(agent_ip, address->valuestring, IPSIZE);
@@ -425,6 +435,10 @@ char *get_agent_ip()
         else {
             merror("Unable to get system network information. Error code: %d.", error_code);
         }
+    }
+
+    if (strchr(agent_ip, ':') != NULL) {
+        OS_ExpandIPv6(agent_ip, IPSIZE);
     }
 
     return strdup(agent_ip);

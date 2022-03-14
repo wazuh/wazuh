@@ -21,22 +21,10 @@
 #endif
 
 /**
- * @brief Main function for Google Cloud Pub/Sub
- * @param gcp_config Module configuration structure
- */
-static void* wm_gcp_pubsub_main(wm_gcp_pubsub *gcp_config);          // Module main function. It won't return
-
-/**
  * @brief Run module function for Google Cloud Pub/Sub
  * @param data Module configuration structure
  */
 static void wm_gcp_pubsub_run(const wm_gcp_pubsub *data);            // Running python script
-
-/**
- * @brief Free configuration structure for Google Cloud Pub/Sub
- * @param gcp_config Module configuration structure
- */
-static void wm_gcp_pubsub_destroy(wm_gcp_pubsub *gcp_config);        // Destroy data
 
 /**
  * @brief Dump configuration structure in JSON for Google Cloud Pub/Sub
@@ -44,6 +32,36 @@ static void wm_gcp_pubsub_destroy(wm_gcp_pubsub *gcp_config);        // Destroy 
  * @return JSON structure with module configuration
  */
 cJSON *wm_gcp_pubsub_dump(const wm_gcp_pubsub *gcp_config);          // Read config
+#ifdef WIN32
+/**
+ * @brief Main function for Google Cloud Pub/Sub
+ * @param gcp_config Module configuration structure
+ */
+static DWORD WINAPI wm_gcp_pubsub_main(void *arg);                     // Module main function. It won't return
+
+/**
+ * @brief Main function for Google Cloud bucket
+ * @param gcp_config Module configuration structure
+ */
+static DWORD WINAPI wm_gcp_bucket_main(void *arg);                     // Module main function. It won't return
+
+/**
+ * @brief Free configuration structure for Google Cloud Pub/Sub
+ * @param gcp_config Module configuration structure
+ */
+static DWORD WINAPI wm_gcp_pubsub_destroy(void *gcp_config);           // Destroy data
+
+/**
+ * @brief Free configuration structure for Google Cloud bucket
+ * @param gcp_config Module configuration structure
+ */
+static DWORD WINAPI wm_gcp_bucket_destroy(void *gcp_config);           // Destroy data
+#else
+/**
+ * @brief Main function for Google Cloud Pub/Sub
+ * @param gcp_config Module configuration structure
+ */
+static void* wm_gcp_pubsub_main(wm_gcp_pubsub *gcp_config);          // Module main function. It won't return
 
 /**
  * @brief Main function for Google Cloud bucket
@@ -52,17 +70,23 @@ cJSON *wm_gcp_pubsub_dump(const wm_gcp_pubsub *gcp_config);          // Read con
 static void* wm_gcp_bucket_main(wm_gcp_bucket_base *gcp_config);          // Module main function. It won't return
 
 /**
- * @brief Run module function for Google Cloud bucket
- * @param data Module configuration structure
- * @param exec_bucket Bucket configuration structure
+ * @brief Free configuration structure for Google Cloud Pub/Sub
+ * @param gcp_config Module configuration structure
  */
-static void wm_gcp_bucket_run(const wm_gcp_bucket_base *data, wm_gcp_bucket *exec_bucket);            // Running python script
+static void wm_gcp_pubsub_destroy(wm_gcp_pubsub *gcp_config);        // Destroy data
 
 /**
  * @brief Free configuration structure for Google Cloud bucket
  * @param gcp_config Module configuration structure
  */
 static void wm_gcp_bucket_destroy(wm_gcp_bucket_base *gcp_config);        // Destroy data
+#endif
+/**
+ * @brief Run module function for Google Cloud bucket
+ * @param data Module configuration structure
+ * @param exec_bucket Bucket configuration structure
+ */
+static void wm_gcp_bucket_run(const wm_gcp_bucket_base *data, wm_gcp_bucket *exec_bucket);            // Running python script
 
 /**
  * @brief Dump configuration structure in JSON for Google Cloud bucket
@@ -96,7 +120,12 @@ const wm_context WM_GCP_BUCKET_CONTEXT = {
 #define pthread_exit(a) return a
 #endif
 // Module main function. It won't return
+#ifdef WIN32
+DWORD WINAPI wm_gcp_pubsub_main(void *arg) {
+    wm_gcp_pubsub *data = (wm_gcp_pubsub *)arg;
+#else
 void* wm_gcp_pubsub_main(wm_gcp_pubsub *data) {
+#endif
     char * timestamp = NULL;
     // If module is disabled, exit
     if (data->enabled) {
@@ -123,10 +152,19 @@ void* wm_gcp_pubsub_main(wm_gcp_pubsub *data) {
         mtdebug1(WM_GCP_PUBSUB_LOGTAG, "Fetching logs finished.");
     } while (FOREVER());
 
+#ifdef WIN32
+    return 0;
+#else
     return NULL;
+#endif
 }
 
+#ifdef WIN32
+DWORD WINAPI wm_gcp_bucket_main(void *arg) {
+    wm_gcp_bucket_base *data = (wm_gcp_bucket_base *)arg;
+#else
 void* wm_gcp_bucket_main(wm_gcp_bucket_base *data) {
+#endif
     char * timestamp = NULL;
     // If module is disabled, exit
     if (data->enabled) {
@@ -188,7 +226,11 @@ void* wm_gcp_bucket_main(wm_gcp_bucket_base *data) {
         mtdebug1(WM_GCP_BUCKET_LOGTAG, "Fetching logs finished.");
     } while (FOREVER());
 
+#ifdef WIN32
+    return 0;
+#else
     return NULL;
+#endif
 }
 
 #ifdef WAZUH_UNIT_TESTING
@@ -478,14 +520,27 @@ void wm_gcp_bucket_run(const wm_gcp_bucket_base *data, wm_gcp_bucket *exec_bucke
     os_free(output);
 }
 
+#ifdef WIN32
+DWORD WINAPI wm_gcp_pubsub_destroy(void *gcp_config) {
+    wm_gcp_pubsub *data = (wm_gcp_pubsub *)gcp_config;
+#else
 void wm_gcp_pubsub_destroy(wm_gcp_pubsub * data) {
+#endif
     if (data->project_id) os_free(data->project_id);
     if (data->subscription_name) os_free(data->subscription_name);
     if (data->credentials_file) os_free(data->credentials_file);
     os_free(data);
+    #ifdef WIN32
+    return 0;
+    #endif
 }
 
+#ifdef WIN32
+DWORD WINAPI wm_gcp_bucket_destroy(void *gcp_config) {
+    wm_gcp_bucket_base * data = (wm_gcp_bucket_base *)gcp_config;
+#else
 void wm_gcp_bucket_destroy(wm_gcp_bucket_base * data) {
+#endif
     wm_gcp_bucket *cur_bucket;
     wm_gcp_bucket *next_bucket = data->buckets;
     while(next_bucket){
@@ -499,6 +554,9 @@ void wm_gcp_bucket_destroy(wm_gcp_bucket_base * data) {
         os_free(cur_bucket);
     }
     os_free(data);
+    #ifdef WIN32
+    return 0;
+    #endif
 }
 
 cJSON *wm_gcp_pubsub_dump(const wm_gcp_pubsub *data) {

@@ -968,7 +968,7 @@ checks:
       - tsc: ["CC5.2"]
     references:
       - More detailed documentation on DHCP is available at https://www.isc.org/software/dhcp
-    condition: none
+    condition: all
     rules:
       - 'c:rpm -q dhcp -> r:package dhcp is not installed'
 
@@ -1375,7 +1375,7 @@ checks:
       - 'c:sysctl net.ipv4.ip_forward -> r:^net.ipv4.ip_forward\s*=\s*0$'
       - 'not c:grep -RhEs "net\.ipv4\.ip_forward" /etc/sysctl.conf /etc/sysctl.d/*.conf -> r:1'
       - 'c:sysctl net.ipv6.conf.all.forwarding -> r:^net.ipv6.conf.all.forwarding\s*=\s*0$'
-      - 'not c:grep -RhEs "net\.ipv6\.conf\.all\.forwarding" /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf ->  r:1'
+      - 'not c:grep -RhEs "net\.ipv6\.conf\.all\.forwarding" /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf -> r:1'
 
 # 3.2.2 Ensure packet redirect sending is disabled.
   - id: 20574
@@ -1866,9 +1866,9 @@ checks:
       - tsc: ["CC8.1"]
     condition: all
     rules:
-      - 'c:iptables -L INPUT   ->  r:policy DROP'
-      - 'c:iptables -L FORWARD ->  r:policy DROP'
-      - 'c:iptables -L OUTPUT  ->  r:policy DROP'
+      - 'c:iptables -L INPUT   -> r:policy DROP'
+      - 'c:iptables -L FORWARD -> r:policy DROP'
+      - 'c:iptables -L OUTPUT  -> r:policy DROP'
 
 # 3.5.3.2.5 Ensure iptables rules are saved - Not implemented, requires manual operation.
 
@@ -1885,8 +1885,8 @@ checks:
       - tsc: ["CC8.1"]
     condition: all
     rules:
-      - 'c:systemctl is-enabled iptables->  r:enabled'
-      - 'c:systemctl status iptables ->  r:active && r:running|exited'
+      - 'c:systemctl is-enabled iptables -> r:enabled'
+      - 'c:systemctl status iptables -> r:active && r:running|exited'
 
 ############################################################
 # 3.5.3.3 Configure IPv6 iptables.
@@ -1905,9 +1905,9 @@ checks:
       - tsc: ["CC8.1"]
     condition: all
     rules:
-      - 'c:ip6tables -L INPUT -v -n ->  r:ACCEPT && r:lo'
-      - 'c:ip6tables -L INPUT -v -n ->  r:DROP'
-      - 'c:ip6tables -L OUTPUT -v -n ->  r:ACCEPT && r:lo'
+      - 'c:ip6tables -L INPUT -v -n -> r:ACCEPT && r:lo'
+      - 'c:ip6tables -L INPUT -v -n -> r:DROP'
+      - 'c:ip6tables -L OUTPUT -v -n -> r:ACCEPT && r:lo'
 
 # 3.5.3.3.2 Ensure ip6tables outbound and established connections are configured - Not implemented, requires manual operation.
 # 3.5.3.3.3 Ensure ip6tables firewall rules exist for all open ports - Not implemented, requires manual operation.
@@ -1925,9 +1925,9 @@ checks:
       - tsc: ["CC8.1"]
     condition: all
     rules:
-      - 'c:ip6tables -L INPUT ->  r:policy DROP'
-      - 'c:ip6tables -L FORWARD ->  r:policy DROP'
-      - 'c:ip6tables -L OUTPUT ->  r:policy DROP'
+      - 'c:ip6tables -L INPUT -> r:policy DROP'
+      - 'c:ip6tables -L FORWARD -> r:policy DROP'
+      - 'c:ip6tables -L OUTPUT -> r:policy DROP'
 
 # 3.5.3.3.5 Ensure ip6tables rules are saved - Not implemented, requires manual operation.
 
@@ -1944,8 +1944,8 @@ checks:
       - tsc: ["CC8.1"]
     condition: all
     rules:
-      - 'c:systemctl is-enabled ip6tables->  r:enabled'
-      - 'c:systemctl status ip6tables ->  r:active && r:running|exited'
+      - 'c:systemctl is-enabled ip6tables -> r:enabled'
+      - 'c:systemctl status ip6tables -> r:active && r:running|exited'
 
 ############################################################
 # 4 Logging and Auditing.
@@ -1986,8 +1986,8 @@ checks:
       - tsc: ["CC6.1","CC6.2","CC6.3","CC7.2","CC7.3","CC7.4"]
     condition: all
     rules:
-      - 'c:systemctl is-enabled auditd->  r:enabled'
-      - 'c:systemctl status auditd ->  r:active && r:running'
+      - 'c:systemctl is-enabled auditd -> r:enabled'
+      - 'c:systemctl status auditd -> r:active && r:running'
 
 # 4.1.1.3 Ensure auditing for processes that start prior to auditd is enabled.
   - id: 20606
@@ -2142,7 +2142,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/audit/audit.rules -> r:-w /etc/selinux/ && r:-p wa && r:-k MAC-policy'
-      - 'f:/etc/audit/audit.rules -> r:\.*.rules -> r:-w /usr/share/selinux/ && r:-p wa && r:-k MAC-policy'
+      - 'd:/etc/audit/rules.d -> r:\.*.rules -> r:-w /usr/share/selinux/ && r:-p wa && r:-k MAC-policy'
 
 # 4.1.7 Ensure login and logout events are collected.
   - id: 20614
@@ -2162,7 +2162,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/audit/audit.rules -> r:-w /var/log/lastlog && r:-p wa && r:-k logins'
-      - 'f:/etc/audit/audit.rules -> r:-w /var/run/faillog/ && r:-p wa && r:-k logins'
+      - 'f:/etc/audit/audit.rules -> r:-w /var/run/faillock/ && r:-p wa && r:-k logins'
 
 # 4.1.8 Ensure session initiation information is collected.
   - id: 20615
@@ -2613,9 +2613,10 @@ checks:
       - cis_csc: ["6.2","6.3"]
       - pci_dss: ["10.5"]
       - tsc: ["CC6.1","CC7.2","CC7.3","CC7.4"]
-    condition: all
+    condition: any
     rules:
-      - 'c:grep -Ei ''^\s*Defaults\s+([^#]\S+,\s*)?use_pty\b'' /etc/sudoers /etc/sudoers.d/* -> r:Defaults use_pty'
+      - 'f:/etc/sudoers -> r:^\s*Defaults\s+use_pty'
+      - 'd:/etc/sudoers.d -> r:\. -> r:^\s*Defaults\s+use_pty'
 
 # 5.2.3 Ensure sudo log file exists.
   - id: 20641
@@ -2628,9 +2629,10 @@ checks:
       - cis_csc: ["6.2","6.3"]
       - pci_dss: ["10.5"]
       - tsc: ["CC6.1","CC7.2","CC7.3","CC7.4"]
-    condition: all
+    condition: any
     rules:
-      - 'c: grep -Ei ''^\s*Defaults\s+([^#;]+,\s*)?logfile\s*=\s*(")?[^#;]+(")?'' /etc/sudoers /etc/sudoers.d/* -> r:Defaults logfile=\"/.+\"'
+      - 'f:/etc/sudoers -> r:^Defaults logfile="'
+      - 'd:/etc/sudoers.d -> r:\. -> r:^Defaults\s+logfile="'
 
 ############################################################
 # 5.3 Configure SSH Server.
@@ -2650,14 +2652,14 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat -L /etc/ssh/sshd_config -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/ssh/sshd_config -> r:^Access:\s*\t*\(0600/-rw-------\)\s*\t*Uid:\s*\t*\(\t*\s*0/\t*\s*root\)\s*\t*Gid:\s*\t*\(\t*\s*0/\t*\s*root\)$'
 
 # 5.3.2 Ensure permissions on SSH private host key files are configured.
   - id: 20643
     title: "Ensure permissions on SSH private host key files are configured."
     description: "An SSH private key is one of two files used in SSH public key authentication. In this authentication method, The possession of the private key is proof of identity. Only a private key that corresponds to a public key will be able to authenticate successfully. The private keys need to be stored and handled carefully, and no copies of the private key should be distributed."
     rationale: "If an unauthorized user obtains the private SSH host key file, the host could be impersonated"
-    remediation: "Run the following commands to set ownership and permissions on the private SSH host key files: # find /etc/ssh -xdev -type f -name 'ssh_host_*_key' -exec chmod 0640 {} \\;  # find /etc/ssh -xdev -type f -name 'ssh_host_*_key' -exec chown root:ssh_keys {} \\;"
+    remediation: "Run the following commands to set ownership and permissions on the private SSH host key files: # find /etc/ssh -xdev -type f -name 'ssh_host_*_key' -exec chmod 0640 {} \\;  # find /etc/ssh -xdev -type f -name 'ssh_host_*_key' -exec chown root:root {} \\;"
     compliance:
       - cis: ["5.3.2"]
       - cis_csc: ["5.1"]
@@ -2666,9 +2668,9 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_rsa_key" -exec stat {} \; -> r:^Access: \(0\d40/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    998/ssh keys\)$'
-      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ecdsa_key" -exec stat {} \; -> r:^Access: \(0\d40/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    998/ssh keys\)$'
-      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ed25519_key" -exec stat {} \; -> r:^Access: \(0\d000/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    998/ssh keys\)$'
+      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_rsa_key" -exec stat {} \; -> r:^Access:\t*\s*\(0600/-rw-------\)\t*\s*Uid:\t*\s*\(\t*\s*0/\t*\s*root\)\t*\s*Gid:\t*\s*\(\t*\s*0/\t*\s*root\)$'
+      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ecdsa_key" -exec stat {} \; -> r:^Access:\t*\s*\(0600/-rw-------\)\t*\s*Uid:\t*\s*\(\t*\s*0/\t*\s*root\)\t*\s*Gid:\t*\s*\(\t*\s*0/\t*\s*root\)$'
+      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ed25519_key" -exec stat {} \; -> r:^Access:\t*\s*\(0600/-rw-------\)\t*\s*Uid:\t*\s*\(\t*\s*0/\t*\s*root\)\t*\s*Gid:\t*\s*\(\t*\s*0/\t*\s*root\)$'
 
 # 5.3.3 Ensure permissions on SSH public host key files are configured.
   - id: 20644
@@ -2684,9 +2686,9 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_rsa_key.pub" -exec stat {} \; -> r:^Access: \(0\d444/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ecdsa_key.pub" -exec stat {} \; -> r:^Access: \(0\d44/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ed25519_key.pub" -exec stat {} \; -> r:^Access: \(0\d44/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_rsa_key.pub" -exec stat {} \; -> r:^Access:\s*\(0644/-rw-r--r--\)\t*\s*Uid:\t*\s*\(\t*\s*0/\t*\s*root\)\t*\s*Gid:\t*\s*\(\t*\s*0/\t*\s*root\)$'
+      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ecdsa_key.pub" -exec stat {} \; -> r:^Access:\s*\(0644/-rw-r--r--\)\t*\s*Uid:\t*\s*\(\t*\s*0/\t*\s*root\)\t*\s*Gid:\t*\s*\(\t*\s*0/\t*\s*root\)$'
+      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ed25519_key.pub" -exec stat {} \; -> r:^Access:\s*\(0644/-rw-r--r--\)\t*\s*Uid:\t*\s*\(\t*\s*0/\t*\s*root\)\t*\s*Gid:\t*\s*\(\t*\s*0/\t*\s*root\)$'
 
 # 5.3.4 Ensure SSH access is limited - Not implemented, requires manual operation.
 
@@ -2998,7 +3000,7 @@ checks:
       - tsc: ["CC6.1"]
     condition: all
     rules:
-      - 'f:/etc/security/pwquality.conf -> n:^\s*minlen\s+\t*=\s+\t*(\d+) compare >= 14'
+      - 'f:/etc/security/pwquality.conf -> n:^\s*minlen\s*\t*=\s*\t*(\d+) compare >= 14'
 
 # 5.4.2 Ensure lockout for failed password attempts is configured - Not implemented, requires manual operation.
 
@@ -3286,9 +3288,10 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: all
+    condition: any
     rules:
       - 'c:stat -L /etc/group -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/group -> r:Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 # 6.1.9 Ensure permissions on /etc/group-are configured.
   - id: 20681
@@ -3302,9 +3305,10 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: all
+    condition: any
     rules:
-      - 'c:stat -L /etc/group- -> r:Access:\s*\(0\d\d\d/-\w\w-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/group- -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat -L /etc/group- -> r:Access:\s*\(0600/-rw-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
 # 6.1.10 Ensure no world writable files exist - Not implemented, requires manual operation.
 # 6.1.11 Ensure no unowned files or directories exist - Not implemented, requires manual operation.

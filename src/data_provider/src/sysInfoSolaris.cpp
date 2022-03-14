@@ -8,18 +8,24 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-
 #include <fstream>
 #include <sys/utsname.h>
+#include <unistd.h>
 
 #include "osinfo/sysOsParsers.h"
 #include "sharedDefs.h"
 #include "sysInfo.hpp"
 #include "cmdHelper.h"
+#include "timeHelper.h"
 #include "filesystemHelper.h"
 #include "packages/packageSolaris.h"
 #include "packages/solarisWrapper.h"
 #include "packages/packageFamilyDataAFactory.h"
+#include "network/networkSolarisHelper.hpp"
+#include "network/networkSolarisWrapper.hpp"
+#include "network/networkFamilyDataAFactory.h"
+#include "UtilsWrapperUnix.hpp"
+#include "uniqueFD.hpp"
 
 constexpr auto SUN_APPS_PATH {"/var/sadm/pkg/"};
 
@@ -60,7 +66,6 @@ int SysInfo::getCpuCores() const
 {
     return 0;
 }
-
 void SysInfo::getMemory(nlohmann::json& /*info*/) const
 {
 
@@ -121,7 +126,76 @@ nlohmann::json SysInfo::getProcessesInfo() const
 }
 nlohmann::json SysInfo::getNetworks() const
 {
-    return nlohmann::json();
+    nlohmann::json networks;
+    Utils::UniqueFD socketV4 ( UtilsWrapperUnix::createSocket(AF_INET, SOCK_DGRAM, 0) );
+    Utils::UniqueFD socketV6 ( UtilsWrapperUnix::createSocket(AF_INET6, SOCK_DGRAM, 0) );
+    const auto interfaceCount { NetworkSolarisHelper::getInterfacesCount(socketV4.get(), AF_UNSPEC) };
+
+    if (interfaceCount > 0)
+    {
+        std::vector<lifreq> buffer(interfaceCount);
+        lifconf lifc =
+        {
+            AF_UNSPEC,
+            0,
+            static_cast<int>(buffer.size() * sizeof(lifreq)),
+            reinterpret_cast<caddr_t>(buffer.data())
+        };
+
+        NetworkSolarisHelper::getInterfacesConfig(socketV4.get(), lifc);
+
+        std::map<std::string, std::vector<std::pair<lifreq*, uint64_t>>> interfaces;
+
+        for (auto& item : buffer)
+        {
+            struct lifreq interfaceReq = {};
+            std::memcpy(interfaceReq.lifr_name, item.lifr_name, sizeof(item.lifr_name));
+
+            if (-1 != UtilsWrapperUnix::ioctl(AF_INET == item.lifr_addr.ss_family ? socketV4.get() : socketV6.get(),
+                                              SIOCGLIFFLAGS,
+                                              reinterpret_cast<char*>(&interfaceReq)))
+            {
+                if ((IFF_UP & interfaceReq.lifr_flags) && !(IFF_LOOPBACK & interfaceReq.lifr_flags))
+                {
+                    interfaces[item.lifr_name].push_back(std::make_pair(&item, interfaceReq.lifr_flags));
+                }
+            }
+        }
+
+        for (const auto& item : interfaces)
+        {
+            if (item.second.size())
+            {
+                const auto firstItem { item.second.front() };
+                const auto firstItemFD { AF_INET == firstItem.first->lifr_addr.ss_family ? socketV4.get() : socketV6.get() };
+
+                nlohmann::json network;
+
+                for (const auto& itemr : item.second)
+                {
+                    if (AF_INET == itemr.first->lifr_addr.ss_family)
+                    {
+                        // IPv4 data
+                        const auto wrapper { std::make_shared<NetworkSolarisInterface>(AF_INET, socketV4.get(), itemr) };
+                        FactoryNetworkFamilyCreator<OSType::SOLARIS>::create(wrapper)->buildNetworkData(network);
+                    }
+                    else if (AF_INET6 == itemr.first->lifr_addr.ss_family)
+                    {
+                        // IPv6 data
+                        const auto wrapper { std::make_shared<NetworkSolarisInterface>(AF_INET6, socketV6.get(), itemr) };
+                        FactoryNetworkFamilyCreator<OSType::SOLARIS>::create(wrapper)->buildNetworkData(network);
+                    }
+                }
+
+                const auto wrapper { std::make_shared<NetworkSolarisInterface>(AF_UNSPEC, firstItemFD, firstItem) };
+                FactoryNetworkFamilyCreator<OSType::SOLARIS>::create(wrapper)->buildNetworkData(network);
+
+                networks["iface"].push_back(network);
+            }
+        }
+    }
+
+    return networks;
 }
 nlohmann::json SysInfo::getPorts() const
 {
@@ -147,4 +221,3 @@ nlohmann::json SysInfo::getHotfixes() const
     // Currently not supported for this OS.
     return nlohmann::json();
 }
-

@@ -227,7 +227,11 @@ int req_push(char * buffer, size_t length) {
 }
 
 // Request receiver thread start
+#ifdef WIN32
+DWORD WINAPI req_receiver(__attribute__((unused)) LPVOID arg) {
+#else
 void * req_receiver(__attribute__((unused)) void * arg) {
+#endif
     int attempts;
     long nsec;
     ssize_t length = 0;
@@ -379,6 +383,9 @@ void * req_receiver(__attribute__((unused)) void * arg) {
         req_free(node);
     }
 
-
+#ifdef WIN32
+    return 0;
+#else
     return NULL;
+#endif
 }

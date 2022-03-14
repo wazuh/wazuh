@@ -7,11 +7,12 @@
  * Foundation
  */
 
-#include "os_net_wrappers.h"
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include "../../headers/shared.h"
+#include "os_net_wrappers.h"
 
 int __wrap_OS_BindUnixDomain(const char *path, int type, int max_msg_size) {
     check_expected(path);
@@ -121,4 +122,33 @@ int __wrap_OS_CloseSocket(int sock) {
 uint32_t __wrap_wnet_order(uint32_t value) {
     check_expected(value);
     return mock();
+}
+
+int __wrap_get_ipv4_numeric(__attribute__((unused)) const char *address,
+                            __attribute__((unused)) struct in_addr *addr) {
+    int ret = mock();
+    if(ret > 0) {
+        ret = 0;
+        addr->s_addr = mock();
+    }
+
+    return ret;
+}
+
+int __wrap_get_ipv6_numeric(__attribute__((unused)) const char *address,
+                            __attribute__((unused)) struct in6_addr *addr6) {
+    int ret = mock();
+    if(ret > 0) {
+        ret = 0;
+        int value = mock();
+        for(unsigned int a = 0; a < 16; a++) {
+#ifndef WIN32
+            addr6->s6_addr[a] = value;
+#else
+            addr6->u.Byte[a] = value;
+#endif
+        }
+    }
+
+    return ret;
 }

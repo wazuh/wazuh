@@ -49,6 +49,7 @@ typedef struct authd_config_t {
     long timeout_sec;
     long timeout_usec;
     bool worker_node;
+    bool ipv6;
 } authd_config_t;
 
 /**

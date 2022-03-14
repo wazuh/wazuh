@@ -35,7 +35,7 @@ typedef struct pending_data_t {
 typedef struct message_t {
     char * buffer;
     unsigned int size;
-    struct sockaddr_in addr;
+    struct sockaddr_storage addr;
     int sock;
     size_t counter;
 } message_t;
@@ -56,7 +56,7 @@ typedef struct remoted_state_t {
 /* Network buffer structure */
 
 typedef struct sockbuffer_t {
-    struct sockaddr_in peer_info;
+    struct sockaddr_storage peer_info;
     char * data;
     unsigned long data_size;
     unsigned long data_len;
@@ -130,7 +130,7 @@ void key_unlock(void);
 void rem_msginit(size_t size);
 
 // Push message into queue
-int rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_in * addr, int sock);
+int rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_storage * addr, int sock);
 
 // Pop message from queue
 message_t * rem_msgpop();
@@ -164,7 +164,7 @@ cJSON *getRemoteGlobalConfig(void);
 
 /* Network buffer */
 
-void nb_open(netbuffer_t * buffer, int sock, const struct sockaddr_in * peer_info);
+void nb_open(netbuffer_t * buffer, int sock, const struct sockaddr_storage * peer_info);
 void nb_close(netbuffer_t * buffer, int sock);
 int nb_recv(netbuffer_t * buffer, int sock);
 
@@ -215,7 +215,6 @@ extern int response_timeout;
 extern int INTERVAL;
 extern rlim_t nofile;
 extern int guess_agent_group;
-extern int group_data_flush;
 extern unsigned receive_chunk;
 extern unsigned send_chunk;
 extern int buffer_relax;

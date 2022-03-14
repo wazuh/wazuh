@@ -271,53 +271,6 @@ int os_write_agent_info(const char *agent_name, __attribute__((unused)) const ch
     return (1);
 }
 
-#ifndef CLIENT
-int set_agent_multigroup(char * group) {
-    int oldmask;
-    char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
-
-    if (!multigroup) {
-        return 0;
-    }
-
-    char *endl = strchr(group, '\n');
-
-    if (endl) {
-        *endl = '\0';
-    }
-
-    /* Check if the multigroup dir is created */
-    os_sha256 multi_group_hash;
-    char multigroup_path[PATH_MAX + 1] = {0};
-    OS_SHA256_String(group,multi_group_hash);
-    char _hash[9] = {0};
-
-    strncpy(_hash,multi_group_hash,8);
-    snprintf(multigroup_path, PATH_MAX, "%s/%s" , MULTIGROUPS_DIR, _hash);
-    DIR *dp;
-    dp = opendir(multigroup_path);
-
-    if (!dp) {
-        if (errno == ENOENT) {
-            oldmask = umask(0002);
-            int retval = mkdir(multigroup_path, 0770);
-            umask(oldmask);
-
-            if (retval == -1) {
-                mdebug1("At read_controlmsg(): couldn't create directory '%s'", multigroup_path);
-                return -1;
-            }
-        } else {
-            mwarn("Could not create directory '%s': %s (%d)", multigroup_path, strerror(errno), errno);
-        }
-    } else {
-        closedir(dp);
-    }
-
-    return 0;
-}
-#endif
-
 int w_validate_group_name(const char *group, char *response) {
 
     unsigned int i = 0;

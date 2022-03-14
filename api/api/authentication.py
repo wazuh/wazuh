@@ -6,7 +6,6 @@ import asyncio
 import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -14,6 +13,7 @@ from jose import JWTError, jwt
 from werkzeug.exceptions import Unauthorized
 
 import api.configuration as conf
+import wazuh.core.utils as core_utils
 import wazuh.rbac.utils as rbac_utils
 from api.constants import SECURITY_CONFIG_PATH
 from api.constants import SECURITY_PATH
@@ -158,7 +158,7 @@ def generate_token(user_id=None, data=None, run_as=False):
                           logger=logging.getLogger('wazuh-api')
                           )
     result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).dikt
-    timestamp = int(datetime.utcnow().timestamp())
+    timestamp = int(core_utils.get_utc_now().timestamp())
 
     payload = {
         "iss": JWT_ISSUER,
