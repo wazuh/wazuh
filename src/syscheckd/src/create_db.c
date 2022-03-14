@@ -660,6 +660,7 @@ void fim_checker(const char *path,
             mdebug1(FIM_STAT_FAILED, path, errno, strerror(errno));
             return;
         }
+
         if((evt_data->mode == FIM_REALTIME && !(configuration->options & REALTIME_ACTIVE)) ||
            (evt_data->mode == FIM_WHODATA && !(configuration->options & WHODATA_ACTIVE))) {
             /* Don't send alert if received mode and mode in configuration aren't the same.
