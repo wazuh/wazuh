@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# Enable debug mode for the remoted daemon
+echo 'remoted.debug=2' >> /var/ossec/etc/local_internal_options.conf
+
 # Apply API configuration
 cp -rf /tmp_volume/config/* /var/ossec/ && chown -R wazuh:wazuh /var/ossec/api
 

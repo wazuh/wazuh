@@ -21,6 +21,7 @@ services:
       - master-node
       - master
       - ${ENV_MODE}
+    privileged: true
 
   wazuh-worker1:
     profiles:
@@ -38,6 +39,7 @@ services:
       - wazuh-master
       - worker1
       - worker
+    privileged: true
 
   wazuh-worker2:
     profiles:
@@ -55,6 +57,7 @@ services:
       - wazuh-master
       - worker2
       - worker
+    privileged: true
 
   wazuh-agent1:
     profiles:
@@ -74,6 +77,7 @@ services:
       - wazuh-agent1
     depends_on:
       - nginx-lb
+    privileged: true
 
   wazuh-agent2:
     profiles:
@@ -94,6 +98,7 @@ services:
     depends_on:
       - wazuh-agent1
       - nginx-lb
+    privileged: true
 
   wazuh-agent3:
     profiles:
@@ -114,6 +119,7 @@ services:
     depends_on:
       - wazuh-agent2
       - nginx-lb
+    privileged: true
 
   wazuh-agent4:
     profiles:
@@ -134,6 +140,7 @@ services:
     depends_on:
       - wazuh-agent3
       - nginx-lb
+    privileged: true
 
   wazuh-agent5:
     profiles:
@@ -155,6 +162,7 @@ services:
     depends_on:
       - wazuh-agent4
       - nginx-lb
+    privileged: true
 
   wazuh-agent6:
     profiles:
@@ -176,6 +184,7 @@ services:
     depends_on:
       - wazuh-agent5
       - nginx-lb
+    privileged: true
 
   wazuh-agent7:
     profiles:
@@ -197,6 +206,7 @@ services:
     depends_on:
       - wazuh-agent6
       - nginx-lb
+    privileged: true
 
   wazuh-agent8:
     profiles:
@@ -218,6 +228,7 @@ services:
     depends_on:
       - wazuh-agent7
       - nginx-lb
+    privileged: true
 
   nginx-lb:
     profiles:
