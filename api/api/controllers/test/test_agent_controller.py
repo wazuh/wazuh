@@ -101,7 +101,8 @@ async def test_get_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp
                     'node_name': None,
                     'name': None,
                     'ip': None,
-                    'registerIP': mock_request.query.get('registerIP', None)
+                    'registerIP': mock_request.query.get('registerIP', None),
+                    'group_config_status': None
                 },
                 'q': None
                 }
