@@ -17,4 +17,4 @@ RUN DEBUG=1 /wazuh/install.sh
 COPY base/manager/entrypoint.sh /scripts/entrypoint.sh
 
 # HEALTHCHECK
-HEALTHCHECK --retries=900 --interval=1s --timeout=30s --start-period=30s CMD /var/ossec/framework/python/bin/python3 /tmp/healthcheck/healthcheck.py ${ENV_MODE} || exit 1
+HEALTHCHECK --retries=900 --interval=1s --timeout=30s --start-period=30s CMD /var/ossec/framework/python/bin/python3 /tmp_volume/healthcheck/healthcheck.py ${ENV_MODE} || exit 1

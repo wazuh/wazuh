@@ -16,7 +16,7 @@ password = 'wazuh'
 base_url = "{}://{}:{}".format(protocol, host, port)
 login_url = "{}/security/user/authenticate".format(base_url)
 
-HEALTHCHECK_TOKEN_FILE = '/tmp/healthcheck/healthcheck.token'
+HEALTHCHECK_TOKEN_FILE = '/tmp_volume/healthcheck/healthcheck.token'
 OSSEC_LOG_PATH = '/var/ossec/logs/ossec.log'
 
 # Variable used to compare default daemons_check.txt with an output with cluster disabled
@@ -92,19 +92,19 @@ def check(result):
 
 
 def get_master_health(env_mode):
-    os.system("/var/ossec/bin/agent_control -ls > /tmp/output.txt")
-    os.system("/var/ossec/bin/wazuh-control status > /tmp/daemons.txt")
+    os.system("/var/ossec/bin/agent_control -ls > /tmp_volume/output.txt")
+    os.system("/var/ossec/bin/wazuh-control status > /tmp_volume/daemons.txt")
 
-    check0 = check(os.system("diff -q /tmp/output.txt /tmp/healthcheck/agent_control_check.txt"))
+    check0 = check(os.system("diff -q /tmp_volume/output.txt /tmp_volume/healthcheck/agent_control_check.txt"))
 
     if env_mode == "standalone":
         # If the environment is in standalone mode, the only difference is in the clusterd daemon
         check1 = check(not
-                       (subprocess.run(['diff', '/tmp/daemons.txt', '/tmp/healthcheck/daemons_check.txt'],
+                       (subprocess.run(['diff', '/tmp_volume/daemons.txt', '/tmp_volume/healthcheck/daemons_check.txt'],
                                        stdout=subprocess.PIPE).stdout.decode('utf-8')
                         == CHECK_CLUSTERD_DAEMON))
     else:
-        check1 = check(os.system("diff -q /tmp/daemons.txt /tmp/healthcheck/daemons_check.txt"))
+        check1 = check(os.system("diff -q /tmp_volume/daemons.txt /tmp_volume/healthcheck/daemons_check.txt"))
 
     check2 = get_api_health()
 
@@ -112,8 +112,8 @@ def get_master_health(env_mode):
 
 
 def get_worker_health():
-    os.system("/var/ossec/bin/wazuh-control status > /tmp/daemons.txt")
-    return check(os.system("diff -q /tmp/daemons.txt /tmp/healthcheck/daemons_check.txt"))
+    os.system("/var/ossec/bin/wazuh-control status > /tmp_volume/daemons.txt")
+    return check(os.system("diff -q /tmp_volume/daemons.txt /tmp_volume/healthcheck/daemons_check.txt"))
 
 
 def get_manager_health_base(env_mode):

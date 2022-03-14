@@ -4,15 +4,15 @@
 echo 'wazuh_modules.debug=2' >> /var/ossec/etc/local_internal_options.conf
 
 # Apply test.keys
-cp /tmp/configuration_files/test.keys /var/ossec/etc/test.keys
+cp /tmp_volume/configuration_files/test.keys /var/ossec/etc/test.keys
 
 # Remove ossec_4.x in agents with version 3.x
 if [ "$3" == "agent_old" ]; then
-  rm /tmp/configuration_files/ossec_4.x.conf
+  rm /tmp_volume/configuration_files/ossec_4.x.conf
 fi
 
 # Modify ossec.conf
-for conf_file in /tmp/configuration_files/*.conf; do
+for conf_file in /tmp_volume/configuration_files/*.conf; do
   python3 /tools/xml_parser.py /var/ossec/etc/ossec.conf $conf_file
 done
 
@@ -21,7 +21,7 @@ chown root:wazuh /var/ossec/etc/client.keys
 rm /var/ossec/etc/test.keys
 
 # Agent configuration
-for sh_file in /tmp/configuration_files/*.sh; do
+for sh_file in /tmp_volume/configuration_files/*.sh; do
   . $sh_file
 done
 
