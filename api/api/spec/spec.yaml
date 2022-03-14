@@ -5389,7 +5389,7 @@ components:
         - severity
         - cvss2_score
         - cvss3_score
-        - references
+        - external_references
         - type
         - status
         - condition
@@ -16906,8 +16906,8 @@ paths:
                 data:
                   severity:
                     critical: 8
-                    high: 0
                     medium: 3
+                    high: 1
                     low: 0
                 error: 0
         '400':
