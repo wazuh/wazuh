@@ -998,6 +998,19 @@ static void test_fim_registry_value_transaction_callback_modify(){
     registry_value_transaction_callback(resultType, result_json, &user_data);
 }
 
+static void test_fim_registry_value_transaction_callback_modify_with_diff(){
+    _base_line = 1;
+    event_data_t event_data = {.mode = FIM_SCHEDULED};
+    ReturnTypeCallback resultType = MODIFIED;
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"arch\":\"[x64]\",\"name\":\"mock_name_value\",\"last_event\":12345}";
+    const cJSON* result_json = cJSON_Parse(json_string);
+    fim_val_txn_context_t user_data = {.data = NULL, .evt_data = &event_data, .diff = "test diff string"};
+
+    expect_function_call(__wrap_send_syscheck_msg);
+
+    registry_value_transaction_callback(resultType, result_json, &user_data);
+}
+
 static void test_fim_registry_value_transaction_callback_delete(){
     _base_line = 1;
     event_data_t event_data = {.mode = FIM_SCHEDULED};
@@ -1125,6 +1138,7 @@ int main(void) {
         cmocka_unit_test(test_fim_registry_value_transaction_callback_null_configuration),
         cmocka_unit_test(test_fim_registry_value_transaction_callback_insert),
         cmocka_unit_test(test_fim_registry_value_transaction_callback_modify),
+        cmocka_unit_test(test_fim_registry_value_transaction_callback_modify_with_diff),
         cmocka_unit_test(test_fim_registry_value_transaction_callback_delete),
         cmocka_unit_test(test_fim_registry_value_transaction_callback_max_rows),
 
