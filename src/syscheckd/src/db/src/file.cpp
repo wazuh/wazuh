@@ -605,7 +605,9 @@ void fim_db_file_update(fim_entry* data, callback_context_t callback)
     }
 }
 
-FIMDBErrorCode fim_db_file_inode_search(const unsigned long inode, const unsigned long dev, callback_context_t callback)
+FIMDBErrorCode fim_db_file_inode_search(const unsigned long long int inode,
+                                        const unsigned long dev,
+                                        callback_context_t callback)
 {
     auto retVal { FIMDB_ERR };
 

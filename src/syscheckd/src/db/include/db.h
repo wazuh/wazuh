@@ -111,7 +111,7 @@ void fim_db_file_update(fim_entry* data, callback_context_t callback);
  * @param dev Device.
  * @param data Pointer to the data structure where the callback context will be stored.
  */
-FIMDBErrorCode fim_db_file_inode_search(unsigned long int inode, unsigned long int dev, callback_context_t data);
+FIMDBErrorCode fim_db_file_inode_search(unsigned long long int inode, unsigned long int dev, callback_context_t data);
 
 /**
  * @brief Push a message to the syscheck queue
