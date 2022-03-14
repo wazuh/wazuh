@@ -88,7 +88,6 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/catalog)
 add_subdirectory(${ENGINE_SOURCE_DIR}/server)
 add_subdirectory(${ENGINE_SOURCE_DIR}/router)
 add_subdirectory(${ENGINE_SOURCE_DIR}/kvdb)
-# TODO dependent
 add_subdirectory(${ENGINE_SOURCE_DIR}/graph)
 add_subdirectory(${ENGINE_SOURCE_DIR}/json)
 add_subdirectory(${ENGINE_SOURCE_DIR}/builder)
