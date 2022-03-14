@@ -1,5 +1,5 @@
 # Minimum 3.14 required by googletest discover tests
-cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
 
 # Set c++17
 set(CMAKE_CXX_STANDARD 17)
@@ -45,27 +45,6 @@ CPMAddPackage(
         # "RAPIDJSON_BUILD_CXX17 ON"
 )
 
-# google logging
-CPMAddPackage(
-  NAME glog
-  GITHUB_REPOSITORY google/glog
-  GIT_TAG v0.5.0
-  VERSION 0.5.0
-  OPTIONS
-      "WITH_GTEST OFF"
-      "BUILD_SHARED_LIBS OFF"
-      "WITH_GFLAGS OFF"
-      "WITH_UNWIND OFF"
-)
-
-# ReactiveX/RxCpp
-CPMAddPackage(
-  NAME RxCpp
-  GITHUB_REPOSITORY ReactiveX/RxCpp
-  GIT_TAG v4.1.1
-  VERSION 4.1.1
-)
-
 include_directories(
     ${RapidJSON_SOURCE_DIR}/include/
     ${ENGINE_SOURCE_DIR}
@@ -78,17 +57,14 @@ include_directories(
     ${ENGINE_SOURCE_DIR}/json
 )
 
-add_executable(serverTest
-  #${SERVER_ENGINE_SOURCE_DIR}/engineServer.cpp
-  #${SERVER_ENGINE_SOURCE_DIR}/engineServer.hpp
-  ${SERVER_TEST_SOURCE_DIR}/testsEngineServer.cpp)
-target_link_libraries(serverTest gtest_main uv rxcpp "glog::glog")
+add_executable(serverTest ${SERVER_ENGINE_SOURCE_DIR}/engineServer.cpp ${SERVER_TEST_SOURCE_DIR}/testsEngineServer.cpp)
+target_link_libraries(serverTest gtest_main uv)
 gtest_discover_tests(serverTest)
 
 add_executable(tcpTest ${SERVER_TEST_SOURCE_DIR}/endpoints/testsTCPEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/baseEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/tcpEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/protocolHandler.cpp)
-target_link_libraries(tcpTest gtest_main uv rxcpp "glog::glog")
+target_link_libraries(tcpTest gtest_main uv)
 gtest_discover_tests(tcpTest)
 
 add_executable(socketTest ${SERVER_TEST_SOURCE_DIR}/endpoints/testsSocketEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/baseEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/endpoints/socketEndpoint.cpp ${SERVER_ENGINE_SOURCE_DIR}/protocolHandler.cpp)
-target_link_libraries(socketTest gtest_main uv rxcpp "glog::glog")
+target_link_libraries(socketTest gtest_main uv)
 gtest_discover_tests(socketTest)

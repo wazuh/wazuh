@@ -10,10 +10,12 @@
 #ifndef _PROTOCOL_HANDLER_H_
 #define _PROTOCOL_HANDLER_H_
 
+#include <glog/logging.h>
 #include <iostream>
+#include <optional>
 #include <string>
 
-#include <json.hpp>
+#include "json.hpp"
 
 namespace engineserver
 {
@@ -31,13 +33,6 @@ private:
     int m_stage{0};
 
     /**
-     * @brief generate a json::Document from internal state
-     *
-     * @return json::Document
-     */
-    json::Document parse();
-
-    /**
      * @brief Update pending value and return true if we have enough data
      * to calculate the message size.
      *
@@ -46,14 +41,14 @@ private:
      */
     bool hasHeader();
 
-    /**
-     * @brief Process a message, parsing it and sending it to s
-     *
-     * @param s a subscriber of this connection.
-     */
-    void send(const rxcpp::subscriber<json::Document> s);
-
 public:
+    /**
+     * @brief generate a json::Document from internal state
+     *
+     * @return json::Document
+     */
+    static json::Document parse(const std::string & event);
+
     /**
      * @brief process the chunk of data and send messages to dst when. Return
      * true if all data was processed correctly, or false in case of error.
@@ -62,10 +57,10 @@ public:
      * @param data
      * @param length
      * @param dst destination subscriber
-     * @return true no errors
-     * @return false errors in processing
+     * @return true and vector of strings if no errors
+     * @return false if errors in processing
      */
-    bool process(char * data, std::size_t length, const rxcpp::subscriber<json::Document> dst);
+    std::optional<std::vector<std::string>> process(char * data, std::size_t length);
 };
 
 } // namespace engineserver

@@ -10,7 +10,9 @@
 #ifndef _TCP_ENDPOINT_H_
 #define _TCP_ENDPOINT_H_
 
+#include <cstring>
 #include <functional>
+#include <glog/logging.h>
 #include <iostream>
 #include <mutex>
 #include <stdexcept>
@@ -23,6 +25,8 @@
 
 namespace engineserver::endpoints
 {
+
+#define CONNECTION_TIMEOUT_MSEC 5000
 
 /**
  * @brief Implements tcp server endpoint using uvw library.
@@ -37,15 +41,16 @@ private:
     std::shared_ptr<uvw::Loop> m_loop;
     std::shared_ptr<uvw::TCPHandle> m_server;
 
-    rxcpp::observable<BaseEndpoint::event_t> connectionHandler(const uvw::ListenEvent & event, uvw::TCPHandle & srv);
+    void connectionHandler(uvw::TCPHandle & server);
 
 public:
     /**
-     * @brief Construct a new TCPEndpoint object.
+     * @brief Construct a new TCPEndpoint object
      *
-     * @param config <ip>:<port> string with allowed ip mask and port to listen.
+     * @param config
+     * @param eventBuffer
      */
-    explicit TCPEndpoint(const std::string & config);
+    explicit TCPEndpoint(const std::string & config, moodycamel::BlockingConcurrentQueue<std::string> & eventBuffer);
     ~TCPEndpoint();
 
     void run() override;

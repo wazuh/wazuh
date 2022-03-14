@@ -43,7 +43,8 @@ EndpointType stringToEndpoint(const std::string & endpointName);
  * @param config
  * @return std::unique_ptr<BaseEndpoint>
  */
-std::unique_ptr<BaseEndpoint> create(const std::string & type, const std::string & config);
+std::unique_ptr<BaseEndpoint> create(const std::string & type, const std::string & config,
+                                     moodycamel::BlockingConcurrentQueue<std::string> & eventBuffer);
 } // namespace engineserver::endpoints
 
 #endif // _ENDPOINT_FACTORY_H

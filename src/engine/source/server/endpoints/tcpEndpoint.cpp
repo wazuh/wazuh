@@ -8,114 +8,110 @@
  */
 
 #include "tcpEndpoint.hpp"
-#include "glog/logging.h"
-#include "protocolHandler.hpp"
-#include <cstring>
-#include <iostream>
+
+using std::endl;
+using std::string;
 
 namespace engineserver::endpoints
 {
 
-rxcpp::observable<BaseEndpoint::event_t> TCPEndpoint::connectionHandler(const uvw::ListenEvent & event,
-                                                                        uvw::TCPHandle & srv)
+void TCPEndpoint::connectionHandler(uvw::TCPHandle & server)
 {
-    auto client = srv.loop().resource<uvw::TCPHandle>();
+    auto client = server.loop().resource<uvw::TCPHandle>();
     auto timer = client->loop().resource<uvw::TimerHandle>();
 
-    auto obs = rxcpp::observable<>::create<BaseEndpoint::event_t>(
-        [client, timer, &srv](rxcpp::subscriber<BaseEndpoint::event_t> s)
+    auto ph = std::make_shared<ProtocolHandler>();
+
+    client->on<uvw::ErrorEvent>(
+        [](const uvw::ErrorEvent & event, uvw::TCPHandle & client)
         {
-            auto ph = std::make_shared<ProtocolHandler>();
-
-            client->on<uvw::ErrorEvent>(
-                [s](const uvw::ErrorEvent & event, uvw::TCPHandle & client)
-                {
-                    LOG(ERROR) << "TCP Server (" << client.sock().ip.c_str() << ":" << client.sock().port
-                               << ") error: code=" << event.code() << "; name=" << event.name()
-                               << "; message=" << event.what() << std::endl;
-                    auto e =
-                        std::runtime_error("Connection error from " + client.peer().ip + " due to " + event.what());
-                    s.on_error(std::make_exception_ptr(e));
-                });
-
-            timer->on<uvw::TimerEvent>(
-                [client, s](const auto &, auto & handler)
-                {
-                    LOG(INFO) << "Timeout for connection" << std::endl;
-                    client->close();
-                    s.on_completed();
-                    handler.close();
-                });
-
-            client->on<uvw::DataEvent>(
-                [s, timer, ph](const uvw::DataEvent & event, uvw::TCPHandle & client)
-                {
-                    timer->again();
-                    if (!ph->process(event.data.get(), event.length, s))
-                    {
-                        timer->close();
-                        client.close();
-                    }
-                });
-
-            client->on<uvw::EndEvent>(
-                [s, timer](const uvw::EndEvent &, uvw::TCPHandle & client)
-                {
-                    LOG(INFO) << "Connection closed" << std::endl;
-                    timer->close();
-                    client.close();
-                    s.on_completed();
-                });
-
-            LOG(INFO) << "Accepting client!" << std::endl;
-            // TODO: configure timeout for a tcp connection
-            timer->start(uvw::TimerHandle::Time{5000}, uvw::TimerHandle::Time{5000});
-            srv.accept(*client);
-            client->read();
+            LOG(ERROR) << "TCP ErrorEvent: endpoint (" << client.sock().ip.c_str() << ":" << client.sock().port
+                       << ") error: code=" << event.code() << "; name=" << event.name() << "; message=" << event.what()
+                       << endl;
         });
 
-    return obs;
+    timer->on<uvw::TimerEvent>(
+        [client](const auto &, auto & handler)
+        {
+            LOG(INFO) << "TCP TimerEvent: Time out for connection" << endl;
+            client->close();
+            handler.close();
+        });
+
+    client->on<uvw::DataEvent>(
+        [&, timer, ph](const uvw::DataEvent & event, uvw::TCPHandle & client)
+        {
+            // TODO: Are we moving the buffer? we should.
+            timer->again();
+            const auto result = ph->process(event.data.get(), event.length);
+            if (result)
+            {
+                const auto events = result.value().data();
+                while (!this->m_out.try_enqueue_bulk(events, result.value().size()))
+                    ;
+            }
+            else
+            {
+                LOG(ERROR) << "TCP DataEvent: Error processing data" << endl;
+                timer->close();
+                client.close();
+            }
+        });
+
+    client->on<uvw::EndEvent>(
+        [timer](const uvw::EndEvent &, uvw::TCPHandle & client)
+        {
+            LOG(INFO) << "TCP EndEvent: Terminating connection" << endl;
+            timer->close();
+            client.close();
+        });
+
+    client->on<uvw::CloseEvent>([](const uvw::CloseEvent & event, uvw::TCPHandle & client)
+                                { LOG(INFO) << "TCP CloseEvent: Connection closed" << endl; });
+
+    server.accept(*client);
+    LOG(INFO) << "TCP ListenEvent: Client accepted" << endl;
+
+    timer->start(uvw::TimerHandle::Time{CONNECTION_TIMEOUT_MSEC}, uvw::TimerHandle::Time{CONNECTION_TIMEOUT_MSEC});
+
+    client->read();
 }
 
-TCPEndpoint::TCPEndpoint(const std::string & config) : BaseEndpoint{config}
+TCPEndpoint::TCPEndpoint(const string & config, ServerOutput & eventBuffer) : BaseEndpoint{config, eventBuffer}
 {
-    auto pos = config.find(":");
+    const auto pos = config.find(":");
     this->m_ip = config.substr(0, pos);
     this->m_port = stoi(config.substr(pos + 1));
 
     this->m_loop = uvw::Loop::getDefault();
     this->m_server = m_loop->resource<uvw::TCPHandle>();
 
-    this->m_out = rxcpp::observable<>::create<BaseEndpoint::observable_t>(
-        [this, config](BaseEndpoint::subscriber_t s)
+    this->m_server->on<uvw::ListenEvent>(
+        [this](const uvw::ListenEvent & event, uvw::TCPHandle & server)
         {
-            this->m_server->on<uvw::ListenEvent>(
-                [s, this](const uvw::ListenEvent & event, uvw::TCPHandle & client)
-                {
-                    LOG(INFO) << "Accepting new connection" << std::endl;
-                    s.on_next(this->connectionHandler(event, client));
-                });
-
-            this->m_server->on<uvw::ErrorEvent>(
-                [s](const uvw::ErrorEvent & event, uvw::TCPHandle & client)
-                {
-                    LOG(ERROR) << "TCP Server (" << client.sock().ip.c_str() << ":" << client.sock().port
-                               << ") error: code=" << event.code() << "; name=" << event.name()
-                               << "; message=" << event.what() << std::endl;
-                    auto e = std::runtime_error("Server error due to " + std::string(event.what()));
-                    s.on_error(std::make_exception_ptr(e));
-                });
-
-            LOG(INFO) << "A route has been enabled for endpoint " << config << std::endl;
+            LOG(INFO) << "TCP ListenEvent: stablishing new connection" << endl;
+            this->connectionHandler(server);
         });
+
+    this->m_server->on<uvw::ErrorEvent>(
+        [](const uvw::ErrorEvent & event, uvw::TCPHandle & client)
+        {
+            LOG(ERROR) << "TCP ErrorEvent: endpoint(" << client.sock().ip.c_str() << ":" << client.sock().port
+                       << ") error: code=" << event.code() << "; name=" << event.name() << "; message=" << event.what()
+                       << endl;
+        });
+
+    this->m_server->on<uvw::CloseEvent>([](const uvw::CloseEvent & event, uvw::TCPHandle & client)
+                                        { LOG(INFO) << "TCP CloseEvent" << endl; });
+
+    LOG(INFO) << "TCP endpoint configured: " << config << endl;
 }
 
 void TCPEndpoint::run()
 {
-    LOG(INFO) << "Server started in TCP Endpoint." << std::endl;
     m_server->bind(m_ip, m_port);
     m_server->listen();
-    m_loop->run();
+    m_loop->run<uvw::Loop::Mode::DEFAULT>();
 }
 
 void TCPEndpoint::close()

@@ -9,50 +9,39 @@
 
 #include "engineServer.hpp"
 
-#include <map>
-#include <memory>
-#include <rxcpp/rx.hpp>
-#include <vector>
-
-#include "endpoints/baseEndpoint.hpp"
-#include "endpoints/endpointFactory.hpp"
-#include "json.hpp"
-
-using namespace std;
+using std::endl;
+using std::string;
+using std::vector;
 
 namespace engineserver
 {
-void EngineServer::configure(const vector<string> & config)
+
+EngineServer::EngineServer(const vector<string> & config, size_t bufferSize)
+    : m_eventBuffer{bufferSize}, m_isConfigured{false}
 {
-    vector<endpoints::BaseEndpoint::out_t> tmpObs;
-
-    // <EnpointType>:<config_string> tcp:localhost:5054 socket:path/to/socket
-    for (auto endpointConf : config)
+    try
     {
-        auto pos = endpointConf.find(":");
+        for (auto endpointConf : config)
+        {
+            const auto pos = endpointConf.find(":");
 
-        this->m_endpoints[endpointConf] = endpoints::create(endpointConf.substr(0, pos), endpointConf.substr(pos + 1));
-
-        tmpObs.push_back(this->m_endpoints[endpointConf]->output());
+            m_endpoints[endpointConf] =
+                endpoints::create(endpointConf.substr(0, pos), endpointConf.substr(pos + 1), m_eventBuffer);
+        }
+    }
+    catch (const std::exception & e)
+    {
+        LOG(ERROR) << "Engine error, got exception while configuring server: " << e.what() << endl;
+        return;
     }
 
-    auto obs = rxcpp::observable<>::iterate(tmpObs).flat_map([](auto o) { return o; });
-    this->m_output = obs.flat_map([](auto o) { return o; });
+    m_isConfigured = true;
 }
 
-EngineServer::EngineServer(const vector<string> & config)
-{
-    this->configure(config);
-}
-
-rxcpp::observable<json::Document> EngineServer::output(void) const
-{
-    return this->m_output;
-}
-
+// TODO: fix, only runs first endpoint because run is blocking
 void EngineServer::run(void)
 {
-    for (auto it = this->m_endpoints.begin(); it != this->m_endpoints.end(); ++it)
+    for (auto it = m_endpoints.begin(); it != m_endpoints.end(); ++it)
     {
         it->second->run();
     }
@@ -60,9 +49,15 @@ void EngineServer::run(void)
 
 void EngineServer::close(void)
 {
-    for (auto it = this->m_endpoints.begin(); it != this->m_endpoints.end(); ++it)
+    for (auto it = m_endpoints.begin(); it != m_endpoints.end(); ++it)
     {
         it->second->close();
     }
 }
+
+moodycamel::BlockingConcurrentQueue<string> & EngineServer::output()
+{
+    return m_eventBuffer;
+}
+
 } // namespace engineserver

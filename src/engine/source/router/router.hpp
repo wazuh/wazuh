@@ -1,3 +1,12 @@
+/* Copyright (C) 2015-2021, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
 #ifndef _ROUTER_H
 #define _ROUTER_H
 
@@ -131,32 +140,34 @@ template <class Builder> class Router
                   "rxcpp::subjects::subject<json::Document>(std::string)");
 
 private:
+    using ServerOutputObs = rxcpp::observable<rxcpp::observable<std::string>>;
+
     std::map<std::string, Environment> m_environments;
     std::map<std::string, Route> m_routes;
-    rxcpp::observable<json::Document> m_observable;
+    rxcpp::subjects::subject<json::Document> m_subj;
+    rxcpp::subscriber<json::Document> m_input;
     Builder m_builder;
 
 public:
     /**
      * @brief Construct a new Router object
      *
-     * @param serverOutput Observable that emits items received by server
      * @param builder Injected Builder object
      */
-    Router(const rxcpp::observable<json::Document> & serverOutput, const Builder & builder) noexcept
-        : m_observable{serverOutput}, m_builder{builder}
+    Router(const Builder & builder) noexcept : m_builder{builder}, m_input{m_subj.get_subscriber()}
     {
     }
 
     /**
      * @brief Add a route
      *
-     * @param route Name of the route
-     * @param filterFunction Filter function to select forwarded envents
      * @param environment Where events are forwarded
+     * @param route Name of the route
+     * @param filterFunction Filter function to select forwarded envent
      */
-    void add(const std::string & route, std::function<bool(json::Document)> filterFunction,
-             const std::string & environment)
+    void add(
+        const std::string & route, const std::string & environment,
+        const std::function<bool(json::Document)> filterFunction = [](const auto) { return true; })
     {
         // Assert route with same name not exists
         if (this->m_routes.count(route) > 0)
@@ -169,20 +180,18 @@ public:
         {
             Op_t envBuilder = this->m_builder(environment);
             this->m_environments[environment] = Environment(environment, envBuilder);
+
+            // Build enviroment
+            // TODO: handle errors/recovery, obs may be needed
             auto in = this->m_environments.at(environment).m_subject.get_observable();
             auto obs = envBuilder(in);
         }
 
-        // Connect server output to environment through route filter
-        auto subscription = this->m_observable.filter(filterFunction)
-                                .on_error_resume_next(
-                                    [=](std::exception_ptr e)
-                                    {
-                                        std::cerr << "on_error_resume_next" << rxcpp::util::what(e).c_str()
-                                                  << std::endl;
-                                        return this->m_observable.filter(filterFunction);
-                                    })
-                                .subscribe(this->m_environments.at(environment).m_subject.get_subscriber());
+        // Route filtered events to enviroment, Router subject implements multicasting (we need to
+        // call get_observable for each filter added)
+        auto envInput = this->m_environments.at(environment).m_subject.get_subscriber();
+        auto subscription = this->m_subj.get_observable().filter(filterFunction).subscribe(envInput);
+
         // Add route to list
         this->m_routes[route] = Route(route, environment, filterFunction, subscription);
     }
@@ -209,6 +218,16 @@ public:
         {
             this->m_environments.erase(environment);
         }
+    }
+
+    /**
+     * @brief Obtain Router subscriber to inject events.
+     *
+     * @return const rxcpp::subscriber<json::Document>&
+     */
+    const rxcpp::subscriber<json::Document> & input() const
+    {
+        return this->m_input;
     }
 
     /**

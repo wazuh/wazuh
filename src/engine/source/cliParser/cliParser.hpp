@@ -1,3 +1,12 @@
+/* Copyright (C) 2015-2021, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
 #ifndef _CLI_PARSER_H
 #define _CLI_PARSER_H
 
@@ -23,8 +32,10 @@ class CliParser
 {
 
 private:
-    std::string m_endpoint_config;
-    std::string m_storage_path;
+    std::string m_endpointConfig;
+    std::string m_storagePath;
+    int m_threads;
+    int m_queueSize;
 
 public:
     /**
@@ -48,14 +59,28 @@ public:
      *
      * @return std::string m_endpoint_config
      */
-    std::string getEndpointConfig();
+    std::string getEndpointConfig() const;
 
     /**
      * @brief Returns the storage path that has been previously parsed
      *
      * @return std::string m_storage_path
      */
-    std::string getStoragePath();
+    std::string getStoragePath() const;
+
+    /**
+     * @brief Get the Threads object
+     *
+     * @return int
+     */
+    int getThreads() const;
+
+    /**
+     * @brief Get the Queue size
+     *
+     * @return size_t
+     */
+    int getQueueSize() const;
 };
 
 } // namespace cliparser

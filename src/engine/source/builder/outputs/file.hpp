@@ -10,12 +10,14 @@
 #ifndef _FILE_OUTPUT_H
 #define _FILE_OUTPUT_H
 
-#include "rxcpp/rx.hpp"
+#include <rxcpp/rx.hpp>
 #include <filesystem>
 #include <fstream>
+#include <glog/logging.h>
 #include <iostream>
 #include <string>
 #include "json.hpp"
+#include "builderTypes.hpp"
 
 namespace builder::internals::outputs
 {
@@ -62,7 +64,7 @@ public:
      *
      * @param e
      */
-    void write(const json::Document & e)
+    void write(const types::Event & e)
     {
         this->m_os << e.str() << std::endl;
     }

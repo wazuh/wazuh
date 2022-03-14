@@ -63,10 +63,11 @@ struct FakeBuilder
 
     Op_t operator()(const std::string & environment)
     {
-        return [&](Obs_t p) -> Obs_t {
+        return [&](Obs_t p) -> Obs_t
+        {
             p.subscribe(m_subj.get_subscriber());
             return p;
-        }; 
+        };
     }
 };
 
@@ -74,14 +75,13 @@ using router_t = Router<FakeBuilder>;
 
 TEST(RouterTest, Initializes)
 {
-    router_t router(FakeServer{documents_t{}}.m_output, FakeBuilder{});
+    router_t router(FakeBuilder{});
 }
 
 TEST(RouterTest, AddRoute)
 {
-    router_t router(FakeServer{documents_t{}}.m_output, FakeBuilder{});
-    ASSERT_NO_THROW(router.add(
-        "test", [](document_t d) { return true; }, "test_env"));
+    router_t router(FakeBuilder{});
+    ASSERT_NO_THROW(router.add("test", "test_env", [](document_t d) { return true; }));
 
     ASSERT_EQ(router.routes().size(), 1);
     ASSERT_EQ(router.environments().size(), 1);
@@ -91,19 +91,15 @@ TEST(RouterTest, AddRoute)
 
 TEST(RouterTest, AddDuplicateRoute)
 {
-    router_t router(FakeServer{documents_t{}}.m_output, FakeBuilder{});
-    router.add(
-        "test", [](document_t d) { return true; }, "test_env");
-    ASSERT_THROW(router.add(
-                     "test", [](document_t d) { return true; }, "test_env"),
-                 invalid_argument);
+    router_t router(FakeBuilder{});
+    router.add("test", "test_env", [](document_t d) { return true; });
+    ASSERT_THROW(router.add("test", "test_env", [](document_t d) { return true; }), invalid_argument);
 }
 
 TEST(RouterTest, RemoveRoute)
 {
-    router_t router(FakeServer{documents_t{}}.m_output, FakeBuilder{});
-    router.add(
-        "test", [](document_t d) { return true; }, "test_env");
+    router_t router(FakeBuilder{});
+    router.add("test", "test_env", [](document_t d) { return true; });
     ASSERT_NO_THROW(router.remove("test"));
     ASSERT_EQ(router.routes().size(), 0);
     ASSERT_EQ(router.environments().size(), 0);
@@ -111,7 +107,7 @@ TEST(RouterTest, RemoveRoute)
 
 TEST(RouterTest, RemoveNonExistentRoute)
 {
-    router_t router{FakeServer{documents_t{}}.m_output, FakeBuilder{}};
+    router_t router{FakeBuilder{}};
     ASSERT_THROW(router.remove("test"), invalid_argument);
 }
 
@@ -133,10 +129,11 @@ TEST(RouterTest, PassThroughSingleRoute)
     documents_t expected;
     builder.m_subj.get_observable().subscribe([&expected](auto j) { expected.push_back(j); });
 
-    router_t router{FakeServer{input, true}.m_output, builder};
+    router_t router{builder};
     router.add(
-        "test", [](document_t j) { return true; }, "test");
+        "test",  "test", [](document_t j) { return true; });
 
+    FakeServer{input, true}.m_output.subscribe(router.input());
     ASSERT_EQ(expected.size(), 3);
     for (auto i = 0; i < 3; ++i)
     {
