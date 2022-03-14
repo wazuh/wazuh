@@ -11,7 +11,8 @@ ADD base/manager/supervisord.conf /etc/supervisor/conf.d/
 
 RUN mkdir wazuh && curl -sL https://github.com/wazuh/wazuh/tarball/${WAZUH_BRANCH} | tar zx --strip-components=1 -C wazuh
 COPY base/manager/preloaded-vars.conf /wazuh/etc/preloaded-vars.conf
-RUN /wazuh/install.sh
+RUN apt-get install gdb
+RUN DEBUG=1 /wazuh/install.sh
 
 COPY base/manager/entrypoint.sh /scripts/entrypoint.sh
 
