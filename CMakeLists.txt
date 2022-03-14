@@ -85,6 +85,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/builder)
 add_subdirectory(${ENGINE_SOURCE_DIR}/catalog)
 add_subdirectory(${ENGINE_SOURCE_DIR}/cliParser)
 add_subdirectory(${ENGINE_SOURCE_DIR}/hlp)
+add_subdirectory(${ENGINE_SOURCE_DIR}/kvdb)
 add_subdirectory(${ENGINE_SOURCE_DIR}/server)
 
 #TODO isolate rxcpp
