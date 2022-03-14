@@ -5373,6 +5373,29 @@ components:
       schema:
         type: string
         format: alphanumeric
+    vulnerability_field:
+      in: path
+      name: field
+      description: "Vulnerability inventory field"
+      required: true
+      schema:
+        type: string
+        enum:
+        - cve
+        - name
+        - version
+        - architecture
+        - detection_time
+        - severity
+        - cvss2_score
+        - cvss3_score
+        - external_references
+        - type
+        - status
+        - condition
+        - title
+        - published
+        - updated
     xml_filename:
       in: query
       name: filename
@@ -16845,6 +16868,47 @@ paths:
                   total_failed_items: 0
                   failed_items: [ ]
                 message: Last vulnerability scans of the agent were returned
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /vulnerability/{agent_id}/summary/{field}:
+    get:
+      tags:
+        - Vulnerability
+      summary: "Get agent vulnerabilities' field summary"
+      description: "Return a summary of the vulnerabilities' field of an agent"
+      operationId: api.controllers.vulnerability_controller.get_vulnerabilities_field_summary
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/vulnerability:read'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/vulnerability_field'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: "Get agent vulnerabilities' field summary"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  severity:
+                    critical: 8
+                    medium: 3
+                    high: 1
+                    low: 0
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
