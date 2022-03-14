@@ -320,6 +320,10 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType,
         cJSON_AddStringToObject(data, "tags", configuration->tag);
     }
 
+    if (diff != NULL) {
+        cJSON_AddStringToObject(data, "content_changes", diff);
+    }
+
     send_syscheck_msg(json_event);
 
 
