@@ -10,7 +10,6 @@ CPMAddPackage(
         "RAPIDJSON_BUILD_TESTS OFF"
 )
 
-# Configuration Catalog tests
 add_executable(kvdb_test
   ${TEST_SOURCE_DIR}/kvdb/kvdb_test.cpp
 )
