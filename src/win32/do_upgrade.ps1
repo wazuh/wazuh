@@ -49,6 +49,32 @@ while($process_id -ne $null -And $counter -gt 0)
     $process_id = (Get-Process $current_process -ErrorAction SilentlyContinue).id
 }
 
+# Modify local_internal_options.conf file
+# Get file into a variable
+
+$internalfile = [IO.File]::ReadAllText('.\local_internal_options.conf')
+
+# Get path into a variable
+$filepath = ".\local_internal_options.conf"
+
+# Check if commands are already enable
+
+$enabledcommand = Select-string -InputObject "$internalfile" -Pattern "remote_commands=1"
+
+# Write commands if doesn't exist
+
+if (-not $enabledcommand){
+
+    Add-Content $filepath `n"#Toggles Logcollector to accept remote commands from the manager or not."
+    Add-Content $filepath `n"logcollector.remote_commands=1"
+
+    Add-Content $filepath `n"#Enable the execution of commands in policy files received from the manager (Files in etc/shared)."
+    Add-Content $filepath `n"sca.remote_commands=1"
+
+    Add-Content $filepath `n"#Toggles whether Command Module should accept commands defined in the shared configuration or not."
+    Add-Content $filepath `n"wazuh_command.remote_commands=1"
+}
+
 # Install
 install
 check-installation
