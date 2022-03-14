@@ -134,25 +134,6 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         }
     }
 
-    // Resolve hostnames
-    rc = 0;
-    while (rc < agt->server_count) {
-        if (OS_IsValidIP(agt->server[rc].rip, NULL) != 1) {
-            mdebug2("Resolving server hostname: %s", agt->server[rc].rip);
-            resolve_hostname(&agt->server[rc].rip, 5);
-            int rip_l = strlen(agt->server[rc].rip);
-
-            if (agt->server[rc].rip[rip_l - 1] == '/') {
-                mwarn("Could not resolve server hostname: %.*s", rip_l - 1, agt->server[rc].rip);
-            } else {
-                minfo("Server hostname resolved: %s", agt->server[rc].rip);
-            }
-        } else {
-            minfo("Server IP Address: %s", agt->server[rc].rip);
-        }
-        rc++;
-    }
-
     start_agent(1);
 
     os_delwait();
