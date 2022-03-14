@@ -338,3 +338,9 @@ int __wrap_wdb_global_restore_backup(__attribute__((unused)) wdb_t** wdb,
     check_expected(save_pre_restore_state);
     return mock();
 }
+
+int __wrap_wdb_remove_group_db(const char *name,
+                               __attribute__((unused)) int *sock) {
+    check_expected(name);
+    return mock();
+}

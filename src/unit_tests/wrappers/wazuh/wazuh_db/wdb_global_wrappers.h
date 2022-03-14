@@ -105,4 +105,6 @@ int __wrap_wdb_global_create_backup(wdb_t* wdb, char* output, const char* tag);
 
 int __wrap_wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore_state, char* output);
 
+int __wrap_wdb_remove_group_db(const char *name, int *sock);
+
 #endif

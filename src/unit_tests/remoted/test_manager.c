@@ -354,9 +354,11 @@ void test_lookfor_agent_group_null_groups()
     expect_value(__wrap_wdb_get_agent_group, id, agent_id);
     will_return(__wrap_wdb_get_agent_group, NULL);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' with group 'default' file 'merged.mg' MD5 'c2305e0ac17e7176e924294c69cc7a24'");
+    expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' with file 'merged.mg' MD5 'c2305e0ac17e7176e924294c69cc7a24'");
 
     will_return(__wrap_w_is_single_node, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Group assigned: 'default'");
 
     expect_value(__wrap_wdb_set_agent_groups_csv, id, agent_id);
     will_return(__wrap_wdb_set_agent_groups_csv, 0);
@@ -378,12 +380,14 @@ void test_lookfor_agent_group_set_default_group()
     expect_value(__wrap_wdb_get_agent_group, id, agent_id);
     will_return(__wrap_wdb_get_agent_group, NULL);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' with group 'default' file 'merged.mg' MD5 'c2305e0ac17e7176e924294c69cc7a24'");
+    expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' with file 'merged.mg' MD5 'c2305e0ac17e7176e924294c69cc7a24'");
 
     will_return(__wrap_w_is_single_node, 0);
 
     expect_value(__wrap_wdb_set_agent_groups_csv, id, agent_id);
     will_return(__wrap_wdb_set_agent_groups_csv, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Group assigned: 'default'");
 
     int ret = lookfor_agent_group(agent_id_str, msg, &r_group, NULL);
     assert_int_equal(OS_SUCCESS, ret);
@@ -938,9 +942,8 @@ void test_c_multi_group_read_dir_fail(void **state)
 
     expect_string(__wrap__mwarn, formatted_msg, "Could not open directory 'etc/shared/multi_group_test'. Group folder was deleted.");
 
-    will_return(__wrap_opendir, 0);
-    will_return(__wrap_strerror, "No such file or directory");
-    expect_string(__wrap__mdebug1, formatted_msg, "At purge_group(): Opening directory: 'queue/agent-groups': No such file or directory");
+    expect_string(__wrap_wdb_remove_group_db, name, "multi_group_test");
+    will_return(__wrap_wdb_remove_group_db, OS_SUCCESS);
 
     /* Open the multi-group files and generate merged */
     will_return(__wrap_opendir, 0);
@@ -1784,235 +1787,101 @@ void test_process_groups_find_group_not_changed(void **state)
     os_free(entry);
 }
 
-void test_process_multi_groups_open_directory_fail(void **state)
+void test_process_multi_groups_no_agents(void **state)
 {
-    will_return(__wrap_opendir, 0);
-
-    will_return(__wrap_strerror, "No such file or directory");
-    expect_string(__wrap__mdebug1, formatted_msg, "Opening directory: 'queue/agent-groups': No such file or directory");
-
-    process_multi_groups();
-}
-
-void test_process_multi_groups_readdir_fail(void **state)
-{
-    will_return(__wrap_opendir, 1);
-
-    will_return(__wrap_readdir, NULL);
+    expect_value(__wrap_wdb_get_all_agents, include_manager, false);
+    will_return(__wrap_wdb_get_all_agents, NULL);
 
     expect_value(__wrap_OSHash_Begin, self, NULL);
     will_return(__wrap_OSHash_Begin, NULL);
 
     process_multi_groups();
-}
-
-void test_process_multi_groups_skip(void **state)
-{
-    struct dirent *entry;
-    os_calloc(1, sizeof(struct dirent), entry);
-    strcpy(entry->d_name, ".");
-
-    will_return(__wrap_opendir, 1);
-
-    will_return(__wrap_readdir, entry);
-
-    will_return(__wrap_readdir, NULL);
-
-    expect_value(__wrap_OSHash_Begin, self, NULL);
-    will_return(__wrap_OSHash_Begin, NULL);
-
-    process_multi_groups();
-
-    os_free(entry);
-}
-
-void test_process_multi_groups_skip_2(void **state)
-{
-    struct dirent *entry;
-    os_calloc(1, sizeof(struct dirent), entry);
-    strcpy(entry->d_name, "..");
-
-    will_return(__wrap_opendir, 1);
-
-    will_return(__wrap_readdir, entry);
-
-    will_return(__wrap_readdir, NULL);
-
-    expect_value(__wrap_OSHash_Begin, self, NULL);
-    will_return(__wrap_OSHash_Begin, NULL);
-
-    process_multi_groups();
-
-    os_free(entry);
-}
-
-void test_process_multi_groups_fopen_null(void **state)
-{
-    struct dirent *entry;
-    os_calloc(1, sizeof(struct dirent), entry);
-    strcpy(entry->d_name, "001");
-
-    will_return(__wrap_opendir, 1);
-
-    will_return(__wrap_readdir, entry);
-
-    expect_string(__wrap_fopen, path, "queue/agent-groups/001");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, NULL);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "At process_multi_groups(): Could not open file '001'");
-
-    will_return(__wrap_readdir, NULL);
-
-    expect_value(__wrap_OSHash_Begin, self, NULL);
-    will_return(__wrap_OSHash_Begin, NULL);
-
-    process_multi_groups();
-
-    os_free(entry);
-}
-
-void test_process_multi_groups_fgets_null(void **state)
-{
-    struct dirent *entry;
-    os_calloc(1, sizeof(struct dirent), entry);
-    strcpy(entry->d_name, "001");
-
-    will_return(__wrap_opendir, 1);
-
-    will_return(__wrap_readdir, entry);
-
-    expect_string(__wrap_fopen, path, "queue/agent-groups/001");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, (FILE *) 100);
-
-    expect_any(__wrap_fgets, __stream);
-    will_return(__wrap_fgets, NULL);
-
-    expect_value(__wrap_fclose, _File, 100);
-    will_return(__wrap_fclose, 1);
-
-    will_return(__wrap_readdir, NULL);
-
-    expect_value(__wrap_OSHash_Begin, self, NULL);
-    will_return(__wrap_OSHash_Begin, NULL);
-
-    process_multi_groups();
-
-    os_free(entry);
 }
 
 void test_process_multi_groups_single_group(void **state)
 {
-    struct dirent *entry;
-    os_calloc(1, sizeof(struct dirent), entry);
-    strcpy(entry->d_name, "001");
+    int *agents_array = NULL;
+    os_calloc(2, sizeof(int), agents_array);
+    agents_array[0] = 1;
+    agents_array[1] = -1;
 
-    will_return(__wrap_opendir, 1);
+    cJSON* j_agent_info = cJSON_Parse("{\"group\":\"group1\",\"group_hash\":\"ec282560\"}");
 
-    will_return(__wrap_readdir, entry);
+    expect_value(__wrap_wdb_get_all_agents, include_manager, false);
+    will_return(__wrap_wdb_get_all_agents, agents_array);
 
-    expect_string(__wrap_fopen, path, "queue/agent-groups/001");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, (FILE *) 100);
-
-    expect_any(__wrap_fgets, __stream);
-    will_return(__wrap_fgets, "group1");
-
-    expect_value(__wrap_fclose, _File, 100);
-    will_return(__wrap_fclose, 1);
-
-    will_return(__wrap_readdir, NULL);
+    expect_value(__wrap_wdb_get_agent_info, id, 1);
+    will_return(__wrap_wdb_get_agent_info, j_agent_info);
 
     expect_value(__wrap_OSHash_Begin, self, NULL);
     will_return(__wrap_OSHash_Begin, NULL);
 
     process_multi_groups();
-
-    os_free(entry);
 }
 
 void test_process_multi_groups_OSHash_Add_fail(void **state)
 {
-    struct dirent *entry;
-    os_calloc(1, sizeof(struct dirent), entry);
-    strcpy(entry->d_name, "001");
+    int *agents_array = NULL;
+    os_calloc(2, sizeof(int), agents_array);
+    agents_array[0] = 1;
+    agents_array[1] = -1;
 
-    will_return(__wrap_opendir, 1);
+    cJSON* j_agent_info = cJSON_Parse("[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]");
 
-    will_return(__wrap_readdir, entry);
+    expect_value(__wrap_wdb_get_all_agents, include_manager, false);
+    will_return(__wrap_wdb_get_all_agents, agents_array);
 
-    expect_string(__wrap_fopen, path, "queue/agent-groups/001");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, (FILE *) 100);
+    expect_value(__wrap_wdb_get_agent_info, id, 1);
+    will_return(__wrap_wdb_get_agent_info, j_agent_info);
 
-    expect_any(__wrap_fgets, __stream);
-    will_return(__wrap_fgets, "group1,group2");
-
-    expect_value(__wrap_fclose, _File, 100);
-    will_return(__wrap_fclose, 1);
-
-    expect_any(__wrap_OS_SHA256_String, str);
-    will_return(__wrap_OS_SHA256_String, "6e3a107738e7d0fc85241f04ed9686d37738e7d08086fb46e3a100fc85241f04");
-
-    expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, 10);
-    m_hash = OSHash_Create();
+    m_hash = __real_OSHash_Create();
 
     expect_value(__wrap_OSHash_Add_ex, self, m_hash);
     expect_string(__wrap_OSHash_Add_ex, key, "group1,group2");
-    expect_string(__wrap_OSHash_Add_ex, data, "6e3a1077");
+    expect_string(__wrap_OSHash_Add_ex, data, "ef48b4cd");
     will_return(__wrap_OSHash_Add_ex, 0);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Couldn't add multigroup 'group1,group2' to hash table 'm_hash'");
-
-    will_return(__wrap_readdir, NULL);
 
     expect_value(__wrap_OSHash_Begin, self, m_hash);
     will_return(__wrap_OSHash_Begin, NULL);
 
     process_multi_groups();
 
-    os_free(entry);
+    __real_OSHash_Clean(m_hash, cleaner);
 }
 
 void test_process_multi_groups_open_fail(void **state)
 {
-    struct dirent *entry;
-    os_calloc(1, sizeof(struct dirent), entry);
-    strcpy(entry->d_name, "001");
+    test_mode = 0;
+    int *agents_array = NULL;
+    os_calloc(2, sizeof(int), agents_array);
+    agents_array[0] = 1;
+    agents_array[1] = -1;
 
-    will_return(__wrap_opendir, 1);
+    cJSON* j_agent_info = cJSON_Parse("[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]");
 
-    will_return(__wrap_readdir, entry);
+    expect_value(__wrap_wdb_get_all_agents, include_manager, false);
+    will_return(__wrap_wdb_get_all_agents, agents_array);
 
-    expect_string(__wrap_fopen, path, "queue/agent-groups/001");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, (FILE *) 100);
+    expect_value(__wrap_wdb_get_agent_info, id, 1);
+    will_return(__wrap_wdb_get_agent_info, j_agent_info);
 
-    expect_any(__wrap_fgets, __stream);
-    will_return(__wrap_fgets, "multi_groups");
-
-    expect_value(__wrap_fclose, _File, 100);
-    will_return(__wrap_fclose, 1);
-
-    m_hash = (OSHash *)1;
-
-    will_return(__wrap_readdir, NULL);
+    m_hash = __real_OSHash_Create();
 
     OSHashNode * hash_node;
     os_calloc(1, sizeof(OSHashNode), hash_node);
     w_strdup("group1,group2", hash_node->key);
-    hash_node->data = "6e3a1077";
+    hash_node->data = "ef48b4cd";
 
     expect_value(__wrap_OSHash_Begin, self, m_hash);
     will_return(__wrap_OSHash_Begin, hash_node);
 
-    expect_string(__wrap_wreaddir, name, "var/multigroups/6e3a1077");
+    expect_string(__wrap_wreaddir, name, "var/multigroups/ef48b4cd");
     will_return(__wrap_wreaddir, NULL);
     errno = EACCES;
     will_return(__wrap_strerror, "Permission denied");
-    expect_string(__wrap__merror, formatted_msg, "Cannot open multigroup directory 'var/multigroups/6e3a1077': Permission denied (13)");
+    expect_string(__wrap__merror, formatted_msg, "Cannot open multigroup directory 'var/multigroups/ef48b4cd': Permission denied (13)");
 
     expect_value(__wrap_OSHash_Next, self, m_hash);
     will_return(__wrap_OSHash_Next, NULL);
@@ -2021,38 +1890,34 @@ void test_process_multi_groups_open_fail(void **state)
 
     errno = 0;
 
-    os_free(entry);
     os_free(hash_node->key);
     os_free(hash_node);
+    __real_OSHash_Clean(m_hash, cleaner);
+    test_mode = 1;
 }
 
 void test_process_multi_groups_find_multi_group_null(void **state)
 {
-    struct dirent *entry;
-    os_calloc(1, sizeof(struct dirent), entry);
-    strcpy(entry->d_name, "001");
+    test_mode = 0;
+    int *agents_array = NULL;
+    os_calloc(2, sizeof(int), agents_array);
+    agents_array[0] = 1;
+    agents_array[1] = -1;
 
-    will_return(__wrap_opendir, 1);
-    will_return(__wrap_readdir, entry);
+    cJSON* j_agent_info = cJSON_Parse("[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]");
 
-    expect_string(__wrap_fopen, path, "queue/agent-groups/001");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, (FILE *) 100);
+    expect_value(__wrap_wdb_get_all_agents, include_manager, false);
+    will_return(__wrap_wdb_get_all_agents, agents_array);
 
-    expect_any(__wrap_fgets, __stream);
-    will_return(__wrap_fgets, "multi_groups");
+    expect_value(__wrap_wdb_get_agent_info, id, 1);
+    will_return(__wrap_wdb_get_agent_info, j_agent_info);
 
-    expect_value(__wrap_fclose, _File, 100);
-    will_return(__wrap_fclose, 1);
-
-    m_hash = (OSHash *)1;
-
-    will_return(__wrap_readdir, NULL);
+    m_hash = __real_OSHash_Create();
 
     OSHashNode * hash_node;
     os_calloc(1, sizeof(OSHashNode), hash_node);
     w_strdup("group1,group2", hash_node->key);
-    hash_node->data = "6e3a1077";
+    hash_node->data = "ef48b4cd";
 
     expect_value(__wrap_OSHash_Begin, self, m_hash);
     will_return(__wrap_OSHash_Begin, hash_node);
@@ -2062,9 +1927,8 @@ void test_process_multi_groups_find_multi_group_null(void **state)
     os_strdup("merged.mg", subdir[0]);
     subdir[1] = NULL;
 
-    expect_string(__wrap_wreaddir, name, "var/multigroups/6e3a1077");
+    expect_string(__wrap_wreaddir, name, "var/multigroups/ef48b4cd");
     will_return(__wrap_wreaddir, subdir);
-
 
     // Start c_multi_group
     // Open the multi-group files and generate merged
@@ -2084,38 +1948,34 @@ void test_process_multi_groups_find_multi_group_null(void **state)
     assert_true(multi_groups[1]->exists);
     assert_null(multi_groups[2]);
 
-    os_free(entry);
     os_free(hash_node->key);
     os_free(hash_node);
+    __real_OSHash_Clean(m_hash, cleaner);
+    test_mode = 1;
 }
 
 void test_process_multi_groups_group_changed(void **state)
 {
-    struct dirent *entry;
-    os_calloc(1, sizeof(struct dirent), entry);
-    strcpy(entry->d_name, "001");
+    test_mode = 0;
+    int *agents_array = NULL;
+    os_calloc(2, sizeof(int), agents_array);
+    agents_array[0] = 1;
+    agents_array[1] = -1;
 
-    will_return(__wrap_opendir, 1);
-    will_return(__wrap_readdir, entry);
+    cJSON* j_agent_info = cJSON_Parse("[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]");
 
-    expect_string(__wrap_fopen, path, "queue/agent-groups/001");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, (FILE *) 100);
+    expect_value(__wrap_wdb_get_all_agents, include_manager, false);
+    will_return(__wrap_wdb_get_all_agents, agents_array);
 
-    expect_any(__wrap_fgets, __stream);
-    will_return(__wrap_fgets, "multi_groups");
+    expect_value(__wrap_wdb_get_agent_info, id, 1);
+    will_return(__wrap_wdb_get_agent_info, j_agent_info);
 
-    expect_value(__wrap_fclose, _File, 100);
-    will_return(__wrap_fclose, 1);
-
-    m_hash = (OSHash *)1;
-
-    will_return(__wrap_readdir, NULL);
+    m_hash = __real_OSHash_Create();
 
     OSHashNode * hash_node;
     os_calloc(1, sizeof(OSHashNode), hash_node);
     w_strdup("group1,group2", hash_node->key);
-    hash_node->data = "6e3a1077";
+    hash_node->data = "ef48b4cd";
 
     expect_value(__wrap_OSHash_Begin, self, m_hash);
     will_return(__wrap_OSHash_Begin, hash_node);
@@ -2125,9 +1985,8 @@ void test_process_multi_groups_group_changed(void **state)
     os_strdup("merged.mg", subdir[0]);
     subdir[1] = NULL;
 
-    expect_string(__wrap_wreaddir, name, "var/multigroups/6e3a1077");
+    expect_string(__wrap_wreaddir, name, "var/multigroups/ef48b4cd");
     will_return(__wrap_wreaddir, subdir);
-
 
     // Start c_multi_group
     // Open the multi-group files and generate merged
@@ -2148,38 +2007,34 @@ void test_process_multi_groups_group_changed(void **state)
     assert_string_equal(multi_groups[0]->name, "group1,group2");
     assert_null(multi_groups[1]);
 
-    os_free(entry);
     os_free(hash_node->key);
     os_free(hash_node);
+    __real_OSHash_Clean(m_hash, cleaner);
+    test_mode = 1;
 }
 
 void test_process_multi_groups_changed_outside(void **state)
 {
-    struct dirent *entry;
-    os_calloc(1, sizeof(struct dirent), entry);
-    strcpy(entry->d_name, "001");
+    test_mode = 0;
+    int *agents_array = NULL;
+    os_calloc(2, sizeof(int), agents_array);
+    agents_array[0] = 1;
+    agents_array[1] = -1;
 
-    will_return(__wrap_opendir, 1);
-    will_return(__wrap_readdir, entry);
+    cJSON* j_agent_info = cJSON_Parse("[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]");
 
-    expect_string(__wrap_fopen, path, "queue/agent-groups/001");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, (FILE *) 100);
+    expect_value(__wrap_wdb_get_all_agents, include_manager, false);
+    will_return(__wrap_wdb_get_all_agents, agents_array);
 
-    expect_any(__wrap_fgets, __stream);
-    will_return(__wrap_fgets, "multi_groups");
+    expect_value(__wrap_wdb_get_agent_info, id, 1);
+    will_return(__wrap_wdb_get_agent_info, j_agent_info);
 
-    expect_value(__wrap_fclose, _File, 100);
-    will_return(__wrap_fclose, 1);
-
-    m_hash = (OSHash *)1;
-
-    will_return(__wrap_readdir, NULL);
+    m_hash = __real_OSHash_Create();
 
     OSHashNode * hash_node;
     os_calloc(1, sizeof(OSHashNode), hash_node);
     w_strdup("group1,group2", hash_node->key);
-    hash_node->data = "6e3a1077";
+    hash_node->data = "ef48b4cd";
 
     expect_value(__wrap_OSHash_Begin, self, m_hash);
     will_return(__wrap_OSHash_Begin, hash_node);
@@ -2189,9 +2044,8 @@ void test_process_multi_groups_changed_outside(void **state)
     os_strdup("merged.mg", subdir[0]);
     subdir[1] = NULL;
 
-    expect_string(__wrap_wreaddir, name, "var/multigroups/6e3a1077");
+    expect_string(__wrap_wreaddir, name, "var/multigroups/ef48b4cd");
     will_return(__wrap_wreaddir, subdir);
-
 
     // Start c_multi_group
     // Open the multi-group files, no generate merged
@@ -2217,36 +2071,34 @@ void test_process_multi_groups_changed_outside(void **state)
     assert_string_equal(multi_groups[0]->name, "group1,group2");
     assert_null(multi_groups[1]);
 
-    os_free(entry);
     os_free(hash_node->key);
     os_free(hash_node);
+    __real_OSHash_Clean(m_hash, cleaner);
+    test_mode = 1;
 }
 
 void test_process_multi_groups_changed_outside_nocmerged(void **state)
 {
-    struct dirent *entry;
-    os_calloc(1, sizeof(struct dirent), entry);
-    strcpy(entry->d_name, "001");
+    test_mode = 0;
+    int *agents_array = NULL;
+    os_calloc(2, sizeof(int), agents_array);
+    agents_array[0] = 1;
+    agents_array[1] = -1;
 
-    will_return(__wrap_opendir, 1);
-    will_return(__wrap_readdir, entry);
+    cJSON* j_agent_info = cJSON_Parse("[{\"group\":\"group1,group2\",\"group_hash\":\"ef48b4cd\"}]");
 
-    expect_string(__wrap_fopen, path, "queue/agent-groups/001");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, (FILE *) 100);
+    expect_value(__wrap_wdb_get_all_agents, include_manager, false);
+    will_return(__wrap_wdb_get_all_agents, agents_array);
 
-    expect_any(__wrap_fgets, __stream);
-    will_return(__wrap_fgets, "multi_groups");
+    expect_value(__wrap_wdb_get_agent_info, id, 1);
+    will_return(__wrap_wdb_get_agent_info, j_agent_info);
 
-    expect_value(__wrap_fclose, _File, 100);
-    will_return(__wrap_fclose, 1);
-
-    will_return(__wrap_readdir, NULL);
+    m_hash = __real_OSHash_Create();
 
     OSHashNode * hash_node;
     os_calloc(1, sizeof(OSHashNode), hash_node);
     w_strdup("group1,group2", hash_node->key);
-    hash_node->data = "6e3a1077";
+    hash_node->data = "ef48b4cd";
 
     expect_value(__wrap_OSHash_Begin, self, m_hash);
     will_return(__wrap_OSHash_Begin, hash_node);
@@ -2256,9 +2108,8 @@ void test_process_multi_groups_changed_outside_nocmerged(void **state)
     os_strdup("merged.mg", subdir[0]);
     subdir[1] = NULL;
 
-    expect_string(__wrap_wreaddir, name, "var/multigroups/6e3a1077");
+    expect_string(__wrap_wreaddir, name, "var/multigroups/ef48b4cd");
     will_return(__wrap_wreaddir, subdir);
-
 
     // Start c_multi_group
     // Open the multi-group files, no generate merged
@@ -2279,9 +2130,10 @@ void test_process_multi_groups_changed_outside_nocmerged(void **state)
     assert_string_equal(multi_groups[0]->name, "group1,group2");
     assert_null(multi_groups[1]);
 
-    os_free(entry);
     os_free(hash_node->key);
     os_free(hash_node);
+    __real_OSHash_Clean(m_hash, cleaner);
+    test_mode = 1;
 }
 
 void test_c_files(void **state)
@@ -2291,10 +2143,6 @@ void test_c_files(void **state)
     will_return(__wrap_opendir, 0);
     will_return(__wrap_strerror, "No such file or directory");
     expect_string(__wrap__mdebug1, formatted_msg, "Opening directory: 'etc/shared': No such file or directory");
-
-    will_return(__wrap_opendir, 0);
-    will_return(__wrap_strerror, "No such file or directory");
-    expect_string(__wrap__mdebug1, formatted_msg, "Opening directory: 'queue/agent-groups': No such file or directory");
 
     groups[0]->exists = true;
     groups[0]->has_changed = false;
@@ -2311,6 +2159,12 @@ void test_c_files(void **state)
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, NULL);
 
+    expect_value(__wrap_wdb_get_all_agents, include_manager, false);
+    will_return(__wrap_wdb_get_all_agents, NULL);
+
+    m_hash = (OSHash *)1;
+    expect_value(__wrap_OSHash_Begin, self, m_hash);
+    will_return(__wrap_OSHash_Begin, NULL);
 
     expect_string(__wrap__mdebug2, formatted_msg, "End updating shared files sums.");
 
@@ -2364,7 +2218,6 @@ int main(void)
         // Tests lookfor_agent_group
         cmocka_unit_test(test_lookfor_agent_group_set_default_group),
         cmocka_unit_test(test_lookfor_agent_group_null_groups),
-        cmocka_unit_test(test_lookfor_agent_group_set_default_group),
         cmocka_unit_test(test_lookfor_agent_group_msg_without_enter),
         cmocka_unit_test(test_lookfor_agent_group_bad_message),
         cmocka_unit_test(test_lookfor_agent_group_message_without_second_enter),
@@ -2424,12 +2277,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_process_groups_find_group_changed, test_process_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_process_groups_find_group_not_changed, test_process_group_setup, test_c_group_teardown),
         // Test process_multi_groups
-        cmocka_unit_test(test_process_multi_groups_open_directory_fail),
-        cmocka_unit_test(test_process_multi_groups_readdir_fail),
-        cmocka_unit_test(test_process_multi_groups_skip),
-        cmocka_unit_test(test_process_multi_groups_skip_2),
-        cmocka_unit_test(test_process_multi_groups_fopen_null),
-        cmocka_unit_test(test_process_multi_groups_fgets_null),
+        cmocka_unit_test(test_process_multi_groups_no_agents),
         cmocka_unit_test(test_process_multi_groups_single_group),
         cmocka_unit_test(test_process_multi_groups_OSHash_Add_fail),
         cmocka_unit_test(test_process_multi_groups_open_fail),

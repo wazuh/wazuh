@@ -848,7 +848,9 @@ STATIC void process_multi_groups() {
             cJSON* j_agent_info = wdb_get_agent_info(agents_array[i], NULL);
             if(j_agent_info) {
                 char* agent_groups = cJSON_GetStringValue(cJSON_GetObjectItem(j_agent_info->child, "group"));
-                char* agent_groups_hash = cJSON_GetStringValue(cJSON_DetachItemFromObject(j_agent_info->child, "group_hash"));
+                // If we don't duplicate the group_hash, the cJSON_Delete() will remove the string pointer from m_hash
+                char* agent_groups_hash = NULL;
+                w_strdup(cJSON_GetStringValue(cJSON_GetObjectItem(j_agent_info->child, "group_hash")), agent_groups_hash);
 
                 // If it's not a multigroup, skip it
                 if(agent_groups && agent_groups_hash && strstr(agent_groups, ",")) {
@@ -1226,7 +1228,8 @@ STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group, 
         if (strcmp(file, SHAREDCFG_FILENAME) == 0) {
 
             // If group was not got, guess it by matching sum
-            mdebug2("Agent '%s' with group '%s' file '%s' MD5 '%s'", agent_id, group, SHAREDCFG_FILENAME, md5);
+            os_calloc(OS_SIZE_65536 + 1, sizeof(char), group);
+            mdebug2("Agent '%s' with file '%s' MD5 '%s'", agent_id, SHAREDCFG_FILENAME, md5);
 
             /* Lock mutex */
             w_mutex_lock(&files_mutex);
