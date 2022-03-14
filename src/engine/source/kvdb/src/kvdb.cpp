@@ -1,4 +1,10 @@
+<<<<<<< HEAD
 #include "glog/logging.h"
+=======
+#include <assert.h>
+#include <string>
+
+>>>>>>> fixing PR requested changes
 #include "rocksdb/db.h"
 #include "rocksdb/options.h"
 #include "rocksdb/slice.h"

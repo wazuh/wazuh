@@ -33,18 +33,6 @@ CPMAddPackage(
     "CMAKE_DISABLE_FIND_PACKAGE_gtest TRUE"
 )
 
-CPMAddPackage(
-  NAME glog
-  GITHUB_REPOSITORY google/glog
-  GIT_TAG v0.5.0
-  VERSION 0.5.0
-  OPTIONS
-      "WITH_GTEST OFF"
-      "BUILD_SHARED_LIBS OFF"
-      "WITH_GFLAGS OFF"
-      "WITH_UNWIND OFF"
-)
-
 # Add this dependencies to parent CMakeLists scope
 set(EXTERNAL_DEPS ${EXTERNAL_DEPS} PARENT_SCOPE)
 
