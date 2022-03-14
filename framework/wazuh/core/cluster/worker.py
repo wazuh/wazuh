@@ -495,10 +495,9 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         while True:
             try:
                 if self.connected:
-                    start_time = get_utc_now().timestamp()
                     if self.check_integrity_free and await integrity_check.request_permission():
                         logger.info("Starting.")
-                        self.integrity_check_status['date_start'] = start_time
+                        self.integrity_check_status['date_start'] = get_utc_now().timestamp()
                         self.integrity_control = await cluster.run_in_pool(self.loop, self.manager.task_pool,
                                                                            cluster.get_files_status,
                                                                            self.integrity_control)
@@ -574,7 +573,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             await extra_valid_sync.sync(files_to_sync=files_to_sync, files_metadata=files_to_sync)
             after = perf_counter()
             logger.debug(f"Finished sending extra valid files in {(after - before):.3f}s.")
-            logger.info(f"Finished in {(after - self.integrity_sync_status['date_start']):.3f}s.")
+            logger.info(f"Finished in {(get_utc_now().timestamp() - self.integrity_sync_status['date_start']):.3f}s.")
 
         # If exception is raised during sync process, notify the master so it removes the file if received.
         except exception.WazuhException as e:
