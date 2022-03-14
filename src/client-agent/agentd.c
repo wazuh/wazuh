@@ -141,16 +141,15 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
             mdebug2("Resolving server hostname: %s", agt->server[rc].rip);
             resolve_hostname(&agt->server[rc].rip, 5);
             int rip_l = strlen(agt->server[rc].rip);
-            mdebug2("Server hostname resolved: %.*s", agt->server[rc].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[rc].rip);
-        }
-        rc++;
-    }
 
-    /* Connect remote */
-    rc = 0;
-    while (rc < agt->server_count) {
-        int rip_l = strlen(agt->server[rc].rip);
-        minfo("Server IP Address: %.*s", agt->server[rc].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[rc].rip);
+            if (agt->server[rc].rip[rip_l - 1] == '/') {
+                mwarn("Could not resolve server hostname: %.*s", rip_l - 1, agt->server[rc].rip);
+            } else {
+                minfo("Server hostname resolved: %s", agt->server[rc].rip);
+            }
+        } else {
+            minfo("Server IP Address: %s", agt->server[rc].rip);
+        }
         rc++;
     }
 
