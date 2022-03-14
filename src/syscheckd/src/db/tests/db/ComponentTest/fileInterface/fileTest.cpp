@@ -42,6 +42,15 @@ const auto insertStatement3 = R"({
         "uid":0, "user_name":"fakeUser"}]
     }
 )"_json;
+const auto insertStatement4 = R"({
+        "table": "file_entry",
+        "data":[{"attributes":"10", "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "dev":8432, "gid":0, "group_name":"root",
+        "hash_md5":"4b531524aa13c8a54614100b570b3dc7", "hash_sha1":"7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
+        "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", "inode":1152921500312810880, "last_event":1596489275,
+        "mode":0, "mtime":1578075431, "options":131583, "path":"/tmp/test3.txt", "perm":"-rw-rw-r--", "scanned":1, "size":4925,
+        "uid":0, "user_name":"fakeUser"}]
+    }
+)"_json;
 const auto updateStatement1 = R"({
         "table": "file_entry",
         "data":[{"attributes":"11", "checksum":"e89f3b4c21c2005896c964462da4766057dd94e9", "dev":2151, "gid":1000, "group_name":"test",
@@ -364,4 +373,36 @@ TEST_F(DBTestFixture, TestFimDBInvalidSearchPath)
     {
         DB::instance().searchFile(std::make_tuple(static_cast<FILE_SEARCH_TYPE>(-1), "","",""), nullptr);
     }, std::runtime_error);
+}
+
+TEST_F(DBTestFixture, TestFimDBFileInodeSearchWithBigInode)
+{
+    const auto fileFIMTest1 { std::make_unique<FileItem>(insertStatement1["data"].front()) };
+    const auto fileFIMTest2 { std::make_unique<FileItem>(insertStatement4["data"].front()) };
+    const auto fileFIMTest3 { std::make_unique<FileItem>(insertStatement3["data"].front()) };
+
+    EXPECT_NO_THROW(
+    {
+        fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
+        fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added);
+        fim_db_file_update(fileFIMTest3->toFimEntry(), callback_data_added);
+        char *test;
+        test = strdup("/etc/wgetrc");
+        callback_context_t callback_data;
+        callback_data.callback = callbackTestSearchPath;
+        callback_data.context = test;
+        try
+        {
+            fim_db_file_inode_search(18277083, 2456, callback_data);
+        }
+        catch(...)
+        {
+            os_free(test);
+        }
+        os_free(test);
+        fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_modified);
+        callback_data.callback = callbackTestSearch;
+        callback_data.context = NULL;
+        fim_db_file_inode_search(1152921500312810880, 8432, callback_data);
+    });
 }

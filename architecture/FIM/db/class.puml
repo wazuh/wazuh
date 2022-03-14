@@ -40,7 +40,7 @@ package "item" <<Folder>> {
         - int m_gid
         - string m_groupname
         - time_t m_time
-        - unsigned long int m_inode
+        - unsigned long long int m_inode
         - string m_md5
         - string m_sha1
         - string m_sha256
