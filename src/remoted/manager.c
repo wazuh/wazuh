@@ -1345,7 +1345,6 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
     /* Check if it is multigroup */
     if (strchr(group, MULTIGROUP_SEPARATOR)) {
         OS_SHA256_String(group, multi_group_hash);
-        OSHash_Add_ex(m_hash, group, strndup(multi_group_hash, 8));
         snprintf(file, OS_SIZE_1024, "%s/%.8s/%s", sharedcfg_dir, multi_group_hash, name);
     } else {
         snprintf(file, OS_SIZE_1024, "%s/%s/%s", sharedcfg_dir, group, name);
