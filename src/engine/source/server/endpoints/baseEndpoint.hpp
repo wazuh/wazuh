@@ -10,10 +10,9 @@
 #ifndef _BASE_ENDPOINT_H_
 #define _BASE_ENDPOINT_H_
 
+#include <blockingconcurrentqueue.h>
 #include <rxcpp/rx.hpp>
 #include <string>
-
-#include "json.hpp"
 
 /**
  * @brief Contains all endpoint related functionality
@@ -28,17 +27,13 @@ namespace engineserver::endpoints
  */
 class BaseEndpoint
 {
-public:
-    using event_t = json::Document;
-    using observable_t = rxcpp::observable<event_t>;
-    using subscriber_t = rxcpp::subscriber<observable_t>;
-    using out_t = rxcpp::observable<observable_t>;
-
 protected:
-    std::string m_path;
-    out_t m_out;
+    using ServerOutput = moodycamel::BlockingConcurrentQueue<std::string>;
 
-    explicit BaseEndpoint(const std::string & path);
+    std::string m_path;
+    ServerOutput & m_out;
+
+    BaseEndpoint(const std::string & path, ServerOutput & out);
 
 public:
     /**
@@ -52,7 +47,7 @@ public:
      *
      * @return auto Observable object
      */
-    out_t output(void) const;
+    const ServerOutput & output(void) const;
 
     /**
      * @brief Start endpoint.

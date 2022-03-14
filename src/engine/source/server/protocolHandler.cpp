@@ -8,7 +8,11 @@
  */
 
 #include "protocolHandler.hpp"
-#include "glog/logging.h"
+
+using std::optional;
+using std::string;
+using std::throw_with_nested;
+using std::vector;
 
 namespace engineserver
 {
@@ -18,7 +22,7 @@ bool ProtocolHandler::hasHeader()
     if (m_buff.size() == sizeof(int))
     {
         // TODO: make this safe
-        std::memcpy(&m_pending, m_buff.data(), sizeof(int));
+        memcpy(&m_pending, m_buff.data(), sizeof(int));
         // TODO: Max message size config option
         if (m_pending > 1 << 20)
         {
@@ -29,31 +33,11 @@ bool ProtocolHandler::hasHeader()
     return false;
 }
 
-void ProtocolHandler::send(const rxcpp::subscriber<json::Document> s)
-{
-    json::Document evt;
-    try
-    {
-        evt = parse();
-        m_buff.clear();
-    }
-    catch (std::exception & e)
-    {
-        LOG(ERROR) << e.what() << std::endl;
-        s.on_error(std::current_exception());
-        return;
-    }
-
-    s.on_next(evt);
-}
-
-json::Document ProtocolHandler::parse()
+json::Document ProtocolHandler::parse(const string & event)
 {
     json::Document doc;
     doc.m_doc.SetObject();
     rapidjson::Document::AllocatorType & allocator = doc.getAllocator();
-
-    auto event = std::string(m_buff.begin() + sizeof(int), m_buff.end());
 
     auto queuePos = event.find(":");
     try
@@ -64,40 +48,42 @@ json::Document ProtocolHandler::parse()
     // std::out_of_range and std::invalid_argument
     catch (...)
     {
-        std::throw_with_nested(std::invalid_argument("Error parsing queue id"));
+        throw_with_nested(std::invalid_argument("Error parsing queue id"));
     }
 
     auto locPos = event.find(":", queuePos + 1);
     try
     {
         rapidjson::Value loc;
-        std::string location = event.substr(queuePos, locPos);
+        string location = event.substr(queuePos, locPos);
         loc.SetString(location.c_str(), location.length(), allocator);
         doc.m_doc.AddMember("location", loc, allocator);
     }
     catch (std::out_of_range & e)
     {
-        std::throw_with_nested(("Error parsing location using token sep :" + event));
+        throw_with_nested(("Error parsing location using token sep :" + event));
     }
 
     try
     {
         rapidjson::Value msg;
-        std::string message = event.substr(locPos + 1, std::string::npos);
+        string message = event.substr(locPos + 1, string::npos);
         msg.SetString(message.c_str(), message.length(), allocator);
         doc.m_doc.AddMember("message", msg, allocator);
     }
     catch (std::out_of_range & e)
     {
-        std::throw_with_nested(("Error parsing location using token sep :" + event));
+        throw_with_nested(("Error parsing location using token sep :" + event));
     }
 
     return doc;
 }
 
-bool ProtocolHandler::process(char * data, std::size_t length, const rxcpp::subscriber<json::Document> s)
+optional<vector<string>> ProtocolHandler::process(char * data, size_t length)
 {
-    for (std::size_t i = 0; i < length; i++)
+    vector<string> events;
+
+    for (size_t i = 0; i < length; i++)
     {
 
         switch (m_stage)
@@ -114,22 +100,39 @@ bool ProtocolHandler::process(char * data, std::size_t length, const rxcpp::subs
                 }
                 catch (...)
                 {
-                    s.on_error(std::current_exception());
-                    return false;
+                    // TODO: improve this try-catch
+                    return std::nullopt;
                 }
                 break;
+
             // payload
             case 1:
                 m_buff.push_back(data[i]);
                 m_pending--;
                 if (m_pending == 0)
                 {
-                    send(s);
+                    try
+                    {
+                        // TODO: Are we moving the buffer? we should
+                        events.push_back(string(m_buff.begin() + sizeof(int), m_buff.end()));
+                        m_buff.clear();
+                    }
+                    catch (std::exception & e)
+                    {
+                        LOG(ERROR) << e.what() << std::endl;
+                        return std::nullopt;
+                    }
                     m_stage = 0;
                 }
                 break;
+
+            default:
+                LOG(ERROR) << "Invalid stage value." << std::endl;
+                return std::nullopt;
         }
     }
-    return true;
+
+    return optional<vector<string>>(std::move(events));
 }
+
 } // namespace engineserver

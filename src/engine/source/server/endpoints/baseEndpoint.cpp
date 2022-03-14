@@ -9,15 +9,10 @@
 
 #include "baseEndpoint.hpp"
 
-#include <rxcpp/rx.hpp>
-#include <string>
-
-#include "json.hpp"
-
 namespace engineserver::endpoints
 {
 
-BaseEndpoint::BaseEndpoint(const std::string & path) : m_path{path}
+BaseEndpoint::BaseEndpoint(const std::string & path, BaseEndpoint::ServerOutput & out) : m_path{path}, m_out{out}
 {
 }
 
@@ -25,7 +20,7 @@ BaseEndpoint::~BaseEndpoint()
 {
 }
 
-BaseEndpoint::out_t BaseEndpoint::output(void) const
+const BaseEndpoint::ServerOutput & BaseEndpoint::output(void) const
 {
     return this->m_out;
 }
