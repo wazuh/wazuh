@@ -759,6 +759,72 @@ int wdb_fim_update_entry(wdb_t * wdb, const char * file, const sk_sum_t * sum) {
     }
 }
 
+
+// LCOV_EXCL_STOP
+int wdb_fim_delete_registry(wdb_t *wdb, const char *data) {
+    cJSON * json_data = cJSON_Parse(data);
+    sqlite3_stmt *stmt = NULL;
+    wdb_stmt delete_stmt = WDB_STMT_FIM_DELETE_REGISTRY_KEY;
+    int retval = -1;
+
+    if (json_data == NULL) {
+        merror("Cannot parse JSON data for delete registry: %s", data);
+        return -1;
+    }
+
+    cJSON *arch_json = cJSON_GetObjectItem(json_data, "arch");
+    cJSON *key_path_json = cJSON_GetObjectItem(json_data, "path");
+    cJSON *value_name_json = cJSON_GetObjectItem(json_data, "value_name");
+
+    if (arch_json == NULL || key_path_json == NULL) {
+        merror("JSON data for delete registry without 'path' or 'arch' %s.", data);
+        goto end;
+    }
+
+    // check if all the fields sent in data are strings
+    if (cJSON_IsString(arch_json) == 0 || cJSON_IsString(key_path_json) == 0) {
+        goto end;
+    }
+
+    if (value_name_json != NULL && cJSON_IsString(value_name_json) == 0) {
+        goto end;
+    }
+
+    // If 'value_name' is not in the JSON, this means that a registry key entry needs to be deleted.
+    if (value_name_json != NULL) {
+        delete_stmt = WDB_STMT_FIM_DELETE_REGISTRY_VALUE;
+    }
+
+    if (wdb_stmt_cache(wdb, delete_stmt) < 0) {
+        merror("DB(%s) Can't cache statement", wdb->id);
+        goto end;
+    }
+
+    stmt = wdb->stmt[delete_stmt];
+
+    sqlite3_bind_text(stmt, 1, cJSON_GetStringValue(arch_json), -1, NULL);
+    sqlite3_bind_text(stmt, 2, cJSON_GetStringValue(key_path_json), -1, NULL);
+
+    if (delete_stmt == WDB_STMT_FIM_DELETE_REGISTRY_VALUE) {
+        sqlite3_bind_text(stmt, 3, cJSON_GetStringValue(value_name_json), -1, NULL);
+    }
+
+    int res = sqlite3_step(stmt);
+    if (res == SQLITE_ROW || res == SQLITE_DONE) {
+        retval = 0;
+        goto end;
+    }
+
+    mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+
+end:
+    cJSON_Delete(json_data);
+    return retval;
+}
+// LCOV_EXCL_START
+
+
+
 // Delete file entry: returns 1 if found, 0 if not, or -1 on error.
 int wdb_fim_delete(wdb_t * wdb, const char * path) {
     sqlite3_stmt *stmt = NULL;

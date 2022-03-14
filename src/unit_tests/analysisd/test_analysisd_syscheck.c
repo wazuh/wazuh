@@ -3071,6 +3071,111 @@ static void test_fim_process_alert_no_audit(void **state) {
     assert_int_equal(input->lf->decoder_info->id, 0);
 }
 
+static void test_fim_process_alert_remove_registry_key(void **state) {
+    fim_data_t *input = *state;
+    _sdb sdb = {.socket = 10};
+    const char *result = "This is a mock query result, it wont go anywhere";
+    int ret;
+
+    cJSON *data = cJSON_GetObjectItem(input->event, "data");
+
+    cJSON_DeleteItemFromObject(data, "type");
+    cJSON_AddStringToObject(data, "type", "deleted");
+    cJSON_DeleteItemFromObject(data, "changed_attributes");
+
+    if(input->lf->agent_id = strdup("007"), input->lf->agent_id == NULL)
+        fail();
+
+    /* Inside fim_send_db_save */
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck delete_registry "
+        "{\"arch\":\"[x64]\","
+        "\"path\":\"HKEY_LOCAL_MACHINE\\\\software\\\\test\"}");
+    expect_any(__wrap_wdbc_query_ex, len);
+    will_return(__wrap_wdbc_query_ex, result);
+    will_return(__wrap_wdbc_query_ex, 0);
+
+    expect_string(__wrap_wdbc_parse_result, result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    ret = fim_process_alert(&sdb, input->lf, data);
+
+    assert_int_equal(ret, 0);
+
+    // Assert fim_generate_alert
+    assert_string_equal(input->lf->fields[FIM_REGISTRY_ARCH].value, "[x64]");
+    assert_string_equal(input->lf->fields[FIM_FILE].value, "HKEY_LOCAL_MACHINE\\software\\test");
+    assert_string_equal(input->lf->fields[FIM_PERM].value, "perm");
+    assert_string_equal(input->lf->fields[FIM_UNAME].value, "user_name");
+    assert_string_equal(input->lf->fields[FIM_GNAME].value, "group_name");
+    assert_string_equal(input->lf->fields[FIM_UID].value, "uid");
+    assert_string_equal(input->lf->fields[FIM_GID].value, "gid");
+
+    assert_null(input->lf->fields[FIM_MD5].value);
+    assert_null(input->lf->fields[FIM_SHA1].value);
+    assert_null(input->lf->fields[FIM_SHA256].value);
+    assert_null(input->lf->fields[FIM_REGISTRY_VALUE_NAME].value);
+    assert_null(input->lf->fields[FIM_SIZE].value);
+
+    assert_string_equal(input->lf->full_log,
+        "Registry Key '[x64] HKEY_LOCAL_MACHINE\\software\\test' deleted\nMode: scheduled\n");
+
+    /* Assert actual output */
+    assert_string_equal(input->lf->fields[FIM_EVENT_TYPE].value, SYSCHECK_EVENT_STRINGS[FIM_DELETED]);
+    assert_string_equal(input->lf->decoder_info->name, FIM_REG_KEY_DEL);
+    assert_int_equal(input->lf->decoder_info->id, 0);
+}
+
+static void test_fim_process_alert_remove_registry_value(void **state) {
+    fim_data_t *input = *state;
+    _sdb sdb = {.socket = 10};
+    const char *result = "This is a mock query result, it wont go anywhere";
+    int ret;
+
+    cJSON *data = cJSON_GetObjectItem(input->event, "data");
+
+    cJSON_DeleteItemFromObject(data, "type");
+    cJSON_AddStringToObject(data, "type", "deleted");
+    cJSON_DeleteItemFromObject(data, "changed_attributes");
+
+    if(input->lf->agent_id = strdup("007"), input->lf->agent_id == NULL)
+        fail();
+
+    /* Inside fim_send_db_save */
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck delete_registry "
+        "{\"arch\":\"[x64]\","
+        "\"path\":\"HKEY_LOCAL_MACHINE\\\\software\\\\test\","
+        "\"value_name\":\"some:value\"}");
+    expect_any(__wrap_wdbc_query_ex, len);
+    will_return(__wrap_wdbc_query_ex, result);
+    will_return(__wrap_wdbc_query_ex, 0);
+
+    expect_string(__wrap_wdbc_parse_result, result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    ret = fim_process_alert(&sdb, input->lf, data);
+
+    assert_int_equal(ret, 0);
+
+    // Assert fim_generate_alert
+    assert_string_equal(input->lf->fields[FIM_REGISTRY_ARCH].value, "[x64]");
+    assert_string_equal(input->lf->fields[FIM_FILE].value, "HKEY_LOCAL_MACHINE\\software\\test");
+    assert_string_equal(input->lf->fields[FIM_REGISTRY_VALUE_NAME].value, "some:value");
+    assert_string_equal(input->lf->fields[FIM_SIZE].value, "4567");
+    assert_string_equal(input->lf->fields[FIM_MD5].value, "hash_md5");
+    assert_string_equal(input->lf->fields[FIM_SHA1].value, "hash_sha1");
+    assert_string_equal(input->lf->fields[FIM_SHA256].value, "hash_sha256");
+
+    assert_string_equal(input->lf->full_log,
+        "Registry Value '[x64] HKEY_LOCAL_MACHINE\\software\\test\\some:value' deleted\nMode: scheduled\n");
+
+    /* Assert actual output */
+    assert_string_equal(input->lf->fields[FIM_EVENT_TYPE].value, SYSCHECK_EVENT_STRINGS[FIM_DELETED]);
+    assert_string_equal(input->lf->decoder_info->name, FIM_REG_VAL_DEL);
+    assert_int_equal(input->lf->decoder_info->id, 0);
+}
+
 static void test_fim_process_alert_null_event(void **state) {
     fim_data_t *input = *state;
     _sdb sdb = {.socket = 10};
@@ -3766,6 +3871,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_process_alert_no_old_attributes, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_process_alert_no_audit, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_process_alert_null_event, setup_fim_data, teardown_fim_data),
+        cmocka_unit_test_setup_teardown(test_fim_process_alert_remove_registry_key, setup_registry_key_data, teardown_fim_data),
+        cmocka_unit_test_setup_teardown(test_fim_process_alert_remove_registry_value, setup_registry_value_data, teardown_fim_data),
+
 
         /* decode_fim_event */
         cmocka_unit_test_setup_teardown(test_decode_fim_event_type_event, setup_decode_fim_event, teardown_decode_fim_event),

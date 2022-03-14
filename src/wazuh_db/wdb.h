@@ -69,6 +69,8 @@ typedef enum wdb_stmt {
     WDB_STMT_FIM_INSERT_ENTRY2,
     WDB_STMT_FIM_UPDATE_ENTRY,
     WDB_STMT_FIM_DELETE,
+    WDB_STMT_FIM_DELETE_REGISTRY_KEY,
+    WDB_STMT_FIM_DELETE_REGISTRY_VALUE,
     WDB_STMT_FIM_UPDATE_DATE,
     WDB_STMT_FIM_FIND_DATE_ENTRIES,
     WDB_STMT_FIM_GET_ATTRIBUTES,
@@ -458,6 +460,7 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data);
 int wdb_fim_update_entry(wdb_t * wdb, const char * file, const sk_sum_t * sum);
 
 int wdb_fim_delete(wdb_t * wdb, const char * file);
+int wdb_fim_delete_registry(wdb_t * wdb, const char * file);
 
 /* Insert configuration assessment entry. Returns ID on success or -1 on error. */
 int wdb_rootcheck_insert(wdb_t * wdb, const rk_event_t *event);
