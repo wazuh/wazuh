@@ -57,18 +57,6 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     minfo(ENC_READ);
     OS_ReadKeys(&keys, W_DUAL_KEY, 0);
 
-    // Resolve hostnames
-    rc = 0;
-    while (rc < agt->server_count) {
-        if (OS_IsValidIP(agt->server[rc].rip, NULL) != 1) {
-            mdebug2("Resolving server hostname: %s", agt->server[rc].rip);
-            resolve_hostname(&agt->server[rc].rip, 5);
-            int rip_l = strlen(agt->server[rc].rip);
-            mdebug2("Server hostname resolved: %.*s", agt->server[rc].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[rc].rip);
-        }
-        rc++;
-    }
-
     minfo("Using notify time: %d and max time to reconnect: %d", agt->notify_time, agt->max_time_reconnect_try);
     if (agt->force_reconnect_interval) {
         minfo("Using force reconnect interval, Wazuh Agent will reconnect every %ld %s", w_seconds_to_time_value(agt->force_reconnect_interval), w_seconds_to_time_unit(agt->force_reconnect_interval, TRUE));
@@ -128,14 +116,6 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         minfo(DISABLED_BUFFER);
     }
 
-    /* Connect remote */
-    rc = 0;
-    while (rc < agt->server_count) {
-        int rip_l = strlen(agt->server[rc].rip);
-        minfo("Server IP Address: %.*s", agt->server[rc].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[rc].rip);
-        rc++;
-    }
-
     /* Configure and start statistics */
     w_agentd_state_init();
     w_create_thread(state_main, NULL);
@@ -152,6 +132,26 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
                    "queue (disabled).");
             agt->execdq = -1;
         }
+    }
+
+    // Resolve hostnames
+    rc = 0;
+    while (rc < agt->server_count) {
+        if (OS_IsValidIP(agt->server[rc].rip, NULL) != 1) {
+            mdebug2("Resolving server hostname: %s", agt->server[rc].rip);
+            resolve_hostname(&agt->server[rc].rip, 5);
+            int rip_l = strlen(agt->server[rc].rip);
+            mdebug2("Server hostname resolved: %.*s", agt->server[rc].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[rc].rip);
+        }
+        rc++;
+    }
+
+    /* Connect remote */
+    rc = 0;
+    while (rc < agt->server_count) {
+        int rip_l = strlen(agt->server[rc].rip);
+        minfo("Server IP Address: %.*s", agt->server[rc].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[rc].rip);
+        rc++;
     }
 
     start_agent(1);
