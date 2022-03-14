@@ -11,12 +11,12 @@ CPMAddPackage(
 )
 
 # Configuration Catalog tests
-add_executable(cdb_test
-  ${TEST_SOURCE_DIR}/cdb/cdb_test.cpp
+add_executable(kvdb_test
+  ${TEST_SOURCE_DIR}/kvdb/kvdb_test.cpp
 )
 
-target_include_directories(cdb_test PUBLIC "${ENGINE_SOURCE_DIR}/" "${RapidJSON_SOURCE_DIR}/include/")
+target_include_directories(kvdb_test PUBLIC "${ENGINE_SOURCE_DIR}/" "${RapidJSON_SOURCE_DIR}/include/")
 
-target_link_libraries(cdb_test cdb gtest_main)
+target_link_libraries(kvdb_test kvdb gtest_main)
 
-gtest_discover_tests(cdb_test)
+gtest_discover_tests(kvdb_test)
