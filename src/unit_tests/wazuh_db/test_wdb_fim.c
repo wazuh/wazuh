@@ -680,6 +680,121 @@ static void test_wdb_fim_insert_entry2_invalid_json_object(void **state) {
     assert_int_equal(ret, -1);
 }
 
+static void test_wdb_fim_delete_registry_key_success(void **state) {
+    wdb_t *wdb = *state;
+    const char *json_str = "{\"arch\":\"[x64]\","
+                           "\"path\":\"HKEY_LOCAL_MACHINE\\\\software\\\\test\"}";
+
+    expect_wdb_stmt_cache_call(WDB_STMT_FIM_DELETE_REGISTRY_KEY);
+
+    expect_sqlite3_bind_text_call(1, "[x64]", 1);
+    expect_sqlite3_bind_text_call(2, "HKEY_LOCAL_MACHINE\\software\\test", 1);
+
+    expect_sqlite3_step_call(SQLITE_DONE);
+
+    int ret = wdb_fim_delete_registry(wdb, json_str);
+
+    assert_int_equal(ret, 0);
+}
+
+static void test_wdb_fim_delete_registry_value_success(void **state) {
+    wdb_t *wdb = *state;
+    const char *json_str = "{\"arch\":\"[x64]\","
+                           "\"path\":\"HKEY_LOCAL_MACHINE\\\\software\\\\test\","
+                           "\"value_name\":\"some:value\"}";
+
+    expect_wdb_stmt_cache_call(WDB_STMT_FIM_DELETE_REGISTRY_VALUE);
+
+    expect_sqlite3_bind_text_call(1, "[x64]", 1);
+    expect_sqlite3_bind_text_call(2, "HKEY_LOCAL_MACHINE\\software\\test", 1);
+    expect_sqlite3_bind_text_call(3, "some:value", 1);
+
+    expect_sqlite3_step_call(SQLITE_DONE);
+
+    int ret = wdb_fim_delete_registry(wdb, json_str);
+
+    assert_int_equal(ret, 0);
+}
+
+static void test_wdb_fim_delete_registry_invalid_json(void **state) {
+    wdb_t *wdb = *state;
+    char error_msg[OS_SIZE_128] = {0};
+    const char *json_str = "this is not a json";
+
+    snprintf(error_msg, OS_SIZE_128, "Cannot parse JSON data for delete registry: %s", json_str);
+
+    expect_string(__wrap__merror, formatted_msg, error_msg);
+
+    int ret = wdb_fim_delete_registry(wdb, json_str);
+    assert_int_equal(ret, -1);
+}
+
+static void test_wdb_fim_delete_registry_json_without_pks(void **state) {
+    wdb_t *wdb = *state;
+    char error_msg[OS_SIZE_128] = {0};
+
+    const char *json_str = "{\"value_name\":\"some:value\"}";
+    snprintf(error_msg, OS_SIZE_128, "JSON data for delete registry without 'path' or 'arch' %s.", json_str);
+    expect_string(__wrap__merror, formatted_msg, error_msg);
+
+    int ret = wdb_fim_delete_registry(wdb, json_str);
+    assert_int_equal(ret, -1);
+}
+
+static void test_wdb_fim_delete_registry_invalid_arch_path(void **state) {
+    wdb_t *wdb = *state;
+    const char *json_str = "{\"arch\":3,"
+                           "\"path\":3,"
+                           "\"value_name\":\"some:value\"}";
+
+
+    int ret = wdb_fim_delete_registry(wdb, json_str);
+    assert_int_equal(ret, -1);
+}
+
+static void test_wdb_fim_delete_registry_invalid_value_name(void **state) {
+    wdb_t *wdb = *state;
+    const char *json_str = "{\"arch\":\"[x64]\","
+                           "\"path\":\"HKEY_LOCAL_MACHINE\\\\software\\\\test\","
+                           "\"value_name\":0}";
+
+
+    int ret = wdb_fim_delete_registry(wdb, json_str);
+    assert_int_equal(ret, -1);
+}
+
+
+static void test_wdb_fim_delete_registry_cache_error(void **state) {
+    wdb_t *wdb = *state;
+    const char *json_str = "{\"arch\":\"[x64]\","
+                           "\"path\":\"HKEY_LOCAL_MACHINE\\\\software\\\\test\"}";
+
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__merror, formatted_msg, "DB(000) Can't cache statement");
+
+    int ret = wdb_fim_delete_registry(wdb, json_str);
+    assert_int_equal(ret, -1);
+}
+
+static void test_wdb_fim_delete_registry_step_error(void **state) {
+    wdb_t *wdb = *state;
+    const char *json_str = "{\"arch\":\"[x64]\","
+                           "\"path\":\"HKEY_LOCAL_MACHINE\\\\software\\\\test\"}";
+
+    expect_wdb_stmt_cache_call(WDB_STMT_FIM_DELETE_REGISTRY_KEY);
+
+    expect_sqlite3_bind_text_call(1, "[x64]", 1);
+    expect_sqlite3_bind_text_call(2, "HKEY_LOCAL_MACHINE\\software\\test", 1);
+
+    expect_sqlite3_step_call(0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): out of memory");
+
+    int ret = wdb_fim_delete_registry(wdb, json_str);
+
+    assert_int_equal(ret, -1);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // Test wdb_syscheck_save2
@@ -712,6 +827,15 @@ int main(void) {
         cmocka_unit_test(test_wdb_fim_insert_entry2_large_inode),
         cmocka_unit_test(test_wdb_fim_insert_entry2_json_perms),
         cmocka_unit_test(test_wdb_fim_insert_entry2_invalid_json_object),
+        cmocka_unit_test(test_wdb_fim_insert_entry2_invalid_json_object),
+        cmocka_unit_test(test_wdb_fim_delete_registry_key_success),
+        cmocka_unit_test(test_wdb_fim_delete_registry_value_success),
+        cmocka_unit_test(test_wdb_fim_delete_registry_invalid_json),
+        cmocka_unit_test(test_wdb_fim_delete_registry_json_without_pks),
+        cmocka_unit_test(test_wdb_fim_delete_registry_invalid_arch_path),
+        cmocka_unit_test(test_wdb_fim_delete_registry_invalid_value_name),
+        cmocka_unit_test(test_wdb_fim_delete_registry_cache_error),
+        cmocka_unit_test(test_wdb_fim_delete_registry_step_error)
     };
 
     return cmocka_run_group_tests(tests, setup_wdb_t, teardown_wdb_t);

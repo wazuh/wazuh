@@ -1441,8 +1441,8 @@ void fim_send_db_delete_registry(_sdb * sdb,
 
     data_plain = cJSON_PrintUnformatted(data);
     if (snprintf(query, sizeof(query), "agent %s syscheck delete_registry %s", agent_id, data_plain) >= OS_SIZE_6144) {
-        merror("FIM decoder: Cannot build delete query: input is too long.");
-        goto end;
+        merror("FIM decoder: Cannot build delete query: input is too long."); // LCOV_EXCL_LINE
+        goto end; // LCOV_EXCL_LINE
     }
 
     fim_send_db_query(&sdb->socket, query);
