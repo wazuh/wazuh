@@ -43,8 +43,6 @@ int main(int argc, char **argv)
     int debug_level = 0;
     int test_config = 0, run_foreground = 0;
     const char *cfg = OSSECCONF;
-    gid_t gid;
-    const char *group = NULL;
     directory_t *dir_it = NULL;
     int start_realtime = 0;
 
@@ -90,17 +88,6 @@ int main(int argc, char **argv)
 
     mdebug1(WAZUH_HOMEDIR, home_path);
     os_free(home_path);
-
-    /* Check if the group given is valid */
-    gid = group ? Privsep_GetGroup(group) : 0;
-    if (gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, "", group, strerror(errno), errno);
-    }
-
-    /* Privilege separation */
-    if (Privsep_SetGroup(gid) < 0) {
-        merror_exit(SETGID_ERROR, group, errno, strerror(errno));
-    }
 
     /* Read internal options */
     read_internal(debug_level);

@@ -26,8 +26,8 @@ static void help_csyslogd(char * home_path)
     print_out("                to increase the debug level.");
     print_out("    -t          Test configuration");
     print_out("    -f          Run in foreground");
-    print_out("    -u <user>   User to run as (default: %s)", USER);
-    print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
+    print_out("    -u <user>   User to run as (default: root)");
+    print_out("    -g <group>  Group to run as (default: root primary group)");
     print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
     print_out("    -D <dir>    Directory to chroot and chdir into (default: %s)", home_path);
     print_out(" ");
@@ -42,8 +42,8 @@ int main(int argc, char **argv)
     gid_t gid;
 
     /* Use USER (read only) */
-    const char *user = USER;
-    const char *group = GROUPGLOBAL;
+    const char *user = NULL;
+    const char *group = NULL;
     const char *cfg = OSSECCONF;
 
     /* Set the name */

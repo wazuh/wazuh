@@ -88,10 +88,7 @@ int main(int argc, char **argv)
     const char *cmdexport = NULL;
     const char *cmdimport = NULL;
     const char *cmdbulk = NULL;
-#ifndef WIN32
-    const char *group = GROUPGLOBAL;
-    gid_t gid;
-#else
+#ifdef WIN32
     FILE *fp;
 #endif
 
@@ -240,14 +237,8 @@ int main(int argc, char **argv)
         shost[sizeof(shost) - 1] = '\0';
     }
 
-    /* Get the group name */
-    gid = Privsep_GetGroup(group);
-    if (gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, "", group, strerror(errno), errno);
-    }
-
     /* Set the group */
-    if (Privsep_SetGroup(gid) < 0) {
+    if (Privsep_SetGroup(0) < 0) {
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 

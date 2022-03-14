@@ -134,10 +134,6 @@ int main(int argc, char ** argv)
         uid_t uid = 0;
         gid_t gid = 0;
 
-        if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-            merror_exit(USER_ERROR, USER, GROUPGLOBAL, strerror(errno), errno);
-        }
-
         if (Privsep_SetGroup(gid) < 0) {
             merror_exit(SETGID_ERROR, GROUPGLOBAL, errno, strerror(errno));
         }

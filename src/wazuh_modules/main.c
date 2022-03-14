@@ -140,12 +140,6 @@ void wm_setup()
         nowDaemon();
     }
 
-    // Set group
-
-    if (Privsep_SetGroup(ROOT_GID) < 0) {
-        merror_exit(SETGID_ERROR, "0", errno, strerror(errno));
-    }
-
     if (wm_check() < 0) {
         minfo("No configuration defined. Exiting...");
         exit(EXIT_SUCCESS);
