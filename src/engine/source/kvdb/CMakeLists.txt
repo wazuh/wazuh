@@ -24,14 +24,13 @@ CPMAddPackage(
   OPTIONS
     "WITH_GFLAGS OFF"
     "WITH_TESTS OFF"
-    "WITH_BENCHMARK_TOOLS OFF" # this flag must be off to avoid test colition
+    "WITH_BENCHMARK_TOOLS OFF"
     "WITH_TOOLS OFF"
     "WITH_FOLLY_DISTRIBUTED_MUTEX OFF"
     "USE_RTTI 1"
     "FAIL_ON_WARNINGS ON"
     "ROCKSDB_BUILD_SHARED FALSE"
     "CMAKE_DISABLE_FIND_PACKAGE_gtest TRUE"
-    "WITH_WINDOWS_UTF8_FILENAMES ON"
 )
 
 # Add this dependencies to parent CMakeLists scope
