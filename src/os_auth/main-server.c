@@ -906,7 +906,6 @@ void* run_writer(__attribute__((unused)) void *arg) {
                     merror("Unable to set agent centralized group: %s (internal error)", cur->group);
                 }
 
-                set_agent_multigroup(cur->group);
             }
 
             gettime(&t1);

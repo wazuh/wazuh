@@ -782,10 +782,8 @@ void test_wdb_get_internal_config() {
     assert_true(cJSON_IsNumber(c2));
     cJSON *c3 = cJSON_GetObjectItem(root, "open_db_limit");
     assert_true(cJSON_IsNumber(c3));
-    cJSON *c4 = cJSON_GetObjectItem(root, "sock_queue_size");
+    cJSON *c4 = cJSON_GetObjectItem(root, "worker_pool_size");
     assert_true(cJSON_IsNumber(c4));
-    cJSON *c5 = cJSON_GetObjectItem(root, "worker_pool_size");
-    assert_true(cJSON_IsNumber(c5));
 
     cJSON_Delete(ret);
 }

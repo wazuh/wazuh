@@ -143,7 +143,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_begin2 -Wl,--wrap,wdb_stmt_cache -Wl
 list(APPEND wdb_tests_names "test_wdb_delta_event")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_get_cache_stmt -Wl,--wrap,wdb_step -Wl,--wrap,sqlite3_bind_int -Wl,--wrap,sqlite3_bind_int64 \
                             -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_bind_double -Wl,--wrap,sqlite3_changes \
-                            -Wl,--wrap,sqlite3_bind_null ${DEBUG_OP_WRAPPERS}")
+                            -Wl,--wrap,sqlite3_bind_null -Wl,--wrap,sqlite3_errmsg ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wazuh_db-config")
 list(APPEND wdb_tests_flags "${DEBUG_OP_WRAPPERS}")

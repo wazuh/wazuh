@@ -1558,7 +1558,6 @@ cJSON* wdb_get_internal_config() {
     cJSON_AddNumberToObject(wazuh_db_config, "commit_time_max", wconfig.commit_time_max);
     cJSON_AddNumberToObject(wazuh_db_config, "commit_time_min", wconfig.commit_time_min);
     cJSON_AddNumberToObject(wazuh_db_config, "open_db_limit", wconfig.open_db_limit);
-    cJSON_AddNumberToObject(wazuh_db_config, "sock_queue_size", wconfig.sock_queue_size);
     cJSON_AddNumberToObject(wazuh_db_config, "worker_pool_size", wconfig.worker_pool_size);
 
     cJSON_AddItemToObject(root, "wazuh_db", wazuh_db_config);

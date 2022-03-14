@@ -142,7 +142,15 @@ STATIC bool fsum_changed(file_sum **old_sum, file_sum **new_sum);
  */
 STATIC bool group_changed(const char *multi_group);
 
-STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **group, int *sock);
+/**
+ * @brief Get agent group
+ * @param agent_id. Agent id to assign a group
+ * @param msg. Message from agent to process and validate current configuration files
+ * @param group. Name of the found group, it will include the name of the group or 'default' group or NULL if it fails.
+ * @param wdb_sock Wazuh-DB socket.
+ * @return OS_SUCCESS if it found or assigned a group, OS_INVALID otherwise
+ */
+STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **group, int* wdb_sock);
 
 /* Groups structures and sizes */
 static group_t **groups;
@@ -828,9 +836,7 @@ STATIC void process_groups() {
 }
 
 STATIC void process_multi_groups() {
-    DIR *dp;
     char ** subdir;
-    struct dirent *entry = NULL;
     char path[PATH_MAX + 1];
     OSHashNode *my_node;
     unsigned int i;
@@ -869,7 +875,6 @@ STATIC void process_multi_groups() {
             os_strdup(my_node->data, data);
         } else {
             os_free(key);
-            closedir(dp);
             return;
         }
 
@@ -1163,8 +1168,8 @@ STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group, 
 {
     char* group = NULL;
     char *end;
-    char *message;
     char *fmsg;
+    char *message;
 
     group = wdb_get_agent_group(atoi(agent_id), wdb_sock);
     if (group) {
