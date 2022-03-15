@@ -25,7 +25,7 @@
 namespace engineserver
 {
 
-#define DEFAULT_BUFFER_SIZE 1024
+constexpr uint32_t DEFAULT_BUFFER_SIZE = 1024;
 
 /**
  * @brief Class that handles all endpoints and exposes Server functionality.
