@@ -49,7 +49,14 @@ static void sigint_handler(const int signum)
 
 int main(int argc, char *argv[])
 {
-    signal(SIGINT, sigint_handler);
+    sigset_t sig_empty_mask;
+    sigemptyset(&sig_empty_mask);
+
+    struct sigaction sigintAction;
+    sigintAction.sa_handler = sigint_handler;
+    sigintAction.sa_mask = sig_empty_mask;
+
+    sigaction(SIGINT, &sigintAction, NULL);
 
     std::vector<std::string> serverArgs;
     std::string storagePath;

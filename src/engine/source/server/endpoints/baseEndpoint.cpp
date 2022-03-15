@@ -11,10 +11,4 @@
 
 namespace engineserver::endpoints
 {
-
-// const BaseEndpoint::ServerOutput & BaseEndpoint::output(void) const
-// {
-//     return this->m_out;
-// }
-
 } // namespace engineserver::endpoints
