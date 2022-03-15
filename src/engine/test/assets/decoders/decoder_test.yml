@@ -4,6 +4,11 @@ check:
   - location: +exists
   - message: +exists
 
+parse:
+  logql:
+    #Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #10
+    - event.original: "[<timestamp/ANSIC>] <host> <tloc>[<locNum>]: <logLine>#<index>"
+
 normalize:
   - decoded.queue: decoded_queue
   - decoded.location: decoded_location

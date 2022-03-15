@@ -5,7 +5,7 @@
 #include <unordered_map>
 
 using ParseResult = std::unordered_map<std::string, std::string>;
-using ParserFn = std::function<bool(std::string, ParseResult& result)>;
+using ParserFn = std::function<bool(std::string_view const&, ParseResult& result)>;
 
 /**
  * @brief Gets a parser operator from a logQL expression.
@@ -14,6 +14,6 @@ using ParserFn = std::function<bool(std::string, ParseResult& result)>;
  *
 * @return ParserFn A Parser Function capable to parse an event.
  */
-ParserFn getParserOp(std::string const &logQl);
+ParserFn getParserOp(std::string_view const &logQl);
 
 #endif // _HLP_H

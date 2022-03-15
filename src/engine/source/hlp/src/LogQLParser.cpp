@@ -165,11 +165,10 @@ static bool parseCapture(Tokenizer &tk, ExpressionList &expresions)
     return true;
 }
 
-ExpressionList parseLogQlExpr(std::string const &expr)
+ExpressionList parseLogQlExpr(const char* expr)
 {
     ExpressionList expresions;
-    Tokenizer tokenizer {expr.c_str()};
-
+    Tokenizer tokenizer {expr};
     bool done = false;
     while(!done)
     {

@@ -32,6 +32,7 @@
 #include "stageBuilderCheck.hpp"
 #include "stageBuilderNormalize.hpp"
 #include "stageBuilderOutputs.hpp"
+#include "stageParse.hpp"
 
 namespace builder::internals
 {
@@ -77,6 +78,7 @@ void registerBuilders()
     // Stages
     Registry::registerBuilder("check", builders::stageBuilderCheck);
     Registry::registerBuilder("allow", builders::stageBuilderCheck);
+    Registry::registerBuilder("parse", builders::stageBuilderParse);
     Registry::registerBuilder("normalize", builders::stageBuilderNormalize);
     Registry::registerBuilder("outputs", builders::stageBuilderOutputs);
     // Assets

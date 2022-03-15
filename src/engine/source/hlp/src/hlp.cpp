@@ -165,11 +165,11 @@ std::vector<Parser> getParserList(ExpressionList const &expresions)
     return parsers;
 }
 
-static bool executeParserList(std::string const &event,
+static bool executeParserList(std::string_view const &event,
                               ParserList const &parsers,
                               ParseResult &result)
 {
-    const char *eventIt = event.c_str();
+    const char *eventIt = event.data();
 
     // TODO This implementation is super simple for the POC
     // but we will want to re-do it or revise it to implement
@@ -209,7 +209,7 @@ static bool executeParserList(std::string const &event,
     return true;
 }
 
-ParserFn getParserOp(std::string const &logQl)
+ParserFn getParserOp(std::string_view const &logQl)
 {
     if(logQl.empty())
     {
@@ -217,7 +217,7 @@ ParserFn getParserOp(std::string const &logQl)
         return {};
     }
 
-    ExpressionList expresions = parseLogQlExpr(logQl);
+    ExpressionList expresions = parseLogQlExpr(logQl.data());
     if(expresions.empty())
     {
         // TODO some error occurred while parsing the logQl expr
@@ -231,8 +231,8 @@ ParserFn getParserOp(std::string const &logQl)
         return {};
     }
 
-    ParserFn parseFn = [expr = logQl, parserList = std::move(parserList)](
-                           std::string const &event, ParseResult &result)
+    ParserFn parseFn = [parserList = std::move(parserList)](
+                           std::string_view const &event, ParseResult &result)
     {
         return executeParserList(event, parserList, result);
     };
