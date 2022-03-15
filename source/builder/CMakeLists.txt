@@ -79,6 +79,7 @@ target_sources(main PRIVATE
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderFilter.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderRule.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderDecoder.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageParse.cpp
 )
 
 target_include_directories(main PUBLIC
