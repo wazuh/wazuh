@@ -28,26 +28,31 @@ namespace engineserver::endpoints
 class BaseEndpoint
 {
 protected:
+    // TODO: here the responsabilities are compromised. Endpoints should not know what is the server's output
+    // TODO: maybe we should embbed a queue on each endpoint
     using ServerOutput = moodycamel::BlockingConcurrentQueue<std::string>;
 
     std::string m_path;
     ServerOutput & m_out;
 
-    BaseEndpoint(const std::string & path, ServerOutput & out);
+    BaseEndpoint(const std::string & path, ServerOutput & out) : m_path{path}, m_out{out} {};
 
 public:
     /**
      * @brief Destroy the Base Endpoint object, made virtual to destroy children classes.
      *
      */
-    virtual ~BaseEndpoint();
+    virtual ~BaseEndpoint(){};
 
     /**
      * @brief Get the Observable object
      *
      * @return auto Observable object
      */
-    const ServerOutput & output(void) const;
+    const ServerOutput & output(void) const
+    {
+        return this->m_out;
+    };
 
     /**
      * @brief Start endpoint.

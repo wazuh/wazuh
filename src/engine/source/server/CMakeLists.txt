@@ -36,7 +36,7 @@ target_sources(main PRIVATE
     ${ENGINE_SERVER_SOURCE_DIR}/protocolHandler.cpp
     ${ENGINE_SERVER_SOURCE_DIR}/endpoints/baseEndpoint.cpp
     ${ENGINE_SERVER_SOURCE_DIR}/endpoints/tcpEndpoint.cpp
-    ${ENGINE_SERVER_SOURCE_DIR}/endpoints/endpointFactory.cpp
+    ${ENGINE_SERVER_SOURCE_DIR}/endpoints/udpEndpoint.cpp
 )
 
 target_include_directories(main PUBLIC
