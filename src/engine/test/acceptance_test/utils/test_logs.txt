@@ -1,35 +1,35 @@
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #1
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #2
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #3
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #4
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #5
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #6
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #7
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #8
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #9
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #10
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #11
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #12
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #13
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #14
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #15
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #16
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #17
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #18
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #19
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #20
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #21
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #22
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #23
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #24
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #25
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #26
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #27
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #28
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #29
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #30
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #31
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #32
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #33
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #34
-Dec 10 01:02:02 host test_decoder_example[1234]: Test_example for acceptation test #35
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #1
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #2
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #3
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #4
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #5
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #6
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #7
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #8
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #9
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #10
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #11
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #12
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #13
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #14
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #15
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #16
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #17
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #18
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #19
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #20
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #21
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #22
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #23
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #24
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #25
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #26
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #27
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #28
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #29
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #30
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #31
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #32
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #33
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #34
+[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #35
