@@ -119,6 +119,18 @@ void wm_module_free(wmodule * config);
  */
 int wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path);
 
+/* Same as wm_exec, but runs the command with the credentials specified.
+ *
+ * command is a mutable string.
+ * output is a pointer to dynamic string. Caller is responsible for freeing it!
+ * uid and gid are the user and group ID we should change to before forking.
+ * On success, return 0. On another error, returns -1.
+ * If the called program timed-out, returns WM_ERROR_TIMEOUT and output may
+ * contain data.
+ * env_path is a pointer to an string to add to the PATH environment variable.
+ */
+int wm_exec_as(char *command, char **output, int *exitcode, int secs, const char * add_path, uid_t uid, gid_t gid);
+
 #ifdef WIN32
 // Add process to pool
 void wm_append_handle(HANDLE hProcess);

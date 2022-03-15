@@ -272,8 +272,12 @@ static void* reader(void *args);   // Reading thread's start point
 static volatile pid_t wm_children[WM_POOL_SIZE] = { 0 };                // Child process pool
 
 // Execute command with timeout of secs
-
 int wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path)
+{
+    return wm_exec_as(command, output, exitcode, secs, add_path, getuid(), getgid());
+}
+
+int wm_exec_as(char *command, char **output, int *exitcode, int secs, const char * add_path, uid_t uid, gid_t gid)
 {
     char **argv;
     pid_t pid;
@@ -317,6 +321,16 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
     case 0:
 
         // Child
+
+        // Change process user and group
+
+        if (setuid(uid) == -1) {
+            merror_exit("Cannot UID to  %d: %d (%s).", uid, errno, strerror(errno));
+        }
+
+        if (setgid(gid) == -1) {
+            merror_exit("Cannot change GID to %d: %d (%s).", gid, errno, strerror(errno));
+        }
 
         // Add environment variable if exists
 
