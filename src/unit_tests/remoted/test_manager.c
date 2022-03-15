@@ -19,11 +19,36 @@
 #include "../wrappers/wazuh/shared/agent_op_wrappers.h"
 #include "../wrappers/wazuh/remoted/shared_download_wrappers.h"
 #include "../wrappers/posix/dirent_wrappers.h"
+#include "../wrappers/wazuh/remoted/request_wrappers.h"
+#include "../wrappers/wazuh/remoted/remoted_op_wrappers.h"
+#include "../wrappers/wazuh/wazuh_db/wdb_global_helpers_wrappers.h"
 
 #include "../remoted/remoted.h"
 #include "../remoted/shared_download.h"
 #include "../../remoted/manager.c"
 /* tests */
+
+
+void keyentry_init(keyentry *key, char *name, char *id, char *ip, char *raw_key) {
+    os_calloc(1, sizeof(os_ip), key->ip);
+    key->ip->ip = ip ? strdup(ip) : NULL;
+    key->name = name ? strdup(name) : NULL;
+    key->id = id ? strdup(id) : NULL;
+    key->raw_key = raw_key ? strdup(raw_key) : NULL;
+}
+
+void free_keyentry(keyentry *key) {
+    os_free(key->ip->ip);
+    os_free(key->ip);
+    os_free(key->name);
+    os_free(key->id);
+    os_free(key->raw_key);
+}
+
+int __wrap_send_msg(const char *msg, ssize_t msg_length) {
+    check_expected(msg);
+    return 0;
+}
 
 static int test_setup_group(void ** state) {
     test_mode = 1;
@@ -2389,6 +2414,539 @@ void test_c_files(void **state)
 
 }
 
+void test_save_controlmsg_request_error(void **state)
+{
+    keyentry * key =  NULL;
+    char *r_msg = "req ";
+    size_t msg_length = sizeof(r_msg);
+    int *wdb_sock = NULL;
+
+    expect_string(__wrap__merror, formatted_msg, "Request control format error.");
+    expect_string(__wrap__mdebug2, formatted_msg, "r_msg = \"req \"");
+
+    save_controlmsg(key, r_msg, msg_length, wdb_sock);
+}
+
+
+void test_save_controlmsg_request_success(void **state)
+{
+    keyentry * key =  NULL;
+    char r_msg[OS_SIZE_128] = {0};
+    size_t msg_length = sizeof(r_msg);
+    int *wdb_sock = NULL;
+
+    strcpy(r_msg, "req payload is here");
+
+    expect_string(__wrap_req_save, counter, "payload");
+    expect_string(__wrap_req_save, buffer, "is here");
+    expect_value(__wrap_req_save, length, OS_SIZE_128 - strlen(HC_REQUEST) - strlen("payload "));
+    will_return(__wrap_req_save, 0);
+
+    save_controlmsg(key, r_msg, msg_length, wdb_sock);
+}
+
+void test_save_controlmsg_invalid_msg(void **state)
+{
+
+    char r_msg[OS_SIZE_128] = {0};
+    strcpy(r_msg, "Invalid message");
+
+    keyentry key;
+    keyentry_init(&key, "NEW_AGENT", "001", "10.2.2.5", NULL);
+
+    size_t msg_length = sizeof(r_msg);
+    int *wdb_sock = NULL;
+
+    expect_string(__wrap_send_msg, msg, "001");
+    expect_string(__wrap__mwarn, formatted_msg, "Invalid message from agent: 'NEW_AGENT' (001)");
+
+    save_controlmsg(&key, r_msg, msg_length, wdb_sock);
+
+    free_keyentry(&key);
+}
+
+void test_save_controlmsg_could_not_add_pending_data(void **state)
+{
+    test_mode = true;
+
+    char r_msg[OS_SIZE_128] = {0};
+    strcpy(r_msg, "Invalid message \n with enter");
+
+    keyentry key;
+    keyentry_init(&key, "NEW_AGENT", "001", "10.2.2.5", NULL);
+
+    size_t msg_length = sizeof(r_msg);
+    int *wdb_sock = NULL;
+
+    expect_string(__wrap_send_msg, msg, "001");
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, 1);
+    pending_data = OSHash_Create();
+
+    expect_value(__wrap_OSHash_Get, self, pending_data);
+    expect_string(__wrap_OSHash_Get, key, "001");
+    will_return(__wrap_OSHash_Get, NULL);
+
+    expect_string(__wrap_OSHash_Add, key, "001");
+    will_return(__wrap_OSHash_Add, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "Couldn't add pending data into hash table.");
+
+    save_controlmsg(&key, r_msg, msg_length, wdb_sock);
+
+    free_keyentry(&key);
+}
+
+void test_save_controlmsg_unable_to_save_last_keepalive(void **state)
+{
+    test_mode = true;
+
+    char r_msg[OS_SIZE_128] = {0};
+    strcpy(r_msg, "Invalid message \n with enter");
+
+    keyentry key;
+    keyentry_init(&key, "NEW_AGENT", "001", "10.2.2.5", NULL);
+
+    size_t msg_length = sizeof(r_msg);
+    int *wdb_sock = NULL;
+
+    expect_string(__wrap_send_msg, msg, "001");
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, 1);
+    pending_data = OSHash_Create();
+
+    pending_data_t data;
+    char * message = strdup("Invalid message \n");
+    data.changed = true;
+    data.message = message;
+
+    expect_value(__wrap_OSHash_Get, self, pending_data);
+    expect_string(__wrap_OSHash_Get, key, "001");
+    will_return(__wrap_OSHash_Get, &data);
+
+    expect_value(__wrap_wdb_update_agent_keepalive, id, 1);
+    expect_string(__wrap_wdb_update_agent_keepalive, connection_status, AGENT_CS_ACTIVE);
+    expect_string(__wrap_wdb_update_agent_keepalive, sync_status, "synced");
+    will_return(__wrap_wdb_update_agent_keepalive, OS_INVALID);
+
+    expect_string(__wrap__mwarn, formatted_msg, "Unable to save last keepalive and set connection status as active for agent: 001");
+
+    save_controlmsg(&key, r_msg, msg_length, wdb_sock);
+    free_keyentry(&key);
+    os_free(data.message);
+}
+
+void test_save_controlmsg_update_msg_error_parsing(void **state)
+{
+    test_mode = true;
+
+    char r_msg[OS_SIZE_128] = {0};
+    strcpy(r_msg, "valid message \n with enter");
+
+    keyentry key;
+    keyentry_init(&key, "NEW_AGENT", "001", "10.2.2.5", NULL);
+
+    size_t msg_length = sizeof(r_msg);
+    int *wdb_sock = NULL;
+
+    expect_string(__wrap_send_msg, msg, "001");
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, 1);
+    pending_data = OSHash_Create();
+
+    pending_data_t *data;
+    os_calloc(1, sizeof(struct pending_data_t), data);
+    char * message = strdup("different message");
+    data->changed = true;
+    data->message = message;
+
+    expect_value(__wrap_OSHash_Get, self, pending_data);
+    expect_string(__wrap_OSHash_Get, key, "001");
+    will_return(__wrap_OSHash_Get, data);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "save_controlmsg(): inserting 'valid message \n'");
+
+    // lookfor_agent_group
+    agent_group *agt_group;
+    os_calloc(1, sizeof(agent_group), agt_group);
+    os_strdup("test_group", agt_group->group);
+
+    static group_t *test_groups = NULL;
+    groups = &test_groups;
+    multi_groups = &test_groups;
+
+    expect_string(__wrap_w_parser_get_agent, name, "001");
+    will_return(__wrap_w_parser_get_agent, agt_group);
+
+    expect_string(__wrap_set_agent_group, id, "001");
+    expect_string(__wrap_set_agent_group, group, "test_group");
+    will_return(__wrap_set_agent_group, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' group is 'test_group'");
+
+    expect_string(__wrap__merror, formatted_msg, "No such group 'test_group' for agent '001'");
+
+    agent_info_data *agent_data;
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+    agent_data->id = 1;
+
+    expect_string(__wrap_parse_agent_update_msg, msg, "valid message \n");
+    will_return(__wrap_parse_agent_update_msg, agent_data);
+    will_return(__wrap_parse_agent_update_msg, OS_INVALID);
+
+    expect_string(__wrap__merror, formatted_msg, "Error parsing message for agent '001'");
+
+    save_controlmsg(&key, r_msg, msg_length, wdb_sock);
+
+    os_free(agent_data);
+
+    os_free(agt_group->group);
+    os_free(agt_group);
+
+    free_keyentry(&key);
+    os_free(data->message);
+    os_free(data->group);
+    os_free(data);
+}
+
+void test_save_controlmsg_update_msg_unable_to_update_information(void **state)
+{
+    test_mode = true;
+
+    char r_msg[OS_SIZE_128] = {0};
+    strcpy(r_msg, "valid message \n with enter");
+
+    keyentry key;
+    keyentry_init(&key, "NEW_AGENT", "001", "10.2.2.5", NULL);
+
+    size_t msg_length = sizeof(r_msg);
+    int *wdb_sock = NULL;
+
+    expect_string(__wrap_send_msg, msg, "001");
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, 1);
+    pending_data = OSHash_Create();
+
+    pending_data_t *data;
+    os_calloc(1, sizeof(struct pending_data_t), data);
+    char * message = strdup("different message");
+    data->changed = false;
+    data->message = message;
+
+    expect_value(__wrap_OSHash_Get, self, pending_data);
+    expect_string(__wrap_OSHash_Get, key, "001");
+    will_return(__wrap_OSHash_Get, data);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "save_controlmsg(): inserting 'valid message \n'");
+
+    os_calloc(1, (2) * sizeof(group_t *), groups);
+    os_calloc(1, sizeof(group_t), groups[0]);
+    groups[0]->name = strdup("test_group");
+    groups[0]->has_changed = false;
+    groups[0]->exists = true;
+    groups[1] = NULL;
+
+    os_calloc(2, sizeof(file_sum *), groups[0]->f_sum);
+    os_calloc(1, sizeof(file_sum), groups[0]->f_sum[0]);
+    os_strdup("test_group", groups[0]->f_sum[0]->name);
+    strncpy(groups[0]->f_sum[0]->sum, "ABCDEF1234567890", 32);
+    groups[0]->f_sum[1] = NULL;
+
+    os_calloc(1, (2) * sizeof(group_t *), multi_groups);
+    os_calloc(1, sizeof(group_t), multi_groups[0]);
+    multi_groups[0]->name = strdup("test_group");
+    multi_groups[0]->has_changed = false;
+    multi_groups[0]->exists = true;
+    multi_groups[1] = NULL;
+
+    agent_group *agt_group;
+    os_calloc(1, sizeof(agent_group), agt_group);
+    os_strdup("test_group", agt_group->group);
+
+    expect_string(__wrap_w_parser_get_agent, name, "001");
+    will_return(__wrap_w_parser_get_agent, agt_group);
+
+    expect_string(__wrap_set_agent_group, id, "001");
+    expect_string(__wrap_set_agent_group, group, "test_group");
+    will_return(__wrap_set_agent_group, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' group is 'test_group'");
+
+    agent_info_data *agent_data;
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+    agent_data->id = 1;
+    os_strdup("managerHost", agent_data->manager_host);
+    os_strdup("10.2.2.2", agent_data->agent_ip);
+    os_strdup("version 4.3", agent_data->version);
+    os_strdup("112358", agent_data->merged_sum);
+
+    os_strdup("NodeName", node_name);
+
+    expect_string(__wrap_parse_agent_update_msg, msg, "valid message \n");
+    will_return(__wrap_parse_agent_update_msg, agent_data);
+    will_return(__wrap_parse_agent_update_msg, OS_SUCCESS);
+
+    expect_any(__wrap_wdb_update_agent_data, agent_data);
+    will_return(__wrap_wdb_update_agent_data, OS_INVALID);
+
+    os_calloc(1, sizeof(w_linked_queue_t), pending_queue);
+
+    expect_any(__wrap_linked_queue_push_ex, queue);
+    expect_any(__wrap_linked_queue_push_ex, data);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Unable to update information in global.db for agent: 001");
+
+    save_controlmsg(&key, r_msg, msg_length, wdb_sock);
+
+    os_free(agent_data->manager_host);
+    os_free(agent_data);
+
+    os_free(node_name);
+
+    os_free(agt_group->group);
+    os_free(agt_group);
+
+    free_keyentry(&key);
+    os_free(data->message);
+    os_free(data->group);
+    os_free(data);
+}
+
+void test_save_controlmsg_update_msg_lookfor_agent_group_fail(void **state)
+{
+    test_mode = true;
+
+    char r_msg[OS_SIZE_128] = {0};
+    strcpy(r_msg, "valid message \n with enter");
+
+    keyentry key;
+    keyentry_init(&key, "NEW_AGENT", "001", "10.2.2.5", NULL);
+
+    size_t msg_length = sizeof(r_msg);
+    int *wdb_sock = NULL;
+
+    expect_string(__wrap_send_msg, msg, "001");
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, 1);
+    pending_data = OSHash_Create();
+
+    pending_data_t *data;
+    os_calloc(1, sizeof(struct pending_data_t), data);
+    char * message = strdup("different message");
+    data->changed = false;
+    data->message = message;
+
+    expect_value(__wrap_OSHash_Get, self, pending_data);
+    expect_string(__wrap_OSHash_Get, key, "001");
+    will_return(__wrap_OSHash_Get, data);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "save_controlmsg(): inserting 'valid message \n'");
+
+    agent_group *agt_group;
+    os_calloc(1, sizeof(agent_group), agt_group);
+    os_strdup("test_group", agt_group->group);
+
+    expect_string(__wrap_w_parser_get_agent, name, "001");
+    will_return(__wrap_w_parser_get_agent, NULL);
+
+    expect_string(__wrap_get_agent_group, id, "001");
+    will_return(__wrap_get_agent_group, "");
+    will_return(__wrap_get_agent_group, -1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' group is ''");
+
+    expect_string(__wrap__merror, formatted_msg, "Error getting group for agent '001'");
+
+    agent_info_data *agent_data;
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+    agent_data->id = 1;
+    os_strdup("manager_host", agent_data->manager_host);
+    os_strdup("10.2.2.2", agent_data->agent_ip);
+    os_strdup("version 4.3", agent_data->version);
+    os_strdup("112358", agent_data->merged_sum);
+
+    expect_string(__wrap_parse_agent_update_msg, msg, "valid message \n");
+    will_return(__wrap_parse_agent_update_msg, agent_data);
+    will_return(__wrap_parse_agent_update_msg, OS_SUCCESS);
+
+    expect_any(__wrap_wdb_update_agent_data, agent_data);
+    will_return(__wrap_wdb_update_agent_data, OS_INVALID);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Unable to update information in global.db for agent: 001");
+
+    save_controlmsg(&key, r_msg, msg_length, wdb_sock);
+
+    os_free(agent_data->manager_host);
+    os_free(agent_data);
+
+    os_free(agt_group->group);
+    os_free(agt_group);
+
+    free_keyentry(&key);
+    os_free(data->message);
+    os_free(data->group);
+    os_free(data);
+}
+
+void test_save_controlmsg_startup(void **state)
+{
+    test_mode = true;
+    char r_msg[OS_SIZE_128] = {0};
+    strcpy(r_msg, HC_STARTUP);
+    keyentry key;
+    keyentry_init(&key, "NEW_AGENT", "001", "10.2.2.5", NULL);
+    key.peer_info.ss_family = 0;
+    size_t msg_length = sizeof(r_msg);
+    int *wdb_sock = NULL;
+
+    expect_string(__wrap_send_msg, msg, "001");
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Agent NEW_AGENT sent HC_STARTUP from ''");
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, 1);
+    pending_data = OSHash_Create();
+
+    pending_data_t data;
+    char * message = strdup("startup message \n");
+    data.changed = false;
+    data.message = message;
+
+    expect_value(__wrap_OSHash_Get, self, pending_data);
+    expect_string(__wrap_OSHash_Get, key, "001");
+    will_return(__wrap_OSHash_Get, &data);
+
+    expect_value(__wrap_wdb_update_agent_keepalive, id, 1);
+    expect_string(__wrap_wdb_update_agent_keepalive, connection_status, AGENT_CS_PENDING);
+    expect_string(__wrap_wdb_update_agent_keepalive, sync_status, "synced");
+    will_return(__wrap_wdb_update_agent_keepalive, OS_INVALID);
+
+    expect_string(__wrap__mwarn, formatted_msg, "Unable to save last keepalive and set connection status as pending for agent: 001");
+
+    save_controlmsg(&key, r_msg, msg_length, wdb_sock);
+
+    free_keyentry(&key);
+    os_free(message);
+}
+
+void test_save_controlmsg_shutdown(void **state)
+{
+    test_mode = true;
+    char r_msg[OS_SIZE_128] = {0};
+    strcpy(r_msg, HC_SHUTDOWN);
+    keyentry key;
+    keyentry_init(&key, "NEW_AGENT", "001", "10.2.2.5", NULL);
+    memset(&key.peer_info, 0, sizeof(struct sockaddr_storage));
+    key.peer_info.ss_family = AF_INET;
+
+    size_t msg_length = sizeof(r_msg);
+    int *wdb_sock = NULL;
+
+    expect_string(__wrap_send_msg, msg, "001");
+
+    expect_any(__wrap_get_ipv4_string, address);
+    expect_any(__wrap_get_ipv4_string, address_size);
+    will_return(__wrap_get_ipv4_string, OS_INVALID);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Agent NEW_AGENT sent HC_SHUTDOWN from ''");
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, 1);
+    pending_data = OSHash_Create();
+
+    pending_data_t data;
+    char * message = strdup("shutdown message \n");
+    data.changed = false;
+    data.message = message;
+
+    expect_value(__wrap_OSHash_Get, self, pending_data);
+    expect_string(__wrap_OSHash_Get, key, "001");
+    will_return(__wrap_OSHash_Get, &data);
+
+    expect_value(__wrap_wdb_update_agent_connection_status, id, 1);
+    expect_string(__wrap_wdb_update_agent_connection_status, connection_status, AGENT_CS_DISCONNECTED);
+    expect_string(__wrap_wdb_update_agent_connection_status, sync_status, "synced");
+    will_return(__wrap_wdb_update_agent_connection_status, OS_SUCCESS);
+
+    expect_string(__wrap_SendMSG, message, "1:wazuh-remoted:ossec: Agent stopped: 'NEW_AGENT->10.2.2.5'.");
+    expect_string(__wrap_SendMSG, locmsg, "[001] (NEW_AGENT) 10.2.2.5");
+    expect_any(__wrap_SendMSG, loc);
+    will_return(__wrap_SendMSG, -1);
+
+    will_return(__wrap_strerror, "fail");
+    expect_string(__wrap__merror, formatted_msg, "(1210): Queue 'queue/sockets/queue' not accessible: 'fail'");
+
+    expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
+    expect_value(__wrap_StartMQ, type, WRITE);
+    will_return(__wrap_StartMQ, -1);
+
+    expect_string(__wrap__minfo, formatted_msg, "Successfully reconnected to 'queue/sockets/queue'");
+
+    expect_string(__wrap_SendMSG, message, "1:wazuh-remoted:ossec: Agent stopped: 'NEW_AGENT->10.2.2.5'.");
+    expect_string(__wrap_SendMSG, locmsg, "[001] (NEW_AGENT) 10.2.2.5");
+    expect_any(__wrap_SendMSG, loc);
+    will_return(__wrap_SendMSG, -1);
+
+    will_return(__wrap_strerror, "fail");
+    expect_string(__wrap__merror, formatted_msg, "(1210): Queue 'queue/sockets/queue' not accessible: 'fail'");
+
+    save_controlmsg(&key, r_msg, msg_length, wdb_sock);
+
+    free_keyentry(&key);
+    os_free(message);
+}
+
+void test_save_controlmsg_shutdown_wdb_fail(void **state)
+{
+    test_mode = true;
+    char r_msg[OS_SIZE_128] = {0};
+    strcpy(r_msg, HC_SHUTDOWN);
+    keyentry key;
+    keyentry_init(&key, "NEW_AGENT", "001", "10.2.2.5", NULL);
+    memset(&key.peer_info, 0, sizeof(struct sockaddr_storage));
+    key.peer_info.ss_family = AF_INET6;
+    size_t msg_length = sizeof(r_msg);
+    int *wdb_sock = NULL;
+
+    expect_string(__wrap_send_msg, msg, "001");
+
+    expect_any(__wrap_get_ipv6_string, address);
+    expect_any(__wrap_get_ipv6_string, address_size);
+    will_return(__wrap_get_ipv6_string, OS_INVALID);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Agent NEW_AGENT sent HC_SHUTDOWN from ''");
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, 1);
+    pending_data = OSHash_Create();
+
+    pending_data_t data;
+    char * message = strdup("shutdown message \n");
+    data.changed = false;
+    data.message = message;
+
+    expect_value(__wrap_OSHash_Get, self, pending_data);
+    expect_string(__wrap_OSHash_Get, key, "001");
+    will_return(__wrap_OSHash_Get, &data);
+
+    expect_value(__wrap_wdb_update_agent_connection_status, id, 1);
+    expect_string(__wrap_wdb_update_agent_connection_status, connection_status, AGENT_CS_DISCONNECTED);
+    expect_string(__wrap_wdb_update_agent_connection_status, sync_status, "synced");
+    will_return(__wrap_wdb_update_agent_connection_status, OS_INVALID);
+
+    expect_string(__wrap__mwarn, formatted_msg, "Unable to set connection status as disconnected for agent: 001");
+
+    save_controlmsg(&key, r_msg, msg_length, wdb_sock);
+
+    free_keyentry(&key);
+    os_free(message);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -2469,7 +3027,18 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_process_multi_groups_changed_outside_nocmerged, test_process_multi_groups_group_not_changed_setup, test_process_multi_group_check_group_changed_teardown),
         // Test c_files
         cmocka_unit_test_setup_teardown(test_c_files, test_c_files_setup, test_c_files_teardown),
-
+        // Tests save_controlmsg
+        cmocka_unit_test(test_save_controlmsg_request_error),
+        cmocka_unit_test(test_save_controlmsg_request_success),
+        cmocka_unit_test(test_save_controlmsg_invalid_msg),
+        cmocka_unit_test(test_save_controlmsg_could_not_add_pending_data),
+        cmocka_unit_test(test_save_controlmsg_unable_to_save_last_keepalive),
+        cmocka_unit_test(test_save_controlmsg_update_msg_error_parsing),
+        cmocka_unit_test(test_save_controlmsg_update_msg_unable_to_update_information),
+        cmocka_unit_test(test_save_controlmsg_update_msg_lookfor_agent_group_fail),
+        cmocka_unit_test(test_save_controlmsg_startup),
+        cmocka_unit_test(test_save_controlmsg_shutdown),
+        cmocka_unit_test(test_save_controlmsg_shutdown_wdb_fail),
     };
     return cmocka_run_group_tests(tests, test_setup_group, test_teardown_group);
 }

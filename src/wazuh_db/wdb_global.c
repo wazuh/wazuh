@@ -33,6 +33,7 @@ static const char *global_db_agent_fields[] = {
     ":last_keepalive",
     ":connection_status",
     ":disconnection_time",
+    ":group_config_status",
     ":id",
     NULL
 };
@@ -145,7 +146,8 @@ int wdb_global_update_agent_version(wdb_t *wdb,
                                     const char *node_name,
                                     const char *agent_ip,
                                     const char *connection_status,
-                                    const char *sync_status)
+                                    const char *sync_status,
+                                    const char *group_config_status)
 {
     sqlite3_stmt *stmt = NULL;
     int index = 1;
@@ -229,6 +231,10 @@ int wdb_global_update_agent_version(wdb_t *wdb,
         return OS_INVALID;
     }
     if (sqlite3_bind_text(stmt, index++, sync_status, -1, NULL) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+    if (sqlite3_bind_text(stmt, index++, group_config_status, -1, NULL) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }

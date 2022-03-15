@@ -156,8 +156,9 @@ int parse_agent_update_msg (char *msg,
     char sdelim[] = { '\n', '\0' };
     const char * agent_ip_label = "#\"_agent_ip\":";
 
-    if (!agent_data)
+    if (!agent_data) {
         return OS_INVALID;
+    }
 
     // Temporary coping the msg string
     os_strdup(msg, msg_tmp);
