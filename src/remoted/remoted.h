@@ -18,6 +18,7 @@
 #include "config/config.h"
 #include "config/remote-config.h"
 #include "config/global-config.h"
+#include "os_crypto/md5/md5_op.h"
 #include "sec.h"
 
 #define FD_LIST_INIT_VALUE 1024
@@ -30,6 +31,7 @@
 typedef struct pending_data_t {
     char *message;
     char *group;
+    os_md5 merged_sum;
     int changed;
 } pending_data_t;
 

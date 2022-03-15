@@ -74,6 +74,9 @@ def get_script_arguments():
 
     parser.add_argument('-t', '--num_threads', dest='n_threads', type=int,
                         help='Number of threads', required=False, default=min_num_threads)
+    
+    parser.add_argument('--reparse', action='store_true', dest='reparse', 
+                        help='Parse the log, even if its been parsed before', default=False)
 
     return parser.parse_args()
 

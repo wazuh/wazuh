@@ -222,6 +222,7 @@ void wm_sync_manager() {
         os_strdup(__ossec_name " " __ossec_version, manager_data->version);
         os_strdup(AGENT_CS_ACTIVE, manager_data->connection_status);
         os_strdup("synced", manager_data->sync_status);
+        os_strdup("synced", manager_data->group_config_status);
 
         wdb_update_agent_data(manager_data, &wdb_wmdb_sock);
 
