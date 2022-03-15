@@ -109,7 +109,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/builder)
 add_subdirectory(${ENGINE_SOURCE_DIR}/cliParser)
 add_subdirectory(${ENGINE_SOURCE_DIR}/hlp)
 
-target_link_libraries(main  ${EXTERNAL_DEPS})
+target_link_libraries(main  hlp ${EXTERNAL_DEPS})
 
 # Build test
 if(ENGINE_BUILD_TEST)
