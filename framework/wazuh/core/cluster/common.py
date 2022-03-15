@@ -1448,8 +1448,8 @@ class SyncWazuhdb(SyncTask):
                                                                       f'not be sent to the master node: {task_id}')
 
             # Specify under which task_id the JSON can be found in the master/worker.
+            self.logger.debug(f"Sending chunks.")
             await self.server.send_request(command=self.cmd, data=task_id)
-            self.logger.debug(f"All chunks sent.")
         else:
             self.logger.info(f"Finished in {(perf_counter() - start_time):.3f}s (0 chunks sent).")
         return True
