@@ -357,7 +357,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 
             os_strdup(msg, data->message);
 
-            if (OS_SUCCESS == lookfor_agent_group(key->id, data->message, &data->group)) {
+            if (OS_SUCCESS == lookfor_agent_group(key->id, data->message, &data->group, wdb_sock)) {
                 group_t *aux = NULL;
 
                 w_mutex_lock(&files_mutex);
