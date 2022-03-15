@@ -34,11 +34,11 @@ def test_get_bucket(gcloud_bucket: WazuhGCloudBucket):
 @pytest.mark.parametrize('credentials_file,logger,bucket_name,exception,errcode', [
     ('unexistent_file',
      None,
-     'test_bucket', exceptions.GCloudError, 2),
+     'test_bucket', exceptions.GCloudError, 1001),
     ('invalid_credentials_file.json',
      None,
      'test_bucket',
-     exceptions.GCloudError, 1)
+     exceptions.GCloudError, 1000)
 ])
 def test_bucket_ko(credentials_file: str, logger: Logger,
                    bucket_name: str, exception: exceptions.WazuhIntegrationException,
@@ -66,4 +66,4 @@ def test_bucket_ko(credentials_file: str, logger: Logger,
     with pytest.raises(exception) as e:
         WazuhGCloudBucket(credentials_file=test_data_path + credentials_file,
                           logger=logger, bucket_name=bucket_name)
-        assert e.errcode == errcode
+    assert e.value.errcode == errcode

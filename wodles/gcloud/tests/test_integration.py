@@ -86,4 +86,4 @@ def test_initialize_socket_ko(
     with patch('socket.socket', side_effect=raised_exception),\
          pytest.raises(expected_exception) as e:
         gcloud_subscriber.initialize_socket()
-        assert errcode == e.errcode
+    assert errcode == e.value.errcode

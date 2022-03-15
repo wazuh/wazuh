@@ -21,31 +21,31 @@ import gcloud
     ({'integration_type': 'type', 'credentials_file': None, 'max_messages': 1,
       'log_level': 1, 'prefix': '', 'store_true': False, 'delete_file': False,
       'only_logs_after': None, 'n_threads': 1},
-     exceptions.GCloudError, 3),
+     exceptions.GCloudError, 1002),
 
     ({'integration_type': 'pubsub', 'subscription_id': 'subscription_id',
       'project': 'project', 'credentials_file': None, 'max_messages': 1,
       'log_level': 1, 'prefix': '', 'store_true': False, 'delete_file': False,
       'only_logs_after': None, 'n_threads': 0},
-     exceptions.GCloudError, 202),
+     exceptions.GCloudError, 1202),
 
     ({'integration_type': 'pubsub', 'subscription_id': 'subscription_id',
       'project': 'project', 'credentials_file': None, 'max_messages': 0,
       'log_level': 1, 'prefix': '', 'store_true': False, 'delete_file': False,
       'only_logs_after': None, 'n_threads': 1},
-     exceptions.GCloudError, 203),
+     exceptions.GCloudError, 1203),
 
     ({'integration_type': 'access_logs', 'credentials_file': None,
       'max_messages': 1, 'bucket_name': '', 'log_level': 1,
       'prefix': '', 'store_true': False, 'only_logs_after': None,
       'delete_file': False, 'n_threads': 1},
-     exceptions.GCloudError, 103),
+     exceptions.GCloudError, 1103),
 
     ({'integration_type': 'access_logs', 'credentials_file': None,
       'max_messages': 1, 'bucket_name': 'bucket', 'log_level': 1,
       'prefix': '', 'store_true': False, 'only_logs_after': None,
       'delete_file': False, 'n_threads': 2},
-     exceptions.GCloudError, 102),
+     exceptions.GCloudError, 1102),
 
 ])
 def test_gcloud_ko(parameters, exception, errcode, caplog):
@@ -75,4 +75,4 @@ def test_gcloud_ko(parameters, exception, errcode, caplog):
          pytest.raises(SystemExit):
         gcloud.main()
 
-        assert exception.ERRORS[errcode]['key'] in caplog.text
+    assert exception.ERRORS[errcode]['key'] in caplog.text
