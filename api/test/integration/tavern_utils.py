@@ -207,7 +207,7 @@ def test_count_elements(response, n_expected_items):
     assert len(response.json()['data']['affected_items']) == n_expected_items
 
 
-def test_expected_value(response, key, expected_values):
+def test_expected_value(response, key, expected_values, empty_response_possible=False):
     """Iterate all items in the response and check that <key> value is within <expected_values>.
 
     Parameters
@@ -218,11 +218,14 @@ def test_expected_value(response, key, expected_values):
         Key whose value is checked.
     expected_values : str, list
         List of values which are allowed.
+    empty_response_possible : bool
+        Indicates whether the response could be empty or not. Set to True when the key value does not depend on the
+        test itself, for instance, node. Default: `False`
     """
     expected_values = set(expected_values.split(',')) if not isinstance(expected_values, list) else set(expected_values)
     affected_items = response.json()['data']['affected_items']
 
-    if not affected_items:
+    if not affected_items and not empty_response_possible:
         raise Exception("No items found in the response")
 
     for item in affected_items:
