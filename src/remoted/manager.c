@@ -173,8 +173,9 @@ STATIC void validate_shared_files(const char *src_path, const char *group, const
  * @param src_path Source path of the files to copy
  * @param dst_path Destination path of the files
  * @param group Group name
+ * @param initial_iteration Flag indicating if it is the first iteration
  */
-STATIC void copy_directory(const char *src_path, const char *dst_path, const char *group);
+STATIC void copy_directory(const char *src_path, const char *dst_path, char *group, bool initial_iteration);
 
 /* Groups structures and sizes */
 static group_t **groups;
@@ -524,14 +525,13 @@ STATIC void c_group(const char *group, file_sum ***_f_sum, char * sharedcfg_dir,
 
         (*_f_sum)[f_size] = NULL;
     } else {
-        // Merge ar.conf always
-
         if (create_merged) {
             snprintf(merged_tmp, PATH_MAX + 1, "%s/%s/%s.tmp", sharedcfg_dir, group, SHAREDCFG_FILENAME);
             // First call, truncate merged file
             MergeAppendFile(merged_tmp, NULL, group, -1);
         }
 
+        // Merge ar.conf always
         if (OS_MD5_File(DEFAULTAR, md5sum, OS_TEXT) == 0) {
             os_realloc((*_f_sum), (f_size + 2) * sizeof(file_sum *), (*_f_sum));
             os_calloc(1, sizeof(file_sum), (*_f_sum)[f_size]);
@@ -573,7 +573,6 @@ STATIC void c_multi_group(char *multi_group, file_sum ***_f_sum, char *hash_mult
     char *group;
     char *save_ptr = NULL;
     const char delim[2] = ",";
-    char ** files;
     char multi_path[PATH_MAX] = {0};
 
     if (!hash_multigroup) {
@@ -601,19 +600,9 @@ STATIC void c_multi_group(char *multi_group, file_sum ***_f_sum, char *hash_mult
                 return;
             }
 
-            if (files = wreaddir(dir), !files) {
-                if (errno != ENOTDIR) {
-                    mwarn("Could not open directory '%s'. Group folder was deleted.", dir);
-                    purge_group(group);
-                    goto next;
-                }
-                goto next;
-            }
+            copy_directory(dir, multi_path, group, true);
 
-            copy_directory(dir, multi_path, group);
-next:
             group = strtok_r(NULL, delim, &save_ptr);
-            free_strarray(files);
             closedir(dp);
         }
     }
@@ -992,6 +981,7 @@ STATIC void validate_shared_files(const char *src_path, const char *group, const
         }
         int ignored = 0;
         time_t *modify_time = NULL;
+        struct stat attrib;
 
         if (snprintf(file, MAX_SHARED_PATH + 1, "%s/%s", src_path, files[i]) > MAX_SHARED_PATH) {
             mdebug2("At validate_shared_files(): path too long '%s'", file);
@@ -1002,8 +992,6 @@ STATIC void validate_shared_files(const char *src_path, const char *group, const
             char filename[MAX_SHARED_PATH];
             char * basedir;
 
-            // Create default basedir
-
             strncpy(filename, file, sizeof(filename));
             filename[sizeof(filename) - 1] = '\0';
             basedir = dirname(filename);
@@ -1013,8 +1001,6 @@ STATIC void validate_shared_files(const char *src_path, const char *group, const
                 path_offset++;
             }
         }
-
-        struct stat attrib;
 
         if (stat(file, &attrib) != 0 ) {
             merror("At validate_shared_files(): Unable to get entry attributes '%s'", file);
@@ -1050,13 +1036,12 @@ STATIC void validate_shared_files(const char *src_path, const char *group, const
                 }
             } else {
                 if (checkBinaryFile(file)) {
+                    int ret_val;
 
                     os_calloc(1, sizeof(time_t), modify_time);
 
                     *modify_time = attrib.st_mtime;
                     ignored = 1;
-
-                    int ret_val;
 
                     if (ret_val = OSHash_Add(invalid_files, file, modify_time), ret_val != 2) {
                         os_free(modify_time);
@@ -1088,7 +1073,7 @@ STATIC void validate_shared_files(const char *src_path, const char *group, const
     return;
 }
 
-STATIC void copy_directory(const char *src_path, const char *dst_path, const char *group) {
+STATIC void copy_directory(const char *src_path, const char *dst_path, char *group, bool initial_iteration) {
     unsigned int i;
     time_t *modify_time = NULL;
     int ignored;
@@ -1097,7 +1082,12 @@ STATIC void copy_directory(const char *src_path, const char *dst_path, const cha
 
     if (files = wreaddir(src_path), !files) {
         if (errno != ENOTDIR) {
-            mwarn("Could not open directory '%s'. Group folder was deleted.", src_path);
+            if (initial_iteration) {
+                mwarn("Could not open directory '%s'. Group folder was deleted.", src_path);
+                purge_group(group);
+            } else {
+                mdebug2("Could not open directory '%s': %s (%d)", src_path, strerror(errno), errno);
+            }
         }
         return;
     }
@@ -1157,7 +1147,7 @@ STATIC void copy_directory(const char *src_path, const char *dst_path, const cha
                 }
             }
 
-            copy_directory(source_path, destination_path, group);
+            copy_directory(source_path, destination_path, group, false);
             closedir(dir);
         }
     }
