@@ -26,7 +26,7 @@
 namespace engineserver::endpoints
 {
 
-#define CONNECTION_TIMEOUT_MSEC 5000
+constexpr uint32_t CONNECTION_TIMEOUT_MSEC = 5000;
 
 /**
  * @brief Implements tcp server endpoint using uvw library.
