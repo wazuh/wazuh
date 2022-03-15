@@ -7,7 +7,7 @@
  * Foundation.
  */
 
-#include "stageBuilderNormalize.hpp"
+#include "stageParse.hpp"
 
 #include <stdexcept>
 #include <string>
@@ -38,25 +38,30 @@ types::Lifter stageBuilderParse(const types::DocumentValue &def)
 
     if(!parseObj["logql"].IsArray())
     {
-        //TODO ERROR
-        throw std::invalid_argument("Config format error. Check the parser section.");
+        // TODO ERROR
+        LOG(ERROR) << "Parse stage is ill formed.";
+        throw std::invalid_argument(
+            "Config format error. Check the parser section.");
     }
 
-    auto const& logqlArr = parseObj["logql"];
+    auto const &logqlArr = parseObj["logql"];
     if(logqlArr.Empty())
     {
-        //TODO error
+        // TODO error
+        LOG(ERROR) << "No logQl expressions found.";
         throw std::invalid_argument("Must have some expressions configured.");
     }
 
     std::vector<types::Lifter> parsers;
-    for(auto const& item : logqlArr.GetArray())
+    for(auto const &item : logqlArr.GetArray())
     {
         if(!item.IsObject())
         {
-            throw std::invalid_argument("Could not find expression.");
+            LOG(ERROR) << "LogQl object is badly formatted.";
+            throw std::invalid_argument("Bad format trying to get parse expression ");
         }
 
+        //TODO hard-coded 'event.original'
         auto logQlExpr = item["event.original"].GetString();
 
         auto newOp = [parserOp = getParserOp(logQlExpr)](types::Observable o)
@@ -64,10 +69,6 @@ types::Lifter stageBuilderParse(const types::DocumentValue &def)
             return o.map(
                 [parserOp = std::move(parserOp)](types::Event e)
                 {
-                    rapidjson::StringBuffer s;
-                    rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(s);
-                    e->m_doc.Accept(writer);
-
                     auto ev = e->get("/message");
                     if(!ev->IsString())
                     {
@@ -97,8 +98,6 @@ types::Lifter stageBuilderParse(const types::DocumentValue &def)
                         obj.AddMember(name, v, e->getAllocator());
                     }
 
-                    std::cout << "----RESULT----\n" << s.GetString();
-
                     return e;
                 });
         };
@@ -114,12 +113,11 @@ types::Lifter stageBuilderParse(const types::DocumentValue &def)
     }
     catch(std::exception &e)
     {
-        const char *msg = "Stage parse builder encountered exception "
+        const char *msg = "Stage [parse] builder encountered exception "
                           "chaining all mappings.";
         LOG(ERROR) << msg << " From exception: " << e.what();
         std::throw_with_nested(std::runtime_error(msg));
     }
-
 }
 
 } // namespace builder::internals::builders
