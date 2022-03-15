@@ -57,7 +57,6 @@ static int test_setup(void **state) {
     init_data->ar->command = "restart-wazuh";
 
     *state = init_data;
-
     return OS_SUCCESS;
 }
 
@@ -860,8 +859,8 @@ void test_send_exec_msg_OS_TIMEOUT(void **state){
     send_exec_msg(&socket, queue_path, exec_msg);
 }
 
-void test_get_ip_success(void **state){
-
+void test_get_ip_success(void **state)
+{
     test_mode = 1;
     test_struct_t *data  = (test_struct_t *)*state;
     Config.white_list = 1;
