@@ -66,5 +66,22 @@ def create_and_send_query(agent_info_file):
                 pass
 
 
+def add_agent_group_relationships(agent_groups_file: str) -> None:
+    def _create_agent_group_relationship(agent_id: int, group_ids: list) -> None:
+        groups = ','.join([f'"{group_id}"' for group_id in group_ids])
+        command = 'global set-agent-groups {"mode":"append","sync_status":"syncreq","data":[{"id":' \
+                  f'{agent_id},"groups":[{groups}]' \
+                  '}]}'
+
+        send_msg(command)
+
+    with open(agent_groups_file) as f:
+        agent_group_relationships = yaml.safe_load(f)
+
+    for agent, group_list in agent_group_relationships['agent_ids'].items():
+        _create_agent_group_relationship(agent, group_list)
+
+
 if __name__ == "__main__":
     create_and_send_query('/tmp/configuration_files/master_only/agent_info.yaml')
+    add_agent_group_relationships('/tmp/configuration_files/master_only/agent_groups.yaml')

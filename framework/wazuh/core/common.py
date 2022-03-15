@@ -194,7 +194,7 @@ MAX_QUERY_FILTERS_RESERVED_SIZE = MAX_SOCKET_BUFFER_SIZE - 4 * 1024  # MAX_BUFFE
 AGENT_NAME_LEN_LIMIT = 128
 DATABASE_LIMIT = 500
 MAXIMUM_DATABASE_LIMIT = 100000
-MAX_GROUPS_PER_MULTIGROUP = 256
+MAX_GROUPS_PER_MULTIGROUP = 128
 
 
 # ============================================= Wazuh constants - Version ==============================================
@@ -227,7 +227,6 @@ OSSEC_TMP_PATH = os.path.join(WAZUH_PATH, 'tmp')
 OSSEC_PIDFILE_PATH = os.path.join(WAZUH_PATH, 'var', 'run')
 OS_PIDFILE_PATH = os.path.join('var', 'run')
 WDB_PATH = os.path.join(WAZUH_PATH, 'queue', 'db')
-GROUPS_PATH = os.path.join(WAZUH_PATH, 'queue', 'agent-groups')
 STATS_PATH = os.path.join(WAZUH_PATH, 'stats')
 BACKUP_PATH = os.path.join(WAZUH_PATH, 'backup')
 MULTI_GROUPS_PATH = os.path.join(WAZUH_PATH, 'var', 'multigroups')

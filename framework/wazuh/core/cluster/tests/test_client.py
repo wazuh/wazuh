@@ -6,7 +6,6 @@ import asyncio
 import logging
 import sys
 import threading
-import _thread
 import time
 from unittest.mock import MagicMock, patch, call
 from freezegun import freeze_time
@@ -189,7 +188,7 @@ async def test_acm_start(add_tasks_mock, starmap_mock):
 def test_ac_init():
     """Check the correct initialization of the AbstractClient object."""
 
-    assert abstract_client.manager is None
+    assert abstract_client.server is None
     assert abstract_client.client_data == b"name"
     assert abstract_client.connected is False
     assert isinstance(abstract_client.on_con_lost, FutureMock)
