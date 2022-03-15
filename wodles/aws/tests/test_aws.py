@@ -308,7 +308,7 @@ def test_aws_waf_load_information_from_file_ko(
     ('2000/2/12', '20000212'),
     ('2022/02/1', '20220201')
 ])
-def test_config_format_creation_date(date: str, expected_date: str, aws_config_bucket):
+def test_config_format_created_date(date: str, expected_date: str, aws_config_bucket):
     """
     Test AWSConfigBucket's format_created_date method.
 
