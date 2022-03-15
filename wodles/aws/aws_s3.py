@@ -2617,7 +2617,7 @@ class AWSService(WazuhIntegration):
     :param region: Region of service
     """
 
-    def __init__(self, access_key, secret_key, aws_profile, iam_role_arn,
+    def __init__(self, reparse, access_key, secret_key, aws_profile, iam_role_arn,
                  service_name, only_logs_after, region, aws_log_groups=None, remove_log_streams=None,
                  discard_field=None, discard_regex=None, sts_endpoint=None, service_endpoint=None,
                  iam_role_duration=None):
@@ -2625,6 +2625,7 @@ class AWSService(WazuhIntegration):
         self.db_name = 'aws_services'
         # table name
         self.db_table_name = 'aws_services'
+        self.reparse = reparse
 
         WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
                                   aws_profile=aws_profile, iam_role_arn=iam_role_arn,
@@ -2746,7 +2747,7 @@ class AWSInspector(AWSService):
         self.service_name = 'inspector'
         self.inspector_region = region
 
-        AWSService.__init__(self, access_key=access_key, secret_key=secret_key,
+        AWSService.__init__(self, reparse=reparse, access_key=access_key, secret_key=secret_key,
                             aws_profile=aws_profile, iam_role_arn=iam_role_arn, only_logs_after=only_logs_after,
                             service_name=self.service_name, region=region, aws_log_groups=aws_log_groups,
                             remove_log_streams=remove_log_streams, discard_field=discard_field,
@@ -2864,6 +2865,8 @@ class AWSCloudWatchLogs(AWSService):
         Name of the table to be created on aws_service.db
     only_logs_after_millis : int
         only_logs_after expressed as the number of milliseconds after Jan 1, 1970 00:00:00 UTC
+    reparse : bool
+        Whether to parse already parsed logs or not.
     log_group_list : list of str
         List of each log group to be parsed
     sql_cloudwatch_create_table : str
@@ -2956,13 +2959,14 @@ class AWSCloudWatchLogs(AWSService):
                                 aws_log_group='{aws_log_group}' AND
                                 aws_log_stream='{aws_log_stream}';"""
 
-        AWSService.__init__(self, access_key=access_key, secret_key=secret_key,
+        AWSService.__init__(self, reparse=reparse, access_key=access_key, secret_key=secret_key,
                             aws_profile=aws_profile, iam_role_arn=iam_role_arn, only_logs_after=only_logs_after,
                             region=region, aws_log_groups=aws_log_groups, remove_log_streams=remove_log_streams,
                             service_name='cloudwatchlogs', discard_field=discard_field, discard_regex=discard_regex,
                             iam_role_duration=iam_role_duration, sts_endpoint=sts_endpoint,
                             service_endpoint=service_endpoint)
 
+        self.reparse = reparse
         self.region = region
         self.db_table_name = 'cloudwatch_logs'
         self.log_group_list = [group for group in aws_log_groups.split(",") if group != ""] if aws_log_groups else []
@@ -2986,6 +2990,9 @@ class AWSCloudWatchLogs(AWSService):
         """
         self.init_db(self.sql_cloudwatch_create_table.format(table_name=self.db_table_name))
 
+        if self.reparse:
+            debug('Reparse mode ON', 1)
+
         try:
             for log_group in self.log_group_list:
                 for log_stream in self.get_log_streams(log_group=log_group):
@@ -3001,7 +3008,12 @@ class AWSCloudWatchLogs(AWSService):
                     token = None
 
                     if db_values:
-                        if db_values['start_time'] and db_values['start_time'] > start_time:
+                        if self.reparse: 
+                            result_before = self.get_alerts_within_range(log_group=log_group, log_stream=log_stream,
+                                                                         token=None, start_time=start_time, 
+                                                                         end_time=None)
+
+                        elif db_values['start_time'] and db_values['start_time'] > start_time:
                             result_before = self.get_alerts_within_range(log_group=log_group, log_stream=log_stream,
                                                                          token=None, start_time=start_time,
                                                                          end_time=db_values['start_time'])
