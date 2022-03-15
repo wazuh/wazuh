@@ -41,7 +41,7 @@ def test_get_subscriber(gcloud_subscriber):
     ])
 def test_subscription_ko(credentials_file: str, logger: Logger,
                          project: str, subscription_id: str,
-                         exception: exceptions.GCloudException,
+                         exception: exceptions.WazuhIntegrationException,
                          exception_name: str,
                          test_data_path: str):
     """
@@ -59,7 +59,7 @@ def test_subscription_ko(credentials_file: str, logger: Logger,
         Name of the project.
     subscription_id : str
         ID of the subscription.
-    exception : exceptions.GCloudException
+    exception : exceptions.WazuhIntegrationException
         Exception that should be raised by the module.
     exception_name : str
         Key of the exception in the exceptions.py file.

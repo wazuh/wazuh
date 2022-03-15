@@ -10,11 +10,11 @@
 import tools
 
 
-UNKNOWN_ERROR_ERRCODE = 901
+UNKNOWN_ERROR_ERRCODE = 999
 
 
-class GCloudException(Exception):
-    """Class that represents an exception of the GCloud package.
+class WazuhIntegrationException(Exception):
+    """Class that represents an exception for the Wazuh external integrations.
 
     Parameters
     ----------
@@ -44,74 +44,78 @@ class GCloudException(Exception):
         return self._message
 
 
-class GCloudError(GCloudException):
+class WazuhIntegrationInternalError(WazuhIntegrationException):
+    """Class that represents a critical exception for the Wazuh external integrations."""
+    ERRORS = {
+        # 1-99 -> Internal errors
+        1: {
+            'key': 'GCloudWazuhNotRunning',
+            'message': 'Wazuh must be running'
+        },
+        2: {
+            'key': 'GCloudSocketError',
+            'message': 'Error initializing {socket_path} socket'
+        },
+        3: {
+            'key': 'GCloudSocketSendError',
+            'message': 'Error sending event to Wazuh'
+        },
+    }
+
+class GCloudError(WazuhIntegrationException):
     """Class that represents an error of the GCloud package."""
     ERRORS = {
-        # 1-99 General errors
-        1: {
+        # 1000-1099 General errors
+        1000: {
             'key': 'GCloudCredentialsStructureError',
             'message': "The '{credentials_file}' credentials file doesn't have the required structure"},
-        2: {
+        1001: {
             'key': 'GCloudCredentialsNotFoundError',
             'message': "The '{credentials_file}' file doesn't exist"},
-        3: {
+        1002: {
             'key': 'GCloudIntegrationTypeError',
             'message': 'Unsupported gcloud integration type: "{integration_type}".' f'The supported types are {*tools.valid_types,}'},
-        4: {
+        1003: {
             'key': 'GCloudImportError',
             'message': "The '{package}' module is required"},
-        # 100-199 -> GCP Bucket errors
-        100: {
+
+        # 1100-1199 -> GCP Bucket errors
+        1100: {
             'key': 'GCloudBucketNotFound',
             'message': "The bucket '{bucket_name}' does not exist"},
-        101: {
+        1101: {
             'key': 'GCloudBucketForbidden',
             'message': "The Service Account provided does not have {permissions} permissions to access the '{resource_name}' bucket or it does not exist in the account"},
-        102: {
+        1102: {
             'key': 'GCloudBucketNumThreadsError',
             'message': 'The parameter -t/--num_threads only works with the Pub/Sub module.'},
-        103: {
+        1103: {
             'key': 'GCloudBucketNameError',
             'message': 'The name of the bucket is required. Use -b <BUCKET_NAME> to specify it.'},
-        # 200-299 -> Pub/Sub errors
-        200: {
+
+        # 1200-1299 -> Pub/Sub errors
+        1200: {
             'key': 'GCloudPubSubNoSubscriptionID',
             'message': 'A subscription ID is required. Use -s <SUBSCRIPTION ID> to specify it.'},
-        201: {
+        1201: {
             'key': 'GCloudPubSubNoProjectID',
             'message': 'A project ID is required. Use -p <PROJECT ID> to specify it.'},
-        202: {
+        1202: {
             'key': 'GCloudPubSubNumThreadsError',
             'message': f'The minimum number of threads is {tools.min_num_threads}. Please check your configuration.'},
-        203: {
+        1203: {
             'key':
             'GCloudPubSubNumMessagesError', 'message': f'The minimum number of messages is {tools.min_num_messages}. Please check your configuration.'},
-        204: {
+        1204: {
             'key': 'GCloudPubSubSubscriptionError',
             'message': "The '{subscription}' subscription is incorrect or the user credentials are not valid"},
-        205: {
+        1205: {
             'key': 'GCloudPubSubProjectError',
             'message': "The '{project}' project ID is incorrect or the user does not have permissions to access to it"},
-        206: {
+        1206: {
             'key': 'GCloudPubSubForbidden',
             'message': "The client does not have the {permissions} required permissions}"}
     }
 
 
-class GCloudInternalError(GCloudException):
-    """Class that represents a critical exception of the GCloud package."""
-    ERRORS = {
-        # 800-899 -> Internal errors
-        800: {
-            'key': 'GCloudWazuhNotRunning',
-            'message': 'Wazuh must be running'
-        },
-        801: {
-            'key': 'GCloudSocketError',
-            'message': 'Error initializing {socket_path} socket'
-        },
-        802: {
-            'key': 'GCloudSocketSendError',
-            'message': 'Error sending event to Wazuh'
-        },
-    }
+

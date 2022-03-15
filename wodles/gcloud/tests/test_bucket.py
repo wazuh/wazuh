@@ -41,7 +41,7 @@ def test_get_bucket(gcloud_bucket: WazuhGCloudBucket):
      exceptions.GCloudError, 1)
 ])
 def test_bucket_ko(credentials_file: str, logger: Logger,
-                   bucket_name: str, exception: exceptions.GCloudException,
+                   bucket_name: str, exception: exceptions.WazuhIntegrationException,
                    test_data_path: str, errcode: int):
     """
     Check that the appropriate exceptions are raised
@@ -56,7 +56,7 @@ def test_bucket_ko(credentials_file: str, logger: Logger,
         Logger used to capture the output of the module.
     bucket_name : str
         Name of the bucket.
-    exception : exceptions.GCloudException
+    exception : exceptions.WazuhIntegrationException
         Exception that should be raised by the module.
     test_data_path : str
         Path where the data folder is.

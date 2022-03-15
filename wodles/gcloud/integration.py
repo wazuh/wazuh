@@ -63,7 +63,7 @@ class WazuhGCloudIntegration:
 
         Raises
         ------
-        exception.GCloudInternalError
+        exceptions.WazuhIntegrationInternalError
             If the socket is unable to establish a connection or send a message
              to analysisd.
         """
@@ -72,9 +72,9 @@ class WazuhGCloudIntegration:
             self.socket.connect(ANALYSISD)
             return self.socket
         except ConnectionRefusedError:
-            raise exceptions.GCloudInternalError(800)
+            raise exceptions.WazuhIntegrationInternalError(1)
         except OSError:
-            raise exceptions.GCloudInternalError(801, socket_path=ANALYSISD)
+            raise exceptions.WazuhIntegrationInternalError(2, socket_path=ANALYSISD)
 
     def process_data(self):
         raise NotImplementedError
@@ -89,7 +89,7 @@ class WazuhGCloudIntegration:
 
         Raises
         ------
-        GCloudCriticalError
+        exceptions.WazuhIntegrationInternalError
             If the socket is unable to send the message to analysisd.
         """
         event_json = f'{self.header}{msg}'.encode(errors='replace')
@@ -97,4 +97,4 @@ class WazuhGCloudIntegration:
         try:
             self.socket.send(event_json)
         except OSError:
-            raise exceptions.GCloudCriticalError(802)
+            raise exceptions.WazuhIntegrationInternalError(3)

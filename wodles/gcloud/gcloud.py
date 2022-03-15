@@ -36,9 +36,9 @@ def main():
 
         if arguments.integration_type == "pubsub":
             if arguments.subscription_id is None:
-                raise exceptions.GCloudError(200)
+                raise exceptions.GCloudError(1200)
             if arguments.project is None:
-                raise exceptions.GCloudError(201)
+                raise exceptions.GCloudError(1201)
 
             project = arguments.project
             subscription_id = arguments.subscription_id
@@ -49,9 +49,9 @@ def main():
                 n_threads = max_threads
                 logger.warning(f'Reached maximum number of threads. Truncating to {max_threads}.')
             if n_threads < tools.min_num_threads:
-                raise exceptions.GCloudError(202)
+                raise exceptions.GCloudError(1202)
             if max_messages < tools.min_num_messages:
-                raise exceptions.GCloudError(203)
+                raise exceptions.GCloudError(1203)
 
             logger.debug(f"Setting {n_threads} thread{'s' if n_threads > 1 else ''} to pull {max_messages}"
                          f" message{'s' if max_messages > 1 else ''} in total")
@@ -76,9 +76,9 @@ def main():
 
         elif arguments.integration_type == "access_logs":
             if arguments.n_threads != tools.min_num_threads:
-                raise exceptions.GCloudError(102)
+                raise exceptions.GCloudError(1102)
             if not arguments.bucket_name:
-                raise exceptions.GCloudError(103)
+                raise exceptions.GCloudError(1103)
 
             f_kwargs = {"bucket_name": arguments.bucket_name,
                         "prefix": arguments.prefix,
@@ -90,11 +90,11 @@ def main():
             num_processed_messages = integration.process_data()
 
         else:
-            raise exceptions.GCloudError(3, integration_type=arguments.integration_type)
+            raise exceptions.GCloudError(1002, integration_type=arguments.integration_type)
 
-    except exceptions.GCloudException as gcloud_exception:
+    except exceptions.WazuhIntegrationException as gcloud_exception:
         logging_func = logger.critical if \
-            isinstance(gcloud_exception, exceptions.GCloudInternalError) else \
+            isinstance(gcloud_exception, exceptions.WazuhIntegrationInternalError) else \
             logger.error
 
         logging_func('An exception happened while running the wodle: '

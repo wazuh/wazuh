@@ -24,7 +24,7 @@ try:
     from google.api_core import exceptions as google_exceptions
     import pytz
 except ImportError as e:
-    raise exceptions.GCloudException(errcode=4, package=e.name)
+    raise exceptions.WazuhIntegrationException(errcode=1003, package=e.name)
 
 
 class WazuhGCloudBucket(WazuhGCloudIntegration):
@@ -53,7 +53,7 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
 
         Raises
         ------
-        GCloudError
+        exceptions.GCloudError
             If the credentials file doesn't exist or doesn't have the required
             structure.
         """
@@ -63,9 +63,9 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         try:
             self.client = storage.client.Client.from_service_account_json(credentials_file)
         except JSONDecodeError as error:
-            raise exceptions.GCloudError(1, credentials_file=credentials_file) from error
+            raise exceptions.GCloudError(1000, credentials_file=credentials_file) from error
         except FileNotFoundError as error:
-            raise exceptions.GCloudError(2, credentials_file=credentials_file) from error
+            raise exceptions.GCloudError(1001, credentials_file=credentials_file) from error
         self.project_id = self.client.project
         self.prefix = prefix if not prefix or prefix[-1] == '/' else f'{prefix}/'
         self.delete_file = delete_file
@@ -201,16 +201,16 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
 
         Raises
         ------
-        GCloudError
+        exceptions.GCloudError
             If the specified bucket doesn't exist or the client doesn't
             have permissions to access it.
         """
         try:
             self.bucket = self.client.get_bucket(self.bucket_name)
         except google_exceptions.NotFound:
-            raise exceptions.GCloudError(100, bucket_name=self.bucket_name)
+            raise exceptions.GCloudError(1100, bucket_name=self.bucket_name)
         except google_exceptions.Forbidden:
-            raise exceptions.GCloudError(101, permissions='storage.buckets.get',
+            raise exceptions.GCloudError(1101, permissions='storage.buckets.get',
                                          resource_name=self.bucket_name)
 
     def init_db(self):

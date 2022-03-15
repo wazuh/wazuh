@@ -59,12 +59,12 @@ def test_format_msg():
 
 
 @pytest.mark.parametrize('raised_exception, expected_exception, errcode', [
-    (ConnectionRefusedError, exceptions.GCloudInternalError, 800),
-    (OSError, exceptions.GCloudInternalError, 801)
+    (ConnectionRefusedError, exceptions.WazuhIntegrationInternalError, 1),
+    (OSError, exceptions.WazuhIntegrationInternalError, 2)
 ])
 def test_initialize_socket_ko(
         raised_exception: Exception,
-        expected_exception: exceptions.GCloudException,
+        expected_exception: exceptions.WazuhIntegrationException,
         gcloud_subscriber: WazuhGCloudSubscriber,
         errcode: int):
     """
@@ -75,7 +75,7 @@ def test_initialize_socket_ko(
     ----------
     raised_exception : Exception
         Exception raised that will be captured.
-    expected_exception : exceptions.GCloudException
+    expected_exception : exceptions.WazuhIntegrationException
         Exception that should be raised by the module after capturing
         raised_exception.
     gcloud_subscriber : WazuhGCloudSubscriber

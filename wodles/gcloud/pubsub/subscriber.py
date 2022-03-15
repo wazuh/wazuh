@@ -19,7 +19,7 @@ try:
     from google.cloud import pubsub_v1 as pubsub
     import google.api_core.exceptions
 except ImportError as e:
-    raise exceptions.GCloudException(errcode=4, package=e.name)
+    raise exceptions.GCloudError(errcode=1003, package=e.name)
 
 
 class WazuhGCloudSubscriber(WazuhGCloudIntegration):
@@ -41,7 +41,7 @@ class WazuhGCloudSubscriber(WazuhGCloudIntegration):
 
         Raises
         ------
-        GCloudError
+        exceptions.GCloudError
             If the credentials file doesn't exist or have a wrong structure.
         """
         super().__init__(logger)
@@ -51,9 +51,9 @@ class WazuhGCloudSubscriber(WazuhGCloudIntegration):
             self.subscriber = self.get_subscriber_client(credentials_file)
             self.subscription_path = self.get_subscription_path(project, subscription_id)
         except JSONDecodeError as error:
-            raise exceptions.GCloudError(1, credentials_file=credentials_file) from error
+            raise exceptions.GCloudError(1000, credentials_file=credentials_file) from error
         except FileNotFoundError as error:
-            raise exceptions.GCloudError(2, credentials_file=credentials_file) from error
+            raise exceptions.GCloudError(1001, credentials_file=credentials_file) from error
 
     @staticmethod
     def get_subscriber_client(credentials_file: str) -> pubsub.subscriber.Client:
@@ -94,7 +94,7 @@ class WazuhGCloudSubscriber(WazuhGCloudIntegration):
 
         Raises
         ------
-        GCloudError
+        exceptions.GCloudError
             If the parameters or credentials are invalid.
         """
         required_permissions = {'pubsub.subscriptions.consume'}
@@ -105,12 +105,12 @@ class WazuhGCloudSubscriber(WazuhGCloudIntegration):
 
         except google.api_core.exceptions.NotFound as e:
             if 'project not found or user does not have access' in e.message:
-                raise exceptions.GCloudError(204, subscription=self.subscription_path.split('/')[1])
+                raise exceptions.GCloudError(1204, subscription=self.subscription_path.split('/')[1])
             else:
-                raise exceptions.GCloudError(205, project=self.subscription_path.split('/')[-1])
+                raise exceptions.GCloudError(1205, project=self.subscription_path.split('/')[-1])
 
         if required_permissions.difference(response.permissions) != set():
-            raise exceptions.GCloudError(206)
+            raise exceptions.GCloudError(1206)
 
     def pull_request(self, max_messages: int) -> int:
         """Make request for pulling messages from the subscription and acknowledge them.
