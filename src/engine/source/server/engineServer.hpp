@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015-2022, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -12,10 +12,11 @@
 
 #include <map>
 #include <memory>
+#include <string>
 #include <vector>
 
-#include "endpoints/baseEndpoint.hpp"
-#include "endpoints/endpointFactory.hpp"
+#include "endpoints/tcpEndpoint.hpp"
+#include "endpoints/udpEndpoint.hpp"
 
 /**
  * @brief Defines all related server functionality.
@@ -36,6 +37,18 @@ private:
     std::map<std::string, std::unique_ptr<endpoints::BaseEndpoint>> m_endpoints;
     moodycamel::BlockingConcurrentQueue<std::string> m_eventBuffer;
     bool m_isConfigured;
+
+    /**
+     * @brief
+     *
+     * @param type
+     * @param path
+     * @param eventBuffer
+     * @return std::unique_ptr<endpoints::BaseEndpoint>
+     */
+    std::unique_ptr<endpoints::BaseEndpoint> createEndpoint(
+        const std::string & type, const std::string & path,
+        moodycamel::BlockingConcurrentQueue<std::string> & eventBuffer) const;
 
 public:
     /**
@@ -65,7 +78,10 @@ public:
      * @return true
      * @return false
      */
-    bool isConfigured(void) const { return m_isConfigured; };
+    bool isConfigured(void) const
+    {
+        return m_isConfigured;
+    };
 
     /**
      * @brief Get server output queue

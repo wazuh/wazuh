@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015-2022, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -11,6 +11,11 @@
 
 #include <logging/logging.hpp>
 #include <profile/profile.hpp>
+using std::nullopt;
+using std::optional;
+using std::string;
+using std::throw_with_nested;
+using std::vector;
 
 namespace engineserver
 {
@@ -77,13 +82,12 @@ std::shared_ptr<json::Document> ProtocolHandler::parse(const std::string & event
     return doc;
 }
 
-std::optional<std::vector<std::string>> ProtocolHandler::process(char * data, size_t length)
+optional<vector<string>> ProtocolHandler::process(const char * data, const size_t length)
 {
     std::vector<std::string> events;
 
     for (size_t i = 0; i < length; i++)
     {
-
         switch (m_stage)
         {
             // header
@@ -99,7 +103,7 @@ std::optional<std::vector<std::string>> ProtocolHandler::process(char * data, si
                 catch (...)
                 {
                     // TODO: improve this try-catch
-                    return std::nullopt;
+                    return nullopt;
                 }
                 break;
 
@@ -118,7 +122,7 @@ std::optional<std::vector<std::string>> ProtocolHandler::process(char * data, si
                     catch (std::exception & e)
                     {
                         WAZUH_LOG_ERROR("{}", e.what());
-                        return std::nullopt;
+                        return nullopt;
                     }
                     m_stage = 0;
                 }
@@ -126,7 +130,7 @@ std::optional<std::vector<std::string>> ProtocolHandler::process(char * data, si
 
             default:
                 WAZUH_LOG_ERROR("Invalid stage value.");
-                return std::nullopt;
+                return nullopt;
         }
     }
 
