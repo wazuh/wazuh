@@ -748,68 +748,6 @@ void test_c_multi_group_open_directory_fail(void **state)
     os_free(multi_group);
 }
 
-void test_c_multi_group_read_dir_fail(void **state)
-{
-    char *multi_group = NULL;
-    file_sum ***_f_sum = NULL;
-    char *hash_multigroup = NULL;
-
-    os_strdup("multi_group_test", multi_group);
-    os_strdup("multi_group_hash", hash_multigroup);
-
-    will_return(__wrap_cldir_ex, 0);
-    will_return(__wrap_opendir, 1);
-
-    expect_string(__wrap_wreaddir, name, "etc/shared/multi_group_test");
-    will_return(__wrap_wreaddir, NULL);
-
-    expect_string(__wrap__mwarn, formatted_msg, "Could not open directory 'etc/shared/multi_group_test'. Group folder was deleted.");
-
-    will_return(__wrap_opendir, 0);
-    will_return(__wrap_strerror, "No such file or directory");
-    expect_string(__wrap__mdebug1, formatted_msg, "At purge_group(): Opening directory: 'queue/agent-groups': No such file or directory");
-
-    /* Open the multi-group files and generate merged */
-    will_return(__wrap_opendir, 0);
-    will_return(__wrap_strerror, "No such file or directory");
-    expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'var/multigroups': No such file or directory");
-
-    c_multi_group(multi_group, _f_sum, hash_multigroup, true);
-
-    os_free(hash_multigroup);
-    os_free(multi_group);
-}
-
-void test_c_multi_group_read_dir_fail_no_entry(void **state)
-{
-    char *multi_group = NULL;
-    file_sum ***_f_sum = NULL;
-    char *hash_multigroup = NULL;
-
-    os_strdup("multi_group_test", multi_group);
-    os_strdup("multi_group_hash", hash_multigroup);
-
-    will_return(__wrap_cldir_ex, 0);
-    will_return(__wrap_opendir, 1);
-
-    expect_string(__wrap_wreaddir, name, "etc/shared/multi_group_test");
-    will_return(__wrap_wreaddir, NULL);
-
-    /* Open the multi-group files and generate merged */
-    will_return(__wrap_opendir, 0);
-    will_return(__wrap_strerror, "Not a directory");
-    expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'var/multigroups': Not a directory");
-
-    errno = ENOTDIR;
-
-    c_multi_group(multi_group, _f_sum, hash_multigroup, true);
-
-    errno = 0;
-
-    os_free(hash_multigroup);
-    os_free(multi_group);
-}
-
 void test_c_multi_group_call_copy_directory(void **state)
 {
     char *multi_group = NULL;
@@ -826,20 +764,16 @@ void test_c_multi_group_call_copy_directory(void **state)
     /* Open the multi-group files and generate merged */
     will_return(__wrap_opendir, 1);
 
-    // Initialize files structure
-    char ** subdir = NULL;
-    os_malloc((2) * sizeof(char *), subdir);
-    subdir[0] = strdup("test-file");
-    subdir[1] = NULL;
-
-    expect_string(__wrap_wreaddir, name, "etc/shared/multi_group_test");
-    will_return(__wrap_wreaddir, subdir);
-
     // Start copy_directory function
     expect_string(__wrap_wreaddir, name, "etc/shared/multi_group_test");
     will_return(__wrap_wreaddir, NULL);
 
+    errno = 1;
     expect_string(__wrap__mwarn, formatted_msg, "Could not open directory 'etc/shared/multi_group_test'. Group folder was deleted.");
+
+    will_return(__wrap_opendir, 0);
+    will_return(__wrap_strerror, "No such file or directory");
+    expect_string(__wrap__mdebug1, formatted_msg, "At purge_group(): Opening directory: 'queue/agent-groups': No such file or directory");
     // End copy_directory function
 
     will_return(__wrap_opendir, 0);
@@ -848,6 +782,7 @@ void test_c_multi_group_call_copy_directory(void **state)
 
     c_multi_group(multi_group, _f_sum, hash_multigroup, true);
 
+    errno = 0;
     os_free(_f_sum);
     os_free(hash_multigroup);
     os_free(multi_group);
@@ -869,20 +804,16 @@ void test_c_multi_group_call_c_group(void **state)
     /* Open the multi-group files and generate merged */
     will_return(__wrap_opendir, 1);
 
-    // Initialize files structure
-    char ** subdir = NULL;
-    os_malloc((2) * sizeof(char *), subdir);
-    subdir[0] = strdup("test-file");
-    subdir[1] = NULL;
-
-    expect_string(__wrap_wreaddir, name, "etc/shared/multi_group_test");
-    will_return(__wrap_wreaddir, subdir);
-
     // Start copy_directory function
     expect_string(__wrap_wreaddir, name, "etc/shared/multi_group_test");
     will_return(__wrap_wreaddir, NULL);
 
+    errno = 1;
     expect_string(__wrap__mwarn, formatted_msg, "Could not open directory 'etc/shared/multi_group_test'. Group folder was deleted.");
+
+    will_return(__wrap_opendir, 0);
+    will_return(__wrap_strerror, "No such file or directory");
+    expect_string(__wrap__mdebug1, formatted_msg, "At purge_group(): Opening directory: 'queue/agent-groups': No such file or directory");
     // End copy_directory function
 
     will_return(__wrap_opendir, 1);
@@ -927,6 +858,7 @@ void test_c_multi_group_call_c_group(void **state)
     assert_string_equal((char *)_f_sum[0][0]->sum, "md5_test_mult");
     assert_null(_f_sum[0][1]);
 
+    errno = 0;
     os_free(_f_sum[0][0]->name);
     os_free(_f_sum[0][0]);
     os_free(_f_sum[0]);
@@ -2947,14 +2879,32 @@ void test_validate_shared_files_sub_subfolder_valid_file(void **state)
     assert_int_equal(f_size, 1);
 }
 
-void test_copy_directory_files_null(void **state)
+void test_copy_directory_files_null_initial(void **state)
 {
     expect_string(__wrap_wreaddir, name, "src_path");
     will_return(__wrap_wreaddir, NULL);
 
+    errno = 1;
     expect_string(__wrap__mwarn, formatted_msg, "Could not open directory 'src_path'. Group folder was deleted.");
 
-    copy_directory("src_path", "dst_path", "group_test");
+    will_return(__wrap_opendir, 0);
+    will_return(__wrap_strerror, "No such file or directory");
+    expect_string(__wrap__mdebug1, formatted_msg, "At purge_group(): Opening directory: 'queue/agent-groups': No such file or directory");
+
+    copy_directory("src_path", "dst_path", "group_test", true);
+
+}
+
+void test_copy_directory_files_null_not_initial(void **state)
+{
+    expect_string(__wrap_wreaddir, name, "src_path");
+    will_return(__wrap_wreaddir, NULL);
+
+    errno = 1;
+    will_return(__wrap_strerror, "ERROR");
+    expect_string(__wrap__mdebug2, formatted_msg, "Could not open directory 'src_path': ERROR (1)");
+
+    copy_directory("src_path", "dst_path", "group_test", false);
 
 }
 
@@ -2969,7 +2919,7 @@ void test_copy_directory_hidden_file(void **state)
     expect_string(__wrap_wreaddir, name, "src_path");
     will_return(__wrap_wreaddir, files);
 
-    copy_directory("src_path", "dst_path", "group_test");
+    copy_directory("src_path", "dst_path", "group_test", true);
 }
 
 void test_copy_directory_merged_file(void **state)
@@ -2983,7 +2933,7 @@ void test_copy_directory_merged_file(void **state)
     expect_string(__wrap_wreaddir, name, "src_path");
     will_return(__wrap_wreaddir, files);
 
-    copy_directory("src_path", "dst_path", "group_test");
+    copy_directory("src_path", "dst_path", "group_test", true);
 }
 
 void test_copy_directory_source_path_too_long(void **state)
@@ -3003,7 +2953,7 @@ void test_copy_directory_source_path_too_long(void **state)
 
     expect_string(__wrap__mdebug2, formatted_msg, log_str);
 
-    copy_directory(base_path, "dst_path", "group_test");
+    copy_directory(base_path, "dst_path", "group_test", true);
 }
 
 void test_copy_directory_destination_path_too_long(void **state)
@@ -3023,7 +2973,7 @@ void test_copy_directory_destination_path_too_long(void **state)
 
     expect_string(__wrap__mdebug2, formatted_msg, log_str);
 
-    copy_directory("src_path", base_path, "group_test");
+    copy_directory("src_path", base_path, "group_test", true);
 }
 
 void test_copy_directory_invalid_file(void **state)
@@ -3051,7 +3001,7 @@ void test_copy_directory_invalid_file(void **state)
     expect_string(__wrap_OSHash_Get, key, "src_path/test-file");
     will_return(__wrap_OSHash_Get, last_modify);
 
-    copy_directory("src_path", "dst_path", "group_test");
+    copy_directory("src_path", "dst_path", "group_test", true);
 
     os_free(last_modify);
 }
@@ -3083,7 +3033,7 @@ void test_copy_directory_agent_conf_file(void **state)
     expect_value(__wrap_w_copy_file, silent, 1);
     will_return(__wrap_w_copy_file, 0);
 
-    copy_directory("src_path", "dst_path", "group_test");
+    copy_directory("src_path", "dst_path", "group_test", true);
 }
 
 void test_copy_directory_valid_file(void **state)
@@ -3113,7 +3063,7 @@ void test_copy_directory_valid_file(void **state)
     expect_value(__wrap_w_copy_file, silent, 1);
     will_return(__wrap_w_copy_file, 0);
 
-    copy_directory("src_path", "dst_path", "group_test");
+    copy_directory("src_path", "dst_path", "group_test", true);
 }
 
 void test_copy_directory_valid_file_subfolder_file(void **state)
@@ -3177,7 +3127,7 @@ void test_copy_directory_valid_file_subfolder_file(void **state)
     expect_value(__wrap_w_copy_file, silent, 1);
     will_return(__wrap_w_copy_file, 0);
 
-    copy_directory("src_path", "dst_path", "group_test");
+    copy_directory("src_path", "dst_path", "group_test", true);
 }
 
 void test_copy_directory_mkdir_fail(void **state)
@@ -3203,7 +3153,7 @@ void test_copy_directory_mkdir_fail(void **state)
     will_return(__wrap_strerror, "ERROR");
     expect_string(__wrap__merror, formatted_msg, "Cannot create directory 'dst_path/subfolder': ERROR (10)");
 
-    copy_directory("src_path", "dst_path", "group_test");
+    copy_directory("src_path", "dst_path", "group_test", true);
     errno = 0;
 }
 
@@ -3227,13 +3177,13 @@ void test_copy_directory_mkdir_exist(void **state)
     will_return(__wrap_mkdir, -1);
 
     errno = 17;
-
     expect_string(__wrap_wreaddir, name, "src_path/subfolder");
     will_return(__wrap_wreaddir, NULL);
 
-    expect_string(__wrap__mwarn, formatted_msg, "Could not open directory 'src_path/subfolder'. Group folder was deleted.");
+    will_return(__wrap_strerror, "ERROR");
+    expect_string(__wrap__mdebug2, formatted_msg, "Could not open directory 'src_path/subfolder': ERROR (17)");
 
-    copy_directory("src_path", "dst_path", "group_test");
+    copy_directory("src_path", "dst_path", "group_test", true);
     errno = 0;
 }
 
@@ -3311,7 +3261,7 @@ void test_copy_directory_file_subfolder_file(void **state)
     expect_value(__wrap_w_copy_file, silent, 1);
     will_return(__wrap_w_copy_file, 0);
 
-    copy_directory("src_path", "dst_path", "group_test");
+    copy_directory("src_path", "dst_path", "group_test", true);
 }
 
 int main(void)
@@ -3332,8 +3282,6 @@ int main(void)
         // Tests c_multi_group
         cmocka_unit_test(test_c_multi_group_hash_multigroup_null),
         cmocka_unit_test(test_c_multi_group_open_directory_fail),
-        cmocka_unit_test(test_c_multi_group_read_dir_fail),
-        cmocka_unit_test(test_c_multi_group_read_dir_fail_no_entry),
         cmocka_unit_test(test_c_multi_group_call_copy_directory),
         cmocka_unit_test(test_c_multi_group_call_c_group),
         // Test find_group
@@ -3410,7 +3358,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_validate_shared_files_valid_file_subfolder_valid_file, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_validate_shared_files_sub_subfolder_valid_file, test_c_group_setup, test_c_group_teardown),
         // Test copy_directory
-        cmocka_unit_test(test_copy_directory_files_null),
+        cmocka_unit_test(test_copy_directory_files_null_initial),
+        cmocka_unit_test(test_copy_directory_files_null_not_initial),
         cmocka_unit_test(test_copy_directory_hidden_file),
         cmocka_unit_test(test_copy_directory_merged_file),
         cmocka_unit_test(test_copy_directory_source_path_too_long),
