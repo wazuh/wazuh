@@ -16798,26 +16798,36 @@ paths:
               example:
                 data:
                   affected_items:
-                    - architecture: amd64
-                      name: binutils
-                      version: 2.34-6ubuntu1.1
-                      type: PACKAGE
-                      severity: Medium
-                      cvss2_score: 7.1
-                      cve: CVE-2021-3487
-                      detection_time: '2021-06-14T07:45:51Z'
-                      cvss3_score: 6.5
-                      status: VALID
-                    - architecture: amd64
-                      name: binutils
-                      version: 2.34-6ubuntu1.1
-                      type: PACKAGE
-                      severity: High
-                      cvss2_score: 6.8
-                      cve: CVE-2021-20294
-                      detection_time: '2021-06-14T07:45:51Z'
+                    - severity: "High"
+                      updated: "2022-01-10"
+                      version: "2.34-6ubuntu1.3"
+                      type: "PACKAGE"
+                      name: "binutils"
+                      external_references: "[\"https://sourceware.org/bugzilla/show_bug.cgi?id=28694\",\"https://sourceware.org/git/gitweb.cgi?p=binutils-gdb.git;h=161e87d12167b1e36193385485c1f6ce92f74f02\",\"https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/UQBH244M5PV6S6UMHUTCVCWFZDX7Y4M6/\",\"https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/UUHLDDT3HH7YEY6TX7IJRGPJUTNNVEL3/\",\"https://security.netapp.com/advisory/ntap-20220107-0002/\",\"https://nvd.nist.gov/vuln/detail/CVE-2021-45078\",\"http://people.canonical.com/~ubuntu-security/cve/2021/CVE-2021-45078.html\",\"https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2021-45078\"]"
+                      condition: "Package unfixed"
+                      detection_time: "2022-03-14T11:04:04Z"
                       cvss3_score: 7.8
-                      status: VALID
+                      published: "2021-12-15"
+                      architecture: "amd64"
+                      cve: "CVE-2021-45078"
+                      status: "VALID"
+                      title: "CVE-2021-45078 affects binutils"
+                      cvss2_score: 6.8
+                    - severity: "High"
+                      updated: "2022-01-10"
+                      version: "2.34-6ubuntu1.3"
+                      type: "PACKAGE"
+                      name: "binutils-common"
+                      external_references: "[\"https://sourceware.org/bugzilla/show_bug.cgi?id=28694\",\"https://sourceware.org/git/gitweb.cgi?p=binutils-gdb.git;h=161e87d12167b1e36193385485c1f6ce92f74f02\",\"https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/UQBH244M5PV6S6UMHUTCVCWFZDX7Y4M6/\",\"https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/UUHLDDT3HH7YEY6TX7IJRGPJUTNNVEL3/\",\"https://security.netapp.com/advisory/ntap-20220107-0002/\",\"https://nvd.nist.gov/vuln/detail/CVE-2021-45078\",\"http://people.canonical.com/~ubuntu-security/cve/2021/CVE-2021-45078.html\",\"https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2021-45078\"]"
+                      condition: "Package unfixed"
+                      detection_time: "2022-03-14T11:04:04Z"
+                      cvss3_score: 7.8
+                      published: "2021-12-15"
+                      architecture: "amd64"
+                      cve: "CVE-2021-45078"
+                      status: "VALID"
+                      title: "CVE-2021-45078 affects binutils-common"
+                      cvss2_score: 6.8
                   total_affected_items: 2
                   total_failed_items: 0
                   failed_items: []
