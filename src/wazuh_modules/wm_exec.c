@@ -47,7 +47,7 @@ static volatile HANDLE wm_children[WM_POOL_SIZE] = { NULL };   // Child process 
 
 // Execute command with timeout of secs
 
-int wm_exec_as(char *command, char **output, int *status, int secs, const char * add_path, uid_t uid, gid_t gid)
+int wm_exec_as(char *command, char **output, int *status, int secs, const char * add_path, __attribute__((unused)) uid_t uid, __attribute__((unused)) gid_t gid)
 {
     return wm_exec(command, output, status, secs, add_path);
 }
