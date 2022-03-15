@@ -12,7 +12,6 @@
 #include "remoted.h"
 #include "remoted_op.h"
 #include "wazuh_db/helpers/wdb_global_helpers.h"
-#include "os_crypto/md5/md5_op.h"
 #include "os_net/os_net.h"
 #include "shared_download.h"
 #include "os_crypto/sha256/sha256_op.h"
@@ -45,9 +44,6 @@ typedef struct group_t {
 static OSHash *invalid_files;
 
 /* Internal functions prototypes */
-
-static void read_controlmsg(const char *agent_id, char *msg, char *group);
-static int send_file_toagent(const char *agent_id, const char *group, const char *name, const char *sum, char *sharedcfg_dir);
 
 /**
  * @brief Process group, update file sum structure and create merged.mg file
@@ -152,6 +148,17 @@ STATIC bool group_changed(const char *multi_group);
  */
 STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **group, int* wdb_sock);
 
+/**
+ * @brief Send a shared file to an agent
+ * @param agent_id ID of the destination agent
+ * @param group Name of the group where the file is located
+ * @param name Name of the file
+ * @param sum MD5 of the file
+ * @param sharedcfg_dir Directory where the file is located
+ * @return OS_SUCCESS if the file was sent, OS_INVALID otherwise
+ */
+static int send_file_toagent(const char *agent_id, const char *group, const char *name, const char *sum, char *sharedcfg_dir);
+
 /* Groups structures and sizes */
 static group_t **groups;
 static group_t **multi_groups;
@@ -192,7 +199,7 @@ void free_file_sum(file_sum **f_sum) {
 }
 
 /* Save a control message received from an agent
- * read_controlmsg (other thread) is going to deal with it
+ * wait_for_msgs (other thread) is going to deal with it
  * (only if message changed)
  */
 void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *wdb_sock)
@@ -269,7 +276,6 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
         }
     }
 
-    /* Lock mutex */
     w_mutex_lock(&lastmsg_mutex);
 
     /* Check if there is a keep alive already for this agent */
@@ -289,10 +295,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 
             if (OSHash_Add(pending_data, key->id, data) != 2) {
                 merror("Couldn't add pending data into hash table.");
-
-                /* Unlock mutex */
                 w_mutex_unlock(&lastmsg_mutex);
-
                 os_free(data);
                 os_free(clean);
                 return;
@@ -300,8 +303,8 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
         }
 
         if (is_startup) {
-            /* Unlock mutex */
             w_mutex_unlock(&lastmsg_mutex);
+
             agent_id = atoi(key->id);
 
             result = wdb_update_agent_keepalive(agent_id, AGENT_CS_PENDING, logr.worker_node ? "syncreq" : "synced", wdb_sock);
@@ -310,8 +313,8 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
                 mwarn("Unable to save last keepalive and set connection status as pending for agent: %s", key->id);
             }
         } else if (is_shutdown) {
-            /* Unlock mutex */
             w_mutex_unlock(&lastmsg_mutex);
+
             agent_id = atoi(key->id);
 
             result = wdb_update_agent_connection_status(agent_id, AGENT_CS_DISCONNECTED, logr.worker_node ? "syncreq" : "synced", wdb_sock);
@@ -347,39 +350,51 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
         } else {
             /* Update message */
             mdebug2("save_controlmsg(): inserting '%s'", msg);
+
             os_free(data->message);
+            os_free(data->group);
+            memset(&data->merged_sum, 0, sizeof(os_md5));
+
             os_strdup(msg, data->message);
 
-            os_free(data->group);
-            if (OS_SUCCESS != lookfor_agent_group(key->id, data->message, &data->group, wdb_sock)) {
-                mdebug1("Error getting agent group for agent: '%s'", key->id);
+            if (OS_SUCCESS == lookfor_agent_group(key->id, data->message, &data->group)) {
+                group_t *aux = NULL;
+
+                w_mutex_lock(&files_mutex);
+
+                if (aux = find_group(data->group), !aux || !aux->f_sum) {
+                    if (aux = find_multi_group(data->group), !aux || !aux->f_sum) {
+                        merror("No such group '%s' for agent '%s'", data->group, key->id);
+                    }
+                }
+
+                w_mutex_unlock(&files_mutex);
+
+                if (aux && aux->f_sum && aux->f_sum[0] && *(aux->f_sum[0]->sum)) {
+                    // Copy sum before unlock mutex
+                    memcpy(data->merged_sum, aux->f_sum[0]->sum, sizeof(os_md5));
+                }
+            } else {
+                merror("Error getting group for agent '%s'", key->id);
             }
 
-            /* Mark data as changed and insert into queue */
-            if (!data->changed) {
-                char *id;
-                os_strdup(key->id, id);
-                linked_queue_push_ex(pending_queue, id);
-
-                data->changed = 1;
-            }
-
-            /* Unlock mutex */
             w_mutex_unlock(&lastmsg_mutex);
 
-            os_calloc(1, sizeof(agent_info_data), agent_data);
-            os_calloc(HOST_NAME_MAX, sizeof(char), agent_data->manager_host);
-
             /* Parsing msg */
+            os_calloc(1, sizeof(agent_info_data), agent_data);
+
             result = parse_agent_update_msg(msg, agent_data);
 
             if (OS_SUCCESS != result) {
-                merror("Error parsing message for agent %s.", key->id);
+                merror("Error parsing message for agent '%s'", key->id);
+                wdb_free_agent_info_data(agent_data);
+                os_free(clean);
                 return;
             }
 
             // Appending system labels
-            /* Get manager name before chroot */
+            os_calloc(HOST_NAME_MAX, sizeof(char), agent_data->manager_host);
+
             if (gethostname(agent_data->manager_host, HOST_NAME_MAX) < 0) {
                 mwarn("Unable to get hostname due to: '%s'", strerror(errno));
             } else {
@@ -391,6 +406,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
                 wm_strcat(&agent_data->labels, agent_ip_label, agent_data->labels ? '\n' : 0);
                 wm_strcat(&agent_data->labels, agent_data->agent_ip, 0);
             }
+
             if (node_name) {
                 wm_strcat(&agent_data->labels, node_label, agent_data->labels ? '\n' : 0);
                 wm_strcat(&agent_data->labels, node_name, 0);
@@ -406,11 +422,30 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             os_strdup(AGENT_CS_ACTIVE, agent_data->connection_status);
             os_strdup(logr.worker_node ? "syncreq" : "synced", agent_data->sync_status);
 
+            w_mutex_lock(&lastmsg_mutex);
+
+            if (data->merged_sum[0] && (!agent_data->merged_sum || (strcmp(data->merged_sum, agent_data->merged_sum) != 0))) {
+                /* Mark data as changed and insert into queue */
+                if (!data->changed) {
+                    char *id;
+                    os_strdup(key->id, id);
+                    linked_queue_push_ex(pending_queue, id);
+
+                    data->changed = 1;
+                }
+                os_strdup("not synced", agent_data->group_config_status);
+            } else {
+                os_strdup("synced", agent_data->group_config_status);
+            }
+
+            w_mutex_unlock(&lastmsg_mutex);
+
             // Updating version and keepalive in global.db
             result = wdb_update_agent_data(agent_data, wdb_sock);
 
-            if (OS_INVALID == result)
+            if (OS_INVALID == result) {
                 mdebug1("Unable to update information in global.db for agent: %s", key->id);
+            }
 
             wdb_free_agent_info_data(agent_data);
         }
@@ -746,7 +781,6 @@ STATIC void c_files()
 {
     mdebug2("Updating shared files sums.");
 
-    /* Lock mutex */
     w_mutex_lock(&files_mutex);
 
     /* Analize groups */
@@ -761,7 +795,6 @@ STATIC void c_files()
     /* Delete residual multigroups */
     process_deleted_multi_groups();
 
-    /* Unlock mutex */
     w_mutex_unlock(&files_mutex);
 
     mdebug2("End updating shared files sums.");
@@ -1180,7 +1213,6 @@ STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group, 
         return OS_SUCCESS;
     }
 
-    // Make a copy to keep original msg for read_controlmsg
     os_strdup(msg, message);
     fmsg = message;
 
@@ -1231,7 +1263,6 @@ STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group, 
             os_calloc(OS_SIZE_65536 + 1, sizeof(char), group);
             mdebug2("Agent '%s' with file '%s' MD5 '%s'", agent_id, SHAREDCFG_FILENAME, md5);
 
-            /* Lock mutex */
             w_mutex_lock(&files_mutex);
 
             if (!guess_agent_group || !find_group_from_file(file, md5, group) || !find_multi_group_from_file(file, md5, group)) {
@@ -1241,7 +1272,6 @@ STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group, 
                 strncpy(group, "default", OS_SIZE_65536);
             }
 
-            /* Unlock mutex */
             w_mutex_unlock(&files_mutex);
 
             wdb_set_agent_groups_csv(atoi(agent_id),
@@ -1273,19 +1303,12 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
     char buf[OS_SIZE_1024 + 1];
     FILE *fp;
     os_sha256 multi_group_hash;
-    char *multi_group_hash_pt = NULL;
     int protocol = -1; // Agent client net protocol
 
     /* Check if it is multigroup */
     if (strchr(group, MULTIGROUP_SEPARATOR)) {
-        if (multi_group_hash_pt = OSHash_Get(m_hash, group), multi_group_hash_pt) {
-            mdebug1("At send_file_toagent(): Hash is '%s'", multi_group_hash_pt);
-            snprintf(file, OS_SIZE_1024, "%s/%s/%s", sharedcfg_dir, multi_group_hash_pt, name);
-        } else {
-            OS_SHA256_String(group, multi_group_hash);
-            OSHash_Add_ex(m_hash, group, strndup(multi_group_hash, 8));
-            snprintf(file, OS_SIZE_1024, "%s/%.8s/%s", sharedcfg_dir, multi_group_hash, name);
-        }
+        OS_SHA256_String(group, multi_group_hash);
+        snprintf(file, OS_SIZE_1024, "%s/%.8s/%s", sharedcfg_dir, multi_group_hash, name);
     } else {
         snprintf(file, OS_SIZE_1024, "%s/%s/%s", sharedcfg_dir, group, name);
     }
@@ -1293,7 +1316,7 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
     fp = fopen(file, "r");
     if (!fp) {
         mdebug1(FOPEN_ERROR, file, errno, strerror(errno));
-        return (-1);
+        return OS_INVALID;
     }
 
     /* Send the file name first */
@@ -1302,7 +1325,7 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
 
     if (send_msg(agent_id, buf, -1) < 0) {
         fclose(fp);
-        return (-1);
+        return OS_INVALID;
     }
 
     /* The following code is used to get the protocol that the client is using in order to answer accordingly */
@@ -1311,7 +1334,7 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
     key_unlock();
     if (protocol < 0) {
         merror(AR_NOAGENT_ERROR, agent_id);
-        return -1;
+        return OS_INVALID;
     }
 
     /* Send the file contents */
@@ -1320,7 +1343,7 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
 
         if (send_msg(agent_id, buf, -1) < 0) {
             fclose(fp);
-            return (-1);
+            return OS_INVALID;
         }
         /* If the protocol being used is UDP, it is necessary to add a delay to avoid flooding */
         if (protocol == REMOTED_NET_PROTOCOL_UDP) {
@@ -1338,163 +1361,79 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
 
     if (send_msg(agent_id, buf, -1) < 0) {
         fclose(fp);
-        return (-1);
+        return OS_INVALID;
     }
 
     fclose(fp);
 
-    return (0);
+    return OS_SUCCESS;
 }
 
-/* Read the available control message from the agent */
-static void read_controlmsg(const char *agent_id, char *msg, char *group)
-{
-    os_md5 tmp_sum;
-    char *end;
-
-    mdebug2("read_controlmsg(): reading '%s'", msg);
-    memset(&tmp_sum, 0, sizeof(os_md5));
-
-    // Skip agent-info and label data
-    if (msg = strchr(msg, '\n'), !msg) {
-        merror("Invalid message from agent ID '%s' (strchr \\n)", agent_id);
-        return;
-    }
-
-    for (msg++; (*msg == '\"' || *msg == '!' || *msg == '#') && (end = strchr(msg, '\n')); msg = end + 1) {};
-
-    /* Lock mutex */
-    w_mutex_lock(&files_mutex);
-
-    group_t *aux = find_group(group);
-    if (!aux || !aux->f_sum) {
-        aux = find_multi_group(group);
-        if (!aux || !aux->f_sum) {
-            /* Unlock mutex */
-            w_mutex_unlock(&files_mutex);
-            merror("No such group '%s' for agent '%s'", group, agent_id);
-            return;
-        }
-    }
-
-    // Copy sum before unlock mutex
-    if (aux->f_sum[0] && *(aux->f_sum[0]->sum)) {
-        memcpy(tmp_sum, aux->f_sum[0]->sum, sizeof(tmp_sum));
-    }
-
-    /* Unlock mutex */
-    w_mutex_unlock(&files_mutex);
-
-    /* Parse message */
-    while (*msg != '\0') {
-        char *md5;
-        char *file;
-
-        md5 = msg;
-        file = msg;
-
-        msg = strchr(msg, '\n');
-        if (!msg) {
-            merror("Invalid message from agent ID '%s' (strchr \\n)", agent_id);
-            break;
-        }
-
-        *msg = '\0';
-        msg++;
-
-        // Skip labeled data
-        if (*md5 == '\"' || *md5 == '!' || *md5 == '#') {
-            continue;
-        }
-
-        file = strchr(file, ' ');
-        if (!file) {
-            merror("Invalid message from agent ID '%s' (strchr ' ')", agent_id);
-            break;
-        }
-
-        *file = '\0';
-        file++;
-
-        /* New agents only have merged.mg */
-        if (strcmp(file, SHAREDCFG_FILENAME) == 0) {
-
-            if (tmp_sum[0] && strcmp(tmp_sum, md5) != 0) {
-                mdebug1("Sending file '%s/%s' to agent '%s'.", group, SHAREDCFG_FILENAME, agent_id);
-
-                /* If the agent has multi group, change the shared path */
-                char *multi_group = strchr(group, MULTIGROUP_SEPARATOR);
-                char sharedcfg_dir[128] = {0};
-
-                if (multi_group) {
-                    strcpy(sharedcfg_dir, MULTIGROUPS_DIR);
-                } else {
-                    strcpy(sharedcfg_dir, SHAREDCFG_DIR);
-                }
-
-                if (send_file_toagent(agent_id, group, SHAREDCFG_FILENAME, tmp_sum, sharedcfg_dir) < 0) {
-                    mwarn(SHARED_ERROR, SHAREDCFG_FILENAME, agent_id);
-                }
-
-                mdebug2("End sending file '%s/%s' to agent '%s'.", group, SHAREDCFG_FILENAME, agent_id);
-            }
-
-            return;
-        }
-    }
-
-    return;
-}
-
-/* Wait for new messages to read
- * The messages will be sent using save_controlmsg
- */
+/* Wait for new messages to read */
 void *wait_for_msgs(__attribute__((unused)) void *none)
 {
     pending_data_t *data;
 
     /* Should never leave this loop */
     while (1) {
-        char * msg = NULL;
-        char * group = NULL;
+        char *group = NULL;
+        os_md5 merged_sum;
+
+        memset(&merged_sum, 0, sizeof(os_md5));
 
         /* Pop data from queue */
         char *agent_id = linked_queue_pop_ex(pending_queue);
 
-        /* Lock mutex */
         w_mutex_lock(&lastmsg_mutex);
 
         if (data = OSHash_Get(pending_data, agent_id), data) {
-            os_strdup(data->message, msg);
             w_strdup(data->group, group);
+            memcpy(merged_sum, data->merged_sum, sizeof(os_md5));
         } else {
             merror("Couldn't get pending data from hash table for agent ID '%s'.", agent_id);
             os_free(agent_id);
             agent_id = NULL;
         }
 
-        /* Unlock mutex */
         w_mutex_unlock(&lastmsg_mutex);
 
-        if (msg && agent_id && group) {
-            read_controlmsg(agent_id, msg, group);
+        if (agent_id && group && merged_sum[0]) {
+            mdebug1("Sending file '%s/%s' to agent '%s'.", group, SHAREDCFG_FILENAME, agent_id);
+
+            /* If the agent has multi group, change the shared path */
+            char *multi_group = strchr(group,MULTIGROUP_SEPARATOR);
+            char sharedcfg_dir[128] = {0};
+
+            if (multi_group) {
+                strcpy(sharedcfg_dir, MULTIGROUPS_DIR);
+            } else {
+                strcpy(sharedcfg_dir, SHAREDCFG_DIR);
+            }
+
+            if (send_file_toagent(agent_id, group, SHAREDCFG_FILENAME, merged_sum, sharedcfg_dir) < 0) {
+                mwarn(SHARED_ERROR, SHAREDCFG_FILENAME, agent_id);
+            }
+
+            mdebug2("End sending file '%s/%s' to agent '%s'.", group, SHAREDCFG_FILENAME, agent_id);
         }
         os_free(agent_id);
-        os_free(msg);
         os_free(group);
 
         // Mark message as dispatched
         w_mutex_lock(&lastmsg_mutex);
+
         if (data) {
             data->changed = 0;
         }
+
         w_mutex_unlock(&lastmsg_mutex);
     }
 
-    return (NULL);
+    return NULL;
 }
 /* Update shared files */
-void *update_shared_files(__attribute__((unused)) void *none) {
+void *update_shared_files(__attribute__((unused)) void *none)
+{
     INTERVAL = getDefine_Int("remoted", "shared_reload", 1, 18000);
 
     poll_interval_time = INTERVAL;

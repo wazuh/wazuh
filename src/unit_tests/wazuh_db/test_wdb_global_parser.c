@@ -422,7 +422,7 @@ void test_wdb_parse_global_update_agent_data_query_error(void **state)
     \"os_major\":\"test_major\",\"os_minor\":\"test_minor\",\"os_codename\":\"test_codename\",\"os_platform\":\"test_platform\",\
     \"os_build\":\"test_build\",\"os_uname\":\"test_uname\",\"os_arch\":\"test_arch\",\"version\":\"test_version\",\"config_sum\":\
     \"test_config\",\"merged_sum\":\"test_merged\",\"manager_host\":\"test_manager\",\"node_name\":\"test_node\",\"agent_ip\":\"test_ip\",\
-    \"connection_status\":\"active\",\"sync_status\":\"syncreq\"}";
+    \"connection_status\":\"active\",\"sync_status\":\"syncreq\",\"group_config_status\":\"synced\"}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg,
@@ -430,7 +430,7 @@ void test_wdb_parse_global_update_agent_data_query_error(void **state)
     \"os_major\":\"test_major\",\"os_minor\":\"test_minor\",\"os_codename\":\"test_codename\",\"os_platform\":\"test_platform\",\
     \"os_build\":\"test_build\",\"os_uname\":\"test_uname\",\"os_arch\":\"test_arch\",\"version\":\"test_version\",\"config_sum\":\
     \"test_config\",\"merged_sum\":\"test_merged\",\"manager_host\":\"test_manager\",\"node_name\":\"test_node\",\"agent_ip\":\"test_ip\",\
-    \"connection_status\":\"active\",\"sync_status\":\"syncreq\"}");
+    \"connection_status\":\"active\",\"sync_status\":\"syncreq\",\"group_config_status\":\"synced\"}");
 
     expect_value(__wrap_wdb_global_update_agent_version, id, 1);
     expect_string(__wrap_wdb_global_update_agent_version, os_name, "test_name");
@@ -450,6 +450,7 @@ void test_wdb_parse_global_update_agent_data_query_error(void **state)
     expect_string(__wrap_wdb_global_update_agent_version, agent_ip, "test_ip");
     expect_string(__wrap_wdb_global_update_agent_version, connection_status, "active");
     expect_string(__wrap_wdb_global_update_agent_version, sync_status, "syncreq");
+    expect_string(__wrap_wdb_global_update_agent_version, group_config_status, "synced");
 
     will_return(__wrap_wdb_global_update_agent_version, OS_INVALID);
 
@@ -470,7 +471,7 @@ void test_wdb_parse_global_update_agent_data_invalid_data(void **state)
     \"os_major\":\"test_major\",\"os_minor\":\"test_minor\",\"os_codename\":\"test_codename\",\"os_platform\":\"test_platform\",\
     \"os_build\":\"test_build\",\"os_uname\":\"test_uname\",\"os_arch\":\"test_arch\",\"version\":\"test_version\",\"config_sum\":\
     \"test_config\",\"merged_sum\":\"test_merged\",\"manager_host\":\"test_manager\",\"node_name\":\"test_node\",\"agent_ip\":\"test_ip\",\
-    \"connection_status\":\"active\",\"sync_status\":\"syncreq\"}";
+    \"connection_status\":\"active\",\"sync_status\":\"syncreq\",\"group_config_status\":\"synced\"}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg,
@@ -478,7 +479,7 @@ void test_wdb_parse_global_update_agent_data_invalid_data(void **state)
     \"os_major\":\"test_major\",\"os_minor\":\"test_minor\",\"os_codename\":\"test_codename\",\"os_platform\":\"test_platform\",\
     \"os_build\":\"test_build\",\"os_uname\":\"test_uname\",\"os_arch\":\"test_arch\",\"version\":\"test_version\",\"config_sum\":\
     \"test_config\",\"merged_sum\":\"test_merged\",\"manager_host\":\"test_manager\",\"node_name\":\"test_node\",\"agent_ip\":\"test_ip\",\
-    \"connection_status\":\"active\",\"sync_status\":\"syncreq\"}");
+    \"connection_status\":\"active\",\"sync_status\":\"syncreq\",\"group_config_status\":\"synced\"}");
 
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid JSON data when updating agent version.");
 
@@ -496,7 +497,7 @@ void test_wdb_parse_global_update_agent_data_success(void **state)
     \"os_major\":\"test_major\",\"os_minor\":\"test_minor\",\"os_codename\":\"test_codename\",\"os_platform\":\"test_platform\",\
     \"os_build\":\"test_build\",\"os_uname\":\"test_uname\",\"os_arch\":\"test_arch\",\"version\":\"test_version\",\"config_sum\":\
     \"test_config\",\"merged_sum\":\"test_merged\",\"manager_host\":\"test_manager\",\"node_name\":\"test_node\",\"agent_ip\":\"test_ip\",\
-    \"connection_status\":\"active\",\"sync_status\":\"syncreq\"}";
+    \"connection_status\":\"active\",\"sync_status\":\"syncreq\",\"group_config_status\":\"not synced\"}";
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg,
@@ -504,7 +505,7 @@ void test_wdb_parse_global_update_agent_data_success(void **state)
     \"os_major\":\"test_major\",\"os_minor\":\"test_minor\",\"os_codename\":\"test_codename\",\"os_platform\":\"test_platform\",\
     \"os_build\":\"test_build\",\"os_uname\":\"test_uname\",\"os_arch\":\"test_arch\",\"version\":\"test_version\",\"config_sum\":\
     \"test_config\",\"merged_sum\":\"test_merged\",\"manager_host\":\"test_manager\",\"node_name\":\"test_node\",\"agent_ip\":\"test_ip\",\
-    \"connection_status\":\"active\",\"sync_status\":\"syncreq\"}");
+    \"connection_status\":\"active\",\"sync_status\":\"syncreq\",\"group_config_status\":\"not synced\"}");
 
     expect_value(__wrap_wdb_global_update_agent_version, id, 1);
     expect_string(__wrap_wdb_global_update_agent_version, os_name, "test_name");
@@ -524,6 +525,8 @@ void test_wdb_parse_global_update_agent_data_success(void **state)
     expect_string(__wrap_wdb_global_update_agent_version, agent_ip, "test_ip");
     expect_string(__wrap_wdb_global_update_agent_version, connection_status, "active");
     expect_string(__wrap_wdb_global_update_agent_version, sync_status, "syncreq");
+    expect_string(__wrap_wdb_global_update_agent_version, group_config_status, "not synced");
+
     will_return(__wrap_wdb_global_update_agent_version, OS_SUCCESS);
 
     expect_value(__wrap_wdb_global_del_agent_labels, id, 1);

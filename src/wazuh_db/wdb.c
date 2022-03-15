@@ -140,8 +140,8 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_ROOTCHECK_DELETE_PM] = "DELETE FROM pm_event;",
     [WDB_STMT_GLOBAL_INSERT_AGENT] = "INSERT INTO agent (id, name, ip, register_ip, internal_key, date_add, `group`) VALUES (?,?,?,?,?,?,?);",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_NAME] = "UPDATE agent SET name = ? WHERE id = ?;",
-    [WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION] = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ?, last_keepalive = (CASE WHEN id = 0 THEN 253402300799 ELSE STRFTIME('%s', 'NOW') END), connection_status = ?, sync_status = ? WHERE id = ?;",
-    [WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION_IP] = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ?, last_keepalive = (CASE WHEN id = 0 THEN 253402300799 ELSE STRFTIME('%s', 'NOW') END), ip = ?, connection_status = ?, sync_status = ? WHERE id = ?;",
+    [WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION] = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ?, last_keepalive = (CASE WHEN id = 0 THEN 253402300799 ELSE STRFTIME('%s', 'NOW') END), connection_status = ?, sync_status = ?, group_config_status = ? WHERE id = ?;",
+    [WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION_IP] = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ?, last_keepalive = (CASE WHEN id = 0 THEN 253402300799 ELSE STRFTIME('%s', 'NOW') END), ip = ?, connection_status = ?, sync_status = ?, group_config_status = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_LABELS_GET] = "SELECT * FROM labels WHERE id = ?;",
     [WDB_STMT_GLOBAL_LABELS_DEL] = "DELETE FROM labels WHERE id = ?;",
     [WDB_STMT_GLOBAL_LABELS_SET] = "INSERT INTO labels (id, key, value) VALUES (?,?,?);",
@@ -162,7 +162,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_GROUP_BELONG_GET] = "SELECT id_agent FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = ?) AND id_agent > ?;",
     [WDB_STMT_GLOBAL_SELECT_GROUPS] = "SELECT name FROM `group`;",
     [WDB_STMT_GLOBAL_SELECT_AGENT_KEEPALIVE] = "SELECT last_keepalive FROM agent WHERE name = ? AND (register_ip = ? OR register_ip LIKE ? || '/_%');",
-    [WDB_STMT_GLOBAL_SYNC_REQ_GET] = "SELECT id, name, ip, os_name, os_version, os_major, os_minor, os_codename, os_build, os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, last_keepalive, connection_status, disconnection_time FROM agent WHERE id > ? AND sync_status = 'syncreq' LIMIT 1;",
+    [WDB_STMT_GLOBAL_SYNC_REQ_GET] = "SELECT id, name, ip, os_name, os_version, os_major, os_minor, os_codename, os_build, os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, last_keepalive, connection_status, disconnection_time, group_config_status FROM agent WHERE id > ? AND sync_status = 'syncreq' LIMIT 1;",
     [WDB_STMT_GLOBAL_SYNC_SET] = "UPDATE agent SET sync_status = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_GROUP_SYNC_REQ_GET] = "SELECT id FROM agent WHERE id > ? AND group_sync_status = 'syncreq' AND date_add < ? LIMIT 1;",
     [WDB_STMT_GLOBAL_GROUP_SYNC_ALL_GET] = "SELECT id FROM agent WHERE id > ? AND date_add < ? LIMIT 1;",
@@ -173,7 +173,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_GROUP_CSV_GET] = "SELECT `group` from agent where id = ?;",
     [WDB_STMT_GLOBAL_GROUP_CTX_SET] = "UPDATE agent SET 'group' = ?, group_hash = ?, group_sync_status = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_GROUP_HASH_GET] = "SELECT group_hash FROM agent WHERE group_hash IS NOT NULL ORDER BY id;",
-    [WDB_STMT_GLOBAL_UPDATE_AGENT_INFO] = "UPDATE agent SET config_sum = :config_sum, ip = :ip, manager_host = :manager_host, merged_sum = :merged_sum, name = :name, node_name = :node_name, os_arch = :os_arch, os_build = :os_build, os_codename = :os_codename, os_major = :os_major, os_minor = :os_minor, os_name = :os_name, os_platform = :os_platform, os_uname = :os_uname, os_version = :os_version, version = :version, last_keepalive = :last_keepalive, connection_status = :connection_status, disconnection_time = :disconnection_time, sync_status = :sync_status WHERE id = :id;",
+    [WDB_STMT_GLOBAL_UPDATE_AGENT_INFO] = "UPDATE agent SET config_sum = :config_sum, ip = :ip, manager_host = :manager_host, merged_sum = :merged_sum, name = :name, node_name = :node_name, os_arch = :os_arch, os_build = :os_build, os_codename = :os_codename, os_major = :os_major, os_minor = :os_minor, os_name = :os_name, os_platform = :os_platform, os_uname = :os_uname, os_version = :os_version, version = :version, last_keepalive = :last_keepalive, connection_status = :connection_status, disconnection_time = :disconnection_time, group_config_status = :group_config_status, sync_status = :sync_status WHERE id = :id;",
     [WDB_STMT_GLOBAL_GET_AGENTS] = "SELECT id FROM agent WHERE id > ?;",
     [WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS] = "SELECT id FROM agent WHERE id > ? AND connection_status = ?;",
     [WDB_STMT_GLOBAL_GET_AGENT_INFO] = "SELECT * FROM agent WHERE id = ?;",
@@ -1467,6 +1467,7 @@ void wdb_free_agent_info_data(agent_info_data *agent_data) {
         os_free(agent_data->labels);
         os_free(agent_data->connection_status);
         os_free(agent_data->sync_status);
+        os_free(agent_data->group_config_status);
         if (agent_data->osd) {
             os_free(agent_data->osd->os_name);
             os_free(agent_data->osd->os_version);

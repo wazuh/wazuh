@@ -38,7 +38,11 @@ list(APPEND remoted_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,w_
                             -Wl,--wrap,OS_SHA256_String -Wl,--wrap,readdir -Wl,--wrap,strerror \
                             -Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,fclose -Wl,--wrap,remove \
                             -Wl,--wrap,fgets -Wl,--wrap,fflush -Wl,--wrap,fseek -Wl,--wrap,fgetpos -Wl,--wrap=fgetc \
-                            -Wl,--wrap,w_copy_file -Wl,--wrap,OSHash_Begin \
+                            -Wl,--wrap,w_copy_file -Wl,--wrap,OSHash_Begin -Wl,--wrap,req_save -Wl,--wrap,send_msg \
+                            -Wl,--wrap,wdb_update_agent_keepalive -Wl,--wrap,parse_agent_update_msg \
+                            -Wl,--wrap,wdb_update_agent_data -Wl,--wrap,linked_queue_push_ex \
+                            -Wl,--wrap,wdb_update_agent_connection_status -Wl,--wrap,SendMSG -Wl,--wrap,StartMQ \
+                            -Wl,--wrap,get_ipv4_string -Wl,--wrap,get_ipv6_string \
                             -Wl,--wrap,wdb_get_agent_group \
                             -Wl,--wrap,wdb_set_agent_groups_csv -Wl,--wrap,w_is_single_node \
                             -Wl,--wrap,wdb_remove_group_db -Wl,--wrap,wdb_get_all_agents -Wl,--wrap,wdb_get_agent_info")
