@@ -2392,21 +2392,14 @@ void test_save_controlmsg_update_msg_error_parsing(void **state)
 
     expect_string(__wrap__mdebug2, formatted_msg, "save_controlmsg(): inserting 'valid message \n'");
 
-    // lookfor_agent_group
-    agent_group *agt_group;
-    os_calloc(1, sizeof(agent_group), agt_group);
-    os_strdup("test_group", agt_group->group);
-
     static group_t *test_groups = NULL;
     groups = &test_groups;
     multi_groups = &test_groups;
 
-    expect_string(__wrap_w_parser_get_agent, name, "001");
-    will_return(__wrap_w_parser_get_agent, agt_group);
-
-    expect_string(__wrap_set_agent_group, id, "001");
-    expect_string(__wrap_set_agent_group, group, "test_group");
-    will_return(__wrap_set_agent_group, 0);
+    char* group = NULL;
+    w_strdup("test_group", group);
+    expect_value(__wrap_wdb_get_agent_group, id, 1);
+    will_return(__wrap_wdb_get_agent_group, group);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' group is 'test_group'");
 
@@ -2425,9 +2418,6 @@ void test_save_controlmsg_update_msg_error_parsing(void **state)
     save_controlmsg(&key, r_msg, msg_length, wdb_sock);
 
     os_free(agent_data);
-
-    os_free(agt_group->group);
-    os_free(agt_group);
 
     free_keyentry(&key);
     os_free(data->message);
@@ -2486,16 +2476,10 @@ void test_save_controlmsg_update_msg_unable_to_update_information(void **state)
     multi_groups[0]->exists = true;
     multi_groups[1] = NULL;
 
-    agent_group *agt_group;
-    os_calloc(1, sizeof(agent_group), agt_group);
-    os_strdup("test_group", agt_group->group);
-
-    expect_string(__wrap_w_parser_get_agent, name, "001");
-    will_return(__wrap_w_parser_get_agent, agt_group);
-
-    expect_string(__wrap_set_agent_group, id, "001");
-    expect_string(__wrap_set_agent_group, group, "test_group");
-    will_return(__wrap_set_agent_group, 0);
+    char* group = NULL;
+    w_strdup("test_group", group);
+    expect_value(__wrap_wdb_get_agent_group, id, 1);
+    will_return(__wrap_wdb_get_agent_group, group);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' group is 'test_group'");
 
@@ -2529,9 +2513,6 @@ void test_save_controlmsg_update_msg_unable_to_update_information(void **state)
     os_free(agent_data);
 
     os_free(node_name);
-
-    os_free(agt_group->group);
-    os_free(agt_group);
 
     free_keyentry(&key);
     os_free(data->message);
@@ -2570,18 +2551,8 @@ void test_save_controlmsg_update_msg_lookfor_agent_group_fail(void **state)
 
     expect_string(__wrap__mdebug2, formatted_msg, "save_controlmsg(): inserting 'valid message \n'");
 
-    agent_group *agt_group;
-    os_calloc(1, sizeof(agent_group), agt_group);
-    os_strdup("test_group", agt_group->group);
-
-    expect_string(__wrap_w_parser_get_agent, name, "001");
-    will_return(__wrap_w_parser_get_agent, NULL);
-
-    expect_string(__wrap_get_agent_group, id, "001");
-    will_return(__wrap_get_agent_group, "");
-    will_return(__wrap_get_agent_group, -1);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' group is ''");
+    expect_value(__wrap_wdb_get_agent_group, id, 1);
+    will_return(__wrap_wdb_get_agent_group, NULL);
 
     expect_string(__wrap__merror, formatted_msg, "Error getting group for agent '001'");
 
@@ -2606,9 +2577,6 @@ void test_save_controlmsg_update_msg_lookfor_agent_group_fail(void **state)
 
     os_free(agent_data->manager_host);
     os_free(agent_data);
-
-    os_free(agt_group->group);
-    os_free(agt_group);
 
     free_keyentry(&key);
     os_free(data->message);
