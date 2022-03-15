@@ -9,7 +9,6 @@ import os.path
 import shutil
 import zlib
 from asyncio import wait_for
-from datetime import datetime
 from functools import partial
 from operator import eq
 from os import listdir, path, remove, stat, walk
@@ -291,7 +290,7 @@ def compress_files(name, list_path, cluster_control_json=None, max_zip_size=None
     if max_zip_size is None:
         max_zip_size = get_cluster_items()['intervals']['communication']['max_zip_size']
     zip_file_path = path.join(common.WAZUH_PATH, 'queue', 'cluster', name,
-                              f'{name}-{datetime.utcnow().timestamp()}-{uuid4().hex}.zip')
+                              f'{name}-{get_utc_now().timestamp()}-{uuid4().hex}.zip')
 
     if not path.exists(path.dirname(zip_file_path)):
         mkdir_with_mode(path.dirname(zip_file_path))

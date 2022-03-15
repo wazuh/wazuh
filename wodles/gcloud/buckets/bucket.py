@@ -30,7 +30,7 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
     """Class for getting Google Cloud Storage Bucket logs"""
 
     def __init__(self, credentials_file: str, logger: logging.Logger, bucket_name: str, prefix: str = None,
-                 delete_file: bool = False, only_logs_after: datetime = None):
+            delete_file: bool = False, only_logs_after: datetime = None, reparse : bool = False):
         """Class constructor.
 
         Parameters
@@ -47,6 +47,8 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
             Indicate whether blobs should be deleted after being processed.
         only_logs_after : datetime
             Date after which obtain logs.
+        reparse : bool
+            Whether to parse already parsed logs or not
         """
         super().__init__(logger)
         self.bucket_name = bucket_name
@@ -60,6 +62,7 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         self.db_path = join(utils.find_wazuh_path(), "wodles/gcloud/gcloud.db")
         self.db_connector = None
         self.datetime_format = "%Y-%m-%d %H:%M:%S.%f%z"
+        self.reparse = reparse
 
         self.sql_create_table = """
                             CREATE TABLE
@@ -226,6 +229,9 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
             last_creation_time = self._get_last_creation_time()
             previous_processed_files = self._get_last_processed_files()
 
+            if self.reparse:
+                self.logger.info('Reparse Mode ON')
+
             for blob in bucket_contents:
                 # Skip folders
                 if blob.name.endswith('/'):
@@ -245,8 +251,14 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
                             new_creation_time = current_creation_time
 
                         processed_files.append(blob)
-                    else:
+
+                    elif self.reparse:
+                        processed_messages += self.process_blob(blob)
+                        processed_files.append(blob)
+
+                    else: 
                         self.logger.info(f'Skipping previously processed file: {blob.name}')
+
                 else:
                     self.logger.info(f'The creation time of {blob.name} is older than {comparison_date}. '
                                      f'Skipping it...')

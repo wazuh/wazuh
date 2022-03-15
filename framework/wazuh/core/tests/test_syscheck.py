@@ -27,7 +27,7 @@ def test_wazuh_db_query_syscheck__init__(mock_wdbquery, mock_backend, agent):
     syscheck.WazuhDBQuerySyscheck(agent)
     mock_backend.assert_called_with(agent)
     mock_wdbquery.assert_called_with(backend=ANY, default_sort_field='mtime', min_select_fields=set(), count=True,
-                                     get_data=True, date_fields={'mtime', 'date'})
+                                     get_data=True, date_fields={'start', 'end', 'mtime', 'date'})
 
 
 @pytest.mark.parametrize('data, is_json', [
