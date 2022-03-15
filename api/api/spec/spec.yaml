@@ -16803,7 +16803,7 @@ paths:
                       version: "2.34-6ubuntu1.3"
                       type: "PACKAGE"
                       name: "binutils"
-                      external_references: "[\"https://sourceware.org/bugzilla/show_bug.cgi?id=28694\",\"https://sourceware.org/git/gitweb.cgi?p=binutils-gdb.git;h=161e87d12167b1e36193385485c1f6ce92f74f02\",\"https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/UQBH244M5PV6S6UMHUTCVCWFZDX7Y4M6/\",\"https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/UUHLDDT3HH7YEY6TX7IJRGPJUTNNVEL3/\",\"https://security.netapp.com/advisory/ntap-20220107-0002/\",\"https://nvd.nist.gov/vuln/detail/CVE-2021-45078\",\"http://people.canonical.com/~ubuntu-security/cve/2021/CVE-2021-45078.html\",\"https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2021-45078\"]"
+                      external_references: ["https://sourceware.org/bugzilla/show_bug.cgi?id=28694","https://sourceware.org/git/gitweb.cgi?p=binutils-gdb.git;h=161e87d12167b1e36193385485c1f6ce92f74f02","https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/UQBH244M5PV6S6UMHUTCVCWFZDX7Y4M6/","https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/UUHLDDT3HH7YEY6TX7IJRGPJUTNNVEL3/","https://security.netapp.com/advisory/ntap-20220107-0002/","https://nvd.nist.gov/vuln/detail/CVE-2021-45078","http://people.canonical.com/~ubuntu-security/cve/2021/CVE-2021-45078.html","https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2021-45078"]
                       condition: "Package unfixed"
                       detection_time: "2022-03-14T11:04:04Z"
                       cvss3_score: 7.8
@@ -16818,7 +16818,7 @@ paths:
                       version: "2.34-6ubuntu1.3"
                       type: "PACKAGE"
                       name: "binutils-common"
-                      external_references: "[\"https://sourceware.org/bugzilla/show_bug.cgi?id=28694\",\"https://sourceware.org/git/gitweb.cgi?p=binutils-gdb.git;h=161e87d12167b1e36193385485c1f6ce92f74f02\",\"https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/UQBH244M5PV6S6UMHUTCVCWFZDX7Y4M6/\",\"https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/UUHLDDT3HH7YEY6TX7IJRGPJUTNNVEL3/\",\"https://security.netapp.com/advisory/ntap-20220107-0002/\",\"https://nvd.nist.gov/vuln/detail/CVE-2021-45078\",\"http://people.canonical.com/~ubuntu-security/cve/2021/CVE-2021-45078.html\",\"https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2021-45078\"]"
+                      external_references: ["https://sourceware.org/bugzilla/show_bug.cgi?id=28694","https://sourceware.org/git/gitweb.cgi?p=binutils-gdb.git;h=161e87d12167b1e36193385485c1f6ce92f74f02","https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/UQBH244M5PV6S6UMHUTCVCWFZDX7Y4M6/","https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/UUHLDDT3HH7YEY6TX7IJRGPJUTNNVEL3/","https://security.netapp.com/advisory/ntap-20220107-0002/","https://nvd.nist.gov/vuln/detail/CVE-2021-45078","http://people.canonical.com/~ubuntu-security/cve/2021/CVE-2021-45078.html","https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2021-45078"]
                       condition: "Package unfixed"
                       detection_time: "2022-03-14T11:04:04Z"
                       cvss3_score: 7.8
