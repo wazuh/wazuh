@@ -220,8 +220,12 @@ def test_expected_value(response, key, expected_values):
         List of values which are allowed.
     """
     expected_values = set(expected_values.split(',')) if not isinstance(expected_values, list) else set(expected_values)
+    affected_items = response.json()['data']['affected_items']
 
-    for item in response.json()['data']['affected_items']:
+    if not affected_items:
+        raise Exception("No items found in the response")
+
+    for item in affected_items:
         response_set = set(map(str, item[key])) if isinstance(item[key], list) else {str(item[key])}
         assert bool(expected_values.intersection(response_set)), \
             f'Expected values {expected_values} not found in {item[key]}'
