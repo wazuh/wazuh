@@ -59,7 +59,7 @@ public:
      * @return true and vector of strings if no errors
      * @return false if errors in processing
      */
-    std::optional<std::vector<std::string>> process(char * data, std::size_t length);
+    std::optional<std::vector<std::string>> process(const char * data, const size_t length);
 };
 
 } // namespace engineserver
