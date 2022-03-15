@@ -308,7 +308,7 @@ def test_aws_waf_load_information_from_file_ko(
     ('2000/2/12', '20000212'),
     ('2022/02/1', '20220201')
 ])
-def test_config_format_created_date(date: str, expected_date: str, aws_config_bucket):
+def test_config_format_creation_date(date: str, expected_date: str, aws_config_bucket):
     """
     Test AWSConfigBucket's format_created_date method.
 
@@ -333,7 +333,7 @@ def test_config_format_created_date(date: str, expected_date: str, aws_config_bu
     ({'Key' : '2021/03/18/aws-waf-logs-delivery-stream-1-2021-03-18-10-32-48-77baca34f-efad-4f14-45bd7871'}, 20210318),
     ({'Key' : '2021-11-12-09-11-26-B9F9F891E8D0EB13'}, 20211112)
 ])
-def test_custom_get_created_date(log_file: dict, expected_date: str, aws_custom_bucket : aws_s3.AWSCustomBucket):
+def test_custom_get_creation_date(log_file: dict, expected_date: str, aws_custom_bucket : aws_s3.AWSCustomBucket):
     """
     Test AWSCustomBucket's get_creation_date method.
     Parameters
