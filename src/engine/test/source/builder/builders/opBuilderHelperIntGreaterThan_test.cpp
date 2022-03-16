@@ -22,7 +22,7 @@ TEST(opBuilderHelperIntGreaterThan, Builds)
             {"field_test": "+i_lt/10"}
     })"};
 
-    ASSERT_NO_THROW(opBuilderHelperIntGreaterThan(*doc.get("/check")));
+    ASSERT_NO_THROW(opBuilderHelperIntGreaterThan(doc.get("/check")));
 }
 
 TEST(opBuilderHelperIntGreaterThan, Builds_error_bad_parameter)
@@ -32,7 +32,7 @@ TEST(opBuilderHelperIntGreaterThan, Builds_error_bad_parameter)
             {"field_test": "+i_lt/test"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIntGreaterThan(*doc.get("/check")),
+    ASSERT_THROW(opBuilderHelperIntGreaterThan(doc.get("/check")),
                  std::invalid_argument);
 }
 
@@ -43,7 +43,7 @@ TEST(opBuilderHelperIntGreaterThan, Builds_error_more_parameters)
             {"field_test": "+i_lt/10/10"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIntGreaterThan(*doc.get("/check")), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperIntGreaterThan(doc.get("/check")), std::runtime_error);
 }
 
 TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_ok)
@@ -70,14 +70,14 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_ok)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntGreaterThan(*doc.get("/check"));
+    Lifter lift = opBuilderHelperIntGreaterThan(doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
 
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_GT(expected[0]->get("/field_test")->GetInt(), 10);
+    ASSERT_GT(expected[0]->get("/field_test").GetInt(), 10);
 }
 
 TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_true)
@@ -104,14 +104,14 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_true)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntGreaterThan(*doc.get("/check"));
+    Lifter lift = opBuilderHelperIntGreaterThan(doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
 
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_GT(expected[0]->get("/field_test")->GetInt(), 10);
+    ASSERT_GT(expected[0]->get("/field_test").GetInt(), 10);
 }
 
 TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_false)
@@ -138,7 +138,7 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_false)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntGreaterThan(*doc.get("/check"));
+    Lifter lift = opBuilderHelperIntGreaterThan(doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -183,17 +183,17 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_ref_true)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntGreaterThan(*doc.get("/check"));
+    Lifter lift = opBuilderHelperIntGreaterThan(doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
 
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_GT(expected[0]->get("/field_test")->GetInt(),
-              expected[0]->get("/field_src")->GetInt());
-    ASSERT_GT(expected[1]->get("/field_test")->GetInt(),
-              expected[1]->get("/field_src")->GetInt());
+    ASSERT_GT(expected[0]->get("/field_test").GetInt(),
+              expected[0]->get("/field_src").GetInt());
+    ASSERT_GT(expected[1]->get("/field_test").GetInt(),
+              expected[1]->get("/field_src").GetInt());
 }
 
 TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_ref_false)
@@ -232,7 +232,7 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_ref_false)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntGreaterThan(*doc.get("/check"));
+    Lifter lift = opBuilderHelperIntGreaterThan(doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -275,15 +275,15 @@ TEST(opBuilderHelperIntGreaterThan, Exec_dynamics_int_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperIntGreaterThan(*doc.get("/check"));
+    Lifter lift = opBuilderHelperIntGreaterThan(doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
 
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_GT(expected[0]->get("/field2check")->GetInt(),
-              expected[0]->get("/ref_key")->GetInt());
+    ASSERT_GT(expected[0]->get("/field2check").GetInt(),
+              expected[0]->get("/ref_key").GetInt());
 }
 
 TEST(opBuilderHelperIntGreaterThan, Exec_multilevel_dynamics_int_ok)
@@ -350,13 +350,13 @@ TEST(opBuilderHelperIntGreaterThan, Exec_multilevel_dynamics_int_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperIntGreaterThan(*doc.get("/check"));
+    Lifter lift = opBuilderHelperIntGreaterThan(doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
 
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_GT(expected[0]->get("/parentObjt_1/field2check")->GetInt(),
-              expected[0]->get("/parentObjt_2/ref_key")->GetInt());
+    ASSERT_GT(expected[0]->get("/parentObjt_1/field2check").GetInt(),
+              expected[0]->get("/parentObjt_2/ref_key").GetInt());
 }
