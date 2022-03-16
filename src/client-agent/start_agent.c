@@ -134,6 +134,7 @@ void start_agent(int is_startup)
 {
 
     if (is_startup) {
+        agent_setup_hostnames();
         w_agentd_keys_init();
     }
 
@@ -401,4 +402,25 @@ void send_agent_stopped_message() {
 
     /* Send shutdown message */
     send_msg(msg, -1);
+}
+
+/**
+ * @brief Resolve manager hostnames
+ */
+void agent_setup_hostnames() {
+    for (int rc = 0; rc < agt->server_count; rc++) {
+        if (OS_IsValidIP(agt->server[rc].rip, NULL) != 1) {
+            mdebug2("Resolving server hostname: %s", agt->server[rc].rip);
+            resolve_hostname(&agt->server[rc].rip, 5);
+            int rip_l = strlen(agt->server[rc].rip);
+
+            if (agt->server[rc].rip[rip_l - 1] == '/') {
+                mwarn("Could not resolve server hostname: %.*s", rip_l - 1, agt->server[rc].rip);
+            } else {
+                minfo("Server hostname resolved: %s", agt->server[rc].rip);
+            }
+        } else {
+            minfo("Server IP Address: %s", agt->server[rc].rip);
+        }
+    }
 }

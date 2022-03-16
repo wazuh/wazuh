@@ -93,6 +93,7 @@ void add_server_config(char* address, int protocol) {
     memset(agt->server + agt->rip_id + 1, 0, sizeof(agent_server));
     agt->server[agt->rip_id].protocol = protocol;
     agt->rip_id++;
+    agt->server_count++;
 }
 
 void keys_init(keystore *keys) {
@@ -378,12 +379,30 @@ static void test_send_agent_stopped_message(void **state) {
     send_agent_stopped_message();
 }
 
+/* agent_setup_hostnames */
+static void test_agent_setup_hostnames(void **state) {
+    expect_string(__wrap__minfo, formatted_msg, "Server IP Address: 127.0.0.1");
+    expect_string(__wrap__minfo, formatted_msg, "Server IP Address: 127.0.0.2");
+    expect_string(__wrap__mdebug2, formatted_msg, "Resolving server hostname: VALID_HOSTNAME/");
+    expect_string(__wrap__minfo, formatted_msg, "Server hostname resolved: VALID_HOSTNAME/127.0.0.3");
+    expect_string(__wrap__mdebug2, formatted_msg, "Resolving server hostname: INVALID_HOSTNAME/");
+    expect_string(__wrap__mwarn, formatted_msg, "Could not resolve server hostname: INVALID_HOSTNAME");
+
+    agent_setup_hostnames();
+
+    assert_string_equal(agt->server[0].rip, "127.0.0.1");
+    assert_string_equal(agt->server[1].rip, "127.0.0.2");
+    assert_string_equal(agt->server[2].rip, "VALID_HOSTNAME/127.0.0.3");
+    assert_string_equal(agt->server[3].rip, "INVALID_HOSTNAME/");
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_connect_server, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_agent_handshake_to_server, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_send_msg_on_startup, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_send_agent_stopped_message, setup_test, teardown_test)
+        cmocka_unit_test_setup_teardown(test_send_agent_stopped_message, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_agent_setup_hostnames, setup_test, teardown_test),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
