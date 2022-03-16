@@ -333,7 +333,7 @@ int receive_msg()
 
 #ifdef WIN32
 /* Receive events from the server */
-void *receiver_thread(__attribute__((unused)) void *none)
+DWORD WINAPI receiver_thread(__attribute__((unused)) LPVOID none)
 {
     int rc = 0;
 
@@ -382,6 +382,6 @@ void *receiver_thread(__attribute__((unused)) void *none)
         }
     }
 
-    return (NULL);
+    return 0;
 }
 #endif
