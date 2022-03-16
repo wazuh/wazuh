@@ -22,7 +22,7 @@ TEST(opBuilderHelperStringUP, Builds)
         "normalize":
             {"field2normalize": "+s_up/abcd"}
     })"};
-    ASSERT_NO_THROW(opBuilderHelperStringUP(*doc.get("/normalize")));
+    ASSERT_NO_THROW(opBuilderHelperStringUP(doc.get("/normalize")));
 }
 
 // Build incorrect number of arguments
@@ -32,7 +32,7 @@ TEST(opBuilderHelperStringUP, Builds_incorrect_number_of_arguments)
         "normalize":
             {"field2normalize": "+s_up/test_value/test_value2"}
     })"};
-    ASSERT_THROW(opBuilderHelperStringUP(*doc.get("/normalize")), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperStringUP(doc.get("/normalize")), std::runtime_error);
 }
 
 // Test ok: static values
@@ -58,14 +58,14 @@ TEST(opBuilderHelperStringUP, Static_string_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringUP(*doc.get("/normalize"));
+    Lifter lift = opBuilderHelperStringUP(doc.get("/normalize"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_STREQ(expected[0]->get("/fieltToCreate")->GetString(), "ASD123ASD");
-    ASSERT_STREQ(expected[1]->get("/fieltToCreate")->GetString(), "ASD123ASD");
-    ASSERT_STREQ(expected[2]->get("/fieltToCreate")->GetString(), "ASD123ASD");
+    ASSERT_STREQ(expected[0]->get("/fieltToCreate").GetString(), "ASD123ASD");
+    ASSERT_STREQ(expected[1]->get("/fieltToCreate").GetString(), "ASD123ASD");
+    ASSERT_STREQ(expected[2]->get("/fieltToCreate").GetString(), "ASD123ASD");
 }
 
 // Test ok: dynamic values (string)
@@ -92,14 +92,14 @@ TEST(opBuilderHelperStringUP, Dynamics_string_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringUP(*doc.get("/normalize"));
+    Lifter lift = opBuilderHelperStringUP(doc.get("/normalize"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_STREQ(expected[0]->get("/fieltToCreate")->GetString(), "QWE");
-    ASSERT_STREQ(expected[1]->get("/fieltToCreate")->GetString(), "ASD123ASD");
-    ASSERT_STREQ(expected[2]->get("/fieltToCreate")->GetString(), "ASD");
+    ASSERT_STREQ(expected[0]->get("/fieltToCreate").GetString(), "QWE");
+    ASSERT_STREQ(expected[1]->get("/fieltToCreate").GetString(), "ASD123ASD");
+    ASSERT_STREQ(expected[2]->get("/fieltToCreate").GetString(), "ASD");
 }
 
 TEST(opBuilderHelperStringUP, Multilevel_src)
@@ -124,14 +124,14 @@ TEST(opBuilderHelperStringUP, Multilevel_src)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringLO(*doc.get("/normalize"));
+    Lifter lift = opBuilderHelperStringLO(doc.get("/normalize"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_STREQ(expected[0]->get("/fieltToCreate")->GetString(), "qwe");
-    ASSERT_STREQ(expected[1]->get("/fieltToCreate")->GetString(), "asd123asd");
-    ASSERT_STREQ(expected[2]->get("/fieltToCreate")->GetString(), "asd");
+    ASSERT_STREQ(expected[0]->get("/fieltToCreate").GetString(), "qwe");
+    ASSERT_STREQ(expected[1]->get("/fieltToCreate").GetString(), "asd123asd");
+    ASSERT_STREQ(expected[2]->get("/fieltToCreate").GetString(), "asd");
 }
 
 TEST(opBuilderHelperStringUP, Multilevel_dst)
@@ -156,14 +156,14 @@ TEST(opBuilderHelperStringUP, Multilevel_dst)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringUP(*doc.get("/normalize"));
+    Lifter lift = opBuilderHelperStringUP(doc.get("/normalize"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_STREQ(expected[0]->get("/a/b/fieltToCreate/2")->GetString(), "QWE");
-    ASSERT_STREQ(expected[1]->get("/a/b/fieltToCreate/2")->GetString(), "ASD123ASD");
-    ASSERT_STREQ(expected[2]->get("/a/b/fieltToCreate/2")->GetString(), "ASD");
+    ASSERT_STREQ(expected[0]->get("/a/b/fieltToCreate/2").GetString(), "QWE");
+    ASSERT_STREQ(expected[1]->get("/a/b/fieltToCreate/2").GetString(), "ASD123ASD");
+    ASSERT_STREQ(expected[2]->get("/a/b/fieltToCreate/2").GetString(), "ASD");
 }
 
 TEST(opBuilderHelperStringUP, Exist_dst)
@@ -188,14 +188,14 @@ TEST(opBuilderHelperStringUP, Exist_dst)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringUP(*doc.get("/normalize"));
+    Lifter lift = opBuilderHelperStringUP(doc.get("/normalize"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_STREQ(expected[0]->get("/a/b")->GetString(), "QWE");
-    ASSERT_STREQ(expected[1]->get("/a/b")->GetString(), "ASD123ASD");
-    ASSERT_STREQ(expected[2]->get("/a/b")->GetString(), "ASD");
+    ASSERT_STREQ(expected[0]->get("/a/b").GetString(), "QWE");
+    ASSERT_STREQ(expected[1]->get("/a/b").GetString(), "ASD123ASD");
+    ASSERT_STREQ(expected[2]->get("/a/b").GetString(), "ASD");
 }
 
 TEST(opBuilderHelperStringUP, Not_exist_src)
@@ -217,12 +217,12 @@ TEST(opBuilderHelperStringUP, Not_exist_src)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringUP(*doc.get("/normalize"));
+    Lifter lift = opBuilderHelperStringUP(doc.get("/normalize"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_STREQ(expected[0]->get("/a/b")->GetString(), "QWE");
+    ASSERT_STREQ(expected[0]->get("/a/b").GetString(), "QWE");
     ASSERT_FALSE(expected[1]->exists("/a/b"));
 }
 
@@ -248,7 +248,7 @@ TEST(opBuilderHelperStringUP, Src_not_string)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringUP(*doc.get("/normalize"));
+    Lifter lift = opBuilderHelperStringUP(doc.get("/normalize"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });

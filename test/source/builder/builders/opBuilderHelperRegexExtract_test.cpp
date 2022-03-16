@@ -23,7 +23,7 @@ TEST(opBuilderHelperRegexExtract, Builds)
             {"field": "+r_ext/_field/regexp/"}
     })"};
 
-    ASSERT_NO_THROW(opBuilderHelperRegexExtract(*doc.get("/map")));
+    ASSERT_NO_THROW(opBuilderHelperRegexExtract(doc.get("/map")));
 }
 
 TEST(opBuilderHelperRegexExtract, Not_enough_arguments_error)
@@ -33,7 +33,7 @@ TEST(opBuilderHelperRegexExtract, Not_enough_arguments_error)
             {"field": "+r_ext/_field/"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperRegexExtract(*doc.get("/map")), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperRegexExtract(doc.get("/map")), std::runtime_error);
 }
 
 TEST(opBuilderHelperRegexExtract, Too_many_arguments_error)
@@ -43,7 +43,7 @@ TEST(opBuilderHelperRegexExtract, Too_many_arguments_error)
             {"field": "+r_ext/_field/regexp/arg/"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperRegexExtract(*doc.get("/map")), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperRegexExtract(doc.get("/map")), std::runtime_error);
 }
 
 TEST(opBuilderHelperRegexExtract, String_regex_extract)
@@ -68,15 +68,15 @@ TEST(opBuilderHelperRegexExtract, String_regex_extract)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperRegexExtract(*doc.get("/map"));
+    Lifter lift = opBuilderHelperRegexExtract(doc.get("/map"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_TRUE(RE2::PartialMatch(expected[0]->get("/_field")->GetString(), "exp"));
-    ASSERT_TRUE(RE2::PartialMatch(expected[1]->get("/_field")->GetString(), "exp"));
-    ASSERT_TRUE(RE2::PartialMatch(expected[2]->get("/_field")->GetString(), "exp"));
+    ASSERT_TRUE(RE2::PartialMatch(expected[0]->get("/_field").GetString(), "exp"));
+    ASSERT_TRUE(RE2::PartialMatch(expected[1]->get("/_field").GetString(), "exp"));
+    ASSERT_TRUE(RE2::PartialMatch(expected[2]->get("/_field").GetString(), "exp"));
 }
 
 TEST(opBuilderHelperRegexExtract, Numeric_regex_extract)
@@ -101,15 +101,15 @@ TEST(opBuilderHelperRegexExtract, Numeric_regex_extract)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperRegexExtract(*doc.get("/map"));
+    Lifter lift = opBuilderHelperRegexExtract(doc.get("/map"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_TRUE(RE2::PartialMatch(expected[0]->get("/_field")->GetString(), "123"));
-    ASSERT_TRUE(RE2::PartialMatch(expected[1]->get("/_field")->GetString(), "123"));
-    ASSERT_TRUE(RE2::PartialMatch(expected[2]->get("/_field")->GetString(), "123"));
+    ASSERT_TRUE(RE2::PartialMatch(expected[0]->get("/_field").GetString(), "123"));
+    ASSERT_TRUE(RE2::PartialMatch(expected[1]->get("/_field").GetString(), "123"));
+    ASSERT_TRUE(RE2::PartialMatch(expected[2]->get("/_field").GetString(), "123"));
 }
 
 TEST(opBuilderHelperRegexExtract, Advanced_regex_extract)
@@ -131,16 +131,16 @@ TEST(opBuilderHelperRegexExtract, Advanced_regex_extract)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperRegexExtract(*doc.get("/map"));
+    Lifter lift = opBuilderHelperRegexExtract(doc.get("/map"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
     ASSERT_TRUE(
-        RE2::PartialMatch(expected[0]->get("/_field")->GetString(), "client@wazuh.com"));
+        RE2::PartialMatch(expected[0]->get("/_field").GetString(), "client@wazuh.com"));
     ASSERT_TRUE(
-        RE2::PartialMatch(expected[1]->get("/_field")->GetString(), "engine@wazuh.com"));
+        RE2::PartialMatch(expected[1]->get("/_field").GetString(), "engine@wazuh.com"));
 }
 
 TEST(opBuilderHelperRegexExtract, Nested_field_regex_extract)
@@ -164,14 +164,14 @@ TEST(opBuilderHelperRegexExtract, Nested_field_regex_extract)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperRegexExtract(*doc.get("/map"));
+    Lifter lift = opBuilderHelperRegexExtract(doc.get("/map"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_TRUE(RE2::PartialMatch(expected[0]->get("/_field")->GetString(), "exp"));
-    ASSERT_TRUE(RE2::PartialMatch(expected[1]->get("/_field")->GetString(), "exp"));
+    ASSERT_TRUE(RE2::PartialMatch(expected[0]->get("/_field").GetString(), "exp"));
+    ASSERT_TRUE(RE2::PartialMatch(expected[1]->get("/_field").GetString(), "exp"));
 }
 
 TEST(opBuilderHelperRegexExtract, Field_not_exists_regex_extract)
@@ -196,7 +196,7 @@ TEST(opBuilderHelperRegexExtract, Field_not_exists_regex_extract)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperRegexExtract(*doc.get("/map"));
+    Lifter lift = opBuilderHelperRegexExtract(doc.get("/map"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -228,14 +228,14 @@ TEST(opBuilderHelperRegexExtract, Multilevel_field_regex_extract)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperRegexExtract(*doc.get("/map"));
+    Lifter lift = opBuilderHelperRegexExtract(doc.get("/map"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_TRUE(RE2::PartialMatch(expected[0]->get("/_field")->GetString(), "exp"));
-    ASSERT_TRUE(RE2::PartialMatch(expected[1]->get("/_field")->GetString(), "exp"));
+    ASSERT_TRUE(RE2::PartialMatch(expected[0]->get("/_field").GetString(), "exp"));
+    ASSERT_TRUE(RE2::PartialMatch(expected[1]->get("/_field").GetString(), "exp"));
 }
 
 TEST(opBuilderHelperRegexExtract, Multilevel_field_dst_regex_extract)
@@ -259,12 +259,12 @@ TEST(opBuilderHelperRegexExtract, Multilevel_field_dst_regex_extract)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperRegexExtract(*doc.get("/map"));
+    Lifter lift = opBuilderHelperRegexExtract(doc.get("/map"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_TRUE(RE2::PartialMatch(expected[0]->get("/parent/_field")->GetString(), "exp"));
-    ASSERT_TRUE(RE2::PartialMatch(expected[1]->get("/parent/_field")->GetString(), "exp"));
+    ASSERT_TRUE(RE2::PartialMatch(expected[0]->get("/parent/_field").GetString(), "exp"));
+    ASSERT_TRUE(RE2::PartialMatch(expected[1]->get("/parent/_field").GetString(), "exp"));
 }
