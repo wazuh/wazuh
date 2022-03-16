@@ -109,6 +109,6 @@ TEST(AssetBuilderFilter, BuildsOperates)
     ASSERT_EQ(expected.size(), 2);
     for (auto e : expected)
     {
-        ASSERT_STREQ(e->get("/field")->GetString(), "value");
+        ASSERT_STREQ(e->get("/field").GetString(), "value");
     }
 }
