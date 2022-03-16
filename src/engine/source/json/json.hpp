@@ -2,18 +2,20 @@
 #define _JSON_H
 
 #include <algorithm>
-#include <chrono>
 #include <iostream>
+#include <stdexcept>
 #include <string>
 
 #include <rapidjson/document.h>
 #include <rapidjson/error/en.h>
 #include <rapidjson/pointer.h>
+#include <rapidjson/prettywriter.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 
 namespace json
 {
+
 using Value = rapidjson::Value;
 
 /**
@@ -22,58 +24,112 @@ using Value = rapidjson::Value;
  */
 class Document
 {
-private:
 public:
     rapidjson::Document m_doc;
 
-    Document(){};
-    explicit Document(const char * json)
-    {
-        rapidjson::ParseResult ok = m_doc.Parse(json);
-        if (!ok)
-        {
-            std::string err = rapidjson::GetParseError_En(ok.Code());
-            throw std::invalid_argument("Unable to build json document because: " + err + " at " +
-                                        std::to_string(ok.Offset()));
-        }
-    };
-    Document(const Document & e)
-    {
-        m_doc.CopyFrom(e.m_doc, m_doc.GetAllocator());
-    };
-    Document(const rapidjson::Value & v)
-    {
-        m_doc.CopyFrom(v, m_doc.GetAllocator());
-    };
+public:
+    /**
+     * @brief Construct a new Document object
+     *
+     */
+    Document() = default;
 
     /**
-     * @brief Prepare a path to be used in json::setPP
+     * @brief Construct a new Document object from json string
      *
-     * Preapend a / to the path if it is not already present and remplace all '.' by '/'
-     * @param path path to be prepared
-     * @return std::string path prepared
+     * @param json
      */
-    static std::string preparePath(std::string path)
+    explicit Document(const char * json)
     {
-        if (path.front() != '/')
+        rapidjson::ParseResult result = m_doc.Parse(json);
+        if (!result)
         {
-            path.insert(0, "/");
+            throw std::invalid_argument("Unable to build json document because: " +
+                                        static_cast<std::string>(rapidjson::GetParseError_En(result.Code())) + " at " +
+                                        std::to_string(result.Offset()));
         }
-        // TODO: Remplace '/' by '\/'
-        // TODO: escape '.' when is preceded by a '\'
-        // TODO: Not sure if this is the best way to do this
-        std::replace(std::begin(path), std::end(path), '.', '/');
-        return path;
+    }
+
+    // TODO: may be unnecesary or movable only
+    /**
+     * @brief Construct a new Document object from a value
+     *
+     * @param v
+     */
+    Document(const rapidjson::Value & v)
+    {
+        this->m_doc.CopyFrom(v, this->m_doc.GetAllocator());
+    }
+
+    /**
+     * @brief Construct a new Document object
+     *
+     * @param other
+     */
+    Document(const Document & other)
+    {
+        this->m_doc.CopyFrom(other.m_doc, this->m_doc.GetAllocator());
+    }
+
+    /**
+     * @brief Construct a new Document object
+     *
+     * @param other
+     */
+    Document(Document && other) noexcept : m_doc{std::move(other.m_doc)}
+    {
+    }
+
+    /**
+     * @brief Asignation
+     *
+     * @param other
+     * @return Document&
+     */
+    Document & operator=(const Document & other)
+    {
+        this->m_doc.CopyFrom(other.m_doc, this->m_doc.GetAllocator());
+        return *this;
+    }
+
+    /**
+     * @brief Move asignation
+     *
+     * @param other
+     * @return Document&
+     */
+    Document & operator=(Document && other) noexcept
+    {
+        this->m_doc = std::move(other.m_doc);
+        return *this;
+    }
+
+    /**
+     * @brief
+     *
+     * @param path
+     * @return const rapidjson::Value&
+     */
+    const rapidjson::Value & get(const std::string & path) const
+    {
+        auto ptr = rapidjson::Pointer(path.c_str());
+        if (ptr.IsValid())
+        {
+            return *ptr.Get(this->m_doc);
+        }
+        else
+        {
+            throw std::invalid_argument("Error, received invalid path in get function: " + path);
+        }
     }
 
     /**
      * @brief Method to set a value in a given json path.
      *
      * @param path json path of the value that will be set.
-     * Prepared with json::preparePath before calling this method
      * @param v new value that will be set.
      */
-    void set(std::string path, const rapidjson::Value & v)
+    void set(const std::string & path, const rapidjson::Value & v)
     {
         auto ptr = rapidjson::Pointer(path.c_str());
         if (ptr.IsValid())
@@ -82,73 +138,66 @@ public:
         }
         else
         {
-            throw std::invalid_argument("Invalid json path for this json");
+            throw std::invalid_argument("Error, received invalid path in set function: " + path);
         }
     }
 
     /**
-     * @brief Set a value `v` in the json document.
+     * @brief Set the `to` field with `from` value
      *
-     * The path is obtain with the key of the value.
-     * Not prepared with json::preparePath before calling this method
-     * @param v value that will be set.
+     * @param to
+     * @param from
      */
-    void set(const Document & v)
+    void set(const std::string & to, const std::string & from)
     {
-        // TODO Call or not call json::preparePath?
-        std::string path = preparePath(v.m_doc.MemberBegin()->name.GetString());
+        auto toPtr = rapidjson::Pointer(to.c_str());
+        auto fromPtr = rapidjson::Pointer(from.c_str());
 
-        auto ptr = rapidjson::Pointer(path.c_str());
-        if (ptr.IsValid())
+        if (toPtr.IsValid() && fromPtr.IsValid())
         {
-            ptr.Set(m_doc, v.m_doc.MemberBegin()->value);
+            auto fromValue = fromPtr.Get(this->m_doc);
+            if (fromValue){
+                // Static cast is used to ensure new allocation is made
+                toPtr.Set(this->m_doc, static_cast<const rapidjson::Value &>(*fromValue));
+            }
+            //TODO: Handle failed case;
         }
         else
         {
-            throw std::invalid_argument("Invalid json path for this json");
-        }
-    }
-
-    // TODO: Doc this
-    void setReference(const Document & v)
-    {
-        // TODO: Write a test and doc for this method and check if it works
-        // TODO Call or not call json::preparePath?
-        std::string pathTarget = preparePath(v.m_doc.MemberBegin()->name.GetString());
-        auto ptrTarget = rapidjson::Pointer(pathTarget.c_str());
-
-        if (!v.m_doc.MemberBegin()->value.IsString()) {
-            throw std::runtime_error("Reference must be a string");
-        }
-        std::string pathRef = preparePath(v.m_doc.MemberBegin()->value.GetString());
-        auto ptrRef = rapidjson::Pointer(pathRef.c_str());
-
-        if (ptrTarget.IsValid() && ptrRef.IsValid())
-        {
-            ptrTarget.Set(m_doc, *ptrRef.Get(m_doc));
-        }
-        else
-        {
-            throw std::runtime_error("Invalid json path for this json");
+            throw std::invalid_argument("Error, received invalid path in set function: " + to + " -> " + from);
         }
     }
 
     /**
-     * @brief Method that returns a pointer to the value of a given json path.
+     * @brief Compare if `source` field's value equals `reference` field's value
      *
-     * @param path json path of the value that will be returned.
-     * Prepared with json::preparePath before calling this method
-     * @return rapidjson::Value * Pointer to the value of path. // TODO why Can be nullptr
-     * @throws std::invalid_argument if the path is invalid (not found).
+     * @param source
+     * @param reference
+     *
+     * @return True if equals, false othrewise
      */
-    const rapidjson::Value * get(std::string path) const
+    bool equals(const std::string & source, const std::string & reference) const
     {
-        auto ptr {rapidjson::Pointer(path.c_str())};
-        if (ptr.IsValid())
+        auto sourcePtr = rapidjson::Pointer(source.c_str());
+        auto referencePtr = rapidjson::Pointer(reference.c_str());
+
+        if (sourcePtr.IsValid() && referencePtr.IsValid())
         {
-            return ptr.Get(m_doc);
+            auto sValue = sourcePtr.Get(this->m_doc);
+            auto rValue = referencePtr.Get(this->m_doc);
+            if (sValue && rValue)
+            {
+                return *sValue == *rValue;
+            }
+            else
+            {
+                return false;
+            }
         }
-        throw std::invalid_argument("Invalid json path for this json");
+        else
+        {
+            throw std::invalid_argument("Error, received invalid path in equals function: " + source + " == " + reference);
+        }
     }
 
     /**
@@ -161,69 +210,51 @@ public:
      * @return boolean True if the value pointed by path is equal to expected.
      * False if its not equal.
      */
-    bool check(std::string path, const rapidjson::Value * expected) const
+    bool equals(const std::string & path, const rapidjson::Value & expected) const
     {
-        auto ptr {rapidjson::Pointer(preparePath(path).c_str())};
-        if (ptr.IsValid())
-        {
-            auto got = ptr.Get(m_doc);
-            if (got)
-            {
-                return *got == *expected;
-            }
-        }
-        return false;
-    }
-
-    bool check(const Document & expected) const
-    {
-        auto ptr = rapidjson::Pointer(preparePath(expected.begin()->name.GetString()).c_str());
-        if (ptr.IsValid())
-        {
-            auto got = ptr.Get(m_doc);
-            auto gotExpected = ptr.Get(expected.m_doc);
-            if (got and gotExpected)
-            {
-                return *got == *gotExpected;
-            }
-        }
-        return false;
-    }
-
-    bool contains(const std::string & field) const
-    {
-        // TODO DOC THIS
-        auto ptr = rapidjson::Pointer(field.c_str());
-        if (ptr.IsValid())
-        {
-            auto got = ptr.Get(m_doc);
-            if (got)
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * @brief Method to check if the value stored on the given path exists.
-     *
-     * @param path json path of the value that will be checked.
-     *
-     * @return boolean True if the value pointed by path exists. False if it does
-     * not.
-     */
-    bool exists(const std::string& path) const
-    {
-
         auto ptr = rapidjson::Pointer(path.c_str());
-        if (ptr.IsValid() && ptr.Get(m_doc))
+        if (ptr.IsValid())
         {
-            return true;
+            const auto got = ptr.Get(this->m_doc);
+            if (got)
+            {
+                return *got == expected;
+            }
+            else
+            {
+                return false;
+            }
         }
         else
         {
-            return false;
+            throw std::invalid_argument("Error, received invalid path in equals function: " + path);
+        }
+    }
+
+    /**
+     * @brief Check if field denoted by path is present in the document
+     *
+     * @param path
+     * @return true
+     * @return false
+     */
+    bool exists(const std::string & path) const
+    {
+        auto ptr = rapidjson::Pointer(path.c_str());
+        if (ptr.IsValid())
+        {
+            if (ptr.Get(this->m_doc))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+        else
+        {
+            throw std::invalid_argument("Error, received invalid path in contains function: " + path);
         }
     }
 
@@ -241,7 +272,22 @@ public:
         return buffer.GetString();
     }
 
-    auto begin() const -> decltype(m_doc.MemberBegin())
+    /**
+     * @brief Method to write a Json object into a prettyfied string.
+     *
+     * @return string Containing the info of the Json object.
+     */
+    std::string prettyStr() const
+    {
+        rapidjson::StringBuffer buffer;
+        rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::Document::EncodingType, rapidjson::ASCII<>> writer(
+            buffer);
+        this->m_doc.Accept(writer);
+        return buffer.GetString();
+    }
+
+    // TODO: this functions may be unnecessary
+    auto begin() const -> decltype(this->m_doc.MemberBegin())
     {
         return m_doc.MemberBegin();
     }
@@ -249,28 +295,39 @@ public:
     {
         return m_doc.MemberEnd();
     }
-    auto getObject()
+
+    auto getObject() const -> decltype(this->m_doc.GetObject())
     {
         return m_doc.GetObject();
     }
-    auto & getAllocator()
+
+    auto getAllocator() -> decltype(this->m_doc.GetAllocator())
     {
         return m_doc.GetAllocator();
     }
-
-    Document operator=(const Document & other)
-    {
-        if (this == &other)
-        {
-            return *this;
-        }
-
-        m_doc.CopyFrom(other.m_doc, m_doc.GetAllocator());
-
-        return *this;
-    }
 };
 
-}; // namespace json
+/**
+ * @brief Adds root slash if not present and replaces dots with slashes
+ *
+ * @param path
+ * @return std::string
+ */
+static std::string formatJsonPath(const std::string & path)
+{
+    std::string formatedPath{path};
+    if (formatedPath.front() != '/')
+    {
+        formatedPath.insert(0, "/");
+    }
+    // TODO: Remplace '/' by '\/'
+    // TODO: escape '.' when is preceded by a '\'
+    // TODO: Not sure if this is the best way to do this
+    std::replace(std::begin(formatedPath), std::end(formatedPath), '.', '/');
+
+    return formatedPath;
+}
+
+} // namespace json
 
 #endif // _JSON_H
