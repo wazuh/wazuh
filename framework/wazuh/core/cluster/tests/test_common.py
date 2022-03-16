@@ -1442,17 +1442,25 @@ async def test_sync_wazuh_db_sync_ok(perf_counter_mock, json_dumps_mock):
 def test_end_sending_agent_information(perf_counter_mock, json_loads_mock):
     """Check the correct output message when a command "syn_m_a_e", "syn_m_g_e" or "syn_w_g_e" takes place."""
 
-    logger = logging.getLogger('testing')
-    with patch.object(logger, "info") as logger_info_mock:
-        assert cluster_common.end_sending_agent_information(logger, 0, "response") == (b'ok', b'Thanks')
-        json_loads_mock.assert_called_once_with("response")
-        logger_info_mock.assert_called_once_with("Finished in 0.000s (10 chunks updated).")
+    class get_utc_now_mock:
+        def __init__(self):
+            pass
 
-    with patch.object(logger, "error") as logger_error_mock:
-        json_loads_mock.return_value = {"updated_chunks": 10, "error_messages": "error"}
-        assert cluster_common.end_sending_agent_information(logger, 0, "response") == (b'ok', b'Thanks')
-        logger_error_mock.assert_called_once_with(
-            "Finished in 0.000s (10 chunks updated). There were 5 chunks with errors: error")
+        def timestamp(self):
+            return 0
+
+    logger = logging.getLogger('testing')
+    with patch('wazuh.core.cluster.common.get_utc_now', side_effect=get_utc_now_mock):
+        with patch.object(logger, "info") as logger_info_mock:
+            assert cluster_common.end_sending_agent_information(logger, 0, "response") == (b'ok', b'Thanks')
+            json_loads_mock.assert_called_once_with("response")
+            logger_info_mock.assert_called_once_with("Finished in 0.000s (10 chunks updated).")
+
+        with patch.object(logger, "error") as logger_error_mock:
+            json_loads_mock.return_value = {"updated_chunks": 10, "error_messages": "error"}
+            assert cluster_common.end_sending_agent_information(logger, 0, "response") == (b'ok', b'Thanks')
+            logger_error_mock.assert_called_once_with(
+                "Finished in 0.000s (10 chunks updated). There were 5 chunks with errors: error")
 
 
 def test_error_receiving_agent_information():

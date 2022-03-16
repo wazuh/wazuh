@@ -26,6 +26,7 @@ from wazuh.core import common, exception
 from wazuh.core import utils
 from wazuh.core.cluster import cluster
 from wazuh.core.common import DECIMALS_DATE_FORMAT
+from wazuh.core.utils import get_utc_now
 from wazuh.core.wdb import WazuhDBConnection
 
 
@@ -1478,7 +1479,7 @@ def end_sending_agent_information(logger, start_time, response) -> Tuple[bytes, 
         Response message.
     """
     data = json.loads(response)
-    msg = f"Finished in {(perf_counter() - start_time):.3f}s ({data['updated_chunks']} " \
+    msg = f"Finished in {(get_utc_now().timestamp() - start_time):.3f}s ({data['updated_chunks']} " \
           f"chunks updated)."
     logger.info(msg) if not data['error_messages'] else logger.error(
         msg + f" There were {len(data['error_messages'])} chunks with errors: {data['error_messages']}")
