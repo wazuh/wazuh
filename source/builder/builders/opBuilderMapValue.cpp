@@ -18,7 +18,7 @@ types::Lifter opBuilderMapValue(const types::DocumentValue & def)
 {
     // Make deep copy of value
     types::Document doc{def};
-    auto field = json::Document::preparePath(def.MemberBegin()->name.GetString());
+    std::string field = json::formatJsonPath(def.MemberBegin()->name.GetString());
 
     // Return Lifter
     return [=](types::Observable o)

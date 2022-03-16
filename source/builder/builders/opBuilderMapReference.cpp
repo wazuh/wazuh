@@ -19,15 +19,22 @@ namespace builder::internals::builders
 // TODO Add test for this
 types::Lifter opBuilderMapReference(const types::DocumentValue & def)
 {
-    // Make deep copy of value
-    std::string field {json::Document::preparePath((def.MemberBegin()->name.GetString()))};
+    if (!def.MemberBegin()->name.IsString())
+    {
+        throw std::runtime_error("Error building condition reference, key of definition must be a string.");
+    }
     if (!def.MemberBegin()->value.IsString())
     {
-        throw std::runtime_error("The value of the field '" + field + "' must be a string.");
+        throw std::runtime_error("Error building condition reference, value of definition must be a string.");
     }
-    std::string reference {def.MemberBegin()->value.GetString()};
-    // TODO Should start with a `$` to reference a field (Adds test, doc and handle the invalid reference)
-    reference = json::Document::preparePath(reference.substr(1, std::string::npos));
+
+    // Estract and prepare field and reference
+    std::string field{json::formatJsonPath(def.MemberBegin()->name.GetString())};
+    std::string reference{def.MemberBegin()->value.GetString()};
+    if (reference.front() == '$'){
+        reference.erase(0, 1);
+    }
+    reference = json::formatJsonPath(reference);
 
     // Return Lifter
     return [=](types::Observable o)
@@ -36,15 +43,7 @@ types::Lifter opBuilderMapReference(const types::DocumentValue & def)
         return o.map(
             [=](types::Event e)
             {
-                // TODO TEst
-                try {
-                    auto v = e->get(reference);
-                    if (v != nullptr) {
-                        e->set(field, *v);
-                    }
-                } catch (std::exception & ex) {
-                    return e;
-                }
+                e->set(field, reference);
                 return e;
             });
     };

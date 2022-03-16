@@ -57,5 +57,5 @@ TEST(opBuilderMap, BuildsReference)
     BuilderVariant c = opBuilderMapReference;
     Registry::registerBuilder("map.reference", c);
     Document doc{R"({"normalize": {"ref": "$ref"}})"};
-    ASSERT_NO_THROW(opBuilderMap(*doc.get("/normalize")));
+    ASSERT_NO_THROW(opBuilderMap(doc.get("/normalize")));
 }

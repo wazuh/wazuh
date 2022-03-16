@@ -19,17 +19,22 @@ namespace builder::internals::builders
 
 types::Lifter opBuilderConditionReference(const types::DocumentValue & def)
 {
-    // Estract field and reference
-    // TODO Add test for this
-    std::string field {json::Document::preparePath(def.MemberBegin()->name.GetString())};
-
+    if (!def.MemberBegin()->name.IsString())
+    {
+        throw std::runtime_error("Error building condition reference, key of definition must be a string.");
+    }
     if (!def.MemberBegin()->value.IsString())
     {
-        throw std::runtime_error("The value of the field '" + field + "' must be a string.");
+        throw std::runtime_error("Error building condition reference, value of definition must be a string.");
     }
-    std::string reference {def.MemberBegin()->value.GetString()};
-    // TODO: Delete the `$` at the beginning of the reference (Adds test, doc and handle the invalid reference)
-    reference = json::Document::preparePath(reference.substr(1, std::string::npos));
+
+    // Estract and prepare field and reference
+    std::string field{json::formatJsonPath(def.MemberBegin()->name.GetString())};
+    std::string reference{def.MemberBegin()->value.GetString()};
+    if (reference.front() == '$'){
+        reference.erase(0, 1);
+    }
+    reference = json::formatJsonPath(reference);
 
     // Return Lifter
     return [=](types::Observable o)
@@ -38,17 +43,7 @@ types::Lifter opBuilderConditionReference(const types::DocumentValue & def)
         return o.filter(
             [=](types::Event e)
             {
-                // TODO: implemente proper json check reference
-                // TODO: remove try and catch
-                try
-                {
-                    auto v = e->get(reference);
-                    return v != nullptr && e->check(field, v);
-                }
-                catch (std::exception & ex)
-                {
-                    return false;
-                }
+                return e->equals(field, reference);
             });
     };
 }
