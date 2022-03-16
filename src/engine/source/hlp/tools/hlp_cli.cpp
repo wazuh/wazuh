@@ -1,42 +1,51 @@
-#include <stdio.h>
+#include <hlp/hlp.hpp>
 #include <iostream>
 #include <iterator>
-#include <hlp/hlp.hpp>
+#include <stdio.h>
 #include <yaml-cpp/yaml.h>
 
-int main(int argc, char * argv[])
+int main(int argc, char *argv[])
 {
     std::vector<std::string> logql_expressions = {};
     std::vector<std::string> events = {};
-    if (argc < 2) {
+    if (argc < 2)
+    {
         printf("Usage:\n");
         printf(" %s  \"FILENAME\"\n", argv[0]);
         printf(" %s  \"LOGQL_EXPRESSION\" \"EVENT\"", argv[0]);
     }
-    else if (argc == 2) {
-        try {
+    else if (argc == 2)
+    {
+        try
+        {
             YAML::Node inputs = YAML::LoadFile(argv[1]);
-            for(auto input : inputs){
-                logql_expressions.emplace_back(input["logql_expression"].as<std::string>());
+            for (auto input : inputs)
+            {
+                logql_expressions.emplace_back(
+                    input["logql_expression"].as<std::string>());
                 events.emplace_back(input["event"].as<std::string>());
             }
         }
-        catch (const std::exception & e) {
+        catch (const std::exception &e)
+        {
             printf("Error reading file %s. Error: %s\n", argv[1], e.what());
             return 0;
         }
     }
-    else if (argc == 3) {
+    else if (argc == 3)
+    {
         logql_expressions.emplace_back(argv[1]);
         events.emplace_back(argv[2]);
     }
-    else {
+    else
+    {
         printf("Error, too many arguments\n");
     }
 
     auto exp_it = logql_expressions.begin();
     auto event_it = events.begin();
-    while(exp_it != logql_expressions.end() && event_it != events.end()) {
+    while (exp_it != logql_expressions.end() && event_it != events.end())
+    {
         auto parseOp = getParserOp(exp_it->c_str());
         ParseResult result;
         bool ret = parseOp(event_it->c_str(), result);

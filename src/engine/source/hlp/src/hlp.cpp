@@ -1,8 +1,5 @@
-#include <algorithm>
-#include <functional>
 #include <stdio.h>
 #include <string>
-#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -50,10 +47,10 @@ static std::vector<std::string_view>
 splitSlashSeparatedField(std::string_view str)
 {
     std::vector<std::string_view> ret;
-    while(true)
+    while (true)
     {
         auto pos = str.find('/');
-        if(pos == str.npos)
+        if (pos == str.npos)
         {
             break;
         }
@@ -61,7 +58,7 @@ splitSlashSeparatedField(std::string_view str)
         str = str.substr(pos + 1);
     }
 
-    if(!str.empty())
+    if (!str.empty())
     {
         ret.emplace_back(str);
     }
@@ -73,7 +70,7 @@ static bool setParserOptions(Parser &parser,
                              std::vector<std::string_view> const &args)
 {
     auto config = kParsersConfig[static_cast<int>(parser.type)];
-    if(config)
+    if (config)
     {
         return config(parser, args);
     }
@@ -81,7 +78,7 @@ static bool setParserOptions(Parser &parser,
     return false;
 }
 
-Parser createParserFromExpresion(Expression const& exp)
+Parser createParserFromExpresion(Expression const &exp)
 {
     // We could be parsing:
     //      '<_>'
@@ -95,17 +92,17 @@ Parser createParserFromExpresion(Expression const& exp)
     parser.name = args[0];
     args.erase(args.begin());
     parser.type = ParserType::Any;
-    if(parser.name[0] == '_')
+    if (parser.name[0] == '_')
     {
-        if(parser.name.size() != 1)
+        if (parser.name.size() != 1)
         {
             // We have a temp capture with the format <_temp/type/typeN>
             // we need to take the first parameter after the name and set the
             // type from it
-            if(!args.empty())
+            if (!args.empty())
             {
                 auto it = kTempTypeMapper.find(args[0]);
-                if(it != kTempTypeMapper.end())
+                if (it != kTempTypeMapper.end())
                 {
                     parser.type = it->second;
                 }
@@ -118,7 +115,7 @@ Parser createParserFromExpresion(Expression const& exp)
     else
     {
         auto it = kECSParserMapper.find(parser.name);
-        if(it != kECSParserMapper.end())
+        if (it != kECSParserMapper.end())
         {
             parser.type = it->second;
         }
@@ -133,9 +130,9 @@ std::vector<Parser> getParserList(ExpressionList const &expresions)
 {
     std::vector<Parser> parsers;
 
-    for(auto const &expresion : expresions)
+    for (auto const &expresion : expresions)
     {
-        switch(expresion.type)
+        switch (expresion.type)
         {
             case ExpressionType::Capture:
             case ExpressionType::OptionalCapture:
@@ -175,28 +172,28 @@ static bool executeParserList(std::string_view const &event,
     // but we will want to re-do it or revise it to implement
     // better parser combinations
     bool isOk = true;
-    for(auto const &parser : parsers)
+    for (auto const &parser : parsers)
     {
         const char *prevIt = eventIt;
         auto parseFunc = kAvailableParsers[static_cast<int>(parser.type)];
-        if(parseFunc != nullptr)
+        if (parseFunc != nullptr)
         {
             isOk = parseFunc(&eventIt, parser, result);
         }
         else
         {
-            //ASSERT here we are missing an implementation
+            // ASSERT here we are missing an implementation
             return false;
         }
 
-        if(!isOk)
+        if (!isOk)
         {
-            if(parser.expType == ExpressionType::OptionalCapture ||
-               parser.expType == ExpressionType::OrCapture)
+            if (parser.expType == ExpressionType::OptionalCapture ||
+                parser.expType == ExpressionType::OrCapture)
             {
                 // We need to test the second part of the 'OR' capture
                 eventIt = prevIt;
-                isOk = true; //Not strictly necessary
+                isOk = true; // Not strictly necessary
             }
             else
             {
@@ -211,21 +208,21 @@ static bool executeParserList(std::string_view const &event,
 
 ParserFn getParserOp(std::string_view const &logQl)
 {
-    if(logQl.empty())
+    if (logQl.empty())
     {
         // TODO report error - empty logQl expression string
         return {};
     }
 
     ExpressionList expresions = parseLogQlExpr(logQl.data());
-    if(expresions.empty())
+    if (expresions.empty())
     {
         // TODO some error occurred while parsing the logQl expr
         return {};
     }
 
     auto parserList = getParserList(expresions);
-    if(parserList.empty())
+    if (parserList.empty())
     {
         // TODO some error occurred while parsing the logQl expr
         return {};
