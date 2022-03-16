@@ -28,7 +28,8 @@ struct Expression
 using ExpressionList = std::vector<Expression>;
 
 /**
- * @brief Creates a list of expressions elements that represent the parser and options extracted from a LogQL expression
+ * @brief Creates a list of expressions elements that represent the parser and
+ * options extracted from a LogQL expression
  *
  * @param expr LogQL expression
  * @return std::vector with all the options in the string expression.

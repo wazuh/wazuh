@@ -1,7 +1,9 @@
-#include <string>
-#include <vector>
-#include <unordered_map>
+#ifndef _H_HLP_DETAILS_
+#define _H_HLP_DETAILS_
 
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 /**
  * @brief Parsers enum type
@@ -35,14 +37,13 @@ struct Parser
     char endToken;
 };
 
-
 using parserFuncPtr =
     bool (*)(const char **it,
              Parser const &parser,
              std::unordered_map<std::string, std::string> &result);
 
-using parserConfigFuncPtr =
-    bool (*)(Parser &parser, std::vector<std::string_view> const& args);
+using parserConfigFuncPtr = bool (*)(Parser &parser,
+                                     std::vector<std::string_view> const &args);
 
 /**
  * @brief List with the available parser functions
@@ -53,3 +54,4 @@ extern const parserFuncPtr kAvailableParsers[];
  * @brief List with the configuration functions of the available parsers
  */
 extern const parserConfigFuncPtr kParsersConfig[];
+#endif //_H_HLP_DETAILS_

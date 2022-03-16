@@ -1,5 +1,5 @@
-#ifndef _FILE_PATH_PARSER_H
-#define _FILE_PATH_PARSER_H
+#ifndef _H_SPECIFIC_PARSERS_
+#define _H_SPECIFIC_PARSERS_
 
 #include <string>
 #include <unordered_map>
@@ -8,25 +8,30 @@
 struct Parser;
 
 /**
- * @brief Method to pre-configure a map parser at build stage to be used on future to parse an event
+ * @brief Method to pre-configure a map parser at build stage to be used on
+ * future to parse an event
  *
  * @param parser The map parser to be pre-configured
  * @param args List with the options for configuring the map parser
  * @return true on success. false on error
  */
-bool configureMapParser(Parser &parser, std::vector<std::string_view> const& args);
+bool configureMapParser(Parser &parser,
+                        std::vector<std::string_view> const &args);
 
 /**
- * @brief Method to pre-configure a TimeStamp parser at build stage to be used on future to parse an event
+ * @brief Method to pre-configure a TimeStamp parser at build stage to be used
+ * on future to parse an event
  *
  * @param parser The TimeStamp parser to be pre-configured
  * @param args List with the options for configuring the TimeStamp parser
  * @return true on success. false on error
  */
-bool configureTsParser(Parser &parser, std::vector<std::string_view> const& args);
+bool configureTsParser(Parser &parser,
+                       std::vector<std::string_view> const &args);
 
 /**
- * @brief Method to pre-configure a Filepath parser at build stage to be used on future to parse an event
+ * @brief Method to pre-configure a Filepath parser at build stage to be used on
+ * future to parse an event
  *
  * @param parser The Filepath parser to be pre-configured
  * @param args List with the options for configuring the Filepath parser
@@ -36,14 +41,15 @@ bool configureFilepathParser(Parser &parser,
                              std::vector<std::string_view> const &args);
 
 /**
- * @brief Method to pre-configure a Dpmain parser at build stage to be used on future to parse an event
+ * @brief Method to pre-configure a Dpmain parser at build stage to be used on
+ * future to parse an event
  *
  * @param parser The Domain parser to be pre-configured
  * @param args List with the options for configuring the Domain parser
  * @return true on success. false on error
  */
 bool configureDomainParser(Parser &parser,
-                             std::vector<std::string_view> const &args);
+                           std::vector<std::string_view> const &args);
 
 /**
  * @brief Parse an unspecified element until an endtoken character is found
@@ -165,4 +171,4 @@ bool parseUserAgent(const char **it,
                     Parser const &parser,
                     std::unordered_map<std::string, std::string> &result);
 
-#endif //_FILE_PATH_PARSER_H
+#endif //_H_SPECIFIC_PARSERS_
