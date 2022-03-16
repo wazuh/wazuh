@@ -21,13 +21,15 @@
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 #include "../../analysisd/eventinfo.h"
 #include "../../analysisd/config.h"
-#include "../../analysisd/alerts/exec.c"
+#include "../../analysisd/alerts/exec.h"
 #include "../../config/active-response.h"
 
 typedef struct test_struct {
     Eventinfo *lf;
     active_response *ar;
 } test_struct_t;
+
+const char *get_ip(const Eventinfo *lf);
 
 // Setup / Teardown
 
