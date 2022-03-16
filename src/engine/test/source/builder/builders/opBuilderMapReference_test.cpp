@@ -22,7 +22,7 @@ TEST(opBuilderMapReference, Builds)
         "normalize":
             {"field": "$other_field"}
     })"};
-    ASSERT_NO_THROW(opBuilderMapReference(*doc.get("/normalize")));
+    ASSERT_NO_THROW(opBuilderMapReference(doc.get("/normalize")));
 }
 
 TEST(opBuilderMapReference, BuildsOperates)
@@ -47,11 +47,11 @@ TEST(opBuilderMapReference, BuildsOperates)
             )"));
             s.on_completed();
         });
-    Lifter lift1 = opBuilderMapReference(*doc.get("/normalize"));
+    Lifter lift1 = opBuilderMapReference(doc.get("/normalize"));
 
     Observable output = lift1(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_STREQ(expected[0]->get("/field")->GetString(), "referenced");
+    ASSERT_STREQ(expected[0]->get("/field").GetString(), "referenced");
 }

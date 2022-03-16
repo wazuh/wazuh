@@ -59,7 +59,7 @@ TEST(opBuilderCondition, BuildsReference)
     BuilderVariant c = opBuilderConditionReference;
     Registry::registerBuilder("condition.reference", c);
     Document doc{R"({"check": {"ref": "$ref"}})"};
-    ASSERT_NO_THROW(opBuilderCondition(*doc.get("/check")));
+    ASSERT_NO_THROW(opBuilderCondition(doc.get("/check")));
 }
 
 TEST(opBuilderCondition, BuildsHelperExists)
@@ -67,7 +67,7 @@ TEST(opBuilderCondition, BuildsHelperExists)
     BuilderVariant c = opBuilderHelperExists;
     Registry::registerBuilder("helper.exists", c);
     Document doc{R"({"check": {"ref": "+exists"}})"};
-    ASSERT_NO_THROW(opBuilderCondition(*doc.get("/check")));
+    ASSERT_NO_THROW(opBuilderCondition(doc.get("/check")));
 }
 
 TEST(opBuilderCondition, BuildsHelperNotExists)
@@ -75,5 +75,5 @@ TEST(opBuilderCondition, BuildsHelperNotExists)
     BuilderVariant c = opBuilderHelperNotExists;
     Registry::registerBuilder("helper.not_exists", c);
     Document doc{R"({"check": {"ref": "+not_exists"}})"};
-    ASSERT_NO_THROW(opBuilderCondition(*doc.get("/check")));
+    ASSERT_NO_THROW(opBuilderCondition(doc.get("/check")));
 }

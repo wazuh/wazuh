@@ -22,7 +22,7 @@ TEST(opBuilderConditionReference, Builds)
         "check":
             {"field": "$reference"}
     })"};
-    ASSERT_NO_THROW(opBuilderConditionReference(*doc.get("/check")));
+    ASSERT_NO_THROW(opBuilderConditionReference(doc.get("/check")));
 }
 
 TEST(opBuilderConditionReference, BuildsOperatesString)
@@ -59,13 +59,13 @@ TEST(opBuilderConditionReference, BuildsOperatesString)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderConditionReference(*doc.get("/check"));
+    Lifter lift = opBuilderConditionReference(doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_STREQ(expected[0]->get("/field")->GetString(), "value1");
-    ASSERT_STREQ(expected[0]->get("/otherfield")->GetString(), "value1");
+    ASSERT_STREQ(expected[0]->get("/field").GetString(), "value1");
+    ASSERT_STREQ(expected[0]->get("/otherfield").GetString(), "value1");
 }
 
 // TODO: Add rest of use cases (int, bool, null)
