@@ -7,8 +7,8 @@
  * Foundation.
  */
 
-#ifndef _CON_T_H
-#define _CON_T_H
+#ifndef _CONNECTABLE_H
+#define _CONNECTABLE_H
 
 #include "json.hpp"
 
@@ -61,10 +61,7 @@ struct Connectable
      * @param p vector of parents names
      * @param o the operation this connectable must do to the input stream.
      */
-    Connectable(std::string n, std::vector<std::string> p, Op_t o)
-        : m_op(o)
-        , m_name(n)
-        , m_parents(p) {};
+    Connectable(std::string n, std::vector<std::string> p, Op_t o) : m_op(o), m_name(n), m_parents(p){}
 
     /**
      * @brief Construct a new Connectable object just from its name. It will use
@@ -81,6 +78,14 @@ struct Connectable
             return o;
         };
     };
+
+    /**
+     * @brief Default constructor, needed my map
+     *
+     */
+    Connectable() : Connectable{"not_initialized"}
+    {
+    }
 
     /**
      * @brief Adds an input stream to this connectable
@@ -114,8 +119,7 @@ struct Connectable
     {
         if (m_inputs.size() > 1)
         {
-            return m_op(rxcpp::observable<>::iterate(m_inputs).flat_map(
-                [](Observable o) { return o; }));
+            return m_op(rxcpp::observable<>::iterate(m_inputs).merge());
         }
         return m_op(m_inputs[0]);
     }
@@ -149,4 +153,4 @@ struct Connectable
     }
 };
 } // namespace builder::internals
-#endif
+#endif // _CONNECTABLE_H
