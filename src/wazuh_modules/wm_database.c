@@ -640,17 +640,15 @@ int wm_sync_group_file(const char* group_file, const char* group_file_path) {
 #endif // LOCAL
 
 int wm_sync_shared_group(const char *fname) {
-    int result = 0;
     char path[PATH_MAX];
-    DIR *dp;
+    DIR *dp = NULL;
     clock_t clock0 = clock();
 
     snprintf(path, PATH_MAX, "%s/%s", SHAREDCFG_DIR, fname);
 
     dp = opendir(path);
-
-    /* The group was deleted */
     if (!dp) {
+        /* The group was deleted */
         wdb_remove_group_db(fname, &wdb_wmdb_sock);
     }
     else {
@@ -659,8 +657,10 @@ int wm_sync_shared_group(const char *fname) {
         }
         closedir(dp);
     }
+
     mtdebug2(WM_DATABASE_LOGTAG, "wm_sync_shared_group(): %.3f ms.", (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
-    return result;
+
+    return OS_SUCCESS;
 }
 
 int wm_sync_file(const char *dirname, const char *fname) {
@@ -776,18 +776,13 @@ int set_max_queued_events(int size) {
 void wm_inotify_setup(wm_database * data) {
     int old_max_queued_events = -1;
 
-    // Create hash table
-
     if (ptable = OSHash_Create(), !ptable) {
         merror_exit("At wm_inotify_setup(): OSHash_Create()");
     }
 
-    // Create queue
     if (queue = queue_init(data->max_queued_events > 0 ? data->max_queued_events : 16384), !queue) {
         merror_exit("At wm_inotify_setup(): queue_init()");
     }
-
-    // Set inotify queued events limit
 
     if (data->max_queued_events) {
         old_max_queued_events = get_max_queued_events();
@@ -803,13 +798,11 @@ void wm_inotify_setup(wm_database * data) {
     }
 
     // Start inotify
-
     if (inotify_fd = inotify_init1(IN_CLOEXEC), inotify_fd < 0) {
         mterror_exit(WM_DATABASE_LOGTAG, "Couldn't init inotify: %s.", strerror(errno));
     }
 
     // Reset inotify queued events limit
-
     if (old_max_queued_events >= 0 && old_max_queued_events != data->max_queued_events) {
         mtdebug2(WM_DATABASE_LOGTAG, "Restoring inotify queued events limit to '%d'", old_max_queued_events);
         set_max_queued_events(old_max_queued_events);
@@ -889,11 +882,6 @@ static void * wm_inotify_start(__attribute__((unused)) void * args) {
                 if (event->len > IN_BUFFER_SIZE) {
                     mterror(WM_DATABASE_LOGTAG, "Inotify event too large (%u)", event->len);
                     break;
-                }
-
-                if (event->name[0] == '.') {
-                    mtdebug2(WM_DATABASE_LOGTAG, "Discarding hidden file.");
-                    continue;
                 }
 #ifndef LOCAL
                 if (event->wd == wd_agents) {
