@@ -25,6 +25,8 @@
 #include "../../remoted/manager.c"
 /* tests */
 
+#define LONG_PATH "190-characters-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
 static int test_setup_group(void ** state) {
     test_mode = 1;
     return 0;
@@ -2098,14 +2100,14 @@ void test_validate_shared_files_merged_file(void **state)
     free_file_sum(f_sum);
 }
 
-void test_validate_shared_files_max_path_size(void **state)
+void test_validate_shared_files_max_path_size_warning(void **state)
 {
     file_sum **f_sum = NULL;
     unsigned int f_size = 0;
     os_calloc(2, sizeof(file_sum *), f_sum);
-    const char *base_path = "190-characters-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     char log_str[PATH_MAX + 1] = {0};
-    snprintf(log_str, PATH_MAX, "At validate_shared_files(): path too long '%s/test-file'", base_path);
+
+    snprintf(log_str, PATH_MAX, "At validate_shared_files(): path too long '%s/test-file'", LONG_PATH);
 
     // Initialize files structure
     char ** files = NULL;
@@ -2113,13 +2115,49 @@ void test_validate_shared_files_max_path_size(void **state)
     files[0] = strdup("test-files");
     files[1] = NULL;
 
-    expect_string(__wrap_wreaddir, name, base_path);
+    expect_string(__wrap_wreaddir, name, LONG_PATH);
+    will_return(__wrap_wreaddir, files);
+
+    expect_string(__wrap__mwarn, formatted_msg, log_str);
+
+    reported_path_size_exceeded = 0;
+
+    validate_shared_files(LONG_PATH, "test_default", "merged_tmp", &f_sum, &f_size, false, -1);
+
+    assert_non_null(groups[0]);
+    assert_string_equal(groups[0]->name, "test_default");
+    assert_null(groups[1]);
+    assert_null(f_sum[0]);
+    assert_int_equal(f_size, 0);
+
+    free_file_sum(f_sum);
+}
+
+void test_validate_shared_files_max_path_size_debug(void **state)
+{
+    file_sum **f_sum = NULL;
+    unsigned int f_size = 0;
+    os_calloc(2, sizeof(file_sum *), f_sum);
+    char log_str[PATH_MAX + 1] = {0};
+
+    snprintf(log_str, PATH_MAX, "At validate_shared_files(): path too long '%s/test-file'", LONG_PATH);
+
+    // Initialize files structure
+    char ** files = NULL;
+    os_malloc((2) * sizeof(char *), files);
+    files[0] = strdup("test-files");
+    files[1] = NULL;
+
+    expect_string(__wrap_wreaddir, name, LONG_PATH);
     will_return(__wrap_wreaddir, files);
 
     expect_string(__wrap__mdebug2, formatted_msg, log_str);
 
-    validate_shared_files(base_path, "test_default", "merged_tmp", &f_sum, &f_size, false, -1);
+    reported_path_size_exceeded = 1;
 
+    validate_shared_files(LONG_PATH, "test_default", "merged_tmp", &f_sum, &f_size, false, -1);
+
+    reported_path_size_exceeded = 0;
     assert_non_null(groups[0]);
     assert_string_equal(groups[0]->name, "test_default");
     assert_null(groups[1]);
@@ -2134,9 +2172,8 @@ void test_validate_shared_files_valid_file_limite_size(void **state)
     file_sum **f_sum = NULL;
     unsigned int f_size = 0;
     os_calloc(2, sizeof(file_sum *), f_sum);
-    const char *base_path = "190-characters-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     char file_str[PATH_MAX + 1] = {0};
-    snprintf(file_str, PATH_MAX, "%s/test-file", base_path);
+    snprintf(file_str, PATH_MAX, "%s/test-file", LONG_PATH);
 
     // Initialize files structure
     char ** files = NULL;
@@ -2144,7 +2181,7 @@ void test_validate_shared_files_valid_file_limite_size(void **state)
     files[0] = strdup("test-file");
     files[1] = NULL;
 
-    expect_string(__wrap_wreaddir, name, base_path);
+    expect_string(__wrap_wreaddir, name, LONG_PATH);
     will_return(__wrap_wreaddir, files);
 
     struct stat stat_buf = { .st_mode = S_IFREG };
@@ -2168,7 +2205,7 @@ void test_validate_shared_files_valid_file_limite_size(void **state)
     expect_string(__wrap_checkBinaryFile, f_name, file_str);
     will_return(__wrap_checkBinaryFile, 0);
 
-    validate_shared_files(base_path, "test_default", "merged_tmp", &f_sum, &f_size, false, -1);
+    validate_shared_files(LONG_PATH, "test_default", "merged_tmp", &f_sum, &f_size, false, -1);
     groups[0]->f_sum = f_sum;
 
     assert_non_null(groups[0]);
@@ -2936,11 +2973,10 @@ void test_copy_directory_merged_file(void **state)
     copy_directory("src_path", "dst_path", "group_test", true);
 }
 
-void test_copy_directory_source_path_too_long(void **state)
+void test_copy_directory_source_path_too_long_warning(void **state)
 {
-    const char *base_path = "190-characters-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     char log_str[PATH_MAX + 1] = {0};
-    snprintf(log_str, PATH_MAX, "At copy_directory(): source path too long '%s/test-file'", base_path);
+    snprintf(log_str, PATH_MAX, "At copy_directory(): source path too long '%s/test-file'", LONG_PATH);
 
     // Initialize files structure
     char ** files = NULL;
@@ -2948,19 +2984,64 @@ void test_copy_directory_source_path_too_long(void **state)
     files[0] = strdup("test-files");
     files[1] = NULL;
 
-    expect_string(__wrap_wreaddir, name, base_path);
+    expect_string(__wrap_wreaddir, name, LONG_PATH);
+    will_return(__wrap_wreaddir, files);
+
+    expect_string(__wrap__mwarn, formatted_msg, log_str);
+
+    reported_path_size_exceeded = 0;
+
+    copy_directory(LONG_PATH, "dst_path", "group_test", true);
+}
+
+void test_copy_directory_source_path_too_long_debug(void **state)
+{
+    char log_str[PATH_MAX + 1] = {0};
+    snprintf(log_str, PATH_MAX, "At copy_directory(): source path too long '%s/test-file'", LONG_PATH);
+
+    // Initialize files structure
+    char ** files = NULL;
+    os_malloc((2) * sizeof(char *), files);
+    files[0] = strdup("test-files");
+    files[1] = NULL;
+
+    expect_string(__wrap_wreaddir, name, LONG_PATH);
     will_return(__wrap_wreaddir, files);
 
     expect_string(__wrap__mdebug2, formatted_msg, log_str);
 
-    copy_directory(base_path, "dst_path", "group_test", true);
+    reported_path_size_exceeded = 1;
+
+    copy_directory(LONG_PATH, "dst_path", "group_test", true);
+
+    reported_path_size_exceeded = 0;
 }
 
-void test_copy_directory_destination_path_too_long(void **state)
+void test_copy_directory_destination_path_too_long_warning(void **state)
 {
-    const char *base_path = "190-characters-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     char log_str[PATH_MAX + 1] = {0};
-    snprintf(log_str, PATH_MAX, "At copy_directory(): destination path too long '%s/test-file'", base_path);
+    snprintf(log_str, PATH_MAX, "At copy_directory(): destination path too long '%s/test-file'", LONG_PATH);
+
+    // Initialize files structure
+    char ** files = NULL;
+    os_malloc((2) * sizeof(char *), files);
+    files[0] = strdup("test-files");
+    files[1] = NULL;
+
+    expect_string(__wrap_wreaddir, name, "src_path");
+    will_return(__wrap_wreaddir, files);
+
+    expect_string(__wrap__mwarn, formatted_msg, log_str);
+
+    reported_path_size_exceeded = 0;
+
+    copy_directory("src_path", LONG_PATH, "group_test", true);
+}
+
+void test_copy_directory_destination_path_too_long_debug(void **state)
+{
+    char log_str[PATH_MAX + 1] = {0};
+    snprintf(log_str, PATH_MAX, "At copy_directory(): destination path too long '%s/test-file'", LONG_PATH);
 
     // Initialize files structure
     char ** files = NULL;
@@ -2973,7 +3054,11 @@ void test_copy_directory_destination_path_too_long(void **state)
 
     expect_string(__wrap__mdebug2, formatted_msg, log_str);
 
-    copy_directory("src_path", base_path, "group_test", true);
+    reported_path_size_exceeded = 1;
+
+    copy_directory("src_path", LONG_PATH, "group_test", true);
+
+    reported_path_size_exceeded = 0;
 }
 
 void test_copy_directory_invalid_file(void **state)
@@ -3343,7 +3428,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_validate_shared_files_files_null, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_validate_shared_files_hidden_file, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_validate_shared_files_merged_file, test_c_group_setup, test_c_group_teardown),
-        cmocka_unit_test_setup_teardown(test_validate_shared_files_max_path_size, test_c_group_setup, test_c_group_teardown),
+        cmocka_unit_test_setup_teardown(test_validate_shared_files_max_path_size_warning, test_c_group_setup, test_c_group_teardown),
+        cmocka_unit_test_setup_teardown(test_validate_shared_files_max_path_size_debug, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_validate_shared_files_valid_file_limite_size, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_validate_shared_files_md5_fail, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_validate_shared_files_still_invalid, test_c_group_setup, test_c_group_teardown),
@@ -3362,8 +3448,10 @@ int main(void)
         cmocka_unit_test(test_copy_directory_files_null_not_initial),
         cmocka_unit_test(test_copy_directory_hidden_file),
         cmocka_unit_test(test_copy_directory_merged_file),
-        cmocka_unit_test(test_copy_directory_source_path_too_long),
-        cmocka_unit_test(test_copy_directory_destination_path_too_long),
+        cmocka_unit_test(test_copy_directory_source_path_too_long_warning),
+        cmocka_unit_test(test_copy_directory_source_path_too_long_debug),
+        cmocka_unit_test(test_copy_directory_destination_path_too_long_warning),
+        cmocka_unit_test(test_copy_directory_destination_path_too_long_debug),
         cmocka_unit_test(test_copy_directory_invalid_file),
         cmocka_unit_test(test_copy_directory_agent_conf_file),
         cmocka_unit_test(test_copy_directory_valid_file),
