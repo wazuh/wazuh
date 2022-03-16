@@ -98,7 +98,6 @@ class "FimDB"  <<(S,#FF7700) Singleton>> {
     - int m_registryLimit
     - int m_syncInterval
     - bool m_stopping
-    - bool m_isWindows
     - mutex m_fimSyncMutex
     - condition_variable m_cv
     - shared_ptr<DBSync> m_dbsyncHandler

@@ -170,9 +170,9 @@ template <OSType osType>
 class FIMDBCreator final
 {
     public:
-        static void setLimits(std::shared_ptr<DBSync> DBSyncHandler,
-                              const unsigned int& fileLimit,
-                              const unsigned int& registryLimit)
+        static void setLimits(__attribute__((unused)) std::shared_ptr<DBSync> DBSyncHandler,
+                              __attribute__((unused)) const unsigned int& fileLimit,
+                              __attribute__((unused)) const unsigned int& registryLimit)
         {
             throw std::runtime_error
             {
@@ -188,11 +188,11 @@ class FIMDBCreator final
             };
         }
 
-        static void registerRsync(std::shared_ptr<RemoteSync> RSyncHandler,
-                                  const RSYNC_HANDLE& handle,
-                                  std::function<void(const std::string&)> syncFileMessageFunction,
+        static void registerRsync(__attribute__((unused)) std::shared_ptr<RemoteSync> RSyncHandler,
+                                  __attribute__((unused)) const RSYNC_HANDLE& handle,
+                                  __attribute__((unused)) std::function<void(const std::string&)> syncFileMessageFunction,
                                   __attribute__((unused)) std::function<void(const std::string&)> syncRegistryMessageFunction,
-                                  const bool syncRegistryEnabled)
+                                  __attribute__((unused)) const bool syncRegistryEnabled)
         {
             throw std::runtime_error
             {
@@ -200,9 +200,9 @@ class FIMDBCreator final
             };
         }
 
-        static void sync(std::shared_ptr<RemoteSync> RSyncHandler,
-                         const DBSYNC_HANDLE& handle,
-                         std::function<void(const std::string&)> syncFileMessageFunction,
+        static void sync(__attribute__((unused)) std::shared_ptr<RemoteSync> RSyncHandler,
+                         __attribute__((unused)) const DBSYNC_HANDLE& handle,
+                         __attribute__((unused)) std::function<void(const std::string&)> syncFileMessageFunction,
                          __attribute__((unused)) std::function<void(const std::string&)> syncRegistryMessageFunction)
         {
             throw std::runtime_error
@@ -211,7 +211,7 @@ class FIMDBCreator final
             };
         }
 
-        static void encodeString(std::string& stringToEncode)
+        static void encodeString(__attribute__((unused)) std::string& stringToEncode)
         {
             throw std::runtime_error
             {
