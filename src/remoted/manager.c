@@ -207,6 +207,9 @@ OSHash *m_hash;
 /* Interval polling */
 static int poll_interval_time = 0;
 
+/* This variable is used to prevent flooding when group files exceed the maximum size */
+static int reported_path_size_exceeded = 0;
+
 // Frees data in m_hash table
 void cleaner(void* data) {
     os_free(data);
@@ -689,6 +692,10 @@ STATIC void c_files()
 
     w_mutex_unlock(&files_mutex);
 
+    if (!reported_path_size_exceeded) {
+        reported_path_size_exceeded = 1;
+    }
+
     mdebug2("End updating shared files sums.");
 }
 
@@ -1028,12 +1035,16 @@ STATIC void validate_shared_files(const char *src_path, const char *group, const
         struct stat attrib;
 
         if (snprintf(file, MAX_SHARED_PATH + 1, "%s/%s", src_path, files[i]) > MAX_SHARED_PATH) {
-            mdebug2("At validate_shared_files(): path too long '%s'", file);
+            if (!reported_path_size_exceeded) {
+                mwarn("At validate_shared_files(): path too long '%s'", file);
+            } else {
+                mdebug2("At validate_shared_files(): path too long '%s'", file);
+            }
             continue;
         }
 
         if (path_offset < 0) {
-            char filename[MAX_SHARED_PATH];
+            char filename[MAX_SHARED_PATH + 1];
             char * basedir;
 
             strncpy(filename, file, sizeof(filename));
@@ -1148,12 +1159,20 @@ STATIC void copy_directory(const char *src_path, const char *dst_path, char *gro
         char destination_path[MAX_SHARED_PATH + 1] = {0};
 
         if (snprintf(source_path, MAX_SHARED_PATH + 1, "%s/%s", src_path, files[i]) > MAX_SHARED_PATH ) {
-            mdebug2("At copy_directory(): source path too long '%s'", source_path);
+            if (!reported_path_size_exceeded) {
+                mwarn("At copy_directory(): source path too long '%s'", source_path);
+            } else {
+                mdebug2("At copy_directory(): source path too long '%s'", source_path);
+            }
             continue;
         }
 
         if (snprintf(destination_path, MAX_SHARED_PATH + 1, "%s/%s", dst_path, files[i]) > MAX_SHARED_PATH) {
-            mdebug2("At copy_directory(): destination path too long '%s'", destination_path);
+            if (!reported_path_size_exceeded) {
+                mwarn("At copy_directory(): destination path too long '%s'", destination_path);
+            } else {
+                mdebug2("At copy_directory(): destination path too long '%s'", destination_path);
+            }
             continue;
         }
 
