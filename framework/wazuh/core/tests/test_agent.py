@@ -596,7 +596,7 @@ def test_agent_reconnect(socket_mock, send_mock, mock_send_msg):
     """Test if method reconnect calls send_msg method with correct params."""
     agent_id = '000'
     agent = Agent(agent_id)
-    agent.reconnect(WazuhQueue(common.ARQUEUE))
+    agent.reconnect(WazuhQueue(common.AR_SOCKET))
 
     # Assert send_msg method is called with correct params
     mock_send_msg.assert_called_with(WazuhQueue.HC_FORCE_RECONNECT, agent_id)
@@ -625,12 +625,16 @@ def test_agent_remove(mock_remove_authd):
         mock_remove_authd.assert_called_once_with(False), 'Not expected params'
 
 
-@patch('wazuh.core.agent.Agent._remove_authd', return_value='Agent was successfully deleted')
-def test_agent_remove_ko(mock_remove_authd):
+def test_agent_remove_ko():
     """Tests if method remove() raises expected exception"""
     with pytest.raises(WazuhError, match='.* 1726 .*'):
         agent = Agent(0)
         agent.remove()
+
+    with patch('wazuh.core.agent.get_manager_status', side_effect=WazuhInternalError(1913)):
+        with pytest.raises(WazuhError, match='.* 1726 .*'):
+            agent = Agent(0)
+            agent.remove()
 
 
 @patch('wazuh.core.agent.WazuhSocketJSON')
@@ -680,7 +684,7 @@ def test_agent_add(mock_add_authd, authd_status, ip, id, key, force):
 
 
 @patch('wazuh.core.agent.get_manager_status', return_value={'wazuh-authd': 'stopped'})
-def test_agent_add_ko(mock_maganer_status):
+def test_agent_add_ko(mock_manager_status):
     """Test if _add() method raises expected exception."""
     agent = Agent(1)
 
@@ -692,6 +696,10 @@ def test_agent_add_ko(mock_maganer_status):
 
     with pytest.raises(WazuhError, match='.* 1726 .*'):
         agent._add('test_name', '192.168.0.0')
+
+    with patch('wazuh.core.agent.get_manager_status', side_effect=WazuhInternalError(1913)):
+        with pytest.raises(WazuhError, match='.* 1726 .*'):
+            agent._add('test_name', '192.168.0.0')
 
 
 @pytest.mark.parametrize("name, ip, id, key, force", [
@@ -763,8 +771,8 @@ def test_get_manager_name(mock_connect, mock_send):
 
 
 @patch('wazuh.core.agent.path.exists', return_value=True)
-@patch('wazuh.core.common.shared_path', new=os.path.join(test_data_path, 'etc', 'shared'))
-@patch('wazuh.core.common.backup_path', new=os.path.join(test_data_path, 'backup'))
+@patch('wazuh.core.common.SHARED_PATH', new=os.path.join(test_data_path, 'etc', 'shared'))
+@patch('wazuh.core.common.BACKUP_PATH', new=os.path.join(test_data_path, 'backup'))
 @patch('wazuh.core.agent.safe_move')
 @patch('wazuh.core.agent.time', return_value=0)
 def test_agent_delete_single_group(mock_time, mock_safe_move, mock_exists):
@@ -775,8 +783,8 @@ def test_agent_delete_single_group(mock_time, mock_safe_move, mock_exists):
 
     assert isinstance(result, dict), 'Result is not a dict'
     assert result['message'] == "Group '001' deleted.", 'Not expected message'
-    mock_safe_move.assert_called_once_with(os.path.join(common.shared_path, '001'),
-                                           os.path.join(common.backup_path, 'groups', '001_0'),
+    mock_safe_move.assert_called_once_with(os.path.join(common.SHARED_PATH, '001'),
+                                           os.path.join(common.BACKUP_PATH, 'groups', '001_0'),
                                            permissions=0o660), 'Safe_move not called with expected params'
 
 
@@ -957,8 +965,8 @@ def test_agent_get_agents_overview_sort(socket_mock, send_mock, sort, first_id):
     ('002', 'test_group', True, False, None),
     ('002', 'test_group', False, True, ['default']),
 ])
-@patch('wazuh.core.common.groups_path', new=test_data_path)
-@patch('wazuh.core.common.shared_path', new=test_data_path)
+@patch('wazuh.core.common.GROUPS_PATH', new=test_data_path)
+@patch('wazuh.core.common.SHARED_PATH', new=test_data_path)
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_add_group_to_agent(socket_mock, send_mock, agent_id, group_id, force, replace, replace_list):
@@ -1006,8 +1014,8 @@ def test_agent_add_group_to_agent(socket_mock, send_mock, agent_id, group_id, fo
         os.remove(os.path.join(test_data_path, agent_id))
 
 
-@patch('wazuh.core.common.groups_path', new=os.path.join(test_data_path, 'etc', 'shared'))
-@patch('wazuh.core.common.shared_path', new=os.path.join(test_data_path, 'etc', 'shared'))
+@patch('wazuh.core.common.GROUPS_PATH', new=os.path.join(test_data_path, 'etc', 'shared'))
+@patch('wazuh.core.common.SHARED_PATH', new=os.path.join(test_data_path, 'etc', 'shared'))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_add_group_to_agent_ko(socket_mock, send_mock):
@@ -1038,7 +1046,7 @@ def test_agent_add_group_to_agent_ko(socket_mock, send_mock):
             with pytest.raises(WazuhError, match='.* 1751 .*'):
                 Agent.add_group_to_agent('default', '002')
 
-            with patch('wazuh.core.common.max_groups_per_multigroup', new=0):
+            with patch('wazuh.core.common.MAX_GROUPS_PER_MULTIGROUP', new=0):
                 # Multigroup limit exceeded.
                 with pytest.raises(WazuhError, match='.* 1737 .*'):
                     Agent.add_group_to_agent('test_group', '002')
@@ -1132,9 +1140,9 @@ def test_agent_set_agent_group_file(mock_chmod, mock_chown, mock_gid, mock_uid, 
     Agent.set_agent_group_file('002', 'test_group')
 
     # Assert methods are called with expected params
-    mock_open.assert_called_once_with(os.path.join(common.groups_path, '002'), 'w')
+    mock_open.assert_called_once_with(os.path.join(common.GROUPS_PATH, '002'), 'w')
     mock_chown.assert_called_once()
-    mock_chmod.assert_called_once_with(os.path.join(common.groups_path, '002'), 0o660)
+    mock_chmod.assert_called_once_with(os.path.join(common.GROUPS_PATH, '002'), 0o660)
 
 
 def test_agent_set_agent_group_file_ko():
@@ -1149,8 +1157,8 @@ def test_agent_set_agent_group_file_ko():
     ('002', 'test_group', False, 'test_group', True),
     ('002', 'test_group', False, 'test_group,another_test', False)
 ])
-@patch('wazuh.core.common.groups_path', new=test_data_path)
-@patch('wazuh.core.common.shared_path', new=test_data_path)
+@patch('wazuh.core.common.GROUPS_PATH', new=test_data_path)
+@patch('wazuh.core.common.SHARED_PATH', new=test_data_path)
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_unset_single_group_agent(socket_mock, send_mock, agent_id, group_id, force, previous_groups,
@@ -1200,8 +1208,8 @@ def test_agent_unset_single_group_agent(socket_mock, send_mock, agent_id, group_
         os.remove(os.path.join(test_data_path, agent_id))
 
 
-@patch('wazuh.core.common.groups_path', new=os.path.join(test_data_path, 'etc', 'shared'))
-@patch('wazuh.core.common.shared_path', new=os.path.join(test_data_path, 'etc', 'shared'))
+@patch('wazuh.core.common.GROUPS_PATH', new=os.path.join(test_data_path, 'etc', 'shared'))
+@patch('wazuh.core.common.SHARED_PATH', new=os.path.join(test_data_path, 'etc', 'shared'))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_unset_single_group_agent_ko(socket_mock, send_mock):
@@ -1229,7 +1237,8 @@ def test_agent_unset_single_group_agent_ko(socket_mock, send_mock):
 @patch('wazuh.core.configuration.WazuhSocket')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_getconfig(socket_mock, send_mock, mock_wazuh_socket):
+@patch('os.path.exists')
+def test_agent_getconfig(mock_exists, socket_mock, send_mock, mock_wazuh_socket):
     """Test getconfig method returns expected message."""
     agent = Agent('001')
     mock_wazuh_socket.return_value.receive.return_value = b'ok {"test": "conf"}'
@@ -1280,6 +1289,30 @@ def test_agent_get_stats_ko(socket_mock, send_mock, mock_wazuh_socket):
         agent.get_stats('logcollector')
 
 
+@pytest.mark.parametrize('upgrade_version', [
+    '4.4.0',
+    'v4.4.0',
+    'wazuh 4.4.0',
+    'wazuh v4.4.0'
+])
+def test_unify_wazuh_upgrade_version_format(upgrade_version):
+    """Test that unify_wazuh_upgrade_version_format is properly working."""
+    assert unify_wazuh_upgrade_version_format(upgrade_version) == 'v4.4.0'
+
+
+@pytest.mark.parametrize('version', [
+    'v4.4.0',
+    '4.4.0',
+    'wazuh v4.4.0',
+    'wazuh 4.4.0'
+])
+def test_unify_wazuh_version_format(version):
+    """Test that unify_wazuh_version_format is properly working."""
+    dkt = {'version': version}
+    unify_wazuh_version_format(dkt)
+    assert dkt['version'] == 'wazuh v4.4.0'
+
+
 @pytest.mark.parametrize('agents_list, versions_list', [
     (['001', '002', '003', '004'],
      [{'version': ver} for ver in ['Wazuh v4.2.0', 'Wazuh v4.0.0', 'Wazuh v4.2.1', 'Wazuh v3.13.2']])
@@ -1298,7 +1331,7 @@ def test_send_restart_command(wq_mock, wq_send_msg, agents_list, versions_list):
     """
     with patch('wazuh.core.agent.Agent.get_basic_information', side_effect=versions_list):
         for agent_id, agent_version in zip(agents_list, versions_list):
-            wq = WazuhQueue(common.ARQUEUE)
+            wq = WazuhQueue(common.AR_SOCKET)
             send_restart_command(agent_id, agent_version['version'], wq)
             expected_msg = WazuhQueue.RESTART_AGENTS_JSON if WazuhVersion(
                 agent_version['version']) >= WazuhVersion(common.AR_LEGACY_VERSION) else WazuhQueue.RESTART_AGENTS
@@ -1323,7 +1356,7 @@ def test_get_groups():
     expected_result = {'group-1', 'group-2'}
     shared = os.path.join(test_data_path, 'shared')
 
-    with patch('wazuh.core.common.shared_path', new=shared):
+    with patch('wazuh.core.common.SHARED_PATH', new=shared):
         try:
             for group in list(expected_result):
                 os.makedirs(os.path.join(shared, group))
@@ -1358,7 +1391,7 @@ def test_expand_group(group, expected_agents):
     id_groups = {'000': 'group1', '001': 'group2', '002': 'group3', '004': '', '005': 'group3,group4', '006': 'group21'}
     agent_groups = os.path.join(test_data_path, 'agent-groups')
 
-    with patch('wazuh.core.common.groups_path', new=agent_groups):
+    with patch('wazuh.core.common.GROUPS_PATH', new=agent_groups):
         try:
             os.makedirs(agent_groups)
             for id_, groups in id_groups.items():

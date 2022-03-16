@@ -6,6 +6,7 @@ import subprocess
 import time
 from base64 import b64encode
 
+import _pytest.fixtures
 import pytest
 import requests
 import urllib3
@@ -28,9 +29,27 @@ environment_status = None
 env_cluster_nodes = ['master', 'worker1', 'worker2']
 agent_names = ['agent1', 'agent2', 'agent3', 'agent4', 'agent5', 'agent6', 'agent7', 'agent8']
 
+standalone_env_mode = 'standalone'
+cluster_env_mode = 'cluster'
+
 
 def pytest_addoption(parser):
     parser.addoption('--nobuild', action='store_false', help='Do not run docker-compose build.')
+
+
+def pytest_collection_modifyitems(items: list):
+    """Pytest hook used to add standalone and cluster marks to tests having none of them.
+
+    Parameters
+    ----------
+    items : list[pytest.Item]
+        List of pytest items collected in the pytest session.
+    """
+    for item in items:
+        test_name = item.nodeid.split('::')[0]
+        if 'rbac' not in test_name and not {standalone_env_mode, cluster_env_mode} & {m.name for m in item.own_markers}:
+            item.add_marker(standalone_env_mode)
+            item.add_marker(cluster_env_mode)
 
 
 def get_token_login_api():
@@ -54,11 +73,14 @@ def pytest_tavern_beta_before_every_test_run(test_dict, variables):
     variables["test_login_token"] = get_token_login_api()
 
 
-def build_and_up(interval: int = 10, interval_build_env: int = 10, build: bool = True):
+def build_and_up(env_mode: str, interval: int = 10, interval_build_env: int = 10,
+                 build: bool = True) -> dict:
     """Build all Docker environments needed for the current test.
 
     Parameters
     ----------
+    env_mode : str
+        Indicates the environment to be used in the process.
     interval : int
         Time interval between every healthcheck.
     interval_build_env : int
@@ -85,15 +107,17 @@ def build_and_up(interval: int = 10, interval_build_env: int = 10, build: bool =
     # Get current branch
     current_branch = '/'.join(open('../../../../.git/HEAD', 'r').readline().split('/')[2:])
     os.makedirs(test_logs_path, exist_ok=True)
-    with open(docker_log_path, mode='w') as fdocker:
+    with open(docker_log_path, mode='w') as f_docker:
         while values_build_env['retries'] < values_build_env['max_retries']:
             if build:
-                current_process = subprocess.Popen(["docker-compose", "build", "--build-arg",
-                                                    f"WAZUH_BRANCH={current_branch}"],
-                                                   stdout=fdocker, stderr=subprocess.STDOUT, universal_newlines=True)
+                current_process = subprocess.Popen(
+                    ["docker-compose", "--profile", env_mode,
+                     "build", "--build-arg", f"WAZUH_BRANCH={current_branch}", "--build-arg", f"ENV_MODE={env_mode}"],
+                    stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
                 current_process.wait()
-            current_process = subprocess.Popen(["docker-compose", "up", "-d"],
-                                               stdout=fdocker, stderr=subprocess.STDOUT, universal_newlines=True)
+            current_process = subprocess.Popen(
+                ["docker-compose", "--profile", env_mode, "up", "-d"], env=dict(os.environ, ENV_MODE=env_mode),
+                stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
             current_process.wait()
 
             if current_process.returncode == 0:
@@ -108,36 +132,40 @@ def build_and_up(interval: int = 10, interval_build_env: int = 10, build: bool =
 
 
 def down_env():
-    """Stop all Docker environments for the current test."""
+    """Stop and remove all Docker containers."""
     os.chdir(env_path)
-    with open(docker_log_path, mode='a') as fdocker:
-        current_process = subprocess.Popen(["docker-compose", "down", "-t", "0"],
-                                           stdout=fdocker, stderr=subprocess.STDOUT, universal_newlines=True)
+    with open(docker_log_path, mode='a') as f_docker:
+        current_process = subprocess.Popen(["docker-compose", "down", "-t0"], stdout=f_docker,
+                                           stderr=subprocess.STDOUT, universal_newlines=True)
         current_process.wait()
     os.chdir(current_path)
 
 
-def check_health(interval: int = 10, node_type: str = 'manager', agents: list = None):
+def check_health(interval: int = 10, node_type: str = 'manager', agents: list = None,
+                 only_check_master_health: bool = False):
     """Check the Wazuh nodes health.
 
     Parameters
     ----------
     interval : int
-        Time interval between every healthcheck
+        Time interval between every healthcheck.
     node_type : str
-        Can be agent or manager
-    agents :
+        Can be agent or manager.
+    agents : list
         List of active agents for the current test
-        (only needed if the agents needs a custom healthcheck)
+        (only needed if the agents need a custom healthcheck).
+    only_check_master_health : bool
+        Indicates whether the only node which health needs to be checked is master or not.
 
     Returns
     -------
     bool
-        True if all healthchecks pass, False if not
+        True if all healthchecks passed, False otherwise.
     """
     time.sleep(interval)
     if node_type == 'manager':
-        for node in env_cluster_nodes:
+        nodes_to_check = ['master'] if only_check_master_health else env_cluster_nodes
+        for node in nodes_to_check:
             health = subprocess.check_output(
                 f"docker inspect env_wazuh-{node}_1 -f '{{{{json .State.Health.Status}}}}'", shell=True)
             if not health.startswith(b'"healthy"'):
@@ -154,12 +182,12 @@ def check_health(interval: int = 10, node_type: str = 'manager', agents: list = 
 
 def general_procedure(module: str):
     """Copy the configurations files of the specified module to temporal folder.
-    The temporal folder will be processed in the environments's entrypoints
+    The temporal folder will be processed in the environments' entrypoints.
 
     Parameters
     ----------
     module : str
-        Name of the tested module
+        Name of the tested module.
     """
     base_content = os.path.join(env_path, 'configurations', 'base', '*')
     module_content = os.path.join(env_path, 'configurations', module, '*')
@@ -246,7 +274,7 @@ def rbac_custom_config_generator(module: str, rbac_mode: str):
     except FileNotFoundError:
         return
 
-    sql_sentences = list()
+    sql_sentences = []
     sql_sentences.append('PRAGMA foreign_keys=OFF;\n')
     sql_sentences.append('BEGIN TRANSACTION;\n')
     sql_sentences.append('DELETE FROM user_roles WHERE user_id=99;\n')  # Current DB status: User 99 - Role 1 (Base)
@@ -298,24 +326,18 @@ def save_logs(test_name: str):
 
 
 @pytest.fixture(scope='session', autouse=True)
-def api_test(request):
+def api_test(request: _pytest.fixtures.SubRequest):
     """This function is responsible for setting up the Docker environment necessary for every test.
     This function will be executed with all the integrated API tests.
 
     Parameters
     ----------
-    request : pytest.fixtures.SubRequest
+    request : _pytest.fixtures.SubRequest
         Object that contains information about the current test
     """
-    test_filename = request.node.config.args[0].split('_')
-    if 'rbac' in test_filename:
-        rbac_mode = test_filename[2]
-        module = test_filename[3]
-    else:
-        rbac_mode = None
-        module = test_filename[1]
 
     def clean_up_env():
+        """Clean temporary folder, save environment logs and status; and stop and remove all Docker containers."""
         clean_tmp_folder()
         if request.session.testsfailed > 0:
             save_logs(f"{rbac_mode}_{module.split('.')[0]}" if rbac_mode else f"{module.split('.')[0]}")
@@ -325,7 +347,20 @@ def api_test(request):
         environment_status = get_health()
         down_env()
 
+    # Get the value of the mark indicating the test mode. This value will vary between 'cluster' or 'standalone'
+    mode = request.node.config.getoption("-m")
+    env_mode = standalone_env_mode if mode == 'standalone' else cluster_env_mode
+
+    # Add clean_up_env as fixture finalizer
     request.addfinalizer(clean_up_env)
+
+    test_filename = request.node.config.args[0].split('_')
+    if 'rbac' in test_filename:
+        rbac_mode = test_filename[2]
+        module = test_filename[3]
+    else:
+        rbac_mode = None
+        module = test_filename[1]
 
     clean_tmp_folder()
 
@@ -336,10 +371,11 @@ def api_test(request):
         enable_white_mode()
 
     general_procedure(module)
-    values = build_and_up(interval=10, build=request.config.getoption('--nobuild'))
+    values = build_and_up(interval=10, build=request.config.getoption('--nobuild'), env_mode=env_mode)
 
     while values['retries'] < values['max_retries']:
-        managers_health = check_health(interval=values['interval'])
+        managers_health = check_health(interval=values['interval'],
+                                       only_check_master_health=env_mode == standalone_env_mode)
         agents_health = check_health(interval=values['interval'], node_type='agent', agents=list(range(1, 9)))
         # Check if entrypoint was successful
         try:
@@ -443,7 +479,7 @@ def pytest_runtest_makereport(item, call):
     report.test_name = item.spec['test_name']
 
     # Store the test case stages
-    report.stages = list()
+    report.stages = []
     for stage in item.spec['stages']:
         report.stages.extend((stage['name'], html.br()))
 

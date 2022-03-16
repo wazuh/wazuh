@@ -776,7 +776,8 @@ int fim_directory(const char *dir,
             *s_name++ = PATH_SEP;
         }
         *(s_name) = '\0';
-        strncpy(s_name, entry->d_name, PATH_MAX - path_size - 2);
+        path_size = strlen(f_name);
+        snprintf(s_name, PATH_MAX + 2 - path_size, "%s", entry->d_name);
 
 #ifdef WIN32
         str_lowercase(f_name);

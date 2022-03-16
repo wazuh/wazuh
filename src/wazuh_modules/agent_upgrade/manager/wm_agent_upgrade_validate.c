@@ -29,6 +29,11 @@ static const char* invalid_platforms[] = {
     "bsd"
 };
 
+static const char* rolling_platforms[] = {
+    "opensuse-tumbleweed",
+    "arch"
+};
+
 int wm_agent_upgrade_validate_id(int agent_id) {
     int return_code = WM_UPGRADE_SUCCESS;
 
@@ -51,16 +56,18 @@ int wm_agent_upgrade_validate_status(const char* connection_status) {
 
 int wm_agent_upgrade_validate_system(const char *platform, const char *os_major, const char *os_minor, const char *arch) {
     int invalid_platforms_len = 0;
-    int invalid_platforms_it = 0;
+    int rolling_platforms_len = 0;
+    int platforms_it = 0;
     int return_code = WM_UPGRADE_GLOBAL_DB_FAILURE;
 
     if (platform) {
         if (!strcmp(platform, "windows") || (os_major && arch && (strcmp(platform, "ubuntu") || os_minor))) {
             return_code = WM_UPGRADE_SUCCESS;
-            invalid_platforms_len = sizeof(invalid_platforms) / sizeof(invalid_platforms[0]);
 
-            for(invalid_platforms_it = 0; invalid_platforms_it < invalid_platforms_len; ++invalid_platforms_it) {
-                if(!strcmp(invalid_platforms[invalid_platforms_it], platform)) {
+            // Blacklist for invalid OS platforms
+            invalid_platforms_len = array_size(invalid_platforms);
+            for(platforms_it = 0; platforms_it < invalid_platforms_len; ++platforms_it) {
+                if(!strcmp(invalid_platforms[platforms_it], platform)) {
                     return_code = WM_UPGRADE_SYSTEM_NOT_SUPPORTED;
                     break;
                 }
@@ -72,6 +79,15 @@ int wm_agent_upgrade_validate_system(const char *platform, const char *os_major,
                     (!strcmp(platform, "centos") && !strcmp(os_major, "5"))) {
                     return_code = WM_UPGRADE_SYSTEM_NOT_SUPPORTED;
                 }
+            }
+        }
+
+        // Whitelist for OS platforms with 'rolling' version
+        rolling_platforms_len = array_size(rolling_platforms);
+        for(platforms_it = 0; platforms_it < rolling_platforms_len; ++platforms_it) {
+            if(!strcmp(rolling_platforms[platforms_it], platform)) {
+                return_code = WM_UPGRADE_SUCCESS;
+                break;
             }
         }
     }

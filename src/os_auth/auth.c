@@ -160,12 +160,16 @@ w_err_t w_auth_parse_data(const char* buf,
 
         /* If IP: != 'src' overwrite the provided ip */
         if (strncmp(client_source_ip,"src",3) != 0) {
-            if (!OS_IsValidIP(client_source_ip, NULL)) {
+            os_ip *aux_ip;
+            os_calloc(1, sizeof(os_ip), aux_ip);
+            if (!OS_IsValidIP(client_source_ip, aux_ip)) {
                 merror("Invalid IP: '%s'", client_source_ip);
                 snprintf(response, 2048, "ERROR: Invalid IP: %s", client_source_ip);
+                w_free_os_ip(aux_ip);
                 return OS_INVALID;
             }
-            snprintf(ip, IPSIZE + 1, "%s", client_source_ip);
+            snprintf(ip, IPSIZE, "%s", aux_ip->ip);
+            w_free_os_ip(aux_ip);
         }
 
         /* Forward the string pointer IP:'........' 3 for IP: , 2 for '' */
@@ -335,7 +339,7 @@ w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, 
     if (groups) {
         char path[PATH_MAX];
         if (snprintf(path, PATH_MAX, GROUPS_DIR "/%s", keys.keyentries[index]->id) >= PATH_MAX) {
-            merror("At set_agent_group(): file path too large for agent '%s'.", keys.keyentries[index]->id);
+            merror("File path too large for agent '%s'.", keys.keyentries[index]->id);
             OS_RemoveAgent(keys.keyentries[index]->id);
             merror("Unable to set agent centralized group: %s (internal error)", groups);
             snprintf(response, 2048, "ERROR: Internal manager error setting agent centralized group: %s", groups);

@@ -13,7 +13,7 @@ import sys
 import tempfile
 import typing
 from copy import deepcopy
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 from itertools import groupby, chain
 from os import chmod, chown, listdir, mkdir, curdir, rename, utime, remove, walk, path
@@ -28,7 +28,7 @@ from defusedxml.minidom import parseString
 import wazuh.core.results as results
 from api import configuration
 from wazuh.core import common
-from wazuh.core.common import pidfiles_path
+from wazuh.core.common import OSSEC_PIDFILE_PATH
 from wazuh.core.database import Connection
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.wdb import WazuhDBConnection
@@ -50,13 +50,13 @@ def clean_pid_files(daemon):
         Daemon's name.
     """
     regex = rf'{daemon}[\w_]*-(\d+).pid'
-    for pid_file in os.listdir(pidfiles_path):
+    for pid_file in os.listdir(OSSEC_PIDFILE_PATH):
         if match := re.match(regex, pid_file):
             try:
                 os.kill(int(match.group(1)), 0)
             except OSError:
                 print(f'{daemon}: Process {match.group(1)} not used by Wazuh, removing...')
-                os.remove(path.join(pidfiles_path, pid_file))
+                os.remove(path.join(OSSEC_PIDFILE_PATH, pid_file))
 
 
 def find_nth(string, substring, n):
@@ -91,7 +91,7 @@ def previous_month(n=1):
     :return: First date of the previous n month.
     """
 
-    date = datetime.utcnow().replace(day=1)  # First day of current month
+    date = get_utc_now().replace(day=1)  # First day of current month
 
     for i in range(0, int(n)):
         date = (date - timedelta(days=1)).replace(day=1)  # (first_day - 1) = previous month
@@ -171,7 +171,7 @@ def process_array(array, search_text=None, complementary_search=False, search_in
     return {'items': cut_array(array, offset=offset, limit=limit), 'totalItems': len(array)}
 
 
-def cut_array(array, offset=0, limit=common.database_limit):
+def cut_array(array, offset=0, limit=common.DATABASE_LIMIT):
     """Returns a part of the array: from offset to offset + limit.
 
     :param array: Array to cut.
@@ -181,7 +181,7 @@ def cut_array(array, offset=0, limit=common.database_limit):
     """
 
     if limit is not None:
-        if limit > common.maximum_database_limit:
+        if limit > common.MAXIMUM_DATABASE_LIMIT:
             raise WazuhError(1405, extra_message=str(limit))
         elif limit == 0:
             raise WazuhError(1406)
@@ -540,7 +540,7 @@ def delete_wazuh_file(full_path):
     bool
         True if success.
     """
-    if not full_path.startswith(common.wazuh_path) or '..' in full_path:
+    if not full_path.startswith(common.WAZUH_PATH) or '..' in full_path:
         raise WazuhError(1907)
 
     if path.exists(full_path):
@@ -933,7 +933,7 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
 
         for pattern in date_patterns:
             try:
-                return datetime.strptime(element, pattern)
+                return get_utc_strptime(element, pattern)
             except ValueError:
                 pass
 
@@ -1237,7 +1237,7 @@ class WazuhDBQuery(object):
 
     def _add_limit_to_query(self):
         if self.limit:
-            if self.limit > common.maximum_database_limit:
+            if self.limit > common.MAXIMUM_DATABASE_LIMIT:
                 raise WazuhError(1405, extra_message=str(self.limit))
             self.query += ' LIMIT :limit OFFSET :offset'
             self.request['offset'] = self.offset
@@ -1293,15 +1293,13 @@ class WazuhDBQuery(object):
         self.select = self._parse_select_filter(self.select)
 
     def _parse_query(self):
-        """
-        A query has the following pattern: field operator value separator field operator value...
+        """A query has the following pattern: field operator value separator field operator value...
+
         An example of query: status=never_connected;name!=pepe
             * Field must be a database field (it must be contained in self.fields variable)
             * operator must be one of = != < >
             * value can be anything
             * Separator can be either ; for 'and' or , for 'or'.
-
-        :return: A list with processed query (self.fields)
         """
         if not self.query_regex.match(self.q):
             raise WazuhError(1407, self.q)
@@ -1440,7 +1438,7 @@ class WazuhDBQuery(object):
             raise WazuhError(1412, date_filter['value'])
 
     def general_run(self):
-        """Builds the query and runs it on the database"""
+        """Builds the query and runs it on the database."""
         self._add_select_to_query()
         self._add_filters_to_query()
         self._add_search_to_query()
@@ -1456,7 +1454,7 @@ class WazuhDBQuery(object):
 
     def oversized_run(self):
         """Method used when the size of the query exceeds the maximum available in the communication.
-        Builds the query and runs it on the database"""
+        Builds the query and runs it on the database."""
         self._add_select_to_query()
         original_select = self.select
         rbac_ids = set(self.legacy_filters.pop('rbac_ids', set()))
@@ -1507,7 +1505,7 @@ class WazuhDBQuery(object):
 
     def run(self):
         """Generic function that will redirect the information
-        to the function that needs to be used for the specific case"""
+        to the function that needs to be used for the specific case."""
         if self.legacy_filters is None:
             return self.general_run()
 
@@ -1563,9 +1561,7 @@ class WazuhDBQueryDistinct(WazuhDBQuery):
 
 
 class WazuhDBQueryGroupBy(WazuhDBQuery):
-    """
-    Retrieves unique values for multiple fields using group by
-    """
+    """Retrieves unique values for multiple fields using group by."""
 
     def __init__(self, filter_fields, *args, **kwargs):
         WazuhDBQuery.__init__(self, *args, **kwargs)
@@ -1597,7 +1593,7 @@ def expand_rules():
     -------
     set
     """
-    folders = [common.ruleset_rules_path, common.user_rules_path]
+    folders = [common.RULES_PATH, common.USER_RULES_PATH]
     rules = set()
     for folder in folders:
         for _, _, files in walk(folder):
@@ -1615,7 +1611,7 @@ def expand_decoders():
     -------
     set
     """
-    folders = [common.ruleset_decoders_path, common.user_decoders_path]
+    folders = [common.DECODERS_PATH, common.USER_DECODERS_PATH]
     decoders = set()
     for folder in folders:
         for _, _, files in walk(folder):
@@ -1633,7 +1629,7 @@ def expand_lists():
     -------
     set
     """
-    folders = [common.ruleset_lists_path, common.user_lists_path]
+    folders = [common.LISTS_PATH, common.USER_LISTS_PATH]
     lists = set()
     for folder in folders:
         for _, _, files in walk(folder):
@@ -1750,7 +1746,7 @@ def upload_file(content, file_path, check_xml_formula_values=True):
         return xml_string
 
     # Path of temporary files for parsing xml input
-    handle, tmp_file_path = tempfile.mkstemp(prefix='api_tmp_file_', suffix='.tmp', dir=common.tmp_path)
+    handle, tmp_file_path = tempfile.mkstemp(prefix='api_tmp_file_', suffix='.tmp', dir=common.OSSEC_TMP_PATH)
     try:
         with open(handle, 'w') as tmp_file:
             final_file = escape_formula_values(content) if check_xml_formula_values else content
@@ -1761,7 +1757,7 @@ def upload_file(content, file_path, check_xml_formula_values=True):
 
     # Move temporary file to group folder
     try:
-        new_conf_path = path.join(common.wazuh_path, file_path)
+        new_conf_path = path.join(common.WAZUH_PATH, file_path)
         safe_move(tmp_file_path, new_conf_path, ownership=(common.wazuh_uid(), common.wazuh_gid()), permissions=0o660)
     except Error:
         raise WazuhInternalError(1016)
@@ -1801,7 +1797,7 @@ def replace_in_comments(original_content, to_be_replaced, replacement):
     return original_content
 
 
-def to_relative_path(full_path: str, prefix: str = common.wazuh_path):
+def to_relative_path(full_path: str, prefix: str = common.WAZUH_PATH):
     """Return a relative path from the Wazuh base directory.
 
     Parameters
@@ -1809,7 +1805,7 @@ def to_relative_path(full_path: str, prefix: str = common.wazuh_path):
     full_path : str
         Absolute path.
     prefix : str, opt
-        Prefix to strip from the absolute path. Default `common.wazuh_path`
+        Prefix to strip from the absolute path. Default `common.WAZUH_PATH`
 
     Returns
     -------
@@ -1874,9 +1870,7 @@ def full_copy(src: str, dst: str, follow_symlinks=True) -> None:
 
 
 class Timeout:
-    """
-    Raise TimeoutError after n seconds.
-    """
+    """Raise TimeoutError after n seconds."""
 
     def __init__(self, seconds, error_message=''):
         self.seconds = seconds
@@ -1891,3 +1885,41 @@ class Timeout:
 
     def __exit__(self, type, value, traceback):
         alarm(0)
+
+
+def get_date_from_timestamp(timestamp):
+    """Function to return the date in datetime format and UTC timezone.
+
+    Parameters
+    ----------
+    timestamp: float
+        The timestamp.
+
+    Returns
+    -------
+    date: datetime
+        The default date.
+    """
+    return datetime.utcfromtimestamp(timestamp).replace(tzinfo=timezone.utc)
+
+
+def get_utc_now():
+    """Function to return the current date.
+
+    Returns
+    -------
+    date: datetime
+        The current date
+    """
+    return datetime.utcnow().replace(tzinfo=timezone.utc)
+
+
+def get_utc_strptime(date, datetime_format):
+    """Function to transform str to date.
+
+    Returns
+    -------
+    date: datetime
+        The current date
+    """
+    return datetime.strptime(date, datetime_format).replace(tzinfo=timezone.utc)

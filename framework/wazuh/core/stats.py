@@ -4,9 +4,8 @@
 import json
 import os
 import re
-from datetime import datetime
 
-from wazuh.core import common
+from wazuh.core import common, utils
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.wazuh_socket import WazuhSocket
 
@@ -26,7 +25,7 @@ def hourly_():
     interactions = 0
     for i in range(25):
         try:
-            with open(f'{common.stats_path}/hourly-average/{i}', mode='r') as hfile:
+            with open(f'{common.STATS_PATH}/hourly-average/{i}', mode='r') as hfile:
                 data = hfile.read()
                 if i == 24:
                     interactions = int(data)
@@ -55,7 +54,7 @@ def weekly_():
         interactions = 0
         for j in range(25):
             try:
-                with open(f'{common.stats_path}/weekly-average/{i}/{j}', mode='r') as wfile:
+                with open(f'{common.STATS_PATH}/weekly-average/{i}/{j}', mode='r') as wfile:
                     data = wfile.read()
                     if j == 24:
                         interactions = int(data)
@@ -71,7 +70,7 @@ def weekly_():
     return weekly_results
 
 
-def totals_(date=datetime.utcnow()):
+def totals_(date=utils.get_utc_now()):
     """Compute statistical information for the current or specified date.
 
     Parameters
@@ -91,7 +90,7 @@ def totals_(date=datetime.utcnow()):
     """
     try:
         stat_filename = os.path.join(
-            common.stats_path, "totals", str(date.year), MONTHS[date.month - 1],
+            common.STATS_PATH, "totals", str(date.year), MONTHS[date.month - 1],
             f"ossec-totals-{date.strftime('%d')}.log")
         with open(stat_filename, mode='r') as statsf:
             stats = statsf.readlines()
@@ -170,7 +169,7 @@ def get_daemons_stats_from_socket(agent_id, daemon):
     if not agent_id or not daemon:
         raise WazuhError(1307)
 
-    sockets_path = os.path.join(common.wazuh_path, "queue", "sockets")
+    sockets_path = os.path.join(common.WAZUH_PATH, "queue", "sockets")
 
     if str(agent_id).zfill(3) == '000':
         # Some daemons do not exist in agent 000
@@ -202,7 +201,7 @@ def get_daemons_stats_from_socket(agent_id, daemon):
     # Format response
     try:
         data = json.loads(rec_msg)['data']
-        data.update((k, datetime.strptime(data[k], "%Y-%m-%d %H:%M:%S").strftime(common.date_format))
+        data.update((k, utils.get_utc_strptime(data[k], "%Y-%m-%d %H:%M:%S").strftime(common.DATE_FORMAT))
                     for k, v in data.items() if k in {'last_keepalive', 'last_ack'})
         return data
     except Exception:

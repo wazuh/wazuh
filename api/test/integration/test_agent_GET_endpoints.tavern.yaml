@@ -309,13 +309,13 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Filter by agent version
+  - name: Filter by agent version following the 'wazuh vX.Y.Z' format
     request:
       verify: False
       <<: *get_agents
       params:
         version: 'Wazuh v3.9.2'
-    response:
+    response: &old_wazuh_agents_response
       status_code: 200
       json:
         error: !anyint
@@ -326,6 +326,33 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
+
+  - name: Filter by agent version following the 'wazuh X.Y.Z' format
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        version: 'Wazuh 3.9.2'
+    response:
+      <<: *old_wazuh_agents_response
+
+  - name: Filter by agent version following the 'vX.Y.Z' format
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        version: 'v3.9.2'
+    response:
+      <<: *old_wazuh_agents_response
+
+  - name: Filter by agent version following the 'X.Y.Z' format
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        version: '3.9.2'
+    response:
+      <<: *old_wazuh_agents_response
 
   - name: Try to show agents using a non existing version
     request:
@@ -1486,28 +1513,6 @@ stages:
               request_timeout: !anyint
               max_restart_lock: !anyint
 
-  - name: Request-Com-Cluster (Manager)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/com/cluster"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          bind_addr: !anystr
-          disabled: !anybool
-          hidden: !anystr
-          key: !anystr
-          name: !anystr
-          node_name: !anystr
-          node_type: !anystr
-          nodes: !anything
-          port: !anyint
-
   - name: Request-Logcollector-Localfile (Manager)
     request:
       verify: False
@@ -1674,7 +1679,6 @@ stages:
             remoted:
               buffer_relax: !anyint
               comp_average_printout: !anyint
-              group_data_flush: !anyint
               guess_agent_group: !anyint
               max_attempts: !anyint
               merge_shared: !anyint
@@ -1926,6 +1930,36 @@ stages:
       status_code: 400
       json:
         <<: *error_spec
+
+---
+test_name: GET /agents/{agent_id}/config/{component}/{configuration} (only cluster configuration)
+
+marks:
+  - cluster
+
+stages:
+
+- name: Request-Com-Cluster (Manager)
+  request:
+    verify: False
+    url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/com/cluster"
+    method: GET
+    headers:
+      Authorization: "Bearer {test_login_token}"
+  response:
+    status_code: 200
+    json:
+      error: !anyint
+      data:
+        bind_addr: !anystr
+        disabled: !anybool
+        hidden: !anystr
+        key: !anystr
+        name: !anystr
+        node_name: !anystr
+        node_type: !anystr
+        nodes: !anything
+        port: !anyint
 
 ---
 test_name: GET /agents/{agent_id}/group/is_sync

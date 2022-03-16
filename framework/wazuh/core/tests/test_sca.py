@@ -2,7 +2,9 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+from datetime import datetime, timezone
 from unittest.mock import patch
+
 import pytest
 
 with patch('wazuh.core.common.wazuh_uid'):
@@ -124,8 +126,8 @@ def test_wazuh_db_query_sca__format_data_into_dictionary(agent_id, offset, limit
     result = wdbq_sca._format_data_into_dictionary()
 
     assert result['items'][0]['id'] == 10
-    assert result['items'][0]['start_scan'] == datetime(2019, 4, 24, 17, 9, 19)
-    assert result['items'][0]['end_scan'] == datetime(2019, 4, 24, 17, 9, 20)
+    assert result['items'][0]['start_scan'] == datetime(2019, 4, 24, 17, 9, 19, tzinfo=timezone.utc)
+    assert result['items'][0]['end_scan'] == datetime(2019, 4, 24, 17, 9, 20, tzinfo=timezone.utc)
     assert result['items'][0]['policy_id'] == 'cis_debian'
     assert result['items'][0]['pass'] == 20
     assert result['items'][0]['fail'] == 6
@@ -257,7 +259,7 @@ def test_wazuh_db_query_sca_check__add_limit_to_query_ko(agent_id, offset, limit
         wdbq_sca_check = WazuhDBQuerySCACheck(agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search,
                                               select=select, query=query, count=count, get_data=get_data)
 
-    wdbq_sca_check.limit = common.maximum_database_limit + 1 if expected_error == '1405' else 0
+    wdbq_sca_check.limit = common.MAXIMUM_DATABASE_LIMIT + 1 if expected_error == '1405' else 0
 
     with pytest.raises(WazuhError, match=f".* {expected_error} .*"):
         wdbq_sca_check._add_limit_to_query()

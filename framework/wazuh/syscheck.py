@@ -50,7 +50,7 @@ def run(agent_list: Union[str, None] = None) -> AffectedItemsWazuhResult:
         id_=agent['id'],
         error=WazuhError(1707)) for agent in non_eligible_agents]
 
-    with WazuhQueue(common.ARQUEUE) as wq:
+    with WazuhQueue(common.AR_SOCKET) as wq:
         eligible_agents = agent_list - not_found_agents - {d['id'] for d in non_eligible_agents}
         for agent_id in eligible_agents:
             try:
@@ -148,7 +148,7 @@ def last_scan(agent_list):
         return result
 
     if WazuhVersion(agent_version) < WazuhVersion('Wazuh v3.7.0'):
-        db_agent = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_list[0]))
+        db_agent = glob('{0}/{1}-*.db'.format(common.DATABASE_PATH_AGENTS, agent_list[0]))
         if not db_agent:
             raise WazuhInternalError(1600, extra_message=agent_list[0])
         else:
@@ -171,7 +171,7 @@ def last_scan(agent_list):
         result.affected_items.append(data)
     else:
         with WazuhDBQuerySyscheck(agent_id=agent_list[0], query='module=fim', offset=0, sort=None,
-                                  search=None, limit=common.database_limit, select={'end', 'start'},
+                                  search=None, limit=common.DATABASE_LIMIT, select={'end', 'start'},
                                   fields={'end': 'end_scan', 'start': 'start_scan', 'module': 'module'},
                                   table='scan_info', default_sort_field='start_scan') as db_query:
             fim_scan_info = db_query.run()['items'][0]
@@ -187,7 +187,7 @@ def last_scan(agent_list):
 
 
 @expose_resources(actions=["syscheck:read"], resources=["agent:id:{agent_list}"])
-def files(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters=None,
+def files(agent_list=None, offset=0, limit=common.DATABASE_LIMIT, sort=None, search=None, select=None, filters=None,
           q='', nested=True, summary=False, distinct=False):
     """Return a list of files from the syscheck database of the specified agents.
 

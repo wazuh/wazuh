@@ -3,12 +3,11 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
 import copy
-from datetime import datetime
 from functools import lru_cache
 from typing import Union
 
 from wazuh.core import common
-from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend
+from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend, get_utc_strptime
 from wazuh.core.utils import process_array
 
 # Optimal request_slice values for each WazuhDBQuery
@@ -29,7 +28,7 @@ EXTRA_FIELDS = {'url', 'source', 'external_id'}
 
 class WazuhDBQueryMitre(WazuhDBQuery):
 
-    def __init__(self, offset: int = 0, limit: Union[int, None] = common.database_limit, query: str = '',
+    def __init__(self, offset: int = 0, limit: Union[int, None] = common.DATABASE_LIMIT, query: str = '',
                  count: bool = True, table: str = '', sort: dict = None, default_sort_field: str = 'id',
                  default_sort_order='ASC', fields=None, search: dict = None, select: list = None,
                  min_select_fields=None, filters=None, request_slice=500):
@@ -72,7 +71,7 @@ class WazuhDBQueryMitre(WazuhDBQuery):
 
     def _format_data_into_dictionary(self):
         """Standardization of dates to the ISO 8601 format."""
-        [t.update((k, datetime.strptime(v, '%Y-%m-%d %H:%M:%S.%f').strftime(common.decimals_date_format))
+        [t.update((k, get_utc_strptime(v, '%Y-%m-%d %H:%M:%S.%f').strftime(common.DECIMALS_DATE_FORMAT))
                   for k, v in t.items() if k in self.date_fields) for t in self._data]
 
         return {'items': self._data, 'totalItems': self.total_items}
@@ -95,7 +94,7 @@ class WazuhDBQueryMitreMetadata(WazuhDBQueryMitre):
 
 class WazuhDBQueryMitreRelational(WazuhDBQueryMitre):
 
-    def __init__(self, table: str = None, offset: int = 0, limit: Union[int, None] = common.database_limit,
+    def __init__(self, table: str = None, offset: int = 0, limit: Union[int, None] = common.DATABASE_LIMIT,
                  query: str = '', count: bool = True, sort: dict = None, default_sort_order: str = 'ASC',
                  default_sort_field: str = None, fields=None, search: dict = None, select: list = None,
                  min_select_fields=None, filters=None, dict_key: str = None, request_slice=RELATIONAL_REQUEST_SLICE):
@@ -164,7 +163,7 @@ class WazuhDBQueryMitreRelational(WazuhDBQueryMitre):
 
 class WazuhDBQueryMitreMitigations(WazuhDBQueryMitre):
 
-    def __init__(self, offset: int = 0, limit: Union[int, None] = common.database_limit, query: str = '',
+    def __init__(self, offset: int = 0, limit: Union[int, None] = common.DATABASE_LIMIT, query: str = '',
                  count: bool = True, sort: dict = None, default_sort_field: str = 'id', default_sort_order='ASC',
                  fields=None, search: dict = None, select: list = None, min_select_fields=None, filters=None):
         """Create an instance of WazuhDBQueryMitreMitigations query."""
@@ -226,7 +225,7 @@ class WazuhDBQueryMitreMitigations(WazuhDBQueryMitre):
 
 class WazuhDBQueryMitreReferences(WazuhDBQueryMitre):
 
-    def __init__(self, offset: int = 0, limit: Union[int, None] = common.database_limit, query: str = '',
+    def __init__(self, offset: int = 0, limit: Union[int, None] = common.DATABASE_LIMIT, query: str = '',
                  count: bool = True, sort: dict = None, default_sort_field: str = 'id', default_sort_order='ASC',
                  fields=None, search: dict = None, select: list = None, min_select_fields=None, filters=None):
         """Create an instance of WazuhDBQueryMitreReferences query."""
@@ -256,7 +255,7 @@ class WazuhDBQueryMitreReferences(WazuhDBQueryMitre):
 
 class WazuhDBQueryMitreTactics(WazuhDBQueryMitre):
 
-    def __init__(self, offset: int = 0, limit: Union[int, None] = common.database_limit, query: str = '',
+    def __init__(self, offset: int = 0, limit: Union[int, None] = common.DATABASE_LIMIT, query: str = '',
                  count: bool = True, sort: dict = None, default_sort_field: str = 'id', default_sort_order='ASC',
                  fields=None, search: dict = None, select: list = None, min_select_fields=None, filters=None):
         """Create an instance of WazuhDBQueryMitreTactics query."""
@@ -315,7 +314,7 @@ class WazuhDBQueryMitreTactics(WazuhDBQueryMitre):
 
 class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
 
-    def __init__(self, offset: int = 0, limit: Union[int, None] = common.database_limit, query: str = '',
+    def __init__(self, offset: int = 0, limit: Union[int, None] = common.DATABASE_LIMIT, query: str = '',
                  count: bool = True, sort: dict = None, default_sort_field: str = 'id', default_sort_order='ASC',
                  fields=None, search: dict = None, select: list = None, min_select_fields=None, filters=None):
         """Create an instance of WazuhDBQueryMitreTechniques query."""
@@ -401,7 +400,7 @@ class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
 
 class WazuhDBQueryMitreGroups(WazuhDBQueryMitre):
 
-    def __init__(self, offset: int = 0, limit: Union[int, None] = common.database_limit, query: str = '',
+    def __init__(self, offset: int = 0, limit: Union[int, None] = common.DATABASE_LIMIT, query: str = '',
                  count: bool = True, sort: dict = None, default_sort_field: str = 'id', default_sort_order='ASC',
                  fields=None, search: dict = None, select: list = None, min_select_fields=None, filters=None):
         """Create an instance of WazuhDBQueryMitreGroups query."""
@@ -473,7 +472,7 @@ class WazuhDBQueryMitreGroups(WazuhDBQueryMitre):
 
 class WazuhDBQueryMitreSoftware(WazuhDBQueryMitre):
 
-    def __init__(self, offset: int = 0, limit: Union[int, None] = common.database_limit, query: str = '',
+    def __init__(self, offset: int = 0, limit: Union[int, None] = common.DATABASE_LIMIT, query: str = '',
                  count: bool = True, sort: dict = None, default_sort_field: str = 'id', default_sort_order='ASC',
                  fields=None, search: dict = None, select: list = None, min_select_fields=None, filters=None):
         """Create an instance of WazuhDBQueryMitreSoftware query."""

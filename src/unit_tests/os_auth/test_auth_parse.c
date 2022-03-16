@@ -129,6 +129,13 @@ static void test_w_auth_parse_data(void **state) {
     char *key_hash = NULL;
     w_err_t err;
 
+    unsigned int max = config.flags.use_source_ip == 1 ? 4 : 1;
+    for (unsigned int a = 0; a < max; a++) {
+        expect_any(__wrap_OS_IsValidIP, ip_address);
+        expect_any(__wrap_OS_IsValidIP, final_ip);
+        will_return(__wrap_OS_IsValidIP, -2);
+    }
+
     for (unsigned i=0; parse_values[i].buffer; i++) {
         set_expected_log(&parse_values[i].expected_log);
         response[0] = '\0';

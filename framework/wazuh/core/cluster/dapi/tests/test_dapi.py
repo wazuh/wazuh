@@ -68,7 +68,7 @@ def raise_if_exc_routine(dapi_kwargs, expected_error=None):
      'basic_services': ('wazuh-modulesd', 'wazuh-db'), 'request_type': 'local_master'},
     {'request_type': 'local_master'}
 ])
-@patch('wazuh.core.cluster.dapi.dapi.common.install_type', return_value='local')
+@patch('wazuh.core.cluster.dapi.dapi.common.WAZUH_INSTALL_TYPE', return_value='local')
 def test_DistributedAPI(install_type_mock, kwargs):
     """Test constructor from DistributedAPI class.
 

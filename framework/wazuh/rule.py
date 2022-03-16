@@ -26,7 +26,7 @@ node_id = get_node().get('node') if cluster_enabled else 'manager'
 
 def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, gdpr=None, hipaa=None, nist_800_53=None,
               tsc=None, mitre=None, relative_dirname=None, filename=None, level=None, offset=0,
-              limit=common.database_limit, select=None, sort_by=None, sort_ascending=True, search_text=None,
+              limit=common.DATABASE_LIMIT, select=None, sort_by=None, sort_ascending=True, search_text=None,
               complementary_search=False, search_in_fields=None, q=''):
     """Gets a list of rules.
 
@@ -105,8 +105,9 @@ def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, 
 
 
 @expose_resources(actions=['rules:read'], resources=['rule:file:{filename}'])
-def get_rules_files(status=None, relative_dirname=None, filename=None, offset=0, limit=common.database_limit, sort_by=None,
-                    sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+def get_rules_files(status=None, relative_dirname=None, filename=None, offset=0, limit=common.DATABASE_LIMIT,
+                    sort_by=None, sort_ascending=True, search_text=None, complementary_search=False,
+                    search_in_fields=None):
     """Gets a list of the rule files.
 
     :param status: Filters by status: enabled, disabled, all.
@@ -139,7 +140,8 @@ def get_rules_files(status=None, relative_dirname=None, filename=None, offset=0,
                                          tags))
     else:
         rules_files = format_rule_decoder_file(ruleset_conf['ruleset'],
-                                               {'status': status, 'relative_dirname': relative_dirname, 'filename': filename},
+                                               {'status': status, 'relative_dirname': relative_dirname,
+                                                'filename': filename},
                                                tags)
 
     data = process_array(rules_files, search_text=search_text, search_in_fields=search_in_fields,
@@ -151,7 +153,7 @@ def get_rules_files(status=None, relative_dirname=None, filename=None, offset=0,
     return result
 
 
-def get_groups(offset=0, limit=common.database_limit, sort_by=None, sort_ascending=True, search_text=None,
+def get_groups(offset=0, limit=common.DATABASE_LIMIT, sort_by=None, sort_ascending=True, search_text=None,
                complementary_search=False, search_in_fields=None):
     """Get all the groups used in the rules.
 
@@ -179,7 +181,7 @@ def get_groups(offset=0, limit=common.database_limit, sort_by=None, sort_ascendi
     return result
 
 
-def get_requirement(requirement=None, offset=0, limit=common.database_limit, sort_by=None, sort_ascending=True,
+def get_requirement(requirement=None, offset=0, limit=common.DATABASE_LIMIT, sort_by=None, sort_ascending=True,
                     search_text=None, complementary_search=False, search_in_fields=None):
     """Get the requirements used in the rules
 
@@ -235,7 +237,7 @@ def get_rule_file(filename=None, raw=False):
     if len(files) > 0:
         rules_path = files[0]['relative_dirname']
         try:
-            full_path = join(common.wazuh_path, rules_path, filename)
+            full_path = join(common.WAZUH_PATH, rules_path, filename)
             with open(full_path) as f:
                 content = f.read()
             if raw:
@@ -279,7 +281,7 @@ def upload_rule_file(filename=None, content=None, overwrite=False):
     result = AffectedItemsWazuhResult(all_msg='Rule was successfully uploaded',
                                       none_msg='Could not upload rule'
                                       )
-    full_path = join(common.user_rules_path, filename)
+    full_path = join(common.USER_RULES_PATH, filename)
     backup_file = ''
     try:
         if len(content) == 0:
@@ -323,7 +325,7 @@ def delete_rule_file(filename=None):
                                       none_msg='Could not delete rule'
                                       )
 
-    full_path = join(common.user_rules_path, filename[0])
+    full_path = join(common.USER_RULES_PATH, filename[0])
 
     try:
         if exists(full_path):

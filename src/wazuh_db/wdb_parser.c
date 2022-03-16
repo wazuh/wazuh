@@ -1284,7 +1284,7 @@ int wdb_parse_syscheck(wdb_t * wdb, wdb_component_t component, char * input, cha
             size_t unsc_size = strlen(unsc_checksum);
             size_t mark_size = strlen(mark);
             os_realloc(unsc_checksum, unsc_size + mark_size + 1, unsc_checksum);
-            strncpy(unsc_checksum + unsc_size, mark, mark_size);
+            strncpy(unsc_checksum + unsc_size, mark, mark_size + 1);
             unsc_checksum[unsc_size + mark_size] = '\0';
         }
 
@@ -4743,6 +4743,7 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
     cJSON *j_connection_status = NULL;
     cJSON *j_sync_status = NULL;
     cJSON *j_labels = NULL;
+    cJSON *j_group_config_status = NULL;
 
     agent_data = cJSON_ParseWithOpts(input, &error, TRUE);
     if (!agent_data) {
@@ -4770,6 +4771,7 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
         j_connection_status = cJSON_GetObjectItem(agent_data, "connection_status");
         j_sync_status = cJSON_GetObjectItem(agent_data, "sync_status");
         j_labels = cJSON_GetObjectItem(agent_data, "labels");
+        j_group_config_status = cJSON_GetObjectItem(agent_data, "group_config_status");
 
         if (cJSON_IsNumber(j_id)) {
             // Getting each field
@@ -4792,10 +4794,12 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
             char *connection_status = cJSON_IsString(j_connection_status) ? j_connection_status->valuestring : NULL;
             char *sync_status = cJSON_IsString(j_sync_status) ? j_sync_status->valuestring : "synced";
             char *labels = cJSON_IsString(j_labels) ? j_labels->valuestring : NULL;
+            char *group_config_status = cJSON_IsString(j_group_config_status) ? j_group_config_status->valuestring : NULL;
 
             if (OS_SUCCESS != wdb_global_update_agent_version(wdb, id, os_name, os_version, os_major, os_minor, os_codename,
                                                               os_platform, os_build, os_uname, os_arch, version, config_sum,
-                                                              merged_sum, manager_host, node_name, agent_ip, connection_status, sync_status)) {
+                                                              merged_sum, manager_host, node_name, agent_ip, connection_status,
+                                                              sync_status, group_config_status)) {
                 mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                 cJSON_Delete(agent_data);

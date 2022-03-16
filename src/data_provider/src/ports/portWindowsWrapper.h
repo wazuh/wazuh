@@ -58,11 +58,11 @@ class WindowsPortWrapper final : public IPortWrapper
         const uint32_t m_pid;
         const std::string m_processName;
 
-        static std::string getIpAddress(const DWORD addr)
+        static std::string getIpV4Address(const DWORD addr)
         {
             in_addr ipaddress;
             ipaddress.S_un.S_addr = addr;
-            return inet_ntoa(ipaddress);
+            return Utils::NetworkWindowsHelper::IAddressToString(AF_INET, ipaddress);
         }
 
         static std::string getProcessName(const std::map<pid_t, std::string> processDataList, const pid_t pid)
@@ -92,9 +92,9 @@ class WindowsPortWrapper final : public IPortWrapper
         WindowsPortWrapper(const _MIB_TCPROW_OWNER_PID& data, const std::map<pid_t, std::string>& processDataList)
             : m_protocol { "tcp" }
             , m_localPort { ntohs(data.dwLocalPort) }
-            , m_localIpAddress { getIpAddress(data.dwLocalAddr) }
+            , m_localIpAddress { getIpV4Address(data.dwLocalAddr) }
             , m_remotePort { ntohs(data.dwRemotePort) }
-            , m_remoteIpAddress { getIpAddress(data.dwRemoteAddr) }
+            , m_remoteIpAddress { getIpV4Address(data.dwRemoteAddr) }
             , m_state { data.dwState }
             , m_pid { data.dwOwningPid }
             , m_processName { getProcessName(processDataList, data.dwOwningPid) }
@@ -114,7 +114,7 @@ class WindowsPortWrapper final : public IPortWrapper
         WindowsPortWrapper(const _MIB_UDPROW_OWNER_PID& data, const std::map<pid_t, std::string>& processDataList)
             : m_protocol { "udp" }
             , m_localPort { ntohs(data.dwLocalPort) }
-            , m_localIpAddress { getIpAddress(data.dwLocalAddr) }
+            , m_localIpAddress { getIpV4Address(data.dwLocalAddr) }
             , m_remotePort { 0 }
             , m_state { 0 }
             , m_pid { data.dwOwningPid }

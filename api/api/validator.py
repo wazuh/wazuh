@@ -34,7 +34,7 @@ _names = re.compile(r'^[\w\-.%]+$')
 _numbers = re.compile(r'^\d+$')
 _numbers_or_all = re.compile(r'^(\d+|all)$')
 _wazuh_key = re.compile(r'[a-zA-Z0-9]+$')
-_wazuh_version = re.compile(r'^v?\d+\.\d+\.\d+$')
+_wazuh_version = re.compile(r'^(?:wazuh |)v?\d+\.\d+\.\d+$', re.IGNORECASE)
 _paths = re.compile(r'^[\w\-.\\/:]+$')
 _cdb_filename_path = re.compile(r'^[\-\w]+$')
 _xml_filename_path = re.compile(r'^[\w\-]+\.xml$')
@@ -222,7 +222,7 @@ def allowed_fields(filters: Dict) -> List:
     return [field for field in filters]
 
 
-def is_safe_path(path: str, basedir: str = common.wazuh_path, relative: bool = True) -> bool:
+def is_safe_path(path: str, basedir: str = common.WAZUH_PATH, relative: bool = True) -> bool:
     """Check if a path is correct.
     
     Parameters

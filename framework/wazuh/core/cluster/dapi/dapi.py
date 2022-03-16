@@ -99,7 +99,7 @@ class DistributedAPI:
         self.nodes = nodes if nodes is not None else list()
         if not basic_services:
             self.basic_services = ('wazuh-modulesd', 'wazuh-analysisd', 'wazuh-execd', 'wazuh-db')
-            if common.install_type != "local":
+            if common.WAZUH_INSTALL_TYPE != "local":
                 self.basic_services += ('wazuh-remoted',)
         else:
             self.basic_services = basic_services
@@ -305,8 +305,8 @@ class DistributedAPI:
             return json.dumps(e, cls=c_common.WazuhJSONEncoder)
         except exception.WazuhInternalError as e:
             e.dapi_errors = self.get_error_info(e)
-            # Avoid exception info if it is an asyncio timeout or JSONDecodeError
-            self.logger.error(f"{e.message}", exc_info=e.code not in {3021, 3036})
+            # Avoid exception info if it is an asyncio timeout error, JSONDecodeError or /proc availability error
+            self.logger.error(f"{e.message}", exc_info=e.code not in {3021, 3036, 1913})
             if self.debug:
                 raise
             return json.dumps(e, cls=c_common.WazuhJSONEncoder)
@@ -381,7 +381,7 @@ class DistributedAPI:
             log_filename = None
             for h in self.logger.handlers or self.logger.parent.handlers:
                 if hasattr(h, 'baseFilename'):
-                    log_filename = os.path.join('WAZUH_HOME', os.path.relpath(h.baseFilename, start=common.wazuh_path))
+                    log_filename = os.path.join('WAZUH_HOME', os.path.relpath(h.baseFilename, start=common.WAZUH_PATH))
             result[node]['logfile'] = log_filename
 
         return result
@@ -390,11 +390,11 @@ class DistributedAPI:
         # POST/agent/group/:group_id/configuration and POST/agent/group/:group_id/file/:file_name API calls write
         # a temporary file in /var/ossec/tmp which needs to be sent to the master before forwarding the request
         client = self.get_client()
-        res = json.loads(await client.send_file(os.path.join(common.wazuh_path,
+        res = json.loads(await client.send_file(os.path.join(common.WAZUH_PATH,
                                                              self.f_kwargs['tmp_file']),
                                                 node_name),
                          object_hook=c_common.as_wazuh_object)
-        os.remove(os.path.join(common.wazuh_path, self.f_kwargs['tmp_file']))
+        os.remove(os.path.join(common.WAZUH_PATH, self.f_kwargs['tmp_file']))
 
     async def execute_remote_request(self) -> Dict:
         """Execute a remote request. This function is used by worker nodes to execute master_only API requests.
@@ -550,7 +550,7 @@ class DistributedAPI:
         if allowed_nodes.total_affected_items > 1:
             response = reduce(or_, response)
             if isinstance(response, wresults.AbstractWazuhResult):
-                response = response.limit(limit=self.f_kwargs.get('limit', common.database_limit),
+                response = response.limit(limit=self.f_kwargs.get('limit', common.DATABASE_LIMIT),
                                           offset=self.f_kwargs.get('offset', 0)) \
                     .sort(fields=self.f_kwargs.get('fields', []),
                           order=self.f_kwargs.get('order', 'asc'))

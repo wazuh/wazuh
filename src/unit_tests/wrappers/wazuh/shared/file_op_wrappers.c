@@ -204,3 +204,36 @@ int __wrap_w_fseek(FILE *x, int64_t pos, __attribute__((unused)) int mode) {
     check_expected(pos);
     return mock_type(int);
 }
+
+int __wrap_MergeAppendFile(const char *finalpath, __attribute__((unused)) const char *files, const char *tag, int path_offset) {
+    check_expected(finalpath);
+    if (tag) {
+        check_expected(tag);
+    }
+    check_expected(path_offset);
+    return mock_type(int);
+}
+
+int __wrap_OS_MoveFile(const char *src, const char *dst) {
+    check_expected(src);
+    check_expected(dst);
+    return mock_type(int);
+}
+
+int __wrap_TestUnmergeFiles(const char *finalpath, __attribute__((unused)) int mode) {
+    check_expected(finalpath);
+    return mock_type(int);
+}
+
+int __wrap_checkBinaryFile(const char *f_name) {
+    check_expected(f_name);
+    return mock_type(int);
+}
+
+int __wrap_w_copy_file(const char *src, const char *dst, char mode, __attribute__((unused)) char * message, int silent) {
+    check_expected(src);
+    check_expected(dst);
+    check_expected(mode);
+    check_expected(silent);
+    return mock_type(int);
+}

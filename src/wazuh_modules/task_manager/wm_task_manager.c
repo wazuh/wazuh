@@ -31,8 +31,13 @@ extern void mock_assert(const int result, const char* const expression,
 
 
 STATIC int wm_task_manager_init(wm_task_manager *task_config) __attribute__((nonnull));
+#ifdef WIN32
+STATIC DWORD WINAPI wm_task_manager_main(void *arg);
+STATIC DWORD WINAPI wm_task_manager_destroy(void* task_config);
+#else
 STATIC void* wm_task_manager_main(wm_task_manager* task_config);    // Module main function. It won't return
 STATIC void wm_task_manager_destroy(wm_task_manager* task_config);
+#endif
 STATIC cJSON* wm_task_manager_dump(const wm_task_manager* task_config);
 
 /* Context definition */
@@ -122,7 +127,12 @@ STATIC int wm_task_manager_init(wm_task_manager *task_config) {
     return sock;
 }
 
+#ifdef WIN32
+STATIC DWORD WINAPI wm_task_manager_main(void *arg) {
+    wm_task_manager* task_config = (wm_task_manager *)arg;
+#else
 STATIC void* wm_task_manager_main(wm_task_manager* task_config) {
+#endif
     int sock;
     int peer;
     char *buffer = NULL;
@@ -132,7 +142,11 @@ STATIC void* wm_task_manager_main(wm_task_manager* task_config) {
 
     if (w_is_worker()) {
         mtinfo(WM_TASK_MANAGER_LOGTAG, MOD_TASK_DISABLED_WORKER);
+#ifdef WIN32
+        return 0;
+#else
         return NULL;
+#endif
     }
 
     // Initial configuration
@@ -198,12 +212,23 @@ STATIC void* wm_task_manager_main(wm_task_manager* task_config) {
     }
 
     close(sock);
+#ifdef WIN32
+    return 0;
+#else
     return NULL;
+#endif
 }
 
+#ifdef WIN32
+STATIC DWORD WINAPI wm_task_manager_destroy(void* task_config) {
+#else
 STATIC void wm_task_manager_destroy(wm_task_manager* task_config) {
+#endif
     mtinfo(WM_TASK_MANAGER_LOGTAG, MOD_TASK_FINISH);
     os_free(task_config);
+    #ifdef WIN32
+    return 0;
+    #endif
 }
 
 STATIC cJSON* wm_task_manager_dump(const wm_task_manager* task_config){

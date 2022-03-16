@@ -11,6 +11,7 @@ import pytest
 from sqlalchemy import create_engine
 
 from wazuh.rbac.tests.utils import init_db
+from wazuh.core.utils import get_utc_now
 
 test_path = os.path.dirname(os.path.realpath(__file__))
 test_data_path = os.path.join(test_path, 'data')
@@ -75,7 +76,7 @@ def test_get_all_token_rules(db_setup):
 
 def test_nbf_invalid(db_setup):
     """Check if a user's token is valid by comparing the values with those stored in the database"""
-    current_timestamp = int(datetime.utcnow().timestamp())
+    current_timestamp = int(get_utc_now().timestamp())
     users, roles = test_add_token(db_setup)
     with db_setup.TokenManager() as tm:
         for user in users:

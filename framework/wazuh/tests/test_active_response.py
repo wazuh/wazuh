@@ -44,7 +44,7 @@ full_agent_list = ['000', '001', '002', '003', '004', '005', '006', '007', '008'
 @patch("wazuh.core.wazuh_queue.WazuhQueue._connect")
 @patch("wazuh.syscheck.WazuhQueue._send", return_value='1')
 @patch("wazuh.core.wazuh_queue.WazuhQueue.close")
-@patch('wazuh.core.common.ar_conf_path', new=test_data_path)
+@patch('wazuh.core.common.AR_CONF', new=test_data_path)
 @patch('wazuh.active_response.get_agents_info', return_value=full_agent_list)
 def test_run_command(mock_get_agents_info, mock_close, mock_send, mock_conn, message_exception,
                      send_exception, agent_id, command, arguments, custom, alert, version):

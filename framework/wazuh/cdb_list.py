@@ -15,7 +15,7 @@ from wazuh.rbac.decorators import expose_resources
 
 
 @expose_resources(actions=['lists:read'], resources=['list:file:{filename}'])
-def get_lists(filename=None, offset=0, limit=common.database_limit, select=None, sort_by=None, sort_ascending=True,
+def get_lists(filename=None, offset=0, limit=common.DATABASE_LIMIT, select=None, sort_by=None, sort_ascending=True,
               search_text=None, complementary_search=False, search_in_fields=None, relative_dirname=None):
     """Get CDB lists content.
 
@@ -51,7 +51,7 @@ def get_lists(filename=None, offset=0, limit=common.database_limit, select=None,
     result = AffectedItemsWazuhResult(all_msg='All specified lists were returned',
                                       some_msg='Some lists were not returned',
                                       none_msg='No list was returned')
-    dirname = join(common.wazuh_path, relative_dirname) if relative_dirname else None
+    dirname = join(common.WAZUH_PATH, relative_dirname) if relative_dirname else None
 
     lists = list()
     for path in get_filenames_paths(filename):
@@ -124,7 +124,7 @@ def upload_list_file(filename=None, content=None, overwrite=False):
     """
     result = AffectedItemsWazuhResult(all_msg='CDB list file uploaded successfully',
                                       none_msg='Could not upload CDB list file')
-    full_path = join(common.user_lists_path, filename)
+    full_path = join(common.USER_LISTS_PATH, filename)
     backup_file = ''
 
     try:
@@ -172,7 +172,7 @@ def delete_list_file(filename):
     """
     result = AffectedItemsWazuhResult(all_msg='CDB list file was successfully deleted',
                                       none_msg='Could not delete CDB list file')
-    full_path = join(common.user_lists_path, filename[0])
+    full_path = join(common.USER_LISTS_PATH, filename[0])
 
     try:
         delete_list(to_relative_path(full_path))
@@ -185,7 +185,7 @@ def delete_list_file(filename):
 
 
 @expose_resources(actions=['lists:read'], resources=['list:file:{filename}'])
-def get_path_lists(filename=None, offset=0, limit=common.database_limit, sort_by=None, sort_ascending=True,
+def get_path_lists(filename=None, offset=0, limit=common.DATABASE_LIMIT, sort_by=None, sort_ascending=True,
                    search_text=None, complementary_search=False, search_in_fields=None, relative_dirname=None):
     """Get paths of all CDB lists.
 
@@ -224,7 +224,7 @@ def get_path_lists(filename=None, offset=0, limit=common.database_limit, sort_by
     lists = iterate_lists(only_names=True)
     for item in list(lists):
         if any([relative_dirname is not None and item['relative_dirname'] != relative_dirname,
-                join(common.wazuh_path, item['relative_dirname'], item['filename']) not in paths]):
+                join(common.WAZUH_PATH, item['relative_dirname'], item['filename']) not in paths]):
             lists.remove(item)
 
     data = process_array(lists, search_text=search_text, search_in_fields=search_in_fields,

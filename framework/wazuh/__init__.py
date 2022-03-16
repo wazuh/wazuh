@@ -4,7 +4,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from datetime import datetime
+from datetime import datetime, timezone
 from time import strftime
 
 from wazuh.core import common
@@ -45,10 +45,10 @@ class Wazuh:
         :return:
         """
 
-        self.version = common.wazuh_version
-        self.installation_date = common.installation_date
-        self.type = common.install_type
-        self.path = common.wazuh_path
+        self.version = common.WAZUH_VERSION
+        self.installation_date = common.WAZUH_INSTALLATION_DATE
+        self.type = common.WAZUH_INSTALL_TYPE
+        self.path = common.WAZUH_PATH
         self.max_agents = 'unlimited'
         self.openssl_support = 'N/A'
         self.tz_offset = None
@@ -67,9 +67,9 @@ class Wazuh:
     def to_dict(self):
         date_format = '%a %b %d %H:%M:%S %Z %Y'
         try:
-            compilation_date = datetime.strptime(self.installation_date, date_format)
+            compilation_date = datetime.strptime(self.installation_date, date_format).replace(tzinfo=timezone.utc)
         except ValueError:
-            compilation_date = datetime.utcnow()
+            compilation_date = datetime.utcnow().replace(tzinfo=timezone.utc)
         return {'path': self.path,
                 'version': self.version,
                 'compilation_date': compilation_date,

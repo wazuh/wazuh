@@ -405,6 +405,9 @@ int main(int argc, char **argv)
         sigaction(SIGTERM, &action, NULL);
         sigaction(SIGHUP, &action, NULL);
         sigaction(SIGINT, &action, NULL);
+
+        action.sa_handler = SIG_IGN;
+        sigaction(SIGPIPE, &action, NULL);
     }
 
     /* Create PID files */
@@ -433,7 +436,7 @@ int main(int argc, char **argv)
         }
 
         /* Connect via TCP */
-        if (remote_sock = OS_Bindporttcp(config.port, NULL, 0), remote_sock <= 0) {
+        if (remote_sock = OS_Bindporttcp(config.port, NULL, config.ipv6), remote_sock <= 0) {
             merror(BIND_ERROR, config.port, errno, strerror(errno));
             exit(1);
         }
@@ -572,7 +575,11 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             continue;
         }
 
-        strncpy(ip, inet_ntoa(client->addr), IPSIZE - 1);
+        if (client->is_ipv6) {
+            get_ipv6_string(*client->addr6, ip, IPSIZE);
+        } else {
+            get_ipv4_string(*client->addr4, ip, IPSIZE);
+        }
         ssl = SSL_new(ctx);
         SSL_set_fd(ssl, client->socket);
         ret = SSL_accept(ssl);
@@ -581,6 +588,11 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             mdebug1("SSL Error (%d)", ret);
             SSL_free(ssl);
             close(client->socket);
+            if (client->is_ipv6) {
+                os_free(client->addr6);
+            } else {
+                os_free(client->addr4);
+            }
             os_free(client);
             continue;
         }
@@ -594,6 +606,11 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 merror("Unable to verify client certificate.");
                 SSL_free(ssl);
                 close(client->socket);
+                if (client->is_ipv6) {
+                    os_free(client->addr6);
+                } else {
+                    os_free(client->addr4);
+                }
                 os_free(client);
                 continue;
             }
@@ -612,6 +629,11 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             }
             SSL_free(ssl);
             close(client->socket);
+            if (client->is_ipv6) {
+                os_free(client->addr6);
+            } else {
+                os_free(client->addr4);
+            }
             os_free(client);
             free(buf);
             continue;
@@ -690,6 +712,11 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
         SSL_free(ssl);
         close(client->socket);
+        if (client->is_ipv6) {
+            os_free(client->addr6);
+        } else {
+            os_free(client->addr4);
+        }
         os_free(client);
         os_free(buf);
         os_free(agentname);
@@ -708,7 +735,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 /* Thread for remote server */
 void* run_remote_server(__attribute__((unused)) void *arg) {
     int client_sock = 0;
-    struct sockaddr_in _nc;
+    struct sockaddr_storage _nc;
     socklen_t _ncl;
     fd_set fdset;
     struct timeval timeout;
@@ -758,14 +785,32 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
             struct client *new_client;
             os_malloc(sizeof(struct client), new_client);
             new_client->socket = client_sock;
-            new_client->addr = _nc.sin_addr;
+
+            switch (_nc.ss_family) {
+            case AF_INET:
+                new_client->is_ipv6 = FALSE;
+                os_calloc(1, sizeof(struct in_addr), new_client->addr4);
+                memcpy(new_client->addr4, &((struct sockaddr_in *)&_nc)->sin_addr, sizeof(struct in_addr));
+                break;
+            case AF_INET6:
+                new_client->is_ipv6 = TRUE;
+                os_calloc(1, sizeof(struct in6_addr), new_client->addr6);
+                memcpy(new_client->addr6, &((struct sockaddr_in6 *)&_nc)->sin6_addr, sizeof(struct in6_addr));
+                break;
+            default:
+                merror("IP address family not supported. Rejecting.");
+                os_free(new_client);
+                close(client_sock);
+            }
 
             if (queue_push_ex(client_queue, new_client) == -1) {
                 merror("Too many connections. Rejecting.");
+                os_free(new_client);
                 close(client_sock);
             }
-        } else if ((errno == EBADF && running) || (errno != EBADF && errno != EINTR))
+        } else if ((errno == EBADF && running) || (errno != EBADF && errno != EINTR)) {
             merror("at main(): accept(): %s", strerror(errno));
+        }
     }
 
     mdebug1("Remote server thread finished");
@@ -844,12 +889,8 @@ void* run_writer(__attribute__((unused)) void *arg) {
 
             mdebug1("[Writer] Performing insert([%s] %s).", cur->id, cur->name);
 
-            if (cur->group) {
-                if (set_agent_group(cur->id,cur->group) == -1) {
-                    merror("Unable to set agent centralized group: %s (internal error)", cur->group);
-                }
-
-                set_agent_multigroup(cur->group);
+            if (cur->group && (set_agent_group(cur->id,cur->group) == -1)) {
+                merror("Unable to set agent centralized group: %s (internal error)", cur->group);
             }
 
             gettime(&t1);

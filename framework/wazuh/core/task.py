@@ -2,13 +2,11 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
-from datetime import datetime
 from json import dumps, loads
 
 from wazuh.core import common
 from wazuh.core.exception import WazuhInternalError
-from wazuh.core.utils import WazuhDBQuery, \
-    WazuhDBBackend
+from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend, get_date_from_timestamp
 from wazuh.core.wazuh_socket import WazuhSocket
 
 tasks_fields = {'task_id': 'task_id', 'agent_id': 'agent_id', 'node': 'node', 'module': 'module',
@@ -18,7 +16,7 @@ tasks_fields = {'task_id': 'task_id', 'agent_id': 'agent_id', 'node': 'node', 'm
 
 class WazuhDBQueryTask(WazuhDBQuery):
 
-    def __init__(self, offset: int = 0, limit: int = common.database_limit, query: str = '', count: bool = True,
+    def __init__(self, offset: int = 0, limit: int = common.DATABASE_LIMIT, query: str = '', count: bool = True,
                  get_data: bool = True, table: str = 'tasks', sort: dict = None, default_sort_field: str = 'task_id',
                  fields=None, search: dict = None, select: dict = None, min_select_fields=None, filters=None):
         """Create an instance of WazuhDBQueryTasks query."""
@@ -54,7 +52,7 @@ class WazuhDBQueryTask(WazuhDBQuery):
 
     def _format_data_into_dictionary(self):
         """Standardization of dates to the ISO 8601 format."""
-        [t.update((k, datetime.utcfromtimestamp(v).strftime(common.date_format))
+        [t.update((k, get_date_from_timestamp(v).strftime(common.DATE_FORMAT))
                   for k, v in t.items() if k in self.date_fields) for t in self._data]
 
         return {'items': self._data, 'totalItems': self.total_items}

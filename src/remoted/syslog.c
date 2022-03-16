@@ -41,15 +41,15 @@ void HandleSyslog()
     char srcip[IPSIZE + 1];
     char *buffer_pt = NULL;
     ssize_t recv_b;
-    struct sockaddr_in peer_info;
-    socklen_t peer_size;
+    struct sockaddr_storage _nc;
+    socklen_t _ncl;
 
     /* Set peer size */
-    peer_size = sizeof(peer_info);
+    _ncl = sizeof(_nc);
 
     /* Initialize some variables */
     memset(buffer, '\0', OS_MAXSTR + 2);
-    memset(&peer_info, 0, sizeof(struct sockaddr_in));
+    memset(&_nc, 0, sizeof(_nc));
 
     /* Connect to the message queue infinitely */
     if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
@@ -59,7 +59,7 @@ void HandleSyslog()
     /* Infinite loop */
     while (1) {
         /* Receive message */
-        recv_b = recvfrom(logr.udp_sock, buffer, OS_MAXSTR, 0, (struct sockaddr *)&peer_info, &peer_size);
+        recv_b = recvfrom(logr.udp_sock, buffer, OS_MAXSTR, 0, (struct sockaddr *)&_nc, &_ncl);
 
         /* Nothing received */
         if (recv_b <= 0) {
@@ -75,8 +75,16 @@ void HandleSyslog()
         }
 
         /* Set the source IP */
-        strncpy(srcip, inet_ntoa(peer_info.sin_addr), IPSIZE);
-        srcip[IPSIZE] = '\0';
+        switch (_nc.ss_family) {
+        case AF_INET:
+            get_ipv4_string(((struct sockaddr_in *)&_nc)->sin_addr, srcip, IPSIZE);
+            break;
+        case AF_INET6:
+            get_ipv6_string(((struct sockaddr_in6 *)&_nc)->sin6_addr, srcip, IPSIZE);
+            break;
+        default:
+            continue;
+        }
 
         /* Remove syslog header */
         if (buffer[0] == '<') {

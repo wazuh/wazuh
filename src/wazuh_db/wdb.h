@@ -295,7 +295,6 @@ typedef struct wdb_t {
 } wdb_t;
 
 typedef struct wdb_config {
-    int sock_queue_size;
     int worker_pool_size;
     int commit_time_min;
     int commit_time_max;
@@ -332,6 +331,7 @@ extern char *schema_upgrade_v8_sql;
 extern char *schema_global_upgrade_v1_sql;
 extern char *schema_global_upgrade_v2_sql;
 extern char *schema_global_upgrade_v3_sql;
+extern char *schema_global_upgrade_v4_sql;
 
 extern wdb_config wconfig;
 extern pthread_mutex_t pool_mutex;
@@ -363,6 +363,7 @@ typedef struct agent_info_data {
     char *labels;
     char *connection_status;
     char *sync_status;
+    char *group_config_status;
 } agent_info_data;
 
 typedef enum {
@@ -1489,6 +1490,7 @@ int wdb_global_update_agent_name(wdb_t *wdb, int id, char* name);
  * @param [in] agent_ip The agent's IP address.
  * @param [in] connection_status The agent's connection status.
  * @param [in] sync_status The agent's synchronization status in cluster.
+ * @param [in] group_config_status The agent's shared configuration synchronization status.
  * @return Returns 0 on success or -1 on error.
  */
 int wdb_global_update_agent_version(wdb_t *wdb,
@@ -1509,7 +1511,8 @@ int wdb_global_update_agent_version(wdb_t *wdb,
                                     const char *node_name,
                                     const char *agent_ip,
                                     const char *connection_status,
-                                    const char *sync_status);
+                                    const char *sync_status,
+                                    const char *group_config_status);
 
 /**
  * @brief Function to get the labels of a particular agent.

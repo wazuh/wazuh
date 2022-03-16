@@ -27,7 +27,7 @@ list(APPEND os_net_names "test_os_net")
 list(APPEND os_net_flags "-Wl,--wrap,socket -Wl,--wrap,listen -Wl,--wrap,bind -Wl,--wrap,setsockopt \
                           -Wl,--wrap,getsockopt -Wl,--wrap,connect -Wl,--wrap,accept -Wl,--wrap,send \
                           -Wl,--wrap,recv -Wl,--wrap,recvfrom -Wl,--wrap,chmod -Wl,--wrap,stat -Wl,--wrap,fcntl \
-                          -Wl,--wrap,gethostbyname -Wl,--wrap,OS_IsValidIP \
+                          -Wl,--wrap,getaddrinfo -Wl,--wrap,OS_IsValidIP -Wl,--wrap,OS_GetIPv4FromIPv6 -Wl,--wrap,OS_ExpandIPv6 \
                           -Wl,--wrap,sleep -Wl,--wrap,getpid ${DEBUG_OP_WRAPPERS}")
 
 # Compiling tests

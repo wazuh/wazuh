@@ -76,7 +76,8 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
     const char * UPDATES[] = {
         schema_global_upgrade_v1_sql,
         schema_global_upgrade_v2_sql,
-        schema_global_upgrade_v3_sql
+        schema_global_upgrade_v3_sql,
+        schema_global_upgrade_v4_sql
     };
 
     char db_version[OS_SIZE_256 + 2];
