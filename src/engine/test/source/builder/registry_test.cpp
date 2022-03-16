@@ -38,7 +38,11 @@ TEST(Registry_test, GetBuilderAndBuilds)
 {
     auto buildB = std::get<types::OpBuilder>(Registry::getBuilder("test"));
     types::Observable o = rxcpp::observable<>::empty<types::Event>();
+<<<<<<< HEAD:src/engine/test/source/builder/registry_test.cpp
     types::Observable expected =
         buildB(*Document(R"({"test":1})").get("/test"))(o);
+=======
+    types::Observable expected = buildB(Document(R"({"test":1})").get("/test"))(o);
+>>>>>>> be742c8671 (Updated registry test):src/engine/test/source/builder/registryTest.cpp
     ASSERT_EQ(o, expected);
 }
