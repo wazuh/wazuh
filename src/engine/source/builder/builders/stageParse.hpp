@@ -16,7 +16,8 @@ namespace builder::internals::builders
 {
 
 /**
- * @brief Builds stage parsing
+ * @brief Builds parsing stage to be able to get information from the original
+ * logged event
  *
  * @param def
  * @return types::Lifter
