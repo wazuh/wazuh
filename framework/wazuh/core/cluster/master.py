@@ -1167,6 +1167,13 @@ class Master(server.AbstractServer):
                                            get_payload={"condition": "sync_status", "set_synced": True,
                                                         "get_global_hash": True})
 
+        # Stop the agent-group calculation task to provide time for workers to connect to the master node.
+        # This prevents workers from requesting the entire database due to lack of information.
+        logger.info(
+            f"Sleeping {self.cluster_items['intervals']['master']['agent_group_start_delay']}s "
+            f"before starting the agent-groups task, waiting for the workers connection.")
+        await asyncio.sleep(self.cluster_items['intervals']['master']['agent_group_start_delay'])
+
         while True:
             try:
                 before = perf_counter()
