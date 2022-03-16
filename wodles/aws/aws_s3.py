@@ -2080,7 +2080,7 @@ class AWSCustomBucket(AWSBucket):
         # The Amazon S3 object name follows the pattern DeliveryStreamName-DeliveryStreamVersion-YYYY-MM-DD-HH-MM-SS-RandomString
         name_regex = re.match(r".*(\d\d\d\d[\/\-]\d\d[\/\-]\d\d).*", log_file['Key'])
         if name_regex is None:
-            return log_file['LastModified'].strftime('%Y%m%d')
+            return int(log_file['LastModified'].strftime('%Y%m%d'))
         else:
             return int(name_regex.group(1).replace('/', '').replace('-',''))
 

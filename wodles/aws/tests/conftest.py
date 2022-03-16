@@ -83,7 +83,7 @@ def aws_waf_bucket(request):
 def aws_config_bucket(request):
     """
     Return a AWSConfigBucket instance.
-    
+
     Parameters
     ----------
     request : pytest.fixtures.SubRequest

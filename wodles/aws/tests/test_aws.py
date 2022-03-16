@@ -10,6 +10,7 @@ import json
 from sqlite3 import connect
 from unittest.mock import patch, MagicMock
 import pytest
+from datetime import datetime
 
 # mock AWS libraries
 sys.modules['boto3'] = MagicMock()
@@ -330,17 +331,20 @@ def test_config_format_created_date(date: str, expected_date: str, aws_config_bu
     ({'Key' : '981837383623/iplogs/2020-09-20/2020-09-20-00-00-moyl.csv.gz'}, 20200920),
     ({'Key' : '836629801214/iplogs/2021-01-18/2021-01-18-00-00-zxsb.csv.gz'}, 20210118),
     ({'Key' : '2020/09/30/13/firehose_guardduty-1-2020-09-30-13-17-05-532e184c-1hfba.zip'}, 20200930),
+    ({'Key' : '2020/10/15/03/firehose_guardduty-1-2020-10-15-03-22-01-ea728dd1-763a4.zip'}, 20201015),
     ({'Key' : '2021/03/18/aws-waf-logs-delivery-stream-1-2021-03-18-10-32-48-77baca34f-efad-4f14-45bd7871'}, 20210318),
-    ({'Key' : '2021-11-12-09-11-26-B9F9F891E8D0EB13'}, 20211112)
+    ({'Key' : '2021/09/06/aws-waf-logs-delivery-stream-1-2021-09-06-21-02-18-8ba031bbd-babf-4c6a-83ba282c'}, 20210906),
+    ({'Key' : '2021-11-12-09-11-26-B9F9F891E8D0EB13'}, 20211112),
+    ({'Key' : '20-03-02-21-02-43-A8269E82CA8BDD21', 'LastModified' : datetime.strptime('2021/01/23', '%Y/%m/%d')}, 20210123)
 ])
-def test_custom_get_creation_date(log_file: dict, expected_date: str, aws_custom_bucket : aws_s3.AWSCustomBucket):
+def test_custom_get_creation_date(log_file: dict, expected_date: int, aws_custom_bucket : aws_s3.AWSCustomBucket):
     """
     Test AWSCustomBucket's get_creation_date method.
     Parameters
     ----------
     log_file : dict
         The log file introduced
-    expected_date : str
+    expected_date : int
         The date that the method should return.
     aws_custom_bucket : aws_s3.AWSCustomBucket
         Instance of the AWSCustomBucket class.  
