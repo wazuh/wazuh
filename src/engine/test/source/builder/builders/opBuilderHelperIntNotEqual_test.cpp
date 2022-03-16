@@ -22,7 +22,7 @@ TEST(opBuilderHelperIntNotEqual, Builds)
             {"field_test": "+i_ne/10"}
     })"};
 
-    ASSERT_NO_THROW(opBuilderHelperIntNotEqual(*doc.get("/check")));
+    ASSERT_NO_THROW(opBuilderHelperIntNotEqual(doc.get("/check")));
 }
 
 TEST(opBuilderHelperIntNotEqual, Builds_error_bad_parameter)
@@ -32,7 +32,7 @@ TEST(opBuilderHelperIntNotEqual, Builds_error_bad_parameter)
             {"field_test": "+i_ne/test"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIntNotEqual(*doc.get("/check")), std::invalid_argument);
+    ASSERT_THROW(opBuilderHelperIntNotEqual(doc.get("/check")), std::invalid_argument);
 }
 
 TEST(opBuilderHelperIntNotEqual, Builds_error_more_parameters)
@@ -42,7 +42,7 @@ TEST(opBuilderHelperIntNotEqual, Builds_error_more_parameters)
             {"field_test": "+i_ne/10/10"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIntNotEqual(*doc.get("/check")), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperIntNotEqual(doc.get("/check")), std::runtime_error);
 }
 
 TEST(opBuilderHelperIntNotEqual, Exec_not_equal_ok)
@@ -69,15 +69,15 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_ok)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntNotEqual(*doc.get("/check"));
+    Lifter lift = opBuilderHelperIntNotEqual(doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
 
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_EQ(expected[0]->get("/field_test")->GetInt(), 9);
-    ASSERT_EQ(expected[1]->get("/field_test")->GetInt(), 11);
+    ASSERT_EQ(expected[0]->get("/field_test").GetInt(), 9);
+    ASSERT_EQ(expected[1]->get("/field_test").GetInt(), 11);
 }
 
 TEST(opBuilderHelperIntNotEqual, Exec_not_equal_true)
@@ -104,15 +104,15 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_true)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntNotEqual(*doc.get("/check"));
+    Lifter lift = opBuilderHelperIntNotEqual(doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
 
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_EQ(expected[0]->get("/field_test")->GetInt(), 9);
-    ASSERT_EQ(expected[1]->get("/field_test")->GetInt(), 11);
+    ASSERT_EQ(expected[0]->get("/field_test").GetInt(), 9);
+    ASSERT_EQ(expected[1]->get("/field_test").GetInt(), 11);
 }
 
 TEST(opBuilderHelperIntNotEqual, Exec_not_equal_false)
@@ -139,7 +139,7 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_false)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntNotEqual(*doc.get("/check"));
+    Lifter lift = opBuilderHelperIntNotEqual(doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -184,17 +184,17 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_ref_true)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntNotEqual(*doc.get("/check"));
+    Lifter lift = opBuilderHelperIntNotEqual(doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
 
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_NE(expected[0]->get("/field_test")->GetInt(),
-              expected[0]->get("/field_src")->GetInt());
-    ASSERT_NE(expected[1]->get("/field_test")->GetInt(),
-              expected[1]->get("/field_src")->GetInt());
+    ASSERT_NE(expected[0]->get("/field_test").GetInt(),
+              expected[0]->get("/field_src").GetInt());
+    ASSERT_NE(expected[1]->get("/field_test").GetInt(),
+              expected[1]->get("/field_src").GetInt());
 }
 
 TEST(opBuilderHelperIntNotEqual, Exec_not_equal_ref_false)
@@ -233,7 +233,7 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_ref_false)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntNotEqual(*doc.get("/check"));
+    Lifter lift = opBuilderHelperIntNotEqual(doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -276,17 +276,17 @@ TEST(opBuilderHelperIntNotEqual, Exec_dynamics_int_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperIntNotEqual(*doc.get("/check"));
+    Lifter lift = opBuilderHelperIntNotEqual(doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
 
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_NE(expected[0]->get("/field2check")->GetInt(),
-              expected[0]->get("/ref_key")->GetInt());
-    ASSERT_NE(expected[1]->get("/field2check")->GetInt(),
-              expected[1]->get("/ref_key")->GetInt());
+    ASSERT_NE(expected[0]->get("/field2check").GetInt(),
+              expected[0]->get("/ref_key").GetInt());
+    ASSERT_NE(expected[1]->get("/field2check").GetInt(),
+              expected[1]->get("/ref_key").GetInt());
 }
 
 TEST(opBuilderHelperIntNotEqual, Exec_multilevel_dynamics_int_ok)
@@ -353,13 +353,13 @@ TEST(opBuilderHelperIntNotEqual, Exec_multilevel_dynamics_int_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperIntNotEqual(*doc.get("/check"));
+    Lifter lift = opBuilderHelperIntNotEqual(doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
 
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_NE(expected[0]->get("/parentObjt_1/field2check")->GetInt(),
-              expected[0]->get("/parentObjt_2/ref_key")->GetInt());
+    ASSERT_NE(expected[0]->get("/parentObjt_1/field2check").GetInt(),
+              expected[0]->get("/parentObjt_2/ref_key").GetInt());
 }

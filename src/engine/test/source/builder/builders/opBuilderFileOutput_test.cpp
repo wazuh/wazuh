@@ -26,7 +26,7 @@ TEST(opBuilderFileOutput, Builds)
             {"path": "value"}
     })"};
 
-    ASSERT_NO_THROW(opBuilderFileOutput(*doc.get("/file")));
+    ASSERT_NO_THROW(opBuilderFileOutput(doc.get("/file")));
 }
 
 TEST(opBuilderFileOutput, BuildsOperates)
@@ -53,7 +53,7 @@ TEST(opBuilderFileOutput, BuildsOperates)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderFileOutput(*doc.get("/file"));
+    Lifter lift = opBuilderFileOutput(doc.get("/file"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });

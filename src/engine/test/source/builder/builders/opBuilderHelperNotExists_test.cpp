@@ -22,7 +22,7 @@ TEST(opBuilderHelperNotExists, Builds)
             {"field": "+not_exists"}
     })"};
 
-    ASSERT_NO_THROW(opBuilderHelperNotExists(*doc.get("/check")));
+    ASSERT_NO_THROW(opBuilderHelperNotExists(doc.get("/check")));
 }
 
 TEST(opBuilderHelperNotExists, Builds_error_bad_parameter)
@@ -32,7 +32,7 @@ TEST(opBuilderHelperNotExists, Builds_error_bad_parameter)
             {"field_test": "+exists/test"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIntEqual(*doc.get("/check")), std::invalid_argument);
+    ASSERT_THROW(opBuilderHelperIntEqual(doc.get("/check")), std::invalid_argument);
 }
 
 TEST(opBuilderHelperNotExists, Exec_not_exists_ok)
@@ -69,7 +69,7 @@ TEST(opBuilderHelperNotExists, Exec_not_exists_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperNotExists(*doc.get("/check"));
+    Lifter lift = opBuilderHelperNotExists(doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -146,15 +146,14 @@ TEST(opBuilderHelperNotExists, Exec_multilevel_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperNotExists(*doc.get("/check"));
+    Lifter lift = opBuilderHelperNotExists(doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
 
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_FALSE(expected[0]->get("/parentObjt_1/field2check"));
-    ASSERT_FALSE(expected[1]->get("/parentObjt_1/field2check"));
-    ASSERT_FALSE(expected[2]->get("/parentObjt_1/field2check"));
+    ASSERT_FALSE(expected[0]->exists("/parentObjt_1/field2check"));
+    ASSERT_FALSE(expected[1]->exists("/parentObjt_1/field2check"));
+    ASSERT_FALSE(expected[2]->exists("/parentObjt_1/field2check"));
 }
-

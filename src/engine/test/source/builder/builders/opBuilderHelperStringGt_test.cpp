@@ -22,7 +22,7 @@ TEST(opBuilderHelperStringGT, Builds)
         "check":
             {"field2check": "+s_gt/abcd"}
     })"};
-    ASSERT_NO_THROW(opBuilderHelperStringGT(*doc.get("/check")));
+    ASSERT_NO_THROW(opBuilderHelperStringGT(doc.get("/check")));
 }
 
 // Build incorrect number of arguments
@@ -32,7 +32,7 @@ TEST(opBuilderHelperStringGT, Builds_incorrect_number_of_arguments)
         "check":
             {"field2check": "+s_gt/test_value/test_value2"}
     })"};
-    ASSERT_THROW(opBuilderHelperStringGT(*doc.get("/check")), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperStringGT(doc.get("/check")), std::runtime_error);
 }
 
 // Test ok: static values
@@ -86,16 +86,16 @@ TEST(opBuilderHelperStringGT, Static_string_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringGT(*doc.get("/check"));
+    Lifter lift = opBuilderHelperStringGT(doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 5);
-    ASSERT_STREQ(expected[0]->get("/field2check")->GetString(), "ABCDE");
-    ASSERT_STREQ(expected[1]->get("/field2check")->GetString(), "BBBB");
-    ASSERT_STREQ(expected[2]->get("/field2check")->GetString(), "abc");
-    ASSERT_STREQ(expected[3]->get("/field2check")->GetString(), "abcd");
-    ASSERT_STREQ(expected[4]->get("/field2check")->GetString(), "abcde");
+    ASSERT_STREQ(expected[0]->get("/field2check").GetString(), "ABCDE");
+    ASSERT_STREQ(expected[1]->get("/field2check").GetString(), "BBBB");
+    ASSERT_STREQ(expected[2]->get("/field2check").GetString(), "abc");
+    ASSERT_STREQ(expected[3]->get("/field2check").GetString(), "abcd");
+    ASSERT_STREQ(expected[4]->get("/field2check").GetString(), "abcde");
 }
 
 // Test ok: static values (numbers, compare as string)
@@ -126,12 +126,12 @@ TEST(opBuilderHelperStringGT, Static_number_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringGT(*doc.get("/check"));
+    Lifter lift = opBuilderHelperStringGT(doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_STREQ(expected[0]->get("/field2check")->GetString(), "BB");
+    ASSERT_STREQ(expected[0]->get("/field2check").GetString(), "BB");
 }
 
 // Test ok: dynamic values (string)
@@ -169,10 +169,10 @@ TEST(opBuilderHelperStringGT, Dynamics_string_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringGT(*doc.get("/check"));
+    Lifter lift = opBuilderHelperStringGT(doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_STREQ(expected[0]->get("/field2check")->GetString(), "abcd");
+    ASSERT_STREQ(expected[0]->get("/field2check").GetString(), "abcd");
 }
