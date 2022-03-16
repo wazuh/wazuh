@@ -32,9 +32,9 @@ UDPEndpoint::UDPEndpoint(const string & config, ServerOutput & eventBuffer)
     m_udpHandle->on<ErrorEvent>(
         [](const ErrorEvent & event, UDPHandle & udpHandle)
         {
-            std::cerr << "UDP Server (" << udpHandle.sock().ip.c_str() << ":" << udpHandle.sock().port
-                      << ") error: code=" << event.code() << "; name=" << event.name() << "; message=" << event.what()
-                      << endl;
+            LOG(ERROR) << "UDP Server (" << udpHandle.sock().ip.c_str() << ":" << udpHandle.sock().port
+                       << ") error: code=" << event.code() << "; name=" << event.name() << "; message=" << event.what()
+                       << endl;
         });
 
     m_udpHandle->on<UDPDataEvent>(
@@ -45,9 +45,9 @@ UDPEndpoint::UDPEndpoint(const string & config, ServerOutput & eventBuffer)
             client->on<ErrorEvent>(
                 [](const ErrorEvent & event, UDPHandle & client)
                 {
-                    std::cerr << "UDP Client (" << client.peer().ip.c_str() << ":" << client.peer().port
-                              << ") error: code=" << event.code() << "; name=" << event.name()
-                              << "; message=" << event.what() << endl;
+                    LOG(ERROR) << "UDP Client (" << client.peer().ip.c_str() << ":" << client.peer().port
+                               << ") error: code=" << event.code() << "; name=" << event.name()
+                               << "; message=" << event.what() << endl;
                 });
 
             try
@@ -63,12 +63,12 @@ UDPEndpoint::UDPEndpoint(const string & config, ServerOutput & eventBuffer)
                 }
                 else
                 {
-                    LOG(ERROR) << "TCP DataEvent: Error processing data" << endl;
+                    LOG(ERROR) << "UDP DataEvent: Error processing data" << endl;
                 }
             }
             catch (const std::exception & e)
             {
-                std::cerr << e.what() << '\n';
+                LOG(ERROR) << e.what() << '\n';
             }
         });
 }
