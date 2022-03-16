@@ -33,6 +33,18 @@ CPMAddPackage(
     "CMAKE_DISABLE_FIND_PACKAGE_gtest TRUE"
 )
 
+CPMAddPackage(
+  NAME glog
+  GITHUB_REPOSITORY google/glog
+  GIT_TAG v0.5.0
+  VERSION 0.5.0
+  OPTIONS
+      "WITH_GTEST OFF"
+      "BUILD_SHARED_LIBS OFF"
+      "WITH_GFLAGS OFF"
+      "WITH_UNWIND OFF"
+)
+
 # Add this dependencies to parent CMakeLists scope
 set(EXTERNAL_DEPS ${EXTERNAL_DEPS} PARENT_SCOPE)
 
@@ -41,7 +53,7 @@ set(EXTERNAL_DEPS ${EXTERNAL_DEPS} PARENT_SCOPE)
 ####################################################################################################
 add_library(kvdb ${ENGINE_KVDB_SOURCE_DIR}/kvdb.cpp)
 
-target_link_libraries(kvdb PRIVATE rocksdb)
+target_link_libraries(kvdb PRIVATE rocksdb "glog::glog")
 
 target_include_directories(kvdb PUBLIC
     ${ENGINE_KVDB_INCLUDE_DIR}
