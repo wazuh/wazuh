@@ -44,6 +44,7 @@ target_include_directories(main PUBLIC
     ${ENGINE_SERVER_SOURCE_DIR}
     ${uvw_SOURCE_DIR}/src/
     ${uvw_SOURCE_DIR}/src/uvw/
+    ${RxCpp_SOURCE_DIR}/Rx/v2/src
 )
 
 #TODO do this better
