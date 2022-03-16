@@ -106,6 +106,11 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define GROUPGLOBAL     "wazuh"
 #endif
 
+// Standard super user UID and GID
+#define ROOT_UID (0)
+
+#define ROOT_GID (0)
+
 // Wazuh home environment variable
 #define WAZUH_HOME_ENV  "WAZUH_HOME"
 

@@ -28,6 +28,7 @@ int OS_Bindportudp(u_int16_t _port, const char *_ip, int ipv6);
  * a Unix Domain socket.
  */
 int OS_BindUnixDomain(const char *path, int type, int max_msg_size) __attribute__((nonnull));
+int OS_BindUnixDomainWithPerms(const char *path, int type, int max_msg_size, uid_t uid, gid_t gid, mode_t mode) __attribute__((nonnull));
 int OS_ConnectUnixDomain(const char *path, int type, int max_msg_size) __attribute__((nonnull));
 int OS_getsocketsize(int ossock);
 

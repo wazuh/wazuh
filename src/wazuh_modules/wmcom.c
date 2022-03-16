@@ -118,10 +118,16 @@ void * wmcom_main(__attribute__((unused)) void * arg) {
     char *response = NULL;
     ssize_t length;
     fd_set fdset;
+    gid_t gid;
 
     mdebug1("Local requests thread ready");
+    gid = Privsep_GetGroup(GROUPGLOBAL);
+    if (gid == (gid_t) OS_INVALID) {
+        merror(USER_ERROR, "-", GROUPGLOBAL, strerror(errno), errno);
+        return NULL;
+    }
 
-    if (sock = OS_BindUnixDomain(WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+    if (sock = OS_BindUnixDomainWithPerms(WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR, getuid(), gid, 0660), sock < 0) {
         merror("Unable to bind to socket '%s': (%d) %s.", WM_LOCAL_SOCK, errno, strerror(errno));
         return NULL;
     }
