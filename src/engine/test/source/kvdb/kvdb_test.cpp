@@ -1,10 +1,24 @@
 #include "gtest/gtest.h"
-
 #include <kvdb/kvdb.hpp>
 
 
 TEST(kvdbTests, execute_simple_example)
 {
-    fprintf(stderr, "\n\n---KVDB Test---\n");
     kvdb_simple_example();
+}
+
+TEST(kvdbTests, column_family_creation_deletion)
+{
+    bool ret = CreateKVDB();
+    ASSERT_TRUE(ret);
+    ret = CreateColumnFamily("IP_BLACKLIST");
+    ASSERT_TRUE(ret);
+    ret = DeleteColumnFamily("IP_BLACKLIST");
+    ASSERT_TRUE(ret);
+    ret = CreateColumnFamily("");
+    ASSERT_TRUE(!ret);
+    ret = DeleteColumnFamily("NOT_AVAILABLE");
+    ASSERT_TRUE(!ret);
+    ret = DestroyKVDB();
+    ASSERT_TRUE(ret);
 }
