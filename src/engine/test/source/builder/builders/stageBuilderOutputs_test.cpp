@@ -34,7 +34,7 @@ TEST(StageBuilderOutputs, BuildsAllNonRegistered)
         ]
     })"};
 
-    ASSERT_THROW(builders::stageBuilderOutputs(*doc.get("/outputs")), std::_Nested_exception<std::runtime_error>);
+    ASSERT_THROW(builders::stageBuilderOutputs(doc.get("/outputs")), std::_Nested_exception<std::runtime_error>);
 }
 
 TEST(StageBuilderOutputs, Builds)
@@ -55,7 +55,7 @@ TEST(StageBuilderOutputs, Builds)
         ]
     })"};
 
-    ASSERT_NO_THROW(builders::stageBuilderOutputs(*doc.get("/outputs")));
+    ASSERT_NO_THROW(builders::stageBuilderOutputs(doc.get("/outputs")));
 }
 
 TEST(StageBuilderOutputs, BuildsOperates)
@@ -88,7 +88,7 @@ TEST(StageBuilderOutputs, BuildsOperates)
             )"));
             s.on_completed();
         });
-    Lifter lift = builders::stageBuilderOutputs(*doc.get("/outputs"));
+    Lifter lift = builders::stageBuilderOutputs(doc.get("/outputs"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });

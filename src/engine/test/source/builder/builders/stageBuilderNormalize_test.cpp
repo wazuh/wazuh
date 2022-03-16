@@ -29,7 +29,7 @@ TEST(StageBuilderNormalize, BuildsAllNonRegistered)
         ]
     })"};
 
-    ASSERT_THROW(builders::stageBuilderNormalize(*doc.get("/normalize")), std::_Nested_exception<std::runtime_error>);
+    ASSERT_THROW(builders::stageBuilderNormalize(doc.get("/normalize")), std::_Nested_exception<std::runtime_error>);
 }
 
 TEST(StageBuilderNormalize, Builds)
@@ -52,7 +52,7 @@ TEST(StageBuilderNormalize, Builds)
         ]
     })"};
 
-    ASSERT_NO_THROW(builders::stageBuilderNormalize(*doc.get("/normalize")));
+    ASSERT_NO_THROW(builders::stageBuilderNormalize(doc.get("/normalize")));
 }
 
 TEST(StageBuilderNormalize, BuildsOperates)
@@ -66,7 +66,7 @@ TEST(StageBuilderNormalize, BuildsOperates)
         ]
     })"};
 
-    auto normalize = builders::stageBuilderNormalize(*doc.get("/normalize"));
+    auto normalize = builders::stageBuilderNormalize(doc.get("/normalize"));
 
     Observable input = observable<>::create<Event>(
         [=](auto s)
@@ -103,9 +103,9 @@ TEST(StageBuilderNormalize, BuildsOperates)
     ASSERT_EQ(expected.size(), 2);
     for (auto e : expected)
     {
-        ASSERT_STREQ(e->get("/mapped/field1")->GetString(), "value");
-        ASSERT_EQ(e->get("/mapped/field2")->GetInt(), 2);
-        ASSERT_STREQ(e->get("/mapped/field3")->GetString(), "value");
-        ASSERT_TRUE(e->get("/mapped/field4")->GetBool());
+        ASSERT_STREQ(e->get("/mapped/field1").GetString(), "value");
+        ASSERT_EQ(e->get("/mapped/field2").GetInt(), 2);
+        ASSERT_STREQ(e->get("/mapped/field3").GetString(), "value");
+        ASSERT_TRUE(e->get("/mapped/field4").GetBool());
     }
 }

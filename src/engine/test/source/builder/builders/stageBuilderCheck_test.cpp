@@ -32,7 +32,7 @@ TEST(StageBuilderCheck, BuildsAllNonRegistered)
         ]
     })"};
 
-    ASSERT_THROW(builders::stageBuilderCheck(*doc.get("/check")), std::_Nested_exception<std::runtime_error>);
+    ASSERT_THROW(builders::stageBuilderCheck(doc.get("/check")), std::_Nested_exception<std::runtime_error>);
 }
 
 TEST(StageBuilderCheck, Builds)
@@ -61,7 +61,7 @@ TEST(StageBuilderCheck, Builds)
         ]
     })"};
 
-    ASSERT_NO_THROW(builders::stageBuilderCheck(*doc.get("/check")));
+    ASSERT_NO_THROW(builders::stageBuilderCheck(doc.get("/check")));
 }
 
 TEST(StageBuilderCheck, BuildsOperates)
@@ -77,7 +77,7 @@ TEST(StageBuilderCheck, BuildsOperates)
         ]
     })"};
 
-    auto check = builders::stageBuilderCheck(*doc.get("/check"));
+    auto check = builders::stageBuilderCheck(doc.get("/check"));
 
     Observable input = observable<>::create<Event>(
         [=](auto s)
@@ -111,10 +111,10 @@ TEST(StageBuilderCheck, BuildsOperates)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_STREQ(expected[0]->get("/field1")->GetString(), "value");
-    ASSERT_EQ(expected[0]->get("/field2")->GetInt(), 2);
-    ASSERT_STREQ(expected[0]->get("/field3")->GetString(), "value");
-    ASSERT_TRUE(expected[0]->get("/field4")->GetBool());
+    ASSERT_STREQ(expected[0]->get("/field1").GetString(), "value");
+    ASSERT_EQ(expected[0]->get("/field2").GetInt(), 2);
+    ASSERT_STREQ(expected[0]->get("/field3").GetString(), "value");
+    ASSERT_TRUE(expected[0]->get("/field4").GetBool());
     ASSERT_NO_THROW(expected[0]->get("/field5"));
-    ASSERT_EQ(expected[0]->get("/field6"), nullptr);
+    ASSERT_FALSE(expected[0]->exists("/field6"));
 }
