@@ -130,6 +130,6 @@ TEST(AssetBuilderDecoder, BuildsOperates)
     ASSERT_EQ(expected.size(), 2);
     for (auto e : expected)
     {
-        ASSERT_STREQ(e->get("/mapped/field")->GetString(), "value");
+        ASSERT_STREQ(e->get("/mapped/field").GetString(), "value");
     }
 }
