@@ -56,12 +56,12 @@ TEST(opBuilderConditionValue, BuildsOperatesString)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderConditionValue(*doc.get("/check"));
+    Lifter lift = opBuilderConditionValue(doc.get("/check"));
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_STREQ(expected[0]->get("/field")->GetString(), doc.get("/check")->MemberBegin()->value.GetString());
+    ASSERT_STREQ(expected[0]->get("/field").GetString(), doc.get("/check").MemberBegin()->value.GetString());
 }
 
 //TODO: Add rest of use cases (int, bool, null)
