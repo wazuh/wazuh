@@ -38,8 +38,13 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(
     fimdb PROPERTIES LINK_FLAGS "-Wl,--add-stdcall-alias -static-libstdc++")
 elseif(UNIX AND NOT APPLE)
-  set_target_properties(fimdb PROPERTIES LINK_FLAGS
-                                         "-static-libgcc -static-libstdc++")
+  if(CMAKE_SYSTEM STREQUAL "SunOS-5.10")
+    set_target_properties(fimdb PROPERTIES
+      LINK_FLAGS "-static-libstdc++")
+  else()
+    set_target_properties(fimdb PROPERTIES
+      LINK_FLAGS "-static-libgcc -static-libstdc++")
+  endif(CMAKE_SYSTEM STREQUAL "SunOS-5.10")
   if(CMAKE_SYSTEM_NAME STREQUAL "AIX")
     string(REPLACE ";" ":" CXX_IMPLICIT_LINK_DIRECTORIES_STR
                  "${CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES}")
