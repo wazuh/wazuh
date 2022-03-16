@@ -42,7 +42,7 @@ gtest_discover_tests(builderTest)
 
 # Registry test
 add_executable(registryTest
-    ${BUILDER_TEST_SOURCE_DIR}/registry_test.cpp 
+    ${BUILDER_TEST_SOURCE_DIR}/registry_test.cpp
     )
 gtest_discover_tests(registryTest)
 

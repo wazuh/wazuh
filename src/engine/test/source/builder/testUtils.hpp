@@ -17,7 +17,7 @@
 #include "registry.hpp"
 #include "json.hpp"
 
-#define GTEST_COUT std::cout << "[          ] [ INFO ] "
+#define GTEST_COUT std::cout << std::boolalpha << "[          ] [ INFO ] "
 
 using namespace std;
 using namespace rxcpp;
