@@ -85,39 +85,77 @@ public:
      */
     internals::Graph build(const std::string & name)
     {
-
-        internals::Graph filters;
         json::Document asset = m_catalog.getAsset("environment", name);
         // TODO: Parametrize - define constextp string
+        // TODO: make it trully dynamic
+        // Input, graph, output
+        std::vector<std::tuple<std::string, internals::Graph, std::string>> subGraphs;
         // Build decoder subgraph
-        auto decoderGraph =
-            this->assetBuilder("decoder", asset.get("/decoders"),
-                               std::get<internals::types::AssetBuilder>(internals::Registry::getBuilder("decoder")));
-        decoderGraph.addParentEdges("INPUT_DECODER", "OUTPUT_DECODER");
+        if (asset.exists("/decoders"))
+        {
+            auto decoderGraph = this->assetBuilder(
+                "decoder", asset.get("/decoders"),
+                std::get<internals::types::AssetBuilder>(internals::Registry::getBuilder("decoder")));
+            // decoderGraph.addParentEdges("INPUT_DECODER", "OUTPUT_DECODER");
+            subGraphs.push_back(std::make_tuple("INPUT_DECODER", decoderGraph, "OUTPUT_DECODER"));
+        }
 
         // Build rule subgraph
-        auto ruleGraph =
-            this->assetBuilder("rule", asset.get("/rules"),
-                               std::get<internals::types::AssetBuilder>(internals::Registry::getBuilder("rule")));
-        ruleGraph.addParentEdges("INPUT_RULE", "OUTPUT_RULE");
+        if (asset.exists("/rules"))
+        {
+            auto ruleGraph =
+                this->assetBuilder("rule", asset.get("/rules"),
+                                   std::get<internals::types::AssetBuilder>(internals::Registry::getBuilder("rule")));
+            //ruleGraph.addParentEdges("INPUT_RULE", "OUTPUT_RULE");
+            subGraphs.push_back(std::make_tuple("INPUT_RULE", ruleGraph, "OUTPUT_RULE"));
+        }
 
         // Build output subgraph
-        auto outputGraph =
-            this->assetBuilder("output", asset.get("/outputs"),
-                               std::get<internals::types::AssetBuilder>(internals::Registry::getBuilder("output")));
-        outputGraph.addParentEdges("INPUT_OUTPUT", "OUTPUT_OUTPUT");
+        if (asset.exists("/outputs"))
+        {
+            auto outputGraph =
+                this->assetBuilder("output", asset.get("/outputs"),
+                                   std::get<internals::types::AssetBuilder>(internals::Registry::getBuilder("output")));
+            //outputGraph.addParentEdges("INPUT_OUTPUT", "OUTPUT_OUTPUT");
+            subGraphs.push_back(std::make_tuple("INPUT_OUTPUT", outputGraph, "OUTPUT_OUTPUT"));
+        }
 
+        // Join and connect subgraphs, handle first outside loop
+        if (subGraphs.empty())
+        {
+            throw std::runtime_error("Error building graph, atleast one subgraph must be defined");
+        }
+        auto graphTuple = subGraphs[0];
+        internals::Graph g = std::get<1>(graphTuple);
+        g.addParentEdges(std::get<0>(graphTuple), std::get<2>(graphTuple));
+        for (auto it = ++subGraphs.begin(); it != subGraphs.end(); ++it)
+        {
+            // Connect current subgraph
+            std::get<1>(*it).addParentEdges(std::get<0>(*it), std::get<2>(*it));
+
+            // Join it
+            g = g.join(std::get<1>(*it), std::get<2>(graphTuple), std::get<0>(*it));
+
+            // Update prev
+            graphTuple = *it;
+        }
+
+        // Filters are not joined, are injected
         // Build filter subgraph
-        auto filterGraph =
-            this->assetBuilder("filter", asset.get("/filters"),
-                               std::get<internals::types::AssetBuilder>(internals::Registry::getBuilder("filter")));
+        if (asset.exists("/filters"))
+        {
+            auto filterGraph =
+                this->assetBuilder("filter", asset.get("/filters"),
+                                   std::get<internals::types::AssetBuilder>(internals::Registry::getBuilder("filter")));
+            g = g.inject(filterGraph);
+        }
 
-        // Connect subgraphs
-        internals::Graph g = decoderGraph.join(ruleGraph, "OUTPUT_DECODER", "INPUT_RULE")
-                                 .join(outputGraph, "OUTPUT_RULE", "INPUT_OUTPUT")
-                                 .inject(filterGraph);
-        g.addEdge("OUTPUT_DECODER", "INPUT_OUTPUT");
-        g.m_nodes["INPUT_OUTPUT"].m_parents.push_back("OUTPUT_DECODER");
+        // Multiple outputs are manual
+        if (asset.exists("/decoders") && asset.exists("/rules") && asset.exists("/outputs"))
+        {
+            g.addEdge("OUTPUT_DECODER", "INPUT_OUTPUT");
+            g.m_nodes["INPUT_OUTPUT"].m_parents.push_back("OUTPUT_DECODER");
+        }
 
         return g;
     }
