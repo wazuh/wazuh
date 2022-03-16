@@ -12,7 +12,7 @@
 #include "connectable.hpp"
 #include "register.hpp"
 
-#define DEBUG_LOG std::cerr << "[          ] [ INFO ] "
+#define GTEST_COUT std::cerr << "[          ] [ INFO ] "
 
 template<class T>
 using Op_t = std::function<T(T)>;
@@ -28,7 +28,7 @@ TEST(Builder, EnvironmentSingleDecoder)
     builder::internals::registerBuilders();
     FakeCatalog fCatalog;
     auto builder = builder::Builder<FakeCatalog>(fCatalog);
-    auto root = builder.build("environment_1");
+    ASSERT_NO_THROW(auto root = builder.build("environment_1"));
 }
 
 TEST(Builder, EnvironmentSingleDecoderSingleRule)
@@ -96,34 +96,31 @@ TEST(RXCPP, DecoderManualConnectExample)
     using Con_t = builder::internals::Connectable<Obs_t>;
 
     int expected = 2;
-    auto source =
-        rxcpp::observable<>::create<Event_t>(
-            [expected](const Sub_t s)
-            {
-                for (int i = 0; i < expected; i++)
-                {
-                    if (i % 2 == 0)
-                        s.on_next(std::make_shared<json::Document>(
-                            R"({"type": "int", "field": "odd", "value": 0})"));
-                    else
-                        s.on_next(std::make_shared<json::Document>(
-                            R"({"type": "int", "field": "even", "value": 1})"));
-                }
-                s.on_completed();
-            })
-            .publish();
+    auto source = rxcpp::observable<>::create<Event_t>(
+                      [expected](const Sub_t s)
+                      {
+                          for (int i = 0; i < expected; i++)
+                          {
+                              if (i % 2 == 0)
+                                  s.on_next(std::make_shared<json::Document>(R"({"type": "int", "field": "odd",
+                                  "value": 0})"));
+                              else
+                                  s.on_next(std::make_shared<json::Document>(R"({"type": "int", "field": "even",
+                                  "value": 1})"));
+                          }
+                          s.on_completed();
+                      })
+                      .publish();
 
     auto sub = rxcpp::subjects::subject<Event_t>();
 
-    auto subscriber = rxcpp::make_subscriber<Event_t>(
-        [](Event_t v) { DEBUG_LOG << "Got " << v->str() << std::endl; },
-        []() { DEBUG_LOG << "OnCompleted" << std::endl; });
+    auto subscriber = rxcpp::make_subscriber<Event_t>([](Event_t v) { GTEST_COUT << "Got " << v->str() << std::endl;
+    },
+                                                      []() { GTEST_COUT << "OnCompleted" << std::endl; });
 
     builder::Builder<FakeCatalog> b {FakeCatalog()};
     auto env = b.build("environment_6");
-    std::map<Con_t, std::set<Con_t>> res = env.get();
-    visit<Event_t>(
-        sub.get_observable(), Con_t("DECODERS_INPUT"), res, subscriber);
+    b("environment_6")(sub.get_observable()).subscribe(subscriber);
 
     source.subscribe(sub.get_subscriber());
     source.connect();
@@ -146,3 +143,31 @@ TEST(RXCPP, DecoderManualConnectExample)
     std::filesystem::remove(file);
     ASSERT_EQ(expectedContents, gotContent);
 }
+
+// using namespace builder::internals::types;
+// TEST(graph, graph)
+// {
+//     std::map<ConnectableT, std::set<ConnectableT>> mymap;
+
+//     ConnectableT conn1{"conn1"};
+//     mymap[conn1] = {};
+
+//     auto tmp = mymap.extract(conn1);
+//     auto aux = tmp.key();
+
+//     aux.m_parents.push_back("1");
+//     aux.m_parents.push_back("1");
+//     aux.m_parents.push_back("1");
+
+//     tmp.key() = aux;
+//     mymap.insert(std::move(tmp));
+
+//     for (auto & conn : mymap)
+//     {
+//     }
+
+//     for (auto & conn : mymap)
+//     {
+//         GTEST_COUT << conn.first.m_parents.size() << std::endl;
+//     }
+// }
