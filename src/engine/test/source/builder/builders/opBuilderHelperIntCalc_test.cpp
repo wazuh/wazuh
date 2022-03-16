@@ -22,7 +22,7 @@ TEST(opBuilderHelperIntCalc, Builds)
             {"field_test": "+i_calc/sum/10"}
     })"};
 
-    ASSERT_NO_THROW(opBuilderHelperIntCalc(*doc.get("/normalice")));
+    ASSERT_NO_THROW(opBuilderHelperIntCalc(doc.get("/normalice")));
 }
 
 TEST(opBuilderHelperIntCalc, Builds_error_bad_parameter)
@@ -32,7 +32,7 @@ TEST(opBuilderHelperIntCalc, Builds_error_bad_parameter)
             {"field_test": "+i_calc/test/test"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIntCalc(*doc.get("/normalice")), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperIntCalc(doc.get("/normalice")), std::runtime_error);
 }
 
 TEST(opBuilderHelperIntCalc, Builds_error_less_parameters)
@@ -42,7 +42,7 @@ TEST(opBuilderHelperIntCalc, Builds_error_less_parameters)
             {"field_test": "+i_calc/10"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIntCalc(*doc.get("/normalice")), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperIntCalc(doc.get("/normalice")), std::runtime_error);
 }
 
 
@@ -53,7 +53,7 @@ TEST(opBuilderHelperIntCalc, Builds_error_more_parameters)
             {"field_test": "+i_calc/10/10/10"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIntCalc(*doc.get("/normalice")), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperIntCalc(doc.get("/normalice")), std::runtime_error);
 }
 
 TEST(opBuilderHelperIntCalc, Builds_error_bad_operator)
@@ -63,7 +63,7 @@ TEST(opBuilderHelperIntCalc, Builds_error_bad_operator)
             {"field_test": "+i_calc/^/10"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIntCalc(*doc.get("/normalice")), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperIntCalc(doc.get("/normalice")), std::runtime_error);
 }
 
 TEST(opBuilderHelperIntCalc, Builds_error_zero_division)
@@ -73,7 +73,7 @@ TEST(opBuilderHelperIntCalc, Builds_error_zero_division)
             {"field_test": "+i_calc/div/0"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIntCalc(*doc.get("/normalice")), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperIntCalc(doc.get("/normalice")), std::runtime_error);
 }
 
 TEST(opBuilderHelperIntCalc, Exec_equal_ok)
@@ -100,17 +100,17 @@ TEST(opBuilderHelperIntCalc, Exec_equal_ok)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntCalc(*doc.get("/normalice"));
+    Lifter lift = opBuilderHelperIntCalc(doc.get("/normalice"));
     Observable output = lift(input);
     vector<Event> expected;
 
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 4);
-    ASSERT_EQ(expected[0]->get("/field_test")->GetInt(),19);
-    ASSERT_EQ(expected[1]->get("/field_test")->GetInt(),20);
-    ASSERT_EQ(expected[2]->get("/field_test")->GetInt(),20);
-    ASSERT_EQ(expected[3]->get("/field_test")->GetInt(),21);
+    ASSERT_EQ(expected[0]->get("/field_test").GetInt(),19);
+    ASSERT_EQ(expected[1]->get("/field_test").GetInt(),20);
+    ASSERT_EQ(expected[2]->get("/field_test").GetInt(),20);
+    ASSERT_EQ(expected[3]->get("/field_test").GetInt(),21);
 
 }
 
@@ -144,19 +144,19 @@ TEST(opBuilderHelperIntCalc, Exec_sum_int)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntCalc(*doc.get("/normalice"));
+    Lifter lift = opBuilderHelperIntCalc(doc.get("/normalice"));
     Observable output = lift(input);
     vector<Event> expected;
 
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 6);
-    ASSERT_EQ(expected[0]->get("/field_test")->GetInt(),10);
-    ASSERT_EQ(expected[1]->get("/field_test")->GetInt(),19);
-    ASSERT_EQ(expected[2]->get("/field_test")->GetInt(),20);
-    ASSERT_EQ(expected[3]->get("/field_test")->GetInt(),21);
-    ASSERT_EQ(expected[4]->get("/field_test")->GetInt(),110);
-    ASSERT_EQ(expected[5]->get("/field_test")->GetInt(),-90);
+    ASSERT_EQ(expected[0]->get("/field_test").GetInt(),10);
+    ASSERT_EQ(expected[1]->get("/field_test").GetInt(),19);
+    ASSERT_EQ(expected[2]->get("/field_test").GetInt(),20);
+    ASSERT_EQ(expected[3]->get("/field_test").GetInt(),21);
+    ASSERT_EQ(expected[4]->get("/field_test").GetInt(),110);
+    ASSERT_EQ(expected[5]->get("/field_test").GetInt(),-90);
 
 }
 
@@ -190,19 +190,19 @@ TEST(opBuilderHelperIntCalc, Exec_sub_int)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntCalc(*doc.get("/normalice"));
+    Lifter lift = opBuilderHelperIntCalc(doc.get("/normalice"));
     Observable output = lift(input);
     vector<Event> expected;
 
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 6);
-    ASSERT_EQ(expected[0]->get("/field_test")->GetInt(),-10);
-    ASSERT_EQ(expected[1]->get("/field_test")->GetInt(),-1);
-    ASSERT_EQ(expected[2]->get("/field_test")->GetInt(),0);
-    ASSERT_EQ(expected[3]->get("/field_test")->GetInt(),1);
-    ASSERT_EQ(expected[4]->get("/field_test")->GetInt(),90);
-    ASSERT_EQ(expected[5]->get("/field_test")->GetInt(),-110);
+    ASSERT_EQ(expected[0]->get("/field_test").GetInt(),-10);
+    ASSERT_EQ(expected[1]->get("/field_test").GetInt(),-1);
+    ASSERT_EQ(expected[2]->get("/field_test").GetInt(),0);
+    ASSERT_EQ(expected[3]->get("/field_test").GetInt(),1);
+    ASSERT_EQ(expected[4]->get("/field_test").GetInt(),90);
+    ASSERT_EQ(expected[5]->get("/field_test").GetInt(),-110);
 
 }
 
@@ -236,19 +236,19 @@ TEST(opBuilderHelperIntCalc, Exec_mult_int)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntCalc(*doc.get("/normalice"));
+    Lifter lift = opBuilderHelperIntCalc(doc.get("/normalice"));
     Observable output = lift(input);
     vector<Event> expected;
 
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 6);
-    ASSERT_EQ(expected[0]->get("/field_test")->GetInt(),0);
-    ASSERT_EQ(expected[1]->get("/field_test")->GetInt(),90);
-    ASSERT_EQ(expected[2]->get("/field_test")->GetInt(),100);
-    ASSERT_EQ(expected[3]->get("/field_test")->GetInt(),110);
-    ASSERT_EQ(expected[4]->get("/field_test")->GetInt(),1000);
-    ASSERT_EQ(expected[5]->get("/field_test")->GetInt(),-1000);
+    ASSERT_EQ(expected[0]->get("/field_test").GetInt(),0);
+    ASSERT_EQ(expected[1]->get("/field_test").GetInt(),90);
+    ASSERT_EQ(expected[2]->get("/field_test").GetInt(),100);
+    ASSERT_EQ(expected[3]->get("/field_test").GetInt(),110);
+    ASSERT_EQ(expected[4]->get("/field_test").GetInt(),1000);
+    ASSERT_EQ(expected[5]->get("/field_test").GetInt(),-1000);
 
 }
 
@@ -282,19 +282,19 @@ TEST(opBuilderHelperIntCalc, Exec_div_int)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntCalc(*doc.get("/normalice"));
+    Lifter lift = opBuilderHelperIntCalc(doc.get("/normalice"));
     Observable output = lift(input);
     vector<Event> expected;
 
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 6);
-    ASSERT_EQ(expected[0]->get("/field_test")->GetInt(),0);
-    ASSERT_EQ(expected[1]->get("/field_test")->GetInt(),0);
-    ASSERT_EQ(expected[2]->get("/field_test")->GetInt(),1);
-    ASSERT_EQ(expected[3]->get("/field_test")->GetInt(),1);
-    ASSERT_EQ(expected[4]->get("/field_test")->GetInt(),10);
-    ASSERT_EQ(expected[5]->get("/field_test")->GetInt(),-10);
+    ASSERT_EQ(expected[0]->get("/field_test").GetInt(),0);
+    ASSERT_EQ(expected[1]->get("/field_test").GetInt(),0);
+    ASSERT_EQ(expected[2]->get("/field_test").GetInt(),1);
+    ASSERT_EQ(expected[3]->get("/field_test").GetInt(),1);
+    ASSERT_EQ(expected[4]->get("/field_test").GetInt(),10);
+    ASSERT_EQ(expected[5]->get("/field_test").GetInt(),-10);
 
 }
 
@@ -334,21 +334,21 @@ TEST(opBuilderHelperIntCalc, Exec_sum_ref)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntCalc(*doc.get("/normalice"));
+    Lifter lift = opBuilderHelperIntCalc(doc.get("/normalice"));
     Observable output = lift(input);
     vector<Event> expected;
 
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 8);
-    ASSERT_EQ(expected[0]->get("/field_test")->GetInt(),10);
-    ASSERT_EQ(expected[1]->get("/field_test")->GetInt(),19);
-    ASSERT_EQ(expected[2]->get("/field_test")->GetInt(),20);
-    ASSERT_EQ(expected[3]->get("/field_test")->GetInt(),21);
-    ASSERT_EQ(expected[4]->get("/field_test")->GetInt(),-10);
-    ASSERT_EQ(expected[5]->get("/field_test")->GetInt(),-1);
-    ASSERT_EQ(expected[6]->get("/field_test")->GetInt(),0);
-    ASSERT_EQ(expected[7]->get("/field_test")->GetInt(),1);
+    ASSERT_EQ(expected[0]->get("/field_test").GetInt(),10);
+    ASSERT_EQ(expected[1]->get("/field_test").GetInt(),19);
+    ASSERT_EQ(expected[2]->get("/field_test").GetInt(),20);
+    ASSERT_EQ(expected[3]->get("/field_test").GetInt(),21);
+    ASSERT_EQ(expected[4]->get("/field_test").GetInt(),-10);
+    ASSERT_EQ(expected[5]->get("/field_test").GetInt(),-1);
+    ASSERT_EQ(expected[6]->get("/field_test").GetInt(),0);
+    ASSERT_EQ(expected[7]->get("/field_test").GetInt(),1);
 
 }
 
@@ -388,21 +388,21 @@ TEST(opBuilderHelperIntCalc, Exec_sub_ref)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntCalc(*doc.get("/normalice"));
+    Lifter lift = opBuilderHelperIntCalc(doc.get("/normalice"));
     Observable output = lift(input);
     vector<Event> expected;
 
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 8);
-    ASSERT_EQ(expected[0]->get("/field_test")->GetInt(),-10);
-    ASSERT_EQ(expected[1]->get("/field_test")->GetInt(),-1);
-    ASSERT_EQ(expected[2]->get("/field_test")->GetInt(),0);
-    ASSERT_EQ(expected[3]->get("/field_test")->GetInt(),1);
-    ASSERT_EQ(expected[4]->get("/field_test")->GetInt(),10);
-    ASSERT_EQ(expected[5]->get("/field_test")->GetInt(),19);
-    ASSERT_EQ(expected[6]->get("/field_test")->GetInt(),20);
-    ASSERT_EQ(expected[7]->get("/field_test")->GetInt(),21);
+    ASSERT_EQ(expected[0]->get("/field_test").GetInt(),-10);
+    ASSERT_EQ(expected[1]->get("/field_test").GetInt(),-1);
+    ASSERT_EQ(expected[2]->get("/field_test").GetInt(),0);
+    ASSERT_EQ(expected[3]->get("/field_test").GetInt(),1);
+    ASSERT_EQ(expected[4]->get("/field_test").GetInt(),10);
+    ASSERT_EQ(expected[5]->get("/field_test").GetInt(),19);
+    ASSERT_EQ(expected[6]->get("/field_test").GetInt(),20);
+    ASSERT_EQ(expected[7]->get("/field_test").GetInt(),21);
 
 }
 
@@ -442,21 +442,21 @@ TEST(opBuilderHelperIntCalc, Exec_mult_ref)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntCalc(*doc.get("/normalice"));
+    Lifter lift = opBuilderHelperIntCalc(doc.get("/normalice"));
     Observable output = lift(input);
     vector<Event> expected;
 
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 8);
-    ASSERT_EQ(expected[0]->get("/field_test")->GetInt(),0);
-    ASSERT_EQ(expected[1]->get("/field_test")->GetInt(),90);
-    ASSERT_EQ(expected[2]->get("/field_test")->GetInt(),100);
-    ASSERT_EQ(expected[3]->get("/field_test")->GetInt(),110);
-    ASSERT_EQ(expected[4]->get("/field_test")->GetInt(),0);
-    ASSERT_EQ(expected[5]->get("/field_test")->GetInt(),-90);
-    ASSERT_EQ(expected[6]->get("/field_test")->GetInt(),-100);
-    ASSERT_EQ(expected[7]->get("/field_test")->GetInt(),-110);
+    ASSERT_EQ(expected[0]->get("/field_test").GetInt(),0);
+    ASSERT_EQ(expected[1]->get("/field_test").GetInt(),90);
+    ASSERT_EQ(expected[2]->get("/field_test").GetInt(),100);
+    ASSERT_EQ(expected[3]->get("/field_test").GetInt(),110);
+    ASSERT_EQ(expected[4]->get("/field_test").GetInt(),0);
+    ASSERT_EQ(expected[5]->get("/field_test").GetInt(),-90);
+    ASSERT_EQ(expected[6]->get("/field_test").GetInt(),-100);
+    ASSERT_EQ(expected[7]->get("/field_test").GetInt(),-110);
 
 }
 
@@ -496,21 +496,21 @@ TEST(opBuilderHelperIntCalc, Exec_div_ref)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntCalc(*doc.get("/normalice"));
+    Lifter lift = opBuilderHelperIntCalc(doc.get("/normalice"));
     Observable output = lift(input);
     vector<Event> expected;
 
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 8);
-    ASSERT_EQ(expected[0]->get("/field_test")->GetInt(),0);
-    ASSERT_EQ(expected[1]->get("/field_test")->GetInt(),0);
-    ASSERT_EQ(expected[2]->get("/field_test")->GetInt(),1);
-    ASSERT_EQ(expected[3]->get("/field_test")->GetInt(),1);
-    ASSERT_EQ(expected[4]->get("/field_test")->GetInt(),0);
-    ASSERT_EQ(expected[5]->get("/field_test")->GetInt(),0);
-    ASSERT_EQ(expected[6]->get("/field_test")->GetInt(),-1);
-    ASSERT_EQ(expected[7]->get("/field_test")->GetInt(),-1);
+    ASSERT_EQ(expected[0]->get("/field_test").GetInt(),0);
+    ASSERT_EQ(expected[1]->get("/field_test").GetInt(),0);
+    ASSERT_EQ(expected[2]->get("/field_test").GetInt(),1);
+    ASSERT_EQ(expected[3]->get("/field_test").GetInt(),1);
+    ASSERT_EQ(expected[4]->get("/field_test").GetInt(),0);
+    ASSERT_EQ(expected[5]->get("/field_test").GetInt(),0);
+    ASSERT_EQ(expected[6]->get("/field_test").GetInt(),-1);
+    ASSERT_EQ(expected[7]->get("/field_test").GetInt(),-1);
 
 }
 
@@ -550,21 +550,21 @@ TEST(opBuilderHelperIntCalc, Exec_div_ref_zero)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntCalc(*doc.get("/normalice"));
+    Lifter lift = opBuilderHelperIntCalc(doc.get("/normalice"));
     Observable output = lift(input);
     vector<Event> expected;
 
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 8);
-    ASSERT_EQ(expected[0]->get("/field_test")->GetInt(),0);
-    ASSERT_EQ(expected[1]->get("/field_test")->GetInt(),9);
-    ASSERT_EQ(expected[2]->get("/field_test")->GetInt(),10);
-    ASSERT_EQ(expected[3]->get("/field_test")->GetInt(),11);
-    ASSERT_EQ(expected[4]->get("/field_test")->GetInt(),0);
-    ASSERT_EQ(expected[5]->get("/field_test")->GetInt(),9);
-    ASSERT_EQ(expected[6]->get("/field_test")->GetInt(),10);
-    ASSERT_EQ(expected[7]->get("/field_test")->GetInt(),11);
+    ASSERT_EQ(expected[0]->get("/field_test").GetInt(),0);
+    ASSERT_EQ(expected[1]->get("/field_test").GetInt(),9);
+    ASSERT_EQ(expected[2]->get("/field_test").GetInt(),10);
+    ASSERT_EQ(expected[3]->get("/field_test").GetInt(),11);
+    ASSERT_EQ(expected[4]->get("/field_test").GetInt(),0);
+    ASSERT_EQ(expected[5]->get("/field_test").GetInt(),9);
+    ASSERT_EQ(expected[6]->get("/field_test").GetInt(),10);
+    ASSERT_EQ(expected[7]->get("/field_test").GetInt(),11);
 
 }
 
@@ -607,15 +607,15 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_sum)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperIntCalc(*doc.get("/normalice"));
+    Lifter lift = opBuilderHelperIntCalc(doc.get("/normalice"));
     Observable output = lift(input);
     vector<Event> expected;
 
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_EQ(expected[0]->get("/parentObjt_1/field2check")->GetInt(), 21);
-    ASSERT_EQ(expected[1]->get("/parentObjt_1/field2check")->GetInt(), 20);
+    ASSERT_EQ(expected[0]->get("/parentObjt_1/field2check").GetInt(), 21);
+    ASSERT_EQ(expected[1]->get("/parentObjt_1/field2check").GetInt(), 20);
 }
 
 TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_sub)
@@ -657,15 +657,15 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_sub)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperIntCalc(*doc.get("/normalice"));
+    Lifter lift = opBuilderHelperIntCalc(doc.get("/normalice"));
     Observable output = lift(input);
     vector<Event> expected;
 
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_EQ(expected[0]->get("/parentObjt_1/field2check")->GetInt(), -1);
-    ASSERT_EQ(expected[1]->get("/parentObjt_1/field2check")->GetInt(), 0);
+    ASSERT_EQ(expected[0]->get("/parentObjt_1/field2check").GetInt(), -1);
+    ASSERT_EQ(expected[1]->get("/parentObjt_1/field2check").GetInt(), 0);
 }
 
 TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_mul)
@@ -707,15 +707,15 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_mul)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperIntCalc(*doc.get("/normalice"));
+    Lifter lift = opBuilderHelperIntCalc(doc.get("/normalice"));
     Observable output = lift(input);
     vector<Event> expected;
 
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_EQ(expected[0]->get("/parentObjt_1/field2check")->GetInt(), 110);
-    ASSERT_EQ(expected[1]->get("/parentObjt_1/field2check")->GetInt(), 100);
+    ASSERT_EQ(expected[0]->get("/parentObjt_1/field2check").GetInt(), 110);
+    ASSERT_EQ(expected[1]->get("/parentObjt_1/field2check").GetInt(), 100);
 }
 
 TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_div)
@@ -757,13 +757,13 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_div)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperIntCalc(*doc.get("/normalice"));
+    Lifter lift = opBuilderHelperIntCalc(doc.get("/normalice"));
     Observable output = lift(input);
     vector<Event> expected;
 
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_EQ(expected[0]->get("/parentObjt_1/field2check")->GetInt(), 0);
-    ASSERT_EQ(expected[1]->get("/parentObjt_1/field2check")->GetInt(), 1);
+    ASSERT_EQ(expected[0]->get("/parentObjt_1/field2check").GetInt(), 0);
+    ASSERT_EQ(expected[1]->get("/parentObjt_1/field2check").GetInt(), 1);
 }
