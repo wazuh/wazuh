@@ -61,7 +61,9 @@ struct Connectable
      * @param p vector of parents names
      * @param o the operation this connectable must do to the input stream.
      */
-    Connectable(std::string n, std::vector<std::string> p, Op_t o) : m_op(o), m_name(n), m_parents(p){}
+    Connectable(std::string n, std::vector<std::string> p, Op_t o) : m_op(o), m_name(n), m_parents(p)
+    {
+    }
 
     /**
      * @brief Construct a new Connectable object just from its name. It will use
@@ -73,10 +75,14 @@ struct Connectable
     Connectable(std::string n)
         : m_name(n)
     {
-        m_op = [](Observable o)
+        if (n.find("OUTPUT_") == std::string::npos)
         {
-            return o;
-        };
+            m_op = [](Observable o) { return o; };
+        }
+        else
+        {
+            m_op = [](Observable o) { return o.distinct_until_changed(); };
+        }
     };
 
     /**
