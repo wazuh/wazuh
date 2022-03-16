@@ -37,7 +37,7 @@ static Token getToken(Tokenizer &tk)
 {
     const char *c = tk.stream++;
 
-    switch(c[0])
+    switch (c[0])
     {
         case '<': return {"<", 1, TokenType::OpenAngle};
         case '>': return {">", 1, TokenType::CloseAngle};
@@ -46,8 +46,8 @@ static Token getToken(Tokenizer &tk)
         default:
         {
             bool escaped = false;
-            while(tk.stream[0] &&
-                  (escaped || (tk.stream[0] != '<' && tk.stream[0] != '>')))
+            while (tk.stream[0] &&
+                   (escaped || (tk.stream[0] != '<' && tk.stream[0] != '>')))
             {
                 tk.stream++;
                 escaped = tk.stream[0] == '\\';
@@ -60,7 +60,8 @@ static Token getToken(Tokenizer &tk)
     return {0, 0, TokenType::Unknown};
 }
 
-static bool requireToken(Tokenizer &tk, TokenType req) {
+static bool requireToken(Tokenizer &tk, TokenType req)
+{
     return getToken(tk).type == req;
 }
 
@@ -75,18 +76,22 @@ static char peekChar(Tokenizer const &tk)
     return tk.stream[0];
 }
 
-static std::vector<std::string> splitSlashSeparatedField(std::string_view str){
+static std::vector<std::string> splitSlashSeparatedField(std::string_view str)
+{
     std::vector<std::string> ret;
-    while (true) {
+    while (true)
+    {
         auto pos = str.find('/');
-        if (pos == str.npos) {
+        if (pos == str.npos)
+        {
             break;
         }
         ret.emplace_back(str.substr(0, pos));
         str = str.substr(pos + 1);
     }
 
-    if (!str.empty()) {
+    if (!str.empty())
+    {
         ret.emplace_back(str);
     }
 
@@ -98,35 +103,36 @@ static bool parseCapture(Tokenizer &tk, ExpressionList &expresions)
     //<name> || <?name> || <name1>?<name2>
     Token token = getToken(tk);
     bool optional = false;
-    if(token.type == TokenType::QuestionMark)
+    if (token.type == TokenType::QuestionMark)
     {
         optional = true;
         token = getToken(tk);
     }
 
-    if(token.type == TokenType::Literal)
+    if (token.type == TokenType::Literal)
     {
-        expresions.push_back({{token.text, token.len}, ExpressionType::Capture});
+        expresions.push_back(
+            {{token.text, token.len}, ExpressionType::Capture});
 
-        if(!requireToken(tk, TokenType::CloseAngle))
+        if (!requireToken(tk, TokenType::CloseAngle))
         {
             // TODO report parsing error
             return false;
         }
 
         // TODO check if there's a better way to do this
-        if(optional)
+        if (optional)
         {
             expresions.back().type = ExpressionType::OptionalCapture;
         }
 
-        if(peekToken(tk).type == TokenType::QuestionMark)
+        if (peekToken(tk).type == TokenType::QuestionMark)
         {
             // We are parsing <name1>?<name2>
             // Discard the peeked '?'
             getToken(tk);
 
-            if(!requireToken(tk, TokenType::OpenAngle))
+            if (!requireToken(tk, TokenType::OpenAngle))
             {
                 // TODO report error
                 return false;
@@ -139,7 +145,7 @@ static bool parseCapture(Tokenizer &tk, ExpressionList &expresions)
             expresions.push_back(
                 {{orEnd.text, orEnd.len}, ExpressionType::Capture});
 
-            if(!requireToken(tk, TokenType::CloseAngle))
+            if (!requireToken(tk, TokenType::CloseAngle))
             {
                 // TODO report error
                 return false;
@@ -165,21 +171,21 @@ static bool parseCapture(Tokenizer &tk, ExpressionList &expresions)
     return true;
 }
 
-ExpressionList parseLogQlExpr(const char* expr)
+ExpressionList parseLogQlExpr(const char *expr)
 {
     ExpressionList expresions;
     Tokenizer tokenizer {expr};
     bool done = false;
-    while(!done)
+    while (!done)
     {
         Token token = getToken(tokenizer);
-        switch(token.type)
+        switch (token.type)
         {
             case TokenType::OpenAngle:
             {
                 const char *prev = tokenizer.stream - 1;
 
-                if(!parseCapture(tokenizer, expresions))
+                if (!parseCapture(tokenizer, expresions))
                 {
                     // TODO report error
                     //  Reset the parser list to signify an error occurred
@@ -187,19 +193,13 @@ ExpressionList parseLogQlExpr(const char* expr)
                     done = true;
                 }
 
-                if(peekToken(tokenizer).type == TokenType::OpenAngle)
+                if (peekToken(tokenizer).type == TokenType::OpenAngle)
                 {
                     // TODO report error. Can't have two captures back to back
                     const char *end = tokenizer.stream;
-                    while(*end++ != '>')
+                    while (*end++ != '>')
                     {
                     };
-                    fprintf(stderr,
-                            "Invalid capture expression detected [%.*s]. Can't "
-                            "have back to back "
-                            "captures.\n",
-                            (int)(end - prev),
-                            prev);
                     // Reset the parser list to signify an error occurred
                     expresions.clear();
                     done = true;

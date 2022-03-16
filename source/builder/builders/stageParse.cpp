@@ -18,15 +18,13 @@
 #include "registry.hpp"
 #include <hlp/hlp.hpp>
 
-#include <rapidjson/prettywriter.h>
-
 namespace builder::internals::builders
 {
 
 types::Lifter stageBuilderParse(const types::DocumentValue &def)
 {
     // Assert value is as expected
-    if(!def.IsObject())
+    if (!def.IsObject())
     {
         std::string msg = "Stage parse builder, expected array but got " +
                           std::to_string(def.GetType());
@@ -36,7 +34,7 @@ types::Lifter stageBuilderParse(const types::DocumentValue &def)
 
     auto parseObj = def.GetObj();
 
-    if(!parseObj["logql"].IsArray())
+    if (!parseObj["logql"].IsArray())
     {
         // TODO ERROR
         LOG(ERROR) << "Parse stage is ill formed.";
@@ -45,7 +43,7 @@ types::Lifter stageBuilderParse(const types::DocumentValue &def)
     }
 
     auto const &logqlArr = parseObj["logql"];
-    if(logqlArr.Empty())
+    if (logqlArr.Empty())
     {
         // TODO error
         LOG(ERROR) << "No logQl expressions found.";
@@ -53,49 +51,50 @@ types::Lifter stageBuilderParse(const types::DocumentValue &def)
     }
 
     std::vector<types::Lifter> parsers;
-    for(auto const &item : logqlArr.GetArray())
+    for (auto const &item : logqlArr.GetArray())
     {
-        if(!item.IsObject())
+        if (!item.IsObject())
         {
             LOG(ERROR) << "LogQl object is badly formatted.";
-            throw std::invalid_argument("Bad format trying to get parse expression ");
+            throw std::invalid_argument(
+                "Bad format trying to get parse expression ");
         }
 
-        //TODO hard-coded 'event.original'
+        // TODO hard-coded 'event.original'
         auto logQlExpr = item["event.original"].GetString();
 
-        auto newOp = [parserOp = getParserOp(logQlExpr)](types::Observable o)
+        auto parseOp = getParserOp(logQlExpr);
+        if (!parseOp)
+        {
+            LOG(ERROR) << "LogQl expression not valid";
+            throw std::invalid_argument("LogQl expression not valid");
+        }
+
+        auto newOp = [parserOp = std::move(parseOp)](types::Observable o)
         {
             return o.map(
                 [parserOp = std::move(parserOp)](types::Event e)
                 {
                     auto ev = e->get("/message");
-                    if(!ev->IsString())
+                    if (!ev->IsString())
                     {
                         // TODO error
                         return e;
                     }
 
                     ParseResult result;
-                    bool ok = parserOp(ev->GetString(), result);
-                    if(!ok)
+                    auto ok = parserOp(ev->GetString(), result);
+                    if (!ok)
                     {
                         // TODO error
                         return e;
                     }
 
-                    for(auto const &val : result)
+                    for (auto const &val : result)
                     {
-                        auto obj = e->getObject();
-                        rapidjson::Value name;
-                        rapidjson::Value v;
-                        v.SetString(val.second.c_str(),
-                                    val.second.size(),
-                                    e->getAllocator());
-                        name.SetString(val.first.c_str(),
-                                       val.first.size(),
-                                       e->getAllocator());
-                        obj.AddMember(name, v, e->getAllocator());
+                        auto name =
+                            json::Document::preparePath(val.first.c_str());
+                        e->set(name, {val.second.c_str(), e->getAllocator()});
                     }
 
                     return e;
@@ -108,10 +107,10 @@ types::Lifter stageBuilderParse(const types::DocumentValue &def)
     try
     {
         auto check = std::get<types::CombinatorBuilder>(
-            Registry::getBuilder("combinator.chain"))(parsers);
+            Registry::getBuilder("combinator.broadcast"))(parsers);
         return check;
     }
-    catch(std::exception &e)
+    catch (std::exception &e)
     {
         const char *msg = "Stage [parse] builder encountered exception "
                           "chaining all mappings.";
