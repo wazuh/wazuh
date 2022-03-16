@@ -12,6 +12,4 @@ bool CreateColumnFamily(std::string const column_family_name);
 
 bool DeleteColumnFamily(std::string const column_family_name);
 
-void kvdb_simple_example();
-
 #endif // _KVDB_H

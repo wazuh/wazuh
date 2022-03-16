@@ -2,11 +2,6 @@
 #include <kvdb/kvdb.hpp>
 
 
-TEST(kvdbTests, execute_simple_example)
-{
-    kvdb_simple_example();
-}
-
 TEST(kvdbTests, column_family_creation_deletion)
 {
     bool ret = CreateKVDB();

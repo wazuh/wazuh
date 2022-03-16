@@ -17,19 +17,24 @@ using ROCKSDB_NAMESPACE::DestroyDB;
 using ROCKSDB_NAMESPACE::Options;
 using ROCKSDB_NAMESPACE::PinnableSlice;
 using ROCKSDB_NAMESPACE::ReadOptions;
-using ROCKSDB_NAMESPACE::Slice; /////
+using ROCKSDB_NAMESPACE::Slice;
 using ROCKSDB_NAMESPACE::Status;
 using ROCKSDB_NAMESPACE::WriteBatch;
 using ROCKSDB_NAMESPACE::WriteOptions;
 
-std::string kDBExamplePath = "/tmp/rocksdb_simple_example";
 std::string kDBPath = "/tmp/kvDB_wazuh_engine";
 
 static std::vector<ColumnFamilyDescriptor> column_families = {
-    // have to open default column family - FIXME: ROCKSDB_NAMESPACE::kDefaultColumnFamilyName doesn't work
+    //TODO: ROCKSDB_NAMESPACE::kDefaultColumnFamilyName produces an error
     ColumnFamilyDescriptor( "default", ColumnFamilyOptions()),
     };
 
+/**
+ * @brief creation of DB on kDBPath = "/tmp/kvDB_wazuh_engine"
+ *
+ * @return true could create DB
+ * @return false couldn't create DB
+ */
 bool CreateKVDB() {
     DB* db;
     Options options;
@@ -38,7 +43,7 @@ bool CreateKVDB() {
 
     options.IncreaseParallelism();
     options.OptimizeLevelStyleCompaction();
-    options.create_if_missing = true; // TODO: this should be the only method with this flag true
+    options.create_if_missing = true;
     options.error_if_exists = true;
 
     s = DB::Open(options, kDBPath, &db);
@@ -57,6 +62,12 @@ bool CreateKVDB() {
     return result;
 }
 
+/**
+ * @brief DB full delete including all member files
+ *
+ * @return true successfull delete of all DB files
+ * @return false unsuccessfull delete of all DB files
+ */
 bool DestroyKVDB() {
     DB* db;
     Options options;
@@ -69,7 +80,7 @@ bool DestroyKVDB() {
 
     s = DB::Open(DBOptions(), kDBPath, column_families, &handles, &db);
     if(s.ok()) {
-        // I need to be sure that the DB is closed before Destroying it
+        // DB must be closed before destroying it
         s = db->Close();
         if(!s.ok()) {
             result = false;
@@ -88,6 +99,14 @@ bool DestroyKVDB() {
     return result;
 }
 
+/**
+ * @brief Create a Column Family object
+ *
+ * @param column_family_name std::string if it's no part of column_families_available
+ * it will be added to it.
+ * @return true successfull creation of FC in DB
+ * @return false unsuccessfull creation of FC in DB
+ */
 bool CreateColumnFamily(std::string const column_family_name) {
     DB *db;
     Status s;
@@ -101,17 +120,8 @@ bool CreateColumnFamily(std::string const column_family_name) {
         return false;
     }
 
-    // TODO: delete later
-    DB::ListColumnFamilies(DBOptions(), kDBPath, &column_families_available);
-    if(column_families_available.size() > 0) {
-        for(auto familia : column_families_available)
-        {
-            LOG(INFO) << "[" << __func__ << "]" << " familias disponibles " << familia << std::endl;
-        }
-    }
-
     dbOptions.IncreaseParallelism();
-    dbOptions.create_if_missing = true; // TODO: this should be the only method with this flag true
+    dbOptions.create_if_missing = true;
     dbOptions.error_if_exists = false;
     dbOptions.create_missing_column_families = true;
 
@@ -123,7 +133,7 @@ bool CreateColumnFamily(std::string const column_family_name) {
         }
     }
 
-    //TODO: this should remained fixed in a file or some other persistent storage
+    //TODO: this should remained fixed in some kind of persistent storage
     LOG(INFO) << "[" << __func__ << "]" << " Adding " << column_family_name << " as a new family column to DB " << std::endl;
     column_families.push_back(ColumnFamilyDescriptor(column_family_name, ColumnFamilyOptions()));
 
@@ -151,6 +161,14 @@ bool CreateColumnFamily(std::string const column_family_name) {
     return result;
 }
 
+/**
+ * @brief Delete a Column Family object
+ *
+ * @param column_family_name std::string if it's part of column_families_available
+ * it will be deleted from it.
+ * @return true successfull deletion of FC in DB
+ * @return false unsuccessfull deletion of FC in DB
+ */
 bool DeleteColumnFamily(std::string const column_family_name) {
     DB *db;
     Status s;
@@ -162,7 +180,6 @@ bool DeleteColumnFamily(std::string const column_family_name) {
         return false;
     }
 
-    // Only available CF can be erased
     for (int i = 0; i < column_families.size() ; i++ ) {
         if(!column_family_name.compare(column_families.at(i).name)) {
             found = true;
@@ -187,7 +204,7 @@ bool DeleteColumnFamily(std::string const column_family_name) {
                         LOG(WARNING) << "[" << __func__ << "]" << " couldn't delete column family handler, error: " << s.ToString() << std::endl;
                     }
                 }
-                // Should hanlde this error
+                // TODO: Should handle this error
                 // LOG(ERROR) << "[" << __func__ << "]" << " couldn't find CF handle, error: " << s.ToString() << std::endl;
                 // result = false;
             }
@@ -210,73 +227,4 @@ bool DeleteColumnFamily(std::string const column_family_name) {
     }
 
     return result;
-}
-
-//TODO: delete this function and the test that use it after implementing first
-//      db functions + test
-void kvdb_simple_example(){
-    DB* db;
-    Options options;
-    // Optimize RocksDB. This is the easiest way to get RocksDB to perform well
-    options.IncreaseParallelism();
-    options.OptimizeLevelStyleCompaction();
-    // create the DB if it's not already present
-    options.create_if_missing = true;
-
-    // open DB
-    Status s = DB::Open(options, kDBExamplePath, &db);
-    assert(s.ok());
-
-    // Put key-value
-    s = db->Put(WriteOptions(), "key1", "value");
-    assert(s.ok());
-    std::string value;
-    // get value
-    s = db->Get(ReadOptions(), "key1", &value);
-    assert(s.ok());
-    assert(value == "value");
-
-    // atomically apply a set of updates
-    {
-        WriteBatch batch;
-        batch.Delete("key1");
-        batch.Put("key2", value);
-        s = db->Write(WriteOptions(), &batch);
-    }
-
-    s = db->Get(ReadOptions(), "key1", &value);
-    assert(s.IsNotFound());
-
-    db->Get(ReadOptions(), "key2", &value);
-    assert(value == "value");
-
-    {
-        PinnableSlice pinnable_val;
-        db->Get(ReadOptions(), db->DefaultColumnFamily(), "key2", &pinnable_val);
-        assert(pinnable_val == "value");
-    }
-
-    {
-        std::string string_val;
-        // If it cannot pin the value, it copies the value to its internal buffer.
-        // The intenral buffer could be set during construction.
-        PinnableSlice pinnable_val(&string_val);
-        db->Get(ReadOptions(), db->DefaultColumnFamily(), "key2", &pinnable_val);
-        assert(pinnable_val == "value");
-        // If the value is not pinned, the internal buffer must have the value.
-        assert(pinnable_val.IsPinned() || string_val == "value");
-    }
-
-    PinnableSlice pinnable_val;
-    s = db->Get(ReadOptions(), db->DefaultColumnFamily(), "key1", &pinnable_val);
-    assert(s.IsNotFound());
-    // Reset PinnableSlice after each use and before each reuse
-    pinnable_val.Reset();
-    db->Get(ReadOptions(), db->DefaultColumnFamily(), "key2", &pinnable_val);
-    assert(pinnable_val == "value");
-    pinnable_val.Reset();
-    // The Slice pointed by pinnable_val is not valid after this point
-
-    delete db;
-
 }
