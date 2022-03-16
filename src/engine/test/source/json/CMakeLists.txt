@@ -1,5 +1,5 @@
 add_executable(json_test
-    json_test.cpp
+    jsonTest.cpp
 )
 
 target_include_directories(json_test
