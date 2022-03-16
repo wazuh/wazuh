@@ -246,8 +246,6 @@ int UninstallService()
 /* "Signal" handler */
 VOID WINAPI OssecServiceCtrlHandler(DWORD dwOpcode)
 {
-    extern bool is_fim_shutdown;
-
     if (ossecServiceStatusHandle) {
         switch (dwOpcode) {
             case SERVICE_CONTROL_STOP:
@@ -257,6 +255,8 @@ VOID WINAPI OssecServiceCtrlHandler(DWORD dwOpcode)
 
                 minfo("Received exit signal. Starting exit process.");
 #ifdef OSSECHIDS
+                extern bool is_fim_shutdown;
+
                 ossecServiceStatus.dwCurrentState           = SERVICE_STOP_PENDING;
                 SetServiceStatus (ossecServiceStatusHandle, &ossecServiceStatus);
                 minfo("Set pending exit signal.");
