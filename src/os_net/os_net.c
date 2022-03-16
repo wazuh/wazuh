@@ -156,13 +156,13 @@ int OS_BindUnixDomainWithPerms(const char *path, int type, int max_msg_size, uid
     }
 
     /* Change permissions */
-    if (fchmod(ossock, mode) < 0) {
+    if (chmod(path, mode) < 0) {
         OS_CloseSocket(ossock);
         return (OS_SOCKTERR);
     }
 
     /* Change owner */
-    if (fchown(ossock, uid, gid) < 0) {
+    if (chown(path, uid, gid) < 0) {
         OS_CloseSocket(ossock);
         return (OS_SOCKTERR);
     }
