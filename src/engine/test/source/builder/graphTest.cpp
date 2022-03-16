@@ -5,8 +5,8 @@
 #include <string>
 #include <thread>
 
-#include "graph/graph.hpp"
-#include "graph_test.hpp"
+#include "graph.hpp"
+#include "graphTest.hpp"
 #include "rxcpp/rx-test.hpp"
 #include "rxcpp/rx.hpp"
 #include "gtest/gtest.h"
