@@ -12,12 +12,16 @@
 using std::endl;
 using std::string;
 
+using uvw::ErrorEvent;
+using uvw::Loop;
+using uvw::UDPDataEvent;
+using uvw::UDPHandle;
+
 namespace engineserver::endpoints
 {
 
 UDPEndpoint::UDPEndpoint(const string & config, ServerOutput & eventBuffer)
-    : BaseEndpoint{config, eventBuffer}, m_loop{uvw::Loop::getDefault()}, m_udpHandle{
-                                                                              m_loop->resource<uvw::UDPHandle>()}
+    : BaseEndpoint{config, eventBuffer}, m_loop{Loop::getDefault()}, m_udpHandle{m_loop->resource<UDPHandle>()}
 {
     auto pos = config.find(":");
     m_ip = config.substr(0, pos);
@@ -25,21 +29,21 @@ UDPEndpoint::UDPEndpoint(const string & config, ServerOutput & eventBuffer)
 
     auto protocolHandler = std::make_shared<ProtocolHandler>();
 
-    m_udpHandle->on<uvw::ErrorEvent>(
-        [](const uvw::ErrorEvent & event, uvw::UDPHandle & udpHandle)
+    m_udpHandle->on<ErrorEvent>(
+        [](const ErrorEvent & event, UDPHandle & udpHandle)
         {
             std::cerr << "UDP Server (" << udpHandle.sock().ip.c_str() << ":" << udpHandle.sock().port
                       << ") error: code=" << event.code() << "; name=" << event.name() << "; message=" << event.what()
                       << endl;
         });
 
-    m_udpHandle->on<uvw::UDPDataEvent>(
-        [this, protocolHandler](const uvw::UDPDataEvent & event, uvw::UDPHandle & udpHandle)
+    m_udpHandle->on<UDPDataEvent>(
+        [this, protocolHandler](const UDPDataEvent & event, UDPHandle & udpHandle)
         {
-            auto client = udpHandle.loop().resource<uvw::UDPHandle>();
+            auto client = udpHandle.loop().resource<UDPHandle>();
 
-            client->on<uvw::ErrorEvent>(
-                [](const uvw::ErrorEvent & event, uvw::UDPHandle & client)
+            client->on<ErrorEvent>(
+                [](const ErrorEvent & event, UDPHandle & client)
                 {
                     std::cerr << "UDP Client (" << client.peer().ip.c_str() << ":" << client.peer().port
                               << ") error: code=" << event.code() << "; name=" << event.name()
@@ -73,7 +77,7 @@ void UDPEndpoint::run(void)
 {
     m_udpHandle->bind(m_ip, m_port);
     m_udpHandle->recv();
-    m_loop->run<uvw::Loop::Mode::DEFAULT>();
+    m_loop->run<Loop::Mode::DEFAULT>();
 }
 
 void UDPEndpoint::close(void)
