@@ -105,7 +105,7 @@ public:
     }
 
     /**
-     * @brief
+     * @brief Get value of path, throws if not found, use exists before
      *
      * @param path
      * @return const rapidjson::Value&
@@ -115,7 +115,15 @@ public:
         auto ptr = rapidjson::Pointer(path.c_str());
         if (ptr.IsValid())
         {
-            return *ptr.Get(this->m_doc);
+            auto tmpPtr = ptr.Get(this->m_doc);
+            if (tmpPtr)
+            {
+                return *tmpPtr;
+            }
+            else
+            {
+                throw std::invalid_argument("Error, field not found: " + path);
+            }
         }
         else
         {
@@ -156,11 +164,12 @@ public:
         if (toPtr.IsValid() && fromPtr.IsValid())
         {
             auto fromValue = fromPtr.Get(this->m_doc);
-            if (fromValue){
+            if (fromValue)
+            {
                 // Static cast is used to ensure new allocation is made
                 toPtr.Set(this->m_doc, static_cast<const rapidjson::Value &>(*fromValue));
             }
-            //TODO: Handle failed case;
+            // TODO: Handle failed case;
         }
         else
         {
@@ -196,7 +205,8 @@ public:
         }
         else
         {
-            throw std::invalid_argument("Error, received invalid path in equals function: " + source + " == " + reference);
+            throw std::invalid_argument("Error, received invalid path in equals function: " + source +
+                                        " == " + reference);
         }
     }
 
