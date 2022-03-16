@@ -53,8 +53,6 @@ int receive_msg(void);
 /* Receiver messages for Windows */
 #ifdef WIN32
 DWORD WINAPI receiver_thread(LPVOID none);
-#else
-void *receiver_thread(void *none);
 #endif
 
 /* Initialize agent buffer */

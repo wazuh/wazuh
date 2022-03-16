@@ -343,7 +343,7 @@ DWORD WINAPI receiver_thread(__attribute__((unused)) LPVOID none)
     while (1) {
         /* Run timeout commands */
         if (agt->execdq >= 0) {
-            WinTimeoutRun();
+            ExecdTimeoutRun();
         }
 
         /* sock must be set */
