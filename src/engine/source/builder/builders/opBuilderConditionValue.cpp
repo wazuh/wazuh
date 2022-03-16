@@ -16,15 +16,22 @@ namespace builder::internals::builders
 
 types::Lifter opBuilderConditionValue(const types::DocumentValue & def)
 {
-    // Make deep copy of value
-    // TODO Should separete document to be checked, in order of build the path before check teh value
-    types::Document doc{def};
+    if (!def.MemberBegin()->name.IsString())
+    {
+        throw std::runtime_error("Error building condition value, key of definition must be a string.");
+    }
+
+    std::string field = json::formatJsonPath(def.MemberBegin()->name.GetString());
+    // TODO: build document with value only
+    types::Document value{def};
 
     // Return Lifter
     return [=](types::Observable o)
     {
         // Append rxcpp operation
-        return o.filter([=](types::Event e) { return e->check(doc); });
+        return o.filter([=](types::Event e) {
+            return e->equals(field, value.begin()->value);
+        });
     };
 }
 
