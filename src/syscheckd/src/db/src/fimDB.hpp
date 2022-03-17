@@ -276,7 +276,6 @@ class FIMDB
 
         unsigned int                                                            m_syncInterval;
         bool                                                                    m_stopping;
-        bool                                                                    m_isWindows;
         std::mutex                                                              m_fimSyncMutex;
         std::condition_variable                                                 m_cv;
         std::shared_ptr<DBSync>                                                 m_dbsyncHandler;

@@ -479,6 +479,7 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
     w_rwlock_unlock(&syscheck.directories_lock);
 
     pthread_exit(NULL);
+    return NULL;
 }
 #endif
 // LCOV_EXCL_STOP
