@@ -494,14 +494,20 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storag
             }
 
             return;
-        } else if ((keys.keyentries[agentid]->sock >= 0) && (keys.keyentries[agentid]->sock != sock_client)) {
-            key_unlock();
-            mwarn("Agent key already in use: agent ID '%s'", keys.keyentries[agentid]->id);
+        } else {
+            w_mutex_lock(&keys.keyentries[agentid]->mutex);
 
-            if (sock_client >= 0) {
-                _close_sock(&keys, sock_client);
+            if ((keys.keyentries[agentid]->sock >= 0) && (keys.keyentries[agentid]->sock != sock_client)) {
+                w_mutex_unlock(&keys.keyentries[agentid]->mutex);
+                key_unlock();
+                mwarn("Agent key already in use: agent ID '%s'", keys.keyentries[agentid]->id);
+
+                if (sock_client >= 0) {
+                    _close_sock(&keys, sock_client);
+                }
+                return;
             }
-            return;
+            w_mutex_unlock(&keys.keyentries[agentid]->mutex);
         }
     } else if (strncmp(buffer, "#ping", 5) == 0) {
             int retval = 0;
@@ -536,17 +542,24 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storag
             }
 
             return;
-        } else if ((keys.keyentries[agentid]->sock >= 0) && (keys.keyentries[agentid]->sock != sock_client)) {
-            key_unlock();
-            mwarn("Agent key already in use: agent ID '%s'", keys.keyentries[agentid]->id);
+        } else {
+            w_mutex_lock(&keys.keyentries[agentid]->mutex);
 
-            if (sock_client >= 0) {
-                _close_sock(&keys, sock_client);
+            if ((keys.keyentries[agentid]->sock >= 0) && (keys.keyentries[agentid]->sock != sock_client)) {
+                w_mutex_unlock(&keys.keyentries[agentid]->mutex);
+                key_unlock();
+                mwarn("Agent key already in use: agent ID '%s'", keys.keyentries[agentid]->id);
+
+                if (sock_client >= 0) {
+                    _close_sock(&keys, sock_client);
+                }
+
+                return;
+            } else {
+                ip_found = 1;
             }
 
-            return;
-        } else {
-            ip_found = 1;
+            w_mutex_unlock(&keys.keyentries[agentid]->mutex);
         }
 
         tmp_msg = buffer;
