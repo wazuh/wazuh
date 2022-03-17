@@ -319,8 +319,9 @@ ifneq (,$(filter ${DEBUG},YES yes y Y 1))
 endif
 endif
 
-# Optimization
+# Optimization and assert() handling
 ifneq (,$(filter ${DEBUG},YES yes y Y 1))
+	OSSEC_CFLAGS+=-DNDEBUG
 	OFLAGS+=-O2
 else
 	OFLAGS+=-O0
