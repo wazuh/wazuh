@@ -310,12 +310,16 @@ ifneq (,$(filter ${DEBUGAD},YES yes y Y 1))
 	DEFINES+=-DDEBUGAD
 endif
 
+
 # Debug symbols
+DBG_ENABLED?=no
 ifeq (${DBG_SYM_SUPPORT}, yes)
 	OSSEC_CFLAGS+=-g
+	DBG_ENABLED=yes
 else
 ifneq (,$(filter ${DEBUG},YES yes y Y 1))
 	OSSEC_CFLAGS+=-g
+	DBG_ENABLED=yes
 endif
 endif
 
@@ -851,6 +855,7 @@ JEMALLOC_LIB = $(EXTERNAL_JEMALLOC)lib/libjemalloc.so.2
 
 EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBPCRE2_LIB)
 
+
 # Adding libcurl only on Windows, Linux and MacOS
 ifeq (${TARGET},winagent)
 	EXTERNAL_LIBS += $(LIBCURL_LIB)
@@ -905,9 +910,19 @@ ifeq ($(wildcard external/*/*),)
 	$(error No external directory found. Run "${MAKE} deps" before compiling external libraries)
 endif
 
+### Common externals configurations
+
+EXTERNALS_COMMON_CFLAGS=-w
+EXTERNALS_COMMON_CPPFLAGS=-w
+ifeq (${DBG_ENABLED},yes)
+	EXTERNALS_COMMON_CFLAGS+=-g
+	EXTERNALS_COMMON_CPPFLAGS+=-g
+endif
+
 #### OpenSSL ##########
 
 OPENSSL_FLAGS = enable-weak-ssl-ciphers no-shared
+OPENSSL_CFLAGS = CFLAGS="${EXTERNALS_COMMON_CFLAGS}"
 
 ifeq (${uname_M}, i386)
 ifeq ($(findstring BSD,${uname_S}), BSD)
@@ -923,19 +938,19 @@ ifeq (${TARGET},winagent)
 	cd ${EXTERNAL_OPENSSL} && CC=${MING_BASE}${CC} RC=${MING_BASE}windres ./Configure $(OPENSSL_FLAGS) mingw && ${MAKE} build_libs
 else
 ifeq (${uname_S},Darwin)
-	cd ${EXTERNAL_OPENSSL} && ./Configure $(OPENSSL_FLAGS) darwin64-x86_64-cc && ${MAKE} build_libs
+	cd ${EXTERNAL_OPENSSL} && ${OPENSSL_CFLAGS} ./Configure $(OPENSSL_FLAGS) darwin64-x86_64-cc && ${MAKE} build_libs
 else
 ifeq (${uname_S},HP-UX)
-	cd ${EXTERNAL_OPENSSL} && MAKE=gmake ./Configure $(OPENSSL_FLAGS) hpux-ia64-gcc && ${MAKE} build_libs
+	cd ${EXTERNAL_OPENSSL} && ${OPENSSL_CFLAGS} MAKE=gmake ./Configure $(OPENSSL_FLAGS) hpux-ia64-gcc && ${MAKE} build_libs
 else
 ifeq (${uname_S},SunOS)
 ifeq ($(uname_M),i86pc)
-	cd ${EXTERNAL_OPENSSL} && ./Configure $(OPENSSL_FLAGS) solaris-x86-gcc && ${MAKE} build_libs
+	cd ${EXTERNAL_OPENSSL} && ${OPENSSL_CFLAGS} ./Configure $(OPENSSL_FLAGS) solaris-x86-gcc && ${MAKE} build_libs
 else
-	cd ${EXTERNAL_OPENSSL} && ./Configure $(OPENSSL_FLAGS) solaris-sparcv9-gcc && ${MAKE} build_libs
+	cd ${EXTERNAL_OPENSSL} && ${OPENSSL_CFLAGS} ./Configure $(OPENSSL_FLAGS) solaris-sparcv9-gcc && ${MAKE} build_libs
 endif
 else
-	cd ${EXTERNAL_OPENSSL} && ./config $(OPENSSL_FLAGS) && ${MAKE} build_libs
+	cd ${EXTERNAL_OPENSSL} && ${OPENSSL_CFLAGS} ./config $(OPENSSL_FLAGS) && ${MAKE} build_libs
 endif
 endif
 endif
@@ -943,26 +958,28 @@ endif
 
 #### libplist ##########
 
+LIBPLIST_CFLAGS = CFLAGS="-fPIC ${EXTERNALS_COMMON_CFLAGS}"
+
 ${LIBPLIST_LIB}:
-	cd ${EXTERNAL_LIBPLIST} && ./autogen.sh --prefix=${ROUTE_PATH}/${EXTERNAL_LIBPLIST}bin && ${MAKE} && ${MAKE} install
+	cd ${EXTERNAL_LIBPLIST} && ${LIBPLIST_CFLAGS} ./autogen.sh --prefix=${ROUTE_PATH}/${EXTERNAL_LIBPLIST}bin && ${MAKE} && ${MAKE} install
 
 #### libffi ##########
 
-LIBFFI_FLAGS = "CFLAGS=-fPIC"
+LIBFFI_CFLAGS = CFLAGS="-fPIC ${EXTERNALS_COMMON_CFLAGS}"
 
 ${LIBFFI_LIB}:
-	cd ${EXTERNAL_LIBFFI} && ./configure $(LIBFFI_FLAGS) && ${MAKE}
+	cd ${EXTERNAL_LIBFFI} && $(LIBFFI_CFLAGS) ./configure && ${MAKE}
 
 #### zlib ##########
 
+ZLIB_CFLAGS = CFLAGS="-fPIC ${EXTERNALS_COMMON_CFLAGS}"
+
 $(ZLIB_LIB):
 ifeq (${TARGET},winagent)
-	cd ${EXTERNAL_ZLIB} && cp zconf.h.in zconf.h && ${MAKE} -f win32/Makefile.gcc PREFIX=${MING_BASE} libz.a
+	cd ${EXTERNAL_ZLIB} && cp zconf.h.in zconf.h && ${ZLIB_CFLAGS} ${MAKE} -f win32/Makefile.gcc PREFIX=${MING_BASE} libz.a
 else
-	cd ${EXTERNAL_ZLIB} && CFLAGS=-fPIC ./configure && ${MAKE} libz.a
+	cd ${EXTERNAL_ZLIB} && ${ZLIB_CFLAGS} ./configure && ${MAKE} libz.a
 endif
-
-ZLIB_INCLUDE=-I./${EXTERNAL_ZLIB}
 
 os_zlib_c := os_zlib/os_zlib.c
 os_zlib_o := $(os_zlib_c:.c=.o)
@@ -972,10 +989,14 @@ os_zlib/%.o: os_zlib/%.c
 
 #### bzip2 ##########
 
+BZIP2_CFLAGS = CFLAGS="${EXTERNALS_COMMON_CFLAGS} -fpic -Wall -O2 -D_FILE_OFFSET_BITS=64"
+
 $(BZIP2_LIB):
-	cd ${EXTERNAL_BZIP2} && ${MAKE} CFLAGS="-fpic -Wall -O2 -D_FILE_OFFSET_BITS=64" libbz2.a
+	cd ${EXTERNAL_BZIP2} && ${MAKE} ${BZIP2_CFLAGS} libbz2.a
 
 #### SQLite #########
+
+SQLITE_CFLAGS = -fPIC ${EXTERNALS_COMMON_CFLAGS}
 
 sqlite_c = ${EXTERNAL_SQLITE}sqlite3.c
 sqlite_o = ${EXTERNAL_SQLITE}sqlite3.o
@@ -985,9 +1006,11 @@ $(SQLITE_LIB): $(sqlite_o)
 	${OSSEC_RANLIB} $@
 
 $(sqlite_o): $(sqlite_c)
-	${OSSEC_CC} ${OSSEC_CFLAGS} -w -fPIC -c $^ -o $@ -fPIC
+	${OSSEC_CC} ${SQLITE_CFLAGS} -c $^ -o $@
 
 #### cJSON #########
+
+CJSON_CFLAGS = -fPIC ${EXTERNALS_COMMON_CFLAGS}
 
 ifeq (${uname_S},Darwin)
 JSON_SHFLAGS=-install_name @rpath/libcjson.$(SHARED)
@@ -1001,38 +1024,43 @@ $(JSON_LIB): ${cjson_o}
 	${OSSEC_RANLIB} $@
 
 ${EXTERNAL_JSON}%.o: ${EXTERNAL_JSON}%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -c $^ -o $@
+	${OSSEC_CC} ${CJSON_CFLAGS} -c $^ -o $@
 
 #### libyaml ##########
+
+LIBYAML_CFLAGS = CFLAGS="-fPIC ${EXTERNALS_COMMON_CFLAGS}"
 
 ${LIBYAML_LIB}: $(EXTERNAL_LIBYAML)Makefile
 	$(MAKE) -C $(EXTERNAL_LIBYAML)
 
 $(EXTERNAL_LIBYAML)Makefile:
 ifeq (${TARGET},winagent)
-	cd $(EXTERNAL_LIBYAML) && CC=${MING_BASE}${CC} && CFLAGS=-fPIC ./configure --host=${MINGW_HOST} --enable-static=yes
+	cd $(EXTERNAL_LIBYAML) && CC=${MING_BASE}${CC} && ${LIBYAML_CFLAGS} ./configure --host=${MINGW_HOST} --enable-static=yes
 else
-	cd $(EXTERNAL_LIBYAML) && CFLAGS=-fPIC ./configure --enable-static=yes --enable-shared=no
+	cd $(EXTERNAL_LIBYAML) && ${LIBYAML_CFLAGS} ./configure --enable-static=yes --enable-shared=no
 endif
 
 #### curl ##########
 
+LIBCURL_CFLAGS = CFLAGS="-fPIC ${EXTERNALS_COMMON_CFLAGS}"
+LIBCURL_CPPFLAGS = CPPFLAGS="-fPIC ${EXTERNALS_COMMON_CPPFLAGS} -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include"
+LIBCURL_CONFIGURE_FLAGS=--enable-debug
 ${LIBCURL_LIB}: $(EXTERNAL_CURL)Makefile
 	${MAKE} -C $(EXTERNAL_CURL)lib
 
 ifeq (${TARGET},winagent)
 $(EXTERNAL_CURL)Makefile:
-	cd $(EXTERNAL_CURL) && CFLAGS=-fPIC CC=${MING_BASE}${CC} ./configure --host=${MINGW_HOST} PREFIX=${MING_BASE} --enable-static=yes --disable-shared --with-winssl --disable-ldap --without-libidn2 && ${MAKE}
+	cd $(EXTERNAL_CURL) && ${LIBCURL_CFLAGS} CC=${MING_BASE}${CC} ./configure --host=${MINGW_HOST} PREFIX=${MING_BASE} ${LIBCURL_CONFIGURE_FLAGS} --enable-static=yes --disable-shared --with-winssl --disable-ldap --without-libidn2 && ${MAKE}
 else
 ifeq (${uname_S},Darwin)
 $(EXTERNAL_CURL)Makefile:
-	cd $(EXTERNAL_CURL) && ./configure --with-darwinssl --disable-ldap --without-libidn2
+	cd $(EXTERNAL_CURL) && ${LIBCURL_CFLAGS} ./configure ${LIBCURL_CONFIGURE_FLAGS} --with-darwinssl --disable-ldap --without-libidn2
 else
 $(EXTERNAL_CURL)Makefile: $(OPENSSL_LIB)
 ifeq (${uname_S},Linux)
-	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-ldl -lpthread" ./configure --disable-ldap --without-libidn2 --without-libpsl --without-brotli
+	cd $(EXTERNAL_CURL) && ${LIBCURL_CPPFLAGS} LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-ldl -lpthread" ./configure ${LIBCURL_CONFIGURE_FLAGS} --disable-ldap --without-libidn2 --without-libpsl --without-brotli
 else
-	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-lpthread" ./configure --disable-ldap --without-libidn2
+	cd $(EXTERNAL_CURL) && ${LIBCURL_CPPFLAGS} LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-lpthread" ./configure ${LIBCURL_CONFIGURE_FLAGS} --disable-ldap --without-libidn2
 endif
 endif
 endif
@@ -1040,13 +1068,13 @@ endif
 
 #### procps #########
 
-PROCPS_INCLUDE=-I./${EXTERNAL_PROCPS}
+PROCPS_CFLAGS = -fPIC ${EXTERNALS_COMMON_CFLAGS}
 
 procps_c := $(wildcard ${EXTERNAL_PROCPS}*.c)
 procps_o := $(procps_c:.c=.o)
 
 ${EXTERNAL_PROCPS}%.o: ${EXTERNAL_PROCPS}%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -c $^ -o $@
+	${OSSEC_CC} ${PROCPS_CFLAGS} -c $^ -o $@
 
 $(PROCPS_LIB): ${procps_o}
 	${OSSEC_LINK} $@ $^
@@ -1054,15 +1082,19 @@ $(PROCPS_LIB): ${procps_o}
 
 #### Berkeley DB ######
 
+LIBDB_CFLAGS = CFLAGS="-fPIC ${EXTERNALS_COMMON_CFLAGS}"
+
 ifeq (${uname_S},Linux)
 ${DB_LIB}: $(EXTERNAL_LIBDB)Makefile
 	 ${MAKE} -C $(EXTERNAL_LIBDB) libdb.a
 
 $(EXTERNAL_LIBDB)Makefile:
-	cd ${EXTERNAL_LIBDB} && CPPFLAGS=-fPIC ../dist/configure --with-cryptography=no --disable-queue --disable-heap --disable-partition --disable-mutexsupport --disable-replication --disable-verify --disable-statistics ac_cv_func_pthread_yield=no
+	cd ${EXTERNAL_LIBDB} && ${LIBDB_CFLAGS} ../dist/configure --with-cryptography=no --disable-queue --disable-heap --disable-partition --disable-mutexsupport --disable-replication --disable-verify --disable-statistics ac_cv_func_pthread_yield=no
 endif
 
 #### libarchive ######
+
+LIBARCHIVE_CPPFLAGS = CPPFLAGS="-fPIC ${EXTERNALS_COMMON_CPPFLAGS}"
 
 ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
@@ -1070,7 +1102,7 @@ ${LIBARCHIVE_LIB}: $(EXTERNAL_LIBARCHIVE)Makefile
 	 ${MAKE} -C $(EXTERNAL_LIBARCHIVE)
 
 $(EXTERNAL_LIBARCHIVE)Makefile:
-	cd ${EXTERNAL_LIBARCHIVE} && CPPFLAGS=-fPIC ./configure --disable-acl --without-expat --without-iconv --without-xml2 --without-lz4 --without-lzma --without-zstd --without-bz2lib --without-openssl
+	cd ${EXTERNAL_LIBARCHIVE} && ${LIBARCHIVE_CPPFLAGS} ./configure --disable-acl --without-expat --without-iconv --without-xml2 --without-lz4 --without-lzma --without-zstd --without-bz2lib --without-openssl
 endif
 endif
 
@@ -1092,7 +1124,9 @@ LIBALPM_CFLAGS=-DSYSHOOKDIR=\"/usr/share/libalpm/hooks\" \
 			    -I${ROUTE_PATH}/${EXTERNAL_LIBARCHIVE}libarchive \
 				-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include \
 			    -I. \
-			    -fPIC
+			    -fPIC \
+				${EXTERNALS_COMMON_CFLAGS}
+
 ${LIBALPM_LIB}: $(EXTERNAL_PACMAN)configure
 	cd ${EXTERNAL_PACMAN}lib/libalpm && \
 	$(CC) -c *.c ${LIBALPM_CFLAGS} && \
@@ -1101,13 +1135,17 @@ endif
 
 #### Audit lib ####
 
+AUDIT_CFLAGS = CFLAGS="-fPIC ${EXTERNALS_COMMON_CFLAGS}"
+
 ${AUDIT_LIB}: $(EXTERNAL_AUDIT)Makefile
 	${MAKE} -C $(EXTERNAL_AUDIT)lib CC=$(CC)
 
 $(EXTERNAL_AUDIT)Makefile:
-	cd $(EXTERNAL_AUDIT) && ./autogen.sh && ./configure CFLAGS=-fPIC --with-libcap-ng=no
+	cd $(EXTERNAL_AUDIT) && ./autogen.sh && ./configure ${AUDIT_CFLAGS} --with-libcap-ng=no
 
 #### msgpack #########
+
+MSGPACK_CFLAGS = -fPIC ${EXTERNALS_COMMON_CFLAGS} -I${EXTERNAL_MSGPACK}include
 
 ifeq (,$(filter ${USE_MSGPACK_OPT},YES yes y Y 1))
         MSGPACK_ARCH=-march=i486
@@ -1118,7 +1156,7 @@ msgpack_c := $(wildcard ${EXTERNAL_MSGPACK}src/*.c)
 msgpack_o := $(msgpack_c:.c=.o)
 
 ${EXTERNAL_MSGPACK}src/%.o: ${EXTERNAL_MSGPACK}src/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${MSGPACK_ARCH} -fPIC -c $^ -o $@
+	${OSSEC_CC} ${MSGPACK_CFLAGS} ${MSGPACK_ARCH} -c $^ -o $@
 
 $(MSGPACK_LIB): ${msgpack_o}
 	${OSSEC_LINK} $@ $^
@@ -1127,23 +1165,24 @@ endif
 
 #### PCRE2 lib #########
 
-
+LIBPCRE2_CFLAGS = CFLAGS="-fPIC ${EXTERNALS_COMMON_CFLAGS}"
 
 $(LIBPCRE2_LIB):
 ifeq (${TARGET},winagent)
-	cd $(EXTERNAL_LIBPCRE2) && CFLAGS=-fPIC CC=${MING_BASE}${CC} ./configure --enable-jit=auto --host=${MINGW_HOST} --disable-shared && cp src/pcre2.h include/pcre2.h && ${MAKE}
+	cd $(EXTERNAL_LIBPCRE2) && ${LIBPCRE2_CFLAGS} CC=${MING_BASE}${CC} ./configure --enable-jit=auto --host=${MINGW_HOST} --disable-shared && cp src/pcre2.h include/pcre2.h && ${MAKE}
 else
-	cd $(EXTERNAL_LIBPCRE2) && CFLAGS=-fPIC ./configure --enable-jit=auto --disable-shared && cp src/pcre2.h include/pcre2.h && ${MAKE}
+	cd $(EXTERNAL_LIBPCRE2) && ${LIBPCRE2_CFLAGS} ./configure --enable-jit=auto --disable-shared && cp src/pcre2.h include/pcre2.h && ${MAKE}
 endif
 
 ### popt lib ###
 
+POPT_CFLAGS = CFLAGS="-fPIC ${EXTERNALS_COMMON_CFLAGS}"
 POPT_BUILD_DIR = $(EXTERNAL_POPT)build/
 
 $(POPT_LIB): $(POPT_BUILD_DIR)Makefile
 	 $(MAKE) -C $(POPT_BUILD_DIR)
 $(POPT_BUILD_DIR)Makefile:
-	mkdir -p $(POPT_BUILD_DIR) && cd $(POPT_BUILD_DIR) && cmake ..
+	mkdir -p $(POPT_BUILD_DIR) && cd $(POPT_BUILD_DIR) && cmake -E env ${POPT_CFLAGS} cmake ..
 
 ### rpm lib ###
 
@@ -1159,7 +1198,7 @@ RPM_LIB_PATHS = -L${ROUTE_PATH}/${EXTERNAL_OPENSSL} \
 				-L${ROUTE_PATH}/${EXTERNAL_POPT}/build/output/src/.libs/ \
 				-L${ROUTE_PATH}/${EXTERNAL_SQLITE}
 
-RPM_CFLAGS = -fPIC ${RPM_INC_PATHS} ${RPM_LIB_PATHS}
+RPM_CFLAGS = -fPIC ${RPM_INC_PATHS} ${RPM_LIB_PATHS} ${EXTERNALS_COMMON_CFLAGS}
 RPM_CC = gcc
 
 ${RPM_LIB}: ${RPM_BUILD_DIR}/Makefile
@@ -1170,12 +1209,14 @@ ${RPM_BUILD_DIR}/Makefile: ${OPENSSL_LIB} ${ZLIB_LIB} ${POPT_LIB} ${SQLITE_LIB}
 
 #### jemalloc ##########
 
+JEMALLOC_CFLAGS = CFLAGS="${EXTERNALS_COMMON_CFLAGS}"
+
 $(JEMALLOC_LIB):
 ifeq (${TARGET},server)
 ifneq ($(wildcard external/jemalloc/configure),)
-	cd ${EXTERNAL_JEMALLOC} && LDFLAGS=-s ./configure --disable-static --disable-cxx && ${MAKE}
+	cd ${EXTERNAL_JEMALLOC} && ${JEMALLOC_CFLAGS} LDFLAGS=-s ./configure --disable-static --disable-cxx && ${MAKE}
 else
-	cd ${EXTERNAL_JEMALLOC} && LDFLAGS=-s ./autogen.sh --disable-static --disable-cxx && ${MAKE}
+	cd ${EXTERNAL_JEMALLOC} && ${JEMALLOC_CFLAGS} LDFLAGS=-s ./autogen.sh --disable-static --disable-cxx && ${MAKE}
 endif
 endif
 
