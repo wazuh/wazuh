@@ -141,6 +141,7 @@ endif
 		AR_LDFLAGS+=-pthread -lrt -ldl
 		OSSEC_CFLAGS+=-Wl,--start-group
 		USE_AUDIT=yes
+		CC=gcc
 ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
 		OSSEC_CFLAGS+=-I$(EXTERNAL_AUDIT)lib
 endif
@@ -1187,7 +1188,7 @@ endif
 else
 ifneq (,$(filter ${uname_S},SunOS AIX))
 	cpu_arch := ${uname_P}
-ifeq (${cpu_arch},powerpc)  
+ifeq (${cpu_arch},powerpc)
 	PRECOMPILED_ARCH := /powerpc
 else
 ifneq (,$(filter ${cpu_arch},sparc sun4u))

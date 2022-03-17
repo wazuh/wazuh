@@ -32,7 +32,7 @@ static unsigned int local_count  = 0;
 
 /* Average compression rates */
 static unsigned int evt_count = 0;
-static unsigned int rcv_count = 0;
+static _Atomic unsigned int rcv_count = 0;
 static size_t c_orig_size = 0;
 static size_t c_comp_size = 0;
 
