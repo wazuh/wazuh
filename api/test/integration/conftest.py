@@ -345,7 +345,7 @@ def api_test(request: _pytest.fixtures.SubRequest):
         # Get the environment current status
         global environment_status
         environment_status = get_health()
-        down_env()
+        # down_env()
 
     # Get the value of the mark indicating the test mode. This value will vary between 'cluster' or 'standalone'
     mode = request.node.config.getoption("-m")
