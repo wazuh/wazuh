@@ -3484,7 +3484,7 @@ void test_save_controlmsg_update_msg_error_parsing(void **state)
 
     expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' group is 'test_group'");
 
-    expect_string(__wrap__merror, formatted_msg, "No such group 'test_group' for agent '001'");
+    expect_string(__wrap__mdebug1, formatted_msg, "No such group 'test_group' for agent '001'");
 
     agent_info_data *agent_data;
     os_calloc(1, sizeof(agent_info_data), agent_data);

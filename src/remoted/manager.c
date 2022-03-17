@@ -387,7 +387,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 
                 if (aux = find_group(data->group), !aux || !aux->f_sum) {
                     if (aux = find_multi_group(data->group), !aux || !aux->f_sum) {
-                        merror("No such group '%s' for agent '%s'", data->group, key->id);
+                        mdebug1("No such group '%s' for agent '%s'", data->group, key->id);
                     }
                 }
 
