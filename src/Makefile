@@ -21,6 +21,15 @@ CHECK_CENTOS5 := $(shell sh -c 'grep "CentOS release 5." /etc/redhat-release 2>&
 
 ARCH_FLAGS =
 
+DBG_SYM_SUPPORT?=yes
+ifneq (${uname_S},Linux)
+ifneq (${uname_S},Darwin)
+ifneq (${TARGET},winagent)
+DBG_SYM_SUPPORT=no
+endif
+endif
+endif
+
 ROUTE_PATH := $(shell pwd)
 EXTERNAL_JSON=external/cJSON/
 EXTERNAL_ZLIB=external/zlib/
@@ -77,6 +86,12 @@ DISABLE_SYSC?=no
 DISABLE_CISCAT?=no
 DISABLE_STRIP_SYMBOLS?=no
 
+ifneq (,$(filter ${DISABLE_STRIP_SYMBOLS},YES yes y Y 1))
+ifeq (${DBG_SYM_SUPPORT},no)
+$(error Option not available for current OS)
+endif
+endif
+
 ifeq (${TARGET},winagent)
 CMAKE_OPTS=-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=${MING_BASE}${CC} -DCMAKE_CXX_COMPILER=${MING_BASE}${CXX}
 WIN_CMAKE_RULES+=win32/sysinfo
@@ -96,12 +111,20 @@ RSYNC_TEST=-DUNIT_TEST=ON #--coverage
 SYSCOLLECTOR_TEST=-DUNIT_TEST=ON #--coverage
 SYSINFO_TEST=-DUNIT_TEST=ON #--coverage
 endif
-ifneq (,$(filter ${DEBUG},YES yes y Y 1))
-SHARED_MODULES_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
-GTEST_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
-SYSCOLLECTOR_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
-SYSINFO_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
+
+# Debug symbols and optimization of CMake subprojects
+CMAKE_BUILD_TYPE?=Release
+ifeq (${DBG_SYM_SUPPORT},yes)
+CMAKE_BUILD_TYPE=RelWithDbgInfo
 endif
+ifneq (,$(filter ${DEBUG},YES yes y Y 1))
+CMAKE_BUILD_TYPE=Debug
+endif
+SHARED_MODULES_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+GTEST_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+SYSCOLLECTOR_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+SYSINFO_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+
 
 ifeq (${COVERITY}, YES)
 	SHARED_MODULES_RELEASE_TYPE+=-DCOVERITY=1
@@ -287,12 +310,22 @@ ifneq (,$(filter ${DEBUGAD},YES yes y Y 1))
 	DEFINES+=-DDEBUGAD
 endif
 
-ifneq (,$(filter ${DEBUG},YES yes y Y 1))
+# Debug symbols
+ifeq (${DBG_SYM_SUPPORT}, yes)
 	OSSEC_CFLAGS+=-g
 else
+ifneq (,$(filter ${DEBUG},YES yes y Y 1))
+	OSSEC_CFLAGS+=-g
+endif
+endif
+
+# Optimization and assert() handling
+ifneq (,$(filter ${DEBUG},YES yes y Y 1))
 	OSSEC_CFLAGS+=-DNDEBUG
 	OFLAGS+=-O2
-endif #DEBUG
+else
+	OFLAGS+=-O0
+endif
 
 OSSEC_CFLAGS+=${OFLAGS}
 OSSEC_LDFLAGS+=${OFLAGS}
@@ -573,41 +606,41 @@ failtarget:
 help: failtarget
 	@echo
 	@echo "General options: "
-	@echo "   make V=yes                   		Display full compiler messages. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make DEBUG=yes               		Build with symbols and without optimization. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make DEBUGAD=yes             		Enables extra debugging logging in wazuh-analysisd. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make INSTALLDIR=/path        		Wazuh's installation path. Mandatory when compiling the python interpreter from sources using PYTHON_SOURCE."
-	@echo "   make ONEWAY=yes              		Disables manager's ACK towards agent. It allows connecting agents without backward connection from manager. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make CLEANFULL=yes           		Makes the alert mailing subject clear in the format: '<location> - <level> - <description>'. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make RESOURCES_URL           		Set the Wazuh resources URL"
-	@echo "   make EXTERNAL_SRC_ONLY=yes   		Combined with 'deps', it downloads only the external source code to be compiled as part of Wazuh building."
-	@echo "   make USE_ZEROMQ=yes          		Build with zeromq support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make USE_PRELUDE=yes         		Build with prelude support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make USE_INOTIFY=yes         		Build with inotify support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make USE_BIG_ENDIAN=yes      		Build with big endian support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make USE_SELINUX=yes         		Build with SELinux policies. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make USE_AUDIT=yes           		Build with audit service support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make USE_MSGPACK_OPT=yes     		Use default architecture for building msgpack library. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make DISABLE_JEMALLOC=yes    		Not to build the JEMalloc library. Allowed values are 1, yes, YES, y, and Y, otherwise, the flag is ignored"
-	@echo "   make OFLAGS=-Ox              		Overrides optimization level"
-	@echo "   make DISABLE_SYSC=yes        		Not to build the Syscollector module (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make DISABLE_CISCAT=yes      		Not to build the CIS-CAT module (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make DISABLE_STRIP_SYMBOLS=yes		Disable debug symbols stripping from binaries. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make OPTIMIZE_CPYTHON=yes    		Enable this flag to optimize the python interpreter build, which is performed when used PYTHON_SOURCE. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make PYTHON_SOURCE=yes       		Used along the deps target. Downloads the sources needed to build the python interpreter. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make V=yes                       Display full compiler messages. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make DEBUG=yes                   Build with symbols and without optimization. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make DEBUGAD=yes                 Enables extra debugging logging in wazuh-analysisd. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make INSTALLDIR=/path            Wazuh's installation path. Mandatory when compiling the python interpreter from sources using PYTHON_SOURCE."
+	@echo "   make ONEWAY=yes                  Disables manager's ACK towards agent. It allows connecting agents without backward connection from manager. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make CLEANFULL=yes               Makes the alert mailing subject clear in the format: '<location> - <level> - <description>'. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make RESOURCES_URL               Set the Wazuh resources URL"
+	@echo "   make EXTERNAL_SRC_ONLY=yes       Combined with 'deps', it downloads only the external source code to be compiled as part of Wazuh building."
+	@echo "   make USE_ZEROMQ=yes              Build with zeromq support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make USE_PRELUDE=yes             Build with prelude support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make USE_INOTIFY=yes             Build with inotify support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make USE_BIG_ENDIAN=yes          Build with big endian support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make USE_SELINUX=yes             Build with SELinux policies. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make USE_AUDIT=yes               Build with audit service support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make USE_MSGPACK_OPT=yes         Use default architecture for building msgpack library. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make DISABLE_JEMALLOC=yes        Not to build the JEMalloc library. Allowed values are 1, yes, YES, y, and Y, otherwise, the flag is ignored"
+	@echo "   make OFLAGS=-Ox                  Overrides optimization level"
+	@echo "   make DISABLE_SYSC=yes            Not to build the Syscollector module (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make DISABLE_CISCAT=yes          Not to build the CIS-CAT module (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make DISABLE_STRIP_SYMBOLS=yes   Disable debug symbols stripping from binaries. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make OPTIMIZE_CPYTHON=yes        Enable this flag to optimize the python interpreter build, which is performed when used PYTHON_SOURCE. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make PYTHON_SOURCE=yes           Used along the deps target. Downloads the sources needed to build the python interpreter. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo
 	@echo "Database options: "
-	@echo "   make DATABASE=mysql          		Build with MYSQL Support"
-	@echo "                                		Use MYSQL_CFLAGS adn MYSQL_LIBS to override defaults"
-	@echo "   make DATABASE=pgsql          		Build with PostgreSQL Support "
-	@echo "                                		Use PGSQL_CFLAGS adn PGSQL_LIBS to override defaults"
+	@echo "   make DATABASE=mysql              Build with MYSQL Support"
+	@echo "                                    Use MYSQL_CFLAGS and MYSQL_LIBS to override defaults"
+	@echo "   make DATABASE=pgsql          	   Build with PostgreSQL Support "
+	@echo "                                    Use PGSQL_CFLAGS and PGSQL_LIBS to override defaults"
 	@echo
 	@echo "Geoip support: "
-	@echo "   make USE_GEOIP=yes           		Build with GeoIP support. Allowed values are auto 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make USE_GEOIP=yes               Build with GeoIP support. Allowed values are auto 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo
 	@echo "User options: "
-	@echo "   make WAZUH_GROUP=wazuh       		Set wazuh group"
-	@echo "   make WAZUH_USER=wazuh        		Set wazuh user"
+	@echo "   make WAZUH_GROUP=wazuh           Set wazuh group"
+	@echo "   make WAZUH_USER=wazuh            Set wazuh user"
 	@echo
 	@echo "Examples: Client with debugging enabled"
 	@echo "   make TARGET=agent DEBUG=yes"
@@ -616,44 +649,44 @@ help: failtarget
 settings:
 	@echo
 	@echo "General settings:"
-	@echo "    TARGET:             		${TARGET}"
-	@echo "    V:                  		${V}"
-	@echo "    DEBUG:              		${DEBUG}"
-	@echo "    DEBUGAD             		${DEBUGAD}"
-	@echo "    INSTALLDIR:         		${INSTALLDIR}"
-	@echo "    DATABASE:           		${DATABASE}"
-	@echo "    ONEWAY:             		${ONEWAY}"
-	@echo "    CLEANFULL:          		${CLEANFULL}"
-	@echo "    RESOURCES_URL:      		${RESOURCES_URL}"
-	@echo "    EXTERNAL_SRC_ONLY:  		${EXTERNAL_SRC_ONLY}"
+	@echo "    TARGET:                  ${TARGET}"
+	@echo "    V:                       ${V}"
+	@echo "    DEBUG:                   ${DEBUG}"
+	@echo "    DEBUGAD                  ${DEBUGAD}"
+	@echo "    INSTALLDIR:              ${INSTALLDIR}"
+	@echo "    DATABASE:                ${DATABASE}"
+	@echo "    ONEWAY:                  ${ONEWAY}"
+	@echo "    CLEANFULL:               ${CLEANFULL}"
+	@echo "    RESOURCES_URL:           ${RESOURCES_URL}"
+	@echo "    EXTERNAL_SRC_ONLY:       ${EXTERNAL_SRC_ONLY}"
 	@echo "User settings:"
-	@echo "    WAZUH_GROUP:        		${WAZUH_GROUP}"
-	@echo "    WAZUH_USER:         		${WAZUH_USER}"
+	@echo "    WAZUH_GROUP:             ${WAZUH_GROUP}"
+	@echo "    WAZUH_USER:              ${WAZUH_USER}"
 	@echo "USE settings:"
-	@echo "    USE_ZEROMQ:         		${USE_ZEROMQ}"
-	@echo "    USE_GEOIP:          		${USE_GEOIP}"
-	@echo "    USE_PRELUDE:        		${USE_PRELUDE}"
-	@echo "    USE_INOTIFY:        		${USE_INOTIFY}"
-	@echo "    USE_BIG_ENDIAN:     		${USE_BIG_ENDIAN}"
-	@echo "    USE_SELINUX:        		${USE_SELINUX}"
-	@echo "    USE_AUDIT:          		${USE_AUDIT}"
-	@echo "    DISABLE_SYSC:       		${DISABLE_SYSC}"
-	@echo "    DISABLE_CISCAT:     		${DISABLE_CISCAT}"
-	@echo "    DISABLE_STRIP_SYMBOLS:	${DISABLE_STRIP_SYMBOLS}"
+	@echo "    USE_ZEROMQ:              ${USE_ZEROMQ}"
+	@echo "    USE_GEOIP:               ${USE_GEOIP}"
+	@echo "    USE_PRELUDE:             ${USE_PRELUDE}"
+	@echo "    USE_INOTIFY:             ${USE_INOTIFY}"
+	@echo "    USE_BIG_ENDIAN:          ${USE_BIG_ENDIAN}"
+	@echo "    USE_SELINUX:             ${USE_SELINUX}"
+	@echo "    USE_AUDIT:               ${USE_AUDIT}"
+	@echo "    DISABLE_SYSC:            ${DISABLE_SYSC}"
+	@echo "    DISABLE_CISCAT:          ${DISABLE_CISCAT}"
+	@echo "    DISABLE_STRIP_SYMBOLS:   ${DISABLE_STRIP_SYMBOLS}"
 	@echo "Mysql settings:"
-	@echo "    includes:           		${MI}"
-	@echo "    libs:               		${ML}"
+	@echo "    includes:                ${MI}"
+	@echo "    libs:                    ${ML}"
 	@echo "Pgsql settings:"
-	@echo "    includes:           		${PI}"
-	@echo "    libs:               		${PL}"
+	@echo "    includes:                ${PI}"
+	@echo "    libs:                    ${PL}"
 	@echo "Defines:"
 	@echo "    ${DEFINES}"
 	@echo "Compiler:"
-	@echo "    CFLAGS            		${OSSEC_CFLAGS}"
-	@echo "    LDFLAGS           		${OSSEC_LDFLAGS}"
-	@echo "    LIBS              		${OSSEC_LIBS}"
-	@echo "    CC                		${CC}"
-	@echo "    MAKE              		${MAKE}"
+	@echo "    CFLAGS                   ${OSSEC_CFLAGS}"
+	@echo "    LDFLAGS                  ${OSSEC_LDFLAGS}"
+	@echo "    LIBS                     ${OSSEC_LIBS}"
+	@echo "    CC                       ${CC}"
+	@echo "    MAKE                     ${MAKE}"
 
 BUILD_SERVER+=wazuh-maild -
 BUILD_SERVER+=wazuh-csyslogd -
