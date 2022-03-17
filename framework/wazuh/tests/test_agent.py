@@ -584,7 +584,7 @@ def test_create_group(chown_mock, uid_mock, gid_mock, group_id):
         result = create_group(group_id)
         assert isinstance(result, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
         assert len(result.dikt) == 1, \
-            f'Result dikt lenght is "{len(result.dikt)}" instead of "1". Result dikt content is: {result.dikt}'
+            f'Result dikt length is "{len(result.dikt)}" instead of "1". Result dikt content is: {result.dikt}'
         assert result.dikt['message'] == expected_msg, \
             f'The "result.dikt[\'message\']" received is not the expected.\n' \
             f'Expected: "{expected_msg}"\n' \
@@ -600,7 +600,9 @@ def test_create_group(chown_mock, uid_mock, gid_mock, group_id):
     ('default', WazuhError, 1711),
     ('group-1', WazuhError, 1711),
     ('invalid!', WazuhError, 1722),
-    ('delete-me', WazuhInternalError, 1005)
+    ('delete-me', WazuhInternalError, 1005),
+    ('ar.conf', WazuhError, 1713),
+    ('agent-template.conf', WazuhError, 1713)
 ])
 @patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
 def test_create_group_exceptions(group_id, exception, exception_code):
