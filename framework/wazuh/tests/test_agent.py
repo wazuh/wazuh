@@ -172,11 +172,11 @@ def test_agent_get_agents_summary_status(socket_mock, send_mock):
     # For the following test cases, if summary_data has unexpected keys, a KeyError will be raised
 
     # Check the data dictionary follows the expected keys schema
-    assert all(summary_data[key].keys() == expected_results[key].keys() for key in summary_data.keys()), \
+    assert all(summary_data[key].keys() == expected_results[key].keys() for key in expected_results.keys()), \
         'The result obtained has unexpected keys'
     # Check that the agents count for connection and configuration statuses are the expected ones
     assert all(all(summary_data[key][status] == expected_results[key][status] for status in
-                   summary_data[key].keys()) for key in summary_data.keys()), \
+                   summary_data[key].keys()) for key in expected_results.keys()), \
         'The agents connection or configuration status counts are not the expected ones'
 
 
