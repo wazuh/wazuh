@@ -28,15 +28,41 @@ include_directories(
   ${ENGINE_SOURCE_DIR}/graph
 )
 
-#TODO do this better
-link_libraries(gtest_main hlp rxcpp builders)
+link_libraries(
+  glog::glog
+  gtest_main
+  re2
+  hlp
+)
 
 ####################################################################################################
 # Builder targets
 ####################################################################################################
 # Builder test
 add_executable(builderTest
-  ${BUILDER_TEST_SOURCE_DIR}/builder_test.cpp
+  ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
+  ${BUILDER_TEST_SOURCE_DIR}/builderTest.cpp
+  ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderBroadcast.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderOutputs.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderChain.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderCheck.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderCondition.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionValue.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionReference.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperFilter.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperMap.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderOutput.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderFileOutput.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderNormalize.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMap.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapValue.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapReference.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderFilter.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderRule.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderDecoder.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageParse.cpp
 )
 gtest_discover_tests(builderTest)
 
@@ -48,7 +74,30 @@ gtest_discover_tests(registryTest)
 
 # Register test
 add_executable(registerTest
-  ${BUILDER_TEST_SOURCE_DIR}/register_test.cpp
+  ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
+  ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
+  ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
+  ${BUILDER_TEST_SOURCE_DIR}/registerTest.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderBroadcast.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderOutputs.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderChain.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderCheck.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderCondition.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionValue.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionReference.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperFilter.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperMap.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderOutput.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderFileOutput.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderNormalize.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMap.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapValue.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapReference.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderFilter.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderRule.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderDecoder.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageParse.cpp
   )
 gtest_discover_tests(registerTest)
 
