@@ -904,7 +904,7 @@ wm_scan_data* wm_ciscat_txt_parser(){
 
         fclose(fp);
     } else {
-        mtdebug1(WM_CISCAT_LOGTAG, "Report result file '%s' missing: %s", file, strerror(errno));
+        mterror(WM_CISCAT_LOGTAG, "Report result file '%s' missing: %s", file, strerror(errno));
         ciscat->flags.error = 1;
     }
 
