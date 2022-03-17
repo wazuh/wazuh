@@ -674,18 +674,11 @@ int wdb_find_group(const char *name, int *sock) {
 }
 
 int wdb_update_groups(const char *dirname, int *sock) {
-    int result = OS_SUCCESS;
-    int n = 0;
-    int i = 0;
-    char **array = NULL;
-    cJSON *json_name = NULL;
-    cJSON *item = NULL;
     cJSON *root = NULL;
     char wdboutput[WDBOUTPUT_SIZE] = "";
     int aux_sock = -1;
-    int* query_sock = sock?sock:&aux_sock;
 
-    root = wdbc_query_parse_json(query_sock, global_db_commands[WDB_SELECT_GROUPS], wdboutput, sizeof(wdboutput));
+    root = wdbc_query_parse_json(sock?sock:&aux_sock, global_db_commands[WDB_SELECT_GROUPS], wdboutput, sizeof(wdboutput));
 
     if (!root) {
         merror("Error querying Wazuh DB to update groups.");
@@ -695,51 +688,39 @@ int wdb_update_groups(const char *dirname, int *sock) {
         return OS_INVALID;
     }
 
-    item = root->child;
-    os_calloc(cJSON_GetArraySize(root) + 1 , sizeof(char *), array);
+    cJSON *item = NULL;
+    cJSON_ArrayForEach(item, root) {
+        cJSON *json_name = cJSON_GetObjectItem(item, "name");
 
-    while (item) {
-        json_name = cJSON_GetObjectItem(item,"name");
+        if (cJSON_IsString(json_name) && json_name->valuestring != NULL) {
+            /* Check if the group exists in dir */
+            char group_path[PATH_MAX + 1] = {0};
+            DIR *dp = NULL;
 
-        if(cJSON_IsString(json_name) && json_name->valuestring != NULL ){
-            os_strdup(json_name->valuestring, array[n]);
-            n++;
+            if (snprintf(group_path, PATH_MAX + 1, "%s/%s", dirname, json_name->valuestring) > PATH_MAX) {
+                merror("At wdb_update_groups(): path too long.");
+                continue;
+            }
+
+            dp = opendir(group_path);
+
+            /* Group doesn't exists anymore, delete it */
+            if (!dp) {
+                wdb_remove_group_db(json_name->valuestring, sock?sock:&aux_sock);
+            }
+            else {
+                closedir(dp);
+            }
         }
-
-        item=item->next;
     }
 
-    array[n] = NULL;
     cJSON_Delete(root);
 
-    for (i=0; array[i]; i++) {
-        /* Check if the group exists in dir */
-        char group_path[PATH_MAX + 1] = {0};
-        DIR *dp;
-
-        if (snprintf(group_path, PATH_MAX + 1, "%s/%s", dirname, array[i]) > PATH_MAX) {
-            merror("At wdb_update_groups(): path too long.");
-            continue;
-        }
-
-        dp = opendir(group_path);
-
-        /* Group doesn't exists anymore, delete it */
-        if (!dp) {
-            wdb_remove_group_db((char *)array[i], query_sock);
-        }
-        else {
-            closedir(dp);
-        }
-    }
-
-    free_strarray(array);
-
     /* Add new groups from the folder /etc/shared if they dont exists on database */
-    DIR *dir;
+    DIR *dp = NULL;
     struct dirent *dirent = NULL;
 
-    if (!(dir = opendir(dirname))) {
+    if (!(dp = opendir(dirname))) {
         merror("Couldn't open directory '%s': %s.", dirname, strerror(errno));
         if (!sock) {
             wdbc_close(&aux_sock);
@@ -747,25 +728,27 @@ int wdb_update_groups(const char *dirname, int *sock) {
         return OS_INVALID;
     }
 
-    while ((dirent = readdir(dir))) {
-        if (dirent->d_name[0] != '.') {
+    const char *current_directory = ".";
+    const char *parent_directory = "..";
+    while ((dirent = readdir(dp))) {
+        if (strcmp(current_directory, dirent->d_name) && strcmp(parent_directory, dirent->d_name)) {
             char path[PATH_MAX];
             snprintf(path, PATH_MAX, "%s/%s", dirname, dirent->d_name);
 
             if (!IsDir(path)) {
-                if (wdb_find_group(dirent->d_name, query_sock) <= 0){
-                    wdb_insert_group(dirent->d_name, query_sock);
+                if (wdb_find_group(dirent->d_name, sock?sock:&aux_sock) <= 0) {
+                    wdb_insert_group(dirent->d_name, sock?sock:&aux_sock);
                 }
             }
         }
     }
-    closedir(dir);
+    closedir(dp);
 
     if (!sock) {
         wdbc_close(&aux_sock);
     }
 
-    return result;
+    return OS_SUCCESS;
 }
 
 int wdb_remove_agent(int id, int *sock) {
