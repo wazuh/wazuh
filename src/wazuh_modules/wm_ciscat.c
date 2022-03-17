@@ -403,6 +403,9 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
             } else {
                 scan_info->profile = wm_ciscat_get_profile();
             }
+            // send scan results if the txt file is right.
+            wm_ciscat_send_scan(scan_info, id);
+        } else {
             wm_ciscat_preparser();
             if (!ciscat->flags.error) {
                 wm_ciscat_xml_parser();
@@ -586,6 +589,9 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
             } else {
                 scan_info->profile = wm_ciscat_get_profile();
             }
+            // send scan results if the txt file is right.
+            wm_ciscat_send_scan(scan_info, id);
+        } else {
             wm_ciscat_preparser();
             if (!ciscat->flags.error) {
                 wm_ciscat_xml_parser();
