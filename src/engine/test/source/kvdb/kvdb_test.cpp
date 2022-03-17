@@ -1,12 +1,28 @@
 #include "gtest/gtest.h"
 #include <kvdb/kvdb.hpp>
 
+TEST(kvdbTests, create_delete_kvd_file)
+{
+    DestroyKVDB(); //TODO: find another way of deleting DB in kDPath
+    bool ret = CreateKVDB();
+    ASSERT_TRUE(ret);
+    ret = DestroyKVDB();
+    ASSERT_TRUE(ret);
+    ret = CreateKVDB();
+    ASSERT_TRUE(ret);
+    //TODO: Check precence of file or directory in kDBPath
+    //ASSERT_EQ(kDBPath,path_obtained);
+    ret = DestroyKVDB();
+    ASSERT_TRUE(ret);
+    ret = DestroyKVDB();
+    ASSERT_TRUE(!ret);
+}
 
 TEST(kvdbTests, column_family_creation_deletion)
 {
-    bool ret = CreateKVDB();
+    bool ret = CreateColumnFamily("IP_BLACKLIST");
     ASSERT_TRUE(ret);
-    ret = CreateColumnFamily("IP_BLACKLIST");
+    ret = CreateColumnFamily("MITRE");
     ASSERT_TRUE(ret);
     ret = DeleteColumnFamily("IP_BLACKLIST");
     ASSERT_TRUE(ret);
@@ -14,15 +30,11 @@ TEST(kvdbTests, column_family_creation_deletion)
     ASSERT_TRUE(!ret);
     ret = DeleteColumnFamily("NOT_AVAILABLE");
     ASSERT_TRUE(!ret);
-    ret = DestroyKVDB();
-    ASSERT_TRUE(ret);
 }
 
 TEST(kvdbTests, read_write_column_family)
 {
-    bool ret = CreateKVDB();
-    ASSERT_TRUE(ret);
-    ret = CreateColumnFamily("IP_BLACKLIST");
+    bool ret = CreateColumnFamily("IP_BLACKLIST");
     ASSERT_TRUE(ret);
     ret = WriteToColumnFamily("IP_BLACKLIST", "someKey", "192.168.10.2");
     ASSERT_TRUE(ret);
@@ -37,7 +49,5 @@ TEST(kvdbTests, read_write_column_family)
     ret = ReadToColumnFamily("IP_BLACKLIST", "someKey", val);
     ASSERT_TRUE(!ret);
     ret = DeleteColumnFamily("IP_BLACKLIST");
-    ASSERT_TRUE(ret);
-    ret = DestroyKVDB();
     ASSERT_TRUE(ret);
 }
