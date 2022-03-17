@@ -10,18 +10,9 @@
 #ifndef _UDP_ENDPOINT_H_
 #define _UDP_ENDPOINT_H_
 
-#include <cstring>
-#include <functional>
-#include <glog/logging.h>
-#include <iostream>
-#include <mutex>
-#include <stdexcept>
-#include <string>
-#include <uvw/timer.hpp>
 #include <uvw/udp.hpp>
 
 #include "baseEndpoint.hpp"
-#include "protocolHandler.hpp"
 
 namespace engineserver::endpoints
 {
@@ -38,7 +29,7 @@ private:
     std::string m_ip;
 
     std::shared_ptr<uvw::Loop> m_loop;
-    std::shared_ptr<uvw::UDPHandle> m_udpHandle;
+    std::shared_ptr<uvw::UDPHandle> m_handle;
 
 public:
     /**

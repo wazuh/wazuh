@@ -7,6 +7,17 @@
  * Foundation.
  */
 
+#include <glog/logging.h>
+#include <map>
+#include <memory>
+#include <rxcpp/rx.hpp>
+#include <stdexcept>
+#include <string>
+#include <vector>
+
+#include "endpoints/datagramSocketEndpoint.hpp"
+#include "endpoints/tcpEndpoint.hpp"
+#include "endpoints/udpEndpoint.hpp"
 #include "engineServer.hpp"
 
 #include <logging/logging.hpp>
