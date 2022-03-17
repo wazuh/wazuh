@@ -601,28 +601,35 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storag
 
         /* We need to save the peerinfo if it is a control msg */
 
+        w_mutex_lock(&keys.keyentries[agentid]->mutex);
         keys.keyentries[agentid]->net_protocol = protocol;
-
-        memcpy(&keys.keyentries[agentid]->peer_info, peer_info, logr.peer_size);
-        keyentry * key = OS_DupKeyEntry(keys.keyentries[agentid]);
-        r = (protocol == REMOTED_NET_PROTOCOL_TCP) ? OS_AddSocket(&keys, agentid, sock_client) : REMOTED_USING_UDP;
         keys.keyentries[agentid]->rcvd = time(0);
+        memcpy(&keys.keyentries[agentid]->peer_info, peer_info, logr.peer_size);
 
-        switch (r) {
-        case OS_ADDSOCKET_ERROR:
-            merror("Couldn't add TCP socket to keystore.");
-            break;
-        case OS_ADDSOCKET_KEY_UPDATED:
-            mdebug2("TCP socket %d already in keystore. Updating...", sock_client);
-            break;
-        case OS_ADDSOCKET_KEY_ADDED:
-            mdebug2("TCP socket %d added to keystore.", sock_client);
-            break;
-        case REMOTED_USING_UDP:
+        keyentry * key = OS_DupKeyEntry(keys.keyentries[agentid]);
+
+        if (protocol == REMOTED_NET_PROTOCOL_TCP) {
+            keys.keyentries[agentid]->sock = sock_client;
+            w_mutex_unlock(&keys.keyentries[agentid]->mutex);
+
+            r = OS_AddSocket(&keys, agentid, sock_client);
+
+            switch (r) {
+            case OS_ADDSOCKET_ERROR:
+                merror("Couldn't add TCP socket to keystore.");
+                break;
+            case OS_ADDSOCKET_KEY_UPDATED:
+                mdebug2("TCP socket %d already in keystore. Updating...", sock_client);
+                break;
+            case OS_ADDSOCKET_KEY_ADDED:
+                mdebug2("TCP socket %d added to keystore.", sock_client);
+                break;
+            default:
+                ;
+            }
+        } else {
             keys.keyentries[agentid]->sock = USING_UDP_NO_CLIENT_SOCKET;
-            break;
-        default:
-            ;
+            w_mutex_unlock(&keys.keyentries[agentid]->mutex);
         }
 
         key_unlock();
