@@ -58,8 +58,8 @@ bool configureMapParser(Parser &parser,
     size_t argsSize = args.size();
     if (argsSize < 2 || argsSize > 3)
     {
-        // TODO report error
-        return false;
+        auto msg = "Invalid arguments for map Parser. Expected 2 or 3, got " + argsSize;
+        throw std::runtime_error(msg);
     }
 
     char opt[4] = {0};

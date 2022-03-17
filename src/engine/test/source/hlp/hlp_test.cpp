@@ -53,16 +53,13 @@ TEST(hlpTests_logQL, logQL_expression)
 TEST(hlpTests_logQL, invalid_logql_expression)
 {
     const char *logQl = "<source.ip><invalid>";
-    auto invalidFunc = getParserOp(logQl);
-    ASSERT_EQ(false, static_cast<bool>(invalidFunc));
+    ASSERT_THROW(getParserOp(logQl), std::runtime_error);
 
     const char *logQl2 = "invalid capture <source.ip><invalid> between strings";
-    auto invalidFunc2 = getParserOp(logQl2);
-    ASSERT_EQ(false, static_cast<bool>(invalidFunc2));
+    ASSERT_THROW(getParserOp(logQl2), std::runtime_error);
 
     const char *logQl3 = "invalid capture <source.ip between strings";
-    auto invalidFunc3 = getParserOp(logQl3);
-    ASSERT_EQ(false, static_cast<bool>(invalidFunc3));
+    ASSERT_THROW(getParserOp(logQl3), std::runtime_error);
 }
 
 TEST(hlpTests_logQL, optional_Field_Not_Found)

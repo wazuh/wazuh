@@ -5,6 +5,7 @@
 #include <string_view>
 #include <unordered_map>
 #include <vector>
+#include <stdexcept>
 
 namespace
 {
@@ -116,7 +117,6 @@ static bool parseCapture(Tokenizer &tk, ExpressionList &expresions)
 
         if (!requireToken(tk, TokenType::CloseAngle))
         {
-            // TODO report parsing error
             return false;
         }
 
@@ -134,7 +134,6 @@ static bool parseCapture(Tokenizer &tk, ExpressionList &expresions)
 
             if (!requireToken(tk, TokenType::OpenAngle))
             {
-                // TODO report error
                 return false;
             }
             // Fix up the combType of the previous capture as this is now an OR
@@ -147,7 +146,6 @@ static bool parseCapture(Tokenizer &tk, ExpressionList &expresions)
 
             if (!requireToken(tk, TokenType::CloseAngle))
             {
-                // TODO report error
                 return false;
             }
 
@@ -164,7 +162,6 @@ static bool parseCapture(Tokenizer &tk, ExpressionList &expresions)
     }
     else
     {
-        // TODO error
         return false;
     }
 
@@ -187,22 +184,14 @@ ExpressionList parseLogQlExpr(const char *expr)
 
                 if (!parseCapture(tokenizer, expresions))
                 {
-                    // TODO report error
-                    //  Reset the parser list to signify an error occurred
-                    expresions.clear();
-                    done = true;
+                    auto msg = "Invalid LogQL expression at '" + std::string(prev) + "'. Unable to parse capture";
+                    throw std::runtime_error(msg);
                 }
 
                 if (peekToken(tokenizer).type == TokenType::OpenAngle)
                 {
-                    // TODO report error. Can't have two captures back to back
-                    const char *end = tokenizer.stream;
-                    while (*end++ != '>')
-                    {
-                    };
-                    // Reset the parser list to signify an error occurred
-                    expresions.clear();
-                    done = true;
+                    auto msg = "Invalid LogQL expression at '" + std::string(prev) + "'. Two captures back to back";
+                    throw std::runtime_error(msg);
                 }
                 break;
             }
@@ -219,8 +208,8 @@ ExpressionList parseLogQlExpr(const char *expr)
             }
             default:
             {
-                // TODO
-                break;
+                auto msg = "Invalid LogQL expression. Unknown token";
+                throw std::runtime_error(msg);
             }
         }
     }
