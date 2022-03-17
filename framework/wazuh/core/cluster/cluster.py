@@ -486,7 +486,7 @@ def compare_files(good_files, check_files, node_name):
     # This condition should never take place. The 'PATH' string is a placeholder to indicate the type of variable that
     # we should place.
     # if extra_valid_files:
-    #     check_if_file_correspond_to_agent()
+    #     extra_valid_function()
 
     # 'all_shared' files are the ones present in both sets but with different MD5 checksum.
     all_shared = [x for x in check_files.keys() & good_files.keys() if check_files[x]['md5'] != good_files[x]['md5']]

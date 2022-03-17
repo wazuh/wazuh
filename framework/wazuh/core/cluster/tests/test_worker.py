@@ -75,7 +75,7 @@ def test_rgit_init(set_up_coro_mock, create_task_mock):
 
 @patch("asyncio.create_task")
 def test_rgit_set_up_coro(create_task_mock):
-    """Check if the function is called when the master sends its agent-groups information."""
+    """Check if the function is called when the master sends its periodic agent-groups information."""
 
     class WazuhCommonMock:
         """Auxiliary class."""
@@ -83,14 +83,35 @@ def test_rgit_set_up_coro(create_task_mock):
         def __init__(self):
             pass
 
-        def recv_agent_groups_local_information(self, wazuh_common, task_id):
+        def recv_agent_groups_periodic_information(self, wazuh_common, task_id):
             """Auxiliary method."""
             pass
 
     wazuh_common_mock = WazuhCommonMock()
     receive_agent_groups_task = worker.ReceiveAgentGroupsTask(wazuh_common=wazuh_common_mock,
                                                               logger=logging.getLogger("wazuh"), task_id="0101")
-    assert receive_agent_groups_task.set_up_coro() == wazuh_common_mock.recv_agent_groups_local_information
+    assert receive_agent_groups_task.set_up_coro() == wazuh_common_mock.recv_agent_groups_periodic_information
+    create_task_mock.assert_called_once()
+
+
+@patch("asyncio.create_task")
+def test_rgcit_set_up_coro(create_task_mock):
+    """Check if the function is called when the master sends its entire agent-groups information."""
+
+    class WazuhCommonMock:
+        """Auxiliary class."""
+
+        def __init__(self):
+            pass
+
+        def recv_agent_groups_entire_information(self, wazuh_common, task_id):
+            """Auxiliary method."""
+            pass
+
+    wazuh_common_mock = WazuhCommonMock()
+    receive_agent_groups_task = worker.ReceiveEntireAgentGroupsTask(wazuh_common=wazuh_common_mock,
+                                                                    logger=logging.getLogger("wazuh"), task_id="0101")
+    assert receive_agent_groups_task.set_up_coro() == wazuh_common_mock.recv_agent_groups_entire_information
     create_task_mock.assert_called_once()
 
 
@@ -98,7 +119,7 @@ def test_rgit_set_up_coro(create_task_mock):
 @patch("wazuh.core.cluster.common.ReceiveStringTask.done_callback")
 @patch("wazuh.core.cluster.worker.ReceiveAgentGroupsTask.set_up_coro")
 def test_rgit_done_callback(set_up_coro_mock, super_callback_mock, create_task_mock):
-    """Check if the agent-groups synchronization process was correct."""
+    """Check if the agent-groups periodic synchronization process was correct."""
 
     class WazuhCommonMock:
         """Auxiliary class."""
@@ -113,6 +134,33 @@ def test_rgit_done_callback(set_up_coro_mock, super_callback_mock, create_task_m
     wazuh_common_mock = WazuhCommonMock()
     receive_agent_groups_task = worker.ReceiveAgentGroupsTask(wazuh_common=wazuh_common_mock,
                                                               logger=logging.getLogger("wazuh"), task_id="0101")
+    receive_agent_groups_task.done_callback()
+
+    create_task_mock.assert_called_once()
+    super_callback_mock.assert_called_once_with(None)
+    set_up_coro_mock.assert_called_once()
+    assert wazuh_common_mock.sync_agent_groups_free is True
+
+
+@patch("asyncio.create_task")
+@patch("wazuh.core.cluster.common.ReceiveStringTask.done_callback")
+@patch("wazuh.core.cluster.worker.ReceiveEntireAgentGroupsTask.set_up_coro")
+def test_rgcit_done_callback(set_up_coro_mock, super_callback_mock, create_task_mock):
+    """Check if the agent-groups entire synchronization process was correct."""
+
+    class WazuhCommonMock:
+        """Auxiliary class."""
+
+        def __init__(self):
+            self.sync_agent_groups_free = None
+
+        def sync_integrity(self, task, info):
+            """Auxiliary method."""
+            pass
+
+    wazuh_common_mock = WazuhCommonMock()
+    receive_agent_groups_task = worker.ReceiveEntireAgentGroupsTask(wazuh_common=wazuh_common_mock,
+                                                                    logger=logging.getLogger("wazuh"), task_id="0101")
     receive_agent_groups_task.done_callback()
 
     create_task_mock.assert_called_once()
@@ -659,7 +707,7 @@ async def test_worker_check_agent_groups_checksums(send_result_to_manager_mock):
 @patch('wazuh.core.cluster.common.Handler.send_result_to_manager', return_value='check')
 @patch('wazuh.core.cluster.common.Handler.update_chunks_wdb', return_value={'updated_chunks': 1})
 @patch('wazuh.core.cluster.common.Handler.get_chunks_in_task_id', return_value='chunks')
-async def test_worker_handler_recv_agent_groups_local_information(
+async def test_worker_handler_recv_agent_groups_information(
         get_chunks_in_task_id_mock, update_chunks_wdb_mock,
         send_result_to_manager_mock, check_agent_groups_checksums_mock):
     """Check that the wazuh-db data reception task is created."""
@@ -673,17 +721,33 @@ async def test_worker_handler_recv_agent_groups_local_information(
         def info(self, info):
             self._info.append(info)
 
+    def reset_mock():
+        list(map(lambda x: x.reset_mock(), [get_chunks_in_task_id_mock, update_chunks_wdb_mock,
+                                            send_result_to_manager_mock, check_agent_groups_checksums_mock]))
+
     logger = LoggerMock()
+    logger_c = LoggerMock()
     worker_handler = get_worker_handler()
     worker_handler.task_loggers['Agent-groups recv'] = logger
+    worker_handler.task_loggers['Agent-groups recv full'] = logger_c
 
-    assert await worker_handler.recv_agent_groups_local_information(task_id=b'17', info_type='agent-groups') == 'check'
+    assert await worker_handler.recv_agent_groups_periodic_information(task_id=b'17',
+                                                                       info_type='agent-groups') == 'check'
     get_chunks_in_task_id_mock.assert_called_once_with(b'17', b'syn_w_g_err')
     update_chunks_wdb_mock.assert_called_once_with('chunks', 'agent-groups', logger, b'syn_w_g_err', 0)
     send_result_to_manager_mock.assert_called_once_with(b'syn_w_g_e', {'updated_chunks': 1})
     check_agent_groups_checksums_mock.assert_called_once_with('chunks', logger)
     assert 'Starting.' in logger._info
     assert 'Finished in 0.000s. Updated 1 chunks.' in logger._info
+    reset_mock()
+
+    assert await worker_handler.recv_agent_groups_entire_information(task_id=b'17', info_type='agent-groups') == 'check'
+    get_chunks_in_task_id_mock.assert_called_once_with(b'17', b'syn_wgc_err')
+    update_chunks_wdb_mock.assert_called_once_with('chunks', 'agent-groups', logger_c, b'syn_wgc_err', 0)
+    send_result_to_manager_mock.assert_called_once_with(b'syn_wgc_e', {'updated_chunks': 1})
+    check_agent_groups_checksums_mock.assert_called_once_with('chunks', logger_c)
+    assert 'Starting.' in logger_c._info
+    assert 'Finished in 0.000s. Updated 1 chunks.' in logger_c._info
 
 
 @pytest.mark.asyncio
