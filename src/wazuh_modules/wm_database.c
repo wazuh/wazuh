@@ -876,6 +876,7 @@ static void * wm_inotify_start(__attribute__((unused)) void * args) {
             buffer[count - 1] = '\0';
 
             for (i = 0; i < (size_t)count; i += (ssize_t)(sizeof(struct inotify_event) + event->len)) {
+                char path[PATH_MAX + 1] = {0};
                 event = (struct inotify_event*)&buffer[i];
                 mtdebug2(WM_DATABASE_LOGTAG, "inotify: i='%zu', name='%s', mask='%u', wd='%d'", i, event->name, event->mask, event->wd);
 
@@ -899,6 +900,13 @@ static void * wm_inotify_start(__attribute__((unused)) void * args) {
                     continue;
                 } else {
                     mterror(WM_DATABASE_LOGTAG, "Unknown watch descriptor '%d', mask='%u'.", event->wd, event->mask);
+                    continue;
+                }
+
+                snprintf(path, PATH_MAX, "%s/%s", dirname, event->name);
+
+                if (event->name[0] == '.' && IsDir(path)) {
+                    mtdebug2(WM_DATABASE_LOGTAG, "Discarding hidden file.");
                     continue;
                 }
 
