@@ -10,14 +10,7 @@
 #ifndef _ENGINE_SERVER_H
 #define _ENGINE_SERVER_H
 
-#include <map>
-#include <memory>
-#include <string>
-#include <vector>
-
-#include "endpoints/tcpEndpoint.hpp"
-#include "endpoints/udpEndpoint.hpp"
-#include "endpoints/datagramSocketEndpoint.hpp"
+#include "endpoints/baseEndpoint.hpp"
 
 /**
  * @brief Defines all related server functionality.

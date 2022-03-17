@@ -10,6 +10,7 @@
 #ifndef _BASE_ENDPOINT_H
 #define _BASE_ENDPOINT_H
 
+#include <blockingconcurrentqueue.h>
 #include <string>
 
 #include <blockingconcurrentqueue.h>
