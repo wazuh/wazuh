@@ -4,7 +4,8 @@ cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
 
 # Set c++17
 set(CMAKE_CXX_STANDARD 17)
-#set(CMAKE_CXX_FLAGS "-Wall -ggdb3 -O3")
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Project settings
 project(wazuh-engine
@@ -106,8 +107,9 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/graph)
 add_subdirectory(${ENGINE_SOURCE_DIR}/json)
 add_subdirectory(${ENGINE_SOURCE_DIR}/builder)
 add_subdirectory(${ENGINE_SOURCE_DIR}/cliParser)
+add_subdirectory(${ENGINE_SOURCE_DIR}/hlp)
 
-target_link_libraries(main  ${EXTERNAL_DEPS})
+target_link_libraries(main  hlp ${EXTERNAL_DEPS})
 
 # Build test
 if(ENGINE_BUILD_TEST)
