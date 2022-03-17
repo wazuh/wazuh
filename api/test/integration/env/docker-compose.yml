@@ -31,7 +31,7 @@ services:
     image: integration_test_wazuh-manager
     hostname: wazuh-worker1
     volumes:
-      - ./configurations/tmp/manager:/tmp
+      - ./configurations/tmp/manager:/tmp/manager
       - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
@@ -48,7 +48,7 @@ services:
     image: integration_test_wazuh-manager
     hostname: wazuh-worker2
     volumes:
-      - ./configurations/tmp/manager:/tmp
+      - ./configurations/tmp/manager:/tmp/manager
       - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
@@ -66,7 +66,7 @@ services:
     image: integration_test_wazuh-agent
     hostname: wazuh-agent1
     volumes:
-      - ./configurations/tmp/agent:/tmp
+      - ./configurations/tmp/agent:/tmp/agent
       - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
@@ -85,7 +85,7 @@ services:
     image: integration_test_wazuh-agent
     hostname: wazuh-agent2
     volumes:
-      - ./configurations/tmp/agent:/tmp
+      - ./configurations/tmp/agent:/tmp/agent
       - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
@@ -105,7 +105,7 @@ services:
     image: integration_test_wazuh-agent
     hostname: wazuh-agent3
     volumes:
-      - ./configurations/tmp/agent:/tmp
+      - ./configurations/tmp/agent:/tmp/agent
       - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
@@ -125,7 +125,7 @@ services:
     image: integration_test_wazuh-agent
     hostname: wazuh-agent4
     volumes:
-      - ./configurations/tmp/agent:/tmp
+      - ./configurations/tmp/agent:/tmp/agent
       - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
@@ -145,7 +145,7 @@ services:
     image: integration_test_wazuh-agent_old
     hostname: wazuh-agent5
     volumes:
-      - ./configurations/tmp/agent:/tmp
+      - ./configurations/tmp/agent:/tmp/agent
       - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
@@ -166,7 +166,7 @@ services:
     image: integration_test_wazuh-agent_old
     hostname: wazuh-agent6
     volumes:
-      - ./configurations/tmp/agent:/tmp
+      - ./configurations/tmp/agent:/tmp/agent
       - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
@@ -187,7 +187,7 @@ services:
     image: integration_test_wazuh-agent_old
     hostname: wazuh-agent7
     volumes:
-      - ./configurations/tmp/agent:/tmp
+      - ./configurations/tmp/agent:/tmp/agent
       - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
@@ -208,7 +208,7 @@ services:
     image: integration_test_wazuh-agent_old
     hostname: wazuh-agent8
     volumes:
-      - ./configurations/tmp/agent:/tmp
+      - ./configurations/tmp/agent:/tmp/agent
       - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
