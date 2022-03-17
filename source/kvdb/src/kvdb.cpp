@@ -1,7 +1,4 @@
-#include <assert.h>
-#include <iostream>
-
-#include "glog/logging.h"
+#include "glog/logging.h" // TODO: set GLOG_minloglevel=2
 #include "rocksdb/db.h"
 #include "rocksdb/slice.h"
 #include "rocksdb/options.h"
@@ -24,10 +21,23 @@ using ROCKSDB_NAMESPACE::WriteOptions;
 
 std::string kDBPath = "/tmp/kvDB_wazuh_engine";
 
-static std::vector<ColumnFamilyDescriptor> column_families = {
-    //TODO: ROCKSDB_NAMESPACE::kDefaultColumnFamilyName produces an error
-    ColumnFamilyDescriptor( "default", ColumnFamilyOptions()),
-    };
+static std::vector<ColumnFamilyDescriptor> column_families;
+
+void UpdateColumnFamiliesList() {
+
+    std::vector<std::string> pColumn_families;
+
+    DB::ListColumnFamilies(DBOptions(), kDBPath, &pColumn_families);
+
+    if(pColumn_families.size()) {
+        column_families.clear();
+        for(auto family : pColumn_families) {
+            LOG(INFO) << "[" << __func__ << "]" << " CF name : " << family << std::endl;
+            column_families.push_back(ColumnFamilyDescriptor(family,ColumnFamilyOptions()));
+        }
+    }
+}
+
 
 /**
  * @brief creation of DB on kDBPath = "/tmp/kvDB_wazuh_engine"
@@ -78,6 +88,7 @@ bool DestroyKVDB() {
     options.IncreaseParallelism();
     options.OptimizeLevelStyleCompaction();
 
+    UpdateColumnFamiliesList();
     s = DB::Open(DBOptions(), kDBPath, column_families, &handles, &db);
     if(s.ok()) {
         // DB must be closed before destroying it
@@ -99,12 +110,22 @@ bool DestroyKVDB() {
     return result;
 }
 
+int CFPresent(std::string const &column_family_name) {
+    for (int i = 0; i < column_families.size() ; i++ ) {
+        if(!column_family_name.compare(column_families.at(i).name))
+        {
+            return i;
+        }
+    }
+    return 0;
+}
+
 /**
  * @brief Create a Column Family object
  *
  * @param column_family_name std::string if it's no part of column_families_available
  * it will be added to it.
- * @return true successfull creation of FC in DB
+ * @return true successfull creation of FC in DB or FC alredy in DB
  * @return false unsuccessfull creation of FC in DB
  */
 bool CreateColumnFamily(std::string const column_family_name) {
@@ -125,12 +146,11 @@ bool CreateColumnFamily(std::string const column_family_name) {
     dbOptions.error_if_exists = false;
     dbOptions.create_missing_column_families = true;
 
-    for (int i = 0; i < column_families.size() ; i++ ) {
-        if(!column_family_name.compare(column_families.at(i).name))
-        {
-            LOG(ERROR) << "[" << __func__ << "]" << " cant create a family column already present" << std::endl;
-            return false;
-        }
+    UpdateColumnFamiliesList();
+
+    if(CFPresent(column_family_name)) {
+        LOG(INFO) << "[" << __func__ << "]" << " cant create a family column already present" << std::endl;
+        return true;
     }
 
     //TODO: this should remained fixed in some kind of persistent storage
@@ -166,7 +186,7 @@ bool CreateColumnFamily(std::string const column_family_name) {
  *
  * @param column_family_name std::string if it's part of column_families_available
  * it will be deleted from it.
- * @return true successfull deletion of FC in DB
+ * @return true successfull deletion of FC in DB or FC alredy in DB
  * @return false unsuccessfull deletion of FC in DB
  */
 bool DeleteColumnFamily(std::string const column_family_name) {
@@ -176,54 +196,55 @@ bool DeleteColumnFamily(std::string const column_family_name) {
     bool result = true, found = false;
 
     if(column_family_name.empty()) {
-        LOG(ERROR) << "[" << __func__ << "]" << " can't create a family column without name " << std::endl;
-        return false;
+        LOG(ERROR) << "[" << __func__ << "]" << " can't delete a family column without name " << std::endl;
+        return true;
     }
 
-    for (int i = 0; i < column_families.size() ; i++ ) {
-        if(!column_family_name.compare(column_families.at(i).name)) {
-            found = true;
-            s = DB::Open(DBOptions(), kDBPath, column_families, &handles, &db);
-            if(s.ok()) {
-                for(auto handle : handles) {
-                    // find the correct CF handle to be erased
-                    if(!column_family_name.compare(handle->GetName())) {
-                        s = db->DropColumnFamily(handle);
-                        if(s.ok()) {
-                            LOG(INFO) << "[" << __func__ << "]" << " Removing " << column_family_name << " from column_families"<< std::endl;
-                            column_families.erase( column_families.begin() + i);
-                        }
-                        else {
-                            LOG(ERROR) << "[" << __func__ << "]" << " couldn't drop CF, error: " << s.ToString() << std::endl;
-                            result = false;
-                        }
+    UpdateColumnFamiliesList();
+
+    int i = CFPresent(column_family_name);
+    if(i) {
+        found = true;
+        s = DB::Open(DBOptions(), kDBPath, column_families, &handles, &db);
+        if(s.ok()) {
+            for(auto handle : handles) {
+                // find the correct CF handle to be erased
+                if(!column_family_name.compare(handle->GetName())) {
+                    s = db->DropColumnFamily(handle);
+                    if(s.ok()) {
+                        LOG(INFO) << "[" << __func__ << "]" << " Removing " << column_family_name << " from column_families"<< std::endl;
+                        column_families.erase( column_families.begin() + i);
                     }
                     else {
-                        // destroy all the other handlers prior closing
-                        s = db->DestroyColumnFamilyHandle(handle);
-                        if(!s.ok()) {
-                            LOG(WARNING) << "[" << __func__ << "]" << " couldn't delete column family handler, error: " << s.ToString() << std::endl;
-                        }
+                        LOG(ERROR) << "[" << __func__ << "]" << " couldn't drop CF, error: " << s.ToString() << std::endl;
+                        result = false;
                     }
                 }
-
-                // TODO: Should handle this error
-                // LOG(ERROR) << "[" << __func__ << "]" << " couldn't find CF handle, error: " << s.ToString() << std::endl;
-                // result = false;
-
-                s = db->Close();
-                if(!s.ok()) {
-                    LOG(WARNING) << "[" << __func__ << "]" << " couldn't close db file, error: " << s.ToString() << std::endl;
+                else {
+                    // destroy all the other handlers prior closing
+                    s = db->DestroyColumnFamilyHandle(handle);
+                    if(!s.ok()) {
+                        LOG(WARNING) << "[" << __func__ << "]" << " couldn't delete column family handler, error: " << s.ToString() << std::endl;
+                    }
                 }
-
-            }
-            else {
-                LOG(ERROR) << "[" << __func__ << "]" << " couldn't open db file, error: " << s.ToString() << std::endl;
-                result = false;
             }
 
-            delete db;
+            // TODO: Should handle this error
+            // LOG(ERROR) << "[" << __func__ << "]" << " couldn't find CF handle, error: " << s.ToString() << std::endl;
+            // result = false;
+
+            s = db->Close();
+            if(!s.ok()) {
+                LOG(WARNING) << "[" << __func__ << "]" << " couldn't close db file, error: " << s.ToString() << std::endl;
+            }
+
         }
+        else {
+            LOG(ERROR) << "[" << __func__ << "]" << " couldn't open db file, error: " << s.ToString() << std::endl;
+            result = false;
+        }
+
+        delete db;
     }
 
     if(!found) {
@@ -244,14 +265,14 @@ bool DeleteColumnFamily(std::string const column_family_name) {
  * @return true If the proccess finished successfully
  * @return false If the proccess didn't finished successfully
  */
-bool AccesSingleItemOfCF(std::string const &columnFamily, std::string &value,
+bool AccesSingleItemOfCF(std::string const &column_family_name, std::string &value,
                                                             std::string const &key, const ACTION_ON_CF action) {
     DB *db;
     Status s;
     std::vector<ColumnFamilyHandle*> handles;
     bool result = true, found = false;
 
-    if(columnFamily.empty()) {
+    if(column_family_name.empty()) {
         LOG(ERROR) << "[" << __func__ << "]" << " can't write to a family column with no name." << std::endl;
         return false;
     }
@@ -261,96 +282,96 @@ bool AccesSingleItemOfCF(std::string const &columnFamily, std::string &value,
         return false;
     }
 
+    UpdateColumnFamiliesList();
 
-    for (int i = 0; i < column_families.size() ; i++ ) {
-        if(!columnFamily.compare(column_families.at(i).name)) {
-            found = true;
-            s = DB::Open(DBOptions(), kDBPath, column_families, &handles, &db);
-            if(s.ok()) {
+    int i = CFPresent(column_family_name);
+    if(i) {
+        found = true;
+        s = DB::Open(DBOptions(), kDBPath, column_families, &handles, &db);
+        if(s.ok()) {
 
-                for(auto handle : handles) {
-                    // find the correct CF handle to be erased
-                    if(!columnFamily.compare(handle->GetName())) {
-                        switch (action)
+            for(auto handle : handles) {
+                // find the correct CF handle to be erased
+                if(!column_family_name.compare(handle->GetName())) {
+                    switch (action)
+                    {
+                    case ACTION_ON_CF::WRITE:
                         {
-                        case ACTION_ON_CF::WRITE:
-                            {
-                                s = db->Put(WriteOptions(), handle, Slice(key), Slice(value));
-                                if(s.ok()) {
-                                    LOG(INFO) << "[" << __func__ << "]" << " value insertion OK {" << key << ","
-                                    << value << "} into CF name : " << columnFamily << std::endl;
-                                }
-                                else {
-                                    LOG(ERROR) << "[" << __func__ << "]" << " couldn't insert value into CF, error: " << s.ToString() << std::endl;
-                                    result = false;
-                                }
+                            s = db->Put(WriteOptions(), handle, Slice(key), Slice(value));
+                            if(s.ok()) {
+                                LOG(INFO) << "[" << __func__ << "]" << " value insertion OK {" << key << ","
+                                << value << "} into CF name : " << column_family_name << std::endl;
                             }
-                            break;
-
-                        case ACTION_ON_CF::READ:
-                            {
-                                s = db->Get(ReadOptions(), handle, Slice(key), &value);
-                                if(s.ok()) {
-                                    LOG(INFO) << "[" << __func__ << "]" << " value obtained OK {" << key << ","
-                                    << value << "} from CF name : " << columnFamily << std::endl;
-                                }
-                                else {
-                                    LOG(ERROR) << "[" << __func__ << "]" << " couldn't insert value into CF, error: " << s.ToString() << std::endl;
-                                    result = false;
-                                }
+                            else {
+                                LOG(ERROR) << "[" << __func__ << "]" << " couldn't insert value into CF, error: " << s.ToString() << std::endl;
+                                result = false;
                             }
-                            break;
-
-                        case ACTION_ON_CF::DELETE:
-                            {
-                                s = db->Delete(WriteOptions(), handle, Slice(key));
-                                if(s.ok()) {
-                                    LOG(INFO) << "[" << __func__ << "]" << " key deleted OK {" << key << "} from CF name : " << columnFamily << std::endl;
-                                }
-                                else {
-                                    LOG(ERROR) << "[" << __func__ << "]" << " couldn't insert value into CF, error: " << s.ToString() << std::endl;
-                                    result = false;
-                                }
-                            }
-                            break;
-
-                        case ACTION_ON_CF::READ_VALUE_COPY:
-                            {
-                                // TODO: pending
-                            }
-                            break;
-
-                        case ACTION_ON_CF::READ_WITHOUT_VALUE_COPY:
-                            {
-                                // TODO: pending
-                            }
-                            break;
-
-
-                        default:
-                            break;
                         }
+                        break;
 
+                    case ACTION_ON_CF::READ:
+                        {
+                            s = db->Get(ReadOptions(), handle, Slice(key), &value);
+                            if(s.ok()) {
+                                LOG(INFO) << "[" << __func__ << "]" << " value obtained OK {" << key << ","
+                                << value << "} from CF name : " << column_family_name << std::endl;
+                            }
+                            else {
+                                LOG(ERROR) << "[" << __func__ << "]" << " couldn't insert value into CF, error: " << s.ToString() << std::endl;
+                                result = false;
+                            }
+                        }
+                        break;
+
+                    case ACTION_ON_CF::DELETE:
+                        {
+                            s = db->Delete(WriteOptions(), handle, Slice(key));
+                            if(s.ok()) {
+                                LOG(INFO) << "[" << __func__ << "]" << " key deleted OK {" << key << "} from CF name : " << column_family_name << std::endl;
+                            }
+                            else {
+                                LOG(ERROR) << "[" << __func__ << "]" << " couldn't insert value into CF, error: " << s.ToString() << std::endl;
+                                result = false;
+                            }
+                        }
+                        break;
+
+                    case ACTION_ON_CF::READ_VALUE_COPY:
+                        {
+                            // TODO: pending
+                        }
+                        break;
+
+                    case ACTION_ON_CF::READ_WITHOUT_VALUE_COPY:
+                        {
+                            // TODO: pending
+                        }
+                        break;
+
+
+                    default:
+                        break;
                     }
-                    // destroy all the handlers prior closing
-                    s = db->DestroyColumnFamilyHandle(handle);
-                    if(!s.ok()) {
-                        LOG(WARNING) << "[" << __func__ << "]" << " couldn't delete column family handler, error: " << s.ToString() << std::endl;
-                    }
+
                 }
-
-                s = db->Close();
+                // destroy all the handlers prior closing
+                s = db->DestroyColumnFamilyHandle(handle);
                 if(!s.ok()) {
-                    LOG(WARNING) << "[" << __func__ << "]" << " couldn't close db file, error: " << s.ToString() << std::endl;
+                    LOG(WARNING) << "[" << __func__ << "]" << " couldn't delete column family handler, error: " << s.ToString() << std::endl;
                 }
             }
-            else {
-                LOG(ERROR) << "[" << __func__ << "]" << " couldn't open db file, error: " << s.ToString() << std::endl;
-                result = false;
-            }
 
-            delete db;
+            s = db->Close();
+            if(!s.ok()) {
+                LOG(WARNING) << "[" << __func__ << "]" << " couldn't close db file, error: " << s.ToString() << std::endl;
+            }
         }
+        else {
+            LOG(ERROR) << "[" << __func__ << "]" << " couldn't open db file, error: " << s.ToString() << std::endl;
+            result = false;
+        }
+
+        delete db;
     }
 
     if(!found) {
