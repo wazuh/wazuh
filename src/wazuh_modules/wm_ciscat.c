@@ -821,6 +821,10 @@ wm_scan_data* wm_ciscat_txt_parser(){
                 last_line = 1;
                 continue;
 
+            } else if ((readbuff[0] == '\0')) {
+                // Jump the empty line
+                continue;
+
             } else {
 
                 char ** parts = NULL;
