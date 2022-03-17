@@ -8,6 +8,7 @@
 #include "hlpDetails.hpp"
 
 #include <hlp/hlp.hpp>
+#include <stdexcept>
 
 using ParserList = std::vector<Parser>;
 
@@ -66,16 +67,14 @@ splitSlashSeparatedField(std::string_view str)
     return ret;
 }
 
-static bool setParserOptions(Parser &parser,
+static void setParserOptions(Parser &parser,
                              std::vector<std::string_view> const &args)
 {
     auto config = kParsersConfig[static_cast<int>(parser.type)];
     if (config)
     {
-        return config(parser, args);
+        config(parser, args);
     }
-
-    return false;
 }
 
 Parser createParserFromExpresion(Expression const &exp)
@@ -126,11 +125,11 @@ Parser createParserFromExpresion(Expression const &exp)
     return parser;
 }
 
-std::vector<Parser> getParserList(ExpressionList const &expresions)
+std::vector<Parser> getParserList(ExpressionList const &expressions)
 {
     std::vector<Parser> parsers;
 
-    for (auto const &expresion : expresions)
+    for (auto const &expresion : expressions)
     {
         switch (expresion.type)
         {
@@ -153,8 +152,7 @@ std::vector<Parser> getParserList(ExpressionList const &expresions)
             }
             default:
             {
-                // TODO report error
-                break;
+                throw std::runtime_error("Invalid expression parsed from LogQL expression");
             }
         }
     }
@@ -210,22 +208,19 @@ ParserFn getParserOp(std::string_view const &logQl)
 {
     if (logQl.empty())
     {
-        // TODO report error - empty logQl expression string
-        return {};
+        throw std::runtime_error("Empty LogQL expression");
     }
 
-    ExpressionList expresions = parseLogQlExpr(logQl.data());
-    if (expresions.empty())
+    ExpressionList expressions = parseLogQlExpr(logQl.data());
+    if (expressions.empty())
     {
-        // TODO some error occurred while parsing the logQl expr
-        return {};
+        throw std::runtime_error("Empty expression output obtained from LogQL parsing");
     }
 
-    auto parserList = getParserList(expresions);
+    auto parserList = getParserList(expressions);
     if (parserList.empty())
     {
-        // TODO some error occurred while parsing the logQl expr
-        return {};
+        throw std::runtime_error("Empty parser list obtained from LogQL parsing");
     }
 
     ParserFn parseFn = [parserList = std::move(parserList)](

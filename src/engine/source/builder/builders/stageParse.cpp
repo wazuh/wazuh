@@ -63,11 +63,16 @@ types::Lifter stageBuilderParse(const types::DocumentValue &def)
         // TODO hard-coded 'event.original'
         auto logQlExpr = item["event.original"].GetString();
 
-        auto parseOp = getParserOp(logQlExpr);
-        if (!parseOp)
+        ParserFn parseOp;
+        try{
+            parseOp = getParserOp(logQlExpr);
+        }
+        catch (std::exception &e)
         {
-            LOG(ERROR) << "LogQl expression not valid";
-            throw std::invalid_argument("LogQl expression not valid");
+            const char *msg = "Stage [parse] builder encountered exception "
+                            "parsing LogQLExpression.";
+            LOG(ERROR) << msg << " From exception: " << e.what();
+            std::throw_with_nested(std::runtime_error(msg));
         }
 
         auto newOp = [parserOp = std::move(parseOp)](types::Observable o)
