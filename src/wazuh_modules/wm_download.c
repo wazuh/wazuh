@@ -64,7 +64,7 @@ void * wm_download_main(wm_download_t * data) {
     do {
         static unsigned int seconds = 60;
 
-        if (sock = OS_BindUnixDomain(WM_DOWNLOAD_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+        if (sock = OS_BindUnixDomainWithPerms(WM_DOWNLOAD_SOCK, SOCK_STREAM, OS_MAXSTR, getuid(), wm_gid, 0660), sock < 0) {
             mwarn("Unable to bind to socket '%s', retrying in %u secs.", WM_DOWNLOAD_SOCK, seconds);
             sleep(seconds);
             seconds += seconds < 600 ? 60 : 0;

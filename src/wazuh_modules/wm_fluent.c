@@ -100,7 +100,7 @@ void * wm_fluent_main(wm_fluent_t * fluent) {
     SSL_library_init();
 
     /* Listen socket */
-    server_sock = OS_BindUnixDomain(fluent->sock_path, SOCK_DGRAM, OS_MAXSTR);
+    server_sock = OS_BindUnixDomainWithPerms(fluent->sock_path, SOCK_DGRAM, OS_MAXSTR, getuid(), wm_gid, 0660);
     if (server_sock < 0) {
         merror("Unable to bind to socket '%s': (%d) %s.", fluent->sock_path, errno, strerror(errno));
         pthread_exit(NULL);

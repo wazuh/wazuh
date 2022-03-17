@@ -373,6 +373,17 @@ int SendMSGPredicated(__attribute__((unused)) int queue, const char *message, co
 }
 
 /* StartMQ for Windows */
+int StartMQWithSpecificOwnerAndPerms(__attribute__((unused)) const char *path
+                                     ,__attribute__((unused)) short int type
+                                     ,__attribute__((unused)) short int n_tries
+                                     ,__attribute__((unused)) uid_t uid
+                                     ,__attribute__((unused)) gid_t gid
+                                     ,__attribute__((unused)) mode_t perm)
+{
+    return (0);
+}
+
+/* StartMQ for Windows */
 int StartMQ(__attribute__((unused)) const char *path, __attribute__((unused)) short int type, __attribute__((unused)) short int n_tries)
 {
     return (0);

@@ -25,10 +25,10 @@ int main(int argc, char **argv)
     int c;
     int wm_debug = 0;
     int test_config = 0;
-    
+
     /* Set the name */
     OS_SetName(ARGV0);
-    
+
     // Define current working directory
     char * home_path = w_homedir(argv[0]);
     if (chdir(home_path) == -1) {
@@ -139,6 +139,11 @@ void wm_setup()
     if (!flag_foreground) {
         goDaemon();
         nowDaemon();
+    }
+
+    wm_gid = Privsep_GetGroup(GROUPGLOBAL);
+    if (wm_gid == (gid_t) OS_INVALID) {
+        merror_exit(USER_ERROR, "", GROUPGLOBAL, strerror(errno), errno);
     }
 
     if (wm_check() < 0) {

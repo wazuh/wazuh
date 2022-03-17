@@ -17,11 +17,11 @@ int sock_fail_time;
 
 #ifndef WIN32
 
-/* Start the Message Queue. type: WRITE||READ */
-int StartMQ(const char *path, short int type, short int n_attempts)
+/* Start the Message Queue with specific owner and permissions(Only for READ type). type: WRITE||READ */
+int StartMQWithSpecificOwnerAndPerms(const char *path, short int type, short int n_attempts, uid_t uid, gid_t gid, mode_t mode)
 {
     if (type == READ) {
-        return (OS_BindUnixDomain(path, SOCK_DGRAM, OS_MAXSTR + 512));
+        return (OS_BindUnixDomainWithPerms(path, SOCK_DGRAM, OS_MAXSTR + 512, uid, gid, mode));
     }
 
     /* We give up to 21 seconds for the other end to start */
@@ -47,6 +47,12 @@ int StartMQ(const char *path, short int type, short int n_attempts)
         mdebug1(MSG_SOCKET_SIZE, OS_getsocketsize(rc));
         return (rc);
     }
+}
+
+/* Start the Message Queue. type: WRITE||READ */
+int StartMQ(const char *path, short int type, short int n_attempts)
+{
+    return StartMQWithSpecificOwnerAndPerms(path, type, n_attempts, getuid(), getgid(), 0660);
 }
 
 /* Reconnect to message queue */
