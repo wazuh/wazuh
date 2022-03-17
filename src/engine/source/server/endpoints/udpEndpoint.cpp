@@ -7,6 +7,13 @@
  * Foundation.
  */
 
+#include <cstring>
+#include <glog/logging.h>
+#include <iostream>
+#include <mutex>
+#include <stdexcept>
+
+#include "protocolHandler.hpp"
 #include "udpEndpoint.hpp"
 
 using std::endl;
@@ -21,7 +28,7 @@ namespace engineserver::endpoints
 {
 
 UDPEndpoint::UDPEndpoint(const string & config, ServerOutput & eventBuffer)
-    : BaseEndpoint{config, eventBuffer}, m_loop{Loop::getDefault()}, m_udpHandle{m_loop->resource<UDPHandle>()}
+    : BaseEndpoint{config, eventBuffer}, m_loop{Loop::getDefault()}, m_handle{m_loop->resource<UDPHandle>()}
 {
     auto pos = config.find(":");
     m_ip = config.substr(0, pos);
@@ -29,18 +36,18 @@ UDPEndpoint::UDPEndpoint(const string & config, ServerOutput & eventBuffer)
 
     auto protocolHandler = std::make_shared<ProtocolHandler>();
 
-    m_udpHandle->on<ErrorEvent>(
-        [](const ErrorEvent & event, UDPHandle & udpHandle)
+    m_handle->on<ErrorEvent>(
+        [](const ErrorEvent & event, UDPHandle & handle)
         {
-            LOG(ERROR) << "UDP Server (" << udpHandle.sock().ip.c_str() << ":" << udpHandle.sock().port
+            LOG(ERROR) << "UDP Server (" << handle.sock().ip.c_str() << ":" << handle.sock().port
                        << ") error: code=" << event.code() << "; name=" << event.name() << "; message=" << event.what()
                        << endl;
         });
 
-    m_udpHandle->on<UDPDataEvent>(
-        [this, protocolHandler](const UDPDataEvent & event, UDPHandle & udpHandle)
+    m_handle->on<UDPDataEvent>(
+        [this, protocolHandler](const UDPDataEvent & event, UDPHandle & handle)
         {
-            auto client = udpHandle.loop().resource<UDPHandle>();
+            auto client = handle.loop().resource<UDPHandle>();
 
             client->on<ErrorEvent>(
                 [](const ErrorEvent & event, UDPHandle & client)
@@ -75,8 +82,8 @@ UDPEndpoint::UDPEndpoint(const string & config, ServerOutput & eventBuffer)
 
 void UDPEndpoint::run(void)
 {
-    m_udpHandle->bind(m_ip, m_port);
-    m_udpHandle->recv();
+    m_handle->bind(m_ip, m_port);
+    m_handle->recv();
     m_loop->run<Loop::Mode::DEFAULT>();
 }
 
