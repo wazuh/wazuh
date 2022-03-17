@@ -12,7 +12,6 @@
 #include <glog/logging.h>
 #include <iostream>
 #include <stdexcept>
-#include <string>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/un.h>

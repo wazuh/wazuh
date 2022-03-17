@@ -10,18 +10,9 @@
 #ifndef _TCP_ENDPOINT_H
 #define _TCP_ENDPOINT_H
 
-#include <cstring>
-#include <functional>
-#include <iostream>
-#include <mutex>
-#include <stdexcept>
-#include <string>
-
 #include <uvw/tcp.hpp>
-#include <uvw/timer.hpp>
 
 #include "baseEndpoint.hpp"
-#include "protocolHandler.hpp"
 
 namespace engineserver::endpoints
 {
@@ -39,9 +30,9 @@ private:
     std::string m_ip;
 
     std::shared_ptr<uvw::Loop> m_loop;
-    std::shared_ptr<uvw::TCPHandle> m_tcpHandle;
+    std::shared_ptr<uvw::TCPHandle> m_handle;
 
-    void connectionHandler(uvw::TCPHandle & tcpHandle);
+    void connectionHandler(uvw::TCPHandle & handle);
 
 public:
     /**

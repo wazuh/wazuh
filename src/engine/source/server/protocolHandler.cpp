@@ -7,6 +7,11 @@
  * Foundation.
  */
 
+#include <glog/logging.h>
+#include <iostream>
+#include <optional>
+#include <string>
+
 #include "protocolHandler.hpp"
 
 #include <logging/logging.hpp>
