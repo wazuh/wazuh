@@ -24,6 +24,7 @@
  */
 
 #include "shared.h"
+#include "cloud_limits.h"
 #include "auth.h"
 #include <pthread.h>
 #include <sys/wait.h>
@@ -470,6 +471,23 @@ int main(int argc, char **argv)
         OS_ReadTimestamps(&keys);
     }
 
+    if (load_limits_file() == OS_SUCCESS) {
+        cJSON * authd_limits = get_deamon_limits("authd");
+        if (authd_limits) {
+            cJSON *max_agents = cJSON_GetObjectItem(authd_limits, "max_agents");
+            if (!cJSON_IsNumber(max_agents)) {
+                mdebug1("element 'max_agents' doesn't found");
+                cJSON_Delete(max_agents);
+            }
+            mdebug1("------------> max_agents value: %d", max_agents->valueint);
+
+            load_limits_file();
+
+            mdebug1("------------> max_agents value: %d", max_agents->valueint);
+        }
+    }
+
+
     /* Start working threads */
 
     if (status = pthread_create(&thread_local_server, NULL, (void *)&run_local_server, NULL), status != 0) {
@@ -544,6 +562,8 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
     memset(ip, '\0', IPSIZE + 1);
 
     mdebug1("Dispatch thread ready.");
+
+    unsigned int cicle_counter = 100;
 
     while (running) {
         const struct timespec timeout = { .tv_sec = time(NULL) + 1 };
@@ -702,6 +722,24 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
         os_free(key_hash);
         os_free(new_id);
         os_free(new_key);
+
+        if (cicle_counter) {
+            cicle_counter--;
+            if (0 == cicle_counter) {
+                if (load_limits_file() == OS_SUCCESS) {
+                    cJSON * authd_limits = get_deamon_limits("authd");
+                    if (authd_limits) {
+                        cJSON *max_agents = cJSON_GetObjectItem(authd_limits, "max_agents");
+                        if (!cJSON_IsNumber(max_agents)) {
+                            mdebug1("element 'max_agents' doesn't found");
+                            cJSON_Delete(max_agents);
+                        }
+                        mdebug1("------------> max_agents value: %d", max_agents->valueint);
+                    }
+                }
+                cicle_counter = 100;
+            }
+        }
     }
 
     mdebug1("Dispatch thread finished");
