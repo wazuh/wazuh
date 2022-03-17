@@ -7,48 +7,40 @@
  * Foundation.
  */
 
-#ifndef _UDP_ENDPOINT_H_
-#define _UDP_ENDPOINT_H_
+#ifndef _DATAGRAM_SOCKET_ENDPOINT_H_
+#define _DATAGRAM_SOCKET_ENDPOINT_H_
 
-#include <cstring>
-#include <functional>
-#include <glog/logging.h>
-#include <iostream>
-#include <mutex>
-#include <stdexcept>
-#include <string>
-#include <uvw/timer.hpp>
 #include <uvw/udp.hpp>
 
 #include "baseEndpoint.hpp"
-#include "protocolHandler.hpp"
 
 namespace engineserver::endpoints
 {
 
 /**
- * @brief Implements udp server endpoint using uvw library.
+ * @brief Implements Unix Datagram Socket endpoint by using uvw library.
  *
  */
 class DatagramSocketEndpoint : public BaseEndpoint
 {
 protected:
-    using DatagramSocketEvent uvw::UDPDataEvent;
-    using DatagramSocketHandle uvw::UDPHandle;
+    using DatagramSocketEvent = uvw::UDPDataEvent;
+    using DatagramSocketHandle = uvw::UDPHandle;
 
 private:
-    std::string m_socketPath;
+    int m_socketFd;
 
     std::shared_ptr<uvw::Loop> m_loop;
-    std::shared_ptr<DGRAMSockHandle> m_datagramSocketHandle;
+    std::shared_ptr<DatagramSocketHandle> m_handle;
 
 public:
     /**
      * @brief Construct a new DatagramSocketEndpoint object.
      *
-     * @param config <ip>:<port> string with allowed ip mask and port to listen.
+     * @param path (std::string) Absolute path to the datagram socket.
+     * @param eventBuffer (ServerOutput) Reference to the event queue.
      */
-    explicit DatagramSocketEndpoint(const std::string & config, ServerOutput & eventBuffer);
+    explicit DatagramSocketEndpoint(const std::string & path, ServerOutput & eventBuffer);
     ~DatagramSocketEndpoint();
 
     void run(void);
@@ -58,4 +50,4 @@ public:
 
 } // namespace engineserver::endpoints
 
-#endif // _UDP_ENDPOINT_H_
+#endif // _DATAGRAM_SOCKET_ENDPOINT_H_

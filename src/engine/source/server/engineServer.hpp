@@ -17,6 +17,7 @@
 
 #include "endpoints/tcpEndpoint.hpp"
 #include "endpoints/udpEndpoint.hpp"
+#include "endpoints/datagramSocketEndpoint.hpp"
 
 /**
  * @brief Defines all related server functionality.
