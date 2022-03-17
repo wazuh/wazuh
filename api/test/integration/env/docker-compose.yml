@@ -13,7 +13,7 @@ services:
     ports:
       - "55000:55000"
     volumes:
-      - ./configurations/tmp/manager:/tmp
+      - ./configurations/tmp/manager:/tmp/manager
       - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
