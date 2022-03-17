@@ -84,15 +84,15 @@ types::Lifter stageBuilderParse(const types::DocumentValue &def)
             return o.map(
                 [parserOp = std::move(parserOp)](types::Event e)
                 {
-                    auto ev = e->get("/message");
-                    if (!ev->IsString())
+                    const auto & ev = e->get("/message");
+                    if (!ev.IsString())
                     {
                         // TODO error
                         return e;
                     }
 
                     ParseResult result;
-                    auto ok = parserOp(ev->GetString(), result);
+                    auto ok = parserOp(ev.GetString(), result);
                     if (!ok)
                     {
                         // TODO error
@@ -102,7 +102,7 @@ types::Lifter stageBuilderParse(const types::DocumentValue &def)
                     for (auto const &val : result)
                     {
                         auto name =
-                            json::Document::preparePath(val.first.c_str());
+                            json::formatJsonPath(val.first.c_str());
                         e->set(name, {val.second.c_str(), e->getAllocator()});
                     }
 
