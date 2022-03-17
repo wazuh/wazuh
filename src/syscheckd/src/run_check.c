@@ -123,12 +123,12 @@ void send_syscheck_msg(const cJSON *_msg) {
         return;
     }
 
-    /*static atomic_int_t n_msg_sent = ATOMIC_INT_INITIALIZER(0);
+    static atomic_int_t n_msg_sent = ATOMIC_INT_INITIALIZER(0);
 
     if (atomic_int_inc(&n_msg_sent) >= syscheck.max_eps) {
         sleep(1);
         atomic_int_set(&n_msg_sent, 0);
-    }*/
+    }
 }
 
 // Send a scan info event
