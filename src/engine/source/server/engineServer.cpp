@@ -55,6 +55,10 @@ std::unique_ptr<BaseEndpoint> EngineServer::createEndpoint(const string & type, 
     {
         return make_unique<UDPEndpoint>(path, eventBuffer);
     }
+    else if (type == "datagramsocket")
+    {
+        return make_unique<DatagramSocketEndpoint>(path, eventBuffer);
+    }
     else
     {
         throw std::runtime_error("Error, endpoint type " + type + " not implemented by factory Endpoint builder");
