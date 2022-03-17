@@ -23,6 +23,10 @@ std::string kDBPath = "/tmp/kvDB_wazuh_engine";
 
 static std::vector<ColumnFamilyDescriptor> column_families;
 
+/**
+ * @brief Updating local arrray of CF with the ones from the DB
+ *
+ */
 void UpdateColumnFamiliesList() {
 
     std::vector<std::string> pColumn_families;
@@ -110,7 +114,13 @@ bool DestroyKVDB() {
     return result;
 }
 
-int CFPresent(std::string const &column_family_name) {
+/**
+ * @brief Checks if CF is in the local array of DB and returns it's position
+ *
+ * @param column_family_name CF being searched
+ * @return int position in vector of CFs
+ */
+int CFIndexInAvailableArray(std::string const &column_family_name) {
     for (int i = 0; i < column_families.size() ; i++ ) {
         if(!column_family_name.compare(column_families.at(i).name))
         {
@@ -148,7 +158,7 @@ bool CreateColumnFamily(std::string const column_family_name) {
 
     UpdateColumnFamiliesList();
 
-    if(CFPresent(column_family_name)) {
+    if(CFIndexInAvailableArray(column_family_name)) {
         LOG(INFO) << "[" << __func__ << "]" << " cant create a family column already present" << std::endl;
         return true;
     }
@@ -202,7 +212,7 @@ bool DeleteColumnFamily(std::string const column_family_name) {
 
     UpdateColumnFamiliesList();
 
-    int i = CFPresent(column_family_name);
+    int i = CFIndexInAvailableArray(column_family_name);
     if(i) {
         found = true;
         s = DB::Open(DBOptions(), kDBPath, column_families, &handles, &db);
@@ -284,7 +294,7 @@ bool AccesSingleItemOfCF(std::string const &column_family_name, std::string &val
 
     UpdateColumnFamiliesList();
 
-    int i = CFPresent(column_family_name);
+    int i = CFIndexInAvailableArray(column_family_name);
     if(i) {
         found = true;
         s = DB::Open(DBOptions(), kDBPath, column_families, &handles, &db);
