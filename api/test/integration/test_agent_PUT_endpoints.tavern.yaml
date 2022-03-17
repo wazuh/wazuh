@@ -47,6 +47,19 @@ stages:
       json:
         <<: *error_spec
 
+  - name: Try to assign an agent to a forbidden group id (it must count as non existent)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "001"
+        group_id: 'ar.conf'
+    response:
+      <<: *resource_not_found_group
+
     # PUT /agents/group?group_id=default&agents_list=998,999
   - name: Try to assign non existing agents to group default
     request:
