@@ -621,7 +621,10 @@ def create_group(group_id):
     group_path = path.join(common.SHARED_PATH, group_id)
 
     if group_id.lower() == "default" or path.exists(group_path):
-        raise WazuhError(1711, extra_message=group_id)
+        if not path.isfile(group_path):
+            raise WazuhError(1711, extra_message=group_id)
+        else:
+            raise WazuhError(1713, extra_message=group_id)
 
     # Create group in /etc/shared
     agent_conf_template = path.join(common.SHARED_PATH, 'agent-template.conf')
