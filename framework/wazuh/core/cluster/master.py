@@ -23,6 +23,7 @@ from wazuh.core.cluster import server, cluster, common as c_common
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag
 from wazuh.core.common import DECIMALS_DATE_FORMAT
+from wazuh.core.utils import get_utc_now
 from wazuh.core.wdb import WazuhDBConnection
 
 
@@ -296,8 +297,15 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             logger = self.task_loggers['Agent-groups send']
             start_time = self.send_agent_groups_status['date_start']
             return c_common.end_sending_agent_information(logger, start_time, data.decode())
+        elif command == b'syn_wgc_e':
+            logger = self.task_loggers['Agent-groups send full']
+            start_time = self.send_agent_groups_status['date_start']
+            return c_common.end_sending_agent_information(logger, start_time, data.decode())
         elif command == b'syn_w_g_err':
             logger = self.task_loggers['Agent-groups send']
+            return c_common.error_receiving_agent_information(logger, data.decode(), info_type='agent-groups')
+        elif command == b'syn_wgc_err':
+            logger = self.task_loggers['Agent-groups send full']
             return c_common.error_receiving_agent_information(logger, data.decode(), info_type='agent-groups')
         elif command == b'dapi':
             self.server.dapi.add_request(self.name.encode() + b'*' + data)
@@ -407,7 +415,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                              'Agent-info sync': self.setup_task_logger('Agent-info sync'),
                              'Agent-groups sync': self.setup_task_logger('Agent-groups sync'),
                              'Agent-groups send': self.setup_task_logger('Agent-groups send'),
-                             'Agent-groups full DB': self.setup_task_logger('Agent-groups full DB')}
+                             'Agent-groups send full': self.setup_task_logger('Agent-groups send full')}
 
         # Fill more information and check both name and version are correct.
         self.version, self.cluster_name, self.node_type = version.decode(), cluster_name.decode(), node_type.decode()
@@ -677,7 +685,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         This method is activated when the worker node requests this information to the master node.
         """
-        logger = self.task_loggers['Agent-groups full DB']
+        logger = self.task_loggers['Agent-groups send full']
         sync_object = c_common.SyncWazuhdb(manager=self, logger=logger,
                                            data_retriever=WazuhDBConnection().run_wdb_command,
                                            get_data_command='global sync-agent-groups-get ',
@@ -685,7 +693,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                                         "get_global_hash": True, "last_id": 0}, pivot_key='last_id')
         local_agent_groups_information = await sync_object.retrieve_information()
 
-        sync_object = c_common.SyncWazuhdb(manager=self, logger=logger, cmd=b'syn_g_m_w',
+        sync_object = c_common.SyncWazuhdb(manager=self, logger=logger, cmd=b'syn_g_m_w_c',
                                            data_retriever=WazuhDBConnection().run_wdb_command,
                                            set_data_command='global set-agent-groups',
                                            set_payload={'mode': 'override', 'sync_status': 'synced'})
@@ -714,7 +722,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             if info != {}:
                 try:
                     logger.info("Starting.")
-                    self.send_agent_groups_status['date_start'] = perf_counter()
+                    self.send_agent_groups_status['date_start'] = get_utc_now().timestamp()
                     await sync_object.sync(start_time=self.send_agent_groups_status['date_start'], chunks=info)
                 except Exception as e:
                     logger.error(f'Error sending agent-groups information to {self.name}: {e}')
@@ -826,7 +834,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
                 # Notify what is the zip path for the current taskID.
                 result = await self.send_request(command=b'syn_m_c_e', data=task_id + b' ' + os.path.relpath(
-                                                     compressed_data, common.WAZUH_PATH).encode())
+                    compressed_data, common.WAZUH_PATH).encode())
 
                 if isinstance(result, Exception):
                     raise result
@@ -851,7 +859,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                         self.cluster_items['intervals']['communication']['min_zip_size'],
                         sent_size * (1 - self.cluster_items['intervals']['communication']['zip_limit_tolerance'])
                     )
-                    self.logger.debug(f"Decreasing sync size limit to {self.current_zip_limit / (1024**2):.2f} MB.")
+                    self.logger.debug(f"Decreasing sync size limit to {self.current_zip_limit / (1024 ** 2):.2f} MB.")
                 except KeyError:
                     # Increase max zip size if two conditions are met:
                     #   1. Current zip limit is lower than default.
@@ -864,7 +872,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                             self.current_zip_limit * (
                                     1 / (1 - self.cluster_items['intervals']['communication']['zip_limit_tolerance'])
                             ))
-                        self.logger.debug(f"Increasing sync size limit to {self.current_zip_limit / (1024**2):.2f} MB.")
+                        self.logger.debug(
+                            f"Increasing sync size limit to {self.current_zip_limit / (1024 ** 2):.2f} MB.")
 
                 # Remove local file.
                 os.unlink(compressed_data)
