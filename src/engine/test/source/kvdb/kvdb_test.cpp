@@ -57,3 +57,19 @@ TEST(kvdbTests, read_write_column_family)
     ret = DeleteColumnFamily("IP_BLACKLIST");
     ASSERT_TRUE(ret);
 }
+
+TEST(kvdbTests, transactions_success)
+{
+    bool ret = CreateColumnFamily("IP_BLACKLIST");
+    ASSERT_TRUE(ret);
+    ret = WriteToColumnFamily("IP_BLACKLIST", "someKey", "192.168.10.2");
+    ASSERT_TRUE(ret);
+    std::vector<std::pair<std::string,std::string>> vPairs = {{"key1","value1"},
+        {"key2","value2"}, {"key3","value3"}, {"key4","value4"}, {"key5","value5"}};
+    ret = WriteToColumnFamilyTransaction("IP_BLACKLIST", vPairs);
+    ASSERT_TRUE(ret);
+    std::string val;
+    ret = ReadToColumnFamily("IP_BLACKLIST", "key2", val);
+    ASSERT_TRUE(ret);
+    ASSERT_EQ(val,"value2");
+}
