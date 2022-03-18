@@ -1044,7 +1044,7 @@ def test_agent_group_exists(group_exists):
     group_exists : bool
         Expected result
     """
-    with patch('os.path.exists', return_value=group_exists):
+    with patch('os.path.isdir', return_value=group_exists):
         result = Agent.group_exists('default')
         assert result == group_exists, f'Group exists should return {group_exists}'
 

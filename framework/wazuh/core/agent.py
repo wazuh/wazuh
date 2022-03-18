@@ -794,7 +794,7 @@ class Agent:
         if not InputValidator().group(group_id):
             raise WazuhError(1722)
 
-        if path.exists(path.join(common.SHARED_PATH, group_id)):
+        if path.isdir(path.join(common.SHARED_PATH, group_id)):
             return True
         else:
             return False
