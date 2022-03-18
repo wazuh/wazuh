@@ -234,9 +234,9 @@ TEST_F(FimDBFixture, loopRSyncSuccess)
     std::mutex test_mutex;
 
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "FIM sync module started."));
-    EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Executing FIM sync."));
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG, "Executing FIM sync."));
     EXPECT_CALL(*mockRSync, startSync(testing::_, testing::_, testing::_)).Times(testing::AtLeast(1));
-    EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Finished FIM sync."));
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG, "Finished FIM sync."));
     EXPECT_CALL(*mockRSync, registerSyncID(testing::_, testing::_, testing::_, testing::_)).Times(testing::AtLeast(1));
 
     fimDBMock.runIntegrity();
