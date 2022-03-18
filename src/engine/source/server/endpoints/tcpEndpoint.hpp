@@ -12,11 +12,11 @@
 
 #include <cstring>
 #include <functional>
-#include <glog/logging.h>
 #include <iostream>
 #include <mutex>
 #include <stdexcept>
 #include <string>
+
 #include <uvw/tcp.hpp>
 #include <uvw/timer.hpp>
 

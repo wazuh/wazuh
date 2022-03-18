@@ -10,8 +10,10 @@
 #ifndef _OP_BUILDER_HELPER_FILTER_H
 #define _OP_BUILDER_HELPER_FILTER_H
 
+#include <optional>
+
 #include "builderTypes.hpp"
-#include "stringUtils.hpp"
+#include <utils/stringUtils.hpp>
 
 /*
  * The helper filter, builds a lifter that will chain rxcpp filter operation
