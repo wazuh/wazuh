@@ -29,6 +29,7 @@
 #include <builders/opBuilderMap.hpp>
 #include <builders/opBuilderMapReference.hpp>
 #include <builders/opBuilderMapValue.hpp>
+#include <builders/opBuilderKVDB.hpp>
 #include <builders/stageBuilderCheck.hpp>
 #include <builders/stageBuilderNormalize.hpp>
 #include <builders/stageBuilderOutputs.hpp>
@@ -72,6 +73,10 @@ void registerBuilders()
     Registry::registerBuilder("helper.r_not_match", builders::opBuilderHelperRegexNotMatch);
     Registry::registerBuilder("helper.r_ext", builders::opBuilderHelperRegexExtract);
     Registry::registerBuilder("helper.ip_cidr", builders::opBuilderHelperIPCIDR);
+    // KVDB Helpers
+    Registry::registerBuilder("helper.kvdb_extract", builders::opBuilderKVDBExtract);
+    Registry::registerBuilder("helper.kvdb_match", builders::opBuilderKVDBMatch);
+    Registry::registerBuilder("helper.kvdb_notmatch", builders::opBuilderKVDBNotMatch);
     // Combinators
     Registry::registerBuilder("combinator.chain", builders::combinatorBuilderChain);
     Registry::registerBuilder("combinator.broadcast", builders::combinatorBuilderBroadcast);
