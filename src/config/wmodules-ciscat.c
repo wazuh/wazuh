@@ -21,6 +21,7 @@ static const char *XML_SCAN_ON_START = "scan-on-start";
 static const char *XML_PROFILE = "profile";
 static const char *XML_JAVA_PATH = "java_path";
 static const char *XML_CISCAT_PATH = "ciscat_path";
+static const char *XML_CISCAT_BINARY = "ciscat_binary";
 static const char *XML_DISABLED = "disabled";
 
 // Parse XML
@@ -172,6 +173,19 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             ciscat->java_path = strdup(nodes[i]->content);
         } else if (!strcmp(nodes[i]->element, XML_CISCAT_PATH)) {
             ciscat->ciscat_path = strdup(nodes[i]->content);
+        } else if (!strcmp(nodes[i]->element, XML_CISCAT_BINARY)) {
+            ciscat->ciscat_binary = strdup(nodes[i]->content);
+            #ifdef WIN32
+                if (strcmp(ciscat->ciscat_binary, WM_CISCAT_V3_BINARY_WIN) && strcmp(ciscat->ciscat_binary, WM_CISCAT_V4_BINARY_WIN)) {
+                    mterror(WM_CISCAT_LOGTAG, "Unsupported CIS-CAT Binary '%s'.", ciscat->ciscat_binary);
+                    return OS_INVALID;
+                }
+            #else
+                if (strcmp(ciscat->ciscat_binary, WM_CISCAT_V3_BINARY) && strcmp(ciscat->ciscat_binary, WM_CISCAT_V4_BINARY)) {
+                    mterror(WM_CISCAT_LOGTAG, "Unsupported CIS-CAT Binary '%s'.", ciscat->ciscat_binary);
+                    return OS_INVALID;
+                }
+            #endif
         } else if (is_sched_tag(nodes[i]->element)) {
             // Do nothing
         } else {
