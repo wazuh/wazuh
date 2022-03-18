@@ -71,8 +71,9 @@ file(GLOB SYSCHECKD_SRC
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     add_library(wazuh-syscheckd STATIC ${SYSCHECKD_SRC})
-    add_definitions(-D_WIN32_WINNT=0x600 -DEVENTCHANNEL_SUPPORT)
-    add_library(wazuh-syscheckd-event OBJECT ${SYSCHECKD_SRC})
+    add_library(wazuh-syscheckd-event STATIC ${SYSCHECKD_SRC})
+    target_compile_definitions(wazuh-syscheckd PUBLIC -D_WIN32_WINNT=0x600)
+    target_compile_definitions(wazuh-syscheckd-event PUBLIC -D_WIN32_WINNT=0x600 -DEVENTCHANNEL_SUPPORT)
 else()
     add_executable(wazuh-syscheckd ${SYSCHECKD_SRC})
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
