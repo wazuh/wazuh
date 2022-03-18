@@ -40,8 +40,8 @@ MariaDB Table events
 
 <decoder name="mariadb-syslog-fields-2">
     <parent>mariadb-syslog</parent>
-    <regex>ip-(\.*),(\.*),(\.*),\.*,\.*,(\.*),(\.*)</regex>
-    <order>mariadb.ip,mariadb.username,mariadb.host,mariadb.action,mariadb.resource</order>
+    <regex>(\.*),ip-(\.*),(\.*),(\.*),\.*,\.*,(\.*),(\.*)</regex>
+    <order>mariadb.datetime,mariadb.ip,mariadb.username,mariadb.host,mariadb.action,mariadb.resource</order>
 </decoder>
 
 
