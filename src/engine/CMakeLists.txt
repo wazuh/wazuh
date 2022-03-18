@@ -43,24 +43,6 @@ MACRO_ENSURE_OUT_OF_SOURCE_BUILD(
     "${CMAKE_PROJECT_NAME} requires an out of source build."
 )
 
-# Format sources and headers as per guidelines using astyle, benchmarks and tests sources excluded
-if(ENGINE_FORMAT_SOURCES)
-find_program(ASTYLE_EXECUTABLE astyle DOC "A tool to format the code")
-if(ASTYLE_EXECUTABLE)
-add_custom_target(format_sources
-  COMMAND ${ASTYLE_EXECUTABLE} --style=allman --formatted --indent=spaces=4 --indent-classes --indent-switches --indent-cases --indent-namespaces --indent-col1-comments --max-instatement-indent=120 --break-blocks --pad-oper --pad-header --pad-comma --align-pointer=type --align-reference=type --convert-tabs --max-code-length=200 --preserve-date --suffix=none --quiet --recursive ${ENGINE_SOURCE_DIR}/*.cpp,*.hpp
-)
-add_custom_target(format_tests
-  COMMAND ${ASTYLE_EXECUTABLE} --style=allman --formatted --indent=spaces=4 --indent-classes --indent-switches --indent-cases --indent-namespaces --indent-col1-comments --max-instatement-indent=120 --break-blocks --pad-oper --pad-header --pad-comma --align-pointer=type --align-reference=type --convert-tabs --max-code-length=200 --preserve-date --suffix=none --quiet --recursive ${ENGINE_TEST_DIR}/*.cpp,*.hpp
-)
-add_custom_target(format_benchmarks
-  COMMAND ${ASTYLE_EXECUTABLE} --style=allman --formatted --indent=spaces=4 --indent-classes --indent-switches --indent-cases --indent-namespaces --indent-col1-comments --max-instatement-indent=120 --break-blocks --pad-oper --pad-header --pad-comma --align-pointer=type --align-reference=type --convert-tabs --max-code-length=200 --preserve-date --suffix=none --quiet --recursive ${ENGINE_BENCHMARK_DIR}/*.cpp,*.hpp
-)
-else()
-message("astyle executable not found, sources won't be formatted" WARNING)
-endif(ASTYLE_EXECUTABLE)
-endif(ENGINE_FORMAT_SOURCES)
-
 ####################################################################################################
 # Dependencies
 ####################################################################################################
