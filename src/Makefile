@@ -912,11 +912,11 @@ endif
 
 ### Common externals configurations
 
-EXTERNALS_COMMON_CFLAGS=-w
-EXTERNALS_COMMON_CPPFLAGS=-w
+EXTERNALS_COMMON_CFLAGS = -w
+EXTERNALS_COMMON_CPPFLAGS = -w
 ifeq (${DBG_ENABLED},yes)
-	EXTERNALS_COMMON_CFLAGS+=-g
-	EXTERNALS_COMMON_CPPFLAGS+=-g
+	EXTERNALS_COMMON_CFLAGS += -g
+	EXTERNALS_COMMON_CPPFLAGS += -g
 endif
 
 #### OpenSSL ##########
@@ -1042,25 +1042,34 @@ endif
 
 #### curl ##########
 
-LIBCURL_CFLAGS = CFLAGS="-fPIC ${EXTERNALS_COMMON_CFLAGS}"
-LIBCURL_CPPFLAGS = CPPFLAGS="-fPIC ${EXTERNALS_COMMON_CPPFLAGS} -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include"
-LIBCURL_CONFIGURE_FLAGS=--enable-debug
+LIBCURL_CFLAGS = CFLAGS="-fPIC"
+LIBCURL_CPPFLAGS = CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include"
+LIBCURL_COMMON_CONFIGURE_FLAGS = --disable-ldap --without-libidn2 --enable-optimize
+
+# Common CFLAGS mapping to custom cURL flags
+ifneq (,$(findstring -w,$(EXTERNALS_COMMON_CFLAGS)))
+	LIBCURL_COMMON_CONFIGURE_FLAGS += --disable-warnings --disable-werror
+endif
+ifneq (,$(findstring -g,$(EXTERNALS_COMMON_CFLAGS)))
+	LIBCURL_COMMON_CONFIGURE_FLAGS += --enable-symbol-hiding --enable-debug
+endif
+
 ${LIBCURL_LIB}: $(EXTERNAL_CURL)Makefile
 	${MAKE} -C $(EXTERNAL_CURL)lib
 
 ifeq (${TARGET},winagent)
 $(EXTERNAL_CURL)Makefile:
-	cd $(EXTERNAL_CURL) && ${LIBCURL_CFLAGS} CC=${MING_BASE}${CC} ./configure --host=${MINGW_HOST} PREFIX=${MING_BASE} ${LIBCURL_CONFIGURE_FLAGS} --enable-static=yes --disable-shared --with-winssl --disable-ldap --without-libidn2 && ${MAKE}
+	cd $(EXTERNAL_CURL) && ${LIBCURL_CFLAGS} CC=${MING_BASE}${CC} ./configure --host=${MINGW_HOST} PREFIX=${MING_BASE} ${LIBCURL_COMMON_CONFIGURE_FLAGS} --enable-static=yes --disable-shared --with-winssl
 else
 ifeq (${uname_S},Darwin)
 $(EXTERNAL_CURL)Makefile:
-	cd $(EXTERNAL_CURL) && ${LIBCURL_CFLAGS} ./configure ${LIBCURL_CONFIGURE_FLAGS} --with-darwinssl --disable-ldap --without-libidn2
+	cd $(EXTERNAL_CURL) && ${LIBCURL_CFLAGS} ./configure ${LIBCURL_COMMON_CONFIGURE_FLAGS} --with-darwinssl
 else
 $(EXTERNAL_CURL)Makefile: $(OPENSSL_LIB)
 ifeq (${uname_S},Linux)
-	cd $(EXTERNAL_CURL) && ${LIBCURL_CPPFLAGS} LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-ldl -lpthread" ./configure ${LIBCURL_CONFIGURE_FLAGS} --disable-ldap --without-libidn2 --without-libpsl --without-brotli
+	cd $(EXTERNAL_CURL) && ${LIBCURL_CPPFLAGS} LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-ldl -lpthread" ./configure ${LIBCURL_COMMON_CONFIGURE_FLAGS} --without-libpsl --without-brotli
 else
-	cd $(EXTERNAL_CURL) && ${LIBCURL_CPPFLAGS} LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-lpthread" ./configure ${LIBCURL_CONFIGURE_FLAGS} --disable-ldap --without-libidn2
+	cd $(EXTERNAL_CURL) && ${LIBCURL_CPPFLAGS} LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-lpthread" ./configure ${LIBCURL_COMMON_CONFIGURE_FLAGS}
 endif
 endif
 endif
@@ -1094,7 +1103,7 @@ endif
 
 #### libarchive ######
 
-LIBARCHIVE_CPPFLAGS = CPPFLAGS="-fPIC ${EXTERNALS_COMMON_CPPFLAGS}"
+LIBARCHIVE_CFLAGS = CFLAGS="-fPIC ${EXTERNALS_COMMON_CFLAGS}"
 
 ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
@@ -1102,7 +1111,7 @@ ${LIBARCHIVE_LIB}: $(EXTERNAL_LIBARCHIVE)Makefile
 	 ${MAKE} -C $(EXTERNAL_LIBARCHIVE)
 
 $(EXTERNAL_LIBARCHIVE)Makefile:
-	cd ${EXTERNAL_LIBARCHIVE} && ${LIBARCHIVE_CPPFLAGS} ./configure --disable-acl --without-expat --without-iconv --without-xml2 --without-lz4 --without-lzma --without-zstd --without-bz2lib --without-openssl
+	cd ${EXTERNAL_LIBARCHIVE} && ${LIBARCHIVE_CFLAGS} ./configure --disable-acl --without-expat --without-iconv --without-xml2 --without-lz4 --without-lzma --without-zstd --without-bz2lib --without-openssl
 endif
 endif
 
@@ -1125,7 +1134,7 @@ LIBALPM_CFLAGS=-DSYSHOOKDIR=\"/usr/share/libalpm/hooks\" \
 				-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include \
 			    -I. \
 			    -fPIC \
-				${EXTERNALS_COMMON_CFLAGS}
+			    ${EXTERNALS_COMMON_CFLAGS}
 
 ${LIBALPM_LIB}: $(EXTERNAL_PACMAN)configure
 	cd ${EXTERNAL_PACMAN}lib/libalpm && \
@@ -2464,11 +2473,11 @@ ifneq ($(wildcard external/libdb/build_unix/*),)
 endif
 
 ifneq ($(wildcard external/libarchive/Makefile),)
-	cd ${EXTERNAL_LIBARCHIVE} && ${MAKE} clean
+	cd ${EXTERNAL_LIBARCHIVE} && ${MAKE} clean && ${MAKE} distclean
 endif
 
 ifneq ($(wildcard external/jemalloc/Makefile),)
-	cd ${EXTERNAL_JEMALLOC} && ${MAKE} clean
+	cd ${EXTERNAL_JEMALLOC} && ${MAKE} clean && ${MAKE} distclean
 endif
 
 ifneq ($(wildcard external/pacman/lib/libalpm/*),)
