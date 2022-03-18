@@ -935,7 +935,7 @@ ${CRYPTO_LIB}: ${OPENSSL_LIB}
 
 ${OPENSSL_LIB}:
 ifeq (${TARGET},winagent)
-	cd ${EXTERNAL_OPENSSL} && CC=${MING_BASE}${CC} RC=${MING_BASE}windres ./Configure $(OPENSSL_FLAGS) mingw && ${MAKE} build_libs
+	cd ${EXTERNAL_OPENSSL} && CC=${MING_BASE}${CC} RC=${MING_BASE}windres ${OPENSSL_CFLAGS} ./Configure $(OPENSSL_FLAGS) mingw && ${MAKE} build_libs
 else
 ifeq (${uname_S},Darwin)
 	cd ${EXTERNAL_OPENSSL} && ${OPENSSL_CFLAGS} ./Configure $(OPENSSL_FLAGS) darwin64-x86_64-cc && ${MAKE} build_libs
