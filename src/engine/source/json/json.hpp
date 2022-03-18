@@ -6,12 +6,11 @@
 #include <iostream>
 #include <string>
 
-#include "rapidjson/document.h"
-#include "rapidjson/error/en.h"
-#include "rapidjson/pointer.h"
-#include "rapidjson/stringbuffer.h"
-#include "rapidjson/writer.h"
-#include "rxcpp/rx.hpp"
+#include <rapidjson/document.h>
+#include <rapidjson/error/en.h>
+#include <rapidjson/pointer.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/writer.h>
 
 namespace json
 {
@@ -40,11 +39,11 @@ public:
     };
     Document(const Document & e)
     {
-        this->m_doc.CopyFrom(e.m_doc, this->m_doc.GetAllocator());
+        m_doc.CopyFrom(e.m_doc, m_doc.GetAllocator());
     };
     Document(const rapidjson::Value & v)
     {
-        this->m_doc.CopyFrom(v, this->m_doc.GetAllocator());
+        m_doc.CopyFrom(v, m_doc.GetAllocator());
     };
 
     /**
@@ -79,7 +78,7 @@ public:
         auto ptr = rapidjson::Pointer(path.c_str());
         if (ptr.IsValid())
         {
-            ptr.Set(this->m_doc, v);
+            ptr.Set(m_doc, v);
         }
         else
         {
@@ -102,7 +101,7 @@ public:
         auto ptr = rapidjson::Pointer(path.c_str());
         if (ptr.IsValid())
         {
-            ptr.Set(this->m_doc, v.m_doc.MemberBegin()->value);
+            ptr.Set(m_doc, v.m_doc.MemberBegin()->value);
         }
         else
         {
@@ -126,7 +125,7 @@ public:
 
         if (ptrTarget.IsValid() && ptrRef.IsValid())
         {
-            ptrTarget.Set(this->m_doc, *ptrRef.Get(this->m_doc));
+            ptrTarget.Set(m_doc, *ptrRef.Get(m_doc));
         }
         else
         {
@@ -147,7 +146,7 @@ public:
         auto ptr {rapidjson::Pointer(path.c_str())};
         if (ptr.IsValid())
         {
-            return ptr.Get(this->m_doc);
+            return ptr.Get(m_doc);
         }
         throw std::invalid_argument("Invalid json path for this json");
     }
@@ -167,7 +166,7 @@ public:
         auto ptr {rapidjson::Pointer(preparePath(path).c_str())};
         if (ptr.IsValid())
         {
-            auto got = ptr.Get(this->m_doc);
+            auto got = ptr.Get(m_doc);
             if (got)
             {
                 return *got == *expected;
@@ -181,7 +180,7 @@ public:
         auto ptr = rapidjson::Pointer(preparePath(expected.begin()->name.GetString()).c_str());
         if (ptr.IsValid())
         {
-            auto got = ptr.Get(this->m_doc);
+            auto got = ptr.Get(m_doc);
             auto gotExpected = ptr.Get(expected.m_doc);
             if (got and gotExpected)
             {
@@ -197,7 +196,7 @@ public:
         auto ptr = rapidjson::Pointer(field.c_str());
         if (ptr.IsValid())
         {
-            auto got = ptr.Get(this->m_doc);
+            auto got = ptr.Get(m_doc);
             if (got)
             {
                 return true;
@@ -218,7 +217,7 @@ public:
     {
 
         auto ptr = rapidjson::Pointer(path.c_str());
-        if (ptr.IsValid() && ptr.Get(this->m_doc))
+        if (ptr.IsValid() && ptr.Get(m_doc))
         {
             return true;
         }
@@ -238,25 +237,25 @@ public:
         rapidjson::StringBuffer buffer;
         rapidjson::Writer<rapidjson::StringBuffer, rapidjson::Document::EncodingType, rapidjson::ASCII<>> writer(
             buffer);
-        this->m_doc.Accept(writer);
+        m_doc.Accept(writer);
         return buffer.GetString();
     }
 
-    auto begin() const -> decltype(this->m_doc.MemberBegin())
+    auto begin() const -> decltype(m_doc.MemberBegin())
     {
-        return this->m_doc.MemberBegin();
+        return m_doc.MemberBegin();
     }
-    auto end() const -> decltype(this->m_doc.MemberEnd())
+    auto end() const -> decltype(m_doc.MemberEnd())
     {
-        return this->m_doc.MemberEnd();
+        return m_doc.MemberEnd();
     }
     auto getObject()
     {
-        return this->m_doc.GetObject();
+        return m_doc.GetObject();
     }
     auto & getAllocator()
     {
-        return this->m_doc.GetAllocator();
+        return m_doc.GetAllocator();
     }
 
     Document operator=(const Document & other)
@@ -266,7 +265,7 @@ public:
             return *this;
         }
 
-        this->m_doc.CopyFrom(other.m_doc, this->m_doc.GetAllocator());
+        m_doc.CopyFrom(other.m_doc, m_doc.GetAllocator());
 
         return *this;
     }

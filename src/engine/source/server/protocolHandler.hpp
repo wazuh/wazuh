@@ -10,7 +10,6 @@
 #ifndef _PROTOCOL_HANDLER_H_
 #define _PROTOCOL_HANDLER_H_
 
-#include <glog/logging.h>
 #include <iostream>
 #include <optional>
 #include <string>

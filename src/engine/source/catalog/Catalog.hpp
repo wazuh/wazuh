@@ -1,14 +1,16 @@
 #ifndef _CATALOG_H
 #define _CATALOG_H
 
-#include "catalogSharedDef.hpp"
-#include "rapidjson/document.h"
-#include "storageDriver/StorageDriverInterface.hpp"
-#include "yml_to_json.hpp"
 #include <memory>
 #include <optional>
 #include <string>
 #include <vector>
+
+#include "catalogSharedDef.hpp"
+#include "storageDriver/StorageDriverInterface.hpp"
+#include "yml_to_json.hpp"
+
+#include <rapidjson/document.h>
 
 namespace catalog
 {

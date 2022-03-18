@@ -19,12 +19,12 @@ using namespace std;
 namespace cliparser
 {
 
-CliParser::CliParser(int argc, char * argv[])
+CliParser::CliParser(int argc, char *argv[])
 {
     parse(argc, argv);
 }
 
-void CliParser::parse(int argc, char * argv[])
+void CliParser::parse(int argc, char *argv[])
 {
     argparse::ArgumentParser serverParser("server");
 

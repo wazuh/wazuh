@@ -10,12 +10,13 @@
 #ifndef _FILE_OUTPUT_H
 #define _FILE_OUTPUT_H
 
-#include <rxcpp/rx.hpp>
 #include <filesystem>
 #include <fstream>
-#include <glog/logging.h>
 #include <iostream>
 #include <string>
+
+#include <rxcpp/rx.hpp>
+
 #include "json.hpp"
 #include "builderTypes.hpp"
 

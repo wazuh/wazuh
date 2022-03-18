@@ -11,7 +11,7 @@
 
 #include <vector>
 
-#include "stringUtils.hpp"
+#include <utils/stringUtils.hpp>
 
 TEST(split, not_delimiter)
 {

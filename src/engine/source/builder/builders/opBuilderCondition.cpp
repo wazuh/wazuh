@@ -9,14 +9,13 @@
 
 #include "opBuilderCondition.hpp"
 
-#include <glog/logging.h>
 #include <stdexcept>
 #include <string>
 
 #include "registry.hpp"
 #include "syntax.hpp"
 
-using namespace std;
+#include <logging/logging.hpp>
 
 namespace builder::internals::builders
 {
@@ -26,22 +25,22 @@ types::Lifter opBuilderCondition(const types::DocumentValue & def)
     // Check that input is as expected and throw exception otherwise
     if (!def.IsObject())
     {
-        auto msg = "condition builder expects value to be an object, but got " + def.GetType();
-        LOG(ERROR) << msg << endl;
-        throw std::invalid_argument(msg);
+        auto msg = fmt::format("Expexted type 'Object' but got [{}]", def.GetType());
+        WAZUH_LOG_ERROR(msg);
+        throw std::invalid_argument(std::move(msg));
     }
     if (def.GetObject().MemberCount() != 1)
     {
-        auto msg = "condition build expects value to have only one key, but got" + def.GetObject().MemberCount();
-        LOG(ERROR) << msg << endl;
-        throw std::invalid_argument(msg);
+        auto msg = fmt::format("Expected single key but got: [{}]", def.GetObject().MemberCount());
+        WAZUH_LOG_ERROR(msg);
+        throw std::invalid_argument(std::move(msg));
     }
 
     // Call apropiate builder depending on value
     auto v = def.MemberBegin();
     if (v->value.IsString())
     {
-        string vStr = v->value.GetString();
+        std::string vStr = v->value.GetString();
         switch (vStr[0])
         {
             case syntax::FUNCTION_HELPER_ANCHOR:

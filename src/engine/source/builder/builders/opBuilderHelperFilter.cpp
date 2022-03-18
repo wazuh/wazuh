@@ -10,12 +10,13 @@
 #include <optional>
 #include <string>
 #include <tuple>
+
 #include <re2/re2.h>
 
 #include "opBuilderHelperFilter.hpp"
-#include "stringUtils.hpp"
-#include "ipUtils.hpp"
 #include "syntax.hpp"
+#include <utils/stringUtils.hpp>
+#include <utils/ipUtils.hpp>
 
 using DocumentValue = builder::internals::types::DocumentValue;
 namespace

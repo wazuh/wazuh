@@ -9,41 +9,47 @@
 
 #include "stageBuilderCheck.hpp"
 
-#include <glog/logging.h>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
 #include "registry.hpp"
 
-using namespace std;
+#include <fmt/format.h>
+#include <logging/logging.hpp>
 
 namespace builder::internals::builders
 {
 
-types::Lifter stageBuilderCheck(const types::DocumentValue & def)
+types::Lifter stageBuilderCheck(const types::DocumentValue &def)
 {
     // Assert value is as expected
-    if (!def.IsArray())
+    if(!def.IsArray())
     {
-        string msg = "Stage check builder, expected array but got " + def.GetType();
-        LOG(ERROR) << msg << endl;
-        throw invalid_argument(msg);
+        std::string msg = fmt::format(
+            "Stage check builder, expected array but got [{}]", def.GetType());
+        WAZUH_LOG_ERROR(msg);
+        throw std::invalid_argument(std::move(msg));
     }
 
     // Build all conditions
-    vector<types::Lifter> conditions;
-    for (auto it = def.Begin(); it != def.End(); ++it)
+    std::vector<types::Lifter> conditions;
+    for(auto it = def.Begin(); it != def.End(); ++it)
     {
         try
         {
-            conditions.push_back(get<types::OpBuilder>(Registry::getBuilder("condition"))(*it));
+            conditions.push_back(std::get<types::OpBuilder>(
+                Registry::getBuilder("condition"))(*it));
         }
-        catch (std::exception & e)
+        catch(std::exception &e)
         {
-            string msg = "Stage check builder encountered exception on building.";
-            LOG(ERROR) << msg << " From exception: " << e.what() << endl;
-            std::throw_with_nested(runtime_error(msg));
+            WAZUH_LOG_ERROR(
+                "Stage check builder encountered exception on building: [{}]",
+                e.what());
+
+            std::string msg =
+                "Stage check builder encountered exception on building.";
+            std::throw_with_nested(std::runtime_error(std::move(msg)));
         }
     }
 
@@ -51,13 +57,18 @@ types::Lifter stageBuilderCheck(const types::DocumentValue & def)
     types::Lifter check;
     try
     {
-        check = get<types::CombinatorBuilder>(Registry::getBuilder("combinator.chain"))(conditions);
+        check = std::get<types::CombinatorBuilder>(
+            Registry::getBuilder("combinator.chain"))(conditions);
     }
-    catch (std::exception & e)
+    catch(std::exception &e)
     {
-        string msg = "Stage check builder encountered exception chaining all conditions.";
-        LOG(ERROR) << msg << " From exception: " << e.what() << endl;
-        std::throw_with_nested(runtime_error(msg));
+        WAZUH_LOG_ERROR("Stage check builder encountered exception chaining "
+                        "all conditions: [{}]",
+                        e.what());
+
+        std::string msg = "Stage check builder encountered exception chaining "
+                          "all conditions.";
+        std::throw_with_nested(std::runtime_error(std::move(msg)));
     }
 
     // Finally return Lifter

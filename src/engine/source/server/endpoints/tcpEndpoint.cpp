@@ -9,13 +9,12 @@
 
 #include "tcpEndpoint.hpp"
 
-using std::endl;
-using std::string;
+#include <logging/logging.hpp>
 
 namespace engineserver::endpoints
 {
 
-void TCPEndpoint::connectionHandler(uvw::TCPHandle & server)
+void TCPEndpoint::connectionHandler(uvw::TCPHandle &server)
 {
     auto client = server.loop().resource<uvw::TCPHandle>();
     auto timer = client->loop().resource<uvw::TimerHandle>();
@@ -23,88 +22,100 @@ void TCPEndpoint::connectionHandler(uvw::TCPHandle & server)
     auto ph = std::make_shared<ProtocolHandler>();
 
     client->on<uvw::ErrorEvent>(
-        [](const uvw::ErrorEvent & event, uvw::TCPHandle & client)
+        [](const uvw::ErrorEvent &event, uvw::TCPHandle &client)
         {
-            LOG(ERROR) << "TCP ErrorEvent: endpoint (" << client.sock().ip.c_str() << ":" << client.sock().port
-                       << ") error: code=" << event.code() << "; name=" << event.name() << "; message=" << event.what()
-                       << endl;
+            WAZUH_LOG_ERROR("TCP ErrorEvent: endpoint[{}:{}] error: code=[{}]; "
+                            "name=[{}]; message=[{}]",
+                            client.sock().ip,
+                            client.sock().port,
+                            event.code(),
+                            event.name(),
+                            event.what());
         });
 
     timer->on<uvw::TimerEvent>(
-        [client](const auto &, auto & handler)
+        [client](const auto &, auto &handler)
         {
-            LOG(INFO) << "TCP TimerEvent: Time out for connection" << endl;
+            WAZUH_LOG_INFO("TCP TimerEvent: Timeout for connection.");
             client->close();
             handler.close();
         });
 
     client->on<uvw::DataEvent>(
-        [&, timer, ph](const uvw::DataEvent & event, uvw::TCPHandle & client)
+        [&, timer, ph](const uvw::DataEvent &event, uvw::TCPHandle &client)
         {
             // TODO: Are we moving the buffer? we should.
             timer->again();
             const auto result = ph->process(event.data.get(), event.length);
-            if (result)
+            if(result)
             {
                 const auto events = result.value().data();
-                while (!this->m_out.try_enqueue_bulk(events, result.value().size()))
+                while(!m_out.try_enqueue_bulk(events, result.value().size()))
                     ;
             }
             else
             {
-                LOG(ERROR) << "TCP DataEvent: Error processing data" << endl;
+                WAZUH_LOG_ERROR("TCP DataEvent: Error processing data.");
                 timer->close();
                 client.close();
             }
         });
 
     client->on<uvw::EndEvent>(
-        [timer](const uvw::EndEvent &, uvw::TCPHandle & client)
+        [timer](const uvw::EndEvent &, uvw::TCPHandle &client)
         {
-            LOG(INFO) << "TCP EndEvent: Terminating connection" << endl;
+            WAZUH_LOG_INFO("TCP EndEvent: Terminating connection.");
             timer->close();
             client.close();
         });
 
-    client->on<uvw::CloseEvent>([](const uvw::CloseEvent & event, uvw::TCPHandle & client)
-                                { LOG(INFO) << "TCP CloseEvent: Connection closed" << endl; });
+    client->on<uvw::CloseEvent>(
+        [](const uvw::CloseEvent &event, uvw::TCPHandle &client)
+        { WAZUH_LOG_INFO("TCP CloseEvent: Connection closed."); });
 
     server.accept(*client);
-    LOG(INFO) << "TCP ListenEvent: Client accepted" << endl;
+    WAZUH_LOG_INFO("TCP ListenEvent: Client accepted.");
 
-    timer->start(uvw::TimerHandle::Time{CONNECTION_TIMEOUT_MSEC}, uvw::TimerHandle::Time{CONNECTION_TIMEOUT_MSEC});
+    timer->start(uvw::TimerHandle::Time {CONNECTION_TIMEOUT_MSEC},
+                 uvw::TimerHandle::Time {CONNECTION_TIMEOUT_MSEC});
 
     client->read();
 }
 
-TCPEndpoint::TCPEndpoint(const string & config, ServerOutput & eventBuffer) : BaseEndpoint{config, eventBuffer}
+TCPEndpoint::TCPEndpoint(const std::string &config, ServerOutput &eventBuffer)
+    : BaseEndpoint {config, eventBuffer}
 {
     const auto pos = config.find(":");
-    this->m_ip = config.substr(0, pos);
-    this->m_port = stoi(config.substr(pos + 1));
+    m_ip = config.substr(0, pos);
+    m_port = stoi(config.substr(pos + 1));
 
-    this->m_loop = uvw::Loop::getDefault();
-    this->m_server = m_loop->resource<uvw::TCPHandle>();
+    m_loop = uvw::Loop::getDefault();
+    m_server = m_loop->resource<uvw::TCPHandle>();
 
-    this->m_server->on<uvw::ListenEvent>(
-        [this](const uvw::ListenEvent & event, uvw::TCPHandle & server)
+    m_server->on<uvw::ListenEvent>(
+        [this](const uvw::ListenEvent &event, uvw::TCPHandle &server)
         {
-            LOG(INFO) << "TCP ListenEvent: stablishing new connection" << endl;
-            this->connectionHandler(server);
+            WAZUH_LOG_INFO("TCP ListenEvent: stablishing new connection.");
+            connectionHandler(server);
         });
 
-    this->m_server->on<uvw::ErrorEvent>(
-        [](const uvw::ErrorEvent & event, uvw::TCPHandle & client)
+    m_server->on<uvw::ErrorEvent>(
+        [](const uvw::ErrorEvent &event, uvw::TCPHandle &client)
         {
-            LOG(ERROR) << "TCP ErrorEvent: endpoint(" << client.sock().ip.c_str() << ":" << client.sock().port
-                       << ") error: code=" << event.code() << "; name=" << event.name() << "; message=" << event.what()
-                       << endl;
+            WAZUH_LOG_ERROR("TCP ErrorEvent: endpoint[{}:{}] error: code=[{}]; "
+                            "name=[{}]; message=[{}]",
+                            client.sock().ip,
+                            client.sock().port,
+                            event.code(),
+                            event.name(),
+                            event.what());
         });
 
-    this->m_server->on<uvw::CloseEvent>([](const uvw::CloseEvent & event, uvw::TCPHandle & client)
-                                        { LOG(INFO) << "TCP CloseEvent" << endl; });
+    m_server->on<uvw::CloseEvent>(
+        [](const uvw::CloseEvent &event, uvw::TCPHandle &client)
+        { WAZUH_LOG_INFO("TCP CloseEvent."); });
 
-    LOG(INFO) << "TCP endpoint configured: " << config << endl;
+    WAZUH_LOG_INFO("TCP endpoint configured: [{}]", config);
 }
 
 void TCPEndpoint::run()
@@ -116,16 +127,19 @@ void TCPEndpoint::run()
 
 void TCPEndpoint::close()
 {
-    m_loop->stop();                                                 /// Stops the loop
-    m_loop->walk([](uvw::BaseHandle & handle) { handle.close(); }); /// Triggers every handle's close callback
-    m_loop->run(); /// Runs the loop again, so every handle is able to receive its close callback
+    m_loop->stop(); /// Stops the loop
+    m_loop->walk(
+        [](uvw::BaseHandle &handle)
+        { handle.close(); }); /// Triggers every handle's close callback
+    m_loop->run(); /// Runs the loop again, so every handle is able to receive
+                   /// its close callback
     m_loop->clear();
     m_loop->close();
 }
 
 TCPEndpoint::~TCPEndpoint()
 {
-    this->close();
+    close();
 };
 
 } // namespace engineserver::endpoints

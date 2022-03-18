@@ -10,11 +10,13 @@
 #include <algorithm>
 #include <optional>
 #include <string>
-#include <re2/re2.h>
 
 #include "opBuilderHelperMap.hpp"
 #include "syntax.hpp"
-#include "stringUtils.hpp"
+
+#include <re2/re2.h>
+
+#include <utils/stringUtils.hpp>
 
 namespace
 {
