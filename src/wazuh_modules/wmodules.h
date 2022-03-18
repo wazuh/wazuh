@@ -88,7 +88,6 @@ extern int wm_task_nice;        // Nice value for tasks.
 extern int wm_max_eps;          // Maximum events per second sent by OpenScap Wazuh Module
 extern int wm_kill_timeout;     // Time for a process to quit before killing it
 extern int wm_debug_level;
-extern gid_t wm_gid;
 
 // Read XML configuration and internal options
 int wm_config();
@@ -98,6 +97,20 @@ int modulesSync(char* args);
 
 // Add module to the global list
 void wm_add(wmodule *module);
+
+/*
+ * @brief Get ID group of Wazuh user.
+ *
+ * @return ID group.
+ */
+gid_t wm_getGroupID(void);
+
+/*
+ * @brief Set ID group of wazuh modules
+ *
+ * @param[in] gid ID group.
+ */
+void wm_setGroupID(const gid_t gid);
 
 // Check general configuration
 int wm_check();

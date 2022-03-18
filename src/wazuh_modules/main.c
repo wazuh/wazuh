@@ -10,6 +10,7 @@
  */
 
 #include "wmodules.h"
+#include <sys/types.h>
 
 static void wm_help();                  // Print help.
 static void wm_setup();                 // Setup function. Exits on error.
@@ -141,10 +142,12 @@ void wm_setup()
         nowDaemon();
     }
 
-    wm_gid = Privsep_GetGroup(GROUPGLOBAL);
-    if (wm_gid == (gid_t) OS_INVALID) {
+    const gid_t gid = Privsep_GetGroup(GROUPGLOBAL);
+    if (gid == (gid_t) OS_INVALID) {
         merror_exit(USER_ERROR, "", GROUPGLOBAL, strerror(errno), errno);
     }
+
+    wm_setGroupID(gid);
 
     if (wm_check() < 0) {
         minfo("No configuration defined. Exiting...");
