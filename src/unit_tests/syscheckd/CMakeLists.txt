@@ -1,7 +1,7 @@
 # Generate syscheck library
 if(${TARGET} STREQUAL "winagent")
-  file(GLOB sysfiles ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/*.obj
-                     ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/*/*.obj)
+  file(GLOB sysfiles ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd-event.dir/src/*.obj
+                     ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd-event.dir/src/*/*.obj)
   list(REMOVE_ITEM sysfiles ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/main.c.obj)
 else()
   file(GLOB sysfiles ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/*.o
