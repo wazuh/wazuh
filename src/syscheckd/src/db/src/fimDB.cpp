@@ -34,13 +34,13 @@ void FIMDB::sync()
 
     if (!m_stopping)
     {
-        m_loggingFunction(LOG_INFO, "Executing FIM sync.");
+        m_loggingFunction(LOG_DEBUG, "Executing FIM sync.");
         FIMDBCreator<OS_TYPE>::sync(m_rsyncHandler,
                                     m_dbsyncHandler->handle(),
                                     m_syncFileMessageFunction,
                                     m_syncRegistryMessageFunction,
                                     m_syncRegistryEnabled);
-        m_loggingFunction(LOG_INFO, "Finished FIM sync.");
+        m_loggingFunction(LOG_DEBUG, "Finished FIM sync.");
     }
 }
 

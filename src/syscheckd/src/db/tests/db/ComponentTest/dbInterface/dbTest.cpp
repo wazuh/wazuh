@@ -88,8 +88,8 @@ TEST_F(DBTestFixture, TestFimSyncPushMsg)
     fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added);
     EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG_VERBOSE, std::string("Message pushed: ") + test)).Times(1);
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "FIM sync module started.")).Times(1);
-    EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Executing FIM sync.")).Times(1);
-    EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Finished FIM sync.")).Times(1);
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG, "Executing FIM sync.")).Times(1);
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG, "Finished FIM sync.")).Times(1);
     EXPECT_CALL(*mockSync, syncMsg("fim_file", testing::_)).Times(1);
     EXPECT_NO_THROW(
     {
@@ -101,8 +101,8 @@ TEST_F(DBTestFixture, TestFimSyncPushMsg)
 TEST_F(DBTestFixture, TestFimRunIntegrity)
 {
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "FIM sync module started.")).Times(1);
-    EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Executing FIM sync.")).Times(1);
-    EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Finished FIM sync.")).Times(1);
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG, "Executing FIM sync.")).Times(1);
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG, "Finished FIM sync.")).Times(1);
 
     EXPECT_NO_THROW(
     {
@@ -114,8 +114,8 @@ TEST_F(DBTestFixture, TestFimRunIntegrityInitTwice)
 {
     EXPECT_CALL(*mockLog, loggingFunction(LOG_ERROR, "FIM integrity thread already running.")).Times(1);
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "FIM sync module started.")).Times(1);
-    EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Executing FIM sync.")).Times(1);
-    EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "Finished FIM sync.")).Times(1);
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG, "Executing FIM sync.")).Times(1);
+    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG, "Finished FIM sync.")).Times(1);
 
     EXPECT_NO_THROW(
     {
