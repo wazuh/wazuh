@@ -1,7 +1,9 @@
 #include "glog/logging.h" // TODO: set GLOG_minloglevel=2
 #include "rocksdb/db.h"
-#include "rocksdb/slice.h"
 #include "rocksdb/options.h"
+#include "rocksdb/slice.h"
+#include "rocksdb/utilities/transaction.h"
+#include "rocksdb/utilities/transaction_db.h"
 
 #include <kvdb/kvdb.hpp>
 
@@ -16,6 +18,9 @@ using ROCKSDB_NAMESPACE::PinnableSlice;
 using ROCKSDB_NAMESPACE::ReadOptions;
 using ROCKSDB_NAMESPACE::Slice;
 using ROCKSDB_NAMESPACE::Status;
+using ROCKSDB_NAMESPACE::Transaction;
+using ROCKSDB_NAMESPACE::TransactionDB;
+using ROCKSDB_NAMESPACE::TransactionDBOptions;
 using ROCKSDB_NAMESPACE::WriteBatch;
 using ROCKSDB_NAMESPACE::WriteOptions;
 
@@ -203,7 +208,7 @@ bool DeleteColumnFamily(std::string const column_family_name) {
     DB *db;
     Status s;
     std::vector<ColumnFamilyHandle*> handles;
-    bool result = true, found = false;
+    bool result = true;
 
     if(column_family_name.empty()) {
         LOG(ERROR) << "[" << __func__ << "]" << " can't delete a family column without name " << std::endl;
@@ -214,7 +219,6 @@ bool DeleteColumnFamily(std::string const column_family_name) {
 
     int i = CFIndexInAvailableArray(column_family_name);
     if(i) {
-        found = true;
         s = DB::Open(DBOptions(), kDBPath, column_families, &handles, &db);
         if(s.ok()) {
             for(auto handle : handles) {
@@ -256,8 +260,7 @@ bool DeleteColumnFamily(std::string const column_family_name) {
 
         delete db;
     }
-
-    if(!found) {
+    else {
         LOG(ERROR) << "[" << __func__ << "]" << " can't delete a FC that doesn't exist" << std::endl;
         result = false;
     }
@@ -280,7 +283,7 @@ bool AccesSingleItemOfCF(std::string const &column_family_name, std::string &val
     DB *db;
     Status s;
     std::vector<ColumnFamilyHandle*> handles;
-    bool result = true, found = false;
+    bool result = true;
 
     if(column_family_name.empty()) {
         LOG(ERROR) << "[" << __func__ << "]" << " can't write to a family column with no name." << std::endl;
@@ -296,7 +299,6 @@ bool AccesSingleItemOfCF(std::string const &column_family_name, std::string &val
 
     int i = CFIndexInAvailableArray(column_family_name);
     if(i) {
-        found = true;
         s = DB::Open(DBOptions(), kDBPath, column_families, &handles, &db);
         if(s.ok()) {
 
@@ -313,7 +315,7 @@ bool AccesSingleItemOfCF(std::string const &column_family_name, std::string &val
                                 << value << "} into CF name : " << column_family_name << std::endl;
                             }
                             else {
-                                LOG(ERROR) << "[" << __func__ << "]" << " couldn't insert value into CF, error: " << s.ToString() << std::endl;
+                                LOG(ERROR) << "[" << __func__ << "]" << " couldn't write value into CF, error: " << s.ToString() << std::endl;
                                 result = false;
                             }
                         }
@@ -327,7 +329,7 @@ bool AccesSingleItemOfCF(std::string const &column_family_name, std::string &val
                                 << value << "} from CF name : " << column_family_name << std::endl;
                             }
                             else {
-                                LOG(ERROR) << "[" << __func__ << "]" << " couldn't insert value into CF, error: " << s.ToString() << std::endl;
+                                LOG(ERROR) << "[" << __func__ << "]" << " couldn't Get value from CF, error: " << s.ToString() << std::endl;
                                 result = false;
                             }
                         }
@@ -340,7 +342,7 @@ bool AccesSingleItemOfCF(std::string const &column_family_name, std::string &val
                                 LOG(INFO) << "[" << __func__ << "]" << " key deleted OK {" << key << "} from CF name : " << column_family_name << std::endl;
                             }
                             else {
-                                LOG(ERROR) << "[" << __func__ << "]" << " couldn't insert value into CF, error: " << s.ToString() << std::endl;
+                                LOG(ERROR) << "[" << __func__ << "]" << " couldn't delete value from CF, error: " << s.ToString() << std::endl;
                                 result = false;
                             }
                         }
@@ -357,7 +359,7 @@ bool AccesSingleItemOfCF(std::string const &column_family_name, std::string &val
                                 pinnable_val.Reset();
                             }
                             else {
-                                LOG(ERROR) << "[" << __func__ << "]" << " couldn't insert value into CF, error: " << s.ToString() << std::endl;
+                                LOG(ERROR) << "[" << __func__ << "]" << " couldn't insert value into CF without copy, error: " << s.ToString() << std::endl;
                                 result = false;
                             }
                         }
@@ -388,8 +390,7 @@ bool AccesSingleItemOfCF(std::string const &column_family_name, std::string &val
 
         delete db;
     }
-
-    if(!found) {
+    else {
         LOG(ERROR) << "[" << __func__ << "]" << " can't write to a FC that doesn't exist" << std::endl;
         result = false;
     }
@@ -468,4 +469,82 @@ bool ReadToColumnFamilyWithoutValueCopy(std::string const &columnFamily, std::st
         return true;
     }
     return false;
+}
+
+bool WriteToColumnFamilyTransaction(std::string const &column_family_name,
+                        std::vector<std::pair<std::string,std::string>> const pairsVector) {
+    Status s;
+    TransactionDBOptions txn_db_options;
+    TransactionDB* txn_db;
+    std::vector<ColumnFamilyHandle*> handles;
+    bool result = true;
+    WriteOptions write_options;
+
+    if(!pairsVector.size()) {
+        LOG(ERROR) << "[" << __func__ << "]" << " can't write to a Transaction without any pair." << std::endl;
+        return false;
+    }
+
+    if(column_family_name.empty()) {
+        LOG(ERROR) << "[" << __func__ << "]" << " can't write to a Transaction to a family column with no name." << std::endl;
+        return false;
+    }
+
+    UpdateColumnFamiliesList();
+
+    int i = CFIndexInAvailableArray(column_family_name);
+    if(i) {
+        s = TransactionDB::Open(DBOptions(), txn_db_options, kDBPath, column_families, &handles, &txn_db);
+        if(s.ok()) {
+            Transaction* txn = txn_db->BeginTransaction(write_options);
+            if(txn) {
+                for(auto handle : handles) {
+                    // find the correct CF handle to be erased
+                    if(!column_family_name.compare(handle->GetName())) {
+                        for(auto pair : pairsVector) {
+                            std::string const key = pair.first;
+                            std::string const value = pair.second;
+                            if(key.empty()) {
+                                LOG(ERROR) << "[" << __func__ << "]" << " can't write to a Transaction to a family column with no key." << std::endl;
+                                return false;
+                            }
+                            // Write a key in this transaction
+                            s = txn->Put(handle, key, value);
+                            if(s.ok()) {
+                                continue;
+                            }
+                            else {
+                                LOG(ERROR) << "[" << __func__ << "]" << " couldn't execute Put in transaction -breaking loop-, error: " << s.code() << std::endl;
+                                result =  false;
+                            }
+                        }
+                        s = txn->Commit();
+                        if (s.ok()) {
+                            LOG(ERROR) << "[" << __func__ << "]" << " transaction commited OK" << std::endl;
+                            delete txn;
+                            result =  true;
+                        }
+                        else {
+                            LOG(ERROR) << "[" << __func__ << "]" << " couldn't commit transaction, error: " << s.code() << std::endl;
+                            result =  false;
+                        }
+                    }
+                }
+            }
+            else {
+                LOG(ERROR) << "[" << __func__ << "]" << " couldn't begin transaction, error: " << s.code() << std::endl;
+                result =  false;
+            }
+        }
+        else {
+            LOG(ERROR) << "[" << __func__ << "]" << " couldn't Open DB, error: " << s.code() << std::endl;
+            result = false;
+        }
+        delete txn_db;
+    }
+    else {
+        LOG(ERROR) << "[" << __func__ << "]" << " can't delete a FC that doesn't exist" << std::endl;
+        result = false;
+    }
+    return result;
 }
