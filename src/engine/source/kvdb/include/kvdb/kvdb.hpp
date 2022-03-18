@@ -8,7 +8,6 @@ enum ACTION_ON_CF {
     WRITE = 0,
     READ,
     DELETE,
-    READ_VALUE_COPY,
     READ_WITHOUT_VALUE_COPY,
 };
 
@@ -21,6 +20,9 @@ bool CreateColumnFamily(std::string const column_family_name);
 bool DeleteColumnFamily(std::string const column_family_name);
 
 bool ReadToColumnFamily(std::string const &columnFamily,
+    std::string const &key, std::string &value);
+
+bool ReadToColumnFamilyWithoutValueCopy(std::string const &columnFamily,
     std::string const &key, std::string &value);
 
 bool WriteToColumnFamily(std::string const &columnFamily,
