@@ -22,7 +22,7 @@ TEST(kvdbTests, column_family_creation_deletion)
 {
     bool ret = CreateColumnFamily("IP_BLACKLIST");
     ASSERT_TRUE(ret);
-    ret = CreateColumnFamily("MITRE");
+    ret = CreateColumnFamily("IP_GEO_TAGGING");
     ASSERT_TRUE(ret);
     ret = DeleteColumnFamily("IP_BLACKLIST");
     ASSERT_TRUE(ret);
@@ -44,6 +44,12 @@ TEST(kvdbTests, read_write_column_family)
     ret = ReadToColumnFamily("IP_BLACKLIST", "someKey", val);
     ASSERT_TRUE(ret);
     ASSERT_EQ(val,"127.0.0.1");
+    ret = WriteToColumnFamily("IP_GEO_TAGGING", "position", "31.4201S,64.1888W");
+    ASSERT_TRUE(ret);
+    std::string valWithoutCopy;
+    ret = ReadToColumnFamilyWithoutValueCopy("IP_GEO_TAGGING", "position", valWithoutCopy);
+    ASSERT_TRUE(ret);
+    ASSERT_EQ(valWithoutCopy,"31.4201S,64.1888W");
     ret = DeleteKeyInColumnFamily("IP_BLACKLIST", "someKey");
     ASSERT_TRUE(ret);
     ret = ReadToColumnFamily("IP_BLACKLIST", "someKey", val);
