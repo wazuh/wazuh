@@ -346,15 +346,20 @@ bool AccesSingleItemOfCF(std::string const &column_family_name, std::string &val
                         }
                         break;
 
-                    case ACTION_ON_CF::READ_VALUE_COPY:
-                        {
-                            // TODO: pending
-                        }
-                        break;
-
                     case ACTION_ON_CF::READ_WITHOUT_VALUE_COPY:
                         {
-                            // TODO: pending
+                            PinnableSlice pinnable_val;
+                            s = db->Get(ReadOptions(), handle, Slice(key), &pinnable_val);
+                            if(s.ok()) {
+                                value = pinnable_val.ToString();
+                                LOG(INFO) << "[" << __func__ << "]" << " value obtained OK {" << key << ","
+                                << value << "} from CF name : " << column_family_name << std::endl;
+                                pinnable_val.Reset();
+                            }
+                            else {
+                                LOG(ERROR) << "[" << __func__ << "]" << " couldn't insert value into CF, error: " << s.ToString() << std::endl;
+                                result = false;
+                            }
                         }
                         break;
 
@@ -443,6 +448,23 @@ bool DeleteKeyInColumnFamily(std::string const &columnFamily, std::string const 
 
     std::string nonConstVal = value; //TODO: avoid this or a const_cast
     if(AccesSingleItemOfCF(columnFamily, nonConstVal, key, ACTION_ON_CF::DELETE)) {
+        return true;
+    }
+    return false;
+}
+/**
+ * @brief read a value from a key inside a CF without value copying
+ *
+ * @param columnFamily where to search the key
+ * @param value that the result of the proccess will modify
+ * @param key where to find the value
+ * @return true If the proccess finished successfully
+ * @return false If the proccess didn't finished successfully
+ */
+bool ReadToColumnFamilyWithoutValueCopy(std::string const &columnFamily, std::string const &key,
+                                                            std::string &value) {
+
+    if(AccesSingleItemOfCF(columnFamily, value, key, ACTION_ON_CF::READ_WITHOUT_VALUE_COPY)) {
         return true;
     }
     return false;
