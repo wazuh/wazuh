@@ -9,7 +9,6 @@
 
 #include "assetBuilderFilter.hpp"
 
-#include <glog/logging.h>
 #include <map>
 #include <stdexcept>
 #include <string>
@@ -17,7 +16,8 @@
 
 #include "registry.hpp"
 
-using namespace std;
+#include <logging/logging.hpp>
+#include <fmt/format.h>
 
 namespace builder::internals::builders
 {
@@ -27,15 +27,15 @@ types::ConnectableT assetBuilderFilter(const types::Document & def)
     // Assert document is as expected
     if (!def.m_doc.IsObject())
     {
-        auto msg = "Filter builder expects value to be an object, but got " + def.m_doc.GetType();
-        LOG(ERROR) << msg << endl;
+        auto msg = fmt::format("Filter builder expects value to be an object, but got [{}]", def.m_doc.GetType());
+        WAZUH_LOG_ERROR(msg);
         throw std::invalid_argument(msg);
     }
 
-    vector<types::Lifter> stages;
+    std::vector<types::Lifter> stages;
 
     // Needed to build stages in a for loop popping its attributes
-    map<string, const types::DocumentValue &> attributes;
+    std::map<std::string, const types::DocumentValue &> attributes;
     try
     {
         for (auto it = def.m_doc.MemberBegin(); it != def.m_doc.MemberEnd(); ++it)
@@ -45,13 +45,13 @@ types::ConnectableT assetBuilderFilter(const types::Document & def)
     }
     catch (std::exception & e)
     {
-        string msg = "Filter builder encountered exception in building auxiliary map.";
-        LOG(ERROR) << msg << " From exception: " << e.what() << endl;
-        std::throw_with_nested(runtime_error(msg));
+        const char* msg = "Filter builder encountered exception in building auxiliary map.";
+        WAZUH_LOG_ERROR("{} From exception: [{}]", msg, e.what());
+        std::throw_with_nested(std::runtime_error(msg));
     }
 
     // Attribute name
-    string name;
+    std::string name;
     try
     {
         name = attributes.at("name").GetString();
@@ -59,13 +59,13 @@ types::ConnectableT assetBuilderFilter(const types::Document & def)
     }
     catch (std::exception & e)
     {
-        string msg = "Filter builder encountered exception building attribute name.";
-        LOG(ERROR) << msg << " From exception: " << e.what() << endl;
-        std::throw_with_nested(invalid_argument(msg));
+        const char* msg = "Filter builder encountered exception building attribute name.";
+        WAZUH_LOG_ERROR("{} From exception: [{}]", msg, e.what());
+        std::throw_with_nested(std::invalid_argument(msg));
     }
 
     // Attribute after
-    vector<string> after;
+    std::vector<std::string> after;
     try
     {
         for (const types::DocumentValue & parentName : attributes.at("after").GetArray())
@@ -76,22 +76,22 @@ types::ConnectableT assetBuilderFilter(const types::Document & def)
     }
     catch (std::exception & e)
     {
-        string msg = "Filter builder encountered exception building attribute after.";
-        LOG(ERROR) << msg << " From exception: " << e.what() << endl;
-        std::throw_with_nested(invalid_argument(msg));
+        const char* msg = "Filter builder encountered exception building attribute after.";
+        WAZUH_LOG_ERROR("{} From exception: [{}]", msg, e.what());
+        std::throw_with_nested(std::invalid_argument(msg));
     }
 
     // Stage allow
     try
     {
-        stages.push_back(get<types::OpBuilder>(Registry::getBuilder("allow"))(attributes.at("allow")));
+        stages.push_back(std::get<types::OpBuilder>(Registry::getBuilder("allow"))(attributes.at("allow")));
         attributes.erase("allow");
     }
     catch (std::exception & e)
     {
-        string msg = "Filter builder encountered exception building stage allow.";
-        LOG(ERROR) << msg << " From exception: " << e.what() << endl;
-        std::throw_with_nested(runtime_error(msg));
+        const char* msg = "Filter builder encountered exception building stage allow.";
+        WAZUH_LOG_ERROR("{} From exception: [{}]", msg, e.what());
+        std::throw_with_nested(std::runtime_error(msg));
     }
 
     // Rest of stages
@@ -100,14 +100,16 @@ types::ConnectableT assetBuilderFilter(const types::Document & def)
     {
         try
         {
-            stages.push_back(get<types::OpBuilder>(Registry::getBuilder(it->first))(it->second));
+            stages.push_back(std::get<types::OpBuilder>(Registry::getBuilder(it->first))(it->second));
             toPop.push_back(it->first);
         }
         catch (std::exception & e)
         {
-            string msg = "Filter builder encountered exception building stage " + it->first + ".";
-            LOG(ERROR) << msg << " From exception: " << e.what() << endl;
-            std::throw_with_nested(runtime_error(msg));
+            auto msg = fmt::format(
+                "Filter builder encountered exception building stage [{}].",
+                it->first);
+            WAZUH_LOG_ERROR("{} From exception: [{}]", msg, e.what());
+            std::throw_with_nested(std::runtime_error(msg));
         }
     }
 
@@ -118,26 +120,26 @@ types::ConnectableT assetBuilderFilter(const types::Document & def)
     }
     if (!attributes.empty())
     {
-        string msg = "Filter builder, json definition contains unproccessed attributes";
-        LOG(ERROR) << msg << endl;
-        throw invalid_argument(msg);
+        const char* msg = "Filter builder, json definition contains unproccessed attributes";
+        WAZUH_LOG_ERROR(msg);
+        throw std::invalid_argument(msg);
     }
 
     // Combine all stages
-    types::Lifter filter;
     try
     {
-        filter = get<types::CombinatorBuilder>(Registry::getBuilder("combinator.chain"))(stages);
+        types::Lifter filter = std::get<types::CombinatorBuilder>(
+            Registry::getBuilder("combinator.chain"))(stages);
+
+        return types::ConnectableT {name, after, filter};
     }
     catch (std::exception & e)
     {
-        string msg = "Filter builder encountered exception building chaining all stages.";
-        LOG(ERROR) << msg << " From exception: " << e.what() << endl;
-        std::throw_with_nested(runtime_error(msg));
+        const char* msg = "Filter builder encountered exception building chaining all stages.";
+        WAZUH_LOG_ERROR("{} From exception: [{}]", msg, e.what());
+        std::throw_with_nested(std::runtime_error(msg));
     }
 
-    // Finally return connectable
-    return types::ConnectableT{name, after, filter};
 }
 
 } // namespace builder::internals::builders

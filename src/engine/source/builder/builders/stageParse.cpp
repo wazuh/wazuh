@@ -13,10 +13,11 @@
 #include <string>
 #include <vector>
 
-#include <glog/logging.h>
-
 #include "registry.hpp"
 #include <hlp/hlp.hpp>
+#include <logging/logging.hpp>
+
+#include <fmt/format.h>
 
 namespace builder::internals::builders
 {
@@ -24,55 +25,51 @@ namespace builder::internals::builders
 types::Lifter stageBuilderParse(const types::DocumentValue &def)
 {
     // Assert value is as expected
-    if (!def.IsObject())
+    if(!def.IsObject())
     {
-        std::string msg = "Stage parse builder, expected array but got " +
-                          std::to_string(def.GetType());
-        LOG(ERROR) << msg;
+        std::string msg = fmt::format(
+            "[Stage parse] builder, expected array but got {}", def.GetType());
+        WAZUH_LOG_ERROR(msg);
         throw std::invalid_argument(msg);
     }
 
     auto parseObj = def.GetObj();
 
-    if (!parseObj["logql"].IsArray())
+    if(!parseObj["logql"].IsArray())
     {
         // TODO ERROR
-        LOG(ERROR) << "Parse stage is ill formed.";
+        WAZUH_LOG_ERROR("Parse stage is ill formed.");
         throw std::invalid_argument(
-            "Config format error. Check the parser section.");
+            "[Stage parse]Config format error. Check the parser section.");
     }
 
     auto const &logqlArr = parseObj["logql"];
-    if (logqlArr.Empty())
+    if(logqlArr.Empty())
     {
         // TODO error
-        LOG(ERROR) << "No logQl expressions found.";
-        throw std::invalid_argument("Must have some expressions configured.");
+        WAZUH_LOG_ERROR("No logQl expressions found.");
+        throw std::invalid_argument(
+            "[Stage parse]Must have some expressions configured.");
     }
 
     std::vector<types::Lifter> parsers;
-    for (auto const &item : logqlArr.GetArray())
+    for(auto const &item : logqlArr.GetArray())
     {
-        if (!item.IsObject())
+        if(!item.IsObject())
         {
-            LOG(ERROR) << "LogQl object is badly formatted.";
+            WAZUH_LOG_ERROR("LogQl object is badly formatted.");
             throw std::invalid_argument(
-                "Bad format trying to get parse expression ");
+                "[Stage parse]Bad format trying to get parse expression ");
         }
 
         // TODO hard-coded 'event.original'
         auto logQlExpr = item["event.original"].GetString();
 
-        ParserFn parseOp;
-        try{
-            parseOp = getParserOp(logQlExpr);
-        }
-        catch (std::exception &e)
+        auto parseOp = getParserOp(logQlExpr);
+        if(!parseOp)
         {
-            const char *msg = "Stage [parse] builder encountered exception "
-                            "parsing LogQLExpression.";
-            LOG(ERROR) << msg << " From exception: " << e.what();
-            std::throw_with_nested(std::runtime_error(msg));
+            throw std::invalid_argument(
+                "[Stage parse]Could not generate the parser fn");
         }
 
         auto newOp = [parserOp = std::move(parseOp)](types::Observable o)
@@ -81,7 +78,7 @@ types::Lifter stageBuilderParse(const types::DocumentValue &def)
                 [parserOp = std::move(parserOp)](types::Event e)
                 {
                     auto ev = e->get("/message");
-                    if (!ev->IsString())
+                    if(!ev->IsString())
                     {
                         // TODO error
                         return e;
@@ -89,13 +86,13 @@ types::Lifter stageBuilderParse(const types::DocumentValue &def)
 
                     ParseResult result;
                     auto ok = parserOp(ev->GetString(), result);
-                    if (!ok)
+                    if(!ok)
                     {
                         // TODO error
                         return e;
                     }
 
-                    for (auto const &val : result)
+                    for(auto const &val : result)
                     {
                         auto name =
                             json::Document::preparePath(val.first.c_str());
@@ -109,19 +106,9 @@ types::Lifter stageBuilderParse(const types::DocumentValue &def)
         parsers.emplace_back(newOp);
     }
 
-    try
-    {
-        auto check = std::get<types::CombinatorBuilder>(
-            Registry::getBuilder("combinator.broadcast"))(parsers);
-        return check;
-    }
-    catch (std::exception &e)
-    {
-        const char *msg = "Stage [parse] builder encountered exception "
-                          "chaining all mappings.";
-        LOG(ERROR) << msg << " From exception: " << e.what();
-        std::throw_with_nested(std::runtime_error(msg));
-    }
+    auto check = std::get<types::CombinatorBuilder>(
+        Registry::getBuilder("combinator.broadcast"))(parsers);
+    return check;
 }
 
 } // namespace builder::internals::builders

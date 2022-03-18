@@ -1,12 +1,3 @@
-# Minimum 3.14 required by googletest discover tests
-cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
-
-# Set c++17
-set(CMAKE_CXX_STANDARD 17)
-
-# Project Settings
-project(wazuh-engine)
-
 set(ENGINE_CATALOG_SOURCE_DIR ${ENGINE_SOURCE_DIR}/catalog)
 
 ####################################################################################################
@@ -21,23 +12,8 @@ CPMAddPackage(
   OPTIONS
       "YAML_BUILD_SHARED_LIBS OFF"
       "YAML_CPP_BUILD_TESTS OFF"
+  EXCLUDE_FROM_ALL YES
 )
-list(APPEND EXTERNAL_DEPS "yaml-cpp")
-
-CPMAddPackage(
-    NAME RapidJSON
-    GITHUB_REPOSITORY Tencent/rapidjson
-    GIT_TAG master
-    VERSION 1.1.0
-    OPTIONS
-        "RAPIDJSON_BUILD_DOC OFF"
-        "RAPIDJSON_BUILD_EXAMPLES OFF"
-        "RAPIDJSON_BUILD_TESTS OFF"
-        # "RAPIDJSON_BUILD_CXX17 ON"
-)
-
-# Add this dependencies to parent CMakeLists scope
-set(EXTERNAL_DEPS ${EXTERNAL_DEPS} PARENT_SCOPE)
 
 ####################################################################################################
 # Sources - Includes
@@ -49,8 +25,11 @@ target_sources(main PRIVATE
 )
 
 target_include_directories(main PUBLIC
-    ${RapidJSON_SOURCE_DIR}/include/
+    ${rapidjson_SOURCE_DIR}/include
     ${ENGINE_CATALOG_SOURCE_DIR}
     ${ENGINE_CATALOG_SOURCE_DIR}/storageDriver/
     ${ENGINE_CATALOG_SOURCE_DIR}/storageDriver/disk/
 )
+
+#TODO do this better
+target_link_libraries(main yaml-cpp)

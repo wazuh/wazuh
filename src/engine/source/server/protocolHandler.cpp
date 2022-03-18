@@ -9,10 +9,7 @@
 
 #include "protocolHandler.hpp"
 
-using std::optional;
-using std::string;
-using std::throw_with_nested;
-using std::vector;
+#include <logging/logging.hpp>
 
 namespace engineserver
 {
@@ -33,7 +30,7 @@ bool ProtocolHandler::hasHeader()
     return false;
 }
 
-std::shared_ptr<json::Document> ProtocolHandler::parse(const string & event)
+std::shared_ptr<json::Document> ProtocolHandler::parse(const std::string & event)
 {
 
     auto doc = std::make_shared<json::Document>();
@@ -56,7 +53,7 @@ std::shared_ptr<json::Document> ProtocolHandler::parse(const string & event)
     try
     {
         rapidjson::Value loc;
-        string location = event.substr(queuePos, locPos);
+        std::string location = event.substr(queuePos, locPos);
         loc.SetString(location.c_str(), location.length(), allocator);
         doc->m_doc.AddMember("location", loc, allocator);
     }
@@ -68,7 +65,7 @@ std::shared_ptr<json::Document> ProtocolHandler::parse(const string & event)
     try
     {
         rapidjson::Value msg;
-        string message = event.substr(locPos + 1, string::npos);
+        std::string message = event.substr(locPos + 1, std::string::npos);
         msg.SetString(message.c_str(), message.length(), allocator);
         doc->m_doc.AddMember("message", msg, allocator);
     }
@@ -80,9 +77,9 @@ std::shared_ptr<json::Document> ProtocolHandler::parse(const string & event)
     return doc;
 }
 
-optional<vector<string>> ProtocolHandler::process(char * data, size_t length)
+std::optional<std::vector<std::string>> ProtocolHandler::process(char * data, size_t length)
 {
-    vector<string> events;
+    std::vector<std::string> events;
 
     for (size_t i = 0; i < length; i++)
     {
@@ -115,12 +112,12 @@ optional<vector<string>> ProtocolHandler::process(char * data, size_t length)
                     try
                     {
                         // TODO: Are we moving the buffer? we should
-                        events.push_back(string(m_buff.begin() + sizeof(int), m_buff.end()));
+                        events.push_back(std::string(m_buff.begin() + sizeof(int), m_buff.end()));
                         m_buff.clear();
                     }
                     catch (std::exception & e)
                     {
-                        LOG(ERROR) << e.what() << std::endl;
+                        WAZUH_LOG_ERROR("{}", e.what());
                         return std::nullopt;
                     }
                     m_stage = 0;
@@ -128,12 +125,12 @@ optional<vector<string>> ProtocolHandler::process(char * data, size_t length)
                 break;
 
             default:
-                LOG(ERROR) << "Invalid stage value." << std::endl;
+                WAZUH_LOG_ERROR("Invalid stage value.");
                 return std::nullopt;
         }
     }
 
-    return optional<vector<string>>(std::move(events));
+    return std::optional<std::vector<std::string>>(std::move(events));
 }
 
 } // namespace engineserver

@@ -10,8 +10,6 @@
 #ifndef _SYNTAX_H
 #define _SYNTAX_H
 
-#include <string>
-
 /**
  * @brief Defines syntax elements.
  *
@@ -20,8 +18,8 @@
  */
 namespace builder::internals::syntax
 {
-constexpr int REFERENCE_ANCHOR('$');
-constexpr int FUNCTION_HELPER_ANCHOR('+');
+constexpr char REFERENCE_ANCHOR{'$'};
+constexpr char FUNCTION_HELPER_ANCHOR{'+'};
 
 } // namespace builder::internals::syntax
 

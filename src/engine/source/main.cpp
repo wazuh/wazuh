@@ -9,20 +9,39 @@
 
 // TODO: QoL CMakeLists
 
-#include "main.hpp"
+#include <atomic>
+#include <csignal>
+#include <string>
+#include <thread>
+#include <vector>
+
+#include "Catalog.hpp"
+#include "builder.hpp"
+#include "catalog/storageDriver/disk/DiskStorage.hpp"
+#include "cliParser.hpp"
+#include "engineServer.hpp"
+#include "graph.hpp"
+#include "json.hpp"
+#include "protocolHandler.hpp"
+#include "register.hpp"
+#include "router.hpp"
+
+#define WAIT_DEQUEUE_TIMEOUT_USEC (1 * 1000000)
+
+#include <logging/logging.hpp>
 
 using namespace engineserver;
 
 // Static global variables for handling threads
-static atomic<bool> gs_doRun = true;
-static vector<thread> gs_threadList;
+static std::atomic<bool> gs_doRun = true;
+static std::vector<std::thread> gs_threadList;
 
 static void sigint_handler(const int signum)
 {
     // Inform threads that they must exit
     gs_doRun = false;
 
-    for (auto & t : gs_threadList)
+    for(auto &t : gs_threadList)
     {
         t.join();
     };
@@ -30,14 +49,12 @@ static void sigint_handler(const int signum)
     exit(0);
 }
 
-int main(int argc, char * argv[])
+int main(int argc, char *argv[])
 {
     signal(SIGINT, sigint_handler);
 
-    // Configure
-    google::InitGoogleLogging(argv[0]);
-    vector<string> serverArgs;
-    string storagePath;
+    std::vector<std::string> serverArgs;
+    std::string storagePath;
     int nThreads;
     size_t queueSize;
 
@@ -50,17 +67,22 @@ int main(int argc, char * argv[])
         nThreads = cliInput.getThreads();
         queueSize = cliInput.getQueueSize();
     }
-    catch (const exception & e)
+    catch(const std::exception &e)
     {
-        LOG(ERROR) << "Error while parsing arguments: " << e.what() << endl;
+        WAZUH_LOG_ERROR("Error while parsing arguments: [{}]", e.what());
         return 1;
     }
 
+    logging::LoggingConfig logConfig;
+    logConfig.logLevel = logging::LogLevel::Debug;
+    logConfig.header = "";
+    logging::loggingInit(logConfig);
+
     // Server
-    EngineServer server{serverArgs, queueSize};
+    EngineServer server {serverArgs, queueSize};
 
     // Check if the server was correctly configured
-    if (!server.isConfigured())
+    if(!server.isConfigured())
     {
         return 1;
     }
@@ -70,11 +92,12 @@ int main(int argc, char * argv[])
     catalog::Catalog _catalog;
     try
     {
-        _catalog.setStorageDriver(make_unique<DiskStorage>(storagePath));
+        _catalog.setStorageDriver(std::make_unique<DiskStorage>(storagePath));
     }
-    catch (const exception & e)
+    catch(const std::exception &e)
     {
-        LOG(ERROR) << "Engine error, got exception while configuring catalog: " << e.what() << endl;
+        WAZUH_LOG_ERROR("Exception while creating catalog configuration : [{}]",
+                        e.what());
         return 1;
     }
 
@@ -83,9 +106,9 @@ int main(int argc, char * argv[])
     {
         builder::internals::registerBuilders();
     }
-    catch (const exception & e)
+    catch(const std::exception &e)
     {
-        LOG(ERROR) << "Engine error, got exception while registering builders: " << e.what() << endl;
+        WAZUH_LOG_ERROR("Exception while registering builders: [{}]", e.what());
         return 1;
     }
     // TODO: Handle errors on construction
@@ -93,37 +116,40 @@ int main(int argc, char * argv[])
 
     // Processing Workers (Router), Router is replicated in each thread
     // TODO: handle hot modification of routes
-    for (auto i = 0; i < nThreads; ++i)
+    for(auto i = 0; i < nThreads; ++i)
     {
-        thread t{[=, &eventBuffer = server.output()]()
-                 {
-                     router::Router<builder::Builder<catalog::Catalog>> router{_builder};
+        std::thread t {
+            [=, &eventBuffer = server.output()]()
+            {
+                router::Router<builder::Builder<catalog::Catalog>> router {
+                    _builder};
 
-                     try
-                     {
-                         // Default route
-                         router.add("test_route", "test_environment");
-                     }
-                     catch (const exception & e)
-                     {
-                         LOG(ERROR) << "Engine error, got exception while building default route: " << e.what() << endl;
-                         return 1;
-                     }
+                try
+                {
+                    // Default route
+                    router.add("test_route", "test_environment");
+                }
+                catch(const std::exception &e)
+                {
+                    WAZUH_LOG_ERROR("Exception while building default route: [{}]", e.what());
+                    return 1;
+                }
 
-                     // Thread loop
-                     while (gs_doRun)
-                     {
-                         string event;
+                // Thread loop
+                while(gs_doRun)
+                {
+                    std::string event;
 
-                         if (eventBuffer.wait_dequeue_timed(event, WAIT_DEQUEUE_TIMEOUT_USEC))
-                         {
-                             router.input().on_next(ProtocolHandler::parse(event));
-                         }
-                     }
+                    if(eventBuffer.wait_dequeue_timed(
+                           event, WAIT_DEQUEUE_TIMEOUT_USEC))
+                    {
+                        router.input().on_next(ProtocolHandler::parse(event));
+                    }
+                }
 
-                     router.input().on_completed();
-                     return 0;
-                 }};
+                router.input().on_completed();
+                return 0;
+            }};
 
         gs_threadList.push_back(std::move(t));
     }

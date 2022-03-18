@@ -9,14 +9,13 @@
 
 #include "opBuilderMap.hpp"
 
-#include <glog/logging.h>
 #include <stdexcept>
 #include <string>
 
 #include "registry.hpp"
 #include "syntax.hpp"
 
-using namespace std;
+#include <logging/logging.hpp>
 
 namespace builder::internals::builders
 {
@@ -26,14 +25,16 @@ types::Lifter opBuilderMap(const types::DocumentValue & def)
     // Check that input is as expected and throw exception otherwise
     if (!def.IsObject())
     {
-        auto msg = "map builder expects value to be an object, but got " + def.GetType();
-        LOG(ERROR) << msg << endl;
+        auto msg = fmt::format("Map builder expects value to be an object, but got [{}]", def.GetType());
+        WAZUH_LOG_ERROR(msg);
         throw std::invalid_argument(msg);
     }
     if (def.GetObject().MemberCount() != 1)
     {
-        auto msg = "map build expects value to have only one key, but got" + def.GetObject().MemberCount();
-        LOG(ERROR) << msg << endl;
+        auto msg = fmt::format(
+            "Map build expects value to have only one key, but got [{}]",
+            def.GetObject().MemberCount());
+        WAZUH_LOG_ERROR(msg);
         throw std::invalid_argument(msg);
     }
 
@@ -41,7 +42,7 @@ types::Lifter opBuilderMap(const types::DocumentValue & def)
     auto v = def.MemberBegin();
     if (v->value.IsString())
     {
-        string vStr = v->value.GetString();
+        std::string vStr = v->value.GetString();
         switch (vStr[0])
         {
             // TODO: handle that only allowed map helpers are built
