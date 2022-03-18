@@ -65,6 +65,7 @@ pycparser==2.20
 pyparsing==2.4.7
 python-dateutil==2.8.1
 python-jose==3.1.0
+python-json-logger==2.0.2
 pytz==2020.1
 PyYAML==5.4.1
 requests==2.25.1
