@@ -122,3 +122,12 @@ add_executable(connectableTest
   ${BUILDER_TEST_SOURCE_DIR}/connectable_test.cpp
 )
 gtest_discover_tests(connectableTest)
+
+add_executable(opBuilderKVDBTest
+  ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
+  ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
+  ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBExtract_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBMatch_test.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderKVDB.cpp)
+gtest_discover_tests(opBuilderKVDBExtractTest)
