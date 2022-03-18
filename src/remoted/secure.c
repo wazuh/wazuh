@@ -42,7 +42,7 @@ static void * rem_handler_main(__attribute__((unused)) void * args);
 void * rem_keyupdate_main(__attribute__((unused)) void * args);
 
 /* Handle each message received */
-STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storage *peer_info, int sock_client, int *wdb_sock);
+STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock);
 
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock);
@@ -335,15 +335,13 @@ STATIC void handle_outgoing_data_to_tcp_socket(int sock_client)
 // Message handler thread
 void * rem_handler_main(__attribute__((unused)) void * args) {
     message_t * message;
-    char buffer[OS_MAXSTR + 1] = "";
     int wdb_sock = -1;
     mdebug1("Message handler thread started.");
 
     while (1) {
         message = rem_msgpop();
         if (message->sock == USING_UDP_NO_CLIENT_SOCKET || message->counter > rem_getCounter(message->sock)) {
-            memcpy(buffer, message->buffer, message->size);
-            HandleSecureMessage(buffer, message->size, &message->addr, message->sock, &wdb_sock);
+            HandleSecureMessage(message, &wdb_sock);
         } else {
             rem_inc_dequeued();
         }
@@ -414,25 +412,27 @@ STATIC void * close_fp_main(void * args) {
     return NULL;
 }
 
-STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storage *peer_info, int sock_client, int *wdb_sock) {
+STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
     int agentid;
-    const int protocol = (sock_client == USING_UDP_NO_CLIENT_SOCKET) ? REMOTED_NET_PROTOCOL_UDP : REMOTED_NET_PROTOCOL_TCP;
+    const int protocol = (message->sock == USING_UDP_NO_CLIENT_SOCKET) ? REMOTED_NET_PROTOCOL_UDP : REMOTED_NET_PROTOCOL_TCP;
     char cleartext_msg[OS_MAXSTR + 1];
     char srcmsg[OS_FLSIZE + 1];
     char srcip[IPSIZE + 1] = {0};
     char agname[KEYSIZE + 1] = {0};
+    char buffer[OS_MAXSTR + 1] = "";
     char *tmp_msg;
     size_t msg_length;
     char ip_found = 0;
     int r;
+    int recv_b = message->size;
 
     /* Set the source IP */
-    switch (peer_info->ss_family) {
+    switch (message->addr.ss_family) {
     case AF_INET:
-        get_ipv4_string(((struct sockaddr_in *)peer_info)->sin_addr, srcip, IPSIZE);
+        get_ipv4_string(((struct sockaddr_in *)&message->addr)->sin_addr, srcip, IPSIZE);
         break;
     case AF_INET6:
-        get_ipv6_string(((struct sockaddr_in6 *)peer_info)->sin6_addr, srcip, IPSIZE);
+        get_ipv6_string(((struct sockaddr_in6 *)&message->addr)->sin6_addr, srcip, IPSIZE);
         break;
     default:
         merror("IP address family not supported.");
@@ -443,6 +443,7 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storag
     memset(cleartext_msg, '\0', OS_MAXSTR + 1);
     memset(srcmsg, '\0', OS_FLSIZE + 1);
     tmp_msg = NULL;
+    memcpy(buffer, message->buffer, recv_b);
 
     /* Get a valid agent id */
     if (buffer[0] == '!') {
@@ -460,8 +461,8 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storag
         if (*tmp_msg != '!') {
             merror(ENCFORMAT_ERROR, "(unknown)", srcip);
 
-            if (sock_client >= 0) {
-                _close_sock(&keys, sock_client);
+            if (message->sock >= 0) {
+                _close_sock(&keys, message->sock);
             }
 
             return;
@@ -489,21 +490,21 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storag
 
             // Send key request by id
             push_request(buffer + 1, "id");
-            if (sock_client >= 0) {
-                _close_sock(&keys, sock_client);
+            if (message->sock >= 0) {
+                _close_sock(&keys, message->sock);
             }
 
             return;
         } else {
             w_mutex_lock(&keys.keyentries[agentid]->mutex);
 
-            if ((keys.keyentries[agentid]->sock >= 0) && (keys.keyentries[agentid]->sock != sock_client)) {
+            if ((keys.keyentries[agentid]->sock >= 0) && (keys.keyentries[agentid]->sock != message->sock)) {
                 w_mutex_unlock(&keys.keyentries[agentid]->mutex);
                 key_unlock();
                 mwarn("Agent key already in use: agent ID '%s'", keys.keyentries[agentid]->id);
 
-                if (sock_client >= 0) {
-                    _close_sock(&keys, sock_client);
+                if (message->sock >= 0) {
+                    _close_sock(&keys, message->sock);
                 }
                 return;
             }
@@ -515,9 +516,9 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storag
             ssize_t msg_size = strlen(msg);
 
             if (protocol == REMOTED_NET_PROTOCOL_UDP) {
-                retval = sendto(logr.udp_sock, msg, msg_size, 0, (struct sockaddr *)peer_info, logr.peer_size) == msg_size ? 0 : -1;
+                retval = sendto(logr.udp_sock, msg, msg_size, 0, (struct sockaddr *)&message->addr, logr.peer_size) == msg_size ? 0 : -1;
             } else {
-                retval = OS_SendSecureTCP(sock_client, msg_size, msg);
+                retval = OS_SendSecureTCP(message->sock, msg_size, msg);
             }
 
             if (retval < 0) {
@@ -537,21 +538,21 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storag
 
             // Send key request by ip
             push_request(srcip, "ip");
-            if (sock_client >= 0) {
-                _close_sock(&keys, sock_client);
+            if (message->sock >= 0) {
+                _close_sock(&keys, message->sock);
             }
 
             return;
         } else {
             w_mutex_lock(&keys.keyentries[agentid]->mutex);
 
-            if ((keys.keyentries[agentid]->sock >= 0) && (keys.keyentries[agentid]->sock != sock_client)) {
+            if ((keys.keyentries[agentid]->sock >= 0) && (keys.keyentries[agentid]->sock != message->sock)) {
                 w_mutex_unlock(&keys.keyentries[agentid]->mutex);
                 key_unlock();
                 mwarn("Agent key already in use: agent ID '%s'", keys.keyentries[agentid]->id);
 
-                if (sock_client >= 0) {
-                    _close_sock(&keys, sock_client);
+                if (message->sock >= 0) {
+                    _close_sock(&keys, message->sock);
                 }
 
                 return;
@@ -568,8 +569,8 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storag
     if (recv_b <= 0) {
         mwarn("Received message is empty");
         key_unlock();
-        if (sock_client >= 0) {
-            _close_sock(&keys, sock_client);
+        if (message->sock >= 0) {
+            _close_sock(&keys, message->sock);
         }
 
         return;
@@ -588,9 +589,9 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storag
             }
         }
 
-        if (sock_client >= 0) {
-            mwarn("Decrypt the message fail, socket %d", sock_client);
-            _close_sock(&keys, sock_client);
+        if (message->sock >= 0) {
+            mwarn("Decrypt the message fail, socket %d", message->sock);
+            _close_sock(&keys, message->sock);
         }
 
         return;
@@ -604,25 +605,25 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storag
         w_mutex_lock(&keys.keyentries[agentid]->mutex);
         keys.keyentries[agentid]->net_protocol = protocol;
         keys.keyentries[agentid]->rcvd = time(0);
-        memcpy(&keys.keyentries[agentid]->peer_info, peer_info, logr.peer_size);
+        memcpy(&keys.keyentries[agentid]->peer_info, &message->addr, logr.peer_size);
 
         keyentry * key = OS_DupKeyEntry(keys.keyentries[agentid]);
 
         if (protocol == REMOTED_NET_PROTOCOL_TCP) {
-            keys.keyentries[agentid]->sock = sock_client;
+            keys.keyentries[agentid]->sock = message->sock;
             w_mutex_unlock(&keys.keyentries[agentid]->mutex);
 
-            r = OS_AddSocket(&keys, agentid, sock_client);
+            r = OS_AddSocket(&keys, agentid, message->sock);
 
             switch (r) {
             case OS_ADDSOCKET_ERROR:
                 merror("Couldn't add TCP socket to keystore.");
                 break;
             case OS_ADDSOCKET_KEY_UPDATED:
-                mdebug2("TCP socket %d already in keystore. Updating...", sock_client);
+                mdebug2("TCP socket %d already in keystore. Updating...", message->sock);
                 break;
             case OS_ADDSOCKET_KEY_ADDED:
-                mdebug2("TCP socket %d added to keystore.", sock_client);
+                mdebug2("TCP socket %d added to keystore.", message->sock);
                 break;
             default:
                 ;
