@@ -34,6 +34,7 @@ add_library(builders OBJECT
     builders/opBuilderMap.cpp
     builders/opBuilderMapReference.cpp
     builders/opBuilderMapValue.cpp
+    builders/opBuilderKVDB.cpp
     builders/stageBuilderCheck.cpp
     builders/stageBuilderNormalize.cpp
     builders/stageBuilderOutputs.cpp
