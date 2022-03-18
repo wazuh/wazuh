@@ -16,7 +16,7 @@ from logging.handlers import TimedRotatingFileHandler
 from pytz import UTC
 
 
-logger_name = 'gcloud_wodle'
+logger_name = ':gcloud_wodle:'
 logger = logging.getLogger(logger_name)
 log_levels = {0: logging.WARNING,
               1: logging.INFO,
@@ -78,7 +78,7 @@ def get_script_arguments():
     return parser.parse_args()
 
 
-def get_stdout_logger(name: str, level: int = 3) -> logging.Logger:
+def get_stdout_logger(name: str, level: int = 0) -> logging.Logger:
     """Create a logger which returns the messages by stdout.
 
     Parameters

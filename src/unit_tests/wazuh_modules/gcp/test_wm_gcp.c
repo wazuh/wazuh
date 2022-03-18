@@ -408,7 +408,7 @@ static void test_wm_gcp_pubsub_run_unknown_error(void **state) {
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, "Unknown error - This is an unknown error.");
+    will_return(__wrap_wm_exec, "gcloud_wodleUnknown error - This is an unknown error.");
     will_return(__wrap_wm_exec, 1);
     will_return(__wrap_wm_exec, 0);
 
@@ -631,7 +631,7 @@ static void test_wm_gcp_pubsub_run_logging_warning_message_warning(void **state)
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, "Test output - WARNING - This is a warning message");
+    will_return(__wrap_wm_exec, ":gcloud_wodle:Test output - WARNING - This is a warning message");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_isDebug, 0);
@@ -703,7 +703,7 @@ static void test_wm_gcp_pubsub_run_logging_debug_message_not_debug(void **state)
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, "Test output - INFO - This is an info message");
+    will_return(__wrap_wm_exec, ":gcloud_wodle:Test output - INFO - This is an info message");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_isDebug, 2);
@@ -740,7 +740,7 @@ static void test_wm_gcp_pubsub_run_logging_info_message_info(void **state) {
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, "Test output - INFO - This is an info message");
+    will_return(__wrap_wm_exec, ":gcloud_wodle:Test output - INFO - This is an info message");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_isDebug, 1);
@@ -777,7 +777,7 @@ static void test_wm_gcp_pubsub_run_logging_info_message_debug(void **state) {
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, "Test output - DEBUG - This is an info message");
+    will_return(__wrap_wm_exec, "gcloud_wodleTest output - DEBUG - This is an info message");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_isDebug, 1);
@@ -811,7 +811,7 @@ static void test_wm_gcp_pubsub_run_logging_info_message_warning(void **state) {
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, "Test output - WARNING - This is a warning message");
+    will_return(__wrap_wm_exec, ":gcloud_wodle:Test output - WARNING - This is a warning message");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_isDebug, 1);
@@ -846,13 +846,89 @@ static void test_wm_gcp_pubsub_run_logging_warning_message_error(void **state) {
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, "Test output - ERROR - This is an error message");
+    will_return(__wrap_wm_exec, ":gcloud_wodle:Test output - ERROR - This is an error message");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_isDebug, 0);
 
     expect_string(__wrap__mterror, tag, WM_GCP_PUBSUB_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg, "This is an error message");
+    wm_gcp_pubsub_run(gcp_config);
+}
+
+static void test_wm_gcp_pubsub_run_logging_warning_multiline_message_error(void **state) {
+    wm_gcp_pubsub *gcp_config = *state;
+
+    snprintf(gcp_config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
+    snprintf(gcp_config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
+    snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
+
+    gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
+
+    expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Create argument list");
+    will_return(__wrap_isDebug, 0);
+
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
+        "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
+
+    expect_string(__wrap_wm_exec, command,
+        "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
+    expect_value(__wrap_wm_exec, secs, 0);
+    expect_value(__wrap_wm_exec, add_path, NULL);
+
+    will_return(__wrap_wm_exec, ":gcloud_wodle:Test output - ERROR - This is a \nmultiline\nerror message");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_isDebug, 0);
+
+    expect_string(__wrap__mterror, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "This is a \nmultiline\nerror message");
+    wm_gcp_pubsub_run(gcp_config);
+}
+
+static void test_wm_gcp_pubsub_run_logging_warning_multimessage_message_error(void **state) {
+    wm_gcp_pubsub *gcp_config = *state;
+
+    snprintf(gcp_config->project_id, OS_SIZE_1024, "wazuh-gcp-test");
+    snprintf(gcp_config->subscription_name, OS_SIZE_1024, "wazuh-subscription-test");
+    snprintf(gcp_config->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
+
+    gcp_config->max_messages = 10;
+    gcp_config->num_threads = 2;
+
+    expect_string(__wrap__mtdebug2, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Create argument list");
+    will_return(__wrap_isDebug, 0);
+
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
+        "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
+
+    expect_string(__wrap_wm_exec, command,
+        "wodles/gcloud/gcloud --integration_type pubsub --project wazuh-gcp-test --subscription_id wazuh-subscription-test "
+        "--credentials_file /wazuh/credentials/test.json --max_messages 10 --num_threads 2");
+    expect_value(__wrap_wm_exec, secs, 0);
+    expect_value(__wrap_wm_exec, add_path, NULL);
+
+    will_return(__wrap_wm_exec, ":gcloud_wodle:Test output - ERROR - This is a \nmultiline\nerror message\n"
+		":gcloud_wodle:Test output - ERROR - This is the second message\n"
+		":gcloud_wodle:Test output - CRITICAL - This is a critical message\n");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_isDebug, 0);
+
+    expect_string(__wrap__mterror, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "This is a \nmultiline\nerror message");
+    expect_string(__wrap__mterror, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "This is the second message");
+    expect_string(__wrap__mterror, tag, WM_GCP_PUBSUB_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "This is a critical message");
     wm_gcp_pubsub_run(gcp_config);
 }
 
@@ -1571,7 +1647,7 @@ static void test_wm_gcp_bucket_run_logging_debug_message_debug(void **state) {
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, "Test output - DEBUG - This is a debug message");
+    will_return(__wrap_wm_exec, ":gcloud_wodle:Test output - DEBUG - This is a debug message");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_isDebug, 2);
@@ -1609,7 +1685,7 @@ static void test_wm_gcp_bucket_run_logging_debug_message_not_debug_discarded(voi
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, "Test output - This is a discarded message");
+    will_return(__wrap_wm_exec, ":gcloud_wodle:Test output - This is a discarded message");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_isDebug, 2);
@@ -1644,7 +1720,7 @@ static void test_wm_gcp_bucket_run_logging_debug_message_not_debug(void **state)
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, "Test output - INFO - This is an info message");
+    will_return(__wrap_wm_exec, ":gcloud_wodle:Test output - INFO - This is an info message\n");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_isDebug, 2);
@@ -1681,7 +1757,7 @@ static void test_wm_gcp_bucket_run_logging_info_message_info(void **state) {
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, "Test output - INFO - This is an info message");
+    will_return(__wrap_wm_exec, ":gcloud_wodle:Test output - INFO - This is an info message");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_isDebug, 1);
@@ -1756,7 +1832,7 @@ static void test_wm_gcp_bucket_run_logging_info_message_warning(void **state) {
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, "Test output - WARNING - This is a warning message");
+    will_return(__wrap_wm_exec, ":gcloud_wodle:Test output - WARNING - This is a warning message");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_isDebug, 1);
@@ -1793,7 +1869,7 @@ static void test_wm_gcp_bucket_run_logging_warning_message_warning(void **state)
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, "Test output - WARNING - This is a warning message");
+    will_return(__wrap_wm_exec, ":gcloud_wodle:Test output - WARNING - This is a warning message");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
@@ -1865,13 +1941,96 @@ static void test_wm_gcp_bucket_run_logging_warning_message_error(void **state) {
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, "Test output - ERROR - This is an error message");
+    will_return(__wrap_wm_exec, ":gcloud_wodle:Test output - ERROR - This is an error message");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_isDebug, 0);
 
     expect_string(__wrap__mterror, tag, WM_GCP_BUCKET_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg, "This is an error message");
+    wm_gcp_bucket_run(gcp_config, cur_bucket);
+}
+
+static void test_wm_gcp_bucket_run_logging_warning_multiline_message_error(void **state) {
+    wm_gcp_bucket_base *gcp_config = *state;
+    wm_gcp_bucket *cur_bucket = gcp_config->buckets;
+
+    snprintf(cur_bucket->bucket, OS_SIZE_1024, "wazuh-gcp-test");
+    snprintf(cur_bucket->type, OS_SIZE_1024, "access_logs");
+    snprintf(cur_bucket->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
+    snprintf(cur_bucket->prefix, OS_SIZE_1024, "access_logs/");
+    snprintf(cur_bucket->only_logs_after, OS_SIZE_1024, "2021-JAN-01");
+
+    cur_bucket->remove_from_bucket = 1; // enabled
+
+    expect_string(__wrap__mtdebug2, tag, WM_GCP_BUCKET_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Create argument list");
+
+    will_return(__wrap_isDebug, 0);
+
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_BUCKET_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
+        "wodles/gcloud/gcloud --integration_type access_logs --bucket_name wazuh-gcp-test --credentials_file "
+        "/wazuh/credentials/test.json --prefix access_logs/ --only_logs_after 2021-JAN-01 --remove");
+
+    expect_string(__wrap_wm_exec, command,
+        "wodles/gcloud/gcloud --integration_type access_logs --bucket_name wazuh-gcp-test --credentials_file "
+        "/wazuh/credentials/test.json --prefix access_logs/ --only_logs_after 2021-JAN-01 --remove");
+    expect_value(__wrap_wm_exec, secs, 0);
+    expect_value(__wrap_wm_exec, add_path, NULL);
+
+    will_return(__wrap_wm_exec, ":gcloud_wodle:Test output - ERROR - This is a\nmultiline\n error message\n");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_isDebug, 0);
+
+    expect_string(__wrap__mterror, tag, WM_GCP_BUCKET_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "This is a\nmultiline\n error message");
+    wm_gcp_bucket_run(gcp_config, cur_bucket);
+}
+
+static void test_wm_gcp_bucket_run_logging_warning_multimessage_message_error(void **state) {
+    wm_gcp_bucket_base *gcp_config = *state;
+    wm_gcp_bucket *cur_bucket = gcp_config->buckets;
+
+    snprintf(cur_bucket->bucket, OS_SIZE_1024, "wazuh-gcp-test");
+    snprintf(cur_bucket->type, OS_SIZE_1024, "access_logs");
+    snprintf(cur_bucket->credentials_file, OS_SIZE_1024, "/wazuh/credentials/test.json");
+    snprintf(cur_bucket->prefix, OS_SIZE_1024, "access_logs/");
+    snprintf(cur_bucket->only_logs_after, OS_SIZE_1024, "2021-JAN-01");
+
+    cur_bucket->remove_from_bucket = 1; // enabled
+
+    expect_string(__wrap__mtdebug2, tag, WM_GCP_BUCKET_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Create argument list");
+
+    will_return(__wrap_isDebug, 1);
+    will_return(__wrap_isDebug, 1);
+
+    expect_string(__wrap__mtdebug1, tag, WM_GCP_BUCKET_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Launching command: "
+        "wodles/gcloud/gcloud --integration_type access_logs --bucket_name wazuh-gcp-test --credentials_file "
+        "/wazuh/credentials/test.json --prefix access_logs/ --only_logs_after 2021-JAN-01 --remove --log_level 1");
+
+    expect_string(__wrap_wm_exec, command,
+        "wodles/gcloud/gcloud --integration_type access_logs --bucket_name wazuh-gcp-test --credentials_file "
+        "/wazuh/credentials/test.json --prefix access_logs/ --only_logs_after 2021-JAN-01 --remove --log_level 1");
+    expect_value(__wrap_wm_exec, secs, 0);
+    expect_value(__wrap_wm_exec, add_path, NULL);
+
+    will_return(__wrap_wm_exec, ":gcloud_wodle:Test output - ERROR - This is a\nmultimessage\n error message\n"
+		":gcloud_wodle:Test critical - CRITICAL - This is another error message\n"
+		":gcloud_wodle:Test info - INFO - This is a test info message\n");
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_isDebug, 1);
+
+    expect_string(__wrap__mterror, tag, WM_GCP_BUCKET_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "This is a\nmultimessage\n error message");
+    expect_string(__wrap__mterror, tag, WM_GCP_BUCKET_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "This is another error message");
+    expect_string(__wrap__mtinfo, tag, WM_GCP_BUCKET_LOGTAG);
+    expect_string(__wrap__mtinfo, formatted_msg, "This is a test info message");
     wm_gcp_bucket_run(gcp_config, cur_bucket);
 }
 
@@ -2335,6 +2494,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_generic_error, setup_group_pubsub, teardown_group_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_generic_error_no_description, setup_group_pubsub, teardown_group_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_logging_warning_message_warning, setup_group_pubsub, teardown_group_pubsub),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_logging_warning_multiline_message_error, setup_group_pubsub, teardown_group_pubsub),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_logging_warning_multimessage_message_error, setup_group_pubsub, teardown_group_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_logging_debug_message_not_debug, setup_group_pubsub, teardown_group_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_logging_debug_message_not_debug_discarded, setup_group_pubsub, teardown_group_pubsub),
         cmocka_unit_test_setup_teardown(test_wm_gcp_pubsub_run_logging_info_message_info, setup_group_pubsub, teardown_group_pubsub),
@@ -2376,12 +2537,13 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_run_logging_warning_message_warning, setup_group_bucket, teardown_group_bucket),
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_run_logging_warning_message_debug, setup_group_bucket, teardown_group_bucket),
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_run_logging_warning_message_error, setup_group_bucket, teardown_group_bucket),
+        cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_run_logging_warning_multiline_message_error, setup_group_bucket, teardown_group_bucket),
+	cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_run_logging_warning_multimessage_message_error, setup_group_bucket, teardown_group_bucket),
 
         /* wm_gcp_bucket_dump */
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_dump_success, setup_gcp_bucket_dump, teardown_gcp_bucket_dump),
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_dump_error_allocating_wm_wd, setup_gcp_bucket_dump, teardown_gcp_bucket_dump),
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_dump_error_allocating_root, setup_gcp_bucket_dump, teardown_gcp_bucket_dump),
-
 
         /* wm_gcp_bucket_destroy */
         cmocka_unit_test_setup_teardown(test_wm_gcp_bucket_destroy, setup_gcp_bucket_destroy, teardown_gcp_bucket_destroy),

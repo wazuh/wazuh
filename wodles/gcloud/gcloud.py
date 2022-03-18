@@ -24,11 +24,12 @@ except TypeError:
 
 
 def main():
+    logger = tools.get_stdout_logger(tools.logger_name)
 
     try:
         # get script arguments
         arguments = tools.get_script_arguments()
-        logger = tools.get_stdout_logger(tools.logger_name, arguments.log_level)
+        logger.setLevel(arguments.log_level)
         credentials_file = arguments.credentials_file
         max_messages = arguments.max_messages
         log_level = arguments.log_level
@@ -102,7 +103,7 @@ def main():
         exit(gcloud_exception.errcode)
 
     except Exception:
-        logger.critical('An exception happened while running the wodle',
+        logger.critical('Unknown error',
                         exc_info=True)
         exit(exceptions.UNKNOWN_ERROR_ERRCODE)
 

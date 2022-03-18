@@ -95,6 +95,15 @@ static void wm_gcp_bucket_run(const wm_gcp_bucket_base *data, wm_gcp_bucket *exe
  */
 cJSON *wm_gcp_bucket_dump(const wm_gcp_bucket_base *gcp_config);          // Read config
 
+/**
+ * @brief Parse the output of the GCP script and prints it depending on the debug
+ *        level stated by the script
+ * @param output Output returned by the call to the script
+ * @param tag Tag that should be used when printing the messages
+ */
+static void wm_gcp_parse_output(char *output, char *tag);
+
+
 /* Context definition */
 
 const wm_context WM_GCP_PUBSUB_CONTEXT = {
@@ -315,42 +324,62 @@ void wm_gcp_pubsub_run(const wm_gcp_pubsub *data) {
         mtwarn(WM_GCP_PUBSUB_LOGTAG, "Command returned exit code %d", status);
     }
 
+    wm_gcp_parse_output(output, WM_GCP_PUBSUB_LOGTAG);
+    os_free(output);
+}
+
+static void wm_gcp_parse_output(char *output, char *tag){
     char *line;
-    char *save_ptr = NULL;
+    char * parsing_output = output;
     int debug_level = isDebug();
 
-    for (line = strtok_r(output, "\n", &save_ptr); line; line = strtok_r(NULL, "\n", &save_ptr)) {
+    for (line = strstr(parsing_output, WM_GCP_LOGGING_TOKEN); line; line = strstr(parsing_output, WM_GCP_LOGGING_TOKEN)) {
+        char * tokenized_line;
+        os_calloc(WM_STRING_MAX, sizeof(char), tokenized_line);
+	char * next_lines;
+
+        line += strlen(WM_GCP_LOGGING_TOKEN);
+        next_lines = strstr(line, WM_GCP_LOGGING_TOKEN);
+
+        int next_lines_chars = next_lines == NULL ? 0 : strlen(next_lines);
+
+        // 1 is added because it's mandatory to consider the null byte
+        int cp_length = 1 + strlen(line) - next_lines_chars > WM_STRING_MAX ? WM_STRING_MAX : 1 + strlen(line) - next_lines_chars;
+        snprintf(tokenized_line, cp_length, "%s", line);
+        if (tokenized_line[cp_length - 2] == '\n') tokenized_line[cp_length - 2] = '\0'; 
+        
         char *p_line = NULL;
 
         if (debug_level >= 2) {
-            if ((p_line = strstr(line, "- DEBUG - "))) {
+            if ((p_line = strstr(tokenized_line, "- DEBUG - "))) {
                 p_line += 10;
-                mtdebug1(WM_GCP_PUBSUB_LOGTAG, "%s", p_line);
+                mtdebug1(tag, "%s", p_line);
             }
         }
         if (debug_level >= 1) {
-            if ((p_line = strstr(line, "- INFO - "))) {
+            if ((p_line = strstr(tokenized_line, "- INFO - "))) {
                 p_line += 9;
-                mtinfo(WM_GCP_PUBSUB_LOGTAG, "%s", p_line);
+                mtinfo(tag, "%s", p_line);
             }
         }
         if (debug_level >= 0) {
-            if ((p_line = strstr(line, "- CRITICAL - "))) {
+            if ((p_line = strstr(tokenized_line, "- CRITICAL - "))) {
                 p_line += 13;
-                mterror(WM_GCP_PUBSUB_LOGTAG, "%s", p_line);
+                mterror(tag, "%s", p_line);
             }
-            if ((p_line = strstr(line, "- ERROR - "))) {
+            if ((p_line = strstr(tokenized_line, "- ERROR - "))) {
                 p_line += 10;
-                mterror(WM_GCP_PUBSUB_LOGTAG, "%s", p_line);
+                mterror(tag, "%s", p_line);
             }
-            if ((p_line = strstr(line, "- WARNING - "))) {
+            if ((p_line = strstr(tokenized_line, "- WARNING - "))) {
                 p_line += 12;
-                mtwarn(WM_GCP_PUBSUB_LOGTAG, "%s", p_line);
+                mtwarn(tag, "%s", p_line);
             }
         }
-    }
 
-    os_free(output);
+	parsing_output += cp_length + strlen(WM_GCP_LOGGING_TOKEN) - 1;
+        os_free(tokenized_line);
+    }
 }
 
 void wm_gcp_bucket_run(const wm_gcp_bucket_base *data, wm_gcp_bucket *exec_bucket) {
@@ -419,42 +448,7 @@ void wm_gcp_bucket_run(const wm_gcp_bucket_base *data, wm_gcp_bucket *exec_bucke
         mtwarn(WM_GCP_BUCKET_LOGTAG, "Command returned exit code %d", status);
     }
 
-    char *line;
-    char *save_ptr = NULL;
-    int debug_level = isDebug();
-
-    for (line = strtok_r(output, "\n", &save_ptr); line; line = strtok_r(NULL, "\n", &save_ptr)) {
-
-        char *p_line = NULL;
-
-        if (debug_level >= 2) {
-            if ((p_line = strstr(line, "- DEBUG - "))) {
-                p_line += 10;
-                mtdebug1(WM_GCP_BUCKET_LOGTAG, "%s", p_line);
-            }
-        }
-        if (debug_level >= 1) {
-            if ((p_line = strstr(line, "- INFO - "))) {
-                p_line += 9;
-                mtinfo(WM_GCP_BUCKET_LOGTAG, "%s", p_line);
-            }
-        }
-        if (debug_level >= 0) {
-            if ((p_line = strstr(line, "- CRITICAL - "))) {
-                p_line += 13;
-                mterror(WM_GCP_BUCKET_LOGTAG, "%s", p_line);
-            }
-            if ((p_line = strstr(line, "- ERROR - "))) {
-                p_line += 10;
-                mterror(WM_GCP_BUCKET_LOGTAG, "%s", p_line);
-            }
-            if ((p_line = strstr(line, "- WARNING - "))) {
-                p_line += 12;
-                mtwarn(WM_GCP_BUCKET_LOGTAG, "%s", p_line);
-            }
-        }
-    }
-
+    wm_gcp_parse_output(output, WM_GCP_BUCKET_LOGTAG);
     os_free(output);
 }
 

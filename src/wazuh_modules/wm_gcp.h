@@ -15,6 +15,7 @@
 #define WM_GCP_PUBSUB_LOGTAG ARGV0 ":gcp-pubsub"
 #define WM_GCP_BUCKET_LOGTAG ARGV0 ":gcp-bucket"
 #define WM_GCP_SCRIPT_PATH "wodles/gcloud/gcloud"
+#define WM_GCP_LOGGING_TOKEN ":gcloud_wodle:"
 
 #define WM_GCP_DEF_INTERVAL 3600
 
