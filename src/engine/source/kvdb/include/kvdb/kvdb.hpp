@@ -28,6 +28,9 @@ bool ReadToColumnFamilyWithoutValueCopy(std::string const &columnFamily,
 bool WriteToColumnFamily(std::string const &columnFamily,
     std::string const &key, std::string const &value);
 
+bool WriteToColumnFamilyTransaction(std::string const &column_family_name,
+    std::vector<std::pair<std::string,std::string>> const pairsVector);
+
 bool DeleteKeyInColumnFamily(std::string const &columnFamily,
     std::string const &key, std::string const &value = std::string());
 
