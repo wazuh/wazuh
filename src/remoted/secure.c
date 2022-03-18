@@ -610,7 +610,10 @@ STATIC void HandleSecureMessage(const message_t *message, int *wdb_sock) {
         keyentry * key = OS_DupKeyEntry(keys.keyentries[agentid]);
 
         if (protocol == REMOTED_NET_PROTOCOL_TCP) {
-            keys.keyentries[agentid]->sock = message->sock;
+            if (message->counter > rem_getCounter(message->sock)) {
+                keys.keyentries[agentid]->sock = message->sock;
+            }
+
             w_mutex_unlock(&keys.keyentries[agentid]->mutex);
 
             r = OS_AddSocket(&keys, agentid, message->sock);
