@@ -814,6 +814,8 @@ void test_fim_send_scan_info(void **state) {
 #ifndef TEST_WINAGENT
     will_return(__wrap_time, 1);
 #endif
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: {\"type\":\"scan_start\",\"data\":{\"timestamp\":1}}");
     expect_w_send_sync_msg(msg, SYSCHECK, SYSCHECK_MQ, fim_shutdown_process_on, 0);
     fim_send_scan_info(FIM_SCAN_START);
