@@ -9,53 +9,57 @@
 
 #include "opBuilderFileOutput.hpp"
 
-#include <glog/logging.h>
 #include <memory>
 #include <stdexcept>
 #include <string>
 
 #include "file.hpp"
 
-using namespace std;
+#include <logging/logging.hpp>
+#include <fmt/format.h>
 
 namespace builder::internals::builders
 {
 
-types::Lifter opBuilderFileOutput(const types::DocumentValue & def)
+types::Lifter opBuilderFileOutput(const types::DocumentValue &def)
 {
     // Check that input is as expected and throw exception otherwise
-    if (!def.IsObject())
+    if(!def.IsObject())
     {
-        auto msg = "File output builder expects value to be an object, but got " + def.GetType();
-        LOG(ERROR) << msg << endl;
+        auto msg = fmt::format("File output builder expects value to be an object, but got [{}]", def.GetType());
+        WAZUH_LOG_ERROR(msg);
         throw std::invalid_argument(msg);
     }
-    if (def.GetObject().MemberCount() != 1)
+    if(def.GetObject().MemberCount() != 1)
     {
-        auto msg = "File output builder expects value to have only one key, but got" + def.GetObject().MemberCount();
-        LOG(ERROR) << msg << endl;
+        auto msg = fmt::format("File output builder expects value to have only "
+                               "one key, but got [{}]",
+                               def.GetObject().MemberCount());
+        WAZUH_LOG_ERROR(msg);
         throw std::invalid_argument(msg);
     }
 
-    string path;
+    std::string path;
     try
     {
         path = def.MemberBegin()->value.GetString();
     }
-    catch (exception & e)
+    catch(std::exception &e)
     {
-        string msg = "File output builder encountered exception on building path.";
-        LOG(ERROR) << msg << " From exception: " << e.what() << endl;
-        std::throw_with_nested(runtime_error(msg));
+        const char *msg =
+            "File output builder encountered exception on building path.";
+        WAZUH_LOG_ERROR("{} From exception: [{}]", msg, e.what());
+        std::throw_with_nested(std::runtime_error(msg));
     }
 
-    return [=](const types::Observable & input) -> types::Observable
+    return [=](const types::Observable &input) -> types::Observable
     {
-        auto filePtr = make_shared<outputs::FileOutput>(path);
+        auto filePtr = std::make_shared<outputs::FileOutput>(path);
         input.subscribe([=](auto v) { filePtr->write(v); },
-                        [](std::exception_ptr e) { LOG(ERROR) << rxcpp::util::what(e).c_str() << endl; },
-                        [=]() { // filePtr->close();
-                        });
+                        [](std::exception_ptr e) {
+                            WAZUH_LOG_ERROR("{}", rxcpp::util::what(e).c_str());
+                        },
+                        [=]() { /* filePtr->close(); */ });
         return input;
     };
 }

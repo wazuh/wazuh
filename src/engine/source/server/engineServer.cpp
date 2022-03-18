@@ -9,14 +9,12 @@
 
 #include "engineServer.hpp"
 
-using std::endl;
-using std::string;
-using std::vector;
+#include <logging/logging.hpp>
 
 namespace engineserver
 {
 
-EngineServer::EngineServer(const vector<string> & config, size_t bufferSize)
+EngineServer::EngineServer(const std::vector<std::string> & config, size_t bufferSize)
     : m_eventBuffer{bufferSize}, m_isConfigured{false}
 {
     try
@@ -31,7 +29,7 @@ EngineServer::EngineServer(const vector<string> & config, size_t bufferSize)
     }
     catch (const std::exception & e)
     {
-        LOG(ERROR) << "Engine error, got exception while configuring server: " << e.what() << endl;
+        WAZUH_LOG_ERROR("Exception while creating server configuration: [{}]", e.what());
         return;
     }
 
@@ -55,7 +53,7 @@ void EngineServer::close(void)
     }
 }
 
-moodycamel::BlockingConcurrentQueue<string> & EngineServer::output()
+moodycamel::BlockingConcurrentQueue<std::string> & EngineServer::output()
 {
     return m_eventBuffer;
 }

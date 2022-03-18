@@ -10,10 +10,8 @@
 #ifndef _ENGINE_SERVER_H_
 #define _ENGINE_SERVER_H_
 
-#include <glog/logging.h>
 #include <map>
 #include <memory>
-#include <rxcpp/rx.hpp>
 #include <vector>
 
 #include "endpoints/baseEndpoint.hpp"

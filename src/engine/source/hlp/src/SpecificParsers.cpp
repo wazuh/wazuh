@@ -8,6 +8,9 @@
 #include <string_view>
 #include <unordered_map>
 
+#include "hlpDetails.hpp"
+#include "tld.hpp"
+
 #include "date/date.h"
 
 #include <arpa/inet.h>
@@ -18,8 +21,7 @@
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"
 
-#include "hlpDetails.hpp"
-#include "tld.hpp"
+#include <profile/profile.hpp>
 
 // TODO For all the rfc timestamps there are variations that we don't parse
 // still, this will need a rework on how this list work
@@ -43,7 +45,7 @@ bool configureTsParser(Parser &parser,
                        std::vector<std::string_view> const &args)
 {
     auto it = kTimeStampFormatMapper.find(args[0]);
-    if (it != kTimeStampFormatMapper.end())
+    if(it != kTimeStampFormatMapper.end())
     {
         parser.options.push_back(it->second);
         return true;
@@ -56,7 +58,7 @@ bool configureMapParser(Parser &parser,
                         std::vector<std::string_view> const &args)
 {
     size_t argsSize = args.size();
-    if (argsSize < 2 || argsSize > 3)
+    if(argsSize < 2 || argsSize > 3)
     {
         auto msg = "Invalid arguments for map Parser. Expected 2 or 3, got " + argsSize;
         throw std::runtime_error(msg);
@@ -76,14 +78,14 @@ bool configureFilepathParser(Parser &parser,
 {
     std::string folderSeparator = "/\\";
     bool hasDriveLetter = true;
-    if (!args.empty() && args[0] == "UNIX")
+    if(!args.empty() && args[0] == "UNIX")
     {
         hasDriveLetter = false;
         folderSeparator = "/";
     }
 
     parser.options.push_back(folderSeparator);
-    if (hasDriveLetter)
+    if(hasDriveLetter)
     {
         // TODO this is a hack to demonstrate the pattern
         parser.options.push_back({});
@@ -95,7 +97,7 @@ bool configureFilepathParser(Parser &parser,
 bool configureDomainParser(Parser &parser,
                            std::vector<std::string_view> const &args)
 {
-    if (!args.empty() && args[0] == "FQDN")
+    if(!args.empty() && args[0] == "FQDN")
     {
         // TODO this is a hack to demonstrate the pattern
         parser.options.push_back({});
@@ -109,7 +111,7 @@ bool parseAny(const char **it,
               std::unordered_map<std::string, std::string> &result)
 {
     const char *start = *it;
-    while (**it != '\0' && **it != parser.endToken)
+    while(**it != '\0' && **it != parser.endToken)
     {
         (*it)++;
     }
@@ -122,15 +124,15 @@ bool matchLiteral(const char **it,
                   std::unordered_map<std::string, std::string> &)
 {
     size_t i = 0;
-    for (; (**it) && (i < parser.name.size());)
+    for(; (**it) && (i < parser.name.size());)
     {
         // Skip over the escaping '\'
-        if (**it == '\\')
+        if(**it == '\\')
         {
             continue;
         }
 
-        if (**it != parser.name[i])
+        if(**it != parser.name[i])
         {
             return false;
         }
@@ -147,7 +149,7 @@ bool parseFilePath(const char **it,
                    std::unordered_map<std::string, std::string> &result)
 {
     const char *start = *it;
-    while (**it != parser.endToken && **it != '\0')
+    while(**it != parser.endToken && **it != '\0')
     {
         (*it)++;
     }
@@ -173,8 +175,8 @@ bool parseFilePath(const char **it,
                          : name.substr(extensionStart + 1);
 
     std::string driveLetter;
-    if (hasDriveLetter && filePath[1] == ':' &&
-        (filePath[2] == '\\' || filePath[2] == '/'))
+    if(hasDriveLetter && filePath[1] == ':' &&
+       (filePath[2] == '\\' || filePath[2] == '/'))
     {
         driveLetter = std::toupper(filePath[0]);
     }
@@ -198,7 +200,7 @@ bool parseJson(const char **it,
     // object). Note: Callbacks on parse() are required to catch the end of the
     // json if the string has trailing data.
     rapidjson::Document doc;
-    if (doc.Parse<rapidjson::kParseStopWhenDoneFlag>(*it).HasParseError())
+    if(doc.Parse<rapidjson::kParseStopWhenDoneFlag>(*it).HasParseError())
     {
         // TODO error handling
         return false;
@@ -219,12 +221,13 @@ bool parseMap(const char **it,
               Parser const &parser,
               std::unordered_map<std::string, std::string> &result)
 {
+    WAZUH_TRACE_FUNCTION;
     char pairSeparator = parser.options[0][0];
     char kvSeparator = parser.options[0][1];
     char endMapToken = parser.options[0][2];
 
     const char *start = *it;
-    while (**it != '\0' && **it != endMapToken)
+    while(**it != '\0' && **it != endMapToken)
     {
         (*it)++;
     }
@@ -241,10 +244,10 @@ bool parseMap(const char **it,
 
     size_t tuple_start_pos = 0;
     bool done = false;
-    while (!done)
+    while(!done)
     {
         size_t separator_pos = map_str.find(kvSeparator, tuple_start_pos);
-        if (separator_pos == std::string::npos)
+        if(separator_pos == std::string::npos)
         {
             // TODO Log error: Missing Separator
             break;
@@ -255,12 +258,12 @@ bool parseMap(const char **it,
         std::string value_str(map_str.substr(
             separator_pos + 1, tuple_end_pos - (separator_pos + 1)));
 
-        if (key_str.empty() || value_str.empty())
+        if(key_str.empty() || value_str.empty())
         {
             // TODO Log error: Empty map fields
             break;
         }
-        else if (tuple_end_pos == std::string::npos)
+        else if(tuple_end_pos == std::string::npos)
         {
             // Map ended
             done = true;
@@ -272,7 +275,7 @@ bool parseMap(const char **it,
                              allocator);
     }
 
-    if (!done)
+    if(!done)
     {
         // TODO report error
         return false;
@@ -294,18 +297,18 @@ bool parseIPaddress(const char **it,
     struct in_addr ip;
     struct in6_addr ipv6;
     const char *start = *it;
-    while (**it != 0 && **it != parser.endToken)
+    while(**it != 0 && **it != parser.endToken)
     {
         (*it)++;
     }
 
     std::string srcip {start, (size_t)((*it) - start)};
-    if (inet_pton(AF_INET, srcip.c_str(), &ip))
+    if(inet_pton(AF_INET, srcip.c_str(), &ip))
     {
         result[parser.name] = {start, *it};
         return true;
     }
-    else if (inet_pton(AF_INET6, srcip.c_str(), &ipv6))
+    else if(inet_pton(AF_INET6, srcip.c_str(), &ipv6))
     {
         result[parser.name] = {start, *it};
         return true;
@@ -328,27 +331,27 @@ parseFormattedTime(std::string const &fmt,
     std::chrono::minutes offset {};
     std::string abbrev;
     date::from_stream(ss, fmt.c_str(), fds, &abbrev, &offset);
-    if (!ss.fail())
+    if(!ss.fail())
     {
-        if (fds.ymd.year().ok())
+        if(fds.ymd.year().ok())
         {
             result[name + ".year"] =
                 std::to_string(static_cast<int>(fds.ymd.year()));
         }
 
-        if (fds.ymd.month().ok())
+        if(fds.ymd.month().ok())
         {
             result[name + ".month"] =
                 std::to_string(static_cast<unsigned>(fds.ymd.month()));
         }
 
-        if (fds.ymd.day().ok())
+        if(fds.ymd.day().ok())
         {
             result[name + ".day"] =
                 std::to_string(static_cast<unsigned>(fds.ymd.day()));
         }
 
-        if (fds.has_tod && fds.tod.in_conventional_range())
+        if(fds.has_tod && fds.tod.in_conventional_range())
         {
             result[name + ".hour"] = std::to_string(fds.tod.hours().count());
             result[name + ".minutes"] =
@@ -356,11 +359,11 @@ parseFormattedTime(std::string const &fmt,
             result[name + ".seconds"] =
                 std::to_string(fds.tod.seconds().count());
             auto subsec = fds.tod.subseconds().count();
-            if (subsec > 0)
+            if(subsec > 0)
             {
                 // TODO check if this is necessary
                 // Remove the 'extra' 0 at the end
-                while ((subsec % 10) == 0)
+                while((subsec % 10) == 0)
                 {
                     subsec /= 10;
                 }
@@ -368,7 +371,7 @@ parseFormattedTime(std::string const &fmt,
                 result[name + ".seconds"] += "." + std::to_string(subsec);
             }
 
-            if (offset.count() != 0)
+            if(offset.count() != 0)
             {
                 date::hh_mm_ss<std::chrono::minutes> t {offset};
                 char str[6] = {0};
@@ -379,7 +382,7 @@ parseFormattedTime(std::string const &fmt,
                          t.minutes().count());
                 result[name + ".timezone"] = str;
             }
-            else if (!abbrev.empty())
+            else if(!abbrev.empty())
             {
                 result[name + ".timezone"] = std::move(abbrev);
             }
@@ -394,13 +397,13 @@ bool parseTimeStamp(const char **it,
                     std::unordered_map<std::string, std::string> &result)
 {
     const char *start = *it;
-    while (**it != parser.endToken && **it != '\0')
+    while(**it != parser.endToken && **it != '\0')
     {
         (*it)++;
     }
 
     std::string tsStr {start, (size_t)((*it) - start)};
-    if (!parser.options.empty())
+    if(!parser.options.empty())
     {
         // TODO assert options?
         return parseFormattedTime(
@@ -408,9 +411,9 @@ bool parseTimeStamp(const char **it,
     }
     else
     {
-        for (auto const &fmt : kTimeStampFormatMapper)
+        for(auto const &fmt : kTimeStampFormatMapper)
         {
-            if (parseFormattedTime(fmt.second, tsStr, result, parser.name))
+            if(parseFormattedTime(fmt.second, tsStr, result, parser.name))
             {
                 return true;
             }
@@ -429,7 +432,7 @@ bool parseURL(const char **it,
 
     const char *start = *it;
     // TODO Check how to handle if the URL contains the endToken
-    while (**it != parser.endToken && **it != '\0')
+    while(**it != parser.endToken && **it != '\0')
     {
         (*it)++;
     }
@@ -441,7 +444,7 @@ bool parseURL(const char **it,
 
     std::unique_ptr<CURLU, decltype(urlCleanup)> url {curl_url(), urlCleanup};
 
-    if (url == nullptr)
+    if(url == nullptr)
     {
         // TODO error
         return false;
@@ -449,7 +452,7 @@ bool parseURL(const char **it,
 
     std::string urlStr {start, *it};
     auto uc = curl_url_set(url.get(), CURLUPART_URL, urlStr.c_str(), 0);
-    if (uc)
+    if(uc)
     {
         // TODO error handling
         return false;
@@ -460,7 +463,7 @@ bool parseURL(const char **it,
     // Check if there's a way to avoid all the copying here
     char *str;
     uc = curl_url_get(url.get(), CURLUPART_URL, &str, 0);
-    if (uc)
+    if(uc)
     {
         // TODO set an error someway
         return false;
@@ -469,7 +472,7 @@ bool parseURL(const char **it,
     curl_free(str);
 
     uc = curl_url_get(url.get(), CURLUPART_HOST, &str, 0);
-    if (uc)
+    if(uc)
     {
         // TODO set an error someway
         return false;
@@ -478,7 +481,7 @@ bool parseURL(const char **it,
     curl_free(str);
 
     uc = curl_url_get(url.get(), CURLUPART_PATH, &str, 0);
-    if (uc)
+    if(uc)
     {
         // TODO set an error someway
         return false;
@@ -487,7 +490,7 @@ bool parseURL(const char **it,
     curl_free(str);
 
     uc = curl_url_get(url.get(), CURLUPART_SCHEME, &str, 0);
-    if (uc)
+    if(uc)
     {
         // TODO set an error someway
         return false;
@@ -496,7 +499,7 @@ bool parseURL(const char **it,
     curl_free(str);
 
     uc = curl_url_get(url.get(), CURLUPART_USER, &str, 0);
-    if (uc)
+    if(uc)
     {
         // TODO set an error someway
         return false;
@@ -505,7 +508,7 @@ bool parseURL(const char **it,
     curl_free(str);
 
     uc = curl_url_get(url.get(), CURLUPART_PASSWORD, &str, 0);
-    if (uc)
+    if(uc)
     {
         // TODO set an error someway
         return false;
@@ -514,7 +517,7 @@ bool parseURL(const char **it,
     curl_free(str);
 
     uc = curl_url_get(url.get(), CURLUPART_QUERY, &str, 0);
-    if (uc)
+    if(uc)
     {
         // TODO set an error someway
         return false;
@@ -523,7 +526,7 @@ bool parseURL(const char **it,
     curl_free(str);
 
     uc = curl_url_get(url.get(), CURLUPART_PORT, &str, 0);
-    if (uc)
+    if(uc)
     {
         // TODO set an error someway
         return false;
@@ -532,7 +535,7 @@ bool parseURL(const char **it,
     curl_free(str);
 
     uc = curl_url_get(url.get(), CURLUPART_FRAGMENT, &str, 0);
-    if (uc)
+    if(uc)
     {
         // TODO set an error someway
         return false;
@@ -573,7 +576,7 @@ bool parseDomain(const char **it,
     const bool validateFQDN = !parser.options.empty();
 
     const char *start = *it;
-    while (**it != parser.endToken && **it != '\0')
+    while(**it != parser.endToken && **it != '\0')
     {
         (*it)++;
     }
@@ -583,7 +586,7 @@ bool parseDomain(const char **it,
     size_t domainStart = 0;
     // Protocol
     std::string protocol;
-    if (std::string::npos != protocolEnd)
+    if(std::string::npos != protocolEnd)
     {
         protocol = str.substr(0, protocolEnd);
         domainStart = protocolEnd + 3;
@@ -592,15 +595,15 @@ bool parseDomain(const char **it,
     // Domain
     auto domain = str.substr(domainStart, domainEnd - domainStart);
     // Domain length check
-    if (domain.empty() || domain.length() > kDomainMaxSize)
+    if(domain.empty() || domain.length() > kDomainMaxSize)
     {
         // TODO Log domain size error
         return false;
     }
     // Domain valid characters check
-    for (char const &c : domain)
+    for(char const &c : domain)
     {
-        if (!isDomainValidChar(c))
+        if(!isDomainValidChar(c))
         {
             // TODO Log invalid char error
             return false;
@@ -608,7 +611,7 @@ bool parseDomain(const char **it,
     }
     // Route
     std::string route;
-    if (std::string::npos != domainEnd)
+    if(std::string::npos != domainEnd)
     {
         route = str.substr(domainEnd + 1);
     }
@@ -618,12 +621,12 @@ bool parseDomain(const char **it,
     std::vector<std::string> labels;
     size_t startLabel = 0;
     size_t endLabel = 0;
-    while (endLabel != std::string::npos)
+    while(endLabel != std::string::npos)
     {
         endLabel = domain.find('.', startLabel);
         // TODO: Avoid String duplication here.
         labels.emplace_back(domain.substr(startLabel, endLabel - startLabel));
-        if (labels.back().empty() || labels.back().length() > kLabelMaxSize)
+        if(labels.back().empty() || labels.back().length() > kLabelMaxSize)
         {
             // TODO Log label size error
             return false;
@@ -633,14 +636,14 @@ bool parseDomain(const char **it,
 
     // Guess the TLD
     std::string topLevelDomain;
-    if (ccTLDlist.find(labels.back()) != ccTLDlist.end())
+    if(ccTLDlist.find(labels.back()) != ccTLDlist.end())
     {
         topLevelDomain = labels.back();
         labels.pop_back();
     }
-    if (popularTLDlist.find(labels.back()) != popularTLDlist.end())
+    if(popularTLDlist.find(labels.back()) != popularTLDlist.end())
     {
-        if (topLevelDomain.empty())
+        if(topLevelDomain.empty())
         {
             topLevelDomain = labels.back();
         }
@@ -653,7 +656,7 @@ bool parseDomain(const char **it,
 
     // Registered domain
     std::string registeredDomain;
-    if (topLevelDomain.empty())
+    if(topLevelDomain.empty())
     {
         registeredDomain = labels.back();
     }
@@ -665,9 +668,9 @@ bool parseDomain(const char **it,
 
     // Subdomain
     std::string subdomain;
-    for (auto label : labels)
+    for(auto label : labels)
     {
-        if (subdomain.empty())
+        if(subdomain.empty())
         {
             subdomain = label;
         }
@@ -682,19 +685,19 @@ bool parseDomain(const char **it,
 
     // Validate if all fields are complete to identify a Fully Qualified Domain
     // Name
-    if (validateFQDN)
+    if(validateFQDN)
     {
-        if (topLevelDomain.empty())
+        if(topLevelDomain.empty())
         {
             // TODO log error
             return false;
         }
-        if (registeredDomain.empty())
+        if(registeredDomain.empty())
         {
             // TODO log error. One for each missing field?
             return false;
         }
-        if (subdomain.empty())
+        if(subdomain.empty())
         {
             // TODO log error. One for each missing field?
             return false;
@@ -738,25 +741,25 @@ bool parseUserAgent(const char **it,
     bool done = false;
     UAState state = UAState::Product;
     const char *lastValid = ev;
-    while (!done)
+    while(!done)
     {
-        switch (state)
+        switch(state)
         {
             case UAState::Product:
             {
                 bool valid = false;
                 // TODO this easily breaks if the user agent has an end
                 // token in it
-                while (ev[0] && ev[0] != ' ' && ev[0] != parser.endToken)
+                while(ev[0] && ev[0] != ' ' && ev[0] != parser.endToken)
                 {
-                    if (ev[0] == '/')
+                    if(ev[0] == '/')
                     {
                         valid = true;
                     }
                     ev++;
                 }
 
-                if (!valid)
+                if(!valid)
                 {
                     done = true;
                     continue;
@@ -769,16 +772,16 @@ bool parseUserAgent(const char **it,
             }
             case UAState::Comment:
             {
-                if (ev[0] == '(')
+                if(ev[0] == '(')
                 {
                     // TODO this easily breaks if the user agent has an end
                     // token in it
-                    while (ev[0] && ev[0] != ')' && ev[0] != parser.endToken)
+                    while(ev[0] && ev[0] != ')' && ev[0] != parser.endToken)
                     {
                         ev++;
                     }
 
-                    if (ev[0] && ev[1] == ' ')
+                    if(ev[0] && ev[1] == ' ')
                     {
                         lastValid = ev;
                         ev += 2;

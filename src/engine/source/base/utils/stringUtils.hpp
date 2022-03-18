@@ -8,12 +8,10 @@
  */
 
 #ifndef _STRING_UTILS_H_
-#define _STRING_UTILS_H
+#define _STRING_UTILS_H_
 
-#include <iostream>
 #include <vector>
 #include <string>
-#include <sstream>
 
 namespace utils::string {
 
@@ -24,7 +22,7 @@ namespace utils::string {
      * @param delimiter Delimiter to split the string
      * @return std::vector<std::string>
      */
-    std::vector<std::string> split(std::string rawValue, char delimiter);
+    std::vector<std::string> split(std::string_view str, char delimiter);
 
 }
 

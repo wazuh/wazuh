@@ -8,20 +8,6 @@ set(ENGINE_HLP_TOOLS_DIR ${ENGINE_SOURCE_DIR}/hlp/tools)
 # TODO we use the one from the system. We may want to change this
 find_package(CURL REQUIRED)
 
-CPMAddPackage(
-    NAME RapidJSON
-    GITHUB_REPOSITORY Tencent/rapidjson
-    GIT_TAG master
-    VERSION 1.1.0
-    OPTIONS
-        "RAPIDJSON_BUILD_DOC OFF"
-        "RAPIDJSON_BUILD_EXAMPLES OFF"
-        "RAPIDJSON_BUILD_TESTS OFF"
-)
-
-# Add this dependencies to parent CMakeLists scope
-set(EXTERNAL_DEPS ${EXTERNAL_DEPS} PARENT_SCOPE)
-
 ####################################################################################################
 # Sources - Includes
 ####################################################################################################
@@ -36,11 +22,12 @@ add_library(hlp STATIC
     ${ENGINE_HLP_SOURCE_DIR}/date/date.h
 )
 
-target_link_libraries(hlp PRIVATE CURL::libcurl)
+target_link_libraries(hlp 
+    PUBLIC base
+    PRIVATE CURL::libcurl)
 
-target_include_directories(hlp PUBLIC
-    ${RapidJSON_SOURCE_DIR}/include/
-    ${ENGINE_HLP_INCLUDE_DIR}
+target_include_directories(hlp
+    PUBLIC ${ENGINE_HLP_INCLUDE_DIR}
 )
 
 ####################################################################################################
@@ -51,4 +38,4 @@ add_executable(hlp_cli
   ${ENGINE_HLP_TOOLS_DIR}/hlp_cli.cpp
 )
 
-target_link_libraries(hlp_cli hlp ${EXTERNAL_DEPS})
+target_link_libraries(hlp_cli yaml-cpp hlp base)

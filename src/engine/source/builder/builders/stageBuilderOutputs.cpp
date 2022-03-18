@@ -9,14 +9,13 @@
 
 #include "stageBuilderOutputs.hpp"
 
-#include <glog/logging.h>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
 #include "registry.hpp"
 
-using namespace std;
+#include <logging/logging.hpp>
 
 namespace builder::internals::builders
 {
@@ -26,24 +25,26 @@ types::Lifter stageBuilderOutputs(const types::DocumentValue & def)
     // Assert value is as expected
     if (!def.IsArray())
     {
-        string msg = "Stage outputs builder, expected array but got " + def.GetType();
-        LOG(ERROR) << msg << endl;
-        throw invalid_argument(msg);
+        auto msg =
+            fmt::format("Stage outputs builder, expected array but got [{}]",
+                        def.GetType());
+        WAZUH_LOG_ERROR(msg);
+        throw std::invalid_argument(msg);
     }
 
     // Build all outputs
-    vector<types::Lifter> outputs;
+    std::vector<types::Lifter> outputs;
     for (auto it = def.Begin(); it != def.End(); ++it)
     {
         try
         {
-            outputs.push_back(get<types::OpBuilder>(Registry::getBuilder(it->MemberBegin()->name.GetString()))(it->MemberBegin()->value));
+            outputs.push_back(std::get<types::OpBuilder>(Registry::getBuilder(it->MemberBegin()->name.GetString()))(it->MemberBegin()->value));
         }
         catch (std::exception & e)
         {
-            string msg = "Stage outputs builder encountered exception on building.";
-            LOG(ERROR) << msg << " From exception: " << e.what() << endl;
-            std::throw_with_nested(runtime_error(msg));
+            const char* msg = "Stage outputs builder encountered exception on building.";
+            WAZUH_LOG_ERROR("{} From exception: [{}]", msg, e.what());
+            std::throw_with_nested(std::runtime_error(msg));
         }
     }
 
@@ -51,13 +52,13 @@ types::Lifter stageBuilderOutputs(const types::DocumentValue & def)
     types::Lifter output;
     try
     {
-        output = get<types::CombinatorBuilder>(Registry::getBuilder("combinator.broadcast"))(outputs);
+        output = std::get<types::CombinatorBuilder>(Registry::getBuilder("combinator.broadcast"))(outputs);
     }
     catch (std::exception & e)
     {
-        string msg = "Stage outputs builder encountered exception broadcasting all outputs.";
-        LOG(ERROR) << msg << " From exception: " << e.what() << endl;
-        std::throw_with_nested(runtime_error(msg));
+        const char* msg = "Stage outputs builder encountered exception broadcasting all outputs.";
+        WAZUH_LOG_ERROR("{} From exception: [{}]", msg, e.what());
+        std::throw_with_nested(std::runtime_error(msg));
     }
 
     // Finally return Lifter
