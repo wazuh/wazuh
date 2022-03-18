@@ -66,28 +66,22 @@ endif(ENGINE_FORMAT_SOURCES)
 ####################################################################################################
 include(cmake/CPM.cmake)
 
-# google logging
-CPMAddPackage(
-  NAME glog
-  GITHUB_REPOSITORY google/glog
-  GIT_TAG v0.5.0
-  VERSION 0.5.0
-  OPTIONS
-      "WITH_GTEST OFF"
-      "BUILD_SHARED_LIBS OFF"
-      "WITH_GFLAGS OFF"
-      "WITH_UNWIND OFF"
-)
-
 # Concurrent Queue
 CPMAddPackage(
   NAME CameronQueue
   GITHUB_REPOSITORY cameron314/concurrentqueue
   GIT_TAG v1.0.3
   VERSION 1.0.3
+  EXCLUDE_FROM_ALL YES
 )
 
-list(APPEND EXTERNAL_DEPS "glog::glog")
+CPMAddPackage(
+  NAME RxCpp
+  GITHUB_REPOSITORY ReactiveX/RxCpp
+  GIT_TAG v4.1.1
+  VERSION 4.1.1
+  EXCLUDE_FROM_ALL YES
+)
 
 ####################################################################################################
 # Targets
@@ -95,21 +89,24 @@ list(APPEND EXTERNAL_DEPS "glog::glog")
 # Build main
 add_executable(main ${ENGINE_SOURCE_DIR}/main.cpp)
 
-include_directories(main PUBLIC
-  ${CameronQueue_SOURCE_DIR}
+target_include_directories(main
+    PUBLIC
+    ${ENGINE_SOURCE_DIR}/router
+    ${ENGINE_SOURCE_DIR}/json
+    ${ENGINE_SOURCE_DIR}/graph
+    ${CameronQueue_SOURCE_DIR}
 )
 
-add_subdirectory(${ENGINE_SOURCE_DIR}/shared)
-add_subdirectory(${ENGINE_SOURCE_DIR}/catalog)
-add_subdirectory(${ENGINE_SOURCE_DIR}/server)
-add_subdirectory(${ENGINE_SOURCE_DIR}/router)
-add_subdirectory(${ENGINE_SOURCE_DIR}/graph)
-add_subdirectory(${ENGINE_SOURCE_DIR}/json)
+
+add_subdirectory(${ENGINE_SOURCE_DIR}/base)
 add_subdirectory(${ENGINE_SOURCE_DIR}/builder)
+add_subdirectory(${ENGINE_SOURCE_DIR}/catalog)
 add_subdirectory(${ENGINE_SOURCE_DIR}/cliParser)
 add_subdirectory(${ENGINE_SOURCE_DIR}/hlp)
+add_subdirectory(${ENGINE_SOURCE_DIR}/server)
 
-target_link_libraries(main  hlp ${EXTERNAL_DEPS})
+#TODO isolate rxcpp
+target_link_libraries(main base hlp rxcpp)
 
 # Build test
 if(ENGINE_BUILD_TEST)
@@ -134,11 +131,12 @@ if (DOXYGEN_FOUND)
     configure_file(${DOXYGEN_IN} ${DOXYGEN_OUT} @ONLY)
 
     # note the option ALL which allows to build the docs together with the application
-    add_custom_target( doc_doxygen ALL
+    add_custom_target( doc_doxygen
       COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYGEN_OUT}
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
       COMMENT "Generating API documentation with Doxygen"
     )
+
 else (DOXYGEN_FOUND)
   message("Doxygen need to be installed to generate the doxygen documentation")
 endif (DOXYGEN_FOUND)

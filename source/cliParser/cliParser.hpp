@@ -44,7 +44,7 @@ public:
      * @param argc Number of arguments passed.
      * @param argv List the arguments passed via console.
      */
-    CliParser(int argc, char * argv[]);
+    CliParser(int argc, char *argv[]);
 
     /**
      * @brief Extracts the arguments saving them into the class variables.
@@ -52,7 +52,7 @@ public:
      * @param argc Number of arguments passed.
      * @param argv List the arguments passed via console.
      */
-    void parse(int argc, char * argv[]);
+    void parse(int argc, char *argv[]);
 
     /**
      * @brief Returns the endpoint configuration that has been previously parsed

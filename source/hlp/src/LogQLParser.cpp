@@ -7,6 +7,9 @@
 #include <vector>
 #include <stdexcept>
 
+#include <profile/profile.hpp>
+#include <fmt/format.h>
+
 namespace
 {
 struct Tokenizer
@@ -170,6 +173,7 @@ static bool parseCapture(Tokenizer &tk, ExpressionList &expresions)
 
 ExpressionList parseLogQlExpr(const char *expr)
 {
+    WAZUH_TRACE_FUNCTION;
     ExpressionList expresions;
     Tokenizer tokenizer {expr};
     bool done = false;
@@ -184,14 +188,14 @@ ExpressionList parseLogQlExpr(const char *expr)
 
                 if (!parseCapture(tokenizer, expresions))
                 {
-                    auto msg = "Invalid LogQL expression at '" + std::string(prev) + "'. Unable to parse capture";
-                    throw std::runtime_error(msg);
+                    auto msg = fmt::format("[HLP]Invalid LogQL expression at [{}]. Unable to parse capture expression.", std::string(prev));
+                    throw std::invalid_argument(msg);
                 }
 
                 if (peekToken(tokenizer).type == TokenType::OpenAngle)
                 {
-                    auto msg = "Invalid LogQL expression at '" + std::string(prev) + "'. Two captures back to back";
-                    throw std::runtime_error(msg);
+                    auto msg = fmt::format("[HLP]Invalid LogQL expression at [{}]. Can't captures back to back", std::string(prev));
+                    throw std::invalid_argument(msg);
                 }
                 break;
             }
@@ -208,8 +212,7 @@ ExpressionList parseLogQlExpr(const char *expr)
             }
             default:
             {
-                auto msg = "Invalid LogQL expression. Unknown token";
-                throw std::runtime_error(msg);
+                throw std::invalid_argument("[HLP] Invalid LogQl expression. Unknown token found.");
             }
         }
     }

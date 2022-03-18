@@ -10,7 +10,9 @@
 #include "registry.hpp"
 
 #include <stdexcept>
-#include <glog/logging.h>
+
+#include <logging/logging.hpp>
+#include <fmt/format.h>
 
 namespace builder::internals
 {
@@ -19,8 +21,9 @@ void Registry::registerBuilder(const std::string & builderName, const types::Bui
 {
     if (Registry::m_registry.count(builderName) > 0)
     {
-        LOG(ERROR) << "Tried to register duplicate builder " << builderName << std::endl;
-        throw std::invalid_argument("Tried to register duplicate builder " + builderName);
+        auto msg = fmt::format("Tried to register duplicate builder: [{}] ", builderName);
+        WAZUH_LOG_ERROR(msg);
+        throw std::invalid_argument(std::move(msg));
     }
     else
     {
@@ -32,8 +35,9 @@ types::BuilderVariant Registry::getBuilder(const std::string & builderName)
 {
     if (Registry::m_registry.count(builderName) == 0)
     {
-        LOG(ERROR) << "Tried to obtain not registered builder " << builderName << std::endl;
-        throw std::invalid_argument("Tried to obtain not registered builder " + builderName);
+        auto msg = fmt::format("Tried to obtain not registered builder: [{}]", builderName);
+        WAZUH_LOG_ERROR(msg);
+        throw std::invalid_argument(std::move(msg));
     }
     else
     {

@@ -5,7 +5,8 @@
 #include <string>
 
 #include "../catalogSharedDef.hpp"
-#include "rapidjson/document.h"
+
+#include <rapidjson/document.h>
 
 /**
  * @brief The StorageDriverInterface class

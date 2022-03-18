@@ -9,7 +9,7 @@
 
 #include <gtest/gtest.h>
 
-#include "ipUtils.hpp"
+#include <utils/ipUtils.hpp>
 
 TEST(IPv4ToUInt, Invalid_format)
 {
