@@ -116,5 +116,13 @@ add_executable(outputTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderFileOutput_test.cpp
   ${TEST_SOURCE_DIR}/builder/outputs/fileOutput_test.cpp
 )
-
 gtest_discover_tests(outputTest)
+
+add_executable(opBuilderKVDBTest
+  ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
+  ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
+  ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBExtract_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBMatch_test.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderKVDB.cpp)
+gtest_discover_tests(opBuilderKVDBExtractTest)
