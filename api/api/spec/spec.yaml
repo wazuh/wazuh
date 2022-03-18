@@ -14837,7 +14837,7 @@ paths:
       deprecated: true
       description: "This method should be called to get an API token. This token will expire after
       auth_token_exp_timeout seconds (default: 900). This value can be changed using PUT /security/config"
-      operationId: api.controllers.security_controller.login_user_
+      operationId: api.controllers.security_controller.deprecated_login_user
       parameters:
         - $ref: '#/components/parameters/raw'
       security:

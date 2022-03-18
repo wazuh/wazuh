@@ -31,7 +31,7 @@ auth_re = re.compile(r'basic (.*)', re.IGNORECASE)
 
 @deprecate_endpoint(link=f'https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/reference.html#'
                          f'operation/api.controllers.security_controller.login_user')
-async def login_user_(user: str, raw: bool = False) -> web.Response:
+async def deprecated_login_user(user: str, raw: bool = False) -> web.Response:
     """User/password authentication to get an access token.
     This method should be called to get an API token. This token will expire at some time. # noqa: E501
 
