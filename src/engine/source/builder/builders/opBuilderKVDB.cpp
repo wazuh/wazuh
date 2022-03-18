@@ -17,7 +17,6 @@
 
 #include "syntax.hpp"
 
-
 namespace builder::internals::builders
 {
 
@@ -175,5 +174,4 @@ types::Lifter opBuilderKVDBMatch(const types::DocumentValue & def, types::Tracer
 types::Lifter opBuilderKVDBNotMatch(const types::DocumentValue & def, types::TracerFn tr) {
     return opBuilderKVDBExistanceCheck(def, false);
 }
-
 } // namespace builder::internals::builders
