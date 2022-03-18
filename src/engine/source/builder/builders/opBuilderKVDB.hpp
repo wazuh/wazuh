@@ -14,7 +14,6 @@
 
 namespace builder::internals::builders
 {
-
 /**
  * @brief Builds KVDB extract function helper
  *
@@ -38,7 +37,6 @@ types::Lifter opBuilderKVDBMatch(const types::DocumentValue & def, types::Tracer
  * @return types::Lifter
  */
 types::Lifter opBuilderKVDBNotMatch(const types::DocumentValue & def, types::TracerFn tr);
-
 }
 
 // namespace builder::internals::builders
