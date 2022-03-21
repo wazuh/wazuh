@@ -5,5 +5,6 @@
 
 TEST(ConnectableTest, NotImplemented)
 {
+    // TODO: Connectable tests
     GTEST_SKIP();
 }
