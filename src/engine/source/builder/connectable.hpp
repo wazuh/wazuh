@@ -11,8 +11,8 @@
 #define _CONNECTABLE_H
 
 #include "json.hpp"
-
-#include "rxcpp/rx.hpp"
+#include <rxcpp/rx.hpp>
+#include <set>
 
 namespace builder::internals
 {
@@ -45,7 +45,7 @@ struct Connectable
      * @brief The name of the parents of this connectable, derived directly
      * from the assets definition.
      */
-    std::vector<std::string> m_parents;
+    std::set<std::string> m_parents;
 
     /**
      * @brief The parents' outputs are this connectable inputs. Each connecatble
@@ -61,7 +61,7 @@ struct Connectable
      * @param p vector of parents names
      * @param o the operation this connectable must do to the input stream.
      */
-    Connectable(std::string n, std::vector<std::string> p, Op_t o) : m_op(o), m_name(n), m_parents(p)
+    Connectable(std::string n, std::vector<std::string> p, Op_t o) : m_op(o), m_name(n), m_parents(p.begin(), p.end())
     {
     }
 
