@@ -14,13 +14,11 @@ if(PROFILE_BUILD)
         GIT_TAG "v0.7.8"
         OPTIONS
         )
-endif()
 
-add_library(profile STATIC ${tracy_SOURCE_DIR}/TracyClient.cpp )
-target_include_directories(profile PUBLIC ${tracy_SOURCE_DIR}/)
-target_link_libraries(profile PUBLIC dl)
+    add_library(profile STATIC ${tracy_SOURCE_DIR}/TracyClient.cpp )
+    target_include_directories(profile PUBLIC ${tracy_SOURCE_DIR}/)
+    target_link_libraries(profile PUBLIC dl pthread)
 
-if(PROFILE_BUILD)
     target_compile_definitions(profile PUBLIC WAZUH_PROFILING_ENABLED TRACY_ENABLE)
     #target_compile_definitions(profile PUBLIC TRACY_NO_EXIT)
 endif()
@@ -64,8 +62,16 @@ add_library(base STATIC
     utils/stringUtils.hpp
     )
 
+if(PROFILE_BUILD)
+    target_link_libraries(base
+        PUBLIC
+        profile
+        )
+endif()
+
 target_link_libraries(base
-    PUBLIC profile fmt
+    PUBLIC
+    fmt
     )
 
 target_include_directories(base
