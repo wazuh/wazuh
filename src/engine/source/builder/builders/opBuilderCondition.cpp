@@ -44,7 +44,7 @@ types::Lifter opBuilderCondition(const types::DocumentValue & def)
         switch (vStr[0])
         {
             case syntax::FUNCTION_HELPER_ANCHOR:
-                return std::get<types::OpBuilder>(Registry::getBuilder("helper." + vStr.substr(1, std::string::npos)))(
+                return std::get<types::OpBuilder>(Registry::getBuilder("helper." + vStr.substr(1, vStr.find("/") - 1)))(
                     def);
                 break;
             case syntax::REFERENCE_ANCHOR:

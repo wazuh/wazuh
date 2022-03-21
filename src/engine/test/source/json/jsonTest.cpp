@@ -63,10 +63,47 @@ TEST(JsonTest, Get)
     ASSERT_STREQ("value", doc.get("/from").GetString());
 }
 
+TEST(JsonTest, GetMultilevel)
+{
+    Document doc{R"({"from": {"multi": { "level": "value"}}})"};
+    ASSERT_NO_THROW(doc.get("/from/multi/level"));
+    ASSERT_STREQ("value", doc.get("/from/multi/level").GetString());
+}
+
+TEST(JsonTest, GetMultilevelIncorrectPath)
+{
+    Document doc{R"({"from": {"multi": { "level": "value"}}})"};
+    ASSERT_THROW(doc.get("/from.multi.level"), std::invalid_argument);
+}
+
 TEST(JsonTest, Set)
 {
     Document doc;
     string field = "/field";
+    rapidjson::Document doc2;
+    rapidjson::Value val("value", doc2.GetAllocator());
+    ASSERT_NO_THROW(doc.set(field, val));
+    ASSERT_EQ(val, doc.get(field));
+    val = rapidjson::Value("other_value", doc2.GetAllocator());
+    ASSERT_NE(val, doc.get(field));
+}
+
+TEST(JsonTest, SetOneLevel)
+{
+    Document doc;
+    string field = "/field/level";
+    rapidjson::Document doc2;
+    rapidjson::Value val("value", doc2.GetAllocator());
+    ASSERT_NO_THROW(doc.set(field, val));
+    ASSERT_EQ(val, doc.get(field));
+    val = rapidjson::Value("other_value", doc2.GetAllocator());
+    ASSERT_NE(val, doc.get(field));
+}
+
+TEST(JsonTest, SetMultiLevel)
+{
+    Document doc;
+    string field = "/field/multi/level";
     rapidjson::Document doc2;
     rapidjson::Value val("value", doc2.GetAllocator());
     ASSERT_NO_THROW(doc.set(field, val));
@@ -80,6 +117,20 @@ TEST(JsonTest, SetReference)
     Document doc{R"({"from": "value"})"};
     ASSERT_NO_THROW(doc.set("/to", "/from"));
     ASSERT_STREQ(doc.get("/to").GetString(), doc.get("/from").GetString());
+}
+
+TEST(JsonTest, SetReferenceOneLevel)
+{
+    Document doc{R"({"from":{"level": "value"}})"};
+    ASSERT_NO_THROW(doc.set("/to/level", "/from/level"));
+    ASSERT_STREQ(doc.get("/to/level").GetString(), doc.get("/from/level").GetString());
+}
+
+TEST(JsonTest, SetReferenceMultiLevel)
+{
+    Document doc{R"({"from": {"multi": {"level": "value"}}})"};
+    ASSERT_NO_THROW(doc.set("/to/multi/level", "/from/multi/level"));
+    ASSERT_STREQ(doc.get("/to/multi/level").GetString(), doc.get("/from/multi/level").GetString());
 }
 
 TEST(JsonTest, Equals)

@@ -96,7 +96,6 @@ public:
             auto decoderGraph = this->assetBuilder(
                 "decoder", asset.get("/decoders"),
                 std::get<internals::types::AssetBuilder>(internals::Registry::getBuilder("decoder")));
-            // decoderGraph.addParentEdges("INPUT_DECODER", "OUTPUT_DECODER");
             subGraphs.push_back(std::make_tuple("INPUT_DECODER", decoderGraph, "OUTPUT_DECODER"));
         }
 
@@ -106,8 +105,10 @@ public:
             auto ruleGraph =
                 this->assetBuilder("rule", asset.get("/rules"),
                                    std::get<internals::types::AssetBuilder>(internals::Registry::getBuilder("rule")));
-            //ruleGraph.addParentEdges("INPUT_RULE", "OUTPUT_RULE");
-            subGraphs.push_back(std::make_tuple("INPUT_RULE", ruleGraph, "OUTPUT_RULE"));
+            // TODO: proper implement that rules are the first choice.
+            // As it is a set ordered by name, to check rules before
+            // outputs an A has been added to the name
+            subGraphs.push_back(std::make_tuple("INPUT_ARULE", ruleGraph, "OUTPUT_RULE"));
         }
 
         // Build output subgraph
@@ -116,7 +117,6 @@ public:
             auto outputGraph =
                 this->assetBuilder("output", asset.get("/outputs"),
                                    std::get<internals::types::AssetBuilder>(internals::Registry::getBuilder("output")));
-            //outputGraph.addParentEdges("INPUT_OUTPUT", "OUTPUT_OUTPUT");
             subGraphs.push_back(std::make_tuple("INPUT_OUTPUT", outputGraph, "OUTPUT_OUTPUT"));
         }
 
@@ -125,7 +125,7 @@ public:
         {
             throw std::runtime_error("Error building graph, atleast one subgraph must be defined");
         }
-        auto graphTuple = subGraphs[0];
+        auto graphTuple = subGraphs[0]; // input graph output
         internals::Graph g = std::get<1>(graphTuple);
         g.addParentEdges(std::get<0>(graphTuple), std::get<2>(graphTuple));
         for (auto it = ++subGraphs.begin(); it != subGraphs.end(); ++it)
@@ -151,10 +151,11 @@ public:
         }
 
         // Multiple outputs are manual
+        // TODO: hardcoded
         if (asset.exists("/decoders") && asset.exists("/rules") && asset.exists("/outputs"))
         {
             g.addEdge("OUTPUT_DECODER", "INPUT_OUTPUT");
-            g.m_nodes["INPUT_OUTPUT"].m_parents.push_back("OUTPUT_DECODER");
+            g.m_nodes["INPUT_OUTPUT"].m_parents.insert("OUTPUT_DECODER");
         }
 
         return g;
@@ -179,11 +180,10 @@ public:
             auto g = this->build(name);
 
             internals::types::Observable last;
-            std::vector<decltype(last.publish())> toConnect;
 
             // Recursive visitor function to call all connectable lifters and build the whole rxcpp
             // pipeline
-            auto visit = [&g, &last, &toConnect](internals::types::Observable source, std::string root,
+            auto visit = [&g, &last](internals::types::Observable source, std::string root,
                                                  auto & visit_ref) -> void
             {
                 // Only must be executed one, graph input
@@ -193,12 +193,11 @@ public:
                 }
 
                 // Call connect.publish only if this connectable has more than one child
-                auto obs = [&toConnect, &g, root]() -> internals::types::Observable
+                auto obs = [&g, root]() -> internals::types::Observable
                 {
                     if (g.m_edges[root].size() > 1)
                     {
-                        auto o = g[root].connect().publish();
-                        toConnect.push_back(o);
+                        auto o = g[root].connect().publish().ref_count();
                         return o;
                     }
                     else
@@ -211,12 +210,6 @@ public:
                 for (auto & n : g.m_edges[root])
                 {
                     g[n].addInput(obs);
-                }
-
-                // TODO: merge both fors?
-                // Visit childs only if all child inputs have been passed
-                for (auto & n : g.m_edges[root])
-                {
                     if (g[n].m_inputs.size() == g[n].m_parents.size())
                         visit_ref(obs, n, visit_ref);
                 }
@@ -230,12 +223,6 @@ public:
 
             // Start recursive visitor
             visit(o, "INPUT_DECODER", visit);
-
-            // Call observables.connect in inverse order of connectable.publish calls
-            for (auto it = toConnect.rbegin(); it != toConnect.rend(); ++it)
-            {
-                it->connect();
-            }
 
             // Finally return output
             return last;
