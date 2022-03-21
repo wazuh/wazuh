@@ -18,12 +18,13 @@ types::Lifter combinatorBuilderBroadcast(const std::vector<types::Lifter> & lift
 {
     return [=](types::Observable input) -> types::Observable
     {
+        input = input.publish().ref_count();
         std::vector<types::Observable> inputs;
         for (auto op : lifters)
         {
             inputs.push_back(op(input));
         }
-        return rxcpp::observable<>::iterate(inputs).flat_map([](types::Observable o) { return o; });
+        return rxcpp::observable<>::iterate(inputs).merge();
     };
 }
 

@@ -76,7 +76,7 @@ public:
 
             if (node.second.m_parents.size() == 0)
             {
-                node.second.m_parents.push_back(root);
+                node.second.m_parents.insert(root);
                 addEdge(root, node.first);
             }
             else
@@ -96,7 +96,7 @@ public:
 
             if (node.second.size() == 0)
             {
-                m_nodes[end].m_parents.push_back(node.first);
+                m_nodes[end].m_parents.insert(node.first);
                 addEdge(node.first, end);
             }
         }
@@ -134,7 +134,7 @@ public:
         g.m_edges.merge(auxEdges);
 
         g.addEdge(thisOutputNode, otherInputNode);
-        g.m_nodes[otherInputNode].m_parents.push_back(thisOutputNode);
+        g.m_nodes[otherInputNode].m_parents.insert(thisOutputNode);
 
         return g;
     }
@@ -157,9 +157,9 @@ public:
 
         for (auto & node : other.m_nodes)
         {
+            g.addNode(node.second);
             for (auto & p : node.second.m_parents)
             {
-                g.addNode(node.second);
                 g.injectEdge(p, node.first);
             }
         }
@@ -189,7 +189,7 @@ public:
         {
             auto it = std::find(m_nodes[child].m_parents.begin(), m_nodes[child].m_parents.end(), a);
             m_nodes[child].m_parents.erase(it);
-            m_nodes[child].m_parents.push_back(b);
+            m_nodes[child].m_parents.insert(b);
         }
 
         m_edges[b].merge(m_edges[a]);
@@ -287,9 +287,9 @@ public:
         {
             if (n.second.size() > 0)
                 for (auto & c : n.second)
-                    diagraph << n.first << " -> " << c << ";" << std::endl;
+                    diagraph << "\"" << n.first << "\" -> \"" << c << "\"" << ";" << std::endl;
             else
-                diagraph << n.first << " -> void;" << std::endl;
+                diagraph << "\"" << n.first << "\"" << " -> void;" << std::endl;
         }
         diagraph << "}" << std::endl;
         return diagraph;

@@ -106,7 +106,7 @@ TEST(AssetBuilderOutput, BuildsOperates)
         ]
     })"};
 
-    Observable input = observable<>::create<Event>(
+    auto input = observable<>::create<Event>(
         [=](auto s)
         {
             s.on_next(std::make_shared<json::Document>(R"(
@@ -128,11 +128,12 @@ TEST(AssetBuilderOutput, BuildsOperates)
                 {"field":"value"}
             )"));
             s.on_completed();
-        });
+        }).publish();
     ConnectableT conn = assetBuilderOutput(doc);
     Observable output = conn.connect(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
+    input.connect();
     ASSERT_EQ(expected.size(), 8);
 
     const string expectedWrite =
