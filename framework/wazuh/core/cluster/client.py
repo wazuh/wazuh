@@ -175,7 +175,7 @@ class AbstractClient(common.Handler):
             self.logger.error(f"Could not connect to master: {response_msg}.")
             self.transport.close()
         else:
-            self.logger.info("Sucessfully connected to master.")
+            self.logger.info("Successfully connected to master.")
             self.connected = True
 
     def connection_made(self, transport):
@@ -232,7 +232,7 @@ class AbstractClient(common.Handler):
             Result message.
         """
         if command == b'ok-m':
-            return b"Sucessful response from master: " + payload
+            return b"Successful response from master: " + payload
         else:
             return super().process_response(command, payload)
 
