@@ -238,6 +238,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.version = ""
         self.cluster_name = ""
         self.node_type = ""
+        self.agent_group_task = None
         # Dictionary to save loggers for each sync task.
         self.task_loggers = {}
         context_tag.set(self.tag)
@@ -423,7 +424,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             utils.mkdir_with_mode(worker_dir)
 
         # Initialize agent-groups sending task
-        asyncio.ensure_future(self.send_agent_groups_information())
+        self.agent_group_task = asyncio.ensure_future(self.send_agent_groups_information())
 
         return cmd, payload
 
@@ -1074,8 +1075,15 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             In case the connection was lost due to an exception, it will be available on this parameter.
         """
         super().connection_lost(exc)
-        # cancel all pending tasks
         self.logger.info("Cancelling pending tasks.")
+
+        # Cancel agent-groups task
+        try:
+            self.agent_group_task.cancel()
+        except AttributeError:
+            pass
+
+        # Cancel all pending tasks
         for pending_task in self.sync_tasks.values():
             pending_task.task.cancel()
 
