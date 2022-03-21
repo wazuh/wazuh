@@ -82,7 +82,9 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
 
     if (data->options & CHECK_OWNER) {
         if (aux = cJSON_GetObjectItem(changed_data, "uid"), aux != NULL) {
-            cJSON_AddStringToObject(old_attributes, "uid", cJSON_GetStringValue(aux));
+            char uid_str [OS_SIZE_64] = {0};
+            snprintf(uid_str, OS_SIZE_64, "%d", aux->valueint);
+            cJSON_AddStringToObject(old_attributes, "uid", uid_str);
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("uid"));
 
         } else {
@@ -92,7 +94,9 @@ cJSON * fim_calculate_dbsync_difference(const fim_file_data *data,
 
     if (data->options & CHECK_GROUP) {
         if (aux = cJSON_GetObjectItem(changed_data, "gid"), aux != NULL) {
-            cJSON_AddStringToObject(old_attributes, "gid", cJSON_GetStringValue(aux));
+            char gid_str [OS_SIZE_64] = {0};
+            snprintf(gid_str, OS_SIZE_64, "%d", aux->valueint);
+            cJSON_AddStringToObject(old_attributes, "gid", gid_str);
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("gid"));
 
         } else {
