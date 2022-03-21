@@ -16,56 +16,6 @@ set(BUILDER_BUILDERS_TEST_SOURCE_DIR ${BUILDER_TEST_SOURCE_DIR}/builders)
 set(BUILDER_BUILDERS_ENGINE_SOURCE_DIR ${BUILDER_ENGINE_SOURCE_DIR}/builders)
 
 ####################################################################################################
-<<<<<<< HEAD
-=======
-# Dependencies -- assuming cpm is available
-####################################################################################################
-# google/googletest
-CPMAddPackage(
-  NAME googletest
-  GITHUB_REPOSITORY google/googletest
-  GIT_TAG release-1.11.0
-  VERSION 1.11.0
-  OPTIONS
-      "INSTALL_GTEST OFF"
-)
-
-# ReactiveX/RxCpp
-CPMAddPackage(
-  NAME RxCpp
-  GITHUB_REPOSITORY ReactiveX/RxCpp
-  GIT_TAG v4.1.1
-  VERSION 4.1.1
-  OPTIONS
-    "RXCPP_DISABLE_TESTS_AND_EXAMPLES"
-)
-
-CPMAddPackage(
-  NAME RE2
-  GITHUB_REPOSITORY google/re2
-  GIT_TAG 2022-02-01
-  VERSION release 2022-02-01
-)
-
-# Tencent/rapidjson
-CPMAddPackage(
-  NAME rapidjson
-  GITHUB_REPOSITORY Tencent/rapidjson
-  GIT_TAG master
-  VERSION 1.1.0
-  OPTIONS
-      "RAPIDJSON_BUILD_DOC OFF"
-      "RAPIDJSON_BUILD_EXAMPLES OFF"
-      "RAPIDJSON_BUILD_TESTS OFF"
-)
-
-FetchContent_GetProperties(
-  rapidjson
-  SOURCE_DIR rapidjson_headers
-)
-
-####################################################################################################
->>>>>>> 20bf8d8658 (Refactored graph, tests not updated)
 # Headers -- Libraries
 ####################################################################################################
 include_directories(
@@ -76,22 +26,10 @@ include_directories(
   ${BUILDER_TEST_SOURCE_DIR}
   ${ENGINE_SOURCE_DIR}/json
   ${ENGINE_SOURCE_DIR}/graph
-<<<<<<< HEAD
 )
 
 #TODO do this better
 link_libraries(gtest_main hlp rxcpp builders)
-=======
-  ${rapidjson_headers}/include
-  ${RxCpp_SOURCE_DIR}/Rx/v2/src
-)
-
-link_libraries(
-  glog::glog
-  gtest_main
-  re2
-)
->>>>>>> 20bf8d8658 (Refactored graph, tests not updated)
 
 ####################################################################################################
 # Builder targets
@@ -114,37 +52,9 @@ add_executable(registerTest
   )
 gtest_discover_tests(registerTest)
 
-<<<<<<< HEAD
 add_executable(opBuilderTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderConditionReference_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderConditionValue_test.cpp
-=======
-# Configuration graph test
-add_executable(graphTest
-  ${BUILDER_TEST_SOURCE_DIR}/graphTest.cpp
-)
-
-target_link_libraries(graphTest gtest_main)
-gtest_discover_tests(graphTest)
-
-####################################################################################################
-# Builders targets
-####################################################################################################
-
-add_executable(opBuilderConditionValueTest
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderConditionValueTest.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionValue.cpp)
-gtest_discover_tests(opBuilderConditionValueTest)
-
-add_executable(opBuilderConditionReferenceTest
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderConditionReferenceTest.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionReference.cpp)
-gtest_discover_tests(opBuilderConditionReferenceTest)
-
-add_executable(opBuilderHelperExists_test
-  ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
-  ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
->>>>>>> 20bf8d8658 (Refactored graph, tests not updated)
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperExists_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperNotExists_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringEq_test.cpp
