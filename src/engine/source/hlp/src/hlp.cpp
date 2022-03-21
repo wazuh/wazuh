@@ -155,7 +155,8 @@ std::vector<Parser> getParserList(ExpressionList const &expressions)
             }
             default:
             {
-                throw std::runtime_error("[HLP]Invalid expression parsed from LogQL expression");
+                throw std::runtime_error(
+                    "[HLP]Invalid expression parsed from LogQL expression");
             }
         }
     }
@@ -213,7 +214,7 @@ static bool executeParserList(std::string_view const &event,
 ParserFn getParserOp(std::string_view const &logQl)
 {
     WAZUH_TRACE_FUNCTION;
-    if(logQl.empty())
+    if (logQl.empty())
     {
         throw std::invalid_argument("[HLP]Empty LogQL expression");
     }
@@ -221,13 +222,15 @@ ParserFn getParserOp(std::string_view const &logQl)
     ExpressionList expressions = parseLogQlExpr(logQl.data());
     if (expressions.empty())
     {
-        throw std::invalid_argument("[HLP]Empty expression output obtained from LogQL parsing");
+        throw std::invalid_argument(
+            "[HLP]Empty expression output obtained from LogQL parsing");
     }
 
     auto parserList = getParserList(expressions);
     if (parserList.empty())
     {
-        throw std::invalid_argument("[HLP]Could not convert expressions to parser List");
+        throw std::invalid_argument(
+            "[HLP]Could not convert expressions to parser List");
     }
 
     ParserFn parseFn = [parserList = std::move(parserList)](
