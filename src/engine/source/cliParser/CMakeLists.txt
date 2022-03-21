@@ -11,11 +11,11 @@ CPMAddPackage(
 ####################################################################################################
 # Sources - Includes
 ####################################################################################################
-target_sources(main 
+target_sources(main
     PRIVATE cliParser.cpp
 )
 
-target_include_directories(main 
+target_include_directories(main
     PUBLIC .
     PRIVATE ${argparse_SOURCE_DIR}/include
 )
