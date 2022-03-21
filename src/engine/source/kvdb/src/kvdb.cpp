@@ -90,7 +90,7 @@ bool CreateKVDB() {
 bool DestroyKVDB() {
     DB* db;
     Options options;
-    std::vector<ColumnFamilyHandle*> handles;
+    std::vector<ColumnFamilyHandle*> handlers;
     Status s;
     bool result = true;
 
@@ -98,7 +98,7 @@ bool DestroyKVDB() {
     options.OptimizeLevelStyleCompaction();
 
     UpdateColumnFamiliesList();
-    s = DB::Open(DBOptions(), kDBPath, column_families, &handles, &db);
+    s = DB::Open(DBOptions(), kDBPath, column_families, &handlers, &db);
     if(s.ok()) {
         // DB must be closed before destroying it
         s = db->Close();
@@ -109,6 +109,7 @@ bool DestroyKVDB() {
         else {
             DestroyDB(kDBPath,options);
         }
+        handlers.clear();
     }
     else {
         LOG(ERROR) << "[" << __func__ << "]" << " couldn't open db file, error: " << s.ToString() << std::endl;
@@ -146,7 +147,7 @@ int CFIndexInAvailableArray(std::string const &column_family_name) {
 bool CreateColumnFamily(std::string const column_family_name) {
     DB *db;
     Status s;
-    std::vector<ColumnFamilyHandle*> handles;
+    std::vector<ColumnFamilyHandle*> handlers;
     DBOptions dbOptions;
     std::vector<std::string> column_families_available;
     bool result = true;
@@ -172,15 +173,15 @@ bool CreateColumnFamily(std::string const column_family_name) {
     LOG(INFO) << "[" << __func__ << "]" << " Adding " << column_family_name << " as a new family column to DB " << std::endl;
     column_families.push_back(ColumnFamilyDescriptor(column_family_name, ColumnFamilyOptions()));
 
-    s = DB::Open(dbOptions, kDBPath, column_families, &handles, &db);
+    s = DB::Open(dbOptions, kDBPath, column_families, &handlers, &db);
     if(s.ok()) {
-        for (auto handle : handles) {
+        for (auto handle : handlers) {
             s = db->DestroyColumnFamilyHandle(handle);
             if(!s.ok()){
                 LOG(WARNING) << "[" << __func__ << "]" << " couldn't delete column family handler, error: " << s.ToString() << std::endl;
             }
         }
-
+        handlers.clear();
         s = db->Close();
         if(!s.ok()) {
             result = false;
@@ -204,10 +205,10 @@ bool CreateColumnFamily(std::string const column_family_name) {
  * @return true successfull deletion of FC in DB or FC alredy in DB
  * @return false unsuccessfull deletion of FC in DB
  */
-bool DeleteColumnFamily(std::string const column_family_name) {
+bool DropColumnFamily(std::string const column_family_name) {
     DB *db;
     Status s;
-    std::vector<ColumnFamilyHandle*> handles;
+    std::vector<ColumnFamilyHandle*> handlers;
     bool result = true;
 
     if(column_family_name.empty()) {
@@ -219,9 +220,9 @@ bool DeleteColumnFamily(std::string const column_family_name) {
 
     int i = CFIndexInAvailableArray(column_family_name);
     if(i) {
-        s = DB::Open(DBOptions(), kDBPath, column_families, &handles, &db);
+        s = DB::Open(DBOptions(), kDBPath, column_families, &handlers, &db);
         if(s.ok()) {
-            for(auto handle : handles) {
+            for(auto handle : handlers) {
                 // find the correct CF handle to be erased
                 if(!column_family_name.compare(handle->GetName())) {
                     s = db->DropColumnFamily(handle);
@@ -234,14 +235,13 @@ bool DeleteColumnFamily(std::string const column_family_name) {
                         result = false;
                     }
                 }
-                else {
-                    // destroy all the other handlers prior closing
-                    s = db->DestroyColumnFamilyHandle(handle);
-                    if(!s.ok()) {
-                        LOG(WARNING) << "[" << __func__ << "]" << " couldn't delete column family handler, error: " << s.ToString() << std::endl;
-                    }
+                // destroy all the handlers prior closing
+                s = db->DestroyColumnFamilyHandle(handle);
+                if(!s.ok()) {
+                    LOG(WARNING) << "[" << __func__ << "]" << " couldn't delete column family handler, error: " << s.ToString() << std::endl;
                 }
             }
+            handlers.clear();
 
             // TODO: Should handle this error
             // LOG(ERROR) << "[" << __func__ << "]" << " couldn't find CF handle, error: " << s.ToString() << std::endl;
@@ -282,7 +282,7 @@ bool AccesSingleItemOfCF(std::string const &column_family_name, std::string &val
                                                             std::string const &key, const ACTION_ON_CF action) {
     DB *db;
     Status s;
-    std::vector<ColumnFamilyHandle*> handles;
+    std::vector<ColumnFamilyHandle*> handlers;
     bool result = true;
 
     if(column_family_name.empty()) {
@@ -299,10 +299,10 @@ bool AccesSingleItemOfCF(std::string const &column_family_name, std::string &val
 
     int i = CFIndexInAvailableArray(column_family_name);
     if(i) {
-        s = DB::Open(DBOptions(), kDBPath, column_families, &handles, &db);
+        s = DB::Open(DBOptions(), kDBPath, column_families, &handlers, &db);
         if(s.ok()) {
 
-            for(auto handle : handles) {
+            for(auto handle : handlers) {
                 // find the correct CF handle to be erased
                 if(!column_family_name.compare(handle->GetName())) {
                     switch (action)
@@ -377,6 +377,7 @@ bool AccesSingleItemOfCF(std::string const &column_family_name, std::string &val
                     LOG(WARNING) << "[" << __func__ << "]" << " couldn't delete column family handler, error: " << s.ToString() << std::endl;
                 }
             }
+            handlers.clear();
 
             s = db->Close();
             if(!s.ok()) {
@@ -476,7 +477,7 @@ bool WriteToColumnFamilyTransaction(std::string const &column_family_name,
     Status s;
     TransactionDBOptions txn_db_options;
     TransactionDB* txn_db;
-    std::vector<ColumnFamilyHandle*> handles;
+    std::vector<ColumnFamilyHandle*> handlers;
     bool result = true;
     WriteOptions write_options;
 
@@ -494,11 +495,11 @@ bool WriteToColumnFamilyTransaction(std::string const &column_family_name,
 
     int i = CFIndexInAvailableArray(column_family_name);
     if(i) {
-        s = TransactionDB::Open(DBOptions(), txn_db_options, kDBPath, column_families, &handles, &txn_db);
+        s = TransactionDB::Open(DBOptions(), txn_db_options, kDBPath, column_families, &handlers, &txn_db);
         if(s.ok()) {
             Transaction* txn = txn_db->BeginTransaction(write_options);
             if(txn) {
-                for(auto handle : handles) {
+                for(auto handle : handlers) {
                     // find the correct CF handle to be erased
                     if(!column_family_name.compare(handle->GetName())) {
                         for(auto pair : pairsVector) {
@@ -530,6 +531,7 @@ bool WriteToColumnFamilyTransaction(std::string const &column_family_name,
                         }
                     }
                 }
+                handlers.clear();
             }
             else {
                 LOG(ERROR) << "[" << __func__ << "]" << " couldn't begin transaction, error: " << s.code() << std::endl;
@@ -546,5 +548,23 @@ bool WriteToColumnFamilyTransaction(std::string const &column_family_name,
         LOG(ERROR) << "[" << __func__ << "]" << " can't delete a FC that doesn't exist" << std::endl;
         result = false;
     }
+    return result;
+}
+
+bool CleanColumnFamily(std::string const column_family_name) {
+    DB *db;
+    Status s;
+    std::vector<ColumnFamilyHandle*> handlers;
+    bool result = true;
+
+    if(column_family_name.empty()) {
+        LOG(ERROR) << "[" << __func__ << "]" << " can't clean a family column without name " << std::endl;
+        return true;
+    }
+
+    if(DropColumnFamily(column_family_name)) {
+        result = CreateColumnFamily(column_family_name);
+    }
+
     return result;
 }
