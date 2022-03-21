@@ -1014,6 +1014,7 @@ void Syscollector::updateChanges(const std::string& table,
 
 Syscollector::Syscollector()
     : m_intervalValue { 0 }
+    , m_adjustedIntervalValue {0}
     , m_scanOnStart { false }
     , m_hardware { false }
     , m_os { false }
@@ -1024,7 +1025,9 @@ Syscollector::Syscollector()
     , m_processes { false }
     , m_hotfixes { false }
     , m_stopping { true }
+    , m_lastScanOnDemand { false }
     , m_notify { false }
+    , m_lastScanOnDemandTime {0}
 {}
 
 std::string Syscollector::getCreateStatement() const
@@ -1187,6 +1190,9 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
 
     std::unique_lock<std::mutex> lock{m_mutex};
     m_stopping = false;
+    m_lastScanOnDemand = false;
+    m_lastScanOnDemandTime = 0;
+    m_adjustedIntervalValue = 0;
     m_spDBSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement());
     m_spRsync = std::make_unique<RemoteSync>();
     m_spNormalizer = std::make_unique<SysNormalizer>(normalizerConfigPath, normalizerType);
@@ -1630,16 +1636,40 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
         sync();
     }
 
-    while (!m_cv.wait_for(lock, std::chrono::seconds{m_intervalValue}, [&]()
+    while (!m_cv.wait_for(lock, std::chrono::seconds{m_adjustedIntervalValue ? m_adjustedIntervalValue : m_intervalValue}, [&]()
 {
-    return m_stopping;
+    return (m_stopping);
 }))
     {
-        scan();
-        sync();
+        if (!m_lastScanOnDemand)
+        {
+            scan();
+            sync();
+            m_adjustedIntervalValue = 0;
+        }
+        else
+        {
+            m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Syscollector scan interval adjusted due to a recent on demand scan.");
+            std::time_t current_time = std::time(nullptr);
+            m_adjustedIntervalValue = m_intervalValue - (current_time - m_lastScanOnDemandTime);
+        }
+        m_lastScanOnDemand = false;
     }
     m_spRsync.reset(nullptr);
     m_spDBSync.reset(nullptr);
+}
+
+void Syscollector::runOnDemandScan() {
+    std::unique_lock<std::mutex> lock{m_mutex};
+
+    if (!m_stopping)
+    {
+        m_logFunction(SYS_LOG_DEBUG, "Syscollector scan on demand requested.");
+        scan();
+        sync();
+        m_lastScanOnDemand = true;
+        m_lastScanOnDemandTime = std::time(nullptr);
+    }
 }
 
 void Syscollector::push(const std::string& data)
@@ -1648,19 +1678,24 @@ void Syscollector::push(const std::string& data)
 
     if (!m_stopping)
     {
-        auto rawData{data};
-        Utils::replaceFirst(rawData, "dbsync ", "");
-        const auto buff{reinterpret_cast<const uint8_t*>(rawData.c_str())};
+        if (0 == data.compare("syscollector_run")) {
+            std::thread worker([this]{ runOnDemandScan(); });
+            worker.detach();
+        } else {
+            auto rawData{data};
+            Utils::replaceFirst(rawData, "dbsync ", "");
+            const auto buff{reinterpret_cast<const uint8_t*>(rawData.c_str())};
 
-        try
-        {
-            m_spRsync->pushMessage(std::vector<uint8_t> {buff, buff + rawData.size()});
-            m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Message pushed: " + data);
-        }
-        // LCOV_EXCL_START
-        catch (const std::exception& ex)
-        {
-            m_logFunction(SYS_LOG_ERROR, ex.what());
+            try
+            {
+                m_spRsync->pushMessage(std::vector<uint8_t> {buff, buff + rawData.size()});
+                m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Message pushed: " + data);
+            }
+            // LCOV_EXCL_START
+            catch (const std::exception& ex)
+            {
+                m_logFunction(SYS_LOG_ERROR, ex.what());
+            }
         }
     }
 

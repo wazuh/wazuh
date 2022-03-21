@@ -299,7 +299,7 @@ int modulesSync(char* args) {
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
         if (strstr(args, cur_module->context->name)) {
             ret = 0;
-            if (strstr(args, "dbsync") && cur_module->context->sync != NULL) {
+            if ( (strstr(args, "dbsync") || strstr(args, "run")) && cur_module->context->sync != NULL) {
                 ret = cur_module->context->sync(args);
             }
             break;
