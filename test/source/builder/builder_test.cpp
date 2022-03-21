@@ -88,7 +88,7 @@ void visit(Obs_t<Value> source,
     }
 }
 
-TEST(RXCPP, DecoderManualConnectExample)
+TEST(Builder, GraphRulesFilteredOut)
 {
     using Event_t = std::shared_ptr<json::Document>;
     using Obs_t = rxcpp::observable<std::shared_ptr<json::Document>>;
@@ -126,13 +126,11 @@ TEST(RXCPP, DecoderManualConnectExample)
     source.connect();
 
     std::string expectedContents =
-        R"({"type":"int","field":"odd","value":0,"new_dec_field0":"new_dec_value0","new_dec_field1":"new_dec_value1","new_dec_field3":"new_dec_value3"}
-{"type":"int","field":"odd","value":0,"new_dec_field0":"new_dec_value0","new_dec_field1":"new_dec_value1","new_dec_field3":"new_dec_value3","new_rule_field":"new_rule_value"}
-{"type":"int","field":"even","value":1,"new_dec_field0":"new_dec_value0","new_dec_field2":"new_dec_value2","new_dec_field3":"new_dec_value3"}
+        R"({"type":"int","field":"odd","value":0,"new_dec_field0":"new_dec_value0","new_dec_field1":"new_dec_value1","new_dec_field3":"new_dec_value3","new_rule_field":"new_rule_value"}
 {"type":"int","field":"even","value":1,"new_dec_field0":"new_dec_value0","new_dec_field2":"new_dec_value2","new_dec_field3":"new_dec_value3","new_rule_field":"new_rule_value"}
 )";
 
-    std::cerr << env.print().str() << std::endl;
+    // std::cerr << env.print().str() << std::endl;
 
     std::string file {"/tmp/filepath.txt"};
 
@@ -140,34 +138,69 @@ TEST(RXCPP, DecoderManualConnectExample)
     std::string gotContent((std::istreambuf_iterator<char>(ifs)),
                            (std::istreambuf_iterator<char>()));
 
+    // std::cout << gotContent << std::endl;
+    // std::cout << std::endl;
+    // std::cout << expectedContents << std::endl;
+
     std::filesystem::remove(file);
     ASSERT_EQ(expectedContents, gotContent);
 }
 
-// using namespace builder::internals::types;
-// TEST(graph, graph)
-// {
-//     std::map<ConnectableT, std::set<ConnectableT>> mymap;
+TEST(Builder, GraphDuplicatedExample)
+{
+    using Event_t = std::shared_ptr<json::Document>;
+    using Obs_t = rxcpp::observable<std::shared_ptr<json::Document>>;
+    using Sub_t = rxcpp::subscriber<std::shared_ptr<json::Document>>;
+    using Con_t = builder::internals::Connectable<Obs_t>;
 
-//     ConnectableT conn1{"conn1"};
-//     mymap[conn1] = {};
+    int expected = 2;
+    auto source = rxcpp::observable<>::create<Event_t>(
+                      [expected](const Sub_t s)
+                      {
+                          for (int i = 0; i < expected; i++)
+                          {
+                              if (i % 2 == 0)
+                                  s.on_next(std::make_shared<json::Document>(R"({"type": "int", "field": "odd",
+                                  "value": 0})"));
+                              else
+                                  s.on_next(std::make_shared<json::Document>(R"({"type": "int", "field": "even",
+                                  "value": 1})"));
+                          }
+                          s.on_completed();
+                      })
+                      .publish();
 
-//     auto tmp = mymap.extract(conn1);
-//     auto aux = tmp.key();
+    auto sub = rxcpp::subjects::subject<Event_t>();
 
-//     aux.m_parents.push_back("1");
-//     aux.m_parents.push_back("1");
-//     aux.m_parents.push_back("1");
+    auto subscriber = rxcpp::make_subscriber<Event_t>([](Event_t v) { GTEST_COUT << "Got " << v->str() << std::endl;
+    },
+                                                      []() { GTEST_COUT << "OnCompleted" << std::endl; });
 
-//     tmp.key() = aux;
-//     mymap.insert(std::move(tmp));
+    builder::Builder<FakeCatalog> b{FakeCatalog()};
+    auto env = b.build("environment_7");
+    b("environment_7")(sub.get_observable()).subscribe(subscriber);
 
-//     for (auto & conn : mymap)
-//     {
-//     }
+    source.subscribe(sub.get_subscriber());
+    source.connect();
 
-//     for (auto & conn : mymap)
-//     {
-//         GTEST_COUT << conn.first.m_parents.size() << std::endl;
-//     }
-// }
+    std::string expectedContents =
+        R"({"type":"int","field":"odd","value":0,"new_dec_field0":"new_dec_value0","new_dec_field1":"new_dec_value1","new_dec_field3":"new_dec_value3","new_rule_field":"new_rule_value"}
+{"type":"int","field":"odd","value":0,"new_dec_field0":"new_dec_value0","new_dec_field1":"new_dec_value1","new_dec_field3":"new_dec_value3","new_rule_field":"new_rule_value"}
+{"type":"int","field":"even","value":1,"new_dec_field0":"new_dec_value0","new_dec_field2":"new_dec_value2","new_dec_field3":"new_dec_value3","new_rule_field":"new_rule_value"}
+{"type":"int","field":"even","value":1,"new_dec_field0":"new_dec_value0","new_dec_field2":"new_dec_value2","new_dec_field3":"new_dec_value3","new_rule_field":"new_rule_value"}
+)";
+
+    // std::cerr << env.print().str() << std::endl;
+
+    std::string file{"/tmp/filepath.txt"};
+
+    std::ifstream ifs(file);
+    std::string gotContent((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
+
+    // std::cout << gotContent << std::endl;
+    // std::cout << std::endl;
+    // std::cout << expectedContents << std::endl;
+
+    std::filesystem::remove(file);
+    ASSERT_EQ(expectedContents, gotContent);
+}
