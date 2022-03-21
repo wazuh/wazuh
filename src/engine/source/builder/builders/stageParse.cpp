@@ -25,7 +25,7 @@ namespace builder::internals::builders
 types::Lifter stageBuilderParse(const types::DocumentValue &def)
 {
     // Assert value is as expected
-    if(!def.IsObject())
+    if (!def.IsObject())
     {
         std::string msg = fmt::format(
             "[Stage parse] builder, expected array but got {}", def.GetType());
@@ -35,7 +35,7 @@ types::Lifter stageBuilderParse(const types::DocumentValue &def)
 
     auto parseObj = def.GetObj();
 
-    if(!parseObj["logql"].IsArray())
+    if (!parseObj["logql"].IsArray())
     {
         // TODO ERROR
         WAZUH_LOG_ERROR("Parse stage is ill formed.");
@@ -44,7 +44,7 @@ types::Lifter stageBuilderParse(const types::DocumentValue &def)
     }
 
     auto const &logqlArr = parseObj["logql"];
-    if(logqlArr.Empty())
+    if (logqlArr.Empty())
     {
         // TODO error
         WAZUH_LOG_ERROR("No logQl expressions found.");
@@ -53,9 +53,9 @@ types::Lifter stageBuilderParse(const types::DocumentValue &def)
     }
 
     std::vector<types::Lifter> parsers;
-    for(auto const &item : logqlArr.GetArray())
+    for (auto const &item : logqlArr.GetArray())
     {
-        if(!item.IsObject())
+        if (!item.IsObject())
         {
             WAZUH_LOG_ERROR("LogQl object is badly formatted.");
             throw std::invalid_argument(
@@ -66,7 +66,7 @@ types::Lifter stageBuilderParse(const types::DocumentValue &def)
         auto logQlExpr = item["event.original"].GetString();
 
         auto parseOp = getParserOp(logQlExpr);
-        if(!parseOp)
+        if (!parseOp)
         {
             throw std::invalid_argument(
                 "[Stage parse]Could not generate the parser fn");
@@ -78,7 +78,7 @@ types::Lifter stageBuilderParse(const types::DocumentValue &def)
                 [parserOp = std::move(parserOp)](types::Event e)
                 {
                     auto ev = e->get("/message");
-                    if(!ev->IsString())
+                    if (!ev->IsString())
                     {
                         // TODO error
                         return e;
@@ -86,13 +86,13 @@ types::Lifter stageBuilderParse(const types::DocumentValue &def)
 
                     ParseResult result;
                     auto ok = parserOp(ev->GetString(), result);
-                    if(!ok)
+                    if (!ok)
                     {
                         // TODO error
                         return e;
                     }
 
-                    for(auto const &val : result)
+                    for (auto const &val : result)
                     {
                         auto name =
                             json::Document::preparePath(val.first.c_str());
