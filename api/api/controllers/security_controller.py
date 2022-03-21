@@ -33,7 +33,7 @@ auth_re = re.compile(r'basic (.*)', re.IGNORECASE)
                          f'operation/api.controllers.security_controller.login_user')
 async def deprecated_login_user(user: str, raw: bool = False) -> web.Response:
     """User/password authentication to get an access token.
-    This method should be called to get an API token. This token will expire at some time. # noqa: E501
+    This method should be called to get an API token. This token will expire at some time.
 
     Parameters
     ----------
@@ -69,7 +69,7 @@ async def deprecated_login_user(user: str, raw: bool = False) -> web.Response:
 
 async def login_user(user: str, raw: bool = False) -> web.Response:
     """User/password authentication to get an access token.
-    This method should be called to get an API token. This token will expire at some time. # noqa: E501
+    This method should be called to get an API token. This token will expire at some time.
 
     Parameters
     ----------

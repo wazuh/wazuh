@@ -14,8 +14,8 @@ PASSWORD = 'wazuh'
 
 # Variables
 LOGIN_METHOD = "POST"
-BASE_URL = "{}://{}:{}".format(PROTOCOL, HOST, PORT)
-LOGIN_URL = "{}/security/user/authenticate".format(BASE_URL)
+BASE_URL = f"{PROTOCOL}://{HOST}:{PORT}"
+LOGIN_URL = f"{BASE_URL}/security/user/authenticate"
 
 HEALTHCHECK_TOKEN_FILE = '/tmp_volume/healthcheck/healthcheck.token'
 OSSEC_LOG_PATH = '/var/ossec/logs/ossec.log'
@@ -47,20 +47,13 @@ def get_response(request_method, url, headers):
     Dict
         API response for the request.
     """
-    import enum
     import requests
     import urllib3
-
-    class RequestMethodWrapper(enum.Enum):
-        GET = requests.get
-        POST = requests.post
-        PUT = requests.put
-        DELETE = requests.delete
 
     # Disable insecure https warnings (for self-signed SSL certificates)
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-    request_result = getattr(RequestMethodWrapper, request_method)(url, headers=headers, verify=False)
+    request_result = getattr(requests, request_method.lower())(url, headers=headers, verify=False)
 
     if request_result.status_code == 200:
         return json.loads(request_result.content.decode())
