@@ -81,6 +81,17 @@ std::map<std::string, std::string> filters = {{"filter_0", R"(
                         "rule_0"
                     ],
                     "allow": [
+                        {"nonexistent": "+exists"}
+                    ]
+                }
+    )"},
+                                              {"filter_1", R"(
+                {
+                    "name": "filter_0",
+                    "after": [
+                        "rule_0"
+                    ],
+                    "allow": [
                         {"type": "int"}
                     ]
                 }
@@ -114,6 +125,12 @@ std::map<std::string, std::string> environments = {
      "decoders": [ "decoder_0" , "decoder_1" , "decoder_2", "decoder_3" ],
      "rules": [ "rule_0" ],
      "filters": [ "filter_0" ],
+     "outputs": [ "output_0" ]
+     })"},
+    {"environment_7", R"({
+     "decoders": [ "decoder_0" , "decoder_1" , "decoder_2", "decoder_3" ],
+     "rules": [ "rule_0" ],
+     "filters": [ "filter_1" ],
      "outputs": [ "output_0" ]
      })"}};
 
