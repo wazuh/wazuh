@@ -89,15 +89,15 @@ public:
         }
 
         // Add leaves to end
-        for (auto & node : m_edges)
+        for (auto & edge : m_edges)
         {
-            if (node.first == root || node.first == end)
+            if (edge.first == root || edge.first == end)
                 continue;
 
-            if (node.second.size() == 0)
+            if (edge.second.size() == 0)
             {
-                m_nodes[end].m_parents.insert(node.first);
-                addEdge(node.first, end);
+                m_nodes[end].m_parents.insert(edge.first);
+                addEdge(edge.first, end);
             }
         }
     }
@@ -123,6 +123,8 @@ public:
             throw std::invalid_argument("Connectable " + otherInputNode + " is not in the graph to be joined");
         }
 
+        // TODO: joining a subgraph that has a node with same name as this graph would lead to
+        // wrong graph structure.
         Graph g;
         std::map<std::string, types::ConnectableT> auxObs{m_nodes};
         g.m_nodes.merge(auxObs);
