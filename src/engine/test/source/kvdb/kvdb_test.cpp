@@ -24,11 +24,11 @@ TEST(kvdbTests, column_family_creation_deletion)
     ASSERT_TRUE(ret);
     ret = CreateColumnFamily("IP_GEO_TAGGING");
     ASSERT_TRUE(ret);
-    ret = DeleteColumnFamily("IP_BLACKLIST");
+    ret = DropColumnFamily("IP_BLACKLIST");
     ASSERT_TRUE(ret);
     ret = CreateColumnFamily("");
     ASSERT_TRUE(!ret);
-    ret = DeleteColumnFamily("NOT_AVAILABLE");
+    ret = DropColumnFamily("NOT_AVAILABLE");
     ASSERT_TRUE(!ret);
 }
 
@@ -54,7 +54,7 @@ TEST(kvdbTests, read_write_column_family)
     ASSERT_TRUE(ret);
     ret = ReadToColumnFamily("IP_BLACKLIST", "someKey", val);
     ASSERT_TRUE(!ret);
-    ret = DeleteColumnFamily("IP_BLACKLIST");
+    ret = DropColumnFamily("IP_BLACKLIST");
     ASSERT_TRUE(ret);
 }
 
@@ -72,4 +72,26 @@ TEST(kvdbTests, transactions_success)
     ret = ReadToColumnFamily("IP_BLACKLIST", "key2", val);
     ASSERT_TRUE(ret);
     ASSERT_EQ(val,"value2");
+}
+
+TEST(kvdbTests, clean_column_family)
+{
+    bool ret = CreateColumnFamily("IP_BLACKLIST");
+    ASSERT_TRUE(ret);
+    ret = WriteToColumnFamily("IP_BLACKLIST", "someKey", "127.0.0.1");
+    ASSERT_TRUE(ret);
+    std::string val;
+    ret = ReadToColumnFamily("IP_BLACKLIST", "someKey", val);
+    ASSERT_TRUE(ret);
+    ASSERT_EQ(val,"127.0.0.1");
+    ret = CleanColumnFamily("IP_BLACKLIST");
+    ASSERT_TRUE(ret);
+    val = std::string();
+    ret = ReadToColumnFamily("IP_BLACKLIST", "someKey", val);
+    ASSERT_TRUE(!ret);
+    ret = WriteToColumnFamily("IP_BLACKLIST", "AnotherKey", "255.255.255.0");
+    ASSERT_TRUE(ret);
+    ret = ReadToColumnFamily("IP_BLACKLIST", "AnotherKey", val);
+    ASSERT_TRUE(ret);
+    ASSERT_EQ(val,"255.255.255.0");
 }
