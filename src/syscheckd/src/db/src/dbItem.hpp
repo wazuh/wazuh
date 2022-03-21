@@ -30,6 +30,7 @@ class DBItem
             , m_mode( mode )
         {
             FIMDBCreator<OS_TYPE>::encodeString(m_identifier);
+            m_oldData = false;
         }
 
         // LCOV_EXCL_START

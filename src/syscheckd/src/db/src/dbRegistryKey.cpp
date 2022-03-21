@@ -14,28 +14,60 @@
 
 void RegistryKey::createFimEntry()
 {
-    fim_entry* fim = reinterpret_cast<fim_entry*>(std::calloc(1, sizeof(fim_entry)));;
+    fim_entry* fim = reinterpret_cast<fim_entry*>(std::calloc(1, sizeof(fim_entry)));
     fim_registry_key* key = reinterpret_cast<fim_registry_key*>(std::calloc(1, sizeof(fim_registry_key)));
     auto uid_size = std::to_string(m_uid).size();
     auto gid_size = std::to_string(m_gid).size();
 
-    fim->type = FIM_TYPE_REGISTRY;
-    key->arch = m_arch;
-    std::snprintf(key->checksum, sizeof(key->checksum), "%s", m_checksum.c_str());
-    key->gid = static_cast<char*>(std::calloc(gid_size + 1, sizeof(char)));
-    std::strncpy(key->gid, std::to_string(m_gid).c_str(), gid_size);
-    key->group_name = const_cast<char*>(m_groupname.c_str());
-    key->last_event = m_lastEvent;
-    key->mtime = m_time;
-    key->path = const_cast<char*>(m_identifier.c_str());
-    key->perm = const_cast<char*>(m_perm.c_str());
-    key->scanned =  m_scanned;
-    key->uid = static_cast<char*>(std::calloc(uid_size + 1, sizeof(char)));
-    std::strncpy(key->uid, std::to_string(m_uid).c_str(), uid_size);
-    key->user_name = const_cast<char*>(m_username.c_str());
-    fim->registry_entry.key = key;
+    if (fim)
+    {
+        fim->type = FIM_TYPE_REGISTRY;
 
-    m_fimEntry = std::unique_ptr<fim_entry, FimRegistryKeyDeleter>(fim);
+        if (key)
+        {
+            key->arch = m_arch;
+            std::snprintf(key->checksum, sizeof(key->checksum), "%s", m_checksum.c_str());
+            key->gid = static_cast<char*>(std::calloc(gid_size + 1, sizeof(char)));
+
+            if (key->gid)
+            {
+                std::strncpy(key->gid, std::to_string(m_gid).c_str(), gid_size);
+            }
+            else
+            {
+                throw std::runtime_error("The memory for uid parameter could not be allocated.");
+            }
+
+            key->group_name = const_cast<char*>(m_groupname.c_str());
+            key->last_event = m_lastEvent;
+            key->mtime = m_time;
+            key->path = const_cast<char*>(m_identifier.c_str());
+            key->perm = const_cast<char*>(m_perm.c_str());
+            key->scanned =  m_scanned;
+            key->uid = static_cast<char*>(std::calloc(uid_size + 1, sizeof(char)));
+
+            if (key->uid)
+            {
+                std::strncpy(key->uid, std::to_string(m_uid).c_str(), uid_size);
+            }
+            else
+            {
+                throw std::runtime_error("The memory for gid parameter could not be allocated.");
+            }
+
+            key->user_name = const_cast<char*>(m_username.c_str());
+            fim->registry_entry.key = key;
+            m_fimEntry = std::unique_ptr<fim_entry, FimRegistryKeyDeleter>(fim);
+        }
+        else
+        {
+            throw std::runtime_error("The memory for fim_registry_key could not be allocated.");
+        }
+    }
+    else
+    {
+        throw std::runtime_error("The memory for fim_entry could not be allocated.");
+    }
 }
 
 void RegistryKey::createJSON()
