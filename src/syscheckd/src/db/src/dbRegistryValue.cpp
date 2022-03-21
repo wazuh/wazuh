@@ -21,13 +21,13 @@ void RegistryValue::createFimEntry()
     value->path = const_cast<char*>(m_path.c_str());
     value->size = m_size;
     value->name = const_cast<char*>(m_identifier.c_str());
-    std::strncpy(value->hash_md5, m_md5.c_str(), sizeof(value->hash_md5));
-    std::strncpy(value->hash_sha1, m_sha1.c_str(), sizeof(value->hash_sha1));
-    std::strncpy(value->hash_sha256, m_sha256.c_str(), sizeof(value->hash_sha256));
+    std::snprintf(value->hash_md5, sizeof(value->hash_md5), "%s", m_md5.c_str());
+    std::snprintf(value->hash_sha1, sizeof(value->hash_sha1), "%s", m_sha1.c_str());
+    std::snprintf(value->hash_sha256, sizeof(value->hash_sha256), "%s", m_sha256.c_str());
     value->mode = m_mode;
     value->last_event = m_lastEvent;
     value->scanned = m_scanned;
-    std::strncpy(value->checksum, m_checksum.c_str(), sizeof(value->checksum));
+    std::snprintf(value->checksum, sizeof(value->checksum), "%s", m_checksum.c_str());
     fim->registry_entry.value = value;
     m_fimEntry = std::unique_ptr<fim_entry, FimRegistryValueDeleter>(fim);
 }
