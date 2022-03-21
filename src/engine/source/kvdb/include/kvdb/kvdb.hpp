@@ -17,7 +17,9 @@ bool DestroyKVDB();
 
 bool CreateColumnFamily(std::string const column_family_name);
 
-bool DeleteColumnFamily(std::string const column_family_name);
+bool DropColumnFamily(std::string const column_family_name);
+
+bool CleanColumnFamily(std::string const column_family_name);
 
 bool ReadToColumnFamily(std::string const &columnFamily,
     std::string const &key, std::string &value);
