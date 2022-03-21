@@ -606,7 +606,7 @@ class Handler(asyncio.Protocol):
                 f'Wazuh-db response for chunk {error[0] + 1}/{len(data["chunks"])} was not "ok": {error[1]}')
 
         logger.debug(f'{result["updated_chunks"]}/{len(data["chunks"])} chunks updated in wazuh-db '
-                     f'in {result["time_spent"]:3f}s.')
+                     f'in {result["time_spent"]:.3f}s.')
         result['error_messages'] = [error[1] for error in result['error_messages']['chunks']]
 
         return result
@@ -1410,7 +1410,8 @@ class SyncWazuhdb(SyncTask):
                 command = self.get_data_command + json.dumps(self.get_payload)
                 result = self.data_retriever(command=command)
                 status = result[0]
-                chunks.append(result[1])
+                if result[1] not in ['[]', '[{"data":[]}]']:
+                    chunks.append(result[1])
                 if pivoting:
                     try:
                         last_pivot_value = json.loads(result[1])[-1]['data'][-1]['id']
@@ -1452,7 +1453,7 @@ class SyncWazuhdb(SyncTask):
             self.logger.debug(f"Sending chunks.")
             await self.server.send_request(command=self.cmd, data=task_id)
         else:
-            self.logger.info(f"Finished in {(perf_counter() - start_time):.3f}s (0 chunks sent).")
+            self.logger.info(f"Finished in {(perf_counter() - start_time):.3f}s. Updated 0 chunks.")
         return True
 
 
@@ -1479,8 +1480,7 @@ def end_sending_agent_information(logger, start_time, response) -> Tuple[bytes, 
         Response message.
     """
     data = json.loads(response)
-    msg = f"Finished in {(get_utc_now().timestamp() - start_time):.3f}s ({data['updated_chunks']} " \
-          f"chunks updated)."
+    msg = f"Finished in {(perf_counter() - start_time):.3f}s. Updated {data['updated_chunks']} chunks."
     logger.info(msg) if not data['error_messages'] else logger.error(
         msg + f" There were {len(data['error_messages'])} chunks with errors: {data['error_messages']}")
 
@@ -1541,7 +1541,10 @@ def send_data_to_wdb(data, timeout, info_type='agent-info'):
                         wdb_conn.send(f"{data['set_data_command']} {chunk}", raw=True)
                     elif info_type == 'agent-groups':
                         data['payload']['data'] = json.loads(chunk)[0]['data']
-                        wdb_conn.send(f"{data['set_data_command']} {json.dumps(data['payload'], separators=(',', ':'))}", raw=True)
+                        wdb_conn.send(
+                            f"{data['set_data_command']} {json.dumps(data['payload'], separators=(',', ':'))}",
+                            raw=True
+                        )
                     result['updated_chunks'] += 1
                 except TimeoutError as e:
                     raise e

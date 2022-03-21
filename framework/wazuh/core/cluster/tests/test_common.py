@@ -645,7 +645,7 @@ async def test_handler_update_chunks_wdb(send_request_mock):
                                                                                'generic_errors': ['ERR'],
                                                                                'time_spent': 6,
                                                                                'total_updated': 0, 'updated_chunks': 2}
-                    logger_debug_mock.assert_has_calls([call('2/5 chunks updated in wazuh-db in 6.000000s.')])
+                    logger_debug_mock.assert_has_calls([call('2/5 chunks updated in wazuh-db in 6.000s.')])
                     logger_debug2_mock.assert_has_calls([call('Chunk 1/5: 0'), call('Chunk 2/5: 1')])
                     logger_error_mock.assert_has_calls([call('other1'), call('other2'),
                                                         call('Wazuh-db response for chunk 1/5 was not "ok": 0'),
@@ -1427,8 +1427,8 @@ async def test_sync_wazuh_db_sync_ok(perf_counter_mock, json_dumps_mock):
 
     # Test else
     with patch.object(sync_wazuh_db.logger, "info") as logger_info_mock:
-        assert await sync_wazuh_db.sync(start_time=10, chunks=[]) is True
-        logger_info_mock.assert_called_once_with(f"Finished in -10.000s (0 chunks sent).")
+        assert await sync_wazuh_db.sync(start_time=-10, chunks=[]) is True
+        logger_info_mock.assert_called_once_with(f"Finished in 10.000s. Updated 0 chunks.")
 
     # Test except
     with patch("wazuh.core.cluster.common.Handler.send_string", return_value=b'Error 1'):
@@ -1454,13 +1454,13 @@ def test_end_sending_agent_information(perf_counter_mock, json_loads_mock):
         with patch.object(logger, "info") as logger_info_mock:
             assert cluster_common.end_sending_agent_information(logger, 0, "response") == (b'ok', b'Thanks')
             json_loads_mock.assert_called_once_with("response")
-            logger_info_mock.assert_called_once_with("Finished in 0.000s (10 chunks updated).")
+            logger_info_mock.assert_called_once_with("Finished in 0.000s. Updated 10 chunks.")
 
         with patch.object(logger, "error") as logger_error_mock:
             json_loads_mock.return_value = {"updated_chunks": 10, "error_messages": "error"}
             assert cluster_common.end_sending_agent_information(logger, 0, "response") == (b'ok', b'Thanks')
             logger_error_mock.assert_called_once_with(
-                "Finished in 0.000s (10 chunks updated). There were 5 chunks with errors: error")
+                "Finished in 0.000s. Updated 10 chunks. There were 5 chunks with errors: error")
 
 
 def test_error_receiving_agent_information():

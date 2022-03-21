@@ -598,16 +598,12 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         while True:
             try:
                 if self.connected:
-                    start_time = get_utc_now().timestamp()
+                    start_time = perf_counter()
                     if await sync_object.request_permission():
                         sync_object.logger.info("Starting.")
                         timer['date_start'] = start_time
                         chunks = await sync_object.retrieve_information()
-                        if chunks != ['[]'] and chunks != ['[{"data":[]}]']:
-                            await sync_object.sync(start_time=start_time, chunks=chunks)
-                        else:
-                            sync_object.logger.debug('There is no agent information that needs '
-                                                     'to be synchronized in the local database. Skipping...')
+                        await sync_object.sync(start_time=start_time, chunks=chunks)
             except Exception as e:
                 sync_object.logger.error(f"Error synchronizing agent information: {e}")
 
