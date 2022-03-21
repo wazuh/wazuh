@@ -1,4 +1,4 @@
-#include "glog/logging.h" // TODO: set GLOG_minloglevel=2
+#include "glog/logging.h"
 #include "rocksdb/db.h"
 #include "rocksdb/options.h"
 #include "rocksdb/slice.h"
@@ -24,7 +24,7 @@ using ROCKSDB_NAMESPACE::TransactionDBOptions;
 using ROCKSDB_NAMESPACE::WriteBatch;
 using ROCKSDB_NAMESPACE::WriteOptions;
 
-std::string kDBPath = "/tmp/kvDB_wazuh_engine";
+std::string const kKvDbPath = "/tmp/kvDB_wazuh_engine";
 
 static std::vector<ColumnFamilyDescriptor> column_families;
 
@@ -36,7 +36,7 @@ void UpdateColumnFamiliesList() {
 
     std::vector<std::string> pColumn_families;
 
-    DB::ListColumnFamilies(DBOptions(), kDBPath, &pColumn_families);
+    DB::ListColumnFamilies(DBOptions(), kKvDbPath, &pColumn_families);
 
     if(pColumn_families.size()) {
         column_families.clear();
@@ -65,7 +65,7 @@ bool CreateKVDB() {
     options.create_if_missing = true;
     options.error_if_exists = true;
 
-    s = DB::Open(options, kDBPath, &db);
+    s = DB::Open(options, kKvDbPath, &db);
     if(s.ok()) {
         s = db->Close();
         if(!s.ok()) {
@@ -98,7 +98,7 @@ bool DestroyKVDB() {
     options.OptimizeLevelStyleCompaction();
 
     UpdateColumnFamiliesList();
-    s = DB::Open(DBOptions(), kDBPath, column_families, &handlers, &db);
+    s = DB::Open(DBOptions(), kKvDbPath, column_families, &handlers, &db);
     if(s.ok()) {
         // DB must be closed before destroying it
         s = db->Close();
@@ -107,7 +107,7 @@ bool DestroyKVDB() {
             LOG(WARNING) << "[" << __func__ << "]" << " couldn't close db file, error: " << s.ToString() << std::endl;
         }
         else {
-            DestroyDB(kDBPath,options);
+            DestroyDB(kKvDbPath,options);
         }
         handlers.clear();
     }
@@ -169,11 +169,10 @@ bool CreateColumnFamily(std::string const column_family_name) {
         return true;
     }
 
-    //TODO: this should remained fixed in some kind of persistent storage
     LOG(INFO) << "[" << __func__ << "]" << " Adding " << column_family_name << " as a new family column to DB " << std::endl;
     column_families.push_back(ColumnFamilyDescriptor(column_family_name, ColumnFamilyOptions()));
 
-    s = DB::Open(dbOptions, kDBPath, column_families, &handlers, &db);
+    s = DB::Open(dbOptions, kKvDbPath, column_families, &handlers, &db);
     if(s.ok()) {
         for (auto handle : handlers) {
             s = db->DestroyColumnFamilyHandle(handle);
@@ -220,7 +219,7 @@ bool DropColumnFamily(std::string const column_family_name) {
 
     int i = CFIndexInAvailableArray(column_family_name);
     if(i) {
-        s = DB::Open(DBOptions(), kDBPath, column_families, &handlers, &db);
+        s = DB::Open(DBOptions(), kKvDbPath, column_families, &handlers, &db);
         if(s.ok()) {
             for(auto handle : handlers) {
                 // find the correct CF handle to be erased
@@ -242,10 +241,6 @@ bool DropColumnFamily(std::string const column_family_name) {
                 }
             }
             handlers.clear();
-
-            // TODO: Should handle this error
-            // LOG(ERROR) << "[" << __func__ << "]" << " couldn't find CF handle, error: " << s.ToString() << std::endl;
-            // result = false;
 
             s = db->Close();
             if(!s.ok()) {
@@ -299,7 +294,7 @@ bool AccesSingleItemOfCF(std::string const &column_family_name, std::string &val
 
     int i = CFIndexInAvailableArray(column_family_name);
     if(i) {
-        s = DB::Open(DBOptions(), kDBPath, column_families, &handlers, &db);
+        s = DB::Open(DBOptions(), kKvDbPath, column_families, &handlers, &db);
         if(s.ok()) {
 
             for(auto handle : handlers) {
@@ -365,13 +360,13 @@ bool AccesSingleItemOfCF(std::string const &column_family_name, std::string &val
                         }
                         break;
 
-
                     default:
+                        LOG(ERROR) << "[" << __func__ << "]" << " this case shouldn't be reacheable" << std::endl;
+                        result = false;
                         break;
                     }
 
                 }
-                // destroy all the handlers prior closing
                 s = db->DestroyColumnFamilyHandle(handle);
                 if(!s.ok()) {
                     LOG(WARNING) << "[" << __func__ << "]" << " couldn't delete column family handler, error: " << s.ToString() << std::endl;
@@ -427,10 +422,8 @@ bool ReadToColumnFamily(std::string const &columnFamily, std::string const &key,
  * @return false If the proccess didn't finished successfully
  */
 bool WriteToColumnFamily(std::string const &columnFamily, std::string const &key,
-                                                            std::string const &value) {
-
-    std::string nonConstVal = value; //TODO: avoid this or a const_cast
-    if(AccesSingleItemOfCF(columnFamily, nonConstVal, key, ACTION_ON_CF::WRITE)) {
+                                                            std::string &value) {
+    if(AccesSingleItemOfCF(columnFamily, value, key, ACTION_ON_CF::WRITE)) {
         return true;
     }
     return false;
@@ -445,11 +438,9 @@ bool WriteToColumnFamily(std::string const &columnFamily, std::string const &key
  * @return true If the proccess finished successfully
  * @return false If the proccess didn't finished successfully
  */
-bool DeleteKeyInColumnFamily(std::string const &columnFamily, std::string const &key,
-                                                            std::string const &value) {
-
-    std::string nonConstVal = value; //TODO: avoid this or a const_cast
-    if(AccesSingleItemOfCF(columnFamily, nonConstVal, key, ACTION_ON_CF::DELETE)) {
+bool DeleteKeyInColumnFamily(std::string const &columnFamily, std::string const &key) {
+    std::string unusedValue;
+    if(AccesSingleItemOfCF(columnFamily, unusedValue, key, ACTION_ON_CF::DELETE)) {
         return true;
     }
     return false;
@@ -495,7 +486,7 @@ bool WriteToColumnFamilyTransaction(std::string const &column_family_name,
 
     int i = CFIndexInAvailableArray(column_family_name);
     if(i) {
-        s = TransactionDB::Open(DBOptions(), txn_db_options, kDBPath, column_families, &handlers, &txn_db);
+        s = TransactionDB::Open(DBOptions(), txn_db_options, kKvDbPath, column_families, &handlers, &txn_db);
         if(s.ok()) {
             Transaction* txn = txn_db->BeginTransaction(write_options);
             if(txn) {
