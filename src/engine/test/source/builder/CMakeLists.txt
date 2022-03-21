@@ -16,6 +16,56 @@ set(BUILDER_BUILDERS_TEST_SOURCE_DIR ${BUILDER_TEST_SOURCE_DIR}/builders)
 set(BUILDER_BUILDERS_ENGINE_SOURCE_DIR ${BUILDER_ENGINE_SOURCE_DIR}/builders)
 
 ####################################################################################################
+<<<<<<< HEAD
+=======
+# Dependencies -- assuming cpm is available
+####################################################################################################
+# google/googletest
+CPMAddPackage(
+  NAME googletest
+  GITHUB_REPOSITORY google/googletest
+  GIT_TAG release-1.11.0
+  VERSION 1.11.0
+  OPTIONS
+      "INSTALL_GTEST OFF"
+)
+
+# ReactiveX/RxCpp
+CPMAddPackage(
+  NAME RxCpp
+  GITHUB_REPOSITORY ReactiveX/RxCpp
+  GIT_TAG v4.1.1
+  VERSION 4.1.1
+  OPTIONS
+    "RXCPP_DISABLE_TESTS_AND_EXAMPLES"
+)
+
+CPMAddPackage(
+  NAME RE2
+  GITHUB_REPOSITORY google/re2
+  GIT_TAG 2022-02-01
+  VERSION release 2022-02-01
+)
+
+# Tencent/rapidjson
+CPMAddPackage(
+  NAME rapidjson
+  GITHUB_REPOSITORY Tencent/rapidjson
+  GIT_TAG master
+  VERSION 1.1.0
+  OPTIONS
+      "RAPIDJSON_BUILD_DOC OFF"
+      "RAPIDJSON_BUILD_EXAMPLES OFF"
+      "RAPIDJSON_BUILD_TESTS OFF"
+)
+
+FetchContent_GetProperties(
+  rapidjson
+  SOURCE_DIR rapidjson_headers
+)
+
+####################################################################################################
+>>>>>>> 20bf8d8658 (Refactored graph, tests not updated)
 # Headers -- Libraries
 ####################################################################################################
 include_directories(
@@ -26,43 +76,29 @@ include_directories(
   ${BUILDER_TEST_SOURCE_DIR}
   ${ENGINE_SOURCE_DIR}/json
   ${ENGINE_SOURCE_DIR}/graph
+<<<<<<< HEAD
+)
+
+#TODO do this better
+link_libraries(gtest_main hlp rxcpp builders)
+=======
+  ${rapidjson_headers}/include
+  ${RxCpp_SOURCE_DIR}/Rx/v2/src
 )
 
 link_libraries(
   glog::glog
   gtest_main
   re2
-  hlp
 )
+>>>>>>> 20bf8d8658 (Refactored graph, tests not updated)
 
 ####################################################################################################
 # Builder targets
 ####################################################################################################
 # Builder test
 add_executable(builderTest
-  ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
-  ${BUILDER_TEST_SOURCE_DIR}/builderTest.cpp
-  ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
-  ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderBroadcast.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderOutputs.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderChain.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderCheck.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderCondition.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionValue.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionReference.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperFilter.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperMap.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderOutput.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderFileOutput.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderNormalize.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMap.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapValue.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapReference.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderFilter.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderRule.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderDecoder.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageParse.cpp
+  ${BUILDER_TEST_SOURCE_DIR}/builder_test.cpp
 )
 gtest_discover_tests(builderTest)
 
@@ -74,36 +110,41 @@ gtest_discover_tests(registryTest)
 
 # Register test
 add_executable(registerTest
-  ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
-  ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
-  ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
-  ${BUILDER_TEST_SOURCE_DIR}/registerTest.cpp
-  ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderBroadcast.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderOutputs.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/combinatorBuilderChain.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderCheck.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderCondition.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionValue.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionReference.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperFilter.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperMap.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderOutput.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderFileOutput.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderNormalize.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMap.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapValue.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderMapReference.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderFilter.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderRule.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/assetBuilderDecoder.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageParse.cpp
+  ${BUILDER_TEST_SOURCE_DIR}/register_test.cpp
   )
 gtest_discover_tests(registerTest)
 
+<<<<<<< HEAD
 add_executable(opBuilderTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderConditionReference_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderConditionValue_test.cpp
+=======
+# Configuration graph test
+add_executable(graphTest
+  ${BUILDER_TEST_SOURCE_DIR}/graphTest.cpp
+)
+
+target_link_libraries(graphTest gtest_main)
+gtest_discover_tests(graphTest)
+
+####################################################################################################
+# Builders targets
+####################################################################################################
+
+add_executable(opBuilderConditionValueTest
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderConditionValueTest.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionValue.cpp)
+gtest_discover_tests(opBuilderConditionValueTest)
+
+add_executable(opBuilderConditionReferenceTest
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderConditionReferenceTest.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderConditionReference.cpp)
+gtest_discover_tests(opBuilderConditionReferenceTest)
+
+add_executable(opBuilderHelperExists_test
+  ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
+  ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
+>>>>>>> 20bf8d8658 (Refactored graph, tests not updated)
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperExists_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperNotExists_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringEq_test.cpp
