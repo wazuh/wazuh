@@ -21,8 +21,8 @@ from wazuh.core.wdb import WazuhDBConnection
 
 
 class ReceiveAgentGroupsTask(c_common.ReceiveStringTask):
-    """TODO
-    Define the process and variables necessary to receive and process Agent groups from the master.
+    """
+    Define the process and variables necessary to receive and process Agent groups (periodic) from the master.
 
     This task is created when the master finishes sending Agent groups chunks and its destroyed once the worker has
     updated all the received information.
@@ -57,8 +57,8 @@ class ReceiveAgentGroupsTask(c_common.ReceiveStringTask):
 
 
 class ReceiveEntireAgentGroupsTask(c_common.ReceiveStringTask):
-    """TODO
-    Define the process and variables necessary to receive and process Agent groups from the master.
+    """
+    Define the process and variables necessary to receive and process Agent groups (entire) from the master.
 
     This task is created when the master finishes sending Agent groups chunks and its destroyed once the worker has
     updated all the received information.
