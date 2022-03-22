@@ -1639,7 +1639,7 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
     while (!m_cv.wait_for(lock, std::chrono::seconds{m_adjustedIntervalValue ? m_adjustedIntervalValue : m_intervalValue}, [&]()
 {
     return (m_stopping);
-}))
+    }))
     {
         if (!m_lastScanOnDemand)
         {
@@ -1653,13 +1653,15 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
             std::time_t current_time = std::time(nullptr);
             m_adjustedIntervalValue = m_intervalValue - (current_time - m_lastScanOnDemandTime);
         }
+
         m_lastScanOnDemand = false;
     }
     m_spRsync.reset(nullptr);
     m_spDBSync.reset(nullptr);
 }
 
-void Syscollector::runOnDemandScan() {
+void Syscollector::runOnDemandScan()
+{
     std::unique_lock<std::mutex> lock{m_mutex};
 
     if (!m_stopping)
@@ -1678,10 +1680,13 @@ void Syscollector::push(const std::string& data)
 
     if (!m_stopping)
     {
-        if (0 == data.compare("syscollector_run")) {
-            std::thread worker([this]{ runOnDemandScan(); });
+        if (0 == data.compare("syscollector_run"))
+        {
+            std::thread worker([this] { runOnDemandScan(); });
             worker.detach();
-        } else {
+        }
+        else
+        {
             auto rawData{data};
             Utils::replaceFirst(rawData, "dbsync ", "");
             const auto buff{reinterpret_cast<const uint8_t*>(rawData.c_str())};
