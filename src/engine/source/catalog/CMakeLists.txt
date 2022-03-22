@@ -18,18 +18,17 @@ CPMAddPackage(
 ####################################################################################################
 # Sources - Includes
 ####################################################################################################
-target_sources(main PRIVATE
-    ${ENGINE_CATALOG_SOURCE_DIR}/Catalog.cpp
-    ${ENGINE_CATALOG_SOURCE_DIR}/storageDriver/disk/DiskStorage.cpp
-    ${ENGINE_CATALOG_SOURCE_DIR}/catalogSharedDef.cpp
+add_library(catalog OBJECT
+    catalog.cpp
+    catalogSharedDef.cpp
+    storageDriver/disk/diskStorage.cpp
 )
 
-target_include_directories(main PUBLIC
-    ${rapidjson_SOURCE_DIR}/include
+target_include_directories(catalog 
+    PUBLIC
     ${ENGINE_CATALOG_SOURCE_DIR}
     ${ENGINE_CATALOG_SOURCE_DIR}/storageDriver/
     ${ENGINE_CATALOG_SOURCE_DIR}/storageDriver/disk/
 )
 
-#TODO do this better
-target_link_libraries(main yaml-cpp)
+target_link_libraries(catalog base yaml-cpp)

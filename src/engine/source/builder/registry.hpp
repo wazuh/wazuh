@@ -10,8 +10,8 @@
 #ifndef _REGISTRY_H
 #define _REGISTRY_H
 
-#include <map>
 #include <string>
+#include <unordered_map>
 
 #include "builderTypes.hpp"
 
@@ -21,8 +21,7 @@ namespace builder::internals
 class Registry
 {
 private:
-    inline static std::map<std::string, types::BuilderVariant> m_registry =
-        std::map<std::string, types::BuilderVariant>{};
+    static std::unordered_map<std::string, types::BuilderVariant> m_registry;
 
 public:
     /**
@@ -31,7 +30,8 @@ public:
      * @param builderName
      * @param builder
      */
-    static void registerBuilder(const std::string & builderName, const types::BuilderVariant & builder);
+    static void registerBuilder(const std::string &builderName,
+                                const types::BuilderVariant &builder);
 
     /**
      * @brief Get the Builder object
@@ -39,7 +39,7 @@ public:
      * @param builderName
      * @return builder_t
      */
-    static types::BuilderVariant getBuilder(const std::string & builderName);
+    static types::BuilderVariant getBuilder(const std::string &builderName);
 };
 
 } // namespace builder::internals

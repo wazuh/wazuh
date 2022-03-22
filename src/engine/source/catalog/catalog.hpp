@@ -4,13 +4,12 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "catalogSharedDef.hpp"
-#include "storageDriver/StorageDriverInterface.hpp"
-#include "yml_to_json.hpp"
-
-#include <rapidjson/document.h>
+#include "storageDriver/storageDriverInterface.hpp"
+#include "yml2Json.hpp"
 
 namespace catalog
 {
@@ -18,18 +17,23 @@ namespace catalog
 /**
  * @brief The Catalog class
  *
- * The Catalog class is used to manage the catalog and will be in charge of managing
- * the load, update and storage of all the assets needed by the engine.
- * It should support multiple storage systems and should make versioning easy to manage.
+ * The Catalog class is used to manage the catalog and will be in charge of
+ * managing the load, update and storage of all the assets needed by the engine.
+ * It should support multiple storage systems and should make versioning easy to
+ * manage.
  *
  * @note The Catalog class is thread-safe. Not implemented yet (#TODO this)
  *
  * @warning Each asset type should have a schema associated to it.
- *  - Decoder schema: "wazuh-decoders" (i.e. in diskDriver /schemas/wazuh-decoders.json)
+ *  - Decoder schema: "wazuh-decoders" (i.e. in diskDriver
+ * /schemas/wazuh-decoders.json)
  *  - Rule schema: "wazuh-rules" (i.e. in diskDriver /schemas/wazuh-rules.json)
- *  - Output schema: "wazuh-outputs" (i.e. in diskDriver /schemas/wazuh-outputs.json)
- *  - Filter schema: "wazuh-filters" (i.e. in diskDriver /schemas/wazuh-filters.json)
- *  - Environment schema: "wazuh-environments" (i.e. in diskDriver /schemas/wazuh-environments.json)
+ *  - Output schema: "wazuh-outputs" (i.e. in diskDriver
+ * /schemas/wazuh-outputs.json)
+ *  - Filter schema: "wazuh-filters" (i.e. in diskDriver
+ * /schemas/wazuh-filters.json)
+ *  - Environment schema: "wazuh-environments" (i.e. in diskDriver
+ * /schemas/wazuh-environments.json)
  */
 class Catalog
 {
@@ -43,15 +47,20 @@ private:
      *
      * @param json The json to validate.
      * @param schema The schema to validate against.
-     * @return std::optional<std::string> The error message if the json is not valid.
+     * @return std::optional<std::string> The error message if the json is not
+     * valid.
      */
-    std::optional<std::string> validateJSON(rapidjson::Document & json, rapidjson::Document & schema) const;
+    std::optional<std::string> validateJSON(rapidjson::Document &json,
+                                            rapidjson::Document &schema) const;
 
     /** @brief Mapping the assets types and their schemas validator. */
-    static const inline std::map<AssetType, std::string> assetTypeToSchema{
-        {AssetType::Decoder, "wazuh-decoders"},         {AssetType::Rule, "wazuh-rules"},
-        {AssetType::Output, "wazuh-outputs"},           {AssetType::Filter, "wazuh-filters"},
-        {AssetType::Environment, "wazuh-environments"}, {AssetType::Schema, ""}};
+    static const inline std::unordered_map<AssetType, std::string>
+        assetTypeToSchema {{AssetType::Decoder, "wazuh-decoders"},
+                           {AssetType::Rule, "wazuh-rules"},
+                           {AssetType::Output, "wazuh-outputs"},
+                           {AssetType::Filter, "wazuh-filters"},
+                           {AssetType::Environment, "wazuh-environments"},
+                           {AssetType::Schema, ""}};
 
 public:
     /**
@@ -65,7 +74,8 @@ public:
      *
      * @param spStorageDriver
      */
-    void setStorageDriver(std::unique_ptr<StorageDriverInterface> spStorageDriver);
+    void
+    setStorageDriver(std::unique_ptr<StorageDriverInterface> spStorageDriver);
 
     /**
      * @brief Create the catalog manager from the given driver to connect.
@@ -81,7 +91,7 @@ public:
         this->setStorageDriver(std::move(spStorageDriver));
     }
 
-    Catalog(Catalog && other);
+    Catalog(Catalog &&other);
 
     /**
      * @brief Dump pending changes and freed driver storage.
@@ -104,10 +114,12 @@ public:
      * @throws std::runtime_error If the asset is not valid.
      * @throws YML::ParserException If the yaml in the storage is corrupted.
      * @throws filesystem::filesystem_error if the storage driver fails to get
-     *                                      the asset. Only if driver is diskDriver.
+     *                                      the asset. Only if driver is
+     * diskDriver.
      *
      */
-    rapidjson::Document getAsset(const AssetType type, std::string assetName) const;
+    rapidjson::Document getAsset(const AssetType type,
+                                 std::string assetName) const;
 
     /**
      * @brief Get the Asset object
@@ -121,10 +133,12 @@ public:
      * @throws std::runtime_error If the asset is not valid.
      * @throws YML::ParserException If the yaml in the storage is corrupted.
      * @throws filesystem::filesystem_error if the storage driver fails to get
-     *                                      the asset. Only if driver is diskDriver.
+     *                                      the asset. Only if driver is
+     * diskDriver.
      *
      */
-    rapidjson::Document getAsset(const std::string & type, std::string assetName) const;
+    rapidjson::Document getAsset(const std::string &type,
+                                 std::string assetName) const;
 
     /**
      * @brief Get the list of assets of a given type.
@@ -133,7 +147,8 @@ public:
      *             filter and schema are supported.
      * @return std::vector<std::string> The list of assets.
      * @throws filesystem::filesystem_error if the storage driver fails to get
-     *                                      the asset. Only if driver is diskDriver.
+     *                                      the asset. Only if driver is
+     * diskDriver.
      */
     std::vector<std::string> getAssetList(const AssetType type);
 };

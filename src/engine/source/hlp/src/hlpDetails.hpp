@@ -1,5 +1,5 @@
-#ifndef _H_HLP_DETAILS_
-#define _H_HLP_DETAILS_
+#ifndef _H_HLP_DETAILS
+#define _H_HLP_DETAILS
 
 #include <string>
 #include <unordered_map>
@@ -54,4 +54,4 @@ extern const parserFuncPtr kAvailableParsers[];
  * @brief List with the configuration functions of the available parsers
  */
 extern const parserConfigFuncPtr kParsersConfig[];
-#endif //_H_HLP_DETAILS_
+#endif //_H_HLP_DETAILS

@@ -1,5 +1,5 @@
-#ifndef _H_SPECIFIC_PARSERS_
-#define _H_SPECIFIC_PARSERS_
+#ifndef _H_SPECIFIC_PARSERS
+#define _H_SPECIFIC_PARSERS
 
 #include <string>
 #include <unordered_map>
@@ -171,4 +171,4 @@ bool parseUserAgent(const char **it,
                     Parser const &parser,
                     std::unordered_map<std::string, std::string> &result);
 
-#endif //_H_SPECIFIC_PARSERS_
+#endif //_H_SPECIFIC_PARSERS

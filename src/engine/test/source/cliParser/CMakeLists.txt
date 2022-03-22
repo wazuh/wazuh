@@ -8,7 +8,7 @@ CPMAddPackage(
 )
 
 add_executable(cli_parser_test 
-    cli_parser_test.cpp 
+    cliParser_test.cpp 
 #---
     ${ENGINE_SOURCE_DIR}/cliParser/cliParser.cpp
 )
