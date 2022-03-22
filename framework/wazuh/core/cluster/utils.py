@@ -47,7 +47,7 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
         Dictionary with cluster configuration.
     """
     cluster_default_configuration = {
-        'disabled': False,
+        'disabled': True,
         'node_type': 'master',
         'name': 'wazuh',
         'node_name': 'node01',

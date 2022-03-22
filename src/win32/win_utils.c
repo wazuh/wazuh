@@ -57,7 +57,6 @@ void stop_wmodules()
 /* Locally start (after service/win init) */
 int local_start()
 {
-    int rc;
     char *cfg = OSSECCONF;
     WSADATA wsaData;
     DWORD  threadID;
@@ -118,17 +117,6 @@ int local_start()
     if (agt->force_reconnect_interval) {
         minfo("Using force reconnect interval, Wazuh Agent will reconnect every %ld %s", \
                w_seconds_to_time_value(agt->force_reconnect_interval), w_seconds_to_time_unit(agt->force_reconnect_interval, TRUE));
-    }
-
-    // Resolve hostnames
-    rc = 0;
-    while (rc < agt->server_count) {
-        if (OS_IsValidIP(agt->server[rc].rip, NULL) != 1) {
-            mdebug2("Resolving server hostname: %s", agt->server[rc].rip);
-            resolve_hostname(&agt->server[rc].rip, 5);
-            mdebug2("Server hostname resolved: %s", agt->server[rc].rip);
-        }
-        rc++;
     }
 
     /* Read logcollector config file */
