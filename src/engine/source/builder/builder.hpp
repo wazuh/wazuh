@@ -10,18 +10,15 @@
 #ifndef _BUILDER_H
 #define _BUILDER_H
 
-#include <algorithm>
 #include <functional>
-#include <map>
-#include <set>
-#include <sstream>
 #include <stdexcept>
-#include <utility>
+#include <variant>
 #include <vector>
 
 #include "builderTypes.hpp"
 #include "graph.hpp"
 #include "registry.hpp"
+#include <profile/profile.hpp>
 
 namespace builder
 {
@@ -35,10 +32,11 @@ using Graph_t = graph::Graph<internals::types::ConnectableT>;
  *
  * @tparam Catalog type of the catalog for dependency injection.
  */
-template <class Catalog> class Builder
+template<class Catalog>
+class Builder
 {
 private:
-    const Catalog & m_catalog;
+    const Catalog &m_catalog;
 
     /**
      * @brief Connects the provided graph single nodes into a connected
@@ -50,7 +48,9 @@ private:
      * @param in input node
      * @param out output node
      */
-    void connectGraph(Graph_t & g, internals::types::ConnectableT in, internals::types::ConnectableT out)
+    void connectGraph(Graph_t &g,
+                      internals::types::ConnectableT in,
+                      internals::types::ConnectableT out)
     {
 
         g.addNode(in);
@@ -60,8 +60,10 @@ private:
             {
                 internals::types::ConnectableT node = edges.first;
 
-                // TODO: do not relay on special names with input and output in the name
-                if (node == in || node == out || node.m_name.find("INPUT") != std::string::npos ||
+                // TODO: do not relay on special names with input and output in
+                // the name
+                if (node == in || node == out ||
+                    node.m_name.find("INPUT") != std::string::npos ||
                     node.m_name.find("OUTPUT") != std::string::npos)
                     return;
 
@@ -99,12 +101,15 @@ private:
      * @param make the maker function which will convert a single asset into
      * a connectable.
      */
-    void assetBuilder(Graph_t & g, std::string atype, const json::Value * v, internals::types::AssetBuilder make)
+    void assetBuilder(Graph_t &g,
+                      std::string atype,
+                      const json::Value *v,
+                      internals::types::AssetBuilder make)
     {
 
         if (v && v->IsArray())
         {
-            for (auto & m : v->GetArray())
+            for (auto &m : v->GetArray())
             {
                 json::Document asset = m_catalog.getAsset(atype, m.GetString());
                 g.addNode(make(asset));
@@ -118,13 +123,13 @@ private:
      * @param g graph to filter
      * @param filters graph of filters
      */
-    void filterGraph(Graph_t & g, Graph_t & filters)
+    void filterGraph(Graph_t &g, Graph_t &filters)
     {
         filters.visit(
             [&](auto edges)
             {
                 internals::types::ConnectableT filter = edges.first;
-                for (auto & p : filter.m_parents)
+                for (auto &p : filter.m_parents)
                 {
                     g.addNode(filter);
                     g.injectEdge(internals::types::ConnectableT(p), filter);
@@ -133,7 +138,8 @@ private:
     }
 
 public:
-    Builder(const Catalog & c) : m_catalog(c){};
+    Builder(const Catalog &c)
+        : m_catalog(c) {};
 
     /**
      * @brief An environment might have decoders, rules, filters and outputs,
@@ -151,60 +157,81 @@ public:
      * @param name name of the environment
      * @return Graph_t execution graph
      */
-    Graph_t build(const std::string & name)
+    Graph_t build(const std::string &name)
     {
         Graph_t g;
         Graph_t filters;
         json::Document asset = m_catalog.getAsset("environment", name);
         // TODO: Parametrize - define constextp string
-        this->assetBuilder(g, "decoder", asset.get("/decoders"),
-                           std::get<internals::types::AssetBuilder>(internals::Registry::getBuilder("decoder")));
-        this->connectGraph(g, internals::types::ConnectableT("DECODERS_INPUT"),
+        this->assetBuilder(g,
+                           "decoder",
+                           asset.get("/decoders"),
+                           std::get<internals::types::AssetBuilder>(
+                               internals::Registry::getBuilder("decoder")));
+        this->connectGraph(g,
+                           internals::types::ConnectableT("DECODERS_INPUT"),
                            internals::types::ConnectableT("DECODERS_OUTPUT"));
 
         g.addNode(internals::types::ConnectableT("RULES_INPUT"));
-        g.addEdge(internals::types::ConnectableT("DECODERS_OUTPUT"), internals::types::ConnectableT("RULES_INPUT"));
+        g.addEdge(internals::types::ConnectableT("DECODERS_OUTPUT"),
+                  internals::types::ConnectableT("RULES_INPUT"));
 
-        this->assetBuilder(g, "rule", asset.get("/rules"),
-                           std::get<internals::types::AssetBuilder>(internals::Registry::getBuilder("rule")));
-        this->connectGraph(g, internals::types::ConnectableT("RULES_INPUT"),
+        this->assetBuilder(g,
+                           "rule",
+                           asset.get("/rules"),
+                           std::get<internals::types::AssetBuilder>(
+                               internals::Registry::getBuilder("rule")));
+        this->connectGraph(g,
+                           internals::types::ConnectableT("RULES_INPUT"),
                            internals::types::ConnectableT("RULES_OUTPUT"));
 
         g.addNode(internals::types::ConnectableT("OUTPUTS_INPUT"));
-        g.addEdge(internals::types::ConnectableT("DECODERS_OUTPUT"), internals::types::ConnectableT("OUTPUTS_INPUT"));
-        g.addEdge(internals::types::ConnectableT("RULES_OUTPUT"), internals::types::ConnectableT("OUTPUTS_INPUT"));
+        g.addEdge(internals::types::ConnectableT("DECODERS_OUTPUT"),
+                  internals::types::ConnectableT("OUTPUTS_INPUT"));
+        g.addEdge(internals::types::ConnectableT("RULES_OUTPUT"),
+                  internals::types::ConnectableT("OUTPUTS_INPUT"));
 
-        this->assetBuilder(g, "output", asset.get("/outputs"),
-                           std::get<internals::types::AssetBuilder>(internals::Registry::getBuilder("output")));
-        this->connectGraph(g, internals::types::ConnectableT("OUTPUTS_INPUT"),
+        this->assetBuilder(g,
+                           "output",
+                           asset.get("/outputs"),
+                           std::get<internals::types::AssetBuilder>(
+                               internals::Registry::getBuilder("output")));
+        this->connectGraph(g,
+                           internals::types::ConnectableT("OUTPUTS_INPUT"),
                            internals::types::ConnectableT("OUTPUTS_OUTPUT"));
 
-        this->assetBuilder(filters, "filter", asset.get("/filters"),
-                           std::get<internals::types::AssetBuilder>(internals::Registry::getBuilder("filter")));
+        this->assetBuilder(filters,
+                           "filter",
+                           asset.get("/filters"),
+                           std::get<internals::types::AssetBuilder>(
+                               internals::Registry::getBuilder("filter")));
         this->filterGraph(g, filters);
 
         std::cerr << g.print().str();
         return g;
     }
 
-    internals::types::Lifter operator()(const std::string & name)
+    internals::types::Lifter operator()(const std::string &name)
     {
 
         auto g = this->build(name);
         auto edges = g.get();
-        return [=](internals::types::Observable o) -> internals::types::Observable
+        return
+            [=](internals::types::Observable o) -> internals::types::Observable
         {
             internals::types::Observable last;
             // This algorithm builds the RXCPP based graph of operations
             // every time the closure is called. The whole graph is captured
             // by value by the parent closure.
-            auto visit = [&](internals::types::Observable source, internals::types::ConnectableT root,
-                             auto & visit_ref) -> void
+            auto visit = [&](internals::types::Observable source,
+                             internals::types::ConnectableT root,
+                             auto &visit_ref) -> void
             {
                 auto itr = edges.find(root);
                 if (itr == edges.end())
                 {
-                    throw std::invalid_argument("Value root is not in the graph");
+                    throw std::invalid_argument(
+                        "Value root is not in the graph");
                 }
 
                 // Visit node
@@ -222,7 +249,7 @@ public:
                 }
 
                 // Visit childs
-                for (auto & n : itr->second)
+                for (auto &n : itr->second)
                 {
                     visit_ref(obs, n, visit_ref);
                 }

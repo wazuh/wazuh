@@ -7,8 +7,8 @@
  * Foundation.
  */
 
-#ifndef _STRING_UTILS_H_
-#define _STRING_UTILS_H_
+#ifndef _STRING_UTILS_H
+#define _STRING_UTILS_H
 
 #include <vector>
 #include <string>

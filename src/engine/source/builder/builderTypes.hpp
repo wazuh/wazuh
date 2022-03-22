@@ -10,12 +10,14 @@
 #ifndef _BUILDER_TYPES_H
 #define _BUILDER_TYPES_H
 
-#include "connectable.hpp"
 #include <functional>
-#include <rxcpp/rx.hpp>
 #include <variant>
 #include <vector>
+#include <memory>
 
+#include <rxcpp/rx.hpp>
+
+#include "connectable.hpp"
 #include "json.hpp"
 
 /**

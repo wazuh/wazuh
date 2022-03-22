@@ -1,4 +1,4 @@
-#include "LogQLParser.hpp"
+#include "logQLParser.hpp"
 
 #include <stdexcept>
 #include <stdio.h>
@@ -7,8 +7,9 @@
 #include <unordered_map>
 #include <vector>
 
-#include <fmt/format.h>
 #include <profile/profile.hpp>
+
+#include <fmt/format.h>
 
 namespace
 {
@@ -192,7 +193,7 @@ ExpressionList parseLogQlExpr(const char *expr)
                         fmt::format("[HLP]Invalid LogQL expression at [{}]. "
                                     "Unable to parse capture expression.",
                                     std::string(prev));
-                    throw std::invalid_argument(msg);
+                    throw std::runtime_error(msg);
                 }
 
                 if (peekToken(tokenizer).type == TokenType::OpenAngle)
@@ -200,7 +201,7 @@ ExpressionList parseLogQlExpr(const char *expr)
                     auto msg = fmt::format("[HLP]Invalid LogQL expression at "
                                            "[{}]. Can't captures back to back",
                                            std::string(prev));
-                    throw std::invalid_argument(msg);
+                    throw std::runtime_error(msg);
                 }
                 break;
             }
@@ -217,7 +218,7 @@ ExpressionList parseLogQlExpr(const char *expr)
             }
             default:
             {
-                throw std::invalid_argument(
+                throw std::runtime_error(
                     "[HLP] Invalid LogQl expression. Unknown token found.");
             }
         }

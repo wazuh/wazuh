@@ -4,7 +4,8 @@
 #include <iostream>
 #include <vector>
 #include <map>
-#include "../StorageDriverInterface.hpp"
+
+#include <storageDriver/storageDriverInterface.hpp>
 
 /*
  * #TODO Implement thread-safe mechanism
