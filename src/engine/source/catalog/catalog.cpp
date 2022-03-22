@@ -5,9 +5,9 @@
 namespace catalog
 {
 void Catalog::setStorageDriver(
-    std::unique_ptr<StorageDriverInterface> spStorageDriver)
+    std::unique_ptr<StorageDriverInterface> driver)
 {
-    spStorageDriver = std::move(spStorageDriver);
+    spStorageDriver = std::move(driver);
 }
 
 Catalog::Catalog(Catalog &&other)
