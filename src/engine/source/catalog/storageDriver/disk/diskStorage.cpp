@@ -2,8 +2,9 @@
 #include <fstream>
 #include <iostream>
 
-#include "DiskStorage.hpp"
-#include "rapidjson/istreamwrapper.h"
+#include <rapidjson/istreamwrapper.h>
+
+#include "diskStorage.hpp"
 
 constexpr std::string_view EXT_JSON_SCHEMA {".json"};
 constexpr std::string_view EXT_OTHER_ASSET {".yml"};
@@ -19,7 +20,7 @@ std::vector<std::string> DiskStorage::getAssetList(const AssetType type)
     // Get the path to the asset directory
     base_dir /= assetTypeToPath.at(type);
 
-    for (const auto& entry : std::filesystem::directory_iterator(base_dir))
+    for (const auto &entry : std::filesystem::directory_iterator(base_dir))
     {
         if (entry.is_regular_file() && entry.path().has_extension())
         {
@@ -27,12 +28,11 @@ std::vector<std::string> DiskStorage::getAssetList(const AssetType type)
             const auto extension = entry.path().extension().string();
 
             if (extension == EXT_OTHER_ASSET ||
-                    (extension == EXT_JSON_SCHEMA && type == AssetType::Schema))
+                (extension == EXT_JSON_SCHEMA && type == AssetType::Schema))
             {
                 assetList.push_back(string {entry.path().stem().string()});
             }
         }
-
     }
 
     return assetList;
@@ -41,8 +41,8 @@ std::vector<std::string> DiskStorage::getAssetList(const AssetType type)
 // Overridden method
 std::string DiskStorage::getAsset(const AssetType type, std::string assetName)
 {
-    using std::string;
     using rapidjson::Document;
+    using std::string;
     namespace fs = std::filesystem;
 
     fs::path base_dir {this->path};
@@ -77,14 +77,16 @@ std::string DiskStorage::getAsset(const AssetType type, std::string assetName)
         else
         {
             // Non regular file or not readable
-            throw std::runtime_error {"Error reading file: '" + assetTypeToPath.at(type)
-                                      + "/" + assetName + "'"};
+            throw std::runtime_error {"Error reading file: '" +
+                                      assetTypeToPath.at(type) + "/" +
+                                      assetName + "'"};
         }
     }
     else
     {
-        throw std::runtime_error {"Asset not found in file: '" + assetTypeToPath.at(type)
-                                  + "/" + assetName + "'"};
+        throw std::runtime_error {"Asset not found in file: '" +
+                                  assetTypeToPath.at(type) + "/" + assetName +
+                                  "'"};
     }
 
     return assetStr;

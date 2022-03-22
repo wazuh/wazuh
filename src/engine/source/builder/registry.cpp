@@ -11,38 +11,41 @@
 
 #include <stdexcept>
 
-#include <logging/logging.hpp>
 #include <fmt/format.h>
+#include <logging/logging.hpp>
 
 namespace builder::internals
 {
+std::unordered_map<std::string, types::BuilderVariant> Registry::m_registry;
 
-void Registry::registerBuilder(const std::string & builderName, const types::BuilderVariant & builder)
+void Registry::registerBuilder(const std::string &builderName,
+                               const types::BuilderVariant &builder)
 {
-    if (Registry::m_registry.count(builderName) > 0)
+
+    auto ret = m_registry.try_emplace(builderName, builder);
+    if (!ret.second)
     {
-        auto msg = fmt::format("Tried to register duplicate builder: [{}] ", builderName);
+        auto msg =
+            fmt::format("[Registry] Tried to register duplicate builder: [{}] ",
+                        builderName);
         WAZUH_LOG_ERROR(msg);
         throw std::invalid_argument(std::move(msg));
-    }
-    else
-    {
-        Registry::m_registry[builderName] = builder;
     }
 }
 
-types::BuilderVariant Registry::getBuilder(const std::string & builderName)
+types::BuilderVariant Registry::getBuilder(const std::string &builderName)
 {
-    if (Registry::m_registry.count(builderName) == 0)
+    auto it = m_registry.find(builderName);
+    if (it == m_registry.end())
     {
-        auto msg = fmt::format("Tried to obtain not registered builder: [{}]", builderName);
+        auto msg =
+            fmt::format("[Registry] Tried to obtain unregistered builder: [{}]",
+                        builderName);
         WAZUH_LOG_ERROR(msg);
         throw std::invalid_argument(std::move(msg));
     }
-    else
-    {
-        return Registry::m_registry[builderName];
-    }
+
+    return it->second;
 }
 
 } // namespace builder::internals

@@ -7,8 +7,8 @@
  * Foundation.
  */
 
-#ifndef _BASE_ENDPOINT_H_
-#define _BASE_ENDPOINT_H_
+#ifndef _BASE_ENDPOINT_H
+#define _BASE_ENDPOINT_H
 
 #include <string>
 
@@ -64,4 +64,4 @@ public:
 
 } // namespace engineserver::endpoints
 
-#endif // _BASE_ENDPOINT_H_
+#endif // _BASE_ENDPOINT_H

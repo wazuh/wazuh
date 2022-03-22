@@ -24,7 +24,7 @@ namespace builder::internals::builders
 types::Lifter stageBuilderCheck(const types::DocumentValue &def)
 {
     // Assert value is as expected
-    if(!def.IsArray())
+    if (!def.IsArray())
     {
         std::string msg = fmt::format(
             "Stage check builder, expected array but got [{}]", def.GetType());
@@ -34,14 +34,14 @@ types::Lifter stageBuilderCheck(const types::DocumentValue &def)
 
     // Build all conditions
     std::vector<types::Lifter> conditions;
-    for(auto it = def.Begin(); it != def.End(); ++it)
+    for (auto it = def.Begin(); it != def.End(); ++it)
     {
         try
         {
             conditions.push_back(std::get<types::OpBuilder>(
                 Registry::getBuilder("condition"))(*it));
         }
-        catch(std::exception &e)
+        catch (std::exception &e)
         {
             WAZUH_LOG_ERROR(
                 "Stage check builder encountered exception on building: [{}]",
@@ -60,7 +60,7 @@ types::Lifter stageBuilderCheck(const types::DocumentValue &def)
         check = std::get<types::CombinatorBuilder>(
             Registry::getBuilder("combinator.chain"))(conditions);
     }
-    catch(std::exception &e)
+    catch (std::exception &e)
     {
         WAZUH_LOG_ERROR("Stage check builder encountered exception chaining "
                         "all conditions: [{}]",

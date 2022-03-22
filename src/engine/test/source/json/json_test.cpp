@@ -55,7 +55,7 @@ auto message = R"({
 TEST(JsonTest, Initialize)
 {
 
-    ASSERT_NO_THROW(json::Document default_event());
+    ASSERT_NO_THROW(json::Document default_event);
 
     ASSERT_NO_THROW(json::Document json_event(message));
 

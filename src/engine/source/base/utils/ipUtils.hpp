@@ -7,7 +7,7 @@
  * Foundation.
  */
 
-#ifndef _IP_UTILS_H_
+#ifndef _IP_UTILS_H
 #define _IP_UTILS_H
 
 #include <iostream>

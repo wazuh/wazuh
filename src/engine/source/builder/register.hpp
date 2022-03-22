@@ -14,25 +14,25 @@
 #include "registry.hpp"
 
 // Add all builders includes here
-#include "assetBuilderDecoder.hpp"
-#include "assetBuilderFilter.hpp"
-#include "assetBuilderOutput.hpp"
-#include "assetBuilderRule.hpp"
-#include "combinatorBuilderBroadcast.hpp"
-#include "combinatorBuilderChain.hpp"
-#include "opBuilderCondition.hpp"
-#include "opBuilderConditionReference.hpp"
-#include "opBuilderConditionValue.hpp"
-#include "opBuilderFileOutput.hpp"
-#include "opBuilderHelperFilter.hpp"
-#include "opBuilderHelperMap.hpp"
-#include "opBuilderMap.hpp"
-#include "opBuilderMapReference.hpp"
-#include "opBuilderMapValue.hpp"
-#include "stageBuilderCheck.hpp"
-#include "stageBuilderNormalize.hpp"
-#include "stageBuilderOutputs.hpp"
-#include "stageParse.hpp"
+#include <builders/assetBuilderDecoder.hpp>
+#include <builders/assetBuilderFilter.hpp>
+#include <builders/assetBuilderOutput.hpp>
+#include <builders/assetBuilderRule.hpp>
+#include <builders/combinatorBuilderBroadcast.hpp>
+#include <builders/combinatorBuilderChain.hpp>
+#include <builders/opBuilderCondition.hpp>
+#include <builders/opBuilderConditionReference.hpp>
+#include <builders/opBuilderConditionValue.hpp>
+#include <builders/opBuilderFileOutput.hpp>
+#include <builders/opBuilderHelperFilter.hpp>
+#include <builders/opBuilderHelperMap.hpp>
+#include <builders/opBuilderMap.hpp>
+#include <builders/opBuilderMapReference.hpp>
+#include <builders/opBuilderMapValue.hpp>
+#include <builders/stageBuilderCheck.hpp>
+#include <builders/stageBuilderNormalize.hpp>
+#include <builders/stageBuilderOutputs.hpp>
+#include <builders/stageParse.hpp>
 
 namespace builder::internals
 {
