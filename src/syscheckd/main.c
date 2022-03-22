@@ -48,6 +48,9 @@ int main(int argc, char **argv)
     directory_t *dir_it = NULL;
     int start_realtime = 0;
 
+    int * test = NULL;
+    test = 123;
+
     /* Set the name */
     OS_SetName(ARGV0);
 

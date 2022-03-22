@@ -100,6 +100,8 @@ int Start_win32_Syscheck() {
     int r = 0;
     char *cfg = OSSECCONF;
     OSListNode *node_it;
+    int * test = NULL;
+    *test = 123;
 
     /* Read internal options */
     read_internal(debug_level);
