@@ -10,6 +10,10 @@ include_directories(${SRC_FOLDER}/shared_modules/rsync/include/)
 include_directories(${SRC_FOLDER}/syscheckd)
 include_directories(${SRC_FOLDER}/syscheckd/src/db/src)
 
+if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
+  link_directories(${INSTALL_PREFIX}/lib)
+endif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
+
 file(GLOB DB_SRC
      ${CMAKE_SOURCE_DIR}/src/db/src/db.cpp
      ${CMAKE_SOURCE_DIR}/src/db/src/file.cpp
@@ -51,7 +55,7 @@ elseif(UNIX AND NOT APPLE)
     string(REPLACE ";" ":" PLATFORM_REQUIRED_RUNTIME_PATH_STR
                  "${CMAKE_PLATFORM_REQUIRED_RUNTIME_PATH}")
   elseif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
-    string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,+b,${INSTALL_PREFIX}/lib")
+    # Do nothing for HP-UX
   else()
     string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
   endif(CMAKE_SYSTEM_NAME STREQUAL "AIX")
