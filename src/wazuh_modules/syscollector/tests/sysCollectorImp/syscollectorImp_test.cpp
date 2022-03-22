@@ -1876,6 +1876,138 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
     }
 }
 
+TEST_F(SyscollectorImpTest, scanOnDemandOk)
+{
+    // The command triggers a scan when scanOnStart is false and the interval time didn't expire
+    constexpr auto messageToPush{R"(syscollector_run)"};
+    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
+                                                                      R"({"board_serial":"Intel Corporation","scan_time":"2020/12/28 21:49:50", "cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":2257872,"ram_total":4972208,"ram_usage":54})")));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
+                                                                      R"({"iface":[{"address":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "mac":"d4:5d:64:51:07:5d", "gateway":"192.168.0.1|600","broadcast":"127.255.255.255", "name":"ens1", "mtu":1500, "name":"enp4s0", "adapter":" ", "type":"ethernet", "state":"up", "dhcp":"disabled","iface":"Loopback Pseudo-Interface 1","metric":"75","netmask":"255.0.0.0","proto":"IPv4","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0, "IPv4":[{"address":"192.168.153.1","broadcast":"192.168.153.255","dhcp":"unknown","metric":" ","netmask":"255.255.255.0"}], "IPv6":[{"address":"fe80::250:56ff:fec0:8","dhcp":"unknown","metric":" ","netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
+                                                                R"({"architecture":"x86_64","scan_time":"2020/12/28 21:49:50", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601"})")));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
+                                                                   R"([{"inode":0,"local_ip":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0}])")));
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":"KB12345678"}])"_json));
+    EXPECT_CALL(*spInfoWrapper, packages(_))
+    .Times(::testing::AtLeast(1))
+    .WillOnce(::testing::InvokeArgument<0>
+              (R"({"name":"TEXT", "scan_time":"2020/12/28 21:49:50", "version":"TEXT", "vendor":"TEXT", "install_time":"TEXT", "location":"TEXT", "architecture":"TEXT", "groups":"TEXT", "description":"TEXT", "size":"TEXT", "priority":"TEXT", "multiarch":"TEXT", "source":"TEXT", "os_patch":"TEXT"})"_json));
+    EXPECT_CALL(*spInfoWrapper, processes(_))
+    .Times(testing::AtLeast(1))
+    .WillOnce(::testing::InvokeArgument<0>
+              (R"({"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":431625,"ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
+
+    std::thread t
+    {
+        [&spInfoWrapper]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          reportFunction,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          60, false, true, true, true, true, true, true, true, true, true);
+        }
+    };
+    std::this_thread::sleep_for(std::chrono::seconds{1});
+    Syscollector::instance().push(messageToPush);
+    std::this_thread::sleep_for(std::chrono::seconds{1});
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+}
+
+TEST_F(SyscollectorImpTest, scanOnDemandOk2)
+{
+    // Only one scan runs, even when sleep time is enough for interval to expire
+    constexpr auto messageToPush{R"(syscollector_run)"};
+    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    EXPECT_CALL(*spInfoWrapper, hardware())
+    .Times(1)
+    .WillRepeatedly(Return(nlohmann::json::parse(
+                               R"({"board_serial":"Intel Corporation","scan_time":"2020/12/28 21:49:50", "cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":2257872,"ram_total":4972208,"ram_usage":54})")));
+
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, packages(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, networks()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, ports()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).Times(0);
+
+    std::thread t
+    {
+        [&spInfoWrapper]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          reportFunction,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          5, false, true, false, false, false, false, false, false, false, true);
+        }
+    };
+    std::this_thread::sleep_for(std::chrono::seconds{3});
+    Syscollector::instance().push(messageToPush);
+    std::this_thread::sleep_for(std::chrono::seconds{4});
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+}
+
+TEST_F(SyscollectorImpTest, scanOnDemandOk3)
+{
+    // The scan runs only twice, even when the sleep time is enough for the interval to expire more than once
+    constexpr auto messageToPush{R"(syscollector_run)"};
+    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    EXPECT_CALL(*spInfoWrapper, hardware())
+    .Times(2)
+    .WillRepeatedly(Return(nlohmann::json::parse(
+                               R"({"board_serial":"Intel Corporation","scan_time":"2020/12/28 21:49:50", "cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":2257872,"ram_total":4972208,"ram_usage":54})")));
+
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, packages(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, networks()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, ports()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).Times(0);
+
+    std::thread t
+    {
+        [&spInfoWrapper]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          reportFunction,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          5, false, true, false, false, false, false, false, false, false, true);
+        }
+    };
+    std::this_thread::sleep_for(std::chrono::seconds{3});
+    Syscollector::instance().push(messageToPush);
+    std::this_thread::sleep_for(std::chrono::seconds{9});
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+}
+
 TEST_F(SyscollectorImpTest, pushMessageInvalid)
 {
     constexpr auto messageToPush{R"(syscollector_network_iface dbsync checksum_fail {"end":"Loopback Pseudo-Interface 1","id":1606851004})"};
