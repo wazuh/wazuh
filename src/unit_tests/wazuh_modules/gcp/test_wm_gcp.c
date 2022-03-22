@@ -28,7 +28,7 @@ cJSON *wm_gcp_pubsub_dump(const wm_gcp_pubsub *data);
 void wm_gcp_pubsub_destroy(wm_gcp_pubsub * data);
 void* wm_gcp_pubsub_main(wm_gcp_pubsub *data);
 
-void wm_gcp_bucket_run(const wm_gcp_bucket_base *data, wm_gcp_bucket *exec_bucket);
+void wm_gcp_bucket_run(wm_gcp_bucket *exec_bucket);
 cJSON *wm_gcp_bucket_dump(const wm_gcp_bucket_base *data);
 void wm_gcp_bucket_destroy(wm_gcp_bucket_base *data);
 void* wm_gcp_bucket_main(wm_gcp_bucket_base *data);
@@ -408,7 +408,7 @@ static void test_wm_gcp_pubsub_run_unknown_error(void **state) {
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, "gcloud_wodleUnknown error - This is an unknown error.");
+    will_return(__wrap_wm_exec, ":gcloud_wodle:Unknown error - This is an unknown error.");
     will_return(__wrap_wm_exec, 1);
     will_return(__wrap_wm_exec, 0);
 
@@ -777,7 +777,7 @@ static void test_wm_gcp_pubsub_run_logging_info_message_debug(void **state) {
     expect_value(__wrap_wm_exec, secs, 0);
     expect_value(__wrap_wm_exec, add_path, NULL);
 
-    will_return(__wrap_wm_exec, "gcloud_wodleTest output - DEBUG - This is an info message");
+    will_return(__wrap_wm_exec, ":gcloud_wodle:Test output - DEBUG - This is an info message");
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_isDebug, 1);
@@ -1345,7 +1345,7 @@ static void test_wm_gcp_bucket_run_success(void **state) {
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_isDebug, 0);
 
-    wm_gcp_bucket_run(gcp_config, cur_bucket);
+    wm_gcp_bucket_run(cur_bucket);
 }
 
 static void test_wm_gcp_bucket_run_error_running_command(void **state)  {
@@ -1383,7 +1383,7 @@ static void test_wm_gcp_bucket_run_error_running_command(void **state)  {
     expect_string(__wrap__mterror, tag, WM_GCP_BUCKET_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg, "Internal error. Exiting...");
 
-    wm_gcp_bucket_run(gcp_config, cur_bucket);
+    wm_gcp_bucket_run(cur_bucket);
 }
 
 static void test_wm_gcp_bucket_run_error(void **state) {
@@ -1422,7 +1422,7 @@ static void test_wm_gcp_bucket_run_error(void **state) {
     expect_string(__wrap__mtwarn, tag, WM_GCP_BUCKET_LOGTAG);
     expect_string(__wrap__mtwarn, formatted_msg, "Command returned exit code 1");
 
-    wm_gcp_bucket_run(gcp_config, cur_bucket);
+    wm_gcp_bucket_run(cur_bucket);
 }
 
 static void test_wm_gcp_bucket_run_error_no_description(void **state) {
@@ -1460,7 +1460,7 @@ static void test_wm_gcp_bucket_run_error_no_description(void **state) {
     expect_string(__wrap__mtwarn, tag, WM_GCP_BUCKET_LOGTAG);
     expect_string(__wrap__mtwarn, formatted_msg, "Command returned exit code 1");
 
-    wm_gcp_bucket_run(gcp_config, cur_bucket);
+    wm_gcp_bucket_run(cur_bucket);
 }
 
 static void test_wm_gcp_bucket_run_error_parsing_args(void **state) {
@@ -1499,7 +1499,7 @@ static void test_wm_gcp_bucket_run_error_parsing_args(void **state) {
     expect_string(__wrap__mtwarn, tag, WM_GCP_BUCKET_LOGTAG);
     expect_string(__wrap__mtwarn, formatted_msg, "Command returned exit code 2");
 
-    wm_gcp_bucket_run(gcp_config, cur_bucket);
+    wm_gcp_bucket_run(cur_bucket);
 }
 
 static void test_wm_gcp_bucket_run_error_parsing_args_no_description(void **state) {
@@ -1538,7 +1538,7 @@ static void test_wm_gcp_bucket_run_error_parsing_args_no_description(void **stat
     expect_string(__wrap__mtwarn, tag, WM_GCP_BUCKET_LOGTAG);
     expect_string(__wrap__mtwarn, formatted_msg, "Command returned exit code 2");
 
-    wm_gcp_bucket_run(gcp_config, cur_bucket);
+    wm_gcp_bucket_run(cur_bucket);
 }
 
 static void test_wm_gcp_bucket_run_generic_error(void **state) {
@@ -1576,7 +1576,7 @@ static void test_wm_gcp_bucket_run_generic_error(void **state) {
 
     will_return(__wrap_isDebug, 0);
 
-    wm_gcp_bucket_run(gcp_config, cur_bucket);
+    wm_gcp_bucket_run(cur_bucket);
 }
 
 static void test_wm_gcp_bucket_run_generic_error_no_description(void **state) {
@@ -1615,7 +1615,7 @@ static void test_wm_gcp_bucket_run_generic_error_no_description(void **state) {
 
     will_return(__wrap_isDebug, 0);
 
-    wm_gcp_bucket_run(gcp_config, cur_bucket);
+    wm_gcp_bucket_run(cur_bucket);
 }
 
 static void test_wm_gcp_bucket_run_logging_debug_message_debug(void **state) {
@@ -1655,7 +1655,7 @@ static void test_wm_gcp_bucket_run_logging_debug_message_debug(void **state) {
     expect_string(__wrap__mtdebug1, tag, WM_GCP_BUCKET_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "This is a debug message");
 
-    wm_gcp_bucket_run(gcp_config, cur_bucket);
+    wm_gcp_bucket_run(cur_bucket);
 }
 
 static void test_wm_gcp_bucket_run_logging_debug_message_not_debug_discarded(void **state) {
@@ -1690,7 +1690,7 @@ static void test_wm_gcp_bucket_run_logging_debug_message_not_debug_discarded(voi
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_isDebug, 2);
 
-    wm_gcp_bucket_run(gcp_config, cur_bucket);
+    wm_gcp_bucket_run(cur_bucket);
 }
 
 static void test_wm_gcp_bucket_run_logging_debug_message_not_debug(void **state) {
@@ -1727,7 +1727,7 @@ static void test_wm_gcp_bucket_run_logging_debug_message_not_debug(void **state)
 
     expect_string(__wrap__mtinfo, tag, WM_GCP_BUCKET_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "This is an info message");
-    wm_gcp_bucket_run(gcp_config, cur_bucket);
+    wm_gcp_bucket_run(cur_bucket);
 }
 
 static void test_wm_gcp_bucket_run_logging_info_message_info(void **state) {
@@ -1765,7 +1765,7 @@ static void test_wm_gcp_bucket_run_logging_info_message_info(void **state) {
     expect_string(__wrap__mtinfo, tag, WM_GCP_BUCKET_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "This is an info message");
 
-    wm_gcp_bucket_run(gcp_config, cur_bucket);
+    wm_gcp_bucket_run(cur_bucket);
 }
 
 static void test_wm_gcp_bucket_run_logging_info_message_debug(void **state) {
@@ -1802,7 +1802,7 @@ static void test_wm_gcp_bucket_run_logging_info_message_debug(void **state) {
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_isDebug, 1);
 
-    wm_gcp_bucket_run(gcp_config, cur_bucket);
+    wm_gcp_bucket_run(cur_bucket);
 }
 
 static void test_wm_gcp_bucket_run_logging_info_message_warning(void **state) {
@@ -1840,7 +1840,7 @@ static void test_wm_gcp_bucket_run_logging_info_message_warning(void **state) {
     expect_string(__wrap__mtwarn, tag, WM_GCP_BUCKET_LOGTAG);
     expect_string(__wrap__mtwarn, formatted_msg, "This is a warning message");
 
-    wm_gcp_bucket_run(gcp_config, cur_bucket);
+    wm_gcp_bucket_run(cur_bucket);
 }
 
 static void test_wm_gcp_bucket_run_logging_warning_message_warning(void **state) {
@@ -1876,7 +1876,7 @@ static void test_wm_gcp_bucket_run_logging_warning_message_warning(void **state)
     expect_string(__wrap__mtwarn, tag, WM_GCP_BUCKET_LOGTAG);
     expect_string(__wrap__mtwarn, formatted_msg, "This is a warning message");
     will_return(__wrap_isDebug, 1);
-    wm_gcp_bucket_run(gcp_config, cur_bucket);
+    wm_gcp_bucket_run(cur_bucket);
 }
 
 static void test_wm_gcp_bucket_run_logging_warning_message_debug(void **state) {
@@ -1910,7 +1910,7 @@ static void test_wm_gcp_bucket_run_logging_warning_message_debug(void **state) {
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_isDebug, 0);
 
-    wm_gcp_bucket_run(gcp_config, cur_bucket);
+    wm_gcp_bucket_run(cur_bucket);
 }
 
 static void test_wm_gcp_bucket_run_logging_warning_message_error(void **state) {
@@ -1948,7 +1948,7 @@ static void test_wm_gcp_bucket_run_logging_warning_message_error(void **state) {
 
     expect_string(__wrap__mterror, tag, WM_GCP_BUCKET_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg, "This is an error message");
-    wm_gcp_bucket_run(gcp_config, cur_bucket);
+    wm_gcp_bucket_run(cur_bucket);
 }
 
 static void test_wm_gcp_bucket_run_logging_warning_multiline_message_error(void **state) {
@@ -1986,7 +1986,7 @@ static void test_wm_gcp_bucket_run_logging_warning_multiline_message_error(void 
 
     expect_string(__wrap__mterror, tag, WM_GCP_BUCKET_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg, "This is a\nmultiline\n error message");
-    wm_gcp_bucket_run(gcp_config, cur_bucket);
+    wm_gcp_bucket_run(cur_bucket);
 }
 
 static void test_wm_gcp_bucket_run_logging_warning_multimessage_message_error(void **state) {
@@ -2031,7 +2031,7 @@ static void test_wm_gcp_bucket_run_logging_warning_multimessage_message_error(vo
     expect_string(__wrap__mterror, formatted_msg, "This is another error message");
     expect_string(__wrap__mtinfo, tag, WM_GCP_BUCKET_LOGTAG);
     expect_string(__wrap__mtinfo, formatted_msg, "This is a test info message");
-    wm_gcp_bucket_run(gcp_config, cur_bucket);
+    wm_gcp_bucket_run(cur_bucket);
 }
 
 /* wm_gcp_bucket_dump */

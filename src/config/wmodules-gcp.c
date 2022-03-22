@@ -184,7 +184,7 @@ int wm_gcp_pubsub_read(xml_node **nodes, wmodule *module) {
             gcp->pull_on_start = pull_on_start;
         }
         else if (!strcmp(nodes[i]->element, XML_LOGGING)) {
-            mdebug1("Tag '%s' from the '%s' module is deprecated. This setting will be skipped.", XML_LOGGING, WM_GCP_PUBSUB_CONTEXT.name);
+            mtdebug1(WM_GCP_PUBSUB_LOGTAG, "Tag '%s' from the '%s' module is deprecated. This setting will be skipped.", XML_LOGGING, WM_GCP_PUBSUB_CONTEXT.name);
         }
         else if (is_sched_tag(nodes[i]->element)) {
             // Do nothing
@@ -267,7 +267,7 @@ int wm_gcp_bucket_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
             gcp->run_on_start = run_on_start;
         }
         else if (!strcmp(nodes[i]->element, XML_LOGGING)) {
-	    mdebug1("Tag '%s' from the '%s' module is deprecated. This setting will be skipped.", XML_LOGGING, WM_GCP_BUCKET_CONTEXT.name);
+	    mtdebug1(WM_GCP_BUCKET_LOGTAG, "Tag '%s' from the '%s' module is deprecated. This setting will be skipped.", XML_LOGGING, WM_GCP_BUCKET_CONTEXT.name);
 	}
         else if (!strcmp(nodes[i]->element, XML_BUCKET)) {
             mtdebug2(WM_GCP_BUCKET_LOGTAG, "Found a bucket tag");

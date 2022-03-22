@@ -83,10 +83,9 @@ static void wm_gcp_bucket_destroy(wm_gcp_bucket_base *gcp_config);        // Des
 #endif
 /**
  * @brief Run module function for Google Cloud bucket
- * @param data Module configuration structure
  * @param exec_bucket Bucket configuration structure
  */
-static void wm_gcp_bucket_run(const wm_gcp_bucket_base *data, wm_gcp_bucket *exec_bucket);            // Running python script
+static void wm_gcp_bucket_run(wm_gcp_bucket *exec_bucket);            // Running python script
 
 /**
  * @brief Dump configuration structure in JSON for Google Cloud bucket
@@ -228,7 +227,7 @@ void* wm_gcp_bucket_main(wm_gcp_bucket_base *data) {
             wm_strcat(&log_info, ")", '\0');
 
             mtinfo(WM_GCP_BUCKET_LOGTAG, "%s", log_info);
-            wm_gcp_bucket_run(data, cur_bucket);
+            wm_gcp_bucket_run(cur_bucket);
             free(log_info);
         }
 
@@ -382,8 +381,7 @@ static void wm_gcp_parse_output(char *output, char *tag){
     }
 }
 
-void wm_gcp_bucket_run(const wm_gcp_bucket_base *data, wm_gcp_bucket *exec_bucket) {
-    (void) data; // Unused
+void wm_gcp_bucket_run(wm_gcp_bucket *exec_bucket) {
     int status;
     char *output = NULL;
     char *command = NULL;
