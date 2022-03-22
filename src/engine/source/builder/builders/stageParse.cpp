@@ -65,11 +65,18 @@ types::Lifter stageBuilderParse(const types::DocumentValue &def)
         // TODO hard-coded 'event.original'
         auto logQlExpr = item["event.original"].GetString();
 
-        auto parseOp = getParserOp(logQlExpr);
-        if (!parseOp)
+        ParserFn parseOp;
+        try
         {
-            throw std::invalid_argument(
-                "[Stage parse]Could not generate the parser fn");
+            parseOp = getParserOp(logQlExpr);
+        }
+        catch (std::runtime_error &e)
+        {
+            const char *msg =
+                "Stage [parse] builder encountered exception parsing logQl "
+                "expr";
+            WAZUH_LOG_ERROR("{} From exception: {}", msg, e.what());
+            std::throw_with_nested(std::runtime_error(msg));
         }
 
         auto newOp = [parserOp = std::move(parseOp)](types::Observable o)
@@ -106,9 +113,18 @@ types::Lifter stageBuilderParse(const types::DocumentValue &def)
         parsers.emplace_back(newOp);
     }
 
-    auto check = std::get<types::CombinatorBuilder>(
-        Registry::getBuilder("combinator.broadcast"))(parsers);
-    return check;
+    try
+    {
+        auto check = std::get<types::CombinatorBuilder>(
+            Registry::getBuilder("combinator.broadcast"))(parsers);
+        return check;
+    }
+    catch (std::exception &e)
+    {
+        const char *msg = "Stage [parse] builder encountered exception "
+                          "chaining all mappings.";
+        WAZUH_LOG_ERROR("{} From exception: {}", msg, e.what());
+        std::throw_with_nested(std::runtime_error(msg));
+    }
 }
-
 } // namespace builder::internals::builders

@@ -7,8 +7,8 @@
  * Foundation.
  */
 
-#ifndef _TCP_ENDPOINT_H_
-#define _TCP_ENDPOINT_H_
+#ifndef _TCP_ENDPOINT_H
+#define _TCP_ENDPOINT_H
 
 #include <cstring>
 #include <functional>
@@ -59,4 +59,4 @@ public:
 };
 } // namespace engineserver::endpoints
 
-#endif // _TCP_ENDPOINT_H_
+#endif // _TCP_ENDPOINT_H

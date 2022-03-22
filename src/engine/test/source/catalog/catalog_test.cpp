@@ -1,6 +1,7 @@
-#include "Catalog_test.hpp"
-#include "rapidjson/writer.h"
+#include "catalog_test.hpp"
+
 #include "gtest/gtest.h"
+#include "rapidjson/writer.h"
 
 using namespace catalog;
 

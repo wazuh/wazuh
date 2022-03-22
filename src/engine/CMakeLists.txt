@@ -88,7 +88,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/hlp)
 add_subdirectory(${ENGINE_SOURCE_DIR}/server)
 
 #TODO isolate rxcpp
-target_link_libraries(main base hlp rxcpp)
+target_link_libraries(main base builders catalog)
 
 # Build test
 if(ENGINE_BUILD_TEST)

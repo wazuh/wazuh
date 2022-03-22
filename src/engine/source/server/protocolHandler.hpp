@@ -7,8 +7,8 @@
  * Foundation.
  */
 
-#ifndef _PROTOCOL_HANDLER_H_
-#define _PROTOCOL_HANDLER_H_
+#ifndef _PROTOCOL_HANDLER_H
+#define _PROTOCOL_HANDLER_H
 
 #include <iostream>
 #include <optional>
@@ -64,4 +64,4 @@ public:
 
 } // namespace engineserver
 
-#endif // _PROTOCOL_HANDLER_H_
+#endif // _PROTOCOL_HANDLER_H
