@@ -39,11 +39,17 @@ set(EXTERNAL_DEPS ${EXTERNAL_DEPS} PARENT_SCOPE)
 ####################################################################################################
 # Sources - Includes
 ####################################################################################################
-add_library(kvdb ${ENGINE_KVDB_SOURCE_DIR}/kvdb.cpp)
+add_library(kvdb
+    ${ENGINE_KVDB_SOURCE_DIR}/kvdbManager.cpp
+    ${ENGINE_KVDB_SOURCE_DIR}/kvdb.cpp
+    ${ENGINE_KVDB_SOURCE_DIR}/kvdb.hpp
+    )
+
 
 target_link_libraries(kvdb PRIVATE rocksdb "glog::glog")
 
 target_include_directories(kvdb PUBLIC
     ${ENGINE_KVDB_INCLUDE_DIR}
+    ${ENGINE_KVDB_SOURCE_DIR}
     ${CMAKE_BINARY_DIR}/_deps/rocksdb-src/include
 )
