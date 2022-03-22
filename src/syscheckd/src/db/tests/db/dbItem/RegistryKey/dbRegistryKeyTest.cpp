@@ -20,7 +20,7 @@ void RegistryKeyTest::SetUp()
 
     fimEntryTest->type = FIM_TYPE_REGISTRY;
     key->arch = ARCH_64BIT;
-    std::strncpy(key->checksum, "a2fbef8f81af27155dcee5e3927ff6243593b91a", sizeof(key->checksum));
+    std::snprintf(key->checksum, sizeof(key->checksum), "a2fbef8f81af27155dcee5e3927ff6243593b91a");
     key->gid = const_cast<char*>("0");
     key->group_name = const_cast<char*>("root");
     key->last_event = 1596489275;
