@@ -34,6 +34,10 @@ int __wrap_OS_getsocketsize(int ossock) {
 
 void __wrap_sleep(unsigned int seconds){};
 
+int __wrap_OS_BindUnixDomainWithPerms(const char * path, int type, int max_msg_size, uid_t uid, gid_t gid, mode_t perm) {
+    return (int) mock();
+}
+
 int __wrap_OS_BindUnixDomain(const char * path, int type, int max_msg_size){
     return (int) mock();
 }
@@ -60,7 +64,7 @@ void test_start_mq_read_success(void ** state){
 
     int ret = 0;
 
-    will_return(__wrap_OS_BindUnixDomain, 0);
+    will_return(__wrap_OS_BindUnixDomainWithPerms, 0);
 
     ret = StartMQ(path, type, n_attempts);
     assert_false(ret);
@@ -76,7 +80,7 @@ void test_start_mq_read_fail(void ** state){
 
     int ret = 0;
 
-    will_return(__wrap_OS_BindUnixDomain, -1);
+    will_return(__wrap_OS_BindUnixDomainWithPerms, -1);
 
     ret = StartMQ(path, type, n_attempts);
     assert_int_equal(ret, -1);

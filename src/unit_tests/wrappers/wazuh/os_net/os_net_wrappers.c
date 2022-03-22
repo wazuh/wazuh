@@ -14,6 +14,17 @@
 #include "../../headers/shared.h"
 #include "os_net_wrappers.h"
 
+int __wrap_OS_BindUnixDomainWithPerms(const char *path, int type, int max_msg_size, uid_t uid, gid_t gid, mode_t perm) {
+    check_expected(path);
+    check_expected(type);
+    check_expected(max_msg_size);
+    check_expected(uid);
+    check_expected(gid);
+    check_expected(perm);
+
+    return mock();
+}
+
 int __wrap_OS_BindUnixDomain(const char *path, int type, int max_msg_size) {
     check_expected(path);
     check_expected(type);

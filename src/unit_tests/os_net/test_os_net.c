@@ -31,6 +31,14 @@
 #define SENDSTRING "Hello World!\n"
 #define BUFFERSIZE 1024
 
+int __wrap_getuid(void) {
+    return mock();
+}
+
+int __wrap_getgid(void) {
+    return mock();
+}
+
 // Structs
 
 typedef struct test_struct {
@@ -405,13 +413,19 @@ void test_bind_unix_domain(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     const int msg_size = 1;
 
+    will_return(__wrap_getuid, 0);
+    will_return(__wrap_getgid, 995);
     will_return(__wrap_socket, 3);
     will_return(__wrap_bind, 1);
     will_return(__wrap_getsockopt, 0);
     will_return(__wrap_fcntl, 0);
 
     expect_string(__wrap_chmod, path, data->socket_path);
-    will_return(__wrap_chmod, 1);
+    will_return(__wrap_chmod, 0);
+    expect_string(__wrap_chown, __file, data->socket_path);
+    expect_value(__wrap_chown, __owner, 0);
+    expect_value(__wrap_chown, __group, 995);
+    will_return(__wrap_chown, 0);
 
     data->server_socket = OS_BindUnixDomain(data->socket_path, SOCK_DGRAM, msg_size);
     assert_return_code(data->server_socket, 0);

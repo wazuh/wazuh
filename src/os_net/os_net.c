@@ -133,8 +133,8 @@ int OS_Bindportudp(u_int16_t _port, const char *_ip, int ipv6)
 }
 
 #ifndef WIN32
-/* Bind to a Unix domain, using DGRAM sockets */
-int OS_BindUnixDomain(const char *path, int type, int max_msg_size)
+/* Bind to a Unix domain, DGRAM sockets while allowing the caller to specify owner and permission bits. */
+int OS_BindUnixDomainWithPerms(const char *path, int type, int max_msg_size, uid_t uid, gid_t gid, mode_t mode)
 {
     struct sockaddr_un n_us;
     int ossock = 0;
@@ -156,7 +156,13 @@ int OS_BindUnixDomain(const char *path, int type, int max_msg_size)
     }
 
     /* Change permissions */
-    if (chmod(path, 0660) < 0) {
+    if (chmod(path, mode) < 0) {
+        OS_CloseSocket(ossock);
+        return (OS_SOCKTERR);
+    }
+
+    /* Change owner */
+    if (chown(path, uid, gid) < 0) {
         OS_CloseSocket(ossock);
         return (OS_SOCKTERR);
     }
@@ -178,6 +184,12 @@ int OS_BindUnixDomain(const char *path, int type, int max_msg_size)
     }
 
     return (ossock);
+}
+
+/* Bind to a Unix domain, using DGRAM sockets */
+int OS_BindUnixDomain(const char *path, int type, int max_msg_size)
+{
+    return OS_BindUnixDomainWithPerms(path, type, max_msg_size, getuid(), getgid(), 0660);
 }
 
 /* Open a client Unix domain socket
