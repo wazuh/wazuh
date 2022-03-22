@@ -1,18 +1,23 @@
-#include "Catalog.hpp"
-#include "rapidjson/schema.h"
+#include "catalog.hpp"
 
-using namespace catalog;
+#include <rapidjson/schema.h>
 
-void Catalog::setStorageDriver(std::unique_ptr<StorageDriverInterface> spStorageDriver)
+namespace catalog
 {
-    this->spStorageDriver = std::move(spStorageDriver);
+void Catalog::setStorageDriver(
+    std::unique_ptr<StorageDriverInterface> spStorageDriver)
+{
+    spStorageDriver = std::move(spStorageDriver);
 }
 
-Catalog::Catalog(Catalog && other) : Catalog{std::move(other.spStorageDriver)}
+Catalog::Catalog(Catalog &&other)
+    : Catalog {std::move(other.spStorageDriver)}
 {
 }
 
-std::optional<std::string> Catalog::validateJSON(rapidjson::Document & json, rapidjson::Document & schema) const
+std::optional<std::string>
+Catalog::validateJSON(rapidjson::Document &json,
+                      rapidjson::Document &schema) const
 {
 
     rapidjson::SchemaDocument schemaDocument(schema);
@@ -21,12 +26,13 @@ std::optional<std::string> Catalog::validateJSON(rapidjson::Document & json, rap
     if (!json.Accept(validator))
     {
         // Input JSON is invalid according to the schema
-        std::ostringstream oss{};
+        std::ostringstream oss {};
         rapidjson::StringBuffer sb;
         validator.GetInvalidSchemaPointer().StringifyUriFragment(sb);
         oss << "Invalid JSON schema: '" << sb.GetString() << "'" << std::endl;
 
-        oss << "Invalid keyword: '" << validator.GetInvalidSchemaKeyword() << "'" << std::endl;
+        oss << "Invalid keyword: '" << validator.GetInvalidSchemaKeyword()
+            << "'" << std::endl;
         sb.Clear();
 
         validator.GetInvalidDocumentPointer().StringifyUriFragment(sb);
@@ -38,24 +44,27 @@ std::optional<std::string> Catalog::validateJSON(rapidjson::Document & json, rap
     return {};
 }
 
-rapidjson::Document Catalog::getAsset(const std::string & type, std::string assetName) const
+rapidjson::Document Catalog::getAsset(const std::string &type,
+                                      std::string assetName) const
 {
-    return this->getAsset(stringToAssetType(type), assetName);
+    return getAsset(stringToAssetType(type), assetName);
 }
 
-rapidjson::Document Catalog::getAsset(const AssetType type, std::string assetName) const
+rapidjson::Document Catalog::getAsset(const AssetType type,
+                                      std::string assetName) const
 {
 
     using rapidjson::Document;
     using std::string;
 
-    string assetStr{};
-    string assetSchemaStr{};
-    Document jsonSchema{};
+    string assetStr {};
+    string assetSchemaStr {};
+    Document jsonSchema {};
 
     if (type == AssetType::Schema)
     {
-        assetSchemaStr = this->spStorageDriver->getAsset(AssetType::Schema, assetName);
+        assetSchemaStr =
+            spStorageDriver->getAsset(AssetType::Schema, assetName);
 
         // Parse schema
         jsonSchema.Parse(assetSchemaStr.c_str());
@@ -71,11 +80,13 @@ rapidjson::Document Catalog::getAsset(const AssetType type, std::string assetNam
 
     try
     {
-        assetSchemaStr = spStorageDriver->getAsset(AssetType::Schema, assetTypeToSchema.at(type));
+        assetSchemaStr = spStorageDriver->getAsset(AssetType::Schema,
+                                                   assetTypeToSchema.at(type));
     }
-    catch (std::runtime_error & e)
+    catch (std::runtime_error &e)
     {
-        throw std::runtime_error("Could not get the schema '" + assetTypeToSchema.at(type) +
+        throw std::runtime_error("Could not get the schema '" +
+                                 assetTypeToSchema.at(type) +
                                  "' for the asset type. DRIVER: " + e.what());
     }
 
@@ -84,16 +95,19 @@ rapidjson::Document Catalog::getAsset(const AssetType type, std::string assetNam
 
     if (jsonSchema.HasParseError())
     {
-        throw std::runtime_error("Could not parse the schema for the asset type.");
+        throw std::runtime_error(
+            "Could not parse the schema for the asset type.");
     }
 
-    // if not, parse asset. Throw a YML::ParserException if the asset is not valid
-    Document asset{yml2json::loadYMLfromString(assetStr)};
+    // if not, parse asset. Throw a YML::ParserException if the asset is not
+    // valid
+    Document asset {yml2json::loadYMLfromString(assetStr)};
 
     // Validate the asset
     if (auto errorStr = validateJSON(asset, jsonSchema); errorStr)
     {
-        throw std::runtime_error("The asset '" + string{assetName} + "' is invalid: " + errorStr.value());
+        throw std::runtime_error("The asset '" + string {assetName} +
+                                 "' is invalid: " + errorStr.value());
     }
 
     return asset;
@@ -102,5 +116,6 @@ rapidjson::Document Catalog::getAsset(const AssetType type, std::string assetNam
 std::vector<std::string> Catalog::getAssetList(const AssetType type)
 {
 
-    return this->spStorageDriver->getAssetList(type);
+    return spStorageDriver->getAssetList(type);
 }
+} // namespace Catalog
