@@ -1,8 +1,8 @@
 <!--
-  -  Copyright (C) 2015, Wazuh Inc.
+  Copyright (C) 2015, Wazuh Inc.
 -->
 
-<!-- 
+<!--
   Sysmon Event ID 1 rules: 92000 - 92100
 -->
 
@@ -226,7 +226,7 @@
       <id>T1033</id>
     </mitre>
   </rule>
-  
+
   <rule id="92023" level="8">
     <if_group>sysmon_event1</if_group>
     <field name="win.eventdata.originalFileName" type="pcre2">(?i)PowerShell.EXE</field>
@@ -248,13 +248,506 @@
     </mitre>
   </rule>
 
-  <rule id="92025" level="14">
+  <rule id="92025" level="0">
     <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.originalFileName" type="pcre2">(?i)reg.EXE</field>
+    <description>Reg.exe execution</description>
+    <mitre>
+      <id>T1112</id>
+      <id>T1012</id>
+    </mitre>
+  </rule>
+
+  <rule id="92026" level="14">
+    <if_sid>92025</if_sid>
     <field name="win.eventdata.originalFileName" type="pcre2">(?i)reg.EXE</field>
     <field name="win.eventdata.commandLine" type="pcre2">(?i)save.+\\\\SAM</field>
     <description>Reg.exe used to dump SAM hive.</description>
     <mitre>
       <id>T1003.002</id>
+    </mitre>
+  </rule>
+
+  <rule id="92027" level="4">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.image" type="pcre2">\\powershell\.exe</field>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)\\powershell\.exe</field>
+    <description>Powershell process spawned powershell instance</description>
+    <mitre>
+      <id>T1059.001</id>
+    </mitre>
+  </rule>
+
+  <rule id="92028" level="0">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)\.ps1</field>
+    <field name="win.eventdata.originalFileName" type="pcre2">(?i)powershell\.exe$</field>
+    <description>Powershell executed script</description>
+    <mitre>
+      <id>T1059.001</id>
+    </mitre>
+  </rule>
+
+  <rule id="92029" level="6">
+    <if_sid>92028</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)[c-z]:\\\\(Windows\\\\Temp|Users)\\.+\.(bat|cmd|lnk|pif|vbs|vbe|js|wsh|ps1)</field>
+    <description>Powershell executed script from suspicious location</description>
+    <mitre>
+      <id>T1059.001</id>
+    </mitre>
+  </rule>
+
+  <rule id="92030" level="3">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.originalFileName" type="pcre2">qwinsta</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)\/server</field>
+    <description>Gathered user information from Remote Desktop Service sessions</description>
+    <mitre>
+      <id>T1033</id>
+    </mitre>
+  </rule>
+
+  <rule id="92031" level="3">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.originalFileName" type="pcre2">(?i)(net\.EXE|net1\.EXE)</field>
+    <description>Discovery activity executed.</description>
+    <mitre>
+      <id>T1087</id>
+    </mitre>
+  </rule>
+
+  <rule id="92032" level="3">
+    <if_sid>92031, 61603</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)cmd\.EXE</field>
+    <field name="win.eventdata.parentCommandLine" type="pcre2">(?i)\s\/C\s</field>
+    <description>Suspicious Windows cmd shell execution</description>
+    <mitre>
+      <id>T1087</id>
+      <id>T1059.003</id>
+    </mitre>
+  </rule>
+
+  <rule id="92033" level="3">
+    <if_sid>92031</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)powershell\.EXE</field>
+    <description>Discovery activity spawned via powershell execution</description>
+    <mitre>
+      <id>T1087</id>
+      <id>T1059.001</id>
+    </mitre>
+  </rule>
+
+  <rule id="92034" level="3">
+    <if_sid>92032</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)view</field>
+    <description>Discovery activity spawned via cmd shell execution</description>
+    <mitre>
+      <id>T1135</id>
+    </mitre>
+  </rule>
+
+  <rule id="92035" level="3">
+    <if_sid>92034</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)domain</field>
+    <description>A net.exe domain discovery command was executed</description>
+    <mitre>
+      <id>T1135</id>
+      <id>T1059.003</id>
+    </mitre>
+  </rule>
+
+  <rule id="92036" level="3">
+    <if_sid>92032</if_sid>
+    <list field="win.eventdata.originalFileName" lookup="match_key">etc/lists/uncommon-cmd-opened-process</list>
+    <description>A $(win.eventdata.image) binary was started by a Windows cmd shell.</description>
+    <mitre>
+      <id>T1059.003</id>
+      <id>T1574.001</id>
+    </mitre>
+  </rule>
+
+  <rule id="92037" level="3">
+    <if_sid>92031, 92033</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)use\s</field>
+    <description>A net.exe connection to a remote resource was started by $(win.eventdata.parentImage).</description>
+    <mitre>
+      <id>T1567</id>
+    </mitre>
+  </rule>
+
+  <rule id="92038" level="12">
+    <if_sid>92037</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(live|outlook|google|drive|microsoft|dropbox)</field>
+    <description>A connection to cloud resource was started by $(win.eventdata.parentImage).</description>
+    <mitre>
+      <id>T1102</id>
+      <id>T1567.002</id>
+    </mitre>
+  </rule>
+
+  <rule id="92039" level="3">
+    <if_sid>92031</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)user\s</field>
+    <description>A net.exe account discovery command was initiated.</description>
+    <mitre>
+      <id>T1087</id>
+    </mitre>
+  </rule>
+
+  <rule id="92040" level="12">
+    <if_sid>92039</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)add\s</field>
+    <description>$(win.eventdata.originalFileName) executed a user creation command.</description>
+    <mitre>
+      <id>T1136.001</id>
+    </mitre>
+  </rule>
+
+  <rule id="92041" level="10">
+    <if_sid>92025</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)add.+\/d\s+(")?(?:[A-Za-z\d+\/]{4})*(?:[A-Za-z\d+\/]{3}=|[A-Za-z\d+\/]{2}==)?</field>
+    <description>Value added to registry key has Base64-like pattern</description>
+    <mitre>
+      <id>T1027</id>
+      <id>T1112</id>
+    </mitre>
+  </rule>
+
+  <rule id="92042" level="0">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.originalFileName" type="pcre2">(?i)netsh.EXE</field>
+    <description>Netsh command invoked</description>
+  </rule>
+
+  <rule id="92043" level="10">
+    <if_sid>92042</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)advfirewall|firewall</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)add\srule</field>
+    <description>Netsh used to add firewall rule</description>
+    <mitre>
+      <id>T1562.004</id>
+    </mitre>
+  </rule>
+
+  <rule id="92044" level="14">
+    <if_sid>92043</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">localport=5900</field>
+    <description>Netsh used to add firewall rule referencing port 5900, usually used for VNC</description>
+    <mitre>
+      <id>T1562.004</id>
+    </mitre>
+  </rule>
+
+  <rule id="92045" level="14">
+    <if_sid>92025</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)IMPORT\s+[C-Z]:\\\\Users\\\\Public\\\\.+\.reg</field>
+    <description>Reg.exe modified registry using .reg file in suspicious location</description>
+    <mitre>
+      <id>T1112</id>
+    </mitre>
+  </rule>
+
+  <rule id="92046" level="12">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.originalFileName" type="pcre2">(?i)(cmd|powershell|rundll32)\.EXE</field>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)fodhelper\.EXE</field>
+    <description>Possible use of fodhelper.exe used to bypass UAC and execute of malicious software</description>
+    <mitre>
+      <id>T1548.002</id>
+    </mitre>
+  </rule>
+
+  <rule id="92047" level="12">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.originalFileName" type="pcre2">(?i)mshta\.EXE</field>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)(winword|excel|powerpnt)\.EXE</field>
+    <description>Office application started mshta.exe</description>
+    <mitre>
+      <id>T1218.005</id>
+    </mitre>
+  </rule>
+
+  <rule id="92048" level="15">
+    <if_sid>92047</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)(vbscript|javascript)</field>
+    <description>Office application started mshta.exe and executed scripting command</description>
+    <mitre>
+      <id>T1218.005</id>
+      <id>T1059</id>
+    </mitre>
+  </rule>
+
+  <rule id="92049" level="12">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)verclsid.exe\s+/S\s+/C\s+\{</field>
+    <description>Verclsid.exe may have been used to execute COM payload</description>
+    <mitre>
+      <id>T1218.012</id>
+    </mitre>
+  </rule>
+
+  <rule id="92050" level="12">
+    <if_sid>92049</if_sid>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)(winword|excel|powerpnt)\.EXE</field>
+    <description>Office application invoked Verclsid.exe, possible COM payload execution</description>
+    <mitre>
+      <id>T1218.012</id>
+      <id>T1559.001</id>
+    </mitre>
+  </rule>
+
+  <rule id="92051" level="12">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.originalFileName" type="pcre2">(?i)wscript\.exe</field>
+    <field name="win.eventdata.image" type="pcre2" negate="yes">(?i)wscript\.exe</field>
+    <description>Executed a renamed copy of wscript.exe</description>
+    <mitre>
+      <id>T1036.003</id>
+      <id>T1059.005</id>
+    </mitre>
+  </rule>
+
+  <rule id="92052" level="4">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.originalFileName" type="pcre2">(?i)cmd\.EXE</field>
+    <field name="win.eventdata.parentImage" type="pcre2" negate="yes">(?i)(explorer|cmd)\.EXE</field>
+    <description>Windows command prompt started by an abnormal process</description>
+    <mitre>
+      <id>T1059.003</id>
+    </mitre>
+  </rule>
+
+  <rule id="92053" level="12">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.parentCommandLine" type="pcre2">(?i)\s\/b\s\/e\:jscript</field>
+    <description>Detected a suspicious process launched with a jscript engine signature</description>
+    <mitre>
+      <id>T1059.003</id>
+    </mitre>
+  </rule>
+
+  <rule id="92054" level="14">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.parentCommandLine" type="pcre2">(?i)svchost.exe -k netsvcs -p</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)appdata\\\\.+\.exe.+\.js$</field>
+    <description>Suspicious execution of .js file by $(win.eventdata.image)</description>
+    <mitre>
+      <id>T1059.007</id>
+    </mitre>
+  </rule>
+
+  <rule id="92055" level="12">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.originalFileName" type="pcre2">(?i)(ComputerDefaults|fodhelper)\.EXE</field>
+    <description>Known auto-elevated utility $(win.eventdata.originalFileName) may have been used to bypass UAC</description>
+    <mitre>
+      <id>T1548.002</id>
+    </mitre>
+  </rule>
+
+  <rule id="92056" level="14">
+    <if_sid>92055</if_sid>
+    <field name="win.eventdata.parentCommandLine" type="pcre2">(?i)powershell\.EXE</field>
+    <description>Powershell process invoked known auto-elevated utility $(win.eventdata.originalFileName), may have been used to bypass UAC</description>
+    <mitre>
+      <id>T1548.002</id>
+    </mitre>
+  </rule>
+
+  <rule id="92057" level="12">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)powershell\.exe</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)powershell\.exe.+\-\b(encodedcommand|e|ea|ec|encodeda|encode|en|enco)\b</field>
+    <description>Powershell.exe spawned a powershell process which executed a base64 encoded command.</description>
+    <mitre>
+      <id>T1059.001</id>
+    </mitre>
+  </rule>
+
+  <rule id="92058" level="12">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.originalFileName" type="pcre2">(?i)sdbinst\.EXE</field>
+    <description>Application Compatibility Database launched.</description>
+    <mitre>
+      <id>T1546.011</id>
+    </mitre>
+  </rule>
+
+  <rule id="92059" level="14">
+    <if_sid>92058</if_sid>
+    <field name="win.eventdata.parentCommandLine" type="pcre2">(?i)powershell\.exe.+\-(encodedcommand|e|ea|ec|encodeda|encode|en|enco)</field>
+    <description>Possible Shimming. Application Compatibility Database launched from an encoded powershell command.</description>
+    <mitre>
+      <id>T1059.001</id>
+      <id>T1546.011</id>
+    </mitre>
+  </rule>
+
+  <rule id="92060" level="15">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.parentImage" type="pcre2">(*UTF)\N{U+202E}</field>
+    <description>Suspicious process (right to left override character) spawned a subprocess</description>
+    <mitre>
+      <id>T1036.002</id>
+    </mitre>
+  </rule>
+
+  <rule id="92061" level="3">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.originalFileName" type="pcre2">(?i)sdclt\.exe</field>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)(cmd\.exe|powershell\.exe)</field>
+    <field name="win.eventdata.integrityLevel" type="pcre2">(?i)(medium|high)</field>
+    <description>Windows backup and restore tool $(win.eventdata.originalFileName) launched via $(win.eventdata.parentImage) with $(win.eventdata.integrityLevel) integrity level.</description>
+    <mitre>
+      <id>T1548</id>
+      <id>T1059.003</id>
+    </mitre>
+  </rule>
+
+  <rule id="92062" level="14">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)control\.exe</field>
+    <field name="win.eventdata.integrityLevel" type="pcre2">(?i)high</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)powershell\.exe</field>
+    <description>Powershell launched with a $(win.eventdata.integrityLevel) integrity level by $(win.eventdata.parentImage).</description>
+    <mitre>
+      <id>T1548</id>
+      <id>T1548.002</id>
+    </mitre>
+  </rule>
+
+  <rule id="92063" level="6">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.originalFileName" type="pcre2">(?i)sdelete\.exe</field>
+    <description>File deletion by $(win.eventdata.originalFileName). Command: $(win.eventdata.commandLine)</description>
+    <mitre>
+      <id>T1070.004</id>
+    </mitre>
+  </rule>
+
+  <rule id="92064" level="15">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.image" type="pcre2">(*UTF)\N{U+202E}</field>
+    <description>Executed suspicious process with right to left override character in binary file, possible malicious file masquerading</description>
+    <mitre>
+      <id>T1036.002</id>
+      <id>T1204.002</id>
+    </mitre>
+  </rule>
+
+  <rule id="92065" level="6">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)Windows\\\\Temp.+\.(exe|dll)</field>
+    <field name="win.eventdata.originalFileName" type="pcre2">(?i)PowerShell\.exe</field>
+    <description>Powershell.exe launched by binary $(win.eventdata.parentImage) in a suspicious location.</description>
+    <mitre>
+      <id>T1059.001</id>
+    </mitre>
+  </rule>
+
+  <rule id="92066" level="4">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)powershell.exe</field>
+    <field name="win.eventdata.image" type="pcre2">(?i)Windows\\\\(SysWOW64|Temp).+\.exe</field>
+    <description>$(win.eventdata.image) binary in a suspicious location launched by $(win.eventdata.parentImage).</description>
+    <mitre>
+      <id>T1059.001</id>
+    </mitre>
+  </rule>
+
+  <rule id="92067" level="6">
+    <if_sid>92066</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)\.(zip|7z|rar)</field>
+    <description>$(win.eventdata.image) launched by $(win.eventdata.parentImage) executed a compressed file creation command.</description>
+    <mitre>
+      <id>T1560.001</id>
+    </mitre>
+  </rule>
+
+  <rule id="92068" level="3">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.parentCommandLine" type="pcre2">(?i)PSEXESVC\.exe</field>
+    <description>PSEXEC was used to execute: $(win.eventdata.commandLine)</description>
+    <mitre>
+      <id>T1569.002</id>
+    </mitre>
+  </rule>
+
+  <rule id="92069" level="0">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.parentImage" type="pcre2">(?i)WmiPrvSE\.exe</field>
+    <description>Windows management instrumentation started a process</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
+  </rule>
+
+  <rule id="92070" level="6">
+    <if_sid>92069</if_sid>
+    <field name="win.eventdata.originalFileName" type="pcre2">(?i)PowerShell\.EXE</field>
+    <description>Windows management instrumentation (WMI) created a powershell process</description>
+    <mitre>
+      <id>T1047</id>
+      <id>T1059.001</id>
+    </mitre>
+  </rule>
+
+  <rule id="92071" level="12">
+    <if_sid>92070</if_sid>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)powershell\.exe.+\-(encodedcommand|e|ea|ec|encodeda|encode|en|enco)</field>
+    <description>A powershell process created by WMI executed a base64 encoded command</description>
+    <mitre>
+      <id>T1047</id>
+      <id>T1059.001</id>
+    </mitre>
+  </rule>
+
+  <rule id="92072" level="4">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)certutil.exe.+\-decode</field>
+    <description>Certutil decoding a file</description>
+    <mitre>
+      <id>T1140</id>
+    </mitre>
+  </rule>
+
+  <rule id="92073" level="6">
+    <if_sid>92072</if_sid>
+    <field name="win.eventdata.parentCommandLine" type="pcre2">(?i)powershell\.exe</field>
+    <description>Powershell executing certutil to decode a file</description>
+    <mitre>
+      <id>T1140</id>
+    </mitre>
+  </rule>
+
+  <rule id="92074" level="12">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.originalFileName" type="pcre2">(?i)(curl|wget)\.exe</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)\-(o|out|outfile).+\.(dll|exe)</field>
+    <description>$(win.eventdata.originalFileName) launched with commands to create a binary file</description>
+    <mitre>
+      <id>T1105</id>
+    </mitre>
+  </rule>
+
+  <rule id="92075" level="12">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.originalFileName" type="pcre2">(?i)certutil\.exe</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i)\-urlcache.+\.(dll|exe)</field>
+    <description>$(win.eventdata.originalFileName) launched with commands to create a binary file</description>
+    <mitre>
+      <id>T1105</id>
+    </mitre>
+  </rule>
+
+  <rule id="92076" level="6">
+    <if_group>sysmon_event1</if_group>
+    <field name="win.eventdata.originalFileName" type="pcre2">(?i)RUNDLL32.EXE</field>
+    <field name="win.eventdata.commandLine" type="pcre2">(?i).lock</field>
+    <description>Rundll32 executing suspicious .lock file, possible persistence tactic</description>
+    <mitre>
+      <id>T1546</id>
+      <id>T1218</id>
     </mitre>
   </rule>
 
