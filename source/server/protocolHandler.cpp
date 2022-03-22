@@ -10,6 +10,7 @@
 #include "protocolHandler.hpp"
 
 #include <logging/logging.hpp>
+#include <profile/profile.hpp>
 
 namespace engineserver
 {
@@ -32,7 +33,6 @@ bool ProtocolHandler::hasHeader()
 
 std::shared_ptr<json::Document> ProtocolHandler::parse(const std::string & event)
 {
-
     auto doc = std::make_shared<json::Document>();
     doc->m_doc.SetObject();
     rapidjson::Document::AllocatorType & allocator = doc->getAllocator();

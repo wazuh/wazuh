@@ -1,8 +1,5 @@
-####################################################################################################
-# Sources -- Headers -- Libraries
-####################################################################################################
 add_executable(routerTest
-  ${TEST_SOURCE_DIR}/router/routerTest.cpp
+  ${TEST_SOURCE_DIR}/router/router_test.cpp
 )
 
 target_include_directories(routerTest PUBLIC

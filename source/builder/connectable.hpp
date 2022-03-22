@@ -23,7 +23,8 @@ namespace builder::internals
  *
  * @tparam Observable
  */
-template <class Observable> struct Connectable
+template<class Observable>
+struct Connectable
 {
     /**
      * @brief An operation is a function which will generate
@@ -34,8 +35,9 @@ template <class Observable> struct Connectable
     Op_t m_op;
 
     /**
-     * @brief Used to distinguish between connectables. Also for debugging purposes.
-     * It is derived from the name of the asset it contains de operation for.
+     * @brief Used to distinguish between connectables. Also for debugging
+     * purposes. It is derived from the name of the asset it contains de
+     * operation for.
      */
     std::string m_name;
 
@@ -50,7 +52,7 @@ template <class Observable> struct Connectable
      * must merge their parents' output as a single input for this connectable
      * operation.
      */
-    std::vector<Observable> m_inputs{};
+    std::vector<Observable> m_inputs {};
 
     /**
      * @brief Construct a new Connectable object from its components.
@@ -59,7 +61,10 @@ template <class Observable> struct Connectable
      * @param p vector of parents names
      * @param o the operation this connectable must do to the input stream.
      */
-    Connectable(std::string n, std::vector<std::string> p, Op_t o) : m_op(o), m_name(n), m_parents(p){};
+    Connectable(std::string n, std::vector<std::string> p, Op_t o)
+        : m_op(o)
+        , m_name(n)
+        , m_parents(p) {};
 
     /**
      * @brief Construct a new Connectable object just from its name. It will use
@@ -68,9 +73,13 @@ template <class Observable> struct Connectable
      *
      * @param n name of the connectable
      */
-    Connectable(std::string n) : m_name(n)
+    Connectable(std::string n)
+        : m_name(n)
     {
-        m_op = [](Observable o) { return o; };
+        m_op = [](Observable o)
+        {
+            return o;
+        };
     };
 
     /**
@@ -90,7 +99,7 @@ template <class Observable> struct Connectable
      * @param input
      * @return Observable
      */
-    Observable connect(const Observable & input)
+    Observable connect(const Observable &input)
     {
         return m_op(input);
     }
@@ -105,33 +114,36 @@ template <class Observable> struct Connectable
     {
         if (m_inputs.size() > 1)
         {
-            return m_op(rxcpp::observable<>::iterate(m_inputs).flat_map([](Observable o) { return o; }));
+            return m_op(rxcpp::observable<>::iterate(m_inputs).flat_map(
+                [](Observable o) { return o; }));
         }
         return m_op(m_inputs[0]);
     }
 
     /**
-     * @brief Operatos defined so Connectables can be stored on maps and sets as keys.
+     * @brief Operatos defined so Connectables can be stored on maps and sets as
+     * keys.
      *
      */
 
-    friend inline bool operator<(const Connectable & lhs, const Connectable & rhs)
+    friend inline bool operator<(const Connectable &lhs, const Connectable &rhs)
     {
         return lhs.m_name < rhs.m_name;
     }
 
-    friend inline std::ostream & operator<<(std::ostream & os, const Connectable & rhs)
+    friend inline std::ostream &operator<<(std::ostream &os,
+                                           const Connectable &rhs)
     {
         os << rhs.m_name;
         return os;
     }
 
-    friend inline bool operator!=(const Connectable & l, const Connectable & r)
+    friend inline bool operator!=(const Connectable &l, const Connectable &r)
     {
         return l.m_name != r.m_name;
     }
 
-    friend inline bool operator==(const Connectable & l, const Connectable & r)
+    friend inline bool operator==(const Connectable &l, const Connectable &r)
     {
         return l.m_name == r.m_name;
     }

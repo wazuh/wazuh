@@ -47,10 +47,10 @@ void TCPEndpoint::connectionHandler(uvw::TCPHandle &server)
             // TODO: Are we moving the buffer? we should.
             timer->again();
             const auto result = ph->process(event.data.get(), event.length);
-            if(result)
+            if (result)
             {
                 const auto events = result.value().data();
-                while(!m_out.try_enqueue_bulk(events, result.value().size()))
+                while (!m_out.try_enqueue_bulk(events, result.value().size()))
                     ;
             }
             else

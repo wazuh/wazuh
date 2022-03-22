@@ -1,15 +1,13 @@
+#include <stdexcept>
 #include <stdio.h>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-#include "LogQLParser.hpp"
-#include "SpecificParsers.hpp"
 #include "hlpDetails.hpp"
-
+#include "logQLParser.hpp"
+#include "specificParsers.hpp"
 #include <hlp/hlp.hpp>
-#include <stdexcept>
-
 #include <profile/profile.hpp>
 
 using ParserList = std::vector<Parser>;
@@ -222,14 +220,14 @@ ParserFn getParserOp(std::string_view const &logQl)
     ExpressionList expressions = parseLogQlExpr(logQl.data());
     if (expressions.empty())
     {
-        throw std::invalid_argument(
+        throw std::runtime_error(
             "[HLP]Empty expression output obtained from LogQL parsing");
     }
 
     auto parserList = getParserList(expressions);
     if (parserList.empty())
     {
-        throw std::invalid_argument(
+        throw std::runtime_error(
             "[HLP]Could not convert expressions to parser List");
     }
 

@@ -2,9 +2,8 @@
 
 #include <benchmark/benchmark.h>
 
-#include "src/SpecificParsers.hpp"
 #include "src/hlpDetails.hpp"
-
+#include "src/specificParsers.hpp"
 #include <hlp/hlp.hpp>
 
 static std::string getRandomString(int len, bool includeSymbols = false)
@@ -19,12 +18,12 @@ static std::string getRandomString(int len, bool includeSymbols = false)
     tmp_s.reserve(len);
 
     std::string dict = alphanum;
-    if(includeSymbols)
+    if (includeSymbols)
     {
         dict += symbols;
     }
 
-    for(int i = 0; i < len; ++i)
+    for (int i = 0; i < len; ++i)
     {
         tmp_s += dict[rand() % dict.size()];
     }
@@ -34,11 +33,11 @@ static std::string getRandomString(int len, bool includeSymbols = false)
 static std::string getRandomCapExprVariable(int len)
 {
     std::string ret;
-    for(int i = 0; i < len; ++i)
+    for (int i = 0; i < len; ++i)
     {
         ret += '<';
         ret += getRandomString((rand() % 10) + 1);
-        for(int j = 0; j < (rand() % 5); ++j)
+        for (int j = 0; j < (rand() % 5); ++j)
         {
             ret += '/';
             ret += getRandomString((rand() % 10) + 1);
@@ -53,11 +52,11 @@ static std::string getRandomCapExprVariable(int len)
 static std::string getRandomCapExpr(int len)
 {
     std::string ret;
-    for(int i = 0; i < len; ++i)
+    for (int i = 0; i < len; ++i)
     {
         ret += '<';
         ret += getRandomString(10);
-        for(int j = 0; j < 4; ++j)
+        for (int j = 0; j < 4; ++j)
         {
             ret += '/';
             ret += getRandomString(10);
@@ -74,7 +73,7 @@ static std::string createRandomFilepath(int folder_name_length,
                                         int folders_qtty = 5)
 {
     std::string ret, folder_separator;
-    if(unixFormat)
+    if (unixFormat)
     {
         folder_separator = '/';
     }
@@ -83,7 +82,7 @@ static std::string createRandomFilepath(int folder_name_length,
         folder_separator = '\\';
         ret += "C:\\";
     }
-    for(int i = 0; i < folders_qtty; i++)
+    for (int i = 0; i < folders_qtty; i++)
     {
         ret += getRandomString(folder_name_length) + folder_separator;
     }
@@ -95,7 +94,7 @@ static std::string createRandomDomain(int len, bool withSubdomain = false)
 {
     std::string ret;
     ret += "www.";
-    if(withSubdomain)
+    if (withSubdomain)
     {
         ret += getRandomString(len) + '.';
     }
@@ -109,13 +108,13 @@ static std::string createRandomDomain(int len, bool withSubdomain = false)
 static std::string createMap(int len)
 {
     std::string ret;
-    for(int i = 0; i < len; ++i)
+    for (int i = 0; i < len; ++i)
     {
         ret += "key";
         ret += std::to_string(i);
         ret += '=';
         ret += getRandomString(10);
-        if(i != (len - 1))
+        if (i != (len - 1))
             ret += ' ';
     }
     ret += ';';
@@ -126,10 +125,10 @@ static std::string createMap(int len)
 static void getting_parser_from_expression(benchmark::State &state)
 {
     auto expr = getRandomCapExpr(state.range(0));
-    for(auto _ : state)
+    for (auto _ : state)
     {
         auto parseOp = getParserOp(expr);
-        if(!parseOp)
+        if (!parseOp)
         {
             state.SkipWithError("Invalid expr");
         }
@@ -141,10 +140,10 @@ static void
 getting_parser_from_variable_length_expression(benchmark::State &state)
 {
     auto expr = getRandomCapExprVariable(state.range(0));
-    for(auto _ : state)
+    for (auto _ : state)
     {
         auto parseOp = getParserOp(expr);
-        if(!parseOp)
+        if (!parseOp)
         {
             state.SkipWithError("Invalid expr");
         }
@@ -160,10 +159,10 @@ static void match_literal_range(benchmark::State &state)
     p.name = ev;
     p.endToken = '\0';
     ParseResult result;
-    for(auto _ : state)
+    for (auto _ : state)
     {
         const char *eventIt = ev.c_str();
-        if(!matchLiteral(&eventIt, p, result))
+        if (!matchLiteral(&eventIt, p, result))
         {
             state.SkipWithError("Parser failed");
         }
@@ -188,7 +187,7 @@ static void getting_result_from_defined_parser(benchmark::State &state)
         " Gecko/20120716 Firefox/15.0a2\"";
 
     auto parseOp = getParserOp(logQL_expression);
-    for(auto _ : state)
+    for (auto _ : state)
     {
         ParseResult result;
         bool ret = parseOp(event, result);
@@ -210,7 +209,7 @@ static void getting_result_from_defined_expression(benchmark::State &state)
         "HTTP/1.1\" 200 612 \"-\" \"Mozilla/5.0 (Windows NT 6.1; rv:15.0)"
         " Gecko/20120716 Firefox/15.0a2\"";
 
-    for(auto _ : state)
+    for (auto _ : state)
     {
         auto parseOp = getParserOp(logQL_expression);
         ParseResult result;
@@ -229,7 +228,7 @@ static void url_parse(benchmark::State &state)
     p.name = "URL";
     p.endToken = '\0';
     ParseResult result;
-    for(auto _ : state)
+    for (auto _ : state)
     {
         const char *eventIt = ev;
         parseURL(&eventIt, p, result);
@@ -246,10 +245,10 @@ static void ipv4_parse(benchmark::State &state)
     p.name = "IP";
     p.endToken = '\0';
     ParseResult result;
-    for(auto _ : state)
+    for (auto _ : state)
     {
         const char *eventIt = ev;
-        if(!parseIPaddress(&eventIt, p, result))
+        if (!parseIPaddress(&eventIt, p, result))
         {
             state.SkipWithError("Parser failed");
         }
@@ -265,10 +264,10 @@ static void ipv6_parse(benchmark::State &state)
     p.name = "IP";
     p.endToken = '\0';
     ParseResult result;
-    for(auto _ : state)
+    for (auto _ : state)
     {
         const char *eventIt = ev;
-        if(!parseIPaddress(&eventIt, p, result))
+        if (!parseIPaddress(&eventIt, p, result))
         {
             state.SkipWithError("Parser failed");
         }
@@ -300,10 +299,10 @@ static void json_parse(benchmark::State &state)
     p.endToken = '\0';
     ParseResult result;
     ev += getRandomCapExpr(20);
-    for(auto _ : state)
+    for (auto _ : state)
     {
         const char *eventIt = ev.c_str();
-        if(!parseJson(&eventIt, p, result))
+        if (!parseJson(&eventIt, p, result))
         {
             state.SkipWithError("Parser failed");
         }
@@ -323,10 +322,10 @@ static void map_parse(benchmark::State &state)
     p.options.push_back(" =;");
     ParseResult result;
     ev += getRandomString(20);
-    for(auto _ : state)
+    for (auto _ : state)
     {
         const char *eventIt = ev.c_str();
-        if(!parseMap(&eventIt, p, result))
+        if (!parseMap(&eventIt, p, result))
         {
             state.SkipWithError("Parser failed");
         }
@@ -342,10 +341,10 @@ static void timestamp_specific_format_parse(benchmark::State &state)
     p.endToken = '\0';
     p.options.push_back("%a %b %d %H:%M:%S %z %Y");
     ParseResult result;
-    for(auto _ : state)
+    for (auto _ : state)
     {
         const char *it = "Mon Jan 02 15:04:05 -0700 2006";
-        if(!parseTimeStamp(&it, p, result))
+        if (!parseTimeStamp(&it, p, result))
         {
             state.SkipWithError("Parser Failed");
         }
@@ -359,10 +358,10 @@ static void timestamp_without_format_parse(benchmark::State &state)
     p.name = "ts";
     p.endToken = '\0';
     ParseResult result;
-    for(auto _ : state)
+    for (auto _ : state)
     {
         const char *it = "Mon Jan 2 15:04:05 MST 2006";
-        if(!parseTimeStamp(&it, p, result))
+        if (!parseTimeStamp(&it, p, result))
         {
             state.SkipWithError("Parser Failed");
         }
@@ -378,10 +377,10 @@ static void domain_parse(benchmark::State &state)
     p.name = "domain";
     p.endToken = '\0';
     ParseResult result;
-    for(auto _ : state)
+    for (auto _ : state)
     {
         const char *eventIt = ev.c_str();
-        if(!parseDomain(&eventIt, p, result))
+        if (!parseDomain(&eventIt, p, result))
         {
             state.SkipWithError("Parser failed");
         }
@@ -397,10 +396,10 @@ static void domain_withSubdomain_parse(benchmark::State &state)
     p.name = "domain";
     p.endToken = '\0';
     ParseResult result;
-    for(auto _ : state)
+    for (auto _ : state)
     {
         const char *eventIt = ev.c_str();
-        if(!parseDomain(&eventIt, p, result))
+        if (!parseDomain(&eventIt, p, result))
         {
             state.SkipWithError("Parser failed");
         }
@@ -418,10 +417,10 @@ static void filepath_parse(benchmark::State &state)
     p.endToken = '\0';
     p.options.push_back("/\\");
     ParseResult result;
-    for(auto _ : state)
+    for (auto _ : state)
     {
         const char *eventIt = ev.c_str();
-        if(!parseFilePath(&eventIt, p, result))
+        if (!parseFilePath(&eventIt, p, result))
             state.SkipWithError("Parser failed");
     }
 }
@@ -437,10 +436,10 @@ static void filepath_variable_length_parse(benchmark::State &state)
     p.endToken = '\0';
     p.options.push_back("/\\");
     ParseResult result;
-    for(auto _ : state)
+    for (auto _ : state)
     {
         const char *eventIt = ev.c_str();
-        if(!parseFilePath(&eventIt, p, result))
+        if (!parseFilePath(&eventIt, p, result))
             state.SkipWithError("Parser failed");
     }
 }
@@ -455,10 +454,10 @@ static void unix_filepath_parse(benchmark::State &state)
     p.endToken = '\0';
     p.options.push_back("/\\");
     ParseResult result;
-    for(auto _ : state)
+    for (auto _ : state)
     {
         const char *eventIt = ev.c_str();
-        if(!parseFilePath(&eventIt, p, result))
+        if (!parseFilePath(&eventIt, p, result))
             state.SkipWithError("Parser failed");
     }
 }
@@ -473,10 +472,10 @@ static void unix_filepath_variable_length_parse(benchmark::State &state)
     p.endToken = '\0';
     p.options.push_back("/\\");
     ParseResult result;
-    for(auto _ : state)
+    for (auto _ : state)
     {
         const char *eventIt = ev.c_str();
-        if(!parseFilePath(&eventIt, p, result))
+        if (!parseFilePath(&eventIt, p, result))
             state.SkipWithError("Parser failed");
     }
 }

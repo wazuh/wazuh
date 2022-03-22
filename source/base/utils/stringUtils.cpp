@@ -9,15 +9,16 @@
 
 #include "stringUtils.hpp"
 
-namespace utils::string {
+namespace utils::string
+{
 
 std::vector<std::string> split(std::string_view str, char delimiter)
 {
     std::vector<std::string> ret;
-    while(true)
+    while (true)
     {
         auto pos = str.find(delimiter);
-        if(pos == str.npos)
+        if (pos == str.npos)
         {
             break;
         }
@@ -25,7 +26,7 @@ std::vector<std::string> split(std::string_view str, char delimiter)
         str = str.substr(pos + 1);
     }
 
-    if(!str.empty())
+    if (!str.empty())
     {
         ret.emplace_back(str);
     }

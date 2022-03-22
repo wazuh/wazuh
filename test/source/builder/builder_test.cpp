@@ -4,20 +4,24 @@
 #include <sstream>
 #include <string>
 
-#include "rxcpp/rx.hpp"
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
+#include <rxcpp/rx.hpp>
 
 #include "builder.hpp"
-#include "builderTest.hpp"
+#include "builder_test.hpp"
 #include "connectable.hpp"
 #include "register.hpp"
 
-#define GTEST_COUT std::cerr << "[          ] [ INFO ] "
+#define DEBUG_LOG std::cerr << "[          ] [ INFO ] "
 
-template <class T> using Op_t = std::function<T(T)>;
-template <class T> using Obs_t = rxcpp::observable<T>;
-template <class T> using Sub_t = rxcpp::subscriber<T>;
-template <class T> using Con_t = builder::internals::Connectable<Obs_t<T>>;
+template<class T>
+using Op_t = std::function<T(T)>;
+template<class T>
+using Obs_t = rxcpp::observable<T>;
+template<class T>
+using Sub_t = rxcpp::subscriber<T>;
+template<class T>
+using Con_t = builder::internals::Connectable<Obs_t<T>>;
 
 TEST(Builder, EnvironmentSingleDecoder)
 {
@@ -48,8 +52,10 @@ TEST(Builder, EnvironmentOneofEachAsset)
     auto root = builder.build("environment_4");
 }
 
-template <class Value>
-void visit(Obs_t<Value> source, Con_t<Value> root, std::map<Con_t<Value>, std::set<Con_t<Value>>> & edges,
+template<class Value>
+void visit(Obs_t<Value> source,
+           Con_t<Value> root,
+           std::map<Con_t<Value>, std::set<Con_t<Value>>> &edges,
            Sub_t<Value> s)
 {
     auto itr = edges.find(root);
@@ -72,7 +78,7 @@ void visit(Obs_t<Value> source, Con_t<Value> root, std::map<Con_t<Value>, std::s
     }
 
     // Visit childs
-    for (auto & n : itr->second)
+    for (auto &n : itr->second)
     {
         visit(obs, n, edges, s);
     }
@@ -90,29 +96,34 @@ TEST(RXCPP, DecoderManualConnectExample)
     using Con_t = builder::internals::Connectable<Obs_t>;
 
     int expected = 2;
-    auto source = rxcpp::observable<>::create<Event_t>(
-                      [expected](const Sub_t s)
-                      {
-                          for (int i = 0; i < expected; i++)
-                          {
-                              if (i % 2 == 0)
-                                  s.on_next(std::make_shared<json::Document>(R"({"type": "int", "field": "odd", "value": 0})"));
-                              else
-                                  s.on_next(std::make_shared<json::Document>(R"({"type": "int", "field": "even", "value": 1})"));
-                          }
-                          s.on_completed();
-                      })
-                      .publish();
+    auto source =
+        rxcpp::observable<>::create<Event_t>(
+            [expected](const Sub_t s)
+            {
+                for (int i = 0; i < expected; i++)
+                {
+                    if (i % 2 == 0)
+                        s.on_next(std::make_shared<json::Document>(
+                            R"({"type": "int", "field": "odd", "value": 0})"));
+                    else
+                        s.on_next(std::make_shared<json::Document>(
+                            R"({"type": "int", "field": "even", "value": 1})"));
+                }
+                s.on_completed();
+            })
+            .publish();
 
     auto sub = rxcpp::subjects::subject<Event_t>();
 
-    auto subscriber = rxcpp::make_subscriber<Event_t>([](Event_t v) { GTEST_COUT << "Got " << v->str() << std::endl; },
-                                                      []() { GTEST_COUT << "OnCompleted" << std::endl; });
+    auto subscriber = rxcpp::make_subscriber<Event_t>(
+        [](Event_t v) { DEBUG_LOG << "Got " << v->str() << std::endl; },
+        []() { DEBUG_LOG << "OnCompleted" << std::endl; });
 
-    builder::Builder<FakeCatalog> b{FakeCatalog()};
+    builder::Builder<FakeCatalog> b {FakeCatalog()};
     auto env = b.build("environment_6");
     std::map<Con_t, std::set<Con_t>> res = env.get();
-    visit<Event_t>(sub.get_observable(), Con_t("DECODERS_INPUT"), res, subscriber);
+    visit<Event_t>(
+        sub.get_observable(), Con_t("DECODERS_INPUT"), res, subscriber);
 
     source.subscribe(sub.get_subscriber());
     source.connect();
@@ -126,10 +137,11 @@ TEST(RXCPP, DecoderManualConnectExample)
 
     std::cerr << env.print().str() << std::endl;
 
-    std::string file{"/tmp/filepath.txt"};
+    std::string file {"/tmp/filepath.txt"};
 
     std::ifstream ifs(file);
-    std::string gotContent((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
+    std::string gotContent((std::istreambuf_iterator<char>(ifs)),
+                           (std::istreambuf_iterator<char>()));
 
     std::filesystem::remove(file);
     ASSERT_EQ(expectedContents, gotContent);

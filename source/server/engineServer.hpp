@@ -7,8 +7,8 @@
  * Foundation.
  */
 
-#ifndef _ENGINE_SERVER_H_
-#define _ENGINE_SERVER_H_
+#ifndef _ENGINE_SERVER_H
+#define _ENGINE_SERVER_H
 
 #include <map>
 #include <memory>
@@ -77,4 +77,4 @@ public:
 
 } // namespace engineserver
 
-#endif // _ENGINE_SERVER_H_
+#endif // _ENGINE_SERVER_H

@@ -13,9 +13,9 @@
 #include <stdexcept>
 #include <string>
 
-#include "file.hpp"
-
+#include "outputs/file.hpp"
 #include <logging/logging.hpp>
+
 #include <fmt/format.h>
 
 namespace builder::internals::builders
@@ -24,13 +24,15 @@ namespace builder::internals::builders
 types::Lifter opBuilderFileOutput(const types::DocumentValue &def)
 {
     // Check that input is as expected and throw exception otherwise
-    if(!def.IsObject())
+    if (!def.IsObject())
     {
-        auto msg = fmt::format("File output builder expects value to be an object, but got [{}]", def.GetType());
+        auto msg = fmt::format(
+            "File output builder expects value to be an object, but got [{}]",
+            def.GetType());
         WAZUH_LOG_ERROR(msg);
         throw std::invalid_argument(msg);
     }
-    if(def.GetObject().MemberCount() != 1)
+    if (def.GetObject().MemberCount() != 1)
     {
         auto msg = fmt::format("File output builder expects value to have only "
                                "one key, but got [{}]",
@@ -44,7 +46,7 @@ types::Lifter opBuilderFileOutput(const types::DocumentValue &def)
     {
         path = def.MemberBegin()->value.GetString();
     }
-    catch(std::exception &e)
+    catch (std::exception &e)
     {
         const char *msg =
             "File output builder encountered exception on building path.";

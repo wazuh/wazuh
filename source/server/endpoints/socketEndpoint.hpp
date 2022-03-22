@@ -7,8 +7,8 @@
  * Foundation.
  */
 
-#ifndef _SOCKET_ENDPOINT_H_
-#define _SOCKET_ENDPOINT_H_
+#ifndef _SOCKET_ENDPOINT_H
+#define _SOCKET_ENDPOINT_H
 
 #include <functional>
 #include <iostream>
@@ -59,4 +59,4 @@ public:
 
 } // namespace engineserver::endpoints
 
-#endif // _SOCKET_ENDPOINT_H_
+#endif // _SOCKET_ENDPOINT_H
