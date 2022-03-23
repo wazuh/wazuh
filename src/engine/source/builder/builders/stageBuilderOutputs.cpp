@@ -28,7 +28,7 @@ types::Lifter stageBuilderOutputs(const types::DocumentValue & def)
         auto msg =
             fmt::format("Stage outputs builder, expected array but got [{}]",
                         def.GetType());
-        WAZUH_LOG_ERROR(msg);
+        WAZUH_LOG_ERROR("{}", msg);
         throw std::invalid_argument(msg);
     }
 

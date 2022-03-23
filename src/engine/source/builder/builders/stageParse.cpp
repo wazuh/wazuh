@@ -29,7 +29,7 @@ types::Lifter stageBuilderParse(const types::DocumentValue &def)
     {
         std::string msg = fmt::format(
             "[Stage parse] builder, expected array but got {}", def.GetType());
-        WAZUH_LOG_ERROR(msg);
+        WAZUH_LOG_ERROR("{}", msg);
         throw std::invalid_argument(msg);
     }
 

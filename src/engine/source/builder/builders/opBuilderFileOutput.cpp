@@ -29,7 +29,7 @@ types::Lifter opBuilderFileOutput(const types::DocumentValue &def)
         auto msg = fmt::format(
             "File output builder expects value to be an object, but got [{}]",
             def.GetType());
-        WAZUH_LOG_ERROR(msg);
+        WAZUH_LOG_ERROR("{}", msg);
         throw std::invalid_argument(msg);
     }
     if (def.GetObject().MemberCount() != 1)
@@ -37,7 +37,7 @@ types::Lifter opBuilderFileOutput(const types::DocumentValue &def)
         auto msg = fmt::format("File output builder expects value to have only "
                                "one key, but got [{}]",
                                def.GetObject().MemberCount());
-        WAZUH_LOG_ERROR(msg);
+        WAZUH_LOG_ERROR("{}", msg);
         throw std::invalid_argument(msg);
     }
 
