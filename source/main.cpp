@@ -151,6 +151,7 @@ int main(int argc, char *argv[])
                     if (eventBuffer.wait_dequeue_timed(
                             event, WAIT_DEQUEUE_TIMEOUT_USEC))
                     {
+                        WAZUH_TRACE_SCOPE("Router on-next");
                         router.input().on_next(ProtocolHandler::parse(event));
                     }
                 }
@@ -163,6 +164,8 @@ int main(int argc, char *argv[])
     }
 
     server.run();
+
+    logging::loggingTerm();
 
     return 0;
 }

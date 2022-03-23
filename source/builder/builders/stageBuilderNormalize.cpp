@@ -26,7 +26,7 @@ types::Lifter stageBuilderNormalize(const types::DocumentValue & def)
     if (!def.IsArray())
     {
         auto msg = fmt::format("Stage normalize builder, expected array but got [{}].", def.GetType());
-        WAZUH_LOG_ERROR(msg);
+        WAZUH_LOG_ERROR("{}", msg);
         throw std::invalid_argument(msg);
     }
 

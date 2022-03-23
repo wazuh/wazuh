@@ -28,7 +28,7 @@ void Registry::registerBuilder(const std::string &builderName,
         auto msg =
             fmt::format("[Registry] Tried to register duplicate builder: [{}] ",
                         builderName);
-        WAZUH_LOG_ERROR(msg);
+        WAZUH_LOG_ERROR("{}", msg);
         throw std::invalid_argument(std::move(msg));
     }
 }
@@ -41,7 +41,7 @@ types::BuilderVariant Registry::getBuilder(const std::string &builderName)
         auto msg =
             fmt::format("[Registry] Tried to obtain unregistered builder: [{}]",
                         builderName);
-        WAZUH_LOG_ERROR(msg);
+        WAZUH_LOG_ERROR("{}", msg);
         throw std::invalid_argument(std::move(msg));
     }
 
