@@ -45,19 +45,23 @@
 
 #define WDB_MAX_COMMAND_SIZE    512
 #define WDB_MAX_RESPONSE_SIZE   OS_MAXSTR-WDB_MAX_COMMAND_SIZE
+#define WDB_MAX_QUERY_SIZE      OS_MAXSTR-WDB_MAX_COMMAND_SIZE
 
 #define AGENT_CS_NEVER_CONNECTED "never_connected"
 #define AGENT_CS_PENDING         "pending"
 #define AGENT_CS_ACTIVE          "active"
 #define AGENT_CS_DISCONNECTED    "disconnected"
 
-#define VULN_CVES_STATUS_VALID    "VALID"
-#define VULN_CVES_STATUS_PENDING  "PENDING"
-#define VULN_CVES_STATUS_OBSOLETE "OBSOLETE"
-#define VULN_CVES_STATUS_REMOVED  "REMOVED"
+#define VULN_CVES_STATUS_VALID              "VALID"
+#define VULN_CVES_STATUS_PENDING            "PENDING"
+#define VULN_CVES_STATUS_OBSOLETE           "OBSOLETE"
+#define VULN_CVES_STATUS_SOLVED_LOWERCASE   "Solved"
+#define VULN_CVES_STATUS_ACTIVE_LOWERCASE   "Active"
 
 #define VULN_CVES_TYPE_OS         "OS"
 #define VULN_CVES_TYPE_PACKAGE    "PACKAGE"
+
+#define VULN_CVES_MAX_REFERENCES OS_SIZE_20480
 
 #define WDB_BLOCK_SEND_TIMEOUT_S   1 /* Max time in seconds waiting for the client to receive the information sent with a blocking method*/
 #define WDB_RESPONSE_OK_SIZE     3

@@ -5998,6 +5998,12 @@ int wdb_parse_agents_insert_vuln_cves(wdb_t* wdb, char* input, char* output) {
         cJSON* j_severity = cJSON_GetObjectItem(data, "severity");
         cJSON* j_cvss2_score = cJSON_GetObjectItem(data, "cvss2_score");
         cJSON* j_cvss3_score = cJSON_GetObjectItem(data, "cvss3_score");
+        cJSON* j_external_references = cJSON_GetObjectItem(data, "external_references");
+        cJSON* j_condition = cJSON_GetObjectItem(data, "condition");
+        cJSON* j_title = cJSON_GetObjectItem(data, "title");
+        cJSON* j_published = cJSON_GetObjectItem(data, "published");
+        cJSON* j_updated = cJSON_GetObjectItem(data, "updated");
+
         // Required fields
         if (!cJSON_IsString(j_name) || !cJSON_IsString(j_version) || !cJSON_IsString(j_architecture) ||!cJSON_IsString(j_cve) ||
             !cJSON_IsString(j_reference) || !cJSON_IsString(j_type) || !cJSON_IsString(j_status) ||!cJSON_IsBool(j_check_pkg_existence)) {
@@ -6005,10 +6011,13 @@ int wdb_parse_agents_insert_vuln_cves(wdb_t* wdb, char* input, char* output) {
             snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, missing required fields");
         }
         else {
+            char* str_external_references = cJSON_PrintUnformatted(j_external_references);
+
             cJSON* result = wdb_agents_insert_vuln_cves(wdb, cJSON_GetStringValue(j_name), cJSON_GetStringValue(j_version), cJSON_GetStringValue(j_architecture), cJSON_GetStringValue(j_cve),
                                                         cJSON_GetStringValue(j_reference), cJSON_GetStringValue(j_type), cJSON_GetStringValue(j_status), (bool)j_check_pkg_existence->valueint,
                                                         cJSON_GetStringValue(j_severity), cJSON_IsNumber(j_cvss2_score) ? j_cvss2_score->valuedouble : 0,
-                                                        cJSON_IsNumber(j_cvss3_score) ? j_cvss3_score->valuedouble : 0);
+                                                        cJSON_IsNumber(j_cvss3_score) ? j_cvss3_score->valuedouble : 0, str_external_references, cJSON_GetStringValue(j_condition),
+                                                        cJSON_GetStringValue(j_title), cJSON_GetStringValue(j_published), cJSON_GetStringValue(j_updated));
 
             if (result) {
                 char *out = cJSON_PrintUnformatted(result);
@@ -6021,6 +6030,7 @@ int wdb_parse_agents_insert_vuln_cves(wdb_t* wdb, char* input, char* output) {
                 mdebug1("Error inserting vulnerability in vuln_cves.");
                 snprintf(output, OS_MAXSTR + 1, "err Error inserting vulnerability in vuln_cves.");
             }
+            os_free(str_external_references);
         }
     }
 
