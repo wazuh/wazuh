@@ -30,7 +30,7 @@ types::ConnectableT assetBuilderDecoder(const types::Document &def)
         auto msg = fmt::format(
             "Decoder builder expects value to be an object, but got [{}]",
             def.m_doc.GetType());
-        WAZUH_LOG_ERROR(msg);
+        WAZUH_LOG_ERROR("{}", msg);
         throw std::invalid_argument(msg);
     }
 
@@ -135,7 +135,7 @@ types::ConnectableT assetBuilderDecoder(const types::Document &def)
     {
         const char *msg =
             "Decoder builder, json definition contains unproccessed attributes";
-        WAZUH_LOG_ERROR(msg);
+        WAZUH_LOG_ERROR("{}", msg);
         throw std::invalid_argument(msg);
     }
 

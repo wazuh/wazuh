@@ -26,13 +26,13 @@ types::Lifter opBuilderCondition(const types::DocumentValue & def)
     if (!def.IsObject())
     {
         auto msg = fmt::format("Expexted type 'Object' but got [{}]", def.GetType());
-        WAZUH_LOG_ERROR(msg);
+        WAZUH_LOG_ERROR("{}", msg);
         throw std::invalid_argument(std::move(msg));
     }
     if (def.GetObject().MemberCount() != 1)
     {
         auto msg = fmt::format("Expected single key but got: [{}]", def.GetObject().MemberCount());
-        WAZUH_LOG_ERROR(msg);
+        WAZUH_LOG_ERROR("{}", msg);
         throw std::invalid_argument(std::move(msg));
     }
 

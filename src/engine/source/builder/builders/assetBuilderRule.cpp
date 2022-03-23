@@ -28,7 +28,7 @@ types::ConnectableT assetBuilderRule(const types::Document & def)
     if (!def.m_doc.IsObject())
     {
         auto msg = fmt::format("Rule builder expects value to be an object, but got [{}]", def.m_doc.GetType());
-        WAZUH_LOG_ERROR(msg);
+        WAZUH_LOG_ERROR("{}", msg);
         throw std::invalid_argument(msg);
     }
 
@@ -123,7 +123,7 @@ types::ConnectableT assetBuilderRule(const types::Document & def)
     if (!attributes.empty())
     {
         const char* msg = "Rule builder, json definition contains unproccessed attributes";
-        WAZUH_LOG_ERROR(msg);
+        WAZUH_LOG_ERROR("{}", msg);
         throw std::invalid_argument(msg);
     }
 
