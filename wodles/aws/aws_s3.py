@@ -2087,11 +2087,11 @@ class AWSCustomBucket(AWSBucket):
 
     def get_creation_date(self, log_file):
         # The Amazon S3 object name follows the pattern DeliveryStreamName-DeliveryStreamVersion-YYYY-MM-DD-HH-MM-SS-RandomString
-        name_regex = re.match(r"^[\w\-]+(\d\d\d\d-\d\d-\d\d)[\w\-.]+$", path.basename(log_file['Key']))
+        name_regex = re.match(r".*(\d\d\d\d[\/\-]\d\d[\/\-]\d\d).*", log_file['Key'])
         if name_regex is None:
-            return log_file['LastModified'].strftime('%Y%m%d')
+            return int(log_file['LastModified'].strftime('%Y%m%d'))
         else:
-            return int(name_regex.group(1).replace('-', ''))
+            return int(name_regex.group(1).replace('/', '').replace('-',''))
 
     def get_full_prefix(self, account_id, account_region):
         return self.prefix
