@@ -133,7 +133,7 @@ class SyncFiles(SyncTask):
         if isinstance(task_id, Exception):
             raise task_id
         elif task_id.startswith(b'Error'):
-            self.logger.error(task_id.decode())
+            self.logger.error(task_id.decode(), exc_info=False)
             exc_info = json.dumps(exception.WazuhClusterError(3016, extra_message=str(task_id)),
                                   cls=c_common.WazuhJSONEncoder).encode()
             await self.worker.send_request(command=self.cmd + b'_r', data=b'None ' + exc_info)
@@ -156,8 +156,8 @@ class SyncFiles(SyncTask):
         except exception.WazuhException as e:
             # Notify error to master and delete its received file.
             self.logger.error(f"Error sending zip file: {e}")
-            await self.worker.send_request(command=self.cmd + b'_r', data=task_id + b' ' +
-                                           json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
+            await self.worker.send_request(command=self.cmd + b'_r', data=task_id + b' ' + json.dumps(e,
+                                           cls=c_common.WazuhJSONEncoder).encode())
         except Exception as e:
             # Notify error to master and delete its received file.
             self.logger.error(f"Error sending zip file: {e}")
@@ -455,7 +455,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
               f" ({data['updated_chunks']} " \
               f"chunks updated)."
         logger.info(msg) if not data['error_messages'] else logger.error(
-            msg + f" There were {len(data['error_messages'])} chunks with errors: {data['error_messages']}")
+            msg + f" There were {len(data['error_messages'])} chunks with errors: {data['error_messages']}",
+            exc_info=False)
 
         return b'ok', b'Thanks'
 
@@ -475,7 +476,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             Response message.
         """
         logger = self.task_loggers['Agent-info sync']
-        logger.error(f"There was an error while processing agent-info on the master: {response}")
+        logger.error(f"There was an error while processing agent-info on the master: {response}", exc_info=False)
 
         return b'ok', b'Thanks'
 
@@ -769,7 +770,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
         if sum(errors.values()) > 0:
             logger.error(f"Found errors: {errors['shared']} overwriting, {errors['missing']} creating and "
-                         f"{errors['extra']} removing")
+                         f"{errors['extra']} removing", exc_info=False)
 
     def get_logger(self, logger_tag: str = ''):
         """Get current logger. In workers it will always return the main logger.
