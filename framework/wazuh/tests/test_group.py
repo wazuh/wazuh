@@ -29,9 +29,9 @@ class AgentMock:
 @patch('wazuh.core.agent.Agent.get_agents_group_file')
 @patch('wazuh.core.agent.Agent.set_agent_group_file')
 @patch('wazuh.core.agent.Agent')
-def test_sucessfully_remove_single_group_agent(agent_patch, set_agent_group_patch, get_groups_patch, agent_groups,
+def test_successfully_remove_single_group_agent(agent_patch, set_agent_group_patch, get_groups_patch, agent_groups,
                                                agent_id, group_id, expected_new_group):
-    """Test sucessfully unsseting a group from an agent. Test cases:
+    """Test successfully unset a group from an agent. Test cases:
         * The agent only belongs to one group. It must be assigned to the default one.
         * The agent belongs to two groups, it must be assigned to the remaining group.
         * The agent belongs to three groups, the group to remove must be removed from the multigroup.

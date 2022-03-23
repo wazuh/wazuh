@@ -1343,7 +1343,7 @@ wdb_t * wdb_backup_global(wdb_t *wdb, int version);
  *
  * @param [in] wdb The global.db database to backup.
  * @param [in] version The global.db database version to backup.
- * @return wdb OS_SUCESS on success or OS_INVALID on error.
+ * @return wdb OS_SUCCESS on success or OS_INVALID on error.
  */
 int wdb_create_backup_global(int version);
 
@@ -1434,7 +1434,7 @@ int wdb_enable_foreign_keys(sqlite3 *db);
  * @param [in] wdb The MITRE struct database.
  * @param [in] id MITRE technique's ID.
  * @param [out] output MITRE technique's name.
- * @retval 1 Sucess: name found on MITRE database.
+ * @retval 1 Success: name found on MITRE database.
  * @retval 0 On error: name not found on MITRE database.
  * @retval -1 On error: invalid DB query syntax.
  */
