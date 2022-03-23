@@ -1,7 +1,8 @@
 name: default_router_filter
 after:
-  - decoder_test
+  - rule_test
 allow:
-  - queue: +exists
-  - location: +exists
-  - message: +exists
+  # - queue: +exists
+  # - location: +exists
+  # - message: +exists
+  - nonexistentfield: +exists
