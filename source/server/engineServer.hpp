@@ -10,6 +10,11 @@
 #ifndef _ENGINE_SERVER_H
 #define _ENGINE_SERVER_H
 
+#include <map>
+#include <string>
+
+#include <blockingconcurrentqueue.h>
+
 #include "endpoints/baseEndpoint.hpp"
 
 /**
@@ -35,24 +40,28 @@ private:
     /**
      * @brief
      *
-     * @param type
-     * @param path
-     * @param eventBuffer
+     * @param type Endpoint Type. Eg: tcp, udp, etc.
+     * @param path Path/Address of the endpoint. This can be either a full path
+     * (route) or an ip:port string.
+     * @param eventBuffer Reference to the events buffering queue
      * @return std::unique_ptr<endpoints::BaseEndpoint>
      */
     std::unique_ptr<endpoints::BaseEndpoint> createEndpoint(
-        const std::string & type, const std::string & path,
-        moodycamel::BlockingConcurrentQueue<std::string> & eventBuffer) const;
+        const std::string &type,
+        const std::string &path,
+        moodycamel::BlockingConcurrentQueue<std::string> &eventBuffer) const;
 
 public:
     /**
      * @brief Construct a new Engine Server object
      *
-     * @param config <type>:<config> string describing endpoint type with it associated configuration.
+     * @param config <type>:<path> string describing endpoint type with it
+     * associated configuration.
      *
      * @param bufferSize Events queue buffer size.
      */
-    explicit EngineServer(const std::vector<std::string> & config, size_t bufferSize = DEFAULT_BUFFER_SIZE);
+    explicit EngineServer(const std::vector<std::string> &config,
+                          size_t bufferSize = DEFAULT_BUFFER_SIZE);
 
     /**
      * @brief Start server.
@@ -82,7 +91,7 @@ public:
      *
      * @return const moodycamel::BlockingConcurrentQueue&
      */
-    moodycamel::BlockingConcurrentQueue<std::string> & output();
+    moodycamel::BlockingConcurrentQueue<std::string> &output();
 };
 
 } // namespace engineserver
