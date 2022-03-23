@@ -1680,7 +1680,7 @@ void Syscollector::push(const std::string& data)
 
     if (!m_stopping)
     {
-        if (0 == data.compare("syscollector_run"))
+        if (0 == data.compare("syscollector_scan start"))
         {
             std::thread worker([this] { runOnDemandScan(); });
             worker.detach();

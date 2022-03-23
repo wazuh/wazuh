@@ -1879,7 +1879,7 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
 TEST_F(SyscollectorImpTest, scanOnDemandOk)
 {
     // The command triggers a scan when scanOnStart is false and the interval time didn't expire
-    constexpr auto messageToPush{R"(syscollector_run)"};
+    constexpr auto messageToPush{R"(syscollector_scan start)"};
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                       R"({"board_serial":"Intel Corporation","scan_time":"2020/12/28 21:49:50", "cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":2257872,"ram_total":4972208,"ram_usage":54})")));
@@ -1927,7 +1927,7 @@ TEST_F(SyscollectorImpTest, scanOnDemandOk)
 TEST_F(SyscollectorImpTest, scanOnDemandOk2)
 {
     // Only one scan runs, even when sleep time is enough for interval to expire
-    constexpr auto messageToPush{R"(syscollector_run)"};
+    constexpr auto messageToPush{R"(syscollector_scan start)"};
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware())
     .Times(1)
@@ -1957,7 +1957,7 @@ TEST_F(SyscollectorImpTest, scanOnDemandOk2)
     };
     std::this_thread::sleep_for(std::chrono::seconds{3});
     Syscollector::instance().push(messageToPush);
-    std::this_thread::sleep_for(std::chrono::seconds{4});
+    std::this_thread::sleep_for(std::chrono::seconds{3});
     Syscollector::instance().destroy();
 
     if (t.joinable())
@@ -1969,7 +1969,7 @@ TEST_F(SyscollectorImpTest, scanOnDemandOk2)
 TEST_F(SyscollectorImpTest, scanOnDemandOk3)
 {
     // The scan runs only twice, even when the sleep time is enough for the interval to expire more than once
-    constexpr auto messageToPush{R"(syscollector_run)"};
+    constexpr auto messageToPush{R"(syscollector_scan start)"};
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware())
     .Times(2)
@@ -1999,7 +1999,7 @@ TEST_F(SyscollectorImpTest, scanOnDemandOk3)
     };
     std::this_thread::sleep_for(std::chrono::seconds{3});
     Syscollector::instance().push(messageToPush);
-    std::this_thread::sleep_for(std::chrono::seconds{9});
+    std::this_thread::sleep_for(std::chrono::seconds{8});
     Syscollector::instance().destroy();
 
     if (t.joinable())
