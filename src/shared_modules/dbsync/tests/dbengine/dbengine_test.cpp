@@ -469,7 +469,9 @@ TEST_F(DBEngineTest, GetRowsToBeDeletedByStatusFieldNoMetadata)
                 createStatement(_, "PRAGMA table_info(dummy);"))
     .WillOnce(Return(ByMove(std::move(mockStatement_2))));
 
-    EXPECT_THROW(spEngine->returnRowsMarkedForDelete({"dummy"}, nullptr), dbengine_error);
+    std::shared_timed_mutex mutex;
+    std::unique_lock<std::shared_timed_mutex> lock(mutex);
+    EXPECT_THROW(spEngine->returnRowsMarkedForDelete({"dummy"}, nullptr, {}, lock), dbengine_error);
 }
 
 TEST_F(DBEngineTest, GetRowsToBeDeletedByStatusField)
@@ -560,7 +562,9 @@ TEST_F(DBEngineTest, GetRowsToBeDeletedByStatusField)
                 createStatement(_, "SELECT PID FROM dummy WHERE db_status_field_dm=0;"))
     .WillOnce(Return(ByMove(std::move(mockStatement_3))));
 
-    EXPECT_NO_THROW(spEngine->returnRowsMarkedForDelete({"dummy"}, [](ReturnTypeCallback, const nlohmann::json&) {}));
+    std::shared_timed_mutex mutex;
+    std::unique_lock<std::shared_timed_mutex> lock(mutex);
+    EXPECT_NO_THROW(spEngine->returnRowsMarkedForDelete({"dummy"}, [](ReturnTypeCallback, const nlohmann::json&) {}, {}, lock));
 }
 
 TEST_F(DBEngineTest, syncTableRowDataWithoutMetadataShouldThrow)
@@ -569,7 +573,7 @@ TEST_F(DBEngineTest, syncTableRowDataWithoutMetadataShouldThrow)
     initNoMetaDataMocks(spEngine);
 
     // Due to the no metadata this should throw
-    EXPECT_THROW(spEngine->syncTableRowData({{"table", "dummy"}, {"data", {}}}, nullptr, false), dbengine_error);
+    EXPECT_THROW(spEngine->syncTableRowData({{"table", "dummy"}, {"data", {}}}, nullptr, false, [] {}), dbengine_error);
 }
 
 TEST_F(DBEngineTest, deleteTableRowsDataWithoutMetadataShouldThrow)
@@ -587,7 +591,9 @@ TEST_F(DBEngineTest, selectDataWithoutMetadataShouldThrow)
     initNoMetaDataMocks(spEngine);
 
     // Due to the no metadata this should throw
-    EXPECT_THROW(spEngine->selectData("dummy", {}, nullptr), dbengine_error);
+    std::shared_timed_mutex mutex;
+    std::unique_lock<std::shared_timed_mutex> lock(mutex);
+    EXPECT_THROW(spEngine->selectData("dummy", {}, nullptr, lock), dbengine_error);
 }
 
 TEST_F(DBEngineTest, bulkInsertWithoutMetadataShouldThrow)

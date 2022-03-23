@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 #include <functional>
+#include <shared_mutex>
 #include "json.hpp"
 #include "commonDefs.h"
 
@@ -35,11 +36,13 @@ namespace DbSync
                                     const bool inTransaction = true) = 0;
 
             virtual void refreshTableData(const nlohmann::json& data,
-                                          const ResultCallback callback) = 0;
+                                          const ResultCallback callback,
+                                          std::unique_lock<std::shared_timed_mutex>& lock) = 0;
 
             virtual void syncTableRowData(const nlohmann::json& jsInput,
                                           const ResultCallback callback,
-                                          const bool inTransaction = false) = 0;
+                                          const bool inTransaction,
+                                          std::function<void()> unlockMutex) = 0;
 
             virtual void setMaxRows(const std::string& table,
                                     const unsigned long long maxRows) = 0;
@@ -50,11 +53,13 @@ namespace DbSync
 
             virtual void returnRowsMarkedForDelete(const nlohmann::json& tableNames,
                                                    const DbSync::ResultCallback callback,
-                                                   const nlohmann::json& options = {}) = 0;
+                                                   const nlohmann::json& options,
+                                                   std::unique_lock<std::shared_timed_mutex>& lock) = 0;
 
             virtual void selectData(const std::string& table,
                                     const nlohmann::json& query,
-                                    const ResultCallback& callback) = 0;
+                                    const ResultCallback& callback,
+                                    std::unique_lock<std::shared_timed_mutex>& lock) = 0;
 
             virtual void deleteTableRowsData(const std::string& table,
                                              const nlohmann::json& jsDeletionData) = 0;

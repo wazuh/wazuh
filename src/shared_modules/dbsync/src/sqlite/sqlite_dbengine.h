@@ -121,11 +121,13 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
                         const bool inTransaction = true) override;
 
         void refreshTableData(const nlohmann::json& data,
-                              const DbSync::ResultCallback callback) override;
+                              const DbSync::ResultCallback callback,
+                              std::unique_lock<std::shared_timed_mutex>& lock) override;
 
         void syncTableRowData(const nlohmann::json& jsInput,
                               const DbSync::ResultCallback callback,
-                              const bool inTransaction = false) override;
+                              const bool inTransaction,
+                              std::function<void()> unlockMutex) override;
 
         void setMaxRows(const std::string& table,
                         const unsigned long long maxRows) override;
@@ -136,11 +138,13 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
 
         void returnRowsMarkedForDelete(const nlohmann::json& tableNames,
                                        const DbSync::ResultCallback callback,
-                                       const nlohmann::json& options = {}) override;
+                                       const nlohmann::json& options,
+                                       std::unique_lock<std::shared_timed_mutex>& lock) override;
 
         void selectData(const std::string& table,
                         const nlohmann::json& query,
-                        const DbSync::ResultCallback& callback) override;
+                        const DbSync::ResultCallback& callback,
+                        std::unique_lock<std::shared_timed_mutex>& lock) override;
 
         void deleteTableRowsData(const std::string& table,
                                  const nlohmann::json& jsDeletionData) override;
@@ -183,7 +187,8 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
 
         bool removeNotExistsRows(const std::string& table,
                                  const std::vector<std::string>& primaryKeyList,
-                                 const DbSync::ResultCallback callback);
+                                 const DbSync::ResultCallback callback,
+                                 std::unique_lock<std::shared_timed_mutex>& lock);
 
         bool getRowDiff(const std::vector<std::string>& primaryKeyList,
                         const nlohmann::json& ignoredColumns,
@@ -194,7 +199,8 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
 
         bool insertNewRows(const std::string& table,
                            const std::vector<std::string>& primaryKeyList,
-                           const DbSync::ResultCallback callback);
+                           const DbSync::ResultCallback callback,
+                           std::unique_lock<std::shared_timed_mutex>& lock);
 
         bool deleteRows(const std::string& table,
                         const std::vector<std::string>& primaryKeyList,
@@ -243,7 +249,8 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
 
         int changeModifiedRows(const std::string& table,
                                const std::vector<std::string>& primaryKeyList,
-                               const DbSync::ResultCallback callback);
+                               const DbSync::ResultCallback callback,
+                               std::unique_lock<std::shared_timed_mutex>& lock);
 
         std::string buildSelectMatchingPKsSqlQuery(const std::string& table,
                                                    const std::vector<std::string>& primaryKeyList);
