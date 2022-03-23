@@ -7,17 +7,16 @@
  * Foundation.
  */
 
+#include "udpEndpoint.hpp"
+
 #include <cstring>
-#include <glog/logging.h>
 #include <iostream>
 #include <mutex>
 #include <stdexcept>
 
-#include "protocolHandler.hpp"
-#include "udpEndpoint.hpp"
+#include <logging/logging.hpp>
 
-using std::endl;
-using std::string;
+#include "protocolHandler.hpp"
 
 using uvw::ErrorEvent;
 using uvw::Loop;
@@ -27,8 +26,10 @@ using uvw::UDPHandle;
 namespace engineserver::endpoints
 {
 
-UDPEndpoint::UDPEndpoint(const string & config, ServerOutput & eventBuffer)
-    : BaseEndpoint{config, eventBuffer}, m_loop{Loop::getDefault()}, m_handle{m_loop->resource<UDPHandle>()}
+UDPEndpoint::UDPEndpoint(const std::string &config, ServerOutput &eventBuffer)
+    : BaseEndpoint {config, eventBuffer}
+    , m_loop {Loop::getDefault()}
+    , m_handle {m_loop->resource<UDPHandle>()}
 {
     auto pos = config.find(":");
     m_ip = config.substr(0, pos);
@@ -37,45 +38,50 @@ UDPEndpoint::UDPEndpoint(const string & config, ServerOutput & eventBuffer)
     auto protocolHandler = std::make_shared<ProtocolHandler>();
 
     m_handle->on<ErrorEvent>(
-        [](const ErrorEvent & event, UDPHandle & handle)
+        [](const ErrorEvent &event, UDPHandle &handle)
         {
-            LOG(ERROR) << "UDP Server (" << handle.sock().ip.c_str() << ":" << handle.sock().port
-                       << ") error: code=" << event.code() << "; name=" << event.name() << "; message=" << event.what()
-                       << endl;
+            WAZUH_LOG_ERROR("UDP ErrorEvent: endpoint[{}:{}] error: code=[{}]; "
+                            "name=[{}]; message=[{}]",
+                            handle.sock().ip,
+                            handle.sock().port,
+                            event.code(),
+                            event.name(),
+                            event.what());
         });
 
     m_handle->on<UDPDataEvent>(
-        [this, protocolHandler](const UDPDataEvent & event, UDPHandle & handle)
+        [this, protocolHandler](const UDPDataEvent &event, UDPHandle &handle)
         {
             auto client = handle.loop().resource<UDPHandle>();
 
             client->on<ErrorEvent>(
-                [](const ErrorEvent & event, UDPHandle & client)
+                [](const ErrorEvent &event, UDPHandle &client)
                 {
-                    LOG(ERROR) << "UDP Client (" << client.peer().ip.c_str() << ":" << client.peer().port
-                               << ") error: code=" << event.code() << "; name=" << event.name()
-                               << "; message=" << event.what() << endl;
+                    WAZUH_LOG_ERROR(
+                        "UDP ErrorEvent: endpoint[{}:{}] error: code=[{}]; "
+                        "name=[{}]; message=[{}]",
+                        client.peer().ip,
+                        client.peer().port,
+                        event.code(),
+                        event.name(),
+                        event.what());
                 });
 
-            try
+            const auto result =
+                protocolHandler->process(event.data.get(), event.length);
+
+            if (result)
             {
-                const auto result = protocolHandler->process(event.data.get(), event.length);
+                const auto events = result.value().data();
 
-                if (result)
-                {
-                    const auto events = result.value().data();
-
-                    while (!this->m_out.try_enqueue_bulk(events, result.value().size()))
-                        ;
-                }
-                else
-                {
-                    LOG(ERROR) << "UDP DataEvent: Error processing data" << endl;
-                }
+                while (!m_out.try_enqueue_bulk(events, result.value().size()))
+                    ;
             }
-            catch (const std::exception & e)
+            else
             {
-                LOG(ERROR) << e.what() << '\n';
+                WAZUH_LOG_ERROR("UDP DataEvent: endpoint[{}] error: Data could "
+                                "not be processed.",
+                                m_path);
             }
         });
 }
@@ -89,9 +95,12 @@ void UDPEndpoint::run(void)
 
 void UDPEndpoint::close(void)
 {
-    m_loop->stop();                                                 /// Stops the loop
-    m_loop->walk([](uvw::BaseHandle & handle) { handle.close(); }); /// Triggers every handle's close callback
-    m_loop->run(); /// Runs the loop again, so every handle is able to receive its close callback
+    m_loop->stop(); /// Stops the loop
+    m_loop->walk(
+        [](uvw::BaseHandle &handle)
+        { handle.close(); }); /// Triggers every handle's close callback
+    m_loop->run(); /// Runs the loop again, so every handle is able to receive
+                   /// its close callback
     m_loop->clear();
     m_loop->close();
 }

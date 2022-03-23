@@ -7,8 +7,8 @@
  * Foundation.
  */
 
-#ifndef _DATAGRAM_SOCKET_ENDPOINT_H_
-#define _DATAGRAM_SOCKET_ENDPOINT_H_
+#ifndef _DATAGRAM_SOCKET_ENDPOINT_H
+#define _DATAGRAM_SOCKET_ENDPOINT_H
 
 #include <uvw/udp.hpp>
 
@@ -40,7 +40,8 @@ public:
      * @param path (std::string) Absolute path to the datagram socket.
      * @param eventBuffer (ServerOutput) Reference to the event queue.
      */
-    explicit DatagramSocketEndpoint(const std::string & path, ServerOutput & eventBuffer);
+    explicit DatagramSocketEndpoint(const std::string &path,
+                                    ServerOutput &eventBuffer);
     ~DatagramSocketEndpoint();
 
     void run(void);
@@ -50,4 +51,4 @@ public:
 
 } // namespace engineserver::endpoints
 
-#endif // _DATAGRAM_SOCKET_ENDPOINT_H_
+#endif // _DATAGRAM_SOCKET_ENDPOINT_H

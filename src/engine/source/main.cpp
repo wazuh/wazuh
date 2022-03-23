@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015-2022, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -13,6 +13,11 @@
 #include <thread>
 #include <vector>
 
+#include <logging/logging.hpp>
+#include <profile/profile.hpp>
+
+#include "builder.hpp"
+#include "catalog.hpp"
 #include "catalog/storageDriver/disk/diskStorage.hpp"
 #include "cliParser.hpp"
 #include "engineServer.hpp"
@@ -21,10 +26,6 @@
 #include "protocolHandler.hpp"
 #include "register.hpp"
 #include "router.hpp"
-#include <builder.hpp>
-#include <catalog.hpp>
-#include <logging/logging.hpp>
-#include <profile/profile.hpp>
 
 #define WAIT_DEQUEUE_TIMEOUT_USEC (1 * 1000000)
 

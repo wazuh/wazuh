@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015-2022, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -10,7 +10,6 @@
 #ifndef _BASE_ENDPOINT_H
 #define _BASE_ENDPOINT_H
 
-#include <blockingconcurrentqueue.h>
 #include <string>
 
 #include <blockingconcurrentqueue.h>
@@ -23,34 +22,39 @@ namespace engineserver::endpoints
 {
 
 /**
- * @brief Endpoint base interfaz that exposes functionality required by EngineServer
+ * @brief Endpoint base interfaz that exposes functionality required by
+ * EngineServer
  *
  */
 class BaseEndpoint
 {
 protected:
-    // TODO: here the responsabilities are compromised. Endpoints should not know what is the server's output
+    // TODO: here the responsabilities are compromised. Endpoints should not
+    // know what is the server's output
     // TODO: maybe we should embbed a queue on each endpoint
     using ServerOutput = moodycamel::BlockingConcurrentQueue<std::string>;
 
     std::string m_path;
-    ServerOutput & m_out;
+    ServerOutput &m_out;
 
-    BaseEndpoint(const std::string & path, ServerOutput & out) : m_path{path}, m_out{out} {};
+    BaseEndpoint(const std::string &path, ServerOutput &out)
+        : m_path {path}
+        , m_out {out} {};
 
 public:
     /**
-     * @brief Destroy the Base Endpoint object, made virtual to destroy children classes.
+     * @brief Destroy the Base Endpoint object, made virtual to destroy children
+     * classes.
      *
      */
-    virtual ~BaseEndpoint(){};
+    virtual ~BaseEndpoint() {};
 
     /**
      * @brief Get the Observable object
      *
      * @return auto Observable object
      */
-    const ServerOutput & output(void) const
+    const ServerOutput &output(void) const
     {
         return this->m_out;
     };

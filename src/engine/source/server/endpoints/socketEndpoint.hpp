@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015-2022, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -6,6 +6,9 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+
+/* TODO: This endpoint should be reworked to be supported by the server, at the
+ * end, the code should be similar to the TCP endpoint */
 
 #ifndef _SOCKET_ENDPOINT_H
 #define _SOCKET_ENDPOINT_H
@@ -35,14 +38,15 @@ private:
     std::shared_ptr<uvw::PipeHandle> m_server;
 
     /**
-     * @brief This function handles connections and returns a connection observable that
-     *  emits event observables.
+     * @brief This function handles connections and returns a connection
+     * observable that emits event observables.
      *
      * @param event
      * @param srv
      * @return BaseEndpoint::ConnectionObs
      */
-    BaseEndpoint::ConnectionObs connection(const uvw::ListenEvent & event, uvw::PipeHandle & srv);
+    BaseEndpoint::ConnectionObs connection(const uvw::ListenEvent &event,
+                                           uvw::PipeHandle &srv);
 
 public:
     /**
@@ -50,7 +54,7 @@ public:
      *
      * @param config string with path to socket.
      */
-    explicit SocketEndpoint(const std::string & config);
+    explicit SocketEndpoint(const std::string &config);
     ~SocketEndpoint();
 
     void run(void);

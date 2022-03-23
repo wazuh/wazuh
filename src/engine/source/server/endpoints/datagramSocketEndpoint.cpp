@@ -7,9 +7,10 @@
  * Foundation.
  */
 
+#include "datagramSocketEndpoint.hpp"
+
 #include <cstring>
 #include <fcntl.h>
-#include <glog/logging.h>
 #include <iostream>
 #include <stdexcept>
 #include <sys/socket.h>
@@ -17,11 +18,9 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-#include "datagramSocketEndpoint.hpp"
-#include "protocolHandler.hpp"
+#include <logging/logging.hpp>
 
-using std::endl;
-using std::string;
+#include "protocolHandler.hpp"
 
 using uvw::ErrorEvent;
 using uvw::Loop;
@@ -38,20 +37,17 @@ namespace engineserver::endpoints
  * @todo The code was extracted from the Wazuh source, so it must be adapted
  * when the engine is integrated to the rest of the Wazuh code to avoid
  * code duplicity.
- * @param path (const char *) Contains the absolute path to the unix datagram socket
+ * @param path (const char *) Contains the absolute path to the unix datagram
+ * socket
  * @return (int) Returns either the file descriptor value or -1
  */
-static inline int OS_BindUnixDomain(const char * path)
+static inline int OS_BindUnixDomain(const char *path)
 {
     struct sockaddr_un n_us;
     int socketFd = 0;
 
-    /*
-       From the man pages:
-        unlink() deletes a name from the filesystem.  If that name was the last
-       link to a file and no processes have the file open, the file is deleted
-       and the space it was  using  is  made available for reuse.
-    */
+    /* TODO: Check the unlink's parameter before unlinking it (to be sure that
+     * it is a socket and not a regular file) */
     unlink(path);
 
     memset(&n_us, 0, sizeof(n_us));
@@ -63,7 +59,7 @@ static inline int OS_BindUnixDomain(const char * path)
         return -1;
     }
 
-    if (bind(socketFd, (struct sockaddr *) &n_us, SUN_LEN(&n_us)) < 0)
+    if (bind(socketFd, (struct sockaddr *)&n_us, SUN_LEN(&n_us)) < 0)
     {
         close(socketFd);
         return -1;
@@ -80,7 +76,8 @@ static inline int OS_BindUnixDomain(const char * path)
     socklen_t optlen = sizeof(len);
 
     /* Get current maximum size */
-    if (getsockopt(socketFd, SOL_SOCKET, SO_RCVBUF, (void *) &len, &optlen) == -1)
+    if (getsockopt(socketFd, SOL_SOCKET, SO_RCVBUF, (void *)&len, &optlen) ==
+        -1)
     {
         len = 0;
     }
@@ -89,7 +86,9 @@ static inline int OS_BindUnixDomain(const char * path)
     if (len < MAX_MSG_SIZE)
     {
         len = MAX_MSG_SIZE;
-        if (setsockopt(socketFd, SOL_SOCKET, SO_RCVBUF, (const void *) &len, optlen) < 0)
+        if (setsockopt(
+                socketFd, SOL_SOCKET, SO_RCVBUF, (const void *)&len, optlen) <
+            0)
         {
             close(socketFd);
             return -1;
@@ -99,57 +98,68 @@ static inline int OS_BindUnixDomain(const char * path)
     // Set close-on-exec
     if (fcntl(socketFd, F_SETFD, FD_CLOEXEC) == -1)
     {
-        LOG(ERROR) << "Cannot set close-on-exec flag to socket: %s (%d)" << strerror(errno) << errno << endl;
+        WAZUH_LOG_ERROR("Cannot set close-on-exec flag to socket: {} ({})",
+                        strerror(errno),
+                        errno);
     }
 
     return (socketFd);
 }
 
-DatagramSocketEndpoint::DatagramSocketEndpoint(const string & path, ServerOutput & eventBuffer)
-    : BaseEndpoint{path, eventBuffer}, m_loop{Loop::getDefault()}, m_handle{m_loop->resource<DatagramSocketHandle>()}
+DatagramSocketEndpoint::DatagramSocketEndpoint(const std::string &path,
+                                               ServerOutput &eventBuffer)
+    : BaseEndpoint {path, eventBuffer}
+    , m_loop {Loop::getDefault()}
+    , m_handle {m_loop->resource<DatagramSocketHandle>()}
 {
     auto protocolHandler = std::make_shared<ProtocolHandler>();
 
     m_handle->on<ErrorEvent>(
-        [](const ErrorEvent & event, DatagramSocketHandle & datagramSocketHandle)
+        [this](const ErrorEvent &event,
+               DatagramSocketHandle &datagramSocketHandle)
         {
-            LOG(ERROR) << "Datagram Socket Server (" << datagramSocketHandle.sock().ip.c_str() << ":"
-                       << datagramSocketHandle.sock().port << ") error: code=" << event.code()
-                       << "; name=" << event.name() << "; message=" << event.what() << endl;
+            WAZUH_LOG_ERROR(
+                "Datagram Socket ErrorEvent: endpoint[{}] error: code=[{}]; "
+                "name=[{}]; message=[{}]",
+                m_path,
+                event.code(),
+                event.name(),
+                event.what());
         });
 
     m_handle->on<DatagramSocketEvent>(
-        [this, protocolHandler](const DatagramSocketEvent & event, DatagramSocketHandle & handle)
+        [this, protocolHandler](const DatagramSocketEvent &event,
+                                DatagramSocketHandle &handle)
         {
             auto client = handle.loop().resource<DatagramSocketHandle>();
 
             client->on<ErrorEvent>(
-                [](const ErrorEvent & event, DatagramSocketHandle & client)
+                [this](const ErrorEvent &event, DatagramSocketHandle &client)
                 {
-                    LOG(ERROR) << "Datagram Socket Client (" << client.peer().ip.c_str() << ":" << client.peer().port
-                               << ") error: code=" << event.code() << "; name=" << event.name()
-                               << "; message=" << event.what() << endl;
+                    WAZUH_LOG_ERROR("Datagram Socket ErrorEvent: endpoint[{}] "
+                                    "error: code=[{}]; "
+                                    "name=[{}]; message=[{}]",
+                                    m_path,
+                                    event.code(),
+                                    event.name(),
+                                    event.what());
                 });
 
-            try
+            const auto result =
+                protocolHandler->process(event.data.get(), event.length);
+
+            if (result)
             {
-                const auto result = protocolHandler->process(event.data.get(), event.length);
+                const auto events = result.value().data();
 
-                if (result)
-                {
-                    const auto events = result.value().data();
-
-                    while (!this->m_out.try_enqueue_bulk(events, result.value().size()))
-                        ;
-                }
-                else
-                {
-                    LOG(ERROR) << "Datagram Socket DataEvent: Error processing data" << endl;
-                }
+                while (!m_out.try_enqueue_bulk(events, result.value().size()))
+                    ;
             }
-            catch (const std::exception & e)
+            else
             {
-                LOG(ERROR) << e.what() << '\n';
+                WAZUH_LOG_ERROR("Datagram Socket DataEvent: endpoint[{}] "
+                                "error: Data could not be processed.",
+                                m_path);
             }
         });
 
@@ -157,7 +167,10 @@ DatagramSocketEndpoint::DatagramSocketEndpoint(const string & path, ServerOutput
 
     if (m_socketFd <= 0)
     {
-        LOG(ERROR) << "Error while opening socket: %s (%d)." << strerror(errno) << errno << endl;
+        WAZUH_LOG_ERROR("Error while opening Datagram Socket ({}): {} ({})",
+                        m_path,
+                        strerror(errno),
+                        errno);
     }
 }
 
@@ -171,15 +184,21 @@ void DatagramSocketEndpoint::run(void)
     }
     else
     {
-        LOG(ERROR) << "Socket's file descriptor is invalid: FD=" << m_socketFd << "." << endl;
+        WAZUH_LOG_ERROR(
+            "Datagram Socket ({}) file descriptor is invalid: FD={}.",
+            m_path,
+            m_socketFd);
     }
 }
 
 void DatagramSocketEndpoint::close(void)
 {
-    m_loop->stop();                                                 /// Stops the loop
-    m_loop->walk([](uvw::BaseHandle & handle) { handle.close(); }); /// Triggers every handle's close callback
-    m_loop->run(); /// Runs the loop again, so every handle is able to receive its close callback
+    m_loop->stop(); /// Stops the loop
+    m_loop->walk(
+        [](uvw::BaseHandle &handle)
+        { handle.close(); }); /// Triggers every handle's close callback
+    m_loop->run(); /// Runs the loop again, so every handle is able to receive
+                   /// its close callback
     m_loop->clear();
     m_loop->close();
 }
