@@ -32,7 +32,7 @@ private:
     std::shared_ptr<uvw::Loop> m_loop;
     std::shared_ptr<uvw::TCPHandle> m_handle;
 
-    void connectionHandler(uvw::TCPHandle & handle);
+    void connectionHandler(uvw::TCPHandle &handle);
 
 public:
     /**
@@ -41,7 +41,7 @@ public:
      * @param config
      * @param eventBuffer
      */
-    explicit TCPEndpoint(const std::string & config, ServerOutput & eventBuffer);
+    explicit TCPEndpoint(const std::string &config, ServerOutput &eventBuffer);
     ~TCPEndpoint();
 
     void run() override;

@@ -37,7 +37,7 @@ public:
      *
      * @param config <ip>:<port> string with allowed ip mask and port to listen.
      */
-    explicit UDPEndpoint(const std::string & config, ServerOutput & eventBuffer);
+    explicit UDPEndpoint(const std::string &config, ServerOutput &eventBuffer);
     ~UDPEndpoint();
 
     void run(void);

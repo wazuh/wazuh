@@ -24,8 +24,8 @@ class ProtocolHandler
 {
 private:
     std::vector<char> m_buff;
-    int m_pending{0};
-    int m_stage{0};
+    int m_pending {0};
+    int m_stage {0};
 
     /**
      * @brief Update pending value and return true if we have enough data
@@ -42,20 +42,21 @@ public:
      *
      * @return json::Document
      */
-    static std::shared_ptr<json::Document> parse(const std::string & event);
+    static std::shared_ptr<json::Document> parse(const std::string &event);
 
     /**
      * @brief process the chunk of data and send messages to dst when. Return
      * true if all data was processed correctly, or false in case of error.
      * The error will be send to the dst.
      *
-     * @param data
-     * @param length
+     * @param data Array of chars containing the event data
+     * @param length Size of the data array
      * @param dst destination subscriber
      * @return true and vector of strings if no errors
      * @return false if errors in processing
      */
-    std::optional<std::vector<std::string>> process(const char * data, const size_t length);
+    std::optional<std::vector<std::string>> process(const char *data,
+                                                    const size_t length);
 };
 
 } // namespace engineserver
