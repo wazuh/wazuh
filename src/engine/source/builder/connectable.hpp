@@ -10,9 +10,11 @@
 #ifndef _CONNECTABLE_H
 #define _CONNECTABLE_H
 
-#include "json.hpp"
-#include <rxcpp/rx.hpp>
 #include <set>
+
+#include <rxcpp/rx.hpp>
+
+#include "json.hpp"
 
 namespace builder::internals
 {
@@ -61,7 +63,10 @@ struct Connectable
      * @param p vector of parents names
      * @param o the operation this connectable must do to the input stream.
      */
-    Connectable(std::string n, std::vector<std::string> p, Op_t o) : m_op(o), m_name(n), m_parents(p.begin(), p.end())
+    Connectable(std::string n, std::vector<std::string> p, Op_t o)
+        : m_op(o)
+        , m_name(n)
+        , m_parents(p.begin(), p.end())
     {
     }
 
@@ -77,11 +82,17 @@ struct Connectable
     {
         if (n.find("OUTPUT_") == std::string::npos)
         {
-            m_op = [](Observable o) { return o; };
+            m_op = [](Observable o)
+            {
+                return o;
+            };
         }
         else
         {
-            m_op = [](Observable o) { return o.distinct_until_changed(); };
+            m_op = [](Observable o)
+            {
+                return o.distinct_until_changed();
+            };
         }
     };
 
@@ -89,7 +100,8 @@ struct Connectable
      * @brief Default constructor, needed my map
      *
      */
-    Connectable() : Connectable{"not_initialized"}
+    Connectable()
+        : Connectable {"not_initialized"}
     {
     }
 
@@ -117,7 +129,7 @@ struct Connectable
 
     /**
      * @brief Merge all inputs of this node into a single stream and return
-     * an obserbable with the operation already attached.
+     * an observable with the operation already attached.
      *
      * @return Observable
      */

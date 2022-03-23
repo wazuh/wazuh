@@ -24,7 +24,8 @@ class Graph
 {
 public:
     /**
-     * @brief Map of connectables, with connectable name as key and connectable as value
+     * @brief Map of connectables, with connectable name as key and connectable
+     * as value
      *
      */
     std::map<std::string, types::ConnectableT> m_nodes;
@@ -45,11 +46,13 @@ public:
     {
         if (m_nodes.count(conn.m_name) != 0)
         {
-            throw std::invalid_argument("Connectable " + conn.m_name + " is already in the graph");
+            throw std::invalid_argument("Connectable " + conn.m_name +
+                                        " is already in the graph");
         }
         if (m_edges.count(conn.m_name) != 0)
         {
-            throw std::invalid_argument("Connectable " + conn.m_name + " is already in the graph edges");
+            throw std::invalid_argument("Connectable " + conn.m_name +
+                                        " is already in the graph edges");
         }
 
         m_nodes[conn.m_name] = conn;
@@ -58,9 +61,9 @@ public:
 
     /**
      * @brief Adds all edges described by Connectable's parents and stablishes
-     * input and output of the graph, all connectables that don't have parents are
-     * connected to root, all connectables that don't have childs are connected to
-     * end.
+     * input and output of the graph, all connectables that don't have parents
+     * are connected to root, all connectables that don't have childs are
+     * connected to end.
      *
      * @param root Name of connectable root for this graph
      * @param end  Name of output connectable for this graph
@@ -69,7 +72,7 @@ public:
     {
         addNode(types::ConnectableT(root));
         addNode(types::ConnectableT(end));
-        for (auto & node : m_nodes)
+        for (auto &node : m_nodes)
         {
             if (node.first == root || node.first == end)
                 continue;
@@ -81,7 +84,7 @@ public:
             }
             else
             {
-                for (auto & parent : node.second.m_parents)
+                for (auto &parent : node.second.m_parents)
                 {
                     addEdge(parent, node.first);
                 }
@@ -89,7 +92,7 @@ public:
         }
 
         // Add leaves to end
-        for (auto & edge : m_edges)
+        for (auto &edge : m_edges)
         {
             if (edge.first == root || edge.first == end)
                 continue;
@@ -103,7 +106,8 @@ public:
     }
 
     /**
-     * @brief Joins other graph under this graph, concretly `otherInputNode` under `thisOutputNode`.
+     * @brief Joins other graph under this graph, concretly `otherInputNode`
+     * under `thisOutputNode`.
      *
      * Does not modify neither graph, returns a new one.
      *
@@ -112,25 +116,29 @@ public:
      * @param otherInputNode
      * @return Graph
      */
-    Graph join(const Graph & other, std::string thisOutputNode, std::string otherInputNode) const
+    Graph join(const Graph &other,
+               std::string thisOutputNode,
+               std::string otherInputNode) const
     {
         if (m_nodes.count(thisOutputNode) == 0)
         {
-            throw std::invalid_argument("Connectable " + thisOutputNode + " is not in the graph");
+            throw std::invalid_argument("Connectable " + thisOutputNode +
+                                        " is not in the graph");
         }
         if (other.m_nodes.count(otherInputNode) == 0)
         {
-            throw std::invalid_argument("Connectable " + otherInputNode + " is not in the graph to be joined");
+            throw std::invalid_argument("Connectable " + otherInputNode +
+                                        " is not in the graph to be joined");
         }
 
-        // TODO: joining a subgraph that has a node with same name as this graph would lead to
-        // wrong graph structure.
+        // TODO: joining a subgraph that has a node with same name as this graph
+        // would lead to wrong graph structure.
         Graph g;
-        std::map<std::string, types::ConnectableT> auxObs{m_nodes};
+        std::map<std::string, types::ConnectableT> auxObs {m_nodes};
         g.m_nodes.merge(auxObs);
         auxObs = other.m_nodes;
         g.m_nodes.merge(auxObs);
-        std::map<std::string, std::set<std::string>> auxEdges{m_edges};
+        std::map<std::string, std::set<std::string>> auxEdges {m_edges};
         g.m_edges.merge(auxEdges);
         auxEdges = other.m_edges;
         g.m_edges.merge(auxEdges);
@@ -142,25 +150,26 @@ public:
     }
 
     /**
-     * @brief Injects other graph nodes on this graph, edges on other graph are ignored.
+     * @brief Injects other graph nodes on this graph, edges on other graph are
+     * ignored.
      *
      * Does not modify neither graph, returns a new one.
      *
      * @param other
      * @return Graph
      */
-    Graph inject(const Graph & other) const
+    Graph inject(const Graph &other) const
     {
         Graph g;
-        std::map<std::string, types::ConnectableT> auxObs{m_nodes};
+        std::map<std::string, types::ConnectableT> auxObs {m_nodes};
         g.m_nodes.merge(auxObs);
-        std::map<std::string, std::set<std::string>> auxEdges{m_edges};
+        std::map<std::string, std::set<std::string>> auxEdges {m_edges};
         g.m_edges.merge(auxEdges);
 
-        for (auto & node : other.m_nodes)
+        for (auto &node : other.m_nodes)
         {
             g.addNode(node.second);
-            for (auto & p : node.second.m_parents)
+            for (auto &p : node.second.m_parents)
             {
                 g.injectEdge(p, node.first);
             }
@@ -180,16 +189,20 @@ public:
     {
         if (m_nodes.count(a) == 0)
         {
-            throw std::invalid_argument("Connectable " + a + " is not in the graph");
+            throw std::invalid_argument("Connectable " + a +
+                                        " is not in the graph");
         }
         if (m_nodes.count(b) == 0)
         {
-            throw std::invalid_argument("Connectable " + b + " is not in the graph");
+            throw std::invalid_argument("Connectable " + b +
+                                        " is not in the graph");
         }
 
-        for (auto & child : m_edges[a])
+        for (auto &child : m_edges[a])
         {
-            auto it = std::find(m_nodes[child].m_parents.begin(), m_nodes[child].m_parents.end(), a);
+            auto it = std::find(m_nodes[child].m_parents.begin(),
+                                m_nodes[child].m_parents.end(),
+                                a);
             m_nodes[child].m_parents.erase(it);
             m_nodes[child].m_parents.insert(b);
         }
@@ -208,16 +221,19 @@ public:
     {
         if (m_nodes.count(a) == 0)
         {
-            throw std::invalid_argument("Connectable " + a + " is not in the graph");
+            throw std::invalid_argument("Connectable " + a +
+                                        " is not in the graph");
         }
         if (m_nodes.count(b) == 0)
         {
-            throw std::invalid_argument("Connectable " + b + " is not in the graph");
+            throw std::invalid_argument("Connectable " + b +
+                                        " is not in the graph");
         }
 
         if (m_edges[a].count(b) == 0)
         {
-            throw std::invalid_argument("Connectable " + b + " is not child of " + a);
+            throw std::invalid_argument("Connectable " + b +
+                                        " is not child of " + a);
         }
 
         m_edges[a].erase(b);
@@ -233,17 +249,20 @@ public:
     {
         if (m_nodes.count(a) == 0)
         {
-            throw std::invalid_argument("Connectable " + a + " is not in the graph");
+            throw std::invalid_argument("Connectable " + a +
+                                        " is not in the graph");
         }
         if (m_nodes.count(b) == 0)
         {
-            throw std::invalid_argument("Connectable " + b + " is not in the graph");
+            throw std::invalid_argument("Connectable " + b +
+                                        " is not in the graph");
         }
 
         // TODO: Maybe we just try to insert and not throw
         if (!m_edges[a].insert(b).second)
         {
-            throw std::invalid_argument("Connectable " + b + " is already a child of " + a);
+            throw std::invalid_argument("Connectable " + b +
+                                        " is already a child of " + a);
         }
     }
 
@@ -255,7 +274,7 @@ public:
      */
     void visit(std::function<void(types::ConnectableT)> fn)
     {
-        for (auto & n : m_nodes)
+        for (auto &n : m_nodes)
         {
             fn(n.second);
         }
@@ -268,7 +287,7 @@ public:
      */
     void leaves(std::function<void(types::ConnectableT)> fn) const
     {
-        for (auto & n : m_edges)
+        for (auto &n : m_edges)
         {
             if (n.second.size() == 0)
                 fn(n.first);
@@ -285,13 +304,15 @@ public:
     {
         std::stringstream diagraph;
         diagraph << "digraph G {" << std::endl;
-        for (auto & n : m_edges)
+        for (auto &n : m_edges)
         {
             if (n.second.size() > 0)
-                for (auto & c : n.second)
-                    diagraph << "\"" << n.first << "\" -> \"" << c << "\"" << ";" << std::endl;
+                for (auto &c : n.second)
+                    diagraph << "\"" << n.first << "\" -> \"" << c << "\""
+                             << ";" << std::endl;
             else
-                diagraph << "\"" << n.first << "\"" << " -> void;" << std::endl;
+                diagraph << "\"" << n.first << "\""
+                         << " -> void;" << std::endl;
         }
         diagraph << "}" << std::endl;
         return diagraph;
@@ -303,7 +324,7 @@ public:
      * @param node
      * @return types::ConnectableT&
      */
-    types::ConnectableT & operator[](std::string node)
+    types::ConnectableT &operator[](std::string node)
     {
         return m_nodes[node];
     }

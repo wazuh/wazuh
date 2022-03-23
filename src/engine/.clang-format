@@ -30,8 +30,8 @@ SpaceAfterCStyleCast: 'false'
 SpaceAfterLogicalNot: 'false'
 SpaceAfterTemplateKeyword: 'false'
 SpaceBeforeAssignmentOperators: 'true'
-SpaceBeforeParens: 'Never'
 Cpp11BracedListStyle: 'true'
+SpaceBeforeParens: ControlStatements
 SpaceBeforeCpp11BracedList: 'true'
 SpaceBeforeCtorInitializerColon: 'true'
 SpaceBeforeInheritanceColon: 'true'
@@ -42,6 +42,4 @@ IndentWidth: '4'
 TabWidth: '4'
 AccessModifierOffset: '-4'
 UseTab: Never
-SpaceBeforeParens: ControlStatements
-
 ...
