@@ -47,7 +47,8 @@ target_include_directories(builders
     ${ENGINE_SOURCE_DIR}/json
     PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}
+    ${RxCpp_SOURCE_DIR}/Rx/v2/src
 )
 
 #TODO do this better. Also, who 'owns' the rxcpp dep
-target_link_libraries(builders base hlp rxcpp re2)
+target_link_libraries(builders base hlp re2)
