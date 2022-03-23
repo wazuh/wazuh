@@ -26,10 +26,11 @@ include_directories(
   ${BUILDER_TEST_SOURCE_DIR}
   ${ENGINE_SOURCE_DIR}/json
   ${ENGINE_SOURCE_DIR}/graph
+  ${RxCpp_SOURCE_DIR}/Rx/v2/src
 )
 
 #TODO do this better
-link_libraries(gtest_main hlp rxcpp builders)
+link_libraries(gtest_main hlp builders)
 
 ####################################################################################################
 # Builder targets
