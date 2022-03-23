@@ -7,20 +7,14 @@
  * Foundation.
  */
 
-#include <glog/logging.h>
+#include "protocolHandler.hpp"
+
 #include <iostream>
 #include <optional>
 #include <string>
 
-#include "protocolHandler.hpp"
-
 #include <logging/logging.hpp>
 #include <profile/profile.hpp>
-using std::nullopt;
-using std::optional;
-using std::string;
-using std::throw_with_nested;
-using std::vector;
 
 namespace engineserver
 {
@@ -41,11 +35,11 @@ bool ProtocolHandler::hasHeader()
     return false;
 }
 
-std::shared_ptr<json::Document> ProtocolHandler::parse(const std::string & event)
+std::shared_ptr<json::Document> ProtocolHandler::parse(const std::string &event)
 {
     auto doc = std::make_shared<json::Document>();
     doc->m_doc.SetObject();
-    rapidjson::Document::AllocatorType & allocator = doc->getAllocator();
+    rapidjson::Document::AllocatorType &allocator = doc->getAllocator();
 
     auto queuePos = event.find(":");
     try
@@ -56,7 +50,7 @@ std::shared_ptr<json::Document> ProtocolHandler::parse(const std::string & event
     // std::out_of_range and std::invalid_argument
     catch (...)
     {
-        throw_with_nested(std::invalid_argument("Error parsing queue id"));
+        std::throw_with_nested(std::invalid_argument("Error parsing queue id"));
     }
 
     auto locPos = event.find(":", queuePos + 1);
@@ -67,9 +61,10 @@ std::shared_ptr<json::Document> ProtocolHandler::parse(const std::string & event
         loc.SetString(location.c_str(), location.length(), allocator);
         doc->m_doc.AddMember("location", loc, allocator);
     }
-    catch (std::out_of_range & e)
+    catch (std::out_of_range &e)
     {
-        throw_with_nested(("Error parsing location using token sep :" + event));
+        std::throw_with_nested(
+            ("Error parsing location using token sep :" + event));
     }
 
     try
@@ -79,15 +74,17 @@ std::shared_ptr<json::Document> ProtocolHandler::parse(const std::string & event
         msg.SetString(message.c_str(), message.length(), allocator);
         doc->m_doc.AddMember("message", msg, allocator);
     }
-    catch (std::out_of_range & e)
+    catch (std::out_of_range &e)
     {
-        throw_with_nested(("Error parsing location using token sep :" + event));
+        std::throw_with_nested(
+            ("Error parsing location using token sep :" + event));
     }
 
     return doc;
 }
 
-optional<vector<string>> ProtocolHandler::process(const char * data, const size_t length)
+std::optional<std::vector<std::string>>
+ProtocolHandler::process(const char *data, const size_t length)
 {
     std::vector<std::string> events;
 
@@ -108,7 +105,7 @@ optional<vector<string>> ProtocolHandler::process(const char * data, const size_
                 catch (...)
                 {
                     // TODO: improve this try-catch
-                    return nullopt;
+                    return std::nullopt;
                 }
                 break;
 
@@ -121,13 +118,14 @@ optional<vector<string>> ProtocolHandler::process(const char * data, const size_
                     try
                     {
                         // TODO: Are we moving the buffer? we should
-                        events.push_back(std::string(m_buff.begin() + sizeof(int), m_buff.end()));
+                        events.push_back(std::string(
+                            m_buff.begin() + sizeof(int), m_buff.end()));
                         m_buff.clear();
                     }
-                    catch (std::exception & e)
+                    catch (std::exception &e)
                     {
                         WAZUH_LOG_ERROR("{}", e.what());
-                        return nullopt;
+                        return std::nullopt;
                     }
                     m_stage = 0;
                 }
@@ -135,7 +133,7 @@ optional<vector<string>> ProtocolHandler::process(const char * data, const size_
 
             default:
                 WAZUH_LOG_ERROR("Invalid stage value.");
-                return nullopt;
+                return std::nullopt;
         }
     }
 

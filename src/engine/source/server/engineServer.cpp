@@ -7,24 +7,19 @@
  * Foundation.
  */
 
-#include <glog/logging.h>
+#include "engineServer.hpp"
+
 #include <map>
 #include <memory>
-#include <rxcpp/rx.hpp>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
+#include <logging/logging.hpp>
+
 #include "endpoints/datagramSocketEndpoint.hpp"
 #include "endpoints/tcpEndpoint.hpp"
 #include "endpoints/udpEndpoint.hpp"
-#include "engineServer.hpp"
-
-#include <logging/logging.hpp>
-using std::endl;
-using std::make_unique;
-using std::string;
-using std::vector;
 
 using moodycamel::BlockingConcurrentQueue;
 
@@ -33,8 +28,10 @@ using namespace engineserver::endpoints;
 namespace engineserver
 {
 
-EngineServer::EngineServer(const std::vector<std::string> & config, size_t bufferSize)
-    : m_eventBuffer{bufferSize}, m_isConfigured{false}
+EngineServer::EngineServer(const std::vector<std::string> &config,
+                           size_t bufferSize)
+    : m_eventBuffer {bufferSize}
+    , m_isConfigured {false}
 {
     try
     {
@@ -43,36 +40,42 @@ EngineServer::EngineServer(const std::vector<std::string> & config, size_t buffe
             const auto pos = endpointConf.find(":");
 
             m_endpoints[endpointConf] =
-                createEndpoint(endpointConf.substr(0, pos), endpointConf.substr(pos + 1), m_eventBuffer);
+                createEndpoint(endpointConf.substr(0, pos),
+                               endpointConf.substr(pos + 1),
+                               m_eventBuffer);
         }
     }
-    catch (const std::exception & e)
+    catch (const std::exception &e)
     {
-        WAZUH_LOG_ERROR("Exception while creating server configuration: [{}]", e.what());
+        WAZUH_LOG_ERROR("Exception while creating server configuration: [{}]",
+                        e.what());
         return;
     }
 
     m_isConfigured = true;
 }
 
-std::unique_ptr<BaseEndpoint> EngineServer::createEndpoint(const string & type, const string & path,
-                                                           BlockingConcurrentQueue<string> & eventBuffer) const
+std::unique_ptr<BaseEndpoint> EngineServer::createEndpoint(
+    const std::string &type,
+    const std::string &path,
+    BlockingConcurrentQueue<std::string> &eventBuffer) const
 {
     if (type == "tcp")
     {
-        return make_unique<TCPEndpoint>(path, eventBuffer);
+        return std::make_unique<TCPEndpoint>(path, eventBuffer);
     }
     else if (type == "udp")
     {
-        return make_unique<UDPEndpoint>(path, eventBuffer);
+        return std::make_unique<UDPEndpoint>(path, eventBuffer);
     }
     else if (type == "datagramsocket")
     {
-        return make_unique<DatagramSocketEndpoint>(path, eventBuffer);
+        return std::make_unique<DatagramSocketEndpoint>(path, eventBuffer);
     }
     else
     {
-        throw std::runtime_error("Error, endpoint type " + type + " not implemented by factory Endpoint builder");
+        throw std::runtime_error("Error, endpoint type " + type +
+                                 " not implemented.");
     }
 
     return nullptr;
@@ -95,7 +98,7 @@ void EngineServer::close(void)
     }
 }
 
-BlockingConcurrentQueue<string> & EngineServer::output()
+BlockingConcurrentQueue<std::string> &EngineServer::output()
 {
     return m_eventBuffer;
 }
