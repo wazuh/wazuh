@@ -10,6 +10,8 @@
 #ifndef _PROTOCOL_HANDLER_H
 #define _PROTOCOL_HANDLER_H
 
+#include <optional>
+
 #include "json.hpp"
 
 namespace engineserver

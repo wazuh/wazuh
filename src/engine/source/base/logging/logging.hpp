@@ -21,6 +21,7 @@ struct LoggingConfig
     const char *filePath = nullptr;
     const char *header = nullptr;
     LogLevel logLevel = LogLevel::Info;
+    int pollInterval = 5000 /*ns*/;
 };
 
 static inline void loggingInit(LoggingConfig const &cfg)
@@ -29,13 +30,24 @@ static inline void loggingInit(LoggingConfig const &cfg)
     {
         fmtlog::setLogFile(cfg.filePath, false);
     }
+    else
+    {
+        fmtlog::setLogFile(stderr, false);
+    }
 
     if (cfg.header)
     {
         fmtlog::setHeaderPattern(cfg.header);
     }
 
+    fmtlog::startPollingThread(cfg.pollInterval);
+
     fmtlog::setLogLevel(fmtlog::LogLevel(cfg.logLevel));
+}
+
+static inline void loggingTerm()
+{
+    fmtlog::stopPollingThread();
 }
 } // namespace logging
 

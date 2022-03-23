@@ -28,7 +28,7 @@ types::ConnectableT assetBuilderFilter(const types::Document & def)
     if (!def.m_doc.IsObject())
     {
         auto msg = fmt::format("Filter builder expects value to be an object, but got [{}]", def.m_doc.GetType());
-        WAZUH_LOG_ERROR(msg);
+        WAZUH_LOG_ERROR("{}", msg);
         throw std::invalid_argument(msg);
     }
 
@@ -121,7 +121,7 @@ types::ConnectableT assetBuilderFilter(const types::Document & def)
     if (!attributes.empty())
     {
         const char* msg = "Filter builder, json definition contains unproccessed attributes";
-        WAZUH_LOG_ERROR(msg);
+        WAZUH_LOG_ERROR("{}", msg);
         throw std::invalid_argument(msg);
     }
 
