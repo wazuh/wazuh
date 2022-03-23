@@ -6,8 +6,6 @@
 
 #include "rapidjson/document.h"
 #include "rapidjson/pointer.h"
-#include "rxcpp/rx-test.hpp"
-#include "rxcpp/rx.hpp"
 
 #define GTEST_COUT std::cerr << "[          ] [ INFO ] "
 
