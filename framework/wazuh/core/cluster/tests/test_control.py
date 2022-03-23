@@ -17,6 +17,7 @@ with patch('wazuh.common.getgrnam'):
                 from wazuh import WazuhInternalError, WazuhError
 
 
+@pytest.mark.asyncio
 async def async_local_client(command, data, wait_for_complete):
     return None
 

@@ -344,6 +344,7 @@ async def test_async_decompress_files(decompress_files_mock):
     decompress_files_mock.assert_called_once_with(zip_path, 'files_metadata.json')
 
 
+@pytest.mark.asyncio
 @patch('zlib.decompress')
 @patch('os.makedirs')
 @patch('os.path.exists', side_effect=[False, True, True])
@@ -372,6 +373,7 @@ async def test_decompress_files_ok(json_loads_mock, mkdir_with_mode_mock, remove
                                             call('/foo/bar/dir/path2', 'wb'), call('/foo/bar/dir/files_metadata.json')]
 
 
+@pytest.mark.asyncio
 @patch('shutil.rmtree')
 @patch('zlib.decompress', return_value=Exception)
 @patch('wazuh.core.cluster.cluster.mkdir_with_mode')
