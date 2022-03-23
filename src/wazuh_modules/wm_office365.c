@@ -114,6 +114,7 @@ const wm_context WM_OFFICE365_CONTEXT = {
     (wm_routine)(void *)wm_office365_destroy,
     (cJSON * (*)(const void *))wm_office365_dump,
     NULL,
+    NULL,
     NULL
 };
 

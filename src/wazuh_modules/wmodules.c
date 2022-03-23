@@ -94,7 +94,6 @@ int wm_config() {
 }
 
 // Add module to the global list
-
 void wm_add(wmodule *module) {
     wmodule *current;
 
@@ -106,7 +105,6 @@ void wm_add(wmodule *module) {
 }
 
 // Check general configuration
-
 int wm_check() {
     wmodule *i = wmodules;
     wmodule *j;
@@ -174,7 +172,6 @@ void wm_destroy() {
 }
 
 // Load or save the running state
-
 int wm_state_io(const char * tag, int op, void *state, size_t size) {
     char path[PATH_MAX] = { '\0' };
     size_t nmemb;
@@ -259,7 +256,6 @@ void wm_free(wmodule * config) {
     }
 }
 
-
 void wm_module_free(wmodule * config){
     if (config->context && config->context->destroy)
             config->context->destroy(config->data);
@@ -267,7 +263,6 @@ void wm_module_free(wmodule * config){
     free(config->tag);
     free(config);
 }
-
 
 // Get read data
 cJSON *getModulesConfig(void) {
@@ -290,6 +285,16 @@ cJSON *getModulesConfig(void) {
     cJSON_AddItemToObject(root,"wmodules",wm_mod);
 
     return root;
+}
+
+cJSON *run_task(cJSON *data) {
+    wmodule *cur_module = NULL;
+    cJSON *ret = NULL;
+    for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
+        if (strcmp(cur_module->context->name, VU_WM_NAME)) {
+            ret = cur_module->context->run_task(data);
+        }
+    }
 }
 
 // sync data

@@ -72,6 +72,7 @@ const wm_context WM_GITHUB_CONTEXT = {
     (wm_routine)(void *)wm_github_destroy,
     (cJSON * (*)(const void *))wm_github_dump,
     NULL,
+    NULL,
     NULL
 };
 

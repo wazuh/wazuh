@@ -39,6 +39,7 @@ typedef struct wm_context {
     cJSON *(* dump)(const void *);
     int (* sync)(const char*);          // Sync
     wm_routine stop;                    // Module destructor
+    cJSON *(* run_task)(cJSON *);       // Runs tasks on demand
 } wm_context;
 
 // Main module structure

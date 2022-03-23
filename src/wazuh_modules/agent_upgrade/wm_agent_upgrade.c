@@ -44,6 +44,7 @@ const wm_context WM_AGENT_UPGRADE_CONTEXT = {
     (wm_routine)(void *)wm_agent_upgrade_destroy,
     (cJSON * (*)(const void *))wm_agent_upgrade_dump,
     NULL,
+    NULL,
     NULL
 };
 

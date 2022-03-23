@@ -12,20 +12,20 @@
 #include "wmodules.h"
 #include "os_net/os_net.h"
 
-
-size_t wmcom_dispatch(char * command, char ** output){
-
-
-    if (strncmp(command, "getconfig", 9) == 0){
+size_t wmcom_dispatch(char * command, char ** output) {
+    cJSON* message = cJSON_Parse(command);
+    if (message) {
+        return wmcom_parse_request(command, output);
+    } else if (strncmp(command, "getconfig", 9) == 0) {
         char *rcv_comm = command;
         char *rcv_args = NULL;
 
-        if ((rcv_args = strchr(rcv_comm, ' '))){
+        if ((rcv_args = strchr(rcv_comm, ' '))) {
             *rcv_args = '\0';
             rcv_args++;
         }
         // getconfig section
-        if (!rcv_args){
+        if (!rcv_args) {
             mdebug1("WMCOM getconfig needs arguments.");
             os_strdup("err WMCOM getconfig needs arguments", *output);
             return strlen(*output);
@@ -40,8 +40,51 @@ size_t wmcom_dispatch(char * command, char ** output){
     }
 }
 
-size_t wmcom_getconfig(const char * section, char ** output) {
+size_t wmcom_parse_request(const char * command, char ** output) {
+    cJSON *j_message = cJSON_Parse(command);
 
+    cJSON *j_version = cJSON_GetObjectItem(j_message, "version");
+    if (!cJSON_IsNumber(j_version)) {
+        mdebug1("WMCOM Invalid version value '%s'.", command);
+        os_strdup("err Invalid version value", *output);
+        return strlen(*output);
+    }
+    cJSON *j_command = cJSON_GetObjectItem(j_message, "command");
+    if(!cJSON_IsString(j_command)) {
+        mdebug1("WMCOM Invalid command '%s'.", command);
+        os_strdup("err Invalid command", *output);
+        return strlen(*output);
+    }
+    cJSON *j_origin = cJSON_GetObjectItem(j_message, "origin");
+    cJSON *j_origin_name = cJSON_GetObjectItem(j_origin, "name");
+    cJSON *j_origin_module = cJSON_GetObjectItem(j_origin, "module");
+    if(!cJSON_IsString(j_origin_name) || !cJSON_IsString(j_origin_module)) {
+        mdebug1("WMCOM Invalid origin information '%s'.", command);
+        os_strdup("err Invalid origin information", *output);
+        return strlen(*output);
+    }
+    cJSON *j_parameters = cJSON_GetObjectItem(j_message, "parameters");
+    if(!cJSON_IsObject(j_parameters)) {
+        mdebug1("WMCOM Invalid command parameters '%s'.", command);
+        os_strdup("err Invalid command parameters", *output);
+        return strlen(*output);
+    }
+    char *module = cJSON_GetStringValue(cJSON_GetObjectItem(j_parameters, "module"));
+    if (module && strcmp(module, VU_WM_NAME) == 0) {
+        cJSON *response = NULL;
+        if (response = run_task(j_message), response) {
+            os_strdup("ok", *output);
+            char *json_str = cJSON_PrintUnformatted(response);
+            wm_strcat(output, json_str, ' ');
+            free(json_str);
+            cJSON_Delete(response);
+            return strlen(*output);
+        }
+    }
+    cJSON_Delete(j_message);
+}
+
+size_t wmcom_getconfig(const char * section, char ** output) {
     cJSON *cfg;
     char *json_str;
 
@@ -91,8 +134,7 @@ void wmcom_send(char * message)
 }
 #else
 
-void wmcom_send(char * message)
-{
+void wmcom_send(char * message) {
     int sock;
     if (sock = OS_ConnectUnixDomain(WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
         switch (errno) {
@@ -103,9 +145,7 @@ void wmcom_send(char * message)
             default:
                 mdebug1("Could not connect to socket wmodules: %s (%d).", strerror(errno), errno);
         }
-    }
-    else
-    {
+    } else {
         OS_SendSecureTCP(sock, strlen(message), message);
         close(sock);
     }
@@ -127,7 +167,6 @@ void * wmcom_main(__attribute__((unused)) void * arg) {
     }
 
     while (1) {
-
         // Wait for socket
         FD_ZERO(&fdset);
         FD_SET(sock, &fdset);
@@ -154,31 +193,28 @@ void * wmcom_main(__attribute__((unused)) void * arg) {
 
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
         switch (length = OS_RecvSecureTCP(peer, buffer,OS_MAXSTR), length) {
-        case OS_SOCKTERR:
-            merror("At wmcom_main(): OS_RecvSecureTCP(): response size is bigger than expected");
-            break;
-
-        case -1:
-            merror("At wmcom_main(): OS_RecvSecureTCP(): %s", strerror(errno));
-            break;
-
-        case 0:
-            mdebug1("Empty message from local client.");
-            close(peer);
-            break;
-
-        case OS_MAXLEN:
-            merror("Received message > %i", MAX_DYN_STR);
-            close(peer);
-            break;
-
-        default:
-            length = wmcom_dispatch(buffer, &response);
-            if (length) {
-                OS_SendSecureTCP(peer, length, response);
-            }
-            os_free(response);
-            close(peer);
+            case OS_SOCKTERR:
+                merror("At wmcom_main(): OS_RecvSecureTCP(): response size is bigger than expected");
+                break;
+            case -1:
+                merror("At wmcom_main(): OS_RecvSecureTCP(): %s", strerror(errno));
+                break;
+            case 0:
+                mdebug1("Empty message from local client.");
+                close(peer);
+                break;
+            case OS_MAXLEN:
+                merror("Received message > %i", MAX_DYN_STR);
+                close(peer);
+                break;
+            default:
+                minfo("COMMAND: %s", buffer);
+                length = wmcom_dispatch(buffer, &response);
+                if (length) {
+                    OS_SendSecureTCP(peer, length, response);
+                }
+                os_free(response);
+                close(peer);
         }
         os_free(buffer);
     }

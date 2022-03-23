@@ -28,6 +28,7 @@ const wm_context WM_COMMAND_CONTEXT = {
     (wm_routine)(void *)wm_command_destroy,
     (cJSON * (*)(const void *))wm_command_dump,
     NULL,
+    NULL,
     NULL
 };
 

@@ -103,6 +103,7 @@ const wm_context WM_GCP_PUBSUB_CONTEXT = {
     (wm_routine)(void *)wm_gcp_pubsub_destroy,
     (cJSON * (*)(const void *))wm_gcp_pubsub_dump,
     NULL,
+    NULL,
     NULL
 };
 
@@ -111,6 +112,7 @@ const wm_context WM_GCP_BUCKET_CONTEXT = {
     (wm_routine)wm_gcp_bucket_main,
     (wm_routine)(void *)wm_gcp_bucket_destroy,
     (cJSON * (*)(const void *))wm_gcp_bucket_dump,
+    NULL,
     NULL,
     NULL
 };

@@ -40,7 +40,8 @@ const wm_context WM_SYS_CONTEXT = {
     (wm_routine)(void *)wm_sys_destroy,
     (cJSON * (*)(const void *))wm_sys_dump,
     (int(*)(const char*))wm_sync_message,
-    (wm_routine)(void *)wm_sys_stop
+    (wm_routine)(void *)wm_sys_stop,
+    NULL
 };
 
 void *syscollector_module = NULL;

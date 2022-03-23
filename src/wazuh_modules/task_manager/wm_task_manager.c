@@ -47,6 +47,7 @@ const wm_context WM_TASK_MANAGER_CONTEXT = {
     (wm_routine)(void *)wm_task_manager_destroy,
     (cJSON * (*)(const void *))wm_task_manager_dump,
     NULL,
+    NULL,
     NULL
 };
 

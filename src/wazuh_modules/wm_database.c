@@ -100,6 +100,7 @@ const wm_context WM_DATABASE_CONTEXT = {
     (wm_routine)wm_database_destroy,
     (cJSON * (*)(const void *))wm_database_dump,
     NULL,
+    NULL,
     NULL
 };
 

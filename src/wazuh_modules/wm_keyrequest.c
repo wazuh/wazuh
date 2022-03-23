@@ -55,6 +55,7 @@ const wm_context WM_KEY_REQUEST_CONTEXT = {
     (wm_routine)(void *)wm_key_request_destroy,
     (cJSON * (*)(const void *))wm_key_request_dump,
     NULL,
+    NULL,
     NULL
 };
 

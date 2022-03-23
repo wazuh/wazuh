@@ -94,6 +94,9 @@ extern int wm_debug_level;
 int wm_config();
 cJSON *getModulesConfig(void);
 cJSON *getModulesInternalOptions(void);
+
+cJSON *run_task(cJSON *data);
+
 int modulesSync(char* args);
 
 // Add module to the global list
@@ -187,6 +190,7 @@ void * wmcom_main(void * arg);
 #endif
 void wmcom_send(char * message);
 size_t wmcom_dispatch(char * command, char ** output);
+size_t wmcom_parse_request(const char * command, char ** output);
 size_t wmcom_getconfig(const char * section, char ** output);
 int wmcom_sync(char * buffer);
 
