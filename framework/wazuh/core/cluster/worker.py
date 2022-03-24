@@ -686,7 +686,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         while True:
             try:
                 if self.connected:
-                    start_time = perf_counter()
+                    start_time = get_utc_now().timestamp()
                     if await sync_object.request_permission():
                         sync_object.logger.info("Starting.")
                         timer['date_start'] = start_time

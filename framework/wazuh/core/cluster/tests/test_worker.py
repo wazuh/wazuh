@@ -889,7 +889,7 @@ async def test_worker_handler_general_agent_sync_task(socket_mock):
                                              get_data_command='global sync-agent-groups-get ',
                                              set_data_command='global sync-agent-groups-set')
 
-    with patch('wazuh.core.cluster.worker.perf_counter', return_value=0) as perf_counter_mock:
+    with patch('wazuh.core.cluster.worker.get_utc_now', side_effect=get_utc_now_mock) as gun_mock:
         with patch.object(sync_object, 'request_permission', side_effect=request_permission_callable):
             with patch.object(sync_object, 'retrieve_information',
                               side_effect=retrieve_information_callable) as retrieve_information_mock:
@@ -906,7 +906,7 @@ async def test_worker_handler_general_agent_sync_task(socket_mock):
 
                                 logger_info_mock.assert_called_with('Starting.')
                                 retrieve_information_mock.assert_called_once()
-                                perf_counter_mock.assert_called()
+                                gun_mock.assert_called()
                                 sync_mock.assert_called_with(start_time=0, chunks=['testing'])
                                 assert w_handler.agent_info_sync_status['date_start'] == 0.0
 

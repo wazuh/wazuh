@@ -700,7 +700,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                            set_payload={'mode': 'override', 'sync_status': 'synced'})
 
         logger.info("Requested entire agent-groups information by the worker node. Starting.")
-        start_time = perf_counter()
+        start_time = get_utc_now().timestamp()
         await sync_object.sync(start_time=start_time, chunks=local_agent_groups_information)
         logger.info("Sent all agent-groups information from the master node database.")
 

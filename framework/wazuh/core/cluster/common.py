@@ -1453,7 +1453,7 @@ class SyncWazuhdb(SyncTask):
             self.logger.debug(f"Sending chunks.")
             await self.server.send_request(command=self.cmd, data=task_id)
         else:
-            self.logger.info(f"Finished in {(perf_counter() - start_time):.3f}s. Updated 0 chunks.")
+            self.logger.info(f"Finished in {(get_utc_now().timestamp() - start_time):.3f}s. Updated 0 chunks.")
         return True
 
 
@@ -1480,7 +1480,7 @@ def end_sending_agent_information(logger, start_time, response) -> Tuple[bytes, 
         Response message.
     """
     data = json.loads(response)
-    msg = f"Finished in {(perf_counter() - start_time):.3f}s. Updated {data['updated_chunks']} chunks."
+    msg = f"Finished in {(get_utc_now().timestamp() - start_time):.3f}s. Updated {data['updated_chunks']} chunks."
     logger.info(msg) if not data['error_messages'] else logger.error(
         msg + f" There were {len(data['error_messages'])} chunks with errors: {data['error_messages']}")
 
