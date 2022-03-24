@@ -602,11 +602,12 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         # Log information about the results
         for error in result['error_messages']['others']:
-            logger.error(error)
+            logger.error(error, exc_info=False)
 
         for error in result['error_messages']['chunks']:
             logger.debug2(f'Chunk {error[0] + 1}/{len(data["chunks"])}: {data["chunks"][error[0]]}')
-            logger.error(f'Wazuh-db response for chunk {error[0] + 1}/{len(data["chunks"])} was not "ok": {error[1]}')
+            logger.error(f'Wazuh-db response for chunk {error[0] + 1}/{len(data["chunks"])} was not "ok": {error[1]}',
+                         exc_info=False)
 
         logger.debug(f'{result["updated_chunks"]}/{len(data["chunks"])} chunks updated in wazuh-db '
                      f'in {result["time_spent"]:3f}s.')
@@ -729,7 +730,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
                 # Notify what is the zip path for the current taskID.
                 result = await self.send_request(command=b'syn_m_c_e', data=task_id + b' ' + os.path.relpath(
-                                                     compressed_data, common.WAZUH_PATH).encode())
+                    compressed_data, common.WAZUH_PATH).encode())
 
                 if isinstance(result, Exception):
                     raise result
@@ -754,7 +755,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                         self.cluster_items['intervals']['communication']['min_zip_size'],
                         sent_size * (1 - self.cluster_items['intervals']['communication']['zip_limit_tolerance'])
                     )
-                    self.logger.debug(f"Decreasing sync size limit to {self.current_zip_limit / (1024**2):.2f} MB.")
+                    self.logger.debug(f"Decreasing sync size limit to {self.current_zip_limit / (1024 ** 2):.2f} MB.")
                 except KeyError:
                     # Increase max zip size if two conditions are met:
                     #   1. Current zip limit is lower than default.
@@ -767,7 +768,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                             self.current_zip_limit * (
                                     1 / (1 - self.cluster_items['intervals']['communication']['zip_limit_tolerance'])
                             ))
-                        self.logger.debug(f"Increasing sync size limit to {self.current_zip_limit / (1024**2):.2f} MB.")
+                        self.logger.debug(
+                            f"Increasing sync size limit to {self.current_zip_limit / (1024 ** 2):.2f} MB.")
 
                 # Remove local file.
                 os.unlink(compressed_data)
@@ -854,9 +856,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         # Log any possible error found in the process.
         self.integrity_sync_status['total_extra_valid'] = result['total_updated']
         if result['errors_per_folder']:
-            logger.error(f"Errors updating worker files: {dict(result['errors_per_folder'])}")
+            logger.error(f"Errors updating worker files: {dict(result['errors_per_folder'])}", exc_info=False)
         for error in result['generic_errors']:
-            logger.error(error)
+            logger.error(error, exc_info=False)
 
     @staticmethod
     def process_files_from_worker(files_metadata: Dict, decompressed_files_path: str, cluster_items: dict,
