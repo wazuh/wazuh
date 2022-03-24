@@ -493,7 +493,8 @@ time_t fim_scan() {
 
     static fim_state_db _files_db_state = FIM_STATE_DB_EMPTY;
 #ifdef WIN32
-    static fim_state_db _registries_db_state = FIM_STATE_DB_EMPTY;
+    static fim_state_db _registry_key_state = FIM_STATE_DB_EMPTY;
+    static fim_state_db _registry_value_state = FIM_STATE_DB_EMPTY;
 #endif
 
     cputime_start = clock();
@@ -587,15 +588,20 @@ time_t fim_scan() {
         int files_count = fim_db_get_count_file_entry();
         fim_check_db_state(syscheck.db_entry_file_limit, files_count, &_files_db_state, FIMDB_FILE_TABLE_NAME);
 #ifdef WIN32
-        int registries_count = fim_db_get_count_registry_data();
-        fim_check_db_state(syscheck.db_entry_registry_limit, registries_count, &_registries_db_state, FIMDB_REGISTRY_VALUE_TABLENAME);
+        fim_check_db_state(syscheck.db_entry_registry_limit,
+                           fim_db_get_count_registry_key(),
+                           &_registry_key_state,
+                           FIMDB_REGISTRY_KEY_TABLENAME);
+        fim_check_db_state(syscheck.db_entry_registry_limit,
+                           fim_db_get_count_registry_data(),
+                           &_registry_value_state,
+                           FIMDB_REGISTRY_VALUE_TABLENAME);
 #endif
     }
 
     if (_base_line == 0) {
         _base_line = 1;
-    }
-    else {
+    } else {
         // In the first scan, the fim initialization is different between Linux and Windows.
         // Realtime watches are set after the first scan in Windows.
         if (fim_realtime_get_queue_overflow()) {
@@ -1075,8 +1081,8 @@ void fim_check_db_state(int nodes_limit, int nodes_count, fim_state_db* db_state
     }
 #ifdef WIN32
     else {
-        cJSON_AddNumberToObject(json_event, "values_limit", nodes_limit);
-        cJSON_AddNumberToObject(json_event, "values_count", nodes_count);
+        cJSON_AddNumberToObject(json_event, "registry_limit", nodes_limit);
+        cJSON_AddNumberToObject(json_event, "values_count", fim_db_get_count_registry_data());
         cJSON_AddNumberToObject(json_event, "keys_count", fim_db_get_count_registry_key());
     }
 #endif
