@@ -2603,6 +2603,8 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     will_return(__wrap_fim_db_get_count_file_entry, 1);
     will_return(__wrap_fim_db_get_count_file_entry, 1);
     will_return(__wrap_fim_db_get_count_registry_data, 1);
+    will_return(__wrap_fim_db_get_count_registry_key, 1);
+
     snprintf(test_file_path, 160, "%s\\test_file", expanded_dirs[0]);
 
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);
@@ -2667,6 +2669,8 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     will_return(__wrap_fim_db_get_count_file_entry, 1);
     will_return(__wrap_fim_db_get_count_file_entry, 1);
     will_return(__wrap_fim_db_get_count_registry_data, 1);
+    will_return(__wrap_fim_db_get_count_registry_key, 1);
+
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
