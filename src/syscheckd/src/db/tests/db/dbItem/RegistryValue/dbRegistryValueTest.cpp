@@ -18,10 +18,10 @@ void RegistryValueTest::SetUp()
     fim_registry_value_data* value = reinterpret_cast<fim_registry_value_data*>(std::calloc(1, sizeof(fim_registry_value_data)));
 
     fimEntryTest->type = FIM_TYPE_REGISTRY;
-    std::strncpy(value->checksum, "a2fbef8f81af27155dcee5e3927ff6243593b91a", sizeof(value->checksum));
-    std::strncpy(value->hash_md5, "4b531524aa13c8a54614100b570b3dc7", sizeof(value->hash_md5));
-    std::strncpy(value->hash_sha1, "7902feb66d0bcbe4eb88e1bfacf28befc38bd58b", sizeof(value->hash_sha1));
-    std::strncpy(value->hash_sha256, "e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", sizeof(value->hash_sha256));
+    std::snprintf(value->checksum, sizeof(value->checksum), "a2fbef8f81af27155dcee5e3927ff6243593b91a");
+    std::snprintf(value->hash_md5, sizeof(value->hash_md5), "4b531524aa13c8a54614100b570b3dc7");
+    std::snprintf(value->hash_sha1, sizeof(value->hash_sha1), "7902feb66d0bcbe4eb88e1bfacf28befc38bd58b");
+    std::snprintf(value->hash_sha256, sizeof(value->hash_sha256), "e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a");
     value->last_event = 1596489275;
     value->mode = FIM_SCHEDULED;
     value->name = const_cast<char*>("testRegistry");

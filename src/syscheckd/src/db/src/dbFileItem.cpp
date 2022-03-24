@@ -34,15 +34,15 @@ void FileItem::createFimEntry()
     data->group_name = const_cast<char*>(m_groupname.c_str());
     data->mtime = m_time;
     data->inode = m_inode;
-    std::strncpy(data->hash_md5, m_md5.c_str(), sizeof(data->hash_md5));
-    std::strncpy(data->hash_sha1, m_sha1.c_str(), sizeof(data->hash_sha1));
-    std::strncpy(data->hash_sha256, m_sha256.c_str(), sizeof(data->hash_sha256));
+    std::snprintf(data->hash_md5, sizeof(data->hash_md5), "%s", m_md5.c_str());
+    std::snprintf(data->hash_sha1, sizeof(data->hash_sha1), "%s", m_sha1.c_str());
+    std::snprintf(data->hash_sha256, sizeof(data->hash_sha256), "%s", m_sha256.c_str());
     data->mode = m_mode;
     data->last_event = m_lastEvent;
     data->dev = m_dev;
     data->scanned = m_scanned;
     data->options = m_options;
-    std::strncpy(data->checksum, m_checksum.c_str(), sizeof(data->checksum));
+    std::snprintf(data->checksum, sizeof(data->checksum), "%s", m_checksum.c_str());
     fim->file_entry.data = data;
     m_fimEntry = std::unique_ptr<fim_entry, FimFileDataDeleter>(fim);
 }

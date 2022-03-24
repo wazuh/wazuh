@@ -21,7 +21,7 @@ void RegistryKey::createFimEntry()
 
     fim->type = FIM_TYPE_REGISTRY;
     key->arch = m_arch;
-    std::strncpy(key->checksum, m_checksum.c_str(), sizeof(key->checksum));
+    std::snprintf(key->checksum, sizeof(key->checksum), "%s", m_checksum.c_str());
     key->gid = static_cast<char*>(std::calloc(gid_size + 1, sizeof(char)));
     std::strncpy(key->gid, std::to_string(m_gid).c_str(), gid_size);
     key->group_name = const_cast<char*>(m_groupname.c_str());

@@ -21,13 +21,13 @@ void FileItemTest::SetUp()
     fimEntryTest->type = FIM_TYPE_FILE;
     fimEntryTest->file_entry.path = const_cast<char*>("/etc/wgetrc");
     data->attributes = const_cast<char*>("10");
-    std::strncpy(data->checksum, "a2fbef8f81af27155dcee5e3927ff6243593b91a", sizeof(data->checksum));
+    std::snprintf(data->checksum, sizeof(data->checksum), "a2fbef8f81af27155dcee5e3927ff6243593b91a");
     data->dev = 2051;
     data->gid = const_cast<char*>("0");
     data->group_name = const_cast<char*>("root");
-    std::strncpy(data->hash_md5, "4b531524aa13c8a54614100b570b3dc7", sizeof(data->hash_md5));
-    std::strncpy(data->hash_sha1, "7902feb66d0bcbe4eb88e1bfacf28befc38bd58b", sizeof(data->hash_sha1));
-    std::strncpy(data->hash_sha256, "e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a", sizeof(data->hash_sha256));
+    std::snprintf(data->hash_md5, sizeof(data->hash_md5), "4b531524aa13c8a54614100b570b3dc7");
+    std::snprintf(data->hash_sha1, sizeof(data->hash_sha1), "7902feb66d0bcbe4eb88e1bfacf28befc38bd58b");
+    std::snprintf(data->hash_sha256, sizeof(data->hash_sha256), "e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a");
     data->inode = 1152921500312810880;
     data->last_event = 1596489275;
     data->mode = FIM_SCHEDULED;
