@@ -83,9 +83,17 @@ size_t syscom_dispatch(char * command, char ** output){
 
         fim_sync_push_msg(command);
         return 0;
-    } else if (strncmp(command, HC_SK, strlen(HC_SK)) == 0) {
-        char *rcv_comm = command + strlen(HC_SK);
+    } else if (strncmp(command, HC_SK, strlen(HC_SK)) == 0 ||
+               strncmp(command, HC_GETCONFIG, strlen(HC_GETCONFIG)) == 0 ||
+               strncmp(command, HC_RESTART, strlen(HC_RESTART)) == 0) {
+        char *rcv_comm = NULL;
         char *rcv_args = NULL;
+
+        if (strncmp(command, HC_SK, strlen(HC_SK)) == 0) {
+            rcv_comm = command + strlen(HC_SK);
+        } else {
+            rcv_comm = command;
+        }
 
         if ((rcv_args = strchr(rcv_comm, ' '))){
             *rcv_args = '\0';
