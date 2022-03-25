@@ -46,7 +46,7 @@ add_library(kvdb
     )
 
 
-target_link_libraries(kvdb PRIVATE rocksdb "glog::glog")
+target_link_libraries(kvdb PRIVATE rocksdb)
 
 target_include_directories(kvdb PUBLIC
     ${ENGINE_KVDB_INCLUDE_DIR}
