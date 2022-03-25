@@ -1,6 +1,15 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v4.2.6]
+
+### Manager
+
+#### Fixed
+
+- Fixed an integer overflow hazard in `wazuh-remoted` that caused it to drop incoming data after receiving 2^31 messages. ([#11974](https://github.com/wazuh/wazuh/pull/11974))
+
+
 ## [v4.2.5]
 
 ### Manager
