@@ -167,7 +167,7 @@ int nb_recv(netbuffer_t * buffer, int sock);
 
 /* Network counter */
 
-void rem_initList(size_t initial_size);
+void rem_initList(int initial_size);
 void rem_setCounter(int fd, size_t counter);
 size_t rem_getCounter(int fd);
 
