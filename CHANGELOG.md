@@ -106,7 +106,6 @@ All notable changes to this project will be documented in this file.
   - Architecture data member from the RHEL 5 feed.
   - RHSA items containing no CVEs.
   - Unused RHSA data member when parsing Debian feeds.
-- Fixed an integer overflow hazard in `wazuh-remoted` that caused it to drop incoming data after receiving 2^31 messages. ([#11974](https://github.com/wazuh/wazuh/pull/11974))
 - Prevented Authd from exiting due to a pipe signal if Wazuh DB gets closed. ([#12368](https://github.com/wazuh/wazuh/pull/12368))
 - Fixed a buffer handling bug in Remoted that left the syslog TCP server stuck. ([#12415](https://github.com/wazuh/wazuh/pull/12415))
 - Fixed a memory leak in Vulnerability Detector when discarding kernel packages. ([#12644](https://github.com/wazuh/wazuh/pull/12644))
@@ -381,6 +380,16 @@ All notable changes to this project will be documented in this file.
 - Fixed external BerkeleyDB library support for GCC 11. ([#10899](https://github.com/wazuh/wazuh/pull/10899))
 - Fixed an installation error due to missing OS minor version on CentOS Stream. ([#11086](https://github.com/wazuh/wazuh/pull/11086))
 - Fixed an installation error due to missing command `hostname` on OpenSUSE Tumbleweed. ([#11455](https://github.com/wazuh/wazuh/pull/11455))
+
+
+## [v4.2.6]
+
+### Manager
+
+#### Fixed
+
+- Fixed an integer overflow hazard in `wazuh-remoted` that caused it to drop incoming data after receiving 2^31 messages. ([#11974](https://github.com/wazuh/wazuh/pull/11974))
+
 
 ## [v4.2.5] - 2021-11-15
 
