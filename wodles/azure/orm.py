@@ -1,6 +1,5 @@
 import logging
 import os
-import sys
 import typing
 
 from sqlalchemy import create_engine, Column, Text, String, UniqueConstraint

@@ -224,7 +224,7 @@ def update_row_object(table: orm.Base, md5_hash: str, new_min: str, new_max: str
     if new_min_date < old_min_date or new_max_date > old_max_date:
         min_ = new_min if new_min_date < old_min_date else old_min_str
         max_ = new_max if new_max_date > old_max_date else old_max_str
-        logging.debug(f"Attempting to update a {table} row object. "
+        logging.debug(f"Attempting to update a {table.__tablename__} row object. "
                       f"MD5: '{md5_hash}', min_date: '{min_}', max_date: '{max_}'")
         success = orm.update_row(table=table, md5=md5_hash, min_date=min_, max_date=max_)
         if not success:
@@ -316,7 +316,7 @@ def build_log_analytics_query(offset: str, md5_hash: str) -> dict:
     item = orm.get_row(orm.LogAnalytics, md5=md5_hash)
     if item is None:
         item = create_new_row(table=orm.LogAnalytics, md5_hash=md5_hash, offset=offset)
-    elif not item:
+    elif item is False:
         logging.error(f"Error trying to obtain row object from '{orm.LogAnalytics.__tablename__}' using md5='{md5}'")
         sys.exit(1)
 
@@ -493,7 +493,7 @@ def build_graph_url(offset: str, md5_hash: str):
     item = orm.get_row(orm.Graph, md5=md5_hash)
     if item is None:
         item = create_new_row(table=orm.Graph, md5_hash=md5_hash, offset=offset)
-    elif not item:
+    elif item is False:
         logging.error(f"Error trying to obtain row object from '{orm.Graph.__tablename__}' using md5='{md5}'")
         sys.exit(1)
 
@@ -623,8 +623,8 @@ def start_storage():
         offset = args.storage_time_offset
         item = orm.get_row(orm.Storage, md5=md5_hash)
         if item is None:
-            item = create_new_row(table=orm.Graph, md5_hash=md5_hash, offset=offset)
-        elif not item:
+            item = create_new_row(table=orm.Storage, md5_hash=md5_hash, offset=offset)
+        elif item is False:
             logging.error(
                 f"Error trying to obtain row object from '{orm.Storage.__tablename__}' using md5='{md5}'")
             sys.exit(1)
