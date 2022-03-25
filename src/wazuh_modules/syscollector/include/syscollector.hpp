@@ -99,12 +99,14 @@ private:
     void syncProcesses();
     void scan();
     void sync();
+    void runOnDemandScan();
     void syncLoop(std::unique_lock<std::mutex>& lock);
     std::shared_ptr<ISysInfo>                                               m_spInfo;
     std::function<void(const std::string&)>                                 m_reportDiffFunction;
     std::function<void(const std::string&)>                                 m_reportSyncFunction;
     std::function<void(const syscollector_log_level_t, const std::string&)> m_logFunction;
     unsigned int                                                            m_intervalValue;
+    unsigned int                                                            m_adjustedIntervalValue;
     bool                                                                    m_scanOnStart;
     bool                                                                    m_hardware;
     bool                                                                    m_os;
@@ -115,7 +117,9 @@ private:
     bool                                                                    m_processes;
     bool                                                                    m_hotfixes;
     bool                                                                    m_stopping;
+    bool                                                                    m_lastScanOnDemand;
     bool                                                                    m_notify;
+    std::time_t                                                             m_lastScanOnDemandTime;
     std::unique_ptr<DBSync>                                                 m_spDBSync;
     std::unique_ptr<RemoteSync>                                             m_spRsync;
     std::condition_variable                                                 m_cv;

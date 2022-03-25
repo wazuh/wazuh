@@ -297,9 +297,10 @@ int modulesSync(char* args) {
     int ret = -1;
     wmodule *cur_module = NULL;
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
-        if (strstr(args, cur_module->context->name)) {
+        size_t len = strlen(cur_module->context->name);
+        if (!strncmp(args, cur_module->context->name, len)) {
             ret = 0;
-            if (strstr(args, "dbsync") && cur_module->context->sync != NULL) {
+            if ( (strstr(args, "dbsync") || strstr(args, "scan")) && cur_module->context->sync != NULL) {
                 ret = cur_module->context->sync(args);
             }
             break;
