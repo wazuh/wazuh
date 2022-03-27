@@ -1094,8 +1094,7 @@ int* wdb_get_agents_by_connection_status(const char* connection_status, int *soc
         snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_AGENTS_BY_CONNECTION_STATUS], last_id, connection_status);
         if (wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {
             status = wdb_parse_chunk_to_int(wdboutput, &array, "id", &last_id, &len);
-        }
-        else {
+        } else {
             status = WDBC_ERROR;
         }
     }
