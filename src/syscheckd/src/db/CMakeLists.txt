@@ -10,6 +10,10 @@ include_directories(${SRC_FOLDER}/shared_modules/rsync/include/)
 include_directories(${SRC_FOLDER}/syscheckd)
 include_directories(${SRC_FOLDER}/syscheckd/src/db/src)
 
+if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
+  link_directories(${INSTALL_PREFIX}/lib)
+endif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
+
 file(GLOB DB_SRC
      ${CMAKE_SOURCE_DIR}/src/db/src/db.cpp
      ${CMAKE_SOURCE_DIR}/src/db/src/file.cpp
@@ -38,20 +42,30 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(
     fimdb PROPERTIES LINK_FLAGS "-Wl,--add-stdcall-alias -static-libstdc++")
 elseif(UNIX AND NOT APPLE)
-  set_target_properties(fimdb PROPERTIES LINK_FLAGS
-                                         "-static-libgcc -static-libstdc++")
-  if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
+  if(CMAKE_SYSTEM STREQUAL "SunOS-5.10")
+    set_target_properties(fimdb PROPERTIES
+      LINK_FLAGS "-static-libstdc++")
+  else()
+    set_target_properties(fimdb PROPERTIES
+      LINK_FLAGS "-static-libgcc -static-libstdc++")
+  endif(CMAKE_SYSTEM STREQUAL "SunOS-5.10")
+  if(CMAKE_SYSTEM_NAME STREQUAL "AIX")
+    string(REPLACE ";" ":" CXX_IMPLICIT_LINK_DIRECTORIES_STR
+                 "${CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES}")
+    string(REPLACE ";" ":" PLATFORM_REQUIRED_RUNTIME_PATH_STR
+                 "${CMAKE_PLATFORM_REQUIRED_RUNTIME_PATH}")
+  elseif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
+    # Do nothing for HP-UX
+  else()
     string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
-  endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
+  endif(CMAKE_SYSTEM_NAME STREQUAL "AIX")
+
+
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
   target_link_libraries(fimdb dbsync rsync wazuhext)
 else()
-  string(REPLACE ";" ":" CXX_IMPLICIT_LINK_DIRECTORIES_STR
-                 "${CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES}")
-  string(REPLACE ";" ":" PLATFORM_REQUIRED_RUNTIME_PATH_STR
-                 "${CMAKE_PLATFORM_REQUIRED_RUNTIME_PATH}")
   target_link_libraries(
     fimdb
     dbsync

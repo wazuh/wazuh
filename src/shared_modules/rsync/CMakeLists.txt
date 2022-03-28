@@ -46,6 +46,10 @@ include_directories(${SHARED_MODULES}/dbsync/include/)
 include_directories(${SHARED_MODULES}/utils/)
 include_directories(${SHARED_MODULES}/common/)
 
+if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
+  link_directories(${INSTALL_PREFIX}/lib)
+endif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
+
 link_directories(${SHARED_MODULES}/dbsync/build/lib/)
 link_directories(${SRC_FOLDER})
 link_directories(${SRC_FOLDER}/external/cJSON/)
@@ -74,9 +78,9 @@ elseif(UNIX AND NOT APPLE)
     set_target_properties(rsync PROPERTIES
       LINK_FLAGS "-static-libgcc -static-libstdc++")
   endif(CMAKE_SYSTEM STREQUAL "SunOS-5.10")
-  if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
+  if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX" AND NOT CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
     string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
-  endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
+  endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX" AND NOT CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 target_link_libraries(rsync dbsync wazuhext)
