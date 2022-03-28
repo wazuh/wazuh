@@ -2,6 +2,8 @@
 #include <iostream>
 #include <unordered_map>
 
+#include <fmt/format.h>
+#include <logging/logging.hpp>
 #include "rocksdb/db.h"
 #include "rocksdb/options.h"
 #include "rocksdb/slice.h"
@@ -13,21 +15,18 @@ KVDB::KVDB(const std::string &DBName, const std::string &path)
 {
     auto DBPath = path + DBName;
 
-    name = DBName;
+    m_name = DBName;
     ROCKSDB::Status s;
     std::vector<std::string> CFNames;
     s = ROCKSDB::DB::ListColumnFamilies(options.open, DBPath, &CFNames);
     if (s.ok())
     {
+        std::vector<ROCKSDB::ColumnFamilyHandle *> CFHandles;
         for (auto CFName : CFNames)
         {
             CFDescriptors.push_back(
                 ROCKSDB::ColumnFamilyDescriptor(CFName, options.CF));
         }
-        // TODO: should we open both? can we procede with only the transaction
-        // one does it allows all the other uses without any issue?
-        s = ROCKSDB::DB::Open(
-            options.open, DBPath, CFDescriptors, &CFHandles, &m_db);
 
         ROCKSDB::Status st = ROCKSDB::TransactionDB::Open(options.open,
                                                           options.TX,
@@ -35,35 +34,73 @@ KVDB::KVDB(const std::string &DBName, const std::string &path)
                                                           CFDescriptors,
                                                           &CFHandles,
                                                           &m_txndb);
-        if (s.ok() && st.ok())
+        if (st.ok())
         {
+            m_db = m_txndb->GetBaseDB();
             for (auto CFHandle : CFHandles)
             {
-                CFHandlesMap[CFHandle->GetName()] = CFHandle;
+                m_CFHandlesMap[CFHandle->GetName()] = CFHandle;
             }
             state = State::Open;
         }
         else
         {
-            // Log
+            auto msg =
+                fmt::format("couldn't open db, error: [{}]", s.ToString());
+            WAZUH_LOG_ERROR(msg);
             state = State::Error;
         }
     }
     else
     {
-        // Log
+        auto msg = fmt::format("couldn't list CF, error: [{}]", s.ToString());
+        WAZUH_LOG_ERROR(msg);
         state = State::Error;
     }
+}
+
+KVDB::~KVDB()
+{
+    if (state != State::Closed)
+    {
+        ROCKSDB::Status s = m_db->Close();
+        if (!s.ok())
+        {
+            auto msg =
+                fmt::format("couldn't close db, error: [{}]", s.ToString());
+            WAZUH_LOG_ERROR(msg);
+        }
+
+        for (auto item : m_CFHandlesMap)
+        {
+            s = m_db->DestroyColumnFamilyHandle(item.second);
+            if (!s.ok())
+            {
+                auto msg =
+                    fmt::format("couldn't destroy family handler, error: [{}]",
+                                s.ToString());
+                WAZUH_LOG_WARN(msg);
+            }
+        }
+        m_CFHandlesMap.clear();
+
+        delete m_db;
+        delete m_txndb;
+        return;
+    }
+    auto msg = fmt::format("couldn't close DB already closed");
+    WAZUH_LOG_WARN(msg);
 }
 
 bool KVDB::write(const std::string &key,
                  const std::string &value,
                  const std::string &columnName)
 {
-    CFHMap::const_iterator cfh = CFHandlesMap.find(columnName);
-    if (cfh == CFHandlesMap.end())
+    CFHMap::const_iterator cfh = m_CFHandlesMap.find(columnName);
+    if (cfh == m_CFHandlesMap.end())
     {
-        // LOG Invalid CF
+        auto msg = fmt::format("couldn't write to DB unknown column name");
+        WAZUH_LOG_ERROR(msg);
         return false;
     }
 
@@ -71,23 +108,28 @@ bool KVDB::write(const std::string &key,
         options.write, cfh->second, ROCKSDB::Slice(key), ROCKSDB::Slice(value));
     if (!s.ok())
     {
-        // LOG(ERROR) << "[" << __func__ << "]" << " couldn't insert value into
-        // CF, error: " << s.ToString() << std::endl;
+        auto msg = fmt::format("couldn't insert value into CF, error: [{}]",
+                               s.ToString());
+        WAZUH_LOG_ERROR(msg);
         return false;
     }
 
-    // LOG(DEBUG) << "[" << __func__ << "]" << " value insertion OK {" << key <<
-    // ","<< value << "} into CF name : " << columnFamily << std::endl;
+    auto msg = fmt::format("value insertion OK [{},{}] into CF name : [{}]",
+                           key,
+                           value,
+                           columnName);
+    WAZUH_LOG_INFO(msg);
     return true;
 }
 
 std::string KVDB::read(const std::string &key, const std::string &ColumnName)
 {
     std::string result, value;
-    CFHMap::const_iterator cfh = CFHandlesMap.find(ColumnName);
-    if (cfh == CFHandlesMap.end())
+    CFHMap::const_iterator cfh = m_CFHandlesMap.find(ColumnName);
+    if (cfh == m_CFHandlesMap.end())
     {
-        // LOG Invalid CF
+        auto msg = fmt::format("couldn't read DB unknown column name");
+        WAZUH_LOG_ERROR(msg);
         return result;
     }
     // Get CF handle
@@ -95,14 +137,18 @@ std::string KVDB::read(const std::string &key, const std::string &ColumnName)
         m_db->Get(options.read, cfh->second, ROCKSDB::Slice(key), &value);
     if (s.ok())
     {
-        // LOG(INFO) << "[" << __func__ << "]" << " value obtained OK {" << key
-        // << ","<< value << "} from CF name : " << columnFamily << std::endl;
+        auto msg = fmt::format("value obtained OK [{},{}] into CF name : [{}]",
+                               key,
+                               value,
+                               ColumnName);
+        WAZUH_LOG_INFO(msg);
         result = value;
     }
     else
     {
-        // LOG(ERROR) << "[" << __func__ << "]" << " couldn't insert value into
-        // CF, error: " << s.ToString() << std::endl;
+        auto msg =
+            fmt::format("couldn't insert value into CF, error: ", s.ToString());
+        WAZUH_LOG_ERROR(msg);
     }
 
     return value;
@@ -110,10 +156,11 @@ std::string KVDB::read(const std::string &key, const std::string &ColumnName)
 
 bool KVDB::deleteKey(const std::string &key, const std::string &columnName)
 {
-    CFHMap::const_iterator cfh = CFHandlesMap.find(columnName);
-    if (cfh == CFHandlesMap.end())
+    CFHMap::const_iterator cfh = m_CFHandlesMap.find(columnName);
+    if (cfh == m_CFHandlesMap.end())
     {
-        // LOG Invalid CF
+        auto msg = fmt::format("couldn't delete key in DB unknown column name");
+        WAZUH_LOG_ERROR(msg);
         return false;
     }
 
@@ -121,31 +168,28 @@ bool KVDB::deleteKey(const std::string &key, const std::string &columnName)
         m_db->Delete(options.write, cfh->second, ROCKSDB::Slice(key));
     if (s.ok())
     {
-        // LOG(INFO) << "[" << __func__ << "]" << " key deleted OK {" << key <<
-        // "} from CF name : " << column_family_name << std::endl;
+        auto msg = fmt::format("key deleted OK [{}]", key);
+        WAZUH_LOG_ERROR(msg);
         return true;
     }
     else
     {
-        // LOG(ERROR) << "[" << __func__ << "]" << " couldn't delete value from
-        // CF, error: " << s.ToString() << std::endl;
+        auto msg =
+            fmt::format("couldn't delete value in CF, error: ", s.ToString());
+        WAZUH_LOG_ERROR(msg);
         return false;
     }
 }
 
 bool KVDB::createColumn(const std::string &columnName)
 {
-    CFHMap::const_iterator cfh = CFHandlesMap.find(columnName);
-    if (cfh != CFHandlesMap.end())
+    CFHMap::const_iterator cfh = m_CFHandlesMap.find(columnName);
+    if (cfh != m_CFHandlesMap.end())
     {
-        // LOG Invalid CF
+        auto msg = fmt::format("couldn't create CF, name already taken");
+        WAZUH_LOG_ERROR(msg);
         return false;
     }
-
-    // TODO: not neccesary!
-    // ROCKSDB::ColumnFamilyOptions options;
-    // options.create_missing_column_families = true;
-    // setCFOptions(options);
 
     ROCKSDB::ColumnFamilyHandle *handler;
     ROCKSDB::Status s =
@@ -154,7 +198,7 @@ bool KVDB::createColumn(const std::string &columnName)
     {
         CFDescriptors.push_back(
             ROCKSDB::ColumnFamilyDescriptor(columnName, options.CF));
-        CFHandlesMap.insert({handler->GetName(), handler});
+        m_CFHandlesMap.insert({handler->GetName(), handler});
         return true;
     }
     return false;
@@ -162,17 +206,18 @@ bool KVDB::createColumn(const std::string &columnName)
 
 bool KVDB::deleteColumn(const std::string &columnName)
 {
-    CFHMap::const_iterator cfh = CFHandlesMap.find(columnName);
-    if (cfh == CFHandlesMap.end())
+    CFHMap::const_iterator cfh = m_CFHandlesMap.find(columnName);
+    if (cfh == m_CFHandlesMap.end())
     {
-        // LOG Invalid CF
+        auto msg = fmt::format("couldn't delete CF unknown column name");
+        WAZUH_LOG_ERROR(msg);
         return false;
     }
 
     ROCKSDB::Status s = m_db->DropColumnFamily(cfh->second);
     if (s.ok())
     {
-        CFHandlesMap.erase(cfh);
+        m_CFHandlesMap.erase(cfh);
         for (int i = 0; i < CFDescriptors.size(); i++)
         {
             if (!columnName.compare(CFDescriptors.at(i).name))
@@ -201,15 +246,18 @@ bool KVDB::writeToTransaction(
 {
     if (!pairsVector.size())
     {
-        // LOG(ERROR) << "[" << __func__ << "]" << " can't write to a
-        // Transaction without any pair." << std::endl;
+        auto msg = fmt::format(
+            "couldn't write transaction to DB, nedd at least 1 element");
+        WAZUH_LOG_ERROR(msg);
         return false;
     }
 
-    CFHMap::const_iterator cfh = CFHandlesMap.find(columnName);
-    if (cfh == CFHandlesMap.end())
+    CFHMap::const_iterator cfh = m_CFHandlesMap.find(columnName);
+    if (cfh == m_CFHandlesMap.end())
     {
-        // LOG Invalid CF
+        auto msg =
+            fmt::format("couldn't write transaction to DB unknown column name");
+        WAZUH_LOG_ERROR(msg);
         return false;
     }
 
@@ -222,8 +270,9 @@ bool KVDB::writeToTransaction(
             std::string const value = pair.second;
             if (key.empty())
             {
-                // LOG(ERROR) << "[" << __func__ << "]" << " can't write to a
-                // Transaction to a family column with no key." << std::endl;
+                auto msg = fmt::format("can't write to a Transaction to a "
+                                       "family column with no key.");
+                WAZUH_LOG_ERROR(msg);
                 return false;
             }
             // Write a key in this transaction
@@ -234,31 +283,33 @@ bool KVDB::writeToTransaction(
             }
             else
             {
-                // LOG(ERROR) << "[" << __func__ << "]" << " couldn't execute
-                // Put in transaction -breaking loop-, error: " << s.code() <<
-                // std::endl;
+                auto msg = fmt::format("couldn't execute Put in transaction "
+                                       "-breaking loop-, error: [{}]",
+                                       s.ToString());
+                WAZUH_LOG_ERROR(msg);
                 return false;
             }
         }
         ROCKSDB::Status s = txn->Commit();
         if (s.ok())
         {
-            // LOG(ERROR) << "[" << __func__ << "]" << " transaction commited
-            // OK" << std::endl;
+            auto msg = fmt::format("transaction commited OK");
+            WAZUH_LOG_INFO(msg);
             delete txn;
             return true;
         }
         else
         {
-            // LOG(ERROR) << "[" << __func__ << "]" << " couldn't commit
-            // transaction, error: " << s.code() << std::endl;
+            auto msg = fmt::format(
+                "couldn't commit in transaction, error: [{}]", s.ToString());
+            WAZUH_LOG_ERROR(msg);
             return false;
         }
     }
     else
     {
-        // LOG(ERROR) << "[" << __func__ << "]" << " couldn't begin transaction,
-        // error: " << s.code() << std::endl;
+        auto msg = fmt::format("couldn't begin in transaction");
+        WAZUH_LOG_ERROR(msg);
         return false;
     }
 }
@@ -273,10 +324,11 @@ bool KVDB::readPinned(const std::string &key,
                       std::string &value,
                       const std::string &ColumnName)
 {
-    CFHMap::const_iterator cfh = CFHandlesMap.find(ColumnName);
-    if (cfh == CFHandlesMap.end())
+    CFHMap::const_iterator cfh = m_CFHandlesMap.find(ColumnName);
+    if (cfh == m_CFHandlesMap.end())
     {
-        // LOG Invalid CF
+        auto msg = fmt::format("couldn't read value in DB unknown column name");
+        WAZUH_LOG_ERROR(msg);
         return false;
     }
 
@@ -286,16 +338,16 @@ bool KVDB::readPinned(const std::string &key,
     if (s.ok())
     {
         value = pinnable_val.ToString();
-        // LOG(INFO) << "[" << __func__ << "]" << " value obtained OK {" << key
-        // << ","
-        // << value << "} from CF name : " << column_family_name << std::endl;
+        auto msg = fmt::format("read pinned value OK [{},{}]", key, value);
+        WAZUH_LOG_INFO(msg);
         pinnable_val.Reset();
         return true;
     }
     else
     {
-        // LOG(ERROR) << "[" << __func__ << "]" << " couldn't insert value into
-        // CF without copy, error: " << s.ToString() << std::endl;
+        auto msg =
+            fmt::format("couldn't read pinned value, error: ", s.ToString());
+        WAZUH_LOG_ERROR(msg);
         return false;
     }
 }
