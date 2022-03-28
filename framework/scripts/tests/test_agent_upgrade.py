@@ -2,21 +2,23 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import framework.scripts.agent_upgrade as agent_upgrade
-from wazuh.core.results import AffectedItemsWazuhResult
-import pytest
 from unittest.mock import call, ANY, patch, MagicMock
+
+import pytest
+
+import scripts.agent_upgrade as agent_upgrade
 from wazuh.core.exception import WazuhError
+from wazuh.core.results import AffectedItemsWazuhResult
 
 
-@patch('framework.scripts.agent_upgrade.exit')
+@patch('scripts.agent_upgrade.exit')
 def test_signal_handler(mock_exit):
     """Check if exit is called in signal_handler function."""
     agent_upgrade.signal_handler('test', 'test')
     mock_exit.assert_called_once_with(1)
 
 
-@patch('framework.scripts.agent_upgrade.argparse.ArgumentParser')
+@patch('scripts.agent_upgrade.argparse.ArgumentParser')
 def test_get_script_arguments(mock_ArgumentParser):
     agent_upgrade.get_script_arguments()
     mock_ArgumentParser.assert_called_once_with()
@@ -60,7 +62,7 @@ def test_list_outdated(capfd, api_response, total_affected_items):
             assert out == 'All agents are updated.\n'
 
 
-@patch('framework.scripts.agent_upgrade.Agent')
+@patch('scripts.agent_upgrade.Agent')
 def test_get_agents_versions(mock_agent):
     """Check if expected result is returned in get_agents_versions function."""
     agents_list = ['test0', 'test1']
@@ -81,9 +83,9 @@ def test_create_command():
     assert result == {'agent_list': ANY, 'wpk_repo': ANY, 'version': ANY, 'use_http': ANY, 'force': ANY}
 
 
-@patch('framework.scripts.agent_upgrade.DistributedAPI')
-@patch('framework.scripts.agent_upgrade.concurrent')
-@patch('framework.scripts.agent_upgrade.raise_if_exc')
+@patch('scripts.agent_upgrade.DistributedAPI')
+@patch('scripts.agent_upgrade.concurrent')
+@patch('scripts.agent_upgrade.raise_if_exc')
 def test_send_command(mock_raise_if_exc, mock_concurrent, mock_distributed_api):
     """Check if methods inside send_command function are run with expected parameters."""
     agent_upgrade.send_command('test_function', {'test_command': 'test'})
@@ -122,9 +124,9 @@ def test_print_result(capfd, agents_versions, failed_agents, expected_output):
 @pytest.mark.parametrize('silent', [
     True, False
 ])
-@patch('framework.scripts.agent_upgrade.print_result')
-@patch('framework.scripts.agent_upgrade.sleep')
-@patch('framework.scripts.agent_upgrade.Agent')
+@patch('scripts.agent_upgrade.print_result')
+@patch('scripts.agent_upgrade.sleep')
+@patch('scripts.agent_upgrade.Agent')
 def test_check_status(mock_agent, mock_sleep, mock_print_result, silent):
     """Check if methods inside check_status function are run with expected parameters.
 
@@ -139,7 +141,7 @@ def test_check_status(mock_agent, mock_sleep, mock_print_result, silent):
                                    {'agent': '002', 'status': 'Error', 'error_msg': 'test_error'}]
     agent_upgrade.args = MagicMock()
     agent_upgrade.args.version = '4.2.0'
-    with patch('framework.scripts.agent_upgrade.send_command', return_value=task_results) as mock_send_command:
+    with patch('scripts.agent_upgrade.send_command', return_value=task_results) as mock_send_command:
         agent_upgrade.check_status(affected_agents=['001', '002'],
                                    result_dict={'001': {'new_version': '4.3.0'}, '002': {'new_version': '4.3.0'}},
                                    failed_agents={}, silent=silent)
@@ -154,11 +156,11 @@ def test_check_status(mock_agent, mock_sleep, mock_print_result, silent):
             mock_print_result.assert_not_called()
 
 
-@patch('framework.scripts.agent_upgrade.signal')
-@patch('framework.scripts.agent_upgrade.exit')
-@patch('framework.scripts.agent_upgrade.list_outdated')
-@patch('framework.scripts.agent_upgrade.get_agents_versions')
-@patch('framework.scripts.agent_upgrade.check_status')
+@patch('scripts.agent_upgrade.signal')
+@patch('scripts.agent_upgrade.exit')
+@patch('scripts.agent_upgrade.list_outdated')
+@patch('scripts.agent_upgrade.get_agents_versions')
+@patch('scripts.agent_upgrade.check_status')
 def test_main(mock_check_status, mock_get_agents_versions, mock_list_outdated, mock_exit, mock_signal, capfd):
     """Check if methods inside main function are run with expected parameters"""
     agent_upgrade.arg_parser = MagicMock()
@@ -170,7 +172,7 @@ def test_main(mock_check_status, mock_get_agents_versions, mock_list_outdated, m
     task_results.failed_items = {'1000': ['001', '002']}
     task_results.affected_items = [{'agent': '003'}]
 
-    with patch('framework.scripts.agent_upgrade.send_command', return_value=task_results) as mock_send_command:
+    with patch('scripts.agent_upgrade.send_command', return_value=task_results) as mock_send_command:
         agent_upgrade.main()
         mock_signal.assert_called_once_with(agent_upgrade.SIGINT, agent_upgrade.signal_handler)
         mock_list_outdated.assert_called_once()
@@ -187,13 +189,13 @@ def test_main_ko(capfd):
     agent_upgrade.args = MagicMock()
     agent_upgrade.args.list_outdated = ['001']
 
-    with patch('framework.scripts.agent_upgrade.list_outdated', side_effect=WazuhError(1000)):
+    with patch('scripts.agent_upgrade.list_outdated', side_effect=WazuhError(1000)):
         with pytest.raises(WazuhError, match='.* 1000 .*'):
             agent_upgrade.main()
         out, err = capfd.readouterr()
         assert out == 'Error 1000: Wazuh Internal Error\n'
 
-    with patch('framework.scripts.agent_upgrade.list_outdated', side_effect=Exception):
+    with patch('scripts.agent_upgrade.list_outdated', side_effect=Exception):
         with pytest.raises(Exception):
             agent_upgrade.main()
         out, err = capfd.readouterr()
