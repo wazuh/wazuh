@@ -106,7 +106,8 @@ void SQLiteDBEngine::bulkInsert(const std::string& table,
 }
 
 void SQLiteDBEngine::refreshTableData(const nlohmann::json& data,
-                                      const DbSync::ResultCallback callback)
+                                      const DbSync::ResultCallback callback,
+                                      std::unique_lock<std::shared_timed_mutex>& lock)
 {
     const std::string table { data.at("table").is_string() ? data.at("table").get_ref<const std::string&>() : "" };
 
@@ -120,21 +121,21 @@ void SQLiteDBEngine::refreshTableData(const nlohmann::json& data,
 
             if (getPrimaryKeysFromTable(table, primaryKeyList))
             {
-                if (!removeNotExistsRows(table, primaryKeyList, callback))
+                if (!removeNotExistsRows(table, primaryKeyList, callback, lock))
                 {
                     // LCOV_EXCL_START
                     std::cout << "Error during the delete rows update " << __LINE__ << " - " << __FILE__ << std::endl;
                     // LCOV_EXCL_STOP
                 }
 
-                if (!changeModifiedRows(table, primaryKeyList, callback))
+                if (!changeModifiedRows(table, primaryKeyList, callback, lock))
                 {
                     // LCOV_EXCL_START
                     std::cout << "Error during the change of modified rows " << __LINE__ << " - " << __FILE__ << std::endl;
                     // LCOV_EXCL_STOP
                 }
 
-                if (!insertNewRows(table, primaryKeyList, callback))
+                if (!insertNewRows(table, primaryKeyList, callback, lock))
                 {
                     // LCOV_EXCL_START
                     std::cout << "Error during the insert rows update " << __LINE__ << " - " << __FILE__ << std::endl;
@@ -152,10 +153,10 @@ void SQLiteDBEngine::refreshTableData(const nlohmann::json& data,
     }
 }
 
-
 void SQLiteDBEngine::syncTableRowData(const nlohmann::json& jsInput,
                                       const DbSync::ResultCallback callback,
-                                      const bool inTransaction)
+                                      const bool inTransaction,
+                                      std::function<void()> unlockMutex)
 {
     const auto& table { jsInput.at("table") };
     const auto& data { jsInput.at("data") };
@@ -288,6 +289,7 @@ void SQLiteDBEngine::syncTableRowData(const nlohmann::json& jsInput,
 
                 if (callback)
                 {
+                    unlockMutex();
                     callback(INSERTED, bulkInsertJson);
                 }
             }
@@ -296,6 +298,7 @@ void SQLiteDBEngine::syncTableRowData(const nlohmann::json& jsInput,
             {
                 if (callback)
                 {
+                    unlockMutex();
                     callback(MODIFIED, bulkModifyJson);
                 }
             }
@@ -403,7 +406,8 @@ void SQLiteDBEngine::deleteRowsByStatusField(const nlohmann::json& tableNames)
 
 void SQLiteDBEngine::returnRowsMarkedForDelete(const nlohmann::json& tableNames,
                                                const DbSync::ResultCallback callback,
-                                               const nlohmann::json& options)
+                                               const nlohmann::json& options,
+                                               std::unique_lock<std::shared_timed_mutex>& lock)
 {
     auto allColumns {false};
 
@@ -461,7 +465,9 @@ void SQLiteDBEngine::returnRowsMarkedForDelete(const nlohmann::json& tableNames,
                     getFieldValueFromTuple(value, object);
                 }
 
+                lock.unlock();
                 callback(ReturnTypeCallback::DELETED, object);
+                lock.lock();
             }
         }
         else
@@ -473,7 +479,8 @@ void SQLiteDBEngine::returnRowsMarkedForDelete(const nlohmann::json& tableNames,
 
 void SQLiteDBEngine::selectData(const std::string& table,
                                 const nlohmann::json& query,
-                                const DbSync::ResultCallback& callback)
+                                const DbSync::ResultCallback& callback,
+                                std::unique_lock<std::shared_timed_mutex>& lock)
 {
     if (0 != loadTableData(table))
     {
@@ -514,7 +521,9 @@ void SQLiteDBEngine::selectData(const std::string& table,
 
             if (callback && !object.empty())
             {
+                lock.unlock();
                 callback(SELECTED, object);
+                lock.lock();
             }
         }
     }
@@ -865,7 +874,8 @@ bool SQLiteDBEngine::getTableCreateQuery(const std::string& table,
 
 bool SQLiteDBEngine::removeNotExistsRows(const std::string& table,
                                          const std::vector<std::string>& primaryKeyList,
-                                         const DbSync::ResultCallback callback)
+                                         const DbSync::ResultCallback callback,
+                                         std::unique_lock<std::shared_timed_mutex>& lock)
 {
     auto ret { true };
     std::vector<Row> rowKeysValue;
@@ -885,7 +895,9 @@ bool SQLiteDBEngine::removeNotExistsRows(const std::string& table,
 
                 if (callback)
                 {
+                    lock.unlock();
                     callback(ReturnTypeCallback::DELETED, object);
+                    lock.lock();
                 }
             }
         }
@@ -1403,7 +1415,8 @@ bool SQLiteDBEngine::getRowDiff(const std::vector<std::string>& primaryKeyList,
 
 bool SQLiteDBEngine::insertNewRows(const std::string& table,
                                    const std::vector<std::string>& primaryKeyList,
-                                   const DbSync::ResultCallback callback)
+                                   const DbSync::ResultCallback callback,
+                                   std::unique_lock<std::shared_timed_mutex>& lock)
 {
     auto ret { true };
     std::vector<Row> rowValues;
@@ -1423,7 +1436,9 @@ bool SQLiteDBEngine::insertNewRows(const std::string& table,
 
             if (callback)
             {
+                lock.unlock();
                 callback(ReturnTypeCallback::INSERTED, object);
+                lock.lock();
             }
         }
     }
@@ -1466,7 +1481,8 @@ void SQLiteDBEngine::bulkInsert(const std::string& table,
 
 int SQLiteDBEngine::changeModifiedRows(const std::string& table,
                                        const std::vector<std::string>& primaryKeyList,
-                                       const DbSync::ResultCallback callback)
+                                       const DbSync::ResultCallback callback,
+                                       std::unique_lock<std::shared_timed_mutex>& lock)
 {
     auto ret { true };
     std::vector<Row> rowKeysValue;
@@ -1486,7 +1502,9 @@ int SQLiteDBEngine::changeModifiedRows(const std::string& table,
 
                 if (callback)
                 {
+                    lock.unlock();
                     callback(ReturnTypeCallback::MODIFIED, object);
+                    lock.lock();
                 }
             }
         }

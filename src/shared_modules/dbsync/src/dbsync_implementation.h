@@ -15,6 +15,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include "dbengine_factory.h"
 #include "commonDefs.h"
 #include "json.hpp"
@@ -123,6 +124,8 @@ namespace DbSync
                         std::lock_guard<std::mutex> lock{m_mutex};
                         m_transactionContexts.erase(txnHandle);
                     }
+
+                    std::shared_timed_mutex m_syncMutex;
                 private:
                     std::map<TXN_HANDLE, std::shared_ptr<TransactionContext>> m_transactionContexts;
                     std::mutex m_mutex;
