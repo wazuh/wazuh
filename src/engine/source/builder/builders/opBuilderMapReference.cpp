@@ -17,7 +17,7 @@ namespace builder::internals::builders
 {
 
 // TODO Add test for this
-types::Lifter opBuilderMapReference(const types::DocumentValue & def)
+types::Lifter opBuilderMapReference(const types::DocumentValue & def, types::TracerFn tr)
 {
     if (!def.MemberBegin()->name.IsString())
     {

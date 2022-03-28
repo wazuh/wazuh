@@ -21,7 +21,7 @@ namespace builder::internals::builders
  * @param def
  * @return types::Lifter
  */
-types::Lifter stageBuilderNormalize(const types::DocumentValue & def);
+types::Lifter stageBuilderNormalize(const types::DocumentValue & def, types::TracerFn tr);
 
 } // namespace builder::internals::builders
 

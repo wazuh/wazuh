@@ -21,7 +21,7 @@
 namespace builder::internals::builders
 {
 
-types::Lifter opBuilderFileOutput(const types::DocumentValue &def)
+types::Lifter opBuilderFileOutput(const types::DocumentValue &def, types::TracerFn tr)
 {
     // Check that input is as expected and throw exception otherwise
     if (!def.IsObject())

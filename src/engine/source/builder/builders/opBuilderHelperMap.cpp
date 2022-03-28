@@ -213,7 +213,7 @@ using builder::internals::syntax::REFERENCE_ANCHOR;
 //*************************************************
 
 // <field>: +s_up/<str>|$<ref>
-types::Lifter opBuilderHelperStringUP(const types::DocumentValue & def)
+types::Lifter opBuilderHelperStringUP(const types::DocumentValue & def, types::TracerFn tr)
 {
     // Get field key to check
 
@@ -260,7 +260,7 @@ types::Lifter opBuilderHelperStringUP(const types::DocumentValue & def)
 }
 
 // <field>: +s_lo/<str>|$<ref>
-types::Lifter opBuilderHelperStringLO(const types::DocumentValue & def)
+types::Lifter opBuilderHelperStringLO(const types::DocumentValue & def, types::TracerFn tr)
 {
 
     // Get field key to check
@@ -307,7 +307,7 @@ types::Lifter opBuilderHelperStringLO(const types::DocumentValue & def)
 }
 
 // <field>: +s_trim/[begin | end | both]/char
-types::Lifter opBuilderHelperStringTrim(const types::DocumentValue & def)
+types::Lifter opBuilderHelperStringTrim(const types::DocumentValue & def, types::TracerFn tr)
 {
 
     // Get field path to trim
@@ -420,7 +420,7 @@ types::Lifter opBuilderHelperStringTrim(const types::DocumentValue & def)
 //*************************************************
 
 // field: +i_calc/[+|-|*|/]/val|$ref/
-types::Lifter opBuilderHelperIntCalc(const types::DocumentValue & def)
+types::Lifter opBuilderHelperIntCalc(const types::DocumentValue & def, types::TracerFn tr)
 {
     // Get field
     std::string field {json::formatJsonPath(def.MemberBegin()->name.GetString())};
@@ -476,7 +476,7 @@ types::Lifter opBuilderHelperIntCalc(const types::DocumentValue & def)
 //*************************************************
 
 // field: +r_ext/_field/regexp/
-types::Lifter opBuilderHelperRegexExtract(const types::DocumentValue & def)
+types::Lifter opBuilderHelperRegexExtract(const types::DocumentValue & def, types::TracerFn tr)
 {
     // Get fields
     std::string field {json::formatJsonPath(def.MemberBegin()->name.GetString())};

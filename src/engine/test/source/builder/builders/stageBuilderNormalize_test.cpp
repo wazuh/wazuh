@@ -18,6 +18,9 @@
 
 using namespace builder::internals::builders;
 
+using FakeTrFn = std::function<void(std::string)>;
+static FakeTrFn tr = [](std::string msg){};
+
 TEST(StageBuilderNormalize, BuildsAllNonRegistered)
 {
     Document doc{R"({
@@ -29,7 +32,7 @@ TEST(StageBuilderNormalize, BuildsAllNonRegistered)
         ]
     })"};
 
-    ASSERT_THROW(builders::stageBuilderNormalize(doc.get("/normalize")), std::_Nested_exception<std::runtime_error>);
+    ASSERT_THROW(builders::stageBuilderNormalize(doc.get("/normalize"), tr), std::_Nested_exception<std::runtime_error>);
 }
 
 TEST(StageBuilderNormalize, Builds)
@@ -52,7 +55,7 @@ TEST(StageBuilderNormalize, Builds)
         ]
     })"};
 
-    ASSERT_NO_THROW(builders::stageBuilderNormalize(doc.get("/normalize")));
+    ASSERT_NO_THROW(builders::stageBuilderNormalize(doc.get("/normalize"), tr));
 }
 
 TEST(StageBuilderNormalize, BuildsOperates)
@@ -66,7 +69,7 @@ TEST(StageBuilderNormalize, BuildsOperates)
         ]
     })"};
 
-    auto normalize = builders::stageBuilderNormalize(doc.get("/normalize"));
+    auto normalize = builders::stageBuilderNormalize(doc.get("/normalize"), tr);
 
     Observable input = observable<>::create<Event>(
         [=](auto s)

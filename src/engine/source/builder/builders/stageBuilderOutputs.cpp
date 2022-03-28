@@ -20,7 +20,7 @@
 namespace builder::internals::builders
 {
 
-types::Lifter stageBuilderOutputs(const types::DocumentValue & def)
+types::Lifter stageBuilderOutputs(const types::DocumentValue & def, types::TracerFn tr)
 {
     // Assert value is as expected
     if (!def.IsArray())
@@ -38,7 +38,7 @@ types::Lifter stageBuilderOutputs(const types::DocumentValue & def)
     {
         try
         {
-            outputs.push_back(std::get<types::OpBuilder>(Registry::getBuilder(it->MemberBegin()->name.GetString()))(it->MemberBegin()->value));
+            outputs.push_back(std::get<types::OpBuilder>(Registry::getBuilder(it->MemberBegin()->name.GetString()))(it->MemberBegin()->value, tr));
         }
         catch (std::exception & e)
         {
