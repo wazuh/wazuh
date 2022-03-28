@@ -86,11 +86,15 @@ DISABLE_SYSC?=no
 DISABLE_CISCAT?=no
 DISABLE_STRIP_SYMBOLS?=no
 
-ifeq (${uname_S}, Linux)
 ifneq (${TARGET}, winagent)
+ifeq (${uname_S}, Linux)
 EXECUTABLE_FILES := $(shell find . -maxdepth 1 -type f ! -name "*.so"  -perm /a=x)
 EXECUTABLE_FILES += $(shell find . -type f -not -path "./external/*" -name "*.so" -perm /a=x)
 EXECUTABLE_FILES:= $(EXECUTABLE_FILES:./%=%)
+endif
+ifeq (${uname_S}, Darwin)
+EXECUTABLE_FILES=$(shell find . -maxdepth 1 -type f -exec /bin/sh -c "file {} | grep 'bit executable' > /dev/null" \; -print)
+EXECUTABLE_FILES+=$(shell find . -type f -not -path "./external/*" -not -path "./symbols/*" -name  "*.dylib" -print)
 endif
 endif
 
@@ -801,14 +805,15 @@ $(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
 ifeq (${TARGET}, agent)
 strip: ${BUILD_AGENT} ${BUILD_CMAKE_PROJECTS}
 else
-ifneq (${TARGET}, winagent)
 strip: ${BUILD_SERVER} ${BUILD_CMAKE_PROJECTS}
 endif
-endif
-ifeq (${uname_S}, Linux)
 ifneq (${TARGET}, winagent)
 ifeq (,$(filter ${DISABLE_STRIP_SYMBOLS},YES yes y Y 1))
+ifeq (${uname_S}, Linux)
 	@$(foreach var, ${EXECUTABLE_FILES}, objcopy --only-keep-debug $(var) symbols/$(basename $(notdir $(var))).debug; objcopy --strip-unneeded $(var);)
+endif
+ifeq (${uname_S}, Darwin)
+	@$(foreach var, ${EXECUTABLE_FILES}, dsymutil -o symbols/$(var).dSYM $(var) && strip -S $(var);)
 endif
 endif
 endif
