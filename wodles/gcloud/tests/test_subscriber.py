@@ -8,14 +8,11 @@
 
 """Unit tests for subscriber module."""
 
-import os
-import sys
 import pytest
 from logging import Logger
 
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))  # noqa: E501
-from pubsub.subscriber import WazuhGCloudSubscriber
-import exceptions
+from wodles.gcloud.pubsub.subscriber import WazuhGCloudSubscriber
+from wodles.gcloud import exceptions
 
 
 def test_get_subscriber(gcloud_subscriber):

@@ -5,16 +5,11 @@
 
 """Unit tests for gcloud module."""
 
-import sys
-import os
 import pytest
 from unittest.mock import patch
 from argparse import Namespace
 
-sys.path.append(os.path.join(os.path.dirname(
-    os.path.realpath(__file__)), '..', '..'))
-import exceptions
-import gcloud
+from wodles.gcloud import gcloud, exceptions
 
 
 @pytest.mark.parametrize('parameters, exception, errcode', [
@@ -64,14 +59,13 @@ def test_gcloud_ko(parameters, exception, errcode, caplog):
         Fixture that captures the logging records and allows to interact
         with the logger.
     """
-    with patch('tools.get_script_arguments',
+    with patch('wodles.gcloud.tools.get_script_arguments',
                return_value=Namespace(**parameters)), \
-         patch('pubsub.subscriber.pubsub.subscriber.Client.from_service_account_file'), \
-         patch('pubsub.subscriber.WazuhGCloudSubscriber.check_permissions'), \
-         patch('pubsub.subscriber.WazuhGCloudSubscriber.process_messages'), \
-         patch('buckets.bucket.storage.client.Client.from_service_account_json'), \
-         patch('buckets.access_logs.GCSAccessLogs.process_data', \
-               return_value=0), \
+         patch('wodles.gcloud.pubsub.subscriber.pubsub.subscriber.Client.from_service_account_file'), \
+         patch('wodles.gcloud.pubsub.subscriber.WazuhGCloudSubscriber.check_permissions'), \
+         patch('wodles.gcloud.pubsub.subscriber.WazuhGCloudSubscriber.process_messages'), \
+         patch('wodles.gcloud.buckets.bucket.storage.client.Client.from_service_account_json'), \
+         patch('wodles.gcloud.buckets.access_logs.GCSAccessLogs.process_data', return_value=0), \
          pytest.raises(SystemExit):
         gcloud.main()
 

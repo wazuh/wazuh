@@ -51,8 +51,7 @@ from datetime import timedelta
 from datetime import timezone
 from time import mktime
 
-sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
-import utils
+from wodles import utils
 
 # Python 2/3 compatibility
 if sys.version_info[0] == 3:

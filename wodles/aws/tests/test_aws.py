@@ -6,18 +6,18 @@
 
 import os
 import sys
-import json
+
 from sqlite3 import connect
 from unittest.mock import patch, MagicMock
 import pytest
 from datetime import datetime
 
+from wodles.aws import aws_s3
+
 # mock AWS libraries
 sys.modules['boto3'] = MagicMock()
 sys.modules['botocore'] = MagicMock()
 
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
-import aws_s3
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 logs_path = os.path.join(test_data_path, 'log_files')
@@ -49,10 +49,10 @@ def test_metadata_version_buckets(mocked_db, class_):
     """
     Checks if metadata version has been updated
     """
-    with patch(f'aws_s3.{class_.__name__}.get_client'), \
-        patch(f'aws_s3.{class_.__name__}.get_sts_client'), \
-        patch(f'aws_s3.utils.find_wazuh_path', return_value=wazuh_installation_path), \
-        patch(f'aws_s3.utils.get_wazuh_version', return_value=wazuh_version):
+    with patch(f'wodles.aws.aws_s3.{class_.__name__}.get_client'), \
+        patch(f'wodles.aws.aws_s3.{class_.__name__}.get_sts_client'), \
+        patch(f'wodles.aws.aws_s3.utils.find_wazuh_path', return_value=wazuh_installation_path), \
+        patch(f'wodles.aws.aws_s3.utils.get_wazuh_version', return_value=wazuh_version):
         ins = class_(**{'reparse': False, 'access_key': None, 'secret_key': None,
                         'profile': None, 'iam_role_arn': None, 'bucket': 'test',
                         'only_logs_after': '19700101', 'skip_on_error': True,
@@ -75,10 +75,10 @@ def test_metadata_version_services(mocked_db, class_):
     """
     Checks if metadata version has been updated
     """
-    with patch(f'aws_s3.{class_.__name__}.get_client'), \
-        patch(f'aws_s3.{class_.__name__}.get_sts_client'), \
-        patch(f'aws_s3.utils.find_wazuh_path', return_value=wazuh_installation_path), \
-        patch(f'aws_s3.utils.get_wazuh_version', return_value=wazuh_version):
+    with patch(f'wodles.aws.aws_s3.{class_.__name__}.get_client'), \
+        patch(f'wodles.aws.aws_s3.{class_.__name__}.get_sts_client'), \
+        patch(f'wodles.aws.aws_s3.utils.find_wazuh_path', return_value=wazuh_installation_path), \
+        patch(f'wodles.aws.aws_s3.utils.get_wazuh_version', return_value=wazuh_version):
         ins = class_(**{'reparse': False, 'access_key': None, 'secret_key': None,
                         'aws_profile': None, 'iam_role_arn': None,
                         'only_logs_after': '19700101', 'region': None})
@@ -100,11 +100,11 @@ def test_db_maintenance(class_, sql_file, db_name):
     """
     Checks DB maintenance
     """
-    with patch(f'aws_s3.{class_.__name__}.get_client'), \
-        patch(f'aws_s3.{class_.__name__}.get_sts_client'), \
+    with patch(f'wodles.aws.aws_s3.{class_.__name__}.get_client'), \
+        patch(f'wodles.aws.aws_s3.{class_.__name__}.get_sts_client'), \
         patch('sqlite3.connect', side_effect=get_fake_s3_db(sql_file)), \
-        patch(f'aws_s3.utils.find_wazuh_path', return_value=wazuh_installation_path), \
-        patch(f'aws_s3.utils.get_wazuh_version', return_value=wazuh_version):
+        patch(f'wodles.aws.aws_s3.utils.find_wazuh_path', return_value=wazuh_installation_path), \
+        patch(f'wodles.aws.aws_s3.utils.get_wazuh_version', return_value=wazuh_version):
         ins = class_(**{'reparse': False, 'access_key': None, 'secret_key': None,
                         'profile': None, 'iam_role_arn': None, 'bucket': 'test-bucket',
                         'only_logs_after': '19700101', 'skip_on_error': True,
@@ -337,7 +337,7 @@ def test_config_format_created_date(date: str, expected_date: str, aws_config_bu
     ({'Key' : '2021-11-12-09-11-26-B9F9F891E8D0EB13'}, 20211112),
     ({'Key' : '20-03-02-21-02-43-A8269E82CA8BDD21', 'LastModified' : datetime.strptime('2021/01/23', '%Y/%m/%d')}, 20210123)
 ])
-def test_custom_get_creation_date(log_file: dict, expected_date: int, aws_custom_bucket : aws_s3.AWSCustomBucket):
+def test_custom_get_creation_date(log_file: dict, expected_date: int, aws_custom_bucket: aws_s3.AWSCustomBucket):
     """
     Test AWSCustomBucket's get_creation_date method.
     Parameters

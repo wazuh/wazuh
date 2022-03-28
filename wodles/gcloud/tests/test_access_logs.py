@@ -9,11 +9,10 @@
 """Unit tests for access_logs module."""
 
 import os
-import sys
 from unittest.mock import patch
 
-sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))  # noqa: E501
-from buckets.access_logs import GCSAccessLogs
+from wodles.gcloud.buckets.access_logs import GCSAccessLogs
+
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
@@ -24,7 +23,8 @@ f_kwargs = {"bucket_name": 'test-bucket',
             "delete_file": False,
             "only_logs_after": None}
 
-@patch('buckets.bucket.storage.client.Client.from_service_account_json')
+
+@patch('wodles.gcloud.buckets.bucket.storage.client.Client.from_service_account_json')
 def get_GCSAccessLogs(mock_client):
     """Return a WazuhGCloudSubscriber client."""
     client = GCSAccessLogs(credentials_file, logger, **f_kwargs)

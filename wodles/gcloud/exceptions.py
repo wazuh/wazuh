@@ -7,7 +7,7 @@
    by the Gcloud package.
 """
 
-import tools
+from wodles.gcloud import tools
 
 
 UNKNOWN_ERROR_ERRCODE = 999

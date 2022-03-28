@@ -6,13 +6,10 @@
 # This program is free software; you can redistribute
 # it and/or modify it under the terms of GPLv2
 import logging
-from os.path import abspath, dirname
-from sys import path
 from json import JSONDecodeError
 
-path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
-import exceptions
-from integration import WazuhGCloudIntegration
+from wodles.gcloud import exceptions
+from wodles.gcloud.integration import WazuhGCloudIntegration
 
 
 try:

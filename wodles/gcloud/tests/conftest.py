@@ -1,12 +1,10 @@
 import os
-from sys import path
 import pytest
 from unittest.mock import patch
 from copy import deepcopy
 
-path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
-from buckets.bucket import WazuhGCloudBucket
-from pubsub.subscriber import WazuhGCloudSubscriber
+from wodles.gcloud.buckets.bucket import WazuhGCloudBucket
+from wodles.gcloud.pubsub.subscriber import WazuhGCloudSubscriber
 
 
 COMMON_PARAMETERS = [
@@ -49,7 +47,7 @@ def test_data_path() -> str:
 
 
 @pytest.fixture(params=deepcopy(GCLOUD_BUCKET_PARAMETERS))
-@patch('buckets.bucket.storage.client.Client.from_service_account_json')
+@patch('wodles.gcloud.buckets.bucket.storage.client.Client.from_service_account_json')
 def gcloud_bucket(mock_client, request):
     """
     Return a WazuhGCloudBucket client.
@@ -72,7 +70,7 @@ def gcloud_bucket(mock_client, request):
 
 
 @pytest.fixture(params=deepcopy(GCLOUD_PUBSUB_PARAMETERS))
-@patch('pubsub.subscriber.pubsub.subscriber.Client.from_service_account_file')
+@patch('wodles.gcloud.pubsub.subscriber.pubsub.subscriber.Client.from_service_account_file')
 def gcloud_subscriber(mock_client, request):
     """
     Return a WazuhGCloudSubscriber client.

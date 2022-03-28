@@ -8,16 +8,13 @@
 
 import logging
 import sqlite3
-from sys import exit, path
 from datetime import datetime, timezone
 from json import dumps, JSONDecodeError
-from os.path import join, dirname, realpath
+from os.path import join
 
-path.append(join(dirname(realpath(__file__)), '..', '..'))  # noqa: E501
-import utils
-import exceptions
-import tools
-from integration import WazuhGCloudIntegration
+from wodles import utils
+from wodles.gcloud import exceptions
+from wodles.gcloud.integration import WazuhGCloudIntegration
 
 try:
     from google.cloud import storage

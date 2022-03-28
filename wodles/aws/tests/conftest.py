@@ -10,7 +10,7 @@ from copy import deepcopy
 sys.modules['boto3'] = MagicMock()
 sys.modules['botocore'] = MagicMock()
 
-import aws_s3
+from wodles.aws import aws_s3
 
 
 AWS_BASE_PARAMS = [
@@ -56,9 +56,9 @@ def aws_bucket(request):
     request : pytest.fixtures.SubRequest
         Object that contains information about the current test.
     """
-    with patch('aws_s3.AWSBucket.get_client'), \
+    with patch('wodles.aws.aws_s3.AWSBucket.get_client'), \
          patch('sqlite3.connect'), \
-         patch('utils.get_wazuh_version'):
+         patch('wodles.utils.get_wazuh_version'):
         return aws_s3.AWSBucket(**{k: v for i in request.param for k, v in i.items()})
 
 
@@ -72,10 +72,10 @@ def aws_waf_bucket(request):
     request : pytest.fixtures.SubRequest
         Object that contains information about the current test.
     """
-    with patch('aws_s3.AWSWAFBucket.get_client'), \
-         patch('aws_s3.AWSWAFBucket.get_sts_client'), \
+    with patch('wodles.aws.aws_s3.AWSWAFBucket.get_client'), \
+         patch('wodles.aws.aws_s3.AWSWAFBucket.get_sts_client'), \
          patch('sqlite3.connect'), \
-         patch('utils.get_wazuh_version'):
+         patch('wodles.utils.get_wazuh_version'):
         return aws_s3.AWSWAFBucket(**{k: v for i in request.param for k, v in i.items()})
 
 
@@ -89,10 +89,10 @@ def aws_config_bucket(request):
     request : pytest.fixtures.SubRequest
         Object that contains information about the current test.
     """
-    with patch('aws_s3.AWSConfigBucket.get_client'), \
-         patch('aws_s3.AWSConfigBucket.get_sts_client'), \
+    with patch('wodles.aws.aws_s3.AWSConfigBucket.get_client'), \
+         patch('wodles.aws.aws_s3.AWSConfigBucket.get_sts_client'), \
          patch('sqlite3.connect'), \
-         patch('utils.get_wazuh_version'):
+         patch('wodles.utils.get_wazuh_version'):
         return aws_s3.AWSConfigBucket(**{k: v for i in request.param for k, v in i.items()})
 
 
@@ -106,8 +106,8 @@ def aws_custom_bucket(request):
     request : pytest.fixtures.SubRequest
         Object that contains information about the current test.
     """
-    with patch('aws_s3.AWSCustomBucket.get_client'), \
-         patch('aws_s3.AWSCustomBucket.get_sts_client'), \
+    with patch('wodles.aws.aws_s3.AWSCustomBucket.get_client'), \
+         patch('wodles.aws.aws_s3.AWSCustomBucket.get_sts_client'), \
          patch('sqlite3.connect'), \
-         patch('utils.get_wazuh_version'):
-        return aws_s3.AWSCustomBucket(**{k: v for i in request.param for k, v in i.items()})   
+         patch('wodles.utils.get_wazuh_version'):
+        return aws_s3.AWSCustomBucket(**{k: v for i in request.param for k, v in i.items()})

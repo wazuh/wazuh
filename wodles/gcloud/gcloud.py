@@ -8,8 +8,7 @@
 
 """This module processes events from Google Cloud PubSub service and GCS Buckets."""
 
-import tools
-import exceptions
+from wodles.gcloud import exceptions, tools
 from sys import exit
 from os import cpu_count
 from buckets.access_logs import GCSAccessLogs

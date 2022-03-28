@@ -10,11 +10,9 @@
 
 import logging
 import socket
-from sys import path
-from os.path import dirname, abspath
-path.insert(0, dirname(dirname(abspath(__file__))))
-import exceptions
-from utils import ANALYSISD
+
+from wodles.gcloud import exceptions
+from wodles.utils import ANALYSISD
 
 
 class WazuhGCloudIntegration:

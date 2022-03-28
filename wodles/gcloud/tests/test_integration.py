@@ -9,14 +9,13 @@
 """Unit tests for integration module."""
 
 import pytest
-import sys
 from unittest.mock import patch
 from os.path import join, dirname, realpath
 
-sys.path.append(join(dirname(realpath(__file__)), '..'))  # noqa: E501
-from pubsub.subscriber import WazuhGCloudSubscriber
 from logging import getLogger
-import exceptions
+from wodles.gcloud.pubsub.subscriber import WazuhGCloudSubscriber
+from wodles.gcloud import exceptions
+
 
 test_data_path = join(dirname(realpath(__file__)), 'data')
 

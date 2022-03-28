@@ -8,11 +8,8 @@
 
 import csv
 import logging
-from os.path import dirname, realpath
-from sys import path
 
-path.append(dirname(realpath(__file__)))  # noqa: E501
-from bucket import WazuhGCloudBucket
+from wodles.gcloud.buckets.bucket import WazuhGCloudBucket
 
 
 class GCSAccessLogs(WazuhGCloudBucket):

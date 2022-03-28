@@ -11,12 +11,11 @@
 import os
 import sys
 import pytest
-from unittest.mock import patch
 from logging import Logger
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))  # noqa: E501
-import exceptions
-from buckets.bucket import WazuhGCloudBucket
+from wodles.gcloud import exceptions
+from wodles.gcloud.buckets.bucket import WazuhGCloudBucket
 
 
 def test_get_bucket(gcloud_bucket: WazuhGCloudBucket):
@@ -32,13 +31,8 @@ def test_get_bucket(gcloud_bucket: WazuhGCloudBucket):
 
 
 @pytest.mark.parametrize('credentials_file,logger,bucket_name,exception,errcode', [
-    ('unexistent_file',
-     None,
-     'test_bucket', exceptions.GCloudError, 1001),
-    ('invalid_credentials_file.json',
-     None,
-     'test_bucket',
-     exceptions.GCloudError, 1000)
+    ('unexistent_file', None, 'test_bucket', exceptions.GCloudError, 1001),
+    ('invalid_credentials_file.json', None, 'test_bucket', exceptions.GCloudError, 1000)
 ])
 def test_bucket_ko(credentials_file: str, logger: Logger,
                    bucket_name: str, exception: exceptions.WazuhIntegrationException,
