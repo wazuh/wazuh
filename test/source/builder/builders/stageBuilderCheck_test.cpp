@@ -19,6 +19,9 @@
 
 using namespace builder::internals::builders;
 
+using FakeTrFn = std::function<void(std::string)>;
+static FakeTrFn tr = [](std::string msg){};
+
 TEST(StageBuilderCheck, BuildsAllNonRegistered)
 {
     Document doc{R"({
@@ -32,7 +35,7 @@ TEST(StageBuilderCheck, BuildsAllNonRegistered)
         ]
     })"};
 
-    ASSERT_THROW(builders::stageBuilderCheck(doc.get("/check")), std::_Nested_exception<std::runtime_error>);
+    ASSERT_THROW(builders::stageBuilderCheck(doc.get("/check"), tr), std::_Nested_exception<std::runtime_error>);
 }
 
 TEST(StageBuilderCheck, Builds)
@@ -61,7 +64,7 @@ TEST(StageBuilderCheck, Builds)
         ]
     })"};
 
-    ASSERT_NO_THROW(builders::stageBuilderCheck(doc.get("/check")));
+    ASSERT_NO_THROW(builders::stageBuilderCheck(doc.get("/check"), tr));
 }
 
 TEST(StageBuilderCheck, BuildsOperates)
@@ -77,7 +80,7 @@ TEST(StageBuilderCheck, BuildsOperates)
         ]
     })"};
 
-    auto check = builders::stageBuilderCheck(doc.get("/check"));
+    auto check = builders::stageBuilderCheck(doc.get("/check"), tr);
 
     Observable input = observable<>::create<Event>(
         [=](auto s)

@@ -84,10 +84,13 @@ types::ConnectableT assetBuilderOutput(const types::Document & def)
         attributes.erase("parents");
     }
 
+    // Create tracer
+    Tracer tr{name};
+
     // Stage check
     try
     {
-        stages.push_back(std::get<types::OpBuilder>(Registry::getBuilder("check"))(attributes.at("check")));
+        stages.push_back(std::get<types::OpBuilder>(Registry::getBuilder("check"))(attributes.at("check"), tr.tracerLogger()));
         attributes.erase("check");
     }
     catch (std::exception & e)
@@ -100,7 +103,7 @@ types::ConnectableT assetBuilderOutput(const types::Document & def)
     // Stage outputs
     try
     {
-        stages.push_back(std::get<types::OpBuilder>(Registry::getBuilder("outputs"))(attributes.at("outputs")));
+        stages.push_back(std::get<types::OpBuilder>(Registry::getBuilder("outputs"))(attributes.at("outputs"), tr.tracerLogger()));
         attributes.erase("outputs");
     }
     catch (std::exception & e)
@@ -116,7 +119,7 @@ types::ConnectableT assetBuilderOutput(const types::Document & def)
     {
         try
         {
-            stages.push_back(std::get<types::OpBuilder>(Registry::getBuilder(it->first))(it->second));
+            stages.push_back(std::get<types::OpBuilder>(Registry::getBuilder(it->first))(it->second, tr.tracerLogger()));
             toPop.push_back(it->first);
         }
         catch (std::exception & e)
@@ -157,7 +160,7 @@ types::ConnectableT assetBuilderOutput(const types::Document & def)
     }
 
     // Finally return connectable
-    return types::ConnectableT{name, parents, output};
+    return types::ConnectableT{name, parents, output, tr};
 }
 
 } // namespace builder::internals::builders

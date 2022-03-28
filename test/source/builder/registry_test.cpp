@@ -5,7 +5,10 @@
 #include "testUtils.hpp"
 #include <json.hpp>
 
-Lifter builderDummy(const Document &t)
+using FakeTrFn = std::function<void(std::string)>;
+FakeTrFn tr = [](std::string msg){};
+
+Lifter builderDummy(const Document &t, FakeTrFn tr)
 {
     return [](Observable o)
     {
@@ -38,6 +41,6 @@ TEST(Registry_test, GetBuilderAndBuilds)
 {
     auto buildB = std::get<types::OpBuilder>(Registry::getBuilder("test"));
     types::Observable o = rxcpp::observable<>::empty<types::Event>();
-    types::Observable expected = buildB(Document(R"({"test":1})").get("/test"))(o);
+    types::Observable expected = buildB(Document(R"({"test":1})").get("/test"), tr)(o);
     ASSERT_EQ(o, expected);
 }

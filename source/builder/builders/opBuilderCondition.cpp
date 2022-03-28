@@ -20,7 +20,7 @@
 namespace builder::internals::builders
 {
 
-types::Lifter opBuilderCondition(const types::DocumentValue & def)
+types::Lifter opBuilderCondition(const types::DocumentValue & def, types::TracerFn tr)
 {
     // Check that input is as expected and throw exception otherwise
     if (!def.IsObject())
@@ -45,26 +45,26 @@ types::Lifter opBuilderCondition(const types::DocumentValue & def)
         {
             case syntax::FUNCTION_HELPER_ANCHOR:
                 return std::get<types::OpBuilder>(Registry::getBuilder("helper." + vStr.substr(1, vStr.find("/") - 1)))(
-                    def);
+                    def, tr);
                 break;
             case syntax::REFERENCE_ANCHOR:
-                return std::get<types::OpBuilder>(Registry::getBuilder("condition.reference"))(def);
+                return std::get<types::OpBuilder>(Registry::getBuilder("condition.reference"))(def, tr);
                 break;
             default:
-                return std::get<types::OpBuilder>(Registry::getBuilder("condition.value"))(def);
+                return std::get<types::OpBuilder>(Registry::getBuilder("condition.value"))(def, tr);
         }
     }
     else if (v->value.IsArray())
     {
-        return std::get<types::OpBuilder>(Registry::getBuilder("condition.array"))(def);
+        return std::get<types::OpBuilder>(Registry::getBuilder("condition.array"))(def, tr);
     }
     else if (v->value.IsObject())
     {
-        return std::get<types::OpBuilder>(Registry::getBuilder("condition.object"))(def);
+        return std::get<types::OpBuilder>(Registry::getBuilder("condition.object"))(def, tr);
     }
     else
     {
-        return std::get<types::OpBuilder>(Registry::getBuilder("condition.value"))(def);
+        return std::get<types::OpBuilder>(Registry::getBuilder("condition.value"))(def, tr);
     }
 }
 

@@ -17,6 +17,9 @@
 
 using namespace builder::internals::builders;
 
+using FakeTrFn = std::function<void(std::string)>;
+static FakeTrFn tr = [](std::string msg){};
+
 TEST(opBuilderMap, BuildsAllNonRegistered)
 {
     Document doc{R"({
@@ -30,7 +33,7 @@ TEST(opBuilderMap, BuildsAllNonRegistered)
     const auto & arr = doc.begin()->value.GetArray();
     for (auto it = arr.Begin(); it != arr.end(); ++it)
     {
-        ASSERT_THROW(opBuilderMap(*it), invalid_argument);
+        ASSERT_THROW(opBuilderMap(*it, tr), invalid_argument);
     }
 }
 
@@ -48,7 +51,7 @@ TEST(opBuilderMap, BuildsValue)
     const auto & arr = doc.begin()->value.GetArray();
     for (auto it = arr.Begin(); it != arr.end(); ++it)
     {
-        ASSERT_NO_THROW(opBuilderMap(*it));
+        ASSERT_NO_THROW(opBuilderMap(*it, tr));
     }
 }
 
@@ -57,5 +60,5 @@ TEST(opBuilderMap, BuildsReference)
     BuilderVariant c = opBuilderMapReference;
     Registry::registerBuilder("map.reference", c);
     Document doc{R"({"normalize": {"ref": "$ref"}})"};
-    ASSERT_NO_THROW(opBuilderMap(doc.get("/normalize")));
+    ASSERT_NO_THROW(opBuilderMap(doc.get("/normalize"), tr));
 }

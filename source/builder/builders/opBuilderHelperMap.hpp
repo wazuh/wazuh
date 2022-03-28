@@ -31,7 +31,7 @@ namespace builder::internals::builders
  * @return types::Lifter The lifter with the `uppercase` transformation.
  * @throw std::runtime_error if the parameter is not a string.
  */
-types::Lifter opBuilderHelperStringUP(const types::DocumentValue & def);
+types::Lifter opBuilderHelperStringUP(const types::DocumentValue & def, types::TracerFn tr);
 
 /**
  * @brief Transforms a string to lowercase and append or remplace it in the event `e`
@@ -40,7 +40,7 @@ types::Lifter opBuilderHelperStringUP(const types::DocumentValue & def);
  * @return types::Lifter The lifter with the `lowercase` transformation.
  * @throw std::runtime_error if the parameter is not a string.
  */
-types::Lifter opBuilderHelperStringLO(const types::DocumentValue & def);
+types::Lifter opBuilderHelperStringLO(const types::DocumentValue & def, types::TracerFn tr);
 
 /**
  * @brief Transforms a string, trim it and append or remplace it in the event `e`
@@ -50,7 +50,7 @@ types::Lifter opBuilderHelperStringLO(const types::DocumentValue & def);
  * @return types::Lifter The lifter with the `trim` transformation.
  * @throw std::runtime_error if the parameter is not a string.
  */
-types::Lifter opBuilderHelperStringTrim(const types::DocumentValue & def);
+types::Lifter opBuilderHelperStringTrim(const types::DocumentValue & def, types::TracerFn tr);
 
 //*************************************************
 //*           Int tranform                        *
@@ -64,7 +64,7 @@ types::Lifter opBuilderHelperStringTrim(const types::DocumentValue & def);
  * @return types::Lifter The lifter with the `mathematical operation` transformation.
  * @throw std::runtime_error if the parameter is not a integer.
  */
-types::Lifter opBuilderHelperIntCalc(const types::DocumentValue & def);
+types::Lifter opBuilderHelperIntCalc(const types::DocumentValue & def, types::TracerFn tr);
 
 //*************************************************
 //*           Regex tranform                      *
@@ -78,7 +78,7 @@ types::Lifter opBuilderHelperIntCalc(const types::DocumentValue & def);
  * @return types::Lifter The lifter with the `regex extract` transformation.
  * @throw std::runtime_error if the parameter is the regex is invalid.
  */
-types::Lifter opBuilderHelperRegexExtract(const types::DocumentValue & def);
+types::Lifter opBuilderHelperRegexExtract(const types::DocumentValue & def, types::TracerFn tr);
 
 } // namespace builder::internals::builders
 
