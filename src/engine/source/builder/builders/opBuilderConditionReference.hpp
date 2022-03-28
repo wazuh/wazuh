@@ -22,7 +22,7 @@ namespace builder::internals::builders
  * @param def Definition of the operation to be built
  * @return types::Lifter
  */
-types::Lifter opBuilderConditionReference(const types::DocumentValue & def);
+types::Lifter opBuilderConditionReference(const types::DocumentValue & def, types::TracerFn tr);
 
 } // namespace builder::internals::builders
 

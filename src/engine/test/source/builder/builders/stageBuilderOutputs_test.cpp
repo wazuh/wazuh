@@ -21,6 +21,9 @@
 
 using namespace builder::internals::builders;
 
+using FakeTrFn = std::function<void(std::string)>;
+static FakeTrFn tr = [](std::string msg){};
+
 TEST(StageBuilderOutputs, BuildsAllNonRegistered)
 {
     Document doc{R"({
@@ -34,7 +37,7 @@ TEST(StageBuilderOutputs, BuildsAllNonRegistered)
         ]
     })"};
 
-    ASSERT_THROW(builders::stageBuilderOutputs(doc.get("/outputs")), std::_Nested_exception<std::runtime_error>);
+    ASSERT_THROW(builders::stageBuilderOutputs(doc.get("/outputs"), tr), std::_Nested_exception<std::runtime_error>);
 }
 
 TEST(StageBuilderOutputs, Builds)
@@ -55,7 +58,7 @@ TEST(StageBuilderOutputs, Builds)
         ]
     })"};
 
-    ASSERT_NO_THROW(builders::stageBuilderOutputs(doc.get("/outputs")));
+    ASSERT_NO_THROW(builders::stageBuilderOutputs(doc.get("/outputs"), tr));
 }
 
 TEST(StageBuilderOutputs, BuildsOperates)
@@ -88,7 +91,7 @@ TEST(StageBuilderOutputs, BuildsOperates)
             )"));
             s.on_completed();
         }).publish();
-    Lifter lift = builders::stageBuilderOutputs(doc.get("/outputs"));
+    Lifter lift = builders::stageBuilderOutputs(doc.get("/outputs"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });

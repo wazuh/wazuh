@@ -81,10 +81,13 @@ types::ConnectableT assetBuilderFilter(const types::Document & def)
         std::throw_with_nested(std::invalid_argument(msg));
     }
 
+    // Create tracer
+    Tracer tr{name};
+
     // Stage allow
     try
     {
-        stages.push_back(std::get<types::OpBuilder>(Registry::getBuilder("allow"))(attributes.at("allow")));
+        stages.push_back(std::get<types::OpBuilder>(Registry::getBuilder("allow"))(attributes.at("allow"), tr.tracerLogger()));
         attributes.erase("allow");
     }
     catch (std::exception & e)
@@ -100,7 +103,7 @@ types::ConnectableT assetBuilderFilter(const types::Document & def)
     {
         try
         {
-            stages.push_back(std::get<types::OpBuilder>(Registry::getBuilder(it->first))(it->second));
+            stages.push_back(std::get<types::OpBuilder>(Registry::getBuilder(it->first))(it->second, tr.tracerLogger()));
             toPop.push_back(it->first);
         }
         catch (std::exception & e)
@@ -131,7 +134,7 @@ types::ConnectableT assetBuilderFilter(const types::Document & def)
         types::Lifter filter = std::get<types::CombinatorBuilder>(
             Registry::getBuilder("combinator.chain"))(stages);
 
-        return types::ConnectableT {name, after, filter};
+        return types::ConnectableT {name, after, filter, tr};
     }
     catch (std::exception & e)
     {

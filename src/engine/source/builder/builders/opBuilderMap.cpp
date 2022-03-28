@@ -20,7 +20,7 @@
 namespace builder::internals::builders
 {
 
-types::Lifter opBuilderMap(const types::DocumentValue & def)
+types::Lifter opBuilderMap(const types::DocumentValue & def, types::TracerFn tr)
 {
     // Check that input is as expected and throw exception otherwise
     if (!def.IsObject())
@@ -48,26 +48,26 @@ types::Lifter opBuilderMap(const types::DocumentValue & def)
             // TODO: handle that only allowed map helpers are built
             case syntax::FUNCTION_HELPER_ANCHOR:
                 return std::get<types::OpBuilder>(Registry::getBuilder("helper." + vStr.substr(1, std::string::npos)))(
-                    def);
+                    def, tr);
                 break;
             case syntax::REFERENCE_ANCHOR:
-                return std::get<types::OpBuilder>(Registry::getBuilder("map.reference"))(def);
+                return std::get<types::OpBuilder>(Registry::getBuilder("map.reference"))(def, tr);
                 break;
             default:
-                return std::get<types::OpBuilder>(Registry::getBuilder("map.value"))(def);
+                return std::get<types::OpBuilder>(Registry::getBuilder("map.value"))(def, tr);
         }
     }
     else if (v->value.IsArray())
     {
-        return std::get<types::OpBuilder>(Registry::getBuilder("map.array"))(def);
+        return std::get<types::OpBuilder>(Registry::getBuilder("map.array"))(def, tr);
     }
     else if (v->value.IsObject())
     {
-        return std::get<types::OpBuilder>(Registry::getBuilder("map.object"))(def);
+        return std::get<types::OpBuilder>(Registry::getBuilder("map.object"))(def, tr);
     }
     else
     {
-        return std::get<types::OpBuilder>(Registry::getBuilder("map.value"))(def);
+        return std::get<types::OpBuilder>(Registry::getBuilder("map.value"))(def, tr);
     }
 }
 

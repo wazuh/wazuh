@@ -34,7 +34,8 @@ using Observable = rxcpp::observable<Event>;
 using Lifter = std::function<Observable(Observable)>;
 using ConnectableT = Connectable<Observable>;
 using AssetBuilder = std::function<ConnectableT(const Document &)>;
-using OpBuilder = std::function<Lifter(const DocumentValue &)>;
+using TracerFn = std::function<void(std::string)>;
+using OpBuilder = std::function<Lifter(const DocumentValue &, TracerFn)>;
 using CombinatorBuilder = std::function<Lifter(std::vector<Lifter>)>;
 using BuilderVariant = std::variant<AssetBuilder, OpBuilder, CombinatorBuilder>;
 
