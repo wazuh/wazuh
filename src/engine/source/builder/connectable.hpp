@@ -19,6 +19,30 @@
 namespace builder::internals
 {
 
+// TODO: Add move semantics
+struct Tracer
+{
+    std::string m_name;
+    rxcpp::subjects::subject<std::string> m_sbj;
+    rxcpp::observable<std::string> m_out;
+    Tracer() = default;
+    explicit Tracer(std::string name)
+        : m_name {name}
+        , m_out {m_sbj.get_observable()}
+    {
+    }
+    auto tracerLogger() const -> std::function<void(std::string)>
+    {
+        return [name = m_name, s = m_sbj.get_subscriber()](std::string msg)
+        {
+            if (s.is_subscribed())
+            {
+                s.on_next("(" + name + ")" + msg);
+            }
+        };
+    }
+};
+
 /**
  * @brief A connectable is a structure which help us build the RXCPP graph when
  * our assets are in the graph.
@@ -35,6 +59,8 @@ struct Connectable
      */
     using Op_t = std::function<Observable(const Observable &)>;
     Op_t m_op;
+
+    Tracer m_tracer;
 
     /**
      * @brief Used to distinguish between connectables. Also for debugging
@@ -63,10 +89,11 @@ struct Connectable
      * @param p vector of parents names
      * @param o the operation this connectable must do to the input stream.
      */
-    Connectable(std::string n, std::vector<std::string> p, Op_t o)
+    Connectable(std::string n, std::vector<std::string> p, Op_t o, Tracer tr)
         : m_op(o)
         , m_name(n)
         , m_parents(p.begin(), p.end())
+        , m_tracer {tr}
     {
     }
 
@@ -78,7 +105,7 @@ struct Connectable
      * @param n name of the connectable
      */
     Connectable(std::string n)
-        : m_name(n)
+        : m_name(n), m_tracer{n}
     {
         if (n.find("OUTPUT_") == std::string::npos)
         {

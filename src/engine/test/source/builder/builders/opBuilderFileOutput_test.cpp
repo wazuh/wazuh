@@ -19,6 +19,9 @@
 
 using namespace builder::internals::builders;
 
+using FakeTrFn = std::function<void(std::string)>;
+static FakeTrFn tr = [](std::string msg){};
+
 TEST(opBuilderFileOutput, Builds)
 {
     Document doc{R"({
@@ -26,7 +29,7 @@ TEST(opBuilderFileOutput, Builds)
             {"path": "value"}
     })"};
 
-    ASSERT_NO_THROW(opBuilderFileOutput(doc.get("/file")));
+    ASSERT_NO_THROW(opBuilderFileOutput(doc.get("/file"), tr));
 }
 
 TEST(opBuilderFileOutput, BuildsOperates)
@@ -53,7 +56,7 @@ TEST(opBuilderFileOutput, BuildsOperates)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderFileOutput(doc.get("/file"));
+    Lifter lift = opBuilderFileOutput(doc.get("/file"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });

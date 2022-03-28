@@ -16,6 +16,9 @@
 
 using namespace builder::internals::builders;
 
+using FakeTrFn = std::function<void(std::string)>;
+static FakeTrFn tr = [](std::string msg){};
+
 TEST(opBuilderHelperRegexExtract, Builds)
 {
     Document doc{R"({
@@ -23,7 +26,7 @@ TEST(opBuilderHelperRegexExtract, Builds)
             {"field": "+r_ext/_field/regexp/"}
     })"};
 
-    ASSERT_NO_THROW(opBuilderHelperRegexExtract(doc.get("/map")));
+    ASSERT_NO_THROW(opBuilderHelperRegexExtract(doc.get("/map"), tr));
 }
 
 TEST(opBuilderHelperRegexExtract, Not_enough_arguments_error)
@@ -33,7 +36,7 @@ TEST(opBuilderHelperRegexExtract, Not_enough_arguments_error)
             {"field": "+r_ext/_field/"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperRegexExtract(doc.get("/map")), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperRegexExtract(doc.get("/map"), tr), std::runtime_error);
 }
 
 TEST(opBuilderHelperRegexExtract, Too_many_arguments_error)
@@ -43,7 +46,7 @@ TEST(opBuilderHelperRegexExtract, Too_many_arguments_error)
             {"field": "+r_ext/_field/regexp/arg/"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperRegexExtract(doc.get("/map")), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperRegexExtract(doc.get("/map"), tr), std::runtime_error);
 }
 
 TEST(opBuilderHelperRegexExtract, String_regex_extract)
@@ -68,7 +71,7 @@ TEST(opBuilderHelperRegexExtract, String_regex_extract)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperRegexExtract(doc.get("/map"));
+    Lifter lift = opBuilderHelperRegexExtract(doc.get("/map"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -101,7 +104,7 @@ TEST(opBuilderHelperRegexExtract, Numeric_regex_extract)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperRegexExtract(doc.get("/map"));
+    Lifter lift = opBuilderHelperRegexExtract(doc.get("/map"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -131,7 +134,7 @@ TEST(opBuilderHelperRegexExtract, Advanced_regex_extract)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperRegexExtract(doc.get("/map"));
+    Lifter lift = opBuilderHelperRegexExtract(doc.get("/map"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -164,7 +167,7 @@ TEST(opBuilderHelperRegexExtract, Nested_field_regex_extract)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperRegexExtract(doc.get("/map"));
+    Lifter lift = opBuilderHelperRegexExtract(doc.get("/map"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -196,7 +199,7 @@ TEST(opBuilderHelperRegexExtract, Field_not_exists_regex_extract)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperRegexExtract(doc.get("/map"));
+    Lifter lift = opBuilderHelperRegexExtract(doc.get("/map"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -228,7 +231,7 @@ TEST(opBuilderHelperRegexExtract, Multilevel_field_regex_extract)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperRegexExtract(doc.get("/map"));
+    Lifter lift = opBuilderHelperRegexExtract(doc.get("/map"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -259,7 +262,7 @@ TEST(opBuilderHelperRegexExtract, Multilevel_field_dst_regex_extract)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperRegexExtract(doc.get("/map"));
+    Lifter lift = opBuilderHelperRegexExtract(doc.get("/map"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });

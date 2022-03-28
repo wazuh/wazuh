@@ -17,6 +17,9 @@
 
 using namespace builder::internals::builders;
 
+using FakeTrFn = std::function<void(std::string)>;
+static FakeTrFn tr = [](std::string msg){};
+
 TEST(opBuilderCondition, BuildsAllNonRegistered)
 {
     Document doc{R"({
@@ -32,7 +35,7 @@ TEST(opBuilderCondition, BuildsAllNonRegistered)
     const auto & arr = doc.begin()->value.GetArray();
     for (auto it = arr.Begin(); it != arr.end(); ++it)
     {
-        ASSERT_THROW(opBuilderCondition(*it), invalid_argument);
+        ASSERT_THROW(opBuilderCondition(*it, tr), invalid_argument);
     }
 }
 
@@ -50,7 +53,7 @@ TEST(opBuilderCondition, BuildsValue)
     const auto & arr = doc.begin()->value.GetArray();
     for (auto it = arr.Begin(); it != arr.end(); ++it)
     {
-        ASSERT_NO_THROW(opBuilderCondition(*it));
+        ASSERT_NO_THROW(opBuilderCondition(*it, tr));
     }
 }
 
@@ -59,7 +62,7 @@ TEST(opBuilderCondition, BuildsReference)
     BuilderVariant c = opBuilderConditionReference;
     Registry::registerBuilder("condition.reference", c);
     Document doc{R"({"check": {"ref": "$ref"}})"};
-    ASSERT_NO_THROW(opBuilderCondition(doc.get("/check")));
+    ASSERT_NO_THROW(opBuilderCondition(doc.get("/check"), tr));
 }
 
 TEST(opBuilderCondition, BuildsHelperExists)
@@ -67,7 +70,7 @@ TEST(opBuilderCondition, BuildsHelperExists)
     BuilderVariant c = opBuilderHelperExists;
     Registry::registerBuilder("helper.exists", c);
     Document doc{R"({"check": {"ref": "+exists"}})"};
-    ASSERT_NO_THROW(opBuilderCondition(doc.get("/check")));
+    ASSERT_NO_THROW(opBuilderCondition(doc.get("/check"), tr));
 }
 
 TEST(opBuilderCondition, BuildsHelperNotExists)
@@ -75,5 +78,5 @@ TEST(opBuilderCondition, BuildsHelperNotExists)
     BuilderVariant c = opBuilderHelperNotExists;
     Registry::registerBuilder("helper.not_exists", c);
     Document doc{R"({"check": {"ref": "+not_exists"}})"};
-    ASSERT_NO_THROW(opBuilderCondition(doc.get("/check")));
+    ASSERT_NO_THROW(opBuilderCondition(doc.get("/check"), tr));
 }

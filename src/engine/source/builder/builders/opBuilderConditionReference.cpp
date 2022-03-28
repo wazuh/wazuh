@@ -17,7 +17,7 @@
 namespace builder::internals::builders
 {
 
-types::Lifter opBuilderConditionReference(const types::DocumentValue & def)
+types::Lifter opBuilderConditionReference(const types::DocumentValue & def, types::TracerFn tr)
 {
     if (!def.MemberBegin()->name.IsString())
     {

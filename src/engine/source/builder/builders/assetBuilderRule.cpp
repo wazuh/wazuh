@@ -84,10 +84,13 @@ types::ConnectableT assetBuilderRule(const types::Document & def)
         attributes.erase("parents");
     }
 
+    // Create tracer
+    Tracer tr{name};
+
     // Stage check
     try
     {
-        stages.push_back(std::get<types::OpBuilder>(Registry::getBuilder("check"))(attributes.at("check")));
+        stages.push_back(std::get<types::OpBuilder>(Registry::getBuilder("check"))(attributes.at("check"), tr.tracerLogger()));
         attributes.erase("check");
     }
     catch (std::exception & e)
@@ -104,7 +107,7 @@ types::ConnectableT assetBuilderRule(const types::Document & def)
         try
         {
             stages.push_back(std::get<types::OpBuilder>(
-                Registry::getBuilder(it->first))(it->second));
+                Registry::getBuilder(it->first))(it->second, tr.tracerLogger()));
             toPop.push_back(it->first);
         }
         catch (std::exception & e)
@@ -133,7 +136,7 @@ types::ConnectableT assetBuilderRule(const types::Document & def)
         types::Lifter decoder = std::get<types::CombinatorBuilder>(
             Registry::getBuilder("combinator.chain"))(stages);
         // Finally return connectable
-        return types::ConnectableT {name, parents, decoder};
+        return types::ConnectableT {name, parents, decoder, tr};
     }
     catch (std::exception & e)
     {

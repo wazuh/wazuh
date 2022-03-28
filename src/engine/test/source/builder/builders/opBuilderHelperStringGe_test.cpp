@@ -15,6 +15,9 @@
 
 using namespace builder::internals::builders;
 
+using FakeTrFn = std::function<void(std::string)>;
+static FakeTrFn tr = [](std::string msg){};
+
 // Build ok
 TEST(opBuilderHelperStringGE, Builds)
 {
@@ -22,7 +25,7 @@ TEST(opBuilderHelperStringGE, Builds)
         "check":
             {"field2check": "+s_ge/abcd"}
     })"};
-    ASSERT_NO_THROW(opBuilderHelperStringGE(doc.get("/check")));
+    ASSERT_NO_THROW(opBuilderHelperStringGE(doc.get("/check"), tr));
 }
 
 // Build incorrect number of arguments
@@ -32,7 +35,7 @@ TEST(opBuilderHelperStringGE, Builds_incorrect_number_of_arguments)
         "check":
             {"field2check": "+s_ge/test_value/test_value2"}
     })"};
-    ASSERT_THROW(opBuilderHelperStringGE(doc.get("/check")), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperStringGE(doc.get("/check"), tr), std::runtime_error);
 }
 
 // Test ok: static values
@@ -86,7 +89,7 @@ TEST(opBuilderHelperStringGE, Static_string_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringGE(doc.get("/check"));
+    Lifter lift = opBuilderHelperStringGE(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -127,7 +130,7 @@ TEST(opBuilderHelperStringGE, Static_number_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringGE(doc.get("/check"));
+    Lifter lift = opBuilderHelperStringGE(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -171,7 +174,7 @@ TEST(opBuilderHelperStringGE, Dynamics_string_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringGE(doc.get("/check"));
+    Lifter lift = opBuilderHelperStringGE(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });

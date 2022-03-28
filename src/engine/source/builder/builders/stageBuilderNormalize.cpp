@@ -20,7 +20,7 @@
 namespace builder::internals::builders
 {
 
-types::Lifter stageBuilderNormalize(const types::DocumentValue & def)
+types::Lifter stageBuilderNormalize(const types::DocumentValue & def, types::TracerFn tr)
 {
     // Assert value is as expected
     if (!def.IsArray())
@@ -36,7 +36,7 @@ types::Lifter stageBuilderNormalize(const types::DocumentValue & def)
     {
         try
         {
-            mappings.push_back(std::get<types::OpBuilder>(Registry::getBuilder("map"))(*it));
+            mappings.push_back(std::get<types::OpBuilder>(Registry::getBuilder("map"))(*it, tr));
         }
         catch (std::exception & e)
         {

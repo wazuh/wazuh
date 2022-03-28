@@ -34,7 +34,7 @@ namespace builder::internals::builders
  * @param def The filter definition.
  * @return types::Lifter The lifter with the `exists` filter.
  */
-types::Lifter opBuilderHelperExists(const types::DocumentValue & def);
+types::Lifter opBuilderHelperExists(const types::DocumentValue & def, types::TracerFn tr);
 
 /**
  * @brief Create `not_exists` helper function that filters events that not contains specified field.
@@ -43,7 +43,7 @@ types::Lifter opBuilderHelperExists(const types::DocumentValue & def);
  * @param def The filter definition.
  * @return types::Lifter The lifter with the `not_exists` filter.
  */
-types::Lifter opBuilderHelperNotExists(const types::DocumentValue & def);
+types::Lifter opBuilderHelperNotExists(const types::DocumentValue & def, types::TracerFn tr);
 
 //*************************************************
 //*           String filters                      *
@@ -81,7 +81,7 @@ inline bool opBuilderHelperStringComparison(const std::string  key, char op, typ
  * @return types::Lifter The lifter with the `s_eq` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
-types::Lifter opBuilderHelperStringEQ(const types::DocumentValue & def);
+types::Lifter opBuilderHelperStringEQ(const types::DocumentValue & def, types::TracerFn tr);
 
 /**
  * @brief Create `s_ne` helper function that filters events with a string
@@ -93,7 +93,7 @@ types::Lifter opBuilderHelperStringEQ(const types::DocumentValue & def);
  * @return types::Lifter The lifter with the `s_ne` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
-types::Lifter opBuilderHelperStringNE(const types::DocumentValue & def);
+types::Lifter opBuilderHelperStringNE(const types::DocumentValue & def, types::TracerFn tr);
 
 /**
  * @brief Create `s_gt` helper function that filters events with a string
@@ -106,7 +106,7 @@ types::Lifter opBuilderHelperStringNE(const types::DocumentValue & def);
  * @return types::Lifter The lifter with the `s_gt` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
-types::Lifter opBuilderHelperStringGT(const types::DocumentValue & def);
+types::Lifter opBuilderHelperStringGT(const types::DocumentValue & def, types::TracerFn tr);
 
 /**
  * @brief Create `s_ge` helper function that filters events with a string
@@ -119,7 +119,7 @@ types::Lifter opBuilderHelperStringGT(const types::DocumentValue & def);
  * @return types::Lifter The lifter with the `s_ge` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
-types::Lifter opBuilderHelperStringGE(const types::DocumentValue & def);
+types::Lifter opBuilderHelperStringGE(const types::DocumentValue & def, types::TracerFn tr);
 
 /**
  * @brief Create `s_lt` helper function that filters events with a string
@@ -132,7 +132,7 @@ types::Lifter opBuilderHelperStringGE(const types::DocumentValue & def);
  * @return types::Lifter The lifter with the `s_lt` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
-types::Lifter opBuilderHelperStringLT(const types::DocumentValue & def);
+types::Lifter opBuilderHelperStringLT(const types::DocumentValue & def, types::TracerFn tr);
 
 /**
  * @brief Create `s_le` helper function that filters events with a string
@@ -145,7 +145,7 @@ types::Lifter opBuilderHelperStringLT(const types::DocumentValue & def);
  * @return types::Lifter The lifter with the `s_le` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
-types::Lifter opBuilderHelperStringLE(const types::DocumentValue & def);
+types::Lifter opBuilderHelperStringLE(const types::DocumentValue & def, types::TracerFn tr);
 
 //*************************************************
 //*              Int filters                      *
@@ -186,7 +186,7 @@ inline bool opBuilderHelperIntComparison(const std::string field, char op,
  * @return types::Lifter The lifter with the `i_eq` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
-types::Lifter opBuilderHelperIntEqual(const types::DocumentValue & def);
+types::Lifter opBuilderHelperIntEqual(const types::DocumentValue & def, types::TracerFn tr);
 
 /**
  * @brief Builds helper integer not equal operation.
@@ -198,7 +198,7 @@ types::Lifter opBuilderHelperIntEqual(const types::DocumentValue & def);
  * @return types::Lifter The lifter with the `i_ne` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
-types::Lifter opBuilderHelperIntNotEqual(const types::DocumentValue & def);
+types::Lifter opBuilderHelperIntNotEqual(const types::DocumentValue & def, types::TracerFn tr);
 
 /**
  * @brief Builds helper integer less than operation.
@@ -210,7 +210,7 @@ types::Lifter opBuilderHelperIntNotEqual(const types::DocumentValue & def);
  * @return types::Lifter The lifter with the `i_lt` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
-types::Lifter opBuilderHelperIntLessThan(const types::DocumentValue & def);
+types::Lifter opBuilderHelperIntLessThan(const types::DocumentValue & def, types::TracerFn tr);
 
 /**
  * @brief Builds helper integer less than equal operation.
@@ -222,7 +222,7 @@ types::Lifter opBuilderHelperIntLessThan(const types::DocumentValue & def);
  * @return types::Lifter The lifter with the `i_le` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
-types::Lifter opBuilderHelperIntLessThanEqual(const types::DocumentValue & def);
+types::Lifter opBuilderHelperIntLessThanEqual(const types::DocumentValue & def, types::TracerFn tr);
 
 /**
  * @brief Builds helper integer greater than operation.
@@ -235,7 +235,7 @@ types::Lifter opBuilderHelperIntLessThanEqual(const types::DocumentValue & def);
  * @throw std::runtime_error if the parameter is not a integer.
  */
 
-types::Lifter opBuilderHelperIntGreaterThan(const types::DocumentValue & def);
+types::Lifter opBuilderHelperIntGreaterThan(const types::DocumentValue & def, types::TracerFn tr);
 
 /**
  * @brief Builds helper integer greater than equal operation.
@@ -247,7 +247,7 @@ types::Lifter opBuilderHelperIntGreaterThan(const types::DocumentValue & def);
  * @return types::Lifter The lifter with the `i_ge` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
-types::Lifter opBuilderHelperIntGreaterThanEqual(const types::DocumentValue & def);
+types::Lifter opBuilderHelperIntGreaterThanEqual(const types::DocumentValue & def, types::TracerFn tr);
 
 /**
  * @brief Builds helper regex match operation.
@@ -256,7 +256,7 @@ types::Lifter opBuilderHelperIntGreaterThanEqual(const types::DocumentValue & de
  * @param def Definition of the operation to be built
  * @return types::Lifter The lifter with the `regex` filter.
  */
-types::Lifter opBuilderHelperRegexMatch(const types::DocumentValue & def);
+types::Lifter opBuilderHelperRegexMatch(const types::DocumentValue & def, types::TracerFn tr);
 
 /**
  * @brief Builds helper regex not match operation.
@@ -265,7 +265,7 @@ types::Lifter opBuilderHelperRegexMatch(const types::DocumentValue & def);
  * @param def Definition of the operation to be built
  * @return types::Lifter The lifter with the `regex_not` filter.
  */
-types::Lifter opBuilderHelperRegexNotMatch(const types::DocumentValue & def);
+types::Lifter opBuilderHelperRegexNotMatch(const types::DocumentValue & def, types::TracerFn tr);
 
 /**
  * @brief Create `ip_cidr` helper function that filters events if the field
@@ -275,7 +275,7 @@ types::Lifter opBuilderHelperRegexNotMatch(const types::DocumentValue & def);
  * @return types::Lifter The lifter with the `ip_cidr` filter.
  * @throw  std::runtime_error if the parameter is not a cidr.
  */
-types::Lifter opBuilderHelperIPCIDR(const types::DocumentValue & def);
+types::Lifter opBuilderHelperIPCIDR(const types::DocumentValue & def, types::TracerFn tr);
 
 } // namespace builder::internals::builders
 

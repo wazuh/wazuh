@@ -16,13 +16,16 @@
 
 using namespace builder::internals::builders;
 
+using FakeTrFn = std::function<void(std::string)>;
+static FakeTrFn tr = [](std::string msg){};
+
 TEST(opBuilderMapReference, Builds)
 {
     Document doc{R"({
         "normalize":
             {"field": "$other_field"}
     })"};
-    ASSERT_NO_THROW(opBuilderMapReference(doc.get("/normalize")));
+    ASSERT_NO_THROW(opBuilderMapReference(doc.get("/normalize"), tr));
 }
 
 TEST(opBuilderMapReference, BuildsOperates)
@@ -47,7 +50,7 @@ TEST(opBuilderMapReference, BuildsOperates)
             )"));
             s.on_completed();
         });
-    Lifter lift1 = opBuilderMapReference(doc.get("/normalize"));
+    Lifter lift1 = opBuilderMapReference(doc.get("/normalize"), tr);
 
     Observable output = lift1(input);
     vector<Event> expected;
