@@ -184,9 +184,9 @@ void fim_db_init(int storage,
                         if (type == REG_VALUE)
                         {
                             const auto registryType { json.at("data").at("attributes").at("value_type").get<uint32_t>() };
-                            std::string value_name = keyValue.second;
-                            Utils::replaceAll(value_name, "\\:", ":");
-                            json["data"]["value_name"] = value_name;
+                            auto valueName { keyValue.second };
+                            Utils::replaceAll(valueName, "\\:", ":");
+                            json["data"]["value_name"] = valueName;
                             json["data"]["attributes"]["value_type"] = RegistryTypes<OS_TYPE>::typeText(registryType);
                             json["data"]["attributes"]["type"] = "registry_value";
                         }
