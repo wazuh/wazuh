@@ -87,9 +87,11 @@ DISABLE_CISCAT?=no
 DISABLE_STRIP_SYMBOLS?=no
 
 ifeq (${uname_S}, Linux)
+ifneq (${TARGET}, winagent)
 EXECUTABLE_FILES := $(shell find . -maxdepth 1 -type f ! -name "*.so"  -perm /a=x)
 EXECUTABLE_FILES += $(shell find . -type f -not -path "./external/*" -name "*.so" -perm /a=x)
 EXECUTABLE_FILES:= $(EXECUTABLE_FILES:./%=%)
+endif
 endif
 
 
@@ -752,7 +754,7 @@ ifneq (${uname_S},HP-UX)
 	${MAKE} ${BUILD_CMAKE_PROJECTS}
 endif
 	${MAKE} ${BUILD_SERVER}
-	@${MAKE} strip DISABLE_STRIP_SYMBOLS=${DISABLE_STRIP_SYMBOLS}
+	@${MAKE} strip TARGET=${TARGET} DISABLE_STRIP_SYMBOLS=${DISABLE_STRIP_SYMBOLS}
 
 ifeq (${MAKECMDGOALS},local)
 $(error Do not use 'local' directly, use 'TARGET=local')
@@ -762,7 +764,7 @@ ifneq (${uname_S},HP-UX)
 	${MAKE} ${BUILD_CMAKE_PROJECTS}
 endif
 	${MAKE} ${BUILD_SERVER}
-	@${MAKE} strip DISABLE_STRIP_SYMBOLS=${DISABLE_STRIP_SYMBOLS}
+	@${MAKE} strip TARGET=${TARGET} DISABLE_STRIP_SYMBOLS=${DISABLE_STRIP_SYMBOLS}
 
 ifeq (${MAKECMDGOALS},hybrid)
 $(error Do not use 'hybrid' directly, use 'TARGET=hybrid')
@@ -772,7 +774,7 @@ ifneq (${uname_S},HP-UX)
 	${MAKE} ${BUILD_CMAKE_PROJECTS}
 endif
 	${MAKE} ${BUILD_SERVER}
-	@${MAKE} strip DISABLE_STRIP_SYMBOLS=${DISABLE_STRIP_SYMBOLS}
+	@${MAKE} strip TARGET=${TARGET} DISABLE_STRIP_SYMBOLS=${DISABLE_STRIP_SYMBOLS}
 
 ifeq (${MAKECMDGOALS},agent)
 $(error Do not use 'agent' directly, use 'TARGET=agent')
@@ -782,7 +784,7 @@ ifneq (${uname_S},HP-UX)
 	${MAKE} ${BUILD_CMAKE_PROJECTS}
 endif
 	${MAKE} ${BUILD_AGENT}
-	@${MAKE} strip DISABLE_STRIP_SYMBOLS=${DISABLE_STRIP_SYMBOLS}
+	@${MAKE} strip TARGET=${TARGET} DISABLE_STRIP_SYMBOLS=${DISABLE_STRIP_SYMBOLS}
 
 ifneq (,$(filter ${USE_SELINUX},YES yes y Y 1))
 server local hybrid agent: selinux
@@ -802,8 +804,10 @@ else
 strip: ${BUILD_SERVER} ${BUILD_CMAKE_PROJECTS}
 endif
 ifeq (${uname_S}, Linux)
+ifneq (${TARGET}, winagent)
 ifeq (,$(filter ${DISABLE_STRIP_SYMBOLS},YES yes y Y 1))
 	@$(foreach var, ${EXECUTABLE_FILES}, objcopy --only-keep-debug $(var) symbols/$(basename $(notdir $(var))).debug; objcopy --strip-unneeded $(var);)
+endif
 endif
 endif
 
