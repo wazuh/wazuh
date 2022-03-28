@@ -8,7 +8,7 @@
 #
 
 import argparse
-from ci import utils
+from ci import run_check
 
 module_list = ['wazuh_modules/syscollector', 'shared_modules/dbsync', 'shared_modules/rsync', 'shared_modules/utils',
                'data_provider', 'syscheckd']
@@ -74,31 +74,31 @@ class CommandLineParser:
 
         args = parser.parse_args()
         if self._argIsValid(args.readytoreview):
-            utils.runReadyToReview(args.readytoreview)
+            run_check.runReadyToReview(args.readytoreview)
         elif self._argIsValid(args.clean):
-            utils.cleanLib(args.clean)
+            run_check.cleanLib(args.clean)
         elif self._argIsValid(args.make):
-            utils.makeLib(args.make)
+            run_check.makeLib(args.make)
         elif self._argIsValid(args.tests):
-            utils.runTests(args.tests)
+            run_check.runTests(args.tests)
         elif self._argIsValid(args.coverage):
-            utils.runCoverage(args.coverage)
+            run_check.runCoverage(args.coverage)
         elif self._argIsValid(args.valgrind):
-            utils.runValgrind(args.valgrind)
+            run_check.runValgrind(args.valgrind)
         elif self._argIsValid(args.cppcheck):
-            utils.runCppCheck(args.cppcheck)
+            run_check.runCppCheck(args.cppcheck)
         elif self._argIsValid(args.asan):
-            utils.runASAN(args.asan)
+            run_check.runASAN(args.asan)
         elif self._argIsValid(args.scheck):
-            utils.runAStyleCheck(args.scheck)
+            run_check.runAStyleCheck(args.scheck)
         elif self._argIsValid(args.sformat):
-            utils.runAStyleFormat(args.sformat)
+            run_check.runAStyleFormat(args.sformat)
         elif self._targetIsValid(args.scanbuild):
-            utils.runScanBuild(args.scanbuild)
+            run_check.runScanBuild(args.scanbuild)
         elif self._argIsValid(args.deleteLogs):
-            utils.deleteLogs(args.deleteLogs)
+            run_check.deleteLogs(args.deleteLogs)
         elif self._argIsValid(args.readytoreviewandclean):
-            utils.runReadyToReview(args.readytoreviewandclean, True)
+            run_check.runReadyToReview(args.readytoreviewandclean, True)
         else:
             parser.print_help()
 
