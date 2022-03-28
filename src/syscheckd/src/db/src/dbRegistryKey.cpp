@@ -35,7 +35,7 @@ void RegistryKey::createFimEntry()
             }
             else
             {
-                throw std::runtime_error("The memory for uid parameter could not be allocated.");
+                throw std::runtime_error("The memory for gid parameter could not be allocated.");
             }
 
             key->group_name = const_cast<char*>(m_groupname.c_str());
@@ -52,7 +52,7 @@ void RegistryKey::createFimEntry()
             }
             else
             {
-                throw std::runtime_error("The memory for gid parameter could not be allocated.");
+                throw std::runtime_error("The memory for uid parameter could not be allocated.");
             }
 
             key->user_name = const_cast<char*>(m_username.c_str());
