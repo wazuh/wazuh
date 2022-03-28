@@ -14,7 +14,7 @@ using namespace std;
 namespace builder::internals::builders
 {
 
-types::Lifter opBuilderConditionValue(const types::DocumentValue & def)
+types::Lifter opBuilderConditionValue(const types::DocumentValue & def, types::TracerFn tr)
 {
     if (!def.MemberBegin()->name.IsString())
     {

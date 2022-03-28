@@ -16,6 +16,9 @@
 
 using namespace builder::internals::builders;
 
+using FakeTrFn = std::function<void(std::string)>;
+static FakeTrFn tr = [](std::string msg){};
+
 TEST(opBuilderConditionValue, Builds)
 {
     Document doc{R"({
@@ -28,7 +31,7 @@ TEST(opBuilderConditionValue, Builds)
     const auto & arr = doc.begin()->value.GetArray();
     for (auto it = arr.Begin(); it != arr.end(); ++it)
     {
-        ASSERT_NO_THROW(opBuilderConditionValue(*it));
+        ASSERT_NO_THROW(opBuilderConditionValue(*it, tr));
     }
 }
 
@@ -56,7 +59,7 @@ TEST(opBuilderConditionValue, BuildsOperatesString)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderConditionValue(doc.get("/check"));
+    Lifter lift = opBuilderConditionValue(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -91,7 +94,7 @@ TEST(opBuilderConditionValue, BuildsOperatesInt)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderConditionValue(doc.get("/check"));
+    Lifter lift = opBuilderConditionValue(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -129,7 +132,7 @@ TEST(opBuilderConditionValue, BuildsOperatesBool)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderConditionValue(doc.get("/check"));
+    Lifter lift = opBuilderConditionValue(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -167,7 +170,7 @@ TEST(opBuilderConditionValue, BuildsOperatesNull)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderConditionValue(doc.get("/check"));
+    Lifter lift = opBuilderConditionValue(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -205,7 +208,7 @@ TEST(opBuilderConditionValue, BuildsOperatesArray)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderConditionValue(doc.get("/check"));
+    Lifter lift = opBuilderConditionValue(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -261,7 +264,7 @@ TEST(opBuilderConditionValue, BuildsOperatesObject)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderConditionValue(doc.get("/check"));
+    Lifter lift = opBuilderConditionValue(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -303,7 +306,7 @@ TEST(opBuilderConditionValue, BuildsOperatesOneLevel)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderConditionValue(doc.get("/check"));
+    Lifter lift = opBuilderConditionValue(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -338,7 +341,7 @@ TEST(opBuilderConditionValue, BuildsOperatesMultiLevel)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderConditionValue(doc.get("/check"));
+    Lifter lift = opBuilderConditionValue(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });

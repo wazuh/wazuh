@@ -16,6 +16,9 @@
 
 using namespace builder::internals::builders;
 
+using FakeTrFn = std::function<void(std::string)>;
+static FakeTrFn tr = [](std::string msg){};
+
 TEST(opBuilderMapValue, Builds)
 {
     Document doc{R"({
@@ -28,7 +31,7 @@ TEST(opBuilderMapValue, Builds)
     const auto & arr = doc.begin()->value.GetArray();
     for (auto it = arr.Begin(); it != arr.end(); ++it)
     {
-        ASSERT_NO_THROW(opBuilderMapValue(*it));
+        ASSERT_NO_THROW(opBuilderMapValue(*it, tr));
     }
 }
 
@@ -59,9 +62,9 @@ TEST(opBuilderMapValue, BuildsOperates)
             )"));
             s.on_completed();
         });
-    Lifter lift1 = opBuilderMapValue(doc.get("/normalize/0"));
-    Lifter lift2 = opBuilderMapValue(doc.get("/normalize/1"));
-    Lifter lift3 = opBuilderMapValue(doc.get("/normalize/2"));
+    Lifter lift1 = opBuilderMapValue(doc.get("/normalize/0"), tr);
+    Lifter lift2 = opBuilderMapValue(doc.get("/normalize/1"), tr);
+    Lifter lift3 = opBuilderMapValue(doc.get("/normalize/2"), tr);
 
     Observable output = lift3(lift2(lift1(input)));
     vector<Event> expected;

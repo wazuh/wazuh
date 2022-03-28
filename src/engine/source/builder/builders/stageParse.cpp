@@ -22,7 +22,7 @@
 namespace builder::internals::builders
 {
 
-types::Lifter stageBuilderParse(const types::DocumentValue &def)
+types::Lifter stageBuilderParse(const types::DocumentValue &def, types::TracerFn tr)
 {
     // Assert value is as expected
     if (!def.IsObject())

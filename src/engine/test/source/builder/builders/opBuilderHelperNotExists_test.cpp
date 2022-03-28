@@ -15,6 +15,9 @@
 
 using namespace builder::internals::builders;
 
+using FakeTrFn = std::function<void(std::string)>;
+static FakeTrFn tr = [](std::string msg){};
+
 TEST(opBuilderHelperNotExists, Builds)
 {
     Document doc{R"({
@@ -22,7 +25,7 @@ TEST(opBuilderHelperNotExists, Builds)
             {"field": "+not_exists"}
     })"};
 
-    ASSERT_NO_THROW(opBuilderHelperNotExists(doc.get("/check")));
+    ASSERT_NO_THROW(opBuilderHelperNotExists(doc.get("/check"), tr));
 }
 
 TEST(opBuilderHelperNotExists, Builds_error_bad_parameter)
@@ -32,7 +35,7 @@ TEST(opBuilderHelperNotExists, Builds_error_bad_parameter)
             {"field_test": "+exists/test"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIntEqual(doc.get("/check")), std::invalid_argument);
+    ASSERT_THROW(opBuilderHelperIntEqual(doc.get("/check"), tr), std::invalid_argument);
 }
 
 TEST(opBuilderHelperNotExists, Exec_not_exists_ok)
@@ -69,7 +72,7 @@ TEST(opBuilderHelperNotExists, Exec_not_exists_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperNotExists(doc.get("/check"));
+    Lifter lift = opBuilderHelperNotExists(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -146,7 +149,7 @@ TEST(opBuilderHelperNotExists, Exec_multilevel_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperNotExists(doc.get("/check"));
+    Lifter lift = opBuilderHelperNotExists(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 

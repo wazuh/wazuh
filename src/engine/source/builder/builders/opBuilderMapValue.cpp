@@ -14,7 +14,7 @@ using namespace std;
 namespace builder::internals::builders
 {
 // TODOL DOC and test this
-types::Lifter opBuilderMapValue(const types::DocumentValue & def)
+types::Lifter opBuilderMapValue(const types::DocumentValue & def, types::TracerFn tr)
 {
     // Make deep copy of value
     types::Document doc{def};
