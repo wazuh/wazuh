@@ -701,8 +701,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         logger.info("Requested entire agent-groups information by the worker node. Starting.")
         start_time = get_utc_now().timestamp()
+        logger.info("Sending all agent-groups information from the master node database.")
         await sync_object.sync(start_time=start_time, chunks=local_agent_groups_information)
-        logger.info("Sent all agent-groups information from the master node database.")
 
         return b'ok', b'Sent'
 

@@ -1031,7 +1031,7 @@ async def test_manager_handler_send_entire_agent_groups_information(WazuhDBConne
     with patch('wazuh.core.cluster.master.c_common.SyncWazuhdb', SyncWazuhdbMock):
         assert await master_handler.send_entire_agent_groups_information() == (b'ok', b'Sent')
     assert 'Requested entire agent-groups information by the worker node. Starting.' in logger._info
-    assert 'Sent all agent-groups information from the master node database.' in logger._info
+    assert 'Sending all agent-groups information from the master node database.' in logger._info
 
 
 @pytest.mark.asyncio
