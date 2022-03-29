@@ -31,14 +31,16 @@ static std::string getRandomString(int len, bool includeSymbols = false) {
 TEST(kvdbTests, create_delete_kvd_file)
 {
     KVDBManager& kvdbManager = KVDBManager::getInstance();
+    kvdbManager.createDB("TEST"); // TODO Move this to Setup()
     KVDB& kvdb1 = kvdbManager.getDB("TEST");
-    KVDB& kvdb2 = kvdbManager.getDB("TEST");
-    KVDB& kvdb3 = kvdbManager.getDB("TESTA"); //TODO: KVDB Manager Error control?
     ASSERT_EQ(kvdb1.getName(), "TEST");
-    ASSERT_EQ(kvdb2.getName(), "TEST");
-    // TODO(*1): ASSERT_EQ(kvdb3.getName(), "");
-    // ASSERT_EQ(kvdb1,kvdb2);
-    //ASSERT_TRUE(kvdb3 == nullptr);
+    ASSERT_EQ(kvdb1.getState(), KVDB::State::Open);
+    kvdbManager.DeleteDB("TEST"); // TODO Move this to TearDown()
+
+    KVDB& invalid_kvdb = kvdbManager.getDB("TEST_INVALID");
+    ASSERT_EQ(invalid_kvdb.getState(), KVDB::State::Invalid);
+    ASSERT_EQ(invalid_kvdb.getName(), "Invalid");
+
 }
 
 TEST(kvdbTests, create_delete_columns)
