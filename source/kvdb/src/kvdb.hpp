@@ -36,20 +36,21 @@ public:
     bool createColumn(const std::string &columnName);
     bool deleteColumn(const std::string &columnName = "default");
     bool cleanColumn(const std::string &columnName = "default");
-    bool existKey(const std::string &key,
-                  const std::string &columnName = "default");
-    std::string read(const std::string &key,
-                     const std::string &columnName = "default");
-    bool readPinned(const std::string &key,
-                    std::string &val,
-                    const std::string &columnName = "default");
     bool write(const std::string &key,
                const std::string &value,
                const std::string &columnName = "default");
     bool writeToTransaction(
         const std::vector<std::pair<std::string, std::string>> pairsVector,
         const std::string &columnName = "default");
-    bool deleteKey(const std::string &key, const std::string &columnName);
+    bool exist(const std::string &key,
+                  const std::string &columnName = "default");
+    std::string read(const std::string &key,
+                     const std::string &columnName = "default");
+    bool readPinned(const std::string &key,
+                    std::string &val,
+                    const std::string &columnName = "default");
+
+    bool deleteKey(const std::string &key, const std::string &columnName = "default");
     bool close();
     bool destroy();
 
