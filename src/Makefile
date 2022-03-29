@@ -2137,7 +2137,7 @@ ifneq (,$(filter ${OPTIMIZE_CPYTHON},YES yes y Y 1))
 CPYTHON_FLAGS=--enable-optimizations
 endif
 
-wpython: install_dependencies install_framework install_api install_mitre
+wpython: install_dependencies install_framework install_api install_wodles install_mitre
 
 build_python:
 ifeq (,${INSTALLDIR})
@@ -2174,6 +2174,9 @@ install_framework: install_python
 
 install_api: install_python
 	cd ../api && ${WPYTHON_DIR}/bin/python3 setup.py clean --all install --prefix=${WPYTHON_DIR}
+
+install_wodles: install_python
+	cd ../wodles && ${WPYTHON_DIR}/bin/python3 setup.py clean --all install --prefix=${WPYTHON_DIR}
 
 install_mitre: install_python
 	cd ../tools/mitre && ${WPYTHON_DIR}/bin/python3 mitredb.py -d ${INSTALLDIR}/var/db/mitre.db
