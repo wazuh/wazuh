@@ -15,12 +15,15 @@
 
 
 KVDBManager::KVDBManager() {
-    static const std::set<std::string> internalFiles = {"legacy", "LOG", "LOG.old", "LOCK"};
+    static const std::set<std::string> INTERNALFILES = {"legacy", "LOG", "LOG.old", "LOCK"};
     for (const auto& dbFile : std::filesystem::directory_iterator(FOLDER)) {
-        if (internalFiles.find(dbFile.path()) != internalFiles.end()) {
+        if (INTERNALFILES.find(dbFile.path().filename()) == INTERNALFILES.end()) {
             KVDB* DB = new KVDB(dbFile.path().stem(), FOLDER);
             if (DB && DB->getState() == KVDB::State::Open) {
-                addDB(DB);
+                if (!addDB(DB)) {
+                    delete DB;
+                    //TODO DEBUG Log
+                }
             }
             else {
                 delete DB;
@@ -29,10 +32,14 @@ KVDBManager::KVDBManager() {
         }
     }
 
-    for (const auto& cdbfile : std::filesystem::directory_iterator(FOLDER + "legacy")) { //Read it from the config file?
-        if (createDBfromCDB(cdbfile.path())) {
-            //TODO Remove files once synced
-            //std::filesystem::remove(cdbfile.path())
+    if (std::filesystem::exists(FOLDER + "legacy")) {
+        for (const auto& cdbfile : std::filesystem::directory_iterator(FOLDER + "legacy")) { //Read it from the config file?
+            if (cdbfile.is_regular_file()) {
+                if (createDBfromCDB(cdbfile.path(), false)) {
+                    //TODO Remove files once synced
+                    //std::filesystem::remove(cdbfile.path())
+                }
+            }
         }
     }
 }
@@ -40,8 +47,8 @@ KVDBManager::KVDBManager() {
 KVDBManager::~KVDBManager() {
     for (DBMap::iterator it = available_kvdbs.begin(); it != available_kvdbs.end(); it++) {
        delete it->second;
-       available_kvdbs.erase(it);
     }
+    available_kvdbs.clear();
 }
 
 bool KVDBManager::createDB(const std::string &name, bool replace)
@@ -69,16 +76,17 @@ bool KVDBManager::createDB(const std::string &name, bool replace)
         // error: " << s.ToString() << std::endl;
         return false;
     }
+
     KVDB *kvdb = new KVDB(name, FOLDER);
-    addDB(kvdb);
+    if (!addDB(kvdb)){
+        delete kvdb;
+        return false;
+    }
+
     return true;
 }
 
 bool KVDBManager::createDBfromCDB(const std::filesystem::path& path, bool replace) {
-    constexpr char folderSeparator = '/';
-    constexpr char extensionSeparator = '.';
-
-    std::string line;
     std::ifstream CDBfile (path);
     if (!CDBfile.is_open()) {
         // TODO Log Error
@@ -90,13 +98,14 @@ bool KVDBManager::createDBfromCDB(const std::filesystem::path& path, bool replac
         CDBfile.close();
         return false;
     }
-    auto kvdb = getDB(path.stem());
+    KVDB& kvdb = getDB(path.stem());
     if (kvdb.getState() != KVDB::State::Open) {
         // TODO Log Error
         CDBfile.close();
         return false;
     }
 
+    std::string line;
     while (getline(CDBfile, line))
     {
         line.erase(remove_if(line.begin(), line.end(), isspace), line.end());
@@ -128,8 +137,13 @@ bool KVDBManager::DeleteDB(const std::string &name) {
 
 bool KVDBManager::addDB(KVDB *DB)
 {
-    available_kvdbs[DB->getName()] = DB;
-    return true;
+    if (available_kvdbs.find(DB->getName()) == available_kvdbs.end()) {
+        available_kvdbs[DB->getName()] = DB;
+        return true;
+    }
+    else {
+        return false;
+    }
 }
 
 KVDB& KVDBManager::getDB(const std::string& Name) {
