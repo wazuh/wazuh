@@ -43,5 +43,7 @@
 #define HC_FIM_FILE         "fim_file "
 #define HC_FIM_REGISTRY     "fim_registry "
 #define HC_FORCE_RECONNECT  "force_reconnect"
+#define HC_RESTART          "restart"
+#define HC_GETCONFIG        "getconfig"
 
 #endif /* RC_H */
