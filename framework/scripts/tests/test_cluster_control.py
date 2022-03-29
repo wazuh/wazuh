@@ -19,7 +19,7 @@ def test_print_table(print_mock, map_mock):
     """Test if the table is being properly printed."""
     data = ''
     headers = 'headers'
-    cluster_control.__print_table(data=data, headers='', show_header=False)
+    cluster_control.__print_table(data=data, headers=headers, show_header=False)
 
     print_mock.assert_called_once_with(data)
     assert map_mock.call_count == 2
@@ -27,7 +27,7 @@ def test_print_table(print_mock, map_mock):
     print_mock.reset_mock()
     map_mock.reset_mock()
 
-    cluster_control.__print_table(data=data, headers='', show_header=True)
+    cluster_control.__print_table(data=data, headers=headers, show_header=True)
 
     print_mock.assert_called_once_with(data)
     assert map_mock.call_count == 3
