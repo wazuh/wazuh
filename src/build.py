@@ -10,7 +10,8 @@
 import argparse
 from ci import run_check
 
-module_list = ['wazuh_modules/syscollector', 'shared_modules/dbsync', 'shared_modules/rsync', 'shared_modules/utils',
+module_list = ['wazuh_modules/syscollector', 'shared_modules/dbsync',
+               'shared_modules/rsync', 'shared_modules/utils',
                'data_provider', 'syscheckd']
 
 module_list_str = '|'.join(module_list)
@@ -41,36 +42,59 @@ class CommandLineParser:
 
     def processArgs(self):
         """
-        Process the command line arguments and executes the corresponding argument's utility.
+        Process the command line arguments and executes the corresponding
+        argument's utility.
         """
         parser = argparse.ArgumentParser()
         parser.add_argument("-r", "--readytoreview",
-                            help=f'Run all the quality checks needed to create a PR. Example: python3 build.py -r <{module_list_str}>')
+                            help="Run all the quality checks needed to \
+                                  create a PR. Example: python3 build.py \
+                                  -r <{}>".format(module_list_str))
         parser.add_argument("-d", "--deleteLogs",
-                            help=f'Clean log results. Example: python3 build.py -d <{module_list_str}>')
+                            help="Clean log results. Example: python3 \
+                                  build.py -d <{}>".format(module_list_str))
         parser.add_argument("-rc", "--readytoreviewandclean",
-                            help=f'Run all the quality checks needed to create a PR and clean results. Example: python3 build.py '
-                                  '-rc <{module_list_str}>')
-        parser.add_argument(
-            "-m", "--make", help=f'Compile the lib. Example: python3 build.py -m <{module_list_str}>')
-        parser.add_argument(
-            "-t", "--tests", help=f'Run tests (should be configured with TEST=on). Example: python3 build.py -t <{module_list_str}>')
-        parser.add_argument(
-            "-c", "--coverage", help=f'Collect tests coverage and generates report. Example: python3 build.py -c <{module_list_str}>')
-        parser.add_argument(
-            "-v", "--valgrind", help=f'Run valgrind on tests. Example: python3 build.py -v <{module_list_str}>')
-        parser.add_argument(
-            "--clean", help=f'Clean the lib. Example: python3 build.py --clean <{module_list_str}>')
-        parser.add_argument(
-            "--cppcheck", help=f'Run cppcheck on the code. Example: python3 build.py --cppcheck <{module_list_str}>')
-        parser.add_argument(
-            "--asan", help=f'Run ASAN on the code. Example: python3 build.py --asan <{module_list_str}>')
-        parser.add_argument(
-            "--scheck", help=f'Run AStyle on the code for checking purposes. Example: python3 build.py --scheck <{module_list_str}>')
-        parser.add_argument(
-            "--sformat", help=f'Run AStyle on the code formatting the needed files. Example: python3 build.py --sformat <{module_list_str}>')
-        parser.add_argument(
-            "--scanbuild", help="Run scan-build on the code. Example: python3 build.py --scanbuild <agent|server|winagent>")
+                            help="Run all the quality checks needed to \
+                                  create a PR and clean results. Example: \
+                                  python3 build.py -rc <{}>"
+                            .format(module_list_str))
+        parser.add_argument("-m", "--make",
+                            help="Compile the lib. Example: python3 build.py\
+                                  -m <{}>".format(module_list_str))
+        parser.add_argument("-t", "--tests",
+                            help="Run tests (should be configured with \
+                                  TEST=on). Example: python3 build.py -t\
+                                  <{}>".format(module_list_str))
+        parser.add_argument("-c", "--coverage",
+                            help="Collect tests coverage and generates\
+                                  report. Example: python3 build.py -c <{}>"
+                                  .format(module_list_str))
+        parser.add_argument("-v", "--valgrind",
+                            help="Run valgrind on tests. Example: python3 \
+                                  build.py -v <{}>".format(module_list_str))
+        parser.add_argument("--clean",
+                            help="Clean the lib. Example: python3 build.py \
+                                  --clean <{}>".format(module_list_str))
+        parser.add_argument("--cppcheck",
+                            help="Run cppcheck on the code. Example: python3 \
+                                  build.py --cppcheck <{}>"
+                            .format(module_list_str))
+        parser.add_argument("--asan",
+                            help="Run ASAN on the code. Example: python3 \
+                                  build.py --asan <{}>"
+                            .format(module_list_str))
+        parser.add_argument("--scheck",
+                            help="Run AStyle on the code for checking \
+                                  purposes. Example: python3 build.py \
+                                  --scheck <{}>".format(module_list_str))
+        parser.add_argument("--sformat",
+                            help="Run AStyle on the code formatting the \
+                                  needed files. Example: python3 build.py \
+                                  --sformat <{}>".format(module_list_str))
+        parser.add_argument("--scanbuild",
+                            help="Run scan-build on the code. Example: \
+                                  python3 build.py --scanbuild <agent|\
+                                  server|winagent>")
 
         args = parser.parse_args()
         if self._argIsValid(args.readytoreview):
