@@ -298,7 +298,7 @@ bool KVDB::createColumn(const std::string &columnName)
     {
         ROCKSDB::ColumnFamilyHandle *handler;
         ROCKSDB::Status s =
-            m_db->CreateColumnFamily(options.CF, columnName, &handler);
+        m_db->CreateColumnFamily(options.CF, columnName, &handler);
         if (s.ok())
         {
             CFDescriptors.push_back(
@@ -470,9 +470,8 @@ bool KVDB::writeToTransaction(
  * @return true if key was found
  * @return false if key wasn't found
  */
-bool KVDB::existKey(const std::string &key, const std::string &columnName)
+bool KVDB::exist(const std::string &key, const std::string &columnName)
 {
-
     //TODO: this should be done with a pinnable read
     std::string result = read(key, columnName);
     return !result.empty();
