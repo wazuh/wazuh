@@ -3,22 +3,26 @@
 
 #include <string>
 #include <vector>
+#include <filesystem>
 
 #include "kvdb.hpp"
 
 class KVDBManager {
     KVDBManager();
-    static constexpr char FOLDER[] = "/var/ossec/queue/db/kvdb/"; //Should be constexpr if it is a singleton?
-    static constexpr char LEGACY_CDB_FOLDER[] = "queue/db/kvdb/"; // TODO Read it from the legacy config.
-    std::unordered_map<std::string, KVDB*> available_kvdbs;
-    void updateLegacyCDB();
+    ~KVDBManager();
+    const std::string FOLDER = "/var/ossec/queue/db/kvdb/";
+    using DBMap = std::unordered_map<std::string, KVDB*>;
+    DBMap available_kvdbs;
     bool addDB(KVDB* DB);
+    KVDB invalidDB = KVDB(); // TODO: Make this static?
 
 public:
     static KVDBManager& getInstance() { static KVDBManager instance; return instance; }
     KVDBManager(KVDBManager const&)     = delete;
     void operator=(KVDBManager const&)  = delete;
-    KVDB* createDB(const std::string& Name);
+    bool createDB(const std::string& Name, bool replace = true);
+    bool createDBfromCDB(const std::filesystem::path& path, bool replace = true);
+    bool DeleteDB(const std::string &name);
     KVDB& getDB(const std::string& Name);
 };
 

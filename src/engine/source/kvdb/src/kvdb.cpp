@@ -11,66 +11,72 @@
 
 #include "kvdb.hpp"
 
-KVDB::KVDB(const std::string &DBName, const std::string &path)
-{
-    auto DBPath = path + DBName;
+KVDB::KVDB() {
+    m_name = "Invalid";
+    m_db = nullptr;
+    m_txndb = nullptr;
+    m_state = State::Invalid;
+}
 
-    m_name = DBName;
+KVDB::KVDB(const std::string &dbName, const std::string &folder)
+{
+    m_name = dbName;
+    m_path = folder + dbName;
+    m_db = nullptr;
+    m_txndb = nullptr;
+    m_state = State::Invalid;
+
     ROCKSDB::Status s;
     std::vector<std::string> CFNames;
-    s = ROCKSDB::DB::ListColumnFamilies(options.open, DBPath, &CFNames);
+    std::vector<ROCKSDB::ColumnFamilyHandle *> CFHandles;
+    s = ROCKSDB::DB::ListColumnFamilies(options.open, m_path, &CFNames);
     if (s.ok())
     {
-        std::vector<ROCKSDB::ColumnFamilyHandle *> CFHandles;
         for (auto CFName : CFNames)
         {
             CFDescriptors.push_back(
                 ROCKSDB::ColumnFamilyDescriptor(CFName, options.CF));
         }
+    }
+    else {
+        CFDescriptors.push_back(
+                ROCKSDB::ColumnFamilyDescriptor("default", options.CF));
+    }
 
-        ROCKSDB::Status st = ROCKSDB::TransactionDB::Open(options.open,
-                                                          options.TX,
-                                                          DBPath,
-                                                          CFDescriptors,
-                                                          &CFHandles,
-                                                          &m_txndb);
-        if (st.ok())
+    ROCKSDB::Status st = ROCKSDB::TransactionDB::Open(options.open,
+                                                        options.TX,
+                                                        m_path,
+                                                        CFDescriptors,
+                                                        &CFHandles,
+                                                        &m_txndb);
+    if (st.ok())
+    {
+        m_db = m_txndb->GetBaseDB();
+        for (auto CFHandle : CFHandles)
         {
-            m_db = m_txndb->GetBaseDB();
-            for (auto CFHandle : CFHandles)
-            {
-                m_CFHandlesMap[CFHandle->GetName()] = CFHandle;
-            }
-            state = State::Open;
+            m_CFHandlesMap[CFHandle->GetName()] = CFHandle;
         }
-        else
-        {
-            auto msg =
-                fmt::format("couldn't open db, error: [{}]", s.ToString());
-            WAZUH_LOG_ERROR(msg);
-            state = State::Error;
-        }
+        m_state = State::Open;
     }
     else
     {
-        auto msg = fmt::format("couldn't list CF, error: [{}]", s.ToString());
+        auto msg =
+            fmt::format("couldn't open db, error: [{}]", s.ToString());
         WAZUH_LOG_ERROR(msg);
-        state = State::Error;
+        m_state = State::Error;
     }
 }
 
 KVDB::~KVDB()
 {
-    if (state != State::Closed)
-    {
-        ROCKSDB::Status s = m_db->Close();
-        if (!s.ok())
-        {
-            auto msg =
-                fmt::format("couldn't close db, error: [{}]", s.ToString());
-            WAZUH_LOG_ERROR(msg);
-        }
+    close();
+}
 
+bool KVDB::close() {
+    bool ret = true;
+    if (m_txndb)
+    {
+        ROCKSDB::Status s;
         for (auto item : m_CFHandlesMap)
         {
             s = m_db->DestroyColumnFamilyHandle(item.second);
@@ -80,17 +86,33 @@ KVDB::~KVDB()
                     fmt::format("couldn't destroy family handler, error: [{}]",
                                 s.ToString());
                 WAZUH_LOG_WARN(msg);
+                ret = false;
             }
         }
         m_CFHandlesMap.clear();
 
-        delete m_db;
+        s = m_db->Close();
+        if (!s.ok())
+        {
+            auto msg =
+                fmt::format("couldn't close db, error: [{}]", s.ToString());
+            WAZUH_LOG_ERROR(msg);
+            ret = false;
+        }
+
         delete m_txndb;
-        return;
     }
-    auto msg = fmt::format("couldn't close DB already closed");
-    WAZUH_LOG_WARN(msg);
+    m_txndb = nullptr;
+    m_db = nullptr;
+    return ret;
 }
+
+bool KVDB::destroy() {
+    close();
+    ROCKSDB::Status s = ROCKSDB::DestroyDB(m_path, ROCKSDB::Options(), CFDescriptors);
+    return s.ok();
+}
+
 
 bool KVDB::write(const std::string &key,
                  const std::string &value,
