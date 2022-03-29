@@ -11,9 +11,15 @@ namespace ROCKSDB = ROCKSDB_NAMESPACE;
 
 class KVDB
 {
-    std::string m_name;
-    ROCKSDB::DB *m_db;
-    ROCKSDB::TransactionDB *m_txndb;
+public:
+    KVDB();
+    KVDB(const std::string &dbName, const std::string &folder);
+    ~KVDB();
+
+    std::string &getName()
+    {
+        return m_name;
+    }
     enum State
     {
         Closed,
@@ -21,26 +27,9 @@ class KVDB
         Locked,
         Error,
         Invalid,
-    } state;
-    struct Option
-    {
-        ROCKSDB::ReadOptions read = ROCKSDB::ReadOptions();
-        ROCKSDB::WriteOptions write = ROCKSDB::WriteOptions();
-        ROCKSDB::DBOptions open = ROCKSDB::DBOptions();
-        ROCKSDB::ColumnFamilyOptions CF = ROCKSDB::ColumnFamilyOptions();
-        ROCKSDB::TransactionDBOptions TX = ROCKSDB::TransactionDBOptions();
-    } options;
-    std::vector<ROCKSDB::ColumnFamilyDescriptor> CFDescriptors;
-    using CFHMap = std::map<std::string, ROCKSDB::ColumnFamilyHandle *>;
-    CFHMap m_CFHandlesMap;
-
-public:
-    KVDB(const std::string &DBName, const std::string &path);
-    ~KVDB();
-
-    std::string &getName()
-    {
-        return m_name;
+    };
+    State getState() {
+        return m_state;
     }
     bool createColumn(const std::string &columnName);
     bool deleteColumn(const std::string &columnName = "default");
@@ -59,7 +48,27 @@ public:
         const std::vector<std::pair<std::string, std::string>> pairsVector,
         const std::string &columnName = "default");
     bool deleteKey(const std::string &key, const std::string &columnName);
+    bool close();
+    bool destroy();
 
+private:
+    std::string m_name;
+    std::string m_path;
+    State m_state;
+
+    ROCKSDB::DB *m_db;
+    ROCKSDB::TransactionDB *m_txndb;
+    struct Option
+    {
+        ROCKSDB::ReadOptions read = ROCKSDB::ReadOptions();
+        ROCKSDB::WriteOptions write = ROCKSDB::WriteOptions();
+        ROCKSDB::DBOptions open = ROCKSDB::DBOptions();
+        ROCKSDB::ColumnFamilyOptions CF = ROCKSDB::ColumnFamilyOptions();
+        ROCKSDB::TransactionDBOptions TX = ROCKSDB::TransactionDBOptions();
+    } options;
+    std::vector<ROCKSDB::ColumnFamilyDescriptor> CFDescriptors;
+    using CFHMap = std::map<std::string, ROCKSDB::ColumnFamilyHandle *>;
+    CFHMap m_CFHandlesMap;
 };
 
 #endif // _KVDB_H
