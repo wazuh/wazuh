@@ -14,6 +14,8 @@ class KVDB
 public:
     KVDB();
     KVDB(const std::string &dbName, const std::string &folder);
+    KVDB(KVDB const&) = delete;
+    void operator=(KVDB const&)  = delete;
     ~KVDB();
 
     std::string &getName()
