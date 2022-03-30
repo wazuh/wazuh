@@ -26,7 +26,7 @@ public:
     }
     KVDBManager(KVDBManager const &) = delete;
     void operator=(KVDBManager const &) = delete;
-    KVDB &createDB(const std::string &Name, bool overwrite = true);
+    bool createDBfromCDB(const std::filesystem::path& path, bool replace = true);
     bool createDBfromCDB(const std::filesystem::path &path,
                          bool overwrite = true);
     bool deleteDB(const std::string &name);
