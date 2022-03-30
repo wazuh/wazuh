@@ -662,6 +662,27 @@ int _close_sock(keystore * keys, int sock) {
         nb_close(&netbuffer_recv, sock);
         nb_close(&netbuffer_send, sock);
         rem_dec_tcp();
+    } else {
+        mdebug2("Could not close socket [%d]: %s (%d)", sock, strerror(errno), errno);
+
+        switch (errno) {
+        case EBADF:
+            break;
+        case EINTR:
+        case EIO:
+        default:
+            if (fcntl(sock, F_GETFD) == -1) {
+                switch (errno) {
+                case EBADF:
+                    nb_close(&netbuffer_recv, sock);
+                    nb_close(&netbuffer_send, sock);
+                    rem_dec_tcp();
+                    break;
+                default:
+                    merror("Failed to close sock [%d]: %s (%d)", sock, strerror(errno), errno);
+                }
+            }
+        }
     }
 
     rem_setCounter(sock, global_counter);
