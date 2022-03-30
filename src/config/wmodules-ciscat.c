@@ -42,6 +42,13 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
     ciscat->flags.scan_on_start = 1;
     sched_scan_init(&(ciscat->scan_config));
     ciscat->scan_config.interval = WM_DEF_INTERVAL;
+    
+    // Set default ciscat binary
+    #ifdef WIN32
+        os_strdup(WM_CISCAT_V3_BINARY_WIN, ciscat->ciscat_binary);
+    #else
+        os_strdup(WM_CISCAT_V3_BINARY, ciscat->ciscat_binary);
+    #endif
     module->context = &WM_CISCAT_CONTEXT;
     module->tag = strdup(module->context->name);
     module->data = ciscat;
@@ -174,6 +181,8 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
         } else if (!strcmp(nodes[i]->element, XML_CISCAT_PATH)) {
             ciscat->ciscat_path = strdup(nodes[i]->content);
         } else if (!strcmp(nodes[i]->element, XML_CISCAT_BINARY)) {
+            // Free the old string (having the default value) before setting a new one.
+            os_free(ciscat->ciscat_binary);
             ciscat->ciscat_binary = strdup(nodes[i]->content);
             #ifdef WIN32
                 if (strcmp(ciscat->ciscat_binary, WM_CISCAT_V3_BINARY_WIN) && strcmp(ciscat->ciscat_binary, WM_CISCAT_V4_BINARY_WIN)) {
