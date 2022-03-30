@@ -11,30 +11,42 @@
 
 #include <string>
 
+#include <fmt/format.h>
+
 using namespace std;
 
 namespace builder::internals::builders
 {
 
 // TODO Add test for this
-types::Lifter opBuilderMapReference(const types::DocumentValue & def, types::TracerFn tr)
+types::Lifter opBuilderMapReference(const types::DocumentValue &def,
+                                    types::TracerFn tr)
 {
     if (!def.MemberBegin()->name.IsString())
     {
-        throw std::runtime_error("Error building condition reference, key of definition must be a string.");
+        throw std::runtime_error("Error building condition reference, key of "
+                                 "definition must be a string.");
     }
     if (!def.MemberBegin()->value.IsString())
     {
-        throw std::runtime_error("Error building condition reference, value of definition must be a string.");
+        throw std::runtime_error("Error building condition reference, value of "
+                                 "definition must be a string.");
     }
 
     // Estract and prepare field and reference
-    std::string field{json::formatJsonPath(def.MemberBegin()->name.GetString())};
-    std::string reference{def.MemberBegin()->value.GetString()};
-    if (reference.front() == '$'){
+    std::string field {
+        json::formatJsonPath(def.MemberBegin()->name.GetString())};
+    std::string reference {def.MemberBegin()->value.GetString()};
+    if (reference.front() == '$')
+    {
         reference.erase(0, 1);
     }
     reference = json::formatJsonPath(reference);
+
+    // Debug trace
+    types::Document value{def};
+    std::string successTrace = fmt::format("{} Mapping Success", value.str());
+    std::string failureTrace = fmt::format("{} Mapping Failure", value.str());
 
     // Return Lifter
     return [=](types::Observable o)
@@ -44,6 +56,7 @@ types::Lifter opBuilderMapReference(const types::DocumentValue & def, types::Tra
             [=](types::Event e)
             {
                 e->set(field, reference);
+                tr(successTrace);
                 return e;
             });
     };
