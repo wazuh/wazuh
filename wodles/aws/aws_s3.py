@@ -44,7 +44,7 @@ import gzip
 import zipfile
 import re
 import io
-import zlib.error
+import zlib
 from os import path
 import operator
 from datetime import datetime
@@ -861,8 +861,12 @@ class AWSBucket(WazuhIntegration):
             Decompressed object.
         """
         try:
-            return gzip.open(filename=raw_object, mode='rt')
-        except (gzip.BadGZipFile, zlib.error):
+            gzip_file = gzip.open(filename=raw_object, mode='rt')
+            # Ensure that the file is not corrupted by reading from it
+            gzip_file.read()
+            gzip_file.seek(0)
+            return gzip_file
+        except (gzip.BadGzipFile, zlib.error, TypeError):
             print(f'ERROR: invalid gzip file received.')
             if not self.skip_on_error:
                 sys.exit(8)
