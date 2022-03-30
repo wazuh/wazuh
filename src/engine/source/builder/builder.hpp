@@ -59,6 +59,23 @@ private:
         return g;
     }
 
+    // Needed by router as a return type by operator()
+    // TODO: only used by operator(), we could use an unnamed struct instead
+    struct envBuilder
+    {
+        internals::types::Lifter m_lifter;
+        std::map<std::string, rxcpp::observable<std::string>> m_debugSinks;
+        internals::types::Lifter getLifter() const
+        {
+            return m_lifter;
+        }
+        std::map<std::string, rxcpp::observable<std::string>>
+        getDebugSinks() const
+        {
+            return m_debugSinks;
+        }
+    };
+
 public:
     /**
      * @brief Construct a new Builder object
@@ -178,24 +195,26 @@ public:
     }
 
     /**
-     * @brief Lifter of the whole execution graph.
-     * Calls all connectable lifters in the order defined by the graph, ensuring
-     * all connectables all connected when all inputs are defined.
+     * @brief Return an struct with the lifter for the given enviroment name and
+     * with all assets debug sinks.
      *
      * @param name Environment name to build/lift
-     * @return internals::types::Lifter
+     * @return envBuilder
      */
-    internals::types::Lifter operator()(const std::string &name)
+    envBuilder operator()(const std::string &name)
     {
-        // Lifter
-        return
-            [=](internals::types::Observable o) -> internals::types::Observable
-        {
-            // Build the graph
-            // TODO: move build outside of lift, its declared here because if
-            // passed by capture value it becames inmutable
-            auto g = this->build(name);
+        envBuilder ret;
+        std::shared_ptr<internals::Graph> g =
+            std::make_shared<internals::Graph>(this->build(name));
 
+        // Debug sinks
+        g->visit([&](auto node)
+                 { ret.m_debugSinks[node.m_name] = node.m_tracer.m_out; });
+
+        // Lifter
+        ret.m_lifter =
+            [g](internals::types::Observable o) -> internals::types::Observable
+        {
             internals::types::Observable last;
 
             // Recursive visitor function to call all connectable lifters and
@@ -205,36 +224,38 @@ public:
                                      auto &visit_ref) -> void
             {
                 // Only must be executed one, graph input
-                if (g[root].m_inputs.size() == 0)
+                if (g->m_nodes[root].m_inputs.size() == 0)
                 {
-                    g[root].addInput(source);
+                    g->m_nodes[root].addInput(source);
                 }
 
                 // Call connect.publish only if this connectable has more than
                 // one child
                 auto obs = [&g, root]() -> internals::types::Observable
                 {
-                    if (g.m_edges[root].size() > 1)
+                    if (g->m_edges[root].size() > 1)
                     {
-                        auto o = g[root].connect().publish().ref_count();
+                        auto o =
+                            g->m_nodes[root].connect().publish().ref_count();
                         return o;
                     }
                     else
                     {
-                        return g[root].connect();
+                        return g->m_nodes[root].connect();
                     }
                 }();
 
                 // Add obs as an input to the childs
-                for (auto &n : g.m_edges[root])
+                for (auto &n : g->m_edges[root])
                 {
-                    g[n].addInput(obs);
-                    if (g[n].m_inputs.size() == g[n].m_parents.size())
+                    g->m_nodes[n].addInput(obs);
+                    if (g->m_nodes[n].m_inputs.size() ==
+                        g->m_nodes[n].m_parents.size())
                         visit_ref(obs, n, visit_ref);
                 }
 
                 // Only executed one, graph output
-                if (g.m_edges[root].size() == 0)
+                if (g->m_edges[root].size() == 0)
                 {
                     last = obs;
                 }
@@ -246,6 +267,8 @@ public:
             // Finally return output
             return last;
         };
+
+        return ret;
     }
 };
 
