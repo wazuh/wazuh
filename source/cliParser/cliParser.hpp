@@ -36,6 +36,7 @@ private:
     std::string m_storagePath;
     int m_threads;
     int m_queueSize;
+    bool m_debugAll;
 
 public:
     /**
@@ -81,6 +82,8 @@ public:
      * @return size_t
      */
     int getQueueSize() const;
+
+    bool getDebugAll() const;
 };
 
 } // namespace cliparser

@@ -12,9 +12,11 @@
 
 #include <algorithm>
 #include <map>
-#include <rxcpp/rx.hpp>
 #include <string>
 #include <type_traits>
+
+#include <fmt/format.h>
+#include <rxcpp/rx.hpp>
 
 #include "json.hpp"
 
@@ -33,8 +35,8 @@ struct Route
     rxcpp::composite_subscription m_subscription;
 
     Route() = default;
-    Route(const Route & other) = delete;
-    Route & operator=(const Route & other) = delete;
+    Route(const Route &other) = delete;
+    Route &operator=(const Route &other) = delete;
 
     /**
      * @brief Construct a new Route object
@@ -44,9 +46,14 @@ struct Route
      * @param environment Environment name wich receives filtered events
      * @param subscription Subscription to handle status
      */
-    Route(const std::string & name, const std::string & environment,
-          std::function<bool(std::shared_ptr<json::Document>)> filter_function, rxcpp::composite_subscription subscription) noexcept
-        : m_name(name), m_to(environment), m_from(filter_function), m_subscription(subscription)
+    Route(const std::string &name,
+          const std::string &environment,
+          std::function<bool(std::shared_ptr<json::Document>)> filter_function,
+          rxcpp::composite_subscription subscription) noexcept
+        : m_name(name)
+        , m_to(environment)
+        , m_from(filter_function)
+        , m_subscription(subscription)
     {
     }
 
@@ -55,9 +62,11 @@ struct Route
      *
      * @param other
      */
-    Route(Route && other) noexcept
-        : m_name{std::move(other.m_name)}, m_to{std::move(other.m_to)}, m_from{std::move(other.m_from)},
-          m_subscription{std::move(other.m_subscription)}
+    Route(Route &&other) noexcept
+        : m_name {std::move(other.m_name)}
+        , m_to {std::move(other.m_to)}
+        , m_from {std::move(other.m_from)}
+        , m_subscription {std::move(other.m_subscription)}
     {
     }
 
@@ -67,7 +76,7 @@ struct Route
      * @param other
      * @return Route&
      */
-    Route & operator=(Route && other) noexcept
+    Route &operator=(Route &&other) noexcept
     {
         this->m_name = std::move(other.m_name);
         this->m_from = std::move(other.m_from);
@@ -78,7 +87,8 @@ struct Route
 
     ~Route()
     {
-        if (!this->m_subscription.get_weak().expired() && this->m_subscription.is_subscribed())
+        if (!this->m_subscription.get_weak().expired() &&
+            this->m_subscription.is_subscribed())
         {
             this->m_subscription.unsubscribe();
         }
@@ -91,23 +101,72 @@ struct Route
  */
 struct Environment
 {
-    using Obs_t = rxcpp::observable<std::shared_ptr<json::Document>>;
-    using Op_t = std::function<Obs_t(Obs_t)>;
+    // TODO: handle debug sink subscriptions lifetime
+
+    using Event = std::shared_ptr<json::Document>;
+    using Observable = rxcpp::observable<Event>;
+    using Lifter = std::function<Observable(Observable)>;
 
     std::string m_name;
-    rxcpp::subjects::subject<std::shared_ptr<json::Document>> m_subject;
-    Op_t m_build;
+    std::map<std::string, rxcpp::observable<std::string>> m_debugSinks;
+    Lifter m_lifter;
+
+    rxcpp::subjects::subject<Event> m_subject;
 
     Environment() = default;
 
+    // TODO: implement move semantics
     /**
      * @brief Construct a new Environment object
      *
-     * @param name Name of the environment
-     * @param subject Subject of the built environment
+     * @param name
+     * @param lifter
+     * @param debugSinks
      */
-    Environment(const std::string & name, Op_t op) noexcept : m_name(name), m_build(op)
+    Environment(
+        std::string name,
+        Lifter lifter,
+        std::map<std::string, rxcpp::observable<std::string>> debugSinks)
+        : m_name {name}
+        , m_lifter {lifter}
+        , m_debugSinks {debugSinks}
     {
+    }
+
+    /**
+     * @brief Subscribe to asset debug sink
+     *
+     * @param assetName
+     * @param subscriberOnNext
+     */
+    void subscribeSink(std::string assetName,
+                       std::function<void(std::string)> subscriberOnNext)
+    {
+        if (m_debugSinks.count(assetName) > 0)
+        {
+            m_debugSinks[assetName].subscribe(subscriberOnNext);
+        }
+        else
+        {
+            throw std::runtime_error(fmt::format(
+                "Error subscribing debug sink, environment [{}] does not "
+                "contain asset [{}]",
+                m_name,
+                assetName));
+        }
+    }
+
+    /**
+     * @brief Subscribe to all assets debug sinks
+     *
+     * @param subscriberOnNext
+     */
+    void subscribeAllSinks(std::function<void(std::string)> subscriberOnNext)
+    {
+        for (auto sink : m_debugSinks)
+        {
+            sink.second.subscribe(subscriberOnNext);
+        }
     }
 };
 
@@ -116,7 +175,8 @@ struct Environment
  *
  * The Router manages the environments which are ready to be enabled, ie.
  * receive events from the server. Particularily, it can:
- *  - Create a new environment from its Catalog definition by calling the Builder
+ *  - Create a new environment from its Catalog definition by calling the
+ * Builder
  *  - Route events received to an environment which is able to accept it
  *  - Enable an environment so it can accept events
  *  - Disable an environment so it can stop accepting events
@@ -129,15 +189,46 @@ struct Environment
  *
  * @tparam Builder injected builder type to build environments
  */
-template <class Builder> class Router
+template<class Builder>
+class Router
 {
-    using Obs_t = rxcpp::observable<std::shared_ptr<json::Document>>;
-    using Op_t = std::function<Obs_t(Obs_t)>;
+    using Observable = rxcpp::observable<std::shared_ptr<json::Document>>;
+    using Lifter = std::function<Observable(Observable)>;
 
-    // Check Builder class is as expected
-    static_assert(std::is_invocable_r_v<Op_t, Builder, std::string>,
-                  "Error, Router object expects a Builder callabe object with signature "
-                  "rxcpp::subjects::subject<json::Document>(std::string)");
+    // Assert Builder satisfies expected interface/functionality
+    // First check if Builder is callable with a string as an argument
+    static_assert(std::is_invocable_v<Builder, std::string>,
+                  "Error, Builder type is not callable with signature: "
+                  "Builder(std::string)");
+    // Obtain return type of Builder call
+    using builder_ret_type = decltype(std::declval<Builder>()(std::string {}));
+    // Assert builder_ret_type implements the functionality needed by the router
+
+    // Assert has a getLifter method
+    static_assert(std::is_member_function_pointer_v<
+                      decltype(&builder_ret_type::getLifter)>,
+                  "Error, type returned by Builder does not implement "
+                  "getLifter function");
+    // Assert getLifter returns a lifter
+    static_assert(
+        std::is_same_v<decltype(std::declval<builder_ret_type>().getLifter()),
+                       Lifter>,
+        "Error, getLifter method does not return function with signature: "
+        "std::function<Observable(Observable)>");
+
+    // Assert has a getDebugSinks method
+    static_assert(std::is_member_function_pointer_v<
+                      decltype(&builder_ret_type::getDebugSinks)>,
+                  "Error, type returned by Builder does not implement "
+                  "getDebugSinks function");
+    // Assert getDebugSinks methods returns a map<string, observable<string>>
+    static_assert(
+        std::is_same_v<
+            decltype(std::declval<builder_ret_type>().getDebugSinks()),
+            std::map<std::string, rxcpp::observable<std::string>>>,
+        "Error, getDebugSinks method does not satisfy signature: "
+        "std::function<std::map<std::string, "
+        "rxcpp::observable<std::string>>()>");
 
 private:
     using ServerOutputObs = rxcpp::observable<rxcpp::observable<std::string>>;
@@ -154,7 +245,9 @@ public:
      *
      * @param builder Injected Builder object
      */
-    Router(const Builder & builder) noexcept : m_builder{builder}, m_input{m_subj.get_subscriber()}
+    Router(const Builder &builder) noexcept
+        : m_builder {builder}
+        , m_input {m_subj.get_subscriber()}
     {
     }
 
@@ -166,34 +259,45 @@ public:
      * @param filterFunction Filter function to select forwarded envent
      */
     void add(
-        const std::string & route, const std::string & environment,
-        const std::function<bool(std::shared_ptr<json::Document>)> filterFunction = [](const auto) { return true; })
+        const std::string &route,
+        const std::string &environment,
+        const std::function<bool(std::shared_ptr<json::Document>)>
+            filterFunction = [](const auto) { return true; })
     {
         // Assert route with same name not exists
         if (this->m_routes.count(route) > 0)
         {
-            throw std::invalid_argument("Error, route " + route + " is already in use");
+            throw std::invalid_argument("Error, route " + route +
+                                        " is already in use");
         }
 
         // Build environment if neccesary
         if (this->m_environments.count(environment) == 0)
         {
-            Op_t envBuilder = this->m_builder(environment);
-            this->m_environments[environment] = Environment(environment, envBuilder);
+            auto envBuilder = this->m_builder(environment);
+            this->m_environments[environment] =
+                Environment {environment,
+                             envBuilder.getLifter(),
+                             envBuilder.getDebugSinks()};
 
-            // Build enviroment
+            // Lift enviroment
             // TODO: handle errors/recovery, obs may be needed
-            auto in = this->m_environments.at(environment).m_subject.get_observable();
-            auto obs = envBuilder(in);
+            auto in =
+                this->m_environments.at(environment).m_subject.get_observable();
+            auto obs = this->m_environments[environment].m_lifter(in);
         }
 
-        // Route filtered events to enviroment, Router subject implements multicasting (we need to
-        // call get_observable for each filter added)
-        auto envInput = this->m_environments.at(environment).m_subject.get_subscriber();
-        auto subscription = this->m_subj.get_observable().filter(filterFunction).subscribe(envInput);
+        // Route filtered events to enviroment, Router subject implements
+        // multicasting (we need to call get_observable for each filter added)
+        auto envInput =
+            this->m_environments.at(environment).m_subject.get_subscriber();
+        auto subscription = this->m_subj.get_observable()
+                                .filter(filterFunction)
+                                .subscribe(envInput);
 
         // Add route to list
-        this->m_routes[route] = Route(route, environment, filterFunction, subscription);
+        this->m_routes[route] =
+            Route(route, environment, filterFunction, subscription);
     }
 
     /**
@@ -201,20 +305,25 @@ public:
      *
      * @param route Name of the route to be deleted
      */
-    void remove(const std::string & route)
+    void remove(const std::string &route)
     {
         // Assert route exists
         if (this->m_routes.count(route) == 0)
         {
-            throw std::invalid_argument("Error, route " + route + " can not be deleted because is not registered");
+            throw std::invalid_argument(
+                "Error, route " + route +
+                " can not be deleted because is not registered");
         }
 
-        // Delete route and delete environment if not referenced by any other route
-        std::string environment{this->m_routes[route].m_to};
+        // Delete route and delete environment if not referenced by any other
+        // route
+        std::string environment {this->m_routes[route].m_to};
         this->m_routes.erase(route);
 
-        if (none_of(this->m_routes.cbegin(), this->m_routes.cend(),
-                    [environment](const auto & r) { return r.second.m_to == environment; }))
+        if (none_of(this->m_routes.cbegin(),
+                    this->m_routes.cend(),
+                    [environment](const auto &r)
+                    { return r.second.m_to == environment; }))
         {
             this->m_environments.erase(environment);
         }
@@ -225,7 +334,7 @@ public:
      *
      * @return const rxcpp::subscriber<json::Document>&
      */
-    const rxcpp::subscriber<std::shared_ptr<json::Document>> & input() const
+    const rxcpp::subscriber<std::shared_ptr<json::Document>> &input() const
     {
         return this->m_input;
     }
@@ -235,7 +344,7 @@ public:
      *
      * @return const std::map<std::string, Environment>&
      */
-    const std::map<std::string, Environment> & environments() const noexcept
+    const std::map<std::string, Environment> &environments() const noexcept
     {
         return this->m_environments;
     }
@@ -245,9 +354,54 @@ public:
      *
      * @return const std::map<std::string, Route>
      */
-    const std::map<std::string, Route> & routes() const noexcept
+    const std::map<std::string, Route> &routes() const noexcept
     {
         return this->m_routes;
+    }
+
+    /**
+     * @brief Subscribe to specified debug sink.
+     *
+     * @param environment
+     * @param asset
+     * @param subscriberOnNext
+     */
+    void subscribeDebugSink(std::string environment,
+                            std::string asset,
+                            std::function<void(std::string)> subscriberOnNext)
+    {
+        if (m_environments.count(environment) > 0)
+        {
+            m_environments[environment].subscribeSink(asset, subscriberOnNext);
+        }
+        else
+        {
+            throw std::runtime_error(fmt::format(
+                "Error subscribing debug sink, enviroment [{}] does not exists",
+                environment));
+        }
+    }
+
+    /**
+     * @brief Subscribes to all debug sinks for specified environment
+     *
+     * @param environment
+     * @param subscriberOnNext
+     */
+    void
+    subscribeAllDebugSinks(std::string environment,
+                           std::function<void(std::string)> subscriberOnNext)
+    {
+        if (m_environments.count(environment) > 0)
+        {
+            m_environments[environment].subscribeAllSinks(subscriberOnNext);
+        }
+        else
+        {
+            throw std::runtime_error(fmt::format(
+                "Error subscribing debug sink, enviroment [{}] does not exists",
+                environment));
+        }
     }
 };
 

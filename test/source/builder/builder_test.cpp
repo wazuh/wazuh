@@ -119,8 +119,8 @@ TEST(Builder, GraphRulesFilteredOut)
                                                       []() { GTEST_COUT << "OnCompleted" << std::endl; });
 
     builder::Builder<FakeCatalog> b {FakeCatalog()};
-    auto env = b.build("environment_6");
-    b("environment_6")(sub.get_observable()).subscribe(subscriber);
+    auto env = b("environment_6");
+    env.getLifter()(sub.get_observable()).subscribe(subscriber);
 
     source.subscribe(sub.get_subscriber());
     source.connect();
@@ -177,8 +177,8 @@ TEST(Builder, GraphDuplicatedExample)
                                                       []() { GTEST_COUT << "OnCompleted" << std::endl; });
 
     builder::Builder<FakeCatalog> b{FakeCatalog()};
-    auto env = b.build("environment_7");
-    b("environment_7")(sub.get_observable()).subscribe(subscriber);
+    auto env = b("environment_7");
+    env.getLifter()(sub.get_observable()).subscribe(subscriber);
 
     source.subscribe(sub.get_subscriber());
     source.connect();
