@@ -63,6 +63,7 @@ int main(int argc, char *argv[])
     std::string storagePath;
     int nThreads;
     size_t queueSize;
+    bool debugAll;
 
     try
     {
@@ -72,6 +73,7 @@ int main(int argc, char *argv[])
         storagePath = cliInput.getStoragePath();
         nThreads = cliInput.getThreads();
         queueSize = cliInput.getQueueSize();
+        debugAll = cliInput.getDebugAll();
     }
     catch (const std::exception &e)
     {
@@ -141,6 +143,21 @@ int main(int argc, char *argv[])
                         "Exception while building default route: [{}]",
                         e.what());
                     return 1;
+                }
+
+                // Debug cerr logger
+                // TODO: this will need to be handled by the api and on the reworked router
+                if (debugAll)
+                {
+                    router.subscribeAllDebugSinks(
+                        "test_environment",
+                        [name = "test_environment"](auto msg)
+                        {
+                            std::stringstream ssTid;
+                            ssTid << std::this_thread::get_id();
+                            std::cerr << fmt::format(
+                                "{}: [{}]{}\n", ssTid.str(), name, msg);
+                        });
                 }
 
                 // Thread loop

@@ -46,6 +46,11 @@ void CliParser::parse(int argc, char *argv[])
         .scan<'i', int>()
         .default_value(1000000);
 
+    serverParser.add_argument("-D", "--debug_all")
+        .help("Subscribe to all debug sinks and print in cerr")
+        .default_value(false)
+        .implicit_value(true);
+
     try
     {
         serverParser.parse_args(argc, argv);
@@ -60,6 +65,7 @@ void CliParser::parse(int argc, char *argv[])
     m_storagePath = serverParser.get("--file_storage");
     m_threads = serverParser.get<int>("--threads");
     m_queueSize = serverParser.get<int>("--queue_size");
+    m_debugAll = serverParser.get<bool>("--debug_all");
 }
 
 string CliParser::getEndpointConfig() const
@@ -80,6 +86,11 @@ int CliParser::getThreads() const
 int CliParser::getQueueSize() const
 {
     return m_queueSize;
+}
+
+bool CliParser::getDebugAll() const
+{
+    return m_debugAll;
 }
 
 } // namespace cliparser
