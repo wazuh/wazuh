@@ -265,6 +265,76 @@ static void help_analysisd(char * home_path)
     exit(1);
 }
 
+#define _CONCAT(x, y) x##y
+#define CONCAT(x, y) _CONCAT(x, y)
+
+#define _scope_guard(b, e)                                                   \
+    for (int CONCAT(annon, __LINE__) = (b, 0); 0 == CONCAT(annon, __LINE__); \
+         e, CONCAT(annon, __LINE__) += 1)
+
+static void profile_begin(struct timespec *beg) {
+    clock_gettime(CLOCK_MONOTONIC_RAW, beg);
+}
+
+static void profile_end(const char* func, const char *tag, struct timespec beg) {
+    struct timespec end;
+    clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+
+    fprintf(stderr,
+            "[%s:%s] = %fus\n",
+            func,
+            tag,
+            (end.tv_nsec - beg.tv_nsec) / 1000.0 + (end.tv_sec - beg.tv_sec) * 1e6);
+}
+
+#define _P_VAR_NAME CONCAT(__FUNC__, __LINE__)
+#define _profile(TAG)            \
+    struct timespec _P_VAR_NAME; \
+    _scope_guard(profile_begin(&_P_VAR_NAME), profile_end(__func__, TAG, _P_VAR_NAME))
+
+#define MAX_ITERATIONS 100000
+int allDone = 0;
+void recurseRules(RuleNode *node)
+{
+    while (node) {
+        if (node->ruleinfo->sigid == 110700) {
+            fprintf(stderr, "Performing [%d] iterations.\n", MAX_ITERATIONS);
+            _profile("Key + val")
+            {
+                for (int i = 0; i < MAX_ITERATIONS; ++i) {
+                    //_profile("iteration")
+                    { OS_DBSearch(node->ruleinfo->lists, "testuser1", &os_analysisd_cdblists); }
+                }
+            }
+            allDone++;
+        }
+
+        if (node->ruleinfo->sigid == 110701) {
+            fprintf(stderr, "Performing [%d] iterations.\n", MAX_ITERATIONS);
+            _profile("Key only")
+            {
+                for (int i = 0; i < MAX_ITERATIONS; ++i) {
+                    //_profile("iteration")
+                    { OS_DBSearch(node->ruleinfo->lists, "testuser1", &os_analysisd_cdblists); }
+                }
+            }
+            allDone++;
+        }
+
+        if (allDone >= 2) {
+            exit(0);
+        }
+
+        if (node->child) {
+            recurseRules(node->child);
+        }
+
+        node = node->next;
+    }
+
+    return;
+}
+
 #ifndef TESTRULE
 #ifdef WAZUH_UNIT_TESTING
 __attribute((weak))
@@ -818,6 +888,8 @@ int main_analysisd(int argc, char **argv)
 
     /* Initialize Logtest */
     w_create_thread(w_logtest_init, NULL);
+
+    recurseRules(OS_GetFirstRule());
 
     /* Going to main loop */
     OS_ReadMSG(m_queue);
@@ -2016,8 +2088,16 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
             }
 
             /* Check each rule */
-            else if (t_currently_rule = OS_CheckIfRuleMatch(lf, os_analysisd_last_events, &os_analysisd_cdblists,
-                     rulenode_pt, &rule_match, &os_analysisd_fts_list, &os_analysisd_fts_store, true, NULL), !t_currently_rule) {
+            else if (t_currently_rule = OS_CheckIfRuleMatch(lf,
+                                                            os_analysisd_last_events,
+                                                            &os_analysisd_cdblists,
+                                                            rulenode_pt,
+                                                            &rule_match,
+                                                            &os_analysisd_fts_list,
+                                                            &os_analysisd_fts_store,
+                                                            true,
+                                                            NULL),
+                     !t_currently_rule) {
 
                 continue;
             }
