@@ -7,7 +7,7 @@ from pathlib import Path
 f = open('/home/francorivero/Desktop/Wazuh_repositories/vagrant/wazuh/src/syscheckd/src/db/smokeTests/output/fileTransaction/action_0.json')
 
 
-with open("testtoolconfig.json", "r") as read_file:
+with open("test_tool_config.json", "r") as read_file:
     data = json.load(read_file)
 
 print(data)
