@@ -10,38 +10,43 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+
+#include "opBuilderKVDB.hpp"
+#include "testUtils.hpp"
+#include <kvdb/kvdbManager.hpp>
 #include <logging/logging.hpp>
 
-#include "testUtils.hpp"
-#include "opBuilderKVDB.hpp"
-#include <kvdb/kvdbManager.hpp>
-
+namespace
+{
 using namespace builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg){};
+static FakeTrFn tr = [](std::string msg) {
+};
 
-namespace {
-class opBuilderKVDBExtractTest : public ::testing::Test {
+class opBuilderKVDBExtractTest : public ::testing::Test
+{
 
 protected:
     bool initialized = KVDBManager::init("/var/ossec/queue/db/kvdb/");
-    KVDBManager& kvdbManager = KVDBManager::get();
+    KVDBManager &kvdbManager = KVDBManager::get();
 
-    opBuilderKVDBExtractTest() {
+    opBuilderKVDBExtractTest()
+    {
         logging::LoggingConfig logConfig;
         logConfig.logLevel = logging::LogLevel::Off;
         logging::loggingInit(logConfig);
     }
 
-    virtual ~opBuilderKVDBExtractTest() {
-    }
+    virtual ~opBuilderKVDBExtractTest() {}
 
-    virtual void SetUp() {
+    virtual void SetUp()
+    {
         kvdbManager.createDB("TEST_DB");
     }
 
-    virtual void TearDown() {
+    virtual void TearDown()
+    {
         kvdbManager.deleteDB("TEST_DB");
     }
 };
@@ -49,7 +54,7 @@ protected:
 // Build ok
 TEST_F(opBuilderKVDBExtractTest, Builds)
 {
-    Document doc{R"({
+    Document doc {R"({
         "map":
             {"field2extract": "+kvdb_extract/TEST_DB/ref_key"}
     })"};
@@ -59,21 +64,23 @@ TEST_F(opBuilderKVDBExtractTest, Builds)
 // Build incorrect number of arguments
 TEST_F(opBuilderKVDBExtractTest, Builds_incorrect_number_of_arguments)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field2match": "+kvdb_extract/TEST_DB"}
     })"};
-    ASSERT_THROW(opBuilderKVDBExtract(doc.get("/check"), tr), std::runtime_error);
+    ASSERT_THROW(opBuilderKVDBExtract(doc.get("/check"), tr),
+                 std::runtime_error);
 }
 
 // Build invalid DB
 TEST_F(opBuilderKVDBExtractTest, Builds_incorrect_invalid_db)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field2match": "+kvdb_extract/INVALID_DB/ref_key"}
     })"};
-    ASSERT_THROW(opBuilderKVDBExtract(doc.get("/check"), tr), std::runtime_error);
+    ASSERT_THROW(opBuilderKVDBExtract(doc.get("/check"), tr),
+                 std::runtime_error);
 }
 
 // Static key
@@ -82,7 +89,7 @@ TEST_F(opBuilderKVDBExtractTest, Static_key)
     auto kvdb = kvdbManager.getDB("TEST_DB");
     kvdb->write("KEY", "VALUE");
 
-    Document doc{R"({
+    Document doc {R"({
         "map":
             {"field2extract": "+kvdb_extract/TEST_DB/KEY"}
     })"};
@@ -118,7 +125,7 @@ TEST_F(opBuilderKVDBExtractTest, Dynamic)
     auto kvdb = kvdbManager.getDB("TEST_DB");
     kvdb->write("KEY", "VALUE");
 
-    Document doc{R"({
+    Document doc {R"({
         "map":
             {"field2extract": "+kvdb_extract/TEST_DB/$key"}
     })"};
@@ -158,7 +165,7 @@ TEST_F(opBuilderKVDBExtractTest, Multi_level_key)
     auto kvdb = kvdbManager.getDB("TEST_DB");
     kvdb->write("KEY", "VALUE");
 
-    Document doc{R"({
+    Document doc {R"({
         "map":
             {"field2extract": "+kvdb_extract/TEST_DB/$a.b.key"}
     })"};
@@ -194,7 +201,7 @@ TEST_F(opBuilderKVDBExtractTest, Multi_level_target)
     auto kvdb = kvdbManager.getDB("TEST_DB");
     kvdb->write("KEY", "VALUE");
 
-    Document doc{R"({
+    Document doc {R"({
         "map":
             {"a.b.field2extract": "+kvdb_extract/TEST_DB/KEY"}
     })"};
@@ -230,7 +237,7 @@ TEST_F(opBuilderKVDBExtractTest, Existent_target)
     auto kvdb = kvdbManager.getDB("TEST_DB");
     kvdb->write("KEY", "VALUE");
 
-    Document doc{R"({
+    Document doc {R"({
         "map":
             {"field2extract": "+kvdb_extract/TEST_DB/KEY"}
     })"};

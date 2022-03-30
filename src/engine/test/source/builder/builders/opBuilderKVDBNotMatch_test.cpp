@@ -10,11 +10,11 @@
 #include <vector>
 
 #include <gtest/gtest.h>
-#include <logging/logging.hpp>
 
-#include "testUtils.hpp"
 #include "opBuilderKVDB.hpp"
+#include "testUtils.hpp"
 #include <kvdb/kvdbManager.hpp>
+#include <logging/logging.hpp>
 
 using namespace builder::internals::builders;
 
