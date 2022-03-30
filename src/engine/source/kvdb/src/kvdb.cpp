@@ -51,8 +51,8 @@ KVDB::KVDB(const std::string &dbName, const std::string &folder)
     }
     else
     {
-        CFDescriptors.push_back(
-            ROCKSDB::ColumnFamilyDescriptor("default", options.CF));
+        CFDescriptors.push_back(ROCKSDB::ColumnFamilyDescriptor(
+            ROCKSDB_NAMESPACE::kDefaultColumnFamilyName, options.CF));
     }
 
     ROCKSDB::Status st = ROCKSDB::TransactionDB::Open(
@@ -371,14 +371,27 @@ bool KVDB::deleteColumn(const std::string &columnName)
 
 /**
  * @brief cleaning of all elements in Column
- *
+ //TODO: when trying to clean a default CF rocksdb doesn't allow it: <return
+ Status::InvalidArgument("Can't drop default column family")> this needs to be
+ fixed differently in order to avoid costly proccess on large DBs.
  * @param columnName that will be cleaned
  * @return true when succesfully cleaned
  * @return false when unsuccesfully cleaned
  */
 bool KVDB::cleanColumn(const std::string &columnName)
 {
-    if (deleteColumn(columnName))
+    if (columnName == ROCKSDB_NAMESPACE::kDefaultColumnFamilyName)
+    {
+        ROCKSDB::Iterator *iter = m_db->NewIterator(options.read);
+        iter->SeekToFirst();
+        while (iter->Valid())
+        {
+            deleteKey(iter->key().ToString());
+            iter->Next();
+        };
+        return true;
+    }
+    else if (deleteColumn(columnName))
     {
         return createColumn(columnName);
     }
@@ -495,9 +508,10 @@ bool KVDB::exist(const std::string &key, const std::string &columnName)
 
 /**
  * @brief
- * //TODO: this should be returning a PinnableSlice and the consumer should be
- * resetting it Check what methods should we add in order to decouple rocksdb
- * library from the client
+ * //TODO: this should be returning a PinnableSlice and the consumer should
+ * reset it and read it's value. Check what methods should we add in order to
+ * decouple rocksdb library from the client, wrapping all the functions and
+ * objects needed.
  * @param key key where to find the value
  * @param value value that the result of the proccess will modify
  * @param ColumnName where to search the key
