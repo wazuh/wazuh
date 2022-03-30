@@ -12,29 +12,44 @@
 #include <algorithm>
 #include <string>
 
+#include <fmt/format.h>
+
 #include "syntax.hpp"
 
 namespace builder::internals::builders
 {
 
-types::Lifter opBuilderConditionReference(const types::DocumentValue & def, types::TracerFn tr)
+types::Lifter opBuilderConditionReference(const types::DocumentValue &def,
+                                          types::TracerFn tr)
 {
     if (!def.MemberBegin()->name.IsString())
     {
-        throw std::runtime_error("Error building condition reference, key of definition must be a string.");
+        throw std::runtime_error("Error building condition reference, key of "
+                                 "definition must be a string.");
     }
     if (!def.MemberBegin()->value.IsString())
     {
-        throw std::runtime_error("Error building condition reference, value of definition must be a string.");
+        throw std::runtime_error("Error building condition reference, value of "
+                                 "definition must be a string.");
     }
 
     // Estract and prepare field and reference
-    std::string field{json::formatJsonPath(def.MemberBegin()->name.GetString())};
-    std::string reference{def.MemberBegin()->value.GetString()};
-    if (reference.front() == '$'){
+    std::string field {
+        json::formatJsonPath(def.MemberBegin()->name.GetString())};
+    std::string reference {def.MemberBegin()->value.GetString()};
+    if (reference.front() == '$')
+    {
         reference.erase(0, 1);
     }
     reference = json::formatJsonPath(reference);
+    std::string successTrace =
+        fmt::format("{{{}: {}}} Condition Success",
+                    def.MemberBegin()->name.GetString(),
+                    def.MemberBegin()->value.GetString());
+    std::string failureTrace =
+        fmt::format("{{{}: {}}} Condition Failure",
+                    def.MemberBegin()->name.GetString(),
+                    def.MemberBegin()->value.GetString());
 
     // Return Lifter
     return [=](types::Observable o)
@@ -43,7 +58,16 @@ types::Lifter opBuilderConditionReference(const types::DocumentValue & def, type
         return o.filter(
             [=](types::Event e)
             {
-                return e->equals(field, reference);
+                if (e->equals(field, reference))
+                {
+                    tr(successTrace);
+                    return true;
+                }
+                else
+                {
+                    tr(failureTrace);
+                    return false;
+                }
             });
     };
 }
