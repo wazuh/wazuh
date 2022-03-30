@@ -15,8 +15,28 @@
 namespace builder::internals::builders
 {
 
+/**
+ * @brief Builds KVDB extract function helper
+ *
+ * @param def
+ * @return types::Lifter
+ */
 types::Lifter opBuilderKVDBExtract(const types::DocumentValue & def);
+
+/**
+ * @brief Builds KVDB match function helper
+ *
+ * @param def
+ * @return types::Lifter
+ */
 types::Lifter opBuilderKVDBMatch(const types::DocumentValue & def);
+
+/**
+ * @brief Builds KVDB not-match function helper
+ *
+ * @param def
+ * @return types::Lifter
+ */
 types::Lifter opBuilderKVDBNotMatch(const types::DocumentValue & def);
 
 }

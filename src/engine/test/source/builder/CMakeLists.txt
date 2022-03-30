@@ -30,7 +30,7 @@ include_directories(
 )
 
 #TODO do this better
-link_libraries(gtest_main hlp builders)
+link_libraries(gtest_main hlp kvdb builders)
 
 ####################################################################################################
 # Builder targets
@@ -119,10 +119,8 @@ add_executable(outputTest
 gtest_discover_tests(outputTest)
 
 add_executable(opBuilderKVDBTest
-  ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
-  ${ENGINE_SOURCE_DIR}/shared/stringUtils.cpp
-  ${ENGINE_SOURCE_DIR}/shared/ipUtils.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBExtract_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBMatch_test.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderKVDB.cpp)
-gtest_discover_tests(opBuilderKVDBExtractTest)
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBNotMatch_test.cpp
+)
+gtest_discover_tests(opBuilderKVDBTest)
