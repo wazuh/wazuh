@@ -64,7 +64,7 @@ types::Lifter opBuilderKVDBExtract(const types::DocumentValue & def, types::Trac
     {
         // Append rxcpp operation
         return o.map(
-            [=](types::Event e)
+            [target, &kvdb, key, isReference](types::Event e)
             {
                 // Get DB key
                 std::string dbKey;
@@ -132,6 +132,7 @@ types::Lifter opBuilderKVDBExistanceCheck(const types::DocumentValue & def, bool
         throw std::runtime_error("Invalid number of parameters for kvdb matching operator");
     }
 
+
     auto kvdb = KVDBManager::get().getDB(parametersArr[1]);
     if (!kvdb)
     {
@@ -144,7 +145,7 @@ types::Lifter opBuilderKVDBExistanceCheck(const types::DocumentValue & def, bool
     {
         // Append rxcpp operations
         return o.filter(
-            [=](types::Event e)
+            [&kvdb, key, checkExist](types::Event e)
             {
                 bool found = false;
                 try // TODO We are only using try for JSON::get. Is correct to wrap everything?
