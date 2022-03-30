@@ -805,7 +805,9 @@ $(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
 ifeq (${TARGET}, agent)
 strip: ${BUILD_AGENT} ${BUILD_CMAKE_PROJECTS}
 else
+ifneq (${TARGET}, winagent)
 strip: ${BUILD_SERVER} ${BUILD_CMAKE_PROJECTS}
+endif
 endif
 ifneq (${TARGET}, winagent)
 ifeq (,$(filter ${DISABLE_STRIP_SYMBOLS},YES yes y Y 1))
