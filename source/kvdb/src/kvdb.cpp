@@ -15,7 +15,8 @@
  * @brief Construct a new KVDB empty object
  *
  */
-KVDB::KVDB() {
+KVDB::KVDB()
+{
     m_name = "Invalid";
     m_db = nullptr;
     m_txndb = nullptr;
@@ -48,17 +49,14 @@ KVDB::KVDB(const std::string &dbName, const std::string &folder)
                 ROCKSDB::ColumnFamilyDescriptor(CFName, options.CF));
         }
     }
-    else {
+    else
+    {
         CFDescriptors.push_back(
-                ROCKSDB::ColumnFamilyDescriptor("default", options.CF));
+            ROCKSDB::ColumnFamilyDescriptor("default", options.CF));
     }
 
-    ROCKSDB::Status st = ROCKSDB::TransactionDB::Open(options.open,
-                                                        options.TX,
-                                                        m_path,
-                                                        CFDescriptors,
-                                                        &CFHandles,
-                                                        &m_txndb);
+    ROCKSDB::Status st = ROCKSDB::TransactionDB::Open(
+        options.open, options.TX, m_path, CFDescriptors, &CFHandles, &m_txndb);
     if (st.ok())
     {
         m_db = m_txndb->GetBaseDB();
@@ -70,9 +68,8 @@ KVDB::KVDB(const std::string &dbName, const std::string &folder)
     }
     else
     {
-        auto msg =
-            fmt::format("couldn't open db, error: [{}]", s.ToString());
-        WAZUH_LOG_ERROR("{}",msg);
+        auto msg = fmt::format("couldn't open db, error: [{}]", s.ToString());
+        WAZUH_LOG_ERROR("{}", msg);
         m_state = State::Error;
     }
 }
@@ -92,7 +89,8 @@ KVDB::~KVDB()
  * @return true succesfully closed
  * @return false unsuccesfully closed
  */
-bool KVDB::close() {
+bool KVDB::close()
+{
     bool ret = true;
     if (m_txndb)
     {
@@ -105,7 +103,7 @@ bool KVDB::close() {
                 auto msg =
                     fmt::format("couldn't destroy family handler, error: [{}]",
                                 s.ToString());
-                WAZUH_LOG_WARN("{}",msg);
+                WAZUH_LOG_WARN("{}", msg);
                 ret = false;
             }
         }
@@ -116,7 +114,7 @@ bool KVDB::close() {
         {
             auto msg =
                 fmt::format("couldn't close db, error: [{}]", s.ToString());
-            WAZUH_LOG_ERROR("{}",msg);
+            WAZUH_LOG_ERROR("{}", msg);
             ret = false;
         }
 
@@ -133,9 +131,11 @@ bool KVDB::close() {
  * @return true succesfully destructed
  * @return false unsuccesfully destructed
  */
-bool KVDB::destroy() {
+bool KVDB::destroy()
+{
     close();
-    ROCKSDB::Status s = ROCKSDB::DestroyDB(m_path, ROCKSDB::Options(), CFDescriptors);
+    ROCKSDB::Status s =
+        ROCKSDB::DestroyDB(m_path, ROCKSDB::Options(), CFDescriptors);
     return s.ok();
 }
 
@@ -156,32 +156,35 @@ bool KVDB::write(const std::string &key,
     if (cfh == m_CFHandlesMap.end())
     {
         auto msg = fmt::format("couldn't write to DB unknown column name");
-        WAZUH_LOG_ERROR("{}",msg);
+        WAZUH_LOG_ERROR("{}", msg);
         return false;
     }
 
     if (m_state == State::Open)
     {
-        ROCKSDB::Status s = m_db->Put(
-            options.write, cfh->second, ROCKSDB::Slice(key), ROCKSDB::Slice(value));
+        ROCKSDB::Status s = m_db->Put(options.write,
+                                      cfh->second,
+                                      ROCKSDB::Slice(key),
+                                      ROCKSDB::Slice(value));
         if (!s.ok())
         {
             auto msg = fmt::format("couldn't insert value into CF, error: [{}]",
-                                s.ToString());
-            WAZUH_LOG_ERROR("{}",msg);
+                                   s.ToString());
+            WAZUH_LOG_ERROR("{}", msg);
             return false;
         }
 
         auto msg = fmt::format("value insertion OK [{},{}] into CF name : [{}]",
-                            key,
-                            value,
-                            columnName);
-        WAZUH_LOG_INFO("{}",msg);
+                               key,
+                               value,
+                               columnName);
+        WAZUH_LOG_INFO("{}", msg);
         return true;
     }
-    else {
+    else
+    {
         auto msg = fmt::format("DB should be open for execution");
-        WAZUH_LOG_ERROR("{}",msg);
+        WAZUH_LOG_ERROR("{}", msg);
     }
     return false;
 }
@@ -202,7 +205,7 @@ std::string KVDB::read(const std::string &key, const std::string &ColumnName)
     if (cfh == m_CFHandlesMap.end())
     {
         auto msg = fmt::format("couldn't read DB unknown column name");
-        WAZUH_LOG_ERROR("{}",msg);
+        WAZUH_LOG_ERROR("{}", msg);
         return result;
     }
 
@@ -213,23 +216,25 @@ std::string KVDB::read(const std::string &key, const std::string &ColumnName)
             m_db->Get(options.read, cfh->second, ROCKSDB::Slice(key), &value);
         if (s.ok())
         {
-            auto msg = fmt::format("value obtained OK [{},{}] into CF name : [{}]",
-                                key,
-                                value,
-                                ColumnName);
-            WAZUH_LOG_INFO("{}",msg);
+            auto msg =
+                fmt::format("value obtained OK [{},{}] into CF name : [{}]",
+                            key,
+                            value,
+                            ColumnName);
+            WAZUH_LOG_INFO("{}", msg);
             result = value;
         }
         else
         {
-            auto msg =
-                fmt::format("couldn't insert value into CF, error: ", s.ToString());
-            WAZUH_LOG_ERROR("{}",msg);
+            auto msg = fmt::format("couldn't insert value into CF, error: ",
+                                   s.ToString());
+            WAZUH_LOG_ERROR("{}", msg);
         }
     }
-    else {
+    else
+    {
         auto msg = fmt::format("DB should be open for execution");
-        WAZUH_LOG_ERROR("{}",msg);
+        WAZUH_LOG_ERROR("{}", msg);
     }
     return value;
 }
@@ -248,7 +253,7 @@ bool KVDB::deleteKey(const std::string &key, const std::string &columnName)
     if (cfh == m_CFHandlesMap.end())
     {
         auto msg = fmt::format("couldn't delete key in DB unknown column name");
-        WAZUH_LOG_ERROR("{}",msg);
+        WAZUH_LOG_ERROR("{}", msg);
         return false;
     }
 
@@ -259,20 +264,21 @@ bool KVDB::deleteKey(const std::string &key, const std::string &columnName)
         if (s.ok())
         {
             auto msg = fmt::format("key deleted OK [{}]", key);
-            WAZUH_LOG_ERROR("{}",msg);
+            WAZUH_LOG_ERROR("{}", msg);
             return true;
         }
         else
         {
-            auto msg =
-                fmt::format("couldn't delete value in CF, error: ", s.ToString());
-            WAZUH_LOG_ERROR("{}",msg);
+            auto msg = fmt::format("couldn't delete value in CF, error: ",
+                                   s.ToString());
+            WAZUH_LOG_ERROR("{}", msg);
             return false;
         }
     }
-    else {
+    else
+    {
         auto msg = fmt::format("DB should be open for execution");
-        WAZUH_LOG_ERROR("{}",msg);
+        WAZUH_LOG_ERROR("{}", msg);
     }
     return false;
 }
@@ -290,7 +296,7 @@ bool KVDB::createColumn(const std::string &columnName)
     if (cfh != m_CFHandlesMap.end())
     {
         auto msg = fmt::format("couldn't create CF, name already taken");
-        WAZUH_LOG_ERROR("{}",msg);
+        WAZUH_LOG_ERROR("{}", msg);
         return false;
     }
 
@@ -298,7 +304,7 @@ bool KVDB::createColumn(const std::string &columnName)
     {
         ROCKSDB::ColumnFamilyHandle *handler;
         ROCKSDB::Status s =
-        m_db->CreateColumnFamily(options.CF, columnName, &handler);
+            m_db->CreateColumnFamily(options.CF, columnName, &handler);
         if (s.ok())
         {
             CFDescriptors.push_back(
@@ -307,9 +313,10 @@ bool KVDB::createColumn(const std::string &columnName)
             return true;
         }
     }
-    else {
+    else
+    {
         auto msg = fmt::format("DB should be open for execution");
-        WAZUH_LOG_ERROR("{}",msg);
+        WAZUH_LOG_ERROR("{}", msg);
     }
     return false;
 }
@@ -327,7 +334,7 @@ bool KVDB::deleteColumn(const std::string &columnName)
     if (cfh == m_CFHandlesMap.end())
     {
         auto msg = fmt::format("couldn't delete CF unknown column name");
-        WAZUH_LOG_ERROR("{}",msg);
+        WAZUH_LOG_ERROR("{}", msg);
         return false;
     }
 
@@ -347,10 +354,17 @@ bool KVDB::deleteColumn(const std::string &columnName)
             }
             return true;
         }
+        else
+        {
+            auto msg = fmt::format("couldn't delete Column, error: [{}]",
+                                   s.ToString());
+            WAZUH_LOG_ERROR("{}", msg);
+        }
     }
-    else {
+    else
+    {
         auto msg = fmt::format("DB should be open for execution");
-        WAZUH_LOG_ERROR("{}",msg);
+        WAZUH_LOG_ERROR("{}", msg);
     }
     return false;
 }
@@ -387,7 +401,7 @@ bool KVDB::writeToTransaction(
     {
         auto msg = fmt::format(
             "couldn't write transaction to DB, nedd at least 1 element");
-        WAZUH_LOG_ERROR("{}",msg);
+        WAZUH_LOG_ERROR("{}", msg);
         return false;
     }
 
@@ -396,11 +410,11 @@ bool KVDB::writeToTransaction(
     {
         auto msg =
             fmt::format("couldn't write transaction to DB unknown column name");
-        WAZUH_LOG_ERROR("{}",msg);
+        WAZUH_LOG_ERROR("{}", msg);
         return false;
     }
 
-    if(m_state == State::Open)
+    if (m_state == State::Open)
     {
         ROCKSDB::Transaction *txn = m_txndb->BeginTransaction(options.write);
         if (txn)
@@ -412,8 +426,8 @@ bool KVDB::writeToTransaction(
                 if (key.empty())
                 {
                     auto msg = fmt::format("can't write to a Transaction to a "
-                                        "family column with no key.");
-                    WAZUH_LOG_ERROR("{}",msg);
+                                           "family column with no key.");
+                    WAZUH_LOG_ERROR("{}", msg);
                     return false;
                 }
                 // Write a key in this transaction
@@ -424,10 +438,11 @@ bool KVDB::writeToTransaction(
                 }
                 else
                 {
-                    auto msg = fmt::format("couldn't execute Put in transaction "
-                                        "-breaking loop-, error: [{}]",
-                                        s.ToString());
-                    WAZUH_LOG_ERROR("{}",msg);
+                    auto msg =
+                        fmt::format("couldn't execute Put in transaction "
+                                    "-breaking loop-, error: [{}]",
+                                    s.ToString());
+                    WAZUH_LOG_ERROR("{}", msg);
                     return false;
                 }
             }
@@ -435,29 +450,30 @@ bool KVDB::writeToTransaction(
             if (s.ok())
             {
                 auto msg = fmt::format("transaction commited OK");
-                WAZUH_LOG_INFO("{}",msg);
+                WAZUH_LOG_INFO("{}", msg);
                 delete txn;
                 return true;
             }
             else
             {
-                auto msg = fmt::format(
-                    "couldn't commit in transaction, error: [{}]", s.ToString());
-                WAZUH_LOG_ERROR("{}",msg);
+                auto msg =
+                    fmt::format("couldn't commit in transaction, error: [{}]",
+                                s.ToString());
+                WAZUH_LOG_ERROR("{}", msg);
                 return false;
             }
         }
         else
         {
             auto msg = fmt::format("couldn't begin in transaction");
-            WAZUH_LOG_ERROR("{}",msg);
+            WAZUH_LOG_ERROR("{}", msg);
             return false;
         }
     }
     else
     {
         auto msg = fmt::format("DB should be open for execution");
-        WAZUH_LOG_ERROR("{}",msg);
+        WAZUH_LOG_ERROR("{}", msg);
         return false;
     }
 }
@@ -472,15 +488,16 @@ bool KVDB::writeToTransaction(
  */
 bool KVDB::exist(const std::string &key, const std::string &columnName)
 {
-    //TODO: this should be done with a pinnable read
+    // TODO: this should be done with a pinnable read
     std::string result = read(key, columnName);
     return !result.empty();
 }
 
 /**
  * @brief
- * //TODO: this should be returning a PinnableSlice and the consumer should be resetting it
- * Check what methods should we add in order to decouple rocksdb library from the client
+ * //TODO: this should be returning a PinnableSlice and the consumer should be
+ * resetting it Check what methods should we add in order to decouple rocksdb
+ * library from the client
  * @param key key where to find the value
  * @param value value that the result of the proccess will modify
  * @param ColumnName where to search the key
@@ -495,11 +512,11 @@ bool KVDB::readPinned(const std::string &key,
     if (cfh == m_CFHandlesMap.end())
     {
         auto msg = fmt::format("couldn't read value in DB unknown column name");
-        WAZUH_LOG_ERROR("{}",msg);
+        WAZUH_LOG_ERROR("{}", msg);
         return false;
     }
 
-    if(m_state == State::Open)
+    if (m_state == State::Open)
     {
         ROCKSDB::PinnableSlice pinnable_val;
         ROCKSDB::Status s = m_db->Get(
@@ -508,22 +525,22 @@ bool KVDB::readPinned(const std::string &key,
         {
             value = pinnable_val.ToString();
             auto msg = fmt::format("read pinned value OK [{},{}]", key, value);
-            WAZUH_LOG_INFO("{}",msg);
+            WAZUH_LOG_INFO("{}", msg);
             pinnable_val.Reset();
             return true;
         }
         else
         {
-            auto msg =
-                fmt::format("couldn't read pinned value, error: ", s.ToString());
-            WAZUH_LOG_ERROR("{}",msg);
+            auto msg = fmt::format("couldn't read pinned value, error: ",
+                                   s.ToString());
+            WAZUH_LOG_ERROR("{}", msg);
             return false;
         }
     }
     else
     {
         auto msg = fmt::format("DB should be open for execution");
-        WAZUH_LOG_ERROR("{}",msg);
+        WAZUH_LOG_ERROR("{}", msg);
         return false;
     }
 }
