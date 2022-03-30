@@ -454,7 +454,8 @@ bool KVDB::writeToTransaction(
  */
 bool KVDB::hasKey(const std::string &key, const std::string &columnName)
 {
-    // TODO: this should be done with a pinnable read
+    //TODO: this should be done with a pinnable read
+    //TODO: We are returning False if we inserted a KEY VALUE like: "KEY",""
     std::string result = read(key, columnName);
     return !result.empty();
 }
