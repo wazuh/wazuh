@@ -7,6 +7,7 @@
 
 
 import hashlib
+import json
 import os
 import pytest
 import sys
@@ -19,7 +20,6 @@ from unittest.mock import patch
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))  # noqa: E501
 with patch('sqlalchemy.create_engine', return_value=create_engine("sqlite://")):
     import orm
-import tools
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 test_last_dates_path = os.path.join(test_data_path, 'last_date_files')
@@ -104,6 +104,45 @@ def test_update_row_ko(create_and_teardown_db):
     assert orm.update_row(orm.Graph, md5="test", min_date="", max_date="") is False
 
 
+
+
+@pytest.mark.parametrize('last_dates_file_path', [
+    (os.path.join(test_last_dates_path, 'last_dates.json')),
+    (os.path.join(test_last_dates_path, 'last_dates_graph.json')),
+    (os.path.join(test_last_dates_path, 'last_dates_log_analytics.json')),
+    (os.path.join(test_last_dates_path, 'last_dates_storage.json')),
+    (os.path.join(test_last_dates_path, 'last_dates_old.json')),
+    (os.path.join(test_last_dates_path, 'last_dates_clean.json'))
+])
+def test_load_dates_json(last_dates_file_path):
+    with patch('orm.last_dates_path', new=last_dates_file_path):
+        last_dates_dict = orm.load_dates_json()
+        for key in last_dates_dict.keys():
+            assert isinstance(last_dates_dict[key], dict)
+            for md5 in last_dates_dict[key].keys():
+                assert isinstance(last_dates_dict[key][md5], dict)
+                assert set(last_dates_dict[key][md5].keys()) == {'min', 'max'}
+
+
+@patch('os.path.exists', return_value=False)
+@patch('builtins.open')
+@patch('json.dump')
+def test_load_dates_json_no_file(mock_dump, mock_open, mock_exists):
+    orm.load_dates_json()
+    mock_exists.assert_called_once()
+    mock_open.assert_called_once()
+    mock_dump.assert_called_once_with(orm.last_dates_default_contents, mock_open().__enter__())
+
+
+@pytest.mark.parametrize('last_dates_file_path', [
+    (os.path.join(test_last_dates_path, 'last_dates_invalid.json'))
+])
+def test_load_dates_json_ko(last_dates_file_path):
+    with patch('orm.last_dates_path', new=last_dates_file_path):
+        with pytest.raises(json.JSONDecodeError):
+            orm.load_dates_json()
+
+
 @pytest.mark.parametrize('file_exists, file_size', [
     (True, 0),
     (True, 100),
@@ -142,8 +181,8 @@ def test_migrate_from_last_dates_file(last_dates_file_path, create_and_teardown_
     items = orm.get_all_rows(table=orm.Graph)
     assert len(items) == 0
 
-    with patch('tools.last_dates_path', new=last_dates_file_path):
-        test_file_contents = tools.load_dates_json()
+    with patch('orm.last_dates_path', new=last_dates_file_path):
+        test_file_contents = orm.load_dates_json()
         orm.migrate_from_last_dates_file()
 
     # Validate the contents of each table

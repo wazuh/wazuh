@@ -1,4 +1,5 @@
 import logging
+import json
 import os
 import typing
 
@@ -7,13 +8,12 @@ from sqlalchemy.exc import IntegrityError, OperationalError, StatementError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-import tools
-
 
 DATABASE_NAME = "azure.db"
 database_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), DATABASE_NAME)
 LAST_DATES_NAME = "last_dates.json"
 last_dates_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), LAST_DATES_NAME)
+last_dates_default_contents = {'log_analytics': {}, 'graph': {}, 'storage': {}}
 
 engine = create_engine('sqlite:///' + database_path, echo=False)
 session = sessionmaker(bind=engine)()
@@ -131,7 +131,7 @@ def get_all_rows(table: Base) -> typing.Union[list, bool]:
 def migrate_from_last_dates_file():
     """Load a 'last_dates.json' file and insert its contents into the database."""
     logging.info("Migration from an old last_dates file is necessary. ")
-    last_dates_content = tools.load_dates_json()
+    last_dates_content = load_dates_json()
     keys = last_dates_content.keys()
     for service in [Graph, LogAnalytics, Storage]:
         if service.__tablename__ in keys:
@@ -171,3 +171,32 @@ def update_row(table: Base, md5: str, min_date: str, max_date: str) -> bool:
     except (IntegrityError, OperationalError, StatementError) as e:
         session.rollback()
         return False
+
+def load_dates_json() -> dict:
+    """Read the "last_dates_file" containing the different processed dates. It will be created with empty values in
+    case it does not exist.
+
+    Returns
+    -------
+    dict
+        The contents of the "last_dates_file".
+    """
+    logging.info(f"Getting the data from {last_dates_path}.")
+    try:
+        if os.path.exists(last_dates_path):
+            with open(last_dates_path) as file:
+                contents = json.load(file)
+                # This adds compatibility with "last_dates_files" from previous releases as the format was different
+                for key in contents.keys():
+                    for md5_hash in contents[key].keys():
+                        if not isinstance(contents[key][md5_hash], dict):
+                            contents[key][md5_hash] = {"min": contents[key][md5_hash], "max": contents[key][md5_hash]}
+        else:
+            # If file does not exist, create it and dump the default structure
+            contents = last_dates_default_contents
+            with open(last_dates_path, 'w') as file:
+                json.dump(contents, file)
+        return contents
+    except (json.JSONDecodeError, OSError) as e:
+        logging.error(f"Error: The file of the last dates could not be read: '{e}.")
+        raise e
