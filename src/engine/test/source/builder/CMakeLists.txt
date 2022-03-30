@@ -116,5 +116,9 @@ add_executable(outputTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderFileOutput_test.cpp
   ${TEST_SOURCE_DIR}/builder/outputs/fileOutput_test.cpp
 )
-
 gtest_discover_tests(outputTest)
+
+add_executable(connectableTest
+  ${BUILDER_TEST_SOURCE_DIR}/connectable_test.cpp
+)
+gtest_discover_tests(connectableTest)
