@@ -12,6 +12,7 @@
 
 #include <set>
 
+#include <fmt/format.h>
 #include <rxcpp/rx.hpp>
 
 #include "json.hpp"
@@ -105,20 +106,44 @@ struct Connectable
      * @param n name of the connectable
      */
     Connectable(std::string n)
-        : m_name(n), m_tracer{n}
+        : m_name(n)
+        , m_tracer {n}
     {
         if (n.find("OUTPUT_") == std::string::npos)
         {
-            m_op = [](Observable o)
+            m_op = [trFn = m_tracer.tracerLogger()](Observable o)
             {
-                return o;
+                return o.tap(
+                    [=](auto event)
+                    {
+                        // TODO: we are assuming event is a shared pointer
+                        // We should expect that template event has to_str
+                        // method instead
+                        trFn(fmt::format(" forwarded: {}", event->str()));
+                    },
+                    [](auto eptr) {},
+                    []() {});
             };
         }
         else
         {
-            m_op = [](Observable o)
+            m_op = [trFn = m_tracer.tracerLogger()](Observable o)
             {
-                return o.distinct_until_changed();
+                return o
+                    .tap(
+                        [=](auto event)
+                        {
+                            // TODO: we are assuming event is a shared pointer
+                            // We should expect that template event has to_str
+                            // method instead
+                            trFn(fmt::format(" got: {}", event->str()));
+                        },
+                        [](auto eptr) {},
+                        []() {})
+                    .distinct_until_changed()
+                    .tap([=](auto event) { trFn(" sent event"); },
+                         [](auto eptr) {},
+                         []() {});
             };
         }
     };
