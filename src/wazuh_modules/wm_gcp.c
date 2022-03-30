@@ -335,7 +335,7 @@ static void wm_gcp_parse_output(char *output, char *tag){
     for (line = strstr(parsing_output, WM_GCP_LOGGING_TOKEN); line; line = strstr(parsing_output, WM_GCP_LOGGING_TOKEN)) {
         char * tokenized_line;
         os_calloc(WM_STRING_MAX, sizeof(char), tokenized_line);
-	char * next_lines;
+        char * next_lines;
 
         line += strlen(WM_GCP_LOGGING_TOKEN);
         next_lines = strstr(line, WM_GCP_LOGGING_TOKEN);
@@ -346,7 +346,7 @@ static void wm_gcp_parse_output(char *output, char *tag){
         int cp_length = 1 + strlen(line) - next_lines_chars > WM_STRING_MAX ? WM_STRING_MAX : 1 + strlen(line) - next_lines_chars;
         snprintf(tokenized_line, cp_length, "%s", line);
         if (tokenized_line[cp_length - 2] == '\n') tokenized_line[cp_length - 2] = '\0'; 
-        
+
         char *p_line = NULL;
 
         if (debug_level >= 2) {
@@ -376,7 +376,7 @@ static void wm_gcp_parse_output(char *output, char *tag){
             }
         }
 
-	parsing_output += cp_length + strlen(WM_GCP_LOGGING_TOKEN) - 1;
+        parsing_output += cp_length + strlen(WM_GCP_LOGGING_TOKEN) - 1;
         os_free(tokenized_line);
     }
 }
