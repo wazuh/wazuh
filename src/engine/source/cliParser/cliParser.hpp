@@ -36,11 +36,14 @@ private:
     std::string m_storagePath;
     int m_threads;
     int m_queueSize;
-    bool m_debugAll;
+    bool m_traceAll;
+    bool m_trace;
+    std::vector<std::string> m_traceNames;
 
 public:
     /**
-     * @brief Construct a new Parser object and extracts the arguments saving them into the class variables
+     * @brief Construct a new Parser object and extracts the arguments saving
+     * them into the class variables
      *
      * @param argc Number of arguments passed.
      * @param argv List the arguments passed via console.
@@ -83,7 +86,28 @@ public:
      */
     int getQueueSize() const;
 
-    bool getDebugAll() const;
+    /**
+     * @brief Get the Trace All object
+     *
+     * @return true
+     * @return false
+     */
+    bool getTraceAll() const;
+
+    /**
+     * @brief Get the Trace object
+     *
+     * @return true
+     * @return false
+     */
+    bool getTrace() const;
+
+    /**
+     * @brief Get the Trace Names object
+     *
+     * @return std::vector<std::string>
+     */
+    std::vector<std::string> getTraceNames() const;
 };
 
 } // namespace cliparser

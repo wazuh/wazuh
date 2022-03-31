@@ -20,30 +20,6 @@
 namespace builder::internals
 {
 
-// TODO: Add move semantics
-struct Tracer
-{
-    std::string m_name;
-    rxcpp::subjects::subject<std::string> m_sbj;
-    rxcpp::observable<std::string> m_out;
-    Tracer() = default;
-    explicit Tracer(std::string name)
-        : m_name {name}
-        , m_out {m_sbj.get_observable()}
-    {
-    }
-    auto tracerLogger() const -> std::function<void(std::string)>
-    {
-        return [name = m_name, s = m_sbj.get_subscriber()](std::string msg)
-        {
-            if (s.is_subscribed())
-            {
-                s.on_next("(" + name + ")" + msg);
-            }
-        };
-    }
-};
-
 /**
  * @brief A connectable is a structure which help us build the RXCPP graph when
  * our assets are in the graph.
@@ -53,6 +29,76 @@ struct Tracer
 template<class Observable>
 struct Connectable
 {
+    // Only if Observable is an observable
+    using eventType = typename Observable::source_operator_type::value_type;
+
+    // TODO: Add move semantics
+    /**
+     * @brief Implements the functionality needed to send trace information
+     * outside rxcpp main pipeline, using a subject and a function that sends
+     * the messages through said subject.
+     *
+     */
+    struct Tracer
+    {
+        std::string m_name;
+        rxcpp::subjects::subject<std::string> m_sbj;
+        rxcpp::observable<std::string> m_out;
+
+        Tracer() = default;
+
+        /**
+         * @brief Construct a new Tracer object.
+         *
+         * @param name name of the asset.
+         */
+        explicit Tracer(std::string name)
+            : m_name {name}
+            , m_out {m_sbj.get_observable()}
+        {
+        }
+
+        /**
+         * @brief Return tracer function that logs a message.
+         * This function will only send the event if the subject observable has
+         * subscribers.
+         *
+         * @return std::function<void(std::string)>
+         */
+        auto tracerLogger() const -> std::function<void(std::string)>
+        {
+            return [name = m_name, s = m_sbj.get_subscriber(), sbj = m_sbj](
+                       std::string msg)
+            {
+                if (sbj.has_observers() && s.is_subscribed())
+                {
+                    s.on_next(fmt::format("({}) {}", name, msg));
+                }
+            };
+        }
+
+        /**
+         * @brief Return tracer function that logs a message and the event as
+         * string. This function will only send the event if the subject
+         * observable has subscribers.
+         *
+         * @return std::function<void(std::string, eventType)>
+         */
+        auto tracerLoggerEvent() const
+            -> std::function<void(std::string, eventType)>
+        {
+            return [name = m_name, s = m_sbj.get_subscriber(), sbj = m_sbj](
+                       std::string msg, eventType event)
+            {
+                if (sbj.has_observers() && s.is_subscribed())
+                {
+                    s.on_next(
+                        fmt::format("({}) {} {}", name, msg, event->str()));
+                }
+            };
+        }
+    };
+
     /**
      * @brief An operation is a function which will generate
      * an observable with the apropriate transformations and filters
@@ -111,7 +157,7 @@ struct Connectable
     {
         if (n.find("OUTPUT_") == std::string::npos)
         {
-            m_op = [trFn = m_tracer.tracerLogger()](Observable o)
+            m_op = [trFnEvt = m_tracer.tracerLoggerEvent()](Observable o)
             {
                 return o.tap(
                     [=](auto event)
@@ -119,7 +165,7 @@ struct Connectable
                         // TODO: we are assuming event is a shared pointer
                         // We should expect that template event has to_str
                         // method instead
-                        trFn(fmt::format(" forwarded: {}", event->str()));
+                        trFnEvt(" forwarded: ", event);
                     },
                     [](auto eptr) {},
                     []() {});
@@ -127,7 +173,8 @@ struct Connectable
         }
         else
         {
-            m_op = [trFn = m_tracer.tracerLogger()](Observable o)
+            m_op = [trFnEvt = m_tracer.tracerLoggerEvent(),
+                    trFn = m_tracer.tracerLogger()](Observable o)
             {
                 return o
                     .tap(
@@ -136,7 +183,7 @@ struct Connectable
                             // TODO: we are assuming event is a shared pointer
                             // We should expect that template event has to_str
                             // method instead
-                            trFn(fmt::format(" got: {}", event->str()));
+                            trFnEvt(" got: ", event);
                         },
                         [](auto eptr) {},
                         []() {})
@@ -194,8 +241,9 @@ struct Connectable
         return m_op(m_inputs[0]);
     }
 
+    // TODO: may be no longer needed
     /**
-     * @brief Operatos defined so Connectables can be stored on maps and sets as
+     * @brief Operators defined so Connectables can be stored on maps and sets as
      * keys.
      *
      */
