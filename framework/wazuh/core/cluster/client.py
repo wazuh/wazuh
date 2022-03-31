@@ -5,10 +5,11 @@ import itertools
 import logging
 import ssl
 import traceback
-from datetime import datetime
+from time import perf_counter
 from typing import Tuple, Dict, List
 
 import uvloop
+
 from wazuh.core.cluster import common
 from wazuh.core.cluster.utils import context_tag
 
@@ -174,7 +175,7 @@ class AbstractClient(common.Handler):
             self.logger.error(f"Could not connect to master: {response_msg}.")
             self.transport.close()
         else:
-            self.logger.info("Sucessfully connected to master.")
+            self.logger.info("Successfully connected to master.")
             self.connected = True
 
     def connection_made(self, transport):
@@ -204,7 +205,7 @@ class AbstractClient(common.Handler):
             self.logger.info('The master closed the connection')
         else:
             self.logger.error(f"Connection closed due to an unhandled error: {exc}\n"
-                              f"{''.join(traceback.format_tb(exc.__traceback__))}")
+                              f"{''.join(traceback.format_tb(exc.__traceback__))}", exc_info=False)
 
         if not self.on_con_lost.done():
             self.on_con_lost.set_result(True)
@@ -231,7 +232,7 @@ class AbstractClient(common.Handler):
             Result message.
         """
         if command == b'ok-m':
-            return b"Sucessful response from master: " + payload
+            return b"Successful response from master: " + payload
         else:
             return super().process_response(command, payload)
 
@@ -311,11 +312,11 @@ class AbstractClient(common.Handler):
             Payload length.
         """
         while not self.on_con_lost.done():
-            before = datetime.utcnow().timestamp()
+            before = perf_counter()
             result = await self.send_request(b'echo', b'a' * test_size)
-            after = datetime.utcnow().timestamp()
+            after = perf_counter()
             if len(result) != test_size:
-                self.logger.error(result)
+                self.logger.error(result, exc_info=False)
             else:
                 self.logger.info(f"Received size: {len(result)} // Time: {after - before}")
             await asyncio.sleep(3)
@@ -331,10 +332,11 @@ class AbstractClient(common.Handler):
             Number of requests to send.
         """
         while not self.on_con_lost.done():
-            before = datetime.utcnow().timestamp()
+            before = perf_counter()
             for i in range(n_msgs):
                 await self.send_request(b'echo', f'concurrency {i}'.encode())
-            self.logger.info(f"Time sending {n_msgs} messages: {datetime.utcnow().timestamp() - before}")
+                after = perf_counter()
+            self.logger.info(f"Time sending {n_msgs} messages: {after - before}")
             await asyncio.sleep(10)
 
     async def send_file_task(self, filename: str):
@@ -347,9 +349,9 @@ class AbstractClient(common.Handler):
         filename : str
             Filename to send.
         """
-        before = datetime.utcnow().timestamp()
+        before = perf_counter()
         response = await self.send_file(filename)
-        after = datetime.utcnow().timestamp()
+        after = perf_counter()
         self.logger.debug(response)
         self.logger.debug(f"Time: {after - before}")
 
@@ -363,8 +365,8 @@ class AbstractClient(common.Handler):
         string_size : int
             String length.
         """
-        before = datetime.utcnow().timestamp()
+        before = perf_counter()
         response = await self.send_string(my_str=b'a' * string_size)
-        after = datetime.utcnow().timestamp()
+        after = perf_counter()
         self.logger.debug(response)
         self.logger.debug(f"Time: {after - before}")

@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS _sys_programs (
     PRIMARY KEY (scan_id, name, version, architecture)
 );
 
-INSERT INTO _sys_programs SELECT * FROM sys_programs;
+INSERT INTO _sys_programs SELECT scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, triaged, cpe, msu_name, CASE WHEN checksum <> '' THEN checksum ELSE 'legacy' END AS checksum, item_id FROM sys_programs;
 DROP TABLE IF EXISTS sys_programs;
 ALTER TABLE _sys_programs RENAME TO sys_programs;
 CREATE INDEX IF NOT EXISTS programs_id ON sys_programs (scan_id);
@@ -62,12 +62,17 @@ CREATE TABLE IF NOT EXISTS vuln_cves (
     architecture TEXT,
     cve TEXT,
     detection_time TEXT DEFAULT '',
-    severity TEXT DEFAULT '-' CHECK (severity IN ('Critical', 'High', 'Medium', 'Low', 'None', '-')),
+    severity TEXT DEFAULT 'Untriaged' CHECK (severity IN ('Critical', 'High', 'Medium', 'Low', 'None', 'Untriaged')),
     cvss2_score REAL DEFAULT 0,
     cvss3_score REAL DEFAULT 0,
     reference TEXT DEFAULT '' NOT NULL,
     type TEXT DEFAULT '' NOT NULL CHECK (type IN ('OS', 'PACKAGE')),
     status TEXT DEFAULT 'PENDING' NOT NULL CHECK (status IN ('VALID', 'PENDING', 'OBSOLETE')),
+    external_references TEXT DEFAULT '',
+    condition TEXT DEFAULT '',
+    title TEXT DEFAULT '',
+    published TEXT '',
+    updated TEXT '',
     PRIMARY KEY (reference, cve)
 );
 CREATE INDEX IF NOT EXISTS packages_id ON vuln_cves (name);

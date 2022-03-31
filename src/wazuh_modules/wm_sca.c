@@ -45,8 +45,13 @@ static const int RETURN_NOT_FOUND = 0;
 static const int RETURN_FOUND = 1;
 static const int RETURN_INVALID = 2;
 
+#ifdef WIN32
+static DWORD WINAPI wm_sca_main(void *arg);         // Module main function. It won't return
+static DWORD WINAPI wm_sca_destroy(void *data);     // Destroy data
+#else
 static void * wm_sca_main(wm_sca_t * data);   // Module main function. It won't return
 static void wm_sca_destroy(wm_sca_t * data);  // Destroy data
+#endif
 static int wm_sca_start(wm_sca_t * data);  // Start
 static cJSON *wm_sca_build_event(const cJSON * const check, const cJSON * const policy, char **p_alert_msg, int id, const char * const result, const char * const reason);
 static int wm_sca_send_event_check(wm_sca_t * data,cJSON *event);  // Send check event
@@ -135,7 +140,12 @@ cJSON **last_summary_json = NULL;
 static pthread_rwlock_t dump_rwlock;
 
 // Module main function. It won't return
+#ifdef WIN32
+DWORD WINAPI wm_sca_main(void *arg) {
+    wm_sca_t *data = (wm_sca_t *)arg;
+#else
 void * wm_sca_main(wm_sca_t * data) {
+#endif
     // If module is disabled, exit
     if (data->enabled) {
         minfo("Module started.");
@@ -240,7 +250,11 @@ void * wm_sca_main(wm_sca_t * data) {
 
     wm_sca_start(data);
 
+#ifdef WIN32
+    return 0;
+#else
     return NULL;
+#endif
 }
 
 static int wm_sca_send_alert(wm_sca_t * data,cJSON *json_alert)
@@ -2052,9 +2066,15 @@ static int wm_sca_check_process_is_running(OSList *p_list, char *value, char **r
 }
 
 // Destroy data
-void wm_sca_destroy(wm_sca_t * data)
-{
+#ifdef WIN32
+DWORD WINAPI wm_sca_destroy(void *data) {
+#else
+void wm_sca_destroy(wm_sca_t * data) {
+#endif
     os_free(data);
+    #ifdef WIN32
+    return 0;
+    #endif
 }
 
 #ifdef WIN32
@@ -2309,7 +2329,8 @@ static int wm_sca_winreg_querykey(HKEY hKey, const char *full_key_name, char *re
 
             /* Write value into a string */
             switch (data_type) {
-                    int size_available;
+                int size_available;
+                size_t size_data;
 
                 case REG_SZ:
                 case REG_EXPAND_SZ:
@@ -2317,19 +2338,20 @@ static int wm_sca_winreg_querykey(HKEY hKey, const char *full_key_name, char *re
                     break;
                 case REG_MULTI_SZ:
                     /* Printing multiple strings */
-                    size_available = MAX_VALUE_NAME - 3;
+                    size_available = MAX_VALUE_NAME;
                     mt_data = data_buffer;
 
                     while (*mt_data) {
-                        if (size_available > 2) {
+                        size_data = strlen(mt_data) + strlen(" ");
+
+                        if ((size_t)size_available >= size_data) {
                             strncat(var_storage, mt_data, size_available);
-                            strncat(var_storage, " ", 2);
-                            size_available = MAX_VALUE_NAME -
-                                             (strlen(var_storage) + 2);
+                            size_available -= strlen(mt_data);
+                            strncat(var_storage, " ", size_available);
+                            size_available -= strlen(" ");
                         }
                         mt_data += strlen(mt_data) + 1;
                     }
-
                     break;
                 case REG_DWORD:
                     snprintf(var_storage, MAX_VALUE_NAME, "%u", *((uint32_t*)data_buffer));
@@ -3017,7 +3039,7 @@ static void * wm_sca_request_thread(wm_sca_t * data) {
 
     /* Create request socket */
     int cfga_queue;
-    if ((cfga_queue = StartMQ(CFGAQUEUE, READ, 0)) < 0) {
+    if ((cfga_queue = StartMQWithSpecificOwnerAndPerms(CFGAQUEUE, READ, 0, getuid(), wm_getGroupID(), 0660)) < 0) {
         merror(QUEUE_ERROR, CFGAQUEUE, strerror(errno));
         pthread_exit(NULL);
     }

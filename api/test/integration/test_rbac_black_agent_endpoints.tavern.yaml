@@ -1,9 +1,6 @@
 ---
 test_name: GET /agents
 
-marks:
-  - rbac_tests
-
 stages:
 
   - name: Get all agents (Partially allowed, user agnostic)
@@ -602,11 +599,16 @@ stages:
      json:
        error: 0
        data:
-         active: 4
-         disconnected: 1
-         never_connected: 1
-         pending: 0
-         total: 6
+         connection:
+           active: 4
+           disconnected: 1
+           never_connected: 1
+           pending: 0
+           total: 6
+         configuration:
+           synced: 4
+           not_synced: 2
+           total: 6
 
 ---
 test_name: GET /agents/summary/os
@@ -693,10 +695,13 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["005"]
       status_code: 200
       json:
-        message: "Agent '005' removed from 'group1'."
-    delay_after: !float "{global_db_delay}"
+        message: !anystr
 
 ---
 test_name: DELETE /agents/{agent_id}/group
@@ -1244,6 +1249,10 @@ stages:
         agents_list: '001,002,005'
         group_id: group1
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["005"]
       status_code: 200
       json:
         error: 2
@@ -1278,7 +1287,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-    delay_after: !float "{restart_delay}"
 
 ---
 test_name: PUT /groups/{group_id}/configuration
@@ -1296,6 +1304,10 @@ stages:
       data:
         "{file_xml:s}"
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["005"]
       status_code: 200
 
   - name: Try to update group3 configuration (Denied)
@@ -1338,6 +1350,10 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["005"]
       status_code: 200
       json:
         error: 0
@@ -1347,13 +1363,9 @@ stages:
           total_affected_items: 1
           failed_items: []
           total_failed_items: 0
-    delay_after: !float "{restart_delay}"
 
 ---
 test_name: PUT /agents/reconnect
-
-marks:
-  - xfail # Review and fix RBAC black agent API integration test - https://github.com/wazuh/wazuh/issues/10914
 
 stages:
 
@@ -1444,6 +1456,10 @@ stages:
       params:
         agents_list: "000,001,002,005"
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["005"]
       status_code: 200
       json:
         error: 2
@@ -1459,7 +1475,6 @@ stages:
                 - '002'
           total_affected_items: 1
           total_failed_items: 3
-    delay_after: !float "{restart_delay}"
 
   - name: Try to restart all agents (Partially allowed, user agnostic)
     request:
@@ -1469,6 +1484,10 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["003", "005", "007"]
       status_code: 200
       json:
         error: 0
@@ -1480,7 +1499,6 @@ stages:
           failed_items: []
           total_affected_items: 3
           total_failed_items: 0
-    delay_after: !float "{restart_delay}"
 
 ---
 test_name: PUT /agents/{agent_id}/group/{group_id}
@@ -1551,6 +1569,10 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
+      verify_response_with:
+        function: tavern_utils:healthcheck_agent_restart
+        extra_kwargs:
+          agents_list: ["005"]
       status_code: 200
       json:
         error: 0
@@ -1560,7 +1582,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-    delay_after: !float "{restart_delay}"
 
 ---
 test_name: PUT /agents/upgrade
@@ -1639,7 +1660,6 @@ stages:
         - function: tavern_utils:test_validate_restart_by_node_rbac
           extra_kwargs:
             permitted_agents: ['003','005','007'] # Agents '003', '005' and '007' can be restarted
-    delay_after: !float "{global_db_delay}"
 
   - name: Restart all agents belonging to worker1 (Allow node_id - Could deny agent_id)
     request:
@@ -1656,7 +1676,6 @@ stages:
         - function: tavern_utils:test_validate_restart_by_node_rbac
           extra_kwargs:
             permitted_agents: ['003','005','007'] # Agents '003', '005' and '007' can be restarted
-    delay_after: !float "{global_db_delay}"
 
   - name: Restart all agents belonging to worker2 (Allow node_id - Could deny agent_id)
     request:

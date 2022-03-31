@@ -45,21 +45,26 @@
 
 #define WDB_MAX_COMMAND_SIZE    512
 #define WDB_MAX_RESPONSE_SIZE   OS_MAXSTR-WDB_MAX_COMMAND_SIZE
+#define WDB_MAX_QUERY_SIZE      OS_MAXSTR-WDB_MAX_COMMAND_SIZE
 
 #define AGENT_CS_NEVER_CONNECTED "never_connected"
 #define AGENT_CS_PENDING         "pending"
 #define AGENT_CS_ACTIVE          "active"
 #define AGENT_CS_DISCONNECTED    "disconnected"
 
-#define VULN_CVES_STATUS_VALID    "VALID"
-#define VULN_CVES_STATUS_PENDING  "PENDING"
-#define VULN_CVES_STATUS_OBSOLETE "OBSOLETE"
-#define VULN_CVES_STATUS_REMOVED  "REMOVED"
+#define VULN_CVES_STATUS_VALID              "VALID"
+#define VULN_CVES_STATUS_PENDING            "PENDING"
+#define VULN_CVES_STATUS_OBSOLETE           "OBSOLETE"
+#define VULN_CVES_STATUS_SOLVED_LOWERCASE   "Solved"
+#define VULN_CVES_STATUS_ACTIVE_LOWERCASE   "Active"
 
 #define VULN_CVES_TYPE_OS         "OS"
 #define VULN_CVES_TYPE_PACKAGE    "PACKAGE"
 
+#define VULN_CVES_MAX_REFERENCES OS_SIZE_20480
+
 #define WDB_BLOCK_SEND_TIMEOUT_S   1 /* Max time in seconds waiting for the client to receive the information sent with a blocking method*/
+#define WDB_RESPONSE_OK_SIZE     3
 
 typedef enum wdb_stmt {
     WDB_STMT_FIM_LOAD,
@@ -292,7 +297,6 @@ typedef struct wdb_t {
 } wdb_t;
 
 typedef struct wdb_config {
-    int sock_queue_size;
     int worker_pool_size;
     int commit_time_min;
     int commit_time_max;
@@ -329,6 +333,7 @@ extern char *schema_upgrade_v8_sql;
 extern char *schema_global_upgrade_v1_sql;
 extern char *schema_global_upgrade_v2_sql;
 extern char *schema_global_upgrade_v3_sql;
+extern char *schema_global_upgrade_v4_sql;
 
 extern wdb_config wconfig;
 extern pthread_mutex_t pool_mutex;
@@ -360,12 +365,14 @@ typedef struct agent_info_data {
     char *labels;
     char *connection_status;
     char *sync_status;
+    char *group_config_status;
 } agent_info_data;
 
 typedef enum {
     FIELD_INTEGER,
     FIELD_TEXT,
-    FIELD_REAL
+    FIELD_REAL,
+    FIELD_INTEGER_LONG
 } field_type_t;
 
 struct field {
@@ -386,6 +393,7 @@ struct kv {
     char value[OS_SIZE_256];
     bool single_row_table;
     struct column_list const *column_list;
+    size_t field_count;
 };
 
 struct kv_list {
@@ -1339,7 +1347,7 @@ wdb_t * wdb_backup_global(wdb_t *wdb, int version);
  *
  * @param [in] wdb The global.db database to backup.
  * @param [in] version The global.db database version to backup.
- * @return wdb OS_SUCESS on success or OS_INVALID on error.
+ * @return wdb OS_SUCCESS on success or OS_INVALID on error.
  */
 int wdb_create_backup_global(int version);
 
@@ -1430,7 +1438,7 @@ int wdb_enable_foreign_keys(sqlite3 *db);
  * @param [in] wdb The MITRE struct database.
  * @param [in] id MITRE technique's ID.
  * @param [out] output MITRE technique's name.
- * @retval 1 Sucess: name found on MITRE database.
+ * @retval 1 Success: name found on MITRE database.
  * @retval 0 On error: name not found on MITRE database.
  * @retval -1 On error: invalid DB query syntax.
  */
@@ -1483,6 +1491,7 @@ int wdb_global_update_agent_name(wdb_t *wdb, int id, char* name);
  * @param [in] agent_ip The agent's IP address.
  * @param [in] connection_status The agent's connection status.
  * @param [in] sync_status The agent's synchronization status in cluster.
+ * @param [in] group_config_status The agent's shared configuration synchronization status.
  * @return Returns 0 on success or -1 on error.
  */
 int wdb_global_update_agent_version(wdb_t *wdb,
@@ -1503,7 +1512,8 @@ int wdb_global_update_agent_version(wdb_t *wdb,
                                     const char *node_name,
                                     const char *agent_ip,
                                     const char *connection_status,
-                                    const char *sync_status);
+                                    const char *sync_status,
+                                    const char *group_config_status);
 
 /**
  * @brief Function to get the labels of a particular agent.
@@ -1808,7 +1818,7 @@ int wdb_global_check_manager_keepalive(wdb_t *wdb);
  * @retval true when the database single row insertion is executed successfully.
  * @retval false on error.
  */
-bool wdb_single_row_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data);
+bool wdb_single_row_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data);
 
 /**
  * @brief Function to insert new rows with a dynamic query based on metadata.
@@ -1820,7 +1830,7 @@ bool wdb_single_row_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, char *
  * @retval true when the database insertion is executed successfully.
  * @retval false on error.
  */
-bool wdb_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data);
+bool wdb_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data);
 
 /**
  * @brief Function to modify existing rows with a dynamic query based on metadata.
@@ -1832,7 +1842,7 @@ bool wdb_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data);
  * @retval true when the database update is executed successfully.
  * @retval false on error.
  */
-bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data);
+bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data);
 
 /**
  * @brief Function to delete rows with a dynamic query based on metadata.
@@ -1844,7 +1854,18 @@ bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data);
  * @retval true when the database delete is executed successfully.
  * @retval false on error.
  */
-bool wdb_delete_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data);
+bool wdb_delete_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data);
+
+/**
+ * @brief Function to select rows with a dynamic query based on metadata.
+ * Its necessary to have the table PKs well.
+ *
+ * @param wdb The Global struct database.
+ * @param kv_value Table metadata to build dynamic queries.
+ * @param data Values separated with pipe character '|'.
+ * @param output Output values separated with pipe character '|'.
+ */
+void wdb_select_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data, char *output);
 
 /**
  * @brief Function to parse the insert upgrade request.
@@ -2056,5 +2077,14 @@ int wdb_task_get_upgrade_task_by_agent_id(wdb_t* wdb, int agent_id, char **node,
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }
+
+/**
+ * Get cache stmt cached for specific query.
+ * @param wdb The task struct database
+ * @param query is the query to be executed.
+ * @return Pointer to the statement already cached. NULL On error.
+ * */
+
+sqlite3_stmt * wdb_get_cache_stmt(wdb_t * wdb, char const *query);
 
 #endif

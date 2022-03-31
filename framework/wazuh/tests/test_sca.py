@@ -207,7 +207,7 @@ def test_sca_failed_limit(mock_agent, mock_sca_agent):
     with patch('wazuh.core.sca.WazuhDBBackend') as mock_wdb:
         mock_wdb.return_value.connect_to_db.return_value.execute.side_effect = get_fake_sca_data
         with pytest.raises(exception.WazuhException, match=".* 1405 .*"):
-            get_sca_list(agent_list=['000'], limit=common.maximum_database_limit + 1)
+            get_sca_list(agent_list=['000'], limit=common.MAXIMUM_DATABASE_LIMIT + 1)
 
         with pytest.raises(exception.WazuhException, match=".* 1406 .*"):
             get_sca_list(agent_list=['000'], limit=0)

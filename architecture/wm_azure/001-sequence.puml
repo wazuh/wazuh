@@ -33,3 +33,5 @@
     end note
     Microsoft_Azure --> azure_logs.py
     azure_logs.py --> user
+
+@enduml

@@ -266,6 +266,11 @@ void test_wdb_agents_insert_vuln_cves_error_json(void **state) {
     const char* reference = "1c979289c63e6225fea818ff9ca83d9d0d25c46a";
     const char* type = "PACKAGE";
     const char* status = "VALID";
+    const char* external_references = "[\"https://references.com/ref1.html\",\"https://references.com/ref2.html\"]";
+    const char* condition = "Package unfixed";
+    const char* title = "CVE-2021-1200 affects package";
+    const char* published = "01-01-2021";
+    const char* updated = "02-01-2021";
     bool check_pkg_existence = true;
     const char* severity = "Unknown";
     double cvss2_score = 0.0;
@@ -273,7 +278,9 @@ void test_wdb_agents_insert_vuln_cves_error_json(void **state) {
 
     will_return(__wrap_cJSON_CreateObject, NULL);
 
-    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status, check_pkg_existence, severity, cvss2_score, cvss3_score);
+    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status,
+                                      check_pkg_existence, severity, cvss2_score, cvss3_score,
+                                      external_references, condition, title, published, updated);
 
     assert_null(ret);
 }
@@ -288,6 +295,11 @@ void test_wdb_agents_insert_vuln_cves_update_success(void **state) {
     const char* reference = "1c979289c63e6225fea818ff9ca83d9d0d25c46a";
     const char* type = "PACKAGE";
     const char* status = "VALID";
+    const char* external_references = "[\"https://references.com/ref1.html\",\"https://references.com/ref2.html\"]";
+    const char* condition = "Package unfixed";
+    const char* title = "CVE-2021-1200 affects package";
+    const char* published = "01-01-2021";
+    const char* updated = "02-01-2021";
     bool check_pkg_existence = false;
     const char* severity = "Unknown";
     double cvss2_score = 0.0;
@@ -334,6 +346,16 @@ void test_wdb_agents_insert_vuln_cves_update_success(void **state) {
     expect_value(__wrap_sqlite3_bind_double, value, 0.0);
     expect_value(__wrap_sqlite3_bind_double, index, 10);
     expect_value(__wrap_sqlite3_bind_double, value, 0.0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 11);
+    expect_string(__wrap_sqlite3_bind_text, buffer, external_references);
+    expect_value(__wrap_sqlite3_bind_text, pos, 12);
+    expect_string(__wrap_sqlite3_bind_text, buffer, condition);
+    expect_value(__wrap_sqlite3_bind_text, pos, 13);
+    expect_string(__wrap_sqlite3_bind_text, buffer, title);
+    expect_value(__wrap_sqlite3_bind_text, pos, 14);
+    expect_string(__wrap_sqlite3_bind_text, buffer, published);
+    expect_value(__wrap_sqlite3_bind_text, pos, 15);
+    expect_string(__wrap_sqlite3_bind_text, buffer, updated);
 
     will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
 
@@ -341,8 +363,9 @@ void test_wdb_agents_insert_vuln_cves_update_success(void **state) {
     expect_string(__wrap_cJSON_AddStringToObject, string, "SUCCESS");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
-    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status, check_pkg_existence, severity, cvss2_score, cvss3_score);
-
+    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status,
+                                      check_pkg_existence, severity, cvss2_score, cvss3_score,
+                                      external_references, condition, title, published, updated);
     assert_ptr_equal(1, ret);
 }
 
@@ -356,6 +379,11 @@ void test_wdb_agents_insert_vuln_cves_pkg_not_found(void **state) {
     const char* reference = "1c979289c63e6225fea818ff9ca83d9d0d25c46a";
     const char* type = "PACKAGE";
     const char* status = "VALID";
+    const char* external_references = "[\"https://references.com/ref1.html\",\"https://references.com/ref2.html\"]";
+    const char* condition = "Package unfixed";
+    const char* title = "CVE-2021-1200 affects package";
+    const char* published = "01-01-2021";
+    const char* updated = "02-01-2021";
     bool check_pkg_existence = true;
     const char* severity = "Unknown";
     double cvss2_score = 0.0;
@@ -410,6 +438,16 @@ void test_wdb_agents_insert_vuln_cves_pkg_not_found(void **state) {
     expect_value(__wrap_sqlite3_bind_double, value, 0.0);
     expect_value(__wrap_sqlite3_bind_double, index, 10);
     expect_value(__wrap_sqlite3_bind_double, value, 0.0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 11);
+    expect_string(__wrap_sqlite3_bind_text, buffer, external_references);
+    expect_value(__wrap_sqlite3_bind_text, pos, 12);
+    expect_string(__wrap_sqlite3_bind_text, buffer, condition);
+    expect_value(__wrap_sqlite3_bind_text, pos, 13);
+    expect_string(__wrap_sqlite3_bind_text, buffer, title);
+    expect_value(__wrap_sqlite3_bind_text, pos, 14);
+    expect_string(__wrap_sqlite3_bind_text, buffer, published);
+    expect_value(__wrap_sqlite3_bind_text, pos, 15);
+    expect_string(__wrap_sqlite3_bind_text, buffer, updated);
 
     will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
 
@@ -417,8 +455,9 @@ void test_wdb_agents_insert_vuln_cves_pkg_not_found(void **state) {
     expect_string(__wrap_cJSON_AddStringToObject, string, "SUCCESS");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
-    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status, check_pkg_existence, severity, cvss2_score, cvss3_score);
-
+    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status,
+                                      check_pkg_existence, severity, cvss2_score, cvss3_score,
+                                      external_references, condition, title, published, updated);
     assert_ptr_equal(1, ret);
 }
 
@@ -432,6 +471,11 @@ void test_wdb_agents_insert_vuln_cves_success_statement_init_fail(void **state) 
     const char* reference = "1c979289c63e6225fea818ff9ca83d9d0d25c46a";
     const char* type = "PACKAGE";
     const char* status = "VALID";
+    const char* external_references = "[\"https://references.com/ref1.html\",\"https://references.com/ref2.html\"]";
+    const char* condition = "Package unfixed";
+    const char* title = "CVE-2021-1200 affects package";
+    const char* published = "01-01-2021";
+    const char* updated = "02-01-2021";
     bool check_pkg_existence = true;
     const char* severity = "Unknown";
     double cvss2_score = 0.0;
@@ -469,8 +513,9 @@ void test_wdb_agents_insert_vuln_cves_success_statement_init_fail(void **state) 
     expect_string(__wrap_cJSON_AddStringToObject, string, "ERROR");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
-    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status, check_pkg_existence, severity, cvss2_score, cvss3_score);
-
+    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status,
+                                      check_pkg_existence, severity, cvss2_score, cvss3_score,
+                                      external_references, condition, title, published, updated);
     assert_ptr_equal(1, ret);
 }
 
@@ -484,6 +529,11 @@ void test_wdb_agents_insert_vuln_cves_success_statement_exec_fail(void **state) 
     const char* reference = "1c979289c63e6225fea818ff9ca83d9d0d25c46a";
     const char* type = "PACKAGE";
     const char* status = "VALID";
+    const char* external_references = "[\"https://references.com/ref1.html\",\"https://references.com/ref2.html\"]";
+    const char* condition = "Package unfixed";
+    const char* title = "CVE-2021-1200 affects package";
+    const char* published = "01-01-2021";
+    const char* updated = "02-01-2021";
     bool check_pkg_existence = true;
     const char* severity = "Unknown";
     double cvss2_score = 0.0;
@@ -538,6 +588,16 @@ void test_wdb_agents_insert_vuln_cves_success_statement_exec_fail(void **state) 
     expect_value(__wrap_sqlite3_bind_double, value, 0.0);
     expect_value(__wrap_sqlite3_bind_double, index, 10);
     expect_value(__wrap_sqlite3_bind_double, value, 0.0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 11);
+    expect_string(__wrap_sqlite3_bind_text, buffer, external_references);
+    expect_value(__wrap_sqlite3_bind_text, pos, 12);
+    expect_string(__wrap_sqlite3_bind_text, buffer, condition);
+    expect_value(__wrap_sqlite3_bind_text, pos, 13);
+    expect_string(__wrap_sqlite3_bind_text, buffer, title);
+    expect_value(__wrap_sqlite3_bind_text, pos, 14);
+    expect_string(__wrap_sqlite3_bind_text, buffer, published);
+    expect_value(__wrap_sqlite3_bind_text, pos, 15);
+    expect_string(__wrap_sqlite3_bind_text, buffer, updated);
 
     will_return(__wrap_wdb_exec_stmt_silent, OS_INVALID);
 
@@ -548,8 +608,9 @@ void test_wdb_agents_insert_vuln_cves_success_statement_exec_fail(void **state) 
     expect_string(__wrap_cJSON_AddStringToObject, string, "ERROR");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
-    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status, check_pkg_existence, severity, cvss2_score, cvss3_score);
-
+    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status,
+                                      check_pkg_existence, severity, cvss2_score, cvss3_score,
+                                      external_references, condition, title, published, updated);
     assert_ptr_equal(1, ret);
 }
 
@@ -563,6 +624,11 @@ void test_wdb_agents_insert_vuln_cves_success_pkg_found(void **state) {
     const char* reference = "1c979289c63e6225fea818ff9ca83d9d0d25c46a";
     const char* type = "PACKAGE";
     const char* status = "VALID";
+    const char* external_references = "[\"https://references.com/ref1.html\",\"https://references.com/ref2.html\"]";
+    const char* condition = "Package unfixed";
+    const char* title = "CVE-2021-1200 affects package";
+    const char* published = "01-01-2021";
+    const char* updated = "02-01-2021";
     bool check_pkg_existence = true;
     const char* severity = "Unknown";
     double cvss2_score = 0.0;
@@ -617,6 +683,16 @@ void test_wdb_agents_insert_vuln_cves_success_pkg_found(void **state) {
     expect_value(__wrap_sqlite3_bind_double, value, 0.0);
     expect_value(__wrap_sqlite3_bind_double, index, 10);
     expect_value(__wrap_sqlite3_bind_double, value, 0.0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 11);
+    expect_string(__wrap_sqlite3_bind_text, buffer, external_references);
+    expect_value(__wrap_sqlite3_bind_text, pos, 12);
+    expect_string(__wrap_sqlite3_bind_text, buffer, condition);
+    expect_value(__wrap_sqlite3_bind_text, pos, 13);
+    expect_string(__wrap_sqlite3_bind_text, buffer, title);
+    expect_value(__wrap_sqlite3_bind_text, pos, 14);
+    expect_string(__wrap_sqlite3_bind_text, buffer, published);
+    expect_value(__wrap_sqlite3_bind_text, pos, 15);
+    expect_string(__wrap_sqlite3_bind_text, buffer, updated);
 
     will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
 
@@ -624,8 +700,9 @@ void test_wdb_agents_insert_vuln_cves_success_pkg_found(void **state) {
     expect_string(__wrap_cJSON_AddStringToObject, string, "SUCCESS");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
-    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status, check_pkg_existence, severity, cvss2_score, cvss3_score);
-
+    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status,
+                                      check_pkg_existence, severity, cvss2_score, cvss3_score,
+                                      external_references, condition, title, published, updated);
     assert_ptr_equal(1, ret);
 }
 

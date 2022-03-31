@@ -23,7 +23,7 @@
 #define NEW_IP1         "192.0.0.0"
 #define RAW_KEY         "6dd186d1740f6c80d4d380ebe72c8061db175881e07e809eb44404c836a7ef96"
 
-extern int w_enrollment_concat_src_ip(char *buff, const char* sender_ip, const int use_src_ip);
+extern int w_enrollment_concat_src_ip(char *buff, const size_t remain_size, const char* sender_ip, const int use_src_ip);
 extern void w_enrollment_concat_group(char *buff, const char* centralized_group);
 extern void w_enrollment_concat_key(char *buff, keyentry* key_entry);
 extern void w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_cert, const char *hostname);
@@ -130,6 +130,14 @@ int test_setup_concats(void **state) {
     char *buf;
     os_calloc(OS_SIZE_65536 + OS_SIZE_4096 + 1, sizeof(char), buf);
     buf[OS_SIZE_65536 + OS_SIZE_4096] = '\0';
+    *state = buf;
+    return 0;
+}
+
+int test_setup_concats_small_buff(void **state) {
+    char *buf;
+    os_calloc(30, sizeof(char), buf);
+    buf[29] = '\0';
     *state = buf;
     return 0;
 }
@@ -311,7 +319,7 @@ void test_w_enrollment_concat_src_ip_invalid_ip(void **state) {
     will_return(__wrap_OS_IsValidIP, 0);
 
     expect_string(__wrap__merror, formatted_msg, "Invalid IP address provided for sender IP.");
-    int ret = w_enrollment_concat_src_ip(buf, sender_ip, 0);
+    int ret = w_enrollment_concat_src_ip(buf, OS_SIZE_65536 + OS_SIZE_4096 - strlen(buf), sender_ip, 0);
     assert_int_equal(ret, -1);
 }
 
@@ -322,7 +330,7 @@ void test_w_enrollment_concat_src_ip_valid_ip(void **state) {
     expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
     will_return(__wrap_OS_IsValidIP, 1);
 
-    int ret = w_enrollment_concat_src_ip(buf, sender_ip, 0);
+    int ret = w_enrollment_concat_src_ip(buf, OS_SIZE_65536 + OS_SIZE_4096 - strlen(buf), sender_ip, 0);
     assert_int_equal(ret, 0);
     assert_string_equal(buf, " IP:'192.168.1.1'");
 }
@@ -331,7 +339,7 @@ void test_w_enrollment_concat_src_ip_empty_ip(void **state) {
     char *buf = *state;
     const char* sender_ip = NULL;
 
-    int ret = w_enrollment_concat_src_ip(buf, sender_ip, 1);
+    int ret = w_enrollment_concat_src_ip(buf, OS_SIZE_65536 + OS_SIZE_4096 - strlen(buf), sender_ip, 1);
     assert_int_equal(ret, 0);
     assert_string_equal(buf, " IP:'src'");
 }
@@ -341,21 +349,43 @@ void test_w_enrollment_concat_src_ip_incomaptible_opt(void **state) {
     const char* sender_ip ="192.168.1.1";
 
     expect_string(__wrap__merror, formatted_msg, "Incompatible sender_ip options: Forcing IP while using use_source_ip flag.");
-    int ret = w_enrollment_concat_src_ip(buf, sender_ip, 1);
+    int ret = w_enrollment_concat_src_ip(buf, OS_SIZE_65536 + OS_SIZE_4096 - strlen(buf), sender_ip, 1);
     assert_int_equal(ret, -1);
+}
+
+void test_w_enrollment_concat_src_ip_small_buff(void **state) {
+    int ret = 0;
+    char *buf = *state;
+    const char* sender_ip = "192.168.1.1";
+
+    expect_string(__wrap_OS_IsValidIP, ip_address, sender_ip);
+    expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
+    will_return(__wrap_OS_IsValidIP, 1);
+
+    ret = w_enrollment_concat_src_ip(buf, 30 - strlen(buf), sender_ip, 0);
+    assert_int_equal(ret, 0);
+    assert_string_equal(buf, " IP:'192.168.1.1'");
+
+    expect_string(__wrap_OS_IsValidIP, ip_address, sender_ip);
+    expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
+    will_return(__wrap_OS_IsValidIP, 1);
+
+    ret = w_enrollment_concat_src_ip(buf, 30 - strlen(buf), sender_ip, 0);
+    assert_int_equal(ret, 0);
+    assert_string_equal(buf, " IP:'192.168.1.1' IP:'192.168");
 }
 
 void test_w_enrollment_concat_src_ip_default(void **state) {
     char *buf = *state;
     const char* sender_ip = NULL;
 
-    int ret = w_enrollment_concat_src_ip(buf, sender_ip, 0);
+    int ret = w_enrollment_concat_src_ip(buf, OS_SIZE_65536 + OS_SIZE_4096 - strlen(buf), sender_ip, 0);
     assert_int_equal(ret, 0);
     assert_string_equal(buf, "");
 }
 
 void test_w_enrollment_concat_src_ip_empty_buff(void **state) {
-    expect_assert_failure(w_enrollment_concat_src_ip(NULL, NULL, 0));
+    expect_assert_failure(w_enrollment_concat_src_ip(NULL, 0, NULL, 0));
 }
 
 /**********************************************/
@@ -505,7 +535,7 @@ void test_w_enrollment_connect_socket_error(void **state) {
     expect_value(__wrap_OS_ConnectTCP, ipv6, 0);
     will_return(__wrap_OS_ConnectTCP, -1);
 
-    expect_string(__wrap__merror, formatted_msg, "(1208): Unable to connect to the Auth service at '127.0.0.1:1234'.");
+    expect_string(__wrap__merror, formatted_msg, "(1208): Unable to connect to enrollment service at '[127.0.0.1]:1234'");
     int ret = w_enrollment_connect(cfg, cfg->target_cfg->manager_name);
     assert_int_equal(ret, ENROLLMENT_CONNECTION_FAILURE);
 }
@@ -574,7 +604,7 @@ void test_w_enrollment_connect_success(void **state) {
     will_return(__wrap_SSL_new, cfg->ssl);
     will_return(__wrap_SSL_connect, 1);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(1209): Connected to the Auth service at '127.0.0.1:1234'.");
+    expect_string(__wrap__mdebug1, formatted_msg, "(1209): Connected to enrollment service at '[127.0.0.1]:1234'");
 
     // verify_ca_certificate
     expect_value(__wrap_check_x509_cert, ssl, cfg->ssl);
@@ -1022,7 +1052,7 @@ void test_w_enrollment_request_key(void **state) {
         will_return(__wrap_SSL_new, cfg->ssl);
         will_return(__wrap_SSL_connect, 1);
 
-        expect_string(__wrap__mdebug1, formatted_msg, "(1209): Connected to the Auth service at '192.168.1.1:1234'.");
+        expect_string(__wrap__mdebug1, formatted_msg, "(1209): Connected to enrollment service at '[192.168.1.1]:1234'");
 
         // verify_ca_certificate
         expect_value(__wrap_check_x509_cert, ssl, cfg->ssl);
@@ -1185,6 +1215,7 @@ int main() {
         cmocka_unit_test_setup_teardown(test_w_enrollment_concat_src_ip_valid_ip, test_setup_concats, test_teardown_concats),
         cmocka_unit_test_setup_teardown(test_w_enrollment_concat_src_ip_empty_ip, test_setup_concats, test_teardown_concats),
         cmocka_unit_test_setup_teardown(test_w_enrollment_concat_src_ip_incomaptible_opt, test_setup_concats, test_teardown_concats),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_concat_src_ip_small_buff, test_setup_concats_small_buff, test_teardown_concats),
         cmocka_unit_test(test_w_enrollment_concat_src_ip_empty_buff),
         // w_enrollment_concat_group
         cmocka_unit_test(test_w_enrollment_concat_group_empty_buff),

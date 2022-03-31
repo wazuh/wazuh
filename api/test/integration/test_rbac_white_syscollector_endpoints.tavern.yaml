@@ -1,10 +1,6 @@
 ---
 test_name: GET OS SYSCOLLECTOR RBAC
 
-marks:
-  - xfail # Review and fix syscollector endpoints API integration tests - https://github.com/wazuh/wazuh/issues/10923
-  - rbac_tests
-
 stages:
 
   - name: Get os from an agent (Allow)
@@ -38,7 +34,7 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        
+
   - name: Get os from an agent (Deny)
     request:
       verify: False
@@ -56,9 +52,6 @@ stages:
 
 ---
 test_name: GET HARDWARE SYSCOLLECTOR RBAC
-
-marks:
-  - xfail # Review and fix syscollector endpoints API integration tests - https://github.com/wazuh/wazuh/issues/10923
 
 stages:
 
@@ -89,7 +82,7 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        
+
   - name: Get hardware from an agent (Deny)
     request:
       verify: False
@@ -102,9 +95,6 @@ stages:
 
 ---
 test_name: GET NETADDR SYSCOLLECTOR RBAC
-
-marks:
-  - xfail # Review and fix syscollector endpoints API integration tests - https://github.com/wazuh/wazuh/issues/10923
 
 stages:
 
@@ -142,9 +132,6 @@ stages:
 
 ---
 test_name: GET NETIFACE SYSCOLLECTOR RBAC
-
-marks:
-  - xfail # Review and fix syscollector endpoints API integration tests - https://github.com/wazuh/wazuh/issues/10923
 
 stages:
 
@@ -262,7 +249,7 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        
+
   - name: Get netiface from an agent (Deny)
     request:
       verify: False
@@ -308,7 +295,7 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        
+
   - name: Get netiface from an agent (Deny)
     request:
       verify: False
@@ -339,8 +326,7 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - cmd: !anystr
-              egroup: !anystr
+            - egroup: !anystr
               euser: !anystr
               fgroup: !anystr
               name: !anystr
@@ -372,7 +358,7 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        
+
   - name: Get netiface from an agent (Deny)
     request:
       verify: False

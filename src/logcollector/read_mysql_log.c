@@ -22,11 +22,11 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
     size_t str_len = 0;
     int need_clear = 0;
     char *p;
-    char str[OS_MAXSTR + 1];
-    char buffer[OS_MAXSTR + 1];
+    char str[OS_MAX_LOG_SIZE] = {0};
+    char buffer[OS_MAX_LOG_SIZE] = {0};
     int lines = 0;
+    int bytes_written = 0;
 
-    str[OS_MAXSTR] = '\0';
     *rc = 0;
 
     /* Obtain context to calculate hash */
@@ -35,7 +35,7 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
     bool is_valid_context_file = w_get_hash_context(lf, &context, current_position);
 
     /* Get new entry */
-    while (can_read() && fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
+    while (can_read() && fgets(str, sizeof(str), lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
 
         lines++;
         /* Get buffer size */
@@ -102,7 +102,7 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
             }
 
             /* Valid MySQL message */
-            snprintf(buffer, OS_MAXSTR, "MySQL log: %s %s",
+            bytes_written = snprintf(buffer, sizeof(buffer), "MySQL log: %s %s",
                      __mysql_last_time, p);
         }
 
@@ -155,10 +155,10 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
            }
 
            /* Valid MySQL message */
-           snprintf(buffer, OS_MAXSTR, "MySQL log: %s %s",
+           bytes_written = snprintf(buffer, sizeof(buffer), "MySQL log: %s %s",
                     __mysql_last_time, p);
        }
-       
+
       /* MySQL 5.7 messages have the following format(in case of utc):
        * YYYY-MM-DDThh:mm:ss.uuuuuuZ XX
        * ref: https://dev.mysql.com/doc/refman/5.7/en/server-system-variables.html#sysvar_log_timestamps
@@ -203,7 +203,7 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
           }
 
           /* Valid MySQL message */
-          snprintf(buffer, OS_MAXSTR, "MySQL log: %s %s",
+          bytes_written = snprintf(buffer, sizeof(buffer), "MySQL log: %s %s",
                    __mysql_last_time, p);
       }
 
@@ -227,10 +227,16 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
             }
 
             /* Valid MySQL message */
-            snprintf(buffer, OS_MAXSTR, "MySQL log: %s %s",
+            bytes_written = snprintf(buffer, sizeof(buffer), "MySQL log: %s %s",
                      __mysql_last_time, p);
         } else {
             continue;
+        }
+
+        if (bytes_written < 0) {
+            merror("Error %d (%s) while reading message: '%s' (length = " FTELL_TT "): '%s'...", errno, strerror(errno), lf->file, FTELL_INT64 bytes_written, buffer);
+        } else if ((size_t)bytes_written >= sizeof(buffer)) {
+            merror("Message size too big on file '%s' (length = " FTELL_TT "): '%s'...", lf->file, FTELL_INT64 bytes_written, buffer);
         }
 
         mdebug2("Reading mysql messages: '%s'", buffer);

@@ -47,15 +47,15 @@ def run(agent_list: Union[list, None] = None) -> AffectedItemsWazuhResult:
         id_=agent['id'],
         error=WazuhError(1707)) for agent in non_eligible_agents]
 
-    wq = WazuhQueue(common.ARQUEUE)
-    eligible_agents = agent_list - not_found_agents - {d['id'] for d in non_eligible_agents}
-    for agent_id in eligible_agents:
-        try:
-            wq.send_msg_to_agent(WazuhQueue.HC_SK_RESTART, agent_id)
-            result.affected_items.append(agent_id)
-        except WazuhError as e:
-            result.add_failed_item(id_=agent_id, error=e)
-    wq.close()
+    with WazuhQueue(common.AR_SOCKET) as wq:
+        eligible_agents = agent_list - not_found_agents - {d['id'] for d in non_eligible_agents}
+        for agent_id in eligible_agents:
+            try:
+                wq.send_msg_to_agent(WazuhQueue.HC_SK_RESTART, agent_id)
+                result.affected_items.append(agent_id)
+            except WazuhError as e:
+                result.add_failed_item(id_=agent_id, error=e)
+
     result.affected_items.sort(key=int)
     result.total_affected_items = len(result.affected_items)
 
@@ -125,7 +125,7 @@ def get_last_scan(agent_list):
 
 
 @expose_resources(actions=["rootcheck:read"], resources=["agent:id:{agent_list}"])
-def get_rootcheck_agent(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None,
+def get_rootcheck_agent(agent_list=None, offset=0, limit=common.DATABASE_LIMIT, sort=None, search=None, select=None,
                         filters=None, q='', distinct=None):
     """Return a list of events from the rootcheck database.
 

@@ -17,8 +17,13 @@
 #include "defs.h"
 #include "mq_op.h"
 
+#ifdef WIN32
+static DWORD WINAPI wm_sys_main(void *arg);         // Module main function. It won't return
+static DWORD WINAPI wm_sys_destroy(void *data);      // Destroy data
+#else
 static void* wm_sys_main(wm_sys_t *sys);        // Module main function. It won't return
-static void wm_sys_destroy(wm_sys_t *sys);      // Destroy data
+static void wm_sys_destroy(wm_sys_t *data);      // Destroy data
+#endif
 static void wm_sys_stop(wm_sys_t *sys);         // Module stopper
 const char *WM_SYS_LOCATION = "syscollector";   // Location field for event sending
 cJSON *wm_sys_dump(const wm_sys_t *sys);
@@ -51,28 +56,22 @@ static bool is_shutdown_process_started() {
     return ret_val;
 }
 
-static void wm_sys_send_diff_message(/*const void* data*/) {
-    // const int eps = 1000000/syscollector_sync_max_eps;
-    // Sending deltas is disabled due to issue: 7322 - https://github.com/wazuh/wazuh/issues/7322
-    // wm_sendmsg(eps, queue_fd, data, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
- }
-
-static void wm_sys_send_dbsync_message(const void* data) {
-    if(!os_iswait() && !is_shutdown_process_started()) {
+static void wm_sys_send_message(const void* data, const char queue_id) {
+    if (!is_shutdown_process_started()) {
         const int eps = 1000000/syscollector_sync_max_eps;
-        if (wm_sendmsg_ex(eps, queue_fd, data, WM_SYS_LOCATION, DBSYNC_MQ, &is_shutdown_process_started) < 0) {
-#ifdef CLIENT
+        if (wm_sendmsg_ex(eps, queue_fd, data, WM_SYS_LOCATION, queue_id, &is_shutdown_process_started) < 0) {
+    #ifdef CLIENT
             mterror(WM_SYS_LOGTAG, "Unable to send message to '%s' (wazuh-agentd might be down). Attempting to reconnect.", DEFAULTQUEUE);
-#else
+    #else
             mterror(WM_SYS_LOGTAG, "Unable to send message to '%s' (wazuh-analysisd might be down). Attempting to reconnect.", DEFAULTQUEUE);
-#endif
+    #endif
             // Since this method is beign called by multiple threads it's necessary this particular portion of code
             // to be mutually exclusive. When one thread is successfully reconnected, the other ones will make use of it.
             w_mutex_lock(&sys_reconnect_mutex);
-            if (!is_shutdown_process_started() && wm_sendmsg_ex(eps, queue_fd, data, WM_SYS_LOCATION, DBSYNC_MQ, &is_shutdown_process_started) < 0) {
+            if (!is_shutdown_process_started() && wm_sendmsg_ex(eps, queue_fd, data, WM_SYS_LOCATION, queue_id, &is_shutdown_process_started) < 0) {
                 if (queue_fd = MQReconnectPredicated(DEFAULTQUEUE, &is_shutdown_process_started), 0 <= queue_fd) {
                     mtinfo(WM_SYS_LOGTAG, "Successfully reconnected to '%s'", DEFAULTQUEUE);
-                    if (wm_sendmsg_ex(eps, queue_fd, data, WM_SYS_LOCATION, DBSYNC_MQ, &is_shutdown_process_started) < 0) {
+                    if (wm_sendmsg_ex(eps, queue_fd, data, WM_SYS_LOCATION, queue_id, &is_shutdown_process_started) < 0) {
                         mterror(WM_SYS_LOGTAG, "Unable to send message to '%s' after a successfull reconnection...", DEFAULTQUEUE);
                     }
                 }
@@ -80,6 +79,16 @@ static void wm_sys_send_dbsync_message(const void* data) {
             w_mutex_unlock(&sys_reconnect_mutex);
         }
     }
+}
+
+static void wm_sys_send_diff_message(const void* data) {
+    if (!os_iswait()) {
+        wm_sys_send_message(data, SYSCOLLECTOR_MQ);
+    }
+}
+
+static void wm_sys_send_dbsync_message(const void* data) {
+    wm_sys_send_message(data, DBSYNC_MQ);
 }
 
 static void wm_sys_log(const syscollector_log_level_t level, const char* log) {
@@ -114,7 +123,12 @@ static void wm_sys_log_config(wm_sys_t *sys)
     }
 }
 
+#ifdef WIN32
+DWORD WINAPI wm_sys_main(void *arg) {
+    wm_sys_t *sys = (wm_sys_t *)arg;
+#else
 void* wm_sys_main(wm_sys_t *sys) {
+#endif
     w_cond_init(&sys_stop_condition, NULL);
     w_mutex_init(&sys_stop_mutex, NULL);
     w_mutex_init(&sys_reconnect_mutex, NULL);
@@ -195,8 +209,15 @@ void* wm_sys_main(wm_sys_t *sys) {
     return 0;
 }
 
+#ifdef WIN32
+DWORD WINAPI wm_sys_destroy(void *data) {
+#else
 void wm_sys_destroy(wm_sys_t *data) {
+#endif
     free(data);
+#ifdef WIN32
+    return 0;
+#endif
 }
 
 void wm_sys_stop(__attribute__((unused))wm_sys_t *data) {

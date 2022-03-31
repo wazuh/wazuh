@@ -11,6 +11,7 @@ VERSION=`cat ${VERSION_FILE}`
 REVISION=`cat ${REVISION_FILE}`
 UNAME=`uname -snr`
 NUNAME=`uname`
+VUNAME=`uname -r`
 
 # If whoami does not exist, try id
 if command -v whoami > /dev/null 2>&1 ; then

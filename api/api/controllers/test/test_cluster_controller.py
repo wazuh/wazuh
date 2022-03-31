@@ -354,7 +354,7 @@ async def test_get_stats_analysisd_node(mock_exc, mock_dapi, mock_remove, mock_d
         result = await get_stats_analysisd_node(request=mock_request,
                                                 node_id='001')
         f_kwargs = {'node_id': '001',
-                    'filename': common.analysisd_stats
+                    'filename': common.ANALYSISD_STATS
                     }
         mock_dapi.assert_called_once_with(f=stats.get_daemons_stats,
                                           f_kwargs=mock_remove.return_value,
@@ -383,7 +383,7 @@ async def test_get_stats_remoted_node(mock_exc, mock_dapi, mock_remove, mock_dfu
         result = await get_stats_remoted_node(request=mock_request,
                                               node_id='001')
         f_kwargs = {'node_id': '001',
-                    'filename': common.remoted_stats
+                    'filename': common.REMOTED_STATS
                     }
         mock_dapi.assert_called_once_with(f=stats.get_daemons_stats,
                                           f_kwargs=mock_remove.return_value,

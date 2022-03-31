@@ -136,8 +136,11 @@ int buffer_append(const char *msg){
 }
 
 /* Send messages from buffer to the server */
+#ifdef WIN32
+DWORD WINAPI dispatch_buffer(__attribute__((unused)) LPVOID arg) {
+#else
 void *dispatch_buffer(__attribute__((unused)) void * arg){
-
+#endif
     char flood_msg[OS_MAXSTR];
     char full_msg[OS_MAXSTR];
     char warn_msg[OS_MAXSTR];

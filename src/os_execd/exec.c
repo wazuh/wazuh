@@ -69,8 +69,13 @@ int ReadExecConfig()
         tmp_str += 3;
 
         /* Set the name */
-        strncpy(exec_names[exec_size], str_pt, OS_FLSIZE);
-        exec_names[exec_size][OS_FLSIZE] = '\0';
+        const int bytes_written = snprintf(exec_names[exec_size], sizeof(exec_names[exec_size]), "%s", str_pt);
+
+        if (bytes_written < 0) {
+            merror(EXEC_BAD_NAME " Error %d (%s).", exec_names[exec_size], errno, strerror(errno));
+        } else if ((size_t)bytes_written >= sizeof(exec_names[exec_size])) {
+            merror(EXEC_BAD_NAME, exec_names[exec_size]);
+        }
 
         str_pt = tmp_str;
 
@@ -122,8 +127,7 @@ int ReadExecConfig()
         for (j = 0; j < exec_size; j++) {
             if (strcmp(exec_names[j], exec_names[exec_size]) == 0) {
                 if (exec_cmd[j][0] == '\0') {
-                    strncpy(exec_cmd[j], exec_cmd[exec_size], OS_FLSIZE);
-                    exec_cmd[j][OS_FLSIZE] = '\0';
+                    snprintf(exec_cmd[j], sizeof(exec_cmd[j]), "%s", exec_cmd[exec_size]);
                     dup_entry = 1;
                     break;
                 } else if (exec_cmd[exec_size][0] == '\0') {

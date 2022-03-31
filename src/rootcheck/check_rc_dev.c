@@ -37,11 +37,22 @@ static int read_dev_file(const char *file_name)
 
     else if (S_ISREG(statbuf.st_mode)) {
         char op_msg[OS_SIZE_1024 + 1];
+        const char op_msg_fmt[] = "File '%*s' present on /dev. Possible hidden file.";
 
-        snprintf(op_msg, OS_SIZE_1024, "File '%s' present on /dev."
-                 " Possible hidden file.", file_name);
-        notify_rk(ALERT_SYSTEM_CRIT, op_msg);
+        const int size = snprintf(NULL, 0, op_msg_fmt, (int)strlen(file_name), file_name);
 
+        if (size >= 0) {
+            if ((size_t)size < sizeof(op_msg)) {
+                snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)strlen(file_name), file_name);
+            } else {
+                const unsigned int surplus = size - sizeof(op_msg) + 1;
+                snprintf(op_msg, sizeof(op_msg), op_msg_fmt, (int)(strlen(file_name) - surplus), file_name);
+            }
+
+            notify_rk(ALERT_SYSTEM_CRIT, op_msg);
+        } else {
+            mtdebug2(ARGV0, "Error %d (%s) with snprintf with file %s\n", errno, strerror(errno), file_name);
+        }
         _dev_errors++;
     }
 

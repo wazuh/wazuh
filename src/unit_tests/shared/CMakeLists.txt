@@ -29,7 +29,9 @@ list(APPEND shared_tests_names "test_rbtree_op")
 list(APPEND shared_tests_flags " ")
 
 list(APPEND shared_tests_names "test_validate_op")
-list(APPEND shared_tests_flags " ")
+list(APPEND shared_tests_flags "-Wl,--wrap,w_expression_match -Wl,--wrap,w_calloc_expression_t \
+                                -Wl,--wrap,w_expression_compile -Wl,--wrap,w_free_expression_t \
+                                -Wl,--wrap,get_ipv4_numeric -Wl,--wrap,get_ipv6_numeric")
 
 list(APPEND shared_tests_names "test_string_op")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
@@ -149,7 +151,7 @@ list(APPEND shared_tests_names "test_privsep_op")
 list(APPEND shared_tests_flags "-Wl,--wrap=sysconf,--wrap=getpwnam_r,--wrap=getgrnam_r,--wrap=getpid")
 
 list(APPEND shared_tests_names "test_mq_op")
-list(APPEND shared_tests_flags "-Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,sleep \
+list(APPEND shared_tests_flags "-Wl,--wrap,OS_BindUnixDomainWithPerms -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,sleep \
                                 -Wl,--wrap,OS_getsocketsize ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND shared_tests_names "test_remoted_op")

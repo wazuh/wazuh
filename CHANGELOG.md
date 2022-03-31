@@ -21,6 +21,7 @@ All notable changes to this project will be documented in this file.
   - The manager will only deliver alerts when new vulnerabilities are detected in agents or when they stop applying.
 - Added a mechanism to ensure the worker synchronization permissions is reset after a fixed period of time. ([#11031](https://github.com/wazuh/wazuh/pull/11031))
 - Included mechanism to create and handle PID files for each child process of the API and cluster. ([#11799](https://github.com/wazuh/wazuh/pull/11799))
+- Added support for Windows 11 in Vulnerability Detector. ([#12446](https://github.com/wazuh/wazuh/pull/12446))
 
 #### Changed
 
@@ -62,6 +63,8 @@ All notable changes to this project will be documented in this file.
   - The cluster's file compression task in the master node is carried out in a parallel separate process. ([#11328](https://github.com/wazuh/wazuh/pull/11328))
   - Now the processing of Integrity files in worker nodes is carried out in a parallel separate process ([#11364](https://github.com/wazuh/wazuh/pull/11364))
   - Use cluster and API single processing when the wazuh user doesn't have permissions to access `/dev/shm`. ([#11386](https://github.com/wazuh/wazuh/pull/11386))
+- Changed the Ubuntu OVAL feed URL to security-metadata.canonical.com. ([#12491](https://github.com/wazuh/wazuh/pull/12491))
+- Let Analysisd warn about missing rule dependencies instead of rejecting the ruleset. ([#12652](https://github.com/wazuh/wazuh/pull/12652))
 
 #### Fixed
 
@@ -103,6 +106,11 @@ All notable changes to this project will be documented in this file.
   - Architecture data member from the RHEL 5 feed.
   - RHSA items containing no CVEs.
   - Unused RHSA data member when parsing Debian feeds.
+- Prevented Authd from exiting due to a pipe signal if Wazuh DB gets closed. ([#12368](https://github.com/wazuh/wazuh/pull/12368))
+- Fixed a buffer handling bug in Remoted that left the syslog TCP server stuck. ([#12415](https://github.com/wazuh/wazuh/pull/12415))
+- Fixed a memory leak in Vulnerability Detector when discarding kernel packages. ([#12644](https://github.com/wazuh/wazuh/pull/12644))
+- Fixed a memory leak at wazuh-logtest-legacy when matching a level-0 rule. ([#12655](https://github.com/wazuh/wazuh/pull/12655))
+- Now the cluster is disabled by default when the "disabled" tag is not included. ([#12489](https://github.com/wazuh/wazuh/pull/12489))
 
 #### Removed
 
@@ -121,7 +129,6 @@ All notable changes to this project will be documented in this file.
 - Added new `discard_regex` option to AWS module configuration. ([8331](https://github.com/wazuh/wazuh/pull/8331))
 - Added support for the S3 Server Access bucket type in AWS module. ([#8482](https://github.com/wazuh/wazuh/pull/8442))
 - Added support for Google Cloud Storage buckets using a new GCP module called `gcp-bucket`. ([#9119](https://github.com/wazuh/wazuh/pull/9119))
-- Added support for Google Cloud Storage access logs to the `gcp-bucket` module. ([#9119](https://github.com/wazuh/wazuh/pull/9119))
 - Added support for VPC endpoints in AWS module. ([#9420](https://github.com/wazuh/wazuh/pull/9420))
 - Added support for GCS access logs in the GCP module. ([#9279](https://github.com/wazuh/wazuh/pull/9279))
 - Added an iam role session duration parameter to AWS module. ([#10198](https://github.com/wazuh/wazuh/pull/10198))
@@ -136,7 +143,6 @@ All notable changes to this project will be documented in this file.
 
 - The agent now reports the version of the running AIX operating system to the manager. ([#8381](https://github.com/wazuh/wazuh/pull/8381))
 - Improved the reliability of the user ID parsing in FIM who-data mode on Linux. ([#8604](https://github.com/wazuh/wazuh/pull/8604))
-- Reword AWS `service_endpoint` parameter description to suit FIPS endpoints too. ([#10230](https://github.com/wazuh/wazuh/pull/10230))
 - Extended support of Logcollector for MySQL 4.7 logs. Thanks to @YoyaYOSHIDA. ([#5047](https://github.com/wazuh/wazuh/pull/5047))
 - Agents running on FreeBSD and OpenBSD now report their IP address. ([#9887](https://github.com/wazuh/wazuh/pull/9887))
 - Reduced verbosity of FIM debugging logs. ([#8202](https://github.com/wazuh/wazuh/pull/8202))
@@ -153,6 +159,8 @@ All notable changes to this project will be documented in this file.
 - Agent logs for inability to resolve the manager hostname now have info level. ([#3659](https://github.com/wazuh/wazuh/pull/3659))
 - Added ID number to connection enrollment logs. ([#11276](https://github.com/wazuh/wazuh/pull/11276))
 - Standardized the use of the `only_logs_after` parameter in the external integration modules. ([#10838](https://github.com/wazuh/wazuh/pull/10838))
+- Updated DockerListener integration shebang to python3 for Wazuh agents. ([#12150](https://github.com/wazuh/wazuh/pull/12150))
+- Updated the Windows installer ico and png assets to the new logo. ([#12779](https://github.com/wazuh/wazuh/pull/12779))
 
 #### Fixed
 
@@ -191,6 +199,9 @@ All notable changes to this project will be documented in this file.
 - Fixed error "Unable to set server IP address" on the Windows agent. ([#11736](https://github.com/wazuh/wazuh/pull/11736))
 - Fixed reparse option in the AWS VPCFlow and Config integrations. ([#11608](https://github.com/wazuh/wazuh/pull/11608))
 - Removed unnecessary calls to the AWS API made by the VPCFlow and Config integration modules. ([#11644](https://github.com/wazuh/wazuh/pull/11644))
+- Fixed how the AWS Config module parses the dates used to request logs from AWS. ([#12324](https://github.com/wazuh/wazuh/pull/12324))
+- Let Logcollector audit format parse logs with a custom name_format. ([#12676](https://github.com/wazuh/wazuh/pull/12676))
+- Fixed Agent bootstrap issue that might lead to startup timeout when it cannot resolve a manager hostname. ([#12704](https://github.com/wazuh/wazuh/pull/12704))
 
 #### Removed
 - Removed oscap module files as it was already deprecated since v4.0.0. ([#10900](https://github.com/wazuh/wazuh/pull/10900))
@@ -218,6 +229,10 @@ All notable changes to this project will be documented in this file.
 - Added new filters to agents upgrade endpoints. ([#10457](https://github.com/wazuh/wazuh/pull/10457))
 - Added new API endpoints to access all the MITRE information. ([#8288](https://github.com/wazuh/wazuh/pull/8288))
 - Show agent-info permissions flag when using cluster_control and in the `GET /cluster/healthcheck` API endpoint. ([#10947](https://github.com/wazuh/wazuh/pull/10947))
+- Save agents' ossec.log if an API integration test fails. ([#11931](https://github.com/wazuh/wazuh/pull/11931))
+- Added `POST /security/user/authenticate/run_as` endpoint to API bruteforce blocking system. ([#12085](https://github.com/wazuh/wazuh/pull/12085))
+- Added new API endpoint to obtain summaries of agent vulnerabilities' inventory items. ([#12638](https://github.com/wazuh/wazuh/pull/12638))
+- Added fields external_references, condition, title, published and updated to GET /vulnerability/{agent_id} API endpoint. ([#12727](https://github.com/wazuh/wazuh/pull/12727))
 
 #### Changed
 
@@ -274,6 +289,7 @@ All notable changes to this project will be documented in this file.
 - Fixed API integration tests related to rule, decoder and task endpoints. ([#10830](https://github.com/wazuh/wazuh/pull/10830))
 - Improved exceptions handling when starting the Wazuh API service. ([#11411](https://github.com/wazuh/wazuh/pull/11411))
 - Fixed race condition while creating RBAC database. ([#11598](https://github.com/wazuh/wazuh/pull/11598))
+- Fixed API integration tests failures caused by race conditions. ([#12102](https://github.com/wazuh/wazuh/pull/12102))
 
 #### Removed
 
@@ -365,7 +381,17 @@ All notable changes to this project will be documented in this file.
 - Fixed an installation error due to missing OS minor version on CentOS Stream. ([#11086](https://github.com/wazuh/wazuh/pull/11086))
 - Fixed an installation error due to missing command `hostname` on OpenSUSE Tumbleweed. ([#11455](https://github.com/wazuh/wazuh/pull/11455))
 
-## [v4.2.5]
+
+## [v4.2.6]
+
+### Manager
+
+#### Fixed
+
+- Fixed an integer overflow hazard in `wazuh-remoted` that caused it to drop incoming data after receiving 2^31 messages. ([#11974](https://github.com/wazuh/wazuh/pull/11974))
+
+
+## [v4.2.5] - 2021-11-15
 
 ### Manager
 

@@ -152,7 +152,7 @@ def version():
 def exit_handler(signum, frame):
     """Try to kill API child processes and remove their PID files."""
     api_pid = os.getpid()
-    pyDaemonModule.delete_child_pids(API_MAIN_PROCESS, api_pid)
+    pyDaemonModule.delete_child_pids(API_MAIN_PROCESS, api_pid, logger)
     pyDaemonModule.delete_pid(API_MAIN_PROCESS, api_pid)
 
 
@@ -229,9 +229,9 @@ if __name__ == '__main__':
                        f"{API_LOG_FILE_PATH}")
 
     # Set correct permissions on api.log file
-    if os.path.exists(os.path.join(common.wazuh_path, API_LOG_FILE_PATH)):
-        os.chown(os.path.join(common.wazuh_path, API_LOG_FILE_PATH), common.wazuh_uid(), common.wazuh_gid())
-        os.chmod(os.path.join(common.wazuh_path, API_LOG_FILE_PATH), 0o660)
+    if os.path.exists(os.path.join(common.WAZUH_PATH, API_LOG_FILE_PATH)):
+        os.chown(os.path.join(common.WAZUH_PATH, API_LOG_FILE_PATH), common.wazuh_uid(), common.wazuh_gid())
+        os.chmod(os.path.join(common.WAZUH_PATH, API_LOG_FILE_PATH), 0o660)
 
     # Configure https
     ssl_context = None
@@ -326,5 +326,5 @@ if __name__ == '__main__':
         print(f'Internal error when trying to start the Wazuh API. {e}')
         sys.exit(1)
     finally:
-        pyDaemonModule.delete_child_pids(API_MAIN_PROCESS, pid)
+        pyDaemonModule.delete_child_pids(API_MAIN_PROCESS, pid, logger)
         pyDaemonModule.delete_pid(API_MAIN_PROCESS, pid)

@@ -47,6 +47,9 @@ list(APPEND analysisd_names "test_exec")
 list(APPEND analysisd_flags "-Wl,--wrap,OS_SendUnix -Wl,--wrap,wdb_get_agent_info -Wl,--wrap,Eventinfo_to_jsonstr \
                              -Wl,--wrap,OS_ReadXML -Wl,--wrap,OS_GetOneContentforElement -Wl,--wrap,OS_ClearXML -Wl,--wrap,StartMQ \
                              -Wl,--wrap,wdb_get_agents_by_connection_status -Wl,--wrap,labels_find -Wl,--wrap,labels_get -Wl,--wrap,labels_free \
+                             -Wl,--wrap,OS_IPFoundList \
+                             -Wl,--wrap,OSMatch_Execute \
+                             -Wl,--wrap,OSRegex_Compile -Wl,--wrap,OSRegex_Execute_ex -Wl,--wrap,OSRegex_Execute \
                              ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND analysisd_names "test_log")
@@ -61,7 +64,8 @@ list(APPEND analysisd_names "test_mitre")
 list(APPEND analysisd_flags "-Wl,--wrap,wdbc_query_ex -Wl,--wrap,wdbc_query_parse_json ${HASH_OP_WRAPPERS} ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND analysisd_names "test_rules")
-LIST(APPEND analysisd_flags "-Wl,--wrap,_os_analysisd_add_logmsg ${DEBUG_OP_WRAPPERS}")
+LIST(APPEND analysisd_flags "-Wl,--wrap,_mwarn -Wl,--wrap,_merror -Wl,--wrap,_os_analysisd_add_logmsg \
+                             -Wl,--wrap,OS_ClearNode -Wl,--wrap,w_get_attr_val_by_name ${DEBUG_OP_WRAPPERS}")
 
 LIST(APPEND analysisd_names "test_same_different_loop")
 LIST(APPEND analysisd_flags "-W")
@@ -122,7 +126,7 @@ LIST(APPEND analysisd_flags "-Wl,--wrap,OSMatch_FreePattern")
 
 LIST(APPEND analysisd_names "test_rule_list")
 LIST(APPEND analysisd_flags "-Wl,--wrap,OSMatch_FreePattern -Wl,--wrap,OSRegex_FreePattern -Wl,--wrap,os_remove_cdbrules \
-                            -Wl,--wrap,_os_analysisd_add_logmsg")
+                            -Wl,--wrap,_os_analysisd_add_logmsg -Wl,--wrap,OS_IsValidIP")
 
 LIST(APPEND analysisd_names "test_eventinfo_list")
 LIST(APPEND analysisd_flags "-Wl,--wrap,Free_Eventinfo")

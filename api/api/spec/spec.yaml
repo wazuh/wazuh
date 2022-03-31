@@ -1458,21 +1458,36 @@ components:
     AgentsSummaryStatus:
       type: object
       properties:
-        total:
-          type: integer
-          format: int32
-        active:
-          type: integer
-          format: int32
-        disconnected:
-          type: integer
-          format: int32
-        never_connected:
-          type: integer
-          format: int32
-        pending:
-          type: integer
-          format: int32
+        connection:
+          type: object
+          properties:
+            total:
+              type: integer
+              format: int32
+            active:
+              type: integer
+              format: int32
+            disconnected:
+              type: integer
+              format: int32
+            never_connected:
+              type: integer
+              format: int32
+            pending:
+              type: integer
+              format: int32
+        configuration:
+          type: object
+          properties:
+            total:
+              type: integer
+              format: int32
+            synced:
+              type: integer
+              format: int32
+            not_synced:
+              type: integer
+              format: int32
 
     AgentDistinct:
       allOf:
@@ -4583,7 +4598,7 @@ components:
     version:
       in: query
       name: version
-      description: "Filter by agents version"
+      description: "Filter by agents version using one of the following formats: 'X.Y.Z', 'vX.Y.Z', 'wazuh X.Y.Z' or 'wazuh vX.Y.Z'. For example: '4.4.0'"
       schema:
         type: string
         format: alphanumeric
@@ -5291,6 +5306,15 @@ components:
       schema:
         type: string
         format: alphanumeric
+    group_config_status:
+      in: query
+      name: group_config_status
+      description: "Agent groups configuration sync status"
+      schema:
+        type: string
+        enum:
+          - "synced"
+          - "not synced"
     force_single_group:
       in: query
       name: force_single_group
@@ -5374,6 +5398,29 @@ components:
       schema:
         type: string
         format: alphanumeric
+    vulnerability_field:
+      in: path
+      name: field
+      description: "Vulnerability inventory field"
+      required: true
+      schema:
+        type: string
+        enum:
+        - cve
+        - name
+        - version
+        - architecture
+        - detection_time
+        - severity
+        - cvss2_score
+        - cvss3_score
+        - external_references
+        - type
+        - status
+        - condition
+        - title
+        - published
+        - updated
     xml_filename:
       in: query
       name: filename
@@ -5610,6 +5657,7 @@ paths:
         - $ref: '#/components/parameters/name'
         - $ref: '#/components/parameters/ip'
         - $ref: '#/components/parameters/registerIP'
+        - $ref: '#/components/parameters/group_config_status'
       responses:
         '200':
           description: "List of agents or error description"
@@ -5648,6 +5696,7 @@ paths:
                       mergedSum: 9a016508cea1e997ab8569f5cfab30f5
                       version: Wazuh v4.3.0
                       node_name: worker2
+                      group_config_status: "synced"
                     - os:
                         arch: x86_64
                         codename: Focal Fossa
@@ -5671,6 +5720,7 @@ paths:
                       mergedSum: 9a016508cea1e997ab8569f5cfab30f5
                       version: Wazuh v4.3.0
                       node_name: worker2
+                      group_config_status: "synced"
                     - os:
                         arch: x86_64
                         codename: Focal Fossa
@@ -5694,6 +5744,7 @@ paths:
                       mergedSum: 9a016508cea1e997ab8569f5cfab30f5
                       version: Wazuh v4.3.0
                       node_name: worker1
+                      group_config_status: "not synced"
                   total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
@@ -5890,6 +5941,7 @@ paths:
     get:
       tags:
         - Agents
+      deprecated: true
       summary: "Get configuration sync status"
       description: "Return whether the agent configuration has been synchronized with the agent or not. This can be
       useful to check after updating a group configuration"
@@ -7634,7 +7686,7 @@ paths:
       tags:
         - Agents
       summary: "Summarize agents status"
-      description: "Return a summary of the status of available agents"
+      description: "Return a summary of the connection and groups configuration synchronization statuses of available agents"
       operationId: api.controllers.agent_controller.get_agent_summary_status
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:read'
@@ -7643,7 +7695,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
-          description: "Get summary of agents"
+          description: "Get summary of agents connection and group configuration statuses"
           content:
             application/json:
               schema:
@@ -7655,11 +7707,16 @@ paths:
                       $ref: '#/components/schemas/AgentsSummaryStatus'
               example:
                 data:
-                  active: 8
-                  disconnected: 0
-                  never_connected: 3
-                  pending: 0
-                  total: 11
+                  connection:
+                    active: 8
+                    disconnected: 0
+                    never_connected: 3
+                    pending: 0
+                    total: 11
+                  configuration:
+                    synced: 8
+                    not_synced: 3
+                    total: 11
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -10648,7 +10705,7 @@ paths:
                     - timestamp: '2020-04-15T13:50:24Z'
                       tag: wazuh-maild
                       level: error
-                      description: " (1223): Error Sending email to 69.172.200.109 (smtp server)"
+                      description: " (1263): Error Sending email to 69.172.200.109 (smtp server)"
                   total_affected_items: 3
                   failed_items: []
                   total_failed_items: 0
@@ -16776,26 +16833,36 @@ paths:
               example:
                 data:
                   affected_items:
-                    - architecture: amd64
-                      name: binutils
-                      version: 2.34-6ubuntu1.1
-                      type: PACKAGE
-                      severity: Medium
-                      cvss2_score: 7.1
-                      cve: CVE-2021-3487
-                      detection_time: '2021-06-14T07:45:51Z'
-                      cvss3_score: 6.5
-                      status: VALID
-                    - architecture: amd64
-                      name: binutils
-                      version: 2.34-6ubuntu1.1
-                      type: PACKAGE
-                      severity: High
-                      cvss2_score: 6.8
-                      cve: CVE-2021-20294
-                      detection_time: '2021-06-14T07:45:51Z'
+                    - severity: "High"
+                      updated: "2022-01-10"
+                      version: "2.34-6ubuntu1.3"
+                      type: "PACKAGE"
+                      name: "binutils"
+                      external_references: ["https://sourceware.org/bugzilla/show_bug.cgi?id=28694","https://sourceware.org/git/gitweb.cgi?p=binutils-gdb.git;h=161e87d12167b1e36193385485c1f6ce92f74f02","https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/UQBH244M5PV6S6UMHUTCVCWFZDX7Y4M6/","https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/UUHLDDT3HH7YEY6TX7IJRGPJUTNNVEL3/","https://security.netapp.com/advisory/ntap-20220107-0002/","https://nvd.nist.gov/vuln/detail/CVE-2021-45078","http://people.canonical.com/~ubuntu-security/cve/2021/CVE-2021-45078.html","https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2021-45078"]
+                      condition: "Package unfixed"
+                      detection_time: "2022-03-14T11:04:04Z"
                       cvss3_score: 7.8
-                      status: VALID
+                      published: "2021-12-15"
+                      architecture: "amd64"
+                      cve: "CVE-2021-45078"
+                      status: "VALID"
+                      title: "CVE-2021-45078 affects binutils"
+                      cvss2_score: 6.8
+                    - severity: "High"
+                      updated: "2022-01-10"
+                      version: "2.34-6ubuntu1.3"
+                      type: "PACKAGE"
+                      name: "binutils-common"
+                      external_references: ["https://sourceware.org/bugzilla/show_bug.cgi?id=28694","https://sourceware.org/git/gitweb.cgi?p=binutils-gdb.git;h=161e87d12167b1e36193385485c1f6ce92f74f02","https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/UQBH244M5PV6S6UMHUTCVCWFZDX7Y4M6/","https://lists.fedoraproject.org/archives/list/package-announce@lists.fedoraproject.org/message/UUHLDDT3HH7YEY6TX7IJRGPJUTNNVEL3/","https://security.netapp.com/advisory/ntap-20220107-0002/","https://nvd.nist.gov/vuln/detail/CVE-2021-45078","http://people.canonical.com/~ubuntu-security/cve/2021/CVE-2021-45078.html","https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2021-45078"]
+                      condition: "Package unfixed"
+                      detection_time: "2022-03-14T11:04:04Z"
+                      cvss3_score: 7.8
+                      published: "2021-12-15"
+                      architecture: "amd64"
+                      cve: "CVE-2021-45078"
+                      status: "VALID"
+                      title: "CVE-2021-45078 affects binutils-common"
+                      cvss2_score: 6.8
                   total_affected_items: 2
                   total_failed_items: 0
                   failed_items: []
@@ -16846,6 +16913,47 @@ paths:
                   total_failed_items: 0
                   failed_items: [ ]
                 message: Last vulnerability scans of the agent were returned
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /vulnerability/{agent_id}/summary/{field}:
+    get:
+      tags:
+        - Vulnerability
+      summary: "Get agent vulnerabilities' field summary"
+      description: "Return a summary of the vulnerabilities' field of an agent"
+      operationId: api.controllers.vulnerability_controller.get_vulnerabilities_field_summary
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/vulnerability:read'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/vulnerability_field'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: "Get agent vulnerabilities' field summary"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  severity:
+                    critical: 8
+                    medium: 3
+                    high: 1
+                    low: 0
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'

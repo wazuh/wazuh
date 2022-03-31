@@ -35,7 +35,7 @@ def exit_handler(signum, frame):
     main_logger.info(f'SIGNAL [({signum})-({signal.Signals(signum).name})] received. Exit...')
 
     # Terminate cluster's child processes
-    pyDaemonModule.delete_child_pids('wazuh-clusterd', cluster_pid)
+    pyDaemonModule.delete_child_pids('wazuh-clusterd', cluster_pid, main_logger)
 
     # Remove cluster's pidfile
     pyDaemonModule.delete_pid('wazuh-clusterd', cluster_pid)
@@ -138,7 +138,7 @@ if __name__ == '__main__':
     parser.add_argument('-r', help="Run as root", action='store_true', dest='root')
     parser.add_argument('-t', help="Test configuration", action='store_true', dest='test_config')
     parser.add_argument('-c', help="Configuration file to use", type=str, metavar='config', dest='config_file',
-                        default=common.ossec_conf)
+                        default=common.OSSEC_CONF)
     args = parser.parse_args()
 
     if args.version:
@@ -152,9 +152,9 @@ if __name__ == '__main__':
         debug_mode = 0
 
     # set correct permissions on cluster.log file
-    if os.path.exists('{0}/logs/cluster.log'.format(common.wazuh_path)):
-        os.chown('{0}/logs/cluster.log'.format(common.wazuh_path), common.wazuh_uid(), common.wazuh_gid())
-        os.chmod('{0}/logs/cluster.log'.format(common.wazuh_path), 0o660)
+    if os.path.exists('{0}/logs/cluster.log'.format(common.WAZUH_PATH)):
+        os.chown('{0}/logs/cluster.log'.format(common.WAZUH_PATH), common.wazuh_uid(), common.wazuh_gid())
+        os.chmod('{0}/logs/cluster.log'.format(common.WAZUH_PATH), 0o660)
 
     main_logger = set_logging(foreground_mode=args.foreground, debug_mode=debug_mode)
 
@@ -173,7 +173,7 @@ if __name__ == '__main__':
 
     cluster_status = wazuh.core.cluster.utils.get_cluster_status()
     if cluster_status['running'] == 'yes':
-        main_logger.error("Cluster is already running.")
+        main_logger.error("Cluster is already running.", exc_info=False)
         sys.exit(1)
 
     # clean
@@ -209,5 +209,5 @@ if __name__ == '__main__':
     except Exception as e:
         main_logger.error(f"Unhandled exception: {e}")
     finally:
-        pyDaemonModule.delete_child_pids('wazuh-clusterd', pid)
+        pyDaemonModule.delete_child_pids('wazuh-clusterd', pid, main_logger)
         pyDaemonModule.delete_pid('wazuh-clusterd', pid)

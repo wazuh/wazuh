@@ -1,9 +1,6 @@
 ---
 test_name: GET /
 
-marks:
-  - base_tests
-
 stages:
 
     # GET /

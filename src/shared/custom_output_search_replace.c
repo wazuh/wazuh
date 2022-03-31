@@ -48,7 +48,7 @@ char *searchAndReplace(const char *orig, const char *search, const char *value)
         total_bytes_allocated += value_len;
         os_realloc(tmp, total_bytes_allocated, tmp);
 
-        strncpy(tmp + tmp_offset, value, value_len);
+        strncpy(tmp + tmp_offset, value, total_bytes_allocated - tmp_offset);
         tmp_offset += value_len;
 
         /* Search for further occurrences */

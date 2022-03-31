@@ -140,8 +140,8 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_ROOTCHECK_DELETE_PM] = "DELETE FROM pm_event;",
     [WDB_STMT_GLOBAL_INSERT_AGENT] = "INSERT INTO agent (id, name, ip, register_ip, internal_key, date_add, `group`) VALUES (?,?,?,?,?,?,?);",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_NAME] = "UPDATE agent SET name = ? WHERE id = ?;",
-    [WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION] = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ?, last_keepalive = (CASE WHEN id = 0 THEN 253402300799 ELSE STRFTIME('%s', 'NOW') END), connection_status = ?, sync_status = ? WHERE id = ?;",
-    [WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION_IP] = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ?, last_keepalive = (CASE WHEN id = 0 THEN 253402300799 ELSE STRFTIME('%s', 'NOW') END), ip = ?, connection_status = ?, sync_status = ? WHERE id = ?;",
+    [WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION] = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ?, last_keepalive = (CASE WHEN id = 0 THEN 253402300799 ELSE STRFTIME('%s', 'NOW') END), connection_status = ?, sync_status = ?, group_config_status = ? WHERE id = ?;",
+    [WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION_IP] = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ?, last_keepalive = (CASE WHEN id = 0 THEN 253402300799 ELSE STRFTIME('%s', 'NOW') END), ip = ?, connection_status = ?, sync_status = ?, group_config_status = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_LABELS_GET] = "SELECT * FROM labels WHERE id = ?;",
     [WDB_STMT_GLOBAL_LABELS_DEL] = "DELETE FROM labels WHERE id = ?;",
     [WDB_STMT_GLOBAL_LABELS_SET] = "INSERT INTO labels (id, key, value) VALUES (?,?,?);",
@@ -160,9 +160,9 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_DELETE_GROUP] = "DELETE FROM `group` WHERE name = ?;",
     [WDB_STMT_GLOBAL_SELECT_GROUPS] = "SELECT name FROM `group`;",
     [WDB_STMT_GLOBAL_SELECT_AGENT_KEEPALIVE] = "SELECT last_keepalive FROM agent WHERE name = ? AND (register_ip = ? OR register_ip LIKE ? || '/_%');",
-    [WDB_STMT_GLOBAL_SYNC_REQ_GET] = "SELECT id, name, ip, os_name, os_version, os_major, os_minor, os_codename, os_build, os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, last_keepalive, connection_status, disconnection_time FROM agent WHERE id > ? AND sync_status = 'syncreq' LIMIT 1;",
+    [WDB_STMT_GLOBAL_SYNC_REQ_GET] = "SELECT id, name, ip, os_name, os_version, os_major, os_minor, os_codename, os_build, os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, last_keepalive, connection_status, disconnection_time, group_config_status FROM agent WHERE id > ? AND sync_status = 'syncreq' LIMIT 1;",
     [WDB_STMT_GLOBAL_SYNC_SET] = "UPDATE agent SET sync_status = ? WHERE id = ?;",
-    [WDB_STMT_GLOBAL_UPDATE_AGENT_INFO] = "UPDATE agent SET config_sum = :config_sum, ip = :ip, manager_host = :manager_host, merged_sum = :merged_sum, name = :name, node_name = :node_name, os_arch = :os_arch, os_build = :os_build, os_codename = :os_codename, os_major = :os_major, os_minor = :os_minor, os_name = :os_name, os_platform = :os_platform, os_uname = :os_uname, os_version = :os_version, version = :version, last_keepalive = :last_keepalive, connection_status = :connection_status, disconnection_time = :disconnection_time, sync_status = :sync_status WHERE id = :id;",
+    [WDB_STMT_GLOBAL_UPDATE_AGENT_INFO] = "UPDATE agent SET config_sum = :config_sum, ip = :ip, manager_host = :manager_host, merged_sum = :merged_sum, name = :name, node_name = :node_name, os_arch = :os_arch, os_build = :os_build, os_codename = :os_codename, os_major = :os_major, os_minor = :os_minor, os_name = :os_name, os_platform = :os_platform, os_uname = :os_uname, os_version = :os_version, version = :version, last_keepalive = :last_keepalive, connection_status = :connection_status, disconnection_time = :disconnection_time, group_config_status = :group_config_status, sync_status = :sync_status WHERE id = :id;",
     [WDB_STMT_GLOBAL_GET_AGENTS] = "SELECT id FROM agent WHERE id > ?;",
     [WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS] = "SELECT id FROM agent WHERE id > ? AND connection_status = ?;",
     [WDB_STMT_GLOBAL_GET_AGENT_INFO] = "SELECT * FROM agent WHERE id = ?;",
@@ -224,7 +224,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_AROUND] = "DELETE FROM sys_osinfo WHERE os_name < ? OR os_name > ? OR checksum = 'legacy' OR checksum = '';",
     [WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_RANGE] = "DELETE FROM sys_osinfo WHERE os_name > ? AND os_name < ?;",
     [WDB_STMT_SYSCOLLECTOR_OSINFO_CLEAR] = "DELETE FROM sys_osinfo;",
-    [WDB_STMT_VULN_CVES_INSERT] = "INSERT OR REPLACE INTO vuln_cves (name, version, architecture, cve, reference, type, status, severity, cvss2_score, cvss3_score, detection_time) VALUES (?,?,?,?,?,?,?,?,?,?,strftime('%s', 'now'));",
+    [WDB_STMT_VULN_CVES_INSERT] = "INSERT OR REPLACE INTO vuln_cves (name, version, architecture, cve, reference, type, status, severity, cvss2_score, cvss3_score, detection_time, external_references, condition, title, published, updated) VALUES (?,?,?,?,?,?,?,?,?,?,strftime('%s', 'now'),?,?,?,?,?);",
     [WDB_STMT_VULN_CVES_CLEAR] = "DELETE FROM vuln_cves;",
     [WDB_STMT_VULN_CVES_UPDATE] = "UPDATE vuln_cves SET status = ? WHERE status = ?;",
     [WDB_STMT_VULN_CVES_UPDATE_BY_TYPE] = "UPDATE vuln_cves SET status = ? WHERE type = ?;",
@@ -1390,6 +1390,7 @@ void wdb_free_agent_info_data(agent_info_data *agent_data) {
         os_free(agent_data->labels);
         os_free(agent_data->connection_status);
         os_free(agent_data->sync_status);
+        os_free(agent_data->group_config_status);
         if (agent_data->osd) {
             os_free(agent_data->osd->os_name);
             os_free(agent_data->osd->os_version);
@@ -1418,4 +1419,58 @@ sqlite3_stmt* wdb_init_stmt_in_cache(wdb_t* wdb, wdb_stmt statement_index){
     }
 
     return wdb->stmt[statement_index];
+}
+
+sqlite3_stmt * wdb_get_cache_stmt(wdb_t * wdb, char const *query) {
+    sqlite3_stmt * ret_val = NULL;
+    if (NULL != wdb && NULL != query) {
+        struct stmt_cache_list *node_stmt = NULL;
+        for (node_stmt = wdb->cache_list; node_stmt ; node_stmt=node_stmt->next) {
+            if (node_stmt->value.query) {
+                if (strcmp(node_stmt->value.query, query) == 0)
+                {
+                    if (sqlite3_reset(node_stmt->value.stmt) != SQLITE_OK || sqlite3_clear_bindings(node_stmt->value.stmt) != SQLITE_OK) {
+                        mdebug1("DB(%s) sqlite3_reset() stmt(%s): %s", wdb->id, sqlite3_sql(node_stmt->value.stmt), sqlite3_errmsg(wdb->db));
+                    }
+                    ret_val = node_stmt->value.stmt;
+                    break;
+                }
+            }
+        }
+        bool is_first_element = true;
+        if (NULL == ret_val) {
+            struct stmt_cache_list *new_item = NULL;
+            if (NULL == wdb->cache_list) {
+                os_malloc(sizeof(struct stmt_cache_list), wdb->cache_list);
+                new_item = wdb->cache_list;
+            } else {
+                node_stmt = wdb->cache_list;
+                while (node_stmt->next){
+                    node_stmt = node_stmt->next;
+                }
+                is_first_element = false;
+                os_malloc(sizeof(struct stmt_cache_list), node_stmt->next);
+                //Add element in the end list
+                new_item = node_stmt->next;
+            }
+            new_item->next = NULL;
+            os_malloc(strlen(query) + 1, new_item->value.query);
+            strcpy(new_item->value.query, query);
+
+            if (sqlite3_prepare_v2(wdb->db, new_item->value.query, -1, &new_item->value.stmt, NULL) != SQLITE_OK) {
+                merror("DB(%s) sqlite3_prepare_v2() : %s", wdb->id, sqlite3_errmsg(wdb->db));
+                os_free(new_item->value.query);
+                if (is_first_element) {
+                    os_free(wdb->cache_list);
+                    wdb->cache_list = NULL;
+                } else {
+                    os_free(node_stmt->next);
+                    node_stmt->next = NULL;
+                }
+            } else {
+                ret_val = new_item->value.stmt;
+            }
+        }
+    }
+    return ret_val;
 }

@@ -28,7 +28,7 @@ def check_path(path):
         raise WazuhError(1801)
 
 
-def iterate_lists(absolute_path=common.user_lists_path, only_names=False):
+def iterate_lists(absolute_path=common.USER_LISTS_PATH, only_names=False):
     """Get the content of all CDB lists
 
     :param absolute_path: Full path of directory to get CDB lists
@@ -51,7 +51,7 @@ def iterate_lists(absolute_path=common.user_lists_path, only_names=False):
                 relative_path = to_relative_path(absolute_path)
                 output.append({'relative_dirname': relative_path, 'filename': name})
             else:
-                items = get_list_from_file(path.join(common.wazuh_path, new_relative_path))
+                items = get_list_from_file(path.join(common.WAZUH_PATH, new_relative_path))
                 output.append({'relative_dirname': new_relative_path, 'filename': name, 'items': items})
         elif path.isdir(new_absolute_path):
             output += iterate_lists(new_absolute_path, only_names=only_names)
@@ -249,16 +249,16 @@ def delete_list(rel_path):
     rel_path : str
         Relative path of the file to delete.
     """
-    delete_wazuh_file(path.join(common.wazuh_path, rel_path))
+    delete_wazuh_file(path.join(common.WAZUH_PATH, rel_path))
 
     # Also delete .cdb file (if exists).
     try:
-        remove(path.join(common.wazuh_path, rel_path + common.COMPILED_LISTS_EXTENSION))
+        remove(path.join(common.WAZUH_PATH, rel_path + common.COMPILED_LISTS_EXTENSION))
     except (IOError, OSError):
         pass
 
 
-def get_filenames_paths(filenames_list, root_directory=common.user_lists_path):
+def get_filenames_paths(filenames_list, root_directory=common.USER_LISTS_PATH):
     """Get full paths from filename list. I.e: test_filename -> {wazuh_path}/etc/lists/test_filename
 
     Parameters
@@ -273,4 +273,5 @@ def get_filenames_paths(filenames_list, root_directory=common.user_lists_path):
     list
         Full path to filenames.
     """
-    return [str(next(Path(root_directory).rglob(file), path.join(common.user_lists_path, file))) for file in filenames_list]
+    return [str(next(Path(root_directory).rglob(file), path.join(common.USER_LISTS_PATH, file)))
+            for file in filenames_list]

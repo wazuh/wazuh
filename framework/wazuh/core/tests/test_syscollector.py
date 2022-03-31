@@ -42,7 +42,7 @@ def test_WazuhDBQuerySyscollector(mock_basic_info, mock_agents_info):
     """Verify that the method connects correctly to the database and returns the correct type."""
     with patch('wazuh.core.utils.WazuhDBConnection') as mock_wdb:
         mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_syscollector_000.sql')
-        db_query = WazuhDBQuerySyscollector(agent_id='000', offset=0, limit=common.database_limit, select=None,
+        db_query = WazuhDBQuerySyscollector(agent_id='000', offset=0, limit=common.DATABASE_LIMIT, select=None,
                                             search=None, sort=None, filters=None,
                                             fields=get_valid_fields(Type.OS, '000')[1], table='sys_osinfo',
                                             array=True, nested=True, query='')

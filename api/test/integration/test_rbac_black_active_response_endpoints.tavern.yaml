@@ -1,9 +1,6 @@
 ---
 test_name: PUT ACTIVE-RESPONSE OVER A LIST OF AGENTS
 
-marks:
-  - rbac_tests
-
 stages:
 
   - name: Runs an Active Response command on a specified agent (Deny)

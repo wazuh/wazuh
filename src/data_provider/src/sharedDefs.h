@@ -42,7 +42,8 @@ enum OSType
 {
     LINUX,
     BSDBASED,
-    WINDOWS
+    WINDOWS,
+    SOLARIS
 };
 
 enum LinuxType

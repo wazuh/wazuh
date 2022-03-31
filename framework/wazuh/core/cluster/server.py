@@ -6,11 +6,12 @@ import logging
 import os
 import ssl
 import traceback
-from datetime import datetime
+from time import perf_counter
 from typing import Tuple, Dict
 from uuid import uuid4
 
 import uvloop
+
 from wazuh.core import common, exception, utils
 from wazuh.core.cluster import common as c_common
 from wazuh.core.cluster.utils import ClusterFilter, context_tag
@@ -44,7 +45,7 @@ class AbstractServerHandler(c_common.Handler):
                          cluster_items=cluster_items)
         self.server = server
         self.loop = loop
-        self.last_keepalive = datetime.utcnow().timestamp()
+        self.last_keepalive = utils.get_utc_now().timestamp()
         self.tag = tag
         context_tag.set(self.tag)
         self.name = None
@@ -113,7 +114,7 @@ class AbstractServerHandler(c_common.Handler):
         data : bytes
             Response message.
         """
-        self.last_keepalive = datetime.utcnow().timestamp()
+        self.last_keepalive = utils.get_utc_now().timestamp()
         return b'ok-m ', data
 
     def hello(self, data: bytes) -> Tuple[bytes, bytes]:
@@ -159,7 +160,7 @@ class AbstractServerHandler(c_common.Handler):
             Result message.
         """
         if command == b'ok-c':
-            return b"Sucessful response from client: " + payload
+            return b"Successful response from client: " + payload
         else:
             return super().process_response(command, payload)
 
@@ -175,18 +176,19 @@ class AbstractServerHandler(c_common.Handler):
         """
         if self.name:
             if exc is None:
-                self.logger.debug("Disconnected.".format(self.name))
+                self.logger.debug(f"Disconnected {self.name}.")
             else:
                 self.logger.error(f"Error during connection with '{self.name}': {exc}.\n"
-                                  f"{''.join(traceback.format_tb(exc.__traceback__))}")
+                                  f"{''.join(traceback.format_tb(exc.__traceback__))}", exc_info=False)
 
             if self.name in self.server.clients:
                 del self.server.clients[self.name]
         else:
             if exc is not None:
-                self.logger.error(f"Error during handshake with incoming connection: {exc}", exc_info=True)
+                self.logger.error(f"Error during handshake with incoming connection: {exc}. \n"
+                                  f"{''.join(traceback.format_tb(exc.__traceback__))}", exc_info=False)
             else:
-                self.logger.error("Error during handshake with incoming connection.")
+                self.logger.error("Error during handshake with incoming connection.", exc_info=False)
 
 
 class AbstractServer:
@@ -256,7 +258,7 @@ class AbstractServer:
         task_logger.addFilter(ClusterFilter(tag=self.tag, subtag=task_tag))
         return task_logger
 
-    def get_connected_nodes(self, filter_node: str = None, offset: int = 0, limit: int = common.database_limit,
+    def get_connected_nodes(self, filter_node: str = None, offset: int = 0, limit: int = common.DATABASE_LIMIT,
                             sort: Dict = None, search: Dict = None, select: Dict = None,
                             filter_type: str = 'all') -> Dict:
         """Get all connected nodes, including the master node.
@@ -338,12 +340,12 @@ class AbstractServer:
         keep_alive_logger = self.setup_task_logger("Keep alive")
         while True:
             keep_alive_logger.debug("Calculating.")
-            curr_timestamp = datetime.utcnow().timestamp()
+            curr_timestamp = utils.get_utc_now().timestamp()
             # Iterate all clients and close the connection when their last keepalive is older than allowed.
             for client_name, client in self.clients.copy().items():
                 if curr_timestamp - client.last_keepalive > self.cluster_items['intervals']['master']['max_allowed_time_without_keepalive']:
                     keep_alive_logger.error("No keep alives have been received from {} in the last minute. "
-                                            "Disconnecting".format(client_name))
+                                            "Disconnecting".format(client_name), exc_info=False)
                     client.transport.close()
             keep_alive_logger.debug("Calculated.")
             await asyncio.sleep(self.cluster_items['intervals']['master']['check_worker_lastkeepalive'])
@@ -360,19 +362,21 @@ class AbstractServer:
         """Send a big message to all clients every 3 seconds."""
         while True:
             for client_name, client in self.clients.items():
-                before = datetime.utcnow().timestamp()
+                before = perf_counter()
                 response = await client.send_request(b'echo', b'a' * self.performance)
-                self.logger.info(f"Received size: {len(response)} // Time: {datetime.utcnow().timestamp() - before}")
+                after = perf_counter()
+                self.logger.info(f"Received size: {len(response)} // Time: {after - before}")
             await asyncio.sleep(3)
 
     async def concurrency_test(self):
         """Send lots of messages in a row to all clients. Then rests for 10 seconds."""
         while True:
-            before = datetime.utcnow().timestamp()
+            before = perf_counter()
             for i in range(self.concurrency):
                 for client_name, client in self.clients.items():
                     await client.send_request(b'echo', f'concurrency {i} client {client_name}'.encode())
-            self.logger.info(f"Time sending {self.concurrency} messages: {datetime.utcnow().timestamp() - before}")
+            after = perf_counter()
+            self.logger.info(f"Time sending {self.concurrency} messages: {after - before}")
             await asyncio.sleep(10)
 
     async def start(self):
@@ -384,8 +388,8 @@ class AbstractServer:
 
         if self.enable_ssl:
             ssl_context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
-            ssl_context.load_cert_chain(certfile=os.path.join(common.wazuh_path, 'etc', 'sslmanager.cert'),
-                                        keyfile=os.path.join(common.wazuh_path, 'etc', 'sslmanager.key'))
+            ssl_context.load_cert_chain(certfile=os.path.join(common.WAZUH_PATH, 'etc', 'sslmanager.cert'),
+                                        keyfile=os.path.join(common.WAZUH_PATH, 'etc', 'sslmanager.key'))
         else:
             ssl_context = None
 

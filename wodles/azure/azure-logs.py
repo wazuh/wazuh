@@ -32,7 +32,7 @@ from azure.storage.common._error import AzureSigningError
 from azure.storage.common.retry import no_retry
 from dateutil.parser import parse
 from pytz import UTC
-from requests import get, post, HTTPError
+from requests import get, post, HTTPError, RequestException
 
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
 from utils import ANALYSISD, find_wazuh_path
@@ -47,26 +47,25 @@ url_graph = 'https://graph.microsoft.com'
 
 socket_header = '1:Azure:'
 
+# Logger parameters
+logging_msg_format = '%(asctime)s azure: %(levelname)s: %(message)s'
+logging_date_format = '%Y/%m/%d %I:%M:%S'
+log_levels = {0: logging.WARNING,
+              1: logging.INFO,
+              2: logging.DEBUG}
+
 
 def set_logger():
     """Set the logger configuration."""
-    if args.verbose:
-        logging.basicConfig(level=logging.DEBUG,
-                            format='%(asctime)s %(levelname)s: AZURE %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
-        logging.getLogger('azure').setLevel(logging.DEBUG)
-
-    else:
-        log_path = f"{find_wazuh_path()}/logs/azure_logs.log"
-        logging.basicConfig(filename=log_path, level=logging.DEBUG,
-                            format='%(asctime)s %(levelname)s: AZURE %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
-        logging.getLogger('azure').setLevel(logging.ERROR)
-        logging.getLogger('urllib3').setLevel(logging.ERROR)
+    logging.basicConfig(level=log_levels.get(args.debug_level, logging.WARNING), format=logging_msg_format,
+                        datefmt=logging_date_format)
+    logging.getLogger('azure').setLevel(log_levels.get(args.debug_level, logging.WARNING))
+    logging.getLogger('urllib3').setLevel(logging.ERROR)
 
 
 def get_script_arguments():
     """Read and parse arguments."""
     parser = ArgumentParser()
-    parser.add_argument("-v", "--verbose", action='store_true', required=False, help="Debug mode.")
 
     # only one must be present (log_analytics, graph or storage)
     group = parser.add_mutually_exclusive_group(required=True)
@@ -133,6 +132,8 @@ def get_script_arguments():
     # General parameters #
     parser.add_argument('--reparse', action='store_true', dest='reparse',
                         help='Parse the log, even if its been parsed before', default=False)
+    parser.add_argument('-d', '--debug', action='store', type=int, dest='debug_level', default=0,
+                        help='Specify debug level. Admits values from 0 to 2.')
 
     return parser.parse_args()
 
@@ -398,15 +399,17 @@ def get_log_analytics_events(url: str, body: dict, headers: dict, md5_hash: str)
 
             if len(rows) == 0:
                 logging.info("Log Analytics: There are no new results")
-            elif time_position := get_time_position(columns):
-                iter_log_analytics_events(columns, rows)
-                update_dates_json(new_min=rows[0][time_position],
-                                  new_max=rows[len(rows) - 1][time_position],
-                                  service_name="log_analytics",
-                                  md5_hash=md5_hash)
-                save_dates_json(dates_json)
             else:
-                logging.error("Error: No TimeGenerated field was found")
+                time_position = get_time_position(columns)
+                if time_position:
+                    iter_log_analytics_events(columns, rows)
+                    update_dates_json(new_min=rows[0][time_position],
+                                      new_max=rows[len(rows) - 1][time_position],
+                                      service_name="log_analytics",
+                                      md5_hash=md5_hash)
+                    save_dates_json(dates_json)
+                else:
+                    logging.error("Error: No TimeGenerated field was found")
 
         except KeyError as e:
             logging.error(f"Error: It was not possible to obtain the columns and rows from the event: '{e}'.")
@@ -581,8 +584,8 @@ def get_graph_events(url: str, headers: dict, md5_hash: str):
 
         if len(values_json) == 0:
             logging.info("Graph: There are no new results")
-
-        if next_url := response_json.get('@odata.nextLink'):
+        next_url = response_json.get('@odata.nextLink')
+        if next_url:
             get_graph_events(url=next_url, headers=headers, md5_hash=md5_hash)
     elif response.status_code == 400:
         logging.error(f"Bad Request for url: {response.url}")
@@ -791,12 +794,23 @@ def get_token(client_id: str, secret: str, domain: str, scope: str):
     }
     auth_url = f'{url_logging}/{domain}/oauth2/v2.0/token'
     try:
-        token_response = post(auth_url, data=body)
-        return token_response.json()['access_token']
-    except (ValueError, KeyError) as e:
-        logging.error(f"Error: Couldn't get the token for authentication: '{e}'.")
-        sys.exit(1)
+        token_response = post(auth_url, data=body).json()
+        return token_response['access_token']
+    except (ValueError, KeyError):
+        if token_response['error'] == 'unauthorized_client':
+            err_msg = "The application id provided is not valid."
+        elif token_response['error'] == 'invalid_client':
+            err_msg = "The application key provided is not valid."
+        elif token_response['error'] == 'invalid_request' and 90002 in token_response['error_codes']:
+            err_msg = f"The '{domain}' tenant domain was not found."
+        else:
+            err_msg = "Couldn't get the token for authentication."
+        logging.error(f"Error: {err_msg}")
 
+    except RequestException as e:
+        logging.error(f"Error: An error occurred while trying to obtain the authentication token: {e}")
+
+    sys.exit(1)
 
 def send_message(message: str):
     """Send a message with a header to the analysisd queue.

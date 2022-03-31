@@ -1,9 +1,6 @@
 ---
 test_name: GET /tasks/status
 
-marks:
-  - base_tests
-
 stages:
 
   - name: Get all existent tasks (At this point there are no tasks created)
@@ -407,6 +404,7 @@ stages:
           extra_kwargs:
             key: "node"
             expected_values: "worker2"
+            empty_response_possible: True
 
   - name: Get all existent tasks with status=In progress
     request:

@@ -56,7 +56,7 @@ test_result = [
                                         {'id': '003', 'status': ['disconnected']}]}],
      ['active', 'disconnected', 'disconnected'], test_result[2]),
 ])
-@patch('wazuh.core.common.client_keys', new=os.path.join(test_agent_path, 'client.keys'))
+@patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
 @patch('wazuh.rootcheck.WazuhDBQueryAgents.__exit__')
 @patch('wazuh.rootcheck.WazuhDBQueryAgents.__init__', return_value=None)
 @patch('wazuh.syscheck.WazuhQueue._connect')

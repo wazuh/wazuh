@@ -8,7 +8,7 @@ import json
 # Install the package locally: python setup.py install
 # Install the package dev: python setup.py develop
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 from setuptools import setup, find_packages
 from setuptools.command.install import install
@@ -33,7 +33,8 @@ class InstallCommand(install):
         with open(os.path.join(here, 'wazuh', 'core', 'wazuh.json'), 'w') as f:
             json.dump({'install_type': self.install_type,
                        'wazuh_version': self.wazuh_version,
-                       'installation_date': datetime.utcnow().strftime('%a %b %d %H:%M:%S UTC %Y')
+                       'installation_date': datetime.utcnow().replace(tzinfo=timezone.utc).strftime(
+                           '%a %b %d %H:%M:%S UTC %Y')
                        }, f)
         # install.run(self)  # OR: install.do_egg_install(self)
         install.do_egg_install(self)

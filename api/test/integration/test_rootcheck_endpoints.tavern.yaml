@@ -1,9 +1,6 @@
 ---
 test_name: GET /rootcheck/001
 
-marks:
-  - base_tests
-
 stages:
 
   # GET /rootcheck/001
@@ -471,8 +468,8 @@ test_name: PUT /rootcheck
 
 stages:
 
-  # PUT /rootcheck?agents_list=001
-  - name: Run rootcheck scan in agent 001
+  # PUT /rootcheck?agents_list=002
+  - name: Run rootcheck scan in agent 002
     request:
       verify: False
       method: PUT
@@ -480,14 +477,14 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: "001"
+        agents_list: "002"
     response:
       status_code: 200
       json:
         error: 0
         data:
           affected_items:
-            - "001"
+            - "002"
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0

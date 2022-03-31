@@ -18,7 +18,7 @@ from wazuh.rbac.decorators import expose_resources
 
 
 @expose_resources(actions=["sca:read"], resources=['agent:id:{agent_list}'])
-def get_sca_list(agent_list=None, q="", offset=0, limit=common.database_limit, sort=None, search=None, select=None,
+def get_sca_list(agent_list=None, q="", offset=0, limit=common.DATABASE_LIMIT, sort=None, search=None, select=None,
                  filters=None):
     """ Get a list of policies analyzed in the configuration assessment for a given agent
 
@@ -67,7 +67,7 @@ def get_sca_list(agent_list=None, q="", offset=0, limit=common.database_limit, s
 
 
 @expose_resources(actions=["sca:read"], resources=['agent:id:{agent_list}'])
-def get_sca_checks(policy_id=None, agent_list=None, q="", offset=0, limit=common.database_limit, sort=None, search=None,
+def get_sca_checks(policy_id=None, agent_list=None, q="", offset=0, limit=common.DATABASE_LIMIT, sort=None, search=None,
                    select=None, filters=None):
     """ Get a list of checks analyzed for a policy
 

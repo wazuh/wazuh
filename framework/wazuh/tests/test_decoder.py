@@ -45,7 +45,7 @@ decoder_ossec_conf_2 = {
 
 @pytest.fixture(scope='module', autouse=True)
 def mock_wazuh_path():
-    with patch('wazuh.core.common.wazuh_path', new=test_data_path):
+    with patch('wazuh.core.common.WAZUH_PATH', new=test_data_path):
         with patch('wazuh.core.configuration.get_ossec_conf', return_value=decoder_ossec_conf):
             yield
 
@@ -184,11 +184,12 @@ def test_get_decoder_file_exceptions():
 ])
 @patch('wazuh.decoder.delete_decoder_file')
 @patch('wazuh.decoder.upload_file')
-@patch('wazuh.core.utils.copyfile')
+@patch('wazuh.core.utils.full_copy')
 @patch('wazuh.decoder.remove')
 @patch('wazuh.decoder.safe_move')
 @patch('wazuh.core.utils.check_remote_commands')
-def test_upload_file(mock_remote_commands, mock_safe_move, mock_remove, mock_copyfile, mock_xml, mock_delete, file, overwrite):
+def test_upload_file(mock_remote_commands, mock_safe_move, mock_remove, mock_full_copy, mock_xml, mock_delete, file,
+                     overwrite):
     """Test uploading a decoder file.
 
     Parameters

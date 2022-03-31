@@ -1258,7 +1258,7 @@ int read_data_unit(const char *content) {
     if (content[len_value_str - 1] == 'B' || content[len_value_str - 1] == 'b') {
         if (isalpha(content[len_value_str - 2])){
             os_calloc(len_value_str, sizeof(char), value_str);
-            strncpy(value_str, content, len_value_str - 2);
+            memcpy(value_str, content, len_value_str - 2);
 
             if (OS_StrIsNum(value_str)) {
                 read_value = atoi(value_str);

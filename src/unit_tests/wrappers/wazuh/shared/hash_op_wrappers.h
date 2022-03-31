@@ -58,4 +58,6 @@ extern int OSHash_Add_ex_check_data;
 
 int __wrap_OSHash_Get_Elem_ex(OSHash *self);
 
+int __wrap_OSHash_Set(OSHash *self, const char *key, void *data);
+
 #endif

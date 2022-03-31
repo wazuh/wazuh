@@ -23,7 +23,11 @@ static const char * IGNORE_LIST[] = { SHAREDCFG_FILENAME, NULL };
 w_queue_t * winexec_queue;
 
 /* Receive events from the server */
+#ifdef WIN32
+DWORD WINAPI receiver_thread(__attribute__((unused)) LPVOID none)
+#else
 void *receiver_thread(__attribute__((unused)) void *none)
+#endif
 {
     ssize_t recv_b;
     size_t msg_length;
@@ -334,7 +338,11 @@ void *receiver_thread(__attribute__((unused)) void *none)
         }
     }
 
+#ifdef WIN32
+    return 0;
+#else
     return (NULL);
+#endif
 }
 
 #endif /* WIN32 */

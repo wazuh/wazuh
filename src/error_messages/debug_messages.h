@@ -54,7 +54,7 @@
 #define VU_AG_PART_SCAN       "(5439): A partial scan will be run on agent '%.3d'"
 #define VU_NO_PACKAGE_SCAN    "(5440): The package inventory of the agent '%.3d' is not available, but a hotfix analysis will be launched."
 #define VU_SOCKET_RETRY       "(5441): Unable to connect to socket '%s'. Waiting '%d' seconds."
-#define VU_NO_HOTFIX_AVAIL    "(5442): It is not possible to perform a hotfix scan on agent '%.3d'"
+#define VU_NO_HOTFIX_AVAIL    "(5442): Hotfixes data not reported by the agent '%.3d'."
 #define VU_OSINFO_DISABLED    "(5443): Unable to get the OS release for agent '%.3d'. It may not have the OS inventory enabled."
 #define VU_OSINFOLNX_DISABLED "(5444): Unable to get the OS version and release for agent '%.3d'. It may not have the OS inventory enabled."
 #define VU_NO_SOFTWARE        "(5445): No changes have been found with respect to the last package inventory or no packages have been indexed for agent '%.3d'"
@@ -85,6 +85,7 @@
 #define VU_FUNCTION_TIME      "(5470): It took '%ld' seconds to '%s' vulnerabilities in agent '%.3d'"
 #define VU_AGENT_FINISH       "(5471): Finished vulnerability assessment for agent '%.3d'"
 #define VU_END_SCAN           "(5472): Vulnerability scan finished."
+#define VU_HOTFIX_NOT_SYNCED  "(5473): Hotfixes data not synchronized in agent '%.3d' database."
 #define VU_NO_SRC_VERSION     "(5480): Unable to get the source '%s' version for agent '%.3d'"
 #define VU_NO_SRC_NAME        "(5481): Unable to get the source '%s' name for agent '%.3d'"
 #define VU_VULN_SEND_AG_FEED  "(5482): A total of '%d' vulnerabilities have been reported for agent '%.3d' thanks to the '%s' feed."
@@ -95,7 +96,7 @@
 #define VU_ERROR_CMP_VER      "(5487): Unknown relation '%s' between versions '%s' and '%s' for package '%s'"
 #define VU_DISCARD_CVE_ENTRY  "(5488): Package '%s' not affected by '%s' with misleading condition (%s '%s')."
 #define VU_DISCARD_DU         "(5489): '%s' vulnerability information discarded for agent '%.3d' ('KB%s'): Dynamic Updates (DU) are only available when upgrading to new Windows 10 versions."
-#define VU_REMOVED_VULN       "(5490): The vulnerability '%s' affecting '%s' was eliminated"
+#define VU_REMOVED_VULN       "(5490): The vulnerability '%s' affecting '%s' was solved"
 #define VU_AG_BASELINE_SCAN   "(5491): A baseline scan will be run on agent '%.3d'"
 
 /* File integrity monitoring debug messages */
@@ -303,5 +304,10 @@
 /* Logcollector */
 
 #define LOGCOLLECTOR_FILE_NOT_EXIST           "(9000): File '%s' no longer exists."
+
+/* Analysisd */
+
+#define MESSAGE_TOO_LONG                    "(9200): Long message, cannot be processed."
+#define UNABLE_TO_SEND_INFORMATION_TO_WDB   "(9201): Unable to send dbsync information to Wazuh DB."
 
 #endif /* DEBUG_MESSAGES_H */
