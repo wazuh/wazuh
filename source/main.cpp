@@ -63,7 +63,9 @@ int main(int argc, char *argv[])
     std::string storagePath;
     int nThreads;
     size_t queueSize;
-    bool debugAll;
+    bool traceAll;
+    bool trace;
+    std::vector<std::string> traceNames;
 
     try
     {
@@ -73,7 +75,9 @@ int main(int argc, char *argv[])
         storagePath = cliInput.getStoragePath();
         nThreads = cliInput.getThreads();
         queueSize = cliInput.getQueueSize();
-        debugAll = cliInput.getDebugAll();
+        traceAll = cliInput.getTraceAll();
+        trace = cliInput.getTrace();
+        traceNames = cliInput.getTraceNames();
     }
     catch (const std::exception &e)
     {
@@ -145,19 +149,28 @@ int main(int argc, char *argv[])
                     return 1;
                 }
 
-                // Debug cerr logger
-                // TODO: this will need to be handled by the api and on the reworked router
-                if (debugAll)
+                // Trace cerr logger
+                // TODO: this will need to be handled by the api and on the
+                // reworked router
+                auto cerrLogger = [name = "test_environment"](auto msg)
                 {
-                    router.subscribeAllDebugSinks(
-                        "test_environment",
-                        [name = "test_environment"](auto msg)
-                        {
-                            std::stringstream ssTid;
-                            ssTid << std::this_thread::get_id();
-                            std::cerr << fmt::format(
-                                "{}: [{}]{}\n", ssTid.str(), name, msg);
-                        });
+                    std::stringstream ssTid;
+                    ssTid << std::this_thread::get_id();
+                    std::cerr
+                        << fmt::format("{}: [{}]{}\n", ssTid.str(), name, msg);
+                };
+                if (traceAll)
+                {
+                    router.subscribeAllTraceSinks("test_environment",
+                                                  cerrLogger);
+                }
+                else if (trace)
+                {
+                    for (auto assetName : traceNames)
+                    {
+                        router.subscribeTraceSink(
+                            "test_environment", assetName, cerrLogger);
+                    }
                 }
 
                 // Thread loop
