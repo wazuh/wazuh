@@ -61,9 +61,10 @@ TEST(ConnectableTest, TracerGraph)
     vector<Connectable<observable<FakeEventType>>> connectables;
     for (auto i = 0; i < 9; ++i)
     {
-        // Build connectable as outputs so only one event will be sent by each conenctable
-        connectables.push_back(
-            Connectable<observable<FakeEventType>> {string("OUTPUT_")+std::to_string(i)});
+        // Build connectable as outputs so only one event will be sent by each
+        // conenctable
+        connectables.push_back(Connectable<observable<FakeEventType>> {
+            string("OUTPUT_") + std::to_string(i)});
     }
 
     // Manually build graph
@@ -113,15 +114,18 @@ TEST(ConnectableTest, TracerGraph)
         conn.m_tracer.m_out.subscribe(
             [&, name = conn.m_name](string msg)
             {
-                //GTEST_COUT << msg << endl;
-                if(msg.find("sent") != string::npos)
-                    expected.push_back(stoi(name.substr(name.size()-1)));
+                // GTEST_COUT << msg << endl;
+                if (msg.find("sent") != string::npos)
+                {
+                    expected.push_back(stoi(name.substr(name.size() - 1)));
+                }
             });
     }
     end.subscribe();
     input.connect();
     ASSERT_EQ(expected.size(), 9);
-    for (auto i = 0; i < 9; ++i){
+    for (auto i = 0; i < 9; ++i)
+    {
         ASSERT_EQ(expected[i], i);
     }
 }
