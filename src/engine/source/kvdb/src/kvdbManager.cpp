@@ -150,9 +150,7 @@ bool KVDBManager::DeleteDB(const std::string &name)
     }
     else
     {
-        auto msg =
-            fmt::format("Database [{}] isn´t handled by KVDB manager", name);
-        WAZUH_LOG_ERROR(msg);
+        WAZUH_LOG_ERROR("Database [{}] isn´t handled by KVDB manager", name);
         ret = false;
     }
 
