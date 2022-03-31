@@ -208,13 +208,13 @@ def update_row_object(table: orm.Base, md5_hash: str, new_min: str, new_max: str
     new_max : str
         Value to compare with the current max value stored.
     """
-    row = orm.get_row(table=table, md5=md5_hash)
-    if not row:
-        logging.error(f"Error trying to obtain row object from '{table.__tablename__}' using md5='{md5}'")
+    try:
+        row = orm.get_row(table=table, md5=md5_hash)
+        old_min_str = row.min_processed_date
+        old_max_str = row.max_processed_date
+    except (orm.AzureORMError, AttributeError) as e:
+        logging.error(f"Error trying to obtain row object from '{table.__tablename__}' using md5='{md5}': {e}")
         sys.exit(1)
-
-    old_min_str = row.min_processed_date
-    old_max_str = row.max_processed_date
     old_min_date = parse(old_min_str, fuzzy=True)
     old_max_date = parse(old_max_str, fuzzy=True)
     # "parse" adds compatibility with "last_dates_files" from previous releases as the format wasn't localized
@@ -226,9 +226,10 @@ def update_row_object(table: orm.Base, md5_hash: str, new_min: str, new_max: str
         max_ = new_max if new_max_date > old_max_date else old_max_str
         logging.debug(f"Attempting to update a {table.__tablename__} row object. "
                       f"MD5: '{md5_hash}', min_date: '{min_}', max_date: '{max_}'")
-        success = orm.update_row(table=table, md5=md5_hash, min_date=min_, max_date=max_)
-        if not success:
-            logging.error(f"Error updating row object from {table.__tablename__}")
+        try:
+            success = orm.update_row(table=table, md5=md5_hash, min_date=min_, max_date=max_)
+        except orm.AzureORMError as e:
+            logging.error(f"Error updating row object from {table.__tablename__}: {e}")
             sys.exit(1)
 
 
@@ -256,9 +257,10 @@ def create_new_row(table: orm.Base, md5_hash: str, offset: str) -> orm.Base:
     item = table(md5=md5_hash, min_processed_date=desired_str, max_processed_date=desired_str)
     logging.debug(f"Attempting to insert row object into {table.__tablename__} with md5='{md5_hash}', "
                   f"min_date='{desired_str}', max_date='{desired_str}'")
-    success = orm.add_row(row=item)
-    if not success:
-        logging.error(f"Error inserting row object into {table.__tablename__}")
+    try:
+        orm.add_row(row=item)
+    except orm.AzureORMError as e:
+        logging.error(f"Error inserting row object into {table.__tablename__}: e")
         sys.exit(1)
     return item
 
@@ -313,11 +315,12 @@ def build_log_analytics_query(offset: str, md5_hash: str) -> dict:
     dict
         The required body for the requested query.
     """
-    item = orm.get_row(orm.LogAnalytics, md5=md5_hash)
-    if item is None:
-        item = create_new_row(table=orm.LogAnalytics, md5_hash=md5_hash, offset=offset)
-    elif item is False:
-        logging.error(f"Error trying to obtain row object from '{orm.LogAnalytics.__tablename__}' using md5='{md5}'")
+    try:
+        item = orm.get_row(orm.LogAnalytics, md5=md5_hash)
+        if item is None:
+            item = create_new_row(table=orm.LogAnalytics, md5_hash=md5_hash, offset=offset)
+    except orm.AzureORMError as e:
+        logging.error(f"Error trying to obtain row object from '{orm.LogAnalytics.__tablename__}' using md5='{md5}': {e}")
         sys.exit(1)
 
     min_str = item.min_processed_date

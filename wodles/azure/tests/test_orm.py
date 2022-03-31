@@ -24,11 +24,10 @@ with patch('sqlalchemy.create_engine', return_value=create_engine("sqlite://")):
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 test_last_dates_path = os.path.join(test_data_path, 'last_date_files')
 
-EXPECTED_TABLE_NAMES = ['graph', 'log_analytics', 'storage']
-
 
 @pytest.fixture(scope='function')
 def create_and_teardown_db():
+    """Create the database and purge it after the test execution."""
     orm.create_db()
     yield
     orm.Base.metadata.drop_all(orm.engine)
@@ -36,11 +35,16 @@ def create_and_teardown_db():
 
 @pytest.fixture(scope='function')
 def teardown_db():
+    """Do not create a database before the test but purge it after the execution."""
     yield
     orm.Base.metadata.drop_all(orm.engine)
 
 
-def test_create_db(teardown_db):
+@pytest.mark.parametrize('expected_table_names', [
+    (['graph', 'log_analytics', 'storage'])
+])
+def test_create_db(expected_table_names, teardown_db):
+    """Check if the create_db function works as expected."""
     # Check there is no tables available
     inspector = inspect(orm.engine)
     assert inspector.get_table_names() == []
@@ -51,7 +55,7 @@ def test_create_db(teardown_db):
     # Validate the tables and their structure
     inspector = inspect(orm.engine)
     table_names = inspector.get_table_names()
-    assert table_names == EXPECTED_TABLE_NAMES
+    assert table_names == expected_table_names
     for table in table_names:
         assert [x['name'] for x in inspector.get_columns(table)] == ['md5', 'min_processed_date', 'max_processed_date']
 
@@ -89,21 +93,25 @@ def test_add_ko(create_and_teardown_db):
     """Test the add_row function by attempting to insert a row with None values. The commit operation should raise an
     IntegrityError that must be caught."""
     row = orm.Graph(md5="test", min_processed_date=None, max_processed_date=None)
-    assert orm.add_row(row=row) is False
+    with pytest.raises(orm.AzureORMError):
+        orm.add_row(row=row)
     assert len(orm.get_all_rows(orm.Graph)) == 0
 
 
 def test_get_rows_ko(create_and_teardown_db):
+    """Ensure the get_rows function fails when using an invalid database."""
     orm.Base.metadata.drop_all(orm.engine)
-    assert orm.get_row(table=orm.Graph, md5="") is False
-    assert orm.get_all_rows(table=orm.Graph) is False
+    with pytest.raises(orm.AzureORMError):
+        assert orm.get_row(table=orm.Graph, md5="")
+    with pytest.raises(orm.AzureORMError):
+        orm.get_all_rows(table=orm.Graph)
 
 
 @patch('orm.session.commit', side_effect=IntegrityError)
 def test_update_row_ko(create_and_teardown_db):
-    assert orm.update_row(orm.Graph, md5="test", min_date="", max_date="") is False
-
-
+    """Ensure the update_row function catch exceptions when trying to commit the changes."""
+    with pytest.raises(orm.AzureORMError):
+        orm.update_row(orm.Graph, md5="test", min_date="", max_date="")
 
 
 @pytest.mark.parametrize('last_dates_file_path', [
@@ -115,6 +123,8 @@ def test_update_row_ko(create_and_teardown_db):
     (os.path.join(test_last_dates_path, 'last_dates_clean.json'))
 ])
 def test_load_dates_json(last_dates_file_path):
+    """Check the load_dates_json function properly loads the contents of the files, regardless of their structure as
+    long as it is a valid one."""
     with patch('orm.last_dates_path', new=last_dates_file_path):
         last_dates_dict = orm.load_dates_json()
         for key in last_dates_dict.keys():
@@ -128,6 +138,7 @@ def test_load_dates_json(last_dates_file_path):
 @patch('builtins.open')
 @patch('json.dump')
 def test_load_dates_json_no_file(mock_dump, mock_open, mock_exists):
+    """Check the load_dates_json handles exception as expected when no file is provided."""
     orm.load_dates_json()
     mock_exists.assert_called_once()
     mock_open.assert_called_once()
@@ -138,6 +149,7 @@ def test_load_dates_json_no_file(mock_dump, mock_open, mock_exists):
     (os.path.join(test_last_dates_path, 'last_dates_invalid.json'))
 ])
 def test_load_dates_json_ko(last_dates_file_path):
+    """Check the load_dates_json handles exception as expected when an invalid file is provided."""
     with patch('orm.last_dates_path', new=last_dates_file_path):
         with pytest.raises(json.JSONDecodeError):
             orm.load_dates_json()
@@ -151,6 +163,7 @@ def test_load_dates_json_ko(last_dates_file_path):
 @patch('orm.create_db')
 @patch('orm.migrate_from_last_dates_file')
 def test_check_integrity(mock_migrate, mock_create_db, create_and_teardown_db, file_exists, file_size):
+    """Ensure that the check_integrity functions is able to create a new database file."""
     with patch('os.path.exists', return_value=file_exists):
         with patch('os.path.getsize', return_value=file_size):
             orm.check_database_integrity()
@@ -162,6 +175,7 @@ def test_check_integrity(mock_migrate, mock_create_db, create_and_teardown_db, f
 
 
 def test_check_integrity_ko(teardown_db):
+    """Ensure the check_integrity function returns a False value when the migration process fails."""
     with patch('os.path.exists'):
         with patch('os.path.getsize', return_value=100):
             with patch('orm.migrate_from_last_dates_file', side_effect=Exception):
@@ -181,8 +195,10 @@ def test_migrate_from_last_dates_file(last_dates_file_path, create_and_teardown_
     items = orm.get_all_rows(table=orm.Graph)
     assert len(items) == 0
 
+    with open(last_dates_file_path, 'r') as file:
+        test_file_contents = json.load(file)
+
     with patch('orm.last_dates_path', new=last_dates_file_path):
-        test_file_contents = orm.load_dates_json()
         orm.migrate_from_last_dates_file()
 
     # Validate the contents of each table
@@ -190,3 +206,10 @@ def test_migrate_from_last_dates_file(last_dates_file_path, create_and_teardown_
         items = orm.get_all_rows(table=table)
         if table.__tablename__ in test_file_contents:
             assert len(items) == len(test_file_contents[table.__tablename__].keys())
+            for item in items:
+                try:
+                    assert test_file_contents[table.__tablename__][item.md5]['min'] == item.min_processed_date
+                    assert test_file_contents[table.__tablename__][item.md5]['max'] == item.max_processed_date
+                except (KeyError, TypeError):
+                    # Old last_dates.json structure
+                    assert test_file_contents[table.__tablename__][item.md5] == item.max_processed_date

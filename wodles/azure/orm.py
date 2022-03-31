@@ -1,7 +1,6 @@
 import logging
 import json
 import os
-import typing
 
 from sqlalchemy import create_engine, Column, Text, String, UniqueConstraint
 from sqlalchemy.exc import IntegrityError, OperationalError, StatementError
@@ -46,7 +45,11 @@ class Storage(AzureTable, Base):
     __table_args__ = (UniqueConstraint('md5', name='md5_restriction'),)
 
 
-def add_row(row: Base) -> bool:
+class AzureORMError(Exception):
+    pass
+
+
+def add_row(row: Base):
     """Insert a new row object into the database.
 
     Parameters
@@ -54,18 +57,16 @@ def add_row(row: Base) -> bool:
     row : Base
         The row object to insert into the database.
 
-    Returns
-    -------
-    bool
-        True if the row was successfully inserted, False otherwise.
+    Raises
+    ------
+    AzureORMError
     """
     try:
         session.add(row)
         session.commit()
-        return True
     except (IntegrityError, OperationalError) as e:
         session.rollback()
-        return False
+        raise AzureORMError(str(e))
 
 
 def check_database_integrity() -> bool:
@@ -99,33 +100,40 @@ def create_db():
     Base.metadata.create_all(engine)
 
 
-def get_row(table: Base, md5: str) -> typing.Union[AzureTable, bool]:
+def get_row(table: Base, md5: str) -> AzureTable:
     """Get a row from the specified table using the md5 value provided.
 
     Returns
     -------
-    AzureTable or bool
+    AzureTable
         The row object if present or False if an exception was caught when attempting to obtain the row object.
+
+    Raises
+    ------
+    AzureORMError
     """
     try:
         return session.query(table).filter_by(md5=md5).first()
-    except (IntegrityError, OperationalError, AttributeError):
-        return False
+    except (IntegrityError, OperationalError, AttributeError) as e:
+        raise AzureORMError(str(e))
 
 
-def get_all_rows(table: Base) -> typing.Union[list, bool]:
+def get_all_rows(table: Base) -> list:
     """Get a list of all the rows available for the given table. For testing purposes.
 
     Returns
     -------
-    list or bool
+    list
         A list containing the different row objects available or False if an exception was raised.
+
+    Raises
+    ------
+    AzureORMError
     """
     try:
         return session.query(table).all()
-    except (IntegrityError, OperationalError, AttributeError):
-        logging.error(f"Error trying to obtain every row from '{table.__tablename__}'")
-        return False
+    except (IntegrityError, OperationalError, AttributeError) as e:
+        raise AzureORMError(str(e))
 
 
 def migrate_from_last_dates_file():
@@ -143,7 +151,7 @@ def migrate_from_last_dates_file():
     logging.info("The database migration process finished successfully.")
 
 
-def update_row(table: Base, md5: str, min_date: str, max_date: str) -> bool:
+def update_row(table: Base, md5: str, min_date: str, max_date: str):
     """Update an existing row in the specified table.
 
     Parameters
@@ -157,20 +165,18 @@ def update_row(table: Base, md5: str, min_date: str, max_date: str) -> bool:
     max_date : str
         The new value for the highest date processed.
 
-    Returns
-    -------
-    bool
-        True if the entry has been inserted successfully. False otherwise (i.e. already exists)
+    Raises
+    ------
+    AzureORMError
     """
     try:
         session.query(table).filter(table.md5 == md5).update({
             'min_processed_date': min_date,
             'max_processed_date': max_date})
         session.commit()
-        return True
     except (IntegrityError, OperationalError, StatementError) as e:
         session.rollback()
-        return False
+        raise AzureORMError(str(e))
 
 def load_dates_json() -> dict:
     """Read the "last_dates_file" containing the different processed dates. It will be created with empty values in
@@ -180,6 +186,11 @@ def load_dates_json() -> dict:
     -------
     dict
         The contents of the "last_dates_file".
+
+    Raises
+    ------
+    json.JSONDecodeError
+    OSError
     """
     logging.info(f"Getting the data from {last_dates_path}.")
     try:
