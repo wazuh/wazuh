@@ -6,6 +6,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#include "opBuilderHelperFilter.hpp"
 
 #include <optional>
 #include <string>
@@ -14,7 +15,6 @@
 #include <fmt/format.h>
 #include <re2/re2.h>
 
-#include "opBuilderHelperFilter.hpp"
 #include "syntax.hpp"
 #include <utils/ipUtils.hpp>
 #include <utils/stringUtils.hpp>
