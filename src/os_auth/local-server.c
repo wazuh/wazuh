@@ -13,6 +13,7 @@
 #include <pthread.h>
 #include <sys/wait.h>
 #include "auth.h"
+#include "cloud_limits.h"
 #include "os_err.h"
 #include <config/authd-config.h>
 
@@ -93,6 +94,8 @@ void* run_local_server(__attribute__((unused)) void *arg) {
         return NULL;
     }
 
+    unsigned int cicle_counter = 30;
+
     while (running) {
 
         // Wait for socket
@@ -100,6 +103,22 @@ void* run_local_server(__attribute__((unused)) void *arg) {
         FD_SET(sock, &fdset);
         timeout.tv_sec = 1;
         timeout.tv_usec = 0;
+
+        if (!cicle_counter) {
+            if (load_limits_file() == OS_SUCCESS) {
+                cJSON * authd_limits = get_deamon_limits("authd");
+                if (authd_limits) {
+                    cJSON *max_agents = cJSON_GetObjectItem(authd_limits, "max_agents");
+                    if (!cJSON_IsNumber(max_agents)) {
+                        mdebug1("element 'max_agents' doesn't found");
+                        cJSON_Delete(max_agents);
+                    }
+                    mdebug1("------------> max_agents value: %d", max_agents->valueint);
+                }
+            }
+            cicle_counter = 30;
+        }
+        cicle_counter--;
 
         switch (select(sock + 1, &fdset, NULL, NULL, &timeout)) {
         case -1:
