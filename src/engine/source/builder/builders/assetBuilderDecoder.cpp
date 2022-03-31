@@ -92,7 +92,7 @@ types::ConnectableT assetBuilderDecoder(const types::Document &def)
     }
 
     // Build tracer
-    Tracer tr{name};
+    types::ConnectableT::Tracer tr{name};
 
     // Stage check
     try

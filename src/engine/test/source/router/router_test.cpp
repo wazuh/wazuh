@@ -76,7 +76,7 @@ struct FakeBuilder
                     return p;
                 };
             }
-            std::map<std::string, observable<std::string>> getDebugSinks()
+            std::map<std::string, observable<std::string>> getTraceSinks()
             {
                 std::map<std::string, observable<std::string>> fakeSinks;
                 fakeSinks["fake_asset"] =
@@ -167,7 +167,7 @@ TEST(RouterTest, SubscribeDebug)
         router.add("test", "test_env", [](document_t d) { return true; }));
 
     ASSERT_NO_THROW(
-        router.subscribeDebugSink("test_env", "fake_asset", [](auto s) {}));
+        router.subscribeTraceSink("test_env", "fake_asset", [](auto s) {}));
 }
 
 TEST(RouterTest, ErrorEnviromentSubscribeDebug)
@@ -177,7 +177,7 @@ TEST(RouterTest, ErrorEnviromentSubscribeDebug)
         router.add("test", "test_env", [](document_t d) { return true; }));
 
     ASSERT_THROW(
-        router.subscribeDebugSink("test_envERROR", "fake_asset", [](auto s) {}),
+        router.subscribeTraceSink("test_envERROR", "fake_asset", [](auto s) {}),
         runtime_error);
 }
 
@@ -188,7 +188,7 @@ TEST(RouterTest, ErrorAssetSubscribeDebug)
         router.add("test", "test_env", [](document_t d) { return true; }));
 
     ASSERT_THROW(
-        router.subscribeDebugSink("test_env", "fake_assetERROR", [](auto s) {}),
+        router.subscribeTraceSink("test_env", "fake_assetERROR", [](auto s) {}),
         runtime_error);
 }
 
@@ -198,7 +198,7 @@ TEST(RouterTest, SubscribeAllDebug)
     ASSERT_NO_THROW(
         router.add("test", "test_env", [](document_t d) { return true; }));
 
-    ASSERT_NO_THROW(router.subscribeAllDebugSinks("test_env", [](auto s) {}));
+    ASSERT_NO_THROW(router.subscribeAllTraceSinks("test_env", [](auto s) {}));
 }
 
 TEST(RouterTest, ErrorSubscribeAllDebug)
@@ -207,5 +207,5 @@ TEST(RouterTest, ErrorSubscribeAllDebug)
     ASSERT_NO_THROW(
         router.add("test", "test_env", [](document_t d) { return true; }));
 
-    ASSERT_THROW(router.subscribeAllDebugSinks("test_envError", [](auto s) {}), runtime_error);
+    ASSERT_THROW(router.subscribeAllTraceSinks("test_envError", [](auto s) {}), runtime_error);
 }

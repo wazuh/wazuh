@@ -108,7 +108,7 @@ struct Environment
     using Lifter = std::function<Observable(Observable)>;
 
     std::string m_name;
-    std::map<std::string, rxcpp::observable<std::string>> m_debugSinks;
+    std::map<std::string, rxcpp::observable<std::string>> m_traceSinks;
     Lifter m_lifter;
 
     rxcpp::subjects::subject<Event> m_subject;
@@ -129,27 +129,27 @@ struct Environment
         std::map<std::string, rxcpp::observable<std::string>> debugSinks)
         : m_name {name}
         , m_lifter {lifter}
-        , m_debugSinks {debugSinks}
+        , m_traceSinks {debugSinks}
     {
     }
 
     /**
-     * @brief Subscribe to asset debug sink
+     * @brief Subscribe to asset trace sink
      *
      * @param assetName
      * @param subscriberOnNext
      */
-    void subscribeSink(std::string assetName,
-                       std::function<void(std::string)> subscriberOnNext)
+    void subscribeTraceSink(std::string assetName,
+                            std::function<void(std::string)> subscriberOnNext)
     {
-        if (m_debugSinks.count(assetName) > 0)
+        if (m_traceSinks.count(assetName) > 0)
         {
-            m_debugSinks[assetName].subscribe(subscriberOnNext);
+            m_traceSinks[assetName].subscribe(subscriberOnNext);
         }
         else
         {
             throw std::runtime_error(fmt::format(
-                "Error subscribing debug sink, environment [{}] does not "
+                "Error subscribing trace sink, environment [{}] does not "
                 "contain asset [{}]",
                 m_name,
                 assetName));
@@ -161,9 +161,10 @@ struct Environment
      *
      * @param subscriberOnNext
      */
-    void subscribeAllSinks(std::function<void(std::string)> subscriberOnNext)
+    void
+    subscribeAllTraceSinks(std::function<void(std::string)> subscriberOnNext)
     {
-        for (auto sink : m_debugSinks)
+        for (auto sink : m_traceSinks)
         {
             sink.second.subscribe(subscriberOnNext);
         }
@@ -216,17 +217,17 @@ class Router
         "Error, getLifter method does not return function with signature: "
         "std::function<Observable(Observable)>");
 
-    // Assert has a getDebugSinks method
+    // Assert has a getTraceSinks method
     static_assert(std::is_member_function_pointer_v<
-                      decltype(&builder_ret_type::getDebugSinks)>,
+                      decltype(&builder_ret_type::getTraceSinks)>,
                   "Error, type returned by Builder does not implement "
-                  "getDebugSinks function");
-    // Assert getDebugSinks methods returns a map<string, observable<string>>
+                  "getTraceSinks function");
+    // Assert getTraceSinks methods returns a map<string, observable<string>>
     static_assert(
         std::is_same_v<
-            decltype(std::declval<builder_ret_type>().getDebugSinks()),
+            decltype(std::declval<builder_ret_type>().getTraceSinks()),
             std::map<std::string, rxcpp::observable<std::string>>>,
-        "Error, getDebugSinks method does not satisfy signature: "
+        "Error, getTraceSinks method does not satisfy signature: "
         "std::function<std::map<std::string, "
         "rxcpp::observable<std::string>>()>");
 
@@ -278,7 +279,7 @@ public:
             this->m_environments[environment] =
                 Environment {environment,
                              envBuilder.getLifter(),
-                             envBuilder.getDebugSinks()};
+                             envBuilder.getTraceSinks()};
 
             // Lift enviroment
             // TODO: handle errors/recovery, obs may be needed
@@ -360,46 +361,46 @@ public:
     }
 
     /**
-     * @brief Subscribe to specified debug sink.
+     * @brief Subscribe to specified trace sink.
      *
      * @param environment
      * @param asset
      * @param subscriberOnNext
      */
-    void subscribeDebugSink(std::string environment,
+    void subscribeTraceSink(std::string environment,
                             std::string asset,
                             std::function<void(std::string)> subscriberOnNext)
     {
         if (m_environments.count(environment) > 0)
         {
-            m_environments[environment].subscribeSink(asset, subscriberOnNext);
+            m_environments[environment].subscribeTraceSink(asset, subscriberOnNext);
         }
         else
         {
             throw std::runtime_error(fmt::format(
-                "Error subscribing debug sink, enviroment [{}] does not exists",
+                "Error subscribing trace sink, enviroment [{}] does not exists",
                 environment));
         }
     }
 
     /**
-     * @brief Subscribes to all debug sinks for specified environment
+     * @brief Subscribes to all trace sinks for specified environment
      *
      * @param environment
      * @param subscriberOnNext
      */
     void
-    subscribeAllDebugSinks(std::string environment,
+    subscribeAllTraceSinks(std::string environment,
                            std::function<void(std::string)> subscriberOnNext)
     {
         if (m_environments.count(environment) > 0)
         {
-            m_environments[environment].subscribeAllSinks(subscriberOnNext);
+            m_environments[environment].subscribeAllTraceSinks(subscriberOnNext);
         }
         else
         {
             throw std::runtime_error(fmt::format(
-                "Error subscribing debug sink, enviroment [{}] does not exists",
+                "Error subscribing trace sink, enviroment [{}] does not exists",
                 environment));
         }
     }

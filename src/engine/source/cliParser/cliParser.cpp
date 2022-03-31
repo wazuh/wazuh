@@ -11,6 +11,7 @@
 #include <chrono>
 #include <iostream>
 #include <string>
+#include <vector>
 
 #include "cliParser.hpp"
 
@@ -46,16 +47,24 @@ void CliParser::parse(int argc, char *argv[])
         .scan<'i', int>()
         .default_value(1000000);
 
-    serverParser.add_argument("-D", "--debug_all")
-        .help("Subscribe to all debug sinks and print in cerr")
+    serverParser.add_argument("-T", "--trace_all")
+        .help("Subscribe to all trace sinks and print in cerr")
         .default_value(false)
         .implicit_value(true);
+
+    serverParser.add_argument("--trace")
+        .help("Subscribe to specified trace sinks and print in cerr")
+        .default_value(false)
+        .implicit_value(true);
+
+    serverParser.add_argument("trace_assets")
+        .remaining();
 
     try
     {
         serverParser.parse_args(argc, argv);
     }
-    catch (const std::runtime_error & err)
+    catch (const std::runtime_error &err)
     {
         std::cerr << err.what() << std::endl;
         cerr << serverParser;
@@ -65,7 +74,16 @@ void CliParser::parse(int argc, char *argv[])
     m_storagePath = serverParser.get("--file_storage");
     m_threads = serverParser.get<int>("--threads");
     m_queueSize = serverParser.get<int>("--queue_size");
-    m_debugAll = serverParser.get<bool>("--debug_all");
+    m_traceAll = serverParser.get<bool>("--trace_all");
+    m_trace = serverParser.get<bool>("--trace");
+    try
+    {
+        m_traceNames =
+            serverParser.get<std::vector<std::string>>("trace_assets");
+    }
+    catch (...)
+    {
+    }
 }
 
 string CliParser::getEndpointConfig() const
@@ -88,9 +106,19 @@ int CliParser::getQueueSize() const
     return m_queueSize;
 }
 
-bool CliParser::getDebugAll() const
+bool CliParser::getTraceAll() const
 {
-    return m_debugAll;
+    return m_traceAll;
+}
+
+bool CliParser::getTrace() const
+{
+    return m_trace;
+}
+
+std::vector<std::string> CliParser::getTraceNames() const
+{
+    return m_traceNames;
 }
 
 } // namespace cliparser

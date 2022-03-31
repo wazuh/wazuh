@@ -82,7 +82,7 @@ types::ConnectableT assetBuilderFilter(const types::Document & def)
     }
 
     // Create tracer
-    Tracer tr{name};
+    types::ConnectableT::Tracer tr{name};
 
     // Stage allow
     try
