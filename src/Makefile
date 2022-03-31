@@ -31,6 +31,7 @@ endif
 endif
 
 ROUTE_PATH := $(shell pwd)
+SYMBOLS_PATH = symbols
 EXTERNAL_JSON=external/cJSON/
 EXTERNAL_ZLIB=external/zlib/
 EXTERNAL_SQLITE=external/sqlite/
@@ -86,7 +87,12 @@ DISABLE_SYSC?=no
 DISABLE_CISCAT?=no
 DISABLE_STRIP_SYMBOLS?=no
 
-ifneq (${TARGET}, winagent)
+
+ifeq (${TARGET}, winagent)
+EXECUTABLE_FILES := $(shell find win32 -maxdepth 1 -type f -name "*.exe"  -perm /a=x)
+EXECUTABLE_FILES += $(shell find . -type f -name "*.dll" ! -path "./external/*" ! -path "./win32/*" -perm /a=x)
+EXECUTABLE_FILES := $(EXECUTABLE_FILES:./%=%)
+else
 ifeq (${uname_S}, Linux)
 EXECUTABLE_FILES := $(shell find . -maxdepth 1 -type f ! -name "*.so"  -perm /a=x)
 EXECUTABLE_FILES += $(shell find . -type f -not -path "./external/*" -name "*.so" -perm /a=x)
@@ -94,7 +100,7 @@ EXECUTABLE_FILES:= $(EXECUTABLE_FILES:./%=%)
 endif
 ifeq (${uname_S}, Darwin)
 EXECUTABLE_FILES=$(shell find . -maxdepth 1 -type f -exec /bin/sh -c "file {} | grep 'bit executable' > /dev/null" \; -print)
-EXECUTABLE_FILES+=$(shell find . -type f -not -path "./external/*" -not -path "./symbols/*" -name  "*.dylib" -print)
+EXECUTABLE_FILES+=$(shell find . -type f -not -path "./external/*" -not -path "./${SYMBOLS_PATH}/*" -name  "*.dylib" -print)
 endif
 endif
 
@@ -338,10 +344,10 @@ endif
 
 # Optimization and assert() handling
 ifneq (,$(filter ${DEBUG},YES yes y Y 1))
+	OFLAGS+=-O0
+else
 	OSSEC_CFLAGS+=-DNDEBUG
 	OFLAGS+=-O2
-else
-	OFLAGS+=-O0
 endif
 
 OSSEC_CFLAGS+=${OFLAGS}
@@ -802,21 +808,29 @@ $(SELINUX_POLICY): $(SELINUX_MODULE)
 $(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
 	checkmodule -M -m -o $@ $?
 
+ifeq (${TARGET}, winagent)
+strip:
+else
 ifeq (${TARGET}, agent)
 strip: ${BUILD_AGENT} ${BUILD_CMAKE_PROJECTS}
 else
-ifneq (${TARGET}, winagent)
 strip: ${BUILD_SERVER} ${BUILD_CMAKE_PROJECTS}
 endif
 endif
-ifneq (${TARGET}, winagent)
 ifeq (,$(filter ${DISABLE_STRIP_SYMBOLS},YES yes y Y 1))
 ifeq (${uname_S}, Linux)
-	@$(foreach var, ${EXECUTABLE_FILES}, objcopy --only-keep-debug $(var) symbols/$(basename $(notdir $(var))).debug; objcopy --strip-unneeded $(var);)
+ifeq (${TARGET}, winagent)
+	@-if test -n "${WIN_STRIP_TOOL_PATH}" -a -d "${WIN_STRIP_TOOL_PATH}" -a -f "${WIN_STRIP_TOOL_PATH}/cv2pdb.exe" && command -v wine > /dev/null 2>&1; then \
+		$(foreach binary, ${EXECUTABLE_FILES}, wine ${WIN_STRIP_TOOL_PATH}/cv2pdb.exe $(binary) $(binary) ${SYMBOLS_PATH}/$(basename $(notdir $(binary))).pdb;) \
+	else \
+		$(foreach binary, ${EXECUTABLE_FILES}, ${MING_BASE}objcopy --strip-unneeded ${binary};) \
+	fi
+else
+	@-$(foreach binary, ${EXECUTABLE_FILES}, objcopy --only-keep-debug $(binary) ${SYMBOLS_PATH}/$(basename $(notdir $(binary))).debug; objcopy --strip-unneeded $(binary);)
+endif
 endif
 ifeq (${uname_S}, Darwin)
-	@$(foreach var, ${EXECUTABLE_FILES}, dsymutil -o symbols/$(var).dSYM $(var) && strip -S $(var);)
-endif
+	@$(foreach binary, ${EXECUTABLE_FILES}, dsymutil -o ${SYMBOLS_PATH}/$(binary).dSYM $(binary) && strip -S $(binary);)
 endif
 endif
 
@@ -830,6 +844,7 @@ endif
 winagent: external win32/libwinpthread-1.dll win32/libgcc_s_sjlj-1.dll
 	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32"
 	${MAKE} ${WINDOWS_ACTIVE_RESPONSES} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32"
+	@${MAKE} strip TARGET=${TARGET} DISABLE_STRIP_SYMBOLS=${DISABLE_STRIP_SYMBOLS}
 	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
 	cd win32/ && ./unix2dos.pl help.txt > help_win.txt
 	cd win32/ && ./unix2dos.pl ../../etc/internal_options.conf > internal_options.conf
@@ -1912,6 +1927,10 @@ active_response_programs = default-firewall-drop pf npf ipfw firewalld-drop disa
 $(active_response_programs): ${WAZUH_LIB} ${WAZUHEXT_LIB}
 
 # Minimal dependencies for building active responses programs
+AR_CFLAGS =
+ifneq (,$(findstring -g,$(OSSEC_CFLAGS)))
+	AR_CFLAGS += -g
+endif
 AR_PROGRAMS_DEPS = os_regex/os_regex.o os_regex/os_regex_free_pattern.o os_regex/os_regex_compile.o os_regex/os_match_free_pattern.o os_regex/os_regex_maps.o os_regex/os_regex_execute.o os_regex/os_regex_free_pattern.o os_regex/os_match_execute.o os_regex/os_match_compile.o shared/expression.o shared/randombytes.o shared/validate_op.o shared/regex_op.o shared/string_op.o shared/exec_op.o shared/file_op_proc.o shared/debug_op_proc.o shared/time_op.o shared/privsep_op.o shared/version_op.o os_xml/os_xml.o os_xml/os_xml_access.o os_regex/os_regex_strbreak.o os_net/os_net.o
 
 ifneq (,$(filter ${TEST},YES yes y Y 1))
@@ -1935,40 +1954,40 @@ active-response/%.o: active-response/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./active-response -DARGV0=\"active-responses\" -c $^ -o $@
 
 default-firewall-drop: active-response/firewalls/default-firewall-drop.o active-response/active_responses.o
-	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} ${AR_CFLAGS} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 pf: active-response/firewalls/pf.o  active-response/active_responses.o
-	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} ${AR_CFLAGS} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 npf: active-response/firewalls/npf.o  active-response/active_responses.o
-	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} ${AR_CFLAGS} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 ipfw: active-response/firewalls/ipfw.o active-response/active_responses.o
-	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} ${AR_CFLAGS} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 firewalld-drop: active-response/firewalld-drop.o active-response/active_responses.o
-	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} ${AR_CFLAGS} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 disable-account: active-response/disable-account.o active-response/active_responses.o
-	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} ${AR_CFLAGS} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 host-deny: active-response/host-deny.o active-response/active_responses.o
-	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} ${AR_CFLAGS} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 ip-customblock: active-response/ip-customblock.o active-response/active_responses.o
-	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} ${AR_CFLAGS} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 restart-wazuh: active-response/restart-wazuh.o active-response/active_responses.o
-	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} ${AR_CFLAGS} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 route-null: active-response/route-null.o active-response/active_responses.o
-	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} ${AR_CFLAGS} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 kaspersky: active-response/kaspersky.o active-response/active_responses.o
-	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} ${AR_CFLAGS} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 wazuh-slack: active-response/wazuh-slack.o active-response/active_responses.o
-	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} ${AR_CFLAGS} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 
 ### libwazuhshared.so #########
@@ -2456,19 +2475,19 @@ win32/auth_resource.o: win32/agent-auth.rc
 	${OSSEC_WINDRES} -i $< -o $@
 
 win32/os_win32ui.exe: win32/ui_resource.o win32/win_service_rk.o ${win32_ui_o}
-	${OSSEC_CCBIN} -DARGV0=\"wazuh-win32ui\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -mwindows -o $@
+	${OSSEC_CCBIN} -DARGV0=\"wazuh-win32ui\" ${AR_CFLAGS} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -mwindows -o $@
 
 win32/agent-auth.exe: win32/auth_resource.o win32/win_service_rk.o os_auth/main-client.o os_auth/ssl.o os_auth/main-client.o os_auth/check_cert.o addagent/validate.o
-	${OSSEC_CCBIN} -DARGV0=\"agent-auth\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -lshlwapi -lwsock32 -lsecur32 -lws2_32 -flto -o $@
+	${OSSEC_CCBIN} -DARGV0=\"agent-auth\" -DOSSECHIDS ${AR_CFLAGS} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -lshlwapi -lwsock32 -lsecur32 -lws2_32 -flto -o $@
 
 win32/restart-wazuh.exe: ${WAZUH_LIB} ${WAZUHEXT_LIB} active-response/restart-wazuh.o active-response/active_responses.o
-	${OSSEC_CCBIN} -DARGV0=\"restart-wazuh\" ${AR_LDFLAGS} $^ -s -o $@
+	${OSSEC_CCBIN} -DARGV0=\"restart-wazuh\" ${AR_CFLAGS} ${AR_LDFLAGS} $^ -o $@
 
 win32/route-null.exe: ${WAZUH_LIB} ${WAZUHEXT_LIB} active-response/route-null.o active-response/active_responses.o
-	${OSSEC_CCBIN} -DARGV0=\"route-null\" ${AR_LDFLAGS} $^ -s -o $@
+	${OSSEC_CCBIN} -DARGV0=\"route-null\" ${AR_CFLAGS} ${AR_LDFLAGS} $^ -o $@
 
 win32/netsh.exe: ${WAZUH_LIB} ${WAZUHEXT_LIB} active-response/netsh.o active-response/active_responses.o
-	${OSSEC_CCBIN} -DARGV0=\"netsh\" ${AR_LDFLAGS} $^ -s -o $@
+	${OSSEC_CCBIN} -DARGV0=\"netsh\" ${AR_CFLAGS} ${AR_LDFLAGS} $^ -o $@
 
 ####################
 #### Clean #########
@@ -2570,7 +2589,7 @@ clean-internals: clean-unit-tests
 	rm -rf $(SYSINFO)build
 	rm -rf libwazuhext
 	rm -f libgcc_s.so.1
-	rm -rf symbols/*
+	rm -rf ${SYMBOLS_PATH}/*
 
 clean-unit-tests:
 	rm -f ${wrappers_syscheck_o}
