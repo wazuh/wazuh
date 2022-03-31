@@ -64,15 +64,15 @@ private:
     struct envBuilder
     {
         internals::types::Lifter m_lifter;
-        std::map<std::string, rxcpp::observable<std::string>> m_debugSinks;
+        std::map<std::string, rxcpp::observable<std::string>> m_traceSinks;
         internals::types::Lifter getLifter() const
         {
             return m_lifter;
         }
         std::map<std::string, rxcpp::observable<std::string>>
-        getDebugSinks() const
+        getTraceSinks() const
         {
-            return m_debugSinks;
+            return m_traceSinks;
         }
     };
 
@@ -209,7 +209,7 @@ public:
 
         // Debug sinks
         g->visit([&](auto node)
-                 { ret.m_debugSinks[node.m_name] = node.m_tracer.m_out; });
+                 { ret.m_traceSinks[node.m_name] = node.m_tracer.m_out; });
 
         // Lifter
         ret.m_lifter =

@@ -85,7 +85,7 @@ types::ConnectableT assetBuilderOutput(const types::Document & def)
     }
 
     // Create tracer
-    Tracer tr{name};
+    types::ConnectableT::Tracer tr{name};
 
     // Stage check
     try
