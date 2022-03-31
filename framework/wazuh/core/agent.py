@@ -190,6 +190,11 @@ class WazuhDBQueryGroup(WazuhDBQuery):
     def _add_select_to_query(self):
         pass
 
+    def _add_sort_to_query(self):
+        # Consider the option to sort by count
+        self.fields['count'] = 'count(id_group)'
+        super()._add_sort_to_query()
+
     def _add_search_to_query(self):
         super()._add_search_to_query()
         self.query = self.query.replace('WHERE  AND', 'WHERE')
