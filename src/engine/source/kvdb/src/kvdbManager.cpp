@@ -5,6 +5,8 @@
 #include <iostream>
 #include <set>
 #include <unordered_map>
+#include <exception>
+#include <filesystem>
 
 #include <fmt/format.h>
 #include <logging/logging.hpp>
@@ -14,15 +16,41 @@
 
 static KVDB invalidDB = KVDB();
 
-KVDBManager::KVDBManager()
+// TODO Change Function Helpers tests initialization too.
+KVDBManager* KVDBManager::mInstance = nullptr;
+bool KVDBManager::init(const std::string& DbFolder)
 {
+    if (mInstance) {
+        return false;
+    }
+    if (DbFolder.empty()) {
+        return false;
+    }
+    std::filesystem::create_directories(DbFolder); // TODO Remove this whe Engine is integrated in Wazuh installation
+    mInstance = new KVDBManager(DbFolder);
+    return true;
+}
+
+KVDBManager& KVDBManager::getInstance()
+{
+    if (!mInstance) {
+        throw std::logic_error("KVDBManager isn't initialized");
+    }
+    return *mInstance;
+}
+
+KVDBManager::KVDBManager(const std::string& DbFolder)
+{
+    mDbFolder = DbFolder;
+
     static const std::set<std::string> INTERNALFILES = {
         "legacy", "LOG", "LOG.old", "LOCK"};
-    for (const auto &dbFile : std::filesystem::directory_iterator(FOLDER))
+    for (const auto &dbFile : std::filesystem::directory_iterator(mDbFolder))
     {
         if (INTERNALFILES.find(dbFile.path().filename()) == INTERNALFILES.end())
         {
-            if (addDB(dbFile.path().stem(), FOLDER))
+            KVDB *DB = new KVDB(dbFile.path().stem(), mDbFolder);
+            if (DB && DB->getState() == KVDB::State::Open)
             {
                 if (m_availableKVDBs[dbFile.path().stem()]->getState() !=
                     KVDB::State::Open)
@@ -38,10 +66,10 @@ KVDBManager::KVDBManager()
         }
     }
 
-    if (std::filesystem::exists(FOLDER + "legacy"))
+    if (std::filesystem::exists(mDbFolder + "legacy"))
     {
         for (const auto &cdbfile :
-             std::filesystem::directory_iterator(FOLDER + "legacy"))
+             std::filesystem::directory_iterator(mDbFolder + "legacy"))
         { // Read it from the config file?
             if (cdbfile.is_regular_file())
             {
@@ -68,8 +96,8 @@ KVDB &KVDBManager::createDB(const std::string &name, bool overwrite)
     createOptions.create_if_missing = true;
     createOptions.error_if_exists = !overwrite;
 
-    rocksdb::DB *db;
-    rocksdb::Status s = rocksdb::DB::Open(createOptions, FOLDER + name, &db);
+    ROCKSDB::DB *db;
+    ROCKSDB::Status s = ROCKSDB::DB::Open(createOptions, mDbFolder + name, &db);
     if (!s.ok())
     {
         WAZUH_LOG_ERROR("couldn't open db file, error: [{}]", s.ToString());
@@ -84,7 +112,8 @@ KVDB &KVDBManager::createDB(const std::string &name, bool overwrite)
         return invalidDB;
     }
 
-    if (addDB(name, FOLDER))
+    KVDB *kvdb = new KVDB(name, mDbFolder);
+    if (!addDB(kvdb))
     {
         return getDB(name);
     }

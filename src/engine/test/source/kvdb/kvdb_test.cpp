@@ -35,6 +35,7 @@ class KVDBTest : public ::testing::Test
 {
 
 protected:
+    bool initialized = KVDBManager::init("/var/ossec/queue/db/kvdb/");
     KVDBManager &kvdbManager = KVDBManager::get();
 
     KVDBTest()
@@ -119,13 +120,13 @@ TEST_F(KVDBTest, ReadWrite)
     valueRead = kvdb.read(KEY);
     ASSERT_TRUE(valueRead.empty());
 
-    ret = kvdb.readPinned(KEY, valueRead); // Check this...
+    ret = kvdb.readPinned(KEY, valueRead);
     ASSERT_FALSE(ret);
     ASSERT_TRUE(valueRead.empty());
 }
 
 // Key-only write
-TEST_F(KVDBTest, Key_only_write)
+TEST_F(KVDBTest, KeyOnlyWrite)
 {
     // TODO Update FH tests too
     const std::string KEY = "dummy_key";
@@ -138,6 +139,9 @@ TEST_F(KVDBTest, Key_only_write)
     ASSERT_TRUE(ret);
     ret = kvdb.exist(KEY);
     ASSERT_TRUE(ret);
+
+    KVDBManager &kvdbManager1 = KVDBManager::getInstance();
+    KVDBManager &kvdbManager2 = KVDBManager::getInstance();
 }
 
 TEST_F(KVDBTest, ReadWriteColumn)
