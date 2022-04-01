@@ -1583,6 +1583,9 @@ void wm_ciscat_destroy(wm_ciscat *ciscat) {
         free(cur_eval);
     }
 
+    free(ciscat->java_path);
+    free(ciscat->ciscat_path);
+    free(ciscat->ciscat_binary);
     free(ciscat);
     #ifdef WIN32
     return 0;
