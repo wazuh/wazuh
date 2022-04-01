@@ -144,28 +144,60 @@ TEST_F(KVDBTest, ReadWriteColumn)
     ASSERT_EQ(valueRead, VALUE);
 }
 
-TEST_F(KVDBTest, Transactions)
+TEST_F(KVDBTest, Transaction_ok)
 {
-    std::vector<std::pair<std::string, std::string>> vPairs = {
+    std::vector<std::pair<std::string, std::string>> vInput = {
         {"key1", "value1"},
         {"key2", "value2"},
         {"key3", "value3"},
         {"key4", "value4"},
         {"key5", "value5"}};
-    std::string valueRead;
     bool ret;
 
     KVDB &kvdb = kvdbManager.getDB("TEST_DB");
-
-    ret = kvdb.writeToTransaction(vPairs);
+    ret = kvdb.writeToTransaction(vInput);
     ASSERT_TRUE(ret);
-
-    for (auto pair : vPairs)
+    for (auto pair : vInput)
     {
-        valueRead = kvdb.read(pair.first);
+        std::string valueRead = kvdb.read(pair.first);
         ASSERT_EQ(valueRead, pair.second);
     }
 }
+
+TEST_F(KVDBTest, Transaction_invalid_input)
+{
+    bool ret;
+    KVDB &kvdb = kvdbManager.getDB("TEST_DB");
+
+    // Empty input
+    std::vector<std::pair<std::string, std::string>> vEmptyInput = {};
+    ret = kvdb.writeToTransaction(vEmptyInput);
+    ASSERT_FALSE(ret);
+
+    // Invalid DB
+    std::vector<std::pair<std::string, std::string>> vInput = {{"key1", "value1"}};
+    KVDB &invalidKvdb = kvdbManager.getDB("INVALID_DB");
+    ret = invalidKvdb.writeToTransaction(vInput);
+    ASSERT_FALSE(ret);
+
+    // Invalid Column name
+    ret = kvdb.writeToTransaction(vInput, "InexistentColumn");
+    ASSERT_FALSE(ret);
+
+    // Partial input
+    std::vector<std::pair<std::string, std::string>> vPartialInput = {
+        {"", "value1"},
+        {"key2", "value2"}};
+    ret = kvdb.writeToTransaction(vPartialInput);
+    ASSERT_TRUE(ret);
+    std::string valueRead = kvdb.read(vPartialInput[1].first);
+    ASSERT_EQ(valueRead, vPartialInput[1].second);
+}
+
+// TODO Mock DB and create tests for:
+//  Txn start error
+//  Put error
+//  Commit error
 
 TEST_F(KVDBTest, CleanColumn)
 {
@@ -225,15 +257,6 @@ TEST_F(KVDBTest, ValueKeyLength)
     ASSERT_TRUE(ret);
     valueRead = kvdb.read(KEY);
     ASSERT_EQ(valueWrite, valueRead);
-}
-
-TEST_F(KVDBTest, concurrent_write)
-{
-    // TODO: how to test a concurrent acces to Rocksdb, it must
-    // * use kvdb methods
-    //   * not possible to use transactions without commit
-    // * block access to a DB while being used
-    // * allow concurrent access to different DBs within RockdDB
 }
 
 } // namespace
