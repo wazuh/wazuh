@@ -12,9 +12,6 @@
 
 #include "shared.h"
 
-int load_limits_file(void);
-void clean_limits_objects(void);
-cJSON * get_deamon_limits(const char *deamon_name);
-
+cJSON *load_limits_file(const char *deamon_name);
 
 #endif
