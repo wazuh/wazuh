@@ -35,7 +35,7 @@ class KVDBTest : public ::testing::Test
 {
 
 protected:
-    KVDBManager &kvdbManager = KVDBManager::getInstance();
+    KVDBManager &kvdbManager = KVDBManager::get();
 
     KVDBTest()
     { // = default;
@@ -57,18 +57,17 @@ protected:
 
     virtual void TearDown()
     {
-        kvdbManager.DeleteDB("TEST_DB");
+        kvdbManager.deleteDB("TEST_DB");
     }
 };
 
 TEST_F(KVDBTest, CreateDeleteKvdFile)
 {
-    kvdbManager.createDB("NEW_DB");
-    KVDB &newKvdb = kvdbManager.getDB("NEW_DB");
+    KVDB &newKvdb = kvdbManager.createDB("NEW_DB");
     ASSERT_EQ(newKvdb.getName(), "NEW_DB");
     ASSERT_EQ(newKvdb.getState(), KVDB::State::Open);
 
-    kvdbManager.DeleteDB("NEW_DB");
+    kvdbManager.deleteDB("NEW_DB");
     KVDB &deletedKvdb = kvdbManager.getDB("NEW_DB");
     ASSERT_EQ(deletedKvdb.getName(), "Invalid");
     ASSERT_EQ(deletedKvdb.getState(), KVDB::State::Invalid);
@@ -101,7 +100,7 @@ TEST_F(KVDBTest, ReadWrite)
     ret = kvdb.write(KEY, VALUE);
     ASSERT_TRUE(ret);
 
-    ret = kvdb.exist(KEY);
+    ret = kvdb.hasKey(KEY);
     ASSERT_TRUE(ret);
 
     valueRead = kvdb.read(KEY);
@@ -114,7 +113,7 @@ TEST_F(KVDBTest, ReadWrite)
     ret = kvdb.deleteKey(KEY);
     ASSERT_TRUE(ret);
 
-    ret = kvdb.exist(KEY);
+    ret = kvdb.hasKey(KEY);
     ASSERT_FALSE(ret);
 
     valueRead = kvdb.read(KEY);
