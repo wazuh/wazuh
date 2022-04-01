@@ -4,13 +4,22 @@
 #include <iostream>
 #include <unordered_map>
 
-#include <fmt/format.h>
 #include "rocksdb/db.h"
 #include "rocksdb/options.h"
 #include "rocksdb/slice.h"
 #include "rocksdb/utilities/transaction.h"
+#include <fmt/format.h>
 
 #include <logging/logging.hpp>
+
+static const struct Option
+{
+    rocksdb::ReadOptions read = rocksdb::ReadOptions();
+    rocksdb::WriteOptions write = rocksdb::WriteOptions();
+    rocksdb::DBOptions open = rocksdb::DBOptions();
+    rocksdb::ColumnFamilyOptions CF = rocksdb::ColumnFamilyOptions();
+    rocksdb::TransactionDBOptions TX = rocksdb::TransactionDBOptions();
+} kOptions;
 
 /**
  * @brief Construct a new KVDB::KVDB object
@@ -19,33 +28,36 @@
  * @param folder where the DB will be stored
  */
 KVDB::KVDB(const std::string &dbName, const std::string &folder)
+    : m_name(dbName)
+    , m_path(folder + dbName)
+    , m_db(nullptr)
+    , m_txndb(nullptr)
+    , m_state(State::Invalid)
 {
-    m_name = dbName;
-    m_path = folder + dbName;
-    m_db = nullptr;
-    m_txndb = nullptr;
-    m_state = State::Invalid;
-
-    ROCKSDB::Status s;
+    rocksdb::Status s;
     std::vector<std::string> CFNames;
-    std::vector<ROCKSDB::ColumnFamilyHandle *> CFHandles;
-    s = ROCKSDB::DB::ListColumnFamilies(m_options.open, m_path, &CFNames);
+    std::vector<rocksdb::ColumnFamilyHandle *> CFHandles;
+    s = rocksdb::DB::ListColumnFamilies(kOptions.open, m_path, &CFNames);
     if (s.ok())
     {
         for (auto CFName : CFNames)
         {
             CFDescriptors.push_back(
-                ROCKSDB::ColumnFamilyDescriptor(CFName, m_options.CF));
+                rocksdb::ColumnFamilyDescriptor(CFName, kOptions.CF));
         }
     }
     else
     {
-        CFDescriptors.push_back(ROCKSDB::ColumnFamilyDescriptor(
-            ROCKSDB_NAMESPACE::kDefaultColumnFamilyName, m_options.CF));
+        CFDescriptors.push_back(rocksdb::ColumnFamilyDescriptor(
+            DEFAULT_CF_NAME, kOptions.CF));
     }
 
-    ROCKSDB::Status st = ROCKSDB::TransactionDB::Open(
-        m_options.open, m_options.TX, m_path, CFDescriptors, &CFHandles, &m_txndb);
+    rocksdb::Status st = rocksdb::TransactionDB::Open(kOptions.open,
+                                                      kOptions.TX,
+                                                      m_path,
+                                                      CFDescriptors,
+                                                      &CFHandles,
+                                                      &m_txndb);
     if (st.ok())
     {
         m_db = m_txndb->GetBaseDB();
@@ -82,7 +94,7 @@ bool KVDB::close()
     bool ret = true;
     if (m_txndb)
     {
-        ROCKSDB::Status s;
+        rocksdb::Status s;
         for (auto item : m_CFHandlesMap)
         {
             s = m_db->DestroyColumnFamilyHandle(item.second);
@@ -118,9 +130,15 @@ bool KVDB::close()
 bool KVDB::destroy()
 {
     close();
-    ROCKSDB::Status s =
-        ROCKSDB::DestroyDB(m_path, ROCKSDB::Options(), CFDescriptors);
-    return s.ok();
+    rocksdb::Status s =
+        rocksdb::DestroyDB(m_path, rocksdb::Options(), CFDescriptors);
+    if (!s.ok())
+    {
+        WAZUH_LOG_ERROR("couldn't destroy db, error: [{}]", s.ToString());
+        m_state = State::Error;
+        return false;
+    }
+    return true;
 }
 
 /**
@@ -145,10 +163,10 @@ bool KVDB::write(const std::string &key,
 
     if (m_state == State::Open)
     {
-        ROCKSDB::Status s = m_db->Put(m_options.write,
+        rocksdb::Status s = m_db->Put(kOptions.write,
                                       cfh->second,
-                                      ROCKSDB::Slice(key),
-                                      ROCKSDB::Slice(value));
+                                      rocksdb::Slice(key),
+                                      rocksdb::Slice(value));
         if (!s.ok())
         {
             WAZUH_LOG_ERROR("couldn't insert value into CF, error: [{}]",
@@ -191,8 +209,8 @@ std::string KVDB::read(const std::string &key, const std::string &ColumnName)
     if (m_state == State::Open)
     {
         // Get CF handle
-        ROCKSDB::Status s =
-            m_db->Get(m_options.read, cfh->second, ROCKSDB::Slice(key), &value);
+        rocksdb::Status s =
+            m_db->Get(kOptions.read, cfh->second, rocksdb::Slice(key), &value);
         if (s.ok())
         {
             WAZUH_LOG_INFO("value obtained OK [{},{}] into CF name : [{}]",
@@ -233,8 +251,8 @@ bool KVDB::deleteKey(const std::string &key, const std::string &columnName)
 
     if (m_state == State::Open)
     {
-        ROCKSDB::Status s =
-            m_db->Delete(m_options.write, cfh->second, ROCKSDB::Slice(key));
+        rocksdb::Status s =
+            m_db->Delete(kOptions.write, cfh->second, rocksdb::Slice(key));
         if (s.ok())
         {
             WAZUH_LOG_INFO("key deleted OK [{}]", key);
@@ -272,13 +290,13 @@ bool KVDB::createColumn(const std::string &columnName)
 
     if (m_state == State::Open)
     {
-        ROCKSDB::ColumnFamilyHandle *handler;
-        ROCKSDB::Status s =
-            m_db->CreateColumnFamily(m_options.CF, columnName, &handler);
+        rocksdb::ColumnFamilyHandle *handler;
+        rocksdb::Status s =
+            m_db->CreateColumnFamily(kOptions.CF, columnName, &handler);
         if (s.ok())
         {
             CFDescriptors.push_back(
-                ROCKSDB::ColumnFamilyDescriptor(columnName, m_options.CF));
+                rocksdb::ColumnFamilyDescriptor(columnName, kOptions.CF));
             m_CFHandlesMap.insert({handler->GetName(), handler});
             return true;
         }
@@ -308,7 +326,7 @@ bool KVDB::deleteColumn(const std::string &columnName)
 
     if (m_state == State::Open)
     {
-        ROCKSDB::Status s = m_db->DropColumnFamily(cfh->second);
+        rocksdb::Status s = m_db->DropColumnFamily(cfh->second);
         if (s.ok())
         {
             m_CFHandlesMap.erase(cfh);
@@ -346,9 +364,9 @@ bool KVDB::deleteColumn(const std::string &columnName)
  */
 bool KVDB::cleanColumn(const std::string &columnName)
 {
-    if (columnName == ROCKSDB_NAMESPACE::kDefaultColumnFamilyName)
+    if (columnName == DEFAULT_CF_NAME)
     {
-        ROCKSDB::Iterator *iter = m_db->NewIterator(m_options.read);
+        rocksdb::Iterator *iter = m_db->NewIterator(kOptions.read);
         iter->SeekToFirst();
         while (iter->Valid())
         {
@@ -392,7 +410,7 @@ bool KVDB::writeToTransaction(
 
     if (m_state == State::Open)
     {
-        ROCKSDB::Transaction *txn = m_txndb->BeginTransaction(m_options.write);
+        rocksdb::Transaction *txn = m_txndb->BeginTransaction(kOptions.write);
         if (txn)
         {
             for (auto pair : pairsVector)
@@ -406,7 +424,7 @@ bool KVDB::writeToTransaction(
                     return false;
                 }
                 // Write a key in this transaction
-                ROCKSDB::Status s = txn->Put(cfh->second, key, value);
+                rocksdb::Status s = txn->Put(cfh->second, key, value);
                 if (s.ok())
                 {
                     continue;
@@ -419,7 +437,7 @@ bool KVDB::writeToTransaction(
                     return false;
                 }
             }
-            ROCKSDB::Status s = txn->Commit();
+            rocksdb::Status s = txn->Commit();
             if (s.ok())
             {
                 WAZUH_LOG_INFO("transaction commited OK");
@@ -454,7 +472,7 @@ bool KVDB::writeToTransaction(
  * @return true if key was found
  * @return false if key wasn't found
  */
-bool KVDB::exist(const std::string &key, const std::string &columnName)
+bool KVDB::hasKey(const std::string &key, const std::string &columnName)
 {
     // TODO: this should be done with a pinnable read
     std::string result = read(key, columnName);
@@ -486,9 +504,9 @@ bool KVDB::readPinned(const std::string &key,
 
     if (m_state == State::Open)
     {
-        ROCKSDB::PinnableSlice pinnable_val;
-        ROCKSDB::Status s = m_db->Get(
-            m_options.read, cfh->second, ROCKSDB::Slice(key), &pinnable_val);
+        rocksdb::PinnableSlice pinnable_val;
+        rocksdb::Status s = m_db->Get(
+            kOptions.read, cfh->second, rocksdb::Slice(key), &pinnable_val);
         if (s.ok())
         {
             value = pinnable_val.ToString();

@@ -2,13 +2,13 @@
 #define _KVDB_H
 
 #include <string>
-#include <vector>
 #include <unordered_map>
+#include <vector>
 
 #include "rocksdb/db.h"
 #include "rocksdb/utilities/transaction_db.h"
 
-namespace ROCKSDB = ROCKSDB_NAMESPACE;
+#define DEFAULT_CF_NAME "default"
 
 class KVDB
 {
@@ -19,7 +19,7 @@ public:
     void operator=(KVDB const &) = delete;
     ~KVDB();
 
-    std::string &getName()
+    const std::string &getName() const
     {
         return m_name;
     }
@@ -40,38 +40,33 @@ public:
 
     bool createColumn(const std::string &columnName);
 
-    bool deleteColumn(const std::string &columnName =
-                          ROCKSDB_NAMESPACE::kDefaultColumnFamilyName);
+    // TODO: all the default column names should be changed, one option is to
+    // define a KVDB default CF in order to avoid using a deleteColumn or
+    // cleanColumn without any argument
+    bool deleteColumn(const std::string &columnName = DEFAULT_CF_NAME);
 
-    bool cleanColumn(const std::string &columnName =
-                         ROCKSDB_NAMESPACE::kDefaultColumnFamilyName);
+    bool cleanColumn(const std::string &columnName = DEFAULT_CF_NAME);
 
     bool write(const std::string &key,
                const std::string &value,
-               const std::string &columnName =
-                   ROCKSDB_NAMESPACE::kDefaultColumnFamilyName);
+               const std::string &columnName = DEFAULT_CF_NAME);
 
     bool writeToTransaction(
         const std::vector<std::pair<std::string, std::string>> pairsVector,
-        const std::string &columnName =
-            ROCKSDB_NAMESPACE::kDefaultColumnFamilyName);
+        const std::string &columnName = DEFAULT_CF_NAME);
 
-    bool exist(const std::string &key,
-               const std::string &columnName =
-                   ROCKSDB_NAMESPACE::kDefaultColumnFamilyName);
+    bool hasKey(const std::string &key,
+                const std::string &columnName = DEFAULT_CF_NAME);
 
     std::string read(const std::string &key,
-                     const std::string &columnName =
-                         ROCKSDB_NAMESPACE::kDefaultColumnFamilyName);
+                     const std::string &columnName = DEFAULT_CF_NAME);
 
     bool readPinned(const std::string &key,
                     std::string &val,
-                    const std::string &columnName =
-                        ROCKSDB_NAMESPACE::kDefaultColumnFamilyName);
+                    const std::string &columnName = DEFAULT_CF_NAME);
 
     bool deleteKey(const std::string &key,
-                   const std::string &columnName =
-                       ROCKSDB_NAMESPACE::kDefaultColumnFamilyName);
+                   const std::string &columnName = DEFAULT_CF_NAME);
     bool close();
     bool destroy();
 
@@ -80,20 +75,11 @@ private:
     std::string m_path;
     State m_state = State::Invalid;
 
-    ROCKSDB::DB *m_db;
-    ROCKSDB::TransactionDB *m_txndb;
-
-    struct Option
-    {
-        ROCKSDB::ReadOptions read = ROCKSDB::ReadOptions();
-        ROCKSDB::WriteOptions write = ROCKSDB::WriteOptions();
-        ROCKSDB::DBOptions open = ROCKSDB::DBOptions();
-        ROCKSDB::ColumnFamilyOptions CF = ROCKSDB::ColumnFamilyOptions();
-        ROCKSDB::TransactionDBOptions TX = ROCKSDB::TransactionDBOptions();
-    } m_options;
-
-    std::vector<ROCKSDB::ColumnFamilyDescriptor> CFDescriptors;
-    using CFHMap = std::unordered_map<std::string, ROCKSDB::ColumnFamilyHandle *>;
+    rocksdb::DB *m_db;
+    rocksdb::TransactionDB *m_txndb;
+    std::vector<rocksdb::ColumnFamilyDescriptor> CFDescriptors;
+    using CFHMap =
+        std::unordered_map<std::string, rocksdb::ColumnFamilyHandle *>;
     CFHMap m_CFHandlesMap;
 };
 
