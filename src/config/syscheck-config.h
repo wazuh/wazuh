@@ -434,7 +434,7 @@ typedef struct _config {
     fdb_t *database;
     int database_store;
 
-    char *prefilter_cmd;
+    char **prefilter_cmd;
     int process_priority; // Adjusts the priority of the process (or threads in Windows)
     bool allow_remote_prefilter_cmd;
 } syscheck_config;
