@@ -51,6 +51,9 @@ public:
                const std::string &value,
                const std::string &columnName = DEFAULT_CF_NAME);
 
+    bool writeKeyOnly(const std::string &key,
+                      const std::string &columnName = DEFAULT_CF_NAME);
+
     bool writeToTransaction(
         const std::vector<std::pair<std::string, std::string>>& pairsVector,
         const std::string &columnName = DEFAULT_CF_NAME);
