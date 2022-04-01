@@ -72,6 +72,9 @@ static cJSON* local_create_agent_response(const char *id, const char *name, cons
 // Generates an agent deleted response
 static cJSON* local_create_agent_delete_response(void);
 
+// Update limits file response
+static cJSON* local_create_update_limits_response(void);
+
 // Generates an error json response
 static cJSON* local_create_error_response(int code, const char *message);
 
@@ -94,7 +97,7 @@ void* run_local_server(__attribute__((unused)) void *arg) {
         return NULL;
     }
 
-    unsigned int cicle_counter = 30;
+    unsigned int cicle_counter = 10;
 
     while (running) {
 
@@ -105,18 +108,8 @@ void* run_local_server(__attribute__((unused)) void *arg) {
         timeout.tv_usec = 0;
 
         if (!cicle_counter) {
-            if (load_limits_file() == OS_SUCCESS) {
-                cJSON * authd_limits = get_deamon_limits("authd");
-                if (authd_limits) {
-                    cJSON *max_agents = cJSON_GetObjectItem(authd_limits, "max_agents");
-                    if (!cJSON_IsNumber(max_agents)) {
-                        mdebug1("element 'max_agents' doesn't found");
-                        cJSON_Delete(max_agents);
-                    }
-                    mdebug1("------------> max_agents value: %d", max_agents->valueint);
-                }
-            }
-            cicle_counter = 30;
+            mdebug1("------------> max_agents value: %d", config.max_agents);
+            cicle_counter = 10;
         }
         cicle_counter--;
 
@@ -331,6 +324,26 @@ char* local_dispatch(const char *input) {
             }
 
             response = local_get(item->valuestring);
+        } else if (!strcmp(function->valuestring, "update_limits")) {
+
+            cJSON *authd_limits = load_limits_file("authd");
+            if (!authd_limits) {
+                ierror = EINTERNAL;
+                goto fail;
+            }
+
+            cJSON *max_agents = cJSON_GetObjectItem(authd_limits, "max_agents");
+            if (!max_agents || !cJSON_IsNumber(max_agents)) {
+                cJSON_Delete(max_agents);
+                ierror = ENOARGUMENT;
+                goto fail;
+            }
+
+            config.max_agents = max_agents->valueint;
+            cJSON_Delete(max_agents);
+            cJSON_Delete(authd_limits);
+
+            response = local_create_update_limits_response();
         }
 
         if (!response) {
@@ -535,6 +548,17 @@ static cJSON* local_create_agent_delete_response(void) {
     response = cJSON_CreateObject();
     cJSON_AddNumberToObject(response, "error", 0);
     cJSON_AddStringToObject(response, "data", "Agent deleted successfully.");
+
+    return response;
+}
+
+// Update limits file response
+static cJSON* local_create_update_limits_response(void) {
+    cJSON *response = NULL;
+
+    response = cJSON_CreateObject();
+    cJSON_AddNumberToObject(response, "error", 0);
+    cJSON_AddStringToObject(response, "data", "Authd limits.conf file updated.");
 
     return response;
 }

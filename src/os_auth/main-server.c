@@ -471,20 +471,14 @@ int main(int argc, char **argv)
         OS_ReadTimestamps(&keys);
     }
 
-    if (load_limits_file() == OS_SUCCESS) {
-        cJSON * authd_limits = get_deamon_limits("authd");
-        if (authd_limits) {
-            cJSON *max_agents = cJSON_GetObjectItem(authd_limits, "max_agents");
-            if (!cJSON_IsNumber(max_agents)) {
-                mdebug1("element 'max_agents' doesn't found");
-                cJSON_Delete(max_agents);
-            }
-            mdebug1("------------> max_agents value: %d", max_agents->valueint);
 
-            load_limits_file();
-
-            mdebug1("------------> max_agents value: %d", max_agents->valueint);
+    cJSON * authd_limits = load_limits_file("authd");
+    if (authd_limits) {
+        cJSON *max_agents = cJSON_GetObjectItem(authd_limits, "max_agents");
+        if (cJSON_IsNumber(max_agents)) {
+            config.max_agents = max_agents->valueint;
         }
+        cJSON_Delete(max_agents);
     }
 
 
