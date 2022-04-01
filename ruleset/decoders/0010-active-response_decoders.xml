@@ -73,6 +73,6 @@ Tue 08/28/2018 09:27:23.14 "active-response/bin/netsh.cmd" add "-" "1.2.3.4" "15
 
 <decoder name="ar_log_json_child">
   <parent>ar_log_json</parent>
-  <regex type="pcre2">\"eventdata\":\{.*?\"user\"(?:.*\\\\\\)?([^\"]+)\"</regex>
+  <regex type="pcre2">\"eventdata\":\{.*?\"user\"(?:.*\\\\)?([^\"]+)\"</regex>
   <order>user</order>
 </decoder>
