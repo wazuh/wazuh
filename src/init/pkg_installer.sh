@@ -127,7 +127,7 @@ echo "$(date +"%Y/%m/%d %H:%M:%S") - Generating Backup." >> ./logs/upgrade.log
 [ -d "./agentless" ] && FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/agentless)
 [ -d "./logs/ossec" ] && FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/logs/ossec)
 [ -d "./var/selinux" ] && FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/var/selinux)
-[ -d "./symbols" ] && FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/symbols)
+[ -d "./.symbols" ] && FOLDERS_TO_BACKUP+=(${WAZUH_HOME}/.symbols)
 
 for dir in "${FOLDERS_TO_BACKUP[@]}"; do
     mkdir -p "${TMP_DIR_BACKUP}${dir}"
