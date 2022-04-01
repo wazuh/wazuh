@@ -374,15 +374,15 @@ bool KVDB::cleanColumn(const std::string &columnName)
 }
 
 /**
- * @brief write vector of pair key values to DB in a pessimisitc transaction
+ * @brief write vector of pair key values to DB in a pessimistic transaction
  * manner.
  * @param pairsVector input data of string pairs
- * @param columnName where the data will be writen to
- * @return true when written and commited wiithout any problem
- * @return false when one or more items wheren't succesfully writen.
+ * @param columnName where the data will be written to
+ * @return true when written and commited without any problem
+ * @return false when one or more items weren't succesfully written.
  */
 bool KVDB::writeToTransaction(
-    const std::vector<std::pair<std::string, std::string>> pairsVector,
+    const std::vector<std::pair<std::string, std::string>>& pairsVector,
     const std::string &columnName)
 {
     if (m_state != State::Open)
@@ -394,54 +394,60 @@ bool KVDB::writeToTransaction(
     if (!pairsVector.size())
     {
         WAZUH_LOG_ERROR(
-            "couldn't write transaction to DB, nedd at least 1 element");
+            "Couldn't write transaction to DB, need at least 1 element");
+        return false;
+    }
+
+    if (m_state != State::Open)
+    {
+        WAZUH_LOG_ERROR("DB should be open for execution");
         return false;
     }
 
     CFHMap::const_iterator cfh = m_CFHandlesMap.find(columnName);
     if (cfh == m_CFHandlesMap.end())
     {
-        WAZUH_LOG_ERROR("couldn't write transaction to DB unknown column name");
+        WAZUH_LOG_ERROR("Couldn't write transaction to DB unknown column name");
         return false;
     }
 
-    rocksdb::Transaction *txn = m_txndb->BeginTransaction(kOptions.write);
+    ROCKSDB::Transaction *txn = m_txndb->BeginTransaction(m_options.write);
     if (!txn)
     {
-        WAZUH_LOG_ERROR("couldn't begin in transaction");
+        WAZUH_LOG_ERROR("Couldn't begin in transaction");
         return false;
     }
 
-    for (auto & [key, value] : pairsVector)
+    bool txnOk = true;
+    for (auto pair : pairsVector)
     {
+        std::string const key = pair.first;
+        std::string const value = pair.second;
         if (key.empty())
         {
-            WAZUH_LOG_ERROR("can't write to a Transaction to a family "
-                            "column with no key.");
-            return false;
+            WAZUH_LOG_ERROR("Discarding tuple because key is empty: [{}:{}]",
+                            key, value);
+            continue;
         }
-        // Write a key in this transaction
-        rocksdb::Status s = txn->Put(cfh->second, key, value);
+        // Write a key-value in this transaction
+        ROCKSDB::Status s = txn->Put(cfh->second, key, value);
         if (!s.ok())
         {
-            WAZUH_LOG_ERROR("couldn't execute Put in transaction "
-                            "-breaking loop-, error: [{}]",
+            txnOk = false;
+            WAZUH_LOG_ERROR("Couldn't execute Put in transaction, error: [{}]",
                             s.ToString());
-            return false;
         }
     }
-
-    rocksdb::Status s = txn->Commit();
-    delete txn;
+    ROCKSDB::Status s = txn->Commit();
     if (!s.ok())
     {
+        txnOk = false;
         WAZUH_LOG_ERROR("couldn't commit in transaction, error: [{}]",
                         s.ToString());
-        return false;
     }
 
-    WAZUH_LOG_DEBUG("transaction commited OK");
-    return true;
+    delete txn;
+    return txnOk;
 }
 
 /**
