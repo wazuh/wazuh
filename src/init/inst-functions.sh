@@ -1156,6 +1156,13 @@ InstallAgent()
 
     ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/azure
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/azure/azure-logs.py ${INSTALLDIR}/wodles/azure/azure-logs
+
+    # Install debugging symbols if available
+    if [ ${NUNAME} = 'Darwin' ]; then
+      cp .symbols/* ${INSTALLDIR}/.symbols/
+      chown -R 0:0 ${INSTALLDIR}/.symbols
+      chmod -R 750 ${INSTALLDIR}/.symbols
+    fi
 }
 
 InstallWazuh()
