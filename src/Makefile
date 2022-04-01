@@ -113,6 +113,7 @@ endif
 
 ifeq (${TARGET},winagent)
 CMAKE_OPTS=-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=${MING_BASE}${CC} -DCMAKE_CXX_COMPILER=${MING_BASE}${CXX}
+WIN_RESOURCE_OBJ=-DRESOURCE_OBJ=win32/version-dll.o
 WIN_CMAKE_RULES+=win32/sysinfo
 WIN_CMAKE_RULES+=win32/shared_modules
 ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
@@ -633,6 +634,7 @@ help: failtarget
 	@echo "   make DEBUG=yes                   Build with symbols and without optimization. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make DEBUGAD=yes                 Enables extra debugging logging in wazuh-analysisd. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make INSTALLDIR=/path            Wazuh's installation path. Mandatory when compiling the python interpreter from sources using PYTHON_SOURCE."
+	@echo "   make BUILD_VERSION=version       Windows detailed build version. If ommited, VERSION file content will be used."
 	@echo "   make ONEWAY=yes                  Disables manager's ACK towards agent. It allows connecting agents without backward connection from manager. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make CLEANFULL=yes               Makes the alert mailing subject clear in the format: '<location> - <level> - <description>'. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make RESOURCES_URL               Set the Wazuh resources URL"
@@ -677,6 +679,7 @@ settings:
 	@echo "    DEBUG:                   ${DEBUG}"
 	@echo "    DEBUGAD                  ${DEBUGAD}"
 	@echo "    INSTALLDIR:              ${INSTALLDIR}"
+	@echo "    BUILD_VERSION            ${BUILD_VERSION}"
 	@echo "    DATABASE:                ${DATABASE}"
 	@echo "    ONEWAY:                  ${ONEWAY}"
 	@echo "    CLEANFULL:               ${CLEANFULL}"
@@ -854,9 +857,9 @@ winagent: external win32/libwinpthread-1.dll win32/libgcc_s_sjlj-1.dll
 	cd win32/ && ./unix2dos.pl ../REVISION > REVISION
 	cd win32/ && makensis wazuh-installer.nsi
 
-win32/shared_modules: $(WAZUHEXT_LIB)
-	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
-	cd ${RSYNC} &&  mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${RSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
+win32/shared_modules: $(WAZUHEXT_LIB) win32/version-dll.o
+	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
+	cd ${RSYNC} &&  mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${RSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 ifneq (,$(filter ${DEBUG},YES yes y Y 1))
 	cd ${SHARED_UTILS_TEST} &&  mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
@@ -865,12 +868,12 @@ endif
 
 #### Sysinfo ##
 
-win32/sysinfo: $(WAZUHEXT_LIB)
-	cd ${SYSINFO} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSINFO_OS} ${SYSINFO_TEST} ${SYSINFO_RELEASE_TYPE} .. && ${MAKE}
+win32/sysinfo: $(WAZUHEXT_LIB) win32/version-dll.o
+	cd ${SYSINFO} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSINFO_OS} ${SYSINFO_TEST} ${SYSINFO_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
 
 #### Syscollector ##
-win32/syscollector: win32/shared_modules win32/sysinfo
-	cd ${SYSCOLLECTOR} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSCOLLECTOR_TEST} ${SYSCOLLECTOR_RELEASE_TYPE} .. && ${MAKE}
+win32/syscollector: win32/shared_modules win32/sysinfo win32/version-dll.o
+	cd ${SYSCOLLECTOR} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSCOLLECTOR_TEST} ${SYSCOLLECTOR_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
 
 win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 	cp $< $@
@@ -1771,7 +1774,7 @@ $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) $(WAZUH_SHFLAGS) -o $@ -Wl,-all_load $^ -Wl,-noall_load $(OSSEC_LIBS)
 else
 ifeq (${TARGET}, winagent)
-$(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
+$(WAZUHEXT_LIB): $(EXTERNAL_LIBS) win32/version-dll.o
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -static-libgcc -Wl,--export-all-symbols -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
 else
 ifeq (${uname_S},SunOS)
@@ -1999,7 +2002,7 @@ $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) $(WAZUH_SHARED_SHFLAGS) -o $@ -Wl,-all_load $^ -Wl,-noall_load $(OSSEC_LIBS)
 else
 ifeq (${TARGET}, winagent)
-$(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
+$(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS) win32/version-dll.o
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -UOSSECHIDS -o $@ -static-libgcc -Wl,--export-all-symbols -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
 else
 ifeq (${uname_S},SunOS)
@@ -2432,6 +2435,19 @@ test-rules:
 #### windows #######
 ####################
 
+ifneq (,${BUILD_VERSION})
+WIN_BUILD_VERSION=-DVER_PRODUCTVERSION_STR=${BUILD_VERSION}
+endif
+ifneq (,$(filter ${DISABLE_STRIP_SYMBOLS},YES yes y Y 1))
+WIN_BUILD_TYPE=-DVER_FILEFLAGS=VS_FF_DEBUG
+endif
+
+win32/version-dll.o: win32/version.rc
+	${OSSEC_WINDRES} ${WIN_BUILD_VERSION} ${WIN_BUILD_TYPE} -DVER_TYPE=VFT_DLL -i $< -o $@
+
+win32/version-app.o: win32/version.rc
+	${OSSEC_WINDRES} ${WIN_BUILD_VERSION} ${WIN_BUILD_TYPE} -DVER_TYPE=VFT_APP -i $< -o $@
+
 win32/icon.o: win32/icofile.rc
 	${OSSEC_WINDRES} -i $< -o $@
 
@@ -2450,22 +2466,22 @@ win32_ui_o := $(win32_ui_c:.c=.o)
 win32/ui/%.o: win32/ui/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -UOSSECHIDS -DARGV0=\"wazuh-win32ui\" -c $^ -o $@
 
-win32/wazuh-agent.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o ${syscheck_o} ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) ${os_execd_o} active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o
+win32/wazuh-agent.exe: win32/version-app.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o ${syscheck_o} ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) ${os_execd_o} active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o
 	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-win32/wazuh-agent-eventchannel.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o $(filter-out syscheckd/main-event.o, ${syscheck_eventchannel_o}) ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) ${os_execd_o} active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o
+win32/wazuh-agent-eventchannel.exe: win32/version-app.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o $(filter-out syscheckd/main-event.o, ${syscheck_eventchannel_o}) ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) ${os_execd_o} active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o
 	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-win32/manage_agents.exe: win32/win_service_rk.o ${addagent_o}
+win32/manage_agents.exe: win32/version-app.o win32/win_service_rk.o ${addagent_o}
 	${OSSEC_CCBIN} -DARGV0=\"manage-agents\" -DMA ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-win32/setup-windows.exe: win32/win_service_rk.o win32/setup-win.o win32/setup-shared.o
+win32/setup-windows.exe: win32/version-app.o win32/win_service_rk.o win32/setup-win.o win32/setup-shared.o
 	${OSSEC_CCBIN} -DARGV0=\"setup-windows\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-win32/setup-syscheck.exe: win32/setup-syscheck.o win32/setup-shared.o
+win32/setup-syscheck.exe: win32/version-app.o win32/setup-syscheck.o win32/setup-shared.o
 	${OSSEC_CCBIN} -DARGV0=\"setup-syscheck\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-win32/setup-iis.exe: win32/setup-iis.o
+win32/setup-iis.exe: win32/version-app.o win32/setup-iis.o
 	${OSSEC_CCBIN} -DARGV0=\"setup-iis\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 win32/ui_resource.o: win32/ui/win32ui.rc
@@ -2474,19 +2490,19 @@ win32/ui_resource.o: win32/ui/win32ui.rc
 win32/auth_resource.o: win32/agent-auth.rc
 	${OSSEC_WINDRES} -i $< -o $@
 
-win32/os_win32ui.exe: win32/ui_resource.o win32/win_service_rk.o ${win32_ui_o}
+win32/os_win32ui.exe: win32/ui_resource.o win32/win_service_rk.o ${win32_ui_o} win32/version-app.o
 	${OSSEC_CCBIN} -DARGV0=\"wazuh-win32ui\" ${AR_CFLAGS} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -mwindows -o $@
 
-win32/agent-auth.exe: win32/auth_resource.o win32/win_service_rk.o os_auth/main-client.o os_auth/ssl.o os_auth/main-client.o os_auth/check_cert.o addagent/validate.o
+win32/agent-auth.exe: win32/auth_resource.o win32/win_service_rk.o os_auth/main-client.o os_auth/ssl.o os_auth/main-client.o os_auth/check_cert.o addagent/validate.o win32/version-app.o
 	${OSSEC_CCBIN} -DARGV0=\"agent-auth\" -DOSSECHIDS ${AR_CFLAGS} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -lshlwapi -lwsock32 -lsecur32 -lws2_32 -flto -o $@
 
-win32/restart-wazuh.exe: ${WAZUH_LIB} ${WAZUHEXT_LIB} active-response/restart-wazuh.o active-response/active_responses.o
+win32/restart-wazuh.exe: ${WAZUH_LIB} ${WAZUHEXT_LIB} active-response/restart-wazuh.o active-response/active_responses.o win32/version-app.o
 	${OSSEC_CCBIN} -DARGV0=\"restart-wazuh\" ${AR_CFLAGS} ${AR_LDFLAGS} $^ -o $@
 
-win32/route-null.exe: ${WAZUH_LIB} ${WAZUHEXT_LIB} active-response/route-null.o active-response/active_responses.o
+win32/route-null.exe: ${WAZUH_LIB} ${WAZUHEXT_LIB} active-response/route-null.o active-response/active_responses.o win32/version-app.o
 	${OSSEC_CCBIN} -DARGV0=\"route-null\" ${AR_CFLAGS} ${AR_LDFLAGS} $^ -o $@
 
-win32/netsh.exe: ${WAZUH_LIB} ${WAZUHEXT_LIB} active-response/netsh.o active-response/active_responses.o
+win32/netsh.exe: ${WAZUH_LIB} ${WAZUHEXT_LIB} active-response/netsh.o active-response/active_responses.o win32/version-app.o
 	${OSSEC_CCBIN} -DARGV0=\"netsh\" ${AR_CFLAGS} ${AR_LDFLAGS} $^ -o $@
 
 ####################
@@ -2660,6 +2676,7 @@ clean-windows:
 	rm -f ${WINDOWS_BINS}
 	rm -f win32/wazuh-agent-*.exe
 	rm -f win32/libwinpthread-1.dll
+	rm -f win32/version-*.o
 	rm -f win32/VERSION
 	rm -f win32/REVISION
 
