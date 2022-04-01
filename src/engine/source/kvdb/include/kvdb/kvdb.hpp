@@ -52,7 +52,7 @@ public:
                const std::string &columnName = DEFAULT_CF_NAME);
 
     bool writeToTransaction(
-        const std::vector<std::pair<std::string, std::string>> pairsVector,
+        const std::vector<std::pair<std::string, std::string>>& pairsVector,
         const std::string &columnName = DEFAULT_CF_NAME);
 
     bool hasKey(const std::string &key,
