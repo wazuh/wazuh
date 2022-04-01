@@ -124,6 +124,22 @@ TEST_F(KVDBTest, ReadWrite)
     ASSERT_TRUE(valueRead.empty());
 }
 
+// Key-only write
+TEST_F(KVDBTest, Key_only_write)
+{
+    // TODO Update FH tests too
+    const std::string KEY = "dummy_key";
+    bool ret;
+    KVDB &kvdb = kvdbManager.getDB("TEST_DB");
+
+    ret = kvdb.exist(KEY);
+    ASSERT_FALSE(ret);
+    ret = kvdb.writeKeyOnly(KEY);
+    ASSERT_TRUE(ret);
+    ret = kvdb.exist(KEY);
+    ASSERT_TRUE(ret);
+}
+
 TEST_F(KVDBTest, ReadWriteColumn)
 {
     const std::string COLUMN_NAME = "NEW_COLUMN";
