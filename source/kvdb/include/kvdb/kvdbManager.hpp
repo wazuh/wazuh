@@ -11,25 +11,26 @@ class KVDBManager
 {
     KVDBManager();
     ~KVDBManager();
+    // TODO: this will be moved to an init method and folder path will be
+    // modifiable
     const std::string FOLDER = "/var/ossec/queue/db/kvdb/";
-    using DBMap = std::unordered_map<std::string, KVDB *>;
-    DBMap available_kvdbs;
-    bool addDB(KVDB *DB);
-    KVDB invalidDB = KVDB(); // TODO: Make this static?
+    using DBMap = std::unordered_map<std::string, std::unique_ptr<KVDB>>;
+    DBMap m_availableKVDBs;
+    bool addDB(std::string name, std::string folder);
 
 public:
-    static KVDBManager &getInstance()
+    static KVDBManager &get()
     {
         static KVDBManager instance;
         return instance;
     }
     KVDBManager(KVDBManager const &) = delete;
     void operator=(KVDBManager const &) = delete;
-    bool createDB(const std::string &Name, bool replace = true);
+    KVDB &createDB(const std::string &Name, bool overwrite = true);
     bool createDBfromCDB(const std::filesystem::path &path,
-                         bool replace = true);
-    bool DeleteDB(const std::string &name);
-    KVDB &getDB(const std::string &Name);
+                         bool overwrite = true);
+    bool deleteDB(const std::string &name);
+    KVDB &getDB(const std::string &name);
 };
 
 #endif // _KVDBMANAGER_H
