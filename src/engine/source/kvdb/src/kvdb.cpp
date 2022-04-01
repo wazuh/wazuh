@@ -141,11 +141,25 @@ bool KVDB::destroy()
 }
 
 /**
- * @brief write a value from to a key inside a CF without value copying
+ * @brief write a key into the DB
  *
- * @param key where to write the value
- * @param value the value that will be writen
- * @param columnName where to write the key
+ * @param key the key that will be written
+ * @param columnName column where to write the key-value
+ * @return true If the proccess finished successfully
+ * @return false If the proccess didn't finished successfully
+ */
+bool KVDB::writeKeyOnly(const std::string &key,
+                        const std::string &columnName)
+{
+    return write(key, "", columnName);
+}
+
+/**
+ * @brief write a key-value into the DB
+ *
+ * @param key the key that will be written
+ * @param value the value that will be written
+ * @param columnName column where to write the key-value
  * @return true If the proccess finished successfully
  * @return false If the proccess didn't finished successfully
  */
@@ -206,7 +220,7 @@ std::string KVDB::read(const std::string &key, const std::string &ColumnName)
     CFHMap::const_iterator cfh = m_CFHandlesMap.find(ColumnName);
     if (cfh == m_CFHandlesMap.end())
     {
-        WAZUH_LOG_ERROR("couldn't read DB unknown column name");
+        WAZUH_LOG_ERROR("Couldn't read DB unknown column name");
         return result;
     }
 
@@ -215,7 +229,7 @@ std::string KVDB::read(const std::string &key, const std::string &ColumnName)
         m_db->Get(kOptions.read, cfh->second, rocksdb::Slice(key), &value);
     if (s.ok())
     {
-        WAZUH_LOG_DEBUG("value obtained OK [{},{}] into CF name : [{}]",
+        WAZUH_LOG_DEBUG("Value obtained OK [{},{}] into CF name : [{}]",
                         key,
                         value,
                         ColumnName);
@@ -223,7 +237,7 @@ std::string KVDB::read(const std::string &key, const std::string &ColumnName)
     }
     else
     {
-        WAZUH_LOG_ERROR("couldn't read value from CF, error: ",
+        WAZUH_LOG_ERROR("Couldn't read value, error: ",
                         s.ToString());
         result.clear();
     }
@@ -460,10 +474,19 @@ bool KVDB::writeToTransaction(
  */
 bool KVDB::hasKey(const std::string &key, const std::string &columnName)
 {
-    //TODO: this should be done with a pinnable read
-    //TODO: We are returning False if we inserted a KEY VALUE like: "KEY",""
-    std::string result = read(key, columnName);
-    return !result.empty();
+    CFHMap::const_iterator cfh = m_CFHandlesMap.find(columnName);
+    if (cfh == m_CFHandlesMap.end())
+    {
+        WAZUH_LOG_ERROR("couldn't read DB unknown column name");
+        return false;
+    }
+
+    if (m_state != State::Open)
+    {
+        WAZUH_LOG_ERROR("DB should be open for execution");
+    }
+    std::string value;
+    return m_db->KeyMayExist(m_options.read, cfh->second, ROCKSDB::Slice(key), &value);
 }
 
 /**
