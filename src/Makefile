@@ -1113,7 +1113,7 @@ $(EXTERNAL_CURL)Makefile:
 else
 ifeq (${uname_S},Darwin)
 $(EXTERNAL_CURL)Makefile:
-	cd $(EXTERNAL_CURL) && ${LIBCURL_CFLAGS} ./configure ${LIBCURL_COMMON_CONFIGURE_FLAGS} --with-darwinssl
+	cd $(EXTERNAL_CURL) && ${LIBCURL_CFLAGS} ./configure ${LIBCURL_COMMON_CONFIGURE_FLAGS} --with-darwinssl --without-nghttp2 --without-rtmp
 else
 $(EXTERNAL_CURL)Makefile: $(OPENSSL_LIB)
 ifeq (${uname_S},Linux)
