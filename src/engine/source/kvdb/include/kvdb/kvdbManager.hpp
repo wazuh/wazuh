@@ -16,7 +16,7 @@ class KVDBManager
     const std::string FOLDER = "/var/ossec/queue/db/kvdb/";
     using DBMap = std::unordered_map<std::string, std::unique_ptr<KVDB>>;
     DBMap m_availableKVDBs;
-    bool addDB(std::string name, std::string folder);
+    bool addDB(const std::string &name,const std::string &folder);
 
 public:
     static KVDBManager &get()
