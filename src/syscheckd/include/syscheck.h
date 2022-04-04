@@ -112,6 +112,10 @@ typedef struct fim_txn_context_s {
 /* Flags to know if a directory/file's watcher has been removed */
 #define FIM_RT_HANDLE_CLOSED 0
 #define FIM_RT_HANDLE_OPEN 1
+
+/* Default value type for cases where type is undefined.
+   0x0000000C is the one after the last defined type, REG_QWORD (0x0000000B) */
+#define REG_UNKNOWN 0x0000000C
 #endif
 
 /* Win32 does not have lstat */

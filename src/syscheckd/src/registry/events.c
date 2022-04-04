@@ -28,6 +28,7 @@ static const char *VALUE_TYPE[] = {
     [REG_FULL_RESOURCE_DESCRIPTOR] = "REG_FULL_RESOURCE_DESCRIPTOR",
     [REG_RESOURCE_REQUIREMENTS_LIST] = "REG_RESOURCE_REQUIREMENTS_LIST",
     [REG_QWORD] = "REG_QWORD",
+    [REG_UNKNOWN] = "REG_UNKNOWN"
 };
 
 
@@ -171,7 +172,7 @@ cJSON *fim_registry_value_attributes_json(const cJSON* dbsync_event, const fim_r
     cJSON_AddStringToObject(attributes, "type", "registry_value");
 
     if (data) {
-        if (configuration->opts & CHECK_TYPE && data->type <= REG_QWORD) {
+        if (configuration->opts & CHECK_TYPE) {
             cJSON_AddStringToObject(attributes, "value_type", VALUE_TYPE[data->type]);
         }
 

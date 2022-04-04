@@ -860,7 +860,7 @@ void fim_read_values(HKEY key_handle,
         }
 
         new.registry_entry.value->name = value_buffer;
-        new.registry_entry.value->type = data_type;
+        new.registry_entry.value->type = data_type <= REG_QWORD ? data_type : REG_UNKNOWN;
         new.registry_entry.value->size = data_size;
         new.registry_entry.value->last_event = time(NULL);
         new.registry_entry.value->scanned = 0;
