@@ -64,7 +64,9 @@ protected:
 
 TEST_F(KVDBTest, CreateDeleteKvdFile)
 {
-    KVDB &newKvdb = kvdbManager.createDB("NEW_DB");
+    bool ret = kvdbManager.createDB("NEW_DB");
+    ASSERT_TRUE(ret);
+    KVDB &newKvdb = kvdbManager.getDB("NEW_DB");
     ASSERT_EQ(newKvdb.getName(), "NEW_DB");
     ASSERT_EQ(newKvdb.getState(), KVDB::State::Open);
 
@@ -133,15 +135,12 @@ TEST_F(KVDBTest, KeyOnlyWrite)
     bool ret;
     KVDB &kvdb = kvdbManager.getDB("TEST_DB");
 
-    ret = kvdb.exist(KEY);
+    ret = kvdb.hasKey(KEY);
     ASSERT_FALSE(ret);
     ret = kvdb.writeKeyOnly(KEY);
     ASSERT_TRUE(ret);
-    ret = kvdb.exist(KEY);
+    ret = kvdb.hasKey(KEY);
     ASSERT_TRUE(ret);
-
-    KVDBManager &kvdbManager1 = KVDBManager::getInstance();
-    KVDBManager &kvdbManager2 = KVDBManager::getInstance();
 }
 
 TEST_F(KVDBTest, ReadWriteColumn)
