@@ -145,7 +145,7 @@ def get_script_arguments():
 
 
 def main():
-    """TODO"""
+    """Main function of the wazuh_clusterd script in charge of starting the cluster process."""
     import wazuh.core.cluster.cluster
 
     # Set correct permissions on cluster.log file
