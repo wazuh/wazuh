@@ -31,7 +31,7 @@ bool KVDBManager::init(const std::string& DbFolder)
     return true;
 }
 
-KVDBManager& KVDBManager::getInstance()
+KVDBManager& KVDBManager::get()
 {
     if (!mInstance) {
         throw std::logic_error("KVDBManager isn't initialized");
@@ -49,19 +49,9 @@ KVDBManager::KVDBManager(const std::string& DbFolder)
     {
         if (INTERNALFILES.find(dbFile.path().filename()) == INTERNALFILES.end())
         {
-            KVDB *DB = new KVDB(dbFile.path().stem(), mDbFolder);
-            if (DB && DB->getState() == KVDB::State::Open)
+            if (!addDB(dbFile.path().stem(), mDbFolder))
             {
-                if (m_availableKVDBs[dbFile.path().stem()]->getState() !=
-                    KVDB::State::Open)
-                {
-                    WAZUH_LOG_ERROR("DB not opened");
-                }
-            }
-            else
-            {
-                // log error coudn't addDB
-                WAZUH_LOG_ERROR("couldn't add db, error: [{}]");
+                WAZUH_LOG_DEBUG("Couldn't add new DB: [{}]", dbFile.path().stem().c_str());
             }
         }
     }
@@ -88,7 +78,7 @@ KVDBManager::~KVDBManager()
     m_availableKVDBs.clear();
 }
 
-KVDB &KVDBManager::createDB(const std::string &name, bool overwrite)
+bool KVDBManager::createDB(const std::string &name, bool overwrite)
 {
     rocksdb::Options createOptions;
     createOptions.IncreaseParallelism();
@@ -96,12 +86,12 @@ KVDB &KVDBManager::createDB(const std::string &name, bool overwrite)
     createOptions.create_if_missing = true;
     createOptions.error_if_exists = !overwrite;
 
-    ROCKSDB::DB *db;
-    ROCKSDB::Status s = ROCKSDB::DB::Open(createOptions, mDbFolder + name, &db);
+    rocksdb::DB *db;
+    rocksdb::Status s = rocksdb::DB::Open(createOptions, mDbFolder + name, &db);
     if (!s.ok())
     {
         WAZUH_LOG_ERROR("couldn't open db file, error: [{}]", s.ToString());
-        return invalidDB;
+        return false;
     }
     s = db->Close(); // TODO: We can avoid this unnecessary close making a more
                      // complex KVDB constructor that creates DBs
@@ -109,15 +99,10 @@ KVDB &KVDBManager::createDB(const std::string &name, bool overwrite)
     if (!s.ok())
     {
         WAZUH_LOG_ERROR("couldn't close db file, error: [{}]", s.ToString());
-        return invalidDB;
+        return false;
     }
 
-    KVDB *kvdb = new KVDB(name, mDbFolder);
-    if (!addDB(kvdb))
-    {
-        return getDB(name);
-    }
-    return invalidDB;
+    return addDB(name, mDbFolder);
 }
 
 bool KVDBManager::createDBfromCDB(const std::filesystem::path &path,
@@ -126,19 +111,19 @@ bool KVDBManager::createDBfromCDB(const std::filesystem::path &path,
     std::ifstream CDBfile(path);
     if (!CDBfile.is_open())
     {
-        WAZUH_LOG_ERROR("Can't open CDB file");
+        //_ERROR("Can't open CDB file");
         return false;
     }
 
-    KVDB &kvdb = createDB(path.stem(), overwrite);
-    if (kvdb.getName().empty())
+    if (!createDB(path.stem(), overwrite))
     {
-        WAZUH_LOG_ERROR("Couldn't create DB from CDB");
+        WAZUH_LOG_ERROR("Couldn't create DB [{}]", path.stem().c_str());
         return false;
     }
+    KVDB &kvdb = getDB(path.stem());
     if (kvdb.getState() != KVDB::State::Open)
     {
-        WAZUH_LOG_ERROR("DB Creted from CDB is not open");
+        WAZUH_LOG_ERROR("Created DB [{}] is not open", path.stem().c_str());
         return false;
     }
 
@@ -163,7 +148,7 @@ bool KVDBManager::deleteDB(const std::string &name)
     auto it = m_availableKVDBs.find(name);
     if (it == m_availableKVDBs.end())
     {
-        WAZUH_LOG_ERROR("Database [{}] isn´t handled by KVDB manager", name);
+        WAZUH_LOG_ERROR("Database [{}] isn't handled by KVDB manager", name);
         return false;
     }
     bool ret = it->second->destroy();
