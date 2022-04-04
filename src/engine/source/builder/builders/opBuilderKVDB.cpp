@@ -9,10 +9,7 @@
 
 #include "opBuilderKVDB.hpp"
 
-#include <algorithm>
-#include <optional>
 #include <string>
-#include <re2/re2.h>
 
 #include <fmt/format.h>
 #include <utils/stringUtils.hpp>
@@ -48,7 +45,7 @@ types::Lifter opBuilderKVDBExtract(const types::DocumentValue & def)
     }
 
     // Get DB
-    KVDBManager& kvdbManager = KVDBManager::getInstance();
+    KVDBManager& kvdbManager = KVDBManager::get();
     KVDB& kvdb = kvdbManager.getDB(parametersArr[1]);
     if (kvdb.getState() != KVDB::State::Open)
     {
@@ -137,7 +134,7 @@ types::Lifter opBuilderKVDBExistanceCheck(const types::DocumentValue & def, bool
         throw std::runtime_error("Invalid number of parameters for kvdb matching operator");
     }
 
-    KVDBManager& kvdbManager = KVDBManager::getInstance();
+    KVDBManager& kvdbManager = KVDBManager::get();
     KVDB& kvdb = kvdbManager.getDB(parametersArr[1]);
     if (kvdb.getState() != KVDB::State::Open)
     {
@@ -157,7 +154,7 @@ types::Lifter opBuilderKVDBExistanceCheck(const types::DocumentValue & def, bool
                 {
                     auto value = &e->get(key);
                     if (value && value->IsString()) {
-                        if (kvdb.exist(value->GetString())) {
+                        if (kvdb.hasKey(value->GetString())) {
                             found = true;
                         }
                     }
