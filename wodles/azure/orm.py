@@ -20,12 +20,14 @@ Base = declarative_base()
 
 
 class AzureTable:
-    md5 = Column('md5', Text, primary_key=True)
+    md5 = Column(Text, primary_key=True)
+    query = Column(Text, nullable=False)
     min_processed_date = Column(String(28), nullable=False)
     max_processed_date = Column(String(28), nullable=False)
 
-    def __init__(self, md5: str, min_processed_date: str, max_processed_date: str):
+    def __init__(self, md5: str, query: str, min_processed_date: str, max_processed_date: str):
         self.md5 = md5
+        self.query = query
         self.min_processed_date = min_processed_date
         self.max_processed_date = max_processed_date
 
@@ -146,12 +148,12 @@ def migrate_from_last_dates_file():
             for md5_hash in last_dates_content[service.__tablename__].keys():
                 min_value = last_dates_content[service.__tablename__][md5_hash]["min"]
                 max_value = last_dates_content[service.__tablename__][md5_hash]["max"]
-                row = service(md5=md5_hash, min_processed_date=min_value, max_processed_date=max_value)
+                row = service(md5=md5_hash, query="", min_processed_date=min_value, max_processed_date=max_value)
                 add_row(row=row)
     logging.info("The database migration process finished successfully.")
 
 
-def update_row(table: Base, md5: str, min_date: str, max_date: str):
+def update_row(table: Base, md5: str, min_date: str, max_date: str, query: str = None):
     """Update an existing row in the specified table.
 
     Parameters
@@ -159,20 +161,23 @@ def update_row(table: Base, md5: str, min_date: str, max_date: str):
     table : Base
         The table to work with.
     md5 : str
-        The key of the item to update.
+        The key of the row object to update.
     min_date : str
         The new value for the lowest date processed.
     max_date : str
         The new value for the highest date processed.
+    query : str
+        The query value for the row object.
 
     Raises
     ------
     AzureORMError
     """
     try:
-        session.query(table).filter(table.md5 == md5).update({
-            'min_processed_date': min_date,
-            'max_processed_date': max_date})
+        row_data = {'min_processed_date': min_date, 'max_processed_date': max_date}
+        if query:
+            row_data['query'] = query
+        session.query(table).filter(table.md5 == md5).update(row_data)
         session.commit()
     except (IntegrityError, OperationalError, StatementError) as e:
         session.rollback()
@@ -203,10 +208,7 @@ def load_dates_json() -> dict:
                         if not isinstance(contents[key][md5_hash], dict):
                             contents[key][md5_hash] = {"min": contents[key][md5_hash], "max": contents[key][md5_hash]}
         else:
-            # If file does not exist, create it and dump the default structure
             contents = last_dates_default_contents
-            with open(last_dates_path, 'w') as file:
-                json.dump(contents, file)
         return contents
     except (json.JSONDecodeError, OSError) as e:
         logging.error(f"Error: The file of the last dates could not be read: '{e}.")

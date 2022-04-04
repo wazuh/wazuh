@@ -40,10 +40,10 @@ def teardown_db():
     orm.Base.metadata.drop_all(orm.engine)
 
 
-@pytest.mark.parametrize('expected_table_names', [
-    (['graph', 'log_analytics', 'storage'])
+@pytest.mark.parametrize('expected_table_names, expected_columns', [
+    (['graph', 'log_analytics', 'storage'], ['md5', 'query', 'min_processed_date', 'max_processed_date'])
 ])
-def test_create_db(expected_table_names, teardown_db):
+def test_create_db(expected_table_names, expected_columns, teardown_db):
     """Check if the create_db function works as expected."""
     # Check there is no tables available
     inspector = inspect(orm.engine)
@@ -57,7 +57,7 @@ def test_create_db(expected_table_names, teardown_db):
     table_names = inspector.get_table_names()
     assert table_names == expected_table_names
     for table in table_names:
-        assert [x['name'] for x in inspector.get_columns(table)] == ['md5', 'min_processed_date', 'max_processed_date']
+        assert [x['name'] for x in inspector.get_columns(table)] == expected_columns
 
 
 def test_add_get_row(create_and_teardown_db):
@@ -68,7 +68,7 @@ def test_add_get_row(create_and_teardown_db):
         for id_ in range(3):
             md5 = hashlib.md5(f'{table.__tablename__}{id_}'.encode()).hexdigest()
             original_datetime = "2022-01-01T23:59:59.1234567Z"
-            row = table(md5=md5, min_processed_date=original_datetime, max_processed_date=original_datetime)
+            row = table(md5=md5, query="", min_processed_date=original_datetime, max_processed_date=original_datetime)
             orm.add_row(row=row)
             row = orm.get_row(table=table, md5=md5)
             assert row
@@ -92,7 +92,7 @@ def test_add_get_row(create_and_teardown_db):
 def test_add_ko(create_and_teardown_db):
     """Test the add_row function by attempting to insert a row with None values. The commit operation should raise an
     IntegrityError that must be caught."""
-    row = orm.Graph(md5="test", min_processed_date=None, max_processed_date=None)
+    row = orm.Graph(md5="test", query="", min_processed_date=None, max_processed_date=None)
     with pytest.raises(orm.AzureORMError):
         orm.add_row(row=row)
     assert len(orm.get_all_rows(orm.Graph)) == 0
@@ -136,13 +136,10 @@ def test_load_dates_json(last_dates_file_path):
 
 @patch('os.path.exists', return_value=False)
 @patch('builtins.open')
-@patch('json.dump')
-def test_load_dates_json_no_file(mock_dump, mock_open, mock_exists):
+def test_load_dates_json_no_file(mock_open, mock_exists):
     """Check the load_dates_json handles exception as expected when no file is provided."""
-    orm.load_dates_json()
+    assert orm.load_dates_json() == orm.last_dates_default_contents
     mock_exists.assert_called_once()
-    mock_open.assert_called_once()
-    mock_dump.assert_called_once_with(orm.last_dates_default_contents, mock_open().__enter__())
 
 
 @pytest.mark.parametrize('last_dates_file_path', [

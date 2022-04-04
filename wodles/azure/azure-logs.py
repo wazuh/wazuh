@@ -194,7 +194,7 @@ def read_auth_file(auth_path: str, fields: tuple):
         sys.exit(1)
 
 
-def update_row_object(table: orm.Base, md5_hash: str, new_min: str, new_max: str):
+def update_row_object(table: orm.Base, md5_hash: str, new_min: str, new_max: str, query: str = None):
     """Update the database with the specified values if applicable.
 
     Parameters
@@ -207,6 +207,8 @@ def update_row_object(table: orm.Base, md5_hash: str, new_min: str, new_max: str
         Value to compare with the current min value stored.
     new_max : str
         Value to compare with the current max value stored.
+    query : str
+        Query value before applying the md5 hash transformation.
     """
     try:
         row = orm.get_row(table=table, md5=md5_hash)
@@ -227,13 +229,13 @@ def update_row_object(table: orm.Base, md5_hash: str, new_min: str, new_max: str
         logging.debug(f"Attempting to update a {table.__tablename__} row object. "
                       f"MD5: '{md5_hash}', min_date: '{min_}', max_date: '{max_}'")
         try:
-            success = orm.update_row(table=table, md5=md5_hash, min_date=min_, max_date=max_)
+            success = orm.update_row(table=table, md5=md5_hash, min_date=min_, max_date=max_, query=query)
         except orm.AzureORMError as e:
             logging.error(f"Error updating row object from {table.__tablename__}: {e}")
             sys.exit(1)
 
 
-def create_new_row(table: orm.Base, md5_hash: str, offset: str) -> orm.Base:
+def create_new_row(table: orm.Base, md5_hash: str, query: str, offset: str) -> orm.Base:
     """Create a new row object for the given table, insert it into the database and return it.
 
     Parameters
@@ -242,6 +244,8 @@ def create_new_row(table: orm.Base, md5_hash: str, offset: str) -> orm.Base:
         Database table reference for the service.
     md5_hash : str
         md5 value used as the key for the table.
+    query : str
+        The query value before applying the md5 transformation.
     offset : str
         Value used to determine the desired datetime.
 
@@ -254,7 +258,7 @@ def create_new_row(table: orm.Base, md5_hash: str, offset: str) -> orm.Base:
     desired_datetime = offset_to_datetime(offset) if offset else datetime.utcnow().replace(hour=0, minute=0,
                                                                                            second=0, microsecond=0)
     desired_str = desired_datetime.strftime(DATETIME_MASK)
-    item = table(md5=md5_hash, min_processed_date=desired_str, max_processed_date=desired_str)
+    item = table(md5=md5_hash, query=query, min_processed_date=desired_str, max_processed_date=desired_str)
     logging.debug(f"Attempting to insert row object into {table.__tablename__} with md5='{md5_hash}', "
                   f"min_date='{desired_str}', max_date='{desired_str}'")
     try:
@@ -318,7 +322,7 @@ def build_log_analytics_query(offset: str, md5_hash: str) -> dict:
     try:
         item = orm.get_row(orm.LogAnalytics, md5=md5_hash)
         if item is None:
-            item = create_new_row(table=orm.LogAnalytics, md5_hash=md5_hash, offset=offset)
+            item = create_new_row(table=orm.LogAnalytics, query=args.la_query, md5_hash=md5_hash, offset=offset)
     except orm.AzureORMError as e:
         logging.error(f"Error trying to obtain row object from '{orm.LogAnalytics.__tablename__}' using md5='{md5}': {e}")
         sys.exit(1)
@@ -334,6 +338,7 @@ def build_log_analytics_query(offset: str, md5_hash: str) -> dict:
 
     # If reparse was provided, get the logs ignoring if they were already processed
     if args.reparse:
+        filter_value = f"TimeGenerated >= {desired_str}"
         filter_value = f"TimeGenerated >= {desired_str}"
     # Build the filter taking into account the min and max values from the file
     else:
@@ -384,7 +389,7 @@ def get_log_analytics_events(url: str, body: dict, headers: dict, md5_hash: str)
                 if time_position:
                     iter_log_analytics_events(columns, rows)
                     update_row_object(table=orm.LogAnalytics, md5_hash=md5_hash, new_min=rows[0][time_position],
-                                      new_max=rows[len(rows) - 1][time_position])
+                                      new_max=rows[len(rows) - 1][time_position], query=args.la_query)
                 else:
                     logging.error("Error: No TimeGenerated field was found")
 
@@ -493,11 +498,12 @@ def build_graph_url(offset: str, md5_hash: str):
     str
         The required URL for the requested query.
     """
-    item = orm.get_row(orm.Graph, md5=md5_hash)
-    if item is None:
-        item = create_new_row(table=orm.Graph, md5_hash=md5_hash, offset=offset)
-    elif item is False:
-        logging.error(f"Error trying to obtain row object from '{orm.Graph.__tablename__}' using md5='{md5}'")
+    try:
+        item = orm.get_row(orm.Graph, md5=md5_hash)
+        if item is None:
+            item = create_new_row(table=orm.Graph, query=args.graph_query, md5_hash=md5_hash, offset=offset)
+    except orm.AzureORMError as e:
+        logging.error(f"Error trying to obtain row object from '{orm.Graph.__tablename__}' using md5='{md5}': {e}")
         sys.exit(1)
 
     min_str = item.min_processed_date
@@ -552,7 +558,7 @@ def get_graph_events(url: str, headers: dict, md5_hash: str):
                 date = value["activityDateTime"]
             except KeyError:
                 date = value["createdDateTime"]
-            update_row_object(table=orm.Graph, md5_hash=md5_hash, new_min=date, new_max=date)
+            update_row_object(table=orm.Graph, md5_hash=md5_hash, new_min=date, new_max=date, query=args.graph_query)
             value["azure_tag"] = "azure-ad-graph"
             if args.graph_tag:
                 value['azure_aad_tag'] = args.graph_tag
@@ -624,12 +630,12 @@ def start_storage():
     for container in containers:
         md5_hash = md5(name.encode()).hexdigest()
         offset = args.storage_time_offset
-        item = orm.get_row(orm.Storage, md5=md5_hash)
-        if item is None:
-            item = create_new_row(table=orm.Storage, md5_hash=md5_hash, offset=offset)
-        elif item is False:
-            logging.error(
-                f"Error trying to obtain row object from '{orm.Storage.__tablename__}' using md5='{md5}'")
+        try:
+            item = orm.get_row(orm.Storage, md5=md5_hash)
+            if item is None:
+                item = create_new_row(table=orm.Storage, query=name, md5_hash=md5_hash, offset=offset)
+        except orm.AzureORMError as e:
+            logging.error(f"Error trying to obtain row object from '{orm.Storage.__tablename__}' using md5='{md5}': {e}")
             sys.exit(1)
 
         min_datetime = parse(item.min_processed_date, fuzzy=True)
@@ -731,7 +737,7 @@ def get_blobs(container_name: str, blob_service: BlockBlobService, md5_hash: str
                         logging.info("Storage: Sending event by socket.")
                         send_message(msg)
             update_row_object(table=orm.Storage, md5_hash=md5_hash, new_min=last_modified.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
-                              new_max=last_modified.strftime('%Y-%m-%dT%H:%M:%S.%fZ'))
+                              new_max=last_modified.strftime('%Y-%m-%dT%H:%M:%S.%fZ'), query=container_name)
 
         # Continue until no marker is returned
         if blobs.next_marker:
