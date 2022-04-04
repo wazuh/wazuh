@@ -28,14 +28,11 @@ CPMAddPackage(
 add_library(kvdb STATIC
     ${ENGINE_KVDB_SOURCE_DIR}/kvdbManager.cpp
     ${ENGINE_KVDB_SOURCE_DIR}/kvdb.cpp
-    ${ENGINE_KVDB_SOURCE_DIR}/kvdb.hpp
-    )
-
+)
 
 target_link_libraries(kvdb PRIVATE rocksdb base)
 
 target_include_directories(kvdb PUBLIC
     ${ENGINE_KVDB_INCLUDE_DIR}
-    ${ENGINE_KVDB_SOURCE_DIR}
     ${CMAKE_BINARY_DIR}/_deps/rocksdb-src/include
 )

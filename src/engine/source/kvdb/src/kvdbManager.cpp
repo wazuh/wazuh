@@ -10,7 +10,7 @@
 #include <logging/logging.hpp>
 #include <utils/stringUtils.hpp>
 
-#include "kvdb.hpp"
+#include <kvdb/kvdb.hpp>
 
 static KVDB invalidDB = KVDB();
 
