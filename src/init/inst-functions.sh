@@ -1159,7 +1159,8 @@ InstallAgent()
 
     # Install debugging symbols if available
     if [ ${NUNAME} = 'Darwin' ]; then
-      cp .symbols/* ${INSTALLDIR}/.symbols/
+      mkdir -p 
+      cp -r symbols/* ${INSTALLDIR}/.symbols/
       chown -R 0:0 ${INSTALLDIR}/.symbols
       chmod -R 750 ${INSTALLDIR}/.symbols
     fi
