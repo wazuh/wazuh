@@ -88,6 +88,10 @@ KVDB &KVDBManager::createDB(const std::string &name, bool overwrite)
     {
         return getDB(name);
     }
+    else
+    {
+        return invalidDB;
+    }
 }
 
 bool KVDBManager::createDBfromCDB(const std::filesystem::path &path,
@@ -144,19 +148,15 @@ bool KVDBManager::deleteDB(const std::string &name)
     return ret;
 }
 
-bool KVDBManager::addDB(std::string name, std::string folder)
+bool KVDBManager::addDB(const std::string &name,const std::string &folder)
 {
     KVDB *kvdb;
     if (m_availableKVDBs.find(name) == m_availableKVDBs.end())
     {
-        kvdb = new KVDB(name, folder);
-        m_availableKVDBs[name] = std::unique_ptr<KVDB>(kvdb);
+        m_availableKVDBs[name] = std::make_unique<KVDB>(name, folder);
         return true;
     }
-    else
-    {
-        return false;
-    }
+    return false;
 }
 
 KVDB &KVDBManager::getDB(const std::string &name)
