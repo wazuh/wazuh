@@ -72,8 +72,9 @@ def test_exit_handler(os_getpid_mock, os_kill_mock):
                     with patch.object(wazuh_clusterd, 'original_sig_handler') as original_sig_handler_mock:
                         wazuh_clusterd.exit_handler(9, 99)
                         main_logger_mock.assert_has_calls([call.info('SIGNAL [(9)-(9)] received. Exit...')])
-                        delete_child_pids_mock.assert_called_once_with('wazuh-clusterd', 1001, main_logger_mock)
-                        delete_pid_mock.assert_called_once_with('wazuh-clusterd', 1001)
+                        delete_child_pids_mock.assert_called_once_with(
+                            'wazuh-clusterd', os_getpid_mock.return_value, main_logger_mock)
+                        delete_pid_mock.assert_called_once_with('wazuh-clusterd', os_getpid_mock.return_value)
                         original_sig_handler_mock.assert_called_once_with(9, 99)
                         main_logger_mock.reset_mock()
                         delete_child_pids_mock.reset_mock()
@@ -105,14 +106,14 @@ async def test_master_main():
 
         def map(self, first, second):
             assert first == cluster_utils.process_spawn_sleep
-            assert second == range(0, 1)
+            assert second == range(1)
 
     class MasterMock:
         def __init__(self, performance_test, concurrency_test, configuration, enable_ssl, logger, cluster_items):
             assert performance_test == 'test_performance'
             assert concurrency_test == 'concurrency_test'
             assert configuration == {'test': 'config'}
-            assert enable_ssl == True
+            assert enable_ssl is True
             assert logger == 'test_logger'
             assert cluster_items == {'node': 'item'}
             self.task_pool = TaskPoolMock()
@@ -122,7 +123,12 @@ async def test_master_main():
 
     class LocalServerMasterMock:
         def __init__(self, performance_test, logger, concurrency_test, node, configuration, enable_ssl, cluster_items):
-            pass
+            assert performance_test == 'test_performance'
+            assert logger == 'test_logger'
+            assert concurrency_test == 'concurrency_test'
+            assert configuration == {'test': 'config'}
+            assert enable_ssl is True
+            assert cluster_items == {'node': 'item'}
 
         def start(self):
             return 'LOCALSERVER_START'
@@ -167,9 +173,9 @@ async def test_worker_main(asyncio_sleep_mock):
             assert performance_test == 'test_performance'
             assert concurrency_test == 'concurrency_test'
             assert configuration == {'test': 'config'}
-            assert enable_ssl == True
-            assert file == True
-            assert string == True
+            assert enable_ssl is True
+            assert file is True
+            assert string is True
             assert logger == 'test_logger'
             assert cluster_items == {'intervals': {'worker': {'connection_retry': 34}}}
             assert task_pool is None
@@ -179,7 +185,12 @@ async def test_worker_main(asyncio_sleep_mock):
 
     class LocalServerWorkerMock:
         def __init__(self, performance_test, logger, concurrency_test, node, configuration, enable_ssl, cluster_items):
-            pass
+            assert performance_test == 'test_performance'
+            assert logger == 'test_logger'
+            assert concurrency_test == 'concurrency_test'
+            assert configuration == {'test': 'config'}
+            assert enable_ssl is True
+            assert cluster_items == {'intervals': {'worker': {'connection_retry': 34}}}
 
         def start(self):
             return 'LOCALSERVER_START'
@@ -222,15 +233,15 @@ async def test_worker_main(asyncio_sleep_mock):
 
 
 @patch('scripts.wazuh_clusterd.argparse.ArgumentParser')
-def test_get_script_arguments(mock_ArgumentParser):
+def test_get_script_arguments(argument_parser_mock):
     """Set the wazuh_clusterd script parameters."""
     from wazuh.core import common
 
     wazuh_clusterd.common = common
     with patch.object(wazuh_clusterd.common, 'OSSEC_CONF', 'testing/path'):
         wazuh_clusterd.get_script_arguments()
-        mock_ArgumentParser.assert_called_once_with()
-        mock_ArgumentParser.return_value.add_argument.assert_has_calls(
+        argument_parser_mock.assert_called_once_with()
+        argument_parser_mock.return_value.add_argument.assert_has_calls(
             [call('--performance_test', type=int, dest='performance_test', help='==SUPPRESS=='),
              call('--concurrency_test', type=int, dest='concurrency_test', help='==SUPPRESS=='),
              call('--string', help='==SUPPRESS==', type=int, dest='send_string'),
