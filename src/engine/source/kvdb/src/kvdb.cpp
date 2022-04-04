@@ -454,7 +454,8 @@ bool KVDB::writeToTransaction(
  */
 bool KVDB::hasKey(const std::string &key, const std::string &columnName)
 {
-    // TODO: this should be done with a pinnable read
+    //TODO: this should be done with a pinnable read
+    //TODO: We are returning False if we inserted a KEY VALUE like: "KEY",""
     std::string result = read(key, columnName);
     return !result.empty();
 }
@@ -502,4 +503,14 @@ bool KVDB::readPinned(const std::string &key,
     WAZUH_LOG_ERROR("couldn't read pinned value, error: [{}]",
                     s.ToString());
     return false;
+}
+
+/**
+ * @brief Check if the DB is able to be used.
+ *
+ * @return true if the DB can be used
+ * @return false if the DB can´t be used
+ */
+bool KVDB::isReady() {
+    return (m_state == State::Open);
 }
