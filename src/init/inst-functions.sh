@@ -1158,7 +1158,6 @@ InstallAgent()
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/azure/azure-logs.py ${INSTALLDIR}/wodles/azure/azure-logs
 
     # Install debugging symbols if available
-    mkdir -p 
     # The symbols directory should always exist, if debugging symbols
     # are not supported for this platform, it will simply be empty.
     cp -r symbols ${INSTALLDIR}/.symbols
