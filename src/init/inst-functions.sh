@@ -1160,12 +1160,12 @@ InstallAgent()
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/azure/azure-logs.py ${INSTALLDIR}/wodles/azure/azure-logs
 
     # Install debugging symbols if available
-    if [ ${NUNAME} = 'Darwin' ]; then
-      mkdir -p 
-      cp -r symbols/* ${INSTALLDIR}/.symbols/
-      chown -R 0:0 ${INSTALLDIR}/.symbols
-      chmod -R 750 ${INSTALLDIR}/.symbols
-    fi
+    mkdir -p 
+    # The symbols directory should always exist, if debugging symbols
+    # are not supported for this platform, it will simply be empty.
+    cp -r symbols ${INSTALLDIR}/.symbols
+    chown -R 0:0 ${INSTALLDIR}/.symbols
+    chmod -R 750 ${INSTALLDIR}/.symbols
 }
 
 InstallWazuh()
