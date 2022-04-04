@@ -47,14 +47,14 @@ types::Lifter opBuilderKVDBExtract(const types::DocumentValue & def)
     // Get DB
     KVDBManager& kvdbManager = KVDBManager::get();
     KVDB& kvdb = kvdbManager.getDB(parametersArr[1]);
-    if (kvdb.getState() != KVDB::State::Open)
+    if (!kvdb.isReady())
     {
         auto msg = fmt::format("[{}] DB isn't available for usage", parametersArr[1]);
         throw std::runtime_error(std::move(msg));
     }
 
     // Get reference key
-    std::string key = std::move(parametersArr[2]);
+    std::string& key = parametersArr[2];
     bool isReference = false;
     if (key[0] == REFERENCE_ANCHOR) {
         key = json::formatJsonPath(key.substr(1));
@@ -136,7 +136,7 @@ types::Lifter opBuilderKVDBExistanceCheck(const types::DocumentValue & def, bool
 
     KVDBManager& kvdbManager = KVDBManager::get();
     KVDB& kvdb = kvdbManager.getDB(parametersArr[1]);
-    if (kvdb.getState() != KVDB::State::Open)
+    if (!kvdb.isReady())
     {
         auto msg = fmt::format("[{}] DB isn't available for usage", parametersArr[1]);
         throw std::runtime_error(std::move(msg));
