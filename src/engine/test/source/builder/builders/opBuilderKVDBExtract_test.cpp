@@ -21,7 +21,7 @@ namespace {
 class opBuilderKVDBExtractTest : public ::testing::Test {
 
 protected:
-    KVDBManager& kvdbManager = KVDBManager::getInstance();
+    KVDBManager& kvdbManager = KVDBManager::get();
 
     opBuilderKVDBExtractTest() {
     }
@@ -34,7 +34,7 @@ protected:
     }
 
     virtual void TearDown() {
-        kvdbManager.DeleteDB("TEST_DB");
+        kvdbManager.deleteDB("TEST_DB");
     }
 };
 

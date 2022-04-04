@@ -21,7 +21,7 @@ namespace {
 class opBuilderKVDBNotMatchTest : public ::testing::Test {
 
 protected:
-    KVDBManager& kvdbManager = KVDBManager::getInstance();
+    KVDBManager& kvdbManager = KVDBManager::get();
 
     opBuilderKVDBNotMatchTest() {
     }
@@ -34,7 +34,7 @@ protected:
     }
 
     virtual void TearDown() {
-        kvdbManager.DeleteDB("TEST_DB");
+        kvdbManager.deleteDB("TEST_DB");
     }
 };
 
