@@ -1,561 +1,505 @@
-#include "glog/logging.h"
+#include <kvdb/kvdb.hpp>
+
+#include <iostream>
+#include <unordered_map>
+
 #include "rocksdb/db.h"
 #include "rocksdb/options.h"
 #include "rocksdb/slice.h"
 #include "rocksdb/utilities/transaction.h"
-#include "rocksdb/utilities/transaction_db.h"
+#include <fmt/format.h>
 
-#include <kvdb/kvdb.hpp>
+#include <logging/logging.hpp>
 
-using ROCKSDB_NAMESPACE::ColumnFamilyDescriptor;
-using ROCKSDB_NAMESPACE::ColumnFamilyHandle;
-using ROCKSDB_NAMESPACE::ColumnFamilyOptions;
-using ROCKSDB_NAMESPACE::DB;
-using ROCKSDB_NAMESPACE::DBOptions;
-using ROCKSDB_NAMESPACE::DestroyDB;
-using ROCKSDB_NAMESPACE::Options;
-using ROCKSDB_NAMESPACE::PinnableSlice;
-using ROCKSDB_NAMESPACE::ReadOptions;
-using ROCKSDB_NAMESPACE::Slice;
-using ROCKSDB_NAMESPACE::Status;
-using ROCKSDB_NAMESPACE::Transaction;
-using ROCKSDB_NAMESPACE::TransactionDB;
-using ROCKSDB_NAMESPACE::TransactionDBOptions;
-using ROCKSDB_NAMESPACE::WriteBatch;
-using ROCKSDB_NAMESPACE::WriteOptions;
-
-std::string const kKvDbPath = "/tmp/kvDB_wazuh_engine";
-
-static std::vector<ColumnFamilyDescriptor> column_families;
+static const struct Option
+{
+    rocksdb::ReadOptions read = rocksdb::ReadOptions();
+    rocksdb::WriteOptions write = rocksdb::WriteOptions();
+    rocksdb::DBOptions open = rocksdb::DBOptions();
+    rocksdb::ColumnFamilyOptions CF = rocksdb::ColumnFamilyOptions();
+    rocksdb::TransactionDBOptions TX = rocksdb::TransactionDBOptions();
+} kOptions;
 
 /**
- * @brief Updating local arrray of CF with the ones from the DB
+ * @brief Construct a new KVDB::KVDB object
  *
+ * @param dbName name of the DB
+ * @param folder where the DB will be stored
  */
-void UpdateColumnFamiliesList() {
-
-    std::vector<std::string> pColumn_families;
-
-    DB::ListColumnFamilies(DBOptions(), kKvDbPath, &pColumn_families);
-
-    if(pColumn_families.size()) {
-        column_families.clear();
-        for(auto family : pColumn_families) {
-            LOG(INFO) << "[" << __func__ << "]" << " CF name : " << family << std::endl;
-            column_families.push_back(ColumnFamilyDescriptor(family,ColumnFamilyOptions()));
-        }
-    }
-}
-
-
-/**
- * @brief creation of DB on kDBPath = "/tmp/kvDB_wazuh_engine"
- *
- * @return true could create DB
- * @return false couldn't create DB
- */
-bool CreateKVDB() {
-    DB* db;
-    Options options;
-    Status s;
-    bool result = true;
-
-    options.IncreaseParallelism();
-    options.OptimizeLevelStyleCompaction();
-    options.create_if_missing = true;
-    options.error_if_exists = true;
-
-    s = DB::Open(options, kKvDbPath, &db);
-    if(s.ok()) {
-        s = db->Close();
-        if(!s.ok()) {
-            LOG(WARNING) << "[" << __func__ << "]" << " couldn't close db file, error: " << s.ToString() << std::endl;
-        }
-    }
-    else {
-        LOG(ERROR) << "[" << __func__ << "]" << " couldn't open db file, error: " << s.ToString() << std::endl;
-        result = false;
-    }
-
-    delete db;
-    return result;
-}
-
-/**
- * @brief DB full delete including all member files
- *
- * @return true successfull delete of all DB files
- * @return false unsuccessfull delete of all DB files
- */
-bool DestroyKVDB() {
-    DB* db;
-    Options options;
-    std::vector<ColumnFamilyHandle*> handlers;
-    Status s;
-    bool result = true;
-
-    options.IncreaseParallelism();
-    options.OptimizeLevelStyleCompaction();
-
-    UpdateColumnFamiliesList();
-    s = DB::Open(DBOptions(), kKvDbPath, column_families, &handlers, &db);
-    if(s.ok()) {
-        // DB must be closed before destroying it
-        s = db->Close();
-        if(!s.ok()) {
-            result = false;
-            LOG(WARNING) << "[" << __func__ << "]" << " couldn't close db file, error: " << s.ToString() << std::endl;
-        }
-        else {
-            DestroyDB(kKvDbPath,options);
-        }
-        handlers.clear();
-    }
-    else {
-        LOG(ERROR) << "[" << __func__ << "]" << " couldn't open db file, error: " << s.ToString() << std::endl;
-        result = false;
-    }
-
-    delete db;
-    return result;
-}
-
-/**
- * @brief Checks if CF is in the local array of DB and returns it's position
- *
- * @param column_family_name CF being searched
- * @return int position in vector of CFs
- */
-int CFIndexInAvailableArray(std::string const &column_family_name) {
-    for (int i = 0; i < column_families.size() ; i++ ) {
-        if(!column_family_name.compare(column_families.at(i).name))
+KVDB::KVDB(const std::string &dbName, const std::string &folder)
+    : m_name(dbName)
+    , m_path(folder + dbName)
+    , m_db(nullptr)
+    , m_txndb(nullptr)
+    , m_state(State::Invalid)
+{
+    rocksdb::Status s;
+    std::vector<std::string> CFNames;
+    std::vector<rocksdb::ColumnFamilyHandle *> CFHandles;
+    s = rocksdb::DB::ListColumnFamilies(kOptions.open, m_path, &CFNames);
+    if (s.ok())
+    {
+        for (auto CFName : CFNames)
         {
-            return i;
+            CFDescriptors.push_back(
+                rocksdb::ColumnFamilyDescriptor(CFName, kOptions.CF));
         }
     }
-    return 0;
+    else
+    {
+        CFDescriptors.push_back(rocksdb::ColumnFamilyDescriptor(
+            DEFAULT_CF_NAME, kOptions.CF));
+    }
+
+    rocksdb::Status st = rocksdb::TransactionDB::Open(kOptions.open,
+                                                      kOptions.TX,
+                                                      m_path,
+                                                      CFDescriptors,
+                                                      &CFHandles,
+                                                      &m_txndb);
+    if (st.ok())
+    {
+        m_db = m_txndb->GetBaseDB();
+        for (auto CFHandle : CFHandles)
+        {
+            m_CFHandlesMap[CFHandle->GetName()] = CFHandle;
+        }
+        m_state = State::Open;
+    }
+    else
+    {
+        WAZUH_LOG_ERROR("couldn't open db, error: [{}]", s.ToString());
+        m_state = State::Error;
+    }
 }
 
 /**
- * @brief Create a Column Family object
+ * @brief Destroy the KVDB object
  *
- * @param column_family_name std::string if it's no part of column_families_available
- * it will be added to it.
- * @return true successfull creation of FC in DB or FC alredy in DB
- * @return false unsuccessfull creation of FC in DB
  */
-bool CreateColumnFamily(std::string const column_family_name) {
-    DB *db;
-    Status s;
-    std::vector<ColumnFamilyHandle*> handlers;
-    DBOptions dbOptions;
-    std::vector<std::string> column_families_available;
-    bool result = true;
+KVDB::~KVDB()
+{
+    close();
+}
 
-    if(column_family_name.empty()) {
-        LOG(ERROR) << "[" << __func__ << "]" << " cant create a family column without name " << std::endl;
+/**
+ * @brief DB closing cleaning all elements used to acces it
+ *
+ * @return true succesfully closed
+ * @return false unsuccesfully closed
+ */
+bool KVDB::close()
+{
+    bool ret = true;
+    if (m_txndb)
+    {
+        rocksdb::Status s;
+        for (auto item : m_CFHandlesMap)
+        {
+            s = m_db->DestroyColumnFamilyHandle(item.second);
+            if (!s.ok())
+            {
+                WAZUH_LOG_WARN("couldn't destroy family handler, error: [{}]",
+                               s.ToString());
+                ret = false;
+            }
+        }
+        m_CFHandlesMap.clear();
+
+        s = m_db->Close();
+        if (!s.ok())
+        {
+            WAZUH_LOG_ERROR("couldn't close db, error: [{}]", s.ToString());
+            ret = false;
+        }
+
+        delete m_txndb;
+    }
+    m_txndb = nullptr;
+    m_db = nullptr;
+    return ret;
+}
+
+/**
+ * @brief Db destruction cleaning all files and data related to it
+ *
+ * @return true succesfully destructed
+ * @return false unsuccesfully destructed
+ */
+bool KVDB::destroy()
+{
+    close();
+    rocksdb::Status s =
+        rocksdb::DestroyDB(m_path, rocksdb::Options(), CFDescriptors);
+    if (!s.ok())
+    {
+        WAZUH_LOG_ERROR("couldn't destroy db, error: [{}]", s.ToString());
+        m_state = State::Error;
         return false;
     }
-
-    dbOptions.IncreaseParallelism();
-    dbOptions.create_if_missing = true;
-    dbOptions.error_if_exists = false;
-    dbOptions.create_missing_column_families = true;
-
-    UpdateColumnFamiliesList();
-
-    if(CFIndexInAvailableArray(column_family_name)) {
-        LOG(INFO) << "[" << __func__ << "]" << " cant create a family column already present" << std::endl;
-        return true;
-    }
-
-    LOG(INFO) << "[" << __func__ << "]" << " Adding " << column_family_name << " as a new family column to DB " << std::endl;
-    column_families.push_back(ColumnFamilyDescriptor(column_family_name, ColumnFamilyOptions()));
-
-    s = DB::Open(dbOptions, kKvDbPath, column_families, &handlers, &db);
-    if(s.ok()) {
-        for (auto handle : handlers) {
-            s = db->DestroyColumnFamilyHandle(handle);
-            if(!s.ok()){
-                LOG(WARNING) << "[" << __func__ << "]" << " couldn't delete column family handler, error: " << s.ToString() << std::endl;
-            }
-        }
-        handlers.clear();
-        s = db->Close();
-        if(!s.ok()) {
-            result = false;
-            LOG(WARNING) << "[" << __func__ << "]" << " couldn't close db file, error: " << s.ToString() << std::endl;
-        }
-    }
-    else {
-        LOG(ERROR) << "[" << __func__ << "]" << " couldn't open db file, error: " << s.ToString() << std::endl;
-        result = false;
-    }
-
-    delete db;
-    return result;
+    return true;
 }
 
 /**
- * @brief Delete a Column Family object
+ * @brief write a value from to a key inside a CF without value copying
  *
- * @param column_family_name std::string if it's part of column_families_available
- * it will be deleted from it.
- * @return true successfull deletion of FC in DB or FC alredy in DB
- * @return false unsuccessfull deletion of FC in DB
- */
-bool DropColumnFamily(std::string const column_family_name) {
-    DB *db;
-    Status s;
-    std::vector<ColumnFamilyHandle*> handlers;
-    bool result = true;
-
-    if(column_family_name.empty()) {
-        LOG(ERROR) << "[" << __func__ << "]" << " can't delete a family column without name " << std::endl;
-        return true;
-    }
-
-    UpdateColumnFamiliesList();
-
-    int i = CFIndexInAvailableArray(column_family_name);
-    if(i) {
-        s = DB::Open(DBOptions(), kKvDbPath, column_families, &handlers, &db);
-        if(s.ok()) {
-            for(auto handle : handlers) {
-                // find the correct CF handle to be erased
-                if(!column_family_name.compare(handle->GetName())) {
-                    s = db->DropColumnFamily(handle);
-                    if(s.ok()) {
-                        LOG(INFO) << "[" << __func__ << "]" << " Removing " << column_family_name << " from column_families"<< std::endl;
-                        column_families.erase( column_families.begin() + i);
-                    }
-                    else {
-                        LOG(ERROR) << "[" << __func__ << "]" << " couldn't drop CF, error: " << s.ToString() << std::endl;
-                        result = false;
-                    }
-                }
-                // destroy all the handlers prior closing
-                s = db->DestroyColumnFamilyHandle(handle);
-                if(!s.ok()) {
-                    LOG(WARNING) << "[" << __func__ << "]" << " couldn't delete column family handler, error: " << s.ToString() << std::endl;
-                }
-            }
-            handlers.clear();
-
-            s = db->Close();
-            if(!s.ok()) {
-                LOG(WARNING) << "[" << __func__ << "]" << " couldn't close db file, error: " << s.ToString() << std::endl;
-            }
-
-        }
-        else {
-            LOG(ERROR) << "[" << __func__ << "]" << " couldn't open db file, error: " << s.ToString() << std::endl;
-            result = false;
-        }
-
-        delete db;
-    }
-    else {
-        LOG(ERROR) << "[" << __func__ << "]" << " can't delete a FC that doesn't exist" << std::endl;
-        result = false;
-    }
-
-    return result;
-}
-
-/**
- * @brief Avoid code duplication by making the access and search of cf more generic
- *
- * @param columnFamily where the key will be searched
- * @param value for writing purpose, reading (being modify by process), not needed in delete
- * @param key used for Writing, deleting and reading a value
- * @param action This is the action that will be executed (READ, WRITE, DELETE)
+ * @param key where to write the value
+ * @param value the value that will be writen
+ * @param columnName where to write the key
  * @return true If the proccess finished successfully
  * @return false If the proccess didn't finished successfully
  */
-bool AccesSingleItemOfCF(std::string const &column_family_name, std::string &value,
-                                                            std::string const &key, const ACTION_ON_CF action) {
-    DB *db;
-    Status s;
-    std::vector<ColumnFamilyHandle*> handlers;
-    bool result = true;
-
-    if(column_family_name.empty()) {
-        LOG(ERROR) << "[" << __func__ << "]" << " can't write to a family column with no name." << std::endl;
+bool KVDB::write(const std::string &key,
+                 const std::string &value,
+                 const std::string &columnName)
+{
+    if (m_state != State::Open)
+    {
+        WAZUH_LOG_ERROR("DB should be open for execution");
         return false;
     }
 
-    if(key.empty()) {
-        LOG(ERROR) << "[" << __func__ << "]" << " can't write to a family column with no key." << std::endl;
+    CFHMap::const_iterator cfh = m_CFHandlesMap.find(columnName);
+    if (cfh == m_CFHandlesMap.end())
+    {
+        WAZUH_LOG_ERROR("couldn't write to DB unknown column name");
         return false;
     }
 
-    UpdateColumnFamiliesList();
-
-    int i = CFIndexInAvailableArray(column_family_name);
-    if(i) {
-        s = DB::Open(DBOptions(), kKvDbPath, column_families, &handlers, &db);
-        if(s.ok()) {
-
-            for(auto handle : handlers) {
-                // find the correct CF handle to be erased
-                if(!column_family_name.compare(handle->GetName())) {
-                    switch (action)
-                    {
-                    case ACTION_ON_CF::WRITE:
-                        {
-                            s = db->Put(WriteOptions(), handle, Slice(key), Slice(value));
-                            if(s.ok()) {
-                                LOG(INFO) << "[" << __func__ << "]" << " value insertion OK {" << key << ","
-                                << value << "} into CF name : " << column_family_name << std::endl;
-                            }
-                            else {
-                                LOG(ERROR) << "[" << __func__ << "]" << " couldn't write value into CF, error: " << s.ToString() << std::endl;
-                                result = false;
-                            }
-                        }
-                        break;
-
-                    case ACTION_ON_CF::READ:
-                        {
-                            s = db->Get(ReadOptions(), handle, Slice(key), &value);
-                            if(s.ok()) {
-                                LOG(INFO) << "[" << __func__ << "]" << " value obtained OK {" << key << ","
-                                << value << "} from CF name : " << column_family_name << std::endl;
-                            }
-                            else {
-                                LOG(ERROR) << "[" << __func__ << "]" << " couldn't Get value from CF, error: " << s.ToString() << std::endl;
-                                result = false;
-                            }
-                        }
-                        break;
-
-                    case ACTION_ON_CF::DELETE:
-                        {
-                            s = db->Delete(WriteOptions(), handle, Slice(key));
-                            if(s.ok()) {
-                                LOG(INFO) << "[" << __func__ << "]" << " key deleted OK {" << key << "} from CF name : " << column_family_name << std::endl;
-                            }
-                            else {
-                                LOG(ERROR) << "[" << __func__ << "]" << " couldn't delete value from CF, error: " << s.ToString() << std::endl;
-                                result = false;
-                            }
-                        }
-                        break;
-
-                    case ACTION_ON_CF::READ_WITHOUT_VALUE_COPY:
-                        {
-                            PinnableSlice pinnable_val;
-                            s = db->Get(ReadOptions(), handle, Slice(key), &pinnable_val);
-                            if(s.ok()) {
-                                value = pinnable_val.ToString();
-                                LOG(INFO) << "[" << __func__ << "]" << " value obtained OK {" << key << ","
-                                << value << "} from CF name : " << column_family_name << std::endl;
-                                pinnable_val.Reset();
-                            }
-                            else {
-                                LOG(ERROR) << "[" << __func__ << "]" << " couldn't insert value into CF without copy, error: " << s.ToString() << std::endl;
-                                result = false;
-                            }
-                        }
-                        break;
-
-                    default:
-                        LOG(ERROR) << "[" << __func__ << "]" << " this case shouldn't be reacheable" << std::endl;
-                        result = false;
-                        break;
-                    }
-
-                }
-                s = db->DestroyColumnFamilyHandle(handle);
-                if(!s.ok()) {
-                    LOG(WARNING) << "[" << __func__ << "]" << " couldn't delete column family handler, error: " << s.ToString() << std::endl;
-                }
-            }
-            handlers.clear();
-
-            s = db->Close();
-            if(!s.ok()) {
-                LOG(WARNING) << "[" << __func__ << "]" << " couldn't close db file, error: " << s.ToString() << std::endl;
-            }
-        }
-        else {
-            LOG(ERROR) << "[" << __func__ << "]" << " couldn't open db file, error: " << s.ToString() << std::endl;
-            result = false;
-        }
-
-        delete db;
-    }
-    else {
-        LOG(ERROR) << "[" << __func__ << "]" << " can't write to a FC that doesn't exist" << std::endl;
-        result = false;
+    rocksdb::Status s = m_db->Put(kOptions.write,
+                                cfh->second,
+                                rocksdb::Slice(key),
+                                rocksdb::Slice(value));
+    if (!s.ok())
+    {
+        WAZUH_LOG_ERROR("couldn't insert value into CF, error: [{}]",
+                        s.ToString());
+        return false;
     }
 
-    return result;
+    WAZUH_LOG_DEBUG("value insertion OK [{},{}] into CF name : [{}]",
+                key,
+                value,
+                columnName);
+    return true;
 }
 
 /**
- * @brief read a value from a key inside a CF
+ * @brief read a value from a key inside a CF without value copying
  *
- * @param columnFamily where to search the key
- * @param value that the result of the proccess will modify
  * @param key where to find the value
- * @return true If the proccess finished successfully
- * @return false If the proccess didn't finished successfully
+ * @param value that the result of the proccess will modify
+ * @param columnName where to search the key
+ * @return value read If the proccess finished successfully
+ * @return empty string If the proccess didn't finished successfully
  */
-bool ReadToColumnFamily(std::string const &columnFamily, std::string const &key,
-                                                            std::string &value) {
+std::string KVDB::read(const std::string &key, const std::string &ColumnName)
+{
+    std::string result, value;
 
-    if(AccesSingleItemOfCF(columnFamily, value, key, ACTION_ON_CF::READ)) {
-        return true;
+    if (m_state != State::Open)
+    {
+        WAZUH_LOG_ERROR("DB should be open for execution");
+        return result;
     }
-    return false;
-}
 
-/**
- * @brief write a value in a key inside a CF
- *
- * @param columnFamily where to search for the key
- * @param value that will be stored inside the key
- * @param key where the value will be stored
-  * @return true If the proccess finished successfully
- * @return false If the proccess didn't finished successfully
- */
-bool WriteToColumnFamily(std::string const &columnFamily, std::string const &key,
-                                                            std::string &value) {
-    if(AccesSingleItemOfCF(columnFamily, value, key, ACTION_ON_CF::WRITE)) {
-        return true;
+    CFHMap::const_iterator cfh = m_CFHandlesMap.find(ColumnName);
+    if (cfh == m_CFHandlesMap.end())
+    {
+        WAZUH_LOG_ERROR("couldn't read DB unknown column name");
+        return result;
     }
-    return false;
+
+    // Get CF handle
+    rocksdb::Status s =
+        m_db->Get(kOptions.read, cfh->second, rocksdb::Slice(key), &value);
+    if (s.ok())
+    {
+        WAZUH_LOG_DEBUG("value obtained OK [{},{}] into CF name : [{}]",
+                        key,
+                        value,
+                        ColumnName);
+        result = value;
+    }
+    else
+    {
+        WAZUH_LOG_ERROR("couldn't read value from CF, error: ",
+                        s.ToString());
+        result.clear();
+    }
+    return result;
 }
 
 /**
  * @brief delete a key of a CF
  *
- * @param columnFamily where to search for the key
- * @param value not used
  * @param key that will be deleted
- * @return true If the proccess finished successfully
- * @return false If the proccess didn't finished successfully
+ * @param columnName where to search for the key
+ * @return true if the key was succesfully deleted
+ * @return false if the key wasn't succesfully deleted
  */
-bool DeleteKeyInColumnFamily(std::string const &columnFamily, std::string const &key) {
-    std::string unusedValue;
-    if(AccesSingleItemOfCF(columnFamily, unusedValue, key, ACTION_ON_CF::DELETE)) {
+bool KVDB::deleteKey(const std::string &key, const std::string &columnName)
+{
+    if (m_state != State::Open)
+    {
+        WAZUH_LOG_ERROR("DB should be open for execution");
+        return false;
+    }
+
+    CFHMap::const_iterator cfh = m_CFHandlesMap.find(columnName);
+    if (cfh == m_CFHandlesMap.end())
+    {
+        WAZUH_LOG_ERROR("couldn't delete key in DB unknown column name");
+        return false;
+    }
+
+    rocksdb::Status s =
+        m_db->Delete(kOptions.write, cfh->second, rocksdb::Slice(key));
+    if (s.ok())
+    {
+        WAZUH_LOG_INFO("key deleted OK [{}]", key);
         return true;
     }
+    WAZUH_LOG_ERROR("couldn't delete value in CF, error: [{}]",
+                    s.ToString());
     return false;
 }
+
 /**
- * @brief read a value from a key inside a CF without value copying
+ * @brief Create a Column object
  *
- * @param columnFamily where to search the key
- * @param value that the result of the proccess will modify
- * @param key where to find the value
- * @return true If the proccess finished successfully
- * @return false If the proccess didn't finished successfully
+ * @param columnName name of the object that will be created
+ * @return true successfull creation of Column in DB
+ * @return false unsuccessfull creation or already created object
  */
-bool ReadToColumnFamilyWithoutValueCopy(std::string const &columnFamily, std::string const &key,
-                                                            std::string &value) {
+bool KVDB::createColumn(const std::string &columnName)
+{
+    if (m_state != State::Open)
+    {
+        WAZUH_LOG_ERROR("DB should be open for execution");
+        return false;
+    }
 
-    if(AccesSingleItemOfCF(columnFamily, value, key, ACTION_ON_CF::READ_WITHOUT_VALUE_COPY)) {
+    CFHMap::const_iterator cfh = m_CFHandlesMap.find(columnName);
+    if (cfh != m_CFHandlesMap.end())
+    {
+        WAZUH_LOG_ERROR("couldn't create CF, name already taken");
+        return false;
+    }
+
+    rocksdb::ColumnFamilyHandle *handler;
+    rocksdb::Status s =
+        m_db->CreateColumnFamily(kOptions.CF, columnName, &handler);
+    if (s.ok())
+    {
+        CFDescriptors.push_back(
+            rocksdb::ColumnFamilyDescriptor(columnName, kOptions.CF));
+        m_CFHandlesMap.insert({handler->GetName(), handler});
         return true;
+    }
+
+    WAZUH_LOG_ERROR("couldn't create CF, error: ", s.ToString());
+    return false;
+}
+
+/**
+ * @brief Delete a Column object
+ *
+ * @param columnName name of the object that will be deleted
+ * @return true successfull deletion of Column in DB
+ * @return false unsuccessfull creation or object not found
+ */
+bool KVDB::deleteColumn(const std::string &columnName)
+{
+    if (m_state != State::Open)
+    {
+        WAZUH_LOG_ERROR("DB should be open for execution");
+        return false;
+    }
+
+    CFHMap::const_iterator cfh = m_CFHandlesMap.find(columnName);
+    if (cfh == m_CFHandlesMap.end())
+    {
+        WAZUH_LOG_ERROR("couldn't delete CF unknown column name");
+        return false;
+    }
+
+    rocksdb::Status s = m_db->DropColumnFamily(cfh->second);
+    if (s.ok())
+    {
+        m_CFHandlesMap.erase(cfh);
+        for (int i = 0; i < CFDescriptors.size(); i++)
+        {
+            if (!columnName.compare(CFDescriptors.at(i).name))
+            {
+                CFDescriptors.erase(CFDescriptors.begin() + i);
+                break;
+            }
+        }
+        return true;
+    }
+
+    WAZUH_LOG_ERROR("couldn't delete Column, error: [{}]",
+                    s.ToString());
+    return false;
+}
+
+/**
+ * @brief cleaning of all elements in Column
+ //TODO: when trying to clean a default CF rocksdb doesn't allow it: <return
+ Status::InvalidArgument("Can't drop default column family")> this needs to be
+ fixed differently in order to avoid costly proccess on large DBs.
+ * @param columnName that will be cleaned
+ * @return true when succesfully cleaned
+ * @return false when unsuccesfully cleaned
+ */
+bool KVDB::cleanColumn(const std::string &columnName)
+{
+    if (columnName == DEFAULT_CF_NAME)
+    {
+        rocksdb::Iterator *iter = m_db->NewIterator(kOptions.read);
+        iter->SeekToFirst();
+        while (iter->Valid())
+        {
+            deleteKey(iter->key().ToString());
+            iter->Next();
+        };
+        return true;
+    }
+    else if (deleteColumn(columnName))
+    {
+        return createColumn(columnName);
     }
     return false;
 }
 
-bool WriteToColumnFamilyTransaction(std::string const &column_family_name,
-                        std::vector<std::pair<std::string,std::string>> const pairsVector) {
-    Status s;
-    TransactionDBOptions txn_db_options;
-    TransactionDB* txn_db;
-    std::vector<ColumnFamilyHandle*> handlers;
-    bool result = true;
-    WriteOptions write_options;
-
-    if(!pairsVector.size()) {
-        LOG(ERROR) << "[" << __func__ << "]" << " can't write to a Transaction without any pair." << std::endl;
+/**
+ * @brief write vector of pair key values to DB in a pessimisitc transaction
+ * manner.
+ * @param pairsVector input data of string pairs
+ * @param columnName where the data will be writen to
+ * @return true when written and commited wiithout any problem
+ * @return false when one or more items wheren't succesfully writen.
+ */
+bool KVDB::writeToTransaction(
+    const std::vector<std::pair<std::string, std::string>> pairsVector,
+    const std::string &columnName)
+{
+    if (m_state != State::Open)
+    {
+        WAZUH_LOG_ERROR("DB should be open for execution");
         return false;
     }
 
-    if(column_family_name.empty()) {
-        LOG(ERROR) << "[" << __func__ << "]" << " can't write to a Transaction to a family column with no name." << std::endl;
+    if (!pairsVector.size())
+    {
+        WAZUH_LOG_ERROR(
+            "couldn't write transaction to DB, nedd at least 1 element");
         return false;
     }
 
-    UpdateColumnFamiliesList();
+    CFHMap::const_iterator cfh = m_CFHandlesMap.find(columnName);
+    if (cfh == m_CFHandlesMap.end())
+    {
+        WAZUH_LOG_ERROR("couldn't write transaction to DB unknown column name");
+        return false;
+    }
 
-    int i = CFIndexInAvailableArray(column_family_name);
-    if(i) {
-        s = TransactionDB::Open(DBOptions(), txn_db_options, kKvDbPath, column_families, &handlers, &txn_db);
-        if(s.ok()) {
-            Transaction* txn = txn_db->BeginTransaction(write_options);
-            if(txn) {
-                for(auto handle : handlers) {
-                    // find the correct CF handle to be erased
-                    if(!column_family_name.compare(handle->GetName())) {
-                        for(auto pair : pairsVector) {
-                            std::string const key = pair.first;
-                            std::string const value = pair.second;
-                            if(key.empty()) {
-                                LOG(ERROR) << "[" << __func__ << "]" << " can't write to a Transaction to a family column with no key." << std::endl;
-                                return false;
-                            }
-                            // Write a key in this transaction
-                            s = txn->Put(handle, key, value);
-                            if(s.ok()) {
-                                continue;
-                            }
-                            else {
-                                LOG(ERROR) << "[" << __func__ << "]" << " couldn't execute Put in transaction -breaking loop-, error: " << s.code() << std::endl;
-                                result =  false;
-                            }
-                        }
-                        s = txn->Commit();
-                        if (s.ok()) {
-                            LOG(ERROR) << "[" << __func__ << "]" << " transaction commited OK" << std::endl;
-                            delete txn;
-                            result =  true;
-                        }
-                        else {
-                            LOG(ERROR) << "[" << __func__ << "]" << " couldn't commit transaction, error: " << s.code() << std::endl;
-                            result =  false;
-                        }
-                    }
-                }
-                handlers.clear();
-            }
-            else {
-                LOG(ERROR) << "[" << __func__ << "]" << " couldn't begin transaction, error: " << s.code() << std::endl;
-                result =  false;
-            }
-        }
-        else {
-            LOG(ERROR) << "[" << __func__ << "]" << " couldn't Open DB, error: " << s.code() << std::endl;
-            result = false;
-        }
-        delete txn_db;
+    rocksdb::Transaction *txn = m_txndb->BeginTransaction(kOptions.write);
+    if (!txn)
+    {
+        WAZUH_LOG_ERROR("couldn't begin in transaction");
+        return false;
     }
-    else {
-        LOG(ERROR) << "[" << __func__ << "]" << " can't delete a FC that doesn't exist" << std::endl;
-        result = false;
+
+    for (auto & [key, value] : pairsVector)
+    {
+        if (key.empty())
+        {
+            WAZUH_LOG_ERROR("can't write to a Transaction to a family "
+                            "column with no key.");
+            return false;
+        }
+        // Write a key in this transaction
+        rocksdb::Status s = txn->Put(cfh->second, key, value);
+        if (!s.ok())
+        {
+            WAZUH_LOG_ERROR("couldn't execute Put in transaction "
+                            "-breaking loop-, error: [{}]",
+                            s.ToString());
+            return false;
+        }
     }
-    return result;
+
+    rocksdb::Status s = txn->Commit();
+    delete txn;
+    if (!s.ok())
+    {
+        WAZUH_LOG_ERROR("couldn't commit in transaction, error: [{}]",
+                        s.ToString());
+        return false;
+    }
+
+    WAZUH_LOG_DEBUG("transaction commited OK");
+    return true;
 }
 
-bool CleanColumnFamily(std::string const column_family_name) {
-    DB *db;
-    Status s;
-    std::vector<ColumnFamilyHandle*> handlers;
-    bool result = true;
+/**
+ * @brief check key existence in Column
+ *
+ * @param key used to check existence
+ * @param columnName where to look for the key
+ * @return true if key was found
+ * @return false if key wasn't found
+ */
+bool KVDB::hasKey(const std::string &key, const std::string &columnName)
+{
+    // TODO: this should be done with a pinnable read
+    std::string result = read(key, columnName);
+    return !result.empty();
+}
 
-    if(column_family_name.empty()) {
-        LOG(ERROR) << "[" << __func__ << "]" << " can't clean a family column without name " << std::endl;
+/**
+ * @brief
+ * //TODO: this should be returning a PinnableSlice and the consumer should
+ * reset it and read it's value. Check what methods should we add in order to
+ * decouple rocksdb library from the client, wrapping all the functions and
+ * objects needed.
+ * @param key key where to find the value
+ * @param value value that the result of the proccess will modify
+ * @param ColumnName where to search the key
+ * @return true If the proccess finished successfully
+ * @return false If the proccess didn't finished successfully
+ */
+bool KVDB::readPinned(const std::string &key,
+                      std::string &value,
+                      const std::string &ColumnName)
+{
+    if (m_state != State::Open)
+    {
+        WAZUH_LOG_ERROR("DB should be open for execution");
+        return false;
+    }
+
+    CFHMap::const_iterator cfh = m_CFHandlesMap.find(ColumnName);
+    if (cfh == m_CFHandlesMap.end())
+    {
+        WAZUH_LOG_ERROR("couldn't read value in DB unknown column name");
+        return false;
+    }
+
+    rocksdb::PinnableSlice pinnable_val;
+    rocksdb::Status s = m_db->Get(
+        kOptions.read, cfh->second, rocksdb::Slice(key), &pinnable_val);
+    if (s.ok())
+    {
+        value = pinnable_val.ToString();
+        WAZUH_LOG_DEBUG("read pinned value OK [{},{}]", key, value);
+        pinnable_val.Reset();
         return true;
     }
 
-    if(DropColumnFamily(column_family_name)) {
-        result = CreateColumnFamily(column_family_name);
-    }
-
-    return result;
+    WAZUH_LOG_ERROR("couldn't read pinned value, error: [{}]",
+                    s.ToString());
+    return false;
 }

@@ -1,181 +1,233 @@
 #include <filesystem>
 
 #include "gtest/gtest.h"
-#include <kvdb/kvdb.hpp>
+#include <kvdb/kvdbManager.hpp>
+#include <logging/logging.hpp>
 
-//TODO: can we move this utility functions to headers accesible to tests and benchmark?
-static std::string getRandomString(int len, bool includeSymbols = false) {
-    static const char alphanum[] =
-        "0123456789"
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        "abcdefghijklmnopqrstuvwxyz";
+// TODO: can we move this utility functions to headers accesible to tests and
+// benchmark?
+static std::string getRandomString(int len, bool includeSymbols = false)
+{
+    static const char alphanum[] = "0123456789"
+                                   "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                                   "abcdefghijklmnopqrstuvwxyz";
 
-    static const char symbols[] =
-        "-_'\\/. *!\"#$%&()+[]{},;";
+    static const char symbols[] = "-_'\\/. *!\"#$%&()+[]{},;";
 
     std::string tmp_s;
     tmp_s.reserve(len);
 
     std::string dict = alphanum;
-    if(includeSymbols)
+    if (includeSymbols)
     {
         dict += symbols;
     }
 
-    for (int i = 0; i < len; ++i) {
+    for (int i = 0; i < len; ++i)
+    {
         tmp_s += dict[rand() % dict.size()];
     }
     return tmp_s;
 }
-
-TEST(kvdbTests, create_delete_kvd_file)
+namespace
 {
-    DestroyKVDB();
-    bool ret = CreateKVDB();
-    ASSERT_TRUE(ret);
-    ret = DestroyKVDB();
-    ASSERT_TRUE(ret);
-    ret = CreateKVDB();
-    ASSERT_TRUE(ret);
-    ret = std::filesystem::exists("/tmp/kvDB_wazuh_engine");
-    ASSERT_TRUE(ret);
-    ret = std::filesystem::is_directory("/tmp/kvDB_wazuh_engine");
-    ASSERT_TRUE(ret);
-    ret = DestroyKVDB();
-    ASSERT_TRUE(ret);
-    ret = DestroyKVDB();
-    ASSERT_TRUE(!ret);
+class KVDBTest : public ::testing::Test
+{
+
+protected:
+    KVDBManager &kvdbManager = KVDBManager::get();
+
+    KVDBTest()
+    { // = default;
+        // TODO: this init is done in order to receive the logs at the right
+        // moment, insted we should be mocking these logs in each test
+        logging::LoggingConfig logConfig;
+        logConfig.logLevel = logging::LogLevel::Debug;
+        logging::loggingInit(logConfig);
+    }
+
+    virtual ~KVDBTest()
+    { // = default;
+    }
+
+    virtual void SetUp()
+    {
+        kvdbManager.createDB("TEST_DB");
+    }
+
+    virtual void TearDown()
+    {
+        kvdbManager.deleteDB("TEST_DB");
+    }
+};
+
+TEST_F(KVDBTest, CreateDeleteKvdFile)
+{
+    KVDB &newKvdb = kvdbManager.createDB("NEW_DB");
+    ASSERT_EQ(newKvdb.getName(), "NEW_DB");
+    ASSERT_EQ(newKvdb.getState(), KVDB::State::Open);
+
+    kvdbManager.deleteDB("NEW_DB");
+    KVDB &deletedKvdb = kvdbManager.getDB("NEW_DB");
+    ASSERT_EQ(deletedKvdb.getName(), "Invalid");
+    ASSERT_EQ(deletedKvdb.getState(), KVDB::State::Invalid);
 }
 
-TEST(kvdbTests, column_family_creation_deletion)
+TEST_F(KVDBTest, CreateDeleteColumns)
 {
-    bool ret = CreateColumnFamily("IP_BLACKLIST");
+    const std::string COLUMN_NAME = "NEW_COLUMN";
+    KVDB &kvdb = kvdbManager.getDB("TEST_DB");
+    bool ret = kvdb.createColumn(COLUMN_NAME);
     ASSERT_TRUE(ret);
-    ret = CreateColumnFamily("IP_GEO_TAGGING");
+    ret = kvdb.deleteColumn(COLUMN_NAME);
     ASSERT_TRUE(ret);
-    ret = DropColumnFamily("IP_BLACKLIST");
-    ASSERT_TRUE(ret);
-    ret = CreateColumnFamily("");
-    ASSERT_TRUE(!ret);
-    ret = DropColumnFamily("NOT_AVAILABLE");
-    ASSERT_TRUE(!ret);
+    ret = kvdb.deleteColumn(COLUMN_NAME);
+    ASSERT_FALSE(ret);
+
+    ret = kvdb.deleteColumn(); // TODO "default" can be deleted? I dont think
+                               // so...
 }
 
-TEST(kvdbTests, read_write_column_family)
+TEST_F(KVDBTest, ReadWrite)
 {
-    std::string valIn, valOut, valWithoutCopy;
-    bool ret = CreateColumnFamily("IP_BLACKLIST");
-    ASSERT_TRUE(ret);
-    valIn = "192.168.10.2";
-    ret = WriteToColumnFamily("IP_BLACKLIST", "someKey", valIn);
-    ASSERT_TRUE(ret);
-    valIn = "127.0.0.1";
-    ret = WriteToColumnFamily("IP_BLACKLIST", "someKey", valIn);
-    ASSERT_TRUE(ret);
-    ret = ReadToColumnFamily("IP_BLACKLIST", "someKey", valOut);
-    ASSERT_TRUE(ret);
-    ASSERT_EQ(valOut,"127.0.0.1");
+    const std::string KEY = "dummy_key";
+    const std::string VALUE = "dummy_value";
+    std::string valueRead;
+    bool ret;
 
-    ret = CreateColumnFamily("IP_GEO_TAGGING");
-    ASSERT_TRUE(ret);
-    valIn = "31.4201S,64.1888W";
-    ret = WriteToColumnFamily("IP_GEO_TAGGING", "position", valIn);
-    ASSERT_TRUE(ret);
-    ret = ReadToColumnFamilyWithoutValueCopy("IP_GEO_TAGGING", "position", valWithoutCopy);
-    ASSERT_TRUE(ret);
-    ASSERT_EQ(valWithoutCopy,"31.4201S,64.1888W");
+    KVDB &kvdb = kvdbManager.getDB("TEST_DB");
 
-    ret = DeleteKeyInColumnFamily("IP_BLACKLIST", "someKey");
+    ret = kvdb.write(KEY, VALUE);
     ASSERT_TRUE(ret);
-    ret = ReadToColumnFamily("IP_BLACKLIST", "someKey", valOut);
-    ASSERT_TRUE(!ret);
-    ret = DropColumnFamily("IP_BLACKLIST");
+
+    ret = kvdb.hasKey(KEY);
     ASSERT_TRUE(ret);
+
+    valueRead = kvdb.read(KEY);
+    ASSERT_EQ(valueRead, VALUE);
+
+    ret = kvdb.readPinned(KEY, valueRead); // Check this...
+    ASSERT_TRUE(ret);
+    ASSERT_EQ(valueRead, VALUE);
+
+    ret = kvdb.deleteKey(KEY);
+    ASSERT_TRUE(ret);
+
+    ret = kvdb.hasKey(KEY);
+    ASSERT_FALSE(ret);
+
+    valueRead = kvdb.read(KEY);
+    ASSERT_TRUE(valueRead.empty());
+
+    ret = kvdb.readPinned(KEY, valueRead); // Check this...
+    ASSERT_FALSE(ret);
+    ASSERT_TRUE(valueRead.empty());
 }
 
-TEST(kvdbTests, transactions_success)
+TEST_F(KVDBTest, ReadWriteColumn)
 {
-    std::string value;
-    std::vector<std::pair<std::string,std::string>> vPairs = {{"key1","value1"},
-    {"key2","value2"}, {"key3","value3"}, {"key4","value4"}, {"key5","value5"}};
+    const std::string COLUMN_NAME = "NEW_COLUMN";
+    const std::string KEY = "dummy_key";
+    const std::string VALUE = "dummy_value";
+    std::string valueRead;
+    bool ret;
 
-    bool ret = CreateColumnFamily("IP_BLACKLIST");
-    ASSERT_TRUE(ret);
-    value = "192.168.10.2";
-    ret = WriteToColumnFamily("IP_BLACKLIST", "someKey", value);
-    ASSERT_TRUE(ret);
-    ret = WriteToColumnFamilyTransaction("IP_BLACKLIST", vPairs);
+    KVDB &kvdb = kvdbManager.getDB("TEST_DB");
+
+    ret = kvdb.createColumn(COLUMN_NAME);
     ASSERT_TRUE(ret);
 
-    ret = ReadToColumnFamily("IP_BLACKLIST", "key1", value);
+    ret = kvdb.write(KEY, VALUE, COLUMN_NAME);
     ASSERT_TRUE(ret);
-    ASSERT_EQ(value,"value1");
-    ret = ReadToColumnFamily("IP_BLACKLIST", "key2", value);
-    ASSERT_TRUE(ret);
-    ASSERT_EQ(value,"value2");
-    ret = ReadToColumnFamily("IP_BLACKLIST", "key3", value);
-    ASSERT_TRUE(ret);
-    ASSERT_EQ(value,"value3");
-    ret = ReadToColumnFamily("IP_BLACKLIST", "key4", value);
-    ASSERT_TRUE(ret);
-    ASSERT_EQ(value,"value4");
-    ret = ReadToColumnFamily("IP_BLACKLIST", "key5", value);
-    ASSERT_TRUE(ret);
-    ASSERT_EQ(value,"value5");
+
+    valueRead = kvdb.read(KEY, COLUMN_NAME);
+    ASSERT_EQ(valueRead, VALUE);
 }
 
-TEST(kvdbTests, clean_column_family)
+TEST_F(KVDBTest, Transactions)
 {
-    std::string valueOut, valueIn;
-    bool ret = CreateColumnFamily("IP_BLACKLIST");
+    std::vector<std::pair<std::string, std::string>> vPairs = {
+        {"key1", "value1"},
+        {"key2", "value2"},
+        {"key3", "value3"},
+        {"key4", "value4"},
+        {"key5", "value5"}};
+    std::string valueRead;
+    bool ret;
+
+    KVDB &kvdb = kvdbManager.getDB("TEST_DB");
+
+    ret = kvdb.writeToTransaction(vPairs);
     ASSERT_TRUE(ret);
 
-    valueIn = "127.0.0.1";
-    ret = WriteToColumnFamily("IP_BLACKLIST", "someKey", valueIn);
-    ASSERT_TRUE(ret);
-    ret = ReadToColumnFamily("IP_BLACKLIST", "someKey", valueOut);
-    ASSERT_TRUE(ret);
-    ASSERT_EQ(valueOut,"127.0.0.1");
-    ret = CleanColumnFamily("IP_BLACKLIST");
-    ASSERT_TRUE(ret);
-
-    valueIn = "255.255.255.0";
-    ret = ReadToColumnFamily("IP_BLACKLIST", "someKey", valueIn);
-    ASSERT_TRUE(!ret);
-    ret = WriteToColumnFamily("IP_BLACKLIST", "AnotherKey", valueIn);
-    ASSERT_TRUE(ret);
-    ret = ReadToColumnFamily("IP_BLACKLIST", "AnotherKey", valueOut);
-    ASSERT_TRUE(ret);
-    ASSERT_EQ(valueOut,"255.255.255.0");
+    for (auto pair : vPairs)
+    {
+        valueRead = kvdb.read(pair.first);
+        ASSERT_EQ(valueRead, pair.second);
+    }
 }
 
-TEST(kvdbTests, value_key_length)
+TEST_F(KVDBTest, CleanColumn)
 {
-    std::string valInput, valOutput;
-    bool ret = CreateColumnFamily("IP_BLACKLIST");
-    ASSERT_TRUE(ret);
+    const std::string COLUMN_NAME = "NEW_COLUMN";
+    const std::string KEY = "dummy_key";
+    const std::string VALUE = "dummy_value";
+    std::string valueRead;
+    bool ret;
 
-    valInput = getRandomString(128,true);
-    ret = WriteToColumnFamily("IP_BLACKLIST", "anyKey", valInput);
-    ASSERT_TRUE(ret);
-    ret = ReadToColumnFamily("IP_BLACKLIST", "anyKey", valOutput);
-    ASSERT_TRUE(ret);
+    KVDB &kvdb = kvdbManager.getDB("TEST_DB");
 
-    valInput = getRandomString(512,true);
-    ret = WriteToColumnFamily("IP_BLACKLIST", "anyKey", valInput);
+    // default column
+    ret = kvdb.write(KEY, VALUE);
     ASSERT_TRUE(ret);
-    ret = ReadToColumnFamily("IP_BLACKLIST", "anyKey", valOutput);
+    valueRead = kvdb.read(KEY);
+    ASSERT_EQ(valueRead, VALUE);
+    ret = kvdb.cleanColumn();
     ASSERT_TRUE(ret);
+    valueRead = kvdb.read(KEY);
+    ASSERT_TRUE(valueRead.empty());
 
-    valInput = getRandomString(1024,true);
-    ret = WriteToColumnFamily("IP_BLACKLIST", "anyKey", valInput);
+    // custom column
+    ret = kvdb.createColumn(COLUMN_NAME);
     ASSERT_TRUE(ret);
-    ret = ReadToColumnFamily("IP_BLACKLIST", "anyKey", valOutput);
-    ASSERT_EQ(valOutput,valInput);
+    ret = kvdb.write(KEY, VALUE, COLUMN_NAME);
     ASSERT_TRUE(ret);
+    valueRead = kvdb.read(KEY, COLUMN_NAME);
+    ASSERT_EQ(valueRead, VALUE);
+    ret = kvdb.cleanColumn(COLUMN_NAME);
+    ASSERT_TRUE(ret);
+    valueRead = kvdb.read(KEY, COLUMN_NAME);
+    ASSERT_TRUE(valueRead.empty());
 }
 
-TEST(kvdbTests, concurrent_write)
+TEST_F(KVDBTest, ValueKeyLength)
+{
+    const std::string KEY = "dummy_key";
+    KVDB &kvdb = kvdbManager.getDB("TEST_DB");
+    std::string valueRead;
+    std::string valueWrite;
+    bool ret;
+
+    valueWrite = getRandomString(128, true);
+    ret = kvdb.write(KEY, valueWrite);
+    ASSERT_TRUE(ret);
+    valueRead = kvdb.read(KEY);
+    ASSERT_EQ(valueWrite, valueRead);
+
+    valueWrite = getRandomString(512, true);
+    ret = kvdb.write(KEY, valueWrite);
+    ASSERT_TRUE(ret);
+    valueRead = kvdb.read(KEY);
+    ASSERT_EQ(valueWrite, valueRead);
+
+    valueWrite = getRandomString(1024, true);
+    ret = kvdb.write(KEY, valueWrite);
+    ASSERT_TRUE(ret);
+    valueRead = kvdb.read(KEY);
+    ASSERT_EQ(valueWrite, valueRead);
+}
+
+TEST_F(KVDBTest, concurrent_write)
 {
     // TODO: how to test a concurrent acces to Rocksdb, it must
     // * use kvdb methods
@@ -183,3 +235,5 @@ TEST(kvdbTests, concurrent_write)
     // * block access to a DB while being used
     // * allow concurrent access to different DBs within RockdDB
 }
+
+} // namespace

@@ -6,17 +6,6 @@ set(ENGINE_KVDB_INCLUDE_DIR ${ENGINE_SOURCE_DIR}/kvdb/include)
 ####################################################################################################
 
 CPMAddPackage(
-    NAME RapidJSON
-    GITHUB_REPOSITORY Tencent/rapidjson
-    GIT_TAG master
-    VERSION 1.1.0
-    OPTIONS
-        "RAPIDJSON_BUILD_DOC OFF"
-        "RAPIDJSON_BUILD_EXAMPLES OFF"
-        "RAPIDJSON_BUILD_TESTS OFF"
-)
-
-CPMAddPackage(
   NAME rocksdb
   GITHUB_REPOSITORY facebook/rocksdb
   GIT_TAG v6.29.3
@@ -33,27 +22,15 @@ CPMAddPackage(
     "CMAKE_DISABLE_FIND_PACKAGE_gtest TRUE"
 )
 
-CPMAddPackage(
-  NAME glog
-  GITHUB_REPOSITORY google/glog
-  GIT_TAG v0.5.0
-  VERSION 0.5.0
-  OPTIONS
-      "WITH_GTEST OFF"
-      "BUILD_SHARED_LIBS OFF"
-      "WITH_GFLAGS OFF"
-      "WITH_UNWIND OFF"
-)
-
-# Add this dependencies to parent CMakeLists scope
-set(EXTERNAL_DEPS ${EXTERNAL_DEPS} PARENT_SCOPE)
-
 ####################################################################################################
 # Sources - Includes
 ####################################################################################################
-add_library(kvdb ${ENGINE_KVDB_SOURCE_DIR}/kvdb.cpp)
+add_library(kvdb STATIC
+    ${ENGINE_KVDB_SOURCE_DIR}/kvdbManager.cpp
+    ${ENGINE_KVDB_SOURCE_DIR}/kvdb.cpp
+)
 
-target_link_libraries(kvdb PRIVATE rocksdb "glog::glog")
+target_link_libraries(kvdb PRIVATE rocksdb base)
 
 target_include_directories(kvdb PUBLIC
     ${ENGINE_KVDB_INCLUDE_DIR}
