@@ -425,7 +425,7 @@ bool KVDB::writeToTransaction(
         return false;
     }
 
-    ROCKSDB::Transaction *txn = m_txndb->BeginTransaction(m_options.write);
+    rocksdb::Transaction *txn = m_txndb->BeginTransaction(kOptions.write);
     if (!txn)
     {
         WAZUH_LOG_ERROR("Couldn't begin in transaction");
@@ -444,7 +444,7 @@ bool KVDB::writeToTransaction(
             continue;
         }
         // Write a key-value in this transaction
-        ROCKSDB::Status s = txn->Put(cfh->second, key, value);
+        rocksdb::Status s = txn->Put(cfh->second, key, value);
         if (!s.ok())
         {
             txnOk = false;
@@ -452,7 +452,7 @@ bool KVDB::writeToTransaction(
                             s.ToString());
         }
     }
-    ROCKSDB::Status s = txn->Commit();
+    rocksdb::Status s = txn->Commit();
     if (!s.ok())
     {
         txnOk = false;
@@ -486,7 +486,7 @@ bool KVDB::hasKey(const std::string &key, const std::string &columnName)
         WAZUH_LOG_ERROR("DB should be open for execution");
     }
     std::string value;
-    return m_db->KeyMayExist(m_options.read, cfh->second, ROCKSDB::Slice(key), &value);
+    return m_db->KeyMayExist(kOptions.read, cfh->second, rocksdb::Slice(key), &value);
 }
 
 /**
