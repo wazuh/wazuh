@@ -8,8 +8,6 @@
 #include "rocksdb/db.h"
 #include "rocksdb/utilities/transaction_db.h"
 
-#define DEFAULT_CF_NAME "default"
-
 class KVDB
 {
 public:
@@ -33,7 +31,7 @@ public:
         Invalid,
     };
 
-    State getState()
+    const State getState() const
     {
         return m_state;
     }
@@ -69,6 +67,8 @@ public:
                    const std::string &columnName = DEFAULT_CF_NAME);
     bool close();
     bool destroy();
+
+    constexpr static char* DEFAULT_CF_NAME {"default"};
 
 private:
     std::string m_name = "Invalid";
