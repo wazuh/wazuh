@@ -215,7 +215,7 @@ std::string KVDB::read(const std::string &key, const std::string &ColumnName)
         m_db->Get(kOptions.read, cfh->second, rocksdb::Slice(key), &value);
     if (s.ok())
     {
-        WAZUH_LOG_INFO("value obtained OK [{},{}] into CF name : [{}]",
+        WAZUH_LOG_DEBUG("value obtained OK [{},{}] into CF name : [{}]",
                         key,
                         value,
                         ColumnName);
@@ -422,11 +422,7 @@ bool KVDB::writeToTransaction(
         }
         // Write a key in this transaction
         rocksdb::Status s = txn->Put(cfh->second, key, value);
-        if (s.ok())
-        {
-            continue;
-        }
-        else
+        if (!s.ok())
         {
             WAZUH_LOG_ERROR("couldn't execute Put in transaction "
                             "-breaking loop-, error: [{}]",
@@ -444,7 +440,7 @@ bool KVDB::writeToTransaction(
         return false;
     }
 
-    WAZUH_LOG_INFO("transaction commited OK");
+    WAZUH_LOG_DEBUG("transaction commited OK");
     return true;
 }
 
@@ -498,7 +494,7 @@ bool KVDB::readPinned(const std::string &key,
     if (s.ok())
     {
         value = pinnable_val.ToString();
-        WAZUH_LOG_INFO("read pinned value OK [{},{}]", key, value);
+        WAZUH_LOG_DEBUG("read pinned value OK [{},{}]", key, value);
         pinnable_val.Reset();
         return true;
     }
