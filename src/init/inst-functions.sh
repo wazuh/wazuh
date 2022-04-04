@@ -923,6 +923,15 @@ InstallCommon()
 
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/backup
 
+  # Install debugging symbols if available
+  # The symbols directory should always exist, if debugging symbols
+  # are not supported for this platform, it will simply be empty.
+  if find symbols ! -path symbols ! -name .gitignore | grep . > /dev/null ;then
+    rm -rf ${INSTALLDIR}/.symbols
+    cp -r symbols ${INSTALLDIR}/.symbols
+    chown -R 0:0 ${INSTALLDIR}/.symbols
+    chmod -R 750 ${INSTALLDIR}/.symbols
+  fi
 }
 
 InstallLocal()
@@ -1159,15 +1168,6 @@ InstallAgent()
     ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/azure
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/azure/azure-logs.py ${INSTALLDIR}/wodles/azure/azure-logs
 
-    # Install debugging symbols if available
-    # The symbols directory should always exist, if debugging symbols
-    # are not supported for this platform, it will simply be empty.
-    if find symbols ! -path symbols ! -name .gitignore | grep . > /dev/null ;then
-      rm -rf ${INSTALLDIR}/.symbols
-      cp -r symbols ${INSTALLDIR}/.symbols
-      chown -R 0:0 ${INSTALLDIR}/.symbols
-      chmod -R 750 ${INSTALLDIR}/.symbols
-    fi
 }
 
 InstallWazuh()
