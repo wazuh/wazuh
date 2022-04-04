@@ -36,6 +36,8 @@ public:
         return m_state;
     }
 
+    bool isReady();
+
     bool createColumn(const std::string &columnName);
 
     // TODO: all the default column names should be changed, one option is to
