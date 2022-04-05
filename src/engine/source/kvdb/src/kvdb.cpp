@@ -68,7 +68,9 @@ KVDB::KVDB(const std::string &dbName, const std::string &folder)
     }
     else
     {
-        WAZUH_LOG_ERROR("couldn't open db, error: [{}]", s.ToString());
+        WAZUH_LOG_ERROR("Couldn't open DB [{}], error: [{}]",
+                        m_name,
+                        s.ToString());
         m_state = State::Error;
     }
 }
@@ -99,7 +101,8 @@ bool KVDB::close()
             s = m_db->DestroyColumnFamilyHandle(item.second);
             if (!s.ok())
             {
-                WAZUH_LOG_WARN("couldn't destroy family handler, error: [{}]",
+                WAZUH_LOG_WARN("Couldn't destroy family handler from DB [{}], error: [{}]",
+                               m_name,
                                s.ToString());
                 ret = false;
             }
@@ -109,7 +112,9 @@ bool KVDB::close()
         s = m_db->Close();
         if (!s.ok())
         {
-            WAZUH_LOG_ERROR("couldn't close db, error: [{}]", s.ToString());
+            WAZUH_LOG_ERROR("Couldn't close DB [{}], error: [{}]",
+                            m_name,
+                            s.ToString());
             ret = false;
         }
 
@@ -138,7 +143,9 @@ bool KVDB::deleteFile()
         rocksdb::DestroyDB(m_path, rocksdb::Options(), CFDescriptors);
     if (!s.ok())
     {
-        WAZUH_LOG_ERROR("couldn't destroy db, error: [{}]", s.ToString());
+        WAZUH_LOG_ERROR("Couldn't destroy DB [{}], error: [{}]",
+                        m_name,
+                        s.ToString());
         m_state = State::Error;
         return false;
     }
@@ -173,14 +180,16 @@ bool KVDB::write(const std::string &key,
 {
     if (m_state != State::Open)
     {
-        WAZUH_LOG_ERROR("DB should be open for execution");
+        WAZUH_LOG_ERROR("DB [{}] should be open for execution", m_name);
         return false;
     }
 
     CFHMap::const_iterator cfh = m_CFHandlesMap.find(columnName);
     if (cfh == m_CFHandlesMap.end())
     {
-        WAZUH_LOG_ERROR("couldn't write to DB unknown column name");
+        WAZUH_LOG_ERROR("Couldn't write to DB [{}] unknown column name [{}]",
+                        m_name,
+                        columnName);
         return false;
     }
 
@@ -190,15 +199,20 @@ bool KVDB::write(const std::string &key,
                                   rocksdb::Slice(value));
     if (!s.ok())
     {
-        WAZUH_LOG_ERROR("couldn't insert value into CF, error: [{}]",
+        WAZUH_LOG_ERROR("Couldn't insert [{},{}] into DB [{}] CF [{}], error: [{}]",
+                        key,
+                        value,
+                        m_name,
+                        columnName,
                         s.ToString());
         return false;
     }
 
-    WAZUH_LOG_DEBUG("value insertion OK [{},{}] into CF name : [{}]",
-                    key,
-                    value,
-                    columnName);
+    WAZUH_LOG_DEBUG("Successfull insert [{},{}] into DB [{}] CF [{}]",
+                key,
+                value,
+                m_name,
+                columnName);
     return true;
 }
 
@@ -211,20 +225,23 @@ bool KVDB::write(const std::string &key,
  * @return value read If the proccess finished successfully
  * @return empty string If the proccess didn't finished successfully
  */
-std::string KVDB::read(const std::string &key, const std::string &ColumnName)
+std::string KVDB::read(const std::string &key, const std::string &columnName)
 {
     std::string result, value;
 
     if (m_state != State::Open)
     {
-        WAZUH_LOG_ERROR("DB should be open for execution");
+        WAZUH_LOG_ERROR("DB [{}] should be open for reading",
+                        m_name);
         return result;
     }
 
-    CFHMap::const_iterator cfh = m_CFHandlesMap.find(ColumnName);
+    CFHMap::const_iterator cfh = m_CFHandlesMap.find(columnName);
     if (cfh == m_CFHandlesMap.end())
     {
-        WAZUH_LOG_ERROR("Couldn't read DB unknown column name");
+        WAZUH_LOG_ERROR("Couldn't read DB [{}] unknown column name [{}]",
+                        m_name,
+                        columnName);
         return result;
     }
 
@@ -233,15 +250,19 @@ std::string KVDB::read(const std::string &key, const std::string &ColumnName)
         m_db->Get(kOptions.read, cfh->second, rocksdb::Slice(key), &value);
     if (s.ok())
     {
-        WAZUH_LOG_DEBUG("Value obtained OK [{},{}] into CF name : [{}]",
+        WAZUH_LOG_DEBUG("Value obtained OK [{},{}] from DB [{}] CF [{}]",
                         key,
                         value,
-                        ColumnName);
+                        m_name,
+                        columnName);
         result = value;
     }
     else
     {
-        WAZUH_LOG_ERROR("Couldn't read value, error: ", s.ToString());
+        WAZUH_LOG_ERROR("Couldn't read value from DB [{}] CF [{}], error: [{}]",
+                        m_name,
+                        columnName,
+                        s.ToString());
         result.clear();
     }
     return result;
@@ -252,21 +273,24 @@ std::string KVDB::read(const std::string &key, const std::string &ColumnName)
  *
  * @param key that will be deleted
  * @param columnName where to search for the key
- * @return true if the key was succesfully deleted
- * @return false if the key wasn't succesfully deleted
+ * @return true if the key was successfully deleted
+ * @return false if the key wasn't successfully deleted
  */
 bool KVDB::deleteKey(const std::string &key, const std::string &columnName)
 {
     if (m_state != State::Open)
     {
-        WAZUH_LOG_ERROR("DB should be open for execution");
+        WAZUH_LOG_ERROR("DB [{}] should be open for execution",
+                        m_name);
         return false;
     }
 
     CFHMap::const_iterator cfh = m_CFHandlesMap.find(columnName);
     if (cfh == m_CFHandlesMap.end())
     {
-        WAZUH_LOG_ERROR("couldn't delete key in DB unknown column name");
+        WAZUH_LOG_ERROR("Couldn't delete key in DB [{}] unknown column name [{}]",
+                        m_name,
+                        columnName);
         return false;
     }
 
@@ -274,10 +298,16 @@ bool KVDB::deleteKey(const std::string &key, const std::string &columnName)
         m_db->Delete(kOptions.write, cfh->second, rocksdb::Slice(key));
     if (s.ok())
     {
-        WAZUH_LOG_DEBUG("key deleted OK [{}]", key);
+        WAZUH_LOG_INFO("Key [{}] deleted OK from DB [{}]",
+                       key,
+                       m_name);
         return true;
     }
-    WAZUH_LOG_ERROR("couldn't delete value in CF, error: [{}]", s.ToString());
+    WAZUH_LOG_ERROR("Couldn't delete key [{}] from DB [{}] CF [{}], error: [{}]",
+                    key,
+                    m_name,
+                    columnName,
+                    s.ToString());
     return false;
 }
 
@@ -292,14 +322,17 @@ bool KVDB::createColumn(const std::string &columnName)
 {
     if (m_state != State::Open)
     {
-        WAZUH_LOG_ERROR("DB should be open for execution");
+        WAZUH_LOG_ERROR("DB [{}] should be open for execution",
+                        m_name);
         return false;
     }
 
     CFHMap::const_iterator cfh = m_CFHandlesMap.find(columnName);
     if (cfh != m_CFHandlesMap.end())
     {
-        WAZUH_LOG_ERROR("couldn't create CF, name already taken");
+        WAZUH_LOG_ERROR("Couldn't create CF [{}] in DB [{}], name already taken",
+                        columnName,
+                        m_name);
         return false;
     }
 
@@ -314,7 +347,10 @@ bool KVDB::createColumn(const std::string &columnName)
         return true;
     }
 
-    WAZUH_LOG_ERROR("couldn't create CF, error: ", s.ToString());
+    WAZUH_LOG_ERROR("Couldn't create CF [{}] in DB [{}], error: ",
+                    columnName,
+                    m_name,
+                    s.ToString());
     return false;
 }
 
@@ -329,14 +365,17 @@ bool KVDB::deleteColumn(const std::string &columnName)
 {
     if (m_state != State::Open)
     {
-        WAZUH_LOG_ERROR("DB should be open for execution");
+        WAZUH_LOG_ERROR("DB [{}] should be open for execution",
+                        m_name);
         return false;
     }
 
     CFHMap::const_iterator cfh = m_CFHandlesMap.find(columnName);
     if (cfh == m_CFHandlesMap.end())
     {
-        WAZUH_LOG_ERROR("couldn't delete CF unknown column name");
+        WAZUH_LOG_ERROR("Couldn't delete CF [{}] from DB [{}], unknown column name",
+                        columnName,
+                        m_name);
         return false;
     }
 
@@ -355,7 +394,10 @@ bool KVDB::deleteColumn(const std::string &columnName)
         return true;
     }
 
-    WAZUH_LOG_ERROR("couldn't delete Column, error: [{}]", s.ToString());
+    WAZUH_LOG_ERROR("Couldn't delete column [{}] from DB [{}], error: [{}]",
+                    columnName,
+                    m_name,
+                    s.ToString());
     return false;
 }
 
@@ -365,8 +407,8 @@ bool KVDB::deleteColumn(const std::string &columnName)
  Status::InvalidArgument("Can't drop default column family")> this needs to be
  fixed differently in order to avoid costly proccess on large DBs.
  * @param columnName that will be cleaned
- * @return true when succesfully cleaned
- * @return false when unsuccesfully cleaned
+ * @return true when successfully cleaned
+ * @return false when unsuccessfully cleaned
  */
 bool KVDB::cleanColumn(const std::string &columnName)
 {
@@ -402,34 +444,39 @@ bool KVDB::writeToTransaction(
 {
     if (m_state != State::Open)
     {
-        WAZUH_LOG_ERROR("DB should be open for execution");
+        WAZUH_LOG_ERROR("DB [{}] should be open for execution",
+                        m_name);
         return false;
     }
 
     if (!pairsVector.size())
     {
-        WAZUH_LOG_ERROR(
-            "Couldn't write transaction to DB, need at least 1 element");
+        WAZUH_LOG_ERROR("Couldn't write transaction to DB [{}], need at least 1 element",
+                        m_name);
         return false;
     }
 
     if (m_state != State::Open)
     {
-        WAZUH_LOG_ERROR("DB should be open for execution");
+        WAZUH_LOG_ERROR("DB [{}] should be open for execution",
+                        m_name);
         return false;
     }
 
     CFHMap::const_iterator cfh = m_CFHandlesMap.find(columnName);
     if (cfh == m_CFHandlesMap.end())
     {
-        WAZUH_LOG_ERROR("Couldn't write transaction to DB unknown column name");
+        WAZUH_LOG_ERROR("Couldn't write transaction to DB [{}] unknown column name [{}]",
+                        m_name,
+                        columnName);
         return false;
     }
 
     rocksdb::Transaction *txn = m_txndb->BeginTransaction(kOptions.write);
     if (!txn)
     {
-        WAZUH_LOG_ERROR("Couldn't begin in transaction");
+        WAZUH_LOG_ERROR("Couldn't begin in transaction in DB [{}]",
+                        m_name);
         return false;
     }
 
@@ -440,8 +487,10 @@ bool KVDB::writeToTransaction(
         std::string const value = pair.second;
         if (key.empty())
         {
-            WAZUH_LOG_ERROR(
-                "Discarding tuple because key is empty: [{}:{}]", key, value);
+            WAZUH_LOG_ERROR("Discarding tuple [{},{}] in DB [{}] because key is empty",
+                            key,
+                            value,
+                            m_name);
             continue;
         }
         // Write a key-value in this transaction
@@ -449,7 +498,8 @@ bool KVDB::writeToTransaction(
         if (!s.ok())
         {
             txnOk = false;
-            WAZUH_LOG_ERROR("Couldn't execute Put in transaction, error: [{}]",
+            WAZUH_LOG_ERROR("Couldn't execute Put in transaction for DB [{}], error: [{}]",
+                            m_name,
                             s.ToString());
         }
     }
@@ -457,7 +507,8 @@ bool KVDB::writeToTransaction(
     if (!s.ok())
     {
         txnOk = false;
-        WAZUH_LOG_ERROR("couldn't commit in transaction, error: [{}]",
+        WAZUH_LOG_ERROR("Couldn't commit in transaction in DB [{}], error: [{}]",
+                        m_name,
                         s.ToString());
     }
 
@@ -478,13 +529,16 @@ bool KVDB::hasKey(const std::string &key, const std::string &columnName)
     CFHMap::const_iterator cfh = m_CFHandlesMap.find(columnName);
     if (cfh == m_CFHandlesMap.end())
     {
-        WAZUH_LOG_ERROR("couldn't read DB unknown column name");
+        WAZUH_LOG_ERROR("Couldn't read from DB [{}], unknown column name [{}]",
+                        m_name,
+                        columnName);
         return false;
     }
 
     if (m_state != State::Open)
     {
-        WAZUH_LOG_ERROR("DB should be open for execution");
+        WAZUH_LOG_ERROR("DB [{}] should be open for execution",
+                        m_name);
     }
     std::string value;
     return m_db->KeyMayExist(
@@ -509,14 +563,17 @@ bool KVDB::readPinned(const std::string &key,
 {
     if (m_state != State::Open)
     {
-        WAZUH_LOG_ERROR("DB should be open for execution");
+        WAZUH_LOG_ERROR("DB [{}] should be open for execution",
+                        m_name);
         return false;
     }
 
     CFHMap::const_iterator cfh = m_CFHandlesMap.find(ColumnName);
     if (cfh == m_CFHandlesMap.end())
     {
-        WAZUH_LOG_ERROR("couldn't read value in DB unknown column name");
+        WAZUH_LOG_ERROR("Couldn't read value from DB [{}], unknown column name [{}]",
+                        m_name,
+                        ColumnName);
         return false;
     }
 
@@ -526,12 +583,17 @@ bool KVDB::readPinned(const std::string &key,
     if (s.ok())
     {
         value = pinnable_val.ToString();
-        WAZUH_LOG_DEBUG("read pinned value OK [{},{}]", key, value);
+        WAZUH_LOG_DEBUG("Successfull read pinned value [{},{}] from DB [{}]",
+                        key,
+                        value,
+                        m_name);
         pinnable_val.Reset();
         return true;
     }
 
-    WAZUH_LOG_ERROR("couldn't read pinned value, error: [{}]", s.ToString());
+    WAZUH_LOG_ERROR("Couldn't read pinned value from DB [{}], error: [{}]",
+                    m_name,
+                    s.ToString());
     return false;
 }
 
