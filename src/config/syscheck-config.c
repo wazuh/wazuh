@@ -2337,6 +2337,9 @@ void Free_Syscheck(syscheck_config * config) {
             free(config->realtime);
         }
         if (config->prefilter_cmd) {
+            for (int i = 0; config->prefilter_cmd[i]; i++) {
+                free(config->prefilter_cmd[i]);
+            }
             free(config->prefilter_cmd);
         }
 
