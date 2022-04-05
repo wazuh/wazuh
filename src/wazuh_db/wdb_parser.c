@@ -5367,12 +5367,12 @@ int wdb_parse_global_sync_agent_groups_get(wdb_t* wdb, char* input, char* output
             ret = OS_INVALID;
         }
         // Checking data types of alternative parameters in case they would have been sent in the input JSON.
-        else if ((j_last_id && !cJSON_IsNumber(j_last_id)) ||
+        else if ((j_last_id && (!cJSON_IsNumber(j_last_id) || j_last_id->valueint < 0)) ||
             (j_set_synced && !cJSON_IsBool(j_set_synced)) ||
             (j_get_hash && !cJSON_IsBool(j_get_hash)) ||
-            (j_agent_registration_delta && !cJSON_IsNumber(j_agent_registration_delta))) {
-            mdebug1("Invalid alternative fields data type in sync-agent-groups-get command.");
-            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, invalid alternative fields data type");
+            (j_agent_registration_delta && (!cJSON_IsNumber(j_agent_registration_delta) || j_agent_registration_delta->valueint < 0))) {
+            mdebug1("Invalid alternative fields data in sync-agent-groups-get command.");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, invalid alternative fields data");
             ret = OS_INVALID;
         } else {
             wdb_groups_sync_condition_t condition = WDB_GROUP_INVALID_CONDITION;
