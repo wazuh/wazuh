@@ -68,7 +68,7 @@ public:
     bool close();
     bool destroy();
 
-    constexpr static char* DEFAULT_CF_NAME {"default"};
+    constexpr static const char* DEFAULT_CF_NAME {"default"};
 
 private:
     std::string m_name = "Invalid";
