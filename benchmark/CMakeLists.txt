@@ -4,7 +4,6 @@
 # and/or modify it under the terms of the GNU General Public
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
-set(BENCHMARK_SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/source)
 
 # Add google benchmark as CPM dependency
 include(../cmake/CPM.cmake)
@@ -17,5 +16,24 @@ CPMAddPackage(
   EXCLUDE_FROM_ALL YES
 )
 
-add_subdirectory(${BENCHMARK_SOURCE_DIR}/regex)
-add_subdirectory(${BENCHMARK_SOURCE_DIR}/hlp)
+if(NOT CMAKE_BUILD_TYPE STREQUAL "Release" 
+        AND NOT CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+    message(FATAL_ERROR 
+        "Building and running benchmarks with a non release build will give bogus data"
+        )
+endif()
+
+add_library(engine_bench
+    OBJECT
+    wazuhBenchMain.cpp
+    )
+
+target_link_libraries(engine_bench
+    PUBLIC
+    benchmark::benchmark 
+    base
+    )
+
+add_subdirectory(regex)
+add_subdirectory(hlp)
+add_subdirectory(kvdb)
