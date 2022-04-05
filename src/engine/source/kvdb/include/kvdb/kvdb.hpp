@@ -43,7 +43,7 @@ public:
     // TODO: all the default column names should be changed, one option is to
     // define a KVDB default CF in order to avoid using a deleteColumn or
     // cleanColumn without any argument
-    bool deleteColumn(const std::string &columnName = DEFAULT_CF_NAME);
+    bool deleteColumn(const std::string &columnName);
 
     bool cleanColumn(const std::string &columnName = DEFAULT_CF_NAME);
 
@@ -55,7 +55,7 @@ public:
                       const std::string &columnName = DEFAULT_CF_NAME);
 
     bool writeToTransaction(
-        const std::vector<std::pair<std::string, std::string>>& pairsVector,
+        const std::vector<std::pair<std::string, std::string>> &pairsVector,
         const std::string &columnName = DEFAULT_CF_NAME);
 
     bool hasKey(const std::string &key,
@@ -71,13 +71,16 @@ public:
     bool deleteKey(const std::string &key,
                    const std::string &columnName = DEFAULT_CF_NAME);
     bool close();
-    bool m_destroyOnClose = false;
-    void markToDestroy() {m_destroyOnClose = true;}
+    bool m_deleteOnClose = false;
+    void markToDelete()
+    {
+        m_deleteOnClose = true;
+    }
 
     constexpr static const char* DEFAULT_CF_NAME {"default"};
 
 private:
-    bool destroy();
+    bool deleteFile();
     std::string m_name = "Invalid";
     std::string m_path;
     State m_state = State::Invalid;

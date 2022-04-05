@@ -47,8 +47,8 @@ KVDB::KVDB(const std::string &dbName, const std::string &folder)
     }
     else
     {
-        CFDescriptors.push_back(rocksdb::ColumnFamilyDescriptor(
-            DEFAULT_CF_NAME, kOptions.CF));
+        CFDescriptors.push_back(
+            rocksdb::ColumnFamilyDescriptor(DEFAULT_CF_NAME, kOptions.CF));
     }
 
     rocksdb::Status st = rocksdb::TransactionDB::Open(kOptions.open,
@@ -118,7 +118,8 @@ bool KVDB::close()
     m_txndb = nullptr;
     m_db = nullptr;
 
-    if (m_destroyOnClose && !destroy()) {
+    if (m_deleteOnClose && !deleteFile())
+    {
         ret = false;
     }
 
@@ -131,7 +132,7 @@ bool KVDB::close()
  * @return true successfully destructed
  * @return false unsuccessfully destructed
  */
-bool KVDB::destroy()
+bool KVDB::deleteFile()
 {
     rocksdb::Status s =
         rocksdb::DestroyDB(m_path, rocksdb::Options(), CFDescriptors);
@@ -152,8 +153,7 @@ bool KVDB::destroy()
  * @return true If the proccess finished successfully
  * @return false If the proccess didn't finished successfully
  */
-bool KVDB::writeKeyOnly(const std::string &key,
-                        const std::string &columnName)
+bool KVDB::writeKeyOnly(const std::string &key, const std::string &columnName)
 {
     return write(key, "", columnName);
 }
@@ -185,9 +185,9 @@ bool KVDB::write(const std::string &key,
     }
 
     rocksdb::Status s = m_db->Put(kOptions.write,
-                                cfh->second,
-                                rocksdb::Slice(key),
-                                rocksdb::Slice(value));
+                                  cfh->second,
+                                  rocksdb::Slice(key),
+                                  rocksdb::Slice(value));
     if (!s.ok())
     {
         WAZUH_LOG_ERROR("couldn't insert value into CF, error: [{}]",
@@ -196,9 +196,9 @@ bool KVDB::write(const std::string &key,
     }
 
     WAZUH_LOG_DEBUG("value insertion OK [{},{}] into CF name : [{}]",
-                key,
-                value,
-                columnName);
+                    key,
+                    value,
+                    columnName);
     return true;
 }
 
@@ -241,8 +241,7 @@ std::string KVDB::read(const std::string &key, const std::string &ColumnName)
     }
     else
     {
-        WAZUH_LOG_ERROR("Couldn't read value, error: ",
-                        s.ToString());
+        WAZUH_LOG_ERROR("Couldn't read value, error: ", s.ToString());
         result.clear();
     }
     return result;
@@ -275,11 +274,10 @@ bool KVDB::deleteKey(const std::string &key, const std::string &columnName)
         m_db->Delete(kOptions.write, cfh->second, rocksdb::Slice(key));
     if (s.ok())
     {
-        WAZUH_LOG_INFO("key deleted OK [{}]", key);
+        WAZUH_LOG_DEBUG("key deleted OK [{}]", key);
         return true;
     }
-    WAZUH_LOG_ERROR("couldn't delete value in CF, error: [{}]",
-                    s.ToString());
+    WAZUH_LOG_ERROR("couldn't delete value in CF, error: [{}]", s.ToString());
     return false;
 }
 
@@ -357,8 +355,7 @@ bool KVDB::deleteColumn(const std::string &columnName)
         return true;
     }
 
-    WAZUH_LOG_ERROR("couldn't delete Column, error: [{}]",
-                    s.ToString());
+    WAZUH_LOG_ERROR("couldn't delete Column, error: [{}]", s.ToString());
     return false;
 }
 
@@ -400,7 +397,7 @@ bool KVDB::cleanColumn(const std::string &columnName)
  * @return false when one or more items weren't succesfully written.
  */
 bool KVDB::writeToTransaction(
-    const std::vector<std::pair<std::string, std::string>>& pairsVector,
+    const std::vector<std::pair<std::string, std::string>> &pairsVector,
     const std::string &columnName)
 {
     if (m_state != State::Open)
@@ -443,8 +440,8 @@ bool KVDB::writeToTransaction(
         std::string const value = pair.second;
         if (key.empty())
         {
-            WAZUH_LOG_ERROR("Discarding tuple because key is empty: [{}:{}]",
-                            key, value);
+            WAZUH_LOG_ERROR(
+                "Discarding tuple because key is empty: [{}:{}]", key, value);
             continue;
         }
         // Write a key-value in this transaction
@@ -490,7 +487,8 @@ bool KVDB::hasKey(const std::string &key, const std::string &columnName)
         WAZUH_LOG_ERROR("DB should be open for execution");
     }
     std::string value;
-    return m_db->KeyMayExist(kOptions.read, cfh->second, rocksdb::Slice(key), &value);
+    return m_db->KeyMayExist(
+        kOptions.read, cfh->second, rocksdb::Slice(key), &value);
 }
 
 /**
@@ -533,8 +531,7 @@ bool KVDB::readPinned(const std::string &key,
         return true;
     }
 
-    WAZUH_LOG_ERROR("couldn't read pinned value, error: [{}]",
-                    s.ToString());
+    WAZUH_LOG_ERROR("couldn't read pinned value, error: [{}]", s.ToString());
     return false;
 }
 
@@ -544,6 +541,7 @@ bool KVDB::readPinned(const std::string &key,
  * @return true if the DB can be used
  * @return false if the DB can´t be used
  */
-bool KVDB::isReady() {
+bool KVDB::isReady()
+{
     return (m_state == State::Open);
 }
