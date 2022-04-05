@@ -49,8 +49,8 @@ BEGIN
 		VALUE "LegalCopyright",     "Copyright (C) 2015, Wazuh Inc."
 		VALUE "ProductName",        "Wazuh Windows Agent"
 		VALUE "ProductVersion",     QUOTE(VER_PRODUCTVERSION_STR)
-        VALUE "Info",               "https://www.wazuh.com"
-        VALUE "Licence",            "GPLv2"
+         VALUE "Info",               "https://www.wazuh.com"
+         VALUE "Licence",            "GPLv2"
         END
 	END
      BLOCK "VarFileInfo"
