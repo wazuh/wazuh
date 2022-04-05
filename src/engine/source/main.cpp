@@ -133,6 +133,8 @@ int main(int argc, char *argv[])
         std::thread t {
             [=, &eventBuffer = server.output()]()
             {
+                WAZUH_PROFILE_THREAD_NAME(
+                    fmt::format("[worker:{}]", i).c_str());
                 router::Router<builder::Builder<catalog::Catalog>> router {
                     _builder};
 
