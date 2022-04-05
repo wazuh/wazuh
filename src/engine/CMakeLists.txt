@@ -25,7 +25,8 @@ set(ENGINE_DOC_DIR ${PROJECT_SOURCE_DIR}/docs)
 option(ENGINE_BUILD_TEST "Generate tests" ON)
 option(ENGINE_BUILD_BENCHMARK "Generate benchmarks" ON)
 option(ENGINE_BUILD_DOCUMENTATION "Generate doxygen documentation" ON)
-option(ENGINE_FORMAT_SOURCES "Format sources using astyle on building" ON)
+option(ENGINE_PROFILE_BUILD "Enables profiling through Tracy" OFF)
+option(ENGINE_PROFILE_MEMORY "Enables memory profiling in Tracy" OFF)
 
 # Ensures that we do an out of source build
 MACRO(MACRO_ENSURE_OUT_OF_SOURCE_BUILD MSG)
@@ -75,7 +76,6 @@ target_include_directories(main
     PUBLIC
     ${ENGINE_SOURCE_DIR}/router
     ${ENGINE_SOURCE_DIR}/json
-    ${ENGINE_SOURCE_DIR}/graph
     ${CameronQueue_SOURCE_DIR}
 )
 

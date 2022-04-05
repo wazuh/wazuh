@@ -13,10 +13,6 @@
 #ifndef _SOCKET_ENDPOINT_H
 #define _SOCKET_ENDPOINT_H
 
-#include <functional>
-#include <iostream>
-#include <mutex>
-#include <string>
 #include <uvw/pipe.hpp>
 #include <uvw/timer.hpp>
 
