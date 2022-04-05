@@ -72,6 +72,10 @@ KVDB::KVDB(const std::string &dbName, const std::string &folder)
                         m_name,
                         s.ToString());
         m_state = State::Error;
+        // TODO: Investigate the reason of this:
+        // RocksDB creates a DB even if the option is create_if_missing is false.
+        // The open operation fails, but the DB is created anyway.
+        rocksdb::DestroyDB(m_path, rocksdb::Options(), CFDescriptors);
     }
 }
 
