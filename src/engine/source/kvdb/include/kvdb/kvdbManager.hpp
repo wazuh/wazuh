@@ -13,7 +13,7 @@ class KVDBManager
     ~KVDBManager();
     static KVDBManager* mInstance;
     std::string mDbFolder;
-    using DBMap = std::unordered_map<std::string, std::unique_ptr<KVDB>>;
+    using DBMap = std::unordered_map<std::string, std::shared_ptr<KVDB>>;
     DBMap m_availableKVDBs;
     bool addDB(const std::string &name,const std::string &folder);
 
@@ -28,7 +28,7 @@ public:
     bool createDBfromCDB(const std::filesystem::path &path,
                          bool overwrite = true);
     bool deleteDB(const std::string &name);
-    KVDB &getDB(const std::string &name);
+    std::shared_ptr<KVDB> getDB(const std::string &name);
 };
 
 #endif // _KVDBMANAGER_H

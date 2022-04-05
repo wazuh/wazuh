@@ -21,6 +21,7 @@ namespace {
 class opBuilderKVDBNotMatchTest : public ::testing::Test {
 
 protected:
+    bool initialized = KVDBManager::init("/var/ossec/queue/db/kvdb/");
     KVDBManager& kvdbManager = KVDBManager::get();
 
     opBuilderKVDBNotMatchTest() {
@@ -72,8 +73,8 @@ TEST_F(opBuilderKVDBNotMatchTest, Builds_incorrect_invalid_db)
 TEST_F(opBuilderKVDBNotMatchTest, Static_string_ok)
 {
     // Set Up KVDB
-    KVDB& kvdb = kvdbManager.getDB("TEST_DB");
-    kvdb.write("KEY", "DUMMY"); // TODO: Remove DUMMY Use non-value overload
+    auto kvdb = kvdbManager.getDB("TEST_DB");
+    kvdb->writeKeyOnly("KEY");
 
     Document doc{R"({
         "check":
@@ -108,8 +109,8 @@ TEST_F(opBuilderKVDBNotMatchTest, Static_string_ok)
 
 TEST_F(opBuilderKVDBNotMatchTest, Multilevel_target)
 {
-    KVDB& kvdb = kvdbManager.getDB("TEST_DB");
-    kvdb.write("KEY", "DUMMY"); // TODO: Remove DUMMY Use non-value overload
+    auto kvdb = kvdbManager.getDB("TEST_DB");
+    kvdb->writeKeyOnly("KEY");
 
     Document doc{R"({
         "check":

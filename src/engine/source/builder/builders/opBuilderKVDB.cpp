@@ -45,9 +45,8 @@ types::Lifter opBuilderKVDBExtract(const types::DocumentValue & def)
     }
 
     // Get DB
-    KVDBManager& kvdbManager = KVDBManager::get();
-    KVDB& kvdb = kvdbManager.getDB(parametersArr[1]);
-    if (!kvdb.isReady())
+    auto kvdb = KVDBManager::get().getDB(parametersArr[1]);
+    if (!kvdb)
     {
         auto msg = fmt::format("[{}] DB isn't available for usage", parametersArr[1]);
         throw std::runtime_error(std::move(msg));
@@ -62,11 +61,11 @@ types::Lifter opBuilderKVDBExtract(const types::DocumentValue & def)
     }
 
     // Return Lifter
-    return [target, &kvdb, key, isReference](types::Observable o)
+    return [target, kvdb, key, isReference](types::Observable o)
     {
         // Append rxcpp operation
         return o.map(
-            [target, &kvdb, key, isReference](types::Event e)
+            [=](types::Event e)
             {
                 // Get DB key
                 std::string dbKey;
@@ -92,7 +91,7 @@ types::Lifter opBuilderKVDBExtract(const types::DocumentValue & def)
                 }
 
                 // Get value from the DB
-                std::string dbValue = kvdb.read(dbKey);
+                std::string dbValue = kvdb->read(dbKey);
                 if (dbValue.empty()) {
                     return e;
                 }
@@ -134,27 +133,26 @@ types::Lifter opBuilderKVDBExistanceCheck(const types::DocumentValue & def, bool
         throw std::runtime_error("Invalid number of parameters for kvdb matching operator");
     }
 
-    KVDBManager& kvdbManager = KVDBManager::get();
-    KVDB& kvdb = kvdbManager.getDB(parametersArr[1]);
-    if (!kvdb.isReady())
+    auto kvdb = KVDBManager::get().getDB(parametersArr[1]);
+    if (!kvdb)
     {
         auto msg = fmt::format("[{}] DB isn't available for usage", parametersArr[1]);
         throw std::runtime_error(std::move(msg));
     }
 
     // Return Lifter
-    return [&kvdb, key, checkExist](types::Observable o)
+    return [kvdb, key, checkExist](types::Observable o)
     {
         // Append rxcpp operations
         return o.filter(
-            [&kvdb, key, checkExist](types::Event e)
+            [=](types::Event e)
             {
                 bool found = false;
                 try // TODO We are only using try for JSON::get. Is correct to wrap everything?
                 {
                     auto value = &e->get(key);
                     if (value && value->IsString()) {
-                        if (kvdb.hasKey(value->GetString())) {
+                        if (kvdb->hasKey(value->GetString())) {
                             found = true;
                         }
                     }

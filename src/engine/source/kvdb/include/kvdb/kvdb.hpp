@@ -71,11 +71,13 @@ public:
     bool deleteKey(const std::string &key,
                    const std::string &columnName = DEFAULT_CF_NAME);
     bool close();
-    bool destroy();
+    bool m_destroyOnClose = false;
+    void markToDestroy() {m_destroyOnClose = true;}
 
     constexpr static const char* DEFAULT_CF_NAME {"default"};
 
 private:
+    bool destroy();
     std::string m_name = "Invalid";
     std::string m_path;
     State m_state = State::Invalid;

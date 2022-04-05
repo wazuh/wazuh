@@ -21,6 +21,7 @@ namespace {
 class opBuilderKVDBExtractTest : public ::testing::Test {
 
 protected:
+    bool initialized = KVDBManager::init("/var/ossec/queue/db/kvdb/");
     KVDBManager& kvdbManager = KVDBManager::get();
 
     opBuilderKVDBExtractTest() {
@@ -71,8 +72,8 @@ TEST_F(opBuilderKVDBExtractTest, Builds_incorrect_invalid_db)
 // Static key
 TEST_F(opBuilderKVDBExtractTest, Static_key)
 {
-    KVDB& kvdb = kvdbManager.getDB("TEST_DB");
-    kvdb.write("KEY", "VALUE");
+    auto kvdb = kvdbManager.getDB("TEST_DB");
+    kvdb->write("KEY", "VALUE");
 
     Document doc{R"({
         "map":
@@ -107,8 +108,8 @@ TEST_F(opBuilderKVDBExtractTest, Static_key)
 // Dynamic key
 TEST_F(opBuilderKVDBExtractTest, Dynamic)
 {
-    KVDB& kvdb = kvdbManager.getDB("TEST_DB");
-    kvdb.write("KEY", "VALUE");
+    auto kvdb = kvdbManager.getDB("TEST_DB");
+    kvdb->write("KEY", "VALUE");
 
     Document doc{R"({
         "map":
@@ -147,8 +148,8 @@ TEST_F(opBuilderKVDBExtractTest, Dynamic)
 // Multi level key
 TEST_F(opBuilderKVDBExtractTest, Multi_level_key)
 {
-    KVDB& kvdb = kvdbManager.getDB("TEST_DB");
-    kvdb.write("KEY", "VALUE");
+    auto kvdb = kvdbManager.getDB("TEST_DB");
+    kvdb->write("KEY", "VALUE");
 
     Document doc{R"({
         "map":
@@ -183,8 +184,8 @@ TEST_F(opBuilderKVDBExtractTest, Multi_level_key)
 // Multi level target
 TEST_F(opBuilderKVDBExtractTest, Multi_level_target)
 {
-    KVDB& kvdb = kvdbManager.getDB("TEST_DB");
-    kvdb.write("KEY", "VALUE");
+    auto kvdb = kvdbManager.getDB("TEST_DB");
+    kvdb->write("KEY", "VALUE");
 
     Document doc{R"({
         "map":
@@ -219,8 +220,8 @@ TEST_F(opBuilderKVDBExtractTest, Multi_level_target)
 // Existent target
 TEST_F(opBuilderKVDBExtractTest, Existent_target)
 {
-    KVDB& kvdb = kvdbManager.getDB("TEST_DB");
-    kvdb.write("KEY", "VALUE");
+    auto kvdb = kvdbManager.getDB("TEST_DB");
+    kvdb->write("KEY", "VALUE");
 
     Document doc{R"({
         "map":
