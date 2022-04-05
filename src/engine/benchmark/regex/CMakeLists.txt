@@ -15,7 +15,7 @@ CPMAddPackage(
 
 # Configuration regex test
 add_executable(regex_bench
-  ${BENCHMARK_SOURCE_DIR}/regex/regex_bench.cpp
+  regex_bench.cpp
 )
 
 # Build benchmarks
