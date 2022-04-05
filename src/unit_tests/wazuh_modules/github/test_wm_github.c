@@ -35,7 +35,7 @@ unsigned int __wrap_sleep(unsigned int __seconds) {
     return mock_type(unsigned int);
 }
 
-unsigned int __wrap_localtime_r(__attribute__ ((__unused__)) const time_t *t, __attribute__ ((__unused__)) struct tm *tm) {
+unsigned int __wrap_gmtime_r(__attribute__ ((__unused__)) const time_t *t, __attribute__ ((__unused__)) struct tm *tm) {
     return mock_type(unsigned int);
 }
 
@@ -420,14 +420,14 @@ void test_github_execute_scan_no_initial_scan(void **state) {
     will_return(__wrap_wm_state_io, 1);
 
 #ifndef WIN32
-    will_return(__wrap_localtime_r, 1);
+    will_return(__wrap_gmtime_r, 1);
 #endif
 
     will_return(__wrap_strftime,"2021-05-07 12:24:56");
     will_return(__wrap_strftime, 20);
 
 #ifndef WIN32
-    will_return(__wrap_localtime_r, 1);
+    will_return(__wrap_gmtime_r, 1);
 #endif
 
     will_return(__wrap_strftime,"2021-05-07 12:34:56");
@@ -476,14 +476,14 @@ void test_github_execute_scan_status_code_200(void **state) {
     will_return(__wrap_wm_state_io, 1);
 
 #ifndef WIN32
-    will_return(__wrap_localtime_r, 1);
+    will_return(__wrap_gmtime_r, 1);
 #endif
 
     will_return(__wrap_strftime,"2021-05-07 12:24:56");
     will_return(__wrap_strftime, 20);
 
 #ifndef WIN32
-    will_return(__wrap_localtime_r, 1);
+    will_return(__wrap_gmtime_r, 1);
 #endif
 
     will_return(__wrap_strftime,"2021-05-07 12:34:56");
@@ -536,14 +536,14 @@ void test_github_execute_scan_status_code_200_null(void **state) {
     will_return(__wrap_wm_state_io, 1);
 
 #ifndef WIN32
-    will_return(__wrap_localtime_r, 1);
+    will_return(__wrap_gmtime_r, 1);
 #endif
 
     will_return(__wrap_strftime,"2021-05-07 12:24:56");
     will_return(__wrap_strftime, 20);
 
 #ifndef WIN32
-    will_return(__wrap_localtime_r, 1);
+    will_return(__wrap_gmtime_r, 1);
 #endif
 
     will_return(__wrap_strftime,"2021-05-07 12:34:56");
@@ -608,14 +608,14 @@ void test_github_execute_scan_max_size_reached(void **state) {
     will_return(__wrap_wm_state_io, 1);
 
 #ifndef WIN32
-    will_return(__wrap_localtime_r, 1);
+    will_return(__wrap_gmtime_r, 1);
 #endif
 
     will_return(__wrap_strftime,"2021-05-07 12:24:56");
     will_return(__wrap_strftime, 20);
 
 #ifndef WIN32
-    will_return(__wrap_localtime_r, 1);
+    will_return(__wrap_gmtime_r, 1);
 #endif
 
     will_return(__wrap_strftime,"2021-05-07 12:34:56");

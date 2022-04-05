@@ -24,9 +24,9 @@
 
 #ifdef WIN32
 #ifdef WAZUH_UNIT_TESTING
-#define localtime_r(x, y)
+#define gmtime_r(x, y)
 #else
-#define localtime_r(x, y) localtime_s(y, x)
+#define gmtime_r(x, y) gmtime_s(y, x)
 #endif
 #endif
 
@@ -352,7 +352,7 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
                 char start_time_str[80];
                 memset(start_time_str, '\0', 80);
                 struct tm tm_start = { .tm_sec = 0 };
-                localtime_r(&start_time, &tm_start);
+                gmtime_r(&start_time, &tm_start);
                 strftime(start_time_str, sizeof(start_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_start);
 
                 if ((end_time - start_time) > DAY_SEC) {
@@ -362,7 +362,7 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
                 char end_time_str[80];
                 memset(end_time_str, '\0', 80);
                 struct tm tm_end = { .tm_sec = 0 };
-                localtime_r(&end_time, &tm_end);
+                gmtime_r(&end_time, &tm_end);
                 strftime(end_time_str, sizeof(end_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_end);
 
                 memset(url, '\0', OS_SIZE_8192);

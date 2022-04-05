@@ -24,9 +24,9 @@
 
 #ifdef WIN32
 #ifdef WAZUH_UNIT_TESTING
-#define localtime_r(x, y)
+#define gmtime_r(x, y)
 #else
-#define localtime_r(x, y) localtime_s(y, x)
+#define gmtime_r(x, y) gmtime_s(y, x)
 #endif
 #endif
 
@@ -238,13 +238,13 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
         char last_scan_time_str[80];
         memset(last_scan_time_str, '\0', 80);
         struct tm tm_last_scan = { .tm_sec = 0 };
-        localtime_r(&last_scan_time, &tm_last_scan);
+        gmtime_r(&last_scan_time, &tm_last_scan);
         strftime(last_scan_time_str, sizeof(last_scan_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_last_scan);
 
         char new_scan_time_str[80];
         memset(new_scan_time_str, '\0', 80);
         struct tm tm_new_scan = { .tm_sec = 0 };
-        localtime_r(&new_scan_time, &tm_new_scan);
+        gmtime_r(&new_scan_time, &tm_new_scan);
         strftime(new_scan_time_str, sizeof(new_scan_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_new_scan);
 
         memset(url, '\0', OS_SIZE_8192);

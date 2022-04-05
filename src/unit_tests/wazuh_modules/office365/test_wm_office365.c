@@ -40,7 +40,7 @@ unsigned int __wrap_sleep(unsigned int __seconds) {
     return mock_type(unsigned int);
 }
 
-unsigned int __wrap_localtime_r(__attribute__ ((__unused__)) const time_t *t, __attribute__ ((__unused__)) struct tm *tm) {
+unsigned int __wrap_gmtime_r(__attribute__ ((__unused__)) const time_t *t, __attribute__ ((__unused__)) struct tm *tm) {
     return mock_type(unsigned int);
 }
 ////////////////  test wmodules-office365 /////////////////
@@ -2344,8 +2344,8 @@ void test_wm_office365_execute_scan_all(void **state) {
     expect_string(__wrap__mtdebug1, formatted_msg, "Office 365 API subscription URL: 'https://manage.office.com/api/v1.0/test_client_id/activity/feed/subscriptions/start?contentType=test_subscription_name'");
 
     #ifndef WIN32
-        will_return(__wrap_localtime_r, 1);
-        will_return(__wrap_localtime_r, 1);
+        will_return(__wrap_gmtime_r, 1);
+        will_return(__wrap_gmtime_r, 1);
     #endif
 
     will_return(__wrap_strftime,"2021-05-07 12:24:56");
@@ -2667,14 +2667,14 @@ void test_wm_office365_execute_scan_content_blobs_fail(void **state) {
     /* wm_office365_manage_subscription */
 
 #ifndef WIN32
-    will_return(__wrap_localtime_r, 1);
+    will_return(__wrap_gmtime_r, 1);
 #endif
 
     will_return(__wrap_strftime,"2021-05-07 12:24:56");
     will_return(__wrap_strftime, 20);
 
 #ifndef WIN32
-    will_return(__wrap_localtime_r, 1);
+    will_return(__wrap_gmtime_r, 1);
 #endif
 
     will_return(__wrap_strftime,"2021-05-08 12:24:55");
@@ -2769,14 +2769,14 @@ void test_wm_office365_execute_scan_get_logs_from_blob_response_null(void **stat
 
     // while ((end_time - start_time) > 0)
 #ifndef WIN32
-    will_return(__wrap_localtime_r, 1);
+    will_return(__wrap_gmtime_r, 1);
 #endif
 
     will_return(__wrap_strftime,"2021-06-11T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
 #ifndef WIN32
-    will_return(__wrap_localtime_r, 1);
+    will_return(__wrap_gmtime_r, 1);
 #endif
 
     will_return(__wrap_strftime,"2021-06-11T12:34:56Z");
