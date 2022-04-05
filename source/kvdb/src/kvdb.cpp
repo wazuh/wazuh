@@ -117,18 +117,22 @@ bool KVDB::close()
     }
     m_txndb = nullptr;
     m_db = nullptr;
+
+    if (m_destroyOnClose && !destroy()) {
+        ret = false;
+    }
+
     return ret;
 }
 
 /**
  * @brief Db destruction cleaning all files and data related to it
  *
- * @return true succesfully destructed
- * @return false unsuccesfully destructed
+ * @return true successfully destructed
+ * @return false unsuccessfully destructed
  */
 bool KVDB::destroy()
 {
-    close();
     rocksdb::Status s =
         rocksdb::DestroyDB(m_path, rocksdb::Options(), CFDescriptors);
     if (!s.ok())
