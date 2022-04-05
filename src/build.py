@@ -20,10 +20,13 @@ def processArgs():
     argument's utility.
 
     Args:
-        None
+        - None
 
     Returns:
-        None
+        - None
+
+    Raises:
+        - None
     """
     parser = argparse.ArgumentParser()
     parser.add_argument("-r", "--readytoreview",
