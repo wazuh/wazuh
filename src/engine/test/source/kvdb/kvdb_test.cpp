@@ -39,11 +39,9 @@ protected:
     KVDBManager &kvdbManager = KVDBManager::get();
 
     KVDBTest()
-    { // = default;
-        // TODO: this init is done in order to receive the logs at the right
-        // moment, insted we should be mocking these logs in each test
+    {
         logging::LoggingConfig logConfig;
-        logConfig.logLevel = logging::LogLevel::Debug;
+        logConfig.logLevel = logging::LogLevel::Off;
         logging::loggingInit(logConfig);
     }
 
