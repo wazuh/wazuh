@@ -14,21 +14,16 @@
 
 #include <kvdb/kvdb.hpp>
 
-// TODO Change Function Helpers tests initialization too.
-KVDBManager *KVDBManager::mInstance = nullptr;
-bool KVDBManager::init(const std::string &DbFolder)
+KVDBManager* KVDBManager::mInstance = nullptr;
+bool KVDBManager::init(const std::string& DbFolder)
 {
-    if (mInstance)
-    {
+    if (mInstance) {
         return false;
     }
-    if (DbFolder.empty())
-    {
+    if (DbFolder.empty()) {
         return false;
     }
-    std::filesystem::create_directories(
-        DbFolder); // TODO Remove this whe Engine is integrated in Wazuh
-                   // installation
+    std::filesystem::create_directories(DbFolder); // TODO Remove this when Engine is integrated in Wazuh installation
     mInstance = new KVDBManager(DbFolder);
     return true;
 }
@@ -81,7 +76,9 @@ bool KVDBManager::createDB(const std::string &name, bool overwrite)
     rocksdb::Status s = rocksdb::DB::Open(createOptions, mDbFolder + name, &db);
     if (!s.ok())
     {
-        WAZUH_LOG_ERROR("couldn't open db file, error: [{}]", s.ToString());
+        WAZUH_LOG_ERROR("Couldn't create DB [{}] file, error: [{}]",
+                        name,
+                        s.ToString());
         return false;
     }
     s = db->Close(); // TODO: We can avoid this unnecessary close making a more
@@ -89,7 +86,7 @@ bool KVDBManager::createDB(const std::string &name, bool overwrite)
                      // or if receives a CFHandler and a CFDescriptor vector.
     if (!s.ok())
     {
-        WAZUH_LOG_ERROR("couldn't close db file, error: [{}]", s.ToString());
+        WAZUH_LOG_ERROR("Couldn't close db file, error: [{}]", s.ToString());
         return false;
     }
 
@@ -102,13 +99,13 @@ bool KVDBManager::createDBfromCDB(const std::filesystem::path &path,
     std::ifstream CDBfile(path);
     if (!CDBfile.is_open())
     {
-        WAZUH_LOG_ERROR("Can't open CDB already open");
+        WAZUH_LOG_ERROR("Can't open CDB file [{}]",
+                        path.c_str());
         return false;
     }
 
     if (!createDB(path.stem(), overwrite))
     {
-        WAZUH_LOG_ERROR("Couldn't create DB [{}]", path.stem().c_str());
         return false;
     }
     auto kvdb = getDB(path.stem());
@@ -125,7 +122,8 @@ bool KVDBManager::createDBfromCDB(const std::filesystem::path &path,
         auto KV = utils::string::split(line, ':');
         if (!KV.empty() && !KV.at(0).empty() && !KV.at(0).empty())
         {
-            WAZUH_LOG_ERROR("Error while reading CDBfile");
+            WAZUH_LOG_ERROR("Error while reading CDBfile [{}]",
+                            path.c_str());
             return false;
         }
         kvdb->write(KV.at(0), KV.at(1));
