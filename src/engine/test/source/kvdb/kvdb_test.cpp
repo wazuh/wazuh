@@ -83,9 +83,6 @@ TEST_F(KVDBTest, CreateDeleteColumns)
     ASSERT_TRUE(ret);
     ret = kvdb->deleteColumn(COLUMN_NAME);
     ASSERT_FALSE(ret);
-
-    ret = kvdb->deleteColumn(); // TODO "default" can be deleted? I dont think
-                               // so...
 }
 
 TEST_F(KVDBTest, ReadWrite)
