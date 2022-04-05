@@ -366,9 +366,9 @@ void LogCollectorStart()
                 }
             }
 #endif
-            current->file = NULL;
-            current->command = NULL;
-            current->fp = NULL;
+            os_free(current->file);
+            os_free(current->command);
+            os_free(current->fp);
         }
 
         else if (j < 0) {

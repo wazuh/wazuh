@@ -129,7 +129,7 @@
                                                 "'log_format'. Default value will be used."
 #define LOGCOLLECTOR_MISSING_LOCATION_MACOS     "(8006): Missing 'location' element when using 'macos' as " \
                                                 "'log_format'. Default value will be used."
-#define MACOS_NOT_SUPPORTED                     "(8007): 'macos' log_format is only supported in macOS."
+#define LOGCOLLECTOR_ONLY_MACOS                 "(8007): 'macos' log_format is only supported in macOS."
 
 /* Remoted */
 #define REMOTED_NET_PROTOCOL_ERROR              "(9000): Error getting protocol. Default value (%s) will be used."
