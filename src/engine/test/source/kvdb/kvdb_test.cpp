@@ -62,32 +62,31 @@ protected:
     }
 };
 
-TEST_F(KVDBTest, CreateDeleteKvdFile)
+TEST_F(KVDBTest, CreateDeleteKvdbFile)
 {
     bool ret = kvdbManager.createDB("NEW_DB");
     ASSERT_TRUE(ret);
-    KVDB &newKvdb = kvdbManager.getDB("NEW_DB");
-    ASSERT_EQ(newKvdb.getName(), "NEW_DB");
-    ASSERT_EQ(newKvdb.getState(), KVDB::State::Open);
+    auto newKvdb = kvdbManager.getDB("NEW_DB");
+    ASSERT_EQ(newKvdb->getName(), "NEW_DB");
+    ASSERT_EQ(newKvdb->getState(), KVDB::State::Open);
 
     kvdbManager.deleteDB("NEW_DB");
-    KVDB &deletedKvdb = kvdbManager.getDB("NEW_DB");
-    ASSERT_EQ(deletedKvdb.getName(), "Invalid");
-    ASSERT_EQ(deletedKvdb.getState(), KVDB::State::Invalid);
+    auto deletedKvdb = kvdbManager.getDB("NEW_DB");
+    ASSERT_EQ(deletedKvdb, nullptr);
 }
 
 TEST_F(KVDBTest, CreateDeleteColumns)
 {
     const std::string COLUMN_NAME = "NEW_COLUMN";
-    KVDB &kvdb = kvdbManager.getDB("TEST_DB");
-    bool ret = kvdb.createColumn(COLUMN_NAME);
+    auto kvdb = kvdbManager.getDB("TEST_DB");
+    bool ret = kvdb->createColumn(COLUMN_NAME);
     ASSERT_TRUE(ret);
-    ret = kvdb.deleteColumn(COLUMN_NAME);
+    ret = kvdb->deleteColumn(COLUMN_NAME);
     ASSERT_TRUE(ret);
-    ret = kvdb.deleteColumn(COLUMN_NAME);
+    ret = kvdb->deleteColumn(COLUMN_NAME);
     ASSERT_FALSE(ret);
 
-    ret = kvdb.deleteColumn(); // TODO "default" can be deleted? I dont think
+    ret = kvdb->deleteColumn(); // TODO "default" can be deleted? I dont think
                                // so...
 }
 
@@ -98,31 +97,31 @@ TEST_F(KVDBTest, ReadWrite)
     std::string valueRead;
     bool ret;
 
-    KVDB &kvdb = kvdbManager.getDB("TEST_DB");
+    auto kvdb = kvdbManager.getDB("TEST_DB");
 
-    ret = kvdb.write(KEY, VALUE);
+    ret = kvdb->write(KEY, VALUE);
     ASSERT_TRUE(ret);
 
-    ret = kvdb.hasKey(KEY);
+    ret = kvdb->hasKey(KEY);
     ASSERT_TRUE(ret);
 
-    valueRead = kvdb.read(KEY);
+    valueRead = kvdb->read(KEY);
     ASSERT_EQ(valueRead, VALUE);
 
-    ret = kvdb.readPinned(KEY, valueRead); // Check this...
+    ret = kvdb->readPinned(KEY, valueRead); // Check this...
     ASSERT_TRUE(ret);
     ASSERT_EQ(valueRead, VALUE);
 
-    ret = kvdb.deleteKey(KEY);
+    ret = kvdb->deleteKey(KEY);
     ASSERT_TRUE(ret);
 
-    ret = kvdb.hasKey(KEY);
+    ret = kvdb->hasKey(KEY);
     ASSERT_FALSE(ret);
 
-    valueRead = kvdb.read(KEY);
+    valueRead = kvdb->read(KEY);
     ASSERT_TRUE(valueRead.empty());
 
-    ret = kvdb.readPinned(KEY, valueRead);
+    ret = kvdb->readPinned(KEY, valueRead);
     ASSERT_FALSE(ret);
     ASSERT_TRUE(valueRead.empty());
 }
@@ -133,13 +132,13 @@ TEST_F(KVDBTest, KeyOnlyWrite)
     // TODO Update FH tests too
     const std::string KEY = "dummy_key";
     bool ret;
-    KVDB &kvdb = kvdbManager.getDB("TEST_DB");
+    auto kvdb = kvdbManager.getDB("TEST_DB");
 
-    ret = kvdb.hasKey(KEY);
+    ret = kvdb->hasKey(KEY);
     ASSERT_FALSE(ret);
-    ret = kvdb.writeKeyOnly(KEY);
+    ret = kvdb->writeKeyOnly(KEY);
     ASSERT_TRUE(ret);
-    ret = kvdb.hasKey(KEY);
+    ret = kvdb->hasKey(KEY);
     ASSERT_TRUE(ret);
 }
 
@@ -151,15 +150,15 @@ TEST_F(KVDBTest, ReadWriteColumn)
     std::string valueRead;
     bool ret;
 
-    KVDB &kvdb = kvdbManager.getDB("TEST_DB");
+    auto kvdb = kvdbManager.getDB("TEST_DB");
 
-    ret = kvdb.createColumn(COLUMN_NAME);
+    ret = kvdb->createColumn(COLUMN_NAME);
     ASSERT_TRUE(ret);
 
-    ret = kvdb.write(KEY, VALUE, COLUMN_NAME);
+    ret = kvdb->write(KEY, VALUE, COLUMN_NAME);
     ASSERT_TRUE(ret);
 
-    valueRead = kvdb.read(KEY, COLUMN_NAME);
+    valueRead = kvdb->read(KEY, COLUMN_NAME);
     ASSERT_EQ(valueRead, VALUE);
 }
 
@@ -173,12 +172,12 @@ TEST_F(KVDBTest, Transaction_ok)
         {"key5", "value5"}};
     bool ret;
 
-    KVDB &kvdb = kvdbManager.getDB("TEST_DB");
-    ret = kvdb.writeToTransaction(vInput);
+    auto kvdb = kvdbManager.getDB("TEST_DB");
+    ret = kvdb->writeToTransaction(vInput);
     ASSERT_TRUE(ret);
     for (auto pair : vInput)
     {
-        std::string valueRead = kvdb.read(pair.first);
+        std::string valueRead = kvdb->read(pair.first);
         ASSERT_EQ(valueRead, pair.second);
     }
 }
@@ -186,30 +185,25 @@ TEST_F(KVDBTest, Transaction_ok)
 TEST_F(KVDBTest, Transaction_invalid_input)
 {
     bool ret;
-    KVDB &kvdb = kvdbManager.getDB("TEST_DB");
+    auto kvdb = kvdbManager.getDB("TEST_DB");
 
     // Empty input
     std::vector<std::pair<std::string, std::string>> vEmptyInput = {};
-    ret = kvdb.writeToTransaction(vEmptyInput);
-    ASSERT_FALSE(ret);
-
-    // Invalid DB
-    std::vector<std::pair<std::string, std::string>> vInput = {{"key1", "value1"}};
-    KVDB &invalidKvdb = kvdbManager.getDB("INVALID_DB");
-    ret = invalidKvdb.writeToTransaction(vInput);
+    ret = kvdb->writeToTransaction(vEmptyInput);
     ASSERT_FALSE(ret);
 
     // Invalid Column name
-    ret = kvdb.writeToTransaction(vInput, "InexistentColumn");
+    std::vector<std::pair<std::string, std::string>> vInput = {{"key1", "value1"}};
+    ret = kvdb->writeToTransaction(vInput, "InexistentColumn");
     ASSERT_FALSE(ret);
 
     // Partial input
     std::vector<std::pair<std::string, std::string>> vPartialInput = {
         {"", "value1"},
         {"key2", "value2"}};
-    ret = kvdb.writeToTransaction(vPartialInput);
+    ret = kvdb->writeToTransaction(vPartialInput);
     ASSERT_TRUE(ret);
-    std::string valueRead = kvdb.read(vPartialInput[1].first);
+    std::string valueRead = kvdb->read(vPartialInput[1].first);
     ASSERT_EQ(valueRead, vPartialInput[1].second);
 }
 
@@ -226,55 +220,55 @@ TEST_F(KVDBTest, CleanColumn)
     std::string valueRead;
     bool ret;
 
-    KVDB &kvdb = kvdbManager.getDB("TEST_DB");
+    auto kvdb = kvdbManager.getDB("TEST_DB");
 
     // default column
-    ret = kvdb.write(KEY, VALUE);
+    ret = kvdb->write(KEY, VALUE);
     ASSERT_TRUE(ret);
-    valueRead = kvdb.read(KEY);
+    valueRead = kvdb->read(KEY);
     ASSERT_EQ(valueRead, VALUE);
-    ret = kvdb.cleanColumn();
+    ret = kvdb->cleanColumn();
     ASSERT_TRUE(ret);
-    valueRead = kvdb.read(KEY);
+    valueRead = kvdb->read(KEY);
     ASSERT_TRUE(valueRead.empty());
 
     // custom column
-    ret = kvdb.createColumn(COLUMN_NAME);
+    ret = kvdb->createColumn(COLUMN_NAME);
     ASSERT_TRUE(ret);
-    ret = kvdb.write(KEY, VALUE, COLUMN_NAME);
+    ret = kvdb->write(KEY, VALUE, COLUMN_NAME);
     ASSERT_TRUE(ret);
-    valueRead = kvdb.read(KEY, COLUMN_NAME);
+    valueRead = kvdb->read(KEY, COLUMN_NAME);
     ASSERT_EQ(valueRead, VALUE);
-    ret = kvdb.cleanColumn(COLUMN_NAME);
+    ret = kvdb->cleanColumn(COLUMN_NAME);
     ASSERT_TRUE(ret);
-    valueRead = kvdb.read(KEY, COLUMN_NAME);
+    valueRead = kvdb->read(KEY, COLUMN_NAME);
     ASSERT_TRUE(valueRead.empty());
 }
 
 TEST_F(KVDBTest, ValueKeyLength)
 {
     const std::string KEY = "dummy_key";
-    KVDB &kvdb = kvdbManager.getDB("TEST_DB");
+    auto kvdb = kvdbManager.getDB("TEST_DB");
     std::string valueRead;
     std::string valueWrite;
     bool ret;
 
     valueWrite = getRandomString(128, true);
-    ret = kvdb.write(KEY, valueWrite);
+    ret = kvdb->write(KEY, valueWrite);
     ASSERT_TRUE(ret);
-    valueRead = kvdb.read(KEY);
+    valueRead = kvdb->read(KEY);
     ASSERT_EQ(valueWrite, valueRead);
 
     valueWrite = getRandomString(512, true);
-    ret = kvdb.write(KEY, valueWrite);
+    ret = kvdb->write(KEY, valueWrite);
     ASSERT_TRUE(ret);
-    valueRead = kvdb.read(KEY);
+    valueRead = kvdb->read(KEY);
     ASSERT_EQ(valueWrite, valueRead);
 
     valueWrite = getRandomString(1024, true);
-    ret = kvdb.write(KEY, valueWrite);
+    ret = kvdb->write(KEY, valueWrite);
     ASSERT_TRUE(ret);
-    valueRead = kvdb.read(KEY);
+    valueRead = kvdb->read(KEY);
     ASSERT_EQ(valueWrite, valueRead);
 }
 
