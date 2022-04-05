@@ -372,6 +372,20 @@ def test_WazuhDBQueryGroupByAgents(mock_socket_conn, send_mock, filter_fields, e
     assert result['items'] == expected_response
 
 
+@pytest.mark.parametrize('expected_response', [
+    [{'name': 'group-2', 'count': 1}, {'name': 'group-1', 'count': 1}]
+])
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_WazuhDBQueryGroup(mock_socket_conn, send_mock, expected_response):
+    query_group = WazuhDBQueryGroup(offset=0, sort={"fields":["count"],"order":"desc"}, search=None, select=None, 
+                                    get_data=True, query='', filters=None, count=True, default_sort_field='name', 
+                                    min_select_fields=None, remove_extra_fields=True, rbac_negate=True)
+
+    query_data = query_group.run()
+    assert query_data['items'] == expected_response
+
+
 @patch('socket.socket.connect')
 def test_WazuhDBQueryMultigroups__init__(mock_socket_conn):
     """Tests if method __init__ of WazuhDBQueryMultigroups works properly."""
