@@ -227,7 +227,6 @@ typedef struct _logreader_glob {
 typedef struct _logreader_config {
     int agent_cfg;
     int accept_remote;
-    unsigned int macos_blocks_count;
     logreader_glob *globs;
     logreader *config;
     logsocket *socket_list;
@@ -243,7 +242,7 @@ void Free_Logreader(logreader * config);
 int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *globf);
 
 /**
- * @brief Get match attribute for multiline regex 
+ * @brief Get match attribute for multiline regex
  * @param node node to find match value
  * @retval ML_MATCH_START if match is "start" or if the attribute is not present
  * @retval ML_MATCH_ALL if match is "all"
@@ -252,7 +251,7 @@ int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *gl
 w_multiline_match_type_t w_get_attr_match(xml_node * node);
 
 /**
- * @brief Get replace attribute for multiline regex 
+ * @brief Get replace attribute for multiline regex
  * @param node node to find match value
  * @retval ML_REPLACE_NO_REPLACE if replace is "no-replace" or if the attribute is not present
  * @retval ML_REPLACE_WSPACE if replace is "wspace"
