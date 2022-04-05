@@ -926,12 +926,10 @@ InstallCommon()
   # Install debugging symbols if available
   # The symbols directory should always exist, if debugging symbols
   # are not supported for this platform, it will simply be empty.
-  if find symbols ! -path symbols ! -name .gitignore | grep . > /dev/null ;then
-    rm -rf ${INSTALLDIR}/.symbols
-    cp -r symbols ${INSTALLDIR}/.symbols
-    chown -R 0:0 ${INSTALLDIR}/.symbols
-    chmod -R 750 ${INSTALLDIR}/.symbols
-  fi
+  rm -rf ${INSTALLDIR}/.symbols
+  cp -r symbols ${INSTALLDIR}/.symbols
+  chown -R 0:0 ${INSTALLDIR}/.symbols
+  chmod -R 750 ${INSTALLDIR}/.symbols
 }
 
 InstallLocal()
