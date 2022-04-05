@@ -14,8 +14,6 @@
 
 #include <kvdb/kvdb.hpp>
 
-static KVDB invalidDB = KVDB();
-
 // TODO Change Function Helpers tests initialization too.
 KVDBManager* KVDBManager::mInstance = nullptr;
 bool KVDBManager::init(const std::string& DbFolder)
@@ -120,10 +118,10 @@ bool KVDBManager::createDBfromCDB(const std::filesystem::path &path,
         WAZUH_LOG_ERROR("Couldn't create DB [{}]", path.stem().c_str());
         return false;
     }
-    KVDB &kvdb = getDB(path.stem());
-    if (kvdb.getState() != KVDB::State::Open)
+    auto kvdb = getDB(path.stem());
+    if (!kvdb)
     {
-        WAZUH_LOG_ERROR("Created DB [{}] is not open", path.stem().c_str());
+        WAZUH_LOG_ERROR("Created DB [{}] is unavailable", path.stem().c_str());
         return false;
     }
 
@@ -137,7 +135,7 @@ bool KVDBManager::createDBfromCDB(const std::filesystem::path &path,
             WAZUH_LOG_ERROR("Error while reading CDBfile");
             return false;
         }
-        kvdb.write(KV.at(0), KV.at(1));
+        kvdb->write(KV.at(0), KV.at(1));
     }
 
     return true;
@@ -151,28 +149,27 @@ bool KVDBManager::deleteDB(const std::string &name)
         WAZUH_LOG_ERROR("Database [{}] isn't handled by KVDB manager", name);
         return false;
     }
-    bool ret = it->second->destroy();
-    it->second.release();
+    it->second->markToDestroy();
     m_availableKVDBs.erase(it);
-    return ret;
+    return true;
 }
 
 bool KVDBManager::addDB(const std::string &name,const std::string &folder)
 {
     if (m_availableKVDBs.find(name) == m_availableKVDBs.end())
     {
-        m_availableKVDBs[name] = std::make_unique<KVDB>(name, folder);
+        m_availableKVDBs[name] = std::make_shared<KVDB>(name, folder);
         return true;
     }
     return false;
 }
 
-KVDB &KVDBManager::getDB(const std::string &name)
+std::shared_ptr<KVDB> KVDBManager::getDB(const std::string &name)
 {
     auto it = m_availableKVDBs.find(name);
     if (it != m_availableKVDBs.end())
     {
-        return (*it->second);
+        return it->second;
     }
-    return invalidDB;
+    return nullptr;
 }
