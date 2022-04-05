@@ -1,7 +1,7 @@
 ####################################################################################################
 # Profiler
 ####################################################################################################
-if(PROFILE_BUILD)
+if(ENGINE_PROFILE_BUILD)
     if( CMAKE_BUILD_TYPE STREQUAL "Release")
         message(WARNING "Prefer 'RelWithDebInfo' build config when trying to profile")
     elseif(NOT CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
@@ -11,16 +11,30 @@ if(PROFILE_BUILD)
     CPMAddPackage(
         NAME tracy
         GITHUB_REPOSITORY wolfpld/tracy
-        GIT_TAG "v0.7.8"
+        GIT_TAG "v0.8"
         OPTIONS
         )
 
-    add_library(profile STATIC ${tracy_SOURCE_DIR}/TracyClient.cpp )
-    target_include_directories(profile PUBLIC ${tracy_SOURCE_DIR}/)
-    target_link_libraries(profile PUBLIC dl pthread)
+    add_library(profile
+        OBJECT
+        profile/profile.hpp
+        )
+
+    if(ENGINE_PROFILE_MEMORY)
+        target_sources(profile
+            PRIVATE
+            profile/profile.cpp
+            )
+    endif()
+
+    target_include_directories(profile
+        PUBLIC
+        ${tracy_SOURCE_DIR}/
+        )
+
+    target_link_libraries(profile PUBLIC TracyClient dl pthread)
 
     target_compile_definitions(profile PUBLIC WAZUH_PROFILING_ENABLED TRACY_ENABLE)
-    #target_compile_definitions(profile PUBLIC TRACY_NO_EXIT)
 endif()
 
 ####################################################################################################

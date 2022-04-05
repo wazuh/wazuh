@@ -9,13 +9,9 @@
 
 #include "udpEndpoint.hpp"
 
-#include <cstring>
-#include <iostream>
-#include <mutex>
 #include <stdexcept>
 
 #include <logging/logging.hpp>
-
 #include "protocolHandler.hpp"
 
 using uvw::ErrorEvent;
