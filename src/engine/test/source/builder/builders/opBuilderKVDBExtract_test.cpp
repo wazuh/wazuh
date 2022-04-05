@@ -10,10 +10,11 @@
 #include <vector>
 
 #include <gtest/gtest.h>
-#include <kvdb/kvdbManager.hpp>
+#include <logging/logging.hpp>
 
 #include "testUtils.hpp"
 #include "opBuilderKVDB.hpp"
+#include <kvdb/kvdbManager.hpp>
 
 using namespace builder::internals::builders;
 
@@ -25,6 +26,9 @@ protected:
     KVDBManager& kvdbManager = KVDBManager::get();
 
     opBuilderKVDBExtractTest() {
+        logging::LoggingConfig logConfig;
+        logConfig.logLevel = logging::LogLevel::Off;
+        logging::loggingInit(logConfig);
     }
 
     virtual ~opBuilderKVDBExtractTest() {
