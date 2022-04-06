@@ -18,6 +18,9 @@
 
 using namespace builder::internals::builders;
 
+using FakeTrFn = std::function<void(std::string)>;
+static FakeTrFn tr = [](std::string msg){};
+
 namespace {
 class opBuilderKVDBNotMatchTest : public ::testing::Test {
 
@@ -50,7 +53,7 @@ TEST_F(opBuilderKVDBNotMatchTest, Builds)
         "check":
             {"field2match": "+kvdb_not_match/TEST_DB"}
     })"};
-    ASSERT_NO_THROW(opBuilderKVDBNotMatch(doc.get("/check")));
+    ASSERT_NO_THROW(opBuilderKVDBNotMatch(doc.get("/check"), tr));
 }
 
 // Build incorrect number of arguments
@@ -60,7 +63,7 @@ TEST_F(opBuilderKVDBNotMatchTest, Builds_incorrect_number_of_arguments)
         "check":
             {"field2match": "+kvdb_not_match"}
     })"};
-    ASSERT_THROW(opBuilderKVDBNotMatch(doc.get("/check")), std::runtime_error);
+    ASSERT_THROW(opBuilderKVDBNotMatch(doc.get("/check"), tr), std::runtime_error);
 }
 
 // Build invalid DB
@@ -70,7 +73,7 @@ TEST_F(opBuilderKVDBNotMatchTest, Builds_incorrect_invalid_db)
         "check":
             {"field2match": "+kvdb_not_match/INVALID_DB"}
     })"};
-    ASSERT_THROW(opBuilderKVDBNotMatch(doc.get("/check")), std::runtime_error);
+    ASSERT_THROW(opBuilderKVDBNotMatch(doc.get("/check"), tr), std::runtime_error);
 }
 
 // Test ok: static values
@@ -101,7 +104,7 @@ TEST_F(opBuilderKVDBNotMatchTest, Static_string_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderKVDBNotMatch(doc.get("/check"));
+    Lifter lift = opBuilderKVDBNotMatch(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -137,7 +140,7 @@ TEST_F(opBuilderKVDBNotMatchTest, Multilevel_target)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderKVDBNotMatch(doc.get("/check"));
+    Lifter lift = opBuilderKVDBNotMatch(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });

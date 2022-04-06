@@ -24,7 +24,7 @@ namespace builder::internals::builders
 using builder::internals::syntax::REFERENCE_ANCHOR;
 
 // <field>: +kvdb_extract/<DB>/<ref_key>
-types::Lifter opBuilderKVDBExtract(const types::DocumentValue & def)
+types::Lifter opBuilderKVDBExtract(const types::DocumentValue & def, types::TracerFn tr)
 {
     // Get target of the extraction
     std::string target {json::formatJsonPath(def.MemberBegin()->name.GetString())};
@@ -167,12 +167,12 @@ types::Lifter opBuilderKVDBExistanceCheck(const types::DocumentValue & def, bool
 }
 
 // <field>: +kvdb_match/<DB>
-types::Lifter opBuilderKVDBMatch(const types::DocumentValue & def) {
+types::Lifter opBuilderKVDBMatch(const types::DocumentValue & def, types::TracerFn tr) {
     return opBuilderKVDBExistanceCheck(def, true);
 }
 
 // <field>: +kvdb_not_match/<DB>
-types::Lifter opBuilderKVDBNotMatch(const types::DocumentValue & def) {
+types::Lifter opBuilderKVDBNotMatch(const types::DocumentValue & def, types::TracerFn tr) {
     return opBuilderKVDBExistanceCheck(def, false);
 }
 
