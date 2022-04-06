@@ -2078,11 +2078,27 @@ void test_wdb_parse_global_sync_agent_groups_get_invalid_last_id_data_type(void 
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-groups-get {\"condition\":\"sync_status\",\"last_id\":\"1_string\"}");
-    expect_string(__wrap__mdebug1, formatted_msg, "Invalid alternative fields data type in sync-agent-groups-get command.");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid alternative fields data in sync-agent-groups-get command.");
 
     ret = wdb_parse(query, data->output, 0);
 
-    assert_string_equal(data->output, "err Invalid JSON data, invalid alternative fields data type");
+    assert_string_equal(data->output, "err Invalid JSON data, invalid alternative fields data");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_sync_agent_groups_get_invalid_last_id_negative(void **state)
+{
+    int ret = 0;
+    test_struct_t *data = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global sync-agent-groups-get {\"condition\":\"sync_status\",\"last_id\":-1}";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-groups-get {\"condition\":\"sync_status\",\"last_id\":-1}");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid alternative fields data in sync-agent-groups-get command.");
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid JSON data, invalid alternative fields data");
     assert_int_equal(ret, OS_INVALID);
 }
 
@@ -2094,11 +2110,11 @@ void test_wdb_parse_global_sync_agent_groups_get_invalid_set_synced_data_type(vo
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-groups-get {\"condition\":\"sync_status\",\"set_synced\":\"true_string\"}");
-    expect_string(__wrap__mdebug1, formatted_msg, "Invalid alternative fields data type in sync-agent-groups-get command.");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid alternative fields data in sync-agent-groups-get command.");
 
     ret = wdb_parse(query, data->output, 0);
 
-    assert_string_equal(data->output, "err Invalid JSON data, invalid alternative fields data type");
+    assert_string_equal(data->output, "err Invalid JSON data, invalid alternative fields data");
     assert_int_equal(ret, OS_INVALID);
 }
 
@@ -2110,11 +2126,11 @@ void test_wdb_parse_global_sync_agent_groups_get_invalid_get_hash_data_type(void
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-groups-get {\"condition\":\"sync_status\",\"get_global_hash\":\"true_string\"}");
-    expect_string(__wrap__mdebug1, formatted_msg, "Invalid alternative fields data type in sync-agent-groups-get command.");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid alternative fields data in sync-agent-groups-get command.");
 
     ret = wdb_parse(query, data->output, 0);
 
-    assert_string_equal(data->output, "err Invalid JSON data, invalid alternative fields data type");
+    assert_string_equal(data->output, "err Invalid JSON data, invalid alternative fields data");
     assert_int_equal(ret, OS_INVALID);
 }
 
@@ -2126,11 +2142,27 @@ void test_wdb_parse_global_sync_agent_groups_get_invalid_agent_registration_delt
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-groups-get {\"condition\":\"sync_status\",\"agent_registration_delta\":\"0_string\"}");
-    expect_string(__wrap__mdebug1, formatted_msg, "Invalid alternative fields data type in sync-agent-groups-get command.");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid alternative fields data in sync-agent-groups-get command.");
 
     ret = wdb_parse(query, data->output, 0);
 
-    assert_string_equal(data->output, "err Invalid JSON data, invalid alternative fields data type");
+    assert_string_equal(data->output, "err Invalid JSON data, invalid alternative fields data");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_sync_agent_groups_get_invalid_agent_registration_delta_negative(void **state)
+{
+    int ret = 0;
+    test_struct_t *data = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global sync-agent-groups-get {\"condition\":\"sync_status\",\"agent_registration_delta\":-1}";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-groups-get {\"condition\":\"sync_status\",\"agent_registration_delta\":-1}");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid alternative fields data in sync-agent-groups-get command.");
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid JSON data, invalid alternative fields data");
     assert_int_equal(ret, OS_INVALID);
 }
 
@@ -2961,9 +2993,11 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_invalid_json, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_missing_condition_field, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_invalid_last_id_data_type, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_invalid_last_id_negative, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_invalid_set_synced_data_type, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_invalid_get_hash_data_type, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_invalid_agent_registration_delta_data_type, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_invalid_agent_registration_delta_negative, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_null_response, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_groups_get_invalid_response, test_setup, test_teardown),
