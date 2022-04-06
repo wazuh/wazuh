@@ -1,10 +1,15 @@
 #include <filesystem>
+#include <thread>
+#include <condition_variable>
+#include <random>
 
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
+#include <pthread.h> //For barrier, not strictly necessary
+
 #include <kvdb/kvdbManager.hpp>
 #include <logging/logging.hpp>
 
-// TODO: can we move this utility functions to headers accesible to tests and
+// TODO: can we move this utility functions to headers accessible to tests and
 // benchmark?
 static std::string getRandomString(int len, bool includeSymbols = false)
 {
@@ -35,7 +40,7 @@ class KVDBTest : public ::testing::Test
 {
 
 protected:
-    bool initialized = KVDBManager::init("/var/ossec/queue/db/kvdb/");
+    bool initialized = KVDBManager::init("/tmp/");
     KVDBManager &kvdbManager = KVDBManager::get();
 
     KVDBTest()
@@ -267,4 +272,135 @@ TEST_F(KVDBTest, ValueKeyLength)
     ASSERT_EQ(valueWrite, valueRead);
 }
 
-} // namespace
+TEST_F(KVDBTest, ManagerConcurrency)
+{
+    constexpr static const char *dbName = "test_db";
+    constexpr int kMaxTestIterations = 100;
+
+    pthread_barrier_t barrier;
+    ASSERT_EQ(0, pthread_barrier_init(&barrier, NULL, 3));
+
+    std::thread create {[&]
+                        {
+                            auto ret = pthread_barrier_wait(&barrier);
+                            EXPECT_TRUE(PTHREAD_BARRIER_SERIAL_THREAD == ret ||
+                                        0 == ret);
+                            auto &m = KVDBManager::get();
+                            for (int i = 0; i < kMaxTestIterations; ++i)
+                            {
+                                auto db = m.getDB(dbName);
+                                if (db && !db->isValid())
+                                {
+                                    m.createDB(dbName);
+                                }
+                            }
+                        }};
+
+    std::thread read {[&]
+                      {
+                          auto ret = pthread_barrier_wait(&barrier);
+                          EXPECT_TRUE(PTHREAD_BARRIER_SERIAL_THREAD == ret ||
+                                      0 == ret);
+                          auto &m = KVDBManager::get();
+                          for (int i = 0; i < kMaxTestIterations; ++i)
+                          {
+                              auto db = m.getDB(dbName);
+                          }
+                      }};
+
+    std::thread del {[&]
+                     {
+                         auto ret = pthread_barrier_wait(&barrier);
+                         EXPECT_TRUE(PTHREAD_BARRIER_SERIAL_THREAD == ret ||
+                                     0 == ret);
+                         auto &m = KVDBManager::get();
+                         for (int i = 0; i < kMaxTestIterations; ++i)
+                         {
+                             auto db = m.getDB(dbName);
+                             if (db && db->isValid())
+                             {
+                                 m.deleteDB(dbName);
+                             }
+                         }
+                     }};
+
+    create.join();
+    read.join();
+    del.join();
+}
+
+TEST_F(KVDBTest, KVDBConcurrency)
+{
+    constexpr static const char *dbName = "test_db";
+    constexpr int kMaxTestIterations = 100;
+
+    pthread_barrier_t barrier;
+    ASSERT_EQ(0, pthread_barrier_init(&barrier, NULL, 4));
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution distrib(0, 100);
+
+    KVDBManager::get().createDB(dbName);
+
+    std::thread create {[&]
+                        {
+                            auto ret = pthread_barrier_wait(&barrier);
+                            EXPECT_TRUE(PTHREAD_BARRIER_SERIAL_THREAD == ret ||
+                                        0 == ret);
+                            auto db = KVDBManager::get().getDB(dbName);
+                            for (int i = 0; i < kMaxTestIterations; ++i)
+                            {
+                                db->createColumn(
+                                    fmt::format("colname.{}", distrib(gen)));
+                            }
+                        }};
+
+    std::thread write {[&]
+                        {
+                            auto ret = pthread_barrier_wait(&barrier);
+                            EXPECT_TRUE(PTHREAD_BARRIER_SERIAL_THREAD == ret ||
+                                        0 == ret);
+                            auto db = KVDBManager::get().getDB(dbName);
+                            for (int i = 0; i < kMaxTestIterations; ++i)
+                            {
+                                db->write(
+                                    fmt::format("key{}", distrib(gen)),
+                                    "value",
+                                    fmt::format("colname.{}", distrib(gen)));
+                            }
+                        }};
+
+    std::thread read {[&]
+                      {
+                          auto ret = pthread_barrier_wait(&barrier);
+                          EXPECT_TRUE(PTHREAD_BARRIER_SERIAL_THREAD == ret ||
+                                      0 == ret);
+                          auto db = KVDBManager::get().getDB(dbName);
+                          for (int i = 0; i < kMaxTestIterations; ++i)
+                          {
+                              db->read(fmt::format("key{}", distrib(gen)),
+                                       fmt::format("colname.{}", distrib(gen)));
+                          }
+                      }};
+
+    std::thread del {[&]
+                     {
+                         auto ret = pthread_barrier_wait(&barrier);
+                         EXPECT_TRUE(PTHREAD_BARRIER_SERIAL_THREAD == ret ||
+                                     0 == ret);
+                         auto db = KVDBManager::get().getDB(dbName);
+                         for (int i = 0; i < kMaxTestIterations; ++i)
+                         {
+                             db->deleteColumn(
+                                 fmt::format("colname.{}", distrib(gen)));
+                         }
+                     }};
+
+    create.join();
+    write.join();
+    read.join();
+    del.join();
+    KVDBManager::get().deleteDB(dbName);
+}
+}
