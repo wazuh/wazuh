@@ -447,7 +447,7 @@ STATIC void wm_github_scan_failure_action(wm_github_fail **current_fails, char *
 
             payload = cJSON_PrintUnformatted(fail_github);
 
-            mtdebug2(WM_GITHUB_LOGTAG, "Sending GitHub internal message: '%s'", payload);
+            mtwarn(WM_GITHUB_LOGTAG, "Sending GitHub internal message: '%s'", payload);
 
             if (wm_sendmsg(WM_GITHUB_MSG_DELAY, queue_fd, payload, WM_GITHUB_CONTEXT.name, LOCALFILE_MQ) < 0) {
                 mterror(WM_GITHUB_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));

@@ -277,8 +277,8 @@ void test_github_scan_failure_action_3(void **state) {
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
     will_return(__wrap_wm_sendmsg, result);
 
-    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:github");
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending GitHub internal message: '{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\",\"organization\":\"test_org\",\"event_type\":\"test_event\",\"response\":\"Unknown error\"}}'");
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:github");
+    expect_string(__wrap__mtwarn, formatted_msg, "Sending GitHub internal message: '{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\",\"organization\":\"test_org\",\"event_type\":\"test_event\",\"response\":\"Unknown error\"}}'");
 
     wm_github_scan_failure_action(&data->github_config->fails, org_name, event_type, error_msg, queue_fd);
 
@@ -309,8 +309,8 @@ void test_github_scan_failure_action_4(void **state) {
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
     will_return(__wrap_wm_sendmsg, result);
 
-    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:github");
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending GitHub internal message: '{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\",\"organization\":\"test_org\",\"event_type\":\"test_event\",\"response\":\"{\\\"test\\\":\\\"test_error\\\"}\"}}'");
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:github");
+    expect_string(__wrap__mtwarn, formatted_msg, "Sending GitHub internal message: '{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\",\"organization\":\"test_org\",\"event_type\":\"test_event\",\"response\":\"{\\\"test\\\":\\\"test_error\\\"}\"}}'");
 
     wm_github_scan_failure_action(&data->github_config->fails, org_name, event_type, error_msg, queue_fd);
 
@@ -341,8 +341,8 @@ void test_github_scan_failure_action_error(void **state) {
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
     will_return(__wrap_wm_sendmsg, result);
 
-    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:github");
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending GitHub internal message: '{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\",\"organization\":\"test_org\",\"event_type\":\"test_event\",\"response\":\"Unknown error\"}}'");
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:github");
+    expect_string(__wrap__mtwarn, formatted_msg, "Sending GitHub internal message: '{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\",\"organization\":\"test_org\",\"event_type\":\"test_event\",\"response\":\"Unknown error\"}}'");
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mterror, formatted_msg, "(1210): Queue 'queue/sockets/queue' not accessible: 'Success'");
