@@ -18,6 +18,9 @@
 
 using namespace builder::internals::builders;
 
+using FakeTrFn = std::function<void(std::string)>;
+static FakeTrFn tr = [](std::string msg){};
+
 namespace {
 class opBuilderKVDBExtractTest : public ::testing::Test {
 
@@ -50,7 +53,7 @@ TEST_F(opBuilderKVDBExtractTest, Builds)
         "map":
             {"field2extract": "+kvdb_extract/TEST_DB/ref_key"}
     })"};
-    ASSERT_NO_THROW(opBuilderKVDBExtract(doc.get("/map")));
+    ASSERT_NO_THROW(opBuilderKVDBExtract(doc.get("/map"), tr));
 }
 
 // Build incorrect number of arguments
@@ -60,7 +63,7 @@ TEST_F(opBuilderKVDBExtractTest, Builds_incorrect_number_of_arguments)
         "check":
             {"field2match": "+kvdb_extract/TEST_DB"}
     })"};
-    ASSERT_THROW(opBuilderKVDBExtract(doc.get("/check")), std::runtime_error);
+    ASSERT_THROW(opBuilderKVDBExtract(doc.get("/check"), tr), std::runtime_error);
 }
 
 // Build invalid DB
@@ -70,7 +73,7 @@ TEST_F(opBuilderKVDBExtractTest, Builds_incorrect_invalid_db)
         "check":
             {"field2match": "+kvdb_extract/INVALID_DB/ref_key"}
     })"};
-    ASSERT_THROW(opBuilderKVDBExtract(doc.get("/check")), std::runtime_error);
+    ASSERT_THROW(opBuilderKVDBExtract(doc.get("/check"), tr), std::runtime_error);
 }
 
 // Static key
@@ -99,7 +102,7 @@ TEST_F(opBuilderKVDBExtractTest, Static_key)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderKVDBExtract(doc.get("/map"));
+    Lifter lift = opBuilderKVDBExtract(doc.get("/map"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -138,7 +141,7 @@ TEST_F(opBuilderKVDBExtractTest, Dynamic)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderKVDBExtract(doc.get("/map"));
+    Lifter lift = opBuilderKVDBExtract(doc.get("/map"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -175,7 +178,7 @@ TEST_F(opBuilderKVDBExtractTest, Multi_level_key)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderKVDBExtract(doc.get("/map"));
+    Lifter lift = opBuilderKVDBExtract(doc.get("/map"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -211,7 +214,7 @@ TEST_F(opBuilderKVDBExtractTest, Multi_level_target)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderKVDBExtract(doc.get("/map"));
+    Lifter lift = opBuilderKVDBExtract(doc.get("/map"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -244,7 +247,7 @@ TEST_F(opBuilderKVDBExtractTest, Existent_target)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderKVDBExtract(doc.get("/map"));
+    Lifter lift = opBuilderKVDBExtract(doc.get("/map"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
