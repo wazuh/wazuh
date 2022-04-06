@@ -51,13 +51,13 @@ KVDB::KVDB(const std::string &dbName, const std::string &folder)
             rocksdb::ColumnFamilyDescriptor(DEFAULT_CF_NAME, kOptions.CF));
     }
 
-    rocksdb::Status st = rocksdb::TransactionDB::Open(kOptions.open,
-                                                      kOptions.TX,
-                                                      m_path,
-                                                      CFDescriptors,
-                                                      &CFHandles,
-                                                      &m_txndb);
-    if (st.ok())
+    s = rocksdb::TransactionDB::Open(kOptions.open,
+                                     kOptions.TX,
+                                     m_path,
+                                     CFDescriptors,
+                                     &CFHandles,
+                                     &m_txndb);
+    if (s.ok())
     {
         m_db = m_txndb->GetBaseDB();
         for (auto CFHandle : CFHandles)
@@ -75,7 +75,10 @@ KVDB::KVDB(const std::string &dbName, const std::string &folder)
         // TODO: Investigate the reason of this:
         // RocksDB creates a DB even if the option create_if_missing is false.
         // The open operation fails, but the DB is created anyway.
-        rocksdb::DestroyDB(m_path, rocksdb::Options(), CFDescriptors);
+        // A possibility is to first open the DB and after that open the transaction.
+        if (s.IsInvalidArgument()) {
+            rocksdb::DestroyDB(m_path, rocksdb::Options(), CFDescriptors);
+        }
     }
 }
 
