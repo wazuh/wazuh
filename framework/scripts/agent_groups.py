@@ -57,7 +57,7 @@ async def show_groups():
     for items in groups.affected_items:
         print(f"  {items['name']} ({items['count']})")
 
-    print(f"Unassigned agens: {unassigned_agents.total_affected_items}.")
+    print(f"Unassigned agents: {unassigned_agents.total_affected_items}.")
 
 
 async def show_group(agent_id):
