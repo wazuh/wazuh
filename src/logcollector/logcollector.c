@@ -365,6 +365,8 @@ void LogCollectorStart()
                     w_logcollector_state_add_target(MACOS_LOG_NAME, current->target[tg_idx]);
                 }
             }
+#else
+            minfo(LOGCOLLECTOR_ONLY_MACOS);
 #endif
             os_free(current->file);
             os_free(current->command);

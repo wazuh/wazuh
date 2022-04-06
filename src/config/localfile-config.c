@@ -363,8 +363,6 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                     os_free(logf[pl].macos_log);
                     return (OS_INVALID);
                 }
-#else
-                mwarn(LOGCOLLECTOR_ONLY_MACOS);
 #endif
 
             } else {
