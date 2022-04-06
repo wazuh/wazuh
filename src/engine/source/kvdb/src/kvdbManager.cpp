@@ -136,6 +136,7 @@ bool KVDBManager::createDBfromCDB(const std::filesystem::path &path,
 
 bool KVDBManager::deleteDB(const std::string &name)
 {
+    std::unique_lock lk(mMtx);
     auto it = m_availableKVDBs.find(name);
     if (it == m_availableKVDBs.end())
     {
@@ -149,6 +150,7 @@ bool KVDBManager::deleteDB(const std::string &name)
 
 bool KVDBManager::popDB(const std::string &name)
 {
+    std::unique_lock lk(mMtx);
     auto it = m_availableKVDBs.find(name);
     if (it == m_availableKVDBs.end())
     {
@@ -179,19 +181,18 @@ bool KVDBManager::addDB(const std::string &name, const std::string &folder)
 
 std::shared_ptr<KVDB> KVDBManager::getDB(const std::string &name)
 {
+    std::unique_lock lk(mMtx);
     auto it = m_availableKVDBs.find(name);
     if (it != m_availableKVDBs.end())
     {
         return it->second;
     }
-    else
+
+    WAZUH_LOG_DEBUG("Database not available, creating it with name: [{}] ",
+                    name);
+    if (addDB(name, mDbFolder))
     {
-        WAZUH_LOG_DEBUG("Database not available, creating it with name: [{}] ",
-                        name);
-        if (addDB(name, mDbFolder))
-        {
-            return getDB(name);
-        }
+        return m_availableKVDBs[name];
     }
 
     WAZUH_LOG_ERROR("Database not available and couldn't create it");

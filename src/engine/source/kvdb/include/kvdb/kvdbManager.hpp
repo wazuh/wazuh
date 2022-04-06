@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <string>
 #include <vector>
+#include <shared_mutex>
 
 #include "kvdb.hpp"
 
@@ -17,6 +18,7 @@ class KVDBManager
     DBMap m_availableKVDBs;
     bool addDB(const std::string &name, const std::string &folder);
     bool popDB(const std::string &name);
+    std::mutex mMtx;
 
 public:
     static bool init(const std::string &DbFolder);
