@@ -69,6 +69,7 @@ CPMAddPackage(
 
 add_library(base STATIC
     logging/logging.hpp
+    utils/baseMacros.hpp
     utils/ipUtils.cpp
     utils/ipUtils.hpp
     utils/stringUtils.cpp

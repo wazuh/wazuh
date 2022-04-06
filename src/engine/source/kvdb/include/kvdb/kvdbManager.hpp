@@ -5,28 +5,27 @@
 #include <string>
 #include <vector>
 #include <shared_mutex>
+#include <unordered_map>
 
-#include "kvdb.hpp"
+#include <utils/baseMacros.hpp>
+#include <kvdb/kvdb.hpp>
 
 class KVDBManager
 {
+    WAZUH_DISABLE_COPY_ASSIGN(KVDBManager);
+
     KVDBManager(const std::string &DbFolder);
     ~KVDBManager();
     static KVDBManager *mInstance;
     std::string mDbFolder;
-    using DBMap = std::unordered_map<std::string, std::shared_ptr<KVDB>>;
-    DBMap m_availableKVDBs;
-    bool addDB(const std::string &name, const std::string &folder);
+    std::unordered_map<std::string, std::shared_ptr<KVDB>> m_availableKVDBs;
     bool popDB(const std::string &name);
-    std::mutex mMtx;
+    std::shared_mutex mMtx;
 
 public:
     static bool init(const std::string &DbFolder);
     static KVDBManager &get();
-    KVDBManager(KVDBManager const &) = delete;
-    KVDBManager() = delete;
-    void operator=(KVDBManager const &) = delete;
-    bool createDB(const std::string &Name, bool overwrite = true);
+    std::shared_ptr<KVDB> createDB(const std::string &Name, bool overwrite = true);
     bool createDBfromCDB(const std::filesystem::path &path,
                          bool overwrite = true);
     bool deleteDB(const std::string &name);

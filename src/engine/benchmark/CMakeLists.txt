@@ -32,6 +32,7 @@ target_link_libraries(engine_bench
     PUBLIC
     benchmark::benchmark
     base
+    kvdb
     )
 
 add_subdirectory(regex)
