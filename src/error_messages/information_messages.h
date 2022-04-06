@@ -71,6 +71,6 @@
 
 /* Logcollector info messages */
 #define LOGCOLLECTOR_INVALID_HANDLE_VALUE   "(9200): File '%s' can not be handled."
-#define LOGCOLLECTOR_ONLY_MACOS             "(9201): 'macos' log_format is only supported in macOS."
+#define LOGCOLLECTOR_ONLY_MACOS             "(9201): 'macos' log format is only supported on macOS."
 
 #endif /* INFO_MESSAGES_H */
