@@ -36,6 +36,7 @@ static std::string getRandomString(int len, bool includeSymbols = false)
 }
 namespace
 {
+static const char *kTestDBName = "TEST_DB";
 class KVDBTest : public ::testing::Test
 {
 
@@ -56,22 +57,22 @@ protected:
 
     virtual void SetUp()
     {
-        kvdbManager.createDB("TEST_DB");
+        kvdbManager.createDB(kTestDBName);
     }
 
     virtual void TearDown()
     {
-        kvdbManager.deleteDB("TEST_DB");
+        kvdbManager.deleteDB(kTestDBName);
     }
 };
 
 TEST_F(KVDBTest, CreateDeleteKvdbFile)
 {
-    bool ret = kvdbManager.createDB("NEW_DB");
+    auto ret = kvdbManager.createDB("NEW_DB");
     ASSERT_TRUE(ret);
     auto newKvdb = kvdbManager.getDB("NEW_DB");
     ASSERT_EQ(newKvdb->getName(), "NEW_DB");
-    ASSERT_EQ(newKvdb->getState(), KVDB::State::Open);
+    ASSERT_TRUE(newKvdb->isReady());
 
     kvdbManager.deleteDB("NEW_DB");
     auto deletedKvdb = kvdbManager.getDB("NEW_DB");
@@ -81,7 +82,7 @@ TEST_F(KVDBTest, CreateDeleteKvdbFile)
 TEST_F(KVDBTest, CreateDeleteColumns)
 {
     const std::string COLUMN_NAME = "NEW_COLUMN";
-    auto kvdb = kvdbManager.getDB("TEST_DB");
+    auto kvdb = kvdbManager.getDB(kTestDBName);
     bool ret = kvdb->createColumn(COLUMN_NAME);
     ASSERT_TRUE(ret);
     ret = kvdb->deleteColumn(COLUMN_NAME);
@@ -97,7 +98,7 @@ TEST_F(KVDBTest, ReadWrite)
     std::string valueRead;
     bool ret;
 
-    auto kvdb = kvdbManager.getDB("TEST_DB");
+    auto kvdb = kvdbManager.getDB(kTestDBName);
 
     ret = kvdb->write(KEY, VALUE);
     ASSERT_TRUE(ret);
@@ -132,7 +133,7 @@ TEST_F(KVDBTest, KeyOnlyWrite)
     // TODO Update FH tests too
     const std::string KEY = "dummy_key";
     bool ret;
-    auto kvdb = kvdbManager.getDB("TEST_DB");
+    auto kvdb = kvdbManager.getDB(kTestDBName);
 
     ret = kvdb->hasKey(KEY);
     ASSERT_FALSE(ret);
@@ -150,7 +151,7 @@ TEST_F(KVDBTest, ReadWriteColumn)
     std::string valueRead;
     bool ret;
 
-    auto kvdb = kvdbManager.getDB("TEST_DB");
+    auto kvdb = kvdbManager.getDB(kTestDBName);
 
     ret = kvdb->createColumn(COLUMN_NAME);
     ASSERT_TRUE(ret);
@@ -172,7 +173,7 @@ TEST_F(KVDBTest, Transaction_ok)
         {"key5", "value5"}};
     bool ret;
 
-    auto kvdb = kvdbManager.getDB("TEST_DB");
+    auto kvdb = kvdbManager.getDB(kTestDBName);
     ret = kvdb->writeToTransaction(vInput);
     ASSERT_TRUE(ret);
     for (auto pair : vInput)
@@ -185,7 +186,7 @@ TEST_F(KVDBTest, Transaction_ok)
 TEST_F(KVDBTest, Transaction_invalid_input)
 {
     bool ret;
-    auto kvdb = kvdbManager.getDB("TEST_DB");
+    auto kvdb = kvdbManager.getDB(kTestDBName);
 
     // Empty input
     std::vector<std::pair<std::string, std::string>> vEmptyInput = {};
@@ -220,7 +221,7 @@ TEST_F(KVDBTest, CleanColumn)
     std::string valueRead;
     bool ret;
 
-    auto kvdb = kvdbManager.getDB("TEST_DB");
+    auto kvdb = kvdbManager.getDB(kTestDBName);
 
     // default column
     ret = kvdb->write(KEY, VALUE);
@@ -248,7 +249,7 @@ TEST_F(KVDBTest, CleanColumn)
 TEST_F(KVDBTest, ValueKeyLength)
 {
     const std::string KEY = "dummy_key";
-    auto kvdb = kvdbManager.getDB("TEST_DB");
+    auto kvdb = kvdbManager.getDB(kTestDBName);
     std::string valueRead;
     std::string valueWrite;
     bool ret;
@@ -403,4 +404,5 @@ TEST_F(KVDBTest, KVDBConcurrency)
     del.join();
     KVDBManager::get().deleteDB(dbName);
 }
-}
+
+} // namespace
