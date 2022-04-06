@@ -1,627 +1,613 @@
 #include <kvdb/kvdb.hpp>
 
-#include <iostream>
 #include <unordered_map>
+#include <shared_mutex>
 
-#include "rocksdb/db.h"
-#include "rocksdb/options.h"
-#include "rocksdb/slice.h"
-#include "rocksdb/utilities/transaction.h"
 #include <fmt/format.h>
+#include <rocksdb/db.h>
+#include <rocksdb/options.h>
+#include <rocksdb/slice.h>
+#include <rocksdb/utilities/transaction.h>
+#include <rocksdb/utilities/optimistic_transaction_db.h>
 
 #include <logging/logging.hpp>
 
 static const struct Option
 {
-    rocksdb::ReadOptions read = rocksdb::ReadOptions();
-    rocksdb::WriteOptions write = rocksdb::WriteOptions();
-    rocksdb::DBOptions open = rocksdb::DBOptions();
-    rocksdb::ColumnFamilyOptions CF = rocksdb::ColumnFamilyOptions();
-    rocksdb::TransactionDBOptions TX = rocksdb::TransactionDBOptions();
+    rocksdb::ReadOptions read;
+    rocksdb::WriteOptions write;
+    rocksdb::DBOptions open;
+    rocksdb::ColumnFamilyOptions CF;
+    rocksdb::OptimisticTransactionOptions TX;
 } kOptions;
 
-/**
- * @brief Construct a new KVDB::KVDB object
- *
- * @param dbName name of the DB
- * @param folder where the DB will be stored
- */
-KVDB::KVDB(const std::string &dbName, const std::string &folder)
-    : m_name(dbName)
-    , m_path(folder + dbName)
-    , m_db(nullptr)
-    , m_txndb(nullptr)
-    , m_state(State::Invalid)
+struct KVDB::Impl
 {
-    rocksdb::Status s;
-    std::vector<std::string> CFNames;
-    std::vector<rocksdb::ColumnFamilyHandle *> CFHandles;
-    s = rocksdb::DB::ListColumnFamilies(kOptions.open, m_path, &CFNames);
-    if (s.ok())
+    enum class State
     {
-        for (auto CFName : CFNames)
-        {
-            CFDescriptors.push_back(
-                rocksdb::ColumnFamilyDescriptor(CFName, kOptions.CF));
-        }
-    }
-    else
+        Open,
+        Closed,
+        Locked,
+        Error,
+        Invalid,
+    };
+
+    Impl(const std::string &dbName,
+         const std::string &folder,
+         bool overwrite = false)
+        : m_name(dbName)
+        , m_path(folder + dbName)
+        , m_overwrite(overwrite)
+        , m_txDb(nullptr)
+        , m_db(nullptr)
+        , m_state(State::Invalid)
     {
-        CFDescriptors.push_back(
-            rocksdb::ColumnFamilyDescriptor(DEFAULT_CF_NAME, kOptions.CF));
     }
 
-    s = rocksdb::TransactionDB::Open(kOptions.open,
-                                     kOptions.TX,
-                                     m_path,
-                                     CFDescriptors,
-                                     &CFHandles,
-                                     &m_txndb);
-    if (s.ok())
+    bool init()
     {
-        m_db = m_txndb->GetBaseDB();
-        for (auto CFHandle : CFHandles)
+        if (m_state == State::Open)
         {
-            m_CFHandlesMap[CFHandle->GetName()] = CFHandle;
+            // Already initialized
+            return true;
         }
-        m_state = State::Open;
-    }
-    else
-    {
-        WAZUH_LOG_ERROR("Couldn't open DB [{}], error: [{}]",
-                        m_name,
-                        s.ToString());
-        m_state = State::Error;
-        // TODO: Investigate the reason of this:
-        // RocksDB creates a DB even if the option create_if_missing is false.
-        // The open operation fails, but the DB is created anyway.
-        // A possibility is to first open the DB and after that open the transaction.
-        if (s.IsInvalidArgument()) {
-            rocksdb::DestroyDB(m_path, rocksdb::Options(), CFDescriptors);
-        }
-    }
-}
 
-/**
- * @brief Destroy the KVDB object
- *
- */
-KVDB::~KVDB()
-{
-    close();
-}
-
-/**
- * @brief DB closing cleaning all elements used to acces it
- *
- * @return true succesfully closed
- * @return false unsuccesfully closed
- */
-bool KVDB::close()
-{
-    std::unique_lock lk(m_mtx);
-    bool ret = true;
-    if (m_txndb)
-    {
-        rocksdb::Status s;
-        for (auto item : m_CFHandlesMap)
+        std::unique_lock lk(m_mtx);
+        std::vector<std::string> cfNames;
+        auto s =
+            rocksdb::DB::ListColumnFamilies(kOptions.open, m_path, &cfNames);
+        if (s.ok())
         {
-            s = m_db->DestroyColumnFamilyHandle(item.second);
-            if (!s.ok())
+            for (auto name : cfNames)
             {
-                WAZUH_LOG_WARN("Couldn't destroy family handler from DB [{}], error: [{}]",
-                               m_name,
-                               s.ToString());
-                ret = false;
+                m_CFDescriptors.push_back(
+                    rocksdb::ColumnFamilyDescriptor(name, kOptions.CF));
             }
         }
-        m_CFHandlesMap.clear();
-
-        s = m_db->Close();
-        if (!s.ok())
+        else
         {
-            WAZUH_LOG_ERROR("Couldn't close DB [{}], error: [{}]",
-                            m_name,
-                            s.ToString());
-            ret = false;
+            m_CFDescriptors.push_back(
+                rocksdb::ColumnFamilyDescriptor(DEFAULT_CF_NAME, kOptions.CF));
         }
 
-        delete m_txndb;
+        rocksdb::Options createOptions;
+        createOptions.IncreaseParallelism();
+        createOptions.OptimizeLevelStyleCompaction();
+        createOptions.create_if_missing = true;
+        //TODO this actually does not overwrite anything
+        createOptions.error_if_exists = !m_overwrite;
+
+        rocksdb::OptimisticTransactionDB *txdb;
+        std::vector<rocksdb::ColumnFamilyHandle *> cfHandles;
+        s = rocksdb::OptimisticTransactionDB::Open(
+            createOptions, m_path, m_CFDescriptors, &cfHandles, &txdb);
+        if (!s.ok())
+        {
+            WAZUH_LOG_ERROR("Couldn't create DB [{}] file, error: [{}]",
+                            m_name,
+                            s.ToString());
+
+            m_state = State::Error;
+            // TODO: Investigate the reason of this:
+            // RocksDB creates a DB even if the option create_if_missing is
+            // false. The open operation fails, but the DB is created anyway.
+            rocksdb::DestroyDB(m_path, rocksdb::Options(), m_CFDescriptors);
+            return false;
+        }
+
+        for (auto handle : cfHandles)
+        {
+            m_CFHandlesMap[handle->GetName()] = handle;
+        }
+
+        m_txDb = txdb;
+        m_db = txdb->GetBaseDB();
+        m_state = State::Open;
+        return true;
     }
-    m_txndb = nullptr;
-    m_db = nullptr;
 
-    if (m_deleteOnClose && !deleteFile())
+    /**
+     * @brief Check if the DB is able to be used.
+     *
+     * @return true if the DB can be used
+     * @return false if the DB can´t be used
+     */
+    bool isReady() const
     {
-        ret = false;
+        return (m_state == State::Open);
     }
 
-    return ret;
-}
-
-/**
- * @brief Db destruction cleaning all files and data related to it
- *
- * @return true successfully destructed
- * @return false unsuccessfully destructed
- */
-bool KVDB::deleteFile()
-{
-    rocksdb::Status s =
-        rocksdb::DestroyDB(m_path, rocksdb::Options(), CFDescriptors);
-    if (!s.ok())
+    bool isValid() const
     {
-        WAZUH_LOG_ERROR("Couldn't destroy DB [{}], error: [{}]",
+        return (m_state != State::Invalid);
+    }
+
+    const std::string &getName() const
+    {
+        return m_name;
+    }
+
+    rocksdb::ColumnFamilyHandle *getCFHandle(std::string const &colName)
+    {
+        std::shared_lock lk(m_mtx);
+        if (m_state != State::Open)
+        {
+            WAZUH_LOG_ERROR("DB [{}] should be open for execution", m_name);
+            return nullptr;
+        }
+
+        auto cfh = m_CFHandlesMap.find(colName);
+        if (cfh == m_CFHandlesMap.end())
+        {
+            WAZUH_LOG_ERROR(
+                "Failed to get CF [{}] in DB [{}]", colName, m_name);
+            return nullptr;
+        }
+
+        return cfh->second;
+    }
+
+    bool createColumn(const std::string &columnName)
+    {
+        auto cf = getCFHandle(columnName);
+        if (cf)
+        {
+            // CF already present
+            return false;
+        }
+
+        rocksdb::ColumnFamilyHandle *handler;
+        rocksdb::Status s =
+            m_db->CreateColumnFamily(kOptions.CF, columnName, &handler);
+        if (s.ok())
+        {
+            std::unique_lock lk(m_mtx);
+            m_CFDescriptors.push_back(
+                rocksdb::ColumnFamilyDescriptor(columnName, kOptions.CF));
+            m_CFHandlesMap.insert({handler->GetName(), handler});
+            return true;
+        }
+
+        WAZUH_LOG_ERROR("Couldn't create CF [{}] in DB [{}], error: ",
+                        columnName,
                         m_name,
                         s.ToString());
-        m_state = State::Error;
-        return false;
-    }
-    return true;
-}
-
-/**
- * @brief write a key into the DB
- *
- * @param key the key that will be written
- * @param columnName column where to write the key-value
- * @return true If the proccess finished successfully
- * @return false If the proccess didn't finished successfully
- */
-bool KVDB::writeKeyOnly(const std::string &key, const std::string &columnName)
-{
-    return write(key, "", columnName);
-}
-
-/**
- * @brief write a key-value into the DB
- *
- * @param key the key that will be written
- * @param value the value that will be written
- * @param columnName column where to write the key-value
- * @return true If the proccess finished successfully
- * @return false If the proccess didn't finished successfully
- */
-bool KVDB::write(const std::string &key,
-                 const std::string &value,
-                 const std::string &columnName)
-{
-    if (m_state != State::Open)
-    {
-        WAZUH_LOG_ERROR("DB [{}] should be open for execution", m_name);
         return false;
     }
 
-    std::shared_lock lk(m_mtx);
-    auto cfh = m_CFHandlesMap.find(columnName);
-    if (cfh == m_CFHandlesMap.end())
+    // TODO: all the default column names should be changed, one option is to
+    // define a KVDB default CF in order to avoid using a deleteColumn or
+    // cleanColumn without any argument
+    bool deleteColumn(const std::string &columnName)
     {
-        WAZUH_LOG_ERROR("Couldn't write to DB [{}] unknown column name [{}]",
+        auto cf = getCFHandle(columnName);
+        if (!cf)
+        {
+            return false;
+        }
+
+        std::unique_lock lk(m_mtx);
+        rocksdb::Status s = m_db->DropColumnFamily(cf);
+        if (s.ok())
+        {
+            m_CFHandlesMap.erase(columnName);
+            for (int i = 0; i < m_CFDescriptors.size(); i++)
+            {
+                if (!columnName.compare(m_CFDescriptors.at(i).name))
+                {
+                    m_CFDescriptors.erase(m_CFDescriptors.begin() + i);
+                    break;
+                }
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    bool cleanColumn(const std::string &columnName)
+    {
+        if (columnName == DEFAULT_CF_NAME)
+        {
+            rocksdb::Iterator *iter = m_db->NewIterator(kOptions.read);
+            iter->SeekToFirst();
+            while (iter->Valid())
+            {
+                deleteKey(iter->key().ToString(), columnName);
+                iter->Next();
+            };
+            delete iter;
+            return true;
+        }
+        else if (deleteColumn(columnName))
+        {
+            return createColumn(columnName);
+        }
+        return false;
+    }
+
+    bool write(const std::string &key,
+               const std::string &value,
+               const std::string &columnName)
+    {
+        auto cf = getCFHandle(columnName);
+        if (!cf)
+        {
+            return false;
+        }
+
+        rocksdb::Status s = m_db->Put(kOptions.write, cf, key, value);
+        if (!s.ok())
+        {
+            WAZUH_LOG_ERROR(
+                "Couldn't insert [{},{}] into DB [{}] CF [{}], error: [{}]",
+                key,
+                value,
+                m_name,
+                columnName,
+                s.ToString());
+            return false;
+        }
+
+        WAZUH_LOG_DEBUG("Successfull insert [{},{}] into DB [{}] CF [{}]",
+                        key,
+                        value,
                         m_name,
                         columnName);
-        return false;
+        return true;
     }
 
-    rocksdb::Status s = m_db->Put(kOptions.write,
-                                  cfh->second,
-                                  rocksdb::Slice(key),
-                                  rocksdb::Slice(value));
-    if (!s.ok())
+    bool writeToTransaction(
+        const std::vector<std::pair<std::string, std::string>> &pairsVector,
+        const std::string &columnName)
     {
-        WAZUH_LOG_ERROR(
-            "Couldn't insert [{},{}] into DB [{}] CF [{}], error: [{}]",
-            key,
-            value,
-            m_name,
-            columnName,
-            s.ToString());
-        return false;
+        auto cf = getCFHandle(columnName);
+        if (!cf)
+        {
+            return false;
+        }
+
+        // TODO is this actually an error? It would be an user error but not a
+        // library error
+        if (!pairsVector.size())
+        {
+            WAZUH_LOG_INFO("Couldn't write transaction to DB [{}], need at "
+                            "least 1 element",
+                            m_name);
+            return false;
+        }
+
+        rocksdb::Transaction *txn = m_txDb->BeginTransaction(kOptions.write);
+        if (!txn)
+        {
+            WAZUH_LOG_ERROR("Couldn't begin in transaction in DB [{}]", m_name);
+            return false;
+        }
+
+        // just delete the tx on scope exit
+        _defer({ delete txn; });
+
+        bool txnOk = true;
+        for (auto const &[key, value] : pairsVector)
+        {
+            // TODO this is an user error not a library error
+            if (key.empty())
+            {
+                WAZUH_LOG_INFO("Discarding tuple [{},{}] in DB [{}] "
+                                "because key is empty",
+                                key,
+                                value,
+                                m_name);
+                continue;
+            }
+            // Write a key-value in this transaction
+            rocksdb::Status s = txn->Put(cf, key, value);
+            if (!s.ok())
+            {
+                txnOk = false;
+                WAZUH_LOG_ERROR("Couldn't execute Put in transaction for DB "
+                                "[{}], error: [{}]",
+                                m_name,
+                                s.ToString());
+                // TODO should we keep going if there was an error?
+                // we potentially get a series of errors after the inital one
+            }
+        }
+
+        // TODO should we commit a tx if we had errors?
+        rocksdb::Status s = txn->Commit();
+        if (!s.ok())
+        {
+            txnOk = false;
+            WAZUH_LOG_ERROR(
+                "Couldn't commit in transaction in DB [{}], error: [{}]",
+                m_name,
+                s.ToString());
+        }
+
+        return txnOk;
     }
 
-    WAZUH_LOG_DEBUG("Successfull insert [{},{}] into DB [{}] CF [{}]",
-                    key,
-                    value,
-                    m_name,
-                    columnName);
-    return true;
-}
-
-/**
- * @brief read a value from a key inside a CF without value copying
- *
- * @param key where to find the value
- * @param value that the result of the proccess will modify
- * @param columnName where to search the key
- * @return value read If the proccess finished successfully
- * @return empty string If the proccess didn't finished successfully
- */
-std::string KVDB::read(const std::string &key, const std::string &columnName)
-{
-    if (m_state != State::Open)
+    bool hasKey(const std::string &key, const std::string &columnName)
     {
-        WAZUH_LOG_ERROR("DB [{}] should be open for reading", m_name);
-        return {};
+        auto cf = getCFHandle(columnName);
+        if (!cf)
+        {
+            return false;
+        }
+
+        std::string value;
+        // TODO We need to investigate this
+        return m_db->KeyMayExist(kOptions.read, cf, key, &value);
     }
 
-    std::shared_lock lk(m_mtx);
-    auto cfh = m_CFHandlesMap.find(columnName);
-    if (cfh == m_CFHandlesMap.end())
+    std::string read(const std::string &key, const std::string &columnName)
     {
-        WAZUH_LOG_ERROR("Couldn't read DB [{}] unknown column name [{}]",
-                        m_name,
-                        columnName);
-        return {};
-    }
+        auto cf = getCFHandle(columnName);
+        if (!cf)
+        {
+            return {};
+        }
 
-    std::string result, value;
-    rocksdb::Status s =
-        m_db->Get(kOptions.read, cfh->second, rocksdb::Slice(key), &value);
-    if (s.ok())
-    {
+        std::string result, value;
+        rocksdb::Status s = m_db->Get(kOptions.read, cf, key, &value);
+        if (!s.ok())
+        {
+            WAZUH_LOG_ERROR(
+                "Couldn't read value from DB [{}] CF [{}], error: [{}]",
+                m_name,
+                columnName,
+                s.ToString());
+            result.clear();
+            return {};
+        }
+
         WAZUH_LOG_DEBUG("Value obtained OK [{},{}] from DB [{}] CF [{}]",
                         key,
                         value,
                         m_name,
                         columnName);
-        result = value;
-    }
-    else
-    {
-        WAZUH_LOG_ERROR("Couldn't read value from DB [{}] CF [{}], error: [{}]",
-                        m_name,
-                        columnName,
-                        s.ToString());
-        result.clear();
-    }
-    return result;
-}
-
-/**
- * @brief delete a key of a CF
- *
- * @param key that will be deleted
- * @param columnName where to search for the key
- * @return true if the key was successfully deleted
- * @return false if the key wasn't successfully deleted
- */
-bool KVDB::deleteKey(const std::string &key, const std::string &columnName)
-{
-    if (m_state != State::Open)
-    {
-        WAZUH_LOG_ERROR("DB [{}] should be open for execution", m_name);
-        return false;
+        return value;
     }
 
-    std::shared_lock lk(m_mtx);
-    auto cfh = m_CFHandlesMap.find(columnName);
-    if (cfh == m_CFHandlesMap.end())
+    bool readPinned(const std::string &key,
+                    std::string &value,
+                    const std::string &columnName)
     {
-        WAZUH_LOG_ERROR(
-            "Couldn't delete key in DB [{}] unknown column name [{}]",
-            m_name,
-            columnName);
-        return false;
-    }
-
-    rocksdb::Status s =
-        m_db->Delete(kOptions.write, cfh->second, rocksdb::Slice(key));
-    if (s.ok())
-    {
-        WAZUH_LOG_INFO("Key [{}] deleted OK from DB [{}]", key, m_name);
-        return true;
-    }
-    WAZUH_LOG_ERROR(
-        "Couldn't delete key [{}] from DB [{}] CF [{}], error: [{}]",
-        key,
-        m_name,
-        columnName,
-        s.ToString());
-    return false;
-}
-
-/**
- * @brief Create a Column object
- *
- * @param columnName name of the object that will be created
- * @return true successfull creation of Column in DB
- * @return false unsuccessfull creation or already created object
- */
-bool KVDB::createColumn(const std::string &columnName)
-{
-    if (m_state != State::Open)
-    {
-        WAZUH_LOG_ERROR("DB [{}] should be open for execution", m_name);
-        return false;
-    }
-
-    std::unique_lock lk(m_mtx);
-    auto cfh = m_CFHandlesMap.find(columnName);
-    if (cfh != m_CFHandlesMap.end())
-    {
-        WAZUH_LOG_ERROR(
-            "Couldn't create CF [{}] in DB [{}], name already taken",
-            columnName,
-            m_name);
-        return false;
-    }
-
-    rocksdb::ColumnFamilyHandle *handler;
-    rocksdb::Status s =
-        m_db->CreateColumnFamily(kOptions.CF, columnName, &handler);
-    if (s.ok())
-    {
-        CFDescriptors.push_back(
-            rocksdb::ColumnFamilyDescriptor(columnName, kOptions.CF));
-        m_CFHandlesMap.insert({handler->GetName(), handler});
-        return true;
-    }
-
-    WAZUH_LOG_ERROR("Couldn't create CF [{}] in DB [{}], error: ",
-                    columnName,
-                    m_name,
-                    s.ToString());
-    return false;
-}
-
-/**
- * @brief Delete a Column object
- *
- * @param columnName name of the object that will be deleted
- * @return true successfull deletion of Column in DB
- * @return false unsuccessfull creation or object not found
- */
-bool KVDB::deleteColumn(const std::string &columnName)
-{
-    if (m_state != State::Open)
-    {
-        WAZUH_LOG_ERROR("DB [{}] should be open for execution",
-                        m_name);
-        return false;
-    }
-
-    std::unique_lock lk(m_mtx);
-    CFHMap::const_iterator cfh = m_CFHandlesMap.find(columnName);
-    if (cfh == m_CFHandlesMap.end())
-    {
-        WAZUH_LOG_ERROR("Couldn't delete CF [{}] from DB [{}], unknown column name",
-                        columnName,
-                        m_name);
-        return false;
-    }
-
-    rocksdb::Status s = m_db->DropColumnFamily(cfh->second);
-    if (s.ok())
-    {
-        m_CFHandlesMap.erase(cfh);
-        for (int i = 0; i < CFDescriptors.size(); i++)
+        auto cf = getCFHandle(columnName);
+        if (!cf)
         {
-            if (!columnName.compare(CFDescriptors.at(i).name))
-            {
-                CFDescriptors.erase(CFDescriptors.begin() + i);
-                break;
-            }
+            return false;
         }
-        return true;
-    }
 
-    WAZUH_LOG_ERROR("Couldn't delete column [{}] from DB [{}], error: [{}]",
-                    columnName,
-                    m_name,
-                    s.ToString());
-    return false;
-}
-
-/**
- * @brief cleaning of all elements in Column
- //TODO: when trying to clean a default CF rocksdb doesn't allow it: <return
- Status::InvalidArgument("Can't drop default column family")> this needs to be
- fixed differently in order to avoid costly proccess on large DBs.
- * @param columnName that will be cleaned
- * @return true when successfully cleaned
- * @return false when unsuccessfully cleaned
- */
-bool KVDB::cleanColumn(const std::string &columnName)
-{
-    if (columnName == DEFAULT_CF_NAME)
-    {
-        rocksdb::Iterator *iter = m_db->NewIterator(kOptions.read);
-        iter->SeekToFirst();
-        while (iter->Valid())
-        {
-            deleteKey(iter->key().ToString());
-            iter->Next();
-        };
-        delete iter;
-        return true;
-    }
-    else if (deleteColumn(columnName))
-    {
-        return createColumn(columnName);
-    }
-    return false;
-}
-
-/**
- * @brief write vector of pair key values to DB in a pessimistic transaction
- * manner.
- * @param pairsVector input data of string pairs
- * @param columnName where the data will be written to
- * @return true when written and commited without any problem
- * @return false when one or more items weren't succesfully written.
- */
-bool KVDB::writeToTransaction(
-    const std::vector<std::pair<std::string, std::string>> &pairsVector,
-    const std::string &columnName)
-{
-    if (m_state != State::Open)
-    {
-        WAZUH_LOG_ERROR("DB [{}] should be open for execution", m_name);
-        return false;
-    }
-
-    if (!pairsVector.size())
-    {
-        WAZUH_LOG_ERROR(
-            "Couldn't write transaction to DB [{}], need at least 1 element",
-            m_name);
-        return false;
-    }
-
-    if (m_state != State::Open)
-    {
-        WAZUH_LOG_ERROR("DB [{}] should be open for execution", m_name);
-        return false;
-    }
-
-    std::shared_lock lk(m_mtx);
-    auto cfh = m_CFHandlesMap.find(columnName);
-    if (cfh == m_CFHandlesMap.end())
-    {
-        WAZUH_LOG_ERROR("Couldn't write transaction to DB [{}] unknown "
-                        "column name [{}]",
-                        m_name,
-                        columnName);
-        return false;
-    }
-
-    rocksdb::Transaction *txn = m_txndb->BeginTransaction(kOptions.write);
-    if (!txn)
-    {
-        WAZUH_LOG_ERROR("Couldn't begin in transaction in DB [{}]",
-                        m_name);
-        return false;
-    }
-
-    bool txnOk = true;
-    for (auto pair : pairsVector)
-    {
-        std::string const key = pair.first;
-        std::string const value = pair.second;
-        if (key.empty())
-        {
-            WAZUH_LOG_ERROR("Discarding tuple [{},{}] in DB [{}] because key is empty",
-                            key,
-                            value,
-                            m_name);
-            continue;
-        }
-        // Write a key-value in this transaction
-        rocksdb::Status s = txn->Put(cfh->second, key, value);
+        rocksdb::PinnableSlice pinnable_val;
+        rocksdb::Status s = m_db->Get(kOptions.read, cf, key, &pinnable_val);
         if (!s.ok())
         {
-            txnOk = false;
-            WAZUH_LOG_ERROR("Couldn't execute Put in transaction for DB [{}], error: [{}]",
-                            m_name,
-                            s.ToString());
+            WAZUH_LOG_ERROR(
+                "Couldn't read pinned value from DB [{}], error: [{}]",
+                m_name,
+                s.ToString());
+            return false;
         }
-    }
-    rocksdb::Status s = txn->Commit();
-    if (!s.ok())
-    {
-        txnOk = false;
-        WAZUH_LOG_ERROR("Couldn't commit in transaction in DB [{}], error: [{}]",
-                        m_name,
-                        s.ToString());
-    }
 
-    delete txn;
-    return txnOk;
-}
-
-/**
- * @brief check key existence in Column
- *
- * @param key used to check existence
- * @param columnName where to look for the key
- * @return true if key was found
- * @return false if key wasn't found
- */
-bool KVDB::hasKey(const std::string &key, const std::string &columnName)
-{
-    std::shared_lock lk(m_mtx);
-    auto cfh = m_CFHandlesMap.find(columnName);
-    if (cfh == m_CFHandlesMap.end())
-    {
-        WAZUH_LOG_ERROR("Couldn't read from DB [{}], unknown column name [{}]",
-                        m_name,
-                        columnName);
-        return false;
-    }
-
-    if (m_state != State::Open)
-    {
-        WAZUH_LOG_ERROR("DB [{}] should be open for execution", m_name);
-    }
-    std::string value;
-    return m_db->KeyMayExist(
-        kOptions.read, cfh->second, rocksdb::Slice(key), &value);
-}
-
-/**
- * @brief
- * //TODO: this should be returning a PinnableSlice and the consumer should
- * reset it and read it's value. Check what methods should we add in order to
- * decouple rocksdb library from the client, wrapping all the functions and
- * objects needed.
- * @param key key where to find the value
- * @param value value that the result of the proccess will modify
- * @param ColumnName where to search the key
- * @return true If the proccess finished successfully
- * @return false If the proccess didn't finished successfully
- */
-bool KVDB::readPinned(const std::string &key,
-                      std::string &value,
-                      const std::string &ColumnName)
-{
-    std::shared_lock lk(m_mtx);
-    if (m_state != State::Open)
-    {
-        WAZUH_LOG_ERROR("DB [{}] should be open for execution", m_name);
-        return false;
-    }
-
-    auto cfh = m_CFHandlesMap.find(ColumnName);
-    if (cfh == m_CFHandlesMap.end())
-    {
-        WAZUH_LOG_ERROR(
-            "Couldn't read value from DB [{}], unknown column name [{}]",
-            m_name,
-            ColumnName);
-        return false;
-    }
-
-    rocksdb::PinnableSlice pinnable_val;
-    rocksdb::Status s = m_db->Get(
-        kOptions.read, cfh->second, rocksdb::Slice(key), &pinnable_val);
-    if (s.ok())
-    {
         value = pinnable_val.ToString();
         WAZUH_LOG_DEBUG("Successfull read pinned value [{},{}] from DB [{}]",
                         key,
                         value,
                         m_name);
-        pinnable_val.Reset();
         return true;
     }
 
-    WAZUH_LOG_ERROR("Couldn't read pinned value from DB [{}], error: [{}]",
-                    m_name,
-                    s.ToString());
-    return false;
+    bool deleteKey(const std::string &key, const std::string &columnName)
+    {
+        auto cf = getCFHandle(columnName);
+        if (!cf)
+        {
+            return false;
+        }
+
+        rocksdb::Status s = m_db->Delete(kOptions.write, cf, key);
+        if (!s.ok())
+        {
+            WAZUH_LOG_ERROR(
+                "Couldn't delete key [{}] from DB [{}] CF [{}], error: [{}]",
+                key,
+                m_name,
+                columnName,
+                s.ToString());
+            return false;
+        }
+
+        WAZUH_LOG_INFO("Key [{}] deleted OK from DB [{}]", key, m_name);
+        return true;
+    }
+
+    bool close()
+    {
+        std::unique_lock lk(m_mtx);
+        if (!m_txDb)
+        {
+            return true;
+        }
+
+        bool ret = true;
+        rocksdb::Status s;
+        for (auto const &it : m_CFHandlesMap)
+        {
+            s = m_db->DestroyColumnFamilyHandle(it.second);
+            if (!s.ok())
+            {
+                WAZUH_LOG_ERROR("Couldn't destroy family handler from DB "
+                                "[{}], error: [{}]",
+                                m_name,
+                                s.ToString());
+                ret = false;
+                // TODO do we continue on error. This could mean an error
+                // for the rest too
+            }
+        }
+
+        m_CFHandlesMap.clear();
+
+        s = m_db->Close();
+        if (!s.ok())
+        {
+            WAZUH_LOG_ERROR(
+                "Couldn't close DB [{}], error: [{}]", m_name, s.ToString());
+            ret = false;
+        }
+
+        s = m_txDb->Close();
+        if(!s.ok())
+        {
+            WAZUH_LOG_ERROR(
+                "Couldn't close DB [{}], error: [{}]", m_name, s.ToString());
+            ret = false;
+        }
+
+        delete m_txDb;
+        m_txDb = nullptr;
+
+        return ret;
+    }
+
+    /**
+     * @brief Db destruction cleaning all files and data related to it
+     *
+     * @return true successfully destructed
+     * @return false unsuccessfully destructed
+     */
+    bool deleteFile()
+    {
+        if(m_shouldCleanupFiles)
+        {
+            //TODO check if we need to delete
+        }
+
+        rocksdb::Status s =
+            rocksdb::DestroyDB(m_path, rocksdb::Options(), m_CFDescriptors);
+        if (!s.ok())
+        {
+            WAZUH_LOG_ERROR(
+                "Couldn't destroy DB [{}], error: [{}]", m_name, s.ToString());
+            m_state = State::Error;
+            return false;
+        }
+
+        return true;
+    }
+
+private:
+    std::string m_name;
+    std::string m_path;
+    bool m_overwrite;
+    bool m_shouldCleanupFiles;
+    State m_state = State::Invalid;
+
+    rocksdb::OptimisticTransactionDB *m_txDb;
+    rocksdb::DB *m_db;
+    std::vector<rocksdb::ColumnFamilyDescriptor> m_CFDescriptors;
+    std::unordered_map<std::string, rocksdb::ColumnFamilyHandle *>
+        m_CFHandlesMap;
+
+    std::shared_mutex m_mtx;
+};
+
+KVDB::KVDB(const std::string &dbName, const std::string &folder, bool overwrite)
+    : mImpl(std::make_unique<KVDB::Impl>(dbName, folder, overwrite))
+{
 }
 
-/**
- * @brief Check if the DB is able to be used.
- *
- * @return true if the DB can be used
- * @return false if the DB can´t be used
- */
-bool KVDB::isReady()
+KVDB::KVDB()
+    : mImpl(std::make_unique<KVDB::Impl>("", ""))
 {
-    return (m_state == State::Open);
 }
 
-bool KVDB::isValid()
+bool KVDB::init()
 {
-    return (m_state != State::Invalid);
+    return mImpl->init();
+}
+
+KVDB::~KVDB()
+{
+    mImpl->close();
+    mImpl->deleteFile();
+}
+
+bool KVDB::close()
+{
+    return mImpl->close();
+}
+
+bool KVDB::writeKeyOnly(const std::string &key, const std::string &columnName)
+{
+    return mImpl->write(key, "", columnName);
+}
+
+bool KVDB::write(const std::string &key,
+                 const std::string &value,
+                 const std::string &columnName)
+{
+    return mImpl->write(key, value, columnName);
+}
+
+std::string KVDB::read(const std::string &key, const std::string &columnName)
+{
+    return mImpl->read(key, columnName);
+}
+
+bool KVDB::deleteKey(const std::string &key, const std::string &columnName)
+{
+    return mImpl->deleteKey(key, columnName);
+}
+
+bool KVDB::createColumn(const std::string &columnName)
+{
+    return mImpl->createColumn(columnName);
+}
+
+bool KVDB::deleteColumn(const std::string &columnName)
+{
+    return mImpl->deleteColumn(columnName);
+}
+
+bool KVDB::cleanColumn(const std::string &columnName)
+{
+    return mImpl->cleanColumn(columnName);
+}
+
+bool KVDB::writeToTransaction(
+    const std::vector<std::pair<std::string, std::string>> &pairsVector,
+    const std::string &columnName)
+{
+    return mImpl->writeToTransaction(pairsVector, columnName);
+}
+
+bool KVDB::hasKey(const std::string &key, const std::string &columnName)
+{
+    return mImpl->hasKey(key, columnName);
+}
+
+bool KVDB::readPinned(const std::string &key,
+                      std::string &value,
+                      const std::string &colName)
+{
+    return mImpl->readPinned(key, value, colName);
+}
+
+bool KVDB::isValid() const
+{
+    return mImpl->isValid();
+}
+
+bool KVDB::isReady() const
+{
+    return mImpl->isReady();
+}
+
+std::string_view KVDB::getName() const
+{
+    return mImpl->getName();
 }
