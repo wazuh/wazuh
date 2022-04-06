@@ -2099,21 +2099,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
     if (prefilter_cmd[0]) {
         if (!(modules & CAGENT_CONFIG) || syscheck->allow_remote_prefilter_cmd) {
-            char *save_ptr;
-            int total_vectors = 2;
-
-            os_calloc(total_vectors, sizeof(char *), syscheck->prefilter_cmd);
-            strtok_r(prefilter_cmd, " ", &save_ptr);
-            os_strdup(prefilter_cmd, syscheck->prefilter_cmd[0]);
-            syscheck->prefilter_cmd[1] = NULL;
-
-            while (save_ptr != NULL && *save_ptr != '\0') {
-                os_realloc(syscheck->prefilter_cmd, (total_vectors + 1) * sizeof(char *), syscheck->prefilter_cmd);
-                syscheck->prefilter_cmd[total_vectors] = NULL;
-                os_strdup( save_ptr, syscheck->prefilter_cmd[total_vectors - 1]);
-                total_vectors++;
-                strtok_r(NULL, " ", &save_ptr);
-            }
+            syscheck->prefilter_cmd = w_strtok(prefilter_cmd);
         } else if (!syscheck->allow_remote_prefilter_cmd) {
             mwarn(FIM_WARN_ALLOW_PREFILTER, prefilter_cmd, xml_allow_remote_prefilter_cmd);
         }
@@ -2337,10 +2323,7 @@ void Free_Syscheck(syscheck_config * config) {
             free(config->realtime);
         }
         if (config->prefilter_cmd) {
-            for (int i = 0; config->prefilter_cmd[i]; i++) {
-                free(config->prefilter_cmd[i]);
-            }
-            free(config->prefilter_cmd);
+            free_strarray(config->prefilter_cmd);
         }
 
         free_strarray(config->audit_key);
