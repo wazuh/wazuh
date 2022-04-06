@@ -297,8 +297,6 @@ class Handler(asyncio.Protocol):
         self.transport = None
         # Tasks to be interrupted.
         self.interrupted_tasks = set()
-        # Max allowed zip size.
-        # self.current_zip_limit = self.cluster_items['intervals']['communication']['max_zip_size']
 
     def push(self, message: bytes):
         """Send a message to peer.
