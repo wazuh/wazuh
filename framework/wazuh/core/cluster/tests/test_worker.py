@@ -531,7 +531,7 @@ async def test_wazuh_handler_sync_extra_valid(merge_info_mock, perf_counter_mock
         logger_info_mock.assert_called_once_with("Finished in 0.000s.")
         merge_info_mock.assert_called_once_with(merge_type='agent-groups', node_name="Testing",
                                                 files=extra_valid.keys())
-        sync_mock.assert_called_once_with(files_to_sync={
+        sync_mock.assert_called_once_with(files={
             "merged_file": {'merged': True, 'merge_type': 'agent-groups', 'merge_name': "merged_file",
                             'cluster_item_key': 'queue/agent-groups/'}}, files_metadata={
             "merged_file": {'merged': True, 'merge_type': 'agent-groups', 'merge_name': "merged_file",

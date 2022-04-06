@@ -444,7 +444,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                                            'cluster_item_key': 'queue/agent-groups/'}} if n_files else {}
 
             # Permission is not requested since it was already granted in the 'Integrity check' task.
-            await extra_valid_sync.sync(files_to_sync=files_to_sync, files_metadata=files_to_sync,
+            await extra_valid_sync.sync(files=files_to_sync, files_metadata=files_to_sync,
                                         task_pool=self.manager.task_pool)
             after = perf_counter()
             logger.debug(f"Finished sending extra valid files in {(after - before):.3f}s.")

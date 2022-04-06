@@ -989,16 +989,6 @@ async def test_master_handler_sync_wazuh_db_info_ko(send_request_mock, loads_moc
 async def test_master_handler_sync_worker_files_ok(run_in_pool_mock, decompress_files_mock, wait_for_mock, rmtree_mock):
     """Check if the extra_valid files are properly received and processed."""
 
-    class EventMock:
-        """Auxiliary class."""
-
-        def __init__(self):
-            pass
-
-        async def wait(self):
-            """Auxiliary method."""
-            pass
-
     class TaskMock:
         """Auxiliary class."""
 
@@ -1016,7 +1006,7 @@ async def test_master_handler_sync_worker_files_ok(run_in_pool_mock, decompress_
     master_handler.sync_tasks["task_id"] = TaskMock()
     master_handler.server = ServerMock()
 
-    await master_handler.sync_worker_files("task_id", EventMock(), logging.getLogger("wazuh"))
+    await master_handler.sync_worker_files("task_id", asyncio.Event(), logging.getLogger("wazuh"))
     wait_for_mock.assert_called_once()
     decompress_files_mock.assert_called_once()
     rmtree_mock.assert_called_once_with("/decompressed/files/path")
@@ -1032,18 +1022,9 @@ async def test_master_handler_sync_worker_files_ok(run_in_pool_mock, decompress_
 @patch("shutil.rmtree")
 @patch('wazuh.core.cluster.master.cluster.run_in_pool', side_effect=Exception)
 @patch("wazuh.core.cluster.cluster.decompress_files", return_value=("files_metadata", "/decompressed/files/path"))
-async def test_master_handler_sync_worker_files_ko(decompress_files_mock, run_in_pool_mock, rmtree_mock):
+@patch("wazuh.core.cluster.master.MasterHandler.wait_for_file")
+async def test_master_handler_sync_worker_files_ko(wait_for_mock, decompress_files_mock, run_in_pool_mock, rmtree_mock):
     """Check if the exceptions are properly raised."""
-
-    class EventMock:
-        """Auxiliary class."""
-
-        def __init__(self):
-            pass
-
-        async def wait(self):
-            """Auxiliary method."""
-            pass
 
     class TaskMock:
         """Auxiliary class."""
@@ -1055,20 +1036,13 @@ async def test_master_handler_sync_worker_files_ko(decompress_files_mock, run_in
     master_handler.sync_tasks["task_id"] = TaskMock()
 
     #  Test the first exception
-    with patch("wazuh.core.cluster.master.MasterHandler.send_request", return_value="response") as send_request_mock:
-        with pytest.raises(exception.WazuhClusterError, match='.* 3039 .*'):
-            with patch("asyncio.wait_for", side_effect=asyncio.TimeoutError):
-                await master_handler.sync_worker_files("task_id", EventMock(), logging.getLogger("wazuh"))
-        send_request_mock.assert_called_once_with(command=b'cancel_task', data=ANY)
+    with pytest.raises(Exception):
+        await master_handler.sync_worker_files("task_id", asyncio.Event(), logging.getLogger("wazuh"))
 
     # Test the second exception
-    with pytest.raises(Exception):
-        await master_handler.sync_worker_files("task_id", EventMock(), logging.getLogger("wazuh"))
-
-    # Test the third exception
     with pytest.raises(exception.WazuhClusterError, match=r'.* 3038 .*'):
         master_handler.sync_tasks["task_id"].filename = ''
-        await master_handler.sync_worker_files("task_id", EventMock(), logging.getLogger("wazuh"))
+        await master_handler.sync_worker_files("task_id", asyncio.Event(), logging.getLogger("wazuh"))
 
     decompress_files_mock.assert_called_once_with('', 'files_metadata.json')
     run_in_pool_mock.assert_not_called()
@@ -1112,6 +1086,7 @@ def test_set_date_end_master(info_mock):
 @pytest.mark.parametrize('compare_result', [
     {}, {'test': 'test'}
 ])
+@pytest.mark.asyncio
 @freeze_time("2021-11-02")
 @patch("shutil.rmtree")
 @patch.object(logging.getLogger("wazuh"), "info")
@@ -1172,6 +1147,7 @@ async def test_master_handler_integrity_check(decompress_files_mock, send_reques
                                                                          'of 14 files. Sync not required.')]
 
 
+@pytest.mark.asyncio
 @patch("wazuh.core.cluster.master.MasterHandler.wait_for_file", return_value=Exception())
 async def test_master_handler_integrity_check_ko(wait_for_file_mock):
     """Check if the exceptions are properly raised."""
@@ -1200,6 +1176,7 @@ async def test_master_handler_integrity_check_ko(wait_for_file_mock):
         await master_handler.integrity_check("task_id", EventMock())
 
 
+@pytest.mark.asyncio
 @freeze_time("2021-11-02")
 @patch.object(logging.getLogger("wazuh"), "info")
 @patch("wazuh.core.cluster.master.MasterHandler.set_date_end_master")

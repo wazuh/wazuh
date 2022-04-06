@@ -52,7 +52,6 @@ cluster_items = {"etc/": {"permissions": "0o640", "source": "master", "files": [
 fernet_key = "00000000000000000000000000000000"
 wazuh_common = cluster_common.WazuhCommon()
 in_buffer = cluster_common.InBuffer()
-logger = logging.getLogger("wazuh")
 
 
 asyncio.set_event_loop_policy(EventLoopPolicy())
@@ -64,13 +63,14 @@ loop = new_event_loop()
 @pytest.mark.asyncio
 async def test_response_init():
     """Test for the 'init' method that belongs to the Response class"""
-    event = asyncio.Event(loop=loop)
+    event = asyncio.Event()
     with patch('asyncio.Event', return_value=event):
         response = cluster_common.Response()
         assert response.received_response == event
         assert response.content is None
 
 
+@pytest.mark.asyncio
 async def test_response_read():
     """Test for the 'read' method that belongs to the Response class. This method waits until a response is received."""
 
@@ -81,6 +81,7 @@ async def test_response_read():
         wait_mock.assert_called_once()
 
 
+@pytest.mark.asyncio
 async def test_response_write():
     """Test for the 'write' method that belongs to the Response class. It sets the content of a response and its
     availability."""
@@ -192,6 +193,7 @@ def test_rst_set_up_coro_ko(wazuh_common_mock, logger_mock):
         cluster_common.ReceiveStringTask(wazuh_common_mock, logger_mock, b"task")
 
 
+@pytest.mark.asyncio
 @patch("asyncio.create_task")
 @patch("wazuh.core.cluster.common.ReceiveStringTask.set_up_coro")
 def test_rst_done_callback(setup_coro_mock, create_task_mock):
@@ -976,30 +978,23 @@ def test_handler_setup_task_logger():
             assert isinstance(handler.setup_task_logger("task_tag"), TaskLoggerMock)
 
 
+@pytest.mark.asyncio
 @patch("asyncio.wait_for")
 async def test_handler_wait_for_file(wait_for_mock):
     """Check if wait_for is called with expected parameters."""
-    class EventMock:
-        """Auxiliary class."""
-
-        def __init__(self):
-            pass
-
-        async def wait(self):
-            """Auxiliary method."""
-            pass
-
     handler = cluster_common.Handler(fernet_key, cluster_items)
-    await handler.wait_for_file(EventMock(), 'test')
+    await handler.wait_for_file(asyncio.Event(), 'test')
     wait_for_mock.assert_called_once_with(ANY, timeout=120)
 
 
+@pytest.mark.asyncio
 @patch('wazuh.core.cluster.common.Handler.send_request')
 async def test_handler_wait_for_file_ko(send_request_mock):
     """Check if expected exception is raised."""
     handler = cluster_common.Handler(fernet_key, cluster_items)
     with pytest.raises(exception.WazuhClusterError, match='.* 3039 .*'):
-        await handler.wait_for_file('test', 'test')
+        with patch("asyncio.wait_for", side_effect=asyncio.TimeoutError):
+            await handler.wait_for_file(asyncio.Event(), 'test')
     send_request_mock.assert_called_once_with(command=b'cancel_task', data=ANY)
 
 # Test 'WazuhCommon' class methods
@@ -1230,16 +1225,14 @@ def test_as_wazuh_object_ko():
 
 def get_handler():
     """Return a Handler object. This is an auxiliary method."""
-    return cluster_common.Handler(fernet_key=fernet_key, cluster_items=cluster_items, logger=logger)
-
-
-sync_task = cluster_common.SyncTask(b"cmd", logging.getLogger("wazuh"), get_handler())
+    return cluster_common.Handler(fernet_key=fernet_key, cluster_items=cluster_items, logger=logging.getLogger("wazuh"))
 
 
 # Test SyncTask class methods
 
 def test_sync_task_init():
     """Test '__init__' method from the SyncTask class."""
+    sync_task = cluster_common.SyncTask(b"cmd", logging.getLogger("wazuh"), get_handler())
 
     assert sync_task.cmd == b"cmd"
     assert sync_task.logger == logging.getLogger("wazuh")
@@ -1251,6 +1244,7 @@ def test_sync_task_init():
 async def test_sync_task_request_permission(send_request_mock):
     """Check if a True value is returned once a permission to start synchronization is granted or a False when it
     is not."""
+    sync_task = cluster_common.SyncTask(b"cmd", logging.getLogger("wazuh"), get_handler())
 
     # Test first condition
     with patch.object(logging.getLogger("wazuh"), "error") as logger_mock:
@@ -1275,6 +1269,7 @@ async def test_sync_task_request_permission(send_request_mock):
 @pytest.mark.asyncio
 async def test_sync_task_sync():
     """Test if an Exception is raised when an error takes place."""
+    sync_task = cluster_common.SyncTask(b"cmd", logging.getLogger("wazuh"), get_handler())
 
     with pytest.raises(NotImplementedError):
         await sync_task.sync()
