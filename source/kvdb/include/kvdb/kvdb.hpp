@@ -4,6 +4,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <shared_mutex>
 
 #include "rocksdb/db.h"
 #include "rocksdb/utilities/transaction_db.h"
@@ -37,6 +38,7 @@ public:
     }
 
     bool isReady();
+    bool isValid();
 
     bool createColumn(const std::string &columnName);
 
@@ -84,6 +86,7 @@ private:
     std::string m_name = "Invalid";
     std::string m_path;
     State m_state = State::Invalid;
+    std::shared_mutex m_mtx;
 
     rocksdb::DB *m_db;
     rocksdb::TransactionDB *m_txndb;
