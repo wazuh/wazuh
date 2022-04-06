@@ -1368,7 +1368,7 @@ STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group)
             /* Lock mutex */
             w_mutex_lock(&files_mutex);
 
-            if (!guess_agent_group || !find_group_from_file(file, md5, group) || !find_multi_group_from_file(file, md5, group)) {
+            if (!guess_agent_group || (!find_group_from_file(file, md5, group) && !find_multi_group_from_file(file, md5, group))) {
                 // If the group could not be guessed, set to "default"
                 // or if the user requested not to guess the group, through the internal
                 // option 'guess_agent_group', set to "default"
