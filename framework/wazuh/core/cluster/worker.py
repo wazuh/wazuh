@@ -6,10 +6,9 @@ import errno
 import json
 import os
 import shutil
-from datetime import datetime
+from time import perf_counter
 from typing import Tuple, Dict, Callable, List
 from typing import Union
-from time import perf_counter
 
 from wazuh.core import cluster as metadata, common, exception, utils
 from wazuh.core.cluster import client, cluster, common as c_common
@@ -41,136 +40,7 @@ class ReceiveIntegrityTask(c_common.ReceiveFileTask):
         super().done_callback(future)
 
 
-class SyncTask:
-    """
-    Common class for all worker sync tasks.
-    """
-
-    def __init__(self, cmd: bytes, logger, worker):
-        """Class constructor.
-
-        Parameters
-        ----------
-        cmd : bytes
-            Request command to send to the master.
-        logger : Logger object
-            Logger to use during synchronization process.
-        worker : WorkerHandler object
-            The WorkerHandler object that creates this one.
-        """
-        self.cmd = cmd
-        self.logger = logger
-        self.worker = worker
-
-    async def request_permission(self):
-        """Request permission to start synchronization process with the master.
-
-        Returns
-        -------
-        bool
-            Whether permission is granted.
-        """
-        result = await self.worker.send_request(command=self.cmd + b'_p', data=b'')
-
-        if isinstance(result, Exception):
-            self.logger.error(f"Error asking for permission: {result}")
-        elif result == b'True':
-            self.logger.debug("Permission to synchronize granted.")
-            return True
-        else:
-            self.logger.debug(f"Master didn't grant permission to start a new synchronization: {result}")
-
-        return False
-
-    async def sync(self, *args, **kwargs):
-        """Define sync() method. It is implemented differently for files and strings synchronization.
-
-        Parameters
-        ----------
-        args
-            Positional arguments for parent constructor class.
-        kwargs
-            Keyword arguments for parent constructor class.
-
-        Raises
-        -------
-        NotImplementedError
-            If the method is not implemented.
-        """
-        raise NotImplementedError
-
-
-class SyncFiles(SyncTask):
-    """
-    Define methods to synchronize files with master.
-    """
-
-    async def sync(self, files_to_sync: Dict, files_metadata: Dict):
-        """Send metadata and files to the master node.
-
-        Parameters
-        ----------
-        files_to_sync : dict
-            Paths (keys) and metadata (values) of the files to send to the master. Keys in this dictionary
-            will be iterated to add the files they refer to the zip file that the master will receive.
-        files_metadata : dict
-            Paths (keys) and metadata (values) of the files to send to the master. This dict will be included as
-            a JSON file named files_metadata.json.
-
-        Returns
-        -------
-        bool
-            True if files were correctly sent to the master node, None otherwise.
-        """
-        self.logger.debug(
-            f"Compressing {'files and ' if files_to_sync else ''}'files_metadata.json' of {len(files_metadata)} files."
-        )
-        compressed_data_path = cluster.compress_files(name=self.worker.name, list_path=files_to_sync,
-                                                      cluster_control_json=files_metadata)
-
-        # Start the synchronization process with the master and get a taskID.
-        task_id = await self.worker.send_request(command=self.cmd, data=b'')
-        if isinstance(task_id, Exception):
-            raise task_id
-        elif task_id.startswith(b'Error'):
-            self.logger.error(task_id.decode(), exc_info=False)
-            exc_info = json.dumps(exception.WazuhClusterError(3016, extra_message=str(task_id)),
-                                  cls=c_common.WazuhJSONEncoder).encode()
-            await self.worker.send_request(command=self.cmd + b'_r', data=b'None ' + exc_info)
-            return
-
-        try:
-            # Send zip file to the master into chunks.
-            self.logger.debug("Sending zip file to master.")
-            await self.worker.send_file(filename=compressed_data_path, task_id=task_id)
-            self.logger.debug("Zip file sent to master.")
-
-            # Finish the synchronization process and notify where the file corresponding to the taskID is located.
-            result = await self.worker.send_request(command=self.cmd + b'_e', data=task_id + b' ' +
-                                                    os.path.relpath(compressed_data_path, common.WAZUH_PATH).encode())
-            if isinstance(result, Exception):
-                raise result
-            elif result.startswith(b'Error'):
-                raise WazuhClusterError(3016, extra_message=result.decode())
-            return True
-        except exception.WazuhException as e:
-            # Notify error to master and delete its received file.
-            self.logger.error(f"Error sending zip file: {e}")
-            await self.worker.send_request(command=self.cmd + b'_r', data=task_id + b' ' + json.dumps(e,
-                                           cls=c_common.WazuhJSONEncoder).encode())
-        except Exception as e:
-            # Notify error to master and delete its received file.
-            self.logger.error(f"Error sending zip file: {e}")
-            exc_info = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)),
-                                  cls=c_common.WazuhJSONEncoder).encode()
-            await self.worker.send_request(command=self.cmd + b'_r', data=task_id + b' ' + exc_info)
-        finally:
-            os.unlink(compressed_data_path)
-            # In case task was interrupted, remove its ID from the interrupted set.
-            self.worker.interrupted_tasks.discard(task_id)
-
-
-class SyncWazuhdb(SyncTask):
+class SyncWazuhdb(c_common.SyncTask):
     """
     Define methods to send information to the master node (wazuh-db) through send_string protocol.
     """
@@ -194,7 +64,7 @@ class SyncWazuhdb(SyncTask):
         data_retriever : Callable
             Function to be called to obtain chunks of data. It must return a list of chunks.
         """
-        super().__init__(worker=worker, logger=logger, cmd=cmd)
+        super().__init__(node=worker, logger=logger, cmd=cmd)
         self.get_data_command = get_data_command
         self.set_data_command = set_data_command
         self.data_retriever = data_retriever
@@ -226,13 +96,13 @@ class SyncWazuhdb(SyncTask):
         if chunks:
             # Send list of chunks as a JSON string
             data = json.dumps({"set_data_command": self.set_data_command, "chunks": chunks}).encode()
-            task_id = await self.worker.send_string(data)
+            task_id = await self.node.send_string(data)
             if task_id.startswith(b'Error'):
                 raise WazuhClusterError(3016, extra_message=f'agent-info string could not be sent to the master '
                                                             f'node: {task_id}')
 
             # Specify under which task_id the JSON can be found in the master.
-            await self.worker.send_request(command=self.cmd, data=task_id)
+            await self.node.send_request(command=self.cmd, data=task_id)
             self.logger.debug("All chunks sent.")
         else:
             self.logger.info(f"Finished in {(get_utc_now().timestamp() - start_time):.3f}s (0 chunks sent).")
@@ -277,6 +147,9 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         self.agent_info_sync_status = {'date_start': 0.0}
         self.integrity_check_status = {'date_start': 0.0}
         self.integrity_sync_status = {'date_start': 0.0}
+
+        # Maximum zip size allowed when syncing Integrity files.
+        self.current_zip_limit = self.cluster_items['intervals']['communication']['max_zip_size']
 
     def connection_result(self, future_result):
         """Callback function called when the master sends a response to the hello command sent by the worker.
@@ -491,7 +364,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         compares it with its own information.
         """
         logger = self.task_loggers["Integrity check"]
-        integrity_check = SyncFiles(cmd=b'syn_i_w_m', logger=logger, worker=self)
+        integrity_check = c_common.SyncFiles(cmd=b'syn_i_w_m', logger=logger, node=self)
 
         while True:
             try:
@@ -502,13 +375,13 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                         self.integrity_control = await cluster.run_in_pool(self.loop, self.manager.task_pool,
                                                                            cluster.get_files_status,
                                                                            self.integrity_control)
-                        await integrity_check.sync(files_metadata=self.integrity_control, files_to_sync={})
+                        await integrity_check.sync(files_metadata=self.integrity_control, files={},
+                                                   task_pool=self.manager.task_pool)
             # If exception is raised during sync process, notify the master so it removes the file if received.
             except exception.WazuhException as e:
                 logger.error(f"Error synchronizing integrity: {e}")
-                await self.send_request(command=b'syn_i_w_m_r', data=b'None ' +
-                                                                     json.dumps(e,
-                                                                                cls=c_common.WazuhJSONEncoder).encode())
+                await self.send_request(command=b'syn_i_w_m_r',
+                                        data=b'None ' + json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
             except Exception as e:
                 logger.error(f"Error synchronizing integrity: {e}")
                 exc_info = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)),
@@ -562,7 +435,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         try:
             before = perf_counter()
             logger.debug("Starting sending extra valid files to master.")
-            extra_valid_sync = SyncFiles(cmd=b'syn_e_w_m', logger=logger, worker=self)
+            extra_valid_sync = c_common.SyncFiles(cmd=b'syn_e_w_m', logger=logger, node=self)
 
             # Merge all agent-groups files into one and create metadata dict with it (key->filepath, value->metadata).
             n_files, merged_file = cluster.merge_info(merge_type='agent-groups', node_name=self.name,
@@ -571,7 +444,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                                            'cluster_item_key': 'queue/agent-groups/'}} if n_files else {}
 
             # Permission is not requested since it was already granted in the 'Integrity check' task.
-            await extra_valid_sync.sync(files_to_sync=files_to_sync, files_metadata=files_to_sync)
+            await extra_valid_sync.sync(files_to_sync=files_to_sync, files_metadata=files_to_sync,
+                                        task_pool=self.manager.task_pool)
             after = perf_counter()
             logger.debug(f"Finished sending extra valid files in {(after - before):.3f}s.")
             logger.info(f"Finished in {(get_utc_now().timestamp() - self.integrity_sync_status['date_start']):.3f}s.")
@@ -602,26 +476,17 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         """
         logger = self.task_loggers['Integrity sync']
 
-        try:
-            await asyncio.wait_for(file_received.wait(),
-                                   timeout=self.cluster_items['intervals']['communication']['timeout_receiving_file'])
-        except Exception:
-            # Notify the sending node to stop its task.
-            await self.send_request(
-                command=b'cancel_task',
-                data=name.encode() + b' ' + json.dumps(timeout_exc := WazuhClusterError(3039),
-                                                       cls=c_common.WazuhJSONEncoder).encode())
-            raise timeout_exc
+        await self.wait_for_file(file=file_received, task_id=name)
 
-        if isinstance(self.sync_tasks[name].filename, Exception):
+        # Path of the zip containing a JSON with metadata and files to be updated in this worker node.
+        received_filename = self.sync_tasks[name].filename
+        if isinstance(received_filename, Exception):
             exc_info = json.dumps(exception.WazuhClusterError(
                 1000, extra_message=str(self.sync_tasks[name].filename)), cls=c_common.WazuhJSONEncoder)
             await self.send_request(command=b'syn_i_w_m_r', data=b'None ' + exc_info.encode())
             raise self.sync_tasks[name].filename
 
         zip_path = ""
-        # Path of the zip containing a JSON with metadata and files to be updated in this worker node.
-        received_filename = self.sync_tasks[name].filename
 
         try:
             self.integrity_sync_status['date_start'] = get_utc_now().timestamp()

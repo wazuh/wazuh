@@ -56,7 +56,7 @@ def clean_pid_files(daemon):
                 os.kill(int(match.group(1)), SIGKILL)
                 print(f"{daemon}: Orphan child process {match.group(1)} was terminated.")
             except OSError:
-                print(f'{daemon}: Non existent process {match.group(1)}, removing from {common.wazuh_path}/var/run...')
+                print(f'{daemon}: Non existent process {match.group(1)}, removing from {common.WAZUH_PATH}/var/run...')
             finally:
                 os.remove(path.join(OSSEC_PIDFILE_PATH, pid_file))
 

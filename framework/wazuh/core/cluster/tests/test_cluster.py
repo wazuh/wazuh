@@ -408,11 +408,11 @@ def test_compare_files(wazuh_db_query_mock, mock_get_cluster_items):
 
     # First condition
     with patch('wazuh.core.cluster.cluster.merge_info', return_values=[1, "random/path/"]):
-        files, count = cluster.compare_files(seq, condition, 'worker1')
-        assert count["missing"] == 1
-        assert count["extra"] == 0
-        assert count["extra_valid"] == 1
-        assert count["shared"] == 1
+        files = cluster.compare_files(seq, condition, 'worker1')
+        assert len(files["missing"]) == 1
+        assert len(files["extra"]) == 0
+        assert len(files["extra_valid"]) == 1
+        assert len(files["shared"]) == 1
 
     # Second condition
     condition = {'some/path5/': {'cluster_item_key': 'key', 'md5': 'md5 def value'},
@@ -420,11 +420,11 @@ def test_compare_files(wazuh_db_query_mock, mock_get_cluster_items):
                  os.path.relpath(common.GROUPS_PATH, common.WAZUH_PATH): {'cluster_item_key': "key",
                                                                           'md5': 'md5 value'}}
 
-    files, count = cluster.compare_files(seq, condition, 'worker1')
-    assert count["missing"] == 2
-    assert count["extra"] == 0
-    assert count["extra_valid"] == 3
-    assert count["shared"] == 0
+    files = cluster.compare_files(seq, condition, 'worker1')
+    assert len(files["missing"]) == 2
+    assert len(files["extra"]) == 0
+    assert len(files["extra_valid"]) == 3
+    assert len(files["shared"]) == 0
     wazuh_db_query_mock.assert_called_once_with(select=['id'], limit=None,
                                                 filters={'rbac_ids': ['agent-groups']},
                                                 rbac_negate=False)
