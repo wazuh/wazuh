@@ -924,12 +924,14 @@ InstallCommon()
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/backup
 
   # Install debugging symbols if available
-  # The symbols directory should always exist, if debugging symbols
+  # The symbols directory in the repo should always exist, if debugging symbols
   # are not supported for this platform, it will simply be empty.
   rm -rf ${INSTALLDIR}/.symbols
-  cp -r symbols ${INSTALLDIR}/.symbols
-  chown -R 0:0 ${INSTALLDIR}/.symbols
-  chmod -R 750 ${INSTALLDIR}/.symbols
+  if find symbols ! -path symbols ! -name .gitignore | grep . > /dev/null ;then
+    cp -r symbols ${INSTALLDIR}/.symbols
+    chown -R 0:0 ${INSTALLDIR}/.symbols
+    chmod -R 750 ${INSTALLDIR}/.symbols
+  fi
 }
 
 InstallLocal()
