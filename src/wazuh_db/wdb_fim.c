@@ -548,59 +548,59 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
         char *path_escaped_slahes;
         char *path_escaped;
 
-        if (!cJSON_IsNumber(version)) {
-            // Synchronization messages without the "version" attribute are ignored, but won't trigger any error
-            // message.
-            return 0;
-        }
-
-        path_escaped_slahes = wstr_replace(path, "\\", "\\\\");
-        path_escaped = wstr_replace(path_escaped_slahes, ":", "\\:");
-        os_free(path_escaped_slahes);
         arch = cJSON_GetStringValue(cJSON_GetObjectItem(data, "arch"));
+        value_name = cJSON_GetStringValue(cJSON_GetObjectItem(data, "value_name"));
 
-        if (arch == NULL) {
-            merror("DB(%s) fim/save registry request with no arch argument.", wdb->id);
-            os_free(path_escaped);
-            return -1;
-        }
+        if (cJSON_GetDoubleValue(version) == 2.0) {
 
-        if (strcmp(item_type + 9, "key") == 0) {
-            value_name = NULL;
-            full_path_length = snprintf(NULL, 0, "%s %s", arch, path_escaped);
+            path_escaped_slahes = wstr_replace(path, "\\", "\\\\");
+            path_escaped = wstr_replace(path_escaped_slahes, ":", "\\:");
+            os_free(path_escaped_slahes);
 
-            os_calloc(full_path_length + 1, sizeof(char), full_path);
-
-            snprintf(full_path, full_path_length + 1, "%s %s", arch, path_escaped);
-        } else if (strcmp(item_type + 9, "value") == 0) {
-            char *value_name_escaped_slashes;
-            char *value_name_escaped;
-            value_name = cJSON_GetStringValue(cJSON_GetObjectItem(data, "value_name"));
-
-            if (value_name == NULL) {
-                merror("DB(%s) fim/save registry value request with no value name argument.", wdb->id);
+            if (arch == NULL) {
+                merror("DB(%s) fim/save registry request with no arch argument.", wdb->id);
                 os_free(path_escaped);
                 return -1;
             }
 
-            value_name_escaped_slashes = wstr_replace(value_name, "\\", "\\\\");
-            value_name_escaped = wstr_replace(value_name_escaped_slashes, ":", "\\:");
-            os_free(value_name_escaped_slashes);
+            if (strcmp(item_type + 9, "key") == 0) {
+                value_name = NULL;
+                full_path_length = snprintf(NULL, 0, "%s %s", arch, path_escaped);
 
-            full_path_length = snprintf(NULL, 0, "%s %s:%s", arch, path_escaped, value_name_escaped);
+                os_calloc(full_path_length + 1, sizeof(char), full_path);
 
-            os_calloc(full_path_length + 1, sizeof(char), full_path);
+                snprintf(full_path, full_path_length + 1, "%s %s", arch, path_escaped);
+            } else if (strcmp(item_type + 9, "value") == 0) {
+                char *value_name_escaped_slashes;
+                char *value_name_escaped;
 
-            snprintf(full_path, full_path_length + 1, "%s %s:%s", arch, path_escaped, value_name_escaped);
+                if (value_name == NULL) {
+                    merror("DB(%s) fim/save registry value request with no value name argument.", wdb->id);
+                    os_free(path_escaped);
+                    return -1;
+                }
 
-            os_free(value_name_escaped);
-        } else {
-            merror("DB(%s) fim/save request with invalid '%s' type argument.", wdb->id, item_type);
+                value_name_escaped_slashes = wstr_replace(value_name, "\\", "\\\\");
+                value_name_escaped = wstr_replace(value_name_escaped_slashes, ":", "\\:");
+                os_free(value_name_escaped_slashes);
+
+                full_path_length = snprintf(NULL, 0, "%s %s:%s", arch, path_escaped, value_name_escaped);
+
+                os_calloc(full_path_length + 1, sizeof(char), full_path);
+
+                snprintf(full_path, full_path_length + 1, "%s %s:%s", arch, path_escaped, value_name_escaped);
+
+                os_free(value_name_escaped);
+            } else {
+                merror("DB(%s) fim/save request with invalid '%s' type argument.", wdb->id, item_type);
+                os_free(path_escaped);
+                return -1;
+            }
+
             os_free(path_escaped);
-            return -1;
+        } else {
+            os_strdup(path, full_path);
         }
-
-        os_free(path_escaped);
     } else {
         merror("DB(%s) fim/save request with invalid '%s' type argument.", wdb->id, item_type);
         return -1;
