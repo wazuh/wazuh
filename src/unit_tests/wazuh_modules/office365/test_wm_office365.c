@@ -1136,6 +1136,7 @@ void test_wm_office365_get_access_token_with_auth_secret(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     data->response = NULL;
     char *access_token = NULL;
+    char *error_msg = NULL;
 
     os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
@@ -1154,9 +1155,10 @@ void test_wm_office365_get_access_token_with_auth_secret(void **state) {
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
     expect_string(__wrap__mtdebug1, formatted_msg, "Unknown error while getting access token.");
 
-    access_token = wm_office365_get_access_token(data->office365_config->auth, max_size);
+    access_token = wm_office365_get_access_token(data->office365_config->auth, max_size, &error_msg);
 
     assert_null(access_token);
+    assert_null(error_msg);
 }
 
 void test_wm_office365_get_access_token_with_auth_secret_path(void **state) {
@@ -1164,6 +1166,7 @@ void test_wm_office365_get_access_token_with_auth_secret_path(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     data->response = NULL;
     char *access_token = NULL;
+    char *error_msg = NULL;
 
     const char *filename = "test_client_secret_path";
     FILE *outfile;
@@ -1186,17 +1189,19 @@ void test_wm_office365_get_access_token_with_auth_secret_path(void **state) {
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
     expect_string(__wrap__mtdebug1, formatted_msg, "Unknown error while getting access token.");
 
-    access_token = wm_office365_get_access_token(data->office365_config->auth, max_size);
+    access_token = wm_office365_get_access_token(data->office365_config->auth, max_size, &error_msg);
 
     fclose(outfile);
 
     assert_null(access_token);
+    assert_null(error_msg);
 }
 
 void test_wm_office365_get_access_token_with_auth_secret_response_400(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     char *access_token = NULL;
     size_t max_size = OS_SIZE_8192;
+    char *error_msg = NULL;
 
     os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
@@ -1222,19 +1227,22 @@ void test_wm_office365_get_access_token_with_auth_secret_response_400(void **sta
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
-    access_token = wm_office365_get_access_token(data->office365_config->auth, max_size);
+    access_token = wm_office365_get_access_token(data->office365_config->auth, max_size, &error_msg);
 
     assert_null(access_token);
+    assert_string_equal(error_msg, data->response->body);
 
     os_free(data->response->body);
     os_free(data->response->header);
     os_free(data->response);
+    os_free(error_msg);
 }
 
 void test_wm_office365_get_access_token_with_auth_secret_response_null(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     char *access_token = NULL;
     size_t max_size = OS_SIZE_8192;
+    char *error_msg = NULL;
 
     os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
@@ -1258,9 +1266,10 @@ void test_wm_office365_get_access_token_with_auth_secret_response_null(void **st
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
     expect_string(__wrap__mtdebug1, formatted_msg, "Unknown error while getting access token.");
 
-    access_token = wm_office365_get_access_token(data->office365_config->auth, max_size);
+    access_token = wm_office365_get_access_token(data->office365_config->auth, max_size, &error_msg);
 
     assert_null(access_token);
+    assert_null(error_msg);
 
     os_free(data->response->body);
     os_free(data->response->header);
@@ -1271,6 +1280,7 @@ void test_wm_office365_get_access_token_with_auth_secret_response_max_size_reach
     test_struct_t *data  = (test_struct_t *)*state;
     char *access_token = NULL;
     size_t max_size = OS_SIZE_8192;
+    char *error_msg = NULL;
 
     os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
@@ -1297,9 +1307,10 @@ void test_wm_office365_get_access_token_with_auth_secret_response_max_size_reach
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
-    access_token = wm_office365_get_access_token(data->office365_config->auth, max_size);
+    access_token = wm_office365_get_access_token(data->office365_config->auth, max_size, &error_msg);
 
     assert_null(access_token);
+    assert_null(error_msg);
 
     os_free(data->response->body);
     os_free(data->response->header);
@@ -1310,6 +1321,7 @@ void test_wm_office365_get_access_token_with_auth_secret_error_json_response(voi
     test_struct_t *data  = (test_struct_t *)*state;
     char *access_token = NULL;
     size_t max_size = OS_SIZE_8192;
+    char *error_msg = NULL;
 
     os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
@@ -1335,9 +1347,10 @@ void test_wm_office365_get_access_token_with_auth_secret_error_json_response(voi
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
-    access_token = wm_office365_get_access_token(data->office365_config->auth, max_size);
+    access_token = wm_office365_get_access_token(data->office365_config->auth, max_size, &error_msg);
 
     assert_null(access_token);
+    assert_null(error_msg);
 
     os_free(data->response->body);
     os_free(data->response->header);
@@ -1348,6 +1361,7 @@ void test_wm_office365_get_access_token_with_auth_secret_response_200(void **sta
     test_struct_t *data  = (test_struct_t *)*state;
     char *access_token = NULL;
     size_t max_size = OS_SIZE_8192;
+    char *error_msg = NULL;
 
     os_calloc(1, sizeof(wm_office365_auth), data->office365_config->auth);
     os_strdup("test_tenant_id", data->office365_config->auth->tenant_id);
@@ -1371,9 +1385,10 @@ void test_wm_office365_get_access_token_with_auth_secret_response_200(void **sta
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
-    access_token = wm_office365_get_access_token(data->office365_config->auth, max_size);
+    access_token = wm_office365_get_access_token(data->office365_config->auth, max_size, &error_msg);
 
     assert_string_equal(access_token, "wazuh");
+    assert_null(error_msg);
 
     os_free(data->response->body);
     os_free(data->response->header);
@@ -1385,6 +1400,7 @@ void test_wm_office365_manage_subscription_start_response_null(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     int value = 0;
     size_t max_size = OS_SIZE_8192;
+    char *error_msg = NULL;
 
     char *token = "test_token";
     char* client_id = "test_client_id";
@@ -1420,9 +1436,10 @@ void test_wm_office365_manage_subscription_start_response_null(void **state) {
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
     expect_string(__wrap__mtdebug1, formatted_msg, "Unknown error while managing subscription.");
 
-    value = wm_office365_manage_subscription(data->office365_config->subscription, client_id, token, start, max_size);
+    value = wm_office365_manage_subscription(data->office365_config->subscription, client_id, token, start, max_size, &error_msg);
 
     assert_int_equal(value, OS_INVALID);
+    assert_null(error_msg);
 
     os_free(data->response->body);
     os_free(data->response->header);
@@ -1433,6 +1450,7 @@ void test_wm_office365_manage_subscription_start_code_200(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     int value = 0;
     size_t max_size = OS_SIZE_8192;
+    char *error_msg = NULL;
 
     char *token = "test_token";
     char* client_id = "test_client_id";
@@ -1468,9 +1486,10 @@ void test_wm_office365_manage_subscription_start_code_200(void **state) {
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
-    value = wm_office365_manage_subscription(data->office365_config->subscription, client_id, token, start, max_size);
+    value = wm_office365_manage_subscription(data->office365_config->subscription, client_id, token, start, max_size, &error_msg);
 
     assert_int_equal(value, OS_SUCCESS);
+    assert_null(error_msg);
 
     os_free(data->response->body);
     os_free(data->response->header);
@@ -1481,6 +1500,7 @@ void test_wm_office365_manage_subscription_stop_error_json_response(void **state
     test_struct_t *data  = (test_struct_t *)*state;
     int value = 0;
     size_t max_size = OS_SIZE_8192;
+    char *error_msg = NULL;
 
     char *token = "test_token";
     char* client_id = "test_client_id";
@@ -1518,9 +1538,10 @@ void test_wm_office365_manage_subscription_stop_error_json_response(void **state
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
-    value = wm_office365_manage_subscription(data->office365_config->subscription, client_id, token, start, max_size);
+    value = wm_office365_manage_subscription(data->office365_config->subscription, client_id, token, start, max_size, &error_msg);
 
     assert_int_equal(value, OS_INVALID);
+    assert_null(error_msg);
 
     os_free(data->response->body);
     os_free(data->response->header);
@@ -1531,6 +1552,7 @@ void test_wm_office365_manage_subscription_stop_error_max_size_reached(void **st
     test_struct_t *data  = (test_struct_t *)*state;
     int value = 0;
     size_t max_size = OS_SIZE_8192;
+    char *error_msg = NULL;
 
     char *token = "test_token";
     char* client_id = "test_client_id";
@@ -1569,9 +1591,10 @@ void test_wm_office365_manage_subscription_stop_error_max_size_reached(void **st
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
-    value = wm_office365_manage_subscription(data->office365_config->subscription, client_id, token, start, max_size);
+    value = wm_office365_manage_subscription(data->office365_config->subscription, client_id, token, start, max_size, &error_msg);
 
     assert_int_equal(value, OS_INVALID);
+    assert_null(error_msg);
 
     os_free(data->response->body);
     os_free(data->response->header);
@@ -1582,6 +1605,7 @@ void test_wm_office365_manage_subscription_stop_code_400_error_AF20024(void **st
     test_struct_t *data  = (test_struct_t *)*state;
     int value = 0;
     size_t max_size = OS_SIZE_8192;
+    char *error_msg = NULL;
 
     char *token = "test_token";
     char* client_id = "test_client_id";
@@ -1617,9 +1641,10 @@ void test_wm_office365_manage_subscription_stop_code_400_error_AF20024(void **st
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
-    value = wm_office365_manage_subscription(data->office365_config->subscription, client_id, token, start, max_size);
+    value = wm_office365_manage_subscription(data->office365_config->subscription, client_id, token, start, max_size, &error_msg);
 
     assert_int_equal(value, OS_SUCCESS);
+    assert_null(error_msg);
 
     os_free(data->response->body);
     os_free(data->response->header);
@@ -1630,6 +1655,7 @@ void test_wm_office365_manage_subscription_stop_code_400_error_different_AF20024
     test_struct_t *data  = (test_struct_t *)*state;
     int value = 0;
     size_t max_size = OS_SIZE_8192;
+    char *error_msg = NULL;
 
     char *token = "test_token";
     char* client_id = "test_client_id";
@@ -1667,13 +1693,15 @@ void test_wm_office365_manage_subscription_stop_code_400_error_different_AF20024
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
-    value = wm_office365_manage_subscription(data->office365_config->subscription, client_id, token, start, max_size);
+    value = wm_office365_manage_subscription(data->office365_config->subscription, client_id, token, start, max_size, &error_msg);
 
     assert_int_equal(value, OS_INVALID);
+    assert_string_equal(error_msg, data->response->body);
 
     os_free(data->response->body);
     os_free(data->response->header);
     os_free(data->response);
+    os_free(error_msg);
 }
 
 void test_wm_office365_get_fail_by_tenant_and_subscription_null(void **state) {
@@ -1719,6 +1747,7 @@ void test_wm_office365_get_content_blobs_response_null(void **state) {
     const char* token = "test_token";
     char** next_page;
     bool buffer_size_reached = 0;
+    char *error_msg = NULL;
 
     expect_any(__wrap_wurl_http_request, method);
     expect_string(__wrap_wurl_http_request, header, "Content-Type: application/json");
@@ -1737,8 +1766,9 @@ void test_wm_office365_get_content_blobs_response_null(void **state) {
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
     expect_string(__wrap__mtdebug1, formatted_msg, "Unknown error while getting content blobs.");
 
-    cJSON *blob = wm_office365_get_content_blobs(url, token, next_page, max_size, &buffer_size_reached);
+    cJSON *blob = wm_office365_get_content_blobs(url, token, next_page, max_size, &buffer_size_reached, &error_msg);
     assert_null(blob);
+    assert_null(error_msg);
     cJSON_Delete(blob);
 }
 
@@ -1751,6 +1781,7 @@ void test_wm_office365_get_content_blobs_response_max_size_reached(void **state)
     const char* token = "test_token";
     char** next_page;
     bool buffer_size_reached = 0;
+    char *error_msg = NULL;
 
     os_calloc(1, sizeof(curl_response), data->response);
     data->response->status_code = 200;
@@ -1777,8 +1808,9 @@ void test_wm_office365_get_content_blobs_response_max_size_reached(void **state)
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
-    cJSON *blob = wm_office365_get_content_blobs(url, token, next_page, max_size, &buffer_size_reached);
+    cJSON *blob = wm_office365_get_content_blobs(url, token, next_page, max_size, &buffer_size_reached, &error_msg);
     assert_null(blob);
+    assert_null(error_msg);
     assert_int_equal(buffer_size_reached, 1);
     cJSON_Delete(blob);
 
@@ -1796,6 +1828,7 @@ void test_wm_office365_get_content_blobs_error_json_response(void **state) {
     const char* token = "test_token";
     char** next_page;
     bool buffer_size_reached = 0;
+    char *error_msg = NULL;
 
     os_calloc(1, sizeof(curl_response), data->response);
     data->response->status_code = 200;
@@ -1821,8 +1854,9 @@ void test_wm_office365_get_content_blobs_error_json_response(void **state) {
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
-    cJSON *blob = wm_office365_get_content_blobs(url, token, next_page, max_size, &buffer_size_reached);
+    cJSON *blob = wm_office365_get_content_blobs(url, token, next_page, max_size, &buffer_size_reached, &error_msg);
     assert_null(blob);
+    assert_null(error_msg);
     cJSON_Delete(blob);
 
     os_free(data->response->body);
@@ -1839,6 +1873,7 @@ void test_wm_office365_get_content_blobs_bad_response(void **state) {
     const char* token = "test_token";
     char** next_page;
     bool buffer_size_reached = 0;
+    char *error_msg = NULL;
 
     os_calloc(1, sizeof(curl_response), data->response);
     data->response->status_code = 400;
@@ -1864,13 +1899,15 @@ void test_wm_office365_get_content_blobs_bad_response(void **state) {
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
-    cJSON *blob = wm_office365_get_content_blobs(url, token, next_page, max_size, &buffer_size_reached);
+    cJSON *blob = wm_office365_get_content_blobs(url, token, next_page, max_size, &buffer_size_reached, &error_msg);
     assert_null(blob);
+    assert_string_equal(error_msg, data->response->body);
     cJSON_Delete(blob);
 
     os_free(data->response->body);
     os_free(data->response->header);
     os_free(data->response);
+    os_free(error_msg);
 }
 
 void test_wm_office365_get_content_blobs_400_code_AF20055(void **state) {
@@ -1882,6 +1919,7 @@ void test_wm_office365_get_content_blobs_400_code_AF20055(void **state) {
     const char* token = "test_token";
     char** next_page;
     bool buffer_size_reached = 0;
+    char *error_msg = NULL;
 
     os_calloc(1, sizeof(curl_response), data->response);
     data->response->status_code = 400;
@@ -1905,8 +1943,9 @@ void test_wm_office365_get_content_blobs_400_code_AF20055(void **state) {
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
-    cJSON *blob = wm_office365_get_content_blobs(url, token, next_page, max_size, &buffer_size_reached);
+    cJSON *blob = wm_office365_get_content_blobs(url, token, next_page, max_size, &buffer_size_reached, &error_msg);
     assert_non_null(blob);
+    assert_null(error_msg);
     cJSON_Delete(blob);
 
     os_free(data->response->body);
@@ -1925,8 +1964,9 @@ void test_wm_office365_scan_failure_action_null(void **state) {
     char* subscription_name = "subscription_name";
     char* tenant_id = "tenant_id";
     int queue_fd = 0;
+    char *error_msg = NULL;
 
-    wm_office365_scan_failure_action(&fails, tenant_id, subscription_name, queue_fd);
+    wm_office365_scan_failure_action(&fails, tenant_id, subscription_name, error_msg, queue_fd);
     assert_string_equal(fails->next->tenant_id, tenant_id);
     assert_string_equal(fails->next->subscription_name, subscription_name);
 
@@ -1944,8 +1984,9 @@ void test_wm_office365_scan_failure_action_no_fail(void **state) {
     char* subscription_name = "subscription_name";
     char* tenant_id = "tenant_id";
     int queue_fd = 0;
+    char *error_msg = NULL;
 
-    wm_office365_scan_failure_action(&fails, tenant_id, subscription_name, queue_fd);
+    wm_office365_scan_failure_action(&fails, tenant_id, subscription_name, error_msg, queue_fd);
     assert_string_equal(fails->tenant_id, tenant_id);
     assert_string_equal(fails->subscription_name, subscription_name);
 
@@ -1968,8 +2009,9 @@ void test_wm_office365_scan_failure_action_null_mult_next(void **state) {
     char* subscription_name = "subscription_name";
     char* tenant_id = "tenant_id";
     int queue_fd = 0;
+    char *error_msg = NULL;
 
-    wm_office365_scan_failure_action(&fails, tenant_id, subscription_name, queue_fd);
+    wm_office365_scan_failure_action(&fails, tenant_id, subscription_name, error_msg, queue_fd);
     assert_string_equal(fails->next->next->tenant_id, tenant_id);
     assert_string_equal(fails->next->next->subscription_name, subscription_name);
 
@@ -1993,14 +2035,15 @@ void test_wm_office365_scan_failure_action_not_null(void **state) {
     char* subscription_name = "subscription_name";
     char* tenant_id = "tenant_id";
     int queue_fd = 1;
+    char *error_msg = NULL;
 
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:office365");
-    expect_string(__wrap__mtwarn, formatted_msg, "Sending Office365 internal message: '{\"integration\":\"office365\",\"office365\":{\"actor\":\"wazuh\",\"tenant_id\":\"tenant_id\",\"subscription_name\":\"subscription_name\"}}'");
+    expect_string(__wrap__mtwarn, formatted_msg, "Sending Office365 internal message: '{\"integration\":\"office365\",\"office365\":{\"actor\":\"wazuh\",\"tenant_id\":\"tenant_id\",\"subscription_name\":\"subscription_name\",\"response\":\"Unknown error\"}}'");
 
     int result = -1;
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue_fd);
-    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"office365\",\"office365\":{\"actor\":\"wazuh\",\"tenant_id\":\"tenant_id\",\"subscription_name\":\"subscription_name\"}}");
+    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"office365\",\"office365\":{\"actor\":\"wazuh\",\"tenant_id\":\"tenant_id\",\"subscription_name\":\"subscription_name\",\"response\":\"Unknown error\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, "office365");
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
     will_return(__wrap_wm_sendmsg, result);
@@ -2008,7 +2051,41 @@ void test_wm_office365_scan_failure_action_not_null(void **state) {
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:office365");
     expect_string(__wrap__mterror, formatted_msg, "(1210): Queue 'queue/sockets/queue' not accessible: 'Success'");
 
-    wm_office365_scan_failure_action(&fails, tenant_id, subscription_name, queue_fd);
+    wm_office365_scan_failure_action(&fails, tenant_id, subscription_name, error_msg, queue_fd);
+
+    os_free(fails);
+}
+
+void test_wm_office365_scan_failure_action_not_null_error_msg(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    wm_office365_fail *fails = NULL;
+    os_calloc(1, sizeof(wm_office365_fail), fails);
+    fails->subscription_name = "subscription_name";
+    fails->tenant_id = "tenant_id";
+    fails->fails = 2;
+    wm_max_eps = 1;
+
+    char* subscription_name = "subscription_name";
+    char* tenant_id = "tenant_id";
+    int queue_fd = 1;
+    char *error_msg = "{\"response\":\"test\"}";
+
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:office365");
+    expect_string(__wrap__mtwarn, formatted_msg, "Sending Office365 internal message: '{\"integration\":\"office365\",\"office365\":{\"actor\":\"wazuh\",\"tenant_id\":\"tenant_id\",\"subscription_name\":\"subscription_name\",\"response\":\"{\\\"response\\\":\\\"test\\\"}\"}}'");
+
+    int result = -1;
+    expect_value(__wrap_wm_sendmsg, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg, queue, queue_fd);
+    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"office365\",\"office365\":{\"actor\":\"wazuh\",\"tenant_id\":\"tenant_id\",\"subscription_name\":\"subscription_name\",\"response\":\"{\\\"response\\\":\\\"test\\\"}\"}}");
+    expect_string(__wrap_wm_sendmsg, locmsg, "office365");
+    expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
+    will_return(__wrap_wm_sendmsg, result);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:office365");
+    expect_string(__wrap__mterror, formatted_msg, "(1210): Queue 'queue/sockets/queue' not accessible: 'Success'");
+
+    wm_office365_scan_failure_action(&fails, tenant_id, subscription_name, error_msg, queue_fd);
 
     os_free(fails);
 }
@@ -2022,6 +2099,7 @@ void test_wm_office365_get_logs_from_blob_response_null(void **state) {
     char *token = "test_token";
     char *url = "https://test_url.com";
     bool buffer_size_reached = false;
+    char *error_msg = NULL;
 
     expect_string(__wrap_wurl_http_request, header, "Content-Type: application/json");
     expect_any(__wrap_wurl_http_request, method);
@@ -2040,9 +2118,10 @@ void test_wm_office365_get_logs_from_blob_response_null(void **state) {
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
     expect_string(__wrap__mtdebug1, formatted_msg, "Unknown error while getting logs from blob.");
 
-    logs_array = wm_office365_get_logs_from_blob(url, token, max_size, &buffer_size_reached);
+    logs_array = wm_office365_get_logs_from_blob(url, token, max_size, &buffer_size_reached, &error_msg);
 
     assert_null(logs_array);
+    assert_null(error_msg);
 
 }
 
@@ -2055,6 +2134,7 @@ void test_wm_office365_get_logs_from_blob_response_max_size_reached(void **state
     char *token = "test_token";
     char *url = "https://test_url.com";
     bool buffer_size_reached = false;
+    char *error_msg = NULL;
 
     os_calloc(1, sizeof(curl_response), data->response);
     data->response->status_code = 200;
@@ -2081,9 +2161,10 @@ void test_wm_office365_get_logs_from_blob_response_max_size_reached(void **state
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
-    logs_array = wm_office365_get_logs_from_blob(url, token, max_size, &buffer_size_reached);
+    logs_array = wm_office365_get_logs_from_blob(url, token, max_size, &buffer_size_reached, &error_msg);
 
     assert_null(logs_array);
+    assert_null(error_msg);
 
     os_free(data->response->body);
     os_free(data->response->header);
@@ -2100,6 +2181,7 @@ void test_wm_office365_get_logs_from_blob_response_parsing_error(void **state) {
     char *token = "test_token";
     char *url = "https://test_url.com";
     bool buffer_size_reached = false;
+    char *error_msg = NULL;
 
     os_calloc(1, sizeof(curl_response), data->response);
     data->response->status_code = 200;
@@ -2126,9 +2208,10 @@ void test_wm_office365_get_logs_from_blob_response_parsing_error(void **state) {
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
-    logs_array = wm_office365_get_logs_from_blob(url, token, max_size, &buffer_size_reached);
+    logs_array = wm_office365_get_logs_from_blob(url, token, max_size, &buffer_size_reached, &error_msg);
 
     assert_null(logs_array);
+    assert_null(error_msg);
 
     os_free(data->response->body);
     os_free(data->response->header);
@@ -2145,6 +2228,7 @@ void test_wm_office365_get_logs_from_blob_response_code_400(void **state) {
     char *token = "test_token";
     char *url = "https://test_url.com";
     bool buffer_size_reached = false;
+    char *error_msg = NULL;
 
     os_calloc(1, sizeof(curl_response), data->response);
     data->response->status_code = 400;
@@ -2171,13 +2255,15 @@ void test_wm_office365_get_logs_from_blob_response_code_400(void **state) {
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
-    logs_array = wm_office365_get_logs_from_blob(url, token, max_size, &buffer_size_reached);
+    logs_array = wm_office365_get_logs_from_blob(url, token, max_size, &buffer_size_reached, &error_msg);
 
     assert_null(logs_array);
+    assert_string_equal(error_msg, data->response->body);
 
     os_free(data->response->body);
     os_free(data->response->header);
     os_free(data->response);
+    os_free(error_msg);
 
 }
 
@@ -2190,6 +2276,7 @@ void test_wm_office365_get_logs_from_blob_response_no_array(void **state) {
     char *token = "test_token";
     char *url = "https://test_url.com";
     bool buffer_size_reached = false;
+    char *error_msg = NULL;
 
     os_calloc(1, sizeof(curl_response), data->response);
     data->response->status_code = 200;
@@ -2216,13 +2303,15 @@ void test_wm_office365_get_logs_from_blob_response_no_array(void **state) {
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
-    logs_array = wm_office365_get_logs_from_blob(url, token, max_size, &buffer_size_reached);
+    logs_array = wm_office365_get_logs_from_blob(url, token, max_size, &buffer_size_reached, &error_msg);
 
     assert_null(logs_array);
+    assert_string_equal(error_msg, data->response->body);
 
     os_free(data->response->body);
     os_free(data->response->header);
     os_free(data->response);
+    os_free(error_msg);
 
 }
 
@@ -2235,6 +2324,7 @@ void test_wm_office365_get_logs_from_blob_ok(void **state) {
     char *token = "test_token";
     char *url = "https://test_url.com";
     bool buffer_size_reached = false;
+    char *error_msg = NULL;
 
     os_calloc(1, sizeof(curl_response), data->response);
     data->response->status_code = 200;
@@ -2259,9 +2349,10 @@ void test_wm_office365_get_logs_from_blob_ok(void **state) {
 
     expect_value(__wrap_wurl_free_response, response, data->response);
 
-    logs_array = wm_office365_get_logs_from_blob(url, token, max_size, &buffer_size_reached);
+    logs_array = wm_office365_get_logs_from_blob(url, token, max_size, &buffer_size_reached, &error_msg);
 
     assert_non_null(logs_array);
+    assert_null(error_msg);
 
     os_free(data->response->body);
     os_free(data->response->header);
@@ -2472,12 +2563,14 @@ void test_wm_office365_execute_scan_access_token_null(void **state) {
     expect_any(__wrap_wurl_http_request, url);
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
-    will_return(__wrap_wurl_http_request, NULL);
+    will_return(__wrap_wurl_http_request, data->response);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
     expect_any(__wrap__mtdebug1, formatted_msg);
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Unknown error while getting access token.");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Error while getting access token: '{\"error\":\"bad_request\"}'");
+
+    expect_value(__wrap_wurl_free_response, response, data->response);
 
     wm_office365_execute_scan(data->office365_config, 0);
 
@@ -2905,6 +2998,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_office365_scan_failure_action_no_fail, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_scan_failure_action_null_mult_next, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_scan_failure_action_not_null, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_office365_scan_failure_action_not_null_error_msg, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_get_logs_from_blob_response_null, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_get_logs_from_blob_response_max_size_reached, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_office365_get_logs_from_blob_response_parsing_error, setup_conf, teardown_conf),
