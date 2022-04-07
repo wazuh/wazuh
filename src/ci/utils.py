@@ -17,21 +17,23 @@ from ci import build_tools
 # Constant values
 CURRENT_DIR = Path(__file__).parent
 HEADER_DIR = {
-    'tests':            "=============== Running Tests       ===============",
-    'valgrind':         "=============== Running Valgrind    ===============",
-    'cppcheck':         "=============== Running cppcheck    ===============",
     'asan':             "=============== Running ASAN        ===============",
-    'wintests':         "=============== Running TEST TOOL for Windows =====",
-    'scanbuild':        "=============== Running Scanbuild   ===============",
-    'testtool':         "=============== Running TEST TOOL   ===============",
-    'cleanfolder':      "=============== Clean build Folders ===============",
-    'configurecmake':   "=============== Running CMake Conf  ===============",
-    'make':             "=============== Compiling library   ===============",
-    'clean':            "=============== Cleaning library    ===============",
-    'rtr':              "=============== Running RTR checks  ===============",
-    'coverage':         "=============== Running Coverage    ===============",
     'AStyle':           "=============== Running AStyle      ===============",
-    'deletelogs':       "=============== Clean result folders =============="
+    'clean':            "=============== Cleaning library    ===============",
+    'cleanfolder':      "=============== Clean build Folders ===============",
+    'cppcheck':         "=============== Running cppcheck    ===============",
+    'configurecmake':   "=============== Running CMake Conf  ===============",
+    'coverage':         "=============== Running Coverage    ===============",
+    'deletelogs':       "=============== Clean result folders ==============",
+    'make':             "=============== Compiling library   ===============",
+    'makeAll':          "=============== Running Make project ==============",
+    'makeDeps':         "=============== Running Make Deps   ===============",
+    'rtr':              "=============== Running RTR checks  ===============",
+    'scanbuild':        "=============== Running Scanbuild   ===============",
+    'tests':            "=============== Running Tests       ===============",
+    'testtool':         "=============== Running TEST TOOL   ===============",
+    'valgrind':         "=============== Running Valgrind    ===============",
+    'wintests':         "=============== Running TEST TOOL for Windows ====="
 }
 MODULE_LIST = ['wazuh_modules/syscollector', 'shared_modules/dbsync',
                'shared_modules/rsync', 'shared_modules/utils',

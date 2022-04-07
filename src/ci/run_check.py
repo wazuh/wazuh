@@ -305,6 +305,8 @@ def runReadyToReview(moduleName, clean=False):
                       headerKey="rtr")
 
     runCppCheck(moduleName=moduleName)
+    build_tools.makeDeps(targetName="agent", srcOnly=False)
+    build_tools.makeTarget(targetName="agent", tests=True, debug=True)
     build_tools.cleanFolder(moduleName=moduleName,
                             additionalFolder="build")
     build_tools.configureCMake(moduleName=moduleName, 

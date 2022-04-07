@@ -271,6 +271,8 @@ def makeDeps(targetName, srcOnly):
     Example:
         makeDeps("wazuh_modules/syscollector", srcOnly=True)
     """
+    utils.printSubHeader(moduleName=targetName,
+                         headerKey="makeDeps")
     makeDepsCommand = "make deps TARGET={} -j4".format(targetName)
     if srcOnly:
         makeDepsCommand += " EXTERNAL_SRC_ONLY=yes"
@@ -342,6 +344,8 @@ def makeTarget(targetName, tests, debug):
     Example:
         makeTarget("winagent", tests=True, debug=True)
     """
+    utils.printSubHeader(moduleName=targetName,
+                         headerKey="makeAll")
     makeTargetCommand = "make TARGET={} -j4".format(targetName)
     if tests:
         makeTargetCommand += " TEST=1"
