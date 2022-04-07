@@ -12,10 +12,10 @@
 #include <string>
 
 #include <fmt/format.h>
-#include <utils/stringUtils.hpp>
-#include <kvdb/kvdbManager.hpp>
 
 #include "syntax.hpp"
+#include <kvdb/kvdbManager.hpp>
+#include <utils/stringUtils.hpp>
 
 namespace builder::internals::builders
 {
@@ -23,38 +23,43 @@ namespace builder::internals::builders
 using builder::internals::syntax::REFERENCE_ANCHOR;
 
 // <field>: +kvdb_extract/<DB>/<ref_key>
-types::Lifter opBuilderKVDBExtract(const types::DocumentValue & def, types::TracerFn tr)
+types::Lifter opBuilderKVDBExtract(const types::DocumentValue &def,
+                                   types::TracerFn tr)
 {
     // Get target of the extraction
-    std::string target {json::formatJsonPath(def.MemberBegin()->name.GetString())};
+    std::string target {
+        json::formatJsonPath(def.MemberBegin()->name.GetString())};
 
     // Get the raw value of parameter
     if (!def.MemberBegin()->value.IsString())
     {
-        throw std::runtime_error(
-            "Invalid parameter type for kvdb extracting operator (str expected)");
+        throw std::runtime_error("Invalid parameter type for kvdb extracting "
+                                 "operator (str expected)");
     }
 
     // Parse parameters
     std::string params {def.MemberBegin()->value.GetString()};
     auto parametersArr {utils::string::split(params, '/')};
-    if (parametersArr.size() != 3) //TODO: We are using default column only now
+    if (parametersArr.size() != 3) // TODO: We are using default column only now
     {
-        throw std::runtime_error("Invalid number of parameters for kvdb extracting operator");
+        throw std::runtime_error(
+            "Invalid number of parameters for kvdb extracting operator");
     }
 
     // Get DB
     auto kvdb = KVDBManager::get().getDB(parametersArr[1]);
     if (!kvdb)
     {
-        auto msg = fmt::format("[{}] DB isn't available for usage", parametersArr[1]);
+        auto msg =
+            fmt::format("[{}] DB isn't available for usage", parametersArr[1]);
         throw std::runtime_error(std::move(msg));
     }
 
     // Get reference key
-    std::string& key = parametersArr[2];
+    std::string &key = parametersArr[2];
     bool isReference = false;
-    if (key[0] == REFERENCE_ANCHOR) {
+    if (key[0] == REFERENCE_ANCHOR)
+    {
         key = json::formatJsonPath(key.substr(1));
         isReference = true;
     }
@@ -68,30 +73,35 @@ types::Lifter opBuilderKVDBExtract(const types::DocumentValue & def, types::Trac
             {
                 // Get DB key
                 std::string dbKey;
-                if (isReference){
+                if (isReference)
+                {
                     try
                     {
                         auto value = &e->get(key);
-                        if (value && value->IsString()){
+                        if (value && value->IsString())
+                        {
                             dbKey = value->GetString();
                         }
-                        else {
+                        else
+                        {
                             return e;
                         }
                     }
-                    catch (std::exception & ex)
+                    catch (std::exception &ex)
                     {
                         // TODO Check exception type
                         return e;
                     }
                 }
-                else {
+                else
+                {
                     dbKey = std::move(key);
                 }
 
                 // Get value from the DB
                 std::string dbValue = kvdb->read(dbKey);
-                if (dbValue.empty()) {
+                if (dbValue.empty())
+                {
                     return e;
                 }
 
@@ -99,9 +109,11 @@ types::Lifter opBuilderKVDBExtract(const types::DocumentValue & def, types::Trac
                 try
                 {
                     e->set(target,
-                        rapidjson::Value(dbValue.c_str(), e->m_doc.GetAllocator()).Move());
+                           rapidjson::Value(dbValue.c_str(),
+                                            e->m_doc.GetAllocator())
+                               .Move());
                 }
-                catch (std::exception & ex)
+                catch (std::exception &ex)
                 {
                     // TODO Check exception type
                     return e;
@@ -112,7 +124,8 @@ types::Lifter opBuilderKVDBExtract(const types::DocumentValue & def, types::Trac
     };
 }
 
-types::Lifter opBuilderKVDBExistanceCheck(const types::DocumentValue & def, bool checkExist)
+types::Lifter opBuilderKVDBExistanceCheck(const types::DocumentValue &def,
+                                          bool checkExist)
 {
     // Get key of the match
     std::string key {json::formatJsonPath(def.MemberBegin()->name.GetString())};
@@ -129,14 +142,15 @@ types::Lifter opBuilderKVDBExistanceCheck(const types::DocumentValue & def, bool
     auto parametersArr {utils::string::split(params, '/')};
     if (parametersArr.size() != 2)
     {
-        throw std::runtime_error("Invalid number of parameters for kvdb matching operator");
+        throw std::runtime_error(
+            "Invalid number of parameters for kvdb matching operator");
     }
-
 
     auto kvdb = KVDBManager::get().getDB(parametersArr[1]);
     if (!kvdb)
     {
-        auto msg = fmt::format("[{}] DB isn't available for usage", parametersArr[1]);
+        auto msg =
+            fmt::format("[{}] DB isn't available for usage", parametersArr[1]);
         throw std::runtime_error(std::move(msg));
     }
 
@@ -148,16 +162,19 @@ types::Lifter opBuilderKVDBExistanceCheck(const types::DocumentValue & def, bool
             [&kvdb, key, checkExist](types::Event e)
             {
                 bool found = false;
-                try // TODO We are only using try for JSON::get. Is correct to wrap everything?
+                try // TODO We are only using try for JSON::get. Is correct to
+                    // wrap everything?
                 {
                     auto value = &e->get(key);
-                    if (value && value->IsString()) {
-                        if (kvdb->hasKey(value->GetString())) {
+                    if (value && value->IsString())
+                    {
+                        if (kvdb->hasKey(value->GetString()))
+                        {
                             found = true;
                         }
                     }
                 }
-                catch (std::exception & ex)
+                catch (std::exception &ex)
                 {
                     // TODO Check exception type
                 }
@@ -167,12 +184,16 @@ types::Lifter opBuilderKVDBExistanceCheck(const types::DocumentValue & def, bool
 }
 
 // <field>: +kvdb_match/<DB>
-types::Lifter opBuilderKVDBMatch(const types::DocumentValue & def, types::TracerFn tr) {
+types::Lifter opBuilderKVDBMatch(const types::DocumentValue &def,
+                                 types::TracerFn tr)
+{
     return opBuilderKVDBExistanceCheck(def, true);
 }
 
 // <field>: +kvdb_not_match/<DB>
-types::Lifter opBuilderKVDBNotMatch(const types::DocumentValue & def, types::TracerFn tr) {
+types::Lifter opBuilderKVDBNotMatch(const types::DocumentValue &def,
+                                    types::TracerFn tr)
+{
     return opBuilderKVDBExistanceCheck(def, false);
 }
 } // namespace builder::internals::builders

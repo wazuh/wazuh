@@ -23,12 +23,12 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "Release"
         )
 endif()
 
-add_library(engine_bench
+add_library(engine_bench_main
     OBJECT
     wazuhBenchMain.cpp
     )
 
-target_link_libraries(engine_bench
+target_link_libraries(engine_bench_main
     PUBLIC
     benchmark::benchmark
     base

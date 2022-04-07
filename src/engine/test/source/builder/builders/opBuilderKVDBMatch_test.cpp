@@ -11,37 +11,42 @@
 
 #include <gtest/gtest.h>
 
-#include "testUtils.hpp"
 #include "opBuilderKVDB.hpp"
+#include "testUtils.hpp"
 #include <kvdb/kvdbManager.hpp>
 #include <logging/logging.hpp>
 
 using namespace builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg){};
+static FakeTrFn tr = [](std::string msg) {
+};
 
-namespace {
-class opBuilderKVDBMatchTest : public ::testing::Test {
+namespace
+{
+class opBuilderKVDBMatchTest : public ::testing::Test
+{
 
 protected:
     bool initialized = KVDBManager::init("/var/ossec/queue/db/kvdb/");
-    KVDBManager& kvdbManager = KVDBManager::get();
+    KVDBManager &kvdbManager = KVDBManager::get();
 
-    opBuilderKVDBMatchTest() {
+    opBuilderKVDBMatchTest()
+    {
         logging::LoggingConfig logConfig;
         logConfig.logLevel = logging::LogLevel::Off;
         logging::loggingInit(logConfig);
     }
 
-    virtual ~opBuilderKVDBMatchTest() {
+    virtual ~opBuilderKVDBMatchTest() {}
+
+    virtual void SetUp()
+    {
+        kvdbManager.addDb("TEST_DB");
     }
 
-    virtual void SetUp() {
-        kvdbManager.createDB("TEST_DB");
-    }
-
-    virtual void TearDown() {
+    virtual void TearDown()
+    {
         kvdbManager.deleteDB("TEST_DB");
     }
 };
@@ -49,7 +54,7 @@ protected:
 // Build ok
 TEST_F(opBuilderKVDBMatchTest, Builds)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field2match": "+kvdb_match/TEST_DB"}
     })"};
@@ -59,7 +64,7 @@ TEST_F(opBuilderKVDBMatchTest, Builds)
 // Build incorrect number of arguments
 TEST_F(opBuilderKVDBMatchTest, Builds_incorrect_number_of_arguments)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field2match": "+kvdb_match"}
     })"};
@@ -69,7 +74,7 @@ TEST_F(opBuilderKVDBMatchTest, Builds_incorrect_number_of_arguments)
 // Build invalid DB
 TEST_F(opBuilderKVDBMatchTest, Builds_incorrect_invalid_db)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field2match": "+kvdb_match/INVALID_DB"}
     })"};
@@ -82,7 +87,7 @@ TEST_F(opBuilderKVDBMatchTest, Single_level_target_ok)
     auto kvdb = kvdbManager.getDB("TEST_DB");
     kvdb->write("KEY", "DUMMY"); // TODO: Remove DUMMY Use non-value overload
 
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field2match": "+kvdb_match/TEST_DB"}
     })"};
@@ -115,7 +120,7 @@ TEST_F(opBuilderKVDBMatchTest, Multilevel_target_ok)
     auto kvdb = kvdbManager.getDB("TEST_DB");
     kvdb->write("KEY", "DUMMY"); // TODO: Remove DUMMY Use non-value overload
 
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"a.b.field2match": "+kvdb_match/TEST_DB"}
     })"};
