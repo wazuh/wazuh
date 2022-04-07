@@ -79,7 +79,8 @@ size_t syscom_dispatch(char * command, char ** output){
     assert(output != NULL);
 
     if (strncmp(command, HC_FIM_FILE, strlen(HC_FIM_FILE)) == 0
-        || strncmp(command, HC_FIM_REGISTRY, strlen(HC_FIM_REGISTRY)) == 0) {
+        || strncmp(command, HC_FIM_REGISTRY, strlen(HC_FIM_REGISTRY)) == 0
+        || strncmp(command, HC_FIM_VALUE, strlen(HC_FIM_VALUE)) == 0) {
 
         fim_sync_push_msg(command);
         return 0;
