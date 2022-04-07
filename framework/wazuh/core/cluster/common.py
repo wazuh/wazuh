@@ -228,7 +228,7 @@ class ReceiveStringTask:
         if not self.task.cancelled():
             task_exc = self.task.exception()
             if task_exc:
-                self.logger.error(task_exc)
+                self.logger.error(task_exc, exc_info=False)
 
 
 class ReceiveFileTask:
@@ -287,7 +287,7 @@ class ReceiveFileTask:
         if not self.task.cancelled():
             task_exc = self.task.exception()
             if task_exc:
-                self.logger.error(task_exc)
+                self.logger.error(task_exc, exc_info=False)
 
 
 class Handler(asyncio.Protocol):
@@ -732,7 +732,7 @@ class Handler(asyncio.Protocol):
         task_id = await self.send_request(command=b'new_str', data=str(total).encode())
 
         if task_id.startswith(b'Error'):
-            self.logger.error(f'There was an error while trying to send a string: {task_id}')
+            self.logger.error(f'There was an error while trying to send a string: {task_id}', exc_info=False)
             await self.send_request(command=b'err_str', data=str(total).encode())
         else:
             # Send chunks of the string to the destination node, indicating the ID of the string.
@@ -1029,9 +1029,11 @@ class Handler(asyncio.Protocol):
         error_json = json.loads(error_details, object_hook=as_wazuh_object)
         if task_id != b'None':
             self.interrupted_tasks.add(task_id)
-            self.logger.error(f'The task was canceled due to the following error on the remote node: {error_json}')
+            self.logger.error(f'The task was canceled due to the following error on the remote node: {error_json}',
+                              exc_info=False)
         else:
-            self.logger.error(f'The task was requested to be canceled but no task_id was received: {error_json}')
+            self.logger.error(f'The task was requested to be canceled but no task_id was received: {error_json}',
+                              exc_info=False)
 
         return b'ok', b'Request received correctly'
 

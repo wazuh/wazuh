@@ -19,7 +19,7 @@ from itertools import groupby, chain
 from os import chmod, chown, listdir, mkdir, curdir, rename, utime, remove, walk, path
 from pyexpat import ExpatError
 from shutil import Error, move, copy2
-from signal import signal, alarm, SIGALRM
+from signal import signal, alarm, SIGALRM, SIGKILL
 
 from cachetools import cached, TTLCache
 from defusedxml.ElementTree import fromstring
@@ -53,9 +53,11 @@ def clean_pid_files(daemon):
     for pid_file in os.listdir(OSSEC_PIDFILE_PATH):
         if match := re.match(regex, pid_file):
             try:
-                os.kill(int(match.group(1)), 0)
+                os.kill(int(match.group(1)), SIGKILL)
+                print(f"{daemon}: Orphan child process {match.group(1)} was terminated.")
             except OSError:
-                print(f'{daemon}: Process {match.group(1)} not used by Wazuh, removing...')
+                print(f'{daemon}: Non existent process {match.group(1)}, removing from {common.wazuh_path}/var/run...')
+            finally:
                 os.remove(path.join(OSSEC_PIDFILE_PATH, pid_file))
 
 

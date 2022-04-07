@@ -33,7 +33,7 @@ list(APPEND upgrade_flags "-Wl,--wrap,_mtinfo -Wl,--wrap,wm_agent_upgrade_start_
 if(${TARGET} STREQUAL "server")
 
     list(APPEND upgrade_names "test_wm_agent_upgrade_manager")
-    list(APPEND upgrade_flags "-Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,select -Wl,--wrap,close -Wl,--wrap,accept -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP \
+    list(APPEND upgrade_flags "-Wl,--wrap,OS_BindUnixDomainWithPerms -Wl,--wrap,select -Wl,--wrap,close -Wl,--wrap,accept -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP \
                             -Wl,--wrap,wm_agent_upgrade_parse_message -Wl,--wrap,wm_agent_upgrade_process_upgrade_command -Wl,--wrap,wm_agent_upgrade_process_upgrade_custom_command -Wl,--wrap,wm_agent_upgrade_process_agent_result_command \
                             -Wl,--wrap,wm_agent_upgrade_parse_response -Wl,--wrap,wm_agent_upgrade_cancel_pending_upgrades -Wl,--wrap,wm_agent_upgrade_process_upgrade_result_command -Wl,--wrap,sleep -Wl,--wrap,CreateThread -Wl,--wrap,pthread_exit -Wl,--wrap,getpid \
                             ${DEBUG_OP_WRAPPERS}")

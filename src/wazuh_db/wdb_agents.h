@@ -66,6 +66,11 @@ bool wdb_agents_find_cve(wdb_t *wdb, const char* cve, const char* reference);
  * @param [in] severity A string representing the severity of the vulnerability.
  * @param [in] cvss2_score The vulnerability score according to CVSS v2.
  * @param [in] cvss3_score The vulnerability score according to CVSS v3.
+ * @param [in] external_references The vulnerability external references.
+ * @param [in] condition The vulnerability condition.
+ * @param [in] title The vulnerability title.
+ * @param [in] published The vulnerability published date in the feed.
+ * @param [in] updated The vulnerability update date, if any.
  * @return Returns cJSON object with 'action': 'INSERT' | 'UPDATE'.
  *                               and 'status': 'SUCCESS' | 'ERROR'.
  *         The cJSON object must be freed by the caller.
@@ -81,7 +86,12 @@ cJSON* wdb_agents_insert_vuln_cves(wdb_t *wdb,
                                    bool check_pkg_existence,
                                    const char* severity,
                                    double cvss2_score,
-                                   double cvss3_score);
+                                   double cvss3_score,
+                                   const char *external_references,
+                                   const char *condition,
+                                   const char *title,
+                                   const char *published,
+                                   const char *updated);
 
 /**
  * @brief Function to update the status field in agent database vuln_cves table.

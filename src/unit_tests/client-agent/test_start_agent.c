@@ -83,6 +83,7 @@ void add_server_config(char* address, int protocol) {
     memset(agt->server + agt->rip_id + 1, 0, sizeof(agent_server));
     agt->server[agt->rip_id].protocol = protocol;
     agt->rip_id++;
+    agt->server_count++;
 }
 
 void keys_init(keystore *keys) {
@@ -395,7 +396,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_connect_server, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_agent_handshake_to_server, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_send_msg_on_startup, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_send_agent_stopped_message, setup_test, teardown_test)
+        cmocka_unit_test_setup_teardown(test_send_agent_stopped_message, setup_test, teardown_test),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

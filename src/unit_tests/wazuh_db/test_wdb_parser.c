@@ -1357,6 +1357,7 @@ void test_vuln_cves_insert_command_error(void **state) {
     expect_value(__wrap_wdb_agents_insert_vuln_cves, severity, NULL);
     expect_value(__wrap_wdb_agents_insert_vuln_cves, cvss2_score, 0);
     expect_value(__wrap_wdb_agents_insert_vuln_cves, cvss3_score, 0);
+    will_return(__wrap_cJSON_PrintUnformatted, NULL);
 
     will_return(__wrap_wdb_agents_insert_vuln_cves, NULL);
 
@@ -1378,7 +1379,9 @@ void test_vuln_cves_insert_command_success(void **state) {
     os_strdup("[{\"test\":\"TEST\"}]", result);
     os_strdup("insert {\"name\":\"package\",\"version\":\"2.2\",\"architecture\":\"x86\",\"cve\":\"CVE-2021-1500\","
               "\"reference\":\"8549fd9faf9b124635298e9311ccf672c2ad05d1\",\"type\":\"PACKAGE\",\"status\":\"VALID\","
-              "\"check_pkg_existence\":true,\"severity\":\"MEDIUM\",\"cvss2_score\":5.2,\"cvss3_score\":6}", query);
+              "\"check_pkg_existence\":true,\"severity\":\"MEDIUM\",\"cvss2_score\":5.2,\"cvss3_score\":6,"
+              "\"external_references\":[\"https.//refs.com/refs1\",\"https.//refs.com/refs1\"],\"condition\":\"Package unfixes\","
+              "\"title\":\"CVE-2021-1500 affects package\",\"published\":\"01-01-2020\",\"updated\":\"02-01-2020\"}", query);
 
     cJSON *test =  cJSON_CreateObject();
 
@@ -1395,6 +1398,8 @@ void test_vuln_cves_insert_command_success(void **state) {
     expect_value(__wrap_wdb_agents_insert_vuln_cves, cvss2_score, 5.2);
     expect_value(__wrap_wdb_agents_insert_vuln_cves, cvss3_score, 6);
     will_return(__wrap_wdb_agents_insert_vuln_cves, test);
+    will_return(__wrap_cJSON_PrintUnformatted, strdup("[\"https.//refs.com/refs1\",\"https.//refs.com/refs1\"]"));
+
     will_return(__wrap_cJSON_PrintUnformatted, result);
 
     ret = wdb_parse_vuln_cves(data->wdb, query, data->output);

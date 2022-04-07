@@ -167,6 +167,22 @@ stages:
       <<: *permission_denied
 
 ---
+test_name: GET /vulnerability/{agent_id}/summary/severity
+
+stages:
+
+  - name: Try to get a summary of the vulnerabilities' severity of a given agent
+    request:
+      verify: False
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/vulnerability/001/summary/severity"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+
+---
 test_name: DELETE /agents/{agent_id}/group
 
 stages:
@@ -555,11 +571,16 @@ stages:
       json:
         error: !anyint
         data:
-          active: 0
-          disconnected: 0
-          never_connected: 0
-          pending: 0
-          total: 0
+          connection:
+            active: 0
+            disconnected: 0
+            never_connected: 0
+            pending: 0
+            total: 0
+          configuration:
+            synced: 0
+            not_synced: 0
+            total: 0
 
 ---
 test_name: GET /ciscat/{agent_id}/results
@@ -1953,11 +1974,16 @@ stages:
           groups: []
           agent_os: []
           agent_status:
-            active: 0
-            disconnected: 0
-            never_connected: 0
-            pending: 0
-            total: 0
+            connection:
+              active: 0
+              disconnected: 0
+              never_connected: 0
+              pending: 0
+              total: 0
+            configuration:
+              synced: 0
+              total: 0
+              not_synced: 0
           agent_version: []
           last_registered_agent: []
         error: 0

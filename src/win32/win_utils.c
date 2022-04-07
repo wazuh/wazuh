@@ -57,7 +57,6 @@ void stop_wmodules()
 /* Locally start (after service/win init) */
 int local_start()
 {
-    int rc;
     char *cfg = OSSECCONF;
     WSADATA wsaData;
     DWORD  threadID;
@@ -118,17 +117,6 @@ int local_start()
     if (agt->force_reconnect_interval) {
         minfo("Using force reconnect interval, Wazuh Agent will reconnect every %ld %s", \
                w_seconds_to_time_value(agt->force_reconnect_interval), w_seconds_to_time_unit(agt->force_reconnect_interval, TRUE));
-    }
-
-    // Resolve hostnames
-    rc = 0;
-    while (rc < agt->server_count) {
-        if (OS_IsValidIP(agt->server[rc].rip, NULL) != 1) {
-            mdebug2("Resolving server hostname: %s", agt->server[rc].rip);
-            resolve_hostname(&agt->server[rc].rip, 5);
-            mdebug2("Server hostname resolved: %s", agt->server[rc].rip);
-        }
-        rc++;
     }
 
     /* Read logcollector config file */
@@ -370,6 +358,17 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
 int SendMSGPredicated(__attribute__((unused)) int queue, const char *message, const char *locmsg, char loc, bool (*fn_ptr)()) {
     os_wait_predicate(fn_ptr);
     return SendMSGAction(queue, message, locmsg, loc);
+}
+
+/* StartMQ for Windows */
+int StartMQWithSpecificOwnerAndPerms(__attribute__((unused)) const char *path
+                                     ,__attribute__((unused)) short int type
+                                     ,__attribute__((unused)) short int n_tries
+                                     ,__attribute__((unused)) uid_t uid
+                                     ,__attribute__((unused)) gid_t gid
+                                     ,__attribute__((unused)) mode_t perm)
+{
+    return (0);
 }
 
 /* StartMQ for Windows */

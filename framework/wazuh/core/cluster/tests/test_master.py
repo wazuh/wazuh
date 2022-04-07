@@ -1050,7 +1050,15 @@ async def test_manager_handler_send_agent_groups_information(WazuhDBConnection_m
             """Auxiliary method."""
             self._info.append(data)
 
-        def error(self, data):
+        def debug(self, data):
+            """Auxiliary method."""
+            self._debug.append(data)
+
+        def debug2(self, data):
+            """Auxiliary method."""
+            self._debug2.append(data)
+
+        def error(self, data, exc_info=False):
             """Auxiliary method."""
             self._error.append(data)
             raise Exception('Stop while True')

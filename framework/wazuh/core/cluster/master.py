@@ -961,9 +961,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         # Log any possible error found in the process.
         self.integrity_sync_status['total_extra_valid'] = result['total_updated']
         if result['errors_per_folder']:
-            logger.error(f"Errors updating worker files: {dict(result['errors_per_folder'])}")
+            logger.error(f"Errors updating worker files: {dict(result['errors_per_folder'])}", exc_info=False)
         for error in result['generic_errors']:
-            logger.error(error)
+            logger.error(error, exc_info=False)
 
     @staticmethod
     def process_files_from_worker(files_metadata: Dict, decompressed_files_path: str, cluster_items: dict,

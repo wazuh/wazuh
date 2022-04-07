@@ -89,7 +89,7 @@ void * wm_key_request_main(wm_krequest_t * data) {
     /* Init the queue input */
     request_queue = queue_init(data->queue_size);
 
-    if ((sock = StartMQ(WM_KEY_REQUEST_SOCK, READ, 0)) < 0) {
+    if ((sock = StartMQWithSpecificOwnerAndPerms(WM_KEY_REQUEST_SOCK, READ, 0, getuid(), wm_getGroupID(), 0660)) < 0) {
         merror(QUEUE_ERROR, WM_KEY_REQUEST_SOCK, strerror(errno));
         pthread_exit(NULL);
     }

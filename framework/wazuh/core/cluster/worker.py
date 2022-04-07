@@ -147,7 +147,7 @@ class SyncFiles(c_common.SyncTask):
         if isinstance(task_id, Exception):
             raise task_id
         elif task_id.startswith(b'Error'):
-            self.logger.error(task_id.decode())
+            self.logger.error(task_id.decode(), exc_info=False)
             exc_info = json.dumps(exception.WazuhClusterError(3016, extra_message=str(task_id)),
                                   cls=c_common.WazuhJSONEncoder).encode()
             await self.server.send_request(command=self.cmd + b'_r', data=b'None ' + exc_info)
@@ -921,7 +921,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
         if sum(errors.values()) > 0:
             logger.error(f"Found errors: {errors['shared']} overwriting, {errors['missing']} creating and "
-                         f"{errors['extra']} removing")
+                         f"{errors['extra']} removing", exc_info=False)
 
     def get_logger(self, logger_tag: str = ''):
         """Get current logger. In workers it will always return the main logger.

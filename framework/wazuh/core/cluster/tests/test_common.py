@@ -287,7 +287,7 @@ def test_rst_done_callback(setup_coro_mock, create_task_mock):
             string_task.done_callback()
             assert string_task.wazuh_common.in_str == {b"011": b"123456789"}
             assert string_task.wazuh_common.sync_tasks == {b"011": b"123456789"}
-            logger_mock.assert_called_once_with(Exception)
+            logger_mock.assert_called_once_with(Exception, exc_info=False)
 
 
 # Test ReceiveFileTask methods
@@ -396,7 +396,7 @@ def test_rft_done_callback(set_up_coro_mock, create_task_mock, event_mock):
                                                        logger=logging.getLogger('wazuh'), task_id=b"010")
             file_task.done_callback()
             assert file_task.wazuh_common.sync_tasks == {"011": b"123456789"}
-            logger_mock.assert_called_once_with(Exception)
+            logger_mock.assert_called_once_with(Exception, exc_info=False)
 
 
 # Test Handler class methods
@@ -754,7 +754,8 @@ async def test_handler_send_string():
     with patch('wazuh.core.cluster.common.Handler.send_request', return_value=b"Error"):
         with patch.object(logging.getLogger("wazuh"), "error") as logger_mock:
             assert (await handler.send_string(b"something") == b"Error")
-            logger_mock.assert_called_once_with(f'There was an error while trying to send a string: {b"Error"}')
+            logger_mock.assert_called_once_with(f'There was an error while trying to send a string: {b"Error"}',
+                                                exc_info=False)
 
 
 def test_handler_get_manager():

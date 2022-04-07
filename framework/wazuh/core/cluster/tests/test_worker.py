@@ -260,7 +260,7 @@ async def test_sync_files_sync_ok(compress_files_mock, unlink_mock, relpath_mock
         json_dumps_mock.assert_called_once_with(
             exception.WazuhClusterError(code=3016, extra_message=str(b"Error")),
             cls=cluster_common.WazuhJSONEncoder)
-        logger_mock.assert_called_once_with("Error")
+        logger_mock.assert_called_once_with("Error", exc_info=False)
 
     worker_mock.count = 2
     with patch.object(ServerMock, "send_file") as send_file_mock:
@@ -1214,7 +1214,7 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
                 logger_error_mock.assert_has_calls(
                     [call("Error processing shared file 'filename1': string indices must be integers"),
                      call("Error processing missing file 'filename2': string indices must be integers"),
-                     call("Found errors: 1 overwriting, 1 creating and 0 removing")])
+                     call("Found errors: 1 overwriting, 1 creating and 0 removing", exc_info=False)])
                 logger_debug_mock.assert_has_calls(
                     [call("Received 1 shared files to update from master."),
                      call("Received 1 missing files to update from master."),
@@ -1253,10 +1253,10 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
                 logger_error_mock.assert_has_calls(
                     [call("Error processing shared file 'filename1': string indices must be integers"),
                      call("Error processing missing file 'filename2': string indices must be integers"),
-                     call("Found errors: 1 overwriting, 1 creating and 0 removing"),
+                     call("Found errors: 1 overwriting, 1 creating and 0 removing", exc_info=False),
                      call("Error processing shared file 'filename1': string indices must be integers"),
                      call("Error processing missing file 'filename2': string indices must be integers"),
-                     call("Found errors: 1 overwriting, 1 creating and 0 removing")])
+                     call("Found errors: 1 overwriting, 1 creating and 0 removing", exc_info=False)])
                 logger_debug_mock.assert_has_calls(
                     [call("Received 1 shared files to update from master."),
                      call("Received 1 missing files to update from master."),
@@ -1307,10 +1307,10 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
                         logger_error_mock.assert_has_calls(
                             [call("Error processing shared file 'filename1': string indices must be integers"),
                              call("Error processing missing file 'filename2': string indices must be integers"),
-                             call("Found errors: 1 overwriting, 1 creating and 0 removing"),
+                             call("Found errors: 1 overwriting, 1 creating and 0 removing", exc_info=False),
                              call("Error processing shared file 'filename1': string indices must be integers"),
                              call("Error processing missing file 'filename2': string indices must be integers"),
-                             call("Found errors: 1 overwriting, 1 creating and 0 removing")])
+                             call("Found errors: 1 overwriting, 1 creating and 0 removing", exc_info=False)])
                         logger_debug_mock.assert_has_calls(
                             [call("Received 1 shared files to update from master."),
                              call("Received 1 missing files to update from master."),
@@ -1353,11 +1353,11 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
                 logger_error_mock.assert_has_calls(
                     [call("Error processing shared file 'filename1': string indices must be integers"),
                      call("Error processing missing file 'filename2': string indices must be integers"),
-                     call("Found errors: 1 overwriting, 1 creating and 0 removing"),
+                     call("Found errors: 1 overwriting, 1 creating and 0 removing", exc_info=False),
                      call("Error processing shared file 'filename1': string indices must be integers"),
                      call("Error processing missing file 'filename2': string indices must be integers"),
-                     call("Found errors: 1 overwriting, 1 creating and 0 removing"),
-                     call("Found errors: 0 overwriting, 0 creating and 1 removing")])
+                     call("Found errors: 1 overwriting, 1 creating and 0 removing", exc_info=False),
+                     call("Found errors: 0 overwriting, 0 creating and 1 removing", exc_info=False)])
                 logger_debug_mock.assert_has_calls(
                     [call("Received 1 shared files to update from master."),
                      call("Received 1 missing files to update from master."),
