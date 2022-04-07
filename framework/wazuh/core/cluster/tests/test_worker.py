@@ -409,7 +409,7 @@ def test_worker_handler_error_receiving_agent_info(logger_mock):
 @patch.object(logging.getLogger("wazuh.Integrity check"), "error")
 @patch("wazuh.core.cluster.cluster.get_files_status", return_value={})
 @patch("wazuh.core.cluster.worker.client.common.Handler.send_request")
-@patch('wazuh.core.cluster.worker.cluster.run_in_pool', return_value=True)
+@patch('wazuh.core.cluster.worker.cluster.run_in_pool', return_value={'path': 'test'})
 @patch("wazuh.core.cluster.common.SyncFiles.request_permission", return_value=True)
 async def test_worker_handler_sync_integrity(request_permission_mock, run_in_pool_mock, send_request_mock,
                                              get_files_status, error_mock, sync_mock, json_dumps_mock):
@@ -437,7 +437,7 @@ async def test_worker_handler_sync_integrity(request_permission_mock, run_in_poo
                 pass
 
             request_permission_mock.assert_any_call()
-            sync_mock.assert_called_with(files_metadata=worker_handler.check_integrity_free, files={}, task_pool=None)
+            sync_mock.assert_called_with(files={}, files_metadata={'path': 'test'}, metadata_len=1, task_pool=None)
             logger_info_mock.assert_called_with("Starting.")
             assert worker_handler.integrity_check_status["date_start"] == 0.0
 
@@ -531,11 +531,12 @@ async def test_wazuh_handler_sync_extra_valid(merge_info_mock, perf_counter_mock
         logger_info_mock.assert_called_once_with("Finished in 0.000s.")
         merge_info_mock.assert_called_once_with(merge_type='agent-groups', node_name="Testing",
                                                 files=extra_valid.keys())
-        sync_mock.assert_called_once_with(files={
-            "merged_file": {'merged': True, 'merge_type': 'agent-groups', 'merge_name': "merged_file",
-                            'cluster_item_key': 'queue/agent-groups/'}}, files_metadata={
-            "merged_file": {'merged': True, 'merge_type': 'agent-groups', 'merge_name': "merged_file",
-                            'cluster_item_key': 'queue/agent-groups/'}}, task_pool=None)
+        sync_mock.assert_called_once_with(
+            files={"merged_file": {'merged': True, 'merge_type': 'agent-groups', 'merge_name': "merged_file",
+                                   'cluster_item_key': 'queue/agent-groups/'}},
+            files_metadata={"merged_file": {'merged': True, 'merge_type': 'agent-groups', 'merge_name': "merged_file",
+                            'cluster_item_key': 'queue/agent-groups/'}},
+            metadata_len=1, task_pool=None)
 
     # Test the first exception
     with patch("wazuh.core.cluster.worker.WorkerHandler.send_request") as send_request_mock:

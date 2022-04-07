@@ -375,7 +375,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                         self.integrity_control = await cluster.run_in_pool(self.loop, self.manager.task_pool,
                                                                            cluster.get_files_status,
                                                                            self.integrity_control)
-                        await integrity_check.sync(files_metadata=self.integrity_control, files={},
+                        await integrity_check.sync(files={}, files_metadata=self.integrity_control,
+                                                   metadata_len=len(self.integrity_control),
                                                    task_pool=self.manager.task_pool)
             # If exception is raised during sync process, notify the master so it removes the file if received.
             except exception.WazuhException as e:
@@ -445,7 +446,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
             # Permission is not requested since it was already granted in the 'Integrity check' task.
             await extra_valid_sync.sync(files=files_to_sync, files_metadata=files_to_sync,
-                                        task_pool=self.manager.task_pool)
+                                        metadata_len=len(files_to_sync), task_pool=self.manager.task_pool)
             after = perf_counter()
             logger.debug(f"Finished sending extra valid files in {(after - before):.3f}s.")
             logger.info(f"Finished in {(get_utc_now().timestamp() - self.integrity_sync_status['date_start']):.3f}s.")

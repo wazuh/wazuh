@@ -1195,15 +1195,15 @@ async def test_master_handler_integrity_sync(set_date_end_mock, info_mock):
     master_handler.server = ServerMock()
     master_handler.task_loggers["Integrity sync"] = logging.getLogger("wazuh")
 
-    await master_handler.integrity_sync({'missing': {}, 'shared': {}, 'extra': {}, 'extra_valid': {}})
+    await master_handler.integrity_sync({'missing': {'path': 'test'}, 'shared': {}, 'extra': {}, 'extra_valid': {}})
     assert master_handler.integrity_sync_status == {'date_start_master': ANY, 'tmp_date_start_master': ANY,
                                                     'date_end_master': ANY, 'total_extra_valid': 0,
-                                                    'total_files': {'missing': 0, 'shared': 0, 'extra': 0,
+                                                    'total_files': {'missing': 1, 'shared': 0, 'extra': 0,
                                                                     'extra_valid': 0}}
     master_handler.integrity.sync.assert_called_once_with(
-        set(), {'missing': {}, 'shared': {}, 'extra': {}, 'extra_valid': {}}, None, 1000)
+        {'path'}, {'missing': {'path': 'test'}, 'shared': {}, 'extra': {}, 'extra_valid': {}}, 1, None, 1000)
     assert info_mock.call_args_list == [call('Starting.'),
-                                        call('Files to create in worker: 0 | Files to update in worker: 0 | '
+                                        call('Files to create in worker: 1 | Files to update in worker: 0 | '
                                              'Files to delete in worker: 0 | Files to receive: 0')]
     set_date_end_mock.assert_called_once()
 

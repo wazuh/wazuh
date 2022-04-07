@@ -341,7 +341,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             utils.mkdir_with_mode(worker_dir)
 
         # SyncFiles instance is used to zip and send integrity files to worker.
-        self.integrity = c_common.SyncFiles(cmd=b'syn_m_c', logger=self.task_loggers['Integrity check'], node=self)
+        self.integrity = c_common.SyncFiles(cmd=b'syn_m_c', logger=self.task_loggers['Integrity sync'], node=self)
 
         return cmd, payload
 
@@ -719,8 +719,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                     f"Files to receive: {len(files_classif['extra_valid'])}")
 
         # Send files and metadata to the worker node.
+        metadata_len = functools.reduce(operator.add, map(len, files_classif.values()))
         master_files_paths = files_classif['shared'].keys() | files_classif['missing'].keys()
-        await self.integrity.sync(master_files_paths, files_classif, self.server.task_pool, self.current_zip_limit)
+        await self.integrity.sync(master_files_paths, files_classif, metadata_len, self.server.task_pool,
+                                  self.current_zip_limit)
 
         # Log 'Finished in' message only if there are no extra_valid files to sync.
         if not self.extra_valid_requested:

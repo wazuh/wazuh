@@ -1324,7 +1324,7 @@ async def test_sync_files_sync_ok(compress_files_mock, unlink_mock, relpath_mock
 
     # Test second condition
     with patch.object(logging.getLogger("wazuh"), "error") as logger_mock:
-        await sync_files.sync(files_to_sync, files_metadata, task_pool=None)
+        await sync_files.sync(files_to_sync, files_metadata, 1, task_pool=None)
         json_dumps_mock.assert_called_once_with(
             exception.WazuhClusterError(code=3016, extra_message=str(b"Error")),
             cls=cluster_common.WazuhJSONEncoder)
@@ -1335,12 +1335,11 @@ async def test_sync_files_sync_ok(compress_files_mock, unlink_mock, relpath_mock
         # Test if present in try and second exception
         with patch.object(logging.getLogger("wazuh"), "debug") as logger_debug_mock:
             with patch.object(logging.getLogger("wazuh"), "error") as logger_error_mock:
-                await sync_files.sync(files_to_sync, files_metadata, task_pool=None)
+                await sync_files.sync(files_to_sync, files_metadata, 1, task_pool=None)
                 send_file_mock.assert_called_once_with('files/path/', b'OK')
                 logger_debug_mock.assert_has_calls([call(
-                    f"Compressing {'files and ' if files_to_sync else ''}'files_metadata.json' of {len(files_metadata)}"
-                    f" files."), call("Sending zip file."), call("Zip file sent."),
-                    call("Decreasing sync size limit to 30.00 MB."), call("Finished sending files.")])
+                    f"Compressing {'files and ' if files_to_sync else ''}'files_metadata.json' of 1 files."),
+                    call("Sending zip file."), call("Zip file sent."), call("Decreasing sync size limit to 30.00 MB.")])
                 logger_error_mock.assert_called_once_with("Error sending zip file: ")
                 compress_files_mock.assert_has_calls([call('Testing', {'path1': 'metadata1'},
                                                            {'path2': 'metadata2'}, None)] * 2)
@@ -1356,12 +1355,11 @@ async def test_sync_files_sync_ok(compress_files_mock, unlink_mock, relpath_mock
 
                 # Test elif present in try and first exception
                 worker_mock.count = 3
-                await sync_files.sync(files_to_sync, files_metadata, task_pool=None)
+                await sync_files.sync(files_to_sync, files_metadata, 1, task_pool=None)
                 send_file_mock.assert_called_once_with('files/path/', b'OK')
                 logger_debug_mock.assert_has_calls([call(
-                    f"Compressing {'files and ' if files_to_sync else ''}'files_metadata.json' of {len(files_metadata)}"
-                    f" files."), call("Sending zip file."), call("Zip file sent."),
-                    call('Increasing sync size limit to 37.50 MB.'), call('Finished sending files.')])
+                    f"Compressing {'files and ' if files_to_sync else ''}'files_metadata.json' of 1 files."),
+                    call("Sending zip file."), call("Zip file sent."), call('Increasing sync size limit to 37.50 MB.')])
                 logger_error_mock.assert_called_once_with(
                     f"Error sending zip file: {exception.WazuhException(3016, 'Error')}")
                 compress_files_mock.assert_called_once_with('Testing', {'path1': 'metadata1'},
@@ -1378,13 +1376,11 @@ async def test_sync_files_sync_ok(compress_files_mock, unlink_mock, relpath_mock
 
             # Test return
             worker_mock.count = 4
-            assert await sync_files.sync(files_to_sync, files_metadata, task_pool=None) is True
+            assert await sync_files.sync(files_to_sync, files_metadata, 1, task_pool=None) is True
             send_file_mock.assert_called_once_with('files/path/', b'OK')
             logger_debug_mock.assert_has_calls([call(
-                f"Compressing {'files and ' if files_to_sync else ''}'files_metadata.json' of {len(files_metadata)}"
-                f" files."), call("Sending zip file."), call("Zip file sent."),
-                call("Increasing sync size limit to 46.88 MB."), call('Finished sending files.')
-            ])
+                f"Compressing {'files and ' if files_to_sync else ''}'files_metadata.json' of 1 files."),
+                call("Sending zip file."), call("Zip file sent."), call("Increasing sync size limit to 46.88 MB.")])
             compress_files_mock.assert_called_once_with('Testing', {'path1': 'metadata1'}, {'path2': 'metadata2'}, None)
             unlink_mock.assert_called_once_with("files/path/")
             relpath_mock.assert_called_once_with('files/path/', common.WAZUH_PATH)
@@ -1406,5 +1402,5 @@ async def test_sync_files_sync_ko(send_request_mock):
     sync_files = cluster_common.SyncFiles(b"cmd", logging.getLogger("wazuh"), handler)
 
     # Test first condition
-    await sync_files.sync(files_to_sync, files_metadata, task_pool=None)
+    await sync_files.sync(files_to_sync, files_metadata, 1, task_pool=None)
     send_request_mock.assert_has_calls([call(command=b'cmd', data=b''), call(command=b'cmd_r', data=ANY)])

@@ -1054,7 +1054,8 @@ class SyncFiles(SyncTask):
     Define methods to synchronize files with a remote node.
     """
 
-    async def sync(self, files: Iterable, files_metadata: Dict, task_pool=None, zip_limit: int = None):
+    async def sync(self, files: Iterable, files_metadata: Dict, metadata_len: int, task_pool=None,
+                   zip_limit: int = None):
         """Send metadata and files to other node.
 
         Parameters
@@ -1064,6 +1065,8 @@ class SyncFiles(SyncTask):
         files_metadata : dict
             Paths (keys) and metadata (values) of the files to be sent. This dict is included as a JSON
             named "files_metadata.json".
+        metadata_len : int
+            Number of files inside 'files_metadata'.
         zip_limit : int
             Maximum size in the zip. No new files are added to the zip when this limit is about to be exceeded.
         task_pool : ProcessPoolExecutor or None
@@ -1083,7 +1086,7 @@ class SyncFiles(SyncTask):
         timeout_receiving_file = self.node.cluster_items['intervals']['communication']['timeout_receiving_file']
 
         self.logger.debug(f"Compressing {'files and ' if files else ''}"
-                          f"'files_metadata.json' of {len(files_metadata)} files.")
+                          f"'files_metadata.json' of {metadata_len} files.")
         compressed_data = await cluster.run_in_pool(self.node.loop, task_pool, cluster.compress_files, self.node.name,
                                                     files, files_metadata, zip_limit)
 
@@ -1144,7 +1147,6 @@ class SyncFiles(SyncTask):
 
             # Remove local file.
             os.unlink(compressed_data)
-            self.logger.debug("Finished sending files.")
 
 
 class WazuhCommon:
