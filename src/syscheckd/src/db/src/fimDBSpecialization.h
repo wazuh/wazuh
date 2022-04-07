@@ -62,9 +62,48 @@ constexpr auto FIM_REGISTRY_SYNC_CONFIG_STATEMENT
     R"(
     {
         "decoder_type":"JSON_RANGE",
-        "table":"registry_view",
+        "table":"registry_key",
         "component":"fim_registry",
-        "index":"path",
+        "index":"item_id",
+        "last_event":"last_event",
+        "checksum_field":"checksum",
+        "no_data_query_json": {
+                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "count_range_query_json": {
+                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                "count_field_name":"count",
+                "column_list":["count(*) AS count "],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "row_data_query_json": {
+                "row_filter":"WHERE path ='?'",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "range_checksum_query_json": {
+                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        }
+    }
+    )"
+};
+
+constexpr auto FIM_VALUE_SYNC_CONFIG_STATEMENT
+{
+    R"(
+    {
+        "decoder_type":"JSON_RANGE",
+        "table":"registry_data",
+        "component":"fim_value",
+        "index":"item_id",
         "last_event":"last_event",
         "checksum_field":"checksum",
         "no_data_query_json": {
@@ -134,7 +173,7 @@ constexpr auto FIM_FILE_START_CONFIG_STATEMENT
 /* Statement related to registries items. Defines everything necessary to perform the synchronization loop */
 constexpr auto FIM_REGISTRY_START_CONFIG_STATEMENT
 {
-    R"({"table":"registry_view",
+    R"({"table":"registry_key",
         "first_query":
             {
                 "column_list":["path"],
@@ -152,7 +191,42 @@ constexpr auto FIM_REGISTRY_START_CONFIG_STATEMENT
                 "count_opt":1
             },
         "component":"fim_registry",
-        "index":"path",
+        "index":"item_id",
+        "last_event":"last_event",
+        "checksum_field":"checksum",
+        "range_checksum_query_json":
+            {
+                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                "column_list":["path, checksum"],
+                "distinct_opt":false,
+                "order_by_opt":"",
+                "count_opt":100
+            }
+        })"
+};
+
+/* Statement related to registries items. Defines everything necessary to perform the synchronization loop */
+constexpr auto FIM_VALUE_START_CONFIG_STATEMENT
+{
+    R"({"table":"registry_data",
+        "first_query":
+            {
+                "column_list":["path"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"path DESC",
+                "count_opt":1
+            },
+        "last_query":
+            {
+                "column_list":["path"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"path ASC",
+                "count_opt":1
+            },
+        "component":"fim_value",
+        "index":"item_id",
         "last_event":"last_event",
         "checksum_field":"checksum",
         "range_checksum_query_json":
@@ -239,7 +313,6 @@ class FIMDBCreator<OSType::WINDOWS> final
             std::string ret { CREATE_FILE_DB_STATEMENT };
             ret += CREATE_REGISTRY_KEY_DB_STATEMENT;
             ret += CREATE_REGISTRY_VALUE_DB_STATEMENT;
-            ret += CREATE_REGISTRY_VIEW_STATEMENT;
 
             return ret;
         }
@@ -262,6 +335,10 @@ class FIMDBCreator<OSType::WINDOWS> final
                                             handle,
                                             nlohmann::json::parse(FIM_REGISTRY_SYNC_CONFIG_STATEMENT),
                                             syncRegistryMessageFunction);
+                RSyncHandler->registerSyncID(FIM_COMPONENT_VALUE,
+                                            handle,
+                                            nlohmann::json::parse(FIM_VALUE_SYNC_CONFIG_STATEMENT),
+                                            syncRegistryMessageFunction);
             }
 
         }
@@ -280,6 +357,9 @@ class FIMDBCreator<OSType::WINDOWS> final
             {
                 RSyncHandler->startSync(handle,
                                         nlohmann::json::parse(FIM_REGISTRY_START_CONFIG_STATEMENT),
+                                        syncRegistryMessageFunction);
+                RSyncHandler->startSync(handle,
+                                        nlohmann::json::parse(FIM_VALUE_START_CONFIG_STATEMENT),
                                         syncRegistryMessageFunction);
             }
         }
