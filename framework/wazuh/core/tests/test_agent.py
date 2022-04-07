@@ -372,18 +372,14 @@ def test_WazuhDBQueryGroupByAgents(mock_socket_conn, send_mock, filter_fields, e
     assert result['items'] == expected_response
 
 
-@pytest.mark.parametrize('expected_response', [
-    [{'name': 'group-2', 'count': 1}, {'name': 'group-1', 'count': 1}]
-])
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_WazuhDBQueryGroup(mock_socket_conn, send_mock, expected_response):
-    query_group = WazuhDBQueryGroup(offset=0, sort={"fields":["count"],"order":"desc"}, search=None, select=None, 
-                                    get_data=True, query='', filters=None, count=True, default_sort_field='name', 
-                                    min_select_fields=None, remove_extra_fields=True, rbac_negate=True)
+def test_WazuhDBQueryGroup__add_sort_to_query(mock_socket_conn, send_mock):
+    """Tests if _add_sort_to_query method of WazuhDBQueryGroup works properly"""
+    query_group = WazuhDBQueryGroup()
+    query_group._add_sort_to_query()
 
-    query_data = query_group.run()
-    assert query_data['items'] == expected_response
+    assert 'count' in query_group.fields and query_group.fields['count'] == 'count(id_group)' 
 
 
 @patch('socket.socket.connect')
