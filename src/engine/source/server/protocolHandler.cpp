@@ -15,6 +15,7 @@
 
 #include <logging/logging.hpp>
 #include <profile/profile.hpp>
+#include <utils/baseMacros.hpp>
 
 namespace engineserver
 {

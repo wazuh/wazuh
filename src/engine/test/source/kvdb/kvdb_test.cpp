@@ -57,7 +57,7 @@ protected:
 
     virtual void SetUp()
     {
-        kvdbManager.createDB(kTestDBName);
+        kvdbManager.addDb(kTestDBName);
     }
 
     virtual void TearDown()
@@ -68,7 +68,7 @@ protected:
 
 TEST_F(KVDBTest, CreateDeleteKvdbFile)
 {
-    auto ret = kvdbManager.createDB("NEW_DB");
+    auto ret = kvdbManager.addDb("NEW_DB");
     ASSERT_TRUE(ret);
     auto newKvdb = kvdbManager.getDB("NEW_DB");
     ASSERT_EQ(newKvdb->getName(), "NEW_DB");
@@ -292,7 +292,7 @@ TEST_F(KVDBTest, ManagerConcurrency)
                                 auto db = m.getDB(dbName);
                                 if (db && !db->isValid())
                                 {
-                                    m.createDB(dbName);
+                                    m.addDb(dbName);
                                 }
                             }
                         }};
@@ -342,7 +342,7 @@ TEST_F(KVDBTest, KVDBConcurrency)
     std::mt19937 gen(rd());
     std::uniform_int_distribution distrib(0, 100);
 
-    KVDBManager::get().createDB(dbName);
+    KVDBManager::get().addDb(dbName);
 
     std::thread create {[&]
                         {

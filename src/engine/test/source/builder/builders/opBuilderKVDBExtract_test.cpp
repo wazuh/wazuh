@@ -11,10 +11,10 @@
 
 #include <gtest/gtest.h>
 
-#include "opBuilderKVDB.hpp"
 #include "testUtils.hpp"
 #include <kvdb/kvdbManager.hpp>
 #include <logging/logging.hpp>
+#include <opBuilderKVDB.hpp>
 
 namespace
 {
@@ -42,7 +42,7 @@ protected:
 
     virtual void SetUp()
     {
-        kvdbManager.createDB("TEST_DB");
+        kvdbManager.addDb("TEST_DB");
     }
 
     virtual void TearDown()
