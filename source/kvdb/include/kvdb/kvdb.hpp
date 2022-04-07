@@ -14,12 +14,12 @@ class KVDB
 {
 public:
     /**
-     * @brief Construct a new KVDB::KVDB object
+     * @brief Construct a new KVDB object
      *
      * @param dbName name of the DB
      * @param folder where the DB will be stored
      */
-    KVDB(const std::string &dbName, const std::string &folder, bool overwrite = false);
+    KVDB(const std::string &dbName, const std::string &folder);
 
     KVDB();
 
@@ -29,11 +29,29 @@ public:
      */
     ~KVDB();
 
-    bool init();
+    /**
+     * @brief Open and initialize the db
+     *
+     * @param createIfMissing create the db if it does not exist.
+     */
+    bool init(bool createIfMissing = true);
 
+    /**
+     * @brief Get the db name
+     *
+     */
     std::string_view getName() const;
 
+    /**
+     * @brief Returns if the db is ready for operation
+     *
+     */
     bool isReady() const;
+
+    /**
+     * @brief Returns if the db was initialized
+     *
+     */
     bool isValid() const;
 
     /**
@@ -161,6 +179,8 @@ public:
      * @return false unsuccesfully closed
      */
     bool close();
+
+    void cleanupOnClose();
 
 private:
     WAZUH_DISABLE_COPY_ASSIGN(KVDB);

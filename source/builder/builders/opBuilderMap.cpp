@@ -16,12 +16,14 @@
 #include "syntax.hpp"
 
 #include <logging/logging.hpp>
+#include <utils/baseMacros.hpp>
 
 namespace builder::internals::builders
 {
 
 types::Lifter opBuilderMap(const types::DocumentValue & def, types::TracerFn tr)
 {
+    WAZUH_ASSERT(false);
     // Check that input is as expected and throw exception otherwise
     if (!def.IsObject())
     {

@@ -70,6 +70,7 @@ CPMAddPackage(
 add_library(base STATIC
     logging/logging.hpp
     utils/baseMacros.hpp
+    utils/baseMacros.cpp
     utils/ipUtils.cpp
     utils/ipUtils.hpp
     utils/stringUtils.cpp
@@ -91,7 +92,6 @@ target_link_libraries(base
 target_include_directories(base
     PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}
-    INTERFACE
     ${fmtlog_SOURCE_DIR}
     ${rapidjson_SOURCE_DIR}/include
     )

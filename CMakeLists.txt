@@ -27,6 +27,15 @@ option(ENGINE_BUILD_BENCHMARK "Generate benchmarks" ON)
 option(ENGINE_BUILD_DOCUMENTATION "Generate doxygen documentation" ON)
 option(ENGINE_PROFILE_BUILD "Enables profiling through Tracy" OFF)
 option(ENGINE_PROFILE_MEMORY "Enables memory profiling in Tracy" OFF)
+option(ENGINE_ASSERT_WITH_SYMBOLS "Exports exe symbols to have asserts with full symbolicated functions" ON)
+
+# TODO put this in a better place together with other global options like warnings
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    if(ENGINE_ASSERT_WITH_SYMBOLS)
+        add_link_options ( -rdynamic ) #For asserts bt
+    endif()
+    add_compile_definitions ( WAZUH_DEBUG )
+endif()
 
 # Ensures that we do an out of source build
 MACRO(MACRO_ENSURE_OUT_OF_SOURCE_BUILD MSG)
