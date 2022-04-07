@@ -1994,8 +1994,8 @@ void test_wm_office365_scan_failure_action_not_null(void **state) {
     char* tenant_id = "tenant_id";
     int queue_fd = 1;
 
-    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:office365");
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending Office365 internal message: '{\"integration\":\"office365\",\"office365\":{\"actor\":\"wazuh\",\"tenant_id\":\"tenant_id\",\"subscription_name\":\"subscription_name\"}}'");
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:office365");
+    expect_string(__wrap__mtwarn, formatted_msg, "Sending Office365 internal message: '{\"integration\":\"office365\",\"office365\":{\"actor\":\"wazuh\",\"tenant_id\":\"tenant_id\",\"subscription_name\":\"subscription_name\"}}'");
 
     int result = -1;
     expect_value(__wrap_wm_sendmsg, usec, 1000000);

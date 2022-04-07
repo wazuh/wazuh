@@ -768,7 +768,7 @@ STATIC void wm_office365_scan_failure_action(wm_office365_fail** current_fails, 
 
             payload = cJSON_PrintUnformatted(fail_office365);
 
-            mtdebug2(WM_OFFICE365_LOGTAG, "Sending Office365 internal message: '%s'", payload);
+            mtwarn(WM_OFFICE365_LOGTAG, "Sending Office365 internal message: '%s'", payload);
 
             if (wm_sendmsg(WM_OFFICE365_MSG_DELAY, queue_fd, payload, WM_OFFICE365_CONTEXT.name, LOCALFILE_MQ) < 0) {
                 mterror(WM_OFFICE365_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));

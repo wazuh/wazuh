@@ -197,10 +197,10 @@ cJSON *wm_github_dump(const wm_github* github_config) {
 }
 
 STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
-    int event_types_len = 0;
-    int event_types_it = 0;
     int scan_finished = 0;
     int fail = 0;
+    unsigned int event_types_len = 0;
+    unsigned int event_types_it = 0;
     char **headers = NULL;
     char *payload = NULL;
     char *error_msg = NULL;
