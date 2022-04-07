@@ -33,18 +33,16 @@ struct KVDB::Impl
     };
 
     Impl(const std::string &dbName,
-         const std::string &folder,
-         bool overwrite = false)
+         const std::string &folder)
         : m_name(dbName)
         , m_path(folder + dbName)
-        , m_overwrite(overwrite)
         , m_txDb(nullptr)
         , m_db(nullptr)
         , m_state(State::Invalid)
     {
     }
 
-    bool init()
+    bool init(bool createIfMissing)
     {
         if (m_state == State::Open)
         {
@@ -70,17 +68,15 @@ struct KVDB::Impl
                 rocksdb::ColumnFamilyDescriptor(DEFAULT_CF_NAME, kOptions.CF));
         }
 
-        rocksdb::Options createOptions;
-        createOptions.IncreaseParallelism();
-        createOptions.OptimizeLevelStyleCompaction();
-        createOptions.create_if_missing = true;
-        //TODO this actually does not overwrite anything
-        createOptions.error_if_exists = !m_overwrite;
+        rocksdb::Options dbOptions;
+        dbOptions.OptimizeLevelStyleCompaction();
+        dbOptions.OptimizeForSmallDb();
+        dbOptions.create_if_missing = createIfMissing;
 
         rocksdb::OptimisticTransactionDB *txdb;
         std::vector<rocksdb::ColumnFamilyHandle *> cfHandles;
         s = rocksdb::OptimisticTransactionDB::Open(
-            createOptions, m_path, m_CFDescriptors, &cfHandles, &txdb);
+            dbOptions, m_path, m_CFDescriptors, &cfHandles, &txdb);
         if (!s.ok())
         {
             WAZUH_LOG_ERROR("Couldn't create DB [{}] file, error: [{}]",
@@ -129,7 +125,6 @@ struct KVDB::Impl
 
     rocksdb::ColumnFamilyHandle *getCFHandle(std::string const &colName)
     {
-        std::shared_lock lk(m_mtx);
         if (m_state != State::Open)
         {
             WAZUH_LOG_ERROR("DB [{}] should be open for execution", m_name);
@@ -149,6 +144,7 @@ struct KVDB::Impl
 
     bool createColumn(const std::string &columnName)
     {
+        std::unique_lock lk(m_mtx);
         auto cf = getCFHandle(columnName);
         if (cf)
         {
@@ -161,10 +157,8 @@ struct KVDB::Impl
             m_db->CreateColumnFamily(kOptions.CF, columnName, &handler);
         if (s.ok())
         {
-            std::unique_lock lk(m_mtx);
-            m_CFDescriptors.push_back(
-                rocksdb::ColumnFamilyDescriptor(columnName, kOptions.CF));
-            m_CFHandlesMap.insert({handler->GetName(), handler});
+            m_CFDescriptors.push_back({columnName, {}});
+            m_CFHandlesMap[handler->GetName()] = handler;
             return true;
         }
 
@@ -180,25 +174,26 @@ struct KVDB::Impl
     // cleanColumn without any argument
     bool deleteColumn(const std::string &columnName)
     {
+        std::unique_lock lk(m_mtx);
         auto cf = getCFHandle(columnName);
         if (!cf)
         {
             return false;
         }
 
-        std::unique_lock lk(m_mtx);
-        rocksdb::Status s = m_db->DropColumnFamily(cf);
+        if(!m_db->DropColumnFamily(cf).ok())
+        {
+            return false;
+        }
+
+        rocksdb::Status s = m_db->DestroyColumnFamilyHandle(cf);
         if (s.ok())
         {
             m_CFHandlesMap.erase(columnName);
-            for (int i = 0; i < m_CFDescriptors.size(); i++)
-            {
-                if (!columnName.compare(m_CFDescriptors.at(i).name))
-                {
-                    m_CFDescriptors.erase(m_CFDescriptors.begin() + i);
-                    break;
-                }
-            }
+            m_CFDescriptors.erase(std::remove_if(
+                m_CFDescriptors.begin(),
+                m_CFDescriptors.end(),
+                [&](auto const &des) { return des.name == columnName; }));
 
             return true;
         }
@@ -231,6 +226,7 @@ struct KVDB::Impl
                const std::string &value,
                const std::string &columnName)
     {
+        std::shared_lock lk(m_mtx);
         auto cf = getCFHandle(columnName);
         if (!cf)
         {
@@ -262,14 +258,13 @@ struct KVDB::Impl
         const std::vector<std::pair<std::string, std::string>> &pairsVector,
         const std::string &columnName)
     {
+        std::shared_lock lk(m_mtx);
         auto cf = getCFHandle(columnName);
         if (!cf)
         {
             return false;
         }
 
-        // TODO is this actually an error? It would be an user error but not a
-        // library error
         if (!pairsVector.size())
         {
             WAZUH_LOG_INFO("Couldn't write transaction to DB [{}], need at "
@@ -291,7 +286,6 @@ struct KVDB::Impl
         bool txnOk = true;
         for (auto const &[key, value] : pairsVector)
         {
-            // TODO this is an user error not a library error
             if (key.empty())
             {
                 WAZUH_LOG_INFO("Discarding tuple [{},{}] in DB [{}] "
@@ -310,12 +304,9 @@ struct KVDB::Impl
                                 "[{}], error: [{}]",
                                 m_name,
                                 s.ToString());
-                // TODO should we keep going if there was an error?
-                // we potentially get a series of errors after the inital one
             }
         }
 
-        // TODO should we commit a tx if we had errors?
         rocksdb::Status s = txn->Commit();
         if (!s.ok())
         {
@@ -331,6 +322,7 @@ struct KVDB::Impl
 
     bool hasKey(const std::string &key, const std::string &columnName)
     {
+        std::shared_lock lk(m_mtx);
         auto cf = getCFHandle(columnName);
         if (!cf)
         {
@@ -344,6 +336,7 @@ struct KVDB::Impl
 
     std::string read(const std::string &key, const std::string &columnName)
     {
+        std::shared_lock lk(m_mtx);
         auto cf = getCFHandle(columnName);
         if (!cf)
         {
@@ -375,6 +368,7 @@ struct KVDB::Impl
                     std::string &value,
                     const std::string &columnName)
     {
+        std::shared_lock lk(m_mtx);
         auto cf = getCFHandle(columnName);
         if (!cf)
         {
@@ -402,6 +396,7 @@ struct KVDB::Impl
 
     bool deleteKey(const std::string &key, const std::string &columnName)
     {
+        std::shared_lock lk(m_mtx);
         auto cf = getCFHandle(columnName);
         if (!cf)
         {
@@ -444,8 +439,6 @@ struct KVDB::Impl
                                 m_name,
                                 s.ToString());
                 ret = false;
-                // TODO do we continue on error. This could mean an error
-                // for the rest too
             }
         }
 
@@ -481,11 +474,6 @@ struct KVDB::Impl
      */
     bool deleteFile()
     {
-        if(m_shouldCleanupFiles)
-        {
-            //TODO check if we need to delete
-        }
-
         rocksdb::Status s =
             rocksdb::DestroyDB(m_path, rocksdb::Options(), m_CFDescriptors);
         if (!s.ok())
@@ -499,10 +487,8 @@ struct KVDB::Impl
         return true;
     }
 
-private:
     std::string m_name;
     std::string m_path;
-    bool m_overwrite;
     bool m_shouldCleanupFiles;
     State m_state = State::Invalid;
 
@@ -515,8 +501,8 @@ private:
     std::shared_mutex m_mtx;
 };
 
-KVDB::KVDB(const std::string &dbName, const std::string &folder, bool overwrite)
-    : mImpl(std::make_unique<KVDB::Impl>(dbName, folder, overwrite))
+KVDB::KVDB(const std::string &dbName, const std::string &folder)
+    : mImpl(std::make_unique<KVDB::Impl>(dbName, folder))
 {
 }
 
@@ -525,20 +511,28 @@ KVDB::KVDB()
 {
 }
 
-bool KVDB::init()
+bool KVDB::init(bool errorIfExists)
 {
-    return mImpl->init();
+    return mImpl->init(errorIfExists);
 }
 
 KVDB::~KVDB()
 {
     mImpl->close();
-    mImpl->deleteFile();
+    if (mImpl->m_shouldCleanupFiles)
+    {
+        mImpl->deleteFile();
+    }
 }
 
 bool KVDB::close()
 {
     return mImpl->close();
+}
+
+void KVDB::cleanupOnClose()
+{
+    mImpl->m_shouldCleanupFiles = true;
 }
 
 bool KVDB::writeKeyOnly(const std::string &key, const std::string &columnName)

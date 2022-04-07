@@ -6,16 +6,15 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#include "opBuilderHelperMap.hpp"
 
 #include <algorithm>
 #include <optional>
 #include <string>
 
-#include "opBuilderHelperMap.hpp"
-#include "syntax.hpp"
-
 #include <re2/re2.h>
 
+#include "syntax.hpp"
 #include <utils/stringUtils.hpp>
 
 namespace
@@ -33,12 +32,15 @@ using Event = builder::internals::types::Event;
  * - `u`: Upper case
  * - `l`: Lower case
  * @param e The event that contains the field to transform
- * @param refValue The reference to the value user as source of the transformation
+ * @param refValue The reference to the value user as source of the
+ * transformation
  * @param value The value to use as source of the transformation
  * @return types::Event The event with the field transformed
  * @throw std::logic_error if the `op` is not valid
  */
-Event opBuilderHelperStringTransformation(const std::string field, char op, Event & e,
+Event opBuilderHelperStringTransformation(const std::string field,
+                                          char op,
+                                          Event &e,
                                           std::optional<std::string> refValue,
                                           std::optional<std::string> value)
 {
@@ -47,14 +49,15 @@ Event opBuilderHelperStringTransformation(const std::string field, char op, Even
     if (refValue.has_value())
     {
         // Get reference to json event
-        // TODO Remove try catch or if nullptr after fix get method of document class
+        // TODO Remove try catch or if nullptr after fix get method of document
+        // class
         // TODO Update to use proper reference
-        const rapidjson::Value * refValueToCheck{};
+        const rapidjson::Value *refValueToCheck {};
         try
         {
             refValueToCheck = &e->get(refValue.value());
         }
-        catch (std::exception & ex)
+        catch (std::exception &ex)
         {
             // TODO Check exception type
             return e;
@@ -65,7 +68,7 @@ Event opBuilderHelperStringTransformation(const std::string field, char op, Even
             return e;
         }
         // If reache here, the refValueToCheck is a string
-        value = std::string{refValueToCheck->GetString()};
+        value = std::string {refValueToCheck->GetString()};
     }
 
     // Operation
@@ -73,13 +76,17 @@ Event opBuilderHelperStringTransformation(const std::string field, char op, Even
     {
         case 'u':
             // Upper case
-            std::transform(value.value().begin(), value.value().end(),
-                           value.value().begin(), ::toupper);
+            std::transform(value.value().begin(),
+                           value.value().end(),
+                           value.value().begin(),
+                           ::toupper);
             break;
         case 'l':
             // Lower case
-            std::transform(value.value().begin(), value.value().end(),
-                           value.value().begin(), ::tolower);
+            std::transform(value.value().begin(),
+                           value.value().end(),
+                           value.value().begin(),
+                           ::tolower);
             break;
         default:
             // if raise here, then the source code is wrong
@@ -91,9 +98,10 @@ Event opBuilderHelperStringTransformation(const std::string field, char op, Even
     try
     {
         e->set(field,
-              rapidjson::Value(value.value().c_str(), e->m_doc.GetAllocator()).Move());
+               rapidjson::Value(value.value().c_str(), e->m_doc.GetAllocator())
+                   .Move());
     }
-    catch (std::exception & ex)
+    catch (std::exception &ex)
     {
         // TODO Check exception type
         return e;
@@ -113,23 +121,26 @@ Event opBuilderHelperStringTransformation(const std::string field, char op, Even
  * - `mul`: Multiply
  * - `div`: Divide
  * @param e The event that contains the field to transform
- * @param refValue The reference to the value user as source of the transformation
+ * @param refValue The reference to the value user as source of the
+ * transformation
  * @param value The value to use as source of the transformation
  * @return types::Event The event with the field transformed
  * @throw std::logic_error if the `op` is not valid
  */
-Event opBuilderHelperIntTransformation(const std::string field, std::string op, Event & e,
+Event opBuilderHelperIntTransformation(const std::string field,
+                                       std::string op,
+                                       Event &e,
                                        std::optional<std::string> refValue,
                                        std::optional<int> value)
 {
-    // TODO Remove try catch or if nullptr after fix get method of document class
-    // Get value to compare
-    const rapidjson::Value * fieldValue {};
+    // TODO Remove try catch or if nullptr after fix get method of document
+    // class Get value to compare
+    const rapidjson::Value *fieldValue {};
     try
     {
         fieldValue = &e->get(field);
     }
-    catch (std::exception & ex)
+    catch (std::exception &ex)
     {
         // TODO Check exception type
         return e;
@@ -143,13 +154,14 @@ Event opBuilderHelperIntTransformation(const std::string field, std::string op, 
     if (refValue.has_value())
     {
         // Get reference to json event
-        // TODO Remove try catch or if nullptr after fix get method of document class
-        const rapidjson::Value * refValueToCheck {};
+        // TODO Remove try catch or if nullptr after fix get method of document
+        // class
+        const rapidjson::Value *refValueToCheck {};
         try
         {
             refValueToCheck = &e->get(refValue.value());
         }
-        catch (std::exception & ex)
+        catch (std::exception &ex)
         {
             // TODO Check exception type
             return e;
@@ -194,7 +206,7 @@ Event opBuilderHelperIntTransformation(const std::string field, std::string op, 
     {
         e->set(field, rapidjson::Value(value.value()));
     }
-    catch (std::exception & ex)
+    catch (std::exception &ex)
     {
         // TODO Check exception type
         return e;
@@ -213,7 +225,8 @@ using builder::internals::syntax::REFERENCE_ANCHOR;
 //*************************************************
 
 // <field>: +s_up/<str>|$<ref>
-types::Lifter opBuilderHelperStringUP(const types::DocumentValue & def, types::TracerFn tr)
+types::Lifter opBuilderHelperStringUP(const types::DocumentValue &def,
+                                      types::TracerFn tr)
 {
     // Get field key to check
 
@@ -231,7 +244,8 @@ types::Lifter opBuilderHelperStringUP(const types::DocumentValue & def, types::T
     auto parametersArr {utils::string::split(parm, '/')};
     if (parametersArr.size() != 2)
     {
-        throw std::runtime_error("Invalid number of parameters for s_up operator");
+        throw std::runtime_error(
+            "Invalid number of parameters for s_up operator");
     }
 
     std::optional<std::string> refExpStr {};
@@ -252,15 +266,17 @@ types::Lifter opBuilderHelperStringUP(const types::DocumentValue & def, types::T
     {
         // Append rxcpp operation
         return o.map(
-            [key, expectedStr, refExpStr](types::Event e) {
-                return opBuilderHelperStringTransformation(key, 'u', e, refExpStr,
-                                                           expectedStr);
+            [key, expectedStr, refExpStr](types::Event e)
+            {
+                return opBuilderHelperStringTransformation(
+                    key, 'u', e, refExpStr, expectedStr);
             });
     };
 }
 
 // <field>: +s_lo/<str>|$<ref>
-types::Lifter opBuilderHelperStringLO(const types::DocumentValue & def, types::TracerFn tr)
+types::Lifter opBuilderHelperStringLO(const types::DocumentValue &def,
+                                      types::TracerFn tr)
 {
 
     // Get field key to check
@@ -278,11 +294,12 @@ types::Lifter opBuilderHelperStringLO(const types::DocumentValue & def, types::T
     auto parametersArr {utils::string::split(parm, '/')};
     if (parametersArr.size() != 2)
     {
-        throw std::runtime_error("Invalid number of parameters for s_lo operator");
+        throw std::runtime_error(
+            "Invalid number of parameters for s_lo operator");
     }
 
-    std::optional<std::string> refExpStr{};
-    std::optional<std::string> expectedStr{};
+    std::optional<std::string> refExpStr {};
+    std::optional<std::string> expectedStr {};
 
     // Check if is a reference to json event
     if (parametersArr[1][0] == REFERENCE_ANCHOR)
@@ -299,19 +316,22 @@ types::Lifter opBuilderHelperStringLO(const types::DocumentValue & def, types::T
     {
         // Append rxcpp operation
         return o.map(
-            [key, expectedStr, refExpStr](types::Event e) {
-                return opBuilderHelperStringTransformation(key, 'l', e, refExpStr,
-                                                           expectedStr);
+            [key, expectedStr, refExpStr](types::Event e)
+            {
+                return opBuilderHelperStringTransformation(
+                    key, 'l', e, refExpStr, expectedStr);
             });
     };
 }
 
 // <field>: +s_trim/[begin | end | both]/char
-types::Lifter opBuilderHelperStringTrim(const types::DocumentValue & def, types::TracerFn tr)
+types::Lifter opBuilderHelperStringTrim(const types::DocumentValue &def,
+                                        types::TracerFn tr)
 {
 
     // Get field path to trim
-    std::string field {json::formatJsonPath(def.MemberBegin()->name.GetString())};
+    std::string field {
+        json::formatJsonPath(def.MemberBegin()->name.GetString())};
 
     // Get the raw value of parameter
     if (!def.MemberBegin()->value.IsString())
@@ -326,7 +346,8 @@ types::Lifter opBuilderHelperStringTrim(const types::DocumentValue & def, types:
     auto parametersArr {utils::string::split(parm, '/')};
     if (parametersArr.size() != 3)
     {
-        throw std::runtime_error("Invalid number of parameters for s_trim operator");
+        throw std::runtime_error(
+            "Invalid number of parameters for s_trim operator");
     }
 
     // Get trim type
@@ -340,7 +361,7 @@ types::Lifter opBuilderHelperStringTrim(const types::DocumentValue & def, types:
     }
 
     // get trim char
-    std::string trimChar{parametersArr[2]};
+    std::string trimChar {parametersArr[2]};
     if (trimChar.size() != 1)
     {
         throw std::runtime_error("Invalid trim char for s_trim operator");
@@ -355,12 +376,12 @@ types::Lifter opBuilderHelperStringTrim(const types::DocumentValue & def, types:
             {
                 // Shoulbe short after refact, witout try catch
                 // Get field value
-                const rapidjson::Value * fieldValue;
+                const rapidjson::Value *fieldValue;
                 try
                 {
                     fieldValue = &e->get(field);
                 }
-                catch (std::exception & ex)
+                catch (std::exception &ex)
                 {
                     // TODO Check exception type
                     return e;
@@ -373,27 +394,32 @@ types::Lifter opBuilderHelperStringTrim(const types::DocumentValue & def, types:
                 }
 
                 // Get string
-                std::string strToTrim{fieldValue->GetString()};
+                std::string strToTrim {fieldValue->GetString()};
 
                 // Trim
                 switch (trimType)
                 {
                     case 's':
                         // Trim begin
-                        strToTrim.erase(0, strToTrim.find_first_not_of(trimChar));
+                        strToTrim.erase(0,
+                                        strToTrim.find_first_not_of(trimChar));
                         break;
                     case 'e':
                         // Trim end
-                        strToTrim.erase(strToTrim.find_last_not_of(trimChar) + 1);
+                        strToTrim.erase(strToTrim.find_last_not_of(trimChar) +
+                                        1);
                         break;
                     case 'b':
                         // Trim both
-                        strToTrim.erase(0, strToTrim.find_first_not_of(trimChar));
-                        strToTrim.erase(strToTrim.find_last_not_of(trimChar) + 1);
+                        strToTrim.erase(0,
+                                        strToTrim.find_first_not_of(trimChar));
+                        strToTrim.erase(strToTrim.find_last_not_of(trimChar) +
+                                        1);
                         break;
                     default:
                         // if raise here, then the source code is wrong
-                        throw std::logic_error("Invalid trim type for s_trim operator");
+                        throw std::logic_error(
+                            "Invalid trim type for s_trim operator");
                         break;
                 }
 
@@ -401,10 +427,11 @@ types::Lifter opBuilderHelperStringTrim(const types::DocumentValue & def, types:
                 try
                 {
                     e->set(field,
-                          rapidjson::Value(strToTrim.c_str(), e->m_doc.GetAllocator())
-                              .Move());
+                           rapidjson::Value(strToTrim.c_str(),
+                                            e->m_doc.GetAllocator())
+                               .Move());
                 }
-                catch (std::exception & ex)
+                catch (std::exception &ex)
                 {
                     // TODO Check exception type
                     return e;
@@ -420,10 +447,12 @@ types::Lifter opBuilderHelperStringTrim(const types::DocumentValue & def, types:
 //*************************************************
 
 // field: +i_calc/[+|-|*|/]/val|$ref/
-types::Lifter opBuilderHelperIntCalc(const types::DocumentValue & def, types::TracerFn tr)
+types::Lifter opBuilderHelperIntCalc(const types::DocumentValue &def,
+                                     types::TracerFn tr)
 {
     // Get field
-    std::string field {json::formatJsonPath(def.MemberBegin()->name.GetString())};
+    std::string field {
+        json::formatJsonPath(def.MemberBegin()->name.GetString())};
     std::string rawValue {def.MemberBegin()->value.GetString()};
 
     std::vector<std::string> parameters {utils::string::split(rawValue, '/')};
@@ -454,7 +483,8 @@ types::Lifter opBuilderHelperIntCalc(const types::DocumentValue & def, types::Tr
     if (parameters[2][0] == REFERENCE_ANCHOR)
     {
         // Check case `+i_calc/op/$`
-        refValue = json::formatJsonPath(parameters[2].substr(1, std::string::npos));
+        refValue =
+            json::formatJsonPath(parameters[2].substr(1, std::string::npos));
     }
     else
     {
@@ -466,8 +496,10 @@ types::Lifter opBuilderHelperIntCalc(const types::DocumentValue & def, types::Tr
     {
         // Append rxcpp operation
         return o.map(
-            [=](types::Event e)
-            { return opBuilderHelperIntTransformation(field, op, e, refValue, value); });
+            [=](types::Event e) {
+                return opBuilderHelperIntTransformation(
+                    field, op, e, refValue, value);
+            });
     };
 }
 
@@ -476,10 +508,12 @@ types::Lifter opBuilderHelperIntCalc(const types::DocumentValue & def, types::Tr
 //*************************************************
 
 // field: +r_ext/_field/regexp/
-types::Lifter opBuilderHelperRegexExtract(const types::DocumentValue & def, types::TracerFn tr)
+types::Lifter opBuilderHelperRegexExtract(const types::DocumentValue &def,
+                                          types::TracerFn tr)
 {
     // Get fields
-    std::string field {json::formatJsonPath(def.MemberBegin()->name.GetString())};
+    std::string field {
+        json::formatJsonPath(def.MemberBegin()->name.GetString())};
     std::string value {def.MemberBegin()->value.GetString()};
 
     std::vector<std::string> parameters {utils::string::split(value, '/')};
@@ -493,8 +527,8 @@ types::Lifter opBuilderHelperRegexExtract(const types::DocumentValue & def, type
     auto regex_ptr {std::make_shared<RE2>(parameters[2])};
     if (!regex_ptr->ok())
     {
-        const std::string err = "Error compiling regex '" + parameters[2] + "'. "
-                                + regex_ptr->error();
+        const std::string err = "Error compiling regex '" + parameters[2] +
+                                "'. " + regex_ptr->error();
         throw std::runtime_error(err);
     }
 
@@ -506,12 +540,12 @@ types::Lifter opBuilderHelperRegexExtract(const types::DocumentValue & def, type
             [=](types::Event e)
             {
                 // TODO Remove try catch
-                const rapidjson::Value * field_str{};
+                const rapidjson::Value *field_str {};
                 try
                 {
                     field_str = &e->get(field);
                 }
-                catch (std::exception & ex)
+                catch (std::exception &ex)
                 {
                     // TODO Check exception type
                     return e;
@@ -519,15 +553,18 @@ types::Lifter opBuilderHelperRegexExtract(const types::DocumentValue & def, type
                 if (field_str != nullptr && field_str->IsString())
                 {
                     std::string match;
-                    if (RE2::PartialMatch(field_str->GetString(), *regex_ptr, &match))
+                    if (RE2::PartialMatch(
+                            field_str->GetString(), *regex_ptr, &match))
                     {
                         // Create and add string to event
                         try
                         {
                             e->set(map_field,
-                                rapidjson::Value(match.c_str(), e->m_doc.GetAllocator()).Move());
+                                   rapidjson::Value(match.c_str(),
+                                                    e->m_doc.GetAllocator())
+                                       .Move());
                         }
-                        catch (std::exception & ex)
+                        catch (std::exception &ex)
                         {
                             // TODO Check exception type
                             return e;
