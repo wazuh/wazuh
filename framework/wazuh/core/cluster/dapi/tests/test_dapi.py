@@ -495,13 +495,14 @@ def test_DistributedAPI_check_wazuh_status_exception(node_info_mock, status_valu
             assert e._extra_message['not_ready_daemons'] == extra_message
 
 
-@patch("asyncio.get_event_loop")
-def test_APIRequestQueue_init(loop_mock):
+@patch("asyncio.Queue")
+def test_APIRequestQueue_init(queue_mock):
     """Test `APIRequestQueue` constructor."""
     server = DistributedAPI(f=agent.get_agents_summary_status, logger=logger)
     api_request_queue = APIRequestQueue(server=server)
     api_request_queue.add_request(b'testing')
     assert api_request_queue.server == server
+    queue_mock.assert_called_once()
 
 
 @patch("wazuh.core.cluster.common.import_module", return_value="os.path")
