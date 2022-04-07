@@ -864,7 +864,6 @@ class AWSBucket(WazuhIntegration):
             gzip_file = gzip.open(filename=raw_object, mode='rt')
             # Ensure that the file is not corrupted by reading from it
             gzip_file.read()
-            gzip_file.seek(0)
             return gzip_file
         except (gzip.BadGzipFile, zlib.error, TypeError):
             print(f'ERROR: invalid gzip file received.')
