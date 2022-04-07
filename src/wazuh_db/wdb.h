@@ -169,6 +169,16 @@ typedef enum wdb_stmt {
     WDB_STMT_FIM_REGISTRY_CLEAR,
     WDB_STMT_FIM_REGISTRY_DELETE_AROUND,
     WDB_STMT_FIM_REGISTRY_DELETE_RANGE,
+    WDB_STMT_FIM_REGISTRY_KEY_SELECT_CHECKSUM,
+    WDB_STMT_FIM_REGISTRY_KEY_SELECT_CHECKSUM_RANGE,
+    WDB_STMT_FIM_REGISTRY_KEY_CLEAR,
+    WDB_STMT_FIM_REGISTRY_KEY_DELETE_AROUND,
+    WDB_STMT_FIM_REGISTRY_KEY_DELETE_RANGE,
+    WDB_STMT_FIM_REGISTRY_VALUE_SELECT_CHECKSUM,
+    WDB_STMT_FIM_REGISTRY_VALUE_SELECT_CHECKSUM_RANGE,
+    WDB_STMT_FIM_REGISTRY_VALUE_CLEAR,
+    WDB_STMT_FIM_REGISTRY_VALUE_DELETE_AROUND,
+    WDB_STMT_FIM_REGISTRY_VALUE_DELETE_RANGE,
     WDB_STMT_ROOTCHECK_INSERT_PM,
     WDB_STMT_ROOTCHECK_UPDATE_PM,
     WDB_STMT_ROOTCHECK_DELETE_PM,
@@ -310,6 +320,8 @@ typedef enum {
     WDB_FIM,                         ///< File integrity monitoring.
     WDB_FIM_FILE,                    ///< File integrity monitoring.
     WDB_FIM_REGISTRY,                ///< Registry integrity monitoring.
+    WDB_FIM_REGISTRY_KEY,            ///< Registry key integrity monitoring.
+    WDB_FIM_REGISTRY_VALUE,          ///< Registry value integrity monitoring.
     WDB_SYSCOLLECTOR_PROCESSES,      ///< Processes integrity monitoring.
     WDB_SYSCOLLECTOR_PACKAGES,       ///< Packages integrity monitoring.
     WDB_SYSCOLLECTOR_HOTFIXES,       ///< Hotfixes integrity monitoring.
@@ -332,6 +344,7 @@ extern char *schema_upgrade_v5_sql;
 extern char *schema_upgrade_v6_sql;
 extern char *schema_upgrade_v7_sql;
 extern char *schema_upgrade_v8_sql;
+extern char *schema_upgrade_v9_sql;
 extern char *schema_global_upgrade_v1_sql;
 extern char *schema_global_upgrade_v2_sql;
 extern char *schema_global_upgrade_v3_sql;

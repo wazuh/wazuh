@@ -26,9 +26,9 @@ extern "C"
 }
 #endif
 
-#define FIM_COMPONENT_FILE      "fim_file"
-#define FIM_COMPONENT_REGISTRY  "fim_registry"
-#define FIM_COMPONENT_VALUE     "fim_value"
+#define FIM_COMPONENT_FILE              "fim_file"
+#define FIM_COMPONENT_REGISTRY_KEY      "fim_registry_key"
+#define FIM_COMPONENT_REGISTRY_VALUE    "fim_registry_value"
 
 constexpr auto QUEUE_SIZE
 {
@@ -76,7 +76,7 @@ constexpr auto CREATE_REGISTRY_KEY_DB_STATEMENT
     scanned INTEGER,
     last_event INTEGER,
     checksum TEXT NOT NULL,
-    hash_path TEXT NOT NULL,
+    hash_full_path TEXT NOT NULL,
     PRIMARY KEY (arch, path)) WITHOUT ROWID;
     CREATE INDEX IF NOT EXISTS path_index ON registry_key (path);)"
 };
@@ -95,7 +95,7 @@ constexpr auto CREATE_REGISTRY_VALUE_DB_STATEMENT
     scanned INTEGER,
     last_event INTEGER,
     checksum TEXT NOT NULL,
-    hash_path TEXT NOT NULL,
+    hash_full_path TEXT NOT NULL,
     PRIMARY KEY(path, arch, name)
     FOREIGN KEY (path) REFERENCES registry_key(path)
     FOREIGN KEY (arch) REFERENCES registry_key(arch)) WITHOUT ROWID;

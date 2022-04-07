@@ -11,6 +11,7 @@
 
 #include "dbRegistryKey.hpp"
 #include "fimCommonDefs.h"
+#include "hashHelper.h"
 
 void RegistryKey::createFimEntry()
 {
@@ -75,6 +76,7 @@ void RegistryKey::createJSON()
     nlohmann::json conf;
     nlohmann::json data;
     nlohmann::json options;
+    Utils::HashData hash;
 
     conf["table"] = FIMDB_REGISTRY_KEY_TABLENAME;
     data["path"] = m_identifier;
@@ -88,6 +90,15 @@ void RegistryKey::createJSON()
     data["user_name"] = m_username;
     data["group_name"] = m_groupname;
     data["mtime"] = m_time;
+
+    // Hash used in sync messages containing "key", arch and path
+    hash.update("key", 4);
+    const auto& valueString = data["arch"].get<std::string>();
+    hash.update(valueString.c_str(), valueString.size());
+    const auto& valueString2 = data["path"].get<std::string>();
+    hash.update(valueString2.c_str(), valueString2.size());
+    data["hash_full_path"] = Utils::asciiToHex(hash.hash());
+
     conf["data"] = nlohmann::json::array({data});
 
     if (m_oldData)

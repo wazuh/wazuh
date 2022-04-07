@@ -294,13 +294,13 @@ typedef struct fim_file_data {
 
 typedef struct fim_registry_key {
     unsigned int id;
-    char * path;
-    cJSON * perm_json;
-    char * perm;
-    char * uid;
-    char * gid;
-    char * user_name;
-    char * group_name;
+    char* path;
+    cJSON* perm_json;
+    char* perm;
+    char* uid;
+    char* gid;
+    char* user_name;
+    char* group_name;
     unsigned int mtime;
     int arch;
 
@@ -314,7 +314,7 @@ typedef struct fim_registry_value_data {
     unsigned int id;
     char* path;
     int arch;
-    char *name;
+    char* name;
     unsigned int type;
     unsigned int size;
     os_md5 hash_md5;

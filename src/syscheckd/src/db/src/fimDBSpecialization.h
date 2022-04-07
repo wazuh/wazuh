@@ -63,31 +63,31 @@ constexpr auto FIM_REGISTRY_SYNC_CONFIG_STATEMENT
     {
         "decoder_type":"JSON_RANGE",
         "table":"registry_key",
-        "component":"fim_registry",
-        "index":"item_id",
+        "component":"fim_registry_key",
+        "index":"hash_full_path",
         "last_event":"last_event",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                "row_filter":"WHERE hash_full_path BETWEEN '?' and '?' ORDER BY hash_full_path",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "count_range_query_json": {
-                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                "row_filter":"WHERE hash_full_path BETWEEN '?' and '?' ORDER BY hash_full_path",
                 "count_field_name":"count",
                 "column_list":["count(*) AS count "],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "row_data_query_json": {
-                "row_filter":"WHERE path ='?'",
+                "row_filter":"WHERE hash_full_path ='?'",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "range_checksum_query_json": {
-                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                "row_filter":"WHERE hash_full_path BETWEEN '?' and '?' ORDER BY hash_full_path",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -102,31 +102,31 @@ constexpr auto FIM_VALUE_SYNC_CONFIG_STATEMENT
     {
         "decoder_type":"JSON_RANGE",
         "table":"registry_data",
-        "component":"fim_value",
-        "index":"item_id",
+        "component":"fim_registry_value",
+        "index":"hash_full_path",
         "last_event":"last_event",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                "row_filter":"WHERE hash_full_path BETWEEN '?' and '?' ORDER BY hash_full_path",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "count_range_query_json": {
-                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                "row_filter":"WHERE hash_full_path BETWEEN '?' and '?' ORDER BY hash_full_path",
                 "count_field_name":"count",
                 "column_list":["count(*) AS count "],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "row_data_query_json": {
-                "row_filter":"WHERE path ='?'",
+                "row_filter":"WHERE hash_full_path ='?'",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "range_checksum_query_json": {
-                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
+                "row_filter":"WHERE hash_full_path BETWEEN '?' and '?' ORDER BY hash_full_path",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -176,28 +176,28 @@ constexpr auto FIM_REGISTRY_START_CONFIG_STATEMENT
     R"({"table":"registry_key",
         "first_query":
             {
-                "column_list":["path"],
+                "column_list":["hash_full_path"],
                 "row_filter":" ",
                 "distinct_opt":false,
-                "order_by_opt":"path DESC",
+                "order_by_opt":"hash_full_path DESC",
                 "count_opt":1
             },
         "last_query":
             {
-                "column_list":["path"],
+                "column_list":["hash_full_path"],
                 "row_filter":" ",
                 "distinct_opt":false,
-                "order_by_opt":"path ASC",
+                "order_by_opt":"hash_full_path ASC",
                 "count_opt":1
             },
-        "component":"fim_registry",
-        "index":"item_id",
+        "component":"fim_registry_key",
+        "index":"hash_full_path",
         "last_event":"last_event",
         "checksum_field":"checksum",
         "range_checksum_query_json":
             {
-                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
-                "column_list":["path, checksum"],
+                "row_filter":"WHERE hash_full_path BETWEEN '?' and '?' ORDER BY hash_full_path",
+                "column_list":["hash_full_path, checksum"],
                 "distinct_opt":false,
                 "order_by_opt":"",
                 "count_opt":100
@@ -211,28 +211,28 @@ constexpr auto FIM_VALUE_START_CONFIG_STATEMENT
     R"({"table":"registry_data",
         "first_query":
             {
-                "column_list":["path"],
+                "column_list":["hash_full_path"],
                 "row_filter":" ",
                 "distinct_opt":false,
-                "order_by_opt":"path DESC",
+                "order_by_opt":"hash_full_path DESC",
                 "count_opt":1
             },
         "last_query":
             {
-                "column_list":["path"],
+                "column_list":["hash_full_path"],
                 "row_filter":" ",
                 "distinct_opt":false,
-                "order_by_opt":"path ASC",
+                "order_by_opt":"hash_full_path ASC",
                 "count_opt":1
             },
-        "component":"fim_value",
-        "index":"item_id",
+        "component":"fim_registry_value",
+        "index":"hash_full_path",
         "last_event":"last_event",
         "checksum_field":"checksum",
         "range_checksum_query_json":
             {
-                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
-                "column_list":["path, checksum"],
+                "row_filter":"WHERE hash_full_path BETWEEN '?' and '?' ORDER BY hash_full_path",
+                "column_list":["hash_full_path, checksum"],
                 "distinct_opt":false,
                 "order_by_opt":"",
                 "count_opt":100
@@ -331,11 +331,11 @@ class FIMDBCreator<OSType::WINDOWS> final
             if (syncRegistryEnabled)
             {
 
-                RSyncHandler->registerSyncID(FIM_COMPONENT_REGISTRY,
+                RSyncHandler->registerSyncID(FIM_COMPONENT_REGISTRY_KEY,
                                             handle,
                                             nlohmann::json::parse(FIM_REGISTRY_SYNC_CONFIG_STATEMENT),
                                             syncRegistryMessageFunction);
-                RSyncHandler->registerSyncID(FIM_COMPONENT_VALUE,
+                RSyncHandler->registerSyncID(FIM_COMPONENT_REGISTRY_VALUE,
                                             handle,
                                             nlohmann::json::parse(FIM_VALUE_SYNC_CONFIG_STATEMENT),
                                             syncRegistryMessageFunction);

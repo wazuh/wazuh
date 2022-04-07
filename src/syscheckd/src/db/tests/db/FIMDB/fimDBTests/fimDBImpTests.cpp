@@ -66,7 +66,7 @@ class FimDBWinFixture : public ::testing::Test
             {
                 [](const std::string & msg)
                 {
-                    mockSyncMessage(FIM_COMPONENT_REGISTRY, msg.c_str());
+                    mockSyncMessage(FIM_COMPONENT_REGISTRY_KEY, msg.c_str());
                 }
             };
 
@@ -141,7 +141,7 @@ class FimDBFixture : public ::testing::Test
             {
                 [](const std::string & msg)
                 {
-                    mockSyncMessage(FIM_COMPONENT_REGISTRY, msg.c_str());
+                    mockSyncMessage(FIM_COMPONENT_REGISTRY_KEY, msg.c_str());
                 }
             };
 

@@ -544,14 +544,20 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
         os_strdup(path, full_path);
         item_type = "registry_key";
     } else if (strncmp(item_type, "registry_", 9) == 0) {
-        int full_path_length;
-        char *path_escaped_slahes;
-        char *path_escaped;
+
+        if (!cJSON_IsNumber(version)) {
+            // Synchronization messages without the "version" attribute are ignored, but won't trigger any error
+            // message.
+            return 0;
+        }
 
         arch = cJSON_GetStringValue(cJSON_GetObjectItem(data, "arch"));
         value_name = cJSON_GetStringValue(cJSON_GetObjectItem(data, "value_name"));
 
-        if (cJSON_GetDoubleValue(version) == 2.0) {
+        if (version->valuedouble == 2.0) {
+            int full_path_length;
+            char *path_escaped_slahes;
+            char *path_escaped;
 
             path_escaped_slahes = wstr_replace(path, "\\", "\\\\");
             path_escaped = wstr_replace(path_escaped_slahes, ":", "\\:");
@@ -600,6 +606,7 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
             os_free(path_escaped);
         } else {
             os_strdup(path, full_path);
+            path = cJSON_GetStringValue(cJSON_GetObjectItem(data, "key_path"));
         }
     } else {
         merror("DB(%s) fim/save request with invalid '%s' type argument.", wdb->id, item_type);

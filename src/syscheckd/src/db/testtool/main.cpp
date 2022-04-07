@@ -63,7 +63,7 @@ int main(int argc, const char* argv[])
             {
                 [](const std::string & msg)
                 {
-                    syncCallback(FIM_COMPONENT_REGISTRY, msg.c_str());
+                    syncCallback(FIM_COMPONENT_REGISTRY_KEY, msg.c_str());
                 }
             };
 
