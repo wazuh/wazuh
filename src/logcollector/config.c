@@ -35,7 +35,6 @@ int LogCollectorConfig(const char *cfgfile)
     log_config.globs = NULL;
     log_config.socket_list = NULL;
     log_config.agent_cfg = 0;
-    log_config.macos_blocks_count = 0;
     accept_remote = getDefine_Int("logcollector", "remote_commands", 0, 1);
     log_config.accept_remote = accept_remote;
 

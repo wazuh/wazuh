@@ -347,8 +347,9 @@ void LogCollectorStart()
                 merror("Missing command argument. Ignoring it.");
             }
         }
-#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
+
         else if (strcmp(current->logformat, MACOS) == 0) {
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
             /* Get macOS version */
             w_macos_create_log_env(current, sysinfo);
             current->read = read_macos;
@@ -364,8 +365,14 @@ void LogCollectorStart()
                     w_logcollector_state_add_target(MACOS_LOG_NAME, current->target[tg_idx]);
                 }
             }
-        }
+#else
+            minfo(LOGCOLLECTOR_ONLY_MACOS);
 #endif
+            os_free(current->file);
+            os_free(current->command);
+            os_free(current->fp);
+        }
+
         else if (j < 0) {
             set_read(current, i, j);
             if (current->file) {
