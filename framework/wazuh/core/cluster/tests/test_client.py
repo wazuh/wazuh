@@ -229,7 +229,7 @@ def test_ac_connection_result():
         abstract_client.transport = m_mock
 
         abstract_client.connection_result(m_mock)
-        logger_mock.assert_called_once_with("Sucessfully connected to master.")
+        logger_mock.assert_called_once_with("Successfully connected to master.")
         assert abstract_client.connected is True
 
 
@@ -274,7 +274,8 @@ def test_ac_connection_lost(cancel_tasks_mock):
     # Test the second condition
     with patch.object(logging.getLogger('wazuh'), "error") as logger_mock:
         abstract_client.connection_lost(exc=WazuhException(1001))
-        logger_mock.assert_called_once_with(f"Connection closed due to an unhandled error: {WazuhException(1001)}\n")
+        logger_mock.assert_called_once_with(f"Connection closed due to an unhandled error: {WazuhException(1001)}\n",
+                                            exc_info=False)
 
 
 def test_ac_cancel_all_tasks():
@@ -301,7 +302,7 @@ def test_ac_process_response():
 
     # Test the fist condition
     assert (abstract_client.process_response(command=b'ok-m',
-                                             payload=b"payload") == b"Sucessful response from master: " + b"payload")
+                                             payload=b"payload") == b"Successful response from master: " + b"payload")
 
     # Test the second condition
     with patch('wazuh.core.cluster.common.Handler.process_response', return_value=b'ok') as pr_mock:
@@ -397,7 +398,7 @@ async def test_ac_performance_test_client(send_request_mock, perf_counter_mock, 
             except Exception:
                 pass
 
-            logger_mock.assert_called_with("ok")
+            logger_mock.assert_called_with("ok", exc_info=False)
             send_request_mock.assert_called_with(b'echo', b'a' * 10)
 
         with patch.object(logging.getLogger("wazuh"), "info") as logger_mock:

@@ -1364,7 +1364,7 @@ static void test_fim_file_modify_transaction(void **state) {
     expect_value(__wrap_decode_win_acl_json, perms, permissions);
 #endif
 
-    expect_OS_MD5_SHA1_SHA256_File_call(file_path, file_path, "d41d8cd98f00b204e9800998ecf8427e",
+    expect_OS_MD5_SHA1_SHA256_File_call(file_path, syscheck.prefilter_cmd, "d41d8cd98f00b204e9800998ecf8427e",
                                         "da39a3ee5e6b4b0d3255bfef95601890afd80709",
                                         "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", OS_BINARY,
                                         0x400, 0);
@@ -1521,9 +1521,9 @@ static void test_fim_file_error_on_insert(void **state) {
 #endif
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, fname, file_path);
 #ifndef TEST_WINAGENT
-    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "/bin/ls");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, syscheck.prefilter_cmd);
 #else
-    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "c:\\windows\\system32\\cmd.exe");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, syscheck.prefilter_cmd);
 #endif
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, md5output, "d41d8cd98f00b204e9800998ecf8427e");
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha1output, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
@@ -3172,9 +3172,9 @@ static void test_fim_get_data_hash_error(void **state) {
 
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, fname, "test");
 #ifndef TEST_WINAGENT
-    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "/bin/ls");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, syscheck.prefilter_cmd);
 #else
-    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, "c:\\windows\\system32\\cmd.exe");
+    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, syscheck.prefilter_cmd);
 #endif
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, md5output, "d41d8cd98f00b204e9800998ecf8427e");
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha1output, "da39a3ee5e6b4b0d3255bfef95601890afd80709");

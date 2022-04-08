@@ -88,8 +88,8 @@ def get_distinct_agents(agent_list: list = None, offset: int = 0, limit: int = c
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
-def get_agents_summary_status(agent_list=None):
-    """Count the number of agents by status.
+def get_agents_summary_status(agent_list: list = None):
+    """Count the number of agents by connection and groups configuration synchronization statuses.
 
     Parameters
     ----------
@@ -100,19 +100,25 @@ def get_agents_summary_status(agent_list=None):
     -------
     WazuhResult
     """
-    summary = {'active': 0, 'disconnected': 0, 'never_connected': 0, 'pending': 0, 'total': 0}
+    connection = {'active': 0, 'disconnected': 0, 'never_connected': 0, 'pending': 0, 'total': 0}
+    sync_configuration = {'synced': 0, 'not synced': 0, 'total': 0}
     if agent_list:
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
         # We don't consider agent 000 in order to get the summary
-        with WazuhDBQueryAgents(limit=None, select=['status'], query="id!=000", **rbac_filters) as db_query:
+        with WazuhDBQueryAgents(limit=None, select=['status', 'group_config_status'], query="id!=000",
+                                **rbac_filters) as db_query:
             data = db_query.run()
 
-        for agent in data['items']:
-            summary[agent['status']] += 1
-            summary['total'] += 1
+        items = data['items']
+        for agent in items:
+            connection[agent['status']] += 1
+            sync_configuration[agent['group_config_status']] += 1
 
-    return WazuhResult({'data': summary})
+        connection['total'] = sync_configuration['total'] = len(items)
+
+    sync_configuration['not_synced'] = sync_configuration.pop('not synced')
+    return WazuhResult({'data': {'connection': connection, 'configuration': sync_configuration}})
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
@@ -1100,8 +1106,19 @@ def get_agent_config(agent_list=None, component=None, config=None):
 def get_agents_sync_group(agent_list=None):
     """Get agents configuration sync status.
 
-    :param agent_list: List of agents ID's.
-    :return AffectedItemsWazuhResult.
+    Notes
+    -----
+    To be deprecated in v5.0.
+
+    Parameters
+    ----------
+    agent_list : list
+        List of agent IDs.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Agent group sync status information.
     """
     result = AffectedItemsWazuhResult(all_msg='Sync info was returned for all selected agents',
                                       some_msg='Sync info was not returned for some selected agents',

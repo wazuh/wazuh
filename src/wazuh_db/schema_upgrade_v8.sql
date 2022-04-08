@@ -62,12 +62,17 @@ CREATE TABLE IF NOT EXISTS vuln_cves (
     architecture TEXT,
     cve TEXT,
     detection_time TEXT DEFAULT '',
-    severity TEXT DEFAULT '-' CHECK (severity IN ('Critical', 'High', 'Medium', 'Low', 'None', '-')),
+    severity TEXT DEFAULT 'Untriaged' CHECK (severity IN ('Critical', 'High', 'Medium', 'Low', 'None', 'Untriaged')),
     cvss2_score REAL DEFAULT 0,
     cvss3_score REAL DEFAULT 0,
     reference TEXT DEFAULT '' NOT NULL,
     type TEXT DEFAULT '' NOT NULL CHECK (type IN ('OS', 'PACKAGE')),
     status TEXT DEFAULT 'PENDING' NOT NULL CHECK (status IN ('VALID', 'PENDING', 'OBSOLETE')),
+    external_references TEXT DEFAULT '',
+    condition TEXT DEFAULT '',
+    title TEXT DEFAULT '',
+    published TEXT '',
+    updated TEXT '',
     PRIMARY KEY (reference, cve)
 );
 CREATE INDEX IF NOT EXISTS packages_id ON vuln_cves (name);

@@ -896,7 +896,7 @@ async def test_master_handler_sync_wazuh_db_info_ok(send_request_mock, loads_moc
             """Auxiliary method."""
             self._debug2.append(data)
 
-        def error(self, data):
+        def error(self, data, exc_info=False):
             """Auxiliary method."""
             self._error.append(data)
 

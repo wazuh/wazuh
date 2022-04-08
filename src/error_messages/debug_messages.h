@@ -96,7 +96,7 @@
 #define VU_ERROR_CMP_VER      "(5487): Unknown relation '%s' between versions '%s' and '%s' for package '%s'"
 #define VU_DISCARD_CVE_ENTRY  "(5488): Package '%s' not affected by '%s' with misleading condition (%s '%s')."
 #define VU_DISCARD_DU         "(5489): '%s' vulnerability information discarded for agent '%.3d' ('KB%s'): Dynamic Updates (DU) are only available when upgrading to new Windows 10 versions."
-#define VU_REMOVED_VULN       "(5490): The vulnerability '%s' affecting '%s' was eliminated"
+#define VU_REMOVED_VULN       "(5490): The vulnerability '%s' affecting '%s' was solved"
 #define VU_AG_BASELINE_SCAN   "(5491): A baseline scan will be run on agent '%.3d'"
 
 /* File integrity monitoring debug messages */

@@ -191,7 +191,7 @@ async def test_sync_files_sync_ok(compress_files_mock, unlink_mock, relpath_mock
         json_dumps_mock.assert_called_once_with(
             exception.WazuhClusterError(code=3016, extra_message=str(b"Error")),
             cls=common.WazuhJSONEncoder)
-        logger_mock.assert_called_once_with("Error")
+        logger_mock.assert_called_once_with("Error", exc_info=False)
 
     worker_mock.count = 2
     with patch.object(WorkerMock, "send_file") as send_file_mock:
@@ -205,7 +205,7 @@ async def test_sync_files_sync_ok(compress_files_mock, unlink_mock, relpath_mock
                     f" files."), call("Sending zip file to master."), call("Zip file sent to master.")])
                 logger_error_mock.assert_called_once_with("Error sending zip file: ")
                 compress_files_mock.assert_has_calls([call(name="Testing", list_path=files_to_sync,
-                                                           cluster_control_json=files_metadata)]*2)
+                                                           cluster_control_json=files_metadata)] * 2)
                 unlink_mock.assert_called_once_with("files/path/")
                 relpath_mock.assert_called_once_with('files/path/', core_common.WAZUH_PATH)
                 assert json_dumps_mock.call_count == 2
@@ -561,7 +561,7 @@ def test_worker_handler_sync_agent_info_from_master(json_loads_mock):
         json_loads_mock.return_value = {"updated_chunks": 10, "error_messages": "error"}
         assert worker_handler.sync_agent_info_from_master("response") == (b'ok', b'Thanks')
         logger_error_mock.assert_called_once_with(
-            "Finished in 0.000s (10 chunks updated). There were 5 chunks with errors: error")
+            "Finished in 0.000s (10 chunks updated). There were 5 chunks with errors: error", exc_info=False)
 
 
 @patch.object(logging.getLogger("wazuh.Agent-info sync"), "error")
@@ -569,7 +569,8 @@ def test_worker_handler_error_receiving_agent_info(logger_mock):
     """Check the correct output message when a command 'syn_m_a_err' takes place."""
 
     assert worker_handler.error_receiving_agent_info("response") == (b'ok', b'Thanks')
-    logger_mock.assert_called_once_with("There was an error while processing agent-info on the master: response")
+    logger_mock.assert_called_once_with("There was an error while processing agent-info on the master: response",
+                                        exc_info=False)
 
 
 @pytest.mark.asyncio
@@ -584,6 +585,7 @@ def test_worker_handler_error_receiving_agent_info(logger_mock):
 async def test_worker_handler_sync_integrity(request_permission_mock, run_in_pool_mock, send_request_mock,
                                              get_files_status, error_mock, sync_mock, json_dumps_mock):
     """Check if files status are correctly obtained and sent to the master."""
+
     async def asyncio_sleep_mock(delay, result=None, *, loop=None):
         assert delay == worker_handler.cluster_items['intervals']['worker']['sync_agent_info']
         raise Exception()
@@ -919,7 +921,7 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
         def debug2(self, debug):
             self._debug2.append(debug)
 
-        def error(self, error):
+        def error(self, error, exc_info=False):
             self._error.append(error)
 
     all_mocks = [wazuh_gid_mock, wazuh_uid_mock, path_join_mock, mkdir_with_mode_mock, safe_move_mock, open_mock,
@@ -978,7 +980,7 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
                 logger_error_mock.assert_has_calls(
                     [call("Error processing shared file 'filename1': string indices must be integers"),
                      call("Error processing missing file 'filename2': string indices must be integers"),
-                     call("Found errors: 1 overwriting, 1 creating and 0 removing")])
+                     call("Found errors: 1 overwriting, 1 creating and 0 removing", exc_info=False)])
                 logger_debug_mock.assert_has_calls(
                     [call("Received 1 shared files to update from master."),
                      call("Received 1 missing files to update from master."),
@@ -1017,10 +1019,10 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
                 logger_error_mock.assert_has_calls(
                     [call("Error processing shared file 'filename1': string indices must be integers"),
                      call("Error processing missing file 'filename2': string indices must be integers"),
-                     call("Found errors: 1 overwriting, 1 creating and 0 removing"),
+                     call("Found errors: 1 overwriting, 1 creating and 0 removing", exc_info=False),
                      call("Error processing shared file 'filename1': string indices must be integers"),
                      call("Error processing missing file 'filename2': string indices must be integers"),
-                     call("Found errors: 1 overwriting, 1 creating and 1 removing")])
+                     call("Found errors: 1 overwriting, 1 creating and 1 removing", exc_info=False)])
                 logger_debug_mock.assert_has_calls(
                     [call("Received 1 shared files to update from master."),
                      call("Received 1 missing files to update from master."),
@@ -1072,11 +1074,11 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
                         logger_error_mock.assert_has_calls(
                             [call("Error processing shared file 'filename1': string indices must be integers"),
                              call("Error processing missing file 'filename2': string indices must be integers"),
-                             call("Found errors: 1 overwriting, 1 creating and 0 removing"),
+                             call("Found errors: 1 overwriting, 1 creating and 0 removing", exc_info=False),
                              call("Error processing shared file 'filename1': string indices must be integers"),
                              call("Error processing missing file 'filename2': string indices must be integers"),
-                             call("Found errors: 1 overwriting, 1 creating and 1 removing"),
-                             call("Found errors: 0 overwriting, 0 creating and 1 removing")])
+                             call("Found errors: 1 overwriting, 1 creating and 1 removing", exc_info=False),
+                             call("Found errors: 0 overwriting, 0 creating and 1 removing", exc_info=False)])
                         logger_debug_mock.assert_has_calls(
                             [call("Received 1 shared files to update from master."),
                              call("Received 1 missing files to update from master."),
@@ -1121,12 +1123,12 @@ def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_u
                 logger_error_mock.assert_has_calls(
                     [call("Error processing shared file 'filename1': string indices must be integers"),
                      call("Error processing missing file 'filename2': string indices must be integers"),
-                     call("Found errors: 1 overwriting, 1 creating and 0 removing"),
+                     call("Found errors: 1 overwriting, 1 creating and 0 removing", exc_info=False),
                      call("Error processing shared file 'filename1': string indices must be integers"),
                      call("Error processing missing file 'filename2': string indices must be integers"),
-                     call("Found errors: 1 overwriting, 1 creating and 1 removing"),
-                     call("Found errors: 0 overwriting, 0 creating and 1 removing"),
-                     call("Found errors: 0 overwriting, 0 creating and 2 removing")])
+                     call("Found errors: 1 overwriting, 1 creating and 1 removing", exc_info=False),
+                     call("Found errors: 0 overwriting, 0 creating and 1 removing", exc_info=False),
+                     call("Found errors: 0 overwriting, 0 creating and 2 removing", exc_info=False)])
                 logger_debug_mock.assert_has_calls(
                     [call("Received 1 shared files to update from master."),
                      call("Received 1 missing files to update from master."),
@@ -1195,6 +1197,7 @@ def test_worker_init(api_request_queue, running_loop_mock):
     assert nested_worker.extra_args["node_type"] == nested_worker.node_type
     assert nested_worker.dapi == api_request_queue.return_value
     assert nested_worker.version == "1.0.0"
+
 
 @patch('asyncio.get_running_loop', return_value=loop)
 @patch("wazuh.core.cluster.client.AbstractClientManager.add_tasks", return_value=["task"])

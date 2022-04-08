@@ -22,7 +22,6 @@ with patch('wazuh.core.common.wazuh_uid'):
 # all necessary params
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'test_agent')
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'test_agent')
 
 
 def get_WazuhDBQuery_params(wdb_class):
@@ -78,11 +77,12 @@ class InitAgent:
         with open(os.path.join(data_path, db_name)) as f:
             self.cur.executescript(f.read())
 
-        self.never_connected_fields = {'status', 'name', 'ip', 'registerIP', 'node_name', 'dateAdd', 'id'}
+        self.never_connected_fields = {'status', 'name', 'ip', 'registerIP', 'node_name', 'dateAdd', 'id',
+                                       'group_config_status'}
         self.pending_fields = self.never_connected_fields | {'manager', 'lastKeepAlive'}
         self.manager_fields = self.pending_fields | {'version', 'os', 'group'}
         self.active_fields = self.manager_fields | {'group', 'mergedSum', 'configSum'}
-        self.disconnected_fields = self.active_fields | {"disconnection_time"}
+        self.disconnected_fields = self.active_fields | {'disconnection_time'}
         self.manager_fields -= {'registerIP'}
 
 

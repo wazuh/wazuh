@@ -27,4 +27,6 @@ int __wrap_OS_GetIPv4FromIPv6(char *ip_address, size_t size);
 
 int __wrap_OS_ExpandIPv6(char *ip_address, size_t size);
 
+int __wrap_OS_IPFoundList(const char *ip_address, os_ip **list_of_ips);
+
 #endif

@@ -24,6 +24,11 @@ cJSON* __wrap_wdb_insert_vuln_cves(int id,
                                    const char *reference,
                                    const char *type,
                                    const char *status,
+                                   char **external_references,
+                                   const char *condition,
+                                   const char *title,
+                                   const char *published,
+                                   const char *updated,
                                    bool check_pkg_existence,
                                    __attribute__((unused)) int *sock);
 
