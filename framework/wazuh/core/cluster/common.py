@@ -982,12 +982,12 @@ class Handler(asyncio.Protocol):
         try:
             await asyncio.wait_for(file.wait(),
                                    timeout=self.cluster_items['intervals']['communication']['timeout_receiving_file'])
-        except Exception:
+        except Exception as e:
             # Notify the sending node to stop its task.
             exc = exception.WazuhClusterError(3039)
             await self.send_request(command=b'cancel_task',
                                     data=task_id.encode() + b' ' + json.dumps(exc, cls=WazuhJSONEncoder).encode())
-            raise exc
+            raise exc from e
 
 
 class SyncTask:
