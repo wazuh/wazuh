@@ -255,8 +255,9 @@ async def test_sync_files_sync_ok(compress_files_mock, unlink_mock, relpath_mock
 
 
 @pytest.mark.asyncio
+@patch("wazuh.core.cluster.cluster.compress_files", return_value="files/path/")
 @patch("wazuh.core.cluster.worker.WorkerHandler.send_request", return_value=Exception())
-async def test_sync_files_sync_ko(send_request_mock):
+async def test_sync_files_sync_ko(send_request_mock, compress_files_mock):
     """Test if the right exceptions are being risen when necessary."""
     files_to_sync = {"path1": "metadata1"}
     files_metadata = {"path2": "metadata2"}
@@ -268,6 +269,8 @@ async def test_sync_files_sync_ko(send_request_mock):
         await sync_files.sync(files_to_sync, files_metadata)
 
     send_request_mock.assert_called_once()
+    compress_files_mock.assert_called_once_with(name='Testing', list_path=files_to_sync,
+                                                cluster_control_json=files_metadata)
 
 
 # Test SyncWazuhdb class
