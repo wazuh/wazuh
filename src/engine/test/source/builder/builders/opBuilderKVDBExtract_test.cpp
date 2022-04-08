@@ -29,7 +29,7 @@ class opBuilderKVDBExtractTest : public ::testing::Test
 
 protected:
     bool initialized = KVDBManager::init("/var/ossec/queue/db/kvdb/");
-    KVDBManager &kvdbManager = KVDBManager::get();
+    KVDBManager& kvdbManager = KVDBManager::get();
 
     opBuilderKVDBExtractTest()
     {

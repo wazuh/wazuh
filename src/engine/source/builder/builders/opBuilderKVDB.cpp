@@ -23,7 +23,7 @@ namespace builder::internals::builders
 using builder::internals::syntax::REFERENCE_ANCHOR;
 
 // <field>: +kvdb_extract/<DB>/<ref_key>
-types::Lifter opBuilderKVDBExtract(const types::DocumentValue &def,
+types::Lifter opBuilderKVDBExtract(const types::DocumentValue& def,
                                    types::TracerFn tr)
 {
     // Get target of the extraction
@@ -56,7 +56,7 @@ types::Lifter opBuilderKVDBExtract(const types::DocumentValue &def,
     }
 
     // Get reference key
-    std::string &key = parametersArr[2];
+    std::string& key = parametersArr[2];
     bool isReference = false;
     if (key[0] == REFERENCE_ANCHOR)
     {
@@ -87,7 +87,7 @@ types::Lifter opBuilderKVDBExtract(const types::DocumentValue &def,
                             return e;
                         }
                     }
-                    catch (std::exception &ex)
+                    catch (std::exception& ex)
                     {
                         // TODO Check exception type
                         return e;
@@ -113,7 +113,7 @@ types::Lifter opBuilderKVDBExtract(const types::DocumentValue &def,
                                             e->m_doc.GetAllocator())
                                .Move());
                 }
-                catch (std::exception &ex)
+                catch (std::exception& ex)
                 {
                     // TODO Check exception type
                     return e;
@@ -124,7 +124,7 @@ types::Lifter opBuilderKVDBExtract(const types::DocumentValue &def,
     };
 }
 
-types::Lifter opBuilderKVDBExistanceCheck(const types::DocumentValue &def,
+types::Lifter opBuilderKVDBExistanceCheck(const types::DocumentValue& def,
                                           bool checkExist)
 {
     // Get key of the match
@@ -174,7 +174,7 @@ types::Lifter opBuilderKVDBExistanceCheck(const types::DocumentValue &def,
                         }
                     }
                 }
-                catch (std::exception &ex)
+                catch (std::exception& ex)
                 {
                     // TODO Check exception type
                 }
@@ -184,14 +184,14 @@ types::Lifter opBuilderKVDBExistanceCheck(const types::DocumentValue &def,
 }
 
 // <field>: +kvdb_match/<DB>
-types::Lifter opBuilderKVDBMatch(const types::DocumentValue &def,
+types::Lifter opBuilderKVDBMatch(const types::DocumentValue& def,
                                  types::TracerFn tr)
 {
     return opBuilderKVDBExistanceCheck(def, true);
 }
 
 // <field>: +kvdb_not_match/<DB>
-types::Lifter opBuilderKVDBNotMatch(const types::DocumentValue &def,
+types::Lifter opBuilderKVDBNotMatch(const types::DocumentValue& def,
                                     types::TracerFn tr)
 {
     return opBuilderKVDBExistanceCheck(def, false);

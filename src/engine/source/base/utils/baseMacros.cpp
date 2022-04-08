@@ -26,9 +26,9 @@ constexpr int kMaxStackTraceDepth = 7;
 // wich needs the symbols to be in the dyn table
 static std::string getBacktrace()
 {
-    auto tracer = [](_Unwind_Context *ctx, void *s)
+    auto tracer = [](_Unwind_Context* ctx, void* s)
     {
-        auto *state = static_cast<BtState *>(s);
+        auto* state = static_cast<BtState*>(s);
         if (state->count == state->addrs.size())
         {
             return _URC_END_OF_STACK;
@@ -58,9 +58,9 @@ static std::string getBacktrace()
     for (auto f : s.addrs)
     {
         Dl_info info;
-        if (dladdr((void *)f, &info))
+        if (dladdr((void*)f, &info))
         {
-            char *demangled = NULL;
+            char* demangled = NULL;
             int ok;
             demangled = abi::__cxa_demangle(info.dli_sname, NULL, 0, &ok);
             if (ok == 0)
@@ -74,9 +74,9 @@ static std::string getBacktrace()
     return ret;
 }
 
-void wazuhAssertImpl(const char *expr,
-                     const char *file,
-                     const char *func,
+void wazuhAssertImpl(const char* expr,
+                     const char* file,
+                     const char* func,
                      int line)
 {
     WAZUH_LOG_ERROR("\n----------------------------------------\n"
@@ -96,11 +96,11 @@ void wazuhAssertImpl(const char *expr,
     //*((volatile int *)0) = 0xDEADBEEF;
 }
 
-void wazuhAssertMsgImpl(const char *expr,
-                        const char *file,
-                        const char *func,
+void wazuhAssertMsgImpl(const char* expr,
+                        const char* file,
+                        const char* func,
                         int line,
-                        const char *fmt,
+                        const char* fmt,
                         ...)
 {
     const int largeEnough = 2048;

@@ -8,26 +8,26 @@
 #define STRINGIFY2(x) #x
 
 #define WAZUH_DISABLE_COPY(ClassName)                                          \
-    ClassName(const ClassName &) = delete;                                     \
-    ClassName(ClassName &&) = delete;
+    ClassName(const ClassName&) = delete;                                      \
+    ClassName(ClassName&&) = delete;
 
 #define WAZUH_DISABLE_ASSIGN(ClassName)                                        \
-    const ClassName &operator=(const ClassName &) = delete;                    \
-    void operator=(ClassName &&) = delete;
+    const ClassName& operator=(const ClassName&) = delete;                     \
+    void operator=(ClassName&&) = delete;
 
 #define WAZUH_DISABLE_COPY_ASSIGN(ClassName)                                   \
-    ClassName(const ClassName &) = delete;                                     \
-    ClassName(ClassName &&) = delete;                                          \
-    const ClassName &operator=(const ClassName &) = delete;                    \
-    void operator=(ClassName &&) = delete;
+    ClassName(const ClassName&) = delete;                                      \
+    ClassName(ClassName&&) = delete;                                           \
+    const ClassName& operator=(const ClassName&) = delete;                     \
+    void operator=(ClassName&&) = delete;
 
 #ifdef WAZUH_DEBUG
-void wazuhAssertImpl(const char *, const char *, const char *, int);
-void wazuhAssertMsgImpl(const char *expr,
-                        const char *file,
-                        const char *func,
+void wazuhAssertImpl(const char*, const char*, const char*, int);
+void wazuhAssertMsgImpl(const char* expr,
+                        const char* file,
+                        const char* func,
                         int line,
-                        const char *fmt,
+                        const char* fmt,
                         ...);
 
 // TODO __FILE_NAME__ is gcc specific
@@ -72,7 +72,7 @@ template<typename Func>
 struct _deferImpl
 {
     Func f;
-    _deferImpl(Func &&func)
+    _deferImpl(Func&& func)
         : f(std::move(func))
     {
     }
@@ -83,7 +83,7 @@ struct _deferImpl
 };
 
 template<class F>
-inline _deferImpl<F> _deferFunc(F &&f)
+inline _deferImpl<F> _deferFunc(F&& f)
 {
     return _deferImpl<F>(std::forward<F>(f));
 }

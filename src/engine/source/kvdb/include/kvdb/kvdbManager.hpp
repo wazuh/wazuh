@@ -25,13 +25,13 @@ class KVDBManager
     static KVDBManager sInstance;
 
 public:
-    static bool init(const std::filesystem::path &DbFolder);
-    static KVDBManager &get();
-    KVDBHandle addDb(const std::string &Name, bool createIfMissing = true);
-    bool createDBfromCDB(const std::filesystem::path &path,
+    static bool init(const std::filesystem::path& DbFolder);
+    static KVDBManager& get();
+    KVDBHandle addDb(const std::string& Name, bool createIfMissing = true);
+    bool createDBfromCDB(const std::filesystem::path& path,
                          bool overwrite = true);
-    bool deleteDB(const std::string &name);
-    KVDBHandle getDB(const std::string &name);
+    bool deleteDB(const std::string& name);
+    KVDBHandle getDB(const std::string& name);
 };
 
 #endif // _KVDBMANAGER_H

@@ -9,7 +9,7 @@
 
 static constexpr char kBenchDbName[] = "bench";
 
-static void dbSetup(const benchmark::State &s)
+static void dbSetup(const benchmark::State& s)
 {
     auto db = KVDBManager::get().addDb(kBenchDbName);
 
@@ -19,12 +19,12 @@ static void dbSetup(const benchmark::State &s)
     }
 }
 
-static void dbTeardown(const benchmark::State &s)
+static void dbTeardown(const benchmark::State& s)
 {
     KVDBManager::get().deleteDB(kBenchDbName);
 }
 
-static void kvdbRead(benchmark::State &state)
+static void kvdbRead(benchmark::State& state)
 {
     auto db = KVDBManager::get().getDB(kBenchDbName);
 
@@ -46,7 +46,7 @@ BENCHMARK(kvdbRead)
     ->Range(8, 16 << 10)
     ->ThreadRange(1, std::thread::hardware_concurrency());
 
-static void kvdbHasKey(benchmark::State &state)
+static void kvdbHasKey(benchmark::State& state)
 {
     auto db = KVDBManager::get().getDB(kBenchDbName);
 
@@ -68,7 +68,7 @@ BENCHMARK(kvdbHasKey)
     ->Range(8, 16 << 10)
     ->ThreadRange(1, std::thread::hardware_concurrency());
 
-static void kvdbWrite(benchmark::State &state)
+static void kvdbWrite(benchmark::State& state)
 {
     auto db = KVDBManager::get().getDB(kBenchDbName);
 
@@ -80,7 +80,7 @@ static void kvdbWrite(benchmark::State &state)
 
     for (auto _ : state)
     {
-        for (auto const &key : keys)
+        for (auto const& key : keys)
         {
             db->write(key, "action");
         }
@@ -93,7 +93,7 @@ static void kvdbWrite(benchmark::State &state)
 
 BENCHMARK(kvdbWrite)->Setup(dbSetup)->Teardown(dbTeardown)->Range(8, 16 << 10);
 
-static void kvdbWriteTx(benchmark::State &state)
+static void kvdbWriteTx(benchmark::State& state)
 {
     auto db = KVDBManager::get().getDB(kBenchDbName);
 
