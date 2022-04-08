@@ -151,6 +151,8 @@
       "data.aws.userIdentity.userName",
       "data.aws.vpcEndpointId",
       "data.command",
+      "data.cis.group",
+      "data.cis.rule_title",
       "data.data",
       "data.docker.Actor.Attributes.container",
       "data.docker.Actor.Attributes.image",
@@ -163,6 +165,16 @@
       "data.dstport",
       "data.dstuser",
       "data.extra_data",
+      "data.gcp.jsonPayload.queryName",
+      "data.gcp.jsonPayload.vmInstanceName",
+      "data.gcp.resource.labels.location",
+      "data.gcp.resource.labels.project_id",
+      "data.gcp.resource.labels.source_type",
+      "data.gcp.resource.type",
+      "data.github.org",
+      "data.github.actor",
+      "data.github.action",
+      "data.github.repo",
       "data.hardware.serial",
       "data.id",
       "data.integration",
@@ -171,6 +183,10 @@
       "data.netinfo.iface.ipv6.address",
       "data.netinfo.iface.mac",
       "data.netinfo.iface.name",
+      "data.office365.Actor.ID",
+      "data.office365.UserId",
+      "data.office365.Operation",
+      "data.office365.ClientIP",
       "data.os.architecture",
       "data.os.build",
       "data.os.codename",
@@ -729,6 +745,9 @@
           "level": {
             "type": "long"
           },
+          "tsc": {
+            "type": "keyword"
+          },
           "id": {
             "type": "keyword"
           },
@@ -1079,6 +1098,55 @@
                     "type": "double"
                   }
                 }
+              }
+            }
+          },
+          "office365": {
+            "properties": {
+              "Actor": {
+                "properties": {
+                  "ID": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "UserId": {
+                "type": "keyword"
+              },
+              "Operation": {
+                "type": "keyword"
+              },
+              "ClientIP": {
+                "type": "keyword"
+              },
+              "ResultStatus": {
+                "type": "keyword"
+              },
+              "Subscription": {
+                "type": "keyword"
+              }
+            }
+          },
+          "github": {
+            "properties": {
+              "org": {
+                "type": "keyword"
+              },
+              "actor": {
+                "type": "keyword"
+              },
+              "action": {
+                "type": "keyword"
+              },
+              "actor_location": {
+                "properties": {
+                  "country_code": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "repo": {
+                "type": "keyword"
               }
             }
           },
@@ -1732,6 +1800,22 @@
           },
           "aws": {
             "properties": {
+              "source": {
+                "type": "keyword"
+              },
+              "accountId": {
+                "type": "keyword"
+              },
+              "log_info": {
+                "properties": {
+                  "s3bucket": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "region": {
+                "type": "keyword"
+              },
               "bytes": {
                 "type": "long"
               },
@@ -1795,6 +1879,129 @@
                     }
                   }
                 }
+              }
+            }
+          },
+          "cis": {
+            "properties": {
+              "benchmark": {
+                "type": "keyword"
+              },
+              "error": {
+                "type": "long"
+              },
+              "fail": {
+                "type": "long"
+              },
+              "group": {
+                "type": "keyword"
+              },
+              "notchecked": {
+                "type": "long"
+              },
+              "pass": {
+                "type": "long"
+              },
+              "result": {
+                "type": "keyword"
+              },
+              "rule_title": {
+                "type": "keyword"
+              },
+              "score": {
+                "type": "long"
+              },
+              "timestamp": {
+                "type": "keyword"
+              },
+              "unknown": {
+                "type": "long"
+              }
+            }
+          },
+          "docker": {
+            "properties": {
+              "Action": {
+                "type": "keyword"
+              },
+              "Actor": {
+                "properties": {
+                  "Attributes": {
+                    "properties": {
+                      "image": {
+                        "type": "keyword"
+                      },
+                      "name": {
+                        "type": "keyword"
+                      }
+                    }
+                  }
+                }
+              },
+              "Type": {
+                "type": "keyword"
+              }
+            }
+          },
+          "gcp": {
+            "properties": {
+              "jsonPayload": {
+                "properties": {
+                  "authAnswer": {
+                    "type": "keyword"
+                  },
+                  "queryName": {
+                    "type": "keyword"
+                  },
+                  "responseCode": {
+                    "type": "keyword"
+                  },
+                  "vmInstanceId": {
+                    "type": "keyword"
+                  },
+                  "vmInstanceName": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "resource": {
+                "properties": {
+                  "labels": {
+                    "properties": {
+                      "location": {
+                        "type": "keyword"
+                      },
+                      "project_id": {
+                        "type": "keyword"
+                      },
+                      "source_type": {
+                        "type": "keyword"
+                      }
+                    }
+                  },
+                  "type": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "severity": {
+                "type": "keyword"
+              }
+            }
+          },
+          "osquery": {
+            "properties": {
+              "name": {
+                "type": "keyword"
+              },
+              "pack": {
+                "type": "keyword"
+              },
+              "action": {
+                "type": "keyword"
+              },
+              "calendarTime": {
+                "type": "keyword"
               }
             }
           }
