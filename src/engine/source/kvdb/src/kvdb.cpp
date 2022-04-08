@@ -1,14 +1,14 @@
 #include <kvdb/kvdb.hpp>
 
-#include <unordered_map>
 #include <shared_mutex>
+#include <unordered_map>
 
 #include <fmt/format.h>
 #include <rocksdb/db.h>
 #include <rocksdb/options.h>
 #include <rocksdb/slice.h>
-#include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/optimistic_transaction_db.h>
+#include <rocksdb/utilities/transaction.h>
 
 #include <logging/logging.hpp>
 
@@ -32,14 +32,15 @@ struct KVDB::Impl
         Invalid,
     };
 
-    Impl(const std::string &dbName,
-         const std::string &folder)
+    Impl(const std::string &dbName, const std::string &folder)
         : m_name(dbName)
         , m_path(folder + dbName)
         , m_txDb(nullptr)
         , m_db(nullptr)
         , m_state(State::Invalid)
     {
+        WAZUH_ASSERT_MSG(!m_name.empty(), "Trying to create a DB with an empty name");
+        WAZUH_ASSERT_MSG(!m_path.empty(), "Trying to create a DB on an empty path");
     }
 
     bool init(bool createIfMissing)
@@ -125,6 +126,8 @@ struct KVDB::Impl
 
     rocksdb::ColumnFamilyHandle *getCFHandle(std::string const &colName)
     {
+        WAZUH_ASSERT_MSG(!colName.empty(), "Trying to get an empty column");
+
         if (m_state != State::Open)
         {
             WAZUH_LOG_ERROR("DB [{}] should be open for execution", m_name);
@@ -144,6 +147,11 @@ struct KVDB::Impl
 
     bool createColumn(const std::string &columnName)
     {
+        if (columnName.empty())
+        {
+            return false;
+        }
+
         std::unique_lock lk(m_mtx);
         auto cf = getCFHandle(columnName);
         if (cf)
@@ -174,6 +182,11 @@ struct KVDB::Impl
     // cleanColumn without any argument
     bool deleteColumn(const std::string &columnName)
     {
+        if (columnName.empty())
+        {
+            return false;
+        }
+
         std::unique_lock lk(m_mtx);
         auto cf = getCFHandle(columnName);
         if (!cf)
@@ -181,7 +194,7 @@ struct KVDB::Impl
             return false;
         }
 
-        if(!m_db->DropColumnFamily(cf).ok())
+        if (!m_db->DropColumnFamily(cf).ok())
         {
             return false;
         }
@@ -203,6 +216,11 @@ struct KVDB::Impl
 
     bool cleanColumn(const std::string &columnName)
     {
+        if (columnName.empty())
+        {
+            return false;
+        }
+
         if (columnName == DEFAULT_CF_NAME)
         {
             rocksdb::Iterator *iter = m_db->NewIterator(kOptions.read);
@@ -226,6 +244,11 @@ struct KVDB::Impl
                const std::string &value,
                const std::string &columnName)
     {
+        if (key.empty() || columnName.empty())
+        {
+            return false;
+        }
+
         std::shared_lock lk(m_mtx);
         auto cf = getCFHandle(columnName);
         if (!cf)
@@ -258,6 +281,11 @@ struct KVDB::Impl
         const std::vector<std::pair<std::string, std::string>> &pairsVector,
         const std::string &columnName)
     {
+        if (columnName.empty())
+        {
+            return false;
+        }
+
         std::shared_lock lk(m_mtx);
         auto cf = getCFHandle(columnName);
         if (!cf)
@@ -268,8 +296,8 @@ struct KVDB::Impl
         if (!pairsVector.size())
         {
             WAZUH_LOG_INFO("Couldn't write transaction to DB [{}], need at "
-                            "least 1 element",
-                            m_name);
+                           "least 1 element",
+                           m_name);
             return false;
         }
 
@@ -289,10 +317,10 @@ struct KVDB::Impl
             if (key.empty())
             {
                 WAZUH_LOG_INFO("Discarding tuple [{},{}] in DB [{}] "
-                                "because key is empty",
-                                key,
-                                value,
-                                m_name);
+                               "because key is empty",
+                               key,
+                               value,
+                               m_name);
                 continue;
             }
             // Write a key-value in this transaction
@@ -322,6 +350,11 @@ struct KVDB::Impl
 
     bool hasKey(const std::string &key, const std::string &columnName)
     {
+        if (key.empty() || columnName.empty())
+        {
+            return false;
+        }
+
         std::shared_lock lk(m_mtx);
         auto cf = getCFHandle(columnName);
         if (!cf)
@@ -336,6 +369,11 @@ struct KVDB::Impl
 
     std::string read(const std::string &key, const std::string &columnName)
     {
+        if (key.empty() || columnName.empty())
+        {
+            return {};
+        }
+
         std::shared_lock lk(m_mtx);
         auto cf = getCFHandle(columnName);
         if (!cf)
@@ -368,6 +406,11 @@ struct KVDB::Impl
                     std::string &value,
                     const std::string &columnName)
     {
+        if (key.empty() || columnName.empty())
+        {
+            return false;
+        }
+
         std::shared_lock lk(m_mtx);
         auto cf = getCFHandle(columnName);
         if (!cf)
@@ -396,6 +439,11 @@ struct KVDB::Impl
 
     bool deleteKey(const std::string &key, const std::string &columnName)
     {
+        if (key.empty() || columnName.empty())
+        {
+            return false;
+        }
+
         std::shared_lock lk(m_mtx);
         auto cf = getCFHandle(columnName);
         if (!cf)
@@ -453,7 +501,7 @@ struct KVDB::Impl
         }
 
         s = m_txDb->Close();
-        if(!s.ok())
+        if (!s.ok())
         {
             WAZUH_LOG_ERROR(
                 "Couldn't close DB [{}], error: [{}]", m_name, s.ToString());
