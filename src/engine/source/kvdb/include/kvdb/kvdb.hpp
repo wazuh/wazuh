@@ -2,13 +2,13 @@
 #define _KVDB_H
 
 #include <memory>
+#include <shared_mutex>
 #include <string>
 #include <vector>
-#include <shared_mutex>
 
 #include <utils/baseMacros.hpp>
 
-constexpr static const char *DEFAULT_CF_NAME {"default"};
+constexpr static const char* DEFAULT_CF_NAME {"default"};
 
 class KVDB
 {
@@ -19,7 +19,7 @@ public:
      * @param dbName name of the DB
      * @param folder where the DB will be stored
      */
-    KVDB(const std::string &dbName, const std::string &folder);
+    KVDB(const std::string& dbName, const std::string& folder);
 
     KVDB();
 
@@ -61,7 +61,7 @@ public:
      * @return true successfull creation of Column in DB
      * @return false unsuccessfull creation or already created object
      */
-    bool createColumn(const std::string &columnName);
+    bool createColumn(const std::string& columnName);
 
     /**
      * @brief Delete a Column object
@@ -73,7 +73,7 @@ public:
     // TODO: all the default column names should be changed, one option is to
     // define a KVDB default CF in order to avoid using a deleteColumn or
     // cleanColumn without any argument
-    bool deleteColumn(const std::string &columnName);
+    bool deleteColumn(const std::string& columnName);
 
     /**
      * @brief cleaning of all elements in Column
@@ -84,7 +84,7 @@ public:
      * @return true when successfully cleaned
      * @return false when unsuccessfully cleaned
      */
-    bool cleanColumn(const std::string &columnName = DEFAULT_CF_NAME);
+    bool cleanColumn(const std::string& columnName = DEFAULT_CF_NAME);
 
     /**
      * @brief write a key-value into the DB
@@ -95,9 +95,9 @@ public:
      * @return true If the proccess finished successfully
      * @return false If the proccess didn't finished successfully
      */
-    bool write(const std::string &key,
-               const std::string &value,
-               const std::string &columnName = DEFAULT_CF_NAME);
+    bool write(const std::string& key,
+               const std::string& value,
+               const std::string& columnName = DEFAULT_CF_NAME);
 
     /**
      * @brief write a key into the DB
@@ -107,8 +107,8 @@ public:
      * @return true If the proccess finished successfully
      * @return false If the proccess didn't finished successfully
      */
-    bool writeKeyOnly(const std::string &key,
-                      const std::string &columnName = DEFAULT_CF_NAME);
+    bool writeKeyOnly(const std::string& key,
+                      const std::string& columnName = DEFAULT_CF_NAME);
 
     /**
      * @brief write vector of pair key values to DB in a pessimistic transaction
@@ -119,8 +119,8 @@ public:
      * @return false when one or more items weren't succesfully written.
      */
     bool writeToTransaction(
-        const std::vector<std::pair<std::string, std::string>> &pairsVector,
-        const std::string &columnName = DEFAULT_CF_NAME);
+        const std::vector<std::pair<std::string, std::string>>& pairsVector,
+        const std::string& columnName = DEFAULT_CF_NAME);
     /**
      * @brief check key existence in Column
      *
@@ -130,8 +130,8 @@ public:
      * @return false if key wasn't found
      */
 
-    bool hasKey(const std::string &key,
-                const std::string &columnName = DEFAULT_CF_NAME);
+    bool hasKey(const std::string& key,
+                const std::string& columnName = DEFAULT_CF_NAME);
 
     /**
      * @brief read a value from a key inside a CF without value copying
@@ -142,8 +142,8 @@ public:
      * @return value read If the proccess finished successfully
      * @return empty string If the proccess didn't finished successfully
      */
-    std::string read(const std::string &key,
-                     const std::string &columnName = DEFAULT_CF_NAME);
+    std::string read(const std::string& key,
+                     const std::string& columnName = DEFAULT_CF_NAME);
 
     /**
      * @brief
@@ -157,9 +157,9 @@ public:
      * @return true If the proccess finished successfully
      * @return false If the proccess didn't finished successfully
      */
-    bool readPinned(const std::string &key,
-                    std::string &val,
-                    const std::string &columnName = DEFAULT_CF_NAME);
+    bool readPinned(const std::string& key,
+                    std::string& val,
+                    const std::string& columnName = DEFAULT_CF_NAME);
 
     /**
      * @brief delete a key of a CF
@@ -169,8 +169,8 @@ public:
      * @return true if the key was successfully deleted
      * @return false if the key wasn't successfully deleted
      */
-    bool deleteKey(const std::string &key,
-                   const std::string &columnName = DEFAULT_CF_NAME);
+    bool deleteKey(const std::string& key,
+                   const std::string& columnName = DEFAULT_CF_NAME);
 
     /**
      * @brief DB closing cleaning all elements used to acces it

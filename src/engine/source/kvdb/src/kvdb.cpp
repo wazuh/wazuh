@@ -32,15 +32,17 @@ struct KVDB::Impl
         Invalid,
     };
 
-    Impl(const std::string &dbName, const std::string &folder)
+    Impl(const std::string& dbName, const std::string& folder)
         : m_name(dbName)
         , m_path(folder + dbName)
         , m_txDb(nullptr)
         , m_db(nullptr)
         , m_state(State::Invalid)
     {
-        WAZUH_ASSERT_MSG(!m_name.empty(), "Trying to create a DB with an empty name");
-        WAZUH_ASSERT_MSG(!m_path.empty(), "Trying to create a DB on an empty path");
+        WAZUH_ASSERT_MSG(!m_name.empty(),
+                         "Trying to create a DB with an empty name");
+        WAZUH_ASSERT_MSG(!m_path.empty(),
+                         "Trying to create a DB on an empty path");
     }
 
     bool init(bool createIfMissing)
@@ -74,8 +76,8 @@ struct KVDB::Impl
         dbOptions.OptimizeForSmallDb();
         dbOptions.create_if_missing = createIfMissing;
 
-        rocksdb::OptimisticTransactionDB *txdb;
-        std::vector<rocksdb::ColumnFamilyHandle *> cfHandles;
+        rocksdb::OptimisticTransactionDB* txdb;
+        std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
         s = rocksdb::OptimisticTransactionDB::Open(
             dbOptions, m_path, m_CFDescriptors, &cfHandles, &txdb);
         if (!s.ok())
@@ -85,10 +87,14 @@ struct KVDB::Impl
                             s.ToString());
 
             m_state = State::Error;
-            // TODO: Investigate the reason of this:
-            // RocksDB creates a DB even if the option create_if_missing is
-            // false. The open operation fails, but the DB is created anyway.
-            rocksdb::DestroyDB(m_path, rocksdb::Options(), m_CFDescriptors);
+            if (s.IsInvalidArgument())
+            {
+                // TODO: Investigate the reason of this:
+                // RocksDB creates a DB even if the option create_if_missing is
+                // false. The open operation fails, but the DB is created
+                // anyway.
+                rocksdb::DestroyDB(m_path, rocksdb::Options(), m_CFDescriptors);
+            }
             return false;
         }
 
@@ -119,12 +125,12 @@ struct KVDB::Impl
         return (m_state != State::Invalid);
     }
 
-    const std::string &getName() const
+    const std::string& getName() const
     {
         return m_name;
     }
 
-    rocksdb::ColumnFamilyHandle *getCFHandle(std::string const &colName)
+    rocksdb::ColumnFamilyHandle* getCFHandle(std::string const& colName)
     {
         WAZUH_ASSERT_MSG(!colName.empty(), "Trying to get an empty column");
 
@@ -145,7 +151,7 @@ struct KVDB::Impl
         return cfh->second;
     }
 
-    bool createColumn(const std::string &columnName)
+    bool createColumn(const std::string& columnName)
     {
         if (columnName.empty())
         {
@@ -160,7 +166,7 @@ struct KVDB::Impl
             return false;
         }
 
-        rocksdb::ColumnFamilyHandle *handler;
+        rocksdb::ColumnFamilyHandle* handler;
         rocksdb::Status s =
             m_db->CreateColumnFamily(kOptions.CF, columnName, &handler);
         if (s.ok())
@@ -180,7 +186,7 @@ struct KVDB::Impl
     // TODO: all the default column names should be changed, one option is to
     // define a KVDB default CF in order to avoid using a deleteColumn or
     // cleanColumn without any argument
-    bool deleteColumn(const std::string &columnName)
+    bool deleteColumn(const std::string& columnName)
     {
         if (columnName.empty())
         {
@@ -206,7 +212,7 @@ struct KVDB::Impl
             m_CFDescriptors.erase(std::remove_if(
                 m_CFDescriptors.begin(),
                 m_CFDescriptors.end(),
-                [&](auto const &des) { return des.name == columnName; }));
+                [&](auto const& des) { return des.name == columnName; }));
 
             return true;
         }
@@ -214,7 +220,7 @@ struct KVDB::Impl
         return false;
     }
 
-    bool cleanColumn(const std::string &columnName)
+    bool cleanColumn(const std::string& columnName)
     {
         if (columnName.empty())
         {
@@ -223,7 +229,7 @@ struct KVDB::Impl
 
         if (columnName == DEFAULT_CF_NAME)
         {
-            rocksdb::Iterator *iter = m_db->NewIterator(kOptions.read);
+            rocksdb::Iterator* iter = m_db->NewIterator(kOptions.read);
             iter->SeekToFirst();
             while (iter->Valid())
             {
@@ -240,9 +246,9 @@ struct KVDB::Impl
         return false;
     }
 
-    bool write(const std::string &key,
-               const std::string &value,
-               const std::string &columnName)
+    bool write(const std::string& key,
+               const std::string& value,
+               const std::string& columnName)
     {
         if (key.empty() || columnName.empty())
         {
@@ -278,8 +284,8 @@ struct KVDB::Impl
     }
 
     bool writeToTransaction(
-        const std::vector<std::pair<std::string, std::string>> &pairsVector,
-        const std::string &columnName)
+        const std::vector<std::pair<std::string, std::string>>& pairsVector,
+        const std::string& columnName)
     {
         if (columnName.empty())
         {
@@ -301,7 +307,7 @@ struct KVDB::Impl
             return false;
         }
 
-        rocksdb::Transaction *txn = m_txDb->BeginTransaction(kOptions.write);
+        rocksdb::Transaction* txn = m_txDb->BeginTransaction(kOptions.write);
         if (!txn)
         {
             WAZUH_LOG_ERROR("Couldn't begin in transaction in DB [{}]", m_name);
@@ -312,7 +318,7 @@ struct KVDB::Impl
         _defer({ delete txn; });
 
         bool txnOk = true;
-        for (auto const &[key, value] : pairsVector)
+        for (auto const& [key, value] : pairsVector)
         {
             if (key.empty())
             {
@@ -348,7 +354,7 @@ struct KVDB::Impl
         return txnOk;
     }
 
-    bool hasKey(const std::string &key, const std::string &columnName)
+    bool hasKey(const std::string& key, const std::string& columnName)
     {
         if (key.empty() || columnName.empty())
         {
@@ -367,7 +373,7 @@ struct KVDB::Impl
         return m_db->KeyMayExist(kOptions.read, cf, key, &value);
     }
 
-    std::string read(const std::string &key, const std::string &columnName)
+    std::string read(const std::string& key, const std::string& columnName)
     {
         if (key.empty() || columnName.empty())
         {
@@ -402,9 +408,9 @@ struct KVDB::Impl
         return value;
     }
 
-    bool readPinned(const std::string &key,
-                    std::string &value,
-                    const std::string &columnName)
+    bool readPinned(const std::string& key,
+                    std::string& value,
+                    const std::string& columnName)
     {
         if (key.empty() || columnName.empty())
         {
@@ -437,7 +443,7 @@ struct KVDB::Impl
         return true;
     }
 
-    bool deleteKey(const std::string &key, const std::string &columnName)
+    bool deleteKey(const std::string& key, const std::string& columnName)
     {
         if (key.empty() || columnName.empty())
         {
@@ -477,7 +483,7 @@ struct KVDB::Impl
 
         bool ret = true;
         rocksdb::Status s;
-        for (auto const &it : m_CFHandlesMap)
+        for (auto const& it : m_CFHandlesMap)
         {
             s = m_db->DestroyColumnFamilyHandle(it.second);
             if (!s.ok())
@@ -540,16 +546,16 @@ struct KVDB::Impl
     bool m_shouldCleanupFiles;
     State m_state = State::Invalid;
 
-    rocksdb::OptimisticTransactionDB *m_txDb;
-    rocksdb::DB *m_db;
+    rocksdb::OptimisticTransactionDB* m_txDb;
+    rocksdb::DB* m_db;
     std::vector<rocksdb::ColumnFamilyDescriptor> m_CFDescriptors;
-    std::unordered_map<std::string, rocksdb::ColumnFamilyHandle *>
+    std::unordered_map<std::string, rocksdb::ColumnFamilyHandle*>
         m_CFHandlesMap;
 
     std::shared_mutex m_mtx;
 };
 
-KVDB::KVDB(const std::string &dbName, const std::string &folder)
+KVDB::KVDB(const std::string& dbName, const std::string& folder)
     : mImpl(std::make_unique<KVDB::Impl>(dbName, folder))
 {
 }
@@ -583,58 +589,58 @@ void KVDB::cleanupOnClose()
     mImpl->m_shouldCleanupFiles = true;
 }
 
-bool KVDB::writeKeyOnly(const std::string &key, const std::string &columnName)
+bool KVDB::writeKeyOnly(const std::string& key, const std::string& columnName)
 {
     return mImpl->write(key, "", columnName);
 }
 
-bool KVDB::write(const std::string &key,
-                 const std::string &value,
-                 const std::string &columnName)
+bool KVDB::write(const std::string& key,
+                 const std::string& value,
+                 const std::string& columnName)
 {
     return mImpl->write(key, value, columnName);
 }
 
-std::string KVDB::read(const std::string &key, const std::string &columnName)
+std::string KVDB::read(const std::string& key, const std::string& columnName)
 {
     return mImpl->read(key, columnName);
 }
 
-bool KVDB::deleteKey(const std::string &key, const std::string &columnName)
+bool KVDB::deleteKey(const std::string& key, const std::string& columnName)
 {
     return mImpl->deleteKey(key, columnName);
 }
 
-bool KVDB::createColumn(const std::string &columnName)
+bool KVDB::createColumn(const std::string& columnName)
 {
     return mImpl->createColumn(columnName);
 }
 
-bool KVDB::deleteColumn(const std::string &columnName)
+bool KVDB::deleteColumn(const std::string& columnName)
 {
     return mImpl->deleteColumn(columnName);
 }
 
-bool KVDB::cleanColumn(const std::string &columnName)
+bool KVDB::cleanColumn(const std::string& columnName)
 {
     return mImpl->cleanColumn(columnName);
 }
 
 bool KVDB::writeToTransaction(
-    const std::vector<std::pair<std::string, std::string>> &pairsVector,
-    const std::string &columnName)
+    const std::vector<std::pair<std::string, std::string>>& pairsVector,
+    const std::string& columnName)
 {
     return mImpl->writeToTransaction(pairsVector, columnName);
 }
 
-bool KVDB::hasKey(const std::string &key, const std::string &columnName)
+bool KVDB::hasKey(const std::string& key, const std::string& columnName)
 {
     return mImpl->hasKey(key, columnName);
 }
 
-bool KVDB::readPinned(const std::string &key,
-                      std::string &value,
-                      const std::string &colName)
+bool KVDB::readPinned(const std::string& key,
+                      std::string& value,
+                      const std::string& colName)
 {
     return mImpl->readPinned(key, value, colName);
 }

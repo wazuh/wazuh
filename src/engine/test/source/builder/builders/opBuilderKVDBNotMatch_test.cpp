@@ -19,29 +19,34 @@
 using namespace builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg){};
+static FakeTrFn tr = [](std::string msg) {
+};
 
-namespace {
-class opBuilderKVDBNotMatchTest : public ::testing::Test {
+namespace
+{
+class opBuilderKVDBNotMatchTest : public ::testing::Test
+{
 
 protected:
     bool initialized = KVDBManager::init("/var/ossec/queue/db/kvdb/");
     KVDBManager& kvdbManager = KVDBManager::get();
 
-    opBuilderKVDBNotMatchTest() {
+    opBuilderKVDBNotMatchTest()
+    {
         logging::LoggingConfig logConfig;
         logConfig.logLevel = logging::LogLevel::Off;
         logging::loggingInit(logConfig);
     }
 
-    virtual ~opBuilderKVDBNotMatchTest() {
-    }
+    virtual ~opBuilderKVDBNotMatchTest() {}
 
-    virtual void SetUp() {
+    virtual void SetUp()
+    {
         kvdbManager.addDb("TEST_DB");
     }
 
-    virtual void TearDown() {
+    virtual void TearDown()
+    {
         kvdbManager.deleteDB("TEST_DB");
     }
 };
@@ -49,7 +54,7 @@ protected:
 // Build ok
 TEST_F(opBuilderKVDBNotMatchTest, Builds)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field2match": "+kvdb_not_match/TEST_DB"}
     })"};
@@ -59,21 +64,23 @@ TEST_F(opBuilderKVDBNotMatchTest, Builds)
 // Build incorrect number of arguments
 TEST_F(opBuilderKVDBNotMatchTest, Builds_incorrect_number_of_arguments)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field2match": "+kvdb_not_match"}
     })"};
-    ASSERT_THROW(opBuilderKVDBNotMatch(doc.get("/check"), tr), std::runtime_error);
+    ASSERT_THROW(opBuilderKVDBNotMatch(doc.get("/check"), tr),
+                 std::runtime_error);
 }
 
 // Build invalid DB
 TEST_F(opBuilderKVDBNotMatchTest, Builds_incorrect_invalid_db)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field2match": "+kvdb_not_match/INVALID_DB"}
     })"};
-    ASSERT_THROW(opBuilderKVDBNotMatch(doc.get("/check"), tr), std::runtime_error);
+    ASSERT_THROW(opBuilderKVDBNotMatch(doc.get("/check"), tr),
+                 std::runtime_error);
 }
 
 // Test ok: static values
@@ -83,7 +90,7 @@ TEST_F(opBuilderKVDBNotMatchTest, Static_string_ok)
     auto kvdb = kvdbManager.getDB("TEST_DB");
     kvdb->writeKeyOnly("KEY");
 
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field2match": "+kvdb_match/TEST_DB"}
     })"};
@@ -110,7 +117,8 @@ TEST_F(opBuilderKVDBNotMatchTest, Static_string_ok)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_STREQ(expected[0]->get("/field2match").GetString(), "INEXISTENT_KEY");
+    ASSERT_STREQ(expected[0]->get("/field2match").GetString(),
+                 "INEXISTENT_KEY");
     ASSERT_STREQ(expected[1]->get("/otherfield").GetString(), "KEY");
 }
 
@@ -119,7 +127,7 @@ TEST_F(opBuilderKVDBNotMatchTest, Multilevel_target)
     auto kvdb = kvdbManager.getDB("TEST_DB");
     kvdb->writeKeyOnly("KEY");
 
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"a.b.field2match": "+kvdb_not_match/TEST_DB"}
     })"};
@@ -146,7 +154,8 @@ TEST_F(opBuilderKVDBNotMatchTest, Multilevel_target)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_STREQ(expected[0]->get("/a/b/field2match").GetString(), "INEXISTENT_KEY");
+    ASSERT_STREQ(expected[0]->get("/a/b/field2match").GetString(),
+                 "INEXISTENT_KEY");
     ASSERT_STREQ(expected[1]->get("/a/b/otherfield").GetString(), "KEY");
 }
 

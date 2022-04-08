@@ -40,7 +40,7 @@ using Event = builder::internals::types::Event;
  */
 Event opBuilderHelperStringTransformation(const std::string field,
                                           char op,
-                                          Event &e,
+                                          Event& e,
                                           std::optional<std::string> refValue,
                                           std::optional<std::string> value)
 {
@@ -52,12 +52,12 @@ Event opBuilderHelperStringTransformation(const std::string field,
         // TODO Remove try catch or if nullptr after fix get method of document
         // class
         // TODO Update to use proper reference
-        const rapidjson::Value *refValueToCheck {};
+        const rapidjson::Value* refValueToCheck {};
         try
         {
             refValueToCheck = &e->get(refValue.value());
         }
-        catch (std::exception &ex)
+        catch (std::exception& ex)
         {
             // TODO Check exception type
             return e;
@@ -101,7 +101,7 @@ Event opBuilderHelperStringTransformation(const std::string field,
                rapidjson::Value(value.value().c_str(), e->m_doc.GetAllocator())
                    .Move());
     }
-    catch (std::exception &ex)
+    catch (std::exception& ex)
     {
         // TODO Check exception type
         return e;
@@ -129,18 +129,18 @@ Event opBuilderHelperStringTransformation(const std::string field,
  */
 Event opBuilderHelperIntTransformation(const std::string field,
                                        std::string op,
-                                       Event &e,
+                                       Event& e,
                                        std::optional<std::string> refValue,
                                        std::optional<int> value)
 {
     // TODO Remove try catch or if nullptr after fix get method of document
     // class Get value to compare
-    const rapidjson::Value *fieldValue {};
+    const rapidjson::Value* fieldValue {};
     try
     {
         fieldValue = &e->get(field);
     }
-    catch (std::exception &ex)
+    catch (std::exception& ex)
     {
         // TODO Check exception type
         return e;
@@ -156,12 +156,12 @@ Event opBuilderHelperIntTransformation(const std::string field,
         // Get reference to json event
         // TODO Remove try catch or if nullptr after fix get method of document
         // class
-        const rapidjson::Value *refValueToCheck {};
+        const rapidjson::Value* refValueToCheck {};
         try
         {
             refValueToCheck = &e->get(refValue.value());
         }
-        catch (std::exception &ex)
+        catch (std::exception& ex)
         {
             // TODO Check exception type
             return e;
@@ -206,7 +206,7 @@ Event opBuilderHelperIntTransformation(const std::string field,
     {
         e->set(field, rapidjson::Value(value.value()));
     }
-    catch (std::exception &ex)
+    catch (std::exception& ex)
     {
         // TODO Check exception type
         return e;
@@ -225,7 +225,7 @@ using builder::internals::syntax::REFERENCE_ANCHOR;
 //*************************************************
 
 // <field>: +s_up/<str>|$<ref>
-types::Lifter opBuilderHelperStringUP(const types::DocumentValue &def,
+types::Lifter opBuilderHelperStringUP(const types::DocumentValue& def,
                                       types::TracerFn tr)
 {
     // Get field key to check
@@ -275,7 +275,7 @@ types::Lifter opBuilderHelperStringUP(const types::DocumentValue &def,
 }
 
 // <field>: +s_lo/<str>|$<ref>
-types::Lifter opBuilderHelperStringLO(const types::DocumentValue &def,
+types::Lifter opBuilderHelperStringLO(const types::DocumentValue& def,
                                       types::TracerFn tr)
 {
 
@@ -325,7 +325,7 @@ types::Lifter opBuilderHelperStringLO(const types::DocumentValue &def,
 }
 
 // <field>: +s_trim/[begin | end | both]/char
-types::Lifter opBuilderHelperStringTrim(const types::DocumentValue &def,
+types::Lifter opBuilderHelperStringTrim(const types::DocumentValue& def,
                                         types::TracerFn tr)
 {
 
@@ -376,12 +376,12 @@ types::Lifter opBuilderHelperStringTrim(const types::DocumentValue &def,
             {
                 // Shoulbe short after refact, witout try catch
                 // Get field value
-                const rapidjson::Value *fieldValue;
+                const rapidjson::Value* fieldValue;
                 try
                 {
                     fieldValue = &e->get(field);
                 }
-                catch (std::exception &ex)
+                catch (std::exception& ex)
                 {
                     // TODO Check exception type
                     return e;
@@ -431,7 +431,7 @@ types::Lifter opBuilderHelperStringTrim(const types::DocumentValue &def,
                                             e->m_doc.GetAllocator())
                                .Move());
                 }
-                catch (std::exception &ex)
+                catch (std::exception& ex)
                 {
                     // TODO Check exception type
                     return e;
@@ -447,7 +447,7 @@ types::Lifter opBuilderHelperStringTrim(const types::DocumentValue &def,
 //*************************************************
 
 // field: +i_calc/[+|-|*|/]/val|$ref/
-types::Lifter opBuilderHelperIntCalc(const types::DocumentValue &def,
+types::Lifter opBuilderHelperIntCalc(const types::DocumentValue& def,
                                      types::TracerFn tr)
 {
     // Get field
@@ -508,7 +508,7 @@ types::Lifter opBuilderHelperIntCalc(const types::DocumentValue &def,
 //*************************************************
 
 // field: +r_ext/_field/regexp/
-types::Lifter opBuilderHelperRegexExtract(const types::DocumentValue &def,
+types::Lifter opBuilderHelperRegexExtract(const types::DocumentValue& def,
                                           types::TracerFn tr)
 {
     // Get fields
@@ -540,12 +540,12 @@ types::Lifter opBuilderHelperRegexExtract(const types::DocumentValue &def,
             [=](types::Event e)
             {
                 // TODO Remove try catch
-                const rapidjson::Value *field_str {};
+                const rapidjson::Value* field_str {};
                 try
                 {
                     field_str = &e->get(field);
                 }
-                catch (std::exception &ex)
+                catch (std::exception& ex)
                 {
                     // TODO Check exception type
                     return e;
@@ -564,7 +564,7 @@ types::Lifter opBuilderHelperRegexExtract(const types::DocumentValue &def,
                                                     e->m_doc.GetAllocator())
                                        .Move());
                         }
-                        catch (std::exception &ex)
+                        catch (std::exception& ex)
                         {
                             // TODO Check exception type
                             return e;

@@ -13,19 +13,20 @@
 #include <thread>
 #include <vector>
 
+#include "argparse/argparse.hpp"
+
+#include <builder.hpp>
+#include <catalog.hpp>
+#include <diskStorage.hpp>
+#include <engineServer.hpp>
+#include <graph.hpp>
+#include <json.hpp>
+#include <kvdb/kvdbManager.hpp>
 #include <logging/logging.hpp>
 #include <profile/profile.hpp>
-
-#include "builder.hpp"
-#include "catalog.hpp"
-#include "catalog/storageDriver/disk/diskStorage.hpp"
-#include "cliParser.hpp"
-#include "engineServer.hpp"
-#include "graph.hpp"
-#include "json.hpp"
-#include "protocolHandler.hpp"
-#include "register.hpp"
-#include "router.hpp"
+#include <protocolHandler.hpp>
+#include <register.hpp>
+#include <router.hpp>
 
 #define WAIT_DEQUEUE_TIMEOUT_USEC (1 * 1000000)
 
@@ -40,7 +41,7 @@ static void sigint_handler(const int signum)
     // Inform threads that they must exit
     gs_doRun = false;
 
-    for (auto &t : gs_threadList)
+    for (auto& t : gs_threadList)
     {
         t.join();
     };
@@ -48,7 +49,51 @@ static void sigint_handler(const int signum)
     exit(0);
 }
 
-int main(int argc, char *argv[])
+static auto configureCliArgs()
+{
+    argparse::ArgumentParser argParser("server");
+
+    argParser.add_argument("-e", "--endpoint")
+        .help("Endpoint configuration string")
+        .required();
+
+    argParser.add_argument("-t", "--threads")
+        .help("Set the number of threads to use while computing")
+        .scan<'i', int>()
+        .default_value(1);
+
+    argParser.add_argument("-f", "--file_storage")
+        .help("Path to storage folder")
+        .required();
+
+    argParser.add_argument("-q", "--queue_size")
+        .help("Number of events that can be queued for processing")
+        .scan<'i', int>()
+        .default_value(1000000);
+
+    // TODO this is just to give the posibility to avoid a 'protected' folder
+    // on the developement cycle of the engine. This would come from a config
+    // later on and the option will be removed
+    argParser.add_argument("--kvdbPath")
+        .help("Optional path where the kvdb will be created")
+        .default_value<std::string>("/var/ossec/queue/db/kvdb/");
+
+    argParser.add_argument("-T", "--trace_all")
+        .help("Subscribe to all trace sinks and print in cerr")
+        .default_value(false)
+        .implicit_value(true);
+
+    argParser.add_argument("--trace")
+        .help("Subscribe to specified trace sinks and print in cerr")
+        .default_value(false)
+        .implicit_value(true);
+
+    argParser.add_argument("trace_assets").remaining();
+
+    return argParser;
+}
+
+int main(int argc, char* argv[])
 {
     sigset_t sig_empty_mask;
     sigemptyset(&sig_empty_mask);
@@ -59,30 +104,29 @@ int main(int argc, char *argv[])
 
     sigaction(SIGINT, &sigintAction, NULL);
 
-    std::vector<std::string> serverArgs;
-    std::string storagePath;
-    int nThreads;
-    size_t queueSize;
-    bool traceAll;
-    bool trace;
-    std::vector<std::string> traceNames;
-
+    auto argParser = configureCliArgs();
     try
     {
-        // TODO: Add and check cliInput missing tests
-        cliparser::CliParser cliInput(argc, argv);
-        serverArgs.push_back(cliInput.getEndpointConfig());
-        storagePath = cliInput.getStoragePath();
-        nThreads = cliInput.getThreads();
-        queueSize = cliInput.getQueueSize();
-        traceAll = cliInput.getTraceAll();
-        trace = cliInput.getTrace();
-        traceNames = cliInput.getTraceNames();
+        argParser.parse_args(argc, argv);
     }
-    catch (const std::exception &e)
+    catch (const std::runtime_error& err)
     {
-        WAZUH_LOG_ERROR("Error while parsing arguments: [{}]", e.what());
-        return 1;
+        WAZUH_LOG_ERROR("Invalid command line arguments: [{}]", err.what());
+        std::cout << argParser.help().str();
+        return -1;
+    }
+
+    auto serverArgs = argParser.get("--endpoint");
+    auto storagePath = argParser.get("--file_storage");
+    auto nThreads = argParser.get<int>("--threads");
+    auto queueSize = argParser.get<int>("--queue_size");
+    auto kvdbPath = argParser.get("--kvdbPath");
+    auto traceAll = argParser.get<bool>("--trace_all");
+    auto trace = argParser.get<bool>("--trace");
+    std::vector<std::string> traceNames;
+    if (trace)
+    {
+        traceNames = argParser.get<std::vector<std::string>>("trace_assets");
     }
 
     logging::LoggingConfig logConfig;
@@ -90,8 +134,10 @@ int main(int argc, char *argv[])
     logConfig.logLevel = logging::LogLevel::Debug;
     logging::loggingInit(logConfig);
 
+    KVDBManager::init(kvdbPath);
+
     // Server
-    EngineServer server {serverArgs, queueSize};
+    EngineServer server {{serverArgs}, static_cast<size_t>(queueSize)};
 
     // Check if the server was correctly configured
     if (!server.isConfigured())
@@ -106,7 +152,7 @@ int main(int argc, char *argv[])
     {
         _catalog.setStorageDriver(std::make_unique<DiskStorage>(storagePath));
     }
-    catch (const std::exception &e)
+    catch (const std::exception& e)
     {
         WAZUH_LOG_ERROR("Exception while creating catalog configuration : [{}]",
                         e.what());
@@ -118,7 +164,7 @@ int main(int argc, char *argv[])
     {
         builder::internals::registerBuilders();
     }
-    catch (const std::exception &e)
+    catch (const std::exception& e)
     {
         WAZUH_LOG_ERROR("Exception while registering builders: [{}]", e.what());
         return 1;
@@ -143,7 +189,7 @@ int main(int argc, char *argv[])
                     // Default route
                     router.add("test_route", "test_environment");
                 }
-                catch (const std::exception &e)
+                catch (const std::exception& e)
                 {
                     WAZUH_LOG_ERROR(
                         "Exception while building default route: [{}]",
