@@ -41,20 +41,7 @@ class KVDBTest : public ::testing::Test
 {
 
 protected:
-    bool initialized = KVDBManager::init("/tmp/");
-    KVDBManager &kvdbManager = KVDBManager::get();
-
-    KVDBTest()
-    {
-        logging::LoggingConfig logConfig;
-        logConfig.logLevel = logging::LogLevel::Off;
-        logging::loggingInit(logConfig);
-    }
-
-    virtual ~KVDBTest()
-    { // = default;
-    }
-
+    KVDBManager& kvdbManager = KVDBManager::get();
     virtual void SetUp()
     {
         kvdbManager.addDb(kTestDBName);
@@ -404,5 +391,15 @@ TEST_F(KVDBTest, KVDBConcurrency)
     del.join();
     KVDBManager::get().deleteDB(dbName);
 }
-
 } // namespace
+
+int main(int argc, char **argv) {
+    KVDBManager::init("/tmp/");
+
+    logging::LoggingConfig logConfig;
+    logConfig.logLevel = logging::LogLevel::Off;
+    logging::loggingInit(logConfig);
+
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+}
