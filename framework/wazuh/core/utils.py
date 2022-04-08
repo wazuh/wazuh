@@ -28,7 +28,6 @@ from defusedxml.minidom import parseString
 import wazuh.core.results as results
 from api import configuration
 from wazuh.core import common
-from wazuh.core.common import OSSEC_PIDFILE_PATH
 from wazuh.core.database import Connection
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.wdb import WazuhDBConnection
@@ -50,15 +49,15 @@ def clean_pid_files(daemon):
         Daemon's name.
     """
     regex = rf'{daemon}[\w_]*-(\d+).pid'
-    for pid_file in os.listdir(OSSEC_PIDFILE_PATH):
+    for pid_file in os.listdir(common.OSSEC_PIDFILE_PATH):
         if match := re.match(regex, pid_file):
             try:
                 os.kill(int(match.group(1)), SIGKILL)
                 print(f"{daemon}: Orphan child process {match.group(1)} was terminated.")
             except OSError:
-                print(f'{daemon}: Non existent process {match.group(1)}, removing from {common.wazuh_path}/var/run...')
+                print(f'{daemon}: Non existent process {match.group(1)}, removing from {common.WAZUH_PATH}/var/run...')
             finally:
-                os.remove(path.join(OSSEC_PIDFILE_PATH, pid_file))
+                os.remove(path.join(common.OSSEC_PIDFILE_PATH, pid_file))
 
 
 def find_nth(string, substring, n):
