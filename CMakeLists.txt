@@ -75,6 +75,13 @@ CPMAddPackage(
   EXCLUDE_FROM_ALL YES
 )
 
+CPMAddPackage(
+  NAME argparse
+  GITHUB_REPOSITORY p-ranav/argparse
+  GIT_TAG v2.2
+  VERSION 2.2
+  DOWNLOAD_ONLY YES
+)
 ####################################################################################################
 # Targets
 ####################################################################################################
@@ -82,17 +89,17 @@ CPMAddPackage(
 add_executable(main ${ENGINE_SOURCE_DIR}/main.cpp)
 
 target_include_directories(main
-    PUBLIC
+    PRIVATE
     ${ENGINE_SOURCE_DIR}/router
     ${ENGINE_SOURCE_DIR}/json
     ${CameronQueue_SOURCE_DIR}
+    ${argparse_SOURCE_DIR}/include
 )
 
 
 add_subdirectory(${ENGINE_SOURCE_DIR}/base)
 add_subdirectory(${ENGINE_SOURCE_DIR}/builder)
 add_subdirectory(${ENGINE_SOURCE_DIR}/catalog)
-add_subdirectory(${ENGINE_SOURCE_DIR}/cliParser)
 add_subdirectory(${ENGINE_SOURCE_DIR}/hlp)
 add_subdirectory(${ENGINE_SOURCE_DIR}/kvdb)
 add_subdirectory(${ENGINE_SOURCE_DIR}/server)

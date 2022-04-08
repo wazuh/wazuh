@@ -11,14 +11,15 @@
 
 #include <kvdb/kvdb.hpp>
 #include <logging/logging.hpp>
-#include <utils/stringUtils.hpp>
 #include <utils/baseMacros.hpp>
+#include <utils/stringUtils.hpp>
 
 bool KVDBManager::mInitialized;
 std::string KVDBManager::mDbFolder;
-bool KVDBManager::init(const std::filesystem::path &path)
+bool KVDBManager::init(const std::filesystem::path& path)
 {
-    WAZUH_ASSERT_MSG(!mInitialized, "The manager should be initialized only once.");
+    WAZUH_ASSERT_MSG(!mInitialized,
+                     "The manager should be initialized only once.");
     mInitialized = true;
 
     // TODO Remove this when Engine is integrated in Wazuh installation
@@ -28,7 +29,7 @@ bool KVDBManager::init(const std::filesystem::path &path)
     return true;
 }
 
-KVDBManager &KVDBManager::get()
+KVDBManager& KVDBManager::get()
 {
     WAZUH_ASSERT_MSG(mInitialized, "Trying to use an un-initialized manager");
     static KVDBManager instance;
@@ -42,7 +43,7 @@ KVDBManager::KVDBManager()
 
     if (std::filesystem::exists(mDbFolder + "legacy"))
     {
-        for (const auto &cdbfile :
+        for (const auto& cdbfile :
              std::filesystem::directory_iterator(mDbFolder + "legacy"))
         {
             // Read it from the config file?
@@ -63,7 +64,7 @@ KVDBManager::~KVDBManager()
     m_availableKVDBs.clear();
 }
 
-KVDBHandle KVDBManager::addDb(const std::string &name, bool createIfMissing)
+KVDBHandle KVDBManager::addDb(const std::string& name, bool createIfMissing)
 {
     std::unique_lock lk(mMtx);
     if (m_availableKVDBs.find(name) != m_availableKVDBs.end())
@@ -79,7 +80,7 @@ KVDBHandle KVDBManager::addDb(const std::string &name, bool createIfMissing)
     return kvdb;
 }
 
-bool KVDBManager::createDBfromCDB(const std::filesystem::path &path,
+bool KVDBManager::createDBfromCDB(const std::filesystem::path& path,
                                   bool overwrite)
 {
     std::ifstream CDBfile(path);
@@ -115,7 +116,7 @@ bool KVDBManager::createDBfromCDB(const std::filesystem::path &path,
     return true;
 }
 
-bool KVDBManager::deleteDB(const std::string &name)
+bool KVDBManager::deleteDB(const std::string& name)
 {
     std::unique_lock lk(mMtx);
     auto it = m_availableKVDBs.find(name);
@@ -129,13 +130,13 @@ bool KVDBManager::deleteDB(const std::string &name)
     return true;
 }
 
-KVDBHandle KVDBManager::getDB(const std::string &name)
+KVDBHandle KVDBManager::getDB(const std::string& name)
 {
     std::shared_lock lk(mMtx);
     auto it = m_availableKVDBs.find(name);
     if (it != m_availableKVDBs.end())
     {
-        auto &db = it->second;
+        auto& db = it->second;
         if (!db->isReady())
         {
             // In general it should never happen so we should consider just

@@ -15,7 +15,6 @@
 
 #include <logging/logging.hpp>
 #include <profile/profile.hpp>
-#include <utils/baseMacros.hpp>
 
 namespace engineserver
 {
@@ -36,11 +35,11 @@ bool ProtocolHandler::hasHeader()
     return false;
 }
 
-std::shared_ptr<json::Document> ProtocolHandler::parse(const std::string &event)
+std::shared_ptr<json::Document> ProtocolHandler::parse(const std::string& event)
 {
     auto doc = std::make_shared<json::Document>();
     doc->m_doc.SetObject();
-    rapidjson::Document::AllocatorType &allocator = doc->getAllocator();
+    rapidjson::Document::AllocatorType& allocator = doc->getAllocator();
 
     auto queuePos = event.find(":");
     try
@@ -62,7 +61,7 @@ std::shared_ptr<json::Document> ProtocolHandler::parse(const std::string &event)
         loc.SetString(location.c_str(), location.length(), allocator);
         doc->m_doc.AddMember("location", loc, allocator);
     }
-    catch (std::out_of_range &e)
+    catch (std::out_of_range& e)
     {
         std::throw_with_nested(
             ("Error parsing location using token sep :" + event));
@@ -75,7 +74,7 @@ std::shared_ptr<json::Document> ProtocolHandler::parse(const std::string &event)
         msg.SetString(message.c_str(), message.length(), allocator);
         doc->m_doc.AddMember("message", msg, allocator);
     }
-    catch (std::out_of_range &e)
+    catch (std::out_of_range& e)
     {
         std::throw_with_nested(
             ("Error parsing location using token sep :" + event));
@@ -85,7 +84,7 @@ std::shared_ptr<json::Document> ProtocolHandler::parse(const std::string &event)
 }
 
 std::optional<std::vector<std::string>>
-ProtocolHandler::process(const char *data, const size_t length)
+ProtocolHandler::process(const char* data, const size_t length)
 {
     std::vector<std::string> events;
 
@@ -123,7 +122,7 @@ ProtocolHandler::process(const char *data, const size_t length)
                             m_buff.begin() + sizeof(int), m_buff.end()));
                         m_buff.clear();
                     }
-                    catch (std::exception &e)
+                    catch (std::exception& e)
                     {
                         WAZUH_LOG_ERROR("{}", e.what());
                         return std::nullopt;
