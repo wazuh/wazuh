@@ -14,31 +14,29 @@
 #include <utils/stringUtils.hpp>
 #include <utils/baseMacros.hpp>
 
-KVDBManager *KVDBManager::mInstance = nullptr;
-bool KVDBManager::init(const std::string &DbFolder)
+bool KVDBManager::mInitialized;
+std::string KVDBManager::mDbFolder;
+bool KVDBManager::init(const std::filesystem::path &path)
 {
-    WAZUH_ASSERT_MSG(!mInstance, "The manager should be initialized only once.");
+    WAZUH_ASSERT_MSG(!mInitialized, "The manager should be initialized only once.");
+    mInitialized = true;
 
-    std::filesystem::create_directories(
-        DbFolder); // TODO Remove this when Engine is integrated in Wazuh
-                   // installation
-    mInstance = new KVDBManager(DbFolder);
+    // TODO Remove this when Engine is integrated in Wazuh installation
+    std::filesystem::create_directories(path);
+    mDbFolder = path;
+
     return true;
 }
 
 KVDBManager &KVDBManager::get()
 {
-    if (!mInstance)
-    {
-        throw std::logic_error("KVDBManager isn't initialized");
-    }
-    return *mInstance;
+    WAZUH_ASSERT_MSG(mInitialized, "Trying to use an un-initialized manager");
+    static KVDBManager instance;
+    return instance;
 }
 
-KVDBManager::KVDBManager(const std::string &DbFolder)
+KVDBManager::KVDBManager()
 {
-    mDbFolder = DbFolder;
-
     // TODO should we read and load all the dbs inside the folder?
     // shouldn't be better to just load the configured ones at start instead?
 
