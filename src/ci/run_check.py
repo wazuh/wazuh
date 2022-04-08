@@ -290,13 +290,14 @@ def runCppCheck(moduleName):
         raise ValueError(errorString)
 
 
-def runReadyToReview(moduleName, clean=False):
+def runReadyToReview(moduleName, clean=False, target="agent"):
     """
     Executes all needed checks for a library in order to create a PR.
 
     Args:
         - moduleName: Library to be built and analyzed.
-        - clean: Delete logs
+        - clean: Delete logs.
+        - target: Build type. <agent, winagent, manager>
 
     Returns:
         - None
@@ -305,8 +306,8 @@ def runReadyToReview(moduleName, clean=False):
                       headerKey="rtr")
 
     runCppCheck(moduleName=moduleName)
-    build_tools.makeDeps(targetName="agent", srcOnly=False)
-    build_tools.makeTarget(targetName="agent", tests=True, debug=True)
+    build_tools.makeDeps(targetName=target, srcOnly=False)
+    build_tools.makeTarget(targetName=target, tests=True, debug=True)
     build_tools.cleanFolder(moduleName=moduleName,
                             additionalFolder="build")
     build_tools.configureCMake(moduleName=moduleName, 

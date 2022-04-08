@@ -83,34 +83,49 @@ def processArgs():
                         help="Run scan-build on the code. Example: \
                               python3 build.py --scanbuild <agent|\
                               server|winagent>")
+    parser.add_argument("--target",
+                        help="Compile with a determinate target. Example: \
+                              python3 build.py --target <agent|\
+                              server|winagent>")
 
     args = parser.parse_args()
-    if utils.argIsValid(args.readytoreview):
-        run_check.runReadyToReview(args.readytoreview)
-    elif utils.argIsValid(args.clean):
-        build_tools.cleanLib(args.clean)
-    elif utils.argIsValid(args.make):
-        build_tools.makeLib(args.make)
-    elif utils.argIsValid(args.tests):
-        run_check.runTests(args.tests)
-    elif utils.argIsValid(args.coverage):
-        run_check.runCoverage(args.coverage)
-    elif utils.argIsValid(args.valgrind):
-        run_check.runValgrind(args.valgrind)
-    elif utils.argIsValid(args.cppcheck):
-        run_check.runCppCheck(args.cppcheck)
-    elif utils.argIsValid(args.asan) and args.path:
-        run_check.runASAN(args.asan, args.path)
-    elif utils.argIsValid(args.scheck):
-        run_check.runAStyleCheck(args.scheck)
-    elif utils.argIsValid(args.sformat):
-        run_check.runAStyleFormat(args.sformat)
-    elif utils.targetIsValid(args.scanbuild):
-        run_check.runScanBuild(args.scanbuild)
-    elif utils.argIsValid(args.deleteLogs):
-        utils.deleteLogs(args.deleteLogs)
-    elif utils.argIsValid(args.readytoreviewandclean):
-        run_check.runReadyToReview(args.readytoreviewandclean, True)
+    if utils.argIsValid(arg=args.readytoreview):
+        if utils.targetIsValid(arg=args.target):
+            run_check.runReadyToReview(moduleName=args.readytoreview,
+                                       target=args.target)
+        else:
+            run_check.runReadyToReview(moduleName=args.readytoreview)
+    elif utils.argIsValid(arg=args.clean):
+        build_tools.cleanLib(moduleName=args.clean)
+    elif utils.argIsValid(arg=args.make):
+        build_tools.makeLib(moduleName=args.make)
+    elif utils.argIsValid(arg=args.tests):
+        run_check.runTests(moduleName=args.tests)
+    elif utils.argIsValid(arg=args.coverage):
+        run_check.runCoverage(moduleName=args.coverage)
+    elif utils.argIsValid(arg=args.valgrind):
+        run_check.runValgrind(moduleName=args.valgrind)
+    elif utils.argIsValid(arg=args.cppcheck):
+        run_check.runCppCheck(moduleName=args.cppcheck)
+    elif utils.argIsValid(arg=args.asan) and args.path:
+        run_check.runASAN(moduleName=args.asan,
+                          testToolConfig=args.path)
+    elif utils.argIsValid(arg=args.scheck):
+        run_check.runAStyleCheck(moduleName=args.scheck)
+    elif utils.argIsValid(arg=args.sformat):
+        run_check.runAStyleFormat(moduleName=args.sformat)
+    elif utils.targetIsValid(arg=args.scanbuild):
+        run_check.runScanBuild(targetName=args.scanbuild)
+    elif utils.argIsValid(arg=args.deleteLogs):
+        utils.deleteLogs(moduleName=args.deleteLogs)
+    elif utils.argIsValid(arg=args.readytoreviewandclean):
+        if utils.targetIsValid(arg=args.target):
+            run_check.runReadyToReview(moduleName=args.readytoreviewandclean,
+                                       clean=True,
+                                       target=args.target)
+        else:
+            run_check.runReadyToReview(moduleName=args.readytoreviewandclean,
+                                       clean=True)
     else:
         parser.print_help()
 
