@@ -2,35 +2,36 @@
 #define _KVDBMANAGER_H
 
 #include <filesystem>
-#include <string>
-#include <vector>
 #include <shared_mutex>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
-#include "kvdb.hpp"
+#include <kvdb/kvdb.hpp>
+#include <utils/baseMacros.hpp>
+
+using KVDBHandle = std::shared_ptr<KVDB>;
 
 class KVDBManager
 {
-    KVDBManager(const std::string &DbFolder);
+    WAZUH_DISABLE_COPY_ASSIGN(KVDBManager);
+
+    KVDBManager();
     ~KVDBManager();
-    static KVDBManager *mInstance;
-    std::string mDbFolder;
-    using DBMap = std::unordered_map<std::string, std::shared_ptr<KVDB>>;
-    DBMap m_availableKVDBs;
-    bool addDB(const std::string &name, const std::string &folder);
-    bool popDB(const std::string &name);
-    std::mutex mMtx;
+    static bool mInitialized;
+    static std::string mDbFolder;
+    std::unordered_map<std::string, KVDBHandle> m_availableKVDBs;
+    std::shared_mutex mMtx;
+    static KVDBManager sInstance;
 
 public:
-    static bool init(const std::string &DbFolder);
-    static KVDBManager &get();
-    KVDBManager(KVDBManager const &) = delete;
-    KVDBManager() = delete;
-    void operator=(KVDBManager const &) = delete;
-    bool createDB(const std::string &Name, bool overwrite = true);
-    bool createDBfromCDB(const std::filesystem::path &path,
+    static bool init(const std::filesystem::path& DbFolder);
+    static KVDBManager& get();
+    KVDBHandle addDb(const std::string& Name, bool createIfMissing = true);
+    bool createDBfromCDB(const std::filesystem::path& path,
                          bool overwrite = true);
-    bool deleteDB(const std::string &name);
-    std::shared_ptr<KVDB> getDB(const std::string &name);
+    bool deleteDB(const std::string& name);
+    KVDBHandle getDB(const std::string& name);
 };
 
 #endif // _KVDBMANAGER_H

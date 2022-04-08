@@ -9,22 +9,24 @@
 
 static constexpr char kBenchDbName[] = "bench";
 
-static void kvdbRead(benchmark::State &state)
+static void dbSetup(const benchmark::State& s)
 {
-    if (state.thread_index() == 0)
-    {
-        KVDBManager::get().createDB(kBenchDbName);
-    }
+    auto db = KVDBManager::get().addDb(kBenchDbName);
 
-    auto &db = KVDBManager::get().getDB(kBenchDbName);
-
-    if (state.thread_index() == 0)
+    for (int i = 0; i < s.range(0); ++i)
     {
-        for (int i = 0; i < state.range(0); ++i)
-        {
-            db.write(fmt::format("user-{}", i), "action");
-        }
+        db->write(fmt::format("user-{}", i), "action");
     }
+}
+
+static void dbTeardown(const benchmark::State& s)
+{
+    KVDBManager::get().deleteDB(kBenchDbName);
+}
+
+static void kvdbRead(benchmark::State& state)
+{
+    auto db = KVDBManager::get().getDB(kBenchDbName);
 
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -33,37 +35,20 @@ static void kvdbRead(benchmark::State &state)
 
     for (auto _ : state)
     {
-        auto val = db.read(user);
+        auto val = db->read(user);
         benchmark::DoNotOptimize(val.data());
-    }
-
-    if (state.thread_index() == 0)
-    {
-        db.destroy();
-        KVDBManager::get().deleteDB(kBenchDbName);
     }
 }
 
 BENCHMARK(kvdbRead)
+    ->Setup(dbSetup)
+    ->Teardown(dbTeardown)
     ->Range(8, 16 << 10)
     ->ThreadRange(1, std::thread::hardware_concurrency());
 
-static void kvdbHasKey(benchmark::State &state)
+static void kvdbHasKey(benchmark::State& state)
 {
-    if (state.thread_index() == 0)
-    {
-        KVDBManager::get().createDB(kBenchDbName);
-    }
-
-    auto &db = KVDBManager::get().getDB(kBenchDbName);
-
-    if (state.thread_index() == 0)
-    {
-        for (int i = 0; i < state.range(0); ++i)
-        {
-            db.write(fmt::format("user-{}", i), "action");
-        }
-    }
+    auto db = KVDBManager::get().getDB(kBenchDbName);
 
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -72,25 +57,20 @@ static void kvdbHasKey(benchmark::State &state)
 
     for (auto _ : state)
     {
-        auto val = db.hasKey(user);
+        auto val = db->hasKey(user);
         benchmark::DoNotOptimize(val);
-    }
-
-    if (state.thread_index() == 0)
-    {
-        db.destroy();
-        KVDBManager::get().deleteDB(kBenchDbName);
     }
 }
 
 BENCHMARK(kvdbHasKey)
+    ->Setup(dbSetup)
+    ->Teardown(dbTeardown)
     ->Range(8, 16 << 10)
     ->ThreadRange(1, std::thread::hardware_concurrency());
 
-static void kvdbWrite(benchmark::State &state)
+static void kvdbWrite(benchmark::State& state)
 {
-    KVDBManager::get().createDB(kBenchDbName);
-    auto &db = KVDBManager::get().getDB(kBenchDbName);
+    auto db = KVDBManager::get().getDB(kBenchDbName);
 
     std::vector<std::string> keys;
     for (int i = 0; i < state.range(0); ++i)
@@ -100,26 +80,22 @@ static void kvdbWrite(benchmark::State &state)
 
     for (auto _ : state)
     {
-        for (auto const &key : keys)
+        for (auto const& key : keys)
         {
-            db.write(key, "action");
+            db->write(key, "action");
         }
 
         state.PauseTiming();
-        db.cleanColumn();
+        db->cleanColumn();
         state.ResumeTiming();
     }
-
-    db.destroy();
-    KVDBManager::get().deleteDB(kBenchDbName);
 }
 
-BENCHMARK(kvdbWrite)->Range(8, 16 << 10);
+BENCHMARK(kvdbWrite)->Setup(dbSetup)->Teardown(dbTeardown)->Range(8, 16 << 10);
 
-static void kvdbWriteTx(benchmark::State &state)
+static void kvdbWriteTx(benchmark::State& state)
 {
-    KVDBManager::get().createDB(kBenchDbName);
-    auto &db = KVDBManager::get().getDB(kBenchDbName);
+    auto db = KVDBManager::get().getDB(kBenchDbName);
 
     std::vector<std::pair<std::string, std::string>> keysList;
     for (int i = 0; i < state.range(0); ++i)
@@ -129,15 +105,15 @@ static void kvdbWriteTx(benchmark::State &state)
 
     for (auto _ : state)
     {
-        db.writeToTransaction(keysList);
+        db->writeToTransaction(keysList);
 
         state.PauseTiming();
-        db.cleanColumn();
+        db->cleanColumn();
         state.ResumeTiming();
     }
-
-    db.destroy();
-    KVDBManager::get().deleteDB(kBenchDbName);
 }
 
-BENCHMARK(kvdbWriteTx)->Range(8, 16 << 10);
+BENCHMARK(kvdbWriteTx)
+    ->Setup(dbSetup)
+    ->Teardown(dbTeardown)
+    ->Range(8, 16 << 10);

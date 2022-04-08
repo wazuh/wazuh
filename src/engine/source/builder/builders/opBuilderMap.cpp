@@ -20,12 +20,14 @@
 namespace builder::internals::builders
 {
 
-types::Lifter opBuilderMap(const types::DocumentValue & def, types::TracerFn tr)
+types::Lifter opBuilderMap(const types::DocumentValue& def, types::TracerFn tr)
 {
     // Check that input is as expected and throw exception otherwise
     if (!def.IsObject())
     {
-        auto msg = fmt::format("Map builder expects value to be an object, but got [{}]", def.GetType());
+        auto msg = fmt::format(
+            "Map builder expects value to be an object, but got [{}]",
+            def.GetType());
         WAZUH_LOG_ERROR("{}", msg);
         throw std::invalid_argument(msg);
     }
@@ -47,27 +49,32 @@ types::Lifter opBuilderMap(const types::DocumentValue & def, types::TracerFn tr)
         {
             // TODO: handle that only allowed map helpers are built
             case syntax::FUNCTION_HELPER_ANCHOR:
-                return std::get<types::OpBuilder>(Registry::getBuilder("helper." + vStr.substr(1, std::string::npos)))(
-                    def, tr);
+                return std::get<types::OpBuilder>(Registry::getBuilder(
+                    "helper." + vStr.substr(1, std::string::npos)))(def, tr);
                 break;
             case syntax::REFERENCE_ANCHOR:
-                return std::get<types::OpBuilder>(Registry::getBuilder("map.reference"))(def, tr);
+                return std::get<types::OpBuilder>(
+                    Registry::getBuilder("map.reference"))(def, tr);
                 break;
             default:
-                return std::get<types::OpBuilder>(Registry::getBuilder("map.value"))(def, tr);
+                return std::get<types::OpBuilder>(
+                    Registry::getBuilder("map.value"))(def, tr);
         }
     }
     else if (v->value.IsArray())
     {
-        return std::get<types::OpBuilder>(Registry::getBuilder("map.array"))(def, tr);
+        return std::get<types::OpBuilder>(Registry::getBuilder("map.array"))(
+            def, tr);
     }
     else if (v->value.IsObject())
     {
-        return std::get<types::OpBuilder>(Registry::getBuilder("map.object"))(def, tr);
+        return std::get<types::OpBuilder>(Registry::getBuilder("map.object"))(
+            def, tr);
     }
     else
     {
-        return std::get<types::OpBuilder>(Registry::getBuilder("map.value"))(def, tr);
+        return std::get<types::OpBuilder>(Registry::getBuilder("map.value"))(
+            def, tr);
     }
 }
 

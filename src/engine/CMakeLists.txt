@@ -27,6 +27,15 @@ option(ENGINE_BUILD_BENCHMARK "Generate benchmarks" ON)
 option(ENGINE_BUILD_DOCUMENTATION "Generate doxygen documentation" ON)
 option(ENGINE_PROFILE_BUILD "Enables profiling through Tracy" OFF)
 option(ENGINE_PROFILE_MEMORY "Enables memory profiling in Tracy" OFF)
+option(ENGINE_ASSERT_WITH_SYMBOLS "Exports exe symbols to have asserts with full symbolicated functions" ON)
+
+# TODO put this in a better place together with other global options like warnings
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    if(ENGINE_ASSERT_WITH_SYMBOLS)
+        add_link_options ( -rdynamic ) #For asserts bt
+    endif()
+    add_compile_definitions ( WAZUH_DEBUG )
+endif()
 
 # Ensures that we do an out of source build
 MACRO(MACRO_ENSURE_OUT_OF_SOURCE_BUILD MSG)
@@ -66,6 +75,13 @@ CPMAddPackage(
   EXCLUDE_FROM_ALL YES
 )
 
+CPMAddPackage(
+  NAME argparse
+  GITHUB_REPOSITORY p-ranav/argparse
+  GIT_TAG v2.2
+  VERSION 2.2
+  DOWNLOAD_ONLY YES
+)
 ####################################################################################################
 # Targets
 ####################################################################################################
@@ -73,17 +89,17 @@ CPMAddPackage(
 add_executable(main ${ENGINE_SOURCE_DIR}/main.cpp)
 
 target_include_directories(main
-    PUBLIC
+    PRIVATE
     ${ENGINE_SOURCE_DIR}/router
     ${ENGINE_SOURCE_DIR}/json
     ${CameronQueue_SOURCE_DIR}
+    ${argparse_SOURCE_DIR}/include
 )
 
 
 add_subdirectory(${ENGINE_SOURCE_DIR}/base)
 add_subdirectory(${ENGINE_SOURCE_DIR}/builder)
 add_subdirectory(${ENGINE_SOURCE_DIR}/catalog)
-add_subdirectory(${ENGINE_SOURCE_DIR}/cliParser)
 add_subdirectory(${ENGINE_SOURCE_DIR}/hlp)
 add_subdirectory(${ENGINE_SOURCE_DIR}/kvdb)
 add_subdirectory(${ENGINE_SOURCE_DIR}/server)

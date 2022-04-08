@@ -1,49 +1,49 @@
 #include <kvdb/kvdbManager.hpp>
 
-#include <assert.h>
+#include <algorithm>
 #include <exception>
 #include <filesystem>
 #include <fstream>
-#include <iostream>
 #include <set>
 #include <unordered_map>
 
 #include <fmt/format.h>
-#include <logging/logging.hpp>
-#include <utils/stringUtils.hpp>
 
 #include <kvdb/kvdb.hpp>
+#include <logging/logging.hpp>
+#include <utils/baseMacros.hpp>
+#include <utils/stringUtils.hpp>
 
-KVDBManager* KVDBManager::mInstance = nullptr;
-bool KVDBManager::init(const std::string& DbFolder)
+bool KVDBManager::mInitialized;
+std::string KVDBManager::mDbFolder;
+bool KVDBManager::init(const std::filesystem::path& path)
 {
-    if (mInstance) {
-        return false;
-    }
-    if (DbFolder.empty()) {
-        return false;
-    }
-    std::filesystem::create_directories(DbFolder); // TODO Remove this when Engine is integrated in Wazuh installation
-    mInstance = new KVDBManager(DbFolder);
+    WAZUH_ASSERT_MSG(!mInitialized,
+                     "The manager should be initialized only once.");
+    mInitialized = true;
+
+    // TODO Remove this when Engine is integrated in Wazuh installation
+    std::filesystem::create_directories(path);
+    mDbFolder = path;
+
     return true;
 }
 
-KVDBManager &KVDBManager::get()
+KVDBManager& KVDBManager::get()
 {
-    if (!mInstance)
-    {
-        throw std::logic_error("KVDBManager isn't initialized");
-    }
-    return *mInstance;
+    WAZUH_ASSERT_MSG(mInitialized, "Trying to use an un-initialized manager");
+    static KVDBManager instance;
+    return instance;
 }
 
-KVDBManager::KVDBManager(const std::string &DbFolder)
+KVDBManager::KVDBManager()
 {
-    mDbFolder = DbFolder;
+    // TODO should we read and load all the dbs inside the folder?
+    // shouldn't be better to just load the configured ones at start instead?
 
     if (std::filesystem::exists(mDbFolder + "legacy"))
     {
-        for (const auto &cdbfile :
+        for (const auto& cdbfile :
              std::filesystem::directory_iterator(mDbFolder + "legacy"))
         {
             // Read it from the config file?
@@ -64,77 +64,59 @@ KVDBManager::~KVDBManager()
     m_availableKVDBs.clear();
 }
 
-bool KVDBManager::createDB(const std::string &name, bool overwrite)
+KVDBHandle KVDBManager::addDb(const std::string& name, bool createIfMissing)
 {
-    rocksdb::Options createOptions;
-    createOptions.IncreaseParallelism();
-    createOptions.OptimizeLevelStyleCompaction();
-    createOptions.create_if_missing = true;
-    createOptions.error_if_exists = !overwrite;
-
-    rocksdb::DB *db;
-    rocksdb::Status s = rocksdb::DB::Open(createOptions, mDbFolder + name, &db);
-    if (!s.ok())
+    std::unique_lock lk(mMtx);
+    if (m_availableKVDBs.find(name) != m_availableKVDBs.end())
     {
-        WAZUH_LOG_ERROR("Couldn't create DB [{}] file, error: [{}]",
-                        name,
-                        s.ToString());
-        return false;
-    }
-    s = db->Close(); // TODO: We can avoid this unnecessary close making a more
-                     // complex KVDB constructor that creates DBs
-                     // or if receives a CFHandler and a CFDescriptor vector.
-    if (!s.ok())
-    {
-        WAZUH_LOG_ERROR("Couldn't close db file, error: [{}]", s.ToString());
-        return false;
+        WAZUH_LOG_ERROR("DB with name [{}] already exists.", name);
+        return nullptr;
     }
 
-    return true;
+    WAZUH_LOG_DEBUG("adding DB with name [{}] to available Databases", name);
+    auto kvdb = std::make_shared<KVDB>(name, mDbFolder);
+    kvdb->init(createIfMissing);
+    m_availableKVDBs[name] = kvdb;
+    return kvdb;
 }
 
-bool KVDBManager::createDBfromCDB(const std::filesystem::path &path,
+bool KVDBManager::createDBfromCDB(const std::filesystem::path& path,
                                   bool overwrite)
 {
     std::ifstream CDBfile(path);
     if (!CDBfile.is_open())
     {
-        WAZUH_LOG_ERROR("Can't open CDB file [{}]",
-                        path.c_str());
+        WAZUH_LOG_ERROR("Couln't open CDB file [{}]", path.c_str());
         return false;
     }
 
-    if (!createDB(path.stem(), overwrite))
+    auto db = addDb(path.stem(), overwrite);
+    if (!db)
     {
-        return false;
-    }
-    auto kvdb = getDB(path.stem());
-    if (!kvdb)
-    {
-        WAZUH_LOG_ERROR("Created DB [{}] is unavailable", path.stem().c_str());
+        WAZUH_LOG_ERROR("Failed to create db [{}] from CDB file [{}].",
+                        path.stem().string(),
+                        path.string());
         return false;
     }
 
-    std::string line;
-    while (getline(CDBfile, line))
+    for (std::string line; getline(CDBfile, line);)
     {
-        line.erase(remove_if(line.begin(), line.end(), isspace), line.end());
+        line.erase(std::remove_if(line.begin(), line.end(), isspace),
+                   line.end());
         auto KV = utils::string::split(line, ':');
         if (!KV.empty() && !KV.at(0).empty() && !KV.at(0).empty())
         {
-            WAZUH_LOG_ERROR("Error while reading CDBfile [{}]",
-                            path.c_str());
+            WAZUH_LOG_ERROR("Error while reading CDBfile [{}]", path.c_str());
             return false;
         }
-        kvdb->write(KV.at(0), KV.at(1));
-    }
 
-    popDB(path.stem());
+        db->write(KV.at(0), KV.at(1));
+    }
 
     return true;
 }
 
-bool KVDBManager::deleteDB(const std::string &name)
+bool KVDBManager::deleteDB(const std::string& name)
 {
     std::unique_lock lk(mMtx);
     auto it = m_availableKVDBs.find(name);
@@ -143,58 +125,31 @@ bool KVDBManager::deleteDB(const std::string &name)
         WAZUH_LOG_ERROR("Database [{}] isn't handled by KVDB manager", name);
         return false;
     }
-    it->second->markToDelete();
+    it->second->cleanupOnClose();
     m_availableKVDBs.erase(it);
     return true;
 }
 
-bool KVDBManager::popDB(const std::string &name)
+KVDBHandle KVDBManager::getDB(const std::string& name)
 {
-    std::unique_lock lk(mMtx);
-    auto it = m_availableKVDBs.find(name);
-    if (it == m_availableKVDBs.end())
-    {
-        WAZUH_LOG_ERROR("Database [{}] isn't handled by KVDB manager", name);
-        return false;
-    }
-    m_availableKVDBs.erase(it);
-    return true;
-}
-
-bool KVDBManager::addDB(const std::string &name, const std::string &folder)
-{
-    if (m_availableKVDBs.find(name) == m_availableKVDBs.end())
-    {
-        WAZUH_LOG_DEBUG("adding DB with name [{}] to available Databases",
-                        name);
-        std::shared_ptr<KVDB> kvdb = std::make_shared<KVDB>(name, folder);
-        if (kvdb->isReady())
-        {
-            m_availableKVDBs[name] = std::move(kvdb);
-            return true;
-        }
-        WAZUH_LOG_ERROR("DB created but not ready for use");
-        return false;
-    }
-    return false;
-}
-
-std::shared_ptr<KVDB> KVDBManager::getDB(const std::string &name)
-{
-    std::unique_lock lk(mMtx);
+    std::shared_lock lk(mMtx);
     auto it = m_availableKVDBs.find(name);
     if (it != m_availableKVDBs.end())
     {
+        auto& db = it->second;
+        if (!db->isReady())
+        {
+            // In general it should never happen so we should consider just
+            // removing this
+            if (!db->init(false))
+            {
+                WAZUH_LOG_ERROR("Error initializing db [{}].", db->getName());
+                return nullptr;
+            }
+        }
+
         return it->second;
     }
 
-    WAZUH_LOG_DEBUG("Database not available, creating it with name: [{}] ",
-                    name);
-    if (addDB(name, mDbFolder))
-    {
-        return m_availableKVDBs[name];
-    }
-
-    WAZUH_LOG_ERROR("Database not available and couldn't create it");
     return nullptr;
 }
