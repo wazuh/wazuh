@@ -30,9 +30,9 @@ make TARGET=server|agent DEBUG=1 TEST=1
 Once the code is compiled and built successfully the following line should be executed:
 
 ```
-usage: python3 build.py [-h] [-r READYTOREVIEW] [-d DELETELOGS] [-rc READYTOREVIEWANDCLEAN] [-m MAKE] [-t TESTS] [-c COVERAGE]
-                [-v VALGRIND] [--clean CLEAN] [--cppcheck CPPCHECK] [--asan ASAN] [--scheck SCHECK] [--sformat SFORMAT]
-                [--scanbuild SCANBUILD]
+usage: python3 build.py [-h] [-r READYTOREVIEW] 
+[-d DELETELOGS] [-rc READYTOREVIEWANDCLEAN] [-m MAKE] 
+[-t TESTS] [-c COVERAGE] [-v VALGRIND] [--clean CLEAN]   [--cppcheck CPPCHECK] [--asan ASAN] [--scheck SCHECK] [--sformat SFORMAT] [--scanbuild SCANBUILD]
 ```
 
 ### Optional arguments:
@@ -40,18 +40,19 @@ usage: python3 build.py [-h] [-r READYTOREVIEW] [-d DELETELOGS] [-rc READYTOREVI
 |Argument|Description|
 |---|---|
 | `-h`, `--help`          | Show the help message and exit |
-| `-r`, `--readytoreview` | Run all the quality checks needed to create a PR. Example: `python3 build.py -r <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector>` |
-| `-m`, `--make`          | Compile the lib. Example: `python3 build.py -m <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector>` |
-| `-t`, `--tests`         | Run tests (should be configured with TEST=on). Example: `python3 build.py -t <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector>` |
-| `-c`, `--coverage`      | Collect tests coverage and generates report. Example: `python3 build.py -c <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector>` |
-| `-v`, `--valgrind`      | Run valgrind on tests. Example: `python3 build.py -v <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector>` |
-| `-c`, `--coverage`      | Collect tests coverage and generates report. Example: `python3 build.py -c <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector>` |
-| `--clean`               | Clean the lib. Example: `python3 build.py --clean <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector>` |
-| `--cppcheck`            | Run cppcheck on the code. Example: `python3 build.py --cppcheck <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector>` |
-| `--asan`                | Run ASAN on the code. Example: `python3 build.py --asan <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector>` |
-| `--scheck`              | Run AStyle on the code for checking purposes. Example: `python3 build.py --scheck <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector>` |
-| `--sformat`             | Run AStyle on the code formatting the needed files. Example: `python3 build.py --sformat <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector>` |
-| `--scanbuild` SCANBUILD | Run scan-build on the code. Example: `python3 build.py --scanbuild <agent\|server\|winagent>` |
+| `-r`, `--readytoreview` | Run all the quality checks needed to create a PR. Example: `python3 build.py -r <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector\|syscheckd>` |
+| `-rc`, `--readytoreviewandclean` | Run all the quality checks needed to create a PR and clean results. Example: `python3 build.py -r <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector\|syscheckd>` |
+| `-m`, `--make`          | Compile the lib. Example: `python3 build.py -m <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector\|syscheckd>` |
+| `-t`, `--tests`         | Run tests (should be configured with TEST=on). Example: `python3 build.py -t <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector\|syscheckd>` |
+| `-c`, `--coverage`      | Collect tests coverage and generates report. Example: `python3 build.py -c <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector\|syscheckd>` |
+| `-v`, `--valgrind`      | Run valgrind on tests. Example: `python3 build.py -v <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector\|syscheckd>` |
+| `-c`, `--coverage`      | Collect tests coverage and generates report. Example: `python3 build.py -c <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector\|syscheckd>` |
+| `--clean`               | Clean the lib. Example: `python3 build.py --clean <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector\|syscheckd>` |
+| `--cppcheck`            | Run cppcheck on the code. Example: `python3 build.py --cppcheck <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector\|syscheckd>` |
+| `--asan`                | Run ASAN on the code. Example: `python3 build.py --asan <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector\|syscheckd>` |
+| `--scheck`              | Run AStyle on the code for checking purposes. Example: `python3 build.py --scheck <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector\|syscheckd>` |
+| `--sformat`             | Run AStyle on the code formatting the needed files. Example: `python3 build.py --sformat <data_provider\|shared_modules/dbsync\|shared_modules/rsync\|shared_modules/utils\|wazuh_modules/syscollector\|syscheckd>` |
+| `--scanbuild`           | Run scan-build on the code. Example: `python3 build.py --scanbuild <agent\|server\|winagent>` |
 
 Ready to review checks:
   1. Runs cppcheck on <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector> folder.

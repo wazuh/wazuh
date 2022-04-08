@@ -85,7 +85,7 @@ def processArgs():
                               server|winagent>")
     parser.add_argument("--target",
                         help="Compile with a determinate target. Example: \
-                              python3 build.py --target <agent|\
+                              python3 build.py -r --target <agent|\
                               server|winagent>")
 
     args = parser.parse_args()
