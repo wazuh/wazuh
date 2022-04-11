@@ -928,9 +928,8 @@ InstallCommon()
   # are not supported for this platform, it will simply be empty.
   rm -rf ${INSTALLDIR}/.symbols
   if find symbols ! -path symbols ! -name .gitignore | grep . > /dev/null ;then
-    cp -r symbols ${INSTALLDIR}/.symbols
-    chown -R 0:0 ${INSTALLDIR}/.symbols
-    chmod -R 750 ${INSTALLDIR}/.symbols
+    ${INSTALL} -d -m 0750 -o root -g 0 ${INSTALLDIR}/.symbols
+    ${INSTALL} -m 0640 -o root -g 0 symbols/* ${INSTALLDIR}/.symbols
   fi
 }
 
