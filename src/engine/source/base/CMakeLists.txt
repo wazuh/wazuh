@@ -86,6 +86,7 @@ endif()
 
 target_link_libraries(base
     PUBLIC
+    dl
     fmt
     )
 
