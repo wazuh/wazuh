@@ -282,6 +282,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #else
 #define OSSEC_DEFINES   "internal_options.conf"
 #define OSSEC_LDEFINES   "local_internal_options.conf"
+#define OSSEC_LIMITS     "limits.conf"
 #endif
 
 /* Log directories */
