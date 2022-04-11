@@ -186,7 +186,8 @@ def cleanLib(moduleName):
 
 def configureCMake(moduleName, debugMode, testMode, withAsan):
     """
-    Clean the files generated in some module when it is built.
+    Configure cmake command with specific configuration based on
+    the parameters passed to the function.
 
     Args:
         - moduleName(str): Library name to be build.
@@ -255,7 +256,8 @@ def deleteFolderDic():
 
 def makeDeps(targetName, srcOnly):
     """
-    Get a map with configured folders to be deleted
+    Use make command in order to download dependencies and
+    after that build them.
 
     Args:
         - targetName(str): Dependencies type to be build.
@@ -293,7 +295,7 @@ def makeDeps(targetName, srcOnly):
 
 def makeLib(moduleName):
     """
-    Build a library
+    Build a library.
 
     Args:
         - moduleName(str): Library to be built.

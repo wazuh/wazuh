@@ -32,7 +32,9 @@ Once the code is compiled and built successfully the following line should be ex
 ```
 usage: python3 build.py [-h] [-r READYTOREVIEW] 
 [-d DELETELOGS] [-rc READYTOREVIEWANDCLEAN] [-m MAKE] 
-[-t TESTS] [-c COVERAGE] [-v VALGRIND] [--clean CLEAN]   [--cppcheck CPPCHECK] [--asan ASAN] [--scheck SCHECK] [--sformat SFORMAT] [--scanbuild SCANBUILD]
+[-t TESTS] [-c COVERAGE] [-v VALGRIND] [--clean CLEAN] 
+[--cppcheck CPPCHECK] [--asan ASAN] [--scheck SCHECK] 
+[--sformat SFORMAT] [--scanbuild SCANBUILD]
 ```
 
 ### Optional arguments:
