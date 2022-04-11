@@ -33,6 +33,7 @@ option(ENGINE_ASSERT_WITH_SYMBOLS "Exports exe symbols to have asserts with full
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     if(ENGINE_ASSERT_WITH_SYMBOLS)
         add_link_options ( -rdynamic ) #For asserts bt
+        add_compile_definitions ( WAZUH_ASSERT_WITH_SYM )
     endif()
     add_compile_definitions ( WAZUH_DEBUG )
 endif()

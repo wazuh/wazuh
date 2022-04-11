@@ -1,18 +1,22 @@
 #include "baseMacros.hpp"
 
-#include <execinfo.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string>
+#include <vector>
 
+#if WAZUH_ASSERT_WITH_SYM
 #include <cxxabi.h> //Gcc specific
-#include <unwind.h> //Gcc specific
-
 #include <dlfcn.h>
+#include <unwind.h> //Gcc specific
+#endif
+
 #include <signal.h>
 
 #include <logging/logging.hpp>
 
+#if WAZUH_ASSERT_WITH_SYM
 struct BtState
 {
     int skip;
@@ -73,6 +77,12 @@ static std::string getBacktrace()
 
     return ret;
 }
+#else
+static std::string getBacktrace()
+{
+    return {};
+}
+#endif
 
 void wazuhAssertImpl(const char* expr,
                      const char* file,
