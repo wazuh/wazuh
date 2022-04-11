@@ -1699,7 +1699,7 @@ void manager_init()
 
     w_yaml_create_groups();
 
-    pending_queue = linked_queue_init();
+    pending_queue = linked_queue_init(NULL, NULL);
     pending_data = OSHash_Create();
 
     if (!m_hash || !pending_data) merror_exit("At manager_init(): OSHash_Create() failed");

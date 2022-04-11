@@ -127,7 +127,7 @@ STATIC int wm_agent_upgrade_send_sha1(int agent_id, int wpk_message_format, cons
 STATIC int wm_agent_upgrade_send_upgrade(int agent_id, int wpk_message_format, const char *wpk_file, const char *installer) __attribute__((nonnull));
 
 void wm_agent_upgrade_init_upgrade_queue() {
-    upgrade_queue = linked_queue_init();
+    upgrade_queue = linked_queue_init(NULL, NULL);
 }
 
 void wm_agent_upgrade_destroy_upgrade_queue() {

@@ -21,26 +21,33 @@
 
 #include <pthread.h>
 
-typedef struct linked_queue_node_t {
+typedef struct linked_queue_node_t
+{
     void *data;                       ///< pointer to the node data
     struct linked_queue_node_t *next; ///< pointer to next node
     struct linked_queue_node_t *prev; ///< pointer to prev node
 } w_linked_queue_node_t;
 
-typedef struct linked_queue_t {
-    pthread_mutex_t mutex;        ///< mutex for mutual exclusion
-    pthread_cond_t available;     ///< condition variable when queue is empty
-    unsigned int elements;        ///< counts the number of elements stored in the queue
-    w_linked_queue_node_t *first; ///< points to the first node that would go out the queue
-    w_linked_queue_node_t *last;  ///< pointer to the last node in the queue
+typedef struct linked_queue_t
+{
+    pthread_mutex_t mutex;         ///< mutex for mutual exclusion
+    pthread_cond_t available;      ///< condition variable when queue is empty
+    unsigned int elements;         ///< counts the number of elements stored in the queue
+    w_linked_queue_node_t *first;  ///< points to the first node that would go out the queue
+    w_linked_queue_node_t *last;   ///< pointer to the last node in the queue
+    void (*push_callback)(void *); ///< function pointer to an optional callback for push operation
+    void (*pop_callback)(void *);  ///< function pointer to an optional callback for pop operation
+
 } w_linked_queue_t;
 
 /**
  * @brief Initializes a new queue structure
  *
- * @return initialize queue structure
+ * @param push_callback Optional callback to run every time a push is called
+ * @param pop_callback Optional callback to run every time a pop is called
+ * @return w_linked_queue_t* Initialized queue structure
  * */
-w_linked_queue_t *linked_queue_init();
+w_linked_queue_t * linked_queue_init(void (*push_callback)(void *), void (*pop_callback)(void *));
 
 /**
  * @brief Frees an existent queue
@@ -56,7 +63,7 @@ void linked_queue_free(w_linked_queue_t *queue);
  * @param data data to be inserted
  * @return node structure pushed to the queue
  * */
-w_linked_queue_node_t * linked_queue_push(w_linked_queue_t * queue, void * data);
+w_linked_queue_node_t *linked_queue_push(w_linked_queue_t *queue, void *data);
 
 /**
  * @brief Same as queue_push but with mutual exclusion
@@ -66,7 +73,7 @@ w_linked_queue_node_t * linked_queue_push(w_linked_queue_t * queue, void * data)
  * @param data data to be inserted
  * @return node structure pushed to the queue
  * */
-w_linked_queue_node_t * linked_queue_push_ex(w_linked_queue_t * queue, void * data);
+w_linked_queue_node_t *linked_queue_push_ex(w_linked_queue_t *queue, void *data);
 
 /**
  * @brief Retrieves next item in the queue
@@ -75,7 +82,7 @@ w_linked_queue_node_t * linked_queue_push_ex(w_linked_queue_t * queue, void * da
  * @return element if queue has a next
  *         NULL if queue is empty
  * */
-void * linked_queue_pop(w_linked_queue_t * queue);
+void *linked_queue_pop(w_linked_queue_t *queue);
 
 /**
  * @brief Same as queue_pop but with mutual exclusion
@@ -84,7 +91,7 @@ void * linked_queue_pop(w_linked_queue_t * queue);
  * @param queue the queue
  * @return next element in the queue
  * */
-void * linked_queue_pop_ex(w_linked_queue_t * queue);
+void *linked_queue_pop_ex(w_linked_queue_t *queue);
 
 /**
  * @brief Retrieves next item in the queue without conditional wait
@@ -93,7 +100,15 @@ void * linked_queue_pop_ex(w_linked_queue_t * queue);
  * @return next element in the queue
  *
  * */
-void * linked_queue_pop_ex_no_cond_wait(w_linked_queue_t * queue);
+void *linked_queue_pop_ex_no_cond_wait(w_linked_queue_t *queue);
+
+/**
+ * @brief Reads the next item in the queue with mutual exclusion but doesn't remove it
+ *
+ * @param queue The queue used
+ * @return void* The next element in the queue
+ */
+void *linked_queue_read_ex(w_linked_queue_t *queue);
 
 /**
  * @brief Unlinks an existent node from the queue and pushes it again to the end
@@ -101,6 +116,6 @@ void * linked_queue_pop_ex_no_cond_wait(w_linked_queue_t * queue);
  * @param queue the queue
  * @param node node to be unlinked from the queue
  * */
-void linked_queue_unlink_and_push_node(w_linked_queue_t * queue, w_linked_queue_node_t *node);
+void linked_queue_unlink_and_push_node(w_linked_queue_t *queue, w_linked_queue_node_t *node);
 
 #endif

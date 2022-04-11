@@ -24,7 +24,7 @@ static void linked_queue_append_node(w_linked_queue_t *queue, w_linked_queue_nod
  * */
 static void linked_queue_pop_node(w_linked_queue_t *queue);
 
-w_linked_queue_t *linked_queue_init() {
+w_linked_queue_t *linked_queue_init(void (*push_callback)(void*), void (*pop_callback)(void*)) {
     w_linked_queue_t *queue;
     os_calloc(1, sizeof(w_linked_queue_t), queue);
     queue->elements = 0;
@@ -32,6 +32,9 @@ w_linked_queue_t *linked_queue_init() {
     queue->last = NULL;
     w_mutex_init(&queue->mutex, NULL);
     w_cond_init(&queue->available, NULL);
+    queue->push_callback = push_callback;
+    queue->pop_callback = pop_callback;
+
     return queue;
 }
 
@@ -94,6 +97,10 @@ void * linked_queue_pop(w_linked_queue_t * queue) {
         data = queue->first->data;
         linked_queue_pop_node(queue);
     }
+
+    if (queue->pop_callback) {
+        queue->pop_callback(data);
+    }
     return data;
 }
 
@@ -119,6 +126,22 @@ void * linked_queue_pop_ex_no_cond_wait(w_linked_queue_t * queue) {
     return data;
 }
 
+void * linked_queue_read_ex(w_linked_queue_t * queue) {
+    void * data;
+
+    w_mutex_lock(&queue->mutex);
+
+    if (!queue->first) {
+       data = NULL;
+    } else {
+        data = queue->first->data;
+    }
+
+    w_mutex_unlock(&queue->mutex);
+
+    return data;
+}
+
 static void linked_queue_append_node(w_linked_queue_t *queue, w_linked_queue_node_t *node) {
     if (!queue->first) {
         // First node, will be both first and last
@@ -133,6 +156,10 @@ static void linked_queue_append_node(w_linked_queue_t *queue, w_linked_queue_nod
         queue->last = node;
     }
     queue->elements++;
+
+    if (queue->push_callback) {
+        queue->push_callback(node->data);
+    }
 }
 
 static void linked_queue_pop_node(w_linked_queue_t *queue) {
