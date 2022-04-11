@@ -30,7 +30,7 @@ include_directories(
 )
 
 #TODO do this better
-link_libraries(gtest_main hlp kvdb builders)
+link_libraries(gtest engine_test_main hlp kvdb builders)
 
 ####################################################################################################
 # Builder targets
