@@ -340,8 +340,8 @@ async def test_sync_wazuh_db_sync_ko(send_string_mock, logger_debug_mock, json_d
     # Test try and if
     with pytest.raises(exception.WazuhClusterError, match=r".* 3016 .*"):
         await sync_wazuh_db.sync(start_time=10)
-        json_dumps_mock.assert_called_with({"set_data_command": "set_command", "chunks": ["get_command"]})
-        logger_debug_mock.assert_called_once_with(f"Obtained {1} chunks of data in 0.000s.")
+    json_dumps_mock.assert_called_with({"set_data_command": "set_command", "chunks": ["get_command"]})
+    logger_debug_mock.assert_called_once_with(f"Obtained {1} chunks of data in 0.000s.")
 
     send_string_mock.assert_called_with(b"")
 

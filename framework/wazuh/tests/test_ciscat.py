@@ -101,7 +101,7 @@ def test_get_ciscat_results_select_ko(agents_info_mock, socket_mock):
     with patch('wazuh.core.utils.WazuhDBConnection') as mock_wdb:
         mock_wdb.return_value = InitWDBSocketMock(sql_schema_file=db_file)
         with pytest.raises(WazuhError, match=r'\b1724\b'):
-            result = get_ciscat_results(agent_list=['001'], select=['random']).render()['data']
+            get_ciscat_results(agent_list=['001'], select=['random']).render()['data']
 
 
 @pytest.mark.parametrize('search, total_expected_items', [
