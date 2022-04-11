@@ -1,4 +1,5 @@
 generic/sca_unix_audit.yml
+alibaba/cis_alibaba_cloud_linux_3.yml
 amazon/cis_amazon_linux_1.yml
 amazon/cis_amazon_linux_2.yml
 applications/cis_apache_24.yml
