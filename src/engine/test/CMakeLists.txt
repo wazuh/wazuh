@@ -20,6 +20,18 @@ CPMAddPackage(
   EXCLUDE_FROM_ALL YES
 )
 
+add_library(engine_test_main
+    OBJECT
+    engineTestMain.cpp
+    )
+
+target_link_libraries(engine_test_main
+    PUBLIC
+    gtest
+    base
+    kvdb
+    )
+
 include(GoogleTest)
 
 #TODO: Fix server tests

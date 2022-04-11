@@ -14,7 +14,6 @@
 #include "opBuilderKVDB.hpp"
 #include "testUtils.hpp"
 #include <kvdb/kvdbManager.hpp>
-#include <logging/logging.hpp>
 
 using namespace builder::internals::builders;
 
@@ -28,17 +27,7 @@ class opBuilderKVDBNotMatchTest : public ::testing::Test
 {
 
 protected:
-    bool initialized = KVDBManager::init("/var/ossec/queue/db/kvdb/");
     KVDBManager& kvdbManager = KVDBManager::get();
-
-    opBuilderKVDBNotMatchTest()
-    {
-        logging::LoggingConfig logConfig;
-        logConfig.logLevel = logging::LogLevel::Off;
-        logging::loggingInit(logConfig);
-    }
-
-    virtual ~opBuilderKVDBNotMatchTest() {}
 
     virtual void SetUp()
     {

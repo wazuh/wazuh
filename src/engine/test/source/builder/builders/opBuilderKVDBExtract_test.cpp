@@ -13,7 +13,6 @@
 
 #include "testUtils.hpp"
 #include <kvdb/kvdbManager.hpp>
-#include <logging/logging.hpp>
 #include <opBuilderKVDB.hpp>
 
 namespace
@@ -28,17 +27,7 @@ class opBuilderKVDBExtractTest : public ::testing::Test
 {
 
 protected:
-    bool initialized = KVDBManager::init("/var/ossec/queue/db/kvdb/");
     KVDBManager& kvdbManager = KVDBManager::get();
-
-    opBuilderKVDBExtractTest()
-    {
-        logging::LoggingConfig logConfig;
-        logConfig.logLevel = logging::LogLevel::Off;
-        logging::loggingInit(logConfig);
-    }
-
-    virtual ~opBuilderKVDBExtractTest() {}
 
     virtual void SetUp()
     {
@@ -262,5 +251,4 @@ TEST_F(opBuilderKVDBExtractTest, Existent_target)
     ASSERT_STREQ(expected[0]->get("/field2extract").GetString(), "VALUE");
     ASSERT_STREQ(expected[0]->get("/field2extract").GetString(), "VALUE");
 }
-
 } // namespace
