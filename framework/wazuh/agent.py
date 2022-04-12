@@ -984,6 +984,8 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
                 else:
                     raise WazuhInternalError(error_code, cmd_error=True, extra_message=agent_result['message'])
 
+    result.affected_items.sort(key=lambda x: x['agent'])
+
     return result
 
 
@@ -1076,6 +1078,8 @@ def get_upgrade_result(agent_list: list = None, filters: dict = None, q: str = N
                 # Upgrade error for all agents, internal server error
                 else:
                     raise WazuhInternalError(error_code, cmd_error=True, extra_message=task_result['message'])
+
+    result.affected_items.sort(key=lambda x: x['agent'])
 
     return result
 
