@@ -105,14 +105,14 @@ bool KVDBManager::createDBfromCDB(const std::filesystem::path& path,
     {
         line.erase(std::remove_if(line.begin(), line.end(), isspace),
                    line.end());
-        auto KV = utils::string::split(line, ':');
-        if (!KV.empty() && !KV.at(0).empty() && !KV.at(0).empty())
+        auto kv = utils::string::split(line, ':');
+        if (kv.empty() || kv.size() > 2)
         {
             WAZUH_LOG_ERROR("Error while reading CDBfile [{}]", path.c_str());
             return false;
         }
 
-        db->write(KV.at(0), KV.at(1));
+        db->write(kv[0], kv.size() == 2 ? kv[1] : "");
     }
 
     return true;
