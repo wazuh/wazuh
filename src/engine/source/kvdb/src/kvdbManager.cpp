@@ -15,7 +15,7 @@
 #include <utils/stringUtils.hpp>
 
 bool KVDBManager::mInitialized;
-std::string KVDBManager::mDbFolder;
+std::filesystem::path KVDBManager::mDbFolder;
 bool KVDBManager::init(const std::filesystem::path& path)
 {
     WAZUH_ASSERT_MSG(!mInitialized,
@@ -41,15 +41,17 @@ KVDBManager::KVDBManager()
     // TODO should we read and load all the dbs inside the folder?
     // shouldn't be better to just load the configured ones at start instead?
 
-    if (std::filesystem::exists(mDbFolder + "legacy"))
+    auto legacyPath = mDbFolder;
+    legacyPath.append("legacy");
+    if (std::filesystem::exists(legacyPath))
     {
         for (const auto& cdbfile :
-             std::filesystem::directory_iterator(mDbFolder + "legacy"))
+             std::filesystem::directory_iterator(legacyPath))
         {
             // Read it from the config file?
             if (cdbfile.is_regular_file())
             {
-                if (createDBfromCDB(cdbfile.path(), false))
+                if (createDBfromCDB(cdbfile.path(), true))
                 {
                     // TODO Remove files once synced
                     // std::filesystem::remove(cdbfile.path())
@@ -81,7 +83,7 @@ KVDBHandle KVDBManager::addDb(const std::string& name, bool createIfMissing)
 }
 
 bool KVDBManager::createDBfromCDB(const std::filesystem::path& path,
-                                  bool overwrite)
+                                  bool createIfMissing)
 {
     std::ifstream CDBfile(path);
     if (!CDBfile.is_open())
@@ -90,7 +92,7 @@ bool KVDBManager::createDBfromCDB(const std::filesystem::path& path,
         return false;
     }
 
-    auto db = addDb(path.stem(), overwrite);
+    auto db = addDb(path.stem(), createIfMissing);
     if (!db)
     {
         WAZUH_LOG_ERROR("Failed to create db [{}] from CDB file [{}].",
