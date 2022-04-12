@@ -3,6 +3,7 @@
 
 const parserConfigFuncPtr kParsersConfig[] = {
     nullptr,
+    configureAnyParser,
     nullptr,
     nullptr,
     configureTsParser,
@@ -12,10 +13,14 @@ const parserConfigFuncPtr kParsersConfig[] = {
     configureDomainParser,
     configureFilepathParser,
     nullptr,
+    configureKeywordParser,
+    nullptr,
+    configureQuotedString,
     nullptr,
 };
 
 const parserFuncPtr kAvailableParsers[] = {
+    parseAny,
     parseAny,
     matchLiteral,
     parseIPaddress,
@@ -26,5 +31,8 @@ const parserFuncPtr kAvailableParsers[] = {
     parseDomain,
     parseFilePath,
     parseUserAgent,
+    parseAny, //Keyword
+    parseNumber,
+    parseQuotedString,
     nullptr,
 };
