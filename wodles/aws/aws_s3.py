@@ -44,6 +44,7 @@ import gzip
 import zipfile
 import re
 import io
+import zlib
 from os import path
 import operator
 from datetime import datetime
@@ -845,22 +846,67 @@ class AWSBucket(WazuhIntegration):
 
         return event
 
-    def decompress_file(self, log_key):
-        def decompress_gzip(raw_object):
-            # decompress gzip file in text mode.
-            try:
-                # Python 3
-                return gzip.open(filename=raw_object, mode='rt')
-            except TypeError:
-                # Python 2
-                return gzip.GzipFile(fileobj=raw_object, mode='r')
+    def _decompress_gzip(self, raw_object: io.BytesIO):
+        """
+        Method that decompress gzip compressed data.
 
-        raw_object = io.BytesIO(self.client.get_object(Bucket=self.bucket, Key=log_key)['Body'].read())
-        if log_key[-3:] == '.gz':
-            return decompress_gzip(raw_object)
-        elif log_key[-4:] == '.zip':
+        Parameters
+        ----------
+        raw_object : io.BytesIO
+            Buffer with the gzip compressed object.
+
+        Returns
+        -------
+        file_object
+            Decompressed object.
+        """
+        try:
+            gzip_file = gzip.open(filename=raw_object, mode='rt')
+            # Ensure that the file is not corrupted by reading from it
+            gzip_file.read()
+            gzip_file.seek(0)
+            return gzip_file
+        except (gzip.BadGzipFile, zlib.error, TypeError):
+            print(f'ERROR: invalid gzip file received.')
+            if not self.skip_on_error:
+                sys.exit(8)
+
+    def _decompress_zip(self, raw_object: io.BytesIO):
+        """
+        Method that decompress zip compressed data.
+
+        Parameters
+        ----------
+        raw_object : io.BytesIO
+            Buffer with the zip compressed object.
+
+        Returns
+        -------
+        file_object
+            Decompressed object.
+        """
+        try:
             zipfile_object = zipfile.ZipFile(raw_object, compression=zipfile.ZIP_DEFLATED)
             return io.TextIOWrapper(zipfile_object.open(zipfile_object.namelist()[0]))
+        except zipfile.BadZipFile:
+            print('ERROR: invalid zip file received.')
+        if not self.skip_on_error:
+            sys.exit(8)
+
+    def decompress_file(self, log_key: str):
+        """
+        Method that returns a file stored in a bucket decompressing it if necessary.
+
+        Parameters
+        ----------
+        log_key : str
+            Name of the file that should be returned.
+        """
+        raw_object = io.BytesIO(self.client.get_object(Bucket=self.bucket, Key=log_key)['Body'].read())
+        if log_key[-3:] == '.gz':
+            return self._decompress_gzip(raw_object)
+        elif log_key[-4:] == '.zip':
+            return self._decompress_zip(raw_object)
         elif log_key[-7:] == '.snappy':
             print(f"ERROR: couldn't decompress the {log_key} file, snappy compression is not supported.")
             if not self.skip_on_error:
