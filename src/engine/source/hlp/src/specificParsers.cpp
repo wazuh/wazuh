@@ -103,6 +103,31 @@ bool configureDomainParser(Parser &parser,
     return true;
 }
 
+bool configureAnyParser(Parser &parser,
+                           std::vector<std::string_view> const &args)
+{
+    parser.endToken = '\0';
+    return true;
+}
+
+bool configureKeywordParser(Parser &parser,
+                           std::vector<std::string_view> const &args)
+{
+    parser.endToken = ' ';
+    return true;
+}
+
+bool configureQuotedString(Parser &parser,
+                           std::vector<std::string_view> const &args)
+{
+    if (!args.empty() && args[0] == "SIMPLE")
+    {
+        parser.options.push_back({});
+    }
+
+    return true;
+}
+
 bool parseAny(const char **it,
               Parser const &parser,
               std::unordered_map<std::string, std::string> &result)
@@ -804,5 +829,79 @@ bool parseUserAgent(const char **it,
     result[parser.name + ".original"] = {start, lastValid};
 
     *it = lastValid;
+    return true;
+}
+
+bool parseNumber(const char **it,
+              Parser const &parser,
+              std::unordered_map<std::string, std::string> &result)
+{
+    const char *start = *it;
+    char * ptrEnd;
+    bool hasDecimalSeparator = false;
+    float fnum;
+    while (**it != '\0' && **it != parser.endToken)
+    {
+        if(!hasDecimalSeparator && **it == '.')
+        {
+            hasDecimalSeparator = true;
+        }
+        else if(!std::isdigit(**it))
+        {
+            result[parser.name] = {};
+            return false;
+        }
+        (*it)++;
+    }
+
+    if(!hasDecimalSeparator)
+    {
+        std::strtol(start, &ptrEnd, 10);
+        if(start == ptrEnd)
+        {
+            result[parser.name] = {};
+            return false;
+        }
+    }
+    else
+    {
+        if (!sscanf(start, "%f", &fnum))
+        {
+            result[parser.name] = {};
+            return false;
+        }
+    }
+
+    result[parser.name] = {start, *it};
+    return true;
+}
+
+bool parseQuotedString(const char **it,
+              Parser const &parser,
+              std::unordered_map<std::string, std::string> &result)
+{
+    const char *start = *it;
+    bool escaped = false;
+
+    char quotedChar = !parser.options.empty() ? '\'' : '"';
+
+    if(**it == quotedChar)
+    {
+        (*it)++;
+    }
+
+    while (**it != '\0' && ( escaped || **it != quotedChar))
+    {
+        (*it)++;
+        escaped = **it == '\\';
+    }
+
+    if( **it != quotedChar) //TODO: better way to hanlde this?
+    {
+        result[parser.name] = {};
+        return false;
+    }
+
+    result[parser.name] = {++start, *it};
     return true;
 }

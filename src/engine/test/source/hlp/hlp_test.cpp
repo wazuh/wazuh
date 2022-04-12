@@ -964,3 +964,139 @@ TEST(hlpTests_UserAgent, user_agent_safari)
               "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1.1 "
               "Mobile/15E148 Safari/604.1");
 }
+
+TEST(hlpTests_ParseAny, success)
+{
+    const char* logQl = "{<any> }";
+    const char *anyMessage = "{Lorem ipsum dolor sit amet, consectetur adipiscing elit }";
+
+    ParserFn parseOp = getParserOp(logQl);
+    ParseResult result;
+    bool ret = parseOp(anyMessage, result);
+
+    ASSERT_EQ(result["any"],"Lorem ipsum dolor sit amet, consectetur adipiscing elit }");
+}
+
+TEST(hlpTests_ParseAny, failed)
+{
+    const char* logQl = "{ <any> }";
+    const char *anyMessage = "{ Lorem {ipsum} dolor sit [amet], consectetur adipiscing elit }";
+
+    ParserFn parseOp = getParserOp(logQl);
+    ParseResult result;
+    bool ret = parseOp(anyMessage, result);
+
+    ASSERT_EQ(result["any"],"Lorem {ipsum} dolor sit [amet], consectetur adipiscing elit }");
+}
+
+TEST(hlpTests_ParseKeyword, success)
+{
+    const char* logQl = "{<client.registered_domain> }";
+    const char *anyMessage = "{Lorem ipsum dolor sit amet, consectetur adipiscing elit }";
+
+    ParserFn parseOp = getParserOp(logQl);
+    ParseResult result;
+    bool ret = parseOp(anyMessage, result);
+
+    ASSERT_EQ(result["client.registered_domain"],"Lorem");
+}
+
+TEST(hlpTests_ParseKeyword, success_long)
+{
+    const char* logQl = "{<client.registered_domain> }";
+    const char *anyMessage = "{Loremipsumdolorsitamet,consecteturadipiscingelit}";
+
+    ParserFn parseOp = getParserOp(logQl);
+    ParseResult result;
+    bool ret = parseOp(anyMessage, result);
+
+    ASSERT_EQ(result["client.registered_domain"],"Loremipsumdolorsitamet,consecteturadipiscingelit}");
+}
+
+TEST(hlpTests_ParseNumber, succes_long)
+{
+    const char* logQl = " <file.size> ";
+    const char* event =" 125 ";
+
+    ParserFn parseOp = getParserOp(logQl);
+    ParseResult result;
+    bool ret = parseOp(event, result);
+
+    ASSERT_EQ(true, static_cast<bool>(ret));
+    ASSERT_EQ(result["file.size"],"125");
+}
+
+TEST(hlpTests_ParseNumber, succes_float)
+{
+    const char* logQl = " <vulnerability.score.temporal> ";
+    const char* event =" 125.256 ";
+
+    ParserFn parseOp = getParserOp(logQl);
+    ParseResult result;
+    bool ret = parseOp(event, result);
+
+    ASSERT_EQ(true, static_cast<bool>(ret));
+    ASSERT_EQ(result["vulnerability.score.temporal"],"125.256");
+}
+
+TEST(hlpTests_ParseNumber, failed_long)
+{
+    const char* logQl = " <file.size> ";
+    const char* event =" A125 ";
+
+    ParserFn parseOp = getParserOp(logQl);
+    ParseResult result;
+    bool ret = parseOp(event, result);
+
+    ASSERT_EQ(false, static_cast<bool>(ret));
+    ASSERT_EQ(result["file.size"],"");
+}
+
+TEST(hlpTests_ParseNumber, failed_float)
+{
+    const char* logQl = " <vulnerability.score.temporal> ";
+    const char* event =" .125.256 ";
+
+    ParserFn parseOp = getParserOp(logQl);
+    ParseResult result;
+    bool ret = parseOp(event, result);
+
+    ASSERT_EQ(false, static_cast<bool>(ret));
+    ASSERT_EQ(result["vulnerability.score.temporal"],"");
+}
+
+TEST(hlpTests_QuotedString, success)
+{
+    const char* logQl = " ASRTR <_val/quoted_string> STRINGS ";
+    const char* event = " ASRTR \"this is some quoted string \" STRINGS ";
+
+    ParserFn parseOp = getParserOp(logQl);
+    ParseResult result;
+    bool ret = parseOp(event, result);
+
+    ASSERT_EQ(result["_val"],"this is some quoted string ");
+}
+
+TEST(hlpTests_QuotedString, success_simple_char)
+{
+    const char* logQl = " ASRTR <_val/quoted_string/SIMPLE> STRINGS ";
+    const char* event = " ASRTR \'this is some quoted string \' STRINGS ";
+
+    ParserFn parseOp = getParserOp(logQl);
+    ParseResult result;
+    bool ret = parseOp(event, result);
+
+    ASSERT_EQ(result["_val"],"this is some quoted string ");
+}
+
+TEST(hlpTests_QuotedString, failed)
+{
+    const char* logQl = " ASRTR <_val/quoted_string> STRINGS ";
+    const char* event = " ASRTR \"this is some quoted string STRINGS ";
+
+    ParserFn parseOp = getParserOp(logQl);
+    ParseResult result;
+    bool ret = parseOp(event, result);
+
+    ASSERT_EQ(result["_val"],"");
+}

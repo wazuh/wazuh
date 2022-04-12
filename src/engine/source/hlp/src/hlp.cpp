@@ -24,6 +24,10 @@ static const std::unordered_map<std::string_view, ParserType> kECSParserMapper {
     {"http.request.method", ParserType::Any},
     {"client", ParserType::Domain},
     {"userAgent", ParserType::UserAgent},
+    {"any", ParserType::ExpicitAny},
+    {"client.registered_domain", ParserType::KeyWord},
+    {"file.size", ParserType::Number}, //long
+    {"vulnerability.score.temporal", ParserType::Number}, //float
 };
 
 static const std::unordered_map<std::string_view, ParserType> kTempTypeMapper {
@@ -34,6 +38,7 @@ static const std::unordered_map<std::string_view, ParserType> kTempTypeMapper {
     {"FilePath", ParserType::FilePath},
     {"userAgent", ParserType::UserAgent},
     {"url", ParserType::URL},
+    {"quoted_string", ParserType::QuotedString},
 };
 
 /**
