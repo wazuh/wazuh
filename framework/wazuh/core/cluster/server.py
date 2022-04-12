@@ -1,6 +1,8 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
+import functools
+import inspect
 import itertools
 import logging
 import os
@@ -15,6 +17,8 @@ import uvloop
 from wazuh.core import common, exception, utils
 from wazuh.core.cluster import common as c_common
 from wazuh.core.cluster.utils import ClusterFilter, context_tag
+
+NO_RESULT = 'no_result'
 
 
 class AbstractServerHandler(c_common.Handler):
@@ -51,6 +55,51 @@ class AbstractServerHandler(c_common.Handler):
         self.name = None
         self.ip = None
         self.transport = None
+        self.broadcast_queue = asyncio.Queue()
+
+    def add_request(self, broadcast_id, f, *args, **kwargs):
+        """Add a request to the queue to execute a function in this server handler.
+
+        Parameters
+        ----------
+        broadcast_id : Str or None
+            Request identifier to be included in the queue.
+        f : callable
+            Function reference to be run. The function should be defined in this or in any inheriting class.
+        *args
+            Arguments to be passed to function `f`.
+        **kwargs
+            Keyword arguments to be passed to function `f`.
+        """
+        self.broadcast_queue.put_nowait(
+            {'broadcast_id': broadcast_id, 'func': functools.partial(f, self, *args, **kwargs)}
+        )
+
+    async def broadcast_reader(self):
+        """Execute functions added to the broadcast_queue of this server handler.
+
+        Wait until something with this structure is added to the queue:
+        {'broadcast_id': Union[Str, None], 'func': Callable}.
+
+        The function 'func' is executed and its result is stored in a dict
+        under the key 'broadcast_id', if it exists.
+        """
+        while True:
+            q_item = await self.broadcast_queue.get()
+
+            try:
+                if inspect.iscoroutinefunction(q_item['func']):
+                    result = await q_item['func']()
+                else:
+                    result = q_item['func']()
+            except Exception as e:
+                self.logger.error(f"Error while broadcasting function. ID: {q_item['broadcast_id']}. Error: {e}.")
+                result = e
+
+            try:
+                self.server.broadcast_results[q_item['broadcast_id']][self.name] = result
+            except KeyError:
+                pass
 
     def to_dict(self) -> Dict:
         """Get basic info from AbstractServerHandler instance.
@@ -142,6 +191,7 @@ class AbstractServerHandler(c_common.Handler):
             self.server.clients[self.name] = self
             self.tag = f'{self.tag} {self.name}'
             context_tag.set(self.tag)
+            self.loop.create_task(self.broadcast_reader())
             return b'ok', f'Client {self.name} added'.encode()
 
     def process_response(self, command: bytes, payload: bytes) -> bytes:
@@ -230,6 +280,90 @@ class AbstractServer:
         self.tasks = [self.check_clients_keepalive]
         self.handler_class = AbstractServerHandler
         self.loop = asyncio.get_running_loop()
+        self.broadcast_results = {}
+
+    def broadcast(self, f, *args, **kwargs):
+        """Add a function to the broadcast_queue of each server handler.
+
+        Parameters
+        ----------
+        f : Callable
+            Function to be run in each server handler.
+        *args
+            Arguments to be passed to function `f`.
+        **kwargs
+            Keyword arguments to be passed to function `f`.
+
+        Notes
+        -----
+        This method does not allow determining whether the function has been
+        executed in all server handlers or the result for each one. For those
+        features, see `broadcast_add` and `broadcast_pop`.
+        """
+        for _, client in self.clients.items():
+            client.add_request(None, f, *args, **kwargs)
+
+    def broadcast_add(self, f, *args, **kwargs):
+        """Add a function to the broadcast_queue of each server handler and obtain an identifier.
+
+        Parameters
+        ----------
+        f : Callable
+            Function to be run in each server handler.
+        *args
+            Arguments to be passed to function `f`.
+        **kwargs
+            Keyword arguments to be passed to function `f`.
+
+        Returns
+        -------
+        broadcast_id : str
+            Identifier to check the status of the broadcast request.
+
+        Notes
+        -----
+        It is important to run `broadcast_pop` to remove the result entry from the
+        broadcast_results dict after using this method. Otherwise, it will be kept
+        until restarting the server. See `broadcast` method if broadcast results
+        are not needed.
+        """
+        if self.clients:
+            broadcast_id = str(uuid4())
+            self.broadcast_results[broadcast_id] = {}
+
+            for name, client in self.clients.items():
+                self.broadcast_results[broadcast_id][name] = NO_RESULT
+                client.add_request(broadcast_id, f, *args, **kwargs)
+
+            return broadcast_id
+
+    def broadcast_pop(self, broadcast_id):
+        """Get the broadcast result of all server handlers, if ready.
+
+        Return False if the requested function was not executed in all the
+        server handlers. Otherwise, return a dictionary with the execution
+        result in each server handler.
+
+        If the dict is returned, said entry is removed from the broadcast_results dict.
+
+        Parameters
+        ----------
+        broadcast_id : str
+            Identifier to check the status of the broadcast request.
+
+        Returns
+        -------
+        Dict, bool
+            False if request was not executed in all server handlers. Dict with results otherwise.
+        """
+        try:
+            for name, result in self.broadcast_results[broadcast_id].items():
+                if name in self.clients and result == NO_RESULT:
+                    return False
+        except KeyError:
+            return False
+
+        return self.broadcast_results.pop(broadcast_id, True)
 
     def to_dict(self) -> Dict:
         """Get basic info from AbstractServer instance.
