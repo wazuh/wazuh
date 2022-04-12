@@ -19,7 +19,7 @@ class KVDBManager
     KVDBManager();
     ~KVDBManager();
     static bool mInitialized;
-    static std::string mDbFolder;
+    static std::filesystem::path mDbFolder;
     std::unordered_map<std::string, KVDBHandle> m_availableKVDBs;
     std::shared_mutex mMtx;
     static KVDBManager sInstance;
@@ -29,7 +29,7 @@ public:
     static KVDBManager& get();
     KVDBHandle addDb(const std::string& Name, bool createIfMissing = true);
     bool createDBfromCDB(const std::filesystem::path& path,
-                         bool overwrite = true);
+                         bool createIfMissing = true);
     bool deleteDB(const std::string& name);
     KVDBHandle getDB(const std::string& name);
 };
