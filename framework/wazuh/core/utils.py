@@ -5,7 +5,6 @@
 import errno
 import glob
 import hashlib
-import logging
 import operator
 import os
 import re
@@ -628,9 +627,6 @@ def mkdir_with_mode(name, mode=0o770):
 
 
 def md5(fname):
-    logger = logging.getLogger('wazuh')
-    logger.warning("### md5 estoy en md5")
-    logger.warning(f"### fname{fname}")
     hash_md5 = hashlib.md5()
     with open(fname, "rb") as f:
         for chunk in iter(lambda: f.read(4096), b""):
@@ -639,9 +635,6 @@ def md5(fname):
 
 
 def blake2b(fname):
-    logger = logging.getLogger('wazuh')
-    logger.warning("### blake estoy en blake2")
-    logger.warning(f"### fname{fname}")
     hash_blake2b = hashlib.blake2b()
     with open(fname, 'rb') as f:
         for chunk in iter(lambda: f.read(4096), b""):
