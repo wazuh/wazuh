@@ -961,6 +961,7 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
         for agent_result_chunk in agent_results:
             for agent_result in agent_result_chunk['data']:
                 socket_error = agent_result['error']
+                error_code = 1810 + socket_error
                 # Success, return agent and task IDs
                 if socket_error == 0:
                     task_agent = {
@@ -971,17 +972,10 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
                     result.total_affected_items += 1
 
                 # Upgrade error for specific agents
-                elif (error_code := 1810 + socket_error) in ERROR_CODES_UPGRADE_SOCKET:
+                else:
                     error = WazuhError(error_code, cmd_error=True, extra_message=agent_result['message'])
                     result.add_failed_item(id_=str(agent_result['agent']).zfill(3), error=error)
 
-                # Upgrade error for all agents, bad request
-                elif error_code in ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST:
-                    raise WazuhError(error_code, cmd_error=True, extra_message=agent_result['message'])
-
-                # Upgrade error for all agents, internal server error
-                else:
-                    raise WazuhInternalError(error_code, cmd_error=True, extra_message=agent_result['message'])
 
     result.affected_items.sort(key=lambda x: x['agent'])
 
