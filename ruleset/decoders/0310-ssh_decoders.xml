@@ -168,7 +168,7 @@
 <!-- Apr 14 19:28:21 gorilla sshd[31274]: Connection closed by 192.168.1.33 port 883 -->
 <decoder name="ssh-closed">
   <parent>sshd</parent>
-  <prematch>^Connection closed by (\S+) port (\S+)$</prematch>
+  <prematch>^Connection closed by \S+ port \S+</prematch>
   <regex>by (\S+) port (\S+)$</regex>
   <order>srcip, srcport</order>
 </decoder>
@@ -238,7 +238,7 @@
 <!-- user from, added last to avoid conflicts with ssh-error and ssh-failed -->
 <decoder name="sshd-from">
   <parent>sshd</parent>
-  <prematch>for (\S+) from (\S+)</prematch>
+  <prematch>for \S+ from \S+</prematch>
   <regex>for (\S+) from (\S+)</regex>
   <order>srcuser, srcip</order>
 </decoder>
