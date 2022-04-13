@@ -24,7 +24,7 @@ void callback_queue_push_ex() {
 }
 
 int setup_queue(void **state) {
-    w_linked_queue_t *queue = linked_queue_init();
+    w_linked_queue_t *queue = linked_queue_init(NULL, NULL);
     *state = queue;
     queue_ptr = queue;
     return 0;
@@ -43,7 +43,32 @@ int teardown_queue(void **state) {
 }
 
 int setup_queue_with_values(void **state) {
-    w_linked_queue_t *queue = linked_queue_init();
+    w_linked_queue_t *queue = linked_queue_init(NULL, NULL);
+    *state = queue;
+    int *ptr = malloc(sizeof(int));
+    *ptr = 3;
+    linked_queue_push(queue, ptr);
+    int *ptr2 = malloc(sizeof(int));
+    *ptr2 = 5;
+    linked_queue_push(queue, ptr2);
+    queue_ptr = queue;
+    return 0;
+}
+
+void test_pop_callback(void * data) {
+    if(data) {
+        *((int*)data) -= 1;
+    }
+}
+
+void test_push_callback(void * data) {
+    if(data) {
+        *((int*)data) += 1;
+    }
+}
+
+int setup_queue_with_values_callbacks(void **state) {
+    w_linked_queue_t *queue = linked_queue_init(test_push_callback, test_pop_callback);
     *state = queue;
     int *ptr = malloc(sizeof(int));
     *ptr = 3;
@@ -97,6 +122,14 @@ void test_linked_pop_empty(void **state) {
     assert_ptr_equal(data, NULL);
 }
 
+void test_linked_read_empty(void **state) {
+    w_linked_queue_t *queue = *state;
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    void *data = linked_queue_read_ex(queue);
+    assert_ptr_equal(data, NULL);
+}
+
 void test_linked_pop(void **state) {
     w_linked_queue_t *queue = *state;
     assert_int_equal(queue->elements, 2);
@@ -135,6 +168,123 @@ void test_linked_pop_ex(void **state) {
     assert_ptr_equal(queue->first, NULL);
     assert_ptr_equal(queue->last, NULL);
     os_free(data);
+    expect_function_calls(__wrap_pthread_mutex_lock, 2);
+    expect_function_calls(__wrap_pthread_mutex_unlock, 2);
+    expect_value(__wrap_pthread_cond_wait, cond, &queue->available);
+    expect_value(__wrap_pthread_cond_wait, mutex, &queue->mutex);
+    expect_value(__wrap_pthread_cond_signal, cond, &queue->available);
+    pthread_callback_ptr = callback_queue_push_ex;
+    data = linked_queue_pop_ex(queue);
+    os_free(data);
+}
+
+void test_linked_read_ex(void **state) {
+    // The elements remain in the queue when they are read
+    w_linked_queue_t *queue = *state;
+    assert_int_equal(queue->elements, 2);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    int *data = linked_queue_read_ex(queue);
+    assert_int_equal(queue->elements, 2);
+    assert_ptr_not_equal(data, NULL);
+    assert_int_equal(*data, 3);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    data = linked_queue_pop_ex(queue);
+    assert_int_equal(queue->elements, 1);
+    assert_ptr_not_equal(data, NULL);
+    assert_int_equal(*data, 3);
+    os_free(data);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    data = linked_queue_read_ex(queue);
+    assert_int_equal(queue->elements, 1);
+    assert_ptr_not_equal(data, NULL);
+    assert_int_equal(*data, 5);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    data = linked_queue_pop_ex(queue);
+    assert_int_equal(queue->elements, 0);
+    assert_ptr_not_equal(data, NULL);
+    assert_int_equal(*data, 5);
+    os_free(data);
+
+    // Check queue is now empty
+    assert_ptr_equal(queue->first, NULL);
+    assert_ptr_equal(queue->last, NULL);
+    expect_function_calls(__wrap_pthread_mutex_lock, 2);
+    expect_function_calls(__wrap_pthread_mutex_unlock, 2);
+    expect_value(__wrap_pthread_cond_wait, cond, &queue->available);
+    expect_value(__wrap_pthread_cond_wait, mutex, &queue->mutex);
+    expect_value(__wrap_pthread_cond_signal, cond, &queue->available);
+    pthread_callback_ptr = callback_queue_push_ex;
+    data = linked_queue_pop_ex(queue);
+    os_free(data);
+}
+
+void test_linked_queue_callbacks(void **state) {
+    // The pop callback isn't called during a read
+    w_linked_queue_t *queue = *state;
+
+    assert_int_equal(queue->elements, 2);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    int *data = linked_queue_read_ex(queue);
+    assert_int_equal(queue->elements, 2);
+    assert_ptr_not_equal(data, NULL);
+    assert_int_equal(*data, 4);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    data = linked_queue_pop_ex(queue);
+    assert_int_equal(queue->elements, 1);
+    assert_ptr_not_equal(data, NULL);
+    assert_int_equal(*data, 3);
+    os_free(data);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    data = linked_queue_read_ex(queue);
+    assert_int_equal(queue->elements, 1);
+    assert_ptr_not_equal(data, NULL);
+    assert_int_equal(*data, 6);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    data = linked_queue_pop_ex(queue);
+    assert_int_equal(queue->elements, 0);
+    assert_ptr_not_equal(data, NULL);
+    assert_int_equal(*data, 5);
+    os_free(data);
+
+    int *ptr = malloc(sizeof(int));
+    *ptr = 100;
+    linked_queue_push(queue, ptr);
+    assert_int_equal(queue->elements, 1);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    data = linked_queue_read_ex(queue);
+    assert_int_equal(queue->elements, 1);
+    assert_ptr_not_equal(data, NULL);
+    assert_int_equal(*data, 101);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    data = linked_queue_pop_ex(queue);
+    assert_int_equal(queue->elements, 0);
+    assert_ptr_not_equal(data, NULL);
+    assert_int_equal(*data, 100);
+    os_free(data);
+
+    // Check queue is now empty
+    assert_ptr_equal(queue->first, NULL);
+    assert_ptr_equal(queue->last, NULL);
     expect_function_calls(__wrap_pthread_mutex_lock, 2);
     expect_function_calls(__wrap_pthread_mutex_unlock, 2);
     expect_value(__wrap_pthread_cond_wait, cond, &queue->available);
@@ -258,9 +408,12 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_linked_queue_push, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_linked_queue_push_ex, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_linked_pop_empty, setup_queue, teardown_queue),
+        cmocka_unit_test_setup_teardown(test_linked_read_empty, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_linked_pop, setup_queue_with_values, teardown_queue),
         cmocka_unit_test_setup_teardown(test_linked_pop_ex, setup_queue_with_values, teardown_queue),
         cmocka_unit_test_setup_teardown(test_linked_pop_ex_no_cond_wait, setup_queue_with_values, teardown_queue),
+        cmocka_unit_test_setup_teardown(test_linked_read_ex, setup_queue_with_values, teardown_queue),
+        cmocka_unit_test_setup_teardown(test_linked_queue_callbacks, setup_queue_with_values_callbacks, teardown_queue),
         cmocka_unit_test_setup_teardown(test_linked_queue_unlink_and_push_mid, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_linked_queue_unlink_and_push_start, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_linked_queue_unlink_and_push_end, setup_queue, teardown_queue),

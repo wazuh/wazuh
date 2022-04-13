@@ -58,7 +58,7 @@ static int setup_config(void **state) {
     wm_manager_configs *config = NULL;
     os_calloc(1, sizeof(wm_manager_configs), config);
     *state = config;
-    upgrade_queue = linked_queue_init();
+    upgrade_queue = linked_queue_init(NULL, NULL);
     return 0;
 }
 
@@ -82,7 +82,7 @@ static int setup_upgrade_args(void **state) {
     args->config = config;
     state[0] = (void *)args;
     state[1] = (void *)config;
-    upgrade_queue = linked_queue_init();
+    upgrade_queue = linked_queue_init(NULL, NULL);
     sem_init(&upgrade_semaphore, 0, 5);
     return 0;
 }
@@ -109,7 +109,7 @@ static int setup_nodes(void **state) {
     node_next->data = agent_task_next;
     node->next = node_next;
     *state = (void *)node;
-    upgrade_queue = linked_queue_init();
+    upgrade_queue = linked_queue_init(NULL, NULL);
     return 0;
 }
 
