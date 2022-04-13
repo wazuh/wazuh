@@ -67,7 +67,7 @@ void test_jqueue_parse_json_valid(void ** state) {
     expect_value(__wrap_fgets, __stream, queue->fp);
     will_return(__wrap_fgets, buffer);
 
-    object = jqueue_parse_json(queue);
+    object = jqueue_parse_json(queue, MAX_READ_ATTEMPTS);
 
     output = cJSON_PrintUnformatted(object);
     assert_string_equal(output, "{\"test\":\"valid_json\"}");
@@ -95,7 +95,7 @@ void test_jqueue_parse_json_invalid(void ** state) {
     expect_string(__wrap__mdebug2, formatted_msg, "Invalid JSON alert read from '/home/test'. Remaining attempts: 2");
     will_return(__wrap_fseek, 0);
 
-    object = jqueue_parse_json(queue);
+    object = jqueue_parse_json(queue, MAX_READ_ATTEMPTS);
 
     assert_null(object);
     assert_int_equal(queue->read_attempts, 1);
@@ -121,7 +121,7 @@ void test_jqueue_parse_json_max_attempts(void ** state) {
     expect_string(__wrap__mdebug2, formatted_msg, "Invalid JSON alert read from '/home/test'. Remaining attempts: 0");
     expect_string(__wrap__merror, formatted_msg, "Invalid JSON alert read from '/home/test'. Skipping it.");
 
-    object = jqueue_parse_json(queue);
+    object = jqueue_parse_json(queue, MAX_READ_ATTEMPTS);
 
     assert_null(object);
     assert_int_equal(queue->read_attempts, 0);
@@ -138,7 +138,7 @@ void test_jqueue_parse_json_fgets_fail(void ** state) {
     expect_value(__wrap_fgets, __stream, queue->fp);
     will_return(__wrap_fgets, NULL);
 
-    object = jqueue_parse_json(queue);
+    object = jqueue_parse_json(queue, MAX_READ_ATTEMPTS);
 
     assert_null(object);
     assert_int_equal(queue->read_attempts, 0);
