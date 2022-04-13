@@ -122,9 +122,9 @@ TEST_F(RegistryKeyTest, getJSONWithJSONCtrReportOldData)
     const nlohmann::json oldDataJson = R"(
             {
                 "data":[{"arch":"[x64]","checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a","gid":0,"group_name":"root",
-                "last_event":1596489275,"mtime":1578075431,"path":"HKEY_LOCAL_MACHINE\\SOFTWARE","perm":"-rw-rw-r--",
-                "scanned":1,"uid":0, "user_name":"fakeUser"}],"table":"registry_key","options":{"return_old_data": true,
-                "ignore":["last_event"]}
+                "hash_full_path":"466330db6ceee9352ed2978536a05b127fb2d29a","last_event":1596489275,"mtime":1578075431,
+                "path":"HKEY_LOCAL_MACHINE\\SOFTWARE","perm":"-rw-rw-r--","scanned":1,"uid":0, "user_name":"fakeUser"}],
+                "table":"registry_key","options":{"return_old_data": true,"ignore":["last_event"]}
             }
         )"_json;
     auto key = new RegistryKey(fimEntryTest, true);

@@ -498,10 +498,12 @@ FIMDBErrorCode fim_db_get_path(const char* file_path, callback_context_t callbac
         {
             FIMDB::instance().logFunction(LOG_DEBUG_VERBOSE, err.what());
         }
+        // LCOV_EXCL_START
         catch (const std::exception& err)
         {
             FIMDB::instance().logFunction(LOG_ERROR, err.what());
         }
+        // LCOV_EXCL_STOP
     }
 
     return retVal;

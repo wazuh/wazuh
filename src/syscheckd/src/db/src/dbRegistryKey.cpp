@@ -34,10 +34,12 @@ void RegistryKey::createFimEntry()
             {
                 std::strncpy(key->gid, std::to_string(m_gid).c_str(), gid_size);
             }
+            // LCOV_EXCL_START
             else
             {
                 throw std::runtime_error("The memory for gid parameter could not be allocated.");
             }
+            // LCOV_EXCL_STOP
 
             key->group_name = const_cast<char*>(m_groupname.c_str());
             key->last_event = m_lastEvent;
@@ -51,24 +53,30 @@ void RegistryKey::createFimEntry()
             {
                 std::strncpy(key->uid, std::to_string(m_uid).c_str(), uid_size);
             }
+            // LCOV_EXCL_START
             else
             {
                 throw std::runtime_error("The memory for uid parameter could not be allocated.");
             }
+            // LCOV_EXCL_STOP
 
             key->user_name = const_cast<char*>(m_username.c_str());
             fim->registry_entry.key = key;
             m_fimEntry = std::unique_ptr<fim_entry, FimRegistryKeyDeleter>(fim);
         }
+        // LCOV_EXCL_START
         else
         {
             throw std::runtime_error("The memory for fim_registry_key could not be allocated.");
         }
+        // LCOV_EXCL_STOP
     }
+    // LCOV_EXCL_START
     else
     {
         throw std::runtime_error("The memory for fim_entry could not be allocated.");
     }
+    // LCOV_EXCL_STOP
 }
 
 void RegistryKey::createJSON()

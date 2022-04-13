@@ -37,15 +37,19 @@ void RegistryValue::createFimEntry()
             fim->registry_entry.value = value;
             m_fimEntry = std::unique_ptr<fim_entry, FimRegistryValueDeleter>(fim);
         }
+        // LCOV_EXCL_START
         else
         {
             throw std::runtime_error("The memory for fim_registry_value_data could not be allocated.");
         }
+        // LCOV_EXCL_STOP
     }
+    // LCOV_EXCL_START
     else
     {
         throw std::runtime_error("The memory for fim_entry could not be allocated.");
     }
+    // LCOV_EXCL_STOP
 }
 
 void RegistryValue::createJSON()

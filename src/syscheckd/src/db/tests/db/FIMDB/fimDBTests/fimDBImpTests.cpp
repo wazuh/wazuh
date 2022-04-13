@@ -222,6 +222,16 @@ TEST_F(FimDBFixture, registerSyncIDSuccess)
 
 }
 
+#ifdef WIN32
+TEST_F(FimDBFixture, registerSyncIDSuccessWindows)
+{
+    EXPECT_CALL(*mockRSync, registerSyncID(testing::_, testing::_, testing::_, testing::_)).Times(testing::AtLeast(3));
+
+    fimDBMock.registerRSync();
+
+}
+#endif
+
 TEST_F(FimDBFixture, registerSyncIDError)
 {
     EXPECT_CALL(*mockRSync, registerSyncID(testing::_, testing::_, testing::_, testing::_)).Times(testing::AtLeast(1));

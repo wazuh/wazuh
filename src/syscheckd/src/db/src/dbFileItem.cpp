@@ -34,10 +34,12 @@ void FileItem::createFimEntry()
             {
                 std::strncpy(data->uid, std::to_string(m_uid).c_str(), uid_size);
             }
+            // LCOV_EXCL_START
             else
             {
                 throw std::runtime_error("The memory for uid parameter could not be allocated.");
             }
+            // LCOV_EXCL_STOP
 
             data->gid = static_cast<char*>(std::calloc(gid_size + 1, sizeof(char)));
 
@@ -45,10 +47,12 @@ void FileItem::createFimEntry()
             {
                 std::strncpy(data->gid, std::to_string(m_gid).c_str(), gid_size);
             }
+            // LCOV_EXCL_START
             else
             {
                 throw std::runtime_error("The memory for gid parameter could not be allocated.");
             }
+            // LCOV_EXCL_STOP
 
             data->user_name = const_cast<char*>(m_username.c_str());
             data->group_name = const_cast<char*>(m_groupname.c_str());
@@ -66,15 +70,19 @@ void FileItem::createFimEntry()
             fim->file_entry.data = data;
             m_fimEntry = std::unique_ptr<fim_entry, FimFileDataDeleter>(fim);
         }
+        // LCOV_EXCL_START
         else
         {
             throw std::runtime_error("The memory for fim_file_data could not be allocated.");
         }
+        // LCOV_EXCL_STOP
     }
+    // LCOV_EXCL_START
     else
     {
         throw std::runtime_error("The memory for fim_entry could not be allocated.");
     }
+    // LCOV_EXCL_STOP
 }
 
 void FileItem::createJSON()
