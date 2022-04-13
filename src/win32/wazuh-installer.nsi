@@ -235,6 +235,21 @@ Section "Wazuh Agent (required)" MainSec
         Delete "$INSTDIR\wazuh-agent-eventchannel.exe"
     ${Endif}
 
+    ; Comma-separated string variable containing executables
+    Var /global executables
+    StrCpy $executables "wazuh-agent.exe,win32ui.exe"
+    StrCpy $executables "$executables,manage_agents.exe,agent-auth.exe"
+    StrCpy $executables "$executables,setup-windows.exe,setup-syscheck.exe,setup-iis.exe"
+    StrCpy $executables "$executables,route-null.exe,restart-wazuh.exe,netsh.exe,agent-auth.exe"
+
+    ; Deploy script as a temp to enable wazuh DumpsSetupScripts
+    ; WoW64 rediction need to be disabled during script execution to avoid Registries keys redirection
+    GetTempFileName $0
+    File /oname=$0 `DumpsSetupScripts.vbs`
+    System::Call kernel32::Wow64EnableWow64FsRedirection(i0)
+    nsExec::ExecToLog '"$SYSDIR\wscript.exe" $0 //e:vbscript "$INSTDIR" "$executables"'
+    System::Call kernel32::Wow64EnableWow64FsRedirection(i1)
+
     ; write registry keys
     WriteRegStr HKLM SOFTWARE\ossec "Install_Dir" "$INSTDIR"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "DisplayName" "${NAME} Agent"

@@ -53,10 +53,13 @@
         </Property>
         
         <Binary Id="InstallerScripts" SourceFile="InstallerScripts.vbs" />
+        <Binary Id="DumpsSetup" SourceFile="DumpsSetupScripts.vbs" />
 
         <Property Id="APPLICATIONFOLDER">
             <RegistrySearch Id="WazuhInstallDirProperty" Type="raw" Root="HKLM" Key="Software\[Manufacturer]\[ProductName]" Name="WazuhInstallDir" />
         </Property>
+
+        <Property Id="WAZUH_EXECUTABLES" Value="wazuh-agent.exe,win32ui.exe,manage_agents.exe,agent-auth.exe,setup-windows.exe,setup-syscheck.exe,setup-iis.exe,route-null.exe,restart-wazuh.exe,netsh.exe,agent-auth.exe" />
 
         <CustomAction Id="LaunchUI" Directory="APPLICATIONFOLDER" ExeCommand="[APPLICATIONFOLDER]win32ui.exe" Return="asyncNoWait" />
 
@@ -92,6 +95,9 @@
 
         <CustomAction Id="SetCustomActionDataValue" Return="check" Property="CustomAction_InstallerScripts" Value="&quot;[APPLICATIONFOLDER]&quot;,&quot;[WAZUH_MANAGER]&quot;,&quot;[WAZUH_MANAGER_PORT]&quot;,&quot;[WAZUH_PROTOCOL]&quot;,&quot;[NOTIFY_TIME]&quot;,&quot;[WAZUH_REGISTRATION_SERVER]&quot;,&quot;[WAZUH_REGISTRATION_PORT]&quot;,&quot;[WAZUH_REGISTRATION_PASSWORD]&quot;,&quot;[WAZUH_KEEP_ALIVE_INTERVAL]&quot;,&quot;[WAZUH_TIME_RECONNECT]&quot;,&quot;[WAZUH_REGISTRATION_CA]&quot;,&quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot;,&quot;[WAZUH_REGISTRATION_KEY]&quot;,&quot;[WAZUH_AGENT_NAME]&quot;,&quot;[WAZUH_AGENT_GROUP]&quot;,&quot;[ENROLLMENT_DELAY]&quot;" />
         <CustomAction Id="CustomAction_InstallerScripts" BinaryKey="InstallerScripts" VBScriptCall="config" Return="check" Execute="commit" Impersonate="no"/>
+
+        <CustomAction Id="SetDumpsDirs" Return="check" Property="CustomAction_DumpsSetup" Value="&quot;[APPLICATIONFOLDER]&quot;|&quot;[WAZUH_EXECUTABLES]&quot;" />
+        <CustomAction Id="CustomAction_DumpsSetup" BinaryKey="DumpsSetup" VBScriptCall="EnableDumps" Return="check" Execute="commit" Impersonate="no"/>
 
         <!-- Explicitely stopping and deleting the OSSEC service to install new Wazuh service -->
         <CustomAction Id="StopOssecService" Directory="APPLICATIONFOLDER" ExeCommand="NET STOP OssecSvc" Execute="deferred" Impersonate="no" Return="ignore" />
