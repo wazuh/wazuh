@@ -110,6 +110,8 @@ bool configureAnyParser(Parser &parser,
     return true;
 }
 
+// TODO: keyword parser doesn't add any functionality, it can be replace by
+// setting the endToken by the char needed
 bool configureKeywordParser(Parser &parser,
                            std::vector<std::string_view> const &args)
 {
@@ -848,7 +850,6 @@ bool parseNumber(const char **it,
         }
         else if(!std::isdigit(**it))
         {
-            result[parser.name] = {};
             return false;
         }
         (*it)++;
@@ -859,7 +860,6 @@ bool parseNumber(const char **it,
         std::strtol(start, &ptrEnd, 10);
         if(start == ptrEnd)
         {
-            result[parser.name] = {};
             return false;
         }
     }
@@ -867,7 +867,6 @@ bool parseNumber(const char **it,
     {
         if (!sscanf(start, "%f", &fnum))
         {
-            result[parser.name] = {};
             return false;
         }
     }
@@ -885,10 +884,11 @@ bool parseQuotedString(const char **it,
 
     char quotedChar = !parser.options.empty() ? '\'' : '"';
 
-    if(**it == quotedChar)
+    if(**it != quotedChar)
     {
-        (*it)++;
+        return false;
     }
+    (*it)++;
 
     while (**it != '\0' && ( escaped || **it != quotedChar))
     {
@@ -896,9 +896,8 @@ bool parseQuotedString(const char **it,
         escaped = **it == '\\';
     }
 
-    if( **it != quotedChar) //TODO: better way to hanlde this?
+    if( **it != quotedChar)
     {
-        result[parser.name] = {};
         return false;
     }
 
