@@ -26,7 +26,7 @@ int jqueue_open(file_queue * queue, int tail);
  * Return next JSON object from the queue, or NULL if it is not available.
  * If no more data is available and the day has changed, queue is reloaded.
  */
-cJSON * jqueue_next(file_queue * queue);
+cJSON * jqueue_next(file_queue * queue, int max_read_attempts);
 
 // Close queue
 void jqueue_close(file_queue * queue);
@@ -39,6 +39,6 @@ void jqueue_close(file_queue * queue);
  * @post The read position is restored if failed to get a JSON object.
  * @retval NULL No data read or could not get a valid JSON object. Pointer to the JSON object otherwise.
  */
-cJSON * jqueue_parse_json(file_queue * queue);
+cJSON * jqueue_parse_json(file_queue * queue, int max_read_attempts);
 
 #endif

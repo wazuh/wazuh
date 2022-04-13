@@ -38,6 +38,8 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
     exec_tmp_file[2048] = 0;
     exec_full_cmd[4096] = 0;
 
+    int max_read_attempts = getDefine_Int("integrator", "max_read_attempts", 1, 10);
+
     /* Initing file queue JSON - to read the alerts */
     jqueue_init(&jfileq);
 
@@ -124,7 +126,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
 
         /* Get JSON message if available (timeout of 5 seconds) */
         mdebug2("jqueue_next()");
-        al_json = jqueue_next(&jfileq);
+        al_json = jqueue_next(&jfileq, max_read_attempts);
         if(!al_json) {
             sleep(1);
             continue;

@@ -108,7 +108,7 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
 
         if (sources.alert_json) {
             mdebug2("jqueue_next()");
-            json_data = jqueue_next(&jfileq);
+            json_data = jqueue_next(&jfileq, MAX_READ_ATTEMPTS);
         }
 
         /* Send via syslog */

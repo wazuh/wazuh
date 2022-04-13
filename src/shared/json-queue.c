@@ -54,7 +54,7 @@ int jqueue_open(file_queue * queue, int tail) {
  * Return next JSON object from the queue, or NULL if it is not available.
  * If no more data is available and the inode has changed, queue is reloaded.
  */
-cJSON * jqueue_next(file_queue * queue) {
+cJSON * jqueue_next(file_queue * queue, int max_read_attempts) {
     struct stat buf;
     cJSON * alert;
 
@@ -63,7 +63,7 @@ cJSON * jqueue_next(file_queue * queue) {
     }
 
     clearerr(queue->fp);
-    alert = jqueue_parse_json(queue);
+    alert = jqueue_parse_json(queue, max_read_attempts);
 
     if (alert && !(queue->flags & CRALERT_READ_FAILED)) {
         return alert;
@@ -87,7 +87,7 @@ cJSON * jqueue_next(file_queue * queue) {
                 return NULL;
             }
 
-            return jqueue_parse_json(queue);
+            return jqueue_parse_json(queue, max_read_attempts);
 
         } else {
             sleep(1);
@@ -110,7 +110,8 @@ void jqueue_close(file_queue * queue) {
  * @post The read position is restored if failed to get a JSON object.
  * @retval NULL No data read or could not get a valid JSON object. Pointer to the JSON object otherwise.
  */
-cJSON * jqueue_parse_json(file_queue * queue) {
+cJSON * jqueue_parse_json(file_queue * queue, int max_read_attempts) {
+
     cJSON * object = NULL;
     char buffer[OS_MAXSTR + 1];
     int64_t current_pos;
@@ -120,7 +121,7 @@ cJSON * jqueue_parse_json(file_queue * queue) {
     current_pos = w_ftell(queue->fp);
 
     if (fgets(buffer, OS_MAXSTR + 1, queue->fp)) {
-
+        
         if (end = strchr(buffer, '\n'), end) {
             *end = '\0';
 
@@ -136,9 +137,10 @@ cJSON * jqueue_parse_json(file_queue * queue) {
         }
 
         queue->read_attempts++;
-        mdebug2("Invalid JSON alert read from '%s'. Remaining attempts: %d", queue->file_name, MAX_READ_ATTEMPTS - queue->read_attempts);
+        mdebug2("Invalid JSON alert read from '%s'. Remaining attempts: %d", queue->file_name, max_read_attempts - queue->read_attempts);
+        mdebug2("s\n\n ---------------------------------- max_read_attempts '%d'\n\n", max_read_attempts);
 
-        if (queue->read_attempts < MAX_READ_ATTEMPTS) {
+        if (queue->read_attempts < max_read_attempts) {
             if (current_pos >= 0) {
                 if (fseek(queue->fp, current_pos, SEEK_SET) != 0) {
                     queue->flags = CRALERT_READ_FAILED;
@@ -150,6 +152,7 @@ cJSON * jqueue_parse_json(file_queue * queue) {
         }
     } else {
         // Force the queue reload when the read fails
+        // mdebug2("\n######### FGETS FAIL ######\n");
         queue->flags = CRALERT_READ_FAILED;
     }
 
