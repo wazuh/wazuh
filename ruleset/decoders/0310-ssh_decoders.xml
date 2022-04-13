@@ -234,11 +234,3 @@
   <regex offset="after_prematch">^(\S+) (\S+) port (\d+)</regex>
   <order>srcuser,srcip,srcport</order>
 </decoder>
-
-<!-- user from, added last to avoid conflicts with ssh-error and ssh-failed -->
-<decoder name="sshd-from">
-  <parent>sshd</parent>
-  <prematch>for \S+ from \S+</prematch>
-  <regex>for (\S+) from (\S+)</regex>
-  <order>srcuser, srcip</order>
-</decoder>
