@@ -64,12 +64,18 @@ types::Lifter opBuilderKVDBExtract(const types::DocumentValue& def,
         isReference = true;
     }
 
+    // TODO this is not great
+    // Make deep copy of value
+    types::Document doc {def};
+    std::string successTrace = fmt::format("{} KVDBExtract Success", doc.str());
+    std::string failureTrace = fmt::format("{} KVDBExtract Failure", doc.str());
+
     // Return Lifter
-    return [target, kvdb, key, isReference](types::Observable o)
+    return [=, kvdb = std::move(kvdb), tr = std::move(tr)](types::Observable o)
     {
         // Append rxcpp operation
         return o.map(
-            [target, kvdb, key, isReference](types::Event e)
+            [=, kvdb = std::move(kvdb), tr = std::move(tr)](types::Event e)
             {
                 // Get DB key
                 std::string dbKey;
@@ -84,12 +90,14 @@ types::Lifter opBuilderKVDBExtract(const types::DocumentValue& def,
                         }
                         else
                         {
+                            tr(failureTrace);
                             return e;
                         }
                     }
                     catch (std::exception& ex)
                     {
                         // TODO Check exception type
+                        tr(failureTrace);
                         return e;
                     }
                 }
@@ -102,6 +110,7 @@ types::Lifter opBuilderKVDBExtract(const types::DocumentValue& def,
                 std::string dbValue = kvdb->read(dbKey);
                 if (dbValue.empty())
                 {
+                    tr(failureTrace);
                     return e;
                 }
 
@@ -112,10 +121,12 @@ types::Lifter opBuilderKVDBExtract(const types::DocumentValue& def,
                            rapidjson::Value(dbValue.c_str(),
                                             e->m_doc.GetAllocator())
                                .Move());
+                    tr(successTrace);
                 }
                 catch (std::exception& ex)
                 {
                     // TODO Check exception type
+                    tr(failureTrace);
                     return e;
                 }
 
@@ -125,7 +136,8 @@ types::Lifter opBuilderKVDBExtract(const types::DocumentValue& def,
 }
 
 types::Lifter opBuilderKVDBExistanceCheck(const types::DocumentValue& def,
-                                          bool checkExist)
+                                          bool checkExist,
+                                          types::TracerFn tr)
 {
     // Get key of the match
     std::string key {json::formatJsonPath(def.MemberBegin()->name.GetString())};
@@ -154,12 +166,20 @@ types::Lifter opBuilderKVDBExistanceCheck(const types::DocumentValue& def,
         throw std::runtime_error(std::move(msg));
     }
 
+    // TODO this is not great
+    // Make deep copy of value
+    types::Document doc {def};
+    std::string successTrace =
+        fmt::format("{} KVDBExistanceCheck Found", doc.str());
+    std::string failureTrace =
+        fmt::format("{} KVDBExistanceCheck NotFound", doc.str());
+
     // Return Lifter
-    return [kvdb, key, checkExist](types::Observable o)
+    return [=, kvdb = std::move(kvdb), tr = std::move(tr)](types::Observable o)
     {
         // Append rxcpp operations
         return o.filter(
-            [kvdb, key, checkExist](types::Event e)
+            [=, kvdb = std::move(kvdb), tr = std::move(tr)](types::Event e)
             {
                 bool found = false;
                 try // TODO We are only using try for JSON::get. Is correct to
@@ -178,6 +198,8 @@ types::Lifter opBuilderKVDBExistanceCheck(const types::DocumentValue& def,
                 {
                     // TODO Check exception type
                 }
+
+                tr(found ? successTrace : failureTrace);
                 return checkExist ? found : !found;
             });
     };
@@ -187,13 +209,13 @@ types::Lifter opBuilderKVDBExistanceCheck(const types::DocumentValue& def,
 types::Lifter opBuilderKVDBMatch(const types::DocumentValue& def,
                                  types::TracerFn tr)
 {
-    return opBuilderKVDBExistanceCheck(def, true);
+    return opBuilderKVDBExistanceCheck(def, true, tr);
 }
 
 // <field>: +kvdb_not_match/<DB>
 types::Lifter opBuilderKVDBNotMatch(const types::DocumentValue& def,
                                     types::TracerFn tr)
 {
-    return opBuilderKVDBExistanceCheck(def, false);
+    return opBuilderKVDBExistanceCheck(def, false, tr);
 }
 } // namespace builder::internals::builders
