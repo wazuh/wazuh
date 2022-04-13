@@ -37,31 +37,31 @@ typedef struct linked_queue_t {
 
 /**
  * @brief Initializes a new queue structure
- * 
+ *
  * @return initialize queue structure
  * */
 w_linked_queue_t *linked_queue_init();
 
 /**
  * @brief Frees an existent queue
- * 
- * @param queue 
+ *
+ * @param queue
  * */
 void linked_queue_free(w_linked_queue_t *queue);
 
-/** 
+/**
  * @brief Inserts an element into the queue
- * 
+ *
  * @param queue the queue
  * @param data data to be inserted
  * @return node structure pushed to the queue
  * */
 w_linked_queue_node_t * linked_queue_push(w_linked_queue_t * queue, void * data);
 
-/** 
- * @brief Same as queue_push but with mutual exclusion 
+/**
+ * @brief Same as queue_push but with mutual exclusion
  * for multithreaded applications
- * 
+ *
  * @param queue the queue
  * @param data data to be inserted
  * @return node structure pushed to the queue
@@ -70,7 +70,7 @@ w_linked_queue_node_t * linked_queue_push_ex(w_linked_queue_t * queue, void * da
 
 /**
  * @brief Retrieves next item in the queue
- * 
+ *
  * @param queue the queue
  * @return element if queue has a next
  *         NULL if queue is empty
@@ -78,17 +78,26 @@ w_linked_queue_node_t * linked_queue_push_ex(w_linked_queue_t * queue, void * da
 void * linked_queue_pop(w_linked_queue_t * queue);
 
 /**
- * @brief Same as queue_pop but with mutual exclusion 
+ * @brief Same as queue_pop but with mutual exclusion
  * for multithreaded applications.
- * 
+ *
  * @param queue the queue
  * @return next element in the queue
  * */
 void * linked_queue_pop_ex(w_linked_queue_t * queue);
 
 /**
+ * @brief Retrieves next item in the queue without conditional wait
+ *
+ * @param queue the queue
+ * @return next element in the queue
+ *
+ * */
+void * linked_queue_pop_ex_no_cond_wait(w_linked_queue_t * queue);
+
+/**
  * @brief Unlinks an existent node from the queue and pushes it again to the end
- * 
+ *
  * @param queue the queue
  * @param node node to be unlinked from the queue
  * */

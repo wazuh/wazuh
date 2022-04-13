@@ -20,7 +20,7 @@ static w_linked_queue_t *queue_ptr = NULL; // Local ptr to queue
 void callback_queue_push_ex() {
     int *ptr = malloc(sizeof(int));
     *ptr = 0;
-    linked_queue_push_ex(queue_ptr, ptr);   
+    linked_queue_push_ex(queue_ptr, ptr);
 }
 
 int setup_queue(void **state) {
@@ -91,7 +91,6 @@ void test_linked_queue_push_ex(void **state) {
     assert_int_equal(queue->elements, 2);
 }
 
-
 void test_linked_pop_empty(void **state) {
     w_linked_queue_t *queue = *state;
     void *data = linked_queue_pop(queue);
@@ -144,6 +143,33 @@ void test_linked_pop_ex(void **state) {
     pthread_callback_ptr = callback_queue_push_ex;
     data = linked_queue_pop_ex(queue);
     os_free(data);
+}
+
+void test_linked_pop_ex_no_cond_wait(void **state) {
+    w_linked_queue_t *queue = *state;
+    assert_int_equal(queue->elements, 2);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    int *data = linked_queue_pop_ex_no_cond_wait(queue);
+    assert_int_equal(queue->elements, 1);
+    assert_ptr_not_equal(data, NULL);
+    assert_int_equal(*data, 3);
+    os_free(data);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    data = linked_queue_pop_ex_no_cond_wait(queue);
+    assert_int_equal(queue->elements, 0);
+    assert_ptr_not_equal(data, NULL);
+    assert_int_equal(*data, 5);
+    os_free(data);
+    // Check queue is now empty
+    assert_ptr_equal(queue->first, NULL);
+    assert_ptr_equal(queue->last, NULL);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    data = linked_queue_pop_ex_no_cond_wait(queue);
+    assert_int_equal(queue->elements, 0);
+    assert_ptr_equal(data, NULL);
 }
 
 void test_linked_queue_unlink_and_push_mid(void **state) {
@@ -234,6 +260,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_linked_pop_empty, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_linked_pop, setup_queue_with_values, teardown_queue),
         cmocka_unit_test_setup_teardown(test_linked_pop_ex, setup_queue_with_values, teardown_queue),
+        cmocka_unit_test_setup_teardown(test_linked_pop_ex_no_cond_wait, setup_queue_with_values, teardown_queue),
         cmocka_unit_test_setup_teardown(test_linked_queue_unlink_and_push_mid, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_linked_queue_unlink_and_push_start, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_linked_queue_unlink_and_push_end, setup_queue, teardown_queue),

@@ -70,7 +70,7 @@ void linked_queue_unlink_and_push_node(w_linked_queue_t * queue, w_linked_queue_
         node->next->prev = node->prev;
     } else {
         // Already at the correct spot
-        w_mutex_unlock(&queue->mutex); 
+        w_mutex_unlock(&queue->mutex);
         return;
     }
     if (node->prev) {
@@ -82,7 +82,7 @@ void linked_queue_unlink_and_push_node(w_linked_queue_t * queue, w_linked_queue_
     node->next = NULL;
     queue->elements--;
     linked_queue_append_node(queue, node);
-    w_mutex_unlock(&queue->mutex); 
+    w_mutex_unlock(&queue->mutex);
 }
 
 void * linked_queue_pop(w_linked_queue_t * queue) {
@@ -104,6 +104,16 @@ void * linked_queue_pop_ex(w_linked_queue_t * queue) {
     while (data = linked_queue_pop(queue), !data) {
         w_cond_wait(&queue->available, &queue->mutex);
     }
+    w_mutex_unlock(&queue->mutex);
+
+    return data;
+}
+
+void * linked_queue_pop_ex_no_cond_wait(w_linked_queue_t * queue) {
+    void * data;
+
+    w_mutex_lock(&queue->mutex);
+    data = linked_queue_pop(queue);
     w_mutex_unlock(&queue->mutex);
 
     return data;
