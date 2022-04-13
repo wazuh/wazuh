@@ -308,6 +308,7 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
     runCppCheck(moduleName=moduleName)
     build_tools.makeDeps(targetName=target, srcOnly=False)
     build_tools.makeTarget(targetName=target, tests=True, debug=True)
+    runTests(moduleName=moduleName)
     build_tools.cleanFolder(moduleName=moduleName,
                             additionalFolder="build")
     build_tools.configureCMake(moduleName=moduleName, 
@@ -315,14 +316,21 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
                                testMode=(False, True)
                                [moduleName!="shared_modules/utils"],
                                withAsan=False)
-    build_tools.makeLib(moduleName=moduleName)
-    runTests(moduleName=moduleName)
-    runValgrind(moduleName=moduleName)
-    runCoverage(moduleName=moduleName)
+    if target != "winagent":
+        build_tools.makeLib(moduleName=moduleName)
+        runValgrind(moduleName=moduleName)
+        runCoverage(moduleName=moduleName)
     runAStyleCheck(moduleName=moduleName)
     configPath = os.path.join(utils.currentPath(),
                               "input/test_tool_config.json")
     smokeTestConfig = utils.readJSONFile(jsonFilePath=configPath)
+    if target == "winagent":
+        build_tools.cleanAll()
+        build_tools.cleanExternals()
+        build_tools.makeDeps(targetName="agent", srcOnly=False)
+        build_tools.makeTarget(targetName="agent", tests=False, debug=True)
+        build_tools.cleanFolder(moduleName=moduleName,
+                                additionalFolder="build")
     if moduleName != "shared_modules/utils":
         runASAN(moduleName=moduleName,
                 testToolConfig=smokeTestConfig)
@@ -462,7 +470,7 @@ def runTestToolForWindows(moduleName, testToolConfig):
     build_tools.cleanAll()
     build_tools.cleanExternals()
     build_tools.makeDeps(targetName="winagent",
-                         srcOnly=True)
+                         srcOnly=False)
     build_tools.makeTarget(targetName="winagent",
                            tests=False,
                            debug=True)
@@ -526,7 +534,12 @@ def runTests(moduleName):
         if entry.is_file() and bool(re.match(reg, entry.name)):
             tests.append(entry.name)
     for test in tests:
-        out = subprocess.run(os.path.join(currentDir, test),
+        path = os.path.join(currentDir, test)
+        if ".exe" in test:
+            command = f'WINEPATH="/usr/i686-w64-mingw32/lib;{utils.currentPath()}" WINEARCH=win64 /usr/bin/wine {path}'
+        else:
+            command = path
+        out = subprocess.run(command,
                              stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE,
                              shell=True,

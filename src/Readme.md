@@ -57,14 +57,17 @@ usage: python3 build.py [-h] [-r READYTOREVIEW]
 | `--scanbuild`           | Run scan-build on the code. Example: `python3 build.py --scanbuild <agent\|server\|winagent>` |
 
 Ready to review checks:
-  1. Runs cppcheck on <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector> folder.
-  2. Compiles <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>.
-  3. Runs <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector> UTs.
-  4. Runs valgrind on <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector> UTs.
-  5. Runs code coverage on <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector> tests and generates coverage reports.
-  6. Runs AStyle on <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>.
-  7. Runs ASAN on <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>.
-If all the checks passed it returns 0 and prints a "[RTR: PASSED]", otherwise it stops the execution of the checking on the first failure, prints the info related to the failure and returns and error code.
+  1. Runs cppcheck on <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector|syscheckd> folder.
+  2. Compiles <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector|syscheckd>.
+  3. Runs <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector|syscheckd> UTs.
+  4. Runs valgrind on <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector|syscheckd> UTs.
+  5. Runs code coverage on <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector|syscheckd> tests and generates coverage reports.
+  6. Runs AStyle on <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector|syscheckd>.
+  7. Runs ASAN on <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector|syscheckd>.
+  8. Runs Test tool for Windows on <syscheckd>.
+  9. Runs check output from test tool on <syscheckd>.
+
+If all the checks passed it returns 0 and prints a "[RTR: PASSED]", otherwise it stops the execution of the checking on the first failure, prints the info related to the failure and returns and error code. We can use a flag like `target` to run tests on Windows this runs unit tests so this works only for syscheckd at the moment.
 
 
 Output Example executing the RTR tool with `dbsync` module:
@@ -130,12 +133,76 @@ shared_modules/dbsync > [make: PASSED]
 <shared_modules/dbsync>[RTR: PASSED]<shared_modules/dbsync>
 
 ```
+Output Example executing the RTR tool with `syscheck` module and target `winagent`:
+```
+#> python3 build.py -r syscheckd --target winagent
+ <syscheckd>=============== Running RTR checks  ===============<syscheckd>
+ <syscheckd>=============== Running cppcheck    ===============<syscheckd>
+ [Cppcheck: PASSED]
+ <winagent>=============== Running Make Deps   ===============<winagent>
+ [MakeDeps: PASSED]
+ <winagent>=============== Running Make project ==============<winagent>
+ [MakeTarget: PASSED]
+ <syscheckd>=============== Running Tests       ===============<syscheckd>
+ [fim_db_interface_test.exe: PASSED]
+ [fileitem_unit_test.exe: PASSED]
+ [registryvalue_unit_test.exe: PASSED]
+ [fimdb_unit_test.exe: PASSED]
+ [fim_registry_interface_test.exe: PASSED]
+ [fim_file_interface_test.exe: PASSED]
+ [registrykey_unit_test.exe: PASSED]
+
+
+ <syscheckd>[All tests: PASSED]<syscheckd>
+ [Cleanfolder : PASSED]
+ <syscheckd>=============== Running CMake Conf  ===============<syscheckd>
+ [ConfigureCMake: PASSED]
+ <syscheckd>=============== Running AStyle      ===============<syscheckd>
+ [Cleanfolder : PASSED]
+ [AStyle Check: PASSED]
+ [CleanAll: PASSED]
+ [CleanExternals: PASSED]
+ <agent>=============== Running Make Deps   ===============<agent>
+ [MakeDeps: PASSED]
+ <agent>=============== Running Make project ==============<agent>
+ [MakeTarget: PASSED]
+ [Cleanfolder : PASSED]
+ <syscheckd>=============== Running ASAN        ===============<syscheckd>
+ [CleanInternals: PASSED]
+ <agent>=============== Running Make project ==============<agent>
+ [MakeTarget: PASSED]
+ [Cleanfolder : PASSED]
+ <syscheckd>=============== Running CMake Conf  ===============<syscheckd>
+ [ConfigureCMake: PASSED]
+ <syscheckd>=============== Compiling library   ===============<syscheckd>
+ [make: PASSED]
+ [Cleanfolder : PASSED]
+ <TESTTOOL>=============== Running TEST TOOL   ===============<TESTTOOL>
+ /home/francorivero/Desktop/Wazuh_repositories/vagrant/wazuh/src/syscheckd/build/bin/fimdb_test_tool -c config.json -a FimDBTransaction/StartTransaction.json,FimDBTransaction/SyncTxnRows_1.json,FimDBTransaction/GetDeletedRows.json,FimDBTransaction/CountFiles.json,FimDBTransaction/StartTransaction.json,FimDBTransaction/SyncTxnRows_2.json,FimDBTransaction/GetDeletedRows.json,FimDBTransaction/CountFiles.json -o ./output/fileTransaction
+ <TESTTOOL>=============== Running TEST TOOL   ===============<TESTTOOL>
+ /home/francorivero/Desktop/Wazuh_repositories/vagrant/wazuh/src/syscheckd/build/bin/fimdb_test_tool -c config.json -a atomicFileOperations/SyncRow_1.json,atomicFileOperations/SyncRow_2.json,atomicFileOperations/CountFiles.json,atomicFileOperations/SyncRow_3.json,atomicFileOperations/DeleteFile.json,atomicFileOperations/CountFiles.json,atomicFileOperations/GetFile.json -o ./output/AtomicOperations
+ [ASAN: PASSED]
+ <syscheckd>=============== Running TEST TOOL for Windows =====<syscheckd>
+ [CleanAll: PASSED]
+ [CleanExternals: PASSED]
+ <winagent>=============== Running Make Deps   ===============<winagent>
+ [MakeDeps: PASSED]
+ <winagent>=============== Running Make project ==============<winagent>
+ [MakeTarget: PASSED]
+ <TESTTOOL>=============== Running TEST TOOL   ===============<TESTTOOL>
+ WINEPATH="/usr/i686-w64-mingw32/lib;/home/francorivero/Desktop/Wazuh_repositories/vagrant/wazuh/src"                            WINEARCH=win64 /usr/bin/wine /home/francorivero/Desktop/Wazuh_repositories/vagrant/wazuh/src/syscheckd/build/bin/fimdb_test_tool.exe -c configWindows.json -a FimDBTransaction/StartTransactionRegistryKey.json,FimDBTransaction/SyncTxnRowsRegistryKey_1.json,FimDBTransaction/GetDeletedRows.json,FimDBTransaction/StartTransactionRegistryKey.json,FimDBTransaction/SyncTxnRowsRegistryKey_2.json,FimDBTransaction/GetDeletedRows.json -o ./output/registryKeyTransaction
+ <TESTTOOL>=============== Running TEST TOOL   ===============<TESTTOOL>
+ WINEPATH="/usr/i686-w64-mingw32/lib;/home/francorivero/Desktop/Wazuh_repositories/vagrant/wazuh/src"                            WINEARCH=win64 /usr/bin/wine /home/francorivero/Desktop/Wazuh_repositories/vagrant/wazuh/src/syscheckd/build/bin/fimdb_test_tool.exe -c configWindows.json -a FimDBTransaction/StartTransactionRegistryData.json,FimDBTransaction/SyncTxnRowsRegistryData_1.json,FimDBTransaction/GetDeletedRows.json,FimDBTransaction/StartTransactionRegistryData.json,FimDBTransaction/SyncTxnRowsRegistryData_2.json,FimDBTransaction/GetDeletedRows.json -o ./output/registryDataTransaction
+ [TEST TOOL for Windows: PASSED]
+ [TestTool check: PASSED]
+ <syscheckd>[RTR: PASSED]<syscheckd>
+```
 
 Address sanitizer checks:
-  1. Clean previous builds <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector> folder.
-  2. Compiles with address sanitizers flags<data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>.
-  3. Runs smoke tests <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>
-  4. Runs valgrind on <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector> UTs.
+  1. Clean previous builds <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector|syscheckd> folder.
+  2. Compiles with address sanitizers flags<data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector|syscheckd>.
+  3. Runs smoke tests <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector|syscheckd>
+  4. Runs valgrind on <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector|syscheckd> UTs.
 If all the checks passed it returns 0 and prints a "[ASAN: PASSED]", otherwise it stops the execution of the checking on the first failure, prints the info related to the failure and returns and error code.
 
 Output Example executing the ASAN tests with `dbsync` module:
