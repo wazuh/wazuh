@@ -169,7 +169,7 @@
 <decoder name="ssh-closed">
   <parent>sshd</parent>
   <prematch>^Connection closed by \S+ port \S+</prematch>
-  <regex>by (\S+) port (\S+)$</regex>
+  <regex>by (\S+) port (\S+)</regex>
   <order>srcip, srcport</order>
 </decoder>
 
