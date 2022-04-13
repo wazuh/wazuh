@@ -69,7 +69,7 @@ types::Lifter opBuilderKVDBExtract(const types::DocumentValue& def,
     {
         // Append rxcpp operation
         return o.map(
-            [target, &kvdb, key, isReference](types::Event e)
+            [target, kvdb, key, isReference](types::Event e)
             {
                 // Get DB key
                 std::string dbKey;
@@ -159,7 +159,7 @@ types::Lifter opBuilderKVDBExistanceCheck(const types::DocumentValue& def,
     {
         // Append rxcpp operations
         return o.filter(
-            [&kvdb, key, checkExist](types::Event e)
+            [kvdb, key, checkExist](types::Event e)
             {
                 bool found = false;
                 try // TODO We are only using try for JSON::get. Is correct to
