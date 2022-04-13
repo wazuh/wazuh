@@ -121,7 +121,7 @@ cJSON * jqueue_parse_json(file_queue * queue, int max_read_attempts) {
     current_pos = w_ftell(queue->fp);
 
     if (fgets(buffer, OS_MAXSTR + 1, queue->fp)) {
-        
+
         if (end = strchr(buffer, '\n'), end) {
             *end = '\0';
 
@@ -137,8 +137,7 @@ cJSON * jqueue_parse_json(file_queue * queue, int max_read_attempts) {
         }
 
         queue->read_attempts++;
-        mdebug2("Invalid JSON alert read from '%s'. Remaining attempts: %d", queue->file_name, max_read_attempts - queue->read_attempts);
-        mdebug2("s\n\n ---------------------------------- max_read_attempts '%d'\n\n", max_read_attempts);
+        mdebug2("Invalid JSON alert read from '%s'. Remaining attempts: %d", queue->file_name, max_read_attempts - queue->read_attempts);        
 
         if (queue->read_attempts < max_read_attempts) {
             if (current_pos >= 0) {
@@ -151,8 +150,7 @@ cJSON * jqueue_parse_json(file_queue * queue, int max_read_attempts) {
             merror("Invalid JSON alert read from '%s'. Skipping it.", queue->file_name);
         }
     } else {
-        // Force the queue reload when the read fails
-        // mdebug2("\n######### FGETS FAIL ######\n");
+        // Force the queue reload when the read fails        
         queue->flags = CRALERT_READ_FAILED;
     }
 
