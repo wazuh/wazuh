@@ -1,5 +1,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import asyncio
 import functools
 import inspect
@@ -56,50 +57,6 @@ class AbstractServerHandler(c_common.Handler):
         self.ip = None
         self.transport = None
         self.broadcast_queue = asyncio.Queue()
-
-    def add_request(self, broadcast_id, f, *args, **kwargs):
-        """Add a request to the queue to execute a function in this server handler.
-
-        Parameters
-        ----------
-        broadcast_id : Str or None
-            Request identifier to be included in the queue.
-        f : callable
-            Function reference to be run. The function should be defined in this or in any inheriting class.
-        *args
-            Arguments to be passed to function `f`.
-        **kwargs
-            Keyword arguments to be passed to function `f`.
-        """
-        self.broadcast_queue.put_nowait(
-            {'broadcast_id': broadcast_id, 'func': functools.partial(f, self, *args, **kwargs)}
-        )
-
-    async def broadcast_reader(self):
-        """Execute functions added to the broadcast_queue of this server handler.
-
-        Wait until something with this structure is added to the queue:
-        {'broadcast_id': Union[Str, None], 'func': Callable}.
-
-        The function 'func' is executed and its result is stored in a dict
-        under the key 'broadcast_id', if it exists.
-        """
-        while True:
-            q_item = await self.broadcast_queue.get()
-
-            try:
-                if inspect.iscoroutinefunction(q_item['func']):
-                    result = await q_item['func']()
-                else:
-                    result = q_item['func']()
-            except Exception as e:
-                self.logger.error(f"Error while broadcasting function. ID: {q_item['broadcast_id']}. Error: {e}.")
-                result = e
-
-            try:
-                self.server.broadcast_results[q_item['broadcast_id']][self.name] = result
-            except KeyError:
-                pass
 
     def to_dict(self) -> Dict:
         """Get basic info from AbstractServerHandler instance.
@@ -240,6 +197,50 @@ class AbstractServerHandler(c_common.Handler):
             else:
                 self.logger.error("Error during handshake with incoming connection.", exc_info=False)
 
+    def add_request(self, broadcast_id, f, *args, **kwargs):
+        """Add a request to the queue to execute a function in this server handler.
+
+        Parameters
+        ----------
+        broadcast_id : Str or None
+            Request identifier to be included in the queue.
+        f : callable
+            Function reference to be run. The function should be defined in this or in any inheriting class.
+        *args
+            Arguments to be passed to function `f`.
+        **kwargs
+            Keyword arguments to be passed to function `f`.
+        """
+        self.broadcast_queue.put_nowait(
+            {'broadcast_id': broadcast_id, 'func': functools.partial(f, self, *args, **kwargs)}
+        )
+
+    async def broadcast_reader(self):
+        """Execute functions added to the broadcast_queue of this server handler.
+
+        Wait until something with this structure is added to the queue:
+        {'broadcast_id': Union[Str, None], 'func': Callable}.
+
+        The function 'func' is executed and its result is stored in a dict
+        under the key 'broadcast_id', if it exists.
+        """
+        while True:
+            q_item = await self.broadcast_queue.get()
+
+            try:
+                if inspect.iscoroutinefunction(q_item['func']):
+                    result = await q_item['func']()
+                else:
+                    result = q_item['func']()
+            except Exception as e:
+                self.logger.error(f"Error while broadcasting function. ID: {q_item['broadcast_id']}. Error: {e}.")
+                result = e
+
+            try:
+                self.server.broadcast_results[q_item['broadcast_id']][self.name] = result
+            except KeyError:
+                pass
+
 
 class AbstractServer:
     """
@@ -300,8 +301,12 @@ class AbstractServer:
         executed in all server handlers or the result for each one. For those
         features, see `broadcast_add` and `broadcast_pop`.
         """
-        for _, client in self.clients.items():
-            client.add_request(None, f, *args, **kwargs)
+        for name, client in self.clients.items():
+            try:
+                client.add_request(None, f, *args, **kwargs)
+                self.logger.debug2(f'Added broadcast request to execute "{f.__name__}" in {name}.')
+            except Exception as e:
+                self.logger.error(f'Error while adding broadcast request in {name}: {e}', exc_info=False)
 
     def broadcast_add(self, f, *args, **kwargs):
         """Add a function to the broadcast_queue of each server handler and obtain an identifier.
@@ -332,17 +337,26 @@ class AbstractServer:
             self.broadcast_results[broadcast_id] = {}
 
             for name, client in self.clients.items():
-                self.broadcast_results[broadcast_id][name] = NO_RESULT
-                client.add_request(broadcast_id, f, *args, **kwargs)
+                try:
+                    self.broadcast_results[broadcast_id][name] = NO_RESULT
+                    client.add_request(broadcast_id, f, *args, **kwargs)
+                    self.logger.debug2(f'Added broadcast request to execute "{f.__name__}" in {name}.')
+                except Exception as e:
+                    self.broadcast_results[broadcast_id].pop(name, None)
+                    self.logger.error(f'Error while adding broadcast request in {name}: {e}', exc_info=False)
 
-            return broadcast_id
+            if not self.broadcast_results[broadcast_id]:
+                self.broadcast_results.pop(broadcast_id, None)
+            else:
+                return broadcast_id
 
     def broadcast_pop(self, broadcast_id):
         """Get the broadcast result of all server handlers, if ready.
 
-        Return False if the requested function was not executed in all the
-        server handlers. Otherwise, return a dictionary with the execution
-        result in each server handler.
+        Return False if `broadcast_id` exists but the requested function was not
+        executed in all the server handlers. Otherwise, return a dictionary
+        with the execution result in each server handler or True if the `broadcast_id`
+        is unknown.
 
         If the dict is returned, said entry is removed from the broadcast_results dict.
 
@@ -354,14 +368,13 @@ class AbstractServer:
         Returns
         -------
         Dict, bool
-            False if request was not executed in all server handlers. Dict with results otherwise.
+            False if the `broadcast_id` exists but the request was not executed in all server handlers.
+            True if the `broadcast_id` is unknown. Dict with results if the `broadcast_id` exists and
+            the results are ready, it is, the request was executed in all server handlers.
         """
-        try:
-            for name, result in self.broadcast_results[broadcast_id].items():
-                if name in self.clients and result == NO_RESULT:
-                    return False
-        except KeyError:
-            return False
+        for name, result in self.broadcast_results.get(broadcast_id, {}).items():
+            if name in self.clients and result == NO_RESULT:
+                return False
 
         return self.broadcast_results.pop(broadcast_id, True)
 

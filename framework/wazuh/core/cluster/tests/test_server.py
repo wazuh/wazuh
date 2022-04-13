@@ -5,7 +5,7 @@
 from asyncio import Transport
 from contextvars import ContextVar
 from logging import Logger
-from unittest.mock import call, patch
+from unittest.mock import call, patch, ANY, MagicMock
 
 import pytest
 from freezegun import freeze_time
@@ -45,6 +45,7 @@ def test_AbstractServerHandler_init():
         assert isinstance(abstract_server_handler.last_keepalive, float)
         assert abstract_server_handler.tag == "NoClient"
         assert mock_contextvar.get() == "NoClient"
+        assert isinstance(abstract_server_handler.broadcast_queue, asyncio.Queue)
 
 
 def test_AbstractServerHandler_to_dict():
@@ -182,6 +183,46 @@ def test_AbstractServerHandler_connection_lost():
             mock_debug_logger.assert_called_once_with("Disconnected unit.")
 
 
+@patch("asyncio.Queue")
+@patch("wazuh.core.cluster.server.functools")
+def test_AbstractServerHandler_add_request(functools_mock, queue_mock):
+    """Check that requests are added to asyncio queue with expected parameters."""
+    abstract_server_handler = AbstractServerHandler(server="Test", loop=loop, fernet_key=fernet_key,
+                                                    cluster_items={"test": "server"})
+    abstract_server_handler.add_request('test_id', 'test_f', 'test_param', keyword_param='test')
+    queue_mock.return_value.put_nowait.assert_called_with({'broadcast_id': 'test_id', 'func': ANY})
+    functools_mock.partial.assert_called_with('test_f', abstract_server_handler, 'test_param', keyword_param='test')
+
+
+@pytest.mark.asyncio
+async def test_AbstractServerHandler_broadcast_reader():
+    """Check that requests are read from the queue and executed with expected parameters."""
+    async def async_mock_func():
+        return 'Coroutine result'
+
+    def sync_mock_func():
+        return 'Result'
+
+    server_mock = MagicMock()
+    logger_mock = MagicMock()
+    server_mock.broadcast_results = {'test1': {'worker1': {}}, 'test2': {'worker1': {}}, 'test3': {'worker1': {}}}
+    abstract_server_handler = AbstractServerHandler(server=server_mock, loop=loop, fernet_key=fernet_key,
+                                                    cluster_items={"test": "server"}, logger=logger_mock)
+    abstract_server_handler.name = 'worker1'
+
+    with patch("asyncio.Queue.get", side_effect=[{'broadcast_id': 'test1', 'func': async_mock_func},
+                                                 {'broadcast_id': 'test2', 'func': sync_mock_func},
+                                                 {'broadcast_id': 'test3', 'func': 'ko_func'},
+                                                 {'broadcast_id': None, 'func': sync_mock_func}]):
+        with pytest.raises(Exception):
+            await abstract_server_handler.broadcast_reader()
+        assert server_mock.broadcast_results == {'test1': {'worker1': 'Coroutine result'},
+                                                 'test2': {'worker1': 'Result'},
+                                                 'test3': {'worker1': ANY}}
+        logger_mock.error.assert_called_once_with("Error while broadcasting function. ID: test3. Error: 'str' object"
+                                                  " is not callable.")
+
+
 @patch("asyncio.get_running_loop", return_value=loop)
 def test_AbstractServer_init(loop_mock):
     """Check the correct initialization of the AbstractServer object."""
@@ -205,6 +246,96 @@ def test_AbstractServer_init(loop_mock):
         assert abstract_server.tag == "test"
         assert mock_contextvar.get() == "test"
         assert abstract_server.logger == logger
+        assert abstract_server.broadcast_results == {}
+
+
+@patch("asyncio.get_running_loop", return_value=loop)
+def test_AbstractServer_broadcast(loop_mock):
+    """Check that add_request is called with expected parameters."""
+    def test_func():
+        pass
+
+    logger_mock = MagicMock()
+    worker1_instance = MagicMock()
+    worker2_instance = MagicMock()
+    abstract_server = AbstractServer(performance_test=1, concurrency_test=2, configuration={"test3": 3},
+                                     cluster_items={"test4": 4}, enable_ssl=True, logger=logger_mock)
+    abstract_server.clients = {"worker1": worker1_instance, "worker2": worker2_instance}
+
+    abstract_server.broadcast(test_func, "test_param", keyword_param="param")
+    worker1_instance.add_request.assert_called_once_with(None, ANY, "test_param", keyword_param="param")
+    worker2_instance.add_request.assert_called_once_with(None, ANY, "test_param", keyword_param="param")
+    logger_mock.debug2.call_args_list == [call('Added broadcast request to execute "test_func" in worker1.'),
+                                          call('Added broadcast request to execute "test_func" in worker2.')]
+
+
+@patch("asyncio.get_running_loop", return_value=loop)
+def test_AbstractServer_broadcast_ko(loop_mock):
+    """Verify that expected error log is printed when an exception is raised."""
+    logger_mock = MagicMock()
+    abstract_server = AbstractServer(performance_test=1, concurrency_test=2, configuration={"test3": 3},
+                                     cluster_items={"test4": 4}, enable_ssl=True, logger=logger_mock)
+    abstract_server.clients = {"worker1": "test"}
+
+    abstract_server.broadcast("test_f", "test_param", keyword_param="param")
+    logger_mock.error.assert_called_once_with("Error while adding broadcast request in worker1: 'str' object "
+                                              "has no attribute 'add_request'", exc_info=False)
+
+@patch("wazuh.core.cluster.server.uuid4", return_value="abc123")
+@patch("asyncio.get_running_loop", return_value=loop)
+def test_AbstractServer_broadcast_add(loop_mock, uuid_mock):
+    """Check that add_request is called with expected parameters."""
+    def test_func():
+        pass
+
+    logger_mock = MagicMock()
+    worker1_instance = MagicMock()
+    worker2_instance = MagicMock()
+    abstract_server = AbstractServer(performance_test=1, concurrency_test=2, configuration={"test3": 3},
+                                     cluster_items={"test4": 4}, enable_ssl=True, logger=logger_mock)
+    abstract_server.broadcast_results = {}
+    abstract_server.clients = {"worker1": worker1_instance, "worker2": worker2_instance}
+
+    assert abstract_server.broadcast_add(test_func, "test_param", keyword_param="param") == "abc123"
+    assert abstract_server.broadcast_results == {"abc123": {"worker1": "no_result", "worker2": "no_result"}}
+    logger_mock.debug2.call_args_list == [call('Added broadcast request to execute "test_func" in worker1.'),
+                                          call('Added broadcast request to execute "test_func" in worker2.')]
+
+
+@patch("wazuh.core.cluster.server.uuid4", return_value="abc123")
+@patch("asyncio.get_running_loop", return_value=loop)
+def test_AbstractServer_broadcast_add_ko(loop_mock, uuid_mock):
+    """Check that expected error log is printed and that broadcast_results is deleted."""
+    logger_mock = MagicMock()
+    abstract_server = AbstractServer(performance_test=1, concurrency_test=2, configuration={"test3": 3},
+                                     cluster_items={"test4": 4}, enable_ssl=True, logger=logger_mock)
+    abstract_server.broadcast_results = {}
+    abstract_server.clients = {"worker1": "test"}
+
+    assert abstract_server.broadcast_add("test_f", "test_param", keyword_param="param") is None
+    logger_mock.error.assert_called_once_with("Error while adding broadcast request in worker1: 'str' object "
+                                              "has no attribute 'add_request'", exc_info=False)
+    assert abstract_server.broadcast_results == {}
+
+
+@pytest.mark.parametrize('broadcast_results, expected_response', [
+    ({"abc123": {"worker1": "no_result", "worker2": "no_result"}}, False),
+    ({"abc123": {"worker1": "Response", "worker2": "no_result"}}, False),
+    ({"unknown": {}}, True),
+    ({"abc123": {"worker1": "Response", "worker2": "Response"}}, {"worker1": "Response", "worker2": "Response"}),
+    ({"abc123": {"worker1": "Response", "worker2": "Response", "worker3": "Response"}},
+     {"worker1": "Response", "worker2": "Response", "worker3": "Response"}),
+])
+@patch("asyncio.get_running_loop", return_value=loop)
+def test_AbstractServer_broadcast_pop(loop_mock, broadcast_results, expected_response):
+    """Check that expected response is returned for each case."""
+    logger_mock = MagicMock()
+    abstract_server = AbstractServer(performance_test=1, concurrency_test=2, configuration={"test3": 3},
+                                     cluster_items={"test4": 4}, enable_ssl=True, logger=logger_mock)
+    abstract_server.broadcast_results = broadcast_results
+    abstract_server.clients = {"worker1": "test", "worker2": "test"}
+
+    assert abstract_server.broadcast_pop("abc123") == expected_response
 
 
 @patch("asyncio.get_running_loop", return_value=loop)
