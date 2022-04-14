@@ -43,9 +43,11 @@ typedef struct linked_queue_t
 /**
  * @brief Initializes a new queue structure
  *
- * @param push_callback Optional callback to run every time a push is called
- * @param pop_callback Optional callback to run every time a pop is called
- * @return w_linked_queue_t* Initialized queue structure
+ * @param push_callback Optional callback to run every time a push is called. It receives the (void* data) node as parameter.
+ *                      This parameter may be NULL so the method should perform the corresponding sanity checks.
+ * @param pop_callback Optional callback to run every time a pop is called. It receives the (void* data) node as parameter.
+ *                     This parameter may be NULL so the method should perform the corresponding sanity checks.
+ * @return w_linked_queue_t* Initialized queue structure.
  * */
 w_linked_queue_t * linked_queue_init(void (*push_callback)(void *), void (*pop_callback)(void *));
 
@@ -88,25 +90,25 @@ void *linked_queue_pop(w_linked_queue_t *queue);
  * @brief Same as queue_pop but with mutual exclusion
  * for multithreaded applications.
  *
- * @param queue the queue
- * @return next element in the queue
+ * @param queue The queue
+ * @return The front element in the queue
  * */
 void *linked_queue_pop_ex(w_linked_queue_t *queue);
 
 /**
- * @brief Retrieves next item in the queue without conditional wait
+ * @brief Retrieves the front item in the queue without conditional wait
  *
  * @param queue the queue
- * @return next element in the queue
+ * @return The front element in the queue
  *
  * */
 void *linked_queue_pop_ex_no_cond_wait(w_linked_queue_t *queue);
 
 /**
- * @brief Reads the next item in the queue with mutual exclusion but doesn't remove it
+ * @brief Reads the front item in the queue with mutual exclusion but doesn't remove it
  *
  * @param queue The queue used
- * @return void* The next element in the queue
+ * @return void* The front element in the queue
  */
 void *linked_queue_read_ex(w_linked_queue_t *queue);
 
