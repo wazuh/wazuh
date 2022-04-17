@@ -133,6 +133,7 @@
             <!-- Install functions -->
             <Custom Action="SetCustomActionDataValue" After="InstallInitialize">NOT Installed</Custom>
             <Custom Action="CustomAction_InstallerScripts" After="SetCustomActionDataValue">NOT Installed</Custom>
+            <Custom Action="CustomAction_DumpsSetup" After="CustomAction_InstallerScripts">NOT Installed</Custom>
 
             <!-- Stop the service as soon as possible on uninstall, and only on uninstall, in order to unlock the files and folders that must be deleted. -->
             <Custom Action="SetRemoveAllDataValue" Before="InstallFinalize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
