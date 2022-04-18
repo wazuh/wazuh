@@ -110,15 +110,6 @@ bool configureAnyParser(Parser &parser,
     return true;
 }
 
-// TODO: keyword parser doesn't add any functionality, it can be replace by
-// setting the endToken by the char needed
-bool configureKeywordParser(Parser &parser,
-                           std::vector<std::string_view> const &args)
-{
-    parser.endToken = ' ';
-    return true;
-}
-
 bool configureQuotedString(Parser &parser,
                            std::vector<std::string_view> const &args)
 {
