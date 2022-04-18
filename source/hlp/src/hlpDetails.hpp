@@ -21,7 +21,6 @@ enum class ParserType
     Domain,
     FilePath,
     UserAgent,
-    KeyWord,
     Number,
     QuotedString,
     Invalid,
