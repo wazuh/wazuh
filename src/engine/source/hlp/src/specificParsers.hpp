@@ -75,7 +75,7 @@ bool configureQuotedString(Parser &parser,
  */
 bool parseAny(const char **it,
               Parser const &parser,
-              std::unordered_map<std::string, std::string> &result);
+              ParseResult &result);
 
 /**
  * @brief Parse a literal character
@@ -87,7 +87,7 @@ bool parseAny(const char **it,
  */
 bool matchLiteral(const char **it,
                   Parser const &parser,
-                  std::unordered_map<std::string, std::string> &);
+                  ParseResult &);
 
 /**
  * @brief Parse a File path string
@@ -99,7 +99,7 @@ bool matchLiteral(const char **it,
  */
 bool parseFilePath(const char **it,
                    Parser const &parser,
-                   std::unordered_map<std::string, std::string> &result);
+                   ParseResult &result);
 
 /**
  * @brief Parse a JSON string
@@ -111,7 +111,7 @@ bool parseFilePath(const char **it,
  */
 bool parseJson(const char **it,
                Parser const &parser,
-               std::unordered_map<std::string, std::string> &result);
+               ParseResult &result);
 
 /**
  * @brief Parse a map-like string
@@ -123,7 +123,7 @@ bool parseJson(const char **it,
  */
 bool parseMap(const char **it,
               Parser const &parser,
-              std::unordered_map<std::string, std::string> &result);
+              ParseResult &result);
 
 /**
  * @brief Parse an IP string
@@ -135,7 +135,7 @@ bool parseMap(const char **it,
  */
 bool parseIPaddress(const char **it,
                     Parser const &parser,
-                    std::unordered_map<std::string, std::string> &result);
+                    ParseResult &result);
 
 /**
  * @brief Parse a TimeStamp string
@@ -147,7 +147,7 @@ bool parseIPaddress(const char **it,
  */
 bool parseTimeStamp(const char **it,
                     Parser const &parser,
-                    std::unordered_map<std::string, std::string> &result);
+                    ParseResult &result);
 
 /**
  * @brief Parse an url string
@@ -159,7 +159,7 @@ bool parseTimeStamp(const char **it,
  */
 bool parseURL(const char **it,
               Parser const &parser,
-              std::unordered_map<std::string, std::string> &result);
+              ParseResult &result);
 
 /**
  * @brief Parse a domain string
@@ -171,7 +171,7 @@ bool parseURL(const char **it,
  */
 bool parseDomain(const char **it,
                  Parser const &parser,
-                 std::unordered_map<std::string, std::string> &result);
+                 ParseResult &result);
 
 /**
  * @brief Parse a user agent string
@@ -183,7 +183,7 @@ bool parseDomain(const char **it,
  */
 bool parseUserAgent(const char **it,
                     Parser const &parser,
-                    std::unordered_map<std::string, std::string> &result);
+                    ParseResult &result);
 
 /**
  * @brief Parse an integer ir floating point number
@@ -194,7 +194,7 @@ bool parseUserAgent(const char **it,
  */
 bool parseNumber(const char **it,
               Parser const &parser,
-              std::unordered_map<std::string, std::string> &result);
+              ParseResult &result);
 
 /**
  * @brief parse a quoted string
@@ -204,6 +204,6 @@ bool parseNumber(const char **it,
  */
 bool parseQuotedString(const char **it,
               Parser const &parser,
-              std::unordered_map<std::string, std::string> &result);
+              ParseResult &result);
 
 #endif //_H_SPECIFIC_PARSERS

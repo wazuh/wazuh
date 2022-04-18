@@ -7,7 +7,7 @@ check:
 parse:
   logql:
     #[Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: Test_example for acceptation test #3
-    - event.original: "[<timestamp/ANSIC>] <host> <tloc>[<locNum>]: <logLine>#<index>"
+    - event.original: "[<timestamp/ANSIC>] <_json/JSON> <host> <tloc>[<locNum>]: <logLine>#<index>"
 
 normalize:
   - decoded.queue: decoded_queue

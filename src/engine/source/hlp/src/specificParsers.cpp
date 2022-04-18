@@ -5,12 +5,6 @@
 #include <string_view>
 #include <unordered_map>
 
-#include "date/date.h"
-#include "hlpDetails.hpp"
-#include "specificParsers.hpp"
-#include "tld.hpp"
-#include <profile/profile.hpp>
-
 #include <arpa/inet.h>
 #include <curl/curl.h>
 #include <fmt/format.h>
@@ -18,6 +12,12 @@
 #include <rapidjson/error/en.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
+
+#include "date/date.h"
+#include "hlpDetails.hpp"
+#include "specificParsers.hpp"
+#include "tld.hpp"
+#include <profile/profile.hpp>
 
 // TODO For all the rfc timestamps there are variations that we don't parse
 // still, this will need a rework on how this list work
@@ -122,22 +122,19 @@ bool configureQuotedString(Parser &parser,
     return true;
 }
 
-bool parseAny(const char **it,
-              Parser const &parser,
-              std::unordered_map<std::string, std::string> &result)
+bool parseAny(const char **it, Parser const &parser, ParseResult &result)
 {
     const char *start = *it;
     while (**it != '\0' && **it != parser.endToken)
     {
         (*it)++;
     }
-    result[parser.name] = {start, *it};
+    // TODO check if we can get away with a string_view
+    result[parser.name] = std::string {start, *it};
     return true;
 }
 
-bool matchLiteral(const char **it,
-                  Parser const &parser,
-                  std::unordered_map<std::string, std::string> &)
+bool matchLiteral(const char **it, Parser const &parser, ParseResult &)
 {
     size_t i = 0;
     for (; (**it) && (i < parser.name.size());)
@@ -160,9 +157,7 @@ bool matchLiteral(const char **it,
     return parser.name[i] == '\0';
 }
 
-bool parseFilePath(const char **it,
-                   Parser const &parser,
-                   std::unordered_map<std::string, std::string> &result)
+bool parseFilePath(const char **it, Parser const &parser, ParseResult &result)
 {
     const char *start = *it;
     while (**it != parser.endToken && **it != '\0')
@@ -197,45 +192,34 @@ bool parseFilePath(const char **it,
         driveLetter = std::toupper(filePath[0]);
     }
 
-    result[parser.name + ".path"] = filePath;
-    result[parser.name + ".drive_letter"] = driveLetter;
-    result[parser.name + ".folder"] = folder;
-    result[parser.name + ".name"] = name;
-    result[parser.name + ".extension"] = extension;
+    result[parser.name + ".path"] = std::string {filePath};
+    result[parser.name + ".drive_letter"] = std::string {driveLetter};
+    result[parser.name + ".folder"] = std::string {folder};
+    result[parser.name + ".name"] = std::string {name};
+    result[parser.name + ".extension"] = std::string {extension};
 
     return true;
 }
 
-bool parseJson(const char **it,
-               Parser const &parser,
-               std::unordered_map<std::string, std::string> &result)
+bool parseJson(const char **it, Parser const &parser, ParseResult &result)
 {
-    // TODO: Implement a benchmark test comparing this approach and a possible
-    // more performant one: With Nlohman Json library it's possible to validate
-    // a Json string without having to parse it (convert and allocate a json
-    // object). Note: Callbacks on parse() are required to catch the end of the
-    // json if the string has trailing data.
-    rapidjson::Document doc;
-    if (doc.Parse<rapidjson::kParseStopWhenDoneFlag>(*it).HasParseError())
+    rapidjson::Reader reader;
+    rapidjson::StringStream ss {*it};
+    auto h = rapidjson::BaseReaderHandler {};
+    if (reader.Parse<rapidjson::kParseStopWhenDoneFlag>(ss, h).IsError())
     {
-        // TODO error handling
         return false;
     }
 
-    rapidjson::StringBuffer s;
-    rapidjson::Writer<rapidjson::StringBuffer> writer(s);
-    doc.Accept(writer);
+    hlp::JsonString json {{*it, ss.Tell()}};
+    *it += ss.Tell();
 
-    *it += s.GetLength();
-
-    result[parser.name] = s.GetString();
+    result[parser.name] = json;
 
     return true;
 }
 
-bool parseMap(const char **it,
-              Parser const &parser,
-              std::unordered_map<std::string, std::string> &result)
+bool parseMap(const char **it, Parser const &parser, ParseResult &result)
 {
     WAZUH_TRACE_FUNCTION;
     char pairSeparator = parser.options[0][0];
@@ -301,14 +285,12 @@ bool parseMap(const char **it,
     rapidjson::Writer<rapidjson::StringBuffer> writer(s);
     output_doc.Accept(writer);
 
-    result[parser.name] = s.GetString();
+    result[parser.name] = hlp::JsonString {s.GetString()};
 
     return true;
 }
 
-bool parseIPaddress(const char **it,
-                    Parser const &parser,
-                    std::unordered_map<std::string, std::string> &result)
+bool parseIPaddress(const char **it, Parser const &parser, ParseResult &result)
 {
     struct in_addr ip;
     struct in6_addr ipv6;
@@ -321,12 +303,14 @@ bool parseIPaddress(const char **it,
     std::string srcip {start, (size_t)((*it) - start)};
     if (inet_pton(AF_INET, srcip.c_str(), &ip))
     {
-        result[parser.name] = {start, *it};
+        // TODO check if we can get away with a string_view
+        result[parser.name] = std::string {start, *it};
         return true;
     }
     else if (inet_pton(AF_INET6, srcip.c_str(), &ipv6))
     {
-        result[parser.name] = {start, *it};
+        // TODO check if we can get away with a string_view
+        result[parser.name] = std::string {start, *it};
         return true;
     }
 
@@ -334,11 +318,10 @@ bool parseIPaddress(const char **it,
     return false;
 }
 
-static bool
-parseFormattedTime(std::string const &fmt,
-                   std::string const &time,
-                   std::unordered_map<std::string, std::string> &result,
-                   std::string const &name)
+static bool parseFormattedTime(std::string const &fmt,
+                               std::string const &time,
+                               ParseResult &result,
+                               std::string const &name)
 {
     std::stringstream ss {time};
     // check in which cases this could be necessary
@@ -351,41 +334,29 @@ parseFormattedTime(std::string const &fmt,
     {
         if (fds.ymd.year().ok())
         {
-            result[name + ".year"] =
-                std::to_string(static_cast<int>(fds.ymd.year()));
+            result[name + ".year"] = static_cast<int>(fds.ymd.year());
         }
 
         if (fds.ymd.month().ok())
         {
-            result[name + ".month"] =
-                std::to_string(static_cast<unsigned>(fds.ymd.month()));
+            result[name + ".month"] = static_cast<unsigned>(fds.ymd.month());
         }
 
         if (fds.ymd.day().ok())
         {
-            result[name + ".day"] =
-                std::to_string(static_cast<unsigned>(fds.ymd.day()));
+            result[name + ".day"] = static_cast<unsigned>(fds.ymd.day());
         }
 
         if (fds.has_tod && fds.tod.in_conventional_range())
         {
-            result[name + ".hour"] = std::to_string(fds.tod.hours().count());
-            result[name + ".minutes"] =
-                std::to_string(fds.tod.minutes().count());
-            result[name + ".seconds"] =
-                std::to_string(fds.tod.seconds().count());
-            auto subsec = fds.tod.subseconds().count();
-            if (subsec > 0)
-            {
-                // TODO check if this is necessary
-                // Remove the 'extra' 0 at the end
-                while ((subsec % 10) == 0)
-                {
-                    subsec /= 10;
-                }
-                // TODO double table lookup
-                result[name + ".seconds"] += "." + std::to_string(subsec);
-            }
+            result[name + ".hour"] = fds.tod.hours().count();
+            result[name + ".minutes"] = fds.tod.minutes().count();
+
+            // result[name + ".seconds"] =
+            // std::to_string(fds.tod.seconds().count());
+            auto secs = fds.tod.seconds() + fds.tod.subseconds();
+
+            result[name + ".seconds"] = static_cast<double>(secs.count() / 1e9);
 
             if (offset.count() != 0)
             {
@@ -396,11 +367,11 @@ parseFormattedTime(std::string const &fmt,
                          t.is_negative() ? "-%02lu%02lu" : "%02lu%02lu",
                          t.hours().count(),
                          t.minutes().count());
-                result[name + ".timezone"] = str;
+                result[name + ".timezone"] = std::string {str};
             }
             else if (!abbrev.empty())
             {
-                result[name + ".timezone"] = std::move(abbrev);
+                result[name + ".timezone"] = abbrev;
             }
         }
         return true;
@@ -408,9 +379,7 @@ parseFormattedTime(std::string const &fmt,
     return false;
 }
 
-bool parseTimeStamp(const char **it,
-                    Parser const &parser,
-                    std::unordered_map<std::string, std::string> &result)
+bool parseTimeStamp(const char **it, Parser const &parser, ParseResult &result)
 {
     const char *start = *it;
     while (**it != parser.endToken && **it != '\0')
@@ -440,9 +409,7 @@ bool parseTimeStamp(const char **it,
     return false;
 }
 
-bool parseURL(const char **it,
-              Parser const &parser,
-              std::unordered_map<std::string, std::string> &result)
+bool parseURL(const char **it, Parser const &parser, ParseResult &result)
 {
     // TODO should we fill partial results?
 
@@ -484,7 +451,7 @@ bool parseURL(const char **it,
         // TODO set an error someway
         return false;
     }
-    result[parser.name + ".original"] = str;
+    result[parser.name + ".original"] = std::string {str};
     curl_free(str);
 
     uc = curl_url_get(url.get(), CURLUPART_HOST, &str, 0);
@@ -493,7 +460,7 @@ bool parseURL(const char **it,
         // TODO set an error someway
         return false;
     }
-    result[parser.name + ".domain"] = str;
+    result[parser.name + ".domain"] = std::string {str};
     curl_free(str);
 
     uc = curl_url_get(url.get(), CURLUPART_PATH, &str, 0);
@@ -502,7 +469,7 @@ bool parseURL(const char **it,
         // TODO set an error someway
         return false;
     }
-    result[parser.name + ".path"] = str;
+    result[parser.name + ".path"] = std::string {str};
     curl_free(str);
 
     uc = curl_url_get(url.get(), CURLUPART_SCHEME, &str, 0);
@@ -511,7 +478,7 @@ bool parseURL(const char **it,
         // TODO set an error someway
         return false;
     }
-    result[parser.name + ".scheme"] = str;
+    result[parser.name + ".scheme"] = std::string {str};
     curl_free(str);
 
     uc = curl_url_get(url.get(), CURLUPART_USER, &str, 0);
@@ -520,7 +487,7 @@ bool parseURL(const char **it,
         // TODO set an error someway
         return false;
     }
-    result[parser.name + ".username"] = str;
+    result[parser.name + ".username"] = std::string {str};
     curl_free(str);
 
     uc = curl_url_get(url.get(), CURLUPART_PASSWORD, &str, 0);
@@ -529,7 +496,7 @@ bool parseURL(const char **it,
         // TODO set an error someway
         return false;
     }
-    result[parser.name + ".password"] = str;
+    result[parser.name + ".password"] = std::string {str};
     curl_free(str);
 
     uc = curl_url_get(url.get(), CURLUPART_QUERY, &str, 0);
@@ -538,7 +505,7 @@ bool parseURL(const char **it,
         // TODO set an error someway
         return false;
     }
-    result[parser.name + ".query"] = str;
+    result[parser.name + ".query"] = std::string {str};
     curl_free(str);
 
     uc = curl_url_get(url.get(), CURLUPART_PORT, &str, 0);
@@ -547,7 +514,7 @@ bool parseURL(const char **it,
         // TODO set an error someway
         return false;
     }
-    result[parser.name + ".port"] = str;
+    result[parser.name + ".port"] = std::atoi(str);
     curl_free(str);
 
     uc = curl_url_get(url.get(), CURLUPART_FRAGMENT, &str, 0);
@@ -556,7 +523,7 @@ bool parseURL(const char **it,
         // TODO set an error someway
         return false;
     }
-    result[parser.name + ".fragment"] = str;
+    result[parser.name + ".fragment"] = std::string {str};
     curl_free(str);
 
     return true;
@@ -580,9 +547,7 @@ static bool isDomainValidChar(char c)
             c == '_' || c == '.');
 }
 
-bool parseDomain(const char **it,
-                 Parser const &parser,
-                 std::unordered_map<std::string, std::string> &result)
+bool parseDomain(const char **it, Parser const &parser, ParseResult &result)
 {
 
     constexpr int kDomainMaxSize = 253;
@@ -735,9 +700,7 @@ enum class UAState
     Comment,
 };
 
-bool parseUserAgent(const char **it,
-                    Parser const &parser,
-                    std::unordered_map<std::string, std::string> &result)
+bool parseUserAgent(const char **it, Parser const &parser, ParseResult &result)
 {
     const char *start = *it;
     const char *ev = *it;
@@ -820,7 +783,8 @@ bool parseUserAgent(const char **it,
         }
     }
 
-    result[parser.name + ".original"] = {start, lastValid};
+    // TODO check type and see if we can get away with a string_view
+    result[parser.name + ".original"] = std::string {start, lastValid};
 
     *it = lastValid;
     return true;
@@ -828,10 +792,10 @@ bool parseUserAgent(const char **it,
 
 bool parseNumber(const char **it,
               Parser const &parser,
-              std::unordered_map<std::string, std::string> &result)
+              ParseResult &result)
 {
-    const char *start = *it;
-    char * ptrEnd;
+    const char* start = *it;
+    char* ptrEnd;
     bool hasDecimalSeparator = false;
     float fnum;
     long int val;
@@ -843,18 +807,18 @@ bool parseNumber(const char **it,
 
     while (**it != '\0' && **it != parser.endToken)
     {
-        if(!hasDecimalSeparator && **it == '.')
+        if (!hasDecimalSeparator && **it == '.')
         {
             hasDecimalSeparator = true;
         }
-        else if(!std::isdigit(**it))
+        else if (!std::isdigit(**it))
         {
             return false;
         }
         (*it)++;
     }
 
-    if(!hasDecimalSeparator)
+    if (!hasDecimalSeparator)
     {
         val = std::strtol(start, &ptrEnd, 10);
         //TODO: if the number is exactly any of the limits it will fail
@@ -862,6 +826,7 @@ bool parseNumber(const char **it,
         {
             return false;
         }
+        result[parser.name] = val;
     }
     else
     {
@@ -871,15 +836,15 @@ bool parseNumber(const char **it,
         {
             return false;
         }
+        result[parser.name] = fnum;
     }
 
-    result[parser.name] = {start, *it};
     return true;
 }
 
 bool parseQuotedString(const char **it,
               Parser const &parser,
-              std::unordered_map<std::string, std::string> &result)
+              ParseResult &result)
 {
     const char *start = *it;
     bool escaped = false;
@@ -903,6 +868,6 @@ bool parseQuotedString(const char **it,
         return false;
     }
 
-    result[parser.name] = {++start, *it};
+    result[parser.name] = std::string{++start, *it};
     return true;
 }

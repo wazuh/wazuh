@@ -10,6 +10,8 @@
 #include <hlp/hlp.hpp>
 #include <profile/profile.hpp>
 
+namespace hlp
+{
 using ParserList = std::vector<Parser>;
 
 static const std::unordered_map<std::string_view, ParserType> kECSParserMapper {
@@ -184,7 +186,6 @@ static bool executeParserList(std::string_view const &event,
         auto parseFunc = kAvailableParsers[static_cast<int>(parser.type)];
         if (parseFunc != nullptr)
         {
-            WAZUH_TRACE_SCOPE("parserFunc");
             isOk = parseFunc(&eventIt, parser, result);
         }
         else
@@ -243,3 +244,4 @@ ParserFn getParserOp(std::string_view const &logQl)
 
     return parseFn;
 }
+} // namespace hlp
