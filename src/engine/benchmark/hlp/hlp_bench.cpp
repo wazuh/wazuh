@@ -6,7 +6,12 @@
 #include "src/specificParsers.hpp"
 #include <hlp/hlp.hpp>
 
-static std::string getRandomString(int len, bool includeSymbols = false, bool onlyNumbers = false, bool withFloatingPoint = false)
+using namespace hlp;
+
+static std::string getRandomString(int len,
+                                   bool includeSymbols = false,
+                                   bool onlyNumbers = false,
+                                   bool withFloatingPoint = false)
 {
     static const char numbers[] = "0123456789";
     static const char alphanum[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -19,13 +24,13 @@ static std::string getRandomString(int len, bool includeSymbols = false, bool on
     tmp_s.reserve(len);
 
     std::string dict = numbers;
-    if(!onlyNumbers)
+    if (!onlyNumbers)
     {
         dict += alphanum;
     }
-    else if(withFloatingPoint)
+    else if (withFloatingPoint)
     {
-            floating_point_position = rand() % len;
+        floating_point_position = rand() % len;
     }
 
     if (includeSymbols)
@@ -35,7 +40,7 @@ static std::string getRandomString(int len, bool includeSymbols = false, bool on
 
     for (int i = 0; i < len; ++i)
     {
-        if(onlyNumbers && withFloatingPoint && (i == floating_point_position))
+        if (onlyNumbers && withFloatingPoint && (i == floating_point_position))
         {
             tmp_s += ".";
         }
@@ -139,7 +144,7 @@ static std::string createMap(int len)
     return ret;
 }
 
-static void getting_parser_from_expression(benchmark::State &state)
+static void getting_parser_from_expression(benchmark::State& state)
 {
     auto expr = getRandomCapExpr(state.range(0));
     for (auto _ : state)
@@ -154,7 +159,7 @@ static void getting_parser_from_expression(benchmark::State &state)
 BENCHMARK(getting_parser_from_expression)->Range(8, 8 << 10);
 
 static void
-getting_parser_from_variable_length_expression(benchmark::State &state)
+getting_parser_from_variable_length_expression(benchmark::State& state)
 {
     auto expr = getRandomCapExprVariable(state.range(0));
     for (auto _ : state)
@@ -168,7 +173,7 @@ getting_parser_from_variable_length_expression(benchmark::State &state)
 }
 BENCHMARK(getting_parser_from_variable_length_expression)->Range(8, 8 << 10);
 
-static void match_literal_range(benchmark::State &state)
+static void match_literal_range(benchmark::State& state)
 {
     srand((unsigned)time(NULL));
     std::string ev = getRandomString(state.range(0));
@@ -178,7 +183,7 @@ static void match_literal_range(benchmark::State &state)
     ParseResult result;
     for (auto _ : state)
     {
-        const char *eventIt = ev.c_str();
+        const char* eventIt = ev.c_str();
         if (!matchLiteral(&eventIt, p, result))
         {
             state.SkipWithError("Parser failed");
@@ -187,16 +192,16 @@ static void match_literal_range(benchmark::State &state)
 }
 BENCHMARK(match_literal_range)->Range(8, 8 << 11);
 
-static void getting_result_from_defined_parser(benchmark::State &state)
+static void getting_result_from_defined_parser(benchmark::State& state)
 {
     // TODO Probably need a way to mix-match a variable number of all our
     // parsers
-    const char *logQL_expression =
+    const char* logQL_expression =
         "<source.address> - <JSON> - [<timestamp/APACHE>]"
         " \"<http.request.method> <url> HTTP/<http.version>\" "
         "<http.response.status_code> <http.response.body.bytes> \"-\" "
         "\"<user_agent.original>\"";
-    const char *event =
+    const char* event =
         "monitoring-server - {\"data\":\"this is a json\"} - "
         "[29/May/2017:19:02:48 +0000] \"GET https://user:password@wazuh.com"
         ":8080/status?query=%22a%20query%20with%20a%20space%22#fragment "
@@ -212,14 +217,14 @@ static void getting_result_from_defined_parser(benchmark::State &state)
 }
 BENCHMARK(getting_result_from_defined_parser);
 
-static void getting_result_from_defined_expression(benchmark::State &state)
+static void getting_result_from_defined_expression(benchmark::State& state)
 {
-    const char *logQL_expression =
+    const char* logQL_expression =
         "<source.address> - <JSON> - [<timestamp/APACHE>]"
         " \"<http.request.method> <url> HTTP/<http.version>\" "
         "<http.response.status_code> <http.response.body.bytes> \"-\" "
         "\"<user_agent.original>\"";
-    const char *event =
+    const char* event =
         "monitoring-server - {\"data\":\"this is a json\"} - "
         "[29/May/2017:19:02:48 +0000] \"GET https://user:password@wazuh.com"
         ":8080/status?query=%22a%20query%20with%20a%20space%22#fragment "
@@ -236,9 +241,9 @@ static void getting_result_from_defined_expression(benchmark::State &state)
 BENCHMARK(getting_result_from_defined_expression);
 
 // Url parsing
-static void url_parse(benchmark::State &state)
+static void url_parse(benchmark::State& state)
 {
-    const char *ev = "https://user:password@wazuh.com:8080/"
+    const char* ev = "https://user:password@wazuh.com:8080/"
                      "status?query=%22a%20query%20with%20a%20space%22#fragment";
 
     Parser p;
@@ -247,16 +252,16 @@ static void url_parse(benchmark::State &state)
     ParseResult result;
     for (auto _ : state)
     {
-        const char *eventIt = ev;
+        const char* eventIt = ev;
         parseURL(&eventIt, p, result);
     }
 }
 BENCHMARK(url_parse);
 
 // IP parsing
-static void ipv4_parse(benchmark::State &state)
+static void ipv4_parse(benchmark::State& state)
 {
-    const char *ev = "127.0.0.1";
+    const char* ev = "127.0.0.1";
 
     Parser p;
     p.name = "IP";
@@ -264,7 +269,7 @@ static void ipv4_parse(benchmark::State &state)
     ParseResult result;
     for (auto _ : state)
     {
-        const char *eventIt = ev;
+        const char* eventIt = ev;
         if (!parseIPaddress(&eventIt, p, result))
         {
             state.SkipWithError("Parser failed");
@@ -273,9 +278,9 @@ static void ipv4_parse(benchmark::State &state)
 }
 BENCHMARK(ipv4_parse);
 
-static void ipv6_parse(benchmark::State &state)
+static void ipv6_parse(benchmark::State& state)
 {
-    const char *ev = "2001:db8:3333:4444:CCCC:DDDD:EEEE:FFFF";
+    const char* ev = "2001:db8:3333:4444:CCCC:DDDD:EEEE:FFFF";
 
     Parser p;
     p.name = "IP";
@@ -283,7 +288,7 @@ static void ipv6_parse(benchmark::State &state)
     ParseResult result;
     for (auto _ : state)
     {
-        const char *eventIt = ev;
+        const char* eventIt = ev;
         if (!parseIPaddress(&eventIt, p, result))
         {
             state.SkipWithError("Parser failed");
@@ -293,7 +298,7 @@ static void ipv6_parse(benchmark::State &state)
 BENCHMARK(ipv6_parse);
 
 // JSON parsing
-static void json_parse(benchmark::State &state)
+static void json_parse(benchmark::State& state)
 {
     std::string ev =
         "{\"id\": \"It has been suggested that he adopted Christianity as part "
@@ -318,7 +323,7 @@ static void json_parse(benchmark::State &state)
     ev += getRandomCapExpr(20);
     for (auto _ : state)
     {
-        const char *eventIt = ev.c_str();
+        const char* eventIt = ev.c_str();
         if (!parseJson(&eventIt, p, result))
         {
             state.SkipWithError("Parser failed");
@@ -328,7 +333,7 @@ static void json_parse(benchmark::State &state)
 BENCHMARK(json_parse);
 
 // Map parsing
-static void map_parse(benchmark::State &state)
+static void map_parse(benchmark::State& state)
 {
     std::string ev = createMap(state.range(0));
     std::vector<std::string> opts {" ", "=", ";"};
@@ -341,7 +346,7 @@ static void map_parse(benchmark::State &state)
     ev += getRandomString(20);
     for (auto _ : state)
     {
-        const char *eventIt = ev.c_str();
+        const char* eventIt = ev.c_str();
         if (!parseMap(&eventIt, p, result))
         {
             state.SkipWithError("Parser failed");
@@ -351,7 +356,7 @@ static void map_parse(benchmark::State &state)
 BENCHMARK(map_parse)->Range(8, 8 << 10);
 
 // Timestamp parsing
-static void timestamp_specific_format_parse(benchmark::State &state)
+static void timestamp_specific_format_parse(benchmark::State& state)
 {
     Parser p;
     p.name = "ts";
@@ -360,7 +365,7 @@ static void timestamp_specific_format_parse(benchmark::State &state)
     ParseResult result;
     for (auto _ : state)
     {
-        const char *it = "Mon Jan 02 15:04:05 -0700 2006";
+        const char* it = "Mon Jan 02 15:04:05 -0700 2006";
         if (!parseTimeStamp(&it, p, result))
         {
             state.SkipWithError("Parser Failed");
@@ -369,7 +374,7 @@ static void timestamp_specific_format_parse(benchmark::State &state)
 }
 BENCHMARK(timestamp_specific_format_parse);
 
-static void timestamp_without_format_parse(benchmark::State &state)
+static void timestamp_without_format_parse(benchmark::State& state)
 {
     Parser p;
     p.name = "ts";
@@ -377,7 +382,7 @@ static void timestamp_without_format_parse(benchmark::State &state)
     ParseResult result;
     for (auto _ : state)
     {
-        const char *it = "Mon Jan 2 15:04:05 MST 2006";
+        const char* it = "Mon Jan 2 15:04:05 MST 2006";
         if (!parseTimeStamp(&it, p, result))
         {
             state.SkipWithError("Parser Failed");
@@ -387,7 +392,7 @@ static void timestamp_without_format_parse(benchmark::State &state)
 BENCHMARK(timestamp_without_format_parse);
 
 // Domain parsing
-static void domain_parse(benchmark::State &state)
+static void domain_parse(benchmark::State& state)
 {
     std::string ev = createRandomDomain(state.range(0));
     Parser p;
@@ -396,7 +401,7 @@ static void domain_parse(benchmark::State &state)
     ParseResult result;
     for (auto _ : state)
     {
-        const char *eventIt = ev.c_str();
+        const char* eventIt = ev.c_str();
         if (!parseDomain(&eventIt, p, result))
         {
             state.SkipWithError("Parser failed");
@@ -405,7 +410,7 @@ static void domain_parse(benchmark::State &state)
 }
 BENCHMARK(domain_parse)->Range(3, 63);
 
-static void domain_withSubdomain_parse(benchmark::State &state)
+static void domain_withSubdomain_parse(benchmark::State& state)
 {
     std::string ev = createRandomDomain(state.range(0), true);
 
@@ -415,7 +420,7 @@ static void domain_withSubdomain_parse(benchmark::State &state)
     ParseResult result;
     for (auto _ : state)
     {
-        const char *eventIt = ev.c_str();
+        const char* eventIt = ev.c_str();
         if (!parseDomain(&eventIt, p, result))
         {
             state.SkipWithError("Parser failed");
@@ -425,7 +430,7 @@ static void domain_withSubdomain_parse(benchmark::State &state)
 BENCHMARK(domain_withSubdomain_parse)->Range(3, 63);
 
 // Filepath parsing
-static void filepath_parse(benchmark::State &state)
+static void filepath_parse(benchmark::State& state)
 {
     std::string ev = createRandomFilepath(state.range(0));
 
@@ -436,14 +441,14 @@ static void filepath_parse(benchmark::State &state)
     ParseResult result;
     for (auto _ : state)
     {
-        const char *eventIt = ev.c_str();
+        const char* eventIt = ev.c_str();
         if (!parseFilePath(&eventIt, p, result))
             state.SkipWithError("Parser failed");
     }
 }
 BENCHMARK(filepath_parse)->Range(8, 8 << 8);
 
-static void filepath_variable_length_parse(benchmark::State &state)
+static void filepath_variable_length_parse(benchmark::State& state)
 {
     std::string ev =
         createRandomFilepath(state.range(0), false, state.range(0));
@@ -455,14 +460,14 @@ static void filepath_variable_length_parse(benchmark::State &state)
     ParseResult result;
     for (auto _ : state)
     {
-        const char *eventIt = ev.c_str();
+        const char* eventIt = ev.c_str();
         if (!parseFilePath(&eventIt, p, result))
             state.SkipWithError("Parser failed");
     }
 }
 BENCHMARK(filepath_variable_length_parse)->Range(8, 8 << 8);
 
-static void unix_filepath_parse(benchmark::State &state)
+static void unix_filepath_parse(benchmark::State& state)
 {
     std::string ev = createRandomFilepath(state.range(0), true);
 
@@ -473,14 +478,14 @@ static void unix_filepath_parse(benchmark::State &state)
     ParseResult result;
     for (auto _ : state)
     {
-        const char *eventIt = ev.c_str();
+        const char* eventIt = ev.c_str();
         if (!parseFilePath(&eventIt, p, result))
             state.SkipWithError("Parser failed");
     }
 }
 BENCHMARK(unix_filepath_parse)->Range(8, 8 << 8);
 
-static void unix_filepath_variable_length_parse(benchmark::State &state)
+static void unix_filepath_variable_length_parse(benchmark::State& state)
 {
     std::string ev = createRandomFilepath(state.range(0), true, state.range(0));
 
@@ -491,14 +496,14 @@ static void unix_filepath_variable_length_parse(benchmark::State &state)
     ParseResult result;
     for (auto _ : state)
     {
-        const char *eventIt = ev.c_str();
+        const char* eventIt = ev.c_str();
         if (!parseFilePath(&eventIt, p, result))
             state.SkipWithError("Parser failed");
     }
 }
 BENCHMARK(unix_filepath_variable_length_parse)->Range(8, 8 << 8);
 
-static void any_string_variable_length_parse(benchmark::State &state)
+static void any_string_variable_length_parse(benchmark::State& state)
 {
     std::string ev = getRandomString(state.range(0));
 
@@ -508,14 +513,14 @@ static void any_string_variable_length_parse(benchmark::State &state)
     ParseResult result;
     for (auto _ : state)
     {
-        const char *eventIt = ev.c_str();
+        const char* eventIt = ev.c_str();
         if (!parseAny(&eventIt, p, result))
             state.SkipWithError("Parser failed");
     }
 }
 BENCHMARK(any_string_variable_length_parse)->Range(8, 8 << 8);
 
-static void keyword_variable_length_parse(benchmark::State &state)
+static void keyword_variable_length_parse(benchmark::State& state)
 {
     std::string ev = getRandomString(state.range(0));
 
@@ -525,16 +530,16 @@ static void keyword_variable_length_parse(benchmark::State &state)
     ParseResult result;
     for (auto _ : state)
     {
-        const char *eventIt = ev.c_str() + ' ';
+        const char* eventIt = ev.c_str() + ' ';
         if (!parseAny(&eventIt, p, result))
             state.SkipWithError("Parser failed");
     }
 }
 BENCHMARK(keyword_variable_length_parse)->Range(8, 8 << 8);
 
-static void integer_number_variable_length_parse(benchmark::State &state)
+static void integer_number_variable_length_parse(benchmark::State& state)
 {
-    std::string ev = getRandomString(state.range(0),false,true);
+    std::string ev = getRandomString(state.range(0), false, true);
 
     Parser p;
     p.name = "file.size";
@@ -542,16 +547,16 @@ static void integer_number_variable_length_parse(benchmark::State &state)
     ParseResult result;
     for (auto _ : state)
     {
-        const char *eventIt = ev.c_str();
+        const char* eventIt = ev.c_str();
         if (!parseNumber(&eventIt, p, result))
             state.SkipWithError("Parser failed");
     }
 }
 BENCHMARK(integer_number_variable_length_parse)->Range(8, 18);
 
-static void float_number_variable_length_parse(benchmark::State &state)
+static void float_number_variable_length_parse(benchmark::State& state)
 {
-    std::string ev = getRandomString(state.range(0),false,true,true);
+    std::string ev = getRandomString(state.range(0), false, true, true);
 
     Parser p;
     p.name = "file.size";
@@ -559,14 +564,14 @@ static void float_number_variable_length_parse(benchmark::State &state)
     ParseResult result;
     for (auto _ : state)
     {
-        const char *eventIt = ev.c_str();
+        const char* eventIt = ev.c_str();
         if (!parseNumber(&eventIt, p, result))
             state.SkipWithError("Parser failed");
     }
 }
 BENCHMARK(float_number_variable_length_parse)->Range(8, 31);
 
-static void quoted_string_variable_length_parse(benchmark::State &state)
+static void quoted_string_variable_length_parse(benchmark::State& state)
 {
     std::string ev = "\"" + getRandomString(state.range(0)) + "\"";
 
@@ -576,7 +581,7 @@ static void quoted_string_variable_length_parse(benchmark::State &state)
     ParseResult result;
     for (auto _ : state)
     {
-        const char *eventIt = ev.c_str();
+        const char* eventIt = ev.c_str();
         if (!parseQuotedString(&eventIt, p, result))
             state.SkipWithError("Parser failed");
     }
