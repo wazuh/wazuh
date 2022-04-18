@@ -991,14 +991,14 @@ TEST(hlpTests_ParseAny, failed)
 
 TEST(hlpTests_ParseKeyword, success)
 {
-    const char* logQl = "{<client.registered_domain> }";
+    const char* logQl = "{<keyword> }";
     const char *anyMessage = "{Lorem ipsum dolor sit amet, consectetur adipiscing elit }";
 
     ParserFn parseOp = getParserOp(logQl);
     ParseResult result;
     bool ret = parseOp(anyMessage, result);
 
-    ASSERT_EQ(result["client.registered_domain"],"Lorem");
+    ASSERT_EQ(result["keyword"],"Lorem");
 }
 
 TEST(hlpTests_ParseKeyword, success_long)
