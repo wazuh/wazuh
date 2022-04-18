@@ -57,13 +57,6 @@ bool configureDomainParser(Parser &parser,
  */
 bool configureAnyParser(Parser &parser,
                            std::vector<std::string_view> const &args);
-/**
- * @brief Method to pre-configure the any parser for Keyword parsing, this is
- * everything till the first empty space
-* @return always true
- */
-bool configureKeywordParser(Parser &parser,
-                           std::vector<std::string_view> const &args);
 
 /**
  * @brief Method for pre-configuration of quoted string parsing
