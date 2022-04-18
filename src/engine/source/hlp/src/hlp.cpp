@@ -25,7 +25,6 @@ static const std::unordered_map<std::string_view, ParserType> kECSParserMapper {
     {"client", ParserType::Domain},
     {"userAgent", ParserType::UserAgent},
     {"any", ParserType::ExpicitAny},
-    {"client.registered_domain", ParserType::KeyWord},
     {"file.size", ParserType::Number}, //long
     {"vulnerability.score.temporal", ParserType::Number}, //float
 };
