@@ -5,6 +5,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <hlp/hlp.hpp>
+
 /**
  * @brief Parsers enum type
  */
@@ -43,7 +45,7 @@ struct Parser
 using parserFuncPtr =
     bool (*)(const char **it,
              Parser const &parser,
-             std::unordered_map<std::string, std::string> &result);
+             ParseResult &result);
 
 using parserConfigFuncPtr = bool (*)(Parser &parser,
                                      std::vector<std::string_view> const &args);
