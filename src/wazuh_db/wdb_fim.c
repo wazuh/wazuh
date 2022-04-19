@@ -500,9 +500,11 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
         return -1;
     }
 
+    // Determines if we got the first format of the messages,
+    // where field path contains the index.
     json_path = cJSON_GetObjectItem(data, "path");
 
-    // Fallback for RSync format.
+    // Fallback for RSync format. Field index.
     if (!json_path) {
         json_path = cJSON_GetObjectItem(data, "index");
     }
@@ -554,6 +556,9 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
         arch = cJSON_GetStringValue(cJSON_GetObjectItem(data, "arch"));
         value_name = cJSON_GetStringValue(cJSON_GetObjectItem(data, "value_name"));
 
+        // Second version of the message, both registry keys and registry values
+        // work with the same component "fim_registry".
+        // full_path example: "[x32] HKEY_LOCAL_MACHINE\\\\software\\:value_name"
         if (version->valuedouble == 2.0) {
             int full_path_length;
             char *path_escaped_slahes;
@@ -605,6 +610,9 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
 
             os_free(path_escaped);
         } else {
+            // Third version of the messages, field index its a hash formed with arch,
+            // key_path and value_name (if it is a value). New key_path field added.
+            // Differents components for keys and values.
             os_strdup(path, full_path);
             path = cJSON_GetStringValue(cJSON_GetObjectItem(data, "key_path"));
         }
