@@ -56,6 +56,7 @@ class AbstractServerHandler(c_common.Handler):
         self.name = None
         self.ip = None
         self.transport = None
+        self.handler_tasks = []
         self.broadcast_queue = asyncio.Queue()
 
     def to_dict(self) -> Dict:
@@ -148,7 +149,7 @@ class AbstractServerHandler(c_common.Handler):
             self.server.clients[self.name] = self
             self.tag = f'{self.tag} {self.name}'
             context_tag.set(self.tag)
-            self.loop.create_task(self.broadcast_reader())
+            self.handler_tasks.append(self.loop.create_task(self.broadcast_reader()))
             return b'ok', f'Client {self.name} added'.encode()
 
     def process_response(self, command: bytes, payload: bytes) -> bytes:
@@ -187,9 +188,10 @@ class AbstractServerHandler(c_common.Handler):
             else:
                 self.logger.error(f"Error during connection with '{self.name}': {exc}.\n"
                                   f"{''.join(traceback.format_tb(exc.__traceback__))}", exc_info=False)
-
             if self.name in self.server.clients:
                 del self.server.clients[self.name]
+            for task in self.handler_tasks:
+                task.cancel()
         else:
             if exc is not None:
                 self.logger.error(f"Error during handshake with incoming connection: {exc}. \n"
