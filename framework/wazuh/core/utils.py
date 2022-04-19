@@ -28,7 +28,6 @@ from defusedxml.minidom import parseString
 import wazuh.core.results as results
 from api import configuration
 from wazuh.core import common
-from wazuh.core.common import OSSEC_PIDFILE_PATH
 from wazuh.core.database import Connection
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.wdb import WazuhDBConnection
@@ -50,15 +49,15 @@ def clean_pid_files(daemon):
         Daemon's name.
     """
     regex = rf'{daemon}[\w_]*-(\d+).pid'
-    for pid_file in os.listdir(OSSEC_PIDFILE_PATH):
+    for pid_file in os.listdir(common.OSSEC_PIDFILE_PATH):
         if match := re.match(regex, pid_file):
             try:
                 os.kill(int(match.group(1)), SIGKILL)
                 print(f"{daemon}: Orphan child process {match.group(1)} was terminated.")
             except OSError:
-                print(f'{daemon}: Non existent process {match.group(1)}, removing from {common.wazuh_path}/var/run...')
+                print(f'{daemon}: Non existent process {match.group(1)}, removing from {common.WAZUH_PATH}/var/run...')
             finally:
-                os.remove(path.join(OSSEC_PIDFILE_PATH, pid_file))
+                os.remove(path.join(common.OSSEC_PIDFILE_PATH, pid_file))
 
 
 def find_nth(string, substring, n):
@@ -1090,6 +1089,10 @@ class WazuhDBBackend(AbstractDatabaseBackend):
     """
 
     def __init__(self, agent_id=None, query_format='agent', max_size=6144, request_slice=500):
+        if query_format == 'agent' and not path.exists(path.join(common.WDB_PATH, f"{agent_id}.db")):
+            raise WazuhError(2007, extra_message=f"There is no database for agent {agent_id}. "
+                                                 "Please check if the agent has connected to the manager")
+
         self.agent_id = agent_id
         self.query_format = query_format
         self.max_size = max_size

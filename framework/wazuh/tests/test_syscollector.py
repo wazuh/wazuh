@@ -30,10 +30,11 @@ with patch('wazuh.core.common.wazuh_uid'):
     (['hostname', 'os.name'], None),
     (None, {'negation': False, 'value': 'Centos'}),
 ])
-@patch("wazuh.syscollector.get_agents_info", return_value=['000', '001'])
-@patch("wazuh.core.agent.Agent.get_basic_information", return_value=None)
+@patch('wazuh.core.utils.path.exists', return_value=True)
+@patch('wazuh.syscollector.get_agents_info', return_value=['000', '001'])
+@patch('wazuh.core.agent.Agent.get_basic_information', return_value=None)
 @patch('wazuh.core.agent.Agent.get_agent_os_name', return_value='Linux')
-def test_get_item_agent(mock_agent_attr, mock_basic_info, mock_agents_info, select, search):
+def test_get_item_agent(mock_agent_attr, mock_basic_info, mock_agents_info, mock_exists, select, search):
     """Test get_item_agent method.
 
     Verify that the get_item method returns an appropriate
@@ -62,8 +63,8 @@ def test_get_item_agent(mock_agent_attr, mock_basic_info, mock_agents_info, sele
 @pytest.mark.parametrize("agent_list, expected_exception", [
     (['010'], 1701),
 ])
-@patch("wazuh.syscollector.get_agents_info", return_value=['000', '001'])
-@patch("wazuh.core.agent.Agent.get_basic_information", return_value=None)
+@patch('wazuh.syscollector.get_agents_info', return_value=['000', '001'])
+@patch('wazuh.core.agent.Agent.get_basic_information', return_value=None)
 @patch('wazuh.core.agent.Agent.get_agent_os_name', return_value='Linux')
 def test_failed_get_item_agent(mock_agent_attr, mock_basic_info, mock_agents_info, agent_list, expected_exception):
     """Test if get_item_agent method handle exceptions properly.
@@ -93,10 +94,11 @@ def test_failed_get_item_agent(mock_agent_attr, mock_basic_info, mock_agents_inf
     'netiface',
     'hotfixes'
 ])
-@patch("wazuh.syscollector.get_agents_info", return_value=['000', '001'])
-@patch("wazuh.core.agent.Agent.get_basic_information", return_value=None)
+@patch('wazuh.core.utils.path.exists', return_value=True)
+@patch('wazuh.syscollector.get_agents_info', return_value=['000', '001'])
+@patch('wazuh.core.agent.Agent.get_basic_information', return_value=None)
 @patch('wazuh.core.agent.Agent.get_agent_os_name', return_value='Linux')
-def test_agent_elements(mock_agent_attr, mock_basic_info, mock_agents_info, element_type):
+def test_agent_elements(mock_agent_attr, mock_basic_info, mock_agents_info, mock_exists, element_type):
     """Tests every possible type of agent element
 
     Iterate over each element type, call the get_item_agent function with that
