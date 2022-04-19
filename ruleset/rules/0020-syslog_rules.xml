@@ -629,7 +629,7 @@
     <description>useradd failed.</description>
   </rule>
 
-</group> <!-- SYSLOG,ADDUSER -->
+</group> <!-- SYSLOG, CHANGE COMMENT ADDUSER -->
 
 
 <!-- Sudo messages -->
@@ -950,4 +950,3 @@
   </rule>
 
 </group>
-
