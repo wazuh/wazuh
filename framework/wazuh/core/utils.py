@@ -5,6 +5,7 @@
 import errno
 import glob
 import hashlib
+import json
 import operator
 import os
 import re
@@ -1227,6 +1228,12 @@ class WazuhDBQuery(object):
         isinstance(self.backend, WazuhDBBackend) and self.backend.close_connection()
 
     def _clean_filter(self, query_filter):
+        if isinstance(query_filter['value'], str):
+            try:
+                query_filter['value'] = json.dumps(json.loads(query_filter['value']), separators=(',', ':'))
+            except ValueError:
+                pass
+
         # Replace special characters with wildcards
         for sp_char in self.special_characters:
             if isinstance(query_filter['value'], str) and sp_char in query_filter['value']:
