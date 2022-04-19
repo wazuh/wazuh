@@ -55,7 +55,7 @@ void test_StoreCounter_updating_rids(void **state)
     os_calloc(1, sizeof(keyentry*), keyentries);
     keys.keyentries = keyentries;
     w_linked_queue_t *queue;
-    queue = linked_queue_init();
+    queue = linked_queue_init(NULL, NULL);
     keys.keysize = 0;
     keys.id_counter = 0;
     keys.opened_fp_queue = queue;
@@ -103,7 +103,7 @@ void test_StoreCounter_pushing_rids(void **state)
     os_calloc(1, sizeof(keyentry*), keyentries);
     keys.keyentries = keyentries;
     w_linked_queue_t *queue;
-    queue = linked_queue_init();
+    queue = linked_queue_init(NULL, NULL);
     keys.keysize = 0;
     keys.id_counter = 0;
     keys.opened_fp_queue = queue;
@@ -156,7 +156,7 @@ void test_StoreCounter_pushing_rids_fp_null(void **state)
     os_calloc(1, sizeof(keyentry*), keyentries);
     keys.keyentries = keyentries;
     w_linked_queue_t *queue;
-    queue = linked_queue_init();
+    queue = linked_queue_init(NULL, NULL);
     keys.keysize = 0;
     keys.id_counter = 0;
     keys.opened_fp_queue = queue;
@@ -214,7 +214,7 @@ void test_StoreCounter_fail_first_open(void **state)
     os_calloc(1, sizeof(keyentry*), keyentries);
     keys.keyentries = keyentries;
     w_linked_queue_t *queue;
-    queue = linked_queue_init();
+    queue = linked_queue_init(NULL, NULL);
     keys.keysize = 0;
     keys.id_counter = 0;
     keys.opened_fp_queue = queue;

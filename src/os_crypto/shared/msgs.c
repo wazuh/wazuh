@@ -138,7 +138,7 @@ void OS_StartCounter(keystore *keys)
     }
 
     mdebug2("Stored counter.");
-    keys->opened_fp_queue = linked_queue_init();
+    keys->opened_fp_queue = linked_queue_init(NULL, NULL);
 
     /* Get counter values */
     if (_s_recv_flush == 0) {
