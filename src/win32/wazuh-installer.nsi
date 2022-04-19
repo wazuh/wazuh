@@ -243,12 +243,9 @@ Section "Wazuh Agent (required)" MainSec
     StrCpy $executables "$executables,route-null.exe,restart-wazuh.exe,netsh.exe,agent-auth.exe"
 
     ; Deploy script as a temp to enable wazuh DumpsSetupScripts
-    ; WoW64 rediction need to be disabled during script execution to avoid Registries keys redirection
     GetTempFileName $0
     File /oname=$0 `DumpsSetupScripts.vbs`
-    System::Call kernel32::Wow64EnableWow64FsRedirection(i0)
     nsExec::ExecToLog '"$SYSDIR\wscript.exe" $0 //e:vbscript "$INSTDIR" "$executables"'
-    System::Call kernel32::Wow64EnableWow64FsRedirection(i1)
 
     ; write registry keys
     WriteRegStr HKLM SOFTWARE\ossec "Install_Dir" "$INSTDIR"

@@ -18,9 +18,18 @@
 ' ------------------------------------------------
 
 Public Function EnableDumps()
-    Set WshShell = CreateObject("WScript.Shell")
+	Const HKEY_LOCAL_MACHINE = &H80000002
 
-    Const windowsDumpFolder = "HKLM\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\"
+	Set objRegistry = GetObject("winmgmts:\\.\root\default:StdRegProv")
+	
+	strComputer = "."
+	Set objCtx = CreateObject("WbemScripting.SWbemNamedValueSet")
+	objCtx.Add "__ProviderArchitecture", 64
+	Set objLocator = CreateObject("Wbemscripting.SWbemLocator")
+	Set objServices = objLocator.ConnectServer(strComputer,"root\default","","",,,,objCtx)
+	Set objStdRegProv = objServices.Get("StdRegProv") 
+	
+    Const windowsDumpFolder = "SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\"
     Const defaultDumpCount = 20
     Const defaultDumpType = 2
     Const defaultDumpFolder = "dumps"
@@ -30,24 +39,66 @@ Public Function EnableDumps()
         executablesArgs = WScript.Arguments.Item(1)
     Else
         args = Split(Session.Property("CustomActionData"), "|")
-        wazuhDumpFolder = Replace(args(0), Chr(34), "") + "\" + defaultDumpFolder
+        wazuhDumpFolder = Replace(args(0), Chr(34), "") + defaultDumpFolder
         executablesArgs = Replace(args(1), Chr(34), "")
     End If
     wazuhExecutables = Split(executablesArgs,",")
-	On Error Resume Next
-    WshShell.RegRead windowsDumpFolder
-    If Err.Number <> 0 Then
+
+	Set inEnumKey = objStdRegProv.Methods_("EnumKey").Inparameters
+	inEnumKey.Hdefkey = HKEY_LOCAL_MACHINE
+	inEnumKey.Ssubkeyname = windowsDumpFolder
+	Set Outparams = objStdRegProv.ExecMethod_("EnumKey", inEnumKey,,objCtx)
+		
+	Set inCreateKey = objStdRegProv.Methods_("CreateKey").Inparameters
+	Set inSetDWORDValue = objStdRegProv.Methods_("SetDWORDValue").Inparameters
+	Set inSetExpandedStringValue = objStdRegProv.Methods_("SetExpandedStringValue").Inparameters
+
+
+    If Outparams.ReturnValue <> 0 Then
         ' Folder does not exist. Create a default one
-        WshShell.RegWrite windowsDumpFolder + "DumpCount", 0, "REG_DWORD"
+		inCreateKey.Hdefkey = HKEY_LOCAL_MACHINE
+		inCreateKey.Ssubkeyname = windowsDumpFolder
+		objStdRegProv.ExecMethod_ "CreateKey", inCreateKey,,objCtx
+				
+		inSetDWORDValue.Hdefkey = HKEY_LOCAL_MACHINE
+		inSetDWORDValue.Ssubkeyname = windowsDumpFolder
+		inSetDWORDValue.Svaluename = "DumpCount"
+		inSetDWORDValue.uvalue = 0
+
+		objStdRegProv.ExecMethod_ "SetDWORDValue", inSetDWORDValue,,objCtx
     End If
 
     For Each executableFile In wazuhExecutables
-        exeReg = windowsDumpFolder + executableFile + "\"
-        WshShell.RegWrite exeReg + "DumpFolder", wazuhDumpFolder, "REG_EXPAND_SZ"
-        WshShell.RegWrite exeReg + "DumpCount", defaultDumpCount, "REG_DWORD"
-        WshShell.RegWrite exeReg + "DumpType", defaultDumpType, "REG_DWORD"
+        exeReg = windowsDumpFolder + executableFile
+		
+		inCreateKey.Hdefkey = HKEY_LOCAL_MACHINE
+		inCreateKey.Ssubkeyname = exeReg
+		objStdRegProv.ExecMethod_ "CreateKey", inCreateKey,,objCtx
+				
+		inSetDWORDValue.Hdefkey = HKEY_LOCAL_MACHINE
+		inSetDWORDValue.Ssubkeyname = exeReg
+		inSetDWORDValue.Svaluename = "DumpCount"
+		inSetDWORDValue.uvalue = defaultDumpCount
+
+		objStdRegProv.ExecMethod_ "SetDWORDValue", inSetDWORDValue,,objCtx
+		
+		inSetDWORDValue.Hdefkey = HKEY_LOCAL_MACHINE
+		inSetDWORDValue.Ssubkeyname = exeReg
+		inSetDWORDValue.Svaluename = "DumpType"
+		inSetDWORDValue.uvalue = defaultDumpType
+		
+		objStdRegProv.ExecMethod_ "SetDWORDValue", inSetDWORDValue,,objCtx
+		
+		inSetExpandedStringValue.Hdefkey = HKEY_LOCAL_MACHINE
+		inSetExpandedStringValue.Ssubkeyname = exeReg
+		inSetExpandedStringValue.Svaluename = "DumpFolder"
+		inSetExpandedStringValue.svalue = wazuhDumpFolder
+		
+		objStdRegProv.ExecMethod_ "SetExpandedStringValue", inSetExpandedStringValue,,objCtx
+			
     Next
     EnableDumps = 0
 End Function
+
 
 EnableDumps()
