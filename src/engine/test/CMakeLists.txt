@@ -20,6 +20,18 @@ CPMAddPackage(
   EXCLUDE_FROM_ALL YES
 )
 
+add_library(engine_test_main
+    OBJECT
+    engineTestMain.cpp
+    )
+
+target_link_libraries(engine_test_main
+    PUBLIC
+    gtest
+    base
+    kvdb
+    )
+
 include(GoogleTest)
 
 #TODO: Fix server tests
@@ -27,8 +39,7 @@ include(GoogleTest)
 add_subdirectory(${TEST_SOURCE_DIR}/base)
 add_subdirectory(${TEST_SOURCE_DIR}/builder)
 add_subdirectory(${TEST_SOURCE_DIR}/catalog)
-add_subdirectory(${TEST_SOURCE_DIR}/cliParser)
-#add_subdirectory(${TEST_SOURCE_DIR}/graph)
 add_subdirectory(${TEST_SOURCE_DIR}/hlp)
 add_subdirectory(${TEST_SOURCE_DIR}/json)
+add_subdirectory(${TEST_SOURCE_DIR}/kvdb)
 add_subdirectory(${TEST_SOURCE_DIR}/router)

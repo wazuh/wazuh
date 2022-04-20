@@ -34,6 +34,7 @@ add_library(builders OBJECT
     builders/opBuilderMap.cpp
     builders/opBuilderMapReference.cpp
     builders/opBuilderMapValue.cpp
+    builders/opBuilderKVDB.cpp
     builders/stageBuilderCheck.cpp
     builders/stageBuilderNormalize.cpp
     builders/stageBuilderOutputs.cpp
@@ -51,4 +52,4 @@ target_include_directories(builders
 )
 
 #TODO do this better. Also, who 'owns' the rxcpp dep
-target_link_libraries(builders base hlp re2)
+target_link_libraries(builders base hlp kvdb re2)

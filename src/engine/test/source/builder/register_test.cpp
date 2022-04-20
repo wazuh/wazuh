@@ -35,6 +35,9 @@ TEST(Register, AllBuildersRegistered)
     ASSERT_NO_THROW(Registry::getBuilder("helper.r_not_match"));
     ASSERT_NO_THROW(Registry::getBuilder("helper.r_ext"));
     ASSERT_NO_THROW(Registry::getBuilder("helper.ip_cidr"));
+    ASSERT_NO_THROW(Registry::getBuilder("helper.kvdb_extract"));
+    ASSERT_NO_THROW(Registry::getBuilder("helper.kvdb_match"));
+    ASSERT_NO_THROW(Registry::getBuilder("helper.kvdb_notmatch"));
     ASSERT_NO_THROW(Registry::getBuilder("map"));
     ASSERT_NO_THROW(Registry::getBuilder("map.value"));
     ASSERT_NO_THROW(Registry::getBuilder("map.reference"));
