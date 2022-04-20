@@ -86,7 +86,6 @@ def test_check_cluster_config_ko(read_config, message):
     with patch('wazuh.core.cluster.utils.get_ossec_conf', return_value=read_config) as m:
         with pytest.raises(WazuhException, match=rf'.* 3004 .* {message}'):
             configuration = wazuh.core.cluster.utils.read_config()
-
             for key in m.return_value["cluster"]:
                 if key in configuration:
                     configuration[key] = m.return_value["cluster"][key]

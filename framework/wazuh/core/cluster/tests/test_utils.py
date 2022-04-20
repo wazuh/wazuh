@@ -1,7 +1,7 @@
 import logging
 import os
 import sys
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, call
 
 import pytest
 
@@ -14,7 +14,6 @@ with patch('wazuh.core.common.getgrnam'):
                 from wazuh.core.cluster import utils
                 from wazuh import WazuhError, WazuhException, WazuhInternalError
                 from wazuh.core.results import WazuhResult
-
 
 default_cluster_config = {
     'disabled': True,
@@ -149,28 +148,28 @@ def test_get_cluster_items():
 
     items = utils.get_cluster_items()
     assert items == {'files': {'etc/': {'permissions': 416, 'source': 'master', 'files': ['client.keys'],
-                                         'recursive': False, 'restart': False, 'remove_subdirs_if_empty': False,
-                                         'extra_valid': False, 'description': 'client keys file database'},
+                                        'recursive': False, 'restart': False, 'remove_subdirs_if_empty': False,
+                                        'extra_valid': False, 'description': 'client keys file database'},
                                'etc/shared/': {'permissions': 432, 'source': 'master', 'files': ['all'],
-                                                'recursive': True, 'restart': False, 'remove_subdirs_if_empty': True,
-                                                'extra_valid': False, 'description': 'shared configuration files'},
+                                               'recursive': True, 'restart': False, 'remove_subdirs_if_empty': True,
+                                               'extra_valid': False, 'description': 'shared configuration files'},
                                'var/multigroups/': {'permissions': 432, 'source': 'master', 'files': ['merged.mg'],
-                                                     'recursive': True, 'restart': False,
-                                                     'remove_subdirs_if_empty': True, 'extra_valid': False,
-                                                     'description': 'shared configuration files'},
+                                                    'recursive': True, 'restart': False,
+                                                    'remove_subdirs_if_empty': True, 'extra_valid': False,
+                                                    'description': 'shared configuration files'},
                                'etc/rules/': {'permissions': 432, 'source': 'master', 'files': ['all'],
-                                               'recursive': True, 'restart': True, 'remove_subdirs_if_empty': False,
-                                               'extra_valid': False, 'description': 'user rules'},
+                                              'recursive': True, 'restart': True, 'remove_subdirs_if_empty': False,
+                                              'extra_valid': False, 'description': 'user rules'},
                                'etc/decoders/': {'permissions': 432, 'source': 'master', 'files': ['all'],
-                                                  'recursive': True, 'restart': True, 'remove_subdirs_if_empty': False,
-                                                  'extra_valid': False, 'description': 'user decoders'},
+                                                 'recursive': True, 'restart': True, 'remove_subdirs_if_empty': False,
+                                                 'extra_valid': False, 'description': 'user decoders'},
                                'etc/lists/': {'permissions': 432, 'source': 'master', 'files': ['all'],
-                                               'recursive': True, 'restart': True, 'remove_subdirs_if_empty': False,
-                                               'extra_valid': False, 'description': 'user CDB lists'},
+                                              'recursive': True, 'restart': True, 'remove_subdirs_if_empty': False,
+                                              'extra_valid': False, 'description': 'user CDB lists'},
                                'queue/agent-groups/': {'permissions': 432, 'source': 'master', 'files': ['all'],
-                                                        'recursive': True, 'restart': False,
-                                                        'remove_subdirs_if_empty': False, 'extra_valid': True,
-                                                        'description': 'agents group configuration'},
+                                                       'recursive': True, 'restart': False,
+                                                       'remove_subdirs_if_empty': False, 'extra_valid': True,
+                                                       'description': 'agents group configuration'},
                                'excluded_files': ['ar.conf', 'ossec.conf'],
                                'excluded_extensions': ['~', '.tmp', '.lock', '.swp']},
                      'intervals': {'worker': {'sync_integrity': 9, 'sync_agent_info': 10, 'sync_agent_info_ko_retry': 1,
@@ -207,3 +206,22 @@ def test_ClusterLogger():
     assert cluster_logger.logger.level == logging.DEBUG
 
     os.path.exists(current_logger_path) and os.remove(current_logger_path)
+
+
+@patch('time.sleep')
+@patch('signal.signal')
+@patch('signal.SIGINT')
+@patch('signal.SIG_IGN')
+@patch('signal.SIGTERM')
+@patch('os.getpid', return_value=0)
+@patch('wazuh.core.cluster.utils.pyDaemonModule.create_pid')
+def test_process_spawn_child(pydaemon_module_mock, getpid_mock, sigterm_mock, sigign_mock, sigint_mock, signal_mock,
+                             time_mock):
+    """Test if the cluster is properly spawning all its children and create their PID files correctly."""
+    child = 'child'
+    utils.process_spawn_sleep(child)
+
+    getpid_mock.assert_called_once_with()
+    pydaemon_module_mock.assert_called_once_with(f"wazuh-clusterd_child_{child}", getpid_mock.return_value)
+    signal_mock.assert_has_calls([call(sigint_mock, sigign_mock), call(sigterm_mock, sigign_mock)])
+    time_mock.assert_called_once_with(0.1)

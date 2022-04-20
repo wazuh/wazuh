@@ -534,8 +534,8 @@ async def test_APIRequestQueue_run(loop_mock, import_module_mock):
         apirequest.request_queue = RequestQueueMock()
         with pytest.raises(Exception, match=".*break while true.*"):
             await apirequest.run()
-            logger_mock.assert_called_once_with("Error in DAPI. The destination node is "
-                                                "not connected or does not exist: break while true.")
+        logger_mock.assert_called_once_with("Error in DAPI request. The destination node is "
+                                            "not connected or does not exist: 'wazuh'.")
 
         node = NodeMock()
         with patch.object(node, "send_string", return_value=b"noerror"):
@@ -589,11 +589,11 @@ async def test_SendSyncRequestQueue_run(loop_mock):
         sendsync.request_queue = RequestQueueMock()
         with pytest.raises(Exception, match=".*break while true.*"):
             await sendsync.run()
-            logger_mock.assert_called_with("Error in Sendsync. The destination node is "
-                                           "not connected or does not exist: break while true.")
+        logger_mock.assert_called_once_with("Error in Sendsync. The destination node is "
+                                            "not connected or does not exist: 'wazuh'.")
 
         node = NodeMock()
-        with patch.object(node, "send_request", Exception("break while true")) as node_mock:
+        with patch.object(node, "send_request", Exception("break while true")):
             with patch("wazuh.core.cluster.dapi.dapi.wazuh_sendsync", side_effect=Exception("break while true")):
                 server.clients = {"wazuh": node}
                 sendsync.logger = logging.getLogger("sendsync")
@@ -603,7 +603,6 @@ async def test_SendSyncRequestQueue_run(loop_mock):
             with patch("wazuh.core.cluster.dapi.dapi.wazuh_sendsync", side_effect="noerror"):
                 with pytest.raises(Exception):
                     await sendsync.run()
-                    node_mock.assert_called_with(b"sendsyn_res", "request_queue*test ")
 
         with patch.object(node, "send_request", return_value=WazuhError(1000)):
             with patch("wazuh.core.cluster.dapi.dapi.wazuh_sendsync", return_value="valid"):
