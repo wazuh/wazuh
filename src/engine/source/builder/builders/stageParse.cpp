@@ -15,6 +15,8 @@
 #include <typeindex>
 #include <typeinfo>
 #include <vector>
+//TODO test
+#include <fstream>
 
 #include <fmt/format.h>
 
@@ -113,6 +115,26 @@ base::Lifter stageBuilderParse(const base::DocumentValue &def, types::TracerFn t
     }
 
     std::vector<base::Lifter> parsers;
+
+    //Configure parsers
+    std::ifstream in("../test/assets/schemas/field_type.json",
+                     std::ios::in | std::ios::binary);
+    if (in)
+    {
+        std::string contents;
+        in.seekg(0, std::ios::end);
+        contents.resize(in.tellg());
+        in.seekg(0, std::ios::beg);
+        in.read(&contents[0], contents.size());
+        in.close();
+
+        hlp::configureParserMappings(contents);
+    }
+    else
+    {
+            throw std::invalid_argument("Error reading logql configuration schema");
+    }
+
     for (auto const &item : logqlArr.GetArray())
     {
         if (!item.IsObject())
