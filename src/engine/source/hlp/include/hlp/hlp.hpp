@@ -18,6 +18,7 @@ struct JsonString
     std::string jsonString;
 };
 
+void configureParserMappings(const std::string &config);
 /*
  * @brief Gets a parser operator from a logQL expression.
  *        This method parse a complete logQL expression to create and bind all
