@@ -18,34 +18,35 @@
 ' ------------------------------------------------
 
 Public Function DisableDumps()
-	Const HKEY_LOCAL_MACHINE = &H80000002
+    Const HKEY_LOCAL_MACHINE = &H80000002
 
-	Set objRegistry = GetObject("winmgmts:\\.\root\default:StdRegProv")
+    Set objRegistry = GetObject("winmgmts:\\.\root\default:StdRegProv")
 
-	strComputer = "."
-	Set objCtx = CreateObject("WbemScripting.SWbemNamedValueSet")
-	objCtx.Add "__ProviderArchitecture", 64
-	Set objLocator = CreateObject("Wbemscripting.SWbemLocator")
-	Set objServices = objLocator.ConnectServer(strComputer,"root\default","","",,,,objCtx)
-	Set objStdRegProv = objServices.Get("StdRegProv")
+    strComputer = "."
+    Set objCtx = CreateObject("WbemScripting.SWbemNamedValueSet")
+    objCtx.Add "__ProviderArchitecture", 64
+    Set objLocator = CreateObject("Wbemscripting.SWbemLocator")
+    Set objServices = objLocator.ConnectServer(strComputer,"root\default","","",,,,objCtx)
+    Set objStdRegProv = objServices.Get("StdRegProv")
 
     Const windowsDumpFolder = "SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\"
 
     If (IsEmpty(Session)) Then
         executablesArgs = WScript.Arguments.Item(0)
     Else
-        executablesArgs = Replace(Session.Property("CustomActionData"), Chr(34), "")
+        caArgs = Session.Property("CustomActionData")
+        executablesArgs = Replace(caArgs, Chr(34), "")
     End If
     wazuhExecutables = Split(executablesArgs,",")
 
-	Set inDeleteKey = objStdRegProv.Methods_("DeleteKey").Inparameters
-	inDeleteKey.Hdefkey = HKEY_LOCAL_MACHINE
+    Set inDeleteKey = objStdRegProv.Methods_("DeleteKey").Inparameters
+    inDeleteKey.Hdefkey = HKEY_LOCAL_MACHINE
 
     For Each executableFile In wazuhExecutables
         exeReg = windowsDumpFolder + executableFile
 
-		inDeleteKey.Ssubkeyname = exeReg
-		objStdRegProv.ExecMethod_ "DeleteKey", inDeleteKey,,objCtx
+        inDeleteKey.Ssubkeyname = exeReg
+        objStdRegProv.ExecMethod_ "DeleteKey", inDeleteKey,,objCtx
 
     Next
     DisableDumps = 0
