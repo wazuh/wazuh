@@ -634,6 +634,14 @@ def md5(fname):
     return hash_md5.hexdigest()
 
 
+def blake2b(fname):
+    hash_blake2b = hashlib.blake2b()
+    with open(fname, 'rb') as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_blake2b.update(chunk)
+    return hash_blake2b.hexdigest()
+
+
 def _get_hashing_algorithm(hash_algorithm):
     # check hash algorithm
     algorithm_list = hashlib.algorithms_available

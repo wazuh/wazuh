@@ -487,6 +487,19 @@ def test_md5(mock_iter, mock_open):
         mock_open.assert_called_once_with('test', 'rb')
 
 
+@patch('wazuh.core.utils.open')
+@patch('wazuh.core.utils.iter', return_value=['1', '2'])
+def test_blake2b(mock_iter, mock_open):
+    """Test md5 function."""
+    with patch('wazuh.core.utils.hashlib.blake2b') as blake2b_mock:
+        blake2b_mock.return_value.update.side_effect = None
+        result = utils.blake2b('test')
+
+        assert isinstance(result, MagicMock)
+        assert isinstance(result.return_value, MagicMock)
+        mock_open.assert_called_once_with('test', 'rb')
+
+
 def test_protected_get_hashing_algorithm_ko():
     """Test _get_hashing_algorithm function exception."""
     with pytest.raises(exception.WazuhException, match=".* 1723 .*"):
