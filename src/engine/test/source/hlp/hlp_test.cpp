@@ -633,17 +633,21 @@ TEST(hlpTests_Timestamp, specific_format)
 
 TEST(hlpTests_Timestamp, kitchen)
 {
-    // FIXME: this specific test is know to fail even at a chronos library level.
-    GTEST_SKIP();
-
     static const char *logQl = "[<timestamp/Kitchen>]";
-    static const char *kitchenTs = "[3:04a.m.]";
+    static const char *kitchenTs = "[3:04AM]";
     auto parseOp = getParserOp(logQl);
     ParseResult result;
     bool ret = parseOp(kitchenTs, result);
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
     ASSERT_EQ("3", result["timestamp.hour"]);
+    ASSERT_EQ("4", result["timestamp.minutes"]);
+
+    kitchenTs = "[3:04PM]";
+    ret = parseOp(kitchenTs, result);
+
+    ASSERT_EQ(true, static_cast<bool>(parseOp));
+    ASSERT_EQ("15", result["timestamp.hour"]);
     ASSERT_EQ("4", result["timestamp.minutes"]);
 }
 
@@ -1001,7 +1005,7 @@ TEST(hlpTests_ParseKeyword, success)
     ASSERT_EQ(result["keyword"],"Lorem");
 }
 
-TEST(hlpTests_ParseKeyword, success_long)
+TEST(hlpTests_ParseKeyword, success_end_token)
 {
     const char* logQl = "{<client.registered_domain> }";
     const char *anyMessage = "{Loremipsumdolorsitamet,consecteturadipiscingelit}";
@@ -1015,8 +1019,8 @@ TEST(hlpTests_ParseKeyword, success_long)
 
 TEST(hlpTests_ParseNumber, succes_long)
 {
-    const char* logQl = " <file.size> ";
-    const char* event =" 125 ";
+    const char* logQl = " <file.size> <vulnerability.score.temporal>";
+    const char* event =" 125 -125";
 
     ParserFn parseOp = getParserOp(logQl);
     ParseResult result;
@@ -1024,6 +1028,7 @@ TEST(hlpTests_ParseNumber, succes_long)
 
     ASSERT_EQ(true, static_cast<bool>(ret));
     ASSERT_EQ(result["file.size"],"125");
+    ASSERT_EQ(result["vulnerability.score.temporal"],"-125");
 }
 
 TEST(hlpTests_ParseNumber, succes_float)
@@ -1042,11 +1047,16 @@ TEST(hlpTests_ParseNumber, succes_float)
 TEST(hlpTests_ParseNumber, failed_long)
 {
     const char* logQl = " <file.size> ";
-    const char* event =" A125 ";
+    const char* event =" 10E2 ";
 
     ParserFn parseOp = getParserOp(logQl);
     ParseResult result;
     bool ret = parseOp(event, result);
+
+    ASSERT_EQ(false, static_cast<bool>(ret));
+
+    event =" 9223372036854775808 ";
+    ret = parseOp(event, result);
 
     ASSERT_EQ(false, static_cast<bool>(ret));
     ASSERT_EQ(result["file.size"],"");
@@ -1060,6 +1070,12 @@ TEST(hlpTests_ParseNumber, failed_float)
     ParserFn parseOp = getParserOp(logQl);
     ParseResult result;
     bool ret = parseOp(event, result);
+
+    ASSERT_EQ(false, static_cast<bool>(ret));
+    ASSERT_EQ(result["vulnerability.score.temporal"],"");
+
+    event =" 10E63 ";
+    ret = parseOp(event, result);
 
     ASSERT_EQ(false, static_cast<bool>(ret));
     ASSERT_EQ(result["vulnerability.score.temporal"],"");

@@ -1,3 +1,4 @@
+#include <climits>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -833,6 +834,13 @@ bool parseNumber(const char **it,
     char * ptrEnd;
     bool hasDecimalSeparator = false;
     float fnum;
+    long int val;
+
+    if(**it == '+' || **it == '-')
+    {
+        (*it)++;
+    }
+
     while (**it != '\0' && **it != parser.endToken)
     {
         if(!hasDecimalSeparator && **it == '.')
@@ -848,14 +856,16 @@ bool parseNumber(const char **it,
 
     if(!hasDecimalSeparator)
     {
-        std::strtol(start, &ptrEnd, 10);
-        if(start == ptrEnd)
+        val = std::strtol(start, &ptrEnd, 10);
+        //TODO: if the number is exactly any of the limits it will fail
+        if(start == ptrEnd || val == LLONG_MAX || val == LLONG_MIN)
         {
             return false;
         }
     }
     else
     {
+        //TODO: if the number surpass limits won't fail
         if (!sscanf(start, "%f", &fnum))
         {
             return false;
