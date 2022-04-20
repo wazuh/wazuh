@@ -6,18 +6,28 @@
 #include "src/specificParsers.hpp"
 #include <hlp/hlp.hpp>
 
-static std::string getRandomString(int len, bool includeSymbols = false)
+static std::string getRandomString(int len, bool includeSymbols = false, bool onlyNumbers = false, bool withFloatingPoint = false)
 {
-    static const char alphanum[] = "0123456789"
-                                   "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    static const char numbers[] = "0123456789";
+    static const char alphanum[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
                                    "abcdefghijklmnopqrstuvwxyz";
 
     static const char symbols[] = "-_'\\/. *!\"#$%&()+[]{},;";
 
     std::string tmp_s;
+    int floating_point_position;
     tmp_s.reserve(len);
 
-    std::string dict = alphanum;
+    std::string dict = numbers;
+    if(!onlyNumbers)
+    {
+        dict += alphanum;
+    }
+    else if(withFloatingPoint)
+    {
+            floating_point_position = rand() % len;
+    }
+
     if (includeSymbols)
     {
         dict += symbols;
@@ -25,7 +35,14 @@ static std::string getRandomString(int len, bool includeSymbols = false)
 
     for (int i = 0; i < len; ++i)
     {
-        tmp_s += dict[rand() % dict.size()];
+        if(onlyNumbers && withFloatingPoint && (i == floating_point_position))
+        {
+            tmp_s += ".";
+        }
+        else
+        {
+            tmp_s += dict[rand() % dict.size()];
+        }
     }
     return tmp_s;
 }
@@ -480,3 +497,88 @@ static void unix_filepath_variable_length_parse(benchmark::State &state)
     }
 }
 BENCHMARK(unix_filepath_variable_length_parse)->Range(8, 8 << 8);
+
+static void any_string_variable_length_parse(benchmark::State &state)
+{
+    std::string ev = getRandomString(state.range(0));
+
+    Parser p;
+    p.name = "any";
+    p.endToken = '\0';
+    ParseResult result;
+    for (auto _ : state)
+    {
+        const char *eventIt = ev.c_str();
+        if (!parseAny(&eventIt, p, result))
+            state.SkipWithError("Parser failed");
+    }
+}
+BENCHMARK(any_string_variable_length_parse)->Range(8, 8 << 8);
+
+static void keyword_variable_length_parse(benchmark::State &state)
+{
+    std::string ev = getRandomString(state.range(0));
+
+    Parser p;
+    p.name = "keyword";
+    p.endToken = ' ';
+    ParseResult result;
+    for (auto _ : state)
+    {
+        const char *eventIt = ev.c_str() + ' ';
+        if (!parseAny(&eventIt, p, result))
+            state.SkipWithError("Parser failed");
+    }
+}
+BENCHMARK(keyword_variable_length_parse)->Range(8, 8 << 8);
+
+static void integer_number_variable_length_parse(benchmark::State &state)
+{
+    std::string ev = getRandomString(state.range(0),false,true);
+
+    Parser p;
+    p.name = "file.size";
+    p.endToken = '\0';
+    ParseResult result;
+    for (auto _ : state)
+    {
+        const char *eventIt = ev.c_str();
+        if (!parseNumber(&eventIt, p, result))
+            state.SkipWithError("Parser failed");
+    }
+}
+BENCHMARK(integer_number_variable_length_parse)->Range(8, 18);
+
+static void float_number_variable_length_parse(benchmark::State &state)
+{
+    std::string ev = getRandomString(state.range(0),false,true,true);
+
+    Parser p;
+    p.name = "file.size";
+    p.endToken = '\0';
+    ParseResult result;
+    for (auto _ : state)
+    {
+        const char *eventIt = ev.c_str();
+        if (!parseNumber(&eventIt, p, result))
+            state.SkipWithError("Parser failed");
+    }
+}
+BENCHMARK(float_number_variable_length_parse)->Range(8, 31);
+
+static void quoted_string_variable_length_parse(benchmark::State &state)
+{
+    std::string ev = "\"" + getRandomString(state.range(0)) + "\"";
+
+    Parser p;
+    p.name = "quoted_string";
+    p.endToken = '\0';
+    ParseResult result;
+    for (auto _ : state)
+    {
+        const char *eventIt = ev.c_str();
+        if (!parseQuotedString(&eventIt, p, result))
+            state.SkipWithError("Parser failed");
+    }
+}
+BENCHMARK(quoted_string_variable_length_parse)->Range(8, 8 << 8);
