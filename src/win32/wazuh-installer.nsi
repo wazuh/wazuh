@@ -236,16 +236,18 @@ Section "Wazuh Agent (required)" MainSec
     ${Endif}
 
     ; Comma-separated string variable containing executables
-    Var /global executables
-    StrCpy $executables "wazuh-agent.exe,win32ui.exe"
-    StrCpy $executables "$executables,manage_agents.exe,agent-auth.exe"
-    StrCpy $executables "$executables,setup-windows.exe,setup-syscheck.exe,setup-iis.exe"
-    StrCpy $executables "$executables,route-null.exe,restart-wazuh.exe,netsh.exe,agent-auth.exe"
+    Var /global enable_executables
+    StrCpy $enable_executables "wazuh-agent.exe,win32ui.exe"
+    StrCpy $enable_executables "$enable_executables,manage_agents.exe,agent-auth.exe"
+    StrCpy $enable_executables "$enable_executables,setup-windows.exe,setup-syscheck.exe,setup-iis.exe"
+    StrCpy $enable_executables "$enable_executables,route-null.exe,restart-wazuh.exe,netsh.exe,agent-auth.exe"
 
-    ; Deploy script as a temp to enable wazuh DumpsSetupScripts
-    GetTempFileName $0
-    File /oname=$0 `DumpsSetupScripts.vbs`
-    nsExec::ExecToLog '"$SYSDIR\wscript.exe" $0 //e:vbscript "$INSTDIR" "$executables"'
+    ${If} ${AtLeastWinVista}
+        ; Deploy script as a temp to enable wazuh dumps
+        GetTempFileName $0
+        File /oname=$0 `EnableDumps.vbs`
+        nsExec::ExecToLog '"$SYSDIR\wscript.exe" $0 //e:vbscript "$INSTDIR" "$enable_executables"'
+    ${Endif}
 
     ; write registry keys
     WriteRegStr HKLM SOFTWARE\ossec "Install_Dir" "$INSTDIR"
@@ -487,6 +489,22 @@ Section "Uninstall"
     ; remove registry keys
     DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC"
     DeleteRegKey HKLM SOFTWARE\OSSEC
+
+    ; remove dumps registries
+    ; Comma-separated string variable containing executables
+    Var /global disable_executables
+    StrCpy $disable_executables "wazuh-agent.exe,win32ui.exe"
+    StrCpy $disable_executables "$disable_executables,manage_agents.exe,agent-auth.exe"
+    StrCpy $disable_executables "$disable_executables,setup-windows.exe,setup-syscheck.exe,setup-iis.exe"
+    StrCpy $disable_executables "$disable_executables,route-null.exe,restart-wazuh.exe,netsh.exe,agent-auth.exe"
+
+    ${If} ${AtLeastWinVista}
+        ; Deploy script as a temp to disable wazuh dumps
+        GetTempFileName $0
+        File /oname=$0 `DisableDumps.vbs`
+        nsExec::ExecToLog '"$SYSDIR\wscript.exe" $0 //e:vbscript "$disable_executables"'
+    ${Endif}
+
 
     ; remove files and uninstaller
     Delete "$INSTDIR\wazuh-agent.exe"

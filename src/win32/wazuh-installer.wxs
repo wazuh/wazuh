@@ -51,9 +51,9 @@
         <Property Id="BUILDVERSION" Value="0">
             <RegistrySearch Id="BuildVersion" Root="HKLM" Key="SOFTWARE\Microsoft\Windows NT\CurrentVersion" Type="raw" Name="CurrentBuild" />
         </Property>
-        
+
         <Binary Id="InstallerScripts" SourceFile="InstallerScripts.vbs" />
-        <Binary Id="DumpsSetupScripts" SourceFile="DumpsSetupScripts.vbs" />
+        <Binary Id="EnableDumps" SourceFile="EnableDumps.vbs" />
 
         <Property Id="APPLICATIONFOLDER">
             <RegistrySearch Id="WazuhInstallDirProperty" Type="raw" Root="HKLM" Key="Software\[Manufacturer]\[ProductName]" Name="WazuhInstallDir" />
@@ -97,7 +97,7 @@
         <CustomAction Id="CustomAction_InstallerScripts" BinaryKey="InstallerScripts" VBScriptCall="config" Return="check" Execute="commit" Impersonate="no"/>
 
         <CustomAction Id="SetDumpsDirs" Return="check" Property="CustomAction_DumpsSetup" Value="&quot;[APPLICATIONFOLDER]|[WAZUH_EXECUTABLES]&quot;" />
-        <CustomAction Id="CustomAction_DumpsSetup" BinaryKey="DumpsSetupScripts" VBScriptCall="EnableDumps" Return="check" Execute="commit" Impersonate="no"  />
+        <CustomAction Id="CustomAction_DumpsSetup" BinaryKey="EnableDumps" VBScriptCall="EnableDumps" Return="check" Execute="commit" Impersonate="no"  />
 
         <!-- Explicitely stopping and deleting the OSSEC service to install new Wazuh service -->
         <CustomAction Id="StopOssecService" Directory="APPLICATIONFOLDER" ExeCommand="NET STOP OssecSvc" Execute="deferred" Impersonate="no" Return="ignore" />
@@ -133,8 +133,8 @@
             <!-- Install functions -->
             <Custom Action="SetCustomActionDataValue" After="InstallInitialize">NOT Installed</Custom>
             <Custom Action="CustomAction_InstallerScripts" After="SetCustomActionDataValue">NOT Installed</Custom>
-			<Custom Action="SetDumpsDirs" After="SetCustomActionDataValue">NOT Installed</Custom>
-            <Custom Action="CustomAction_DumpsSetup" After="SetDumpsDirs">NOT Installed</Custom>
+			<Custom Action="SetDumpsDirs" After="SetCustomActionDataValue">VersionNT &gt;= 600</Custom>
+            <Custom Action="CustomAction_DumpsSetup" After="SetDumpsDirs">VersionNT &gt;= 600</Custom>
 
             <!-- Stop the service as soon as possible on uninstall, and only on uninstall, in order to unlock the files and folders that must be deleted. -->
             <Custom Action="SetRemoveAllDataValue" Before="InstallFinalize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
