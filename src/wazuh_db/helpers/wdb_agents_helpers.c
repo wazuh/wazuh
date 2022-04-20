@@ -138,24 +138,26 @@ cJSON* wdb_insert_vuln_cves(int id,
     cJSON_AddBoolToObject(data_in, "check_pkg_existence", check_pkg_existence);
 
     // Limiting references just in case there are too many or the links are too long
-    char* str_cvs_references = NULL;
-    os_calloc(WDB_MAX_QUERY_SIZE, sizeof(char), str_cvs_references);
-    cJSON *j_cvs_references = cJSON_CreateArray();
-    int refcount;
-    for (refcount = 0; external_references[refcount]; ++refcount)
-    {
-        cJSON *j_ref_item = cJSON_CreateString(external_references[refcount]);
-        cJSON_AddItemToArray(j_cvs_references, j_ref_item);
+    if (external_references) {
+        char* str_cvs_references = NULL;
+        os_calloc(WDB_MAX_QUERY_SIZE, sizeof(char), str_cvs_references);
+        cJSON *j_cvs_references = cJSON_CreateArray();
+        int refcount;
+        for (refcount = 0; external_references[refcount]; ++refcount)
+        {
+            cJSON *j_ref_item = cJSON_CreateString(external_references[refcount]);
+            cJSON_AddItemToArray(j_cvs_references, j_ref_item);
 
-        cJSON_PrintPreallocated(j_cvs_references, str_cvs_references, WDB_MAX_QUERY_SIZE, FALSE);
-        if (strlen(str_cvs_references) >= VULN_CVES_MAX_REFERENCES) {
-            cJSON_DeleteItemFromArray(j_cvs_references, refcount);
-            mdebug2("External references truncated before inserting in inventory.");
-            break;
+            cJSON_PrintPreallocated(j_cvs_references, str_cvs_references, WDB_MAX_QUERY_SIZE, FALSE);
+            if (strlen(str_cvs_references) >= VULN_CVES_MAX_REFERENCES) {
+                cJSON_DeleteItemFromArray(j_cvs_references, refcount);
+                mdebug2("External references truncated before inserting in inventory.");
+                break;
+            }
         }
+        cJSON_AddItemToObject(data_in, "external_references", j_cvs_references);
+        os_free(str_cvs_references);
     }
-    cJSON_AddItemToObject(data_in, "external_references", j_cvs_references);
-    os_free(str_cvs_references);
 
     data_in_str = cJSON_PrintUnformatted(data_in);
     os_malloc(WDB_MAX_QUERY_SIZE, wdbquery);

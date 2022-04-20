@@ -794,6 +794,10 @@ int wdb_update_groups(const char *dirname, int *sock) {
     int aux_sock = -1;
     int* query_sock = sock?sock:&aux_sock;
 
+    if (!dirname) {
+        return OS_INVALID;
+    }
+
     root = wdbc_query_parse_json(query_sock, global_db_commands[WDB_SELECT_GROUPS], wdboutput, sizeof(wdboutput));
 
     if (!root) {
@@ -1115,6 +1119,10 @@ wdbc_result wdb_parse_chunk_to_int(char* input, int** output, const char* item, 
     int len = last_size ? *last_size : 0;
     int _last_item = 0;
     char* payload = NULL;
+
+    if (!output) {
+        return WDBC_ERROR;
+    }
 
     wdbc_result status = wdbc_parse_result(input, &payload);
     if (status == WDBC_OK || status == WDBC_DUE) {
