@@ -5,6 +5,7 @@
 import errno
 import glob
 import hashlib
+import json
 import operator
 import os
 import re
@@ -1210,7 +1211,7 @@ class WazuhDBQuery(object):
             r'(\()?' +  # A ( character.
             r'([\w.]+)' +  # Field name: name of the field to look on DB
             '([' + ''.join(self.query_operators.keys()) + "]{1,2})" +  # Operator: looks for =, !=, <, > or ~.
-            r"([\[\]\w _\-\.:\\/']+)" +  # Value: A string.
+            r"(\[[\[\]\w _\-.,:?\\/'\"=@%<>]+]|[\[\]\w _\-.:?\\/'\"=@%<>]+)" +  # Value: A string.
             r"(\))?" +  # A ) character
             "([" + ''.join(self.query_separators.keys()) + "])?"  # Separator: looks for ;, , or nothing.
         )
@@ -1230,6 +1231,12 @@ class WazuhDBQuery(object):
         isinstance(self.backend, WazuhDBBackend) and self.backend.close_connection()
 
     def _clean_filter(self, query_filter):
+        if isinstance(query_filter['value'], str):
+            try:
+                query_filter['value'] = json.dumps(json.loads(query_filter['value']), separators=(',', ':'))
+            except ValueError:
+                pass
+
         # Replace special characters with wildcards
         for sp_char in self.special_characters:
             if isinstance(query_filter['value'], str) and sp_char in query_filter['value']:
