@@ -4,6 +4,8 @@
 # TODO we use the one from the system. We may want to change this
 find_package(CURL REQUIRED)
 
+add_compile_definitions ( ONLY_C_LOCALE=1 )
+
 ####################################################################################################
 # Sources - Includes
 ####################################################################################################
