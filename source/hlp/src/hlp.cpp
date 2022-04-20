@@ -4,42 +4,87 @@
 #include <unordered_map>
 #include <vector>
 
+#include <rapidjson/document.h>
+
 #include "hlpDetails.hpp"
 #include "logQLParser.hpp"
 #include "specificParsers.hpp"
 #include <hlp/hlp.hpp>
+#include <logging/logging.hpp>
 #include <profile/profile.hpp>
 
 namespace hlp
 {
 using ParserList = std::vector<Parser>;
 
-static const std::unordered_map<std::string_view, ParserType> kECSParserMapper {
-    {"source.ip", ParserType::IP},
-    {"server.ip", ParserType::IP},
-    {"source.nat.ip", ParserType::IP},
-    {"timestamp", ParserType::Ts},
-    {"threat.indicator.first_seen", ParserType::Ts},
-    {"file.accessed", ParserType::Ts},
-    {"file.created", ParserType::Ts},
-    {"url", ParserType::URL},
-    {"http.request.method", ParserType::Any},
-    {"client", ParserType::Domain},
-    {"userAgent", ParserType::UserAgent},
-    {"any", ParserType::ExpicitAny},
-    {"file.size", ParserType::Number}, //long
-    {"vulnerability.score.temporal", ParserType::Number}, //float
-};
+static bool sInitialized = false;
+static std::unordered_map<std::string, ParserType> kECSParserMapper;
+
+//{
+//    {"source.ip", ParserType::IP},
+//    {"server.ip", ParserType::IP},
+//    {"source.nat.ip", ParserType::IP},
+//    {"timestamp", ParserType::Ts},
+//    {"threat.indicator.first_seen", ParserType::Ts},
+//    {"file.accessed", ParserType::Ts},
+//    {"file.created", ParserType::Ts},
+//    {"url", ParserType::URL},
+//    {"http.request.method", ParserType::Any},
+//    {"client", ParserType::Domain},
+//    {"userAgent", ParserType::UserAgent},
+//};
+
+void configureParserMappings(const std::string &config)
+{
+    static const std::unordered_map<std::string_view, ParserType>
+        kSchema2ParserType {
+            {"keyword", ParserType::Any},
+            {"ip", ParserType::IP},
+            {"timestamp", ParserType::Ts},
+            {"url", ParserType::URL},
+            {"json", ParserType::JSON},
+            {"map", ParserType::Map},
+            {"domain", ParserType::Domain},
+            {"filepath", ParserType::FilePath},
+            {"useragent", ParserType::UserAgent},
+        };
+
+    if (config.empty())
+    {
+        WAZUH_LOG_ERROR("Schema configuration is empty.");
+        return;
+    }
+
+    rapidjson::Document doc;
+    doc.Parse(config.c_str());
+
+    for (auto it = doc.MemberBegin(); it != doc.MemberEnd(); it++)
+    {
+        auto pt = kSchema2ParserType.find(it->value.GetString());
+        if (pt != kSchema2ParserType.end())
+        {
+            kECSParserMapper[it->name.GetString()] = pt->second;
+        }
+        else
+        {
+            WAZUH_LOG_ERROR("Invalid parser type [{}] for field [{}]",
+                            it->value.GetString(),
+                            it->name.GetString());
+        }
+    }
+}
 
 static const std::unordered_map<std::string_view, ParserType> kTempTypeMapper {
-    {"JSON", ParserType::JSON},
-    {"MAP", ParserType::Map},
+    {"json", ParserType::JSON},
+    {"map", ParserType::Map},
     {"timestamp", ParserType::Ts},
     {"domain", ParserType::Domain},
-    {"FilePath", ParserType::FilePath},
-    {"userAgent", ParserType::UserAgent},
+    {"filepath", ParserType::FilePath},
+    {"useragent", ParserType::UserAgent},
     {"url", ParserType::URL},
     {"quoted_string", ParserType::QuotedString},
+    {"ip", ParserType::IP},
+    //TODO add missing parsers
 };
 
 /**
