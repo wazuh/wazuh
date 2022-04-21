@@ -140,9 +140,9 @@ EXPORTED int dbsync_insert_data(const DBSYNC_HANDLE handle,
  *
  * @details The table will work as a queue if the limit is exceeded.
  */
-EXPORTED int dbsync_set_table_max_rows(const DBSYNC_HANDLE      handle,
-                                       const char*              table,
-                                       const unsigned long long max_rows);
+EXPORTED int dbsync_set_table_max_rows(const DBSYNC_HANDLE handle,
+                                       const char*         table,
+                                       const long long     max_rows);
 
 /**
  * @brief Inserts (or modifies) a database record.

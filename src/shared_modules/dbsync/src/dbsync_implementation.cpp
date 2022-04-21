@@ -10,6 +10,7 @@
  */
 
 #include <iostream>
+#include "abstractLocking.hpp"
 #include "dbsync_implementation.h"
 
 using namespace DbSync;
@@ -55,14 +56,12 @@ void DBSyncImplementation::syncRowData(const DBSYNC_HANDLE      handle,
                                        const ResultCallback     callback)
 {
     const auto ctx{ dbEngineContext(handle) };
-    std::unique_lock<std::shared_timed_mutex> lock{ ctx->m_syncMutex };
+    Utils::ExclusiveLocking lock{ ctx->m_syncMutex };
+
     ctx->m_dbEngine->syncTableRowData(json,
                                       callback,
                                       false,
-                                      [&lock]()
-    {
-        lock.unlock();
-    });
+                                      lock);
 }
 
 void DBSyncImplementation::syncRowData(const DBSYNC_HANDLE      handle,
@@ -78,14 +77,11 @@ void DBSyncImplementation::syncRowData(const DBSYNC_HANDLE      handle,
         throw dbsync_error{INVALID_TABLE};
     }
 
-    std::shared_lock<std::shared_timed_mutex> lock{ ctx->m_syncMutex };
+    Utils::SharedLocking lock{ ctx->m_syncMutex };
     ctx->m_dbEngine->syncTableRowData(json,
                                       callback,
                                       true,
-                                      [&lock]()
-    {
-        lock.unlock();
-    });
+                                      lock);
 }
 
 void DBSyncImplementation::deleteRowsData(const DBSYNC_HANDLE   handle,
@@ -123,7 +119,7 @@ std::shared_ptr<DBSyncImplementation::DbEngineContext> DBSyncImplementation::dbE
 
 void DBSyncImplementation::setMaxRows(const DBSYNC_HANDLE handle,
                                       const std::string& table,
-                                      const unsigned long long maxRows)
+                                      const int64_t maxRows)
 {
     const auto ctx{ dbEngineContext(handle) };
 

@@ -225,8 +225,8 @@ class FIMDBCreator<OSType::WINDOWS> final
 {
     public:
         static void setLimits(std::shared_ptr<DBSync> DBSyncHandler,
-                              const unsigned int& fileLimit,
-                              const unsigned int& registryLimit)
+                              const int fileLimit,
+                              const int registryLimit)
         {
             if (fileLimit > 0)
             {
@@ -302,8 +302,8 @@ class FIMDBCreator<OSType::OTHERS> final
 {
     public:
         static void setLimits(std::shared_ptr<DBSync> DBSyncHandler,
-                              const unsigned int& fileLimit,
-                              __attribute__((unused)) const unsigned int& registryLimit)
+                              const int fileLimit,
+                              __attribute__((unused)) const int registryLimit)
         {
             if (fileLimit > 0)
             {

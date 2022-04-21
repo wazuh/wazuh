@@ -50,9 +50,9 @@ void FIMDB::init(unsigned int syncInterval,
                  std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,
                  std::shared_ptr<DBSync> dbsyncHandler,
                  std::shared_ptr<RemoteSync> rsyncHandler,
-                 unsigned int fileLimit,
-                 unsigned int registryLimit,
-                 bool syncRegistryEnabled)
+                 const int fileLimit,
+                 const int registryLimit,
+                 const bool syncRegistryEnabled)
 {
     m_syncInterval = syncInterval;
     m_dbsyncHandler = dbsyncHandler;

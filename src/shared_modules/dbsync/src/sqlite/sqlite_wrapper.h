@@ -29,6 +29,7 @@ namespace SQLite
             void execute(const std::string& query) override;
             void close() override;
             const std::shared_ptr<sqlite3>& db() const override;
+            int64_t changes() const override;
         private:
             std::shared_ptr<sqlite3> m_db;
     };

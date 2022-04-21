@@ -24,20 +24,10 @@ static void checkSqliteResult(const int result,
 {
     if (SQLITE_OK != result)
     {
-        if (SQLITE_CONSTRAINT == result && exceptionString.find(MAX_ROWS_ERROR_STRING) != std::string::npos)
+        throw sqlite_error
         {
-            throw DbSync::max_rows_error
-            {
-                exceptionString
-            };
-        }
-        else
-        {
-            throw sqlite_error
-            {
-                std::make_pair(result, exceptionString)
-            };
-        }
+            std::make_pair(result, exceptionString)
+        };
     }
 }
 
@@ -48,6 +38,7 @@ static sqlite3* openSQLiteDb(const std::string& path)
     {
         sqlite3_open_v2(path.c_str(), &pDb, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nullptr)
     };
+    sqlite3_extended_result_codes(pDb, 1);
     checkSqliteResult(result, "Unspecified type during initialization of SQLite.");
     return pDb;
 }
@@ -87,7 +78,13 @@ void Connection::execute(const std::string& query)
     {
         sqlite3_exec(m_db.get(), query.c_str(), 0, 0, nullptr)
     };
+
     checkSqliteResult(result, query + ". " + sqlite3_errmsg(m_db.get()));
+}
+
+int64_t Connection::changes() const
+{
+    return sqlite3_changes(m_db.get());
 }
 
 Transaction::~Transaction()
@@ -100,8 +97,11 @@ Transaction::~Transaction()
         }
     }
     //dtor should never throw
+    // LCOV_EXCL_START
     catch (...)
     {}
+
+    // LCOV_EXCL_STOP
 }
 
 Transaction::Transaction(std::shared_ptr<IConnection>& connection)
@@ -132,8 +132,11 @@ void Transaction::rollback()
         }
     }
     //rollback can be called in a catch statement to unwind things so it shouldn't throw
+    // LCOV_EXCL_START
     catch (...)
     {}
+
+    // LCOV_EXCL_STOP
 }
 
 bool Transaction::isCommited() const
@@ -230,10 +233,12 @@ void Statement::bind(const int32_t index, const double_t value)
     ++m_bindParametersIndex;
 }
 
+// LCOV_EXCL_START
 std::string Statement::expand()
 {
-    return sqlite3_sql(m_stmt.get());
+    return sqlite3_expanded_sql(m_stmt.get());
 }
+// LCOV_EXCL_STOP
 
 std::unique_ptr<IColumn> Statement::column(const int32_t index)
 {
