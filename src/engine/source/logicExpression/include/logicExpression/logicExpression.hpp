@@ -1,0 +1,4 @@
+#ifndef _LOGIC_EXPRESSION_H
+#define _LOGIC_EXPRESSION_H
+
+#endif // _LOGIC_EXPRESSION_H
