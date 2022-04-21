@@ -42,6 +42,7 @@ void RegistryValue::createFimEntry()
         {
             throw std::runtime_error("The memory for fim_registry_value_data could not be allocated.");
         }
+
         // LCOV_EXCL_STOP
     }
     // LCOV_EXCL_START
@@ -49,6 +50,7 @@ void RegistryValue::createFimEntry()
     {
         throw std::runtime_error("The memory for fim_entry could not be allocated.");
     }
+
     // LCOV_EXCL_STOP
 }
 

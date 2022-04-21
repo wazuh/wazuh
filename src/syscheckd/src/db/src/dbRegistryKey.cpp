@@ -39,6 +39,7 @@ void RegistryKey::createFimEntry()
             {
                 throw std::runtime_error("The memory for gid parameter could not be allocated.");
             }
+
             // LCOV_EXCL_STOP
 
             key->group_name = const_cast<char*>(m_groupname.c_str());
@@ -58,6 +59,7 @@ void RegistryKey::createFimEntry()
             {
                 throw std::runtime_error("The memory for uid parameter could not be allocated.");
             }
+
             // LCOV_EXCL_STOP
 
             key->user_name = const_cast<char*>(m_username.c_str());
@@ -69,6 +71,7 @@ void RegistryKey::createFimEntry()
         {
             throw std::runtime_error("The memory for fim_registry_key could not be allocated.");
         }
+
         // LCOV_EXCL_STOP
     }
     // LCOV_EXCL_START
@@ -76,6 +79,7 @@ void RegistryKey::createFimEntry()
     {
         throw std::runtime_error("The memory for fim_entry could not be allocated.");
     }
+
     // LCOV_EXCL_STOP
 }
 

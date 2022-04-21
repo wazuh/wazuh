@@ -39,6 +39,7 @@ void FileItem::createFimEntry()
             {
                 throw std::runtime_error("The memory for uid parameter could not be allocated.");
             }
+
             // LCOV_EXCL_STOP
 
             data->gid = static_cast<char*>(std::calloc(gid_size + 1, sizeof(char)));
@@ -52,6 +53,7 @@ void FileItem::createFimEntry()
             {
                 throw std::runtime_error("The memory for gid parameter could not be allocated.");
             }
+
             // LCOV_EXCL_STOP
 
             data->user_name = const_cast<char*>(m_username.c_str());
@@ -75,6 +77,7 @@ void FileItem::createFimEntry()
         {
             throw std::runtime_error("The memory for fim_file_data could not be allocated.");
         }
+
         // LCOV_EXCL_STOP
     }
     // LCOV_EXCL_START
@@ -82,6 +85,7 @@ void FileItem::createFimEntry()
     {
         throw std::runtime_error("The memory for fim_entry could not be allocated.");
     }
+
     // LCOV_EXCL_STOP
 }
 
