@@ -15,6 +15,7 @@ const parserConfigFuncPtr kParsersConfig[] = {
     nullptr,
     nullptr,
     configureQuotedString,
+    configureBooleanParser,
     nullptr,
 };
 
@@ -32,5 +33,6 @@ const parserFuncPtr kAvailableParsers[] = {
     parseUserAgent,
     parseNumber,
     parseQuotedString,
+    parseBoolean,
     nullptr,
 };
