@@ -4,15 +4,30 @@
 #include <memory>
 #include <optional>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
-#include "catalogSharedDef.hpp"
-#include "storageDriver/storageDriverInterface.hpp"
-#include "yml2Json.hpp"
+#include <rapidjson/document.h>
+
+class IStorage;
 
 namespace catalog
 {
+
+enum class AssetType
+{
+    Decoder,
+    Rule,
+    Output,
+    Filter,
+    Schema,
+    Environment
+};
+
+enum class StorageType
+{
+    Local,
+    Network,
+};
 
 /**
  * @brief The Catalog class
@@ -40,43 +55,9 @@ class Catalog
 
 private:
     //! @brief The storage driver.
-    std::unique_ptr<StorageDriverInterface> spStorageDriver;
-
-    /**
-     * @brief Validate json through the schema.
-     *
-     * @param json The json to validate.
-     * @param schema The schema to validate against.
-     * @return std::optional<std::string> The error message if the json is not
-     * valid.
-     */
-    std::optional<std::string> validateJSON(rapidjson::Document &json,
-                                            rapidjson::Document &schema) const;
-
-    /** @brief Mapping the assets types and their schemas validator. */
-    static const inline std::unordered_map<AssetType, std::string>
-        assetTypeToSchema {{AssetType::Decoder, "wazuh-decoders"},
-                           {AssetType::Rule, "wazuh-rules"},
-                           {AssetType::Output, "wazuh-outputs"},
-                           {AssetType::Filter, "wazuh-filters"},
-                           {AssetType::Environment, "wazuh-environments"},
-                           {AssetType::Schema, ""}};
+    std::unique_ptr<IStorage> mStorage;
 
 public:
-    /**
-     * @brief Construct a new Catalog object
-     *
-     */
-    Catalog() = default;
-
-    /**
-     * @brief Configure Catalog to use passed storage driver
-     *
-     * @param spStorageDriver
-     */
-    void
-    setStorageDriver(std::unique_ptr<StorageDriverInterface> spStorageDriver);
-
     /**
      * @brief Create the catalog manager from the given driver to connect.
      *
@@ -86,20 +67,9 @@ public:
      * @param spStorageDriver The storage driver to connect to.
      * The driver is destroyed when the catalog is freed.
      */
-    Catalog(std::unique_ptr<StorageDriverInterface> spStorageDriver)
-    {
-        this->setStorageDriver(std::move(spStorageDriver));
-    }
+    Catalog(StorageType type, std::string const& basePath);
 
-    Catalog(Catalog &&other);
-
-    /**
-     * @brief Dump pending changes and freed driver storage.
-     */
-    ~Catalog()
-    {
-        spStorageDriver.reset();
-    }
+    ~Catalog();
 
     /**
      * @brief Get the Asset object
@@ -119,7 +89,7 @@ public:
      *
      */
     rapidjson::Document getAsset(const AssetType type,
-                                 std::string assetName) const;
+                                 std::string const& assetName) const;
 
     /**
      * @brief Get the Asset object
@@ -138,7 +108,7 @@ public:
      *
      */
     rapidjson::Document getAsset(const std::string &type,
-                                 std::string assetName) const;
+                                 std::string const& assetName) const;
 
     /**
      * @brief Get the list of assets of a given type.
