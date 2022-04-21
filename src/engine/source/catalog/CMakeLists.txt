@@ -1,5 +1,3 @@
-set(ENGINE_CATALOG_SOURCE_DIR ${ENGINE_SOURCE_DIR}/catalog)
-
 ####################################################################################################
 # Dependencies
 ####################################################################################################
@@ -20,15 +18,13 @@ CPMAddPackage(
 ####################################################################################################
 add_library(catalog OBJECT
     catalog.cpp
-    catalogSharedDef.cpp
-    storageDriver/disk/diskStorage.cpp
+    assetStorage/diskStorage.cpp
 )
 
 target_include_directories(catalog 
     PUBLIC
-    ${ENGINE_CATALOG_SOURCE_DIR}
-    ${ENGINE_CATALOG_SOURCE_DIR}/storageDriver/
-    ${ENGINE_CATALOG_SOURCE_DIR}/storageDriver/disk/
+    .
+    assetStorage/
 )
 
 target_link_libraries(catalog base yaml-cpp)
