@@ -24,7 +24,7 @@ TEST(split, not_delimiter)
 TEST(split, middle_delimiter)
 {
     std::string test = "value1/value2";
-    std::vector<std::string> expected = {"value1","value2"};
+    std::vector<std::string> expected = {"value1", "value2"};
     std::vector<std::string> result = utils::string::split(test, '/');
     ASSERT_EQ(result, expected);
 }
@@ -32,7 +32,7 @@ TEST(split, middle_delimiter)
 TEST(split, first_delimiter)
 {
     std::string test = "/value1/value2";
-    std::vector<std::string> expected = {"","value1","value2"};
+    std::vector<std::string> expected = {"", "value1", "value2"};
     std::vector<std::string> result = utils::string::split(test, '/');
     ASSERT_EQ(result, expected);
 }
@@ -40,7 +40,7 @@ TEST(split, first_delimiter)
 TEST(split, final_delimiter)
 {
     std::string test = "value1/value2/";
-    std::vector<std::string> expected = {"value1","value2"};
+    std::vector<std::string> expected = {"value1", "value2"};
     std::vector<std::string> result = utils::string::split(test, '/');
     ASSERT_EQ(result, expected);
 }
@@ -48,7 +48,7 @@ TEST(split, final_delimiter)
 TEST(split, doble_delimiter)
 {
     std::string test = "value1//value2";
-    std::vector<std::string> expected = {"value1","","value2"};
+    std::vector<std::string> expected = {"value1", "", "value2"};
     std::vector<std::string> result = utils::string::split(test, '/');
     ASSERT_EQ(result, expected);
 }
@@ -56,7 +56,14 @@ TEST(split, doble_delimiter)
 TEST(split, ok_delimiter)
 {
     std::string test = "value1/value2/value3";
-    std::vector<std::string> expected = {"value1","value2","value3"};
+    std::vector<std::string> expected = {"value1", "value2", "value3"};
     std::vector<std::string> result = utils::string::split(test, '/');
+    ASSERT_EQ(result, expected);
+}
+
+TEST(splitMulti, ThreeDelimiters) {
+    std::string input = "this is-a test to split by - and ,,where-are included in the result";
+    std::vector<std::string> expected = {"this", "is", "-", "a", "test", "to", "split", "by", "-", "and", "where", "-", "are", "included", "in", "the", "result"};
+    std::vector<std::string> result = utils::string::splitMulti(input, utils::string::Delimeter('-', true), utils::string::Delimeter(',', false), utils::string::Delimeter(' ', false));
     ASSERT_EQ(result, expected);
 }
