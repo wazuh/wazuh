@@ -13,7 +13,7 @@
 enum class ParserType
 {
     Any,
-    ExpicitAny, //TODO: can this be avoided merging it with Any parser?
+    ToEnd, //TODO: can this be avoided merging it with Any parser?
     Literal,
     IP,
     Ts,
@@ -25,6 +25,7 @@ enum class ParserType
     UserAgent,
     Number,
     QuotedString,
+    Boolean,
     Invalid,
 };
 
