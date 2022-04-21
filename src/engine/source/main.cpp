@@ -13,11 +13,10 @@
 #include <thread>
 #include <vector>
 
-#include "argparse/argparse.hpp"
+#include <argparse/argparse.hpp>
 
 #include <builder.hpp>
 #include <catalog.hpp>
-#include <diskStorage.hpp>
 #include <engineServer.hpp>
 #include <graph.hpp>
 #include <json.hpp>
@@ -147,17 +146,7 @@ int main(int argc, char* argv[])
 
     // Catalog
     // TODO: Integrate configure and constructor
-    catalog::Catalog _catalog;
-    try
-    {
-        _catalog.setStorageDriver(std::make_unique<DiskStorage>(storagePath));
-    }
-    catch (const std::exception& e)
-    {
-        WAZUH_LOG_ERROR("Exception while creating catalog configuration : [{}]",
-                        e.what());
-        return 1;
-    }
+    catalog::Catalog _catalog(catalog::StorageType::Local, storagePath);
 
     // Builder
     try

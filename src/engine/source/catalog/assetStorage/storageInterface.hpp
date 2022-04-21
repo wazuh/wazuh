@@ -4,10 +4,6 @@
 #include <vector>
 #include <string>
 
-#include "../catalogSharedDef.hpp"
-
-#include <rapidjson/document.h>
-
 /**
  * @brief The StorageDriverInterface class
  *
@@ -19,12 +15,12 @@
  *
  * Implementations are thread-safe.
  */
-class StorageDriverInterface
+class IStorage
 {
 
     public:
         //! @brief The destructor
-        virtual ~StorageDriverInterface() = default;
+        virtual ~IStorage() = default;
 
         /**
          * @brief Gets a list of available assets of a specific type
@@ -32,7 +28,7 @@ class StorageDriverInterface
          * @param type The asset type
          * @return std::vector<std::string> List of assets
          */
-        virtual std::vector<std::string> getAssetList(const AssetType type) = 0;
+        virtual std::vector<std::string> getFileList(std::string const& folder) = 0;
 
         /**
          * @brief Get the Asset object
@@ -42,7 +38,7 @@ class StorageDriverInterface
          * @throw std::runtime_error If the asset does not exist or cannot be recovered
          * @return std::string The asset as a string
          */
-        virtual std::string getAsset(const AssetType type, std::string assetName) = 0;
+        virtual std::string getFileContents(std::string const& file) = 0;
 };
 
 #endif // _STORAGEDRIVERINTERFACE_H
