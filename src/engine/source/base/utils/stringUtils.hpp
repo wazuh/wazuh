@@ -37,7 +37,7 @@ using Delimeter = std::pair<char, bool>;
  * @return std::vector<std::string> Vector of strings
  */
 template<typename... Delimiter>
-std::vector<std::string> split(const std::string &input,
+std::vector<std::string> splitMulti(const std::string &input,
                                Delimiter &&...delimiters)
 {
     std::vector<std::string> splitted;
