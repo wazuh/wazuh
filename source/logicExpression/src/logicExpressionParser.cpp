@@ -16,7 +16,7 @@ namespace
 std::queue<logicExpression::Token> tokenize(const std::string &rawExpression)
 {
     std::vector<std::string> rawTokens =
-        utils::string::split(rawExpression,
+        utils::string::splitMulti(rawExpression,
                              utils::string::Delimeter(' ', false),
                              utils::string::Delimeter('(', true),
                              utils::string::Delimeter(')', true));
