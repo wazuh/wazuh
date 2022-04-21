@@ -122,6 +122,21 @@ bool configureQuotedString(Parser &parser,
     return true;
 }
 
+bool configureBooleanParser(Parser &parser,
+        std::vector<std::string_view> const& args)
+{
+    if(!args.empty())
+    {
+        parser.options.emplace_back(args[0]);
+    }
+    else
+    {
+        parser.options.emplace_back("true");
+    }
+
+    return true;
+}
+
 bool parseAny(const char **it, Parser const &parser, ParseResult &result)
 {
     const char *start = *it;
@@ -869,5 +884,21 @@ bool parseQuotedString(const char **it,
     }
 
     result[parser.name] = std::string{++start, *it};
+    return true;
+}
+
+bool parseBoolean(const char **it,
+        Parser const& parser,
+        ParseResult &result)
+{
+    const char *start = *it;
+    while (**it != parser.endToken && **it != '\0')
+    {
+        (*it)++;
+    }
+    std::string_view str {start, (size_t)((*it) - start)};
+
+    auto& trueVal = parser.options[0];
+    result[parser.name] = bool {str == trueVal};
     return true;
 }
