@@ -20,25 +20,12 @@ using ParserList = std::vector<Parser>;
 static bool sInitialized = false;
 static std::unordered_map<std::string, ParserType> kECSParserMapper;
 
-//{
-//    {"source.ip", ParserType::IP},
-//    {"server.ip", ParserType::IP},
-//    {"source.nat.ip", ParserType::IP},
-//    {"timestamp", ParserType::Ts},
-//    {"threat.indicator.first_seen", ParserType::Ts},
-//    {"file.accessed", ParserType::Ts},
-//    {"file.created", ParserType::Ts},
-//    {"url", ParserType::URL},
-//    {"http.request.method", ParserType::Any},
-//    {"client", ParserType::Domain},
-//    {"userAgent", ParserType::UserAgent},
-//};
-
 void configureParserMappings(const std::string &config)
 {
     static const std::unordered_map<std::string_view, ParserType>
         kSchema2ParserType {
             {"keyword", ParserType::Any},
+            {"any", ParserType::ToEnd},
             {"ip", ParserType::IP},
             {"timestamp", ParserType::Ts},
             {"url", ParserType::URL},
@@ -47,6 +34,9 @@ void configureParserMappings(const std::string &config)
             {"domain", ParserType::Domain},
             {"filepath", ParserType::FilePath},
             {"useragent", ParserType::UserAgent},
+            {"number", ParserType::Number},
+            {"quoted", ParserType::QuotedString},
+            {"boolean", ParserType::Boolean},
         };
 
     if (config.empty())
@@ -57,6 +47,14 @@ void configureParserMappings(const std::string &config)
 
     rapidjson::Document doc;
     doc.Parse(config.c_str());
+
+    if(doc.HasParseError())
+    {
+        WAZUH_LOG_ERROR("HLP types configuration its not a valid JSON. Error "
+                        "at offset [{}]",
+                        doc.GetErrorOffset());
+        return;
+    }
 
     for (auto it = doc.MemberBegin(); it != doc.MemberEnd(); it++)
     {
@@ -84,6 +82,7 @@ static const std::unordered_map<std::string_view, ParserType> kTempTypeMapper {
     {"url", ParserType::URL},
     {"quoted_string", ParserType::QuotedString},
     {"ip", ParserType::IP},
+    {"number", ParserType::Number},
     //TODO add missing parsers
 };
 
