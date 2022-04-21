@@ -65,6 +65,15 @@ bool configureAnyParser(Parser &parser,
  */
 bool configureQuotedString(Parser &parser,
                            std::vector<std::string_view> const &args);
+
+/**
+ * @brief Method for pre-configuration of boolean parsing
+ * @param args the 'true' value to compare agains. (the 'true' string by
+ * default)
+ * @return always true
+ */
+bool configureBooleanParser(Parser& parser,
+                            std::vector<std::string_view> const& args);
 /**
  * @brief Parse an unspecified element until an endtoken character is found
  *
@@ -198,7 +207,7 @@ bool parseNumber(const char **it,
 
 /**
  * @brief parse a quoted string
- * @param it event fro parsing.
+ * @param it event for parsing.
  * @param result string under quotes
  * @return true for success false on error
  */
@@ -206,4 +215,13 @@ bool parseQuotedString(const char **it,
               Parser const &parser,
               ParseResult &result);
 
+/**
+ * @brief parse a quoted string
+ * @param it event for parsing.
+ * @param result true if strings compares against configured trueval
+ * @return true for success false on error
+ */
+bool parseBoolean(const char **it,
+        Parser const& parser,
+        ParseResult &result);
 #endif //_H_SPECIFIC_PARSERS
