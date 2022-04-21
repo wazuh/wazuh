@@ -398,7 +398,7 @@ int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2) {
     vuldet->min_full_scan_interval = VU_DEF_MIN_FULL_SCAN_INTERVAL;
     vuldet->retry_interval = VU_DEF_RETRY_INTERVAL;
     vuldet->scan_interval = WM_VULNDETECTOR_DEFAULT_INTERVAL;
-    vuldet->scan_agents = NULL;
+    vuldet->agent_to_scan = NULL;
     cur_wmodule->context = &WM_VULNDETECTOR_CONTEXT;
     cur_wmodule->tag = strdup(cur_wmodule->context->name);
     cur_wmodule->data = vuldet;
