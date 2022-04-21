@@ -10,3 +10,5 @@
 
 INSERT INTO sync_info (component) VALUES ('fim_registry_key');
 INSERT INTO sync_info (component) VALUES ('fim_registry_value');
+
+INSERT OR REPLACE INTO metadata (key, value) VALUES ('db_version', 9);
