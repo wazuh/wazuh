@@ -48,7 +48,7 @@ void *SCFGA_Forward(__attribute__((unused)) void *arg)
             if(strncmp(msg_dump,CFGA_DB_DUMP,strlen(CFGA_DB_DUMP)) == 0) {
                 char final_msg[OS_SIZE_4096 + 1] = {0};
 
-                snprintf(final_msg,OS_SIZE_4096,"#!-%s",msg_dump);
+                snprintf(final_msg, OS_SIZE_4096, "%s%s", CONTROL_HEADER, msg_dump);
                 send_msg(agent_id, final_msg, -1);
             }
         }
