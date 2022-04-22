@@ -15,7 +15,7 @@
 #include <typeindex>
 #include <typeinfo>
 #include <vector>
-//TODO test
+// TODO test
 #include <fstream>
 
 #include <fmt/format.h>
@@ -27,9 +27,9 @@
 namespace builder::internals::builders
 {
 static bool
-any2Json(std::any const &anyVal, std::string const &path, json::Document *doc)
+any2Json(std::any const& anyVal, std::string const& path, json::Document* doc)
 {
-    auto &type = anyVal.type();
+    auto& type = anyVal.type();
     if (type == typeid(void))
     {
         doc->set(path, {nullptr, doc->getAllocator()});
@@ -66,12 +66,12 @@ any2Json(std::any const &anyVal, std::string const &path, json::Document *doc)
     }
     else if (type == typeid(std::string))
     {
-        const auto &s = std::any_cast<std::string>(anyVal);
+        const auto& s = std::any_cast<std::string>(anyVal);
         doc->set(path, {s.c_str(), doc->getAllocator()});
     }
     else if (type == typeid(hlp::JsonString))
     {
-        const auto &s = std::any_cast<hlp::JsonString>(anyVal);
+        const auto& s = std::any_cast<hlp::JsonString>(anyVal);
         rapidjson::Document d(&doc->getAllocator());
         d.Parse<rapidjson::kParseStopWhenDoneFlag>(s.jsonString.data());
         doc->set(path, d);
@@ -105,7 +105,7 @@ base::Lifter stageBuilderParse(const base::DocumentValue &def, types::TracerFn t
             "[Stage parse]Config format error. Check the parser section.");
     }
 
-    auto const &logqlArr = parseObj["logql"];
+    auto const& logqlArr = parseObj["logql"];
     if (logqlArr.Empty())
     {
         // TODO error
@@ -135,7 +135,7 @@ base::Lifter stageBuilderParse(const base::DocumentValue &def, types::TracerFn t
             throw std::invalid_argument("Error reading logql configuration schema");
     }
 
-    for (auto const &item : logqlArr.GetArray())
+    for (auto const& item : logqlArr.GetArray())
     {
         if (!item.IsObject())
         {
@@ -144,30 +144,32 @@ base::Lifter stageBuilderParse(const base::DocumentValue &def, types::TracerFn t
                 "[Stage parse]Bad format trying to get parse expression ");
         }
 
-        // TODO hard-coded 'event.original'
-        auto logQlExpr = item["event.original"].GetString();
+        auto logql = item.GetObj().begin();
 
         ParserFn parseOp;
         try
         {
-            parseOp = hlp::getParserOp(logQlExpr);
+            parseOp = hlp::getParserOp(logql->value.GetString());
         }
-        catch (std::runtime_error &e)
+        catch (std::runtime_error& e)
         {
-            const char *msg =
+            const char* msg =
                 "Stage [parse] builder encountered exception parsing logQl "
                 "expr";
             WAZUH_LOG_ERROR("{} From exception: {}", msg, e.what());
             std::throw_with_nested(std::runtime_error(msg));
         }
 
-        auto newOp = [parserOp = std::move(parseOp)](base::Observable o)
+        auto newOp = [name = std::string {logql->name.GetString()},
+                      parserOp = std::move(parseOp)](base::Observable o)
         {
             return o.map(
-                [parserOp = std::move(parserOp)](base::Event e)
+                [name = std::move(name),
+                 parserOp = std::move(parserOp)](base::Event e)
                 {
-                    // TODO: What is the /message field? Why is hard-coded?
-                    const auto & ev = e->getEvent()->get("/message");
+                    // TODO handle item not existing in event
+                    auto jsonName = json::formatJsonPath(name);
+                    const auto& ev = e->getEvent()->get(jsonName);
                     if (!ev.IsString())
                     {
                         // TODO error
@@ -182,13 +184,13 @@ base::Lifter stageBuilderParse(const base::DocumentValue &def, types::TracerFn t
                         return e;
                     }
 
-                    for (auto const &val : result)
+                    for (auto const& val : result)
                     {
-                        auto name =
+                        auto resultPath =
                             json::formatJsonPath(val.first.c_str());
-                        if(!any2Json(val.second, name, e->getEvent()->get()))
+                        if (!any2Json(val.second, resultPath, e->getEvent()->get()))
                         {
-                            //ERROR
+                            // ERROR
                             return e;
                         }
                     }
@@ -206,9 +208,9 @@ base::Lifter stageBuilderParse(const base::DocumentValue &def, types::TracerFn t
             Registry::getBuilder("combinator.broadcast"))(parsers);
         return check;
     }
-    catch (std::exception &e)
+    catch (std::exception& e)
     {
-        const char *msg = "Stage [parse] builder encountered exception "
+        const char* msg = "Stage [parse] builder encountered exception "
                           "chaining all mappings.";
         WAZUH_LOG_ERROR("{} From exception: {}", msg, e.what());
         std::throw_with_nested(std::runtime_error(msg));
