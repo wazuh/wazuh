@@ -28,17 +28,18 @@ std::vector<std::string> split(std::string_view str, char delimiter);
 using Delimeter = std::pair<char, bool>;
 
 /**
- * @brief
+ * @brief Split a string into a vector of strings
  *
- * @tparam Delimiter Pair with delimiter char and a boolean indicating if the
- * delimiter should also be included in the result
+ * @tparam Delim Expecting Pair (or any structure that implements Delim.first
+ * and Delim.second as char and bool respectively) with delimiter char and a
+ * boolean indicating if the delimiter should also be included in the result
  * @param input Input string
  * @param delimiters Delimiters to split the string
  * @return std::vector<std::string> Vector of strings
  */
-template<typename... Delimiter>
+template<typename... Delim>
 std::vector<std::string> splitMulti(const std::string &input,
-                               Delimiter &&...delimiters)
+                                    Delim &&...delimiters)
 {
     std::vector<std::string> splitted;
     for (auto i = 0, last = i; i < input.size(); ++i)
