@@ -10,6 +10,7 @@
 #include "testUtils.hpp"
 #include <gtest/gtest.h>
 
+#include "combinatorBuilderBroadcast.hpp"
 #include "combinatorBuilderChain.hpp"
 #include "opBuilderMap.hpp"
 #include "opBuilderMapReference.hpp"
@@ -57,8 +58,57 @@ static FakeTrFn tr = [](std::string msg) {
 
  */
 
-TEST(StageBuilderNormalize, BuildsAllNonRegistered)
+// TEST(StageBuilderNormalize, BuildsAllNonRegistered)
+// {
+//     Document doc {R"({
+//         "normalize": [
+//             {
+//                 "map": {
+//                     "mapped.field1": "value",
+//                     "mapped.field2": 2,
+//                     "mapped.field3": "$field1",
+//                     "mapped.field4": true,
+//                     "mapped.field5": false
+//                 }
+//             },
+//             {
+//                 "check": [
+//                     {"mapped.field1": "value"},
+//                     {"mapped.field2": 2},
+//                     {"mapped.field3": "$field1"},
+//                     {"mapped.field4": true},
+//                     {"mapped.field5": "+exists"}
+//                 ],
+//                 "map": {
+//                     "mapped.field6": "value",
+//                     "mapped.field7": 2,
+//                     "mapped.field8": "$field1",
+//                     "mapped.field9": true,
+//                     "mapped.field10": false
+//                 }
+//             }
+//         ]
+//     })"};
+
+//     ASSERT_THROW(builders::stageBuilderNormalize(doc.get("/normalize"), tr),
+//                  std::_Nested_exception<std::runtime_error>);
+// }
+
+// TODO: UNCOMMENT AND FIX THESE TESTS
+
+TEST(StageBuilderNormalize, Builds)
 {
+    BuilderVariant c = opBuilderMapValue;
+    Registry::registerBuilder("map.value", c);
+    c = opBuilderMapReference;
+    Registry::registerBuilder("map.reference", c);
+    c = opBuilderMap;
+    Registry::registerBuilder("map", c);
+    c = combinatorBuilderChain;
+    Registry::registerBuilder("combinator.chain", c);
+    c = combinatorBuilderBroadcast;
+    Registry::registerBuilder("combinator.broadcast", c);
+
     Document doc {R"({
         "normalize": [
             {
@@ -88,36 +138,9 @@ TEST(StageBuilderNormalize, BuildsAllNonRegistered)
             }
         ]
     })"};
-    ;
 
-    ASSERT_THROW(builders::stageBuilderNormalize(doc.get("/normalize"), tr),
-                 std::_Nested_exception<std::runtime_error>);
+    ASSERT_NO_THROW(builders::stageBuilderNormalize(doc.get("/normalize"), tr));
 }
-
-// TODO: UNCOMMENT AND FIX THESE TESTS
-
-// TEST(StageBuilderNormalize, Builds)
-// {
-//     BuilderVariant c = opBuilderMapValue;
-//     Registry::registerBuilder("map.value", c);
-//     c = opBuilderMapReference;
-//     Registry::registerBuilder("map.reference", c);
-//     c = opBuilderMap;
-//     Registry::registerBuilder("map", c);
-//     c = combinatorBuilderChain;
-//     Registry::registerBuilder("combinator.chain", c);
-
-//     Document doc {R"({
-//         "normalize": [
-//             {"mapped.field1": "value"},
-//             {"mapped.field2": 2},
-//             {"mapped.field3": "$field1"},
-//             {"mapped.field4": true}
-//         ]
-//     })"};
-
-//     ASSERT_NO_THROW(builders::stageBuilderNormalize(doc.get("/normalize"), tr));
-// }
 
 // TEST(StageBuilderNormalize, BuildsOperates)
 // {
