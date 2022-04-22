@@ -78,20 +78,20 @@ cJSON * jqueue_next(file_queue * queue) {
             return NULL;
         }
 
-        // If the inode has changed, reopen and retry to open
+        // If the inode has changed, reopen and retry to open  
+        if (!((queue->read_attempts+1) % MAX_INODE_CHANGE)){   // y si cambia MAX_INODE_CHANGE
+            if (buf.st_ino != queue->f_status.st_ino) {
+                mdebug2("jqueue_next(): Alert file inode changed. Reloading.");
 
-        if (buf.st_ino != queue->f_status.st_ino) {
-            mdebug2("jqueue_next(): Alert file inode changed. Reloading.");
+                if (jqueue_open(queue, 0) < 0) {
+                    return NULL;
+                }
 
-            if (jqueue_open(queue, 0) < 0) {
+                return jqueue_parse_json(queue);
+
+            } else {
                 return NULL;
             }
-
-            return jqueue_parse_json(queue);
-
-        } else {
-            sleep(1);
-            return NULL;
         }
     }
 }
@@ -122,31 +122,43 @@ cJSON * jqueue_parse_json(file_queue * queue) {
     if (fgets(buffer, OS_MAXSTR + 1, queue->fp)) {
 
         if (end = strchr(buffer, '\n'), end) {
-            *end = '\0';
+            *end = '\0';                               // --> TIENE \N
 
-            if ((object = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), object) && (*jsonErrPtr == '\0')) {
-                queue->read_attempts = 0;
+            if ((object = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), object) && (*jsonErrPtr == '\0')) {   
+                queue->read_attempts = 0;                                // --> ES JSON VALIDO
                 return object;
             }
-        }
 
-        // The read JSON is invalid
-        if (object) {
-            cJSON_Delete(object);
-        }
-
-        queue->read_attempts++;
-        mdebug2("Invalid JSON alert read from '%s'. Remaining attempts: %d", queue->file_name, MAX_READ_ATTEMPTS - queue->read_attempts);
-
-        if (queue->read_attempts < MAX_READ_ATTEMPTS) {
-            if (current_pos >= 0) {
-                if (fseek(queue->fp, current_pos, SEEK_SET) != 0) {
-                    queue->flags = CRALERT_READ_FAILED;
-                }
+            // The read JSON is invalid                       
+            if (object){        //check si hace falta este if, que devuelve cuando falla arriba?
+                cJSON_Delete(object);
             }
-        } else {
-            queue->read_attempts = 0;
-            merror("Invalid JSON alert read from '%s'. Skipping it.", queue->file_name);
+
+            merror("Invalid JSON alert read from '%s': '%s'", queue->file_name, buffer);
+            return NULL;
+        }
+
+        while (buffer >= OS_MAXSTR) // SI NO HAY /n Y BUFFER LLENO --> WHILE DE FGETS HASTA /n Y RETURN NULL Y merror o mwarn
+        {
+            fgets(buffer, OS_MAXSTR + 1, queue->fp);
+
+            if (end = strchr(buffer, '\n'), end){
+                merror("Overlong JSON alert read from '%s'", queue->file_name);
+                return NULL;
+            }
+        }
+        
+        // CAMBIAR MAX_READ_ATTEMPTS POR ALGO COMO MAX_INODE_CHANGE
+        queue->read_attempts++;
+        mdebug2("Invalid JSON alert read from '%s'.", queue->file_name);
+
+
+        // LECTURAS INFINITAS PERO CADA 3 CHECKEO INODO  condicion para q de true cada 3 | multiplo de 3   :  if (!((queue->read_attempts+1) % 3) && i>0 )
+        // para checkear inodo sino q reintente sin tener en cuenta MAX_READ_ATTEMPTS
+        if (current_pos >= 0) {
+            if (fseek(queue->fp, current_pos, SEEK_SET) != 0) {
+                queue->flags = CRALERT_READ_FAILED;
+            }
         }
     } else {
         // Force the queue reload when the read fails
