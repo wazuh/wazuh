@@ -82,7 +82,7 @@ void Connection::execute(const std::string& query)
     checkSqliteResult(result, query + ". " + sqlite3_errmsg(m_db.get()));
 }
 
-int64_t Connection::changes() const
+long long Connection::changes() const
 {
     return sqlite3_changes(m_db.get());
 }

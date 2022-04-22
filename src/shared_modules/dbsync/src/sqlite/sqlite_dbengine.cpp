@@ -2066,7 +2066,7 @@ std::string SQLiteDBEngine::buildUpdateRelationTrigger(const nlohmann::json&    
     return sqlUpdate;
 }
 
-void SQLiteDBEngine::updateTableRowCounter(const std::string& table, const int64_t rowModifyCount)
+void SQLiteDBEngine::updateTableRowCounter(const std::string& table, const long long rowModifyCount)
 {
     std::lock_guard<std::mutex> lock(m_maxRowsMutex);
     auto it { m_maxRows.find(table) };

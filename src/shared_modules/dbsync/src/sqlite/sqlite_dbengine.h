@@ -107,7 +107,7 @@ class dbengine_error : public DbSync::dbsync_error
         {}
 };
 
-struct MaxRows
+struct MaxRows final
 {
     int64_t maxRows;
     int64_t currentRows;
@@ -303,7 +303,7 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
                                                const std::vector<std::string>&  primaryKeys);
 
         void updateTableRowCounter(const std::string& table,
-                                   const int64_t      rowModifyCount);
+                                   const long long    rowModifyCount);
 
         void insertElement(const std::string& table,
                            const TableColumns& tableColumns,
