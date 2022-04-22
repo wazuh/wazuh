@@ -26,6 +26,7 @@
 #include <protocolHandler.hpp>
 #include <register.hpp>
 #include <router.hpp>
+#include <hlp/hlp.hpp>
 
 #define WAIT_DEQUEUE_TIMEOUT_USEC (1 * 1000000)
 
@@ -135,20 +136,20 @@ int main(int argc, char* argv[])
 
     KVDBManager::init(kvdbPath);
 
-    // Server
     EngineServer server {{serverArgs}, static_cast<size_t>(queueSize)};
-
-    // Check if the server was correctly configured
     if (!server.isConfigured())
     {
         return 1;
     }
 
-    // Catalog
-    // TODO: Integrate configure and constructor
     catalog::Catalog _catalog(catalog::StorageType::Local, storagePath);
 
-    // Builder
+    auto hlpParsers = _catalog.getFileContents(catalog::AssetType::Schema,
+                                               "wazuh-logql-types");
+    // TODO because builders don't have access to the catalog we are configuring
+    // the parser mappings on start up for now
+    hlp::configureParserMappings(hlpParsers);
+
     try
     {
         builder::internals::registerBuilders();
