@@ -29,7 +29,7 @@ class MockConnection : public SQLite::IConnection
                     execute,
                     (const std::string& query),
                     (override));
-        MOCK_METHOD(long long,
+        MOCK_METHOD(int64_t,
                     changes,
                     (),
                     (const override));
