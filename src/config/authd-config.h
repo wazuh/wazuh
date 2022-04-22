@@ -50,7 +50,6 @@ typedef struct authd_config_t {
     long timeout_usec;
     bool worker_node;
     bool ipv6;
-    unsigned int max_agents;
 } authd_config_t;
 
 /**
