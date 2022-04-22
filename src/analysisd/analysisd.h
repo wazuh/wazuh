@@ -75,14 +75,14 @@ size_t asyscom_getconfig(const char * section, char ** output);
 
 /**
  * @brief Get the number of elements divided by the size of queues
- * 
+ *
  * Values are save in state's variables
  */
 void w_get_queues_size();
 
 /**
  * @brief Obtains analysisd's queues sizes
- * 
+ *
  * Values are save in state's variables
  */
 void w_get_initial_queues_size();
@@ -104,5 +104,12 @@ extern int num_rule_matching_threads;
 #define FIM_MAX_WAZUH_DB_ATTEMPS 5
 #define SYS_MAX_WAZUH_DB_ATTEMPS 5
 #define PM_MAX_WAZUH_DB_ATTEMPS 5
+
+#define EPS_LIMITS_DEAULT_TIMEFRAME 10
+#define EPS_LIMITS_MAX_TIMEFRAME 600
+#define EPS_LIMITS_MIN_TIMEFRAME 1
+#define EPS_LIMITS_MAX_EPS 100000
+#define EPS_LIMITS_MIN_EPS 0
+#define EPS_LIMITS_FILE_CHECK 10
 
 #endif /* LOGAUDIT_H */

@@ -80,12 +80,6 @@ int GlobalConf(const char *cfgfile)
     Config.max_output_size = 0;
     Config.queue_size = 0;
 
-    Config.limit_eps = 0;
-    Config.limit_timeframe = DEFAULT_LIMIT_TIMEFRAME;
-    Config.limit_max_eps = 0;
-    Config.limit_current_eps = 0;
-    Config.limit_exceeded_eps = false;
-
     os_calloc(1, sizeof(wlabel_t), Config.labels);
 
     modules |= CGLOBAL;
