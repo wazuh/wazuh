@@ -14,12 +14,12 @@
 namespace builder::internals::builders
 {
 
-types::Lifter combinatorBuilderBroadcast(const std::vector<types::Lifter> & lifters)
+base::Lifter combinatorBuilderBroadcast(const std::vector<base::Lifter> & lifters)
 {
-    return [=](types::Observable input) -> types::Observable
+    return [=](base::Observable input) -> base::Observable
     {
         input = input.publish().ref_count();
-        std::vector<types::Observable> inputs;
+        std::vector<base::Observable> inputs;
         for (auto op : lifters)
         {
             inputs.push_back(op(input));

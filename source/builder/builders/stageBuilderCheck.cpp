@@ -21,7 +21,7 @@
 namespace builder::internals::builders
 {
 
-types::Lifter stageBuilderCheck(const types::DocumentValue &def, types::TracerFn tr)
+base::Lifter stageBuilderCheck(const base::DocumentValue &def, types::TracerFn tr)
 {
     // Assert value is as expected
     if (!def.IsArray())
@@ -33,7 +33,7 @@ types::Lifter stageBuilderCheck(const types::DocumentValue &def, types::TracerFn
     }
 
     // Build all conditions
-    std::vector<types::Lifter> conditions;
+    std::vector<base::Lifter> conditions;
     for (auto it = def.Begin(); it != def.End(); ++it)
     {
         try
@@ -54,7 +54,7 @@ types::Lifter stageBuilderCheck(const types::DocumentValue &def, types::TracerFn
     }
 
     // Chain all operations
-    types::Lifter check;
+    base::Lifter check;
     try
     {
         check = std::get<types::CombinatorBuilder>(

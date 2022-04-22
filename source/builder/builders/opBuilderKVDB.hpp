@@ -18,27 +18,27 @@ namespace builder::internals::builders
  * @brief Builds KVDB extract function helper
  *
  * @param def
- * @return types::Lifter
+ * @return base::Lifter
  */
-types::Lifter opBuilderKVDBExtract(const types::DocumentValue& def,
+base::Lifter opBuilderKVDBExtract(const base::DocumentValue& def,
                                    types::TracerFn tr);
 
 /**
  * @brief Builds KVDB match function helper
  *
  * @param def
- * @return types::Lifter
+ * @return base::Lifter
  */
-types::Lifter opBuilderKVDBMatch(const types::DocumentValue& def,
+base::Lifter opBuilderKVDBMatch(const base::DocumentValue& def,
                                  types::TracerFn tr);
 
 /**
  * @brief Builds KVDB not-match function helper
  *
  * @param def
- * @return types::Lifter
+ * @return base::Lifter
  */
-types::Lifter opBuilderKVDBNotMatch(const types::DocumentValue& def,
+base::Lifter opBuilderKVDBNotMatch(const base::DocumentValue& def,
                                     types::TracerFn tr);
 } // namespace builder::internals::builders
 

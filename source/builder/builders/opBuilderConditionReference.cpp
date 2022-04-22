@@ -19,7 +19,7 @@
 namespace builder::internals::builders
 {
 
-types::Lifter opBuilderConditionReference(const types::DocumentValue &def,
+base::Lifter opBuilderConditionReference(const base::DocumentValue &def,
                                           types::TracerFn tr)
 {
     if (!def.MemberBegin()->name.IsString())
@@ -52,11 +52,11 @@ types::Lifter opBuilderConditionReference(const types::DocumentValue &def,
                     def.MemberBegin()->value.GetString());
 
     // Return Lifter
-    return [=](types::Observable o)
+    return [=](base::Observable o)
     {
         // Append rxcpp operation
         return o.filter(
-            [=](types::Event e)
+            [=](base::Event e)
             {
                 if (e->getEvent()->equals(field, reference))
                 {

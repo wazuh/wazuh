@@ -63,9 +63,9 @@ private:
     // TODO: only used by operator(), we could use an unnamed struct instead
     struct envBuilder
     {
-        internals::types::Lifter m_lifter;
+        base::Lifter m_lifter;
         std::map<std::string, rxcpp::observable<std::string>> m_traceSinks;
-        internals::types::Lifter getLifter() const
+        base::Lifter getLifter() const
         {
             return m_lifter;
         }
@@ -213,13 +213,13 @@ public:
 
         // Lifter
         ret.m_lifter =
-            [g](internals::types::Observable o) -> internals::types::Observable
+            [g](base::Observable o) -> base::Observable
         {
-            internals::types::Observable last;
+            base::Observable last;
 
             // Recursive visitor function to call all connectable lifters and
             // build the whole rxcpp pipeline
-            auto visit = [&g, &last](internals::types::Observable source,
+            auto visit = [&g, &last](base::Observable source,
                                      std::string root,
                                      auto &visit_ref) -> void
             {
@@ -231,7 +231,7 @@ public:
 
                 // Call connect.publish only if this connectable has more than
                 // one child
-                auto obs = [&g, root]() -> internals::types::Observable
+                auto obs = [&g, root]() -> base::Observable
                 {
                     if (g->m_edges[root].size() > 1)
                     {

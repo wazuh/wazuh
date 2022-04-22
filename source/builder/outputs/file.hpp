@@ -65,7 +65,7 @@ public:
      *
      * @param e
      */
-    void write(const types::Event & e)
+    void write(const base::Event & e)
     {
         this->m_os << e->getEvent()->str() << std::endl;
     }

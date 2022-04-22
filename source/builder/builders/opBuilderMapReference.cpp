@@ -19,7 +19,7 @@ namespace builder::internals::builders
 {
 
 // TODO Add test for this
-types::Lifter opBuilderMapReference(const types::DocumentValue &def,
+base::Lifter opBuilderMapReference(const base::DocumentValue &def,
                                     types::TracerFn tr)
 {
     if (!def.MemberBegin()->name.IsString())
@@ -44,16 +44,16 @@ types::Lifter opBuilderMapReference(const types::DocumentValue &def,
     reference = json::formatJsonPath(reference);
 
     // Debug trace
-    types::Document value{def};
+    base::Document value{def};
     std::string successTrace = fmt::format("{} Mapping Success", value.str());
     std::string failureTrace = fmt::format("{} Mapping Failure", value.str());
 
     // Return Lifter
-    return [=](types::Observable o)
+    return [=](base::Observable o)
     {
         // Append rxcpp operation
         return o.map(
-            [=](types::Event e)
+            [=](base::Event e)
             {
                 e->getEvent()->set(field, reference);
                 tr(successTrace);

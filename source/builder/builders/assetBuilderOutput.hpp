@@ -20,7 +20,7 @@ namespace builder::internals::builders
  * @param def
  * @return types::ConnectableT
  */
-types::ConnectableT assetBuilderOutput(const types::Document & def);
+types::ConnectableT assetBuilderOutput(const base::Document & def);
 } // namespace builder::internals::builders
 
 #endif // _ASSET_BUILDER_OUTPUT_H
