@@ -25,6 +25,7 @@
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/randombytes_wrappers.h"
+#include "../../wrappers/wazuh/shared/mq_op_wrappers.h"
 
 #define TEST_MAX_DATES 5
 
@@ -59,7 +60,7 @@ static int setup_module() {
         "<interval>3m</interval>\n"
         "<scan-on-start>no</scan-on-start>\n"
         "<java_path>/usr/lib/jvm/java-1.8.0-openjdk-amd64/jre/bin</java_path>\n"
-        "<ciscat_path>wodles/ciscat</ciscat_path>\n"
+        "<ciscat_path>/var/ossec/wodles/ciscat</ciscat_path>\n"
         "<content type=\"xccdf\" path=\"benchmarks/CIS_Ubuntu_Linux_16.04_LTS_Benchmark_v1.0.0-xccdf.xml\">\n"
         "    <profile>xccdf_org.cisecurity.benchmarks_profile_Level_2_-_Server</profile>\n"
         "</content>\n"
@@ -120,10 +121,14 @@ void test_interval_execution(void **state) {
     module_data->scan_config.interval = 120; // 2min
     module_data->scan_config.month_interval = false;
 
+    expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
+    expect_value(__wrap_StartMQ, type, WRITE);
+    will_return(__wrap_StartMQ, 0);
     expect_string(__wrap_IsDir, file, "/var/ossec/wodles/ciscat");
     will_return(__wrap_IsDir, 0);
     will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
     will_return(__wrap_FOREVER, 0);
+    will_return_always(__wrap_os_random, 12345);
     expect_string_count(__wrap__mterror, tag, "wazuh-modulesd:ciscat", TEST_MAX_DATES + 1);
     expect_string_count(__wrap__mterror, formatted_msg, "Benchmark file '/var/ossec/wodles/ciscat/benchmarks/CIS_Ubuntu_Linux_16.04_LTS_Benchmark_v1.0.0-xccdf.xml' not found.", TEST_MAX_DATES + 1);
     expect_any_always(__wrap__mtinfo, tag);
@@ -257,8 +262,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_scheduling_daytime_configuration, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_scheduling_interval_configuration, setup_test_read, teardown_test_read)
     };
-    int result;
-    result = cmocka_run_group_tests(tests_with_startup, setup_module, teardown_module);
-    result &= cmocka_run_group_tests(tests_without_startup, NULL, NULL);
+    int result = (cmocka_run_group_tests(tests_with_startup, setup_module, teardown_module) ||
+                  cmocka_run_group_tests(tests_without_startup, NULL, NULL));
     return result;
 }
