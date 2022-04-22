@@ -866,7 +866,8 @@ bool parseNumber(const char **it,
     else
     {
         //TODO: if the number surpass limits won't fail
-        if (!sscanf(start, "%f", &fnum))
+        fnum = std::strtof(start, &ptrEnd);
+        if(start == ptrEnd)
         {
             return false;
         }
