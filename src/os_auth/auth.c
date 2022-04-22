@@ -289,12 +289,6 @@ w_err_t w_auth_validate_data(char *response,
         result = w_auth_validate_groups(groups, response);
     }
 
-    /* Check for agents limit */
-    if ((result != OS_INVALID) && (config.max_agents > 0) && (keys.keysize >= config.max_agents)) {
-        snprintf(response, OS_SIZE_2048, "ERROR: The maximum number of agents has been reached");
-        return OS_INVALID;
-    }
-
     /* Check for duplicate IP */
     if (result != OS_INVALID && strcmp(ip, "any") != 0 && (index = OS_IsAllowedIP(&keys, ip), index >= 0)) {
         if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, &config.force_options, &str_result)) {

@@ -24,7 +24,6 @@
  */
 
 #include "shared.h"
-#include "cloud_limits.h"
 #include "auth.h"
 #include <pthread.h>
 #include <sys/wait.h>
@@ -470,17 +469,6 @@ int main(int argc, char **argv)
         OS_ReadKeys(&keys, W_RAW_KEY, !config.flags.clear_removed);
         OS_ReadTimestamps(&keys);
     }
-
-
-    cJSON * authd_limits = load_limits_file("authd");
-    if (authd_limits) {
-        cJSON *max_agents = cJSON_GetObjectItem(authd_limits, "max_agents");
-        if (cJSON_IsNumber(max_agents)) {
-            config.max_agents = max_agents->valueint;
-        }
-        cJSON_Delete(max_agents);
-    }
-
 
     /* Start working threads */
 

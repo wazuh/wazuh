@@ -72,9 +72,6 @@ static cJSON* local_create_agent_response(const char *id, const char *name, cons
 // Generates an agent deleted response
 static cJSON* local_create_agent_delete_response(void);
 
-// Update limits file response
-static cJSON* local_create_update_limits_response(void);
-
 // Generates an error json response
 static cJSON* local_create_error_response(int code, const char *message);
 
@@ -324,26 +321,6 @@ char* local_dispatch(const char *input) {
             }
 
             response = local_get(item->valuestring);
-        } else if (!strcmp(function->valuestring, "update_limits")) {
-
-            cJSON *authd_limits = load_limits_file("authd");
-            if (!authd_limits) {
-                ierror = EINTERNAL;
-                goto fail;
-            }
-
-            cJSON *max_agents = cJSON_GetObjectItem(authd_limits, "max_agents");
-            if (!max_agents || !cJSON_IsNumber(max_agents)) {
-                cJSON_Delete(max_agents);
-                ierror = ENOARGUMENT;
-                goto fail;
-            }
-
-            config.max_agents = max_agents->valueint;
-            cJSON_Delete(max_agents);
-            cJSON_Delete(authd_limits);
-
-            response = local_create_update_limits_response();
         }
 
         if (!response) {
@@ -548,17 +525,6 @@ static cJSON* local_create_agent_delete_response(void) {
     response = cJSON_CreateObject();
     cJSON_AddNumberToObject(response, "error", 0);
     cJSON_AddStringToObject(response, "data", "Agent deleted successfully.");
-
-    return response;
-}
-
-// Update limits file response
-static cJSON* local_create_update_limits_response(void) {
-    cJSON *response = NULL;
-
-    response = cJSON_CreateObject();
-    cJSON_AddNumberToObject(response, "error", 0);
-    cJSON_AddStringToObject(response, "data", "Authd limits.conf file updated.");
 
     return response;
 }
