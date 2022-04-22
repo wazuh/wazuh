@@ -26,7 +26,6 @@ base::Lifter stageBuilderNormalizeMap(const rapidjson::Value &value,
 {
     std::vector<base::Lifter> mappings;
 
-    // auto mapObject = value.FindMember("map");
     if (value.MemberCount() <= 0)
     {
         throw std::runtime_error("Invalid map");
@@ -37,15 +36,27 @@ base::Lifter stageBuilderNormalizeMap(const rapidjson::Value &value,
         throw std::runtime_error("Invalid map object");
     }
 
-    for (rapidjson::Value::ConstMemberIterator it = value.GetObject().MemberBegin(); it != value.GetObject().MemberEnd(); ++it)
+    for (rapidjson::Value::ConstMemberIterator it =
+             value.GetObject().MemberBegin();
+         it != value.GetObject().MemberEnd();
+         ++it)
     {
         try
         {
-            // TODO: Here is an error
-            // auto val = std::get<types::OpBuilder>(Registry::getBuilder("map"));
-            // auto aux = val(it->value, tr);
-            // mappings.push_back(std::get<types::OpBuilder>(
-            //     Registry::getBuilder("map"))(it->value, tr));
+            auto type = it->value.GetType();
+
+            /** Todo: there is a problem in here:
+             *
+             * 04:09:24.065588 opBuilderMap.cpp:29 ERR[131558] Map builder
+             * expects value to be an object, but got [5] 04:09:24.066025
+             *
+             * stageBuilderNormalize.cpp:54 ERR[131558] Stage normalize builder
+             * encountered exception on building: [Map builder expects value to
+             * be an object, but got [5]]
+             *
+             * **/
+            mappings.push_back(std::get<types::OpBuilder>(
+                Registry::getBuilder("map"))(it->value, tr));
         }
         catch (std::exception &e)
         {
@@ -147,27 +158,18 @@ base::Lifter stageBuilderNormalize(const base::DocumentValue &def,
     {
         if (it->IsObject())
         {
-            if(it->GetObject().HasMember("check"))
-            {
-                auto a = true;
-            }
-            if(it->GetObject().HasMember("map"))
-            {
-                auto a = true;
-            }
-
             if (it->GetObject().HasMember("check") &&
                 it->GetObject().HasMember("map"))
             {
+                // TODO: it should enter in here after the map operation
                 auto a = true;
-                normalizeOps.push_back(
-                    stageBuilderNormalizeConditionalMap(*it, tr));
+                // normalizeOps.push_back(
+                //     stageBuilderNormalizeConditionalMap(*it, tr));
             }
             else if (it->GetObject().HasMember("map"))
             {
-                auto a = true;
-                const auto &test = it->GetObject()["map"];
-                normalizeOps.push_back(stageBuilderNormalizeMap(it->GetObject()["map"], tr));
+                normalizeOps.push_back(
+                    stageBuilderNormalizeMap(it->GetObject()["map"], tr));
             }
             else
             {
@@ -191,7 +193,11 @@ base::Lifter stageBuilderNormalize(const base::DocumentValue &def,
 
     try
     {
-        // Normalize operation (map & check+map) must be completed independently
+        /** TODO: iterate the "normalizeOps" and add the filters to avoid
+         * publishing more than one event Normalize operation (map & check+map)
+         * **/
+
+        // must be completed independently
         return std::get<types::CombinatorBuilder>(
             Registry::getBuilder("combinator.broadcast"))(normalizeOps);
     }
