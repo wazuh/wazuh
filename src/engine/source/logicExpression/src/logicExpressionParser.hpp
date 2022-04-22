@@ -10,6 +10,13 @@
 
 #include <fmt/format.h>
 
+namespace
+{
+#define ERROR_TOKEN_START    -1
+#define TOKEN_START          0
+#define OPERATOR_TOKEN_START 10
+} // namespace
+
 /**
  * @brief Namespace containing parsing logic expressions functionality
  */
@@ -19,17 +26,15 @@ namespace logicExpression
 /**
  * @brief Identifies token type.
  *
- * Tokens with value >= 10 are operators, and are ordered by precedence (higher
- * value indicate higher precedence).
- * Error type is -1 and is used to identify invalid tokens.
+ * Operators are ordered by ascendent precedence.
  */
 enum TokenType
 {
-    ERROR_TYPE = -1,
-    TERM = 0,
+    ERROR_TYPE = ERROR_TOKEN_START,
+    TERM = TOKEN_START,
     PARENTHESIS_OPEN,
     PARENTHESIS_CLOSE,
-    OR_OPERATOR = 10,
+    OR_OPERATOR = OPERATOR_TOKEN_START,
     AND_OPERATOR,
     NOT_OPERATOR,
 };
@@ -68,8 +73,6 @@ struct Token
      */
     Token()
         : m_type {ERROR_TYPE}
-        , m_text {""}
-        , m_position {0}
     {
     }
 
@@ -79,9 +82,17 @@ struct Token
      * @param text token string
      * @param position position in the input string
      * @return Token
+     *
+     * @throws std::runtime_error if token string is invalid
      */
     static Token parseToken(std::string_view text, size_t position)
     {
+        if (text.empty())
+        {
+            throw std::runtime_error(
+                "Got empty token while parsing a new Token");
+        }
+
         if (text == "(")
         {
             return Token {TokenType::PARENTHESIS_OPEN, text, position};
@@ -116,7 +127,7 @@ struct Token
      */
     bool isOperator() const
     {
-        return m_type >= 10;
+        return m_type >= OPERATOR_TOKEN_START;
     }
 
     /**
@@ -176,11 +187,11 @@ struct Token
 };
 
 /**
- * @brief Represents an expression node, where the whole expression is a binary tree
- * linked by m_left and m_right.
+ * @brief Represents an expression node, where the whole expression is a binary
+ * tree linked by m_left and m_right.
  *
  */
-class Expression : std::enable_shared_from_this<Expression>
+class Expression : public std::enable_shared_from_this<Expression>
 {
 public:
     // Token of this node
@@ -213,7 +224,8 @@ public:
      *
      * @param postfix stack with all tokens if postfix notation
      * @return std::shared_ptr<Expression> root of the expression tree
-     * @throw std::logic_error if the stack is empty or contains an unbalanced expression
+     * @throw std::logic_error if the stack is empty or contains an unbalanced
+     * expression
      */
     [[nodiscard]] static std::shared_ptr<Expression>
     create(std::stack<Token> &postfix)
@@ -316,6 +328,16 @@ private:
         if (postfix.empty())
         {
             throw std::logic_error("Got unbalanced expression");
+        }
+        if (postfix.top().m_type == TokenType::ERROR_TYPE)
+        {
+            throw std::logic_error("Got invalid token with [ERROR_TYPE]");
+        }
+        if (postfix.top().m_type == TokenType::PARENTHESIS_OPEN ||
+            postfix.top().m_type == TokenType::PARENTHESIS_CLOSE)
+        {
+            throw std::logic_error("Got invalid token with [PARENTHESIS_OPEN] "
+                                   "or [PARENTHESIS_CLOSE]");
         }
 
         m_token = std::move(postfix.top());
