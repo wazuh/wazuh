@@ -94,8 +94,6 @@ void* run_local_server(__attribute__((unused)) void *arg) {
         return NULL;
     }
 
-    unsigned int cicle_counter = 10;
-
     while (running) {
 
         // Wait for socket
@@ -103,12 +101,6 @@ void* run_local_server(__attribute__((unused)) void *arg) {
         FD_SET(sock, &fdset);
         timeout.tv_sec = 1;
         timeout.tv_usec = 0;
-
-        if (!cicle_counter) {
-            mdebug1("------------> max_agents value: %d", config.max_agents);
-            cicle_counter = 10;
-        }
-        cicle_counter--;
 
         switch (select(sock + 1, &fdset, NULL, NULL, &timeout)) {
         case -1:
