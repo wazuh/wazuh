@@ -38,15 +38,16 @@ static void wmodule_cleanup(wmodule *module){
     while(eval != 0) {
         wm_ciscat_eval *aux = eval;
         eval = eval->next;
-        free(aux->profile);
-        free(aux->path);
-        free(aux);
+        os_free(aux->profile);
+        os_free(aux->path);
+        os_free(aux);
     }
-    free(module_data->ciscat_path);
-    free(module_data->java_path);
-    free(module_data);
-    free(module->tag);
-    free(module);
+    os_free(module_data->ciscat_binary);
+    os_free(module_data->ciscat_path);
+    os_free(module_data->java_path);
+    os_free(module_data);
+    os_free(module->tag);
+    os_free(module);
 }
 
 /***  SETUPS/TEARDOWNS  ******/
@@ -100,7 +101,10 @@ static int teardown_test_read(void **state) {
     OS_ClearNode(test->nodes);
     OS_ClearXML(&(test->xml));
     wm_ciscat *module_data = (wm_ciscat*)test->module->data;
-    sched_scan_free(&(module_data->scan_config));
+    if (module_data) {
+        os_free(module_data->ciscat_binary);
+        sched_scan_free(&(module_data->scan_config));
+    }
     wmodule_cleanup(test->module);
     os_free(test);
     return 0;
