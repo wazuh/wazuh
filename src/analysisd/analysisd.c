@@ -104,6 +104,16 @@ static unsigned int hourly_events;
 static unsigned int hourly_syscheck;
 static unsigned int hourly_firewall;
 
+/* EPS limits struct */
+typedef struct _limits_t {
+    unsigned int eps;
+    unsigned int timeframe;
+    unsigned int max_eps;
+    unsigned int current_eps;
+    bool   exceeded_eps;
+} limits_t;
+
+limits_t limits;
 
 /* Archives writer thread */
 void * w_writer_thread(__attribute__((unused)) void * args );
@@ -1061,6 +1071,7 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     mdebug1("Startup completed. Waiting for new messages..");
 
+    memset(&limits, 0, sizeof(limits));
     unsigned int interval = 0;
     unsigned int check_limits_file_interval = 0;
 
@@ -1068,21 +1079,21 @@ void OS_ReadMSG_analysisd(int m_queue)
 
         sleep(1);
 
-        if (Config.limit_max_eps) {
+        if (limits.max_eps) {
             interval++;
-            if (interval >= Config.limit_timeframe) {
+            if (interval >= limits.timeframe) {
                 interval = 0;
-                mdebug1("current_eps: %d", Config.limit_current_eps);
+                mdebug1("last timeframe processed events: %d", limits.current_eps);
 
                 w_mutex_lock(&limit_eps_mutex);
-                Config.limit_current_eps = 0;
-                Config.limit_exceeded_eps = false;
+                limits.current_eps = 0;
+                limits.exceeded_eps = false;
                 w_mutex_unlock(&limit_eps_mutex);
             }
         }
 
         check_limits_file_interval++;
-        if (check_limits_file_interval >= DEFAULT_LIMIT_TIMEFRAME) {
+        if (check_limits_file_interval >= EPS_LIMITS_FILE_CHECK) {
             check_limits_file_interval = 0;
             load_limits();
         }
@@ -2451,31 +2462,34 @@ void load_limits(void) {
     cJSON * analysisd_limits;
     if (analysisd_limits = load_limits_file("wazuh-analysisd"), analysisd_limits) {
 
+        w_mutex_lock(&limit_eps_mutex);
         cJSON *timeframe_eps;
         if ((timeframe_eps = cJSON_GetObjectItem(analysisd_limits, "timeframe_eps"), timeframe_eps) && cJSON_IsNumber(timeframe_eps)) {
-            Config.limit_timeframe = timeframe_eps->valueint;
-            cJSON_Delete(timeframe_eps);
+            limits.timeframe = (timeframe_eps->valueint > EPS_LIMITS_MAX_TIMEFRAME ? EPS_LIMITS_MAX_TIMEFRAME : \
+                (timeframe_eps->valueint < EPS_LIMITS_MIN_TIMEFRAME ? EPS_LIMITS_MIN_TIMEFRAME : timeframe_eps->valueint));
         }
 
         cJSON *max_eps;
         if ((max_eps = cJSON_GetObjectItem(analysisd_limits, "max_eps"), max_eps) && cJSON_IsNumber(max_eps)) {
-            Config.limit_eps = max_eps->valueint;
-            //cJSON_Delete(max_eps);
+            limits.eps = (max_eps->valueint > EPS_LIMITS_MAX_EPS ? EPS_LIMITS_MAX_EPS : \
+                (max_eps->valueint < EPS_LIMITS_MIN_EPS ? EPS_LIMITS_MIN_EPS : max_eps->valueint));
         }
 
-        Config.limit_max_eps = Config.limit_eps * Config.limit_timeframe;
-        mdebug1("limits eps: %d, timeframe %d, events per timeframe: %d", Config.limit_eps, Config.limit_timeframe, Config.limit_max_eps);
-        //cJSON_Delete(analysisd_limits);
+        limits.max_eps = limits.eps * limits.timeframe;
+        w_mutex_unlock(&limit_eps_mutex);
+
+        mdebug1("limits eps: %d, timeframe %d, events per timeframe: %d", limits.eps, limits.timeframe, limits.max_eps);
+        cJSON_Delete(analysisd_limits);
     }
 }
 
 bool exceeded_eps_limit(void) {
 
-    if (Config.limit_max_eps) {
-        if (Config.limit_current_eps >= Config.limit_max_eps) {
-            if (!Config.limit_exceeded_eps) {
-                mwarn("exceeded eps limits!! processed events: %d", Config.limit_current_eps);
-                Config.limit_exceeded_eps = true;
+    if (limits.max_eps) {
+        if (limits.current_eps >= limits.max_eps) {
+            if (!limits.exceeded_eps) {
+                mwarn("exceeded eps limits!! processed events: %d", limits.current_eps);
+                limits.exceeded_eps = true;
             }
             return true;
         }
@@ -2486,6 +2500,6 @@ bool exceeded_eps_limit(void) {
 void encrease_eps(void) {
 
     w_mutex_lock(&limit_eps_mutex);
-    Config.limit_current_eps++;
+    limits.current_eps++;
     w_mutex_unlock(&limit_eps_mutex);
 }

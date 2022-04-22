@@ -21,8 +21,6 @@
 #include "GeoIP.h"
 #endif
 
-#define DEFAULT_LIMIT_TIMEFRAME 10
-
 extern long int __crt_ftell; /* Global ftell pointer */
 extern _Config Config;       /* Global Config structure */
 
