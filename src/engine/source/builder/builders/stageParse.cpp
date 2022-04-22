@@ -84,7 +84,8 @@ types::Lifter stageBuilderParse(const types::DocumentValue &def, types::TracerFn
             return o.map(
                 [parserOp = std::move(parserOp)](types::Event e)
                 {
-                    const auto & ev = e->get("/message");
+                    // TODO: What is the /message field? Why is hard-coded?
+                    const auto & ev = e->getEvent()->get("/message");
                     if (!ev.IsString())
                     {
                         // TODO error
@@ -103,7 +104,7 @@ types::Lifter stageBuilderParse(const types::DocumentValue &def, types::TracerFn
                     {
                         auto name =
                             json::formatJsonPath(val.first.c_str());
-                        e->set(name, {val.second.c_str(), e->getAllocator()});
+                        e->getEvent()->set(name, {val.second.c_str(), e->getEvent()->getAllocator()});
                     }
 
                     return e;
