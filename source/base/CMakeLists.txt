@@ -75,6 +75,7 @@ add_library(base STATIC
     utils/ipUtils.hpp
     utils/stringUtils.cpp
     utils/stringUtils.hpp
+    EventHandler.hpp
     )
 
 if(PROFILE_BUILD)

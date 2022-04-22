@@ -12,7 +12,7 @@
 
 #include <optional>
 
-#include "json.hpp"
+#include <EventHandler.hpp>
 
 namespace engineserver
 {
@@ -44,7 +44,7 @@ public:
      *
      * @return json::Document
      */
-    static std::shared_ptr<json::Document> parse(const std::string &event);
+    static std::shared_ptr<Base::EventHandler> parse(const std::string &event);
 
     /**
      * @brief process the chunk of data and send messages to dst when. Return

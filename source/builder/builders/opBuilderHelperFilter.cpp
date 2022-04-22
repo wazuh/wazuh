@@ -105,7 +105,7 @@ types::Lifter opBuilderHelperExists(const types::DocumentValue &def,
         return o.filter(
             [=](types::Event e)
             {
-                if (e->exists(field))
+                if (e->getEvent()->exists(field))
                 {
                     tr(successTrace);
                     return true;
@@ -149,7 +149,7 @@ types::Lifter opBuilderHelperNotExists(const types::DocumentValue &def,
         return o.filter(
             [=](types::Event e)
             {
-                if (!e->exists(field))
+                if (!e->getEvent()->exists(field))
                 {
                     tr(successTrace);
                     return true;
@@ -186,7 +186,7 @@ bool opBuilderHelperStringComparison(const std::string key,
     const rapidjson::Value *fieldToCompare {};
     try
     {
-        fieldToCompare = &e->get(key);
+        fieldToCompare = &e->getEvent()->get(key);
     }
     catch (std::exception &ex)
     {
@@ -209,7 +209,7 @@ bool opBuilderHelperStringComparison(const std::string key,
         const rapidjson::Value *refValueToCheck {};
         try
         {
-            refValueToCheck = &e->get(refValue.value());
+            refValueToCheck = &e->getEvent()->get(refValue.value());
         }
         catch (std::exception &ex)
         {
@@ -480,7 +480,7 @@ bool opBuilderHelperIntComparison(const std::string field,
     const rapidjson::Value *fieldValue {};
     try
     {
-        fieldValue = &e->get(field);
+        fieldValue = &e->getEvent()->get(field);
     }
     catch (std::exception &ex)
     {
@@ -503,7 +503,7 @@ bool opBuilderHelperIntComparison(const std::string field,
         const rapidjson::Value *refValueToCheck {};
         try
         {
-            refValueToCheck = &e->get(refValue.value());
+            refValueToCheck = &e->getEvent()->get(refValue.value());
         }
         catch (std::exception &ex)
         {
@@ -826,7 +826,7 @@ types::Lifter opBuilderHelperRegexMatch(const types::DocumentValue &def,
                 const rapidjson::Value *field_str {};
                 try
                 {
-                    field_str = &e->get(field);
+                    field_str = &e->getEvent()->get(field);
                 }
                 catch (std::exception &ex)
                 {
@@ -885,7 +885,7 @@ types::Lifter opBuilderHelperRegexNotMatch(const types::DocumentValue &def,
                 const rapidjson::Value *field_str {};
                 try
                 {
-                    field_str = &e->get(field);
+                    field_str = &e->getEvent()->get(field);
                 }
                 catch (std::exception &ex)
                 {
@@ -983,7 +983,7 @@ types::Lifter opBuilderHelperIPCIDR(const types::DocumentValue &def,
                 const rapidjson::Value *field_str {};
                 try
                 {
-                    field_str = &e->get(field);
+                    field_str = &e->getEvent()->get(field);
                 }
                 catch (std::exception &ex)
                 {
