@@ -18,6 +18,10 @@ using namespace builder::internals::builders;
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
 
+auto createEvent = [](const char * json){
+    return std::make_shared<Base::EventHandler>(std::make_shared<json::Document>(json));
+};
+
 TEST(opBuilderHelperIntEqual, Builds)
 {
     Document doc{R"({
@@ -58,16 +62,16 @@ TEST(opBuilderHelperIntEqual, Exec_equal_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":9}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":11}
             )"));
             s.on_completed();
@@ -79,8 +83,8 @@ TEST(opBuilderHelperIntEqual, Exec_equal_ok)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_EQ(expected[0]->get("/field_test").GetInt(), 10);
-    ASSERT_EQ(expected[1]->get("/field_test").GetInt(), 10);
+    ASSERT_EQ(expected[0]->getEvent()->get("/field_test").GetInt(), 10);
+    ASSERT_EQ(expected[1]->getEvent()->get("/field_test").GetInt(), 10);
 }
 
 TEST(opBuilderHelperIntEqual, Exec_equal_true)
@@ -93,16 +97,16 @@ TEST(opBuilderHelperIntEqual, Exec_equal_true)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":9}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":11}
             )"));
             s.on_completed();
@@ -114,8 +118,8 @@ TEST(opBuilderHelperIntEqual, Exec_equal_true)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_EQ(expected[0]->get("/field_test").GetInt(), 10);
-    ASSERT_EQ(expected[1]->get("/field_test").GetInt(), 10);
+    ASSERT_EQ(expected[0]->getEvent()->get("/field_test").GetInt(), 10);
+    ASSERT_EQ(expected[1]->getEvent()->get("/field_test").GetInt(), 10);
 }
 
 TEST(opBuilderHelperIntEqual, Exec_equal_false)
@@ -128,16 +132,16 @@ TEST(opBuilderHelperIntEqual, Exec_equal_false)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":9}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test2":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test3":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":11}
             )"));
             s.on_completed();
@@ -161,28 +165,28 @@ TEST(opBuilderHelperIntEqual, Exec_equal_ref_true)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test": 9,"field_src": 10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":10,"field_src":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":10,"field_src":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":10,"field_src":"10"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":"10","field_src":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":"10","field_src":"10"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":11,"field_src":"10"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":10,"field_src":"test"}
             )"));
             s.on_completed();
@@ -193,10 +197,10 @@ TEST(opBuilderHelperIntEqual, Exec_equal_ref_true)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_EQ(expected[0]->get("/field_test").GetInt(),
-              expected[0]->get("/field_src").GetInt());
-    ASSERT_EQ(expected[1]->get("/field_test").GetInt(),
-              expected[0]->get("/field_src").GetInt());
+    ASSERT_EQ(expected[0]->getEvent()->get("/field_test").GetInt(),
+              expected[0]->getEvent()->get("/field_src").GetInt());
+    ASSERT_EQ(expected[1]->getEvent()->get("/field_test").GetInt(),
+              expected[0]->getEvent()->get("/field_src").GetInt());
 }
 
 TEST(opBuilderHelperIntEqual, Exec_equal_ref_false)
@@ -209,28 +213,28 @@ TEST(opBuilderHelperIntEqual, Exec_equal_ref_false)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test2":9,"field_src":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":10,"field_src3":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":10,"field_src4":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test5":10,"field_src":"10"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test6":"10","field_src2":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_":"10","field_src":"10"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":11,"field_src2":"10"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test2":10,"field_src2":"test"}
             )"));
             s.on_completed();
@@ -254,21 +258,21 @@ TEST(opBuilderHelperIntEqual, Exec_dynamics_int_ok)
         [=](auto s)
         {
             // Greater
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "field2check":11,
                     "ref_key":10
                 }
             )"));
             // Equal
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "field2check":10,
                     "ref_key":10
                 }
             )"));
             // Less
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "field2check":10,
                     "ref_key":11
@@ -284,8 +288,8 @@ TEST(opBuilderHelperIntEqual, Exec_dynamics_int_ok)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_EQ(expected[0]->get("/field2check").GetInt(),
-              expected[0]->get("/ref_key").GetInt());
+    ASSERT_EQ(expected[0]->getEvent()->get("/field2check").GetInt(),
+              expected[0]->getEvent()->get("/ref_key").GetInt());
 }
 
 TEST(opBuilderHelperIntEqual, Exec_multilevel_dynamics_int_ok)
@@ -298,7 +302,7 @@ TEST(opBuilderHelperIntEqual, Exec_multilevel_dynamics_int_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "parentObjt_2": {
                         "field2check": 10,
@@ -311,7 +315,7 @@ TEST(opBuilderHelperIntEqual, Exec_multilevel_dynamics_int_ok)
                 }
             )"));
 
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "parentObjt_2": {
                         "field2check": 11,
@@ -324,7 +328,7 @@ TEST(opBuilderHelperIntEqual, Exec_multilevel_dynamics_int_ok)
                 }
             )"));
 
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "parentObjt_2": {
                         "field2check":10,
@@ -337,7 +341,7 @@ TEST(opBuilderHelperIntEqual, Exec_multilevel_dynamics_int_ok)
                 }
             )"));
 
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "parentObjt_2": {
                         "field2check":10,
@@ -359,6 +363,6 @@ TEST(opBuilderHelperIntEqual, Exec_multilevel_dynamics_int_ok)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_EQ(expected[0]->get("/parentObjt_1/field2check").GetInt(),
-              expected[0]->get("/parentObjt_2/ref_key").GetInt());
+    ASSERT_EQ(expected[0]->getEvent()->get("/parentObjt_1/field2check").GetInt(),
+              expected[0]->getEvent()->get("/parentObjt_2/ref_key").GetInt());
 }
