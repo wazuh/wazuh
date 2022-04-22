@@ -15,6 +15,8 @@
 #define OSSEC_LIMITS  "./limits.conf"
 #endif
 
+time_t last_mod_date = 0;
+
 /*
  * load json objects from limits.conf file.
  */
@@ -24,6 +26,15 @@ cJSON *load_limits_file(const char *object_name) {
         mdebug1("Invalid deamon name is null");
         return NULL;
     }
+
+    struct stat limit_attrib;
+    stat(OSSEC_LIMITS, &limit_attrib);
+
+    if (limit_attrib.st_ctime == last_mod_date) {
+        mdebug2("File %s doesn't change", OSSEC_LIMITS);
+        return NULL;
+    }
+    last_mod_date = limit_attrib.st_ctime;
 
     FILE *fp;
     if (fp = fopen(OSSEC_LIMITS, "r"), !fp) {

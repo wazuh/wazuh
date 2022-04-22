@@ -41,6 +41,7 @@
 #include "state.h"
 #include "syscheck_op.h"
 #include "lists_make.h"
+#include "cloud_limits.h"
 
 #ifdef PRELUDE_OUTPUT_ENABLED
 #include "output/prelude.h"
@@ -74,6 +75,12 @@ static void DumpLogstats(void);
 
 // Message handler thread
 void * ad_input_main(void * args);
+
+void load_limits(void);
+
+bool exceeded_eps_limit(void);
+
+void encrease_eps(void);
 
 /** Global definitions **/
 int today;
@@ -233,6 +240,9 @@ pthread_mutex_t process_event_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Reported mutexes */
 static pthread_mutex_t writer_threads_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+/* eps mutex */
+pthread_mutex_t limit_eps_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 
 /* To translate between month (int) to month (char) */
@@ -1051,8 +1061,31 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     mdebug1("Startup completed. Waiting for new messages..");
 
+    unsigned int interval = 0;
+    unsigned int check_limits_file_interval = 0;
+
     while (1) {
+
         sleep(1);
+
+        if (Config.limit_max_eps) {
+            interval++;
+            if (interval >= Config.limit_timeframe) {
+                interval = 0;
+                mdebug1("current_eps: %d", Config.limit_current_eps);
+
+                w_mutex_lock(&limit_eps_mutex);
+                Config.limit_current_eps = 0;
+                Config.limit_exceeded_eps = false;
+                w_mutex_unlock(&limit_eps_mutex);
+            }
+        }
+
+        check_limits_file_interval++;
+        if (check_limits_file_interval >= DEFAULT_LIMIT_TIMEFRAME) {
+            check_limits_file_interval = 0;
+            load_limits();
+        }
     }
 }
 
@@ -1495,10 +1528,12 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
     /* Initialize the integrity database */
     sdb_init(&sdb, fim_decoder);
 
-    while(1){
+    while(1) {
 
         /* Receive message from queue */
-        if (msg = queue_pop_ex(decode_queue_syscheck_input), msg) {
+        if (!exceeded_eps_limit() && (msg = queue_pop_ex(decode_queue_syscheck_input), msg)) {
+            encrease_eps();
+
             int res = 0;
             os_calloc(1, sizeof(Eventinfo), lf);
             os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
@@ -1543,10 +1578,12 @@ void * w_decode_syscollector_thread(__attribute__((unused)) void * args){
     char *msg = NULL;
     int socket = -1;
 
-    while(1){
+    while(1) {
 
         /* Receive message from queue */
-        if (msg = queue_pop_ex(decode_queue_syscollector_input), msg) {
+        if (!exceeded_eps_limit() && (msg = queue_pop_ex(decode_queue_syscollector_input), msg)) {
+            encrease_eps();
+
             os_calloc(1, sizeof(Eventinfo), lf);
             os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
 
@@ -1586,10 +1623,11 @@ void * w_decode_rootcheck_thread(__attribute__((unused)) void * args){
     Eventinfo *lf = NULL;
     char *msg = NULL;
 
-    while(1){
+    while(1) {
 
         /* Receive message from queue */
-        if (msg = queue_pop_ex(decode_queue_rootcheck_input), msg) {
+        if (!exceeded_eps_limit() && (msg = queue_pop_ex(decode_queue_rootcheck_input), msg)) {
+            encrease_eps();
 
             os_calloc(1, sizeof(Eventinfo), lf);
             os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
@@ -1629,10 +1667,11 @@ void * w_decode_sca_thread(__attribute__((unused)) void * args){
     char *msg = NULL;
     int socket = -1;
 
-    while(1){
+    while(1) {
 
         /* Receive message from queue */
-        if (msg = queue_pop_ex(decode_queue_sca_input), msg) {
+        if (!exceeded_eps_limit() && (msg = queue_pop_ex(decode_queue_sca_input), msg)) {
+            encrease_eps();
 
             os_calloc(1, sizeof(Eventinfo), lf);
             os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
@@ -1671,10 +1710,12 @@ void * w_decode_hostinfo_thread(__attribute__((unused)) void * args){
     Eventinfo *lf = NULL;
     char * msg = NULL;
 
-    while(1){
+    while(1) {
 
         /* Receive message from queue */
-        if (msg = queue_pop_ex(decode_queue_hostinfo_input), msg) {
+        if (!exceeded_eps_limit() && (msg = queue_pop_ex(decode_queue_hostinfo_input), msg)) {
+            encrease_eps();
+
             os_calloc(1, sizeof(Eventinfo), lf);
             os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
 
@@ -1716,10 +1757,12 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
     memset(&decoder_match, 0, sizeof(regex_matching));
     int sock = -1;
 
-    while(1){
+    while(1) {
 
         /* Receive message from queue */
-        if (msg = queue_pop_ex(decode_queue_event_input), msg) {
+        if (!exceeded_eps_limit() && (msg = queue_pop_ex(decode_queue_event_input), msg)) {
+            encrease_eps();
+
             os_calloc(1, sizeof(Eventinfo), lf);
             os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
 
@@ -1760,14 +1803,16 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
     }
 }
 
-void * w_decode_winevt_thread(__attribute__((unused)) void * args){
+void * w_decode_winevt_thread(__attribute__((unused)) void * args) {
     Eventinfo *lf = NULL;
     char * msg = NULL;
 
-    while(1){
+    while(1) {
 
         /* Receive message from queue */
-        if (msg = queue_pop_ex(decode_queue_winevt_input), msg) {
+        if (!exceeded_eps_limit() && (msg = queue_pop_ex(decode_queue_winevt_input), msg)) {
+            encrease_eps();
+
             os_calloc(1, sizeof(Eventinfo), lf);
             os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
 
@@ -1805,24 +1850,27 @@ void * w_dispatch_dbsync_thread(__attribute__((unused)) void * args) {
     dbsync_context_t ctx = { .db_sock = -1, .ar_sock = -1 };
 
     for (;;) {
-        msg = queue_pop_ex(dispatch_dbsync_input);
-        assert(msg != NULL);
+        if (!exceeded_eps_limit() && (msg = queue_pop_ex(dispatch_dbsync_input))) {
+            encrease_eps();
 
-        os_calloc(1, sizeof(Eventinfo), lf);
-        os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
-        Zero_Eventinfo(lf);
+            assert(msg != NULL);
 
-        if (OS_CleanMSG(msg, lf) < 0) {
-            merror(IMSG_ERROR, msg);
+            os_calloc(1, sizeof(Eventinfo), lf);
+            os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+            Zero_Eventinfo(lf);
+
+            if (OS_CleanMSG(msg, lf) < 0) {
+                merror(IMSG_ERROR, msg);
+                Free_Eventinfo(lf);
+                free(msg);
+                continue;
+            }
+
+            DispatchDBSync(&ctx, lf);
+            w_inc_dbsync_dispatched_messages();
             Free_Eventinfo(lf);
             free(msg);
-            continue;
         }
-
-        DispatchDBSync(&ctx, lf);
-        w_inc_dbsync_dispatched_messages();
-        Free_Eventinfo(lf);
-        free(msg);
     }
 
     return NULL;
@@ -1833,51 +1881,54 @@ void * w_dispatch_upgrade_module_thread(__attribute__((unused)) void * args) {
     Eventinfo * lf;
 
     while (true) {
-        msg = queue_pop_ex(upgrade_module_input);
-        assert(msg != NULL);
+        if (!exceeded_eps_limit() && (msg = queue_pop_ex(upgrade_module_input))) {
+            encrease_eps();
 
-        os_calloc(1, sizeof(Eventinfo), lf);
-        os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
-        Zero_Eventinfo(lf);
+            assert (msg != NULL);
 
-        if (OS_CleanMSG(msg, lf) < 0) {
-            merror(IMSG_ERROR, msg);
-            Free_Eventinfo(lf);
-            free(msg);
-            continue;
-        }
-        free(msg);
+            os_calloc(1, sizeof(Eventinfo), lf);
+            os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+            Zero_Eventinfo(lf);
 
-        // Inserts agent id into incomming message and sends it to upgrade module
-        cJSON *message_obj = cJSON_Parse(lf->log);
-
-        if (message_obj) {
-            cJSON *message_params = cJSON_GetObjectItem(message_obj, "parameters");
-
-            if (message_params) {
-                int sock = OS_ConnectUnixDomain(WM_UPGRADE_SOCK, SOCK_STREAM, OS_MAXSTR);
-
-                if (sock == OS_SOCKTERR) {
-                    merror("Could not connect to upgrade module socket at '%s'. Error: %s", WM_UPGRADE_SOCK, strerror(errno));
-                } else {
-                    int agent = atoi(lf->agent_id);
-                    cJSON* agents = cJSON_CreateIntArray(&agent, 1);
-                    cJSON_AddItemToObject(message_params, "agents", agents);
-
-                    char *message = cJSON_PrintUnformatted(message_obj);
-                    OS_SendSecureTCP(sock, strlen(message), message);
-                    os_free(message);
-
-                    close(sock);
-                }
-            } else {
-                merror("Could not get parameters from upgrade message: %s", lf->log);
+            if (OS_CleanMSG(msg, lf) < 0) {
+                merror(IMSG_ERROR, msg);
+                Free_Eventinfo(lf);
+                free(msg);
+                continue;
             }
-            cJSON_Delete(message_obj);
-        } else {
-            merror("Could not parse upgrade message: %s", lf->log);
+            free(msg);
+
+            // Inserts agent id into incomming message and sends it to upgrade module
+            cJSON *message_obj = cJSON_Parse(lf->log);
+
+            if (message_obj) {
+                cJSON *message_params = cJSON_GetObjectItem(message_obj, "parameters");
+
+                if (message_params) {
+                    int sock = OS_ConnectUnixDomain(WM_UPGRADE_SOCK, SOCK_STREAM, OS_MAXSTR);
+
+                    if (sock == OS_SOCKTERR) {
+                        merror("Could not connect to upgrade module socket at '%s'. Error: %s", WM_UPGRADE_SOCK, strerror(errno));
+                    } else {
+                        int agent = atoi(lf->agent_id);
+                        cJSON* agents = cJSON_CreateIntArray(&agent, 1);
+                        cJSON_AddItemToObject(message_params, "agents", agents);
+
+                        char *message = cJSON_PrintUnformatted(message_obj);
+                        OS_SendSecureTCP(sock, strlen(message), message);
+                        os_free(message);
+
+                        close(sock);
+                    }
+                } else {
+                    merror("Could not get parameters from upgrade message: %s", lf->log);
+                }
+                cJSON_Delete(message_obj);
+            } else {
+                merror("Could not parse upgrade message: %s", lf->log);
+            }
+            Free_Eventinfo(lf);
         }
-        Free_Eventinfo(lf);
     }
 
     return NULL;
@@ -2393,4 +2444,48 @@ void w_init_queues(){
 
     /* Initialize upgrade module message queue */
     upgrade_module_input = queue_init(getDefine_Int("analysisd", "upgrade_queue_size", 128, 2000000));
+}
+
+void load_limits(void) {
+
+    cJSON * analysisd_limits;
+    if (analysisd_limits = load_limits_file("wazuh-analysisd"), analysisd_limits) {
+
+        cJSON *timeframe_eps;
+        if ((timeframe_eps = cJSON_GetObjectItem(analysisd_limits, "timeframe_eps"), timeframe_eps) && cJSON_IsNumber(timeframe_eps)) {
+            Config.limit_timeframe = timeframe_eps->valueint;
+            cJSON_Delete(timeframe_eps);
+        }
+
+        cJSON *max_eps;
+        if ((max_eps = cJSON_GetObjectItem(analysisd_limits, "max_eps"), max_eps) && cJSON_IsNumber(max_eps)) {
+            Config.limit_eps = max_eps->valueint;
+            //cJSON_Delete(max_eps);
+        }
+
+        Config.limit_max_eps = Config.limit_eps * Config.limit_timeframe;
+        mdebug1("limits eps: %d, timeframe %d, events per timeframe: %d", Config.limit_eps, Config.limit_timeframe, Config.limit_max_eps);
+        //cJSON_Delete(analysisd_limits);
+    }
+}
+
+bool exceeded_eps_limit(void) {
+
+    if (Config.limit_max_eps) {
+        if (Config.limit_current_eps >= Config.limit_max_eps) {
+            if (!Config.limit_exceeded_eps) {
+                mwarn("exceeded eps limits!! processed events: %d", Config.limit_current_eps);
+                Config.limit_exceeded_eps = true;
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
+void encrease_eps(void) {
+
+    w_mutex_lock(&limit_eps_mutex);
+    Config.limit_current_eps++;
+    w_mutex_unlock(&limit_eps_mutex);
 }
