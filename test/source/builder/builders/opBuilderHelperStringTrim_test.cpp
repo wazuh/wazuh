@@ -18,6 +18,10 @@ using namespace builder::internals::builders;
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
 
+auto createEvent = [](const char * json){
+    return std::make_shared<Base::EventHandler>(std::make_shared<json::Document>(json));
+};
+
 // Build ok
 TEST(opBuilderHelperStringTrim, Builds)
 {
@@ -49,16 +53,16 @@ TEST(opBuilderHelperStringTrim, BothOk)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"fieldToTranf": "---hi---"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"fieldToTranf": "hi---"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"fieldToTranf": "---hi"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"fieldToTranf": "hi"}
             )"));
             s.on_completed();
@@ -69,9 +73,9 @@ TEST(opBuilderHelperStringTrim, BothOk)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 4);
-    ASSERT_STREQ(expected[0]->get("/fieldToTranf").GetString(), "hi");
-    ASSERT_STREQ(expected[1]->get("/fieldToTranf").GetString(), "hi");
-    ASSERT_STREQ(expected[2]->get("/fieldToTranf").GetString(), "hi");
+    ASSERT_STREQ(expected[0]->getEvent()->get("/fieldToTranf").GetString(), "hi");
+    ASSERT_STREQ(expected[1]->getEvent()->get("/fieldToTranf").GetString(), "hi");
+    ASSERT_STREQ(expected[2]->getEvent()->get("/fieldToTranf").GetString(), "hi");
 }
 
 TEST(opBuilderHelperStringTrim, Start_ok)
@@ -84,16 +88,16 @@ TEST(opBuilderHelperStringTrim, Start_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"fieldToTranf": "---hi---"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"fieldToTranf": "hi---"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"fieldToTranf": "---hi"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"fieldToTranf": "hi"}
             )"));
             s.on_completed();
@@ -104,10 +108,10 @@ TEST(opBuilderHelperStringTrim, Start_ok)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 4);
-    ASSERT_STREQ(expected[0]->get("/fieldToTranf").GetString(), "hi---");
-    ASSERT_STREQ(expected[1]->get("/fieldToTranf").GetString(), "hi---");
-    ASSERT_STREQ(expected[2]->get("/fieldToTranf").GetString(), "hi");
-    ASSERT_STREQ(expected[3]->get("/fieldToTranf").GetString(), "hi");
+    ASSERT_STREQ(expected[0]->getEvent()->get("/fieldToTranf").GetString(), "hi---");
+    ASSERT_STREQ(expected[1]->getEvent()->get("/fieldToTranf").GetString(), "hi---");
+    ASSERT_STREQ(expected[2]->getEvent()->get("/fieldToTranf").GetString(), "hi");
+    ASSERT_STREQ(expected[3]->getEvent()->get("/fieldToTranf").GetString(), "hi");
 }
 
 // Test ok: dynamic values (string)
@@ -121,16 +125,16 @@ TEST(opBuilderHelperStringTrim, End_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"fieldToTranf": "---hi---"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"fieldToTranf": "hi---"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"fieldToTranf": "---hi"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"fieldToTranf": "hi"}
             )"));
             s.on_completed();
@@ -141,10 +145,10 @@ TEST(opBuilderHelperStringTrim, End_ok)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 4);
-    ASSERT_STREQ(expected[0]->get("/fieldToTranf").GetString(), "---hi");
-    ASSERT_STREQ(expected[1]->get("/fieldToTranf").GetString(), "hi");
-    ASSERT_STREQ(expected[2]->get("/fieldToTranf").GetString(), "---hi");
-    ASSERT_STREQ(expected[3]->get("/fieldToTranf").GetString(), "hi");
+    ASSERT_STREQ(expected[0]->getEvent()->get("/fieldToTranf").GetString(), "---hi");
+    ASSERT_STREQ(expected[1]->getEvent()->get("/fieldToTranf").GetString(), "hi");
+    ASSERT_STREQ(expected[2]->getEvent()->get("/fieldToTranf").GetString(), "---hi");
+    ASSERT_STREQ(expected[3]->getEvent()->get("/fieldToTranf").GetString(), "hi");
 }
 
 TEST(opBuilderHelperStringTrim, Multilevel_src)
@@ -157,16 +161,16 @@ TEST(opBuilderHelperStringTrim, Multilevel_src)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"fieldToTranf": {"a": {"b": "---hi---"}}}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"fieldToTranf": {"a": {"b": "hi---"}}}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"fieldToTranf": {"a": {"b": "---hi"}}}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"fieldToTranf": {"a": {"b": "hi"}}}
             )"));
             s.on_completed();
@@ -177,10 +181,10 @@ TEST(opBuilderHelperStringTrim, Multilevel_src)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 4);
-    ASSERT_STREQ(expected[0]->get("/fieldToTranf/a/b").GetString(), "---hi");
-    ASSERT_STREQ(expected[1]->get("/fieldToTranf/a/b").GetString(), "hi");
-    ASSERT_STREQ(expected[2]->get("/fieldToTranf/a/b").GetString(), "---hi");
-    ASSERT_STREQ(expected[3]->get("/fieldToTranf/a/b").GetString(), "hi");
+    ASSERT_STREQ(expected[0]->getEvent()->get("/fieldToTranf/a/b").GetString(), "---hi");
+    ASSERT_STREQ(expected[1]->getEvent()->get("/fieldToTranf/a/b").GetString(), "hi");
+    ASSERT_STREQ(expected[2]->getEvent()->get("/fieldToTranf/a/b").GetString(), "---hi");
+    ASSERT_STREQ(expected[3]->getEvent()->get("/fieldToTranf/a/b").GetString(), "hi");
 }
 
 TEST(opBuilderHelperStringTrim, Not_exist_src)
@@ -193,7 +197,7 @@ TEST(opBuilderHelperStringTrim, Not_exist_src)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"not_ext": "---hi---"}
             )"));
             s.on_completed();
@@ -204,7 +208,7 @@ TEST(opBuilderHelperStringTrim, Not_exist_src)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_FALSE(expected[0]->exists("/fieldToTranf"));
+    ASSERT_FALSE(expected[0]->getEvent()->exists("/fieldToTranf"));
 }
 
 TEST(opBuilderHelperStringTrim, Src_not_string)
@@ -217,7 +221,7 @@ TEST(opBuilderHelperStringTrim, Src_not_string)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"fieldToTranf": 15}
             )"));
             s.on_completed();
@@ -228,8 +232,8 @@ TEST(opBuilderHelperStringTrim, Src_not_string)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_TRUE(expected[0]->exists("/fieldToTranf"));
-    ASSERT_EQ(expected[0]->get("/fieldToTranf").GetInt(), 15);
+    ASSERT_TRUE(expected[0]->getEvent()->exists("/fieldToTranf"));
+    ASSERT_EQ(expected[0]->getEvent()->get("/fieldToTranf").GetInt(), 15);
 }
 
 TEST(opBuilderHelperStringTrim, Multilevel)
@@ -242,16 +246,16 @@ TEST(opBuilderHelperStringTrim, Multilevel)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"fieldToTranf": {"a": {"b": "---hi---"}}}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"fieldToTranf": {"a": {"b": "hi---"}}}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"fieldToTranf": {"a": {"b": "---hi"}}}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"fieldToTranf": {"a": {"b": "hi"}}}
             )"));
             s.on_completed();
@@ -262,8 +266,8 @@ TEST(opBuilderHelperStringTrim, Multilevel)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 4);
-    ASSERT_STREQ(expected[0]->get("/fieldToTranf/a/b").GetString(), "---hi");
-    ASSERT_STREQ(expected[1]->get("/fieldToTranf/a/b").GetString(), "hi");
-    ASSERT_STREQ(expected[2]->get("/fieldToTranf/a/b").GetString(), "---hi");
-    ASSERT_STREQ(expected[3]->get("/fieldToTranf/a/b").GetString(), "hi");
+    ASSERT_STREQ(expected[0]->getEvent()->get("/fieldToTranf/a/b").GetString(), "---hi");
+    ASSERT_STREQ(expected[1]->getEvent()->get("/fieldToTranf/a/b").GetString(), "hi");
+    ASSERT_STREQ(expected[2]->getEvent()->get("/fieldToTranf/a/b").GetString(), "---hi");
+    ASSERT_STREQ(expected[3]->getEvent()->get("/fieldToTranf/a/b").GetString(), "hi");
 }
