@@ -18,12 +18,11 @@ CPMAddPackage(
 ####################################################################################################
 add_library(catalog OBJECT
     catalog.cpp
-    assetStorage/diskStorage.cpp
 )
 
 target_include_directories(catalog 
     PUBLIC
-    .
+    ${CMAKE_CURRENT_LIST_DIR}
     assetStorage/
 )
 

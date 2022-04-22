@@ -1,12 +1,12 @@
 #include "catalog.hpp"
 
+#include <filesystem>
+#include <fstream>
 #include <unordered_map>
 
 #include <fmt/format.h>
 #include <rapidjson/schema.h>
 
-#include "assetStorage/diskStorage.hpp"
-#include "assetStorage/storageInterface.hpp"
 #include "yml2Json.hpp"
 
 namespace catalog
@@ -18,11 +18,11 @@ static constexpr const char* EXT_OTHER_ASSET {".yml"};
 
 /** @brief Mapping the assets types and their schemas validator. */
 static const std::unordered_map<AssetType, std::string> assetTypeToSchema {
-    {AssetType::Decoder, "wazuh-decoders.json"},
-    {AssetType::Rule, "wazuh-rules.json"},
-    {AssetType::Output, "wazuh-outputs.json"},
-    {AssetType::Filter, "wazuh-filters.json"},
-    {AssetType::Environment, "wazuh-environments.json"},
+    {AssetType::Decoder, "wazuh-decoders"},
+    {AssetType::Rule, "wazuh-rules"},
+    {AssetType::Output, "wazuh-outputs"},
+    {AssetType::Filter, "wazuh-filters"},
+    {AssetType::Environment, "wazuh-environments"},
     {AssetType::Schema, ""}};
 
 /** @brief Mapping the assets and the storage directory */
@@ -42,6 +42,24 @@ static const std::unordered_map<std::string, AssetType> stringToAssetType {
     {"schema", AssetType::Schema},
     {"environment", AssetType::Environment},
 };
+
+std::string readFileFromDisk(std::filesystem::path const& file)
+{
+    std::ifstream in(file, std::ios::in | std::ios::binary);
+    if (in)
+    {
+        std::string contents;
+        in.seekg(0, std::ios::end);
+        contents.resize(in.tellg());
+        in.seekg(0, std::ios::beg);
+        in.read(&contents[0], contents.size());
+        in.close();
+        return contents;
+    }
+
+    throw std::runtime_error(fmt::format(
+        "Error oppening asset [{}]. Error [{}]", file.string(), errno));
+}
 } // namespace
 
 std::optional<std::string> validateJSON(rapidjson::Document& json,
@@ -69,20 +87,9 @@ std::optional<std::string> validateJSON(rapidjson::Document& json,
 }
 
 Catalog::Catalog(StorageType stype, std::string const& basePath)
+    : mStorageType(stype)
+    , mBasePath(basePath)
 {
-    switch (stype)
-    {
-        case StorageType::Local:
-        {
-            mStorage = std::make_unique<DiskStorage>(basePath);
-            break;
-        }
-        default:
-        {
-            throw std::runtime_error("Storage type not supported");
-            break;
-        }
-    }
 }
 
 rapidjson::Document Catalog::getAsset(const std::string& type,
@@ -100,34 +107,21 @@ rapidjson::Document Catalog::getAsset(const std::string& type,
 rapidjson::Document Catalog::getAsset(const AssetType type,
                                       std::string const& assetName) const
 {
-    std::string assetSchemaStr;
-    rapidjson::Document jsonSchema;
-
-    auto assetPath = assetTypeToPath.find(type);
-    if (assetPath == assetTypeToPath.end())
-    {
-        throw std::runtime_error(
-            fmt::format("Invalid asset type [{}]", static_cast<int>(type)));
-    }
-
-    std::filesystem::path fullPath = assetPath->second;
-    fullPath /= assetName;
-
-    if (type == AssetType::Schema)
-    {
-        fullPath += EXT_JSON_SCHEMA;
-        assetSchemaStr = mStorage->getFileContents(fullPath);
-        jsonSchema.Parse(assetSchemaStr.c_str());
-        // TODO parse error
-        return jsonSchema;
-    }
-
-    fullPath += EXT_OTHER_ASSET;
-    auto assetStr = mStorage->getFileContents(fullPath);
-
+    auto assetStr = getFileContents(type, assetName);
     if (assetStr.empty())
     {
         throw std::runtime_error("Asset " + assetName + " is empty");
+    }
+
+    rapidjson::Document jsonSchema;
+    if (type == AssetType::Schema)
+    {
+        jsonSchema.Parse(assetStr.c_str());
+        if (jsonSchema.HasParseError())
+        {
+            throw std::runtime_error("Could not parse the schema.");
+        }
+        return jsonSchema;
     }
 
     auto schema = assetTypeToSchema.find(type);
@@ -137,21 +131,15 @@ rapidjson::Document Catalog::getAsset(const AssetType type,
             fmt::format("Could not get the schema [{}].", schema->second));
     }
 
-    //TODO hardcoded schemas
-    assetSchemaStr = mStorage->getFileContents("schemas/" + schema->second);
-
-    jsonSchema.Parse(assetSchemaStr.c_str());
-
+    auto schemaStr = getFileContents(AssetType::Schema, schema->second);
+    jsonSchema.Parse(schemaStr.c_str());
     if (jsonSchema.HasParseError())
     {
         throw std::runtime_error(
             "Could not parse the schema for the asset type.");
     }
 
-    // if not, parse asset. Throw a YML::ParserException if the asset is not
-    // valid
     rapidjson::Document asset {yml2json::loadYMLfromString(assetStr)};
-
     if (auto errorStr = validateJSON(asset, jsonSchema); errorStr)
     {
         throw std::runtime_error(fmt::format("Invalid asset type [{}]: [{}]",
@@ -162,17 +150,35 @@ rapidjson::Document Catalog::getAsset(const AssetType type,
     return asset;
 }
 
-std::vector<std::string> Catalog::getAssetList(const AssetType type)
+std::string Catalog::getFileContents(AssetType type,
+                                     std::string const& file) const
 {
-    auto it = assetTypeToPath.find(type);
-    if (it == assetTypeToPath.end())
+    if (mStorageType == StorageType::Local)
     {
-        throw std::runtime_error(
-            fmt::format("Invalid asset type [{}]", static_cast<int>(type)));
+        std::filesystem::path fullPath = mBasePath;
+
+        auto assetPath = assetTypeToPath.find(type);
+        if (assetPath == assetTypeToPath.end())
+        {
+            throw std::runtime_error(
+                fmt::format("Invalid asset type [{}]", static_cast<int>(type)));
+        }
+
+        fullPath /= assetPath->second;
+        fullPath /= file;
+
+        if (type == AssetType::Schema)
+        {
+            fullPath += EXT_JSON_SCHEMA;
+        }
+        else
+        {
+            fullPath += EXT_OTHER_ASSET;
+        }
+
+        return readFileFromDisk(fullPath);
     }
 
-    return mStorage->getFileList(it->second);
+    return {};
 }
-
-Catalog::~Catalog() {}
 } // namespace catalog

@@ -27,6 +27,7 @@ enum class StorageType
 {
     Local,
     Network,
+    Invalid,
 };
 
 /**
@@ -54,8 +55,9 @@ class Catalog
 {
 
 private:
-    //! @brief The storage driver.
-    std::unique_ptr<IStorage> mStorage;
+    //This can be a local or network path
+    const std::string mBasePath;
+    StorageType mStorageType;
 
 public:
     /**
@@ -68,8 +70,6 @@ public:
      * The driver is destroyed when the catalog is freed.
      */
     Catalog(StorageType type, std::string const& basePath);
-
-    ~Catalog();
 
     /**
      * @brief Get the Asset object
@@ -110,17 +110,7 @@ public:
     rapidjson::Document getAsset(const std::string &type,
                                  std::string const& assetName) const;
 
-    /**
-     * @brief Get the list of assets of a given type.
-     *
-     * @param type The type of the asset. Only decoder, rules,
-     *             filter and schema are supported.
-     * @return std::vector<std::string> The list of assets.
-     * @throws filesystem::filesystem_error if the storage driver fails to get
-     *                                      the asset. Only if driver is
-     * diskDriver.
-     */
-    std::vector<std::string> getAssetList(const AssetType type);
+    std::string getFileContents(AssetType type, std::string const& file) const;
 };
 
 } // namespace catalog
