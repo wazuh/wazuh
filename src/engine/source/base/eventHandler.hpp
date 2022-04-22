@@ -3,14 +3,16 @@
 
 #include <json.hpp>
 
-namespace Base
+namespace base
 {
 
 class EventHandler
 {
 
 private:
+    // Control
     bool is_decoded;
+    // Data
     std::shared_ptr<json::Document> event;
 
 public:
@@ -23,6 +25,7 @@ public:
         : event {event}
         , is_decoded {false}
     {
+        // TODO Throw exception if shared_ptr is empty
     }
 
     /**
@@ -34,25 +37,9 @@ public:
     {
         return event;
     }
-
-    /**
-     * @brief Get the boolean that indicates if the event is decoded
-     *
-     * @return bool
-     */
-    bool getIsDecoded() {
-        return is_decoded;
-    }
-
-    /**
-     * @brief Set the boolean that indicates if the event is decoded
-     *
-     * @param is_decoded
-     */
-    void setIsDecoded(bool is_decoded) {
-        this->is_decoded = is_decoded;
-    }
 };
+
+
 
 } // namespace Base
 #endif

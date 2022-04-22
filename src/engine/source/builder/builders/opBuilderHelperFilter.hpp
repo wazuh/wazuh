@@ -32,18 +32,18 @@ namespace builder::internals::builders
  *
  * The filter checks if a field exists in the JSON event `e`.
  * @param def The filter definition.
- * @return types::Lifter The lifter with the `exists` filter.
+ * @return base::Lifter The lifter with the `exists` filter.
  */
-types::Lifter opBuilderHelperExists(const types::DocumentValue & def, types::TracerFn tr);
+base::Lifter opBuilderHelperExists(const base::DocumentValue & def, types::TracerFn tr);
 
 /**
  * @brief Create `not_exists` helper function that filters events that not contains specified field.
  *
  * The filter checks if a field not exists in the JSON event `e`.
  * @param def The filter definition.
- * @return types::Lifter The lifter with the `not_exists` filter.
+ * @return base::Lifter The lifter with the `not_exists` filter.
  */
-types::Lifter opBuilderHelperNotExists(const types::DocumentValue & def, types::TracerFn tr);
+base::Lifter opBuilderHelperNotExists(const base::DocumentValue & def, types::TracerFn tr);
 
 //*************************************************
 //*           String filters                      *
@@ -67,7 +67,7 @@ types::Lifter opBuilderHelperNotExists(const types::DocumentValue & def, types::
  * @return false in other case
  * @note If `refExpStr` is not provided, the comparison will be against the value of `expectedStr`
  */
-inline bool opBuilderHelperStringComparison(const std::string  key, char op, types::Event& e,
+inline bool opBuilderHelperStringComparison(const std::string  key, char op, base::Event& e,
                                                  std::optional<std::string> refValue,
                                                  std::optional<std::string> value);
 
@@ -78,10 +78,10 @@ inline bool opBuilderHelperStringComparison(const std::string  key, char op, typ
  * The filter checks if a field in the JSON event is equal to a value.
  * Only pass events if the fields are equal (case sensitive) and the values are a string.
  * @param def The filter definition.
- * @return types::Lifter The lifter with the `s_eq` filter.
+ * @return base::Lifter The lifter with the `s_eq` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
-types::Lifter opBuilderHelperStringEQ(const types::DocumentValue & def, types::TracerFn tr);
+base::Lifter opBuilderHelperStringEQ(const base::DocumentValue & def, types::TracerFn tr);
 
 /**
  * @brief Create `s_ne` helper function that filters events with a string
@@ -90,10 +90,10 @@ types::Lifter opBuilderHelperStringEQ(const types::DocumentValue & def, types::T
  * The filter checks if a field in the JSON event is not  equal to a value.
  * Only do not pass events if the fields are equal (case sensitive) and the values are a string.
  * @param def The filter definition.
- * @return types::Lifter The lifter with the `s_ne` filter.
+ * @return base::Lifter The lifter with the `s_ne` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
-types::Lifter opBuilderHelperStringNE(const types::DocumentValue & def, types::TracerFn tr);
+base::Lifter opBuilderHelperStringNE(const base::DocumentValue & def, types::TracerFn tr);
 
 /**
  * @brief Create `s_gt` helper function that filters events with a string
@@ -103,10 +103,10 @@ types::Lifter opBuilderHelperStringNE(const types::DocumentValue & def, types::T
  * or another field <$ref>. Only pass the filter if the event has both fields
  * of type string and passes the condition.
  * @param def The filter definition.
- * @return types::Lifter The lifter with the `s_gt` filter.
+ * @return base::Lifter The lifter with the `s_gt` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
-types::Lifter opBuilderHelperStringGT(const types::DocumentValue & def, types::TracerFn tr);
+base::Lifter opBuilderHelperStringGT(const base::DocumentValue & def, types::TracerFn tr);
 
 /**
  * @brief Create `s_ge` helper function that filters events with a string
@@ -116,10 +116,10 @@ types::Lifter opBuilderHelperStringGT(const types::DocumentValue & def, types::T
  * or another field <$ref>. Only pass the filter if the event has both fields
  * of type string and passes the condition.
  * @param def The filter definition.
- * @return types::Lifter The lifter with the `s_ge` filter.
+ * @return base::Lifter The lifter with the `s_ge` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
-types::Lifter opBuilderHelperStringGE(const types::DocumentValue & def, types::TracerFn tr);
+base::Lifter opBuilderHelperStringGE(const base::DocumentValue & def, types::TracerFn tr);
 
 /**
  * @brief Create `s_lt` helper function that filters events with a string
@@ -129,10 +129,10 @@ types::Lifter opBuilderHelperStringGE(const types::DocumentValue & def, types::T
  * or another field <$ref>. Only pass the filter if the event has both fields
  * of type string and passes the condition.
  * @param def The filter definition.
- * @return types::Lifter The lifter with the `s_lt` filter.
+ * @return base::Lifter The lifter with the `s_lt` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
-types::Lifter opBuilderHelperStringLT(const types::DocumentValue & def, types::TracerFn tr);
+base::Lifter opBuilderHelperStringLT(const base::DocumentValue & def, types::TracerFn tr);
 
 /**
  * @brief Create `s_le` helper function that filters events with a string
@@ -142,10 +142,10 @@ types::Lifter opBuilderHelperStringLT(const types::DocumentValue & def, types::T
  * or another field <$ref>. Only pass the filter if the event has both fields
  * of type string and passes the condition.
  * @param def The filter definition.
- * @return types::Lifter The lifter with the `s_le` filter.
+ * @return base::Lifter The lifter with the `s_le` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
-types::Lifter opBuilderHelperStringLE(const types::DocumentValue & def, types::TracerFn tr);
+base::Lifter opBuilderHelperStringLE(const base::DocumentValue & def, types::TracerFn tr);
 
 //*************************************************
 //*              Int filters                      *
@@ -172,7 +172,7 @@ types::Lifter opBuilderHelperStringLE(const types::DocumentValue & def, types::T
  * `value`
  */
 inline bool opBuilderHelperIntComparison(const std::string field, char op,
-                                         types::Event & e,
+                                         base::Event & e,
                                          std::optional<std::string> refValue,
                                          std::optional<int> value);
 
@@ -183,10 +183,10 @@ inline bool opBuilderHelperIntComparison(const std::string field, char op,
  * The filter checks if a field in the JSON event is equal to a value.
  * Only pass events if the fields are equal and the values are a integer.
  * @param def Definition of the operation to be built
- * @return types::Lifter The lifter with the `i_eq` filter.
+ * @return base::Lifter The lifter with the `i_eq` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
-types::Lifter opBuilderHelperIntEqual(const types::DocumentValue & def, types::TracerFn tr);
+base::Lifter opBuilderHelperIntEqual(const base::DocumentValue & def, types::TracerFn tr);
 
 /**
  * @brief Builds helper integer not equal operation.
@@ -195,10 +195,10 @@ types::Lifter opBuilderHelperIntEqual(const types::DocumentValue & def, types::T
  * The filter checks if a field in the JSON event is not equal to a value.
  * Only pass events if the fields are not equal and the values are a integer.
  * @param def Definition of the operation to be built
- * @return types::Lifter The lifter with the `i_ne` filter.
+ * @return base::Lifter The lifter with the `i_ne` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
-types::Lifter opBuilderHelperIntNotEqual(const types::DocumentValue & def, types::TracerFn tr);
+base::Lifter opBuilderHelperIntNotEqual(const base::DocumentValue & def, types::TracerFn tr);
 
 /**
  * @brief Builds helper integer less than operation.
@@ -207,10 +207,10 @@ types::Lifter opBuilderHelperIntNotEqual(const types::DocumentValue & def, types
  * The filter checks if a field in the JSON event is less than a value.
  * Only pass events if the fields are less than and the values are a integer.
  * @param def Definition of the operation to be built
- * @return types::Lifter The lifter with the `i_lt` filter.
+ * @return base::Lifter The lifter with the `i_lt` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
-types::Lifter opBuilderHelperIntLessThan(const types::DocumentValue & def, types::TracerFn tr);
+base::Lifter opBuilderHelperIntLessThan(const base::DocumentValue & def, types::TracerFn tr);
 
 /**
  * @brief Builds helper integer less than equal operation.
@@ -219,10 +219,10 @@ types::Lifter opBuilderHelperIntLessThan(const types::DocumentValue & def, types
  * The filter checks if a field in the JSON event is less than equal a value.
  * Only pass events if the fields are less than equal and the values are a integer.
  * @param def Definition of the operation to be built
- * @return types::Lifter The lifter with the `i_le` filter.
+ * @return base::Lifter The lifter with the `i_le` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
-types::Lifter opBuilderHelperIntLessThanEqual(const types::DocumentValue & def, types::TracerFn tr);
+base::Lifter opBuilderHelperIntLessThanEqual(const base::DocumentValue & def, types::TracerFn tr);
 
 /**
  * @brief Builds helper integer greater than operation.
@@ -231,11 +231,11 @@ types::Lifter opBuilderHelperIntLessThanEqual(const types::DocumentValue & def, 
  * The filter checks if a field in the JSON event is greater than a value.
  * Only pass events if the fields are greater than and the values are a integer.
  * @param def Definition of the operation to be built
- * @return types::Lifter The lifter with the `i_gt` filter.
+ * @return base::Lifter The lifter with the `i_gt` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
 
-types::Lifter opBuilderHelperIntGreaterThan(const types::DocumentValue & def, types::TracerFn tr);
+base::Lifter opBuilderHelperIntGreaterThan(const base::DocumentValue & def, types::TracerFn tr);
 
 /**
  * @brief Builds helper integer greater than equal operation.
@@ -244,38 +244,38 @@ types::Lifter opBuilderHelperIntGreaterThan(const types::DocumentValue & def, ty
  * The filter checks if a field in the JSON event is greater than equal a value.
  * Only pass events if the fields are greater than equal and the values are a integer.
  * @param def Definition of the operation to be built
- * @return types::Lifter The lifter with the `i_ge` filter.
+ * @return base::Lifter The lifter with the `i_ge` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
-types::Lifter opBuilderHelperIntGreaterThanEqual(const types::DocumentValue & def, types::TracerFn tr);
+base::Lifter opBuilderHelperIntGreaterThanEqual(const base::DocumentValue & def, types::TracerFn tr);
 
 /**
  * @brief Builds helper regex match operation.
  * Checks that the field value matches a regular expression
  *
  * @param def Definition of the operation to be built
- * @return types::Lifter The lifter with the `regex` filter.
+ * @return base::Lifter The lifter with the `regex` filter.
  */
-types::Lifter opBuilderHelperRegexMatch(const types::DocumentValue & def, types::TracerFn tr);
+base::Lifter opBuilderHelperRegexMatch(const base::DocumentValue & def, types::TracerFn tr);
 
 /**
  * @brief Builds helper regex not match operation.
  * Checks that the field value doesn't match a regular expression
  *
  * @param def Definition of the operation to be built
- * @return types::Lifter The lifter with the `regex_not` filter.
+ * @return base::Lifter The lifter with the `regex_not` filter.
  */
-types::Lifter opBuilderHelperRegexNotMatch(const types::DocumentValue & def, types::TracerFn tr);
+base::Lifter opBuilderHelperRegexNotMatch(const base::DocumentValue & def, types::TracerFn tr);
 
 /**
  * @brief Create `ip_cidr` helper function that filters events if the field
  * is in the specified CIDR range.
  *
  * @param def The filter definition.
- * @return types::Lifter The lifter with the `ip_cidr` filter.
+ * @return base::Lifter The lifter with the `ip_cidr` filter.
  * @throw  std::runtime_error if the parameter is not a cidr.
  */
-types::Lifter opBuilderHelperIPCIDR(const types::DocumentValue & def, types::TracerFn tr);
+base::Lifter opBuilderHelperIPCIDR(const base::DocumentValue & def, types::TracerFn tr);
 
 } // namespace builder::internals::builders
 

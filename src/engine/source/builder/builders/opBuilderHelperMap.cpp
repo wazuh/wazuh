@@ -20,27 +20,24 @@
 namespace
 {
 
-using DocumentValue = builder::internals::types::DocumentValue;
-using Event = builder::internals::types::Event;
-
 /**
- * @brief Tranform the string in `field` path in the event `e` according to the
+ * @brief Tranform the string in `field` path in the base::Event `e` according to the
  * `op` definition and the `value` or the `refValue`
  *
  * @param field The field path to transform
  * @param op The operator to use:
  * - `u`: Upper case
  * - `l`: Lower case
- * @param e The event that contains the field to transform
+ * @param e The base::Event that contains the field to transform
  * @param refValue The reference to the value user as source of the
  * transformation
  * @param value The value to use as source of the transformation
- * @return types::Event The event with the field transformed
+ * @return base::Event The base::Event with the field transformed
  * @throw std::logic_error if the `op` is not valid
  */
-Event opBuilderHelperStringTransformation(const std::string field,
+base::Event opBuilderHelperStringTransformation(const std::string field,
                                           char op,
-                                          Event& e,
+                                          base::Event& e,
                                           std::optional<std::string> refValue,
                                           std::optional<std::string> value)
 {
@@ -48,7 +45,7 @@ Event opBuilderHelperStringTransformation(const std::string field,
     // Get src field
     if (refValue.has_value())
     {
-        // Get reference to json event
+        // Get reference to json base::Event
         // TODO Remove try catch or if nullptr after fix get method of document
         // class
         // TODO Update to use proper reference
@@ -94,7 +91,7 @@ Event opBuilderHelperStringTransformation(const std::string field,
             break;
     }
 
-    // Create and add string to event
+    // Create and add string to base::Event
     try
     {
         e->getEvent()->set(field,
@@ -111,7 +108,7 @@ Event opBuilderHelperStringTransformation(const std::string field,
 }
 
 /**
- * @brief Tranform the int in `field` path in the event `e` according to the
+ * @brief Tranform the int in `field` path in the base::Event `e` according to the
  * `op` definition and the `value` or the `refValue`
  *
  * @param field The field path to transform
@@ -120,16 +117,16 @@ Event opBuilderHelperStringTransformation(const std::string field,
  * - `sub`: Subtract
  * - `mul`: Multiply
  * - `div`: Divide
- * @param e The event that contains the field to transform
+ * @param e The base::Event that contains the field to transform
  * @param refValue The reference to the value user as source of the
  * transformation
  * @param value The value to use as source of the transformation
- * @return types::Event The event with the field transformed
+ * @return base::Event The base::Event with the field transformed
  * @throw std::logic_error if the `op` is not valid
  */
-Event opBuilderHelperIntTransformation(const std::string field,
+base::Event opBuilderHelperIntTransformation(const std::string field,
                                        std::string op,
-                                       Event& e,
+                                       base::Event& e,
                                        std::optional<std::string> refValue,
                                        std::optional<int> value)
 {
@@ -153,7 +150,7 @@ Event opBuilderHelperIntTransformation(const std::string field,
 
     if (refValue.has_value())
     {
-        // Get reference to json event
+        // Get reference to json base::Event
         // TODO Remove try catch or if nullptr after fix get method of document
         // class
         const rapidjson::Value* refValueToCheck {};
@@ -201,7 +198,7 @@ Event opBuilderHelperIntTransformation(const std::string field,
         return e;
     }
 
-    // Create and add string to event
+    // Create and add string to base::Event
     try
     {
         e->getEvent()->set(field, rapidjson::Value(value.value()));
@@ -225,7 +222,7 @@ using builder::internals::syntax::REFERENCE_ANCHOR;
 //*************************************************
 
 // <field>: +s_up/<str>|$<ref>
-types::Lifter opBuilderHelperStringUP(const types::DocumentValue& def,
+base::Lifter opBuilderHelperStringUP(const base::DocumentValue& def,
                                       types::TracerFn tr)
 {
     // Get field key to check
@@ -251,7 +248,7 @@ types::Lifter opBuilderHelperStringUP(const types::DocumentValue& def,
     std::optional<std::string> refExpStr {};
     std::optional<std::string> expectedStr {};
 
-    // Check if is a reference to json event
+    // Check if is a reference to json base::Event
     if (parametersArr[1][0] == REFERENCE_ANCHOR)
     {
         refExpStr = json::formatJsonPath(parametersArr[1].substr(1));
@@ -262,11 +259,11 @@ types::Lifter opBuilderHelperStringUP(const types::DocumentValue& def,
     }
 
     // Return Lifter
-    return [=](types::Observable o)
+    return [=](base::Observable o)
     {
         // Append rxcpp operation
         return o.map(
-            [key, expectedStr, refExpStr](types::Event e)
+            [key, expectedStr, refExpStr](base::Event e)
             {
                 return opBuilderHelperStringTransformation(
                     key, 'u', e, refExpStr, expectedStr);
@@ -275,7 +272,7 @@ types::Lifter opBuilderHelperStringUP(const types::DocumentValue& def,
 }
 
 // <field>: +s_lo/<str>|$<ref>
-types::Lifter opBuilderHelperStringLO(const types::DocumentValue& def,
+base::Lifter opBuilderHelperStringLO(const base::DocumentValue& def,
                                       types::TracerFn tr)
 {
 
@@ -301,7 +298,7 @@ types::Lifter opBuilderHelperStringLO(const types::DocumentValue& def,
     std::optional<std::string> refExpStr {};
     std::optional<std::string> expectedStr {};
 
-    // Check if is a reference to json event
+    // Check if is a reference to json base::Event
     if (parametersArr[1][0] == REFERENCE_ANCHOR)
     {
         refExpStr = json::formatJsonPath(parametersArr[1].substr(1));
@@ -312,11 +309,11 @@ types::Lifter opBuilderHelperStringLO(const types::DocumentValue& def,
     }
 
     // Return Lifter
-    return [=](types::Observable o)
+    return [=](base::Observable o)
     {
         // Append rxcpp operation
         return o.map(
-            [key, expectedStr, refExpStr](types::Event e)
+            [key, expectedStr, refExpStr](base::Event e)
             {
                 return opBuilderHelperStringTransformation(
                     key, 'l', e, refExpStr, expectedStr);
@@ -325,7 +322,7 @@ types::Lifter opBuilderHelperStringLO(const types::DocumentValue& def,
 }
 
 // <field>: +s_trim/[begin | end | both]/char
-types::Lifter opBuilderHelperStringTrim(const types::DocumentValue& def,
+base::Lifter opBuilderHelperStringTrim(const base::DocumentValue& def,
                                         types::TracerFn tr)
 {
 
@@ -368,11 +365,11 @@ types::Lifter opBuilderHelperStringTrim(const types::DocumentValue& def,
     }
 
     // Return Lifter
-    return [=](types::Observable o)
+    return [=](base::Observable o)
     {
         // Append rxcpp operation
         return o.map(
-            [field, trimType, trimChar](types::Event e)
+            [field, trimType, trimChar](base::Event e)
             {
                 // Shoulbe short after refact, witout try catch
                 // Get field value
@@ -423,7 +420,7 @@ types::Lifter opBuilderHelperStringTrim(const types::DocumentValue& def,
                         break;
                 }
 
-                // Update event
+                // Update base::Event
                 try
                 {
                     e->getEvent()->set(field,
@@ -447,7 +444,7 @@ types::Lifter opBuilderHelperStringTrim(const types::DocumentValue& def,
 //*************************************************
 
 // field: +i_calc/[+|-|*|/]/val|$ref/
-types::Lifter opBuilderHelperIntCalc(const types::DocumentValue& def,
+base::Lifter opBuilderHelperIntCalc(const base::DocumentValue& def,
                                      types::TracerFn tr)
 {
     // Get field
@@ -492,11 +489,11 @@ types::Lifter opBuilderHelperIntCalc(const types::DocumentValue& def,
     }
 
     // Return Lifter
-    return [field, op, refValue, value](types::Observable o)
+    return [field, op, refValue, value](base::Observable o)
     {
         // Append rxcpp operation
         return o.map(
-            [=](types::Event e) {
+            [=](base::Event e) {
                 return opBuilderHelperIntTransformation(
                     field, op, e, refValue, value);
             });
@@ -508,7 +505,7 @@ types::Lifter opBuilderHelperIntCalc(const types::DocumentValue& def,
 //*************************************************
 
 // field: +r_ext/_field/regexp/
-types::Lifter opBuilderHelperRegexExtract(const types::DocumentValue& def,
+base::Lifter opBuilderHelperRegexExtract(const base::DocumentValue& def,
                                           types::TracerFn tr)
 {
     // Get fields
@@ -533,11 +530,11 @@ types::Lifter opBuilderHelperRegexExtract(const types::DocumentValue& def,
     }
 
     // Return Lifter
-    return [field, regex_ptr, map_field](types::Observable o)
+    return [field, regex_ptr, map_field](base::Observable o)
     {
         // Append rxcpp operation
         return o.map(
-            [=](types::Event e)
+            [=](base::Event e)
             {
                 // TODO Remove try catch
                 const rapidjson::Value* field_str {};
@@ -556,7 +553,7 @@ types::Lifter opBuilderHelperRegexExtract(const types::DocumentValue& def,
                     if (RE2::PartialMatch(
                             field_str->GetString(), *regex_ptr, &match))
                     {
-                        // Create and add string to event
+                        // Create and add string to base::Event
                         try
                         {
                             e->getEvent()->set(map_field,

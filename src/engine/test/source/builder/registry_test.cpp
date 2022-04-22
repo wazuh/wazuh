@@ -40,7 +40,7 @@ TEST(Registry_test, GetNonExistentBuilder)
 TEST(Registry_test, GetBuilderAndBuilds)
 {
     auto buildB = std::get<types::OpBuilder>(Registry::getBuilder("test"));
-    types::Observable o = rxcpp::observable<>::empty<types::Event>();
-    types::Observable expected = buildB(Document(R"({"test":1})").get("/test"), tr)(o);
+    base::Observable o = rxcpp::observable<>::empty<base::Event>();
+    base::Observable expected = buildB(Document(R"({"test":1})").get("/test"), tr)(o);
     ASSERT_EQ(o, expected);
 }

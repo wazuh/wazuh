@@ -19,9 +19,9 @@ namespace builder::internals::builders
  * @brief Auxiliray builder to handle proper specific map builder
  *
  * @param def Definition of the operation to be built
- * @return types::Lifter
+ * @return base::Lifter
  */
-types::Lifter opBuilderMap(const types::DocumentValue & def, types::TracerFn tr);
+base::Lifter opBuilderMap(const base::DocumentValue & def, types::TracerFn tr);
 
 } // namespace builder::internals::builders
 

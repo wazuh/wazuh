@@ -17,8 +17,8 @@
 
 #include <rxcpp/rx.hpp>
 
-#include <EventHandler.hpp>
-
+//#include <eventHandler.hpp>
+#include <baseTypes.hpp>
 #include "connectable.hpp"
 
 /**
@@ -27,17 +27,11 @@
  */
 namespace builder::internals::types
 {
-
-using Event = std::shared_ptr<Base::EventHandler>;
-using Document = json::Document;
-using DocumentValue = json::Value;
-using Observable = rxcpp::observable<Event>;
-using Lifter = std::function<Observable(Observable)>;
-using ConnectableT = Connectable<Observable>;
-using AssetBuilder = std::function<ConnectableT(const Document &)>;
+using ConnectableT = Connectable<base::Observable>;
+using AssetBuilder = std::function<ConnectableT(const base::Document &)>;
 using TracerFn = std::function<void(std::string)>;
-using OpBuilder = std::function<Lifter(const DocumentValue &, TracerFn)>;
-using CombinatorBuilder = std::function<Lifter(std::vector<Lifter>)>;
+using OpBuilder = std::function<base::Lifter(const base::DocumentValue &, TracerFn)>;
+using CombinatorBuilder = std::function<base::Lifter(std::vector<base::Lifter>)>;
 using BuilderVariant = std::variant<AssetBuilder, OpBuilder, CombinatorBuilder>;
 
 } // namespace builder::internals::types
