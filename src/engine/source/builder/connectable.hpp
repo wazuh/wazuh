@@ -93,7 +93,7 @@ struct Connectable
                 if (sbj.has_observers() && s.is_subscribed())
                 {
                     s.on_next(
-                        fmt::format("({}) {} {}", name, msg, event->str()));
+                        fmt::format("({}) {} {}", name, msg, event->getEvent()->str()));
                 }
             };
         }

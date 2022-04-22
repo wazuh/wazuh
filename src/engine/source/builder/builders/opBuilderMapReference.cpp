@@ -55,7 +55,7 @@ types::Lifter opBuilderMapReference(const types::DocumentValue &def,
         return o.map(
             [=](types::Event e)
             {
-                e->set(field, reference);
+                e->getEvent()->set(field, reference);
                 tr(successTrace);
                 return e;
             });

@@ -17,8 +17,9 @@
 
 #include <rxcpp/rx.hpp>
 
+#include <EventHandler.hpp>
+
 #include "connectable.hpp"
-#include "json.hpp"
 
 /**
  * @brief Type definitions needed by builders
@@ -27,7 +28,7 @@
 namespace builder::internals::types
 {
 
-using Event = std::shared_ptr<json::Document>;
+using Event = std::shared_ptr<Base::EventHandler>;
 using Document = json::Document;
 using DocumentValue = json::Value;
 using Observable = rxcpp::observable<Event>;
