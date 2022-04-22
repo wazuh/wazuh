@@ -232,7 +232,10 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
 
         gettime(&ts1);
         time_sub(&ts1, &ts0);
-        delay(&ts1);
+
+        if (ts1.tv_sec >= 0) {
+            delay(&ts1);
+        }
     }
 }
 
