@@ -18,6 +18,10 @@ using namespace builder::internals::builders;
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
 
+auto createEvent = [](const char * json){
+    return std::make_shared<Base::EventHandler>(std::make_shared<json::Document>(json));
+};
+
 TEST(opBuilderHelperIntCalc, Builds)
 {
     Document doc{R"({
@@ -89,16 +93,16 @@ TEST(opBuilderHelperIntCalc, Exec_equal_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":9}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":11}
             )"));
             s.on_completed();
@@ -110,10 +114,10 @@ TEST(opBuilderHelperIntCalc, Exec_equal_ok)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 4);
-    ASSERT_EQ(expected[0]->get("/field_test").GetInt(),19);
-    ASSERT_EQ(expected[1]->get("/field_test").GetInt(),20);
-    ASSERT_EQ(expected[2]->get("/field_test").GetInt(),20);
-    ASSERT_EQ(expected[3]->get("/field_test").GetInt(),21);
+    ASSERT_EQ(expected[0]->getEvent()->get("/field_test").GetInt(),19);
+    ASSERT_EQ(expected[1]->getEvent()->get("/field_test").GetInt(),20);
+    ASSERT_EQ(expected[2]->getEvent()->get("/field_test").GetInt(),20);
+    ASSERT_EQ(expected[3]->getEvent()->get("/field_test").GetInt(),21);
 
 }
 
@@ -127,22 +131,22 @@ TEST(opBuilderHelperIntCalc, Exec_sum_int)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":0}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":9}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":11}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":100}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":-100}
             )"));
             s.on_completed();
@@ -154,12 +158,12 @@ TEST(opBuilderHelperIntCalc, Exec_sum_int)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 6);
-    ASSERT_EQ(expected[0]->get("/field_test").GetInt(),10);
-    ASSERT_EQ(expected[1]->get("/field_test").GetInt(),19);
-    ASSERT_EQ(expected[2]->get("/field_test").GetInt(),20);
-    ASSERT_EQ(expected[3]->get("/field_test").GetInt(),21);
-    ASSERT_EQ(expected[4]->get("/field_test").GetInt(),110);
-    ASSERT_EQ(expected[5]->get("/field_test").GetInt(),-90);
+    ASSERT_EQ(expected[0]->getEvent()->get("/field_test").GetInt(),10);
+    ASSERT_EQ(expected[1]->getEvent()->get("/field_test").GetInt(),19);
+    ASSERT_EQ(expected[2]->getEvent()->get("/field_test").GetInt(),20);
+    ASSERT_EQ(expected[3]->getEvent()->get("/field_test").GetInt(),21);
+    ASSERT_EQ(expected[4]->getEvent()->get("/field_test").GetInt(),110);
+    ASSERT_EQ(expected[5]->getEvent()->get("/field_test").GetInt(),-90);
 
 }
 
@@ -173,22 +177,22 @@ TEST(opBuilderHelperIntCalc, Exec_sub_int)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":0}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":9}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":11}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":100}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":-100}
             )"));
             s.on_completed();
@@ -200,12 +204,12 @@ TEST(opBuilderHelperIntCalc, Exec_sub_int)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 6);
-    ASSERT_EQ(expected[0]->get("/field_test").GetInt(),-10);
-    ASSERT_EQ(expected[1]->get("/field_test").GetInt(),-1);
-    ASSERT_EQ(expected[2]->get("/field_test").GetInt(),0);
-    ASSERT_EQ(expected[3]->get("/field_test").GetInt(),1);
-    ASSERT_EQ(expected[4]->get("/field_test").GetInt(),90);
-    ASSERT_EQ(expected[5]->get("/field_test").GetInt(),-110);
+    ASSERT_EQ(expected[0]->getEvent()->get("/field_test").GetInt(),-10);
+    ASSERT_EQ(expected[1]->getEvent()->get("/field_test").GetInt(),-1);
+    ASSERT_EQ(expected[2]->getEvent()->get("/field_test").GetInt(),0);
+    ASSERT_EQ(expected[3]->getEvent()->get("/field_test").GetInt(),1);
+    ASSERT_EQ(expected[4]->getEvent()->get("/field_test").GetInt(),90);
+    ASSERT_EQ(expected[5]->getEvent()->get("/field_test").GetInt(),-110);
 
 }
 
@@ -219,22 +223,22 @@ TEST(opBuilderHelperIntCalc, Exec_mult_int)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":0}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":9}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":11}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":100}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":-100}
             )"));
             s.on_completed();
@@ -246,12 +250,12 @@ TEST(opBuilderHelperIntCalc, Exec_mult_int)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 6);
-    ASSERT_EQ(expected[0]->get("/field_test").GetInt(),0);
-    ASSERT_EQ(expected[1]->get("/field_test").GetInt(),90);
-    ASSERT_EQ(expected[2]->get("/field_test").GetInt(),100);
-    ASSERT_EQ(expected[3]->get("/field_test").GetInt(),110);
-    ASSERT_EQ(expected[4]->get("/field_test").GetInt(),1000);
-    ASSERT_EQ(expected[5]->get("/field_test").GetInt(),-1000);
+    ASSERT_EQ(expected[0]->getEvent()->get("/field_test").GetInt(),0);
+    ASSERT_EQ(expected[1]->getEvent()->get("/field_test").GetInt(),90);
+    ASSERT_EQ(expected[2]->getEvent()->get("/field_test").GetInt(),100);
+    ASSERT_EQ(expected[3]->getEvent()->get("/field_test").GetInt(),110);
+    ASSERT_EQ(expected[4]->getEvent()->get("/field_test").GetInt(),1000);
+    ASSERT_EQ(expected[5]->getEvent()->get("/field_test").GetInt(),-1000);
 
 }
 
@@ -265,22 +269,22 @@ TEST(opBuilderHelperIntCalc, Exec_div_int)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":0}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":9}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":11}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":100}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":-100}
             )"));
             s.on_completed();
@@ -292,12 +296,12 @@ TEST(opBuilderHelperIntCalc, Exec_div_int)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 6);
-    ASSERT_EQ(expected[0]->get("/field_test").GetInt(),0);
-    ASSERT_EQ(expected[1]->get("/field_test").GetInt(),0);
-    ASSERT_EQ(expected[2]->get("/field_test").GetInt(),1);
-    ASSERT_EQ(expected[3]->get("/field_test").GetInt(),1);
-    ASSERT_EQ(expected[4]->get("/field_test").GetInt(),10);
-    ASSERT_EQ(expected[5]->get("/field_test").GetInt(),-10);
+    ASSERT_EQ(expected[0]->getEvent()->get("/field_test").GetInt(),0);
+    ASSERT_EQ(expected[1]->getEvent()->get("/field_test").GetInt(),0);
+    ASSERT_EQ(expected[2]->getEvent()->get("/field_test").GetInt(),1);
+    ASSERT_EQ(expected[3]->getEvent()->get("/field_test").GetInt(),1);
+    ASSERT_EQ(expected[4]->getEvent()->get("/field_test").GetInt(),10);
+    ASSERT_EQ(expected[5]->getEvent()->get("/field_test").GetInt(),-10);
 
 }
 
@@ -311,28 +315,28 @@ TEST(opBuilderHelperIntCalc, Exec_sum_ref)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test": 0,"field_src":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":9,"field_src":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test": 10,"field_src":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":11,"field_src":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test": 0,"field_src":-10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":9,"field_src":-10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test": 10,"field_src":-10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":11,"field_src":-10}
             )"));
             s.on_completed();
@@ -344,14 +348,14 @@ TEST(opBuilderHelperIntCalc, Exec_sum_ref)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 8);
-    ASSERT_EQ(expected[0]->get("/field_test").GetInt(),10);
-    ASSERT_EQ(expected[1]->get("/field_test").GetInt(),19);
-    ASSERT_EQ(expected[2]->get("/field_test").GetInt(),20);
-    ASSERT_EQ(expected[3]->get("/field_test").GetInt(),21);
-    ASSERT_EQ(expected[4]->get("/field_test").GetInt(),-10);
-    ASSERT_EQ(expected[5]->get("/field_test").GetInt(),-1);
-    ASSERT_EQ(expected[6]->get("/field_test").GetInt(),0);
-    ASSERT_EQ(expected[7]->get("/field_test").GetInt(),1);
+    ASSERT_EQ(expected[0]->getEvent()->get("/field_test").GetInt(),10);
+    ASSERT_EQ(expected[1]->getEvent()->get("/field_test").GetInt(),19);
+    ASSERT_EQ(expected[2]->getEvent()->get("/field_test").GetInt(),20);
+    ASSERT_EQ(expected[3]->getEvent()->get("/field_test").GetInt(),21);
+    ASSERT_EQ(expected[4]->getEvent()->get("/field_test").GetInt(),-10);
+    ASSERT_EQ(expected[5]->getEvent()->get("/field_test").GetInt(),-1);
+    ASSERT_EQ(expected[6]->getEvent()->get("/field_test").GetInt(),0);
+    ASSERT_EQ(expected[7]->getEvent()->get("/field_test").GetInt(),1);
 
 }
 
@@ -365,28 +369,28 @@ TEST(opBuilderHelperIntCalc, Exec_sub_ref)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test": 0,"field_src":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":9,"field_src":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test": 10,"field_src":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":11,"field_src":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test": 0,"field_src":-10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":9,"field_src":-10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test": 10,"field_src":-10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":11,"field_src":-10}
             )"));
             s.on_completed();
@@ -398,14 +402,14 @@ TEST(opBuilderHelperIntCalc, Exec_sub_ref)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 8);
-    ASSERT_EQ(expected[0]->get("/field_test").GetInt(),-10);
-    ASSERT_EQ(expected[1]->get("/field_test").GetInt(),-1);
-    ASSERT_EQ(expected[2]->get("/field_test").GetInt(),0);
-    ASSERT_EQ(expected[3]->get("/field_test").GetInt(),1);
-    ASSERT_EQ(expected[4]->get("/field_test").GetInt(),10);
-    ASSERT_EQ(expected[5]->get("/field_test").GetInt(),19);
-    ASSERT_EQ(expected[6]->get("/field_test").GetInt(),20);
-    ASSERT_EQ(expected[7]->get("/field_test").GetInt(),21);
+    ASSERT_EQ(expected[0]->getEvent()->get("/field_test").GetInt(),-10);
+    ASSERT_EQ(expected[1]->getEvent()->get("/field_test").GetInt(),-1);
+    ASSERT_EQ(expected[2]->getEvent()->get("/field_test").GetInt(),0);
+    ASSERT_EQ(expected[3]->getEvent()->get("/field_test").GetInt(),1);
+    ASSERT_EQ(expected[4]->getEvent()->get("/field_test").GetInt(),10);
+    ASSERT_EQ(expected[5]->getEvent()->get("/field_test").GetInt(),19);
+    ASSERT_EQ(expected[6]->getEvent()->get("/field_test").GetInt(),20);
+    ASSERT_EQ(expected[7]->getEvent()->get("/field_test").GetInt(),21);
 
 }
 
@@ -419,28 +423,28 @@ TEST(opBuilderHelperIntCalc, Exec_mult_ref)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test": 0,"field_src":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":9,"field_src":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test": 10,"field_src":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":11,"field_src":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test": 0,"field_src":-10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":9,"field_src":-10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test": 10,"field_src":-10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":11,"field_src":-10}
             )"));
             s.on_completed();
@@ -452,14 +456,14 @@ TEST(opBuilderHelperIntCalc, Exec_mult_ref)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 8);
-    ASSERT_EQ(expected[0]->get("/field_test").GetInt(),0);
-    ASSERT_EQ(expected[1]->get("/field_test").GetInt(),90);
-    ASSERT_EQ(expected[2]->get("/field_test").GetInt(),100);
-    ASSERT_EQ(expected[3]->get("/field_test").GetInt(),110);
-    ASSERT_EQ(expected[4]->get("/field_test").GetInt(),0);
-    ASSERT_EQ(expected[5]->get("/field_test").GetInt(),-90);
-    ASSERT_EQ(expected[6]->get("/field_test").GetInt(),-100);
-    ASSERT_EQ(expected[7]->get("/field_test").GetInt(),-110);
+    ASSERT_EQ(expected[0]->getEvent()->get("/field_test").GetInt(),0);
+    ASSERT_EQ(expected[1]->getEvent()->get("/field_test").GetInt(),90);
+    ASSERT_EQ(expected[2]->getEvent()->get("/field_test").GetInt(),100);
+    ASSERT_EQ(expected[3]->getEvent()->get("/field_test").GetInt(),110);
+    ASSERT_EQ(expected[4]->getEvent()->get("/field_test").GetInt(),0);
+    ASSERT_EQ(expected[5]->getEvent()->get("/field_test").GetInt(),-90);
+    ASSERT_EQ(expected[6]->getEvent()->get("/field_test").GetInt(),-100);
+    ASSERT_EQ(expected[7]->getEvent()->get("/field_test").GetInt(),-110);
 
 }
 
@@ -473,28 +477,28 @@ TEST(opBuilderHelperIntCalc, Exec_div_ref)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test": 0,"field_src":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":9,"field_src":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test": 10,"field_src":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":11,"field_src":10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test": 0,"field_src":-10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":9,"field_src":-10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test": 10,"field_src":-10}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":11,"field_src":-10}
             )"));
             s.on_completed();
@@ -506,14 +510,14 @@ TEST(opBuilderHelperIntCalc, Exec_div_ref)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 8);
-    ASSERT_EQ(expected[0]->get("/field_test").GetInt(),0);
-    ASSERT_EQ(expected[1]->get("/field_test").GetInt(),0);
-    ASSERT_EQ(expected[2]->get("/field_test").GetInt(),1);
-    ASSERT_EQ(expected[3]->get("/field_test").GetInt(),1);
-    ASSERT_EQ(expected[4]->get("/field_test").GetInt(),0);
-    ASSERT_EQ(expected[5]->get("/field_test").GetInt(),0);
-    ASSERT_EQ(expected[6]->get("/field_test").GetInt(),-1);
-    ASSERT_EQ(expected[7]->get("/field_test").GetInt(),-1);
+    ASSERT_EQ(expected[0]->getEvent()->get("/field_test").GetInt(),0);
+    ASSERT_EQ(expected[1]->getEvent()->get("/field_test").GetInt(),0);
+    ASSERT_EQ(expected[2]->getEvent()->get("/field_test").GetInt(),1);
+    ASSERT_EQ(expected[3]->getEvent()->get("/field_test").GetInt(),1);
+    ASSERT_EQ(expected[4]->getEvent()->get("/field_test").GetInt(),0);
+    ASSERT_EQ(expected[5]->getEvent()->get("/field_test").GetInt(),0);
+    ASSERT_EQ(expected[6]->getEvent()->get("/field_test").GetInt(),-1);
+    ASSERT_EQ(expected[7]->getEvent()->get("/field_test").GetInt(),-1);
 
 }
 
@@ -527,28 +531,28 @@ TEST(opBuilderHelperIntCalc, Exec_div_ref_zero)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test": 0,"field_src":0}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":9,"field_src":0}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test": 10,"field_src":0}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":11,"field_src":0}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test": 0,"field_src":0}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":9,"field_src":0}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test": 10,"field_src":0}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field_test":11,"field_src":0}
             )"));
             s.on_completed();
@@ -560,14 +564,14 @@ TEST(opBuilderHelperIntCalc, Exec_div_ref_zero)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 8);
-    ASSERT_EQ(expected[0]->get("/field_test").GetInt(),0);
-    ASSERT_EQ(expected[1]->get("/field_test").GetInt(),9);
-    ASSERT_EQ(expected[2]->get("/field_test").GetInt(),10);
-    ASSERT_EQ(expected[3]->get("/field_test").GetInt(),11);
-    ASSERT_EQ(expected[4]->get("/field_test").GetInt(),0);
-    ASSERT_EQ(expected[5]->get("/field_test").GetInt(),9);
-    ASSERT_EQ(expected[6]->get("/field_test").GetInt(),10);
-    ASSERT_EQ(expected[7]->get("/field_test").GetInt(),11);
+    ASSERT_EQ(expected[0]->getEvent()->get("/field_test").GetInt(),0);
+    ASSERT_EQ(expected[1]->getEvent()->get("/field_test").GetInt(),9);
+    ASSERT_EQ(expected[2]->getEvent()->get("/field_test").GetInt(),10);
+    ASSERT_EQ(expected[3]->getEvent()->get("/field_test").GetInt(),11);
+    ASSERT_EQ(expected[4]->getEvent()->get("/field_test").GetInt(),0);
+    ASSERT_EQ(expected[5]->getEvent()->get("/field_test").GetInt(),9);
+    ASSERT_EQ(expected[6]->getEvent()->get("/field_test").GetInt(),10);
+    ASSERT_EQ(expected[7]->getEvent()->get("/field_test").GetInt(),11);
 
 }
 
@@ -582,7 +586,7 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_sum)
         [=](auto s)
         {
             // sorted
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "parentObjt_1": {
                         "field2check": 10,
@@ -595,7 +599,7 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_sum)
                 }
             )"));
             // not sorted
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "parentObjt_2": {
                         "field2check": 11,
@@ -617,8 +621,8 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_sum)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_EQ(expected[0]->get("/parentObjt_1/field2check").GetInt(), 21);
-    ASSERT_EQ(expected[1]->get("/parentObjt_1/field2check").GetInt(), 20);
+    ASSERT_EQ(expected[0]->getEvent()->get("/parentObjt_1/field2check").GetInt(), 21);
+    ASSERT_EQ(expected[1]->getEvent()->get("/parentObjt_1/field2check").GetInt(), 20);
 }
 
 TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_sub)
@@ -632,7 +636,7 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_sub)
         [=](auto s)
         {
             // sorted
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "parentObjt_1": {
                         "field2check": 10,
@@ -645,7 +649,7 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_sub)
                 }
             )"));
             // not sorted
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "parentObjt_2": {
                         "field2check": 11,
@@ -667,8 +671,8 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_sub)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_EQ(expected[0]->get("/parentObjt_1/field2check").GetInt(), -1);
-    ASSERT_EQ(expected[1]->get("/parentObjt_1/field2check").GetInt(), 0);
+    ASSERT_EQ(expected[0]->getEvent()->get("/parentObjt_1/field2check").GetInt(), -1);
+    ASSERT_EQ(expected[1]->getEvent()->get("/parentObjt_1/field2check").GetInt(), 0);
 }
 
 TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_mul)
@@ -682,7 +686,7 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_mul)
         [=](auto s)
         {
             // sorted
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "parentObjt_1": {
                         "field2check": 10,
@@ -695,7 +699,7 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_mul)
                 }
             )"));
             // not sorted
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "parentObjt_2": {
                         "field2check": 11,
@@ -717,8 +721,8 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_mul)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_EQ(expected[0]->get("/parentObjt_1/field2check").GetInt(), 110);
-    ASSERT_EQ(expected[1]->get("/parentObjt_1/field2check").GetInt(), 100);
+    ASSERT_EQ(expected[0]->getEvent()->get("/parentObjt_1/field2check").GetInt(), 110);
+    ASSERT_EQ(expected[1]->getEvent()->get("/parentObjt_1/field2check").GetInt(), 100);
 }
 
 TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_div)
@@ -732,7 +736,7 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_div)
         [=](auto s)
         {
             // sorted
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "parentObjt_1": {
                         "field2check": 10,
@@ -745,7 +749,7 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_div)
                 }
             )"));
             // not sorted
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "parentObjt_2": {
                         "field2check": 11,
@@ -767,6 +771,6 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_div)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_EQ(expected[0]->get("/parentObjt_1/field2check").GetInt(), 0);
-    ASSERT_EQ(expected[1]->get("/parentObjt_1/field2check").GetInt(), 1);
+    ASSERT_EQ(expected[0]->getEvent()->get("/parentObjt_1/field2check").GetInt(), 0);
+    ASSERT_EQ(expected[1]->getEvent()->get("/parentObjt_1/field2check").GetInt(), 1);
 }

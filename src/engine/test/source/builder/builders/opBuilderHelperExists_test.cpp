@@ -18,6 +18,10 @@ using namespace builder::internals::builders;
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
 
+auto createEvent = [](const char * json){
+    return std::make_shared<Base::EventHandler>(std::make_shared<json::Document>(json));
+};
+
 TEST(opBuilderHelperExists, Builds)
 {
     Document doc{R"({
@@ -48,19 +52,19 @@ TEST(opBuilderHelperExists, Exec_exists_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "field2check":11,
                     "ref_key":10
                 }
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "field2check":10,
                     "ref_key":10
                 }
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "field2check":10,
                     "ref_key":11
@@ -76,9 +80,9 @@ TEST(opBuilderHelperExists, Exec_exists_ok)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_TRUE(expected[0]->exists("/field2check"));
-    ASSERT_TRUE(expected[1]->exists("/field2check"));
-    ASSERT_TRUE(expected[2]->exists("/field2check"));
+    ASSERT_TRUE(expected[0]->getEvent()->exists("/field2check"));
+    ASSERT_TRUE(expected[1]->getEvent()->exists("/field2check"));
+    ASSERT_TRUE(expected[2]->getEvent()->exists("/field2check"));
 }
 
 TEST(opBuilderHelperExists, Exec_multilevel_ok)
@@ -91,7 +95,7 @@ TEST(opBuilderHelperExists, Exec_multilevel_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "parentObjt_2": {
                         "field2check": 10,
@@ -104,7 +108,7 @@ TEST(opBuilderHelperExists, Exec_multilevel_ok)
                 }
             )"));
 
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "parentObjt_2": {
                         "field2check": 11,
@@ -118,7 +122,7 @@ TEST(opBuilderHelperExists, Exec_multilevel_ok)
             )"));
 
             // false
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "parentObjt_2": {
                         "field2check":10,
@@ -131,7 +135,7 @@ TEST(opBuilderHelperExists, Exec_multilevel_ok)
                 }
             )"));
 
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "parentObjt_2": {
                         "field2check":10,
@@ -153,7 +157,7 @@ TEST(opBuilderHelperExists, Exec_multilevel_ok)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_TRUE(expected[0]->exists("/parentObjt_1/field2check"));
-    ASSERT_TRUE(expected[1]->exists("/parentObjt_1/field2check"));
-    ASSERT_TRUE(expected[2]->exists("/parentObjt_1/field2check"));
+    ASSERT_TRUE(expected[0]->getEvent()->exists("/parentObjt_1/field2check"));
+    ASSERT_TRUE(expected[1]->getEvent()->exists("/parentObjt_1/field2check"));
+    ASSERT_TRUE(expected[2]->getEvent()->exists("/parentObjt_1/field2check"));
 }

@@ -19,6 +19,10 @@ using namespace builder::internals::builders;
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
 
+auto createEvent = [](const char * json){
+    return std::make_shared<Base::EventHandler>(std::make_shared<json::Document>(json));
+};
+
 TEST(opBuilderHelperRegexMatch, Builds)
 {
     Document doc{R"({
@@ -67,19 +71,19 @@ TEST(opBuilderHelperRegexMatch, Invalid_src_type)
         [=](auto s)
         {
             // Object
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"fieldSrc": { "fieldSrc" : "child value"} }
             )"));
             // Number
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"fieldSrc":55}
             )"));
             // Array
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"fieldSrc":[123]}
             )"));
             // Not existing field
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"fieldSrc not exist"}
             )"));
             s.on_completed();
@@ -103,16 +107,16 @@ TEST(opBuilderHelperRegexMatch, String_regex_match)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"exp"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"expregex"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"this is a test exp"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"value"}
             )"));
             s.on_completed();
@@ -124,9 +128,9 @@ TEST(opBuilderHelperRegexMatch, String_regex_match)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_TRUE(RE2::PartialMatch(expected[0]->get("/field").GetString(), "exp"));
-    ASSERT_TRUE(RE2::PartialMatch(expected[1]->get("/field").GetString(), "exp"));
-    ASSERT_TRUE(RE2::PartialMatch(expected[2]->get("/field").GetString(), "exp"));
+    ASSERT_TRUE(RE2::PartialMatch(expected[0]->getEvent()->get("/field").GetString(), "exp"));
+    ASSERT_TRUE(RE2::PartialMatch(expected[1]->getEvent()->get("/field").GetString(), "exp"));
+    ASSERT_TRUE(RE2::PartialMatch(expected[2]->getEvent()->get("/field").GetString(), "exp"));
 }
 
 TEST(opBuilderHelperRegexMatch, Numeric_regex_match)
@@ -139,16 +143,16 @@ TEST(opBuilderHelperRegexMatch, Numeric_regex_match)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"123"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"123.02"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"10123"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"234"}
             )"));
             s.on_completed();
@@ -160,9 +164,9 @@ TEST(opBuilderHelperRegexMatch, Numeric_regex_match)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_TRUE(RE2::PartialMatch(expected[0]->get("/field").GetString(), "123"));
-    ASSERT_TRUE(RE2::PartialMatch(expected[1]->get("/field").GetString(), "123"));
-    ASSERT_TRUE(RE2::PartialMatch(expected[2]->get("/field").GetString(), "123"));
+    ASSERT_TRUE(RE2::PartialMatch(expected[0]->getEvent()->get("/field").GetString(), "123"));
+    ASSERT_TRUE(RE2::PartialMatch(expected[1]->getEvent()->get("/field").GetString(), "123"));
+    ASSERT_TRUE(RE2::PartialMatch(expected[2]->getEvent()->get("/field").GetString(), "123"));
 }
 
 TEST(opBuilderHelperRegexMatch, Advanced_regex_match)
@@ -175,13 +179,13 @@ TEST(opBuilderHelperRegexMatch, Advanced_regex_match)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"client@wazuh.com"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"engine@wazuh.com"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"wazuh.com"}
             )"));
             s.on_completed();
@@ -193,9 +197,9 @@ TEST(opBuilderHelperRegexMatch, Advanced_regex_match)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_TRUE(RE2::PartialMatch(expected[0]->get("/field").GetString(),
+    ASSERT_TRUE(RE2::PartialMatch(expected[0]->getEvent()->get("/field").GetString(),
                                   "([^ @]+)@([^ @]+)"));
-    ASSERT_TRUE(RE2::PartialMatch(expected[1]->get("/field").GetString(),
+    ASSERT_TRUE(RE2::PartialMatch(expected[1]->getEvent()->get("/field").GetString(),
                                   "([^ @]+)@([^ @]+)"));
 }
 
@@ -209,11 +213,11 @@ TEST(opBuilderHelperRegexMatch, Nested_field_regex_match)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"~~({
+            s.on_next(createEvent(R"~~({
             "test":
                 {"field": "exp"}
             })~~"));
-            s.on_next(std::make_shared<json::Document>(R"~~({
+            s.on_next(createEvent(R"~~({
             "test":
                 {"field": "this is a test exp"}
             })~~"));
@@ -226,8 +230,8 @@ TEST(opBuilderHelperRegexMatch, Nested_field_regex_match)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_TRUE(RE2::PartialMatch(expected[0]->get("/test/field").GetString(), "exp"));
-    ASSERT_TRUE(RE2::PartialMatch(expected[1]->get("/test/field").GetString(), "exp"));
+    ASSERT_TRUE(RE2::PartialMatch(expected[0]->getEvent()->get("/test/field").GetString(), "exp"));
+    ASSERT_TRUE(RE2::PartialMatch(expected[1]->getEvent()->get("/test/field").GetString(), "exp"));
 }
 
 TEST(opBuilderHelperRegexMatch, Field_not_exists_regex_match)
@@ -240,10 +244,10 @@ TEST(opBuilderHelperRegexMatch, Field_not_exists_regex_match)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field2":"exp"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"exp"}
             )"));
             s.on_completed();
@@ -255,5 +259,5 @@ TEST(opBuilderHelperRegexMatch, Field_not_exists_regex_match)
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_TRUE(expected[0]->exists("/field2"));
+    ASSERT_TRUE(expected[0]->getEvent()->exists("/field2"));
 }
