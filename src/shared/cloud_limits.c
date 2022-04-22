@@ -23,7 +23,7 @@ time_t last_mod_date = 0;
 cJSON *load_limits_file(const char *object_name) {
 
     if (!object_name) {
-        mdebug1("Invalid deamon name is null");
+        mdebug2("Invalid daemon name is null");
         return NULL;
     }
 
@@ -34,26 +34,27 @@ cJSON *load_limits_file(const char *object_name) {
         mdebug2("File %s doesn't change", OSSEC_LIMITS);
         return NULL;
     }
-    last_mod_date = limit_attrib.st_ctime;
 
     FILE *fp;
     if (fp = fopen(OSSEC_LIMITS, "r"), !fp) {
-        mdebug1("Could not open file '%s'",OSSEC_LIMITS);
+        mdebug2("Could not open file '%s'",OSSEC_LIMITS);
         return NULL;
     }
 
     char buf[OS_MAXSTR + 1];
     memset(buf, '\0', OS_MAXSTR);
     if (fgets(buf, OS_MAXSTR, fp) == NULL) {
-        mdebug1("Could not read file '%s'",OSSEC_LIMITS);
+        mdebug2("Could not read file '%s'",OSSEC_LIMITS);
         fclose(fp);
         return NULL;
     }
 
+    last_mod_date = limit_attrib.st_ctime;
+
     cJSON *file_json = NULL;
     const char *json_err;
     if (file_json = cJSON_ParseWithOpts(buf, &json_err, 0), !file_json) {
-        mdebug1("Invalid format file '%s', json '%s'",OSSEC_LIMITS, json_err);
+        mdebug2("Invalid format file '%s', json '%s'",OSSEC_LIMITS, json_err);
         cJSON_Delete(file_json);
         fclose(fp);
         return NULL;
@@ -66,8 +67,7 @@ cJSON *load_limits_file(const char *object_name) {
 
     cJSON *limits_json = cJSON_GetObjectItem(file_json, "limits");
     if (!cJSON_IsObject(limits_json)) {
-        mdebug1("limits object doesn't found into '%s'", OSSEC_LIMITS);
-        cJSON_Delete(limits_json);
+        mdebug2("limits object doesn't found into '%s'", OSSEC_LIMITS);
         cJSON_Delete(file_json);
         return NULL;
     }
@@ -76,15 +76,13 @@ cJSON *load_limits_file(const char *object_name) {
         return limits_json;
     }
 
-    cJSON *deamon_json = cJSON_GetObjectItem(limits_json, object_name);
-    if (!cJSON_IsObject(deamon_json)) {
-        mdebug1("deamon '%s' doesn't found into '%s'",object_name, OSSEC_LIMITS);
-        cJSON_Delete(deamon_json);
-        cJSON_Delete(limits_json);
+    cJSON *daemon_json = cJSON_GetObjectItem(limits_json, object_name);
+    if (!cJSON_IsObject(daemon_json)) {
+        mdebug2("daemon '%s' doesn't found into '%s'",object_name, OSSEC_LIMITS);
         cJSON_Delete(file_json);
         return NULL;
     }
 
-    return deamon_json;
+    return daemon_json;
 }
 
