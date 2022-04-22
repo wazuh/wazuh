@@ -96,12 +96,20 @@ add_executable(opBuilderMapTest
 )
 gtest_discover_tests(opBuilderMapTest)
 
-add_executable(stageBuilderTest
+add_executable(stageBuilderCheckTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/stageBuilderCheck_test.cpp
+)
+gtest_discover_tests(stageBuilderCheckTest)
+
+add_executable(stageBuilderNormalizeTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/stageBuilderNormalize_test.cpp
+)
+gtest_discover_tests(stageBuilderNormalizeTest)
+
+add_executable(stageBuilderOutputsTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/stageBuilderOutputs_test.cpp
 )
-gtest_discover_tests(stageBuilderTest)
+gtest_discover_tests(stageBuilderOutputsTest)
 
 add_executable(assetBuilderTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/assetBuilderDecoder_test.cpp
