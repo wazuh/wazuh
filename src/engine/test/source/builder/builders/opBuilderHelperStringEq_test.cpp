@@ -18,6 +18,10 @@ using namespace builder::internals::builders;
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
 
+auto createEvent = [](const char * json){
+    return std::make_shared<Base::EventHandler>(std::make_shared<json::Document>(json));
+};
+
 // Build ok
 TEST(opBuilderHelperStringEQ, Builds)
 {
@@ -49,19 +53,19 @@ TEST(opBuilderHelperStringEQ, Static_string_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field2check":"not_test_value"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field2check":"test_value"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"otherfield":"value"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"otherfield":"test_value"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field2check":"test_value"}
             )"));
             s.on_completed();
@@ -72,8 +76,8 @@ TEST(opBuilderHelperStringEQ, Static_string_ok)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_STREQ(expected[0]->get("/field2check").GetString(), "test_value");
-    ASSERT_STREQ(expected[1]->get("/field2check").GetString(), "test_value");
+    ASSERT_STREQ(expected[0]->getEvent()->get("/field2check").GetString(), "test_value");
+    ASSERT_STREQ(expected[1]->getEvent()->get("/field2check").GetString(), "test_value");
 }
 
 // Test ok: static values (numbers, compare as string)
@@ -87,19 +91,19 @@ TEST(opBuilderHelperStringEQ, Static_number_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field2check":"not_11"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field2check":"11"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"otherfield":"11"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"otherfield":11}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field2check":"11"}
             )"));
             s.on_completed();
@@ -110,8 +114,8 @@ TEST(opBuilderHelperStringEQ, Static_number_ok)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_STREQ(expected[0]->get("/field2check").GetString(), "11");
-    ASSERT_STREQ(expected[1]->get("/field2check").GetString(), "11");
+    ASSERT_STREQ(expected[0]->getEvent()->get("/field2check").GetString(), "11");
+    ASSERT_STREQ(expected[1]->getEvent()->get("/field2check").GetString(), "11");
 }
 
 // Test ok: dynamic values (string)
@@ -125,31 +129,31 @@ TEST(opBuilderHelperStringEQ, Dynamics_string_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "field2check":"not_test_value",
                     "ref_key":"test_value"
                 }
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "field2check":"test_value",
                     "ref_key":"test_value"
                 }
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "otherfield":"value",
                     "ref_key":"test_value"
                 }
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "otherfield":"test_value",
                     "ref_key":"test_value"
                 }
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "field2check":"test_value",
                     "ref_key":"test_value"
@@ -163,8 +167,8 @@ TEST(opBuilderHelperStringEQ, Dynamics_string_ok)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_STREQ(expected[0]->get("/field2check").GetString(), "test_value");
-    ASSERT_STREQ(expected[1]->get("/field2check").GetString(), "test_value");
+    ASSERT_STREQ(expected[0]->getEvent()->get("/field2check").GetString(), "test_value");
+    ASSERT_STREQ(expected[1]->getEvent()->get("/field2check").GetString(), "test_value");
 }
 
 // Test ok: multilevel dynamic values (string)
@@ -179,7 +183,7 @@ TEST(opBuilderHelperStringEQ, MultiLevel_dynamics_string_ok)
         [=](auto s)
         {
             // no
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "parentObjt_2": {
                         "field2check": "test_value",
@@ -192,7 +196,7 @@ TEST(opBuilderHelperStringEQ, MultiLevel_dynamics_string_ok)
                 }
             )"));
             // yes
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "parentObjt_2": {
                         "field2check": "not_test_value",
@@ -205,7 +209,7 @@ TEST(opBuilderHelperStringEQ, MultiLevel_dynamics_string_ok)
                 }
             )"));
             // no
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "parentObjt_2": {
                         "field2check":"test_value",
@@ -226,11 +230,11 @@ TEST(opBuilderHelperStringEQ, MultiLevel_dynamics_string_ok)
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
 
-    ASSERT_STREQ(expected[0]->get("/parentObjt_1/field2check").GetString(),
-                 expected[0]->get("/parentObjt_2/ref_key").GetString());
+    ASSERT_STREQ(expected[0]->getEvent()->get("/parentObjt_1/field2check").GetString(),
+                 expected[0]->getEvent()->get("/parentObjt_2/ref_key").GetString());
 
-    ASSERT_STRNE(expected[0]->get("/parentObjt_2/field2check").GetString(), "test_value");
-    ASSERT_STRNE(expected[0]->get("/parentObjt_1/ref_key").GetString(), "test_value");
+    ASSERT_STRNE(expected[0]->getEvent()->get("/parentObjt_2/field2check").GetString(), "test_value");
+    ASSERT_STRNE(expected[0]->getEvent()->get("/parentObjt_1/ref_key").GetString(), "test_value");
 }
 
 // Test ok: dynamic values (number)
@@ -244,37 +248,37 @@ TEST(opBuilderHelperStringEQ, Dynamics_number_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "field2check":11,
                     "ref_key":11
                 }
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "field2check":"11",
                     "ref_key":11
                 }
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "otherfield":11,
                     "ref_key":11
                 }
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "otherfield":11,
                     "ref_key":11
                 }
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "field2check":11,
                     "ref_key":"11"
                 }
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "field2check":"11",
                     "not_ref_key":"11"
