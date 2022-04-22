@@ -58,7 +58,7 @@ types::Lifter opBuilderConditionReference(const types::DocumentValue &def,
         return o.filter(
             [=](types::Event e)
             {
-                if (e->equals(field, reference))
+                if (e->getEvent()->equals(field, reference))
                 {
                     tr(successTrace);
                     return true;

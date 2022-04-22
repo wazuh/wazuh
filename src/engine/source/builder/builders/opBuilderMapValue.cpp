@@ -34,7 +34,7 @@ types::Lifter opBuilderMapValue(const types::DocumentValue &def,
         return o.map(
             [=](types::Event e)
             {
-                e->set(field, doc.m_doc.MemberBegin()->value);
+                e->getEvent()->set(field, doc.m_doc.MemberBegin()->value);
                 tr(successTrace);
                 return e;
             });

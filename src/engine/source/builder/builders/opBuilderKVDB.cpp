@@ -83,7 +83,7 @@ types::Lifter opBuilderKVDBExtract(const types::DocumentValue& def,
                 {
                     try
                     {
-                        auto value = &e->get(key);
+                        auto value = &e->getEvent()->get(key);
                         if (value && value->IsString())
                         {
                             dbKey = value->GetString();
@@ -117,9 +117,9 @@ types::Lifter opBuilderKVDBExtract(const types::DocumentValue& def,
                 // Create and add string to event
                 try
                 {
-                    e->set(target,
+                    e->getEvent()->set(target,
                            rapidjson::Value(dbValue.c_str(),
-                                            e->m_doc.GetAllocator())
+                                            e->getEvent()->m_doc.GetAllocator())
                                .Move());
                     tr(successTrace);
                 }
@@ -185,7 +185,7 @@ types::Lifter opBuilderKVDBExistanceCheck(const types::DocumentValue& def,
                 try // TODO We are only using try for JSON::get. Is correct to
                     // wrap everything?
                 {
-                    auto value = &e->get(key);
+                    auto value = &e->getEvent()->get(key);
                     if (value && value->IsString())
                     {
                         if (kvdb->hasKey(value->GetString()))

@@ -39,7 +39,7 @@ types::Lifter opBuilderConditionValue(const types::DocumentValue &def,
         return o.filter(
             [=](types::Event e)
             {
-                if (e->equals(field, value.begin()->value))
+                if (e->getEvent()->equals(field, value.begin()->value))
                 {
                     tr(successTrace);
                     return true;
