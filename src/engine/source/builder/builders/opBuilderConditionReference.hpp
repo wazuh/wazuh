@@ -20,9 +20,9 @@ namespace builder::internals::builders
  * Checks that a tuple <field: value> is present in the event.
  *
  * @param def Definition of the operation to be built
- * @return types::Lifter
+ * @return base::Lifter
  */
-types::Lifter opBuilderConditionReference(const types::DocumentValue & def, types::TracerFn tr);
+base::Lifter opBuilderConditionReference(const base::DocumentValue & def, types::TracerFn tr);
 
 } // namespace builder::internals::builders
 

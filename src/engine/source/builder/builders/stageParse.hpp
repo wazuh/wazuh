@@ -20,9 +20,9 @@ namespace builder::internals::builders
  * logged event
  *
  * @param def
- * @return types::Lifter
+ * @return base::Lifter
  */
-types::Lifter stageBuilderParse(const types::DocumentValue &def, types::TracerFn tr);
+base::Lifter stageBuilderParse(const base::DocumentValue &def, types::TracerFn tr);
 
 } // namespace builder::internals::builders
 

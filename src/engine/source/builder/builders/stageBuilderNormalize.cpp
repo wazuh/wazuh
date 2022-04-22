@@ -20,7 +20,7 @@
 namespace builder::internals::builders
 {
 
-types::Lifter stageBuilderNormalize(const types::DocumentValue & def, types::TracerFn tr)
+base::Lifter stageBuilderNormalize(const base::DocumentValue & def, types::TracerFn tr)
 {
     // Assert value is as expected
     if (!def.IsArray())
@@ -31,7 +31,7 @@ types::Lifter stageBuilderNormalize(const types::DocumentValue & def, types::Tra
     }
 
     // Build all mappings
-    std::vector<types::Lifter> mappings;
+    std::vector<base::Lifter> mappings;
     for (auto it = def.Begin(); it != def.End(); ++it)
     {
         try

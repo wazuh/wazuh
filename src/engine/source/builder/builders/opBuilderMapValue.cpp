@@ -14,11 +14,11 @@ using namespace std;
 namespace builder::internals::builders
 {
 // TODOL DOC and test this
-types::Lifter opBuilderMapValue(const types::DocumentValue &def,
+base::Lifter opBuilderMapValue(const base::DocumentValue &def,
                                 types::TracerFn tr)
 {
     // Make deep copy of value
-    types::Document doc {def};
+    base::Document doc {def};
     std::string field =
         json::formatJsonPath(def.MemberBegin()->name.GetString());
     std::string defstr {doc.str()};
@@ -28,11 +28,11 @@ types::Lifter opBuilderMapValue(const types::DocumentValue &def,
     std::string failureTrace = fmt::format("{} Mapping Failure", doc.str());
 
     // Return Lifter
-    return [=](types::Observable o)
+    return [=](base::Observable o)
     {
         // Append rxcpp operation
         return o.map(
-            [=](types::Event e)
+            [=](base::Event e)
             {
                 e->getEvent()->set(field, doc.m_doc.MemberBegin()->value);
                 tr(successTrace);

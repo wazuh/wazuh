@@ -18,9 +18,9 @@ namespace builder::internals::builders
  * @brief Broadcast to multiple lifters
  *
  * @param lifters
- * @return types::Lifter
+ * @return base::Lifter
  */
-types::Lifter combinatorBuilderBroadcast(const std::vector<types::Lifter> & lifters);
+base::Lifter combinatorBuilderBroadcast(const std::vector<base::Lifter> & lifters);
 } // namespace builder::internals::builders
 
 #endif // _COMBINATOR_BUILDER_BROADCAST_H
