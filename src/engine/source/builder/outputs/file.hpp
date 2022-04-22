@@ -67,7 +67,7 @@ public:
      */
     void write(const types::Event & e)
     {
-        this->m_os << e->str() << std::endl;
+        this->m_os << e->getEvent()->str() << std::endl;
     }
 };
 
