@@ -20,7 +20,7 @@ namespace builder::internals::builders
  * @param def
  * @return types::ConnectableT
  */
-types::ConnectableT assetBuilderFilter(const types::Document & def);
+types::ConnectableT assetBuilderFilter(const base::Document & def);
 } // namespace builder::internals::builders
 
 #endif // _ASSET_BUILDER_FILTER_H

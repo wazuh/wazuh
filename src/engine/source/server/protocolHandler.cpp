@@ -35,7 +35,7 @@ bool ProtocolHandler::hasHeader()
     return false;
 }
 
-std::shared_ptr<Base::EventHandler> ProtocolHandler::parse(const std::string& event)
+base::Event ProtocolHandler::parse(const std::string& event)
 {
     auto doc = std::make_shared<json::Document>();
     doc->m_doc.SetObject();
@@ -80,7 +80,8 @@ std::shared_ptr<Base::EventHandler> ProtocolHandler::parse(const std::string& ev
             ("Error parsing location using token sep :" + event));
     }
 
-    return  std::shared_ptr<Base::EventHandler>(new Base::EventHandler(doc));
+    // TODO Create event here
+    return  std::shared_ptr<base::EventHandler>(new base::EventHandler(doc));
 }
 
 std::optional<std::vector<std::string>>

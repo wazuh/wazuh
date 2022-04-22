@@ -19,9 +19,9 @@ namespace builder::internals::builders
  * @brief Builds map reference operation.
  *
  * @param def Definition of the operation to be built
- * @return types::Lifter
+ * @return base::Lifter
  */
-types::Lifter opBuilderMapReference(const types::DocumentValue & def, types::TracerFn tr);
+base::Lifter opBuilderMapReference(const base::DocumentValue & def, types::TracerFn tr);
 
 } // namespace builder::internals::builders
 

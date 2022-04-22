@@ -23,7 +23,7 @@ namespace builder::internals::builders
 using builder::internals::syntax::REFERENCE_ANCHOR;
 
 // <field>: +kvdb_extract/<DB>/<ref_key>
-types::Lifter opBuilderKVDBExtract(const types::DocumentValue& def,
+base::Lifter opBuilderKVDBExtract(const base::DocumentValue& def,
                                    types::TracerFn tr)
 {
     // Get target of the extraction
@@ -66,16 +66,16 @@ types::Lifter opBuilderKVDBExtract(const types::DocumentValue& def,
 
     // TODO this is not great
     // Make deep copy of value
-    types::Document doc {def};
+    base::Document doc {def};
     std::string successTrace = fmt::format("{} KVDBExtract Success", doc.str());
     std::string failureTrace = fmt::format("{} KVDBExtract Failure", doc.str());
 
     // Return Lifter
-    return [=, kvdb = std::move(kvdb), tr = std::move(tr)](types::Observable o)
+    return [=, kvdb = std::move(kvdb), tr = std::move(tr)](base::Observable o)
     {
         // Append rxcpp operation
         return o.map(
-            [=, kvdb = std::move(kvdb), tr = std::move(tr)](types::Event e)
+            [=, kvdb = std::move(kvdb), tr = std::move(tr)](base::Event e)
             {
                 // Get DB key
                 std::string dbKey;
@@ -135,7 +135,7 @@ types::Lifter opBuilderKVDBExtract(const types::DocumentValue& def,
     };
 }
 
-types::Lifter opBuilderKVDBExistanceCheck(const types::DocumentValue& def,
+base::Lifter opBuilderKVDBExistanceCheck(const base::DocumentValue& def,
                                           bool checkExist,
                                           types::TracerFn tr)
 {
@@ -168,18 +168,18 @@ types::Lifter opBuilderKVDBExistanceCheck(const types::DocumentValue& def,
 
     // TODO this is not great
     // Make deep copy of value
-    types::Document doc {def};
+    base::Document doc {def};
     std::string successTrace =
         fmt::format("{} KVDBExistanceCheck Found", doc.str());
     std::string failureTrace =
         fmt::format("{} KVDBExistanceCheck NotFound", doc.str());
 
     // Return Lifter
-    return [=, kvdb = std::move(kvdb), tr = std::move(tr)](types::Observable o)
+    return [=, kvdb = std::move(kvdb), tr = std::move(tr)](base::Observable o)
     {
         // Append rxcpp operations
         return o.filter(
-            [=, kvdb = std::move(kvdb), tr = std::move(tr)](types::Event e)
+            [=, kvdb = std::move(kvdb), tr = std::move(tr)](base::Event e)
             {
                 bool found = false;
                 try // TODO We are only using try for JSON::get. Is correct to
@@ -206,14 +206,14 @@ types::Lifter opBuilderKVDBExistanceCheck(const types::DocumentValue& def,
 }
 
 // <field>: +kvdb_match/<DB>
-types::Lifter opBuilderKVDBMatch(const types::DocumentValue& def,
+base::Lifter opBuilderKVDBMatch(const base::DocumentValue& def,
                                  types::TracerFn tr)
 {
     return opBuilderKVDBExistanceCheck(def, true, tr);
 }
 
 // <field>: +kvdb_not_match/<DB>
-types::Lifter opBuilderKVDBNotMatch(const types::DocumentValue& def,
+base::Lifter opBuilderKVDBNotMatch(const base::DocumentValue& def,
                                     types::TracerFn tr)
 {
     return opBuilderKVDBExistanceCheck(def, false, tr);

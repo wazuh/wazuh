@@ -20,7 +20,7 @@
 namespace builder::internals::builders
 {
 
-types::Lifter opBuilderMap(const types::DocumentValue& def, types::TracerFn tr)
+base::Lifter opBuilderMap(const base::DocumentValue& def, types::TracerFn tr)
 {
     // Check that input is as expected and throw exception otherwise
     if (!def.IsObject())

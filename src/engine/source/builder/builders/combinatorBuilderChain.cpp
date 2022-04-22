@@ -12,19 +12,19 @@
 namespace builder::internals::builders
 {
 
-types::Lifter combinatorBuilderChain(const std::vector<types::Lifter> & lifters)
+base::Lifter combinatorBuilderChain(const std::vector<base::Lifter> & lifters)
 {
-    return [=](types::Observable o)
+    return [=](base::Observable o)
     {
         // this is way better than std::function for 3 reasons: it doesn't
         // require type erasure or memory allocation, it can be constexpr and
         // it works properly with auto (templated) parameters / return type
-        auto connect = [](types::Observable o, std::vector<types::Lifter> remaining,
-                          auto & connect_ref) -> types::Observable
+        auto connect = [](base::Observable o, std::vector<base::Lifter> remaining,
+                          auto & connect_ref) -> base::Observable
         {
-            types::Lifter current = remaining.front();
+            base::Lifter current = remaining.front();
             remaining.erase(remaining.begin());
-            types::Observable chain = current(o);
+            base::Observable chain = current(o);
             if (remaining.size() == 0)
             {
                 return chain;

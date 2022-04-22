@@ -20,7 +20,7 @@
 namespace builder::internals::builders
 {
 
-types::Lifter stageBuilderOutputs(const types::DocumentValue & def, types::TracerFn tr)
+base::Lifter stageBuilderOutputs(const base::DocumentValue & def, types::TracerFn tr)
 {
     // Assert value is as expected
     if (!def.IsArray())
@@ -33,7 +33,7 @@ types::Lifter stageBuilderOutputs(const types::DocumentValue & def, types::Trace
     }
 
     // Build all outputs
-    std::vector<types::Lifter> outputs;
+    std::vector<base::Lifter> outputs;
     for (auto it = def.Begin(); it != def.End(); ++it)
     {
         try
@@ -49,7 +49,7 @@ types::Lifter stageBuilderOutputs(const types::DocumentValue & def, types::Trace
     }
 
     // Broadcast to all operations
-    types::Lifter output;
+    base::Lifter output;
     try
     {
         output = std::get<types::CombinatorBuilder>(Registry::getBuilder("combinator.broadcast"))(outputs);

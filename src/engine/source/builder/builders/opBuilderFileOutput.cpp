@@ -21,7 +21,7 @@
 namespace builder::internals::builders
 {
 
-types::Lifter opBuilderFileOutput(const types::DocumentValue &def, types::TracerFn tr)
+base::Lifter opBuilderFileOutput(const base::DocumentValue &def, types::TracerFn tr)
 {
     // Check that input is as expected and throw exception otherwise
     if (!def.IsObject())
@@ -54,7 +54,7 @@ types::Lifter opBuilderFileOutput(const types::DocumentValue &def, types::Tracer
         std::throw_with_nested(std::runtime_error(msg));
     }
 
-    return [=](const types::Observable &input) -> types::Observable
+    return [=](const base::Observable &input) -> base::Observable
     {
         auto filePtr = std::make_shared<outputs::FileOutput>(path);
         input.subscribe([=](auto v) { filePtr->write(v); },
