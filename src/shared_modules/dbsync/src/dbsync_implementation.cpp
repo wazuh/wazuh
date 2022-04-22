@@ -119,7 +119,7 @@ std::shared_ptr<DBSyncImplementation::DbEngineContext> DBSyncImplementation::dbE
 
 void DBSyncImplementation::setMaxRows(const DBSYNC_HANDLE handle,
                                       const std::string& table,
-                                      const int64_t maxRows)
+                                      const long long maxRows)
 {
     const auto ctx{ dbEngineContext(handle) };
 

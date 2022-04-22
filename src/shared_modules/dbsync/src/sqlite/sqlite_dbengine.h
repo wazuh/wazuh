@@ -131,7 +131,7 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
         void syncTableRowData(const nlohmann::json& jsInput,
                               const DbSync::ResultCallback callback,
                               const bool inTransaction,
-                              Utils::AbstractLocking& mutex) override;
+                              Utils::ILocking& mutex) override;
 
         void setMaxRows(const std::string& table,
                         const int64_t maxRows) override;

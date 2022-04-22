@@ -20,15 +20,15 @@
 
 namespace Utils
 {
-    class AbstractLocking
+    class ILocking
     {
         public:
-            virtual ~AbstractLocking() = default;
+            virtual ~ILocking() = default;
             virtual void lock() = 0;
             virtual void unlock() = 0;
     };
 
-    class SharedLocking final : public AbstractLocking
+    class SharedLocking final : public ILocking
     {
         std::shared_lock<std::shared_timed_mutex> m_lock;
         public:
@@ -46,7 +46,7 @@ namespace Utils
             }
     };
 
-    class ExclusiveLocking final : public AbstractLocking
+    class ExclusiveLocking final : public ILocking
     {
         std::unique_lock<std::shared_timed_mutex> m_lock;
         public:

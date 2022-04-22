@@ -9,9 +9,7 @@
  * Foundation.
  */
 
-#include <climits>
 #include <fstream>
-#include <limits>
 #include <thread>
 #include "db_exception.h"
 #include "mapWrapperSafe.h"
@@ -146,7 +144,7 @@ void SQLiteDBEngine::refreshTableData(const nlohmann::json& data,
 void SQLiteDBEngine::syncTableRowData(const nlohmann::json& jsInput,
                                       const DbSync::ResultCallback callback,
                                       const bool inTransaction,
-                                      Utils::AbstractLocking& lock)
+                                      Utils::ILocking& lock)
 {
     const auto& table { jsInput.at("table") };
     const auto& data { jsInput.at("data") };
