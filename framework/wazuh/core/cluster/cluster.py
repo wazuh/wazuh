@@ -19,13 +19,14 @@ from wazuh.core import common
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.agent import WazuhDBQueryAgents
 from wazuh.core.cluster.utils import get_cluster_items, read_config
-from wazuh.core.utils import md5, mkdir_with_mode, get_utc_now, get_date_from_timestamp
+from wazuh.core.utils import blake2b, mkdir_with_mode, get_utc_now, get_date_from_timestamp
 
 logger = logging.getLogger('wazuh')
 
 # Separators used in compression/decompression functions to delimit files.
 FILE_SEP = '|@!@|'
 PATH_SEP = '|!@!|'
+
 
 #
 # Cluster
@@ -117,7 +118,7 @@ def check_cluster_status():
 #
 
 def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get_cluster_item_key, previous_status=None,
-             get_md5=True):
+             get_hash=True):
     """Iterate recursively inside a directory, save the path of each found file and obtain its metadata.
 
     Parameters
@@ -137,8 +138,8 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
         after sending a file from one node to another, depending on the directory the file belongs to.
     previous_status : dict
         Information collected in the previous integration process.
-    get_md5 : bool
-        Whether to calculate and save the MD5 hash of the found file.
+    get_hash : bool
+        Whether to calculate and save the BLAKE2b hash of the found file.
 
     Returns
     -------
@@ -181,8 +182,8 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
                                 file_metadata['merged'] = True
                                 file_metadata['merge_type'] = 'TYPE'
                                 file_metadata['merge_name'] = abs_file_path
-                            if get_md5:
-                                file_metadata['md5'] = md5(abs_file_path)
+                            if get_hash:
+                                file_metadata['blake2_hash'] = blake2b(abs_file_path)
                             # Use the relative file path as a key to save its metadata dictionary.
                             walk_files[relative_file_path] = file_metadata
                     except FileNotFoundError as e:
@@ -196,15 +197,15 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
     return walk_files
 
 
-def get_files_status(previous_status=None, get_md5=True):
+def get_files_status(previous_status=None, get_hash=True):
     """Get all files and metadata inside the directories listed in cluster.json['files'].
 
     Parameters
     ----------
     previous_status : dict
         Information collected in the previous integration process.
-    get_md5 : bool
-        Whether to calculate and save the MD5 hash of the found file.
+    get_hash : bool
+        Whether to calculate and save the BLAKE2b hash of the found file.
 
     Returns
     -------
@@ -223,7 +224,7 @@ def get_files_status(previous_status=None, get_md5=True):
         try:
             final_items.update(
                 walk_dir(file_path, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
-                         cluster_items['files']['excluded_extensions'], file_path, previous_status, get_md5))
+                         cluster_items['files']['excluded_extensions'], file_path, previous_status, get_hash))
         except Exception as e:
             logger.warning(f"Error getting file status: {e}.")
 
@@ -379,7 +380,7 @@ def decompress_files(compress_path, ko_files_name="files_metadata.json"):
     """
     ko_files = ''
     compressed_data = b''
-    window_size = 1024*1024*10   # 10 MiB
+    window_size = 1024 * 1024 * 10  # 10 MiB
     decompress_dir = compress_path + 'dir'
 
     try:
@@ -488,8 +489,9 @@ def compare_files(good_files, check_files, node_name):
     # if extra_valid_files:
     #     extra_valid_function()
 
-    # 'all_shared' files are the ones present in both sets but with different MD5 checksum.
-    all_shared = [x for x in check_files.keys() & good_files.keys() if check_files[x]['md5'] != good_files[x]['md5']]
+    # 'all_shared' files are the ones present in both sets but with different BLAKE2b checksum.
+    all_shared = [x for x in check_files.keys() & good_files.keys() if
+                  check_files[x]['blake2_hash'] != good_files[x]['blake2_hash']]
 
     # 'shared_e_v' are files present in both nodes but need to be merged before sending them to the worker. Only
     # 'agent-groups' files fit into this category.

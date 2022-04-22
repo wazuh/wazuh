@@ -7,8 +7,8 @@ from unittest.mock import AsyncMock, patch
 from freezegun import freeze_time
 import pytest
 
-from api.middlewares import set_user_name, unlock_ip, _cleanup_detail_field, prevent_bruteforce_attack, \
-    prevent_denial_of_service, security_middleware
+from api.middlewares import unlock_ip, _cleanup_detail_field, prevent_bruteforce_attack, prevent_denial_of_service, \
+    security_middleware
 from wazuh.core.exception import WazuhPermissionError, WazuhTooManyRequests
 
 
@@ -44,20 +44,6 @@ def test_cleanup_detail_field():
     """
 
     assert _cleanup_detail_field(detail) == "Testing. Details field."
-
-
-@pytest.mark.parametrize("req", [
-    DummyRequest({'token_info': {'sub': 'test'},
-                  'user': None}),
-    DummyRequest({'user': None}),
-])
-@pytest.mark.asyncio
-async def test_middlewares_set_user_name(req):
-    """Test `set_user_name` updates user when there is `token_info`."""
-    await set_user_name(req, handler_mock)
-    processed_request = handler_mock.call_args.args[-1]
-
-    assert processed_request['user'] if "token_info" in req else processed_request['user'] is None
 
 
 @patch("api.middlewares.ip_stats", new={'ip': {'timestamp': 5}})

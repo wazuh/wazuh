@@ -1,7 +1,7 @@
 import logging
 import os
 import sys
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, call
 
 import pytest
 

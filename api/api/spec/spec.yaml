@@ -2118,8 +2118,6 @@ components:
             type: object
 
         #Wodle sections inside WazuhConfiguration(ossec.conf)
-        agent-key-polling:
-          type: object
         aws-s3:
           type: object
         azure-logs:
@@ -2486,7 +2484,6 @@ components:
             - verify-agent-conf
             - wazuh-db
             - wazuh-modulesd
-            - wazuh-modulesd:agent-key-polling
             - wazuh-modulesd:aws-s3
             - wazuh-modulesd:azure-logs
             - wazuh-modulesd:agent-upgrade
@@ -2579,8 +2576,6 @@ components:
           wazuh-db:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:
-            $ref: '#/components/schemas/LogSummary'
-          wazuh-modulesd:agent-key-polling:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:agent-upgrade:
             $ref: '#/components/schemas/LogSummary'
@@ -4702,7 +4697,6 @@ components:
         - syscheck
         - syslog_output
         # Wodle sections
-        - agent-key-polling
         - aws-s3
         - azure-logs
         - cis-cat
@@ -4749,7 +4743,6 @@ components:
         - sca
         - wazuh-db
         - wazuh-modulesd
-        - wazuh-modulesd:agent-key-polling
         - wazuh-modulesd:aws-s3
         - wazuh-modulesd:azure-logs
         - wazuh-modulesd:agent-upgrade

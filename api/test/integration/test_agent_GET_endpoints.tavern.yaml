@@ -2467,6 +2467,20 @@ stages:
             reverse: true
       status_code: 200
 
+  - name: Sort by count
+    request:
+      verify: False
+      <<: *get_agents_groups
+      params:
+        sort: -count
+    response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "count"
+            reverse: true
+      status_code: 200
+
   - name: Try to show groups with wrong sort
     request:
       verify: False

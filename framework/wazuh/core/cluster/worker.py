@@ -597,7 +597,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         Asynchronous task that is started when the worker connects to the master. It starts an integrity synchronization
         process every self.cluster_items['intervals']['worker']['sync_integrity'] seconds.
 
-        A dictionary like {'file_path': {<MD5, merged, merged_name, etc>}, ...} is created and sent to the master,
+        A dictionary like {'file_path': {<BLAKE2b, merged, merged_name, etc>}, ...} is created and sent to the master,
         containing the information of all the files inside the directories specified in cluster.json. The master
         compares it with its own information.
         """
@@ -781,7 +781,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             """
             - zip_path contains the path of the unzipped directory
             - ko_files contains a Dict with this structure:
-              {'missing': {'<file_path>': {<MD5, merged, merged_name, etc>}, ...},
+              {'missing': {'<file_path>': {<BLAKE2b, merged, merged_name, etc>}, ...},
                'shared': {...}, 'extra': {...}, 'extra_valid': {...}}
             """
             ko_files, zip_path = await cluster.run_in_pool(self.loop, self.server.task_pool, cluster.decompress_files,

@@ -38,10 +38,21 @@ typedef struct authd_flags_t {
     unsigned short remote_enrollment:1;
 } authd_flags_t;
 
+typedef struct authd_key_request_t {
+    int             enabled;
+    char            *exec_path;
+    char            *socket;
+    unsigned int    timeout;
+    unsigned int    threads;
+    unsigned int    queue_size;
+    unsigned short  compatibility_flag; // Flag to avoid overwriting configuration settings
+} authd_key_request_t;
+
 typedef struct authd_config_t {
     unsigned short port;
     authd_flags_t flags;
     authd_force_options_t force_options;
+    authd_key_request_t key_request;
     char *ciphers;
     char *agent_ca;
     char *manager_cert;

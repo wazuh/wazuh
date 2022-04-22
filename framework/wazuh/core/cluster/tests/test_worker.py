@@ -54,8 +54,9 @@ def get_worker_handler():
 
 
 sync_task = cluster_common.SyncTask(b"cmd", logging.getLogger("wazuh"), get_worker_handler())
-sync_wazuh_db = cluster_common.SyncWazuhdb(get_worker_handler(), logging.getLogger("wazuh"), b"cmd", "get_command",
-                                           "set_command", None)
+sync_wazuh_db = cluster_common.SyncWazuhdb(get_worker_handler(), logging.getLogger("wazuh"), cmd=b"cmd",
+                                           get_data_command="get_command", set_data_command="set_command",
+                                           data_retriever=None)
 worker_handler = get_worker_handler()
 
 
@@ -324,8 +325,9 @@ async def test_sync_files_sync_ok(compress_files_mock, unlink_mock, relpath_mock
 
 
 @pytest.mark.asyncio
+@patch("wazuh.core.cluster.cluster.compress_files", return_value="files/path/")
 @patch("wazuh.core.cluster.worker.WorkerHandler.send_request", return_value=Exception())
-async def test_sync_files_sync_ko(send_request_mock):
+async def test_sync_files_sync_ko(send_request_mock, compress_files_mock):
     """Test if the right exceptions are being risen when necessary."""
     files_to_sync = {"path1": "metadata1"}
     files_metadata = {"path2": "metadata2"}
@@ -337,6 +339,74 @@ async def test_sync_files_sync_ko(send_request_mock):
         await sync_files.sync(files_to_sync, files_metadata)
 
     send_request_mock.assert_called_once()
+    compress_files_mock.assert_called_once_with(name='Testing', list_path=files_to_sync,
+                                                cluster_control_json=files_metadata)
+
+
+# Test SyncWazuhdb class
+
+def test_sync_wazuh_db_init():
+    """Test the '__init__' method from the SyncWazuhdb class."""
+
+    assert sync_wazuh_db.get_data_command == "get_command"
+    assert sync_wazuh_db.set_data_command == "set_command"
+    assert sync_wazuh_db.data_retriever is None
+
+
+@pytest.mark.asyncio
+@freeze_time('1970-01-01')
+@patch("json.dumps", return_value="")
+@patch('wazuh.core.cluster.worker.cluster.run_in_pool', return_value=True)
+async def test_sync_wazuh_db_sync_ok(run_in_pool_mock, json_dumps_mock):
+    """Check if the information is being properly sent to the master node."""
+    chunks = True
+
+    def callable_mock(data):
+        """Mock method in order to obtain a particular output."""
+        if chunks:
+            return [data]
+        else:
+            return []
+
+    sync_wazuh_db.data_retriever = callable_mock
+
+    # Test try and if
+    with patch.object(logging.getLogger("wazuh"), "debug") as logger_debug_mock:
+        with patch("wazuh.core.cluster.worker.WorkerHandler.send_string", return_value=b"OK") as send_string_mock:
+            with patch("wazuh.core.cluster.worker.WorkerHandler.send_request") as send_request_mock:
+                assert await sync_wazuh_db.sync(start_time=10, chunks=["get_command"]) is True
+                send_request_mock.assert_called_once_with(command=b"cmd", data=b"OK")
+                json_dumps_mock.assert_called_with({"set_data_command": "set_command", "payload": {},
+                                                    "chunks": ["get_command"]})
+                logger_debug_mock.assert_has_calls([call("Sending chunks.")])
+
+            send_string_mock.assert_called_with(b"")
+
+    # Test else
+    chunks = False
+    with patch.object(logging.getLogger("wazuh"), "info") as logger_info_mock:
+        assert await sync_wazuh_db.sync(start_time=10, chunks=[]) is True
+        logger_info_mock.assert_called_once_with("Finished in -10.000s. Updated 0 chunks.")
+
+
+@pytest.mark.asyncio
+@freeze_time('1970-01-01')
+@patch("json.dumps", return_value="")
+@patch("wazuh.core.cluster.worker.WorkerHandler.send_string", return_value=b"Error")
+async def test_sync_wazuh_db_sync_ko(send_string_mock, json_dumps_mock):
+    """Test if the proper exceptions are raised when needed."""
+
+    def callable_mock(data):
+        """Mock method in order to obtain a particular output."""
+        return [data]
+
+    sync_wazuh_db.data_retriever = callable_mock
+
+    # Test try and if
+    with pytest.raises(exception.WazuhClusterError, match=r".* 3016 .*"):
+        await sync_wazuh_db.sync(start_time=10, chunks=["get_command"])
+    json_dumps_mock.assert_called_with({"set_data_command": "set_command", "payload": {}, "chunks": ["get_command"]})
+    send_string_mock.assert_called_with(b"")
 
 
 # Test WorkerHandler class methods.

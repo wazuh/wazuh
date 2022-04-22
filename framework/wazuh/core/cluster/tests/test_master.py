@@ -482,7 +482,8 @@ def test_master_handler_process_request(logger_mock):
                return_value=b'ok') as end_sending_agent_information_mock:
         master_handler.task_loggers['Agent-groups send full'] = logging.getLogger('Agent-groups send full')
         assert master_handler.process_request(command=b'syn_wgc_e', data=b"data") == b"ok"
-        end_sending_agent_information_mock.assert_called_once_with(logging.getLogger('Agent-groups send full'), 0.0, "data")
+        end_sending_agent_information_mock.assert_called_once_with(
+            logging.getLogger('Agent-groups send full'), 0.0, "data")
 
     # Test the seventh condition
     with patch("wazuh.core.cluster.common.error_receiving_agent_information",
@@ -1587,7 +1588,7 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, basenam
     basename_mock.assert_called_with('data')
     path_join_mock.assert_called_once_with(common.WAZUH_PATH, "data")
     assert result == {'total_updated': 0, 'errors_per_folder': defaultdict(list), 'generic_errors':
-        ["Error updating worker files (extra valid): 'Error 3007 - Client.keys file received in master node'."]}
+                      ["Error updating worker files (extra valid): 'Error 3007 - Client.keys file received in master node'."]}
 
     # Reset all the used mocks
     reset_mock(all_mocks)
@@ -1883,7 +1884,6 @@ async def test_agent_groups_update(sleep_mock):
             self._error.append(data)
             raise Exception('Stop while true')
 
-
     class WazuhDBConnectionMock:
         """Auxiliary class."""
 
@@ -1981,6 +1981,70 @@ async def test_master_file_status_update_ok(sleep_mock):
             assert "Error calculating local file integrity: Stop run_in_pool" in logger_mock._error
             setup_task_logger_mock.assert_called_once_with('Local integrity')
             assert master_class.integrity_control == ['info']
+
+
+@pytest.mark.asyncio
+@freeze_time("2021-11-02")
+@patch('asyncio.sleep')
+@patch('wazuh.core.cluster.master.cluster.run_in_pool', return_value=[])
+async def test_master_file_status_update_ok(run_in_pool_mock, asyncio_sleep_mock):
+    """Check if the file status is properly obtained."""
+
+    master_class = master.Master(performance_test=False, concurrency_test=False,
+                                 configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111,
+                                                "node_type": "master"},
+                                 cluster_items=cluster_items,
+                                 enable_ssl=False)
+
+    class LoggerMock:
+        """Auxiliary class."""
+
+        def __init__(self):
+            self._info = []
+            self._error = []
+
+        def info(self, data):
+            """Auxiliary method."""
+            self._info.append(data)
+
+        def error(self, data):
+            """Auxiliary method."""
+            self._error.append(data)
+
+    class IntegrityExecutedMock:
+        """Auxiliary class."""
+
+        def __init__(self):
+            self._clear = False
+
+        def clear(self):
+            self._clear = True
+
+    async def sleep_mock(recalculate_integrity):
+        raise Exception()
+
+    logger_mock = LoggerMock()
+    master_class.integrity_already_executed = IntegrityExecutedMock()
+    asyncio_sleep_mock.side_effect = sleep_mock
+
+    with patch("wazuh.core.cluster.master.Master.setup_task_logger",
+               return_value=logger_mock) as setup_task_logger_mock:
+        # Test the 'try'
+        try:
+            await master_class.file_status_update()
+        except Exception:
+            assert "Starting." in logger_mock._info
+            assert "Finished in 0.000s. Calculated metadata of 0 files." in logger_mock._info
+            # assert "Error calculating local file integrity: " in logger_mock._error
+            setup_task_logger_mock.assert_called_once_with('Local integrity')
+            assert master_class.integrity_control == run_in_pool_mock.return_value
+
+        # Test the 'except'
+        run_in_pool_mock.side_effect = Exception
+        try:
+            await master_class.file_status_update()
+        except Exception:
+            assert "Error calculating local file integrity: " in logger_mock._error
 
 
 @patch('asyncio.get_running_loop', return_value=loop)
