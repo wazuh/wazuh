@@ -22,7 +22,7 @@
 namespace builder::internals::builders
 {
 
-types::ConnectableT assetBuilderDecoder(const types::Document &def)
+types::ConnectableT assetBuilderDecoder(const base::Document &def)
 {
     // Assert document is as expected
     if (!def.m_doc.IsObject())
@@ -34,10 +34,10 @@ types::ConnectableT assetBuilderDecoder(const types::Document &def)
         throw std::invalid_argument(msg);
     }
 
-    std::vector<types::Lifter> stages;
+    std::vector<base::Lifter> stages;
 
     // Needed to build stages in a for loop popping its attributes
-    std::map<std::string, const types::DocumentValue &> attributes;
+    std::map<std::string, const base::DocumentValue &> attributes;
     try
     {
         for (auto it = def.m_doc.MemberBegin(); it != def.m_doc.MemberEnd();
@@ -75,7 +75,7 @@ types::ConnectableT assetBuilderDecoder(const types::Document &def)
     {
         try
         {
-            for (const types::DocumentValue &parentName :
+            for (const base::DocumentValue &parentName :
                  attributes.at("parents").GetArray())
             {
                 parents.push_back(parentName.GetString());
@@ -144,7 +144,7 @@ types::ConnectableT assetBuilderDecoder(const types::Document &def)
 
     try
     {
-        types::Lifter decoder = std::get<types::CombinatorBuilder>(
+        base::Lifter decoder = std::get<types::CombinatorBuilder>(
             Registry::getBuilder("combinator.chain"))(stages);
         // Finally return connectable
         return types::ConnectableT {name, parents, decoder, tr};

@@ -19,9 +19,9 @@ namespace builder::internals::builders
  * @brief Builds map value operation.
  *
  * @param def Definition of the operation to be built
- * @return types::Lifter
+ * @return base::Lifter
  */
-types::Lifter opBuilderMapValue(const types::DocumentValue & def, types::TracerFn tr);
+base::Lifter opBuilderMapValue(const base::DocumentValue & def, types::TracerFn tr);
 
 } // namespace builder::internals::builders
 

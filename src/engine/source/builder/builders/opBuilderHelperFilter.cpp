@@ -24,7 +24,6 @@ namespace
 
 using opString = std::optional<std::string>;
 using builder::internals::syntax::REFERENCE_ANCHOR;
-using builder::internals::types::DocumentValue;
 
 /**
  * @brief Get the Comparator operator, and the value to compare
@@ -38,7 +37,7 @@ using builder::internals::types::DocumentValue;
  * helper function
  */
 std::tuple<std::string, opString, opString>
-getCompOpParameter(const DocumentValue &def)
+getCompOpParameter(const base::DocumentValue &def)
 {
     // Get destination path
     std::string field {
@@ -77,7 +76,7 @@ namespace builder::internals::builders
 {
 
 // <field>: exists
-types::Lifter opBuilderHelperExists(const types::DocumentValue &def,
+base::Lifter opBuilderHelperExists(const base::DocumentValue &def,
                                     types::TracerFn tr)
 {
     // Get Field path to check
@@ -99,11 +98,11 @@ types::Lifter opBuilderHelperExists(const types::DocumentValue &def,
                                            def.MemberBegin()->name.GetString());
 
     // Return Lifter
-    return [=](types::Observable o)
+    return [=](base::Observable o)
     {
         // Append rxcpp operation
         return o.filter(
-            [=](types::Event e)
+            [=](base::Event e)
             {
                 if (e->getEvent()->exists(field))
                 {
@@ -120,7 +119,7 @@ types::Lifter opBuilderHelperExists(const types::DocumentValue &def,
 }
 
 // <field>: not_exists
-types::Lifter opBuilderHelperNotExists(const types::DocumentValue &def,
+base::Lifter opBuilderHelperNotExists(const base::DocumentValue &def,
                                        types::TracerFn tr)
 {
     // Get Field path to check
@@ -143,11 +142,11 @@ types::Lifter opBuilderHelperNotExists(const types::DocumentValue &def,
                     def.MemberBegin()->name.GetString());
 
     // Return Lifter
-    return [=](types::Observable o)
+    return [=](base::Observable o)
     {
         // Append rxcpp operation
         return o.filter(
-            [=](types::Event e)
+            [=](base::Event e)
             {
                 if (!e->getEvent()->exists(field))
                 {
@@ -169,7 +168,7 @@ types::Lifter opBuilderHelperNotExists(const types::DocumentValue &def,
 
 bool opBuilderHelperStringComparison(const std::string key,
                                      char op,
-                                     types::Event &e,
+                                     base::Event &e,
                                      std::optional<std::string> refValue,
                                      std::optional<std::string> value)
 {
@@ -251,24 +250,24 @@ bool opBuilderHelperStringComparison(const std::string key,
 }
 
 // <field>: s_eq/<value>
-types::Lifter opBuilderHelperStringEQ(const types::DocumentValue &def,
+base::Lifter opBuilderHelperStringEQ(const base::DocumentValue &def,
                                       types::TracerFn tr)
 {
     auto [key, refValue, value] {getCompOpParameter(def)};
 
     // Tracing
-    types::Document defTmp {def};
+    base::Document defTmp {def};
     std::string successTrace =
         fmt::format("{} Condition Success", defTmp.str());
     std::string failureTrace =
         fmt::format("{} Condition Failure", defTmp.str());
 
     // Return Lifter
-    return [=](types::Observable o)
+    return [=](base::Observable o)
     {
         // Append rxcpp operation
         return o.filter(
-            [=](types::Event e)
+            [=](base::Event e)
             {
                 // try and catch, return false
                 if (opBuilderHelperStringComparison(
@@ -287,24 +286,24 @@ types::Lifter opBuilderHelperStringEQ(const types::DocumentValue &def,
 }
 
 // <field>: s_ne/<value>
-types::Lifter opBuilderHelperStringNE(const types::DocumentValue &def,
+base::Lifter opBuilderHelperStringNE(const base::DocumentValue &def,
                                       types::TracerFn tr)
 {
     auto [key, refValue, value] {getCompOpParameter(def)};
 
     // Tracing
-    types::Document defTmp {def};
+    base::Document defTmp {def};
     std::string successTrace =
         fmt::format("{} Condition Success", defTmp.str());
     std::string failureTrace =
         fmt::format("{} Condition Failure", defTmp.str());
 
     // Return Lifter
-    return [=](types::Observable o)
+    return [=](base::Observable o)
     {
         // Append rxcpp operation
         return o.filter(
-            [=](types::Event e)
+            [=](base::Event e)
             {
                 if (opBuilderHelperStringComparison(
                         key, '!', e, refValue, value))
@@ -322,24 +321,24 @@ types::Lifter opBuilderHelperStringNE(const types::DocumentValue &def,
 }
 
 // <field>: s_gt/<value>|$<ref>
-types::Lifter opBuilderHelperStringGT(const types::DocumentValue &def,
+base::Lifter opBuilderHelperStringGT(const base::DocumentValue &def,
                                       types::TracerFn tr)
 {
     auto [key, refValue, value] {getCompOpParameter(def)};
 
     // Tracing
-    types::Document defTmp {def};
+    base::Document defTmp {def};
     std::string successTrace =
         fmt::format("{} Condition Success", defTmp.str());
     std::string failureTrace =
         fmt::format("{} Condition Failure", defTmp.str());
 
     // Return Lifter
-    return [=](types::Observable o)
+    return [=](base::Observable o)
     {
         // Append rxcpp operation
         return o.filter(
-            [=](types::Event e)
+            [=](base::Event e)
             {
                 if (opBuilderHelperStringComparison(
                         key, '>', e, refValue, value))
@@ -357,24 +356,24 @@ types::Lifter opBuilderHelperStringGT(const types::DocumentValue &def,
 }
 
 // <field>: s_ge/<value>|$<ref>
-types::Lifter opBuilderHelperStringGE(const types::DocumentValue &def,
+base::Lifter opBuilderHelperStringGE(const base::DocumentValue &def,
                                       types::TracerFn tr)
 {
     auto [key, refValue, value] {getCompOpParameter(def)};
 
     // Tracing
-    types::Document defTmp {def};
+    base::Document defTmp {def};
     std::string successTrace =
         fmt::format("{} Condition Success", defTmp.str());
     std::string failureTrace =
         fmt::format("{} Condition Failure", defTmp.str());
 
     // Return Lifter
-    return [=](types::Observable o)
+    return [=](base::Observable o)
     {
         // Append rxcpp operation
         return o.filter(
-            [=](types::Event e)
+            [=](base::Event e)
             {
                 if (opBuilderHelperStringComparison(
                         key, 'g', e, refValue, value))
@@ -392,24 +391,24 @@ types::Lifter opBuilderHelperStringGE(const types::DocumentValue &def,
 }
 
 // <field>: s_lt/<value>|$<ref>
-types::Lifter opBuilderHelperStringLT(const types::DocumentValue &def,
+base::Lifter opBuilderHelperStringLT(const base::DocumentValue &def,
                                       types::TracerFn tr)
 {
     auto [key, refValue, value] {getCompOpParameter(def)};
 
     // Tracing
-    types::Document defTmp {def};
+    base::Document defTmp {def};
     std::string successTrace =
         fmt::format("{} Condition Success", defTmp.str());
     std::string failureTrace =
         fmt::format("{} Condition Failure", defTmp.str());
 
     // Return Lifter
-    return [=](types::Observable o)
+    return [=](base::Observable o)
     {
         // Append rxcpp operation
         return o.filter(
-            [=](types::Event e)
+            [=](base::Event e)
             {
                 if (opBuilderHelperStringComparison(
                         key, '<', e, refValue, value))
@@ -427,24 +426,24 @@ types::Lifter opBuilderHelperStringLT(const types::DocumentValue &def,
 }
 
 // <field>: s_le/<value>|$<ref>
-types::Lifter opBuilderHelperStringLE(const types::DocumentValue &def,
+base::Lifter opBuilderHelperStringLE(const base::DocumentValue &def,
                                       types::TracerFn tr)
 {
     auto [key, refValue, value] {getCompOpParameter(def)};
 
     // Tracing
-    types::Document defTmp {def};
+    base::Document defTmp {def};
     std::string successTrace =
         fmt::format("{} Condition Success", defTmp.str());
     std::string failureTrace =
         fmt::format("{} Condition Failure", defTmp.str());
 
     // Return Lifter
-    return [=](types::Observable o)
+    return [=](base::Observable o)
     {
         // Append rxcpp operation
         return o.filter(
-            [=](types::Event e)
+            [=](base::Event e)
             {
                 if (opBuilderHelperStringComparison(
                         key, 'l', e, refValue, value))
@@ -467,7 +466,7 @@ types::Lifter opBuilderHelperStringLE(const types::DocumentValue &def,
 
 bool opBuilderHelperIntComparison(const std::string field,
                                   char op,
-                                  types::Event &e,
+                                  base::Event &e,
                                   std::optional<std::string> refValue,
                                   std::optional<int> value)
 {
@@ -542,7 +541,7 @@ bool opBuilderHelperIntComparison(const std::string field,
 }
 
 // field: +i_eq/int|$ref/
-types::Lifter opBuilderHelperIntEqual(const types::DocumentValue &def,
+base::Lifter opBuilderHelperIntEqual(const base::DocumentValue &def,
                                       types::TracerFn tr)
 {
 
@@ -553,18 +552,18 @@ types::Lifter opBuilderHelperIntEqual(const types::DocumentValue &def,
                              : std::nullopt;
 
     // Tracing
-    types::Document defTmp {def};
+    base::Document defTmp {def};
     std::string successTrace =
         fmt::format("{} Condition Success", defTmp.str());
     std::string failureTrace =
         fmt::format("{} Condition Failure", defTmp.str());
 
     // Return Lifter
-    return [=](types::Observable o)
+    return [=](base::Observable o)
     {
         // Append rxcpp operation
         return o.filter(
-            [=](types::Event e)
+            [=](base::Event e)
             {
                 if (opBuilderHelperIntComparison(
                         field, '=', e, refValue, value))
@@ -582,7 +581,7 @@ types::Lifter opBuilderHelperIntEqual(const types::DocumentValue &def,
 }
 
 // field: +i_ne/int|$ref/
-types::Lifter opBuilderHelperIntNotEqual(const types::DocumentValue &def,
+base::Lifter opBuilderHelperIntNotEqual(const base::DocumentValue &def,
                                          types::TracerFn tr)
 {
 
@@ -593,18 +592,18 @@ types::Lifter opBuilderHelperIntNotEqual(const types::DocumentValue &def,
                              : std::nullopt;
 
     // Tracing
-    types::Document defTmp {def};
+    base::Document defTmp {def};
     std::string successTrace =
         fmt::format("{} Condition Success", defTmp.str());
     std::string failureTrace =
         fmt::format("{} Condition Failure", defTmp.str());
 
     // Return Lifter
-    return [=](types::Observable o)
+    return [=](base::Observable o)
     {
         // Append rxcpp operation
         return o.filter(
-            [=](types::Event e)
+            [=](base::Event e)
             {
                 // try and catche, return false
                 if (opBuilderHelperIntComparison(
@@ -623,7 +622,7 @@ types::Lifter opBuilderHelperIntNotEqual(const types::DocumentValue &def,
 }
 
 // field: +i_lt/int|$ref/
-types::Lifter opBuilderHelperIntLessThan(const types::DocumentValue &def,
+base::Lifter opBuilderHelperIntLessThan(const base::DocumentValue &def,
                                          types::TracerFn tr)
 {
 
@@ -634,18 +633,18 @@ types::Lifter opBuilderHelperIntLessThan(const types::DocumentValue &def,
                              : std::nullopt;
 
     // Tracing
-    types::Document defTmp {def};
+    base::Document defTmp {def};
     std::string successTrace =
         fmt::format("{} Condition Success", defTmp.str());
     std::string failureTrace =
         fmt::format("{} Condition Failure", defTmp.str());
 
     // Return Lifter
-    return [=](types::Observable o)
+    return [=](base::Observable o)
     {
         // Append rxcpp operation
         return o.filter(
-            [=](types::Event e)
+            [=](base::Event e)
             {
                 // try and catche, return false
                 if (opBuilderHelperIntComparison(
@@ -664,7 +663,7 @@ types::Lifter opBuilderHelperIntLessThan(const types::DocumentValue &def,
 }
 
 // field: +i_le/int|$ref/
-types::Lifter opBuilderHelperIntLessThanEqual(const types::DocumentValue &def,
+base::Lifter opBuilderHelperIntLessThanEqual(const base::DocumentValue &def,
                                               types::TracerFn tr)
 {
 
@@ -675,18 +674,18 @@ types::Lifter opBuilderHelperIntLessThanEqual(const types::DocumentValue &def,
                              : std::nullopt;
 
     // Tracing
-    types::Document defTmp {def};
+    base::Document defTmp {def};
     std::string successTrace =
         fmt::format("{} Condition Success", defTmp.str());
     std::string failureTrace =
         fmt::format("{} Condition Failure", defTmp.str());
 
     // Return Lifter
-    return [=](types::Observable o)
+    return [=](base::Observable o)
     {
         // Append rxcpp operation
         return o.filter(
-            [=](types::Event e)
+            [=](base::Event e)
             {
                 // try and catche, return false
                 if (opBuilderHelperIntComparison(
@@ -705,7 +704,7 @@ types::Lifter opBuilderHelperIntLessThanEqual(const types::DocumentValue &def,
 }
 
 // field: +i_gt/int|$ref/
-types::Lifter opBuilderHelperIntGreaterThan(const types::DocumentValue &def,
+base::Lifter opBuilderHelperIntGreaterThan(const base::DocumentValue &def,
                                             types::TracerFn tr)
 {
 
@@ -716,18 +715,18 @@ types::Lifter opBuilderHelperIntGreaterThan(const types::DocumentValue &def,
                              : std::nullopt;
 
     // Tracing
-    types::Document defTmp {def};
+    base::Document defTmp {def};
     std::string successTrace =
         fmt::format("{} Condition Success", defTmp.str());
     std::string failureTrace =
         fmt::format("{} Condition Failure", defTmp.str());
 
     // Return Lifter
-    return [=](types::Observable o)
+    return [=](base::Observable o)
     {
         // Append rxcpp operation
         return o.filter(
-            [=](types::Event e)
+            [=](base::Event e)
             {
                 // try and catche, return false
                 if (opBuilderHelperIntComparison(
@@ -746,8 +745,8 @@ types::Lifter opBuilderHelperIntGreaterThan(const types::DocumentValue &def,
 }
 
 // field: +i_ge/int|$ref/
-types::Lifter
-opBuilderHelperIntGreaterThanEqual(const types::DocumentValue &def,
+base::Lifter
+opBuilderHelperIntGreaterThanEqual(const base::DocumentValue &def,
                                    types::TracerFn tr)
 {
 
@@ -758,18 +757,18 @@ opBuilderHelperIntGreaterThanEqual(const types::DocumentValue &def,
                              : std::nullopt;
 
     // Tracing
-    types::Document defTmp {def};
+    base::Document defTmp {def};
     std::string successTrace =
         fmt::format("{} Condition Success", defTmp.str());
     std::string failureTrace =
         fmt::format("{} Condition Failure", defTmp.str());
 
     // Return Lifter
-    return [=](types::Observable o)
+    return [=](base::Observable o)
     {
         // Append rxcpp operation
         return o.filter(
-            [=](types::Event e)
+            [=](base::Event e)
             {
                 // try and catche, return false
                 if (opBuilderHelperIntComparison(
@@ -792,7 +791,7 @@ opBuilderHelperIntGreaterThanEqual(const types::DocumentValue &def,
 //*************************************************
 
 // field: +r_match/regexp
-types::Lifter opBuilderHelperRegexMatch(const types::DocumentValue &def,
+base::Lifter opBuilderHelperRegexMatch(const base::DocumentValue &def,
                                         types::TracerFn tr)
 {
     // Get field
@@ -815,11 +814,11 @@ types::Lifter opBuilderHelperRegexMatch(const types::DocumentValue &def,
     }
 
     // Return Lifter
-    return [field, regex_ptr](types::Observable o)
+    return [field, regex_ptr](base::Observable o)
     {
         // Append rxcpp operations
         return o.filter(
-            [=](types::Event e)
+            [=](base::Event e)
             {
                 // TODO Remove try catch
                 // TODO Update to use proper reference
@@ -844,7 +843,7 @@ types::Lifter opBuilderHelperRegexMatch(const types::DocumentValue &def,
 }
 
 // field: +r_not_match/regexp
-types::Lifter opBuilderHelperRegexNotMatch(const types::DocumentValue &def,
+base::Lifter opBuilderHelperRegexNotMatch(const base::DocumentValue &def,
                                            types::TracerFn tr)
 {
     // Get field
@@ -867,18 +866,18 @@ types::Lifter opBuilderHelperRegexNotMatch(const types::DocumentValue &def,
     }
 
     // Tracing
-    types::Document defTmp {def};
+    base::Document defTmp {def};
     std::string successTrace =
         fmt::format("{} Condition Success", defTmp.str());
     std::string failureTrace =
         fmt::format("{} Condition Failure", defTmp.str());
 
     // Return Lifter
-    return [=](types::Observable o)
+    return [=](base::Observable o)
     {
         // Append rxcpp operations
         return o.filter(
-            [=](types::Event e)
+            [=](base::Event e)
             {
                 // TODO Remove try catch
                 // TODO Update to use proper reference
@@ -918,7 +917,7 @@ types::Lifter opBuilderHelperRegexNotMatch(const types::DocumentValue &def,
 
 // path_to_ip: +ip_cidr/192.168.0.0/16
 // path_to_ip: +ip_cidr/192.168.0.0/255.255.0.0
-types::Lifter opBuilderHelperIPCIDR(const types::DocumentValue &def,
+base::Lifter opBuilderHelperIPCIDR(const base::DocumentValue &def,
                                     types::TracerFn tr)
 {
     // Get Field path to check
@@ -965,18 +964,18 @@ types::Lifter opBuilderHelperIPCIDR(const types::DocumentValue &def,
     uint32_t net_upper {net_lower | (~mask)};
 
     // Tracing
-    types::Document defTmp {def};
+    base::Document defTmp {def};
     std::string successTrace =
         fmt::format("{} Condition Success", defTmp.str());
     std::string failureTrace =
         fmt::format("{} Condition Failure", defTmp.str());
 
     // Return Lifter
-    return [=](types::Observable o)
+    return [=](base::Observable o)
     {
         // Append rxcpp operations
         return o.filter(
-            [=](types::Event e)
+            [=](base::Event e)
             {
                 // TODO Remove try catch
                 // TODO Update to use proper reference

@@ -16,7 +16,7 @@ using namespace std;
 namespace builder::internals::builders
 {
 
-types::Lifter opBuilderConditionValue(const types::DocumentValue &def,
+base::Lifter opBuilderConditionValue(const base::DocumentValue &def,
                                       types::TracerFn tr)
 {
     if (!def.MemberBegin()->name.IsString())
@@ -28,16 +28,16 @@ types::Lifter opBuilderConditionValue(const types::DocumentValue &def,
     std::string field =
         json::formatJsonPath(def.MemberBegin()->name.GetString());
     // TODO: build document with value only
-    types::Document value {def};
+    base::Document value {def};
     std::string successTrace = fmt::format("{} Condition Success", value.str());
     std::string failureTrace = fmt::format("{} Condition Failure", value.str());
 
     // Return Lifter
-    return [=](types::Observable o)
+    return [=](base::Observable o)
     {
         // Append rxcpp operation
         return o.filter(
-            [=](types::Event e)
+            [=](base::Event e)
             {
                 if (e->getEvent()->equals(field, value.begin()->value))
                 {

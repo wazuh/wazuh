@@ -18,9 +18,9 @@ namespace builder::internals::builders
  * @brief Chains multiple lifters
  *
  * @param lifters
- * @return types::Lifter
+ * @return base::Lifter
  */
-types::Lifter combinatorBuilderChain(const std::vector<types::Lifter> & lifters);
+base::Lifter combinatorBuilderChain(const std::vector<base::Lifter> & lifters);
 } // namespace builder::internals::builders
 
 #endif // _COMBINATOR_BUILDER_CHAIN_H

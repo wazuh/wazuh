@@ -18,7 +18,8 @@
 #include <fmt/format.h>
 #include <rxcpp/rx.hpp>
 
-#include <EventHandler.hpp>
+//#include <eventHandler.hpp>
+#include <baseTypes.hpp>
 
 namespace router
 {
@@ -31,7 +32,7 @@ struct Route
 {
     std::string m_name;
     std::string m_to;
-    std::function<bool(std::shared_ptr<Base::EventHandler>)> m_from;
+    std::function<bool(base::Event)> m_from;
     rxcpp::composite_subscription m_subscription;
 
     Route() = default;
@@ -48,7 +49,7 @@ struct Route
      */
     Route(const std::string &name,
           const std::string &environment,
-          std::function<bool(std::shared_ptr<Base::EventHandler>)> filter_function,
+          std::function<bool(base::Event)> filter_function,
           rxcpp::composite_subscription subscription) noexcept
         : m_name(name)
         , m_to(environment)
@@ -103,7 +104,7 @@ struct Environment
 {
     // TODO: handle debug sink subscriptions lifetime
 
-    using Event = std::shared_ptr<Base::EventHandler>;
+    using Event = base::Event;
     using Observable = rxcpp::observable<Event>;
     using Lifter = std::function<Observable(Observable)>;
 
@@ -193,7 +194,7 @@ struct Environment
 template<class Builder>
 class Router
 {
-    using Observable = rxcpp::observable<std::shared_ptr<Base::EventHandler>>;
+    using Observable = rxcpp::observable<base::Event>;
     using Lifter = std::function<Observable(Observable)>;
 
     // Assert Builder satisfies expected interface/functionality
@@ -236,8 +237,8 @@ private:
 
     std::map<std::string, Environment> m_environments;
     std::map<std::string, Route> m_routes;
-    rxcpp::subjects::subject<std::shared_ptr<Base::EventHandler>> m_subj;
-    rxcpp::subscriber<std::shared_ptr<Base::EventHandler>> m_input;
+    rxcpp::subjects::subject<base::Event> m_subj;
+    rxcpp::subscriber<base::Event> m_input;
     Builder m_builder;
 
 public:
@@ -262,7 +263,7 @@ public:
     void add(
         const std::string &route,
         const std::string &environment,
-        const std::function<bool(std::shared_ptr<Base::EventHandler>)>
+        const std::function<bool(base::Event)>
             filterFunction = [](const auto) { return true; })
     {
         // Assert route with same name not exists
@@ -335,7 +336,7 @@ public:
      *
      * @return const rxcpp::subscriber<json::Document>&
      */
-    const rxcpp::subscriber<std::shared_ptr<Base::EventHandler>> &input() const
+    const rxcpp::subscriber<base::Event> &input() const
     {
         return this->m_input;
     }

@@ -19,9 +19,9 @@ namespace builder::internals::builders
  * @brief Builds stage check
  *
  * @param def
- * @return types::Lifter
+ * @return base::Lifter
  */
-types::Lifter stageBuilderCheck(const types::DocumentValue & def, types::TracerFn tr);
+base::Lifter stageBuilderCheck(const base::DocumentValue & def, types::TracerFn tr);
 
 } // namespace builder::internals::builders
 

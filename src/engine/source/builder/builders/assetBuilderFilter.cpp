@@ -22,7 +22,7 @@
 namespace builder::internals::builders
 {
 
-types::ConnectableT assetBuilderFilter(const types::Document & def)
+types::ConnectableT assetBuilderFilter(const base::Document & def)
 {
     // Assert document is as expected
     if (!def.m_doc.IsObject())
@@ -32,10 +32,10 @@ types::ConnectableT assetBuilderFilter(const types::Document & def)
         throw std::invalid_argument(msg);
     }
 
-    std::vector<types::Lifter> stages;
+    std::vector<base::Lifter> stages;
 
     // Needed to build stages in a for loop popping its attributes
-    std::map<std::string, const types::DocumentValue &> attributes;
+    std::map<std::string, const base::DocumentValue &> attributes;
     try
     {
         for (auto it = def.m_doc.MemberBegin(); it != def.m_doc.MemberEnd(); ++it)
@@ -68,7 +68,7 @@ types::ConnectableT assetBuilderFilter(const types::Document & def)
     std::vector<std::string> after;
     try
     {
-        for (const types::DocumentValue & parentName : attributes.at("after").GetArray())
+        for (const base::DocumentValue & parentName : attributes.at("after").GetArray())
         {
             after.push_back(parentName.GetString());
         }
@@ -131,7 +131,7 @@ types::ConnectableT assetBuilderFilter(const types::Document & def)
     // Combine all stages
     try
     {
-        types::Lifter filter = std::get<types::CombinatorBuilder>(
+        base::Lifter filter = std::get<types::CombinatorBuilder>(
             Registry::getBuilder("combinator.chain"))(stages);
 
         return types::ConnectableT {name, after, filter, tr};

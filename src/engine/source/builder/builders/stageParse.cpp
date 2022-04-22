@@ -22,7 +22,7 @@
 namespace builder::internals::builders
 {
 
-types::Lifter stageBuilderParse(const types::DocumentValue &def, types::TracerFn tr)
+base::Lifter stageBuilderParse(const base::DocumentValue &def, types::TracerFn tr)
 {
     // Assert value is as expected
     if (!def.IsObject())
@@ -52,7 +52,7 @@ types::Lifter stageBuilderParse(const types::DocumentValue &def, types::TracerFn
             "[Stage parse]Must have some expressions configured.");
     }
 
-    std::vector<types::Lifter> parsers;
+    std::vector<base::Lifter> parsers;
     for (auto const &item : logqlArr.GetArray())
     {
         if (!item.IsObject())
@@ -79,10 +79,10 @@ types::Lifter stageBuilderParse(const types::DocumentValue &def, types::TracerFn
             std::throw_with_nested(std::runtime_error(msg));
         }
 
-        auto newOp = [parserOp = std::move(parseOp)](types::Observable o)
+        auto newOp = [parserOp = std::move(parseOp)](base::Observable o)
         {
             return o.map(
-                [parserOp = std::move(parserOp)](types::Event e)
+                [parserOp = std::move(parserOp)](base::Event e)
                 {
                     // TODO: What is the /message field? Why is hard-coded?
                     const auto & ev = e->getEvent()->get("/message");
