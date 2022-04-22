@@ -1,5 +1,5 @@
 add_executable(logicExpression_test
-  ${TEST_SOURCE_DIR}/logicExpression/logicExpression_test.cpp
+  ${TEST_SOURCE_DIR}/logicExpression/logicExpressionParser_test.cpp
   ${ENGINE_SOURCE_DIR}/logicExpression/src/logicExpressionParser.cpp
 )
 target_include_directories(logicExpression_test
