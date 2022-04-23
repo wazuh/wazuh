@@ -43,8 +43,8 @@ struct Route
      * @brief Construct a new Route object
      *
      * @param name Name of the route
-     * @param filter_function Filter events to send to environment
      * @param environment Environment name wich receives filtered events
+     * @param filter_function Filter events to send to environment
      * @param subscription Subscription to handle status
      */
     Route(const std::string &name,
@@ -194,8 +194,6 @@ struct Environment
 template<class Builder>
 class Router
 {
-    using Observable = rxcpp::observable<base::Event>;
-    using Lifter = std::function<Observable(Observable)>;
 
     // Assert Builder satisfies expected interface/functionality
     // First check if Builder is callable with a string as an argument
@@ -214,7 +212,7 @@ class Router
     // Assert getLifter returns a lifter
     static_assert(
         std::is_same_v<decltype(std::declval<builder_ret_type>().getLifter()),
-                       Lifter>,
+                       base::Lifter>,
         "Error, getLifter method does not return function with signature: "
         "std::function<Observable(Observable)>");
 
