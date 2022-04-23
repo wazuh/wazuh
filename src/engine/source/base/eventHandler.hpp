@@ -11,9 +11,9 @@ class EventHandler
 
 private:
     // Control
-    bool is_decoded;
+    bool is_decoded; ///< True if it reached the end of the decoding stage
     // Data
-    std::shared_ptr<json::Document> event;
+    std::shared_ptr<json::Document> event; ///< Event
 
 public:
     /**
@@ -36,6 +36,24 @@ public:
     std::shared_ptr<json::Document> getEvent()
     {
         return event;
+    }
+
+    /**
+     * @brief Get the Decoded
+     *
+     * @return bool
+     */
+    bool getDecoded() {
+        return is_decoded;
+    }
+
+    /**
+     * @brief Set the Decoded
+     *
+     * @param decoded
+     */
+    void setDecoded(bool decoded) {
+        is_decoded = decoded;
     }
 };
 
