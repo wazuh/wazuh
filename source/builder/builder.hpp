@@ -117,6 +117,7 @@ public:
                 asset.get("/decoders"),
                 std::get<internals::types::AssetBuilder>(
                     internals::Registry::getBuilder("decoder")));
+
             subGraphs.push_back(std::make_tuple(
                 "INPUT_DECODER", decoderGraph, "OUTPUT_DECODER"));
         }
