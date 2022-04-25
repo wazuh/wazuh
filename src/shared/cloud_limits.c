@@ -27,7 +27,11 @@ cJSON *load_limits_file(const char *object_name) {
         return NULL;
     }
 
-    time_t cur_mod_date = File_DateofChange(OSSEC_LIMITS);
+    time_t cur_mod_date;
+    if ((cur_mod_date = File_DateofChange(OSSEC_LIMITS)) == -1) {
+        mdebug2("File %s doesn't found", OSSEC_LIMITS);
+        return NULL;
+    }
 
     if (cur_mod_date == last_mod_date) {
         mdebug2("File %s doesn't change", OSSEC_LIMITS);
