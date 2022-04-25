@@ -23,10 +23,16 @@ static FakeTrFn tr = [](std::string msg){};
 TEST(opBuilderMapValue, Builds)
 {
     Document doc{R"({
-        "normalize":[
-            {"mapped.string": "value"},
-            {"mapped.int": 1},
-            {"mapped.bool": true}
+        "normalize":
+        [
+            {
+                "map":
+                {
+                    "mapped.string": "value",
+                    "mapped.int": 1,
+                    "mapped.bool": true
+                }
+            }
         ]
     })"};
     const auto & arr = doc.begin()->value.GetArray();
@@ -39,10 +45,16 @@ TEST(opBuilderMapValue, Builds)
 TEST(opBuilderMapValue, BuildsOperates)
 {
     Document doc{R"({
-        "normalize":[
-            {"mapped.string": "value"},
-            {"mapped.int": 1},
-            {"mapped.bool": true}
+        "normalize":
+        [
+            {
+                "map":
+                {
+                    "mapped.string": "value",
+                    "mapped.int": 1,
+                    "mapped.bool": true
+                }
+            }
         ]
     })"};
 

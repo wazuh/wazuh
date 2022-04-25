@@ -25,7 +25,14 @@ TEST(opBuilderMapReference, Builds)
 {
     Document doc{R"({
         "normalize":
-            {"field": "$other_field"}
+        [
+            {
+                "map":
+                {
+                    "field": "$other_field"
+                }
+            }
+        ]
     })"};
     ASSERT_NO_THROW(bld::opBuilderMapReference(doc.get("/normalize"), tr));
 }
@@ -34,7 +41,14 @@ TEST(opBuilderMapReference, BuildsOperates)
 {
     Document doc{R"({
         "normalize":
-            {"field": "$other_field"}
+        [
+            {
+                "map":
+                {
+                    "field": "$other_field"
+                }
+            }
+        ]
     })"};
 
     Observable input = observable<>::create<Event>(

@@ -24,11 +24,17 @@ static FakeTrFn tr = [](std::string msg){};
 TEST(opBuilderMap, BuildsAllNonRegistered)
 {
     Document doc{R"({
-        "normalize": [
-            {"string": "value"},
-            {"int": 1},
-            {"bool": true},
-            {"reference": "$field"}
+        "normalize":
+        [
+            {
+                "map":
+                {
+                    "string": "value",
+                    "int": 1,
+                    "bool": true,
+                    "reference": "$field"
+                }
+            }
         ]
     })"};
     const auto & arr = doc.begin()->value.GetArray();
@@ -43,10 +49,16 @@ TEST(opBuilderMap, BuildsValue)
     BuilderVariant c = bld::opBuilderMapValue;
     Registry::registerBuilder("map.value", c);
     Document doc{R"({
-        "normalize": [
-            {"string": "value"},
-            {"int": 1},
-            {"bool": true}
+        "normalize":
+        [
+            {
+                "map":
+                {
+                    "string": "value",
+                    "int": 1,
+                    "bool": true
+                }
+            }
         ]
     })"};
     const auto & arr = doc.begin()->value.GetArray();
@@ -60,6 +72,16 @@ TEST(opBuilderMap, BuildsReference)
 {
     BuilderVariant c = bld::opBuilderMapReference;
     Registry::registerBuilder("map.reference", c);
-    Document doc{R"({"normalize": {"ref": "$ref"}})"};
-    ASSERT_NO_THROW(bld::opBuilderMap(doc.get("/normalize"), tr));
+    Document doc{R"({
+        "normalize":
+        [
+            {
+                "map":
+                {
+                    "ref": "$ref"
+                }
+            }
+        ]
+    })"};
+    ASSERT_NO_THROW(opBuilderMap(doc.get("/normalize"), tr));
 }

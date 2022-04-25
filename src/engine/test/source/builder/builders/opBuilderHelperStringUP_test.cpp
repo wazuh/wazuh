@@ -27,7 +27,14 @@ TEST(opBuilderHelperStringUP, Builds)
 {
     Document doc{R"({
         "normalize":
-            {"field2normalize": "+s_up/abcd"}
+        [
+            {
+                "map":
+                {
+                    "field2normalize": "+s_up/abcd"
+                }
+            }
+        ]
     })"};
     ASSERT_NO_THROW(bld::opBuilderHelperStringUP(doc.get("/normalize"), tr));
 }
@@ -37,7 +44,14 @@ TEST(opBuilderHelperStringUP, Builds_incorrect_number_of_arguments)
 {
     Document doc{R"({
         "normalize":
-            {"field2normalize": "+s_up/test_value/test_value2"}
+        [
+            {
+                "map":
+                {
+                    "field2normalize": "+s_up/test_value/test_value2"
+                }
+            }
+        ]
     })"};
     ASSERT_THROW(bld::opBuilderHelperStringUP(doc.get("/normalize"), tr), std::runtime_error);
 }
@@ -47,7 +61,14 @@ TEST(opBuilderHelperStringUP, Static_string_ok)
 {
     Document doc{R"({
         "normalize":
-            {"fieltToCreate": "+s_up/asd123asd"}
+        [
+            {
+                "map":
+                {
+                    "fieltToCreate": "+s_up/asd123asd"
+                }
+            }
+        ]
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -81,7 +102,14 @@ TEST(opBuilderHelperStringUP, Dynamics_string_ok)
 
     Document doc{R"({
         "normalize":
-            {"fieltToCreate": "+s_up/$srcField"}
+        [
+            {
+                "map":
+                {
+                    "fieltToCreate": "+s_up/$srcField"
+                }
+            }
+        ]
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -113,7 +141,14 @@ TEST(opBuilderHelperStringUP, Multilevel_src)
 {
     Document doc{R"({
         "normalize":
-            {"fieltToCreate": "+s_lo/$a.b.c.srcField"}
+        [
+            {
+                "map":
+                {
+                    "fieltToCreate": "+s_lo/$a.b.c.srcField"
+                }
+            }
+        ]
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -145,7 +180,14 @@ TEST(opBuilderHelperStringUP, Multilevel_dst)
 {
     Document doc{R"({
         "normalize":
-            {"a.b.fieltToCreate.2": "+s_lo/$a.b.c.srcField"}
+        [
+            {
+                "map":
+                {
+                    "a.b.fieltToCreate.2": "+s_lo/$a.b.c.srcField"
+                }
+            }
+        ]
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -177,7 +219,14 @@ TEST(opBuilderHelperStringUP, Exist_dst)
 {
     Document doc{R"({
         "normalize":
-            {"a.b": "+s_lo/$a.b.c.srcField"}
+        [
+            {
+                "map":
+                {
+                    "a.b": "+s_lo/$a.b.c.srcField"
+                }
+            }
+        ]
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -208,8 +257,15 @@ TEST(opBuilderHelperStringUP, Exist_dst)
 TEST(opBuilderHelperStringUP, Not_exist_src)
 {
     Document doc{R"({
-    "normalize":
-            {"a.b": "+s_lo/$srcField"}
+        "normalize":
+        [
+            {
+                "map":
+                {
+                    "a.b": "+s_lo/$srcField"
+                }
+            }
+        ]
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -237,7 +293,14 @@ TEST(opBuilderHelperStringUP, Src_not_string)
 {
     Document doc{R"({
         "normalize":
-            {"fieltToCreate": "+s_lo/$srcField123"}
+        [
+            {
+                "map":
+                {
+                    "fieltToCreate": "+s_lo/$srcField123"
+                }
+            }
+        ]
     })"};
 
     Observable input = observable<>::create<Event>(

@@ -37,8 +37,14 @@ TEST(AssetBuilderDecoder, BuildsAllNonRegistered)
         "check": [
             {"field": "value"}
         ],
-        "normalize": [
-            {"mapped.field": "$field"}
+        "normalize":
+        [
+            {
+                "map":
+                {
+                    "mapped.field": "$field"
+                }
+            }
         ]
     })"};
 
@@ -76,8 +82,14 @@ TEST(AssetBuilderDecoder, Builds)
         "check": [
             {"field": "value"}
         ],
-        "normalize": [
-            {"mapped.field": "$field"}
+        "normalize":
+        [
+            {
+                "map":
+                {
+                    "mapped.field": "$field"
+                }
+            }
         ]
     })"};
 
@@ -91,8 +103,14 @@ TEST(AssetBuilderDecoder, BuildsOperates)
         "check": [
             {"field": "value"}
         ],
-        "normalize": [
-            {"mapped.field": "$field"}
+        "normalize":
+        [
+            {
+                "map":
+                {
+                    "mapped.field": "$field"
+                }
+            }
         ]
     })"};
 

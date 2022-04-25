@@ -5,6 +5,7 @@ check:
   - decoded.message: +exists
 
 normalize:
-  - alerted.queue: alerted_queue
-  - alerted.location: alerted_location
-  - alerted.message: alerted_message
+  - map:
+    alerted.queue: alerted_queue
+    alerted.location: alerted_location
+    alerted.message: alerted_message
