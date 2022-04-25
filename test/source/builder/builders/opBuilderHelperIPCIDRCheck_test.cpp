@@ -10,11 +10,17 @@
 #include "opBuilderHelperFilter.hpp"
 #include "testUtils.hpp"
 #include <gtest/gtest.h>
+#include "base/baseTypes.hpp"
 
 using namespace builder::internals::builders;
+using namespace base;
 
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg) {
+};
+
+auto createEvent = [](const char * json){
+    return std::make_shared<EventHandler>(std::make_shared<json::Document>(json));
 };
 
 TEST(opBuilderHelperIPCIDR, Builds)
@@ -77,10 +83,6 @@ TEST(opBuilderHelperIPCIDR, chack_ip_range)
         "check":
             {"field2check": "+ip_cidr/192.168.0.0/16"}
     })"};
-
-    auto createEvent = [](const char * json){
-        return std::make_shared<Base::EventHandler>(std::make_shared<json::Document>(json));
-    };
 
     Observable input = observable<>::create<Event>(
         [=](auto s)
