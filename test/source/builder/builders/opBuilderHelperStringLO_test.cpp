@@ -27,7 +27,14 @@ TEST(opBuilderHelperStringLO, Builds)
 {
     Document doc{R"({
         "normalize":
-            {"field2normalize": "+s_lo/abcd"}
+        [
+            {
+                "map":
+                {
+                    "field2normalize": "+s_lo/abcd"
+                }
+            }
+        ]
     })"};
     ASSERT_NO_THROW(bld::opBuilderHelperStringLO(doc.get("/normalize"), tr));
 }
@@ -37,7 +44,14 @@ TEST(opBuilderHelperStringLO, Builds_incorrect_number_of_arguments)
 {
     Document doc{R"({
         "normalize":
-            {"field2normalize": "+s_lo/test_value/test_value2"}
+        [
+            {
+                "map":
+                {
+                    "field2normalize": "+s_lo/test_value/test_value2"
+                }
+            }
+        ]
     })"};
     ASSERT_THROW(bld::opBuilderHelperStringLO(doc.get("/normalize"), tr), std::runtime_error);
 }
@@ -47,7 +61,14 @@ TEST(opBuilderHelperStringLO, Static_string_ok)
 {
     Document doc{R"({
         "normalize":
-            {"fieltToCreate": "+s_lo/asd123ASD"}
+        [
+            {
+                "map":
+                {
+                    "fieltToCreate": "+s_lo/asd123ASD"
+                }
+            }
+        ]
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -80,7 +101,14 @@ TEST(opBuilderHelperStringLO, Dynamics_string_ok)
 {
     Document doc{R"({
         "normalize":
-            {"fieltToCreate": "+s_lo/$srcField"}
+        [
+            {
+                "map":
+                {
+                    "fieltToCreate": "+s_lo/$srcField"
+                }
+            }
+        ]
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -112,7 +140,14 @@ TEST(opBuilderHelperStringLO, Multilevel_dst)
 {
     Document doc{R"({
         "normalize":
-            {"a.b.fieltToCreate.2": "+s_lo/$a.b.c.srcField"}
+        [
+            {
+                "map":
+                {
+                    "a.b.fieltToCreate.2": "+s_lo/$a.b.c.srcField"
+                }
+            }
+        ]
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -144,7 +179,14 @@ TEST(opBuilderHelperStringLO, Exist_dst)
 {
     Document doc{R"({
         "normalize":
-            {"a.b": "+s_lo/$a.b.c.srcField"}
+        [
+            {
+                "map":
+                {
+                    "a.b": "+s_lo/$a.b.c.srcField"
+                }
+            }
+        ]
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -175,8 +217,15 @@ TEST(opBuilderHelperStringLO, Exist_dst)
 TEST(opBuilderHelperStringLO, Not_exist_src)
 {
     Document doc{R"({
-    "normalize":
-            {"a.b": "+s_lo/$srcField"}
+        "normalize":
+        [
+            {
+                "map":
+                {
+                    "a.b": "+s_lo/$srcField"
+                }
+            }
+        ]
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -204,7 +253,14 @@ TEST(opBuilderHelperStringLO, Src_not_string)
 {
     Document doc{R"({
         "normalize":
-            {"fieltToCreate": "+s_lo/$srcField123"}
+        [
+            {
+                "map":
+                {
+                    "fieltToCreate": "+s_lo/$srcField123"
+                }
+            }
+        ]
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -236,7 +292,14 @@ TEST(opBuilderHelperStringLO, Multilevel_src)
 {
     Document doc{R"({
         "normalize":
-            {"fieltToCreate": "+s_lo/$a.b.c.srcField"}
+        [
+            {
+                "map":
+                {
+                    "fieltToCreate": "+s_lo/$a.b.c.srcField"
+                }
+            }
+        ]
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -268,7 +331,14 @@ TEST(opBuilderHelperStringLO, MultiLevel_dst)
 {
     Document doc{R"({
         "normalize":
-            {"a.b": "+s_lo/$a.b.c.srcField"}
+        [
+            {
+                "map":
+                {
+                    "a.b": "+s_lo/$a.b.c.srcField"
+                }
+            }
+        ]
     })"};
 
     Observable input = observable<>::create<Event>(
