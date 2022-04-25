@@ -1,8 +1,58 @@
-#include <hlp/hlp.hpp>
 #include <iostream>
 #include <iterator>
 #include <stdio.h>
+
 #include <yaml-cpp/yaml.h>
+
+#include <hlp/hlp.hpp>
+
+static bool
+printAny(std::string const& name, std::any const& anyVal)
+{
+    auto& type = anyVal.type();
+    if (type == typeid(void))
+    {
+        printf("%30s | %s\n", name.c_str(), "*void*");
+    }
+    else if (type == typeid(long))
+    {
+        printf("%30s | %lu\n", name.c_str(), std::any_cast<long>(anyVal));
+    }
+    else if (type == typeid(int))
+    {
+        printf("%30s | %d\n", name.c_str(), std::any_cast<int>(anyVal));
+    }
+    else if (type == typeid(unsigned))
+    {
+        printf("%30s | %u\n", name.c_str(), std::any_cast<unsigned>(anyVal));
+    }
+    else if (type == typeid(float))
+    {
+        printf("%30s | %f\n", name.c_str(), std::any_cast<float>(anyVal));
+    }
+    else if (type == typeid(double))
+    {
+        printf("%30s | %lf\n", name.c_str(), std::any_cast<double>(anyVal));
+    }
+    else if (type == typeid(std::string))
+    {
+        printf("%30s | %s\n",
+               name.c_str(),
+               std::any_cast<std::string>(anyVal).c_str());
+    }
+    else if (type == typeid(hlp::JsonString))
+    {
+        printf("%30s | %s\n",
+               name.c_str(),
+               std::any_cast<hlp::JsonString>(anyVal).jsonString.c_str());
+    }
+    else
+    {
+        // ASSERT
+        return false;
+    }
+    return true;
+}
 
 int main(int argc, char *argv[])
 {
@@ -46,7 +96,7 @@ int main(int argc, char *argv[])
     auto event_it = events.begin();
     while (exp_it != logql_expressions.end() && event_it != events.end())
     {
-        auto parseOp = getParserOp(exp_it->c_str());
+        auto parseOp = hlp::getParserOp(exp_it->c_str());
         ParseResult result;
         bool ret = parseOp(event_it->c_str(), result);
 
@@ -60,7 +110,7 @@ int main(int argc, char *argv[])
         printf("-------------------------------|------------\n");
         for (auto const &r : result)
         {
-            printf("%30s | %s\n", r.first.c_str(), r.second.c_str());
+            printAny(r.first, r.second);
         }
         printf("\n\n");
         exp_it++;
