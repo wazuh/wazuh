@@ -17,4 +17,5 @@ target_link_libraries(logicExpression
 
 target_include_directories(logicExpression
     PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include
+    PUBLIC ${CMAKE_CURRENT_LIST_DIR}/src
 )
