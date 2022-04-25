@@ -12,9 +12,9 @@
 
 namespace
 {
-#define ERROR_TOKEN_START    -1
-#define TOKEN_START          0
-#define OPERATOR_TOKEN_START 10
+constexpr int ERROR_TOKEN_START = -1;
+constexpr int TOKEN_START = 0;
+constexpr int OPERATOR_TOKEN_START = 10;
 } // namespace
 
 /**
@@ -34,9 +34,9 @@ enum TokenType
     TERM = TOKEN_START,
     PARENTHESIS_OPEN,
     PARENTHESIS_CLOSE,
-    OR_OPERATOR = OPERATOR_TOKEN_START,
-    AND_OPERATOR,
-    NOT_OPERATOR,
+    OPERATOR_OR = OPERATOR_TOKEN_START,
+    OPERATOR_AND,
+    OPERATOR_NOT,
 };
 
 /**
@@ -103,15 +103,15 @@ struct Token
         }
         else if (text == "AND")
         {
-            return Token {TokenType::AND_OPERATOR, text, position};
+            return Token {TokenType::OPERATOR_AND, text, position};
         }
         else if (text == "OR")
         {
-            return Token {TokenType::OR_OPERATOR, text, position};
+            return Token {TokenType::OPERATOR_OR, text, position};
         }
         else if (text == "NOT")
         {
-            return Token {TokenType::NOT_OPERATOR, text, position};
+            return Token {TokenType::OPERATOR_NOT, text, position};
         }
         else
         {
@@ -138,7 +138,7 @@ struct Token
      */
     bool isUnaryOperator() const
     {
-        return isOperator() && (m_type == TokenType::NOT_OPERATOR);
+        return isOperator() && (m_type == TokenType::OPERATOR_NOT);
     }
 
     /**
@@ -149,8 +149,8 @@ struct Token
      */
     bool isBinaryOperator() const
     {
-        return isOperator() && (m_type == TokenType::OR_OPERATOR ||
-                                m_type == TokenType::AND_OPERATOR);
+        return isOperator() && (m_type == TokenType::OPERATOR_OR ||
+                                m_type == TokenType::OPERATOR_AND);
     }
 
     /**
@@ -162,7 +162,7 @@ struct Token
      *
      * @throw std::logic_error if other or this is not an operator
      */
-    bool operator>=(const Token &other) const
+    bool operator>=(const Token& other) const
     {
         if (!isOperator() || !other.isOperator())
         {
@@ -228,7 +228,7 @@ public:
      * expression
      */
     [[nodiscard]] static std::shared_ptr<Expression>
-    create(std::stack<Token> &postfix)
+    create(std::stack<Token>& postfix)
     {
         return std::shared_ptr<Expression>(new Expression(postfix));
     }
@@ -249,8 +249,8 @@ public:
      * @param expr Expression root of the tree to be visited
      * @param visitor visitor function
      */
-    static void visitPreOrder(const std::shared_ptr<const Expression> &expr,
-                              std::function<void(const Expression &)> visitor)
+    static void visitPreOrder(const std::shared_ptr<const Expression>& expr,
+                              std::function<void(const Expression&)> visitor)
     {
         if (expr)
         {
@@ -273,17 +273,17 @@ public:
      * @return std::string
      */
     static std::string
-    toDotString(const std::shared_ptr<const Expression> &root)
+    toDotString(const std::shared_ptr<const Expression>& root)
     {
         // Not using visitPreOrder because we need to handle repeated names and
         // we need to now if current node is left or right child
         std::stringstream ss;
         ss << "digraph G {" << std::endl;
 
-        auto visit = [&ss](const std::shared_ptr<const Expression> &root,
+        auto visit = [&ss](const std::shared_ptr<const Expression>& root,
                            int depth,
                            int width,
-                           auto &visit_ref) -> void
+                           auto& visit_ref) -> void
         {
             ss << fmt::format("{}_{}{};", root->m_token.m_text, depth, width)
                << std::endl;
@@ -322,7 +322,7 @@ public:
 
 private:
     // Made private so that only create() can be used to create an Expression
-    Expression(std::stack<Token> &postfix)
+    Expression(std::stack<Token>& postfix)
 
     {
         if (postfix.empty())
@@ -366,7 +366,7 @@ private:
  *
  * @throw std::logic_exception if the expression is not valid
  */
-std::shared_ptr<Expression> parse(const std::string &rawExpression);
+std::shared_ptr<Expression> parse(const std::string& rawExpression);
 
 }; // namespace logicExpression
 

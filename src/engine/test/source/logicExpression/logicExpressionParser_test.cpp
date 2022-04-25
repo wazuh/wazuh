@@ -25,20 +25,20 @@ TEST(LogicExpressionParser, TokenConstructs)
     EXPECT_EQ(tk.m_position, 0);
 
     // Not operator
-    EXPECT_NO_THROW(tk = Token(TokenType::NOT_OPERATOR, "NOT", 0));
-    EXPECT_EQ(tk.m_type, TokenType::NOT_OPERATOR);
+    EXPECT_NO_THROW(tk = Token(TokenType::OPERATOR_NOT, "NOT", 0));
+    EXPECT_EQ(tk.m_type, TokenType::OPERATOR_NOT);
     EXPECT_EQ(tk.m_text, "NOT");
     EXPECT_EQ(tk.m_position, 0);
 
     // And operator
-    EXPECT_NO_THROW(tk = Token(TokenType::AND_OPERATOR, "AND", 0));
-    EXPECT_EQ(tk.m_type, TokenType::AND_OPERATOR);
+    EXPECT_NO_THROW(tk = Token(TokenType::OPERATOR_AND, "AND", 0));
+    EXPECT_EQ(tk.m_type, TokenType::OPERATOR_AND);
     EXPECT_EQ(tk.m_text, "AND");
     EXPECT_EQ(tk.m_position, 0);
 
     // Or operator
-    EXPECT_NO_THROW(tk = Token(TokenType::OR_OPERATOR, "OR", 0));
-    EXPECT_EQ(tk.m_type, TokenType::OR_OPERATOR);
+    EXPECT_NO_THROW(tk = Token(TokenType::OPERATOR_OR, "OR", 0));
+    EXPECT_EQ(tk.m_type, TokenType::OPERATOR_OR);
     EXPECT_EQ(tk.m_text, "OR");
     EXPECT_EQ(tk.m_position, 0);
 
@@ -70,19 +70,19 @@ TEST(LogicExpressionParser, ParseToken)
 
     // Not operator
     EXPECT_NO_THROW(tk = Token::parseToken("NOT", 0));
-    EXPECT_EQ(tk.m_type, TokenType::NOT_OPERATOR);
+    EXPECT_EQ(tk.m_type, TokenType::OPERATOR_NOT);
     EXPECT_EQ(tk.m_text, "NOT");
     EXPECT_EQ(tk.m_position, 0);
 
     // And operator
     EXPECT_NO_THROW(tk = Token::parseToken("AND", 0));
-    EXPECT_EQ(tk.m_type, TokenType::AND_OPERATOR);
+    EXPECT_EQ(tk.m_type, TokenType::OPERATOR_AND);
     EXPECT_EQ(tk.m_text, "AND");
     EXPECT_EQ(tk.m_position, 0);
 
     // Or operator
     EXPECT_NO_THROW(tk = Token::parseToken("OR", 0));
-    EXPECT_EQ(tk.m_type, TokenType::OR_OPERATOR);
+    EXPECT_EQ(tk.m_type, TokenType::OPERATOR_OR);
     EXPECT_EQ(tk.m_text, "OR");
     EXPECT_EQ(tk.m_position, 0);
 
@@ -107,11 +107,11 @@ TEST(LogicExpressionParser, TokenUtils)
     EXPECT_FALSE(tk1.isOperator());
     tk1 = Token(TokenType::ERROR_TYPE, "", 0);
     EXPECT_FALSE(tk1.isOperator());
-    tk1 = Token(TokenType::NOT_OPERATOR, "NOT", 0);
+    tk1 = Token(TokenType::OPERATOR_NOT, "NOT", 0);
     EXPECT_TRUE(tk1.isOperator());
-    tk1 = Token(TokenType::AND_OPERATOR, "AND", 0);
+    tk1 = Token(TokenType::OPERATOR_AND, "AND", 0);
     EXPECT_TRUE(tk1.isOperator());
-    tk1 = Token(TokenType::OR_OPERATOR, "OR", 0);
+    tk1 = Token(TokenType::OPERATOR_OR, "OR", 0);
     EXPECT_TRUE(tk1.isOperator());
 
     // is unary operator
@@ -123,11 +123,11 @@ TEST(LogicExpressionParser, TokenUtils)
     EXPECT_FALSE(tk1.isUnaryOperator());
     tk1 = Token(TokenType::ERROR_TYPE, "", 0);
     EXPECT_FALSE(tk1.isUnaryOperator());
-    tk1 = Token(TokenType::NOT_OPERATOR, "NOT", 0);
+    tk1 = Token(TokenType::OPERATOR_NOT, "NOT", 0);
     EXPECT_TRUE(tk1.isUnaryOperator());
-    tk1 = Token(TokenType::AND_OPERATOR, "AND", 0);
+    tk1 = Token(TokenType::OPERATOR_AND, "AND", 0);
     EXPECT_FALSE(tk1.isUnaryOperator());
-    tk1 = Token(TokenType::OR_OPERATOR, "OR", 0);
+    tk1 = Token(TokenType::OPERATOR_OR, "OR", 0);
     EXPECT_FALSE(tk1.isUnaryOperator());
 
     // is binary operator
@@ -139,11 +139,11 @@ TEST(LogicExpressionParser, TokenUtils)
     EXPECT_FALSE(tk1.isBinaryOperator());
     tk1 = Token(TokenType::ERROR_TYPE, "", 0);
     EXPECT_FALSE(tk1.isBinaryOperator());
-    tk1 = Token(TokenType::NOT_OPERATOR, "NOT", 0);
+    tk1 = Token(TokenType::OPERATOR_NOT, "NOT", 0);
     EXPECT_FALSE(tk1.isBinaryOperator());
-    tk1 = Token(TokenType::AND_OPERATOR, "AND", 0);
+    tk1 = Token(TokenType::OPERATOR_AND, "AND", 0);
     EXPECT_TRUE(tk1.isBinaryOperator());
-    tk1 = Token(TokenType::OR_OPERATOR, "OR", 0);
+    tk1 = Token(TokenType::OPERATOR_OR, "OR", 0);
     EXPECT_TRUE(tk1.isBinaryOperator());
 
     // precedence comparisons
@@ -156,15 +156,15 @@ TEST(LogicExpressionParser, TokenUtils)
 
     // One token operator and one not operator
     tk1 = Token(TokenType::PARENTHESIS_OPEN, "(", 0);
-    tk2 = Token(TokenType::NOT_OPERATOR, "NOT", 0);
+    tk2 = Token(TokenType::OPERATOR_NOT, "NOT", 0);
     EXPECT_THROW(tk1 >= tk2, logic_error);
     EXPECT_THROW(tk2 >= tk1, logic_error);
 
     // Operators
-    EXPECT_TRUE(Token(TokenType::NOT_OPERATOR, "NOT", 0) >=
-                Token(TokenType::AND_OPERATOR, "AND", 0));
-    EXPECT_TRUE(Token(TokenType::AND_OPERATOR, "AND", 0) >=
-                Token(TokenType::OR_OPERATOR, "OR", 0));
+    EXPECT_TRUE(Token(TokenType::OPERATOR_NOT, "NOT", 0) >=
+                Token(TokenType::OPERATOR_AND, "AND", 0));
+    EXPECT_TRUE(Token(TokenType::OPERATOR_AND, "AND", 0) >=
+                Token(TokenType::OPERATOR_OR, "OR", 0));
 }
 
 TEST(LogicExpressionParser, ExpressionConstructs)
@@ -197,12 +197,12 @@ TEST(LogicExpressionParser, ExpressionConstructs)
     // Simple expression
     tokens.push(Token(TokenType::TERM, "term", 0));
     tokens.push(Token(TokenType::TERM, "term", 0));
-    tokens.push(Token(TokenType::AND_OPERATOR, "AND", 0));
+    tokens.push(Token(TokenType::OPERATOR_AND, "AND", 0));
     EXPECT_NO_THROW(expr = Expression::create(tokens));
 
     // Unbalanced expression
     tokens.push(Token(TokenType::TERM, "term", 0));
-    tokens.push(Token(TokenType::AND_OPERATOR, "AND", 0));
+    tokens.push(Token(TokenType::OPERATOR_AND, "AND", 0));
     EXPECT_THROW(Expression::create(tokens), logic_error);
 }
 
@@ -228,7 +228,7 @@ TEST(LogicExpressionParser, ExpressionUtils)
     stack<Token> tokens;
     tokens.push(Token(TokenType::TERM, "term", 2));
     tokens.push(Token(TokenType::TERM, "term", 1));
-    tokens.push(Token(TokenType::AND_OPERATOR, "AND", 0));
+    tokens.push(Token(TokenType::OPERATOR_AND, "AND", 0));
     auto root = Expression::create(tokens);
     EXPECT_NO_THROW(Expression::visitPreOrder(root, visitor));
 

@@ -11,6 +11,7 @@
 #define _STRING_UTILS_H
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace utils::string
@@ -38,8 +39,8 @@ using Delimeter = std::pair<char, bool>;
  * @return std::vector<std::string> Vector of strings
  */
 template<typename... Delim>
-std::vector<std::string> splitMulti(const std::string &input,
-                                    Delim &&...delimiters)
+std::vector<std::string> splitMulti(std::string_view input,
+                                    Delim&&... delimiters)
 {
     std::vector<std::string> splitted;
     for (auto i = 0, last = i; i < input.size(); ++i)
@@ -51,7 +52,7 @@ std::vector<std::string> splitMulti(const std::string &input,
                 auto substr = input.substr(last, i - last);
                 if (!substr.empty())
                 {
-                    splitted.push_back(substr);
+                    splitted.push_back(std::string(substr));
                 }
 
                 if (delimiter.second)
@@ -68,7 +69,7 @@ std::vector<std::string> splitMulti(const std::string &input,
             auto substr = input.substr(last);
             if (!substr.empty())
             {
-                splitted.push_back(substr);
+                splitted.push_back(std::string(substr));
             }
         }
     }
