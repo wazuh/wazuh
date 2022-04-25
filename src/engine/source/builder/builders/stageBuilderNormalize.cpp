@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015-2022, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -21,191 +21,269 @@
 namespace builder::internals::builders
 {
 
-base::Lifter stageBuilderNormalizeMap(const rapidjson::Value &value,
-                                       types::TracerFn tr)
+using base::DocumentValue;
+using base::Lifter;
+
+static Lifter normalizeMap(const DocumentValue &ref, types::TracerFn tr)
 {
-    std::vector<base::Lifter> mappings;
-
-    if (value.MemberCount() <= 0)
+    if (!ref.IsObject())
     {
-        throw std::runtime_error("Invalid map");
+        auto msg = "Invalid \"map\" element, it should be an object.";
+        WAZUH_LOG_ERROR("{}", msg);
+        std::throw_with_nested(std::invalid_argument(msg));
     }
 
-    if (!value.IsObject())
+    if (ref.MemberCount() <= 0)
     {
-        throw std::runtime_error("Invalid map object");
+        auto msg = "Invalid \"map\" element, it can not be empty.";
+        WAZUH_LOG_ERROR("{}", msg);
+        std::throw_with_nested(std::invalid_argument(msg));
     }
 
-    for (rapidjson::Value::ConstMemberIterator it =
-             value.GetObject().MemberBegin();
-         it != value.GetObject().MemberEnd();
-         ++it)
+    // These are necessary to create the object to be sent to the map operation
+    base::Document doc;
+    auto docAllocator = doc.getAllocator();
+
+    // Gets the "map" object
+    auto mapObject = ref.GetObject();
+
+    std::vector<Lifter> mapOps;
+
+    // Iterates through the "map" object's members
+    for (auto it = mapObject.MemberBegin(); it != mapObject.MemberEnd(); ++it)
     {
         try
         {
-            auto type = it->value.GetType();
+            /** TODO: This is a temporary (naive) solution to handle the
+             * mapping. As the mapping methods expect an object, it is necessary
+             * to construct one with the key and value pair.
+             */
+            rapidjson::Value pairKeyValue(rapidjson::kObjectType);
+            DocumentValue val(it->value, docAllocator);
+            DocumentValue key(it->name, docAllocator);
+            pairKeyValue.AddMember(key.Move(), val.Move(), docAllocator);
 
-            /** Todo: there is a problem in here:
-             *
-             * 04:09:24.065588 opBuilderMap.cpp:29 ERR[131558] Map builder
-             * expects value to be an object, but got [5] 04:09:24.066025
-             *
-             * stageBuilderNormalize.cpp:54 ERR[131558] Stage normalize builder
-             * encountered exception on building: [Map builder expects value to
-             * be an object, but got [5]]
-             *
-             * **/
-            mappings.push_back(std::get<types::OpBuilder>(
-                Registry::getBuilder("map"))(it->value, tr));
+            mapOps.push_back(std::get<types::OpBuilder>(
+                Registry::getBuilder("map"))(pairKeyValue, tr));
         }
         catch (std::exception &e)
         {
-            WAZUH_LOG_ERROR("Stage normalize builder encountered exception on "
-                            "building: [{}]",
-                            e.what());
-
-            auto msg = "Stage normalize map builder encountered exception on "
-                       "building.";
+            auto msg = fmt::format("Stage normalize builder encountered "
+                                   "exception on building: [{}]",
+                                   e.what());
+            WAZUH_LOG_ERROR("{}", msg);
             std::throw_with_nested(std::runtime_error(msg));
         }
     }
 
     try
     {
+        // Chains the "map" operations
         return std::get<types::CombinatorBuilder>(
-            Registry::getBuilder("combinator.chain"))(mappings);
+            Registry::getBuilder("combinator.chain"))(mapOps);
     }
     catch (std::exception &e)
     {
-        WAZUH_LOG_ERROR("Stage normalize map builder encountered exception on "
-                        "building: [{}]",
-                        e.what());
-
-        auto msg =
-            "Stage normalize map builder encountered exception on building.";
+        auto msg = fmt::format(
+            "Stage normalize builder encountered exception on building: [{}]",
+            e.what());
+        WAZUH_LOG_ERROR("{}", msg);
         std::throw_with_nested(std::runtime_error(msg));
     }
 }
 
-base::Lifter
-stageBuilderNormalizeConditionalMap(const base::DocumentValue &def,
-                                    types::TracerFn tr)
+static Lifter normalizeCheck(const DocumentValue &ref, types::TracerFn tr)
 {
-    std::vector<base::Lifter> conditionalMappingOps;
-
-    for (auto it = def.Begin(); it != def.End(); ++it)
+    if (!ref.IsArray())
     {
-        if (it->GetString() == "check")
-        {
-            try
-            {
-                conditionalMappingOps.push_back(std::get<types::OpBuilder>(
-                    Registry::getBuilder("check"))(*it, tr));
-            }
-            catch (std::exception &e)
-            {
-                WAZUH_LOG_ERROR("Stage normalize conditional map builder "
-                                "encountered exception "
-                                "on building: [{}]",
-                                e.what());
+        auto msg = "Invalid \"check\" object, it should be an array.";
+        WAZUH_LOG_ERROR("{}", msg);
+        std::throw_with_nested(std::invalid_argument(msg));
+    }
 
-                auto msg = "Stage normalize conditional map builder "
-                           "encountered exception on "
-                           "building.";
-                std::throw_with_nested(std::runtime_error(msg));
-            }
-        }
-        else if (it->GetString() == "map")
-        {
-            conditionalMappingOps.push_back(stageBuilderNormalizeMap(*it, tr));
-        }
+    // Gets the "check" array
+    auto checkArray = ref.GetArray();
+
+    if (checkArray.Capacity() <= 0)
+    {
+        auto msg = "Invalid \"check\" object, it can not be empty.";
+        WAZUH_LOG_ERROR("{}", msg);
+        std::throw_with_nested(std::invalid_argument(msg));
+    }
+
+    std::vector<Lifter> checkOps;
+
+    try
+    {
+        checkOps.push_back(std::get<types::OpBuilder>(
+            Registry::getBuilder("check"))(checkArray, tr));
+    }
+    catch (std::exception &e)
+    {
+        auto msg = fmt::format("Stage normalize builder encountered "
+                               "exception on building: [{}]",
+                               e.what());
+        WAZUH_LOG_ERROR("{}", msg);
+        std::throw_with_nested(std::runtime_error(msg));
+    }
+
+    try
+    {
+        // Chains the "check" operations
+        return std::get<types::CombinatorBuilder>(
+            Registry::getBuilder("combinator.chain"))(checkOps);
+    }
+    catch (std::exception &e)
+    {
+        auto msg = fmt::format(
+            "Stage normalize builder encountered exception on building: [{}]",
+            e.what());
+        WAZUH_LOG_ERROR("{}", msg);
+        std::throw_with_nested(std::runtime_error(msg));
+    }
+}
+
+static Lifter normalizeConditionalMap(const DocumentValue &def,
+                                      types::TracerFn tr)
+{
+    if (def.MemberCount() != 2)
+    {
+        auto msg = fmt::format(
+            "Invalid conditional map configuration, two (2) elements "
+            "were expected, \"check\" and \"map\", but got: {}",
+            def.MemberCount());
+        WAZUH_LOG_ERROR("{}", msg);
+        std::throw_with_nested(std::invalid_argument(msg));
+    }
+
+    std::vector<Lifter> conditionalMapOps;
+
+    try
+    {
+        conditionalMapOps.push_back(normalizeCheck(def["check"], tr));
+    }
+    catch (std::exception &e)
+    {
+        auto msg = fmt::format(
+            "Stage normalize conditional map builder "
+            "encountered exception on building the \"check\" object: [{}].",
+            e.what());
+        WAZUH_LOG_ERROR("{}", msg);
+        std::throw_with_nested(std::runtime_error(msg));
+    }
+
+    try
+    {
+        conditionalMapOps.push_back(normalizeMap(def["map"], tr));
+    }
+    catch (std::exception &e)
+    {
+        auto msg = fmt::format(
+            "Stage normalize conditional map builder "
+            "encountered exception on building the \"map\" object: [{}].",
+            e.what());
+        WAZUH_LOG_ERROR("{}", msg);
+        std::throw_with_nested(std::runtime_error(msg));
     }
 
     try
     {
         return std::get<types::CombinatorBuilder>(
-            Registry::getBuilder("combinator.chain"))(conditionalMappingOps);
+            Registry::getBuilder("combinator.chain"))(conditionalMapOps);
     }
     catch (std::exception &e)
     {
-        WAZUH_LOG_ERROR("Stage normalize conditional map builder encountered "
-                        "exception on building: [{}]",
-                        e.what());
-
-        auto msg = "Stage normalize conditional map builder encountered "
-                   "exception on building.";
+        auto msg = fmt::format("Stage normalize conditional map builder "
+                               "encountered exception on building: [{}]",
+                               e.what());
+        WAZUH_LOG_ERROR("{}", msg);
         std::throw_with_nested(std::runtime_error(msg));
     }
 }
 
-base::Lifter stageBuilderNormalize(const base::DocumentValue &def,
-                                    types::TracerFn tr)
+Lifter stageBuilderNormalize(const DocumentValue &def, types::TracerFn tr)
 {
     // Assert value is as expected
     if (!def.IsArray())
     {
-        auto msg =
-            fmt::format("Stage normalize builder, expected array but got [{}].",
-                        def.GetType());
+        auto msg = fmt::format("Stage normalize builder, expected "
+                               "\"normalize\" to be an array but got [{}].",
+                               def.GetType());
         WAZUH_LOG_ERROR("{}", msg);
-        throw std::invalid_argument(msg);
+        std::throw_with_nested(std::invalid_argument(msg));
     }
 
     // Build all the normalize operations
-    std::vector<base::Lifter> normalizeOps;
+    std::vector<Lifter> normalizeOps;
 
     for (auto it = def.Begin(); it != def.End(); ++it)
     {
         if (it->IsObject())
         {
-            if (it->GetObject().HasMember("check") &&
-                it->GetObject().HasMember("map"))
+            auto obj = it->GetObject();
+
+            if (obj.HasMember("map"))
             {
-                // TODO: it should enter in here after the map operation
-                auto a = true;
-                // normalizeOps.push_back(
-                //     stageBuilderNormalizeConditionalMap(*it, tr));
-            }
-            else if (it->GetObject().HasMember("map"))
-            {
-                normalizeOps.push_back(
-                    stageBuilderNormalizeMap(it->GetObject()["map"], tr));
+                if (obj.HasMember("check"))
+                {
+                    normalizeOps.push_back(normalizeConditionalMap(obj, tr));
+                }
+                else
+                {
+                    normalizeOps.push_back(normalizeMap(obj["map"], tr));
+                }
             }
             else
             {
-                auto msg =
-                    fmt::format("Stage normalize builder, expected either "
-                                "\"map\" or \"check\" elements but got [{}].",
-                                it->GetString());
+                auto msg = "Stage normalize builder, there is a conditional "
+                           "map object with no \"map\" element on it.";
                 WAZUH_LOG_ERROR("{}", msg);
-                throw std::invalid_argument(msg);
+                std::throw_with_nested(std::invalid_argument(msg));
             }
         }
         else
         {
-            auto msg = fmt::format(
-                "Stage normalize builder, expected object but got [{}].",
-                it->GetType());
+            auto msg =
+                fmt::format("Stage normalize builder, each \"normalize\" array "
+                            "element should be an object but got [{}].",
+                            it->GetType());
             WAZUH_LOG_ERROR("{}", msg);
-            throw std::invalid_argument(msg);
+            std::throw_with_nested(std::invalid_argument(msg));
         }
     }
 
     try
     {
-        /** TODO: iterate the "normalizeOps" and add the filters to avoid
-         * publishing more than one event Normalize operation (map & check+map)
-         * **/
+        /** As the map and check-map (conditional map) operations run in
+         * parallel, some special considerations must be taken. The map one
+         * always produces an output and modifies the input object while the
+         * check-map operation may not produce any output. To handle this
+         * situation, these operations can not be serialized (chained) so they
+         * should be combined with the broadcast operation. This leads to
+         * another situation, only one observable should be emitted so both
+         * outputs should be filtered and a dummy one had to be created to
+         * publish the result. */
+        for (auto &op : normalizeOps)
+        {
+            op = [&op](base::Observable in)
+            {
+                // Filter map and check-map outputs
+                return op(in).filter([](auto) { return false; });
+            };
+        }
+        // Append a dummy observable publisher to the list of operations
+        normalizeOps.push_back([](base::Observable in) { return in; });
 
-        // must be completed independently
+        // Combine the normalize operations as broadcast
         return std::get<types::CombinatorBuilder>(
             Registry::getBuilder("combinator.broadcast"))(normalizeOps);
     }
     catch (std::exception &e)
     {
-        const char *msg = "Stage normalize builder encountered exception "
-                          "chaining all mappings.";
-        WAZUH_LOG_ERROR("{} From exception: [{}]", msg, e.what());
+        auto msg = fmt::format("Stage normalize builder encountered exception "
+                               "on building: [{}]",
+                               e.what());
+        WAZUH_LOG_ERROR("{}", msg);
         std::throw_with_nested(std::runtime_error(msg));
     }
 }

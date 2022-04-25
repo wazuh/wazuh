@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015-2022, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -21,7 +21,8 @@ namespace builder::internals::builders
  * @param def
  * @return base::Lifter
  */
-base::Lifter stageBuilderNormalize(const base::DocumentValue & def, types::TracerFn tr);
+base::Lifter stageBuilderNormalize(const base::DocumentValue &def,
+                                    types::TracerFn tr);
 
 } // namespace builder::internals::builders
 
