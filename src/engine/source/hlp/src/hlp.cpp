@@ -83,6 +83,7 @@ static const std::unordered_map<std::string_view, ParserType> kTempTypeMapper {
     {"quoted_string", ParserType::QuotedString},
     {"ip", ParserType::IP},
     {"number", ParserType::Number},
+    {"toend", ParserType::ToEnd},
     //TODO add missing parsers
 };
 
