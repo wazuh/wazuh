@@ -12,14 +12,16 @@
 
 #include "testUtils.hpp"
 #include "opBuilderHelperFilter.hpp"
+#include "base/baseTypes.hpp"
 
-using namespace builder::internals::builders;
+namespace bl = builder::internals::builders;
+using namespace base;
 
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
 
 auto createEvent = [](const char * json){
-    return std::make_shared<Base::EventHandler>(std::make_shared<json::Document>(json));
+    return std::make_shared<EventHandler>(std::make_shared<json::Document>(json));
 };
 
 TEST(opBuilderHelperIntLessThanEqual, Builds)
@@ -29,7 +31,7 @@ TEST(opBuilderHelperIntLessThanEqual, Builds)
             {"field_test": "+i_lt/10"}
     })"};
 
-    ASSERT_NO_THROW(opBuilderHelperIntLessThanEqual(doc.get("/check"), tr));
+    ASSERT_NO_THROW(bl::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr));
 }
 
 TEST(opBuilderHelperIntLessThanEqual, Builds_error_bad_parameter)
@@ -39,7 +41,7 @@ TEST(opBuilderHelperIntLessThanEqual, Builds_error_bad_parameter)
             {"field_test": "+i_lt/test"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIntLessThanEqual(doc.get("/check"), tr),
+    ASSERT_THROW(bl::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr),
                  std::invalid_argument);
 }
 
@@ -50,7 +52,7 @@ TEST(opBuilderHelperIntLessThanEqual, Builds_error_more_parameters)
             {"field_test": "+i_lt/10/10"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIntLessThanEqual(doc.get("/check"), tr), std::runtime_error);
+    ASSERT_THROW(bl::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr), std::runtime_error);
 }
 
 TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_ok)
@@ -77,7 +79,7 @@ TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_ok)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
+    Lifter lift = bl::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -113,7 +115,7 @@ TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_true)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
+    Lifter lift = bl::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -149,7 +151,7 @@ TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_false)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
+    Lifter lift = bl::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -194,7 +196,7 @@ TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_ref_true)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
+    Lifter lift = bl::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -245,7 +247,7 @@ TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_ref_false)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
+    Lifter lift = bl::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -288,7 +290,7 @@ TEST(opBuilderHelperIntLessThanEqual, Exec_dynamics_int_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
+    Lifter lift = bl::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -365,7 +367,7 @@ TEST(opBuilderHelperIntLessThanEqual, Exec_multilevel_dynamics_int_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
+    Lifter lift = bl::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
