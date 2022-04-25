@@ -1,0 +1,5 @@
+add_executable(logicExpression_benchmarks
+  logicExpressionEvaluator_bench.cpp
+)
+
+target_link_libraries(logicExpression_benchmarks benchmark::benchmark_main logicExpression)
