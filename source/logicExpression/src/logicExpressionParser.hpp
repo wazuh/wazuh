@@ -22,6 +22,8 @@ constexpr int OPERATOR_TOKEN_START = 10;
  */
 namespace logicExpression
 {
+namespace parser
+{
 
 /**
  * @brief Identifies token type.
@@ -368,6 +370,7 @@ private:
  */
 std::shared_ptr<Expression> parse(const std::string& rawExpression);
 
-}; // namespace logicExpression
+} // namespace parser
+} // namespace logicExpression
 
 #endif // _LOGIC_EXPRESSION_PARSER_H
