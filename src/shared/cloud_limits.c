@@ -27,10 +27,9 @@ cJSON *load_limits_file(const char *object_name) {
         return NULL;
     }
 
-    struct stat limit_attrib;
-    stat(OSSEC_LIMITS, &limit_attrib);
+    time_t cur_mod_date = File_DateofChange(OSSEC_LIMITS);
 
-    if (limit_attrib.st_ctime == last_mod_date) {
+    if (cur_mod_date == last_mod_date) {
         mdebug2("File %s doesn't change", OSSEC_LIMITS);
         return NULL;
     }
@@ -49,7 +48,7 @@ cJSON *load_limits_file(const char *object_name) {
         return NULL;
     }
 
-    last_mod_date = limit_attrib.st_ctime;
+    last_mod_date = cur_mod_date;
 
     cJSON *file_json = NULL;
     const char *json_err;
