@@ -43,16 +43,16 @@ std::function<bool(Event)> buildDijstraEvaluator(
                 builtExpr->m_type = evaluator::ExpressionType::TERM;
                 builtExpr->m_function = termBuilder(tokenExpr->m_token.m_text);
                 return builtExpr;
-            case parser::TokenType::NOT_OPERATOR:
+            case parser::TokenType::OPERATOR_NOT:
                 builtExpr->m_type = evaluator::ExpressionType::NOT;
                 builtExpr->m_left = visit_ref(tokenExpr->m_left, visit_ref);
                 return builtExpr;
-            case parser::TokenType::OR_OPERATOR:
+            case parser::TokenType::OPERATOR_OR:
                 builtExpr->m_type = evaluator::ExpressionType::OR;
                 builtExpr->m_left = visit_ref(tokenExpr->m_left, visit_ref);
                 builtExpr->m_right = visit_ref(tokenExpr->m_right, visit_ref);
                 return builtExpr;
-            case parser::TokenType::AND_OPERATOR:
+            case parser::TokenType::OPERATOR_AND:
                 builtExpr->m_type = evaluator::ExpressionType::AND;
                 builtExpr->m_left = visit_ref(tokenExpr->m_left, visit_ref);
                 builtExpr->m_right = visit_ref(tokenExpr->m_right, visit_ref);
