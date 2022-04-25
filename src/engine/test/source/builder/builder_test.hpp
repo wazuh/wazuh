@@ -7,60 +7,90 @@
 #include "json/json.hpp"
 #include <hlp/hlp.hpp>
 
-std::map<std::string, std::string> decoders = {{"decoder_0", R"(
-                {
-                    "name": "decoder_0",
-                    "check": [
-                        {"type": "int"}
-                    ],
-                    "normalize": [
-                        { "new_dec_field0": "new_dec_value0" }
-                    ]
-                }
-    )"},
-                                               {"decoder_1", R"(
-                {
-                    "name": "decoder_1",
-                    "parents": [
-                        "decoder_0"
-                    ],
-                    "check": [
-                        {"field": "odd"}
-                    ],
-                    "normalize": [
-                        { "new_dec_field1": "new_dec_value1" }
-                    ]
-                }
-    )"},
-                                               {"decoder_2", R"(
-                {
-                    "name": "decoder_2",
-                    "parents": [
-                        "decoder_0"
-                    ],
-                    "check": [
-                        {"field": "even"}
-                    ],
-                    "normalize": [
-                        { "new_dec_field2": "new_dec_value2" }
-                    ]
-                }
-    )"},
-                                               {"decoder_3", R"(
-                {
-                    "name": "decoder_3",
-                    "parents": [
-                        "decoder_1",
-                        "decoder_2"
-                    ],
-                    "check": [
-                        {"type": "int"}
-                    ],
-                    "normalize": [
-                        { "new_dec_field3": "new_dec_value3" }
-                    ]
-                }
-    )"}};
+std::map<std::string, std::string> decoders = {
+    {
+        "decoder_0", R"(
+            {
+                "name": "decoder_0",
+                "check": [
+                    {"type": "int"}
+                ],
+                "normalize": [
+                    {
+                        "map":
+                        {
+                            "new_dec_field0": "new_dec_value0"
+                        }
+                    }
+                ]
+            }
+        )"
+    },
+    {
+        "decoder_1", R"(
+            {
+                "name": "decoder_1",
+                "parents": [
+                    "decoder_0"
+                ],
+                "check": [
+                    {"field": "odd"}
+                ],
+                "normalize": [
+                    {
+                        "map":
+                        {
+                            "new_dec_field1": "new_dec_value1"
+                        }
+                    }
+                ]
+            }
+        )"
+    },
+    {
+        "decoder_2", R"(
+            {
+                "name": "decoder_2",
+                "parents": [
+                    "decoder_0"
+                ],
+                "check": [
+                    {"field": "even"}
+                ],
+                "normalize": [
+                    {
+                        "map":
+                        {
+                            "new_dec_field2": "new_dec_value2"
+                        }
+                    }
+                ]
+            }
+        )"
+    },
+    {
+        "decoder_3", R"(
+            {
+                "name": "decoder_3",
+                "parents": [
+                    "decoder_1",
+                    "decoder_2"
+                ],
+                "check": [
+                    {"type": "int"}
+                ],
+                "normalize": [
+                    {
+                        "map":
+                        {
+                            "new_dec_field3": "new_dec_value3"
+                        }
+                    }
+                ]
+            }
+        )"
+    }
+};
 
 std::map<std::string, std::string> rules = {{"rule_0", R"(
                     {
@@ -68,8 +98,14 @@ std::map<std::string, std::string> rules = {{"rule_0", R"(
                     "check": [
                         {"type": "int"}
                     ],
-                    "normalize": [
-                        { "new_rule_field": "new_rule_value" }
+                    "normalize":
+                    [
+                        {
+                            "map":
+                            {
+                                "new_rule_field": "new_rule_value"
+                            }
+                        }
                     ]
                 }
     )"}};
@@ -111,8 +147,10 @@ std::map<std::string, std::string> outputs = {{"output_0", R"(
 
 std::map<std::string, std::string> environments = {
     {"environment_1", R"( { "decoders": [ "decoder_0"] })"},
-    {"environment_2", R"( { "decoders": [ "decoder_0"], "rules": [ "rule_0" ] })"},
-    {"environment_3", R"( { "decoders": [ "decoder_0"], "rules": [ "rule_0" ], "filters": [ "filter_0" ] })"},
+    {"environment_2",
+     R"( { "decoders": [ "decoder_0"], "rules": [ "rule_0" ] })"},
+    {"environment_3",
+     R"( { "decoders": [ "decoder_0"], "rules": [ "rule_0" ], "filters": [ "filter_0" ] })"},
     {"environment_4",
      R"({  "decoders": [ "decoder_0" ], "rules": [ "rule_0" ], "filters": [ "filter_0" ], "outputs": [ "output_0" ] })"},
     {"environment_5", R"({
@@ -138,7 +176,8 @@ class FakeCatalog
 {
 private:
 public:
-    json::Document getAsset(const std::string atype, const std::string assetName) const
+    json::Document getAsset(const std::string atype,
+                            const std::string assetName) const
     {
 
         if (atype == "environment")
@@ -166,7 +205,8 @@ public:
             return json::Document(outputs[assetName].c_str());
         }
 
-        throw std::invalid_argument("fakeCatalog does not support asset type " + atype);
+        throw std::invalid_argument("fakeCatalog does not support asset type " +
+                                    atype);
     }
 
     std::vector<std::string> getAssetList(const std::string)
