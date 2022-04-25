@@ -51,12 +51,20 @@
         <Property Id="BUILDVERSION" Value="0">
             <RegistrySearch Id="BuildVersion" Root="HKLM" Key="SOFTWARE\Microsoft\Windows NT\CurrentVersion" Type="raw" Name="CurrentBuild" />
         </Property>
-        
+
         <Binary Id="InstallerScripts" SourceFile="InstallerScripts.vbs" />
+        <Binary Id="EnableDumps" SourceFile="EnableDumps.vbs" />
+        <Binary Id="DisableDumps" SourceFile="DisableDumps.vbs" />
 
         <Property Id="APPLICATIONFOLDER">
             <RegistrySearch Id="WazuhInstallDirProperty" Type="raw" Root="HKLM" Key="Software\[Manufacturer]\[ProductName]" Name="WazuhInstallDir" />
         </Property>
+
+        <Property Id="WAZUH_OLD_EXECUTABLES">
+            <RegistrySearch Id="WazuhExecutablesProperty" Type="raw" Root="HKLM" Key="Software\[Manufacturer]\[ProductName]" Name="WazuhExecutables" />
+        </Property>
+
+        <Property Id="WAZUH_EXECUTABLES" Value="wazuh-agent.exe,win32ui.exe,manage_agents.exe,agent-auth.exe,setup-windows.exe,setup-syscheck.exe,setup-iis.exe,route-null.exe,restart-wazuh.exe,netsh.exe,agent-auth.exe" />
 
         <CustomAction Id="LaunchUI" Directory="APPLICATIONFOLDER" ExeCommand="[APPLICATIONFOLDER]win32ui.exe" Return="asyncNoWait" />
 
@@ -93,6 +101,12 @@
         <CustomAction Id="SetCustomActionDataValue" Return="check" Property="CustomAction_InstallerScripts" Value="&quot;[APPLICATIONFOLDER]&quot;,&quot;[WAZUH_MANAGER]&quot;,&quot;[WAZUH_MANAGER_PORT]&quot;,&quot;[WAZUH_PROTOCOL]&quot;,&quot;[NOTIFY_TIME]&quot;,&quot;[WAZUH_REGISTRATION_SERVER]&quot;,&quot;[WAZUH_REGISTRATION_PORT]&quot;,&quot;[WAZUH_REGISTRATION_PASSWORD]&quot;,&quot;[WAZUH_KEEP_ALIVE_INTERVAL]&quot;,&quot;[WAZUH_TIME_RECONNECT]&quot;,&quot;[WAZUH_REGISTRATION_CA]&quot;,&quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot;,&quot;[WAZUH_REGISTRATION_KEY]&quot;,&quot;[WAZUH_AGENT_NAME]&quot;,&quot;[WAZUH_AGENT_GROUP]&quot;,&quot;[ENROLLMENT_DELAY]&quot;" />
         <CustomAction Id="CustomAction_InstallerScripts" BinaryKey="InstallerScripts" VBScriptCall="config" Return="check" Execute="commit" Impersonate="no"/>
 
+        <CustomAction Id="SetEnableDumps" Return="check" Property="CustomAction_EnableDumps" Value="&quot;[APPLICATIONFOLDER]|[WAZUH_EXECUTABLES]&quot;" />
+        <CustomAction Id="CustomAction_EnableDumps" BinaryKey="EnableDumps" VBScriptCall="EnableDumps" Return="check" Execute="commit" Impersonate="no"  />
+        <CustomAction Id="SetDisableDumps" Return="check" Property="CustomAction_DisableDumps" Value="&quot;[WAZUH_OLD_EXECUTABLES]&quot;" />
+        <CustomAction Id="CustomAction_DisableDumps" BinaryKey="DisableDumps" VBScriptCall="DisableDumps" Return="check" Execute="commit" Impersonate="no"  />
+
+
         <!-- Explicitely stopping and deleting the OSSEC service to install new Wazuh service -->
         <CustomAction Id="StopOssecService" Directory="APPLICATIONFOLDER" ExeCommand="NET STOP OssecSvc" Execute="deferred" Impersonate="no" Return="ignore" />
         <CustomAction Id="DeleteOssecService" Directory="APPLICATIONFOLDER" ExeCommand="SC DELETE OssecSvc" Execute="deferred" Impersonate="no" Return="ignore" />
@@ -128,6 +142,12 @@
             <Custom Action="SetCustomActionDataValue" After="InstallInitialize">NOT Installed</Custom>
             <Custom Action="CustomAction_InstallerScripts" After="SetCustomActionDataValue">NOT Installed</Custom>
 
+            <!-- Disable/Enable core dumps -->
+            <Custom Action="SetDisableDumps" After="SetCustomActionDataValue">VersionNT &gt;= 600 AND WAZUHINSTALLED</Custom>
+            <Custom Action="CustomAction_DisableDumps" After="SetDisableDumps">VersionNT &gt;= 600 AND WAZUHINSTALLED</Custom>
+            <Custom Action="SetEnableDumps" After="CustomAction_DisableDumps">VersionNT &gt;= 600 AND NOT Installed</Custom>
+            <Custom Action="CustomAction_EnableDumps" After="SetEnableDumps">VersionNT &gt;= 600 AND NOT Installed</Custom>
+
             <!-- Stop the service as soon as possible on uninstall, and only on uninstall, in order to unlock the files and folders that must be deleted. -->
             <Custom Action="SetRemoveAllDataValue" Before="InstallFinalize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
             <Custom Action="CustomAction_RemoveAllScript" After="SetRemoveAllDataValue">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
@@ -137,6 +157,9 @@
         <Directory Id="TARGETDIR" Name="SourceDir">
             <Directory Id="ProgramFilesFolder" Name="PFiles">
                 <Directory Id="APPLICATIONFOLDER" Name="ossec-agent">
+                    <Component Id="REGISTRY_INSTALLED_EXECUTABLES" Guid="d5aeef1b-6e8c-49ff-a4e0-cc5921e7bbf8" KeyPath="yes">
+                            <RegistryValue Root="HKLM" Key="SOFTWARE\[Manufacturer]\[ProductName]" Id="WazuhExecutablesProperty" Name="WazuhExecutables" Type="string" Value="[WAZUH_EXECUTABLES]" />
+                    </Component>
                     <Component Id="REGISTRY_INSTALL_DIR" Guid="63E18998-4DBB-4C34-A1AD-09AA809A1C15" KeyPath="yes">
                         <RegistryValue Root="HKLM" Key="SOFTWARE\[Manufacturer]\[ProductName]" Id="WazuhInstallDirProperty" Name="WazuhInstallDir" Type="string" Value="[APPLICATIONFOLDER]" />
                     </Component>
@@ -556,6 +579,7 @@
         </DirectoryRef>
         <Feature Id="MainFeature" Title="Wazuh Agent" Description="Install the Wazuh Agent program files" ConfigurableDirectory="APPLICATIONFOLDER" InstallDefault="local" TypicalDefault="install" AllowAdvertise="no" Absent="disallow">
             <ComponentRef Id="REGISTRY_INSTALL_DIR" />
+            <ComponentRef Id="REGISTRY_INSTALLED_EXECUTABLES" />
             <ComponentRef Id="AGENT_AUTH.EXE" />
             <ComponentRef Id="SYSCOLLECTOR_NORM_CONFIG" />
             <ComponentRef Id="SYSCOLLECTOR_DLL" />
