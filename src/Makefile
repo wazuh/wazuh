@@ -832,7 +832,7 @@ else
 endif
 endif
 ifeq (${uname_S}, Darwin)
-	@$(foreach binary, ${EXECUTABLE_FILES}, (dsymutil -s $(binary) | grep -q N_OSO && symutil -o ${SYMBOLS_PATH}/$(binary).dSYM $(binary) && strip -S $(binary)) || true;)
+	@$(foreach binary, ${EXECUTABLE_FILES}, (dsymutil -s $(binary) | grep -q N_OSO && dsymutil -o ${SYMBOLS_PATH}/$(binary).dSYM $(binary) && strip -S $(binary)) || true;)
 endif
 endif
 
