@@ -38,3 +38,4 @@ target_link_libraries(engine_bench_main
 add_subdirectory(regex)
 add_subdirectory(hlp)
 add_subdirectory(kvdb)
+add_subdirectory(logicExpression)
