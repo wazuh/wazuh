@@ -26,7 +26,14 @@ TEST(opBuilderHelperStringTrim, Builds)
 {
     Document doc{R"({
         "normalize":
-            {"fieldToTranf": "+s_trim/both/t"}
+        [
+            {
+                "map":
+                {
+                    "fieldToTranf": "+s_trim/both/t"
+                }
+            }
+        ]
     })"};
     ASSERT_NO_THROW(bld::opBuilderHelperStringTrim(doc.get("/normalize"), tr));
 }
@@ -36,7 +43,14 @@ TEST(opBuilderHelperStringTrim, Builds_incorrect_number_of_arguments)
 {
     Document doc{R"({
         "normalize":
-            {"fieldToTranf": "+s_trim/both/t/t"}
+        [
+            {
+                "map":
+                {
+                    "fieldToTranf": "+s_trim/both/t/t"
+                }
+            }
+        ]
     })"};
     ASSERT_THROW(bld::opBuilderHelperStringTrim(doc.get("/normalize"), tr), std::runtime_error);
 }
@@ -46,7 +60,14 @@ TEST(opBuilderHelperStringTrim, BothOk)
 {
     Document doc{R"({
         "normalize":
-            {"fieldToTranf": "+s_trim/both/-"}
+        [
+            {
+                "map":
+                {
+                    "fieldToTranf": "+s_trim/both/-"
+                }
+            }
+        ]
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -81,7 +102,14 @@ TEST(opBuilderHelperStringTrim, Start_ok)
 {
     Document doc{R"({
         "normalize":
-            {"fieldToTranf": "+s_trim/begin/-"}
+        [
+            {
+                "map":
+                {
+                    "fieldToTranf": "+s_trim/begin/-"
+                }
+            }
+        ]
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -118,7 +146,14 @@ TEST(opBuilderHelperStringTrim, End_ok)
 {
     Document doc{R"({
         "normalize":
-            {"fieldToTranf": "+s_trim/end/-"}
+        [
+            {
+                "map":
+                {
+                    "fieldToTranf": "+s_trim/end/-"
+                }
+            }
+        ]
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -154,7 +189,14 @@ TEST(opBuilderHelperStringTrim, Multilevel_src)
 {
     Document doc{R"({
         "normalize":
-            {"fieldToTranf.a.b": "+s_trim/end/-"}
+        [
+            {
+                "map":
+                {
+                    "fieldToTranf.a.b": "+s_trim/end/-"
+                }
+            }
+        ]
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -190,7 +232,14 @@ TEST(opBuilderHelperStringTrim, Not_exist_src)
 {
     Document doc{R"({
         "normalize":
-            {"fieldToTranf": "+s_trim/end/-"}
+        [
+            {
+                "map":
+                {
+                    "fieldToTranf": "+s_trim/end/-"
+                }
+            }
+        ]
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -214,7 +263,14 @@ TEST(opBuilderHelperStringTrim, Src_not_string)
 {
     Document doc{R"({
         "normalize":
-            {"fieldToTranf": "+s_trim/end/-"}
+        [
+            {
+                "map":
+                {
+                    "fieldToTranf": "+s_trim/end/-"
+                }
+            }
+        ]
     })"};
 
     Observable input = observable<>::create<Event>(
@@ -239,7 +295,14 @@ TEST(opBuilderHelperStringTrim, Multilevel)
 {
     Document doc{R"({
         "normalize":
-            {"fieldToTranf.a.b": "+s_trim/end/-"}
+        [
+            {
+                "map":
+                {
+                    "fieldToTranf.a.b": "+s_trim/end/-"
+                }
+            }
+        ]
     })"};
 
     Observable input = observable<>::create<Event>(
