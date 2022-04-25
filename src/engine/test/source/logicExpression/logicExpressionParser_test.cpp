@@ -3,7 +3,7 @@
 #include "gtest/gtest.h"
 
 using namespace std;
-using namespace logicExpression;
+using namespace logicExpression::parser;
 
 TEST(LogicExpressionParser, TokenConstructs)
 {
@@ -264,7 +264,7 @@ TEST(LogicExpressionParser, ParseErrors)
 
     for (auto &expression : expressions)
     {
-        EXPECT_THROW(logicExpression::parse(expression), runtime_error);
+        EXPECT_THROW(parse(expression), runtime_error);
     }
 }
 
@@ -399,9 +399,9 @@ term_11;
 
     for (auto i = 0; i < expressions.size(); ++i)
     {
-        auto exp = logicExpression::Expression::create();
-        EXPECT_NO_THROW(exp = logicExpression::parse(expressions[i]));
-        EXPECT_EQ(logicExpression::Expression::toDotString(exp),
+        auto exp = Expression::create();
+        EXPECT_NO_THROW(exp = parse(expressions[i]));
+        EXPECT_EQ(Expression::toDotString(exp),
                   expectedGraph[i]);
     }
 }

@@ -8,24 +8,27 @@
 
 #include <utils/stringUtils.hpp>
 
-// Only the parse function and related structs needs to be exposed, rest of the code is made private here
+using namespace logicExpression::parser;
+
+// Only the parse function and related structs needs to be exposed, rest of the
+// code is made private here
 namespace
 {
 // Simple tokenizer using blank space and parenthesis as delimiter.
 // Blank spaces are discarded.
-std::queue<logicExpression::Token> tokenize(const std::string &rawExpression)
+std::queue<Token> tokenize(const std::string& rawExpression)
 {
     std::vector<std::string> rawTokens =
         utils::string::splitMulti(rawExpression,
-                             utils::string::Delimeter(' ', false),
-                             utils::string::Delimeter('(', true),
-                             utils::string::Delimeter(')', true));
+                                  utils::string::Delimeter(' ', false),
+                                  utils::string::Delimeter('(', true),
+                                  utils::string::Delimeter(')', true));
 
-    std::queue<logicExpression::Token> tokens;
+    std::queue<Token> tokens;
     size_t i = 0;
-    for (const auto &rawToken : rawTokens)
+    for (const auto& rawToken : rawTokens)
     {
-        tokens.push(logicExpression::Token::parseToken(rawToken, i));
+        tokens.push(Token::parseToken(rawToken, i));
         i += rawToken.size();
     }
 
@@ -71,10 +74,10 @@ struct syntaxChecker
     }
 
     // Check if token satisfies the current state, otherwise throw exception
-    void operator()(const logicExpression::Token &token)
+    void operator()(const Token& token)
     {
         // Got term
-        if (token.m_type == logicExpression::TokenType::TERM)
+        if (token.m_type == TokenType::TERM)
         {
             if (expectedOperator())
             {
@@ -118,7 +121,7 @@ struct syntaxChecker
         }
 
         // Got parenthesis open
-        if (token.m_type == logicExpression::TokenType::PARENTHESIS_OPEN)
+        if (token.m_type == TokenType::PARENTHESIS_OPEN)
         {
             if (expectedOperator())
             {
@@ -132,7 +135,7 @@ struct syntaxChecker
         }
 
         // Got parenthesis close
-        if (token.m_type == logicExpression::TokenType::PARENTHESIS_CLOSE)
+        if (token.m_type == TokenType::PARENTHESIS_CLOSE)
         {
             if (expectedOperand())
             {
@@ -149,11 +152,10 @@ struct syntaxChecker
 
 // Transform a queue of tokens in infix notation into a stack of tokens in
 // postfix notation using Shunting-Yard algorithm.
-std::stack<logicExpression::Token>
-infixToPostfix(std::queue<logicExpression::Token> &infix)
+std::stack<Token> infixToPostfix(std::queue<Token>& infix)
 {
-    std::stack<logicExpression::Token> postfix;
-    std::stack<logicExpression::Token> operatorStack;
+    std::stack<Token> postfix;
+    std::stack<Token> operatorStack;
 
     syntaxChecker checker;
     while (!infix.empty())
@@ -162,19 +164,18 @@ infixToPostfix(std::queue<logicExpression::Token> &infix)
         infix.pop();
         checker(token);
 
-        if (token.m_type == logicExpression::TokenType::TERM)
+        if (token.m_type == TokenType::TERM)
         {
             postfix.push(std::move(token));
         }
-        else if (token.m_type == logicExpression::TokenType::PARENTHESIS_OPEN)
+        else if (token.m_type == TokenType::PARENTHESIS_OPEN)
         {
             operatorStack.push(std::move(token));
         }
-        else if (token.m_type == logicExpression::TokenType::PARENTHESIS_CLOSE)
+        else if (token.m_type == TokenType::PARENTHESIS_CLOSE)
         {
             while (!operatorStack.empty() &&
-                   operatorStack.top().m_type !=
-                       logicExpression::TokenType::PARENTHESIS_OPEN)
+                   operatorStack.top().m_type != TokenType::PARENTHESIS_OPEN)
             {
                 postfix.push(std::move(operatorStack.top()));
                 operatorStack.pop();
@@ -188,8 +189,7 @@ infixToPostfix(std::queue<logicExpression::Token> &infix)
         else
         {
             while (!operatorStack.empty() &&
-                   operatorStack.top().m_type !=
-                       logicExpression::TokenType::PARENTHESIS_OPEN &&
+                   operatorStack.top().m_type != TokenType::PARENTHESIS_OPEN &&
                    operatorStack.top() >= token)
             {
                 postfix.push(std::move(operatorStack.top()));
@@ -202,8 +202,7 @@ infixToPostfix(std::queue<logicExpression::Token> &infix)
 
     while (!operatorStack.empty())
     {
-        if (operatorStack.top().m_type ==
-            logicExpression::TokenType::PARENTHESIS_OPEN)
+        if (operatorStack.top().m_type == TokenType::PARENTHESIS_OPEN)
         {
             throw std::runtime_error("Mismatched parenthesis");
         }
@@ -216,10 +215,10 @@ infixToPostfix(std::queue<logicExpression::Token> &infix)
 
 } // namespace
 
-namespace logicExpression
+namespace logicExpression::parser
 {
 
-std::shared_ptr<Expression> parse(const std::string &rawExpression)
+std::shared_ptr<Expression> parse(const std::string& rawExpression)
 {
     auto expression = Expression::create();
     try
@@ -236,4 +235,4 @@ std::shared_ptr<Expression> parse(const std::string &rawExpression)
 
     return expression;
 }
-} // namespace logicExpression
+} // namespace logicExpression::parser
