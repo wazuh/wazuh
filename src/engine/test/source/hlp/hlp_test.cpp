@@ -6,14 +6,29 @@ using namespace hlp;
 
 TEST(hlpTests_logQL, logQL_expression)
 {
-    const char *logQl_expression =
-        "<source.address> - <_json/JSON> - [<timestamp/RFC1123>] "
-        "\"<http.request.method> <url> "
+    auto* config = "{"
+                   "\"source.address\": \"keyword\","
+                   "\"event.created\": \"timestamp\","
+                   "\"http.version\": \"number\","
+                   "\"http.request.method\": \"keyword\","
+                   "\"http.request.status_code\": \"number\","
+                   "\"http.response.bytes\": \"number\","
+                   "\"host\": \"url\","
+                   "\"agent.ip\": \"ip\","
+                   "\"client.user_agent\": \"useragent\","
+                   "\"file.created\": \"timestamp\""
+                   "}";
+
+    configureParserMappings(config);
+
+    const char* logQl_expression =
+        "<source.address> - <_json/json> - [<event.created/RFC1123>] "
+        "\"<http.request.method> <host> "
         "HTTP/<http.version>\" <http.response.status_code> "
         "<http.response.body.bytes> \"-\" \"<user_agent.original>\""
-        "<source.ip> - - [<file.created/RFC822Z>] \"-\" "
+        "<agent.ip> - - [<file.created/RFC822Z>] \"-\" "
         "<http.response.status_code> <http.response.body.bytes> ";
-    const char *event =
+    const char* event =
         "monitoring-server - {\"data\":\"this is a json\"} - [Mon, 02 Jan 2006 "
         "15:04:05 MST] \"GET "
         "https://user:password@wazuh.com:8080/"
@@ -29,22 +44,22 @@ TEST(hlpTests_logQL, logQL_expression)
     ASSERT_TRUE(parseOp);
     ASSERT_EQ("{\"data\":\"this is a json\"}",
               std::any_cast<JsonString>(result["_json"]).jsonString);
-    ASSERT_EQ(2006, std::any_cast<int>(result["timestamp.year"]));
-    ASSERT_EQ(1, std::any_cast<unsigned>(result["timestamp.month"]));
-    ASSERT_EQ(2, std::any_cast<unsigned>(result["timestamp.day"]));
-    ASSERT_EQ(15, std::any_cast<long>(result["timestamp.hour"]));
-    ASSERT_EQ(4, std::any_cast<long>(result["timestamp.minutes"]));
-    ASSERT_EQ(5, std::any_cast<double>(result["timestamp.seconds"]));
-    ASSERT_EQ("wazuh.com", std::any_cast<std::string>(result["url.domain"]));
-    ASSERT_EQ("fragment", std::any_cast<std::string>(result["url.fragment"]));
-    ASSERT_EQ("password", std::any_cast<std::string>(result["url.password"]));
-    ASSERT_EQ("/status", std::any_cast<std::string>(result["url.path"]));
-    ASSERT_EQ(8080, std::any_cast<int>(result["url.port"]));
+    ASSERT_EQ(2006, std::any_cast<int>(result["event.created.year"]));
+    ASSERT_EQ(1, std::any_cast<unsigned>(result["event.created.month"]));
+    ASSERT_EQ(2, std::any_cast<unsigned>(result["event.created.day"]));
+    ASSERT_EQ(15, std::any_cast<long>(result["event.created.hour"]));
+    ASSERT_EQ(4, std::any_cast<long>(result["event.created.minutes"]));
+    ASSERT_EQ(5, std::any_cast<double>(result["event.created.seconds"]));
+    ASSERT_EQ("wazuh.com", std::any_cast<std::string>(result["host.domain"]));
+    ASSERT_EQ("fragment", std::any_cast<std::string>(result["host.fragment"]));
+    ASSERT_EQ("password", std::any_cast<std::string>(result["host.password"]));
+    ASSERT_EQ("/status", std::any_cast<std::string>(result["host.path"]));
+    ASSERT_EQ(8080, std::any_cast<int>(result["host.port"]));
     ASSERT_EQ("query=%22a%20query%20with%20a%20space%22",
-              std::any_cast<std::string>(result["url.query"]));
-    ASSERT_EQ("https", std::any_cast<std::string>(result["url.scheme"]));
-    ASSERT_EQ("user", std::any_cast<std::string>(result["url.username"]));
-    ASSERT_EQ("127.0.0.1", std::any_cast<std::string>(result["source.ip"]));
+              std::any_cast<std::string>(result["host.query"]));
+    ASSERT_EQ("https", std::any_cast<std::string>(result["host.scheme"]));
+    ASSERT_EQ("user", std::any_cast<std::string>(result["host.username"]));
+    ASSERT_EQ("127.0.0.1", std::any_cast<std::string>(result["agent.ip"]));
     ASSERT_EQ(2006, std::any_cast<int>(result["file.created.year"]));
     ASSERT_EQ(1, std::any_cast<unsigned>(result["file.created.month"]));
     ASSERT_EQ(2, std::any_cast<unsigned>(result["file.created.day"]));
@@ -70,7 +85,7 @@ TEST(hlpTests_logQL, invalid_logql_expression)
 TEST(hlpTests_logQL, optional_Field_Not_Found)
 {
     static const char *logQl = "this won't match an IP address "
-                               "-<timestamp/UnixDate>- <?url> <_field/JSON>";
+                               "-<_ts/timestamp/UnixDate>- <?url> <_field/json>";
     static const char *event = "this won't match an IP address -Mon Jan 2 "
                                "15:04:05 MST 2006-  {\"String\":\"SomeValue\"}";
 
@@ -80,28 +95,28 @@ TEST(hlpTests_logQL, optional_Field_Not_Found)
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
     ASSERT_TRUE(result.find("url.original") == result.end());
-    ASSERT_EQ(2006, std::any_cast<int>(result["timestamp.year"]));
-    ASSERT_EQ(1, std::any_cast<unsigned>(result["timestamp.month"]));
-    ASSERT_EQ(2, std::any_cast<unsigned>(result["timestamp.day"]));
-    ASSERT_EQ(15, std::any_cast<long>(result["timestamp.hour"]));
-    ASSERT_EQ(4, std::any_cast<long>(result["timestamp.minutes"]));
-    ASSERT_EQ(5, std::any_cast<double>(result["timestamp.seconds"]));
+    ASSERT_EQ(2006, std::any_cast<int>(result["_ts.year"]));
+    ASSERT_EQ(1, std::any_cast<unsigned>(result["_ts.month"]));
+    ASSERT_EQ(2, std::any_cast<unsigned>(result["_ts.day"]));
+    ASSERT_EQ(15, std::any_cast<long>(result["_ts.hour"]));
+    ASSERT_EQ(4, std::any_cast<long>(result["_ts.minutes"]));
+    ASSERT_EQ(5, std::any_cast<double>(result["_ts.seconds"]));
     ASSERT_EQ("{\"String\":\"SomeValue\"}",
               std::any_cast<JsonString>(result["_field"]).jsonString);
 }
 
 TEST(hlpTests_logQL, optional_Or)
 {
-    static const char *logQl = "<url>?<_field/JSON>";
-    static const char *eventJSON = "{\"String\":\"SomeValue\"}";
-    static const char *eventURL =
+    static const char* logQl = "<_url/url>?<_field/json>";
+    static const char* eventjson = "{\"String\":\"SomeValue\"}";
+    static const char* eventURL =
         "https://user:password@wazuh.com:8080/path"
         "?query=%22a%20query%20with%20a%20space%22#fragment";
-    static const char *eventNone = "Mon Jan 2 15:04:05 MST 2006";
+    static const char* eventNone = "Mon Jan 2 15:04:05 MST 2006";
 
     auto parseOp = getParserOp(logQl);
     ParseResult resultJSON;
-    bool ret = parseOp(eventJSON, resultJSON);
+    bool ret = parseOp(eventjson, resultJSON);
     ASSERT_EQ(true, static_cast<bool>(parseOp));
     ASSERT_EQ("{\"String\":\"SomeValue\"}",
               std::any_cast<JsonString>(resultJSON["_field"]).jsonString);
@@ -110,7 +125,7 @@ TEST(hlpTests_logQL, optional_Or)
     ret = parseOp(eventURL, resultURL);
     std::string url = "https://user:password@wazuh.com:8080/"
                       "path?query=%22a%20query%20with%20a%20space%22#fragment";
-    ASSERT_EQ(url, std::any_cast<std::string>(resultURL["url.original"]));
+    ASSERT_EQ(url, std::any_cast<std::string>(resultURL["_url.original"]));
 
     ParseResult resultEmpty;
     ret = parseOp(eventNone, resultEmpty);
@@ -147,8 +162,8 @@ TEST(hlpTests_URL, url_wrong_format)
 
 TEST(hlpTests_URL, url_success)
 {
-    static const char *logQl = "this is an url <url> in text";
-    static const char *event =
+    static const char* logQl = "this is an url <_url/url> in text";
+    static const char* event =
         "this is an url "
         "https://user:password@wazuh.com:8080/"
         "path?query=%22a%20query%20with%20a%20space%22#fragment in text";
@@ -160,23 +175,22 @@ TEST(hlpTests_URL, url_success)
     std::string url = "https://user:password@wazuh.com:8080/"
                       "path?query=%22a%20query%20with%20a%20space%22#fragment";
     ASSERT_EQ(true, static_cast<bool>(parseOp));
-    ASSERT_EQ(url, std::any_cast<std::string>(result["url.original"]));
-    ASSERT_EQ("wazuh.com", std::any_cast<std::string>(result["url.domain"]));
-    ASSERT_EQ("fragment", std::any_cast<std::string>(result["url.fragment"]));
-    ASSERT_EQ("password", std::any_cast<std::string>(result["url.password"]));
-    ASSERT_EQ("/path", std::any_cast<std::string>(result["url.path"]));
-    ASSERT_EQ(8080, std::any_cast<int>(result["url.port"]));
+    ASSERT_EQ(url, std::any_cast<std::string>(result["_url.original"]));
+    ASSERT_EQ("wazuh.com", std::any_cast<std::string>(result["_url.domain"]));
+    ASSERT_EQ("fragment", std::any_cast<std::string>(result["_url.fragment"]));
+    ASSERT_EQ("password", std::any_cast<std::string>(result["_url.password"]));
+    ASSERT_EQ("/path", std::any_cast<std::string>(result["_url.path"]));
+    ASSERT_EQ(8080, std::any_cast<int>(result["_url.port"]));
     ASSERT_EQ("query=%22a%20query%20with%20a%20space%22",
-              std::any_cast<std::string>(result["url.query"]));
-    ASSERT_EQ("https", std::any_cast<std::string>(result["url.scheme"]));
-    ASSERT_EQ("user", std::any_cast<std::string>(result["url.username"]));
+              std::any_cast<std::string>(result["_url.query"]));
+    ASSERT_EQ("https", std::any_cast<std::string>(result["_url.scheme"]));
+    ASSERT_EQ("user", std::any_cast<std::string>(result["_url.username"]));
 }
 
 TEST(hlpTests_IPaddress, IPV4_success)
 {
-    const char *logQl =
-        "<source.ip> - <server.ip> -- <source.nat.ip> \"-\" \"-\"";
-    const char *event =
+    const char* logQl = "<_ip/ip> - <_ip2/ip> -- <_ip3/ip> \"-\" \"-\"";
+    const char* event =
         "127.0.0.1 - 192.168.100.25 -- 255.255.255.0 \"-\" \"-\"";
 
     auto parseOp = getParserOp(logQl);
@@ -184,16 +198,14 @@ TEST(hlpTests_IPaddress, IPV4_success)
     bool ret = parseOp(event, result);
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
-    ASSERT_EQ("127.0.0.1", std::any_cast<std::string>(result["source.ip"]));
-    ASSERT_EQ("192.168.100.25",
-              std::any_cast<std::string>(result["server.ip"]));
-    ASSERT_EQ("255.255.255.0",
-              std::any_cast<std::string>(result["source.nat.ip"]));
+    ASSERT_EQ("127.0.0.1", std::any_cast<std::string>(result["_ip"]));
+    ASSERT_EQ("192.168.100.25", std::any_cast<std::string>(result["_ip2"]));
+    ASSERT_EQ("255.255.255.0", std::any_cast<std::string>(result["_ip3"]));
 }
 
 TEST(hlpTests_IPaddress, IPV4_failed)
 {
-    const char *logQl = "<server.ip> -";
+    const char *logQl = "<_ip/ip> -";
     const char *event = "..100.25 -";
 
     auto parseOp = getParserOp(logQl);
@@ -201,12 +213,12 @@ TEST(hlpTests_IPaddress, IPV4_failed)
     bool ret = parseOp(event, result);
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
-    ASSERT_TRUE(result.find("server.ip") == result.end());
+    ASSERT_TRUE(result.find("_ip") == result.end());
 }
 
 TEST(hlpTests_IPaddress, IPV6_success)
 {
-    const char *logQl = " - <source.nat.ip>";
+    const char *logQl = " - <_ip/ip>";
     const char *event = " - 2001:db8:3333:AB45:1111:00A:4:1";
 
     auto parseOp = getParserOp(logQl);
@@ -215,12 +227,12 @@ TEST(hlpTests_IPaddress, IPV6_success)
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
     ASSERT_EQ("2001:db8:3333:AB45:1111:00A:4:1",
-              std::any_cast<std::string>(result["source.nat.ip"]));
+              std::any_cast<std::string>(result["_ip"]));
 }
 
 TEST(hlpTests_IPaddress, IPV6_failed)
 {
-    const char *logQl = "<server.ip>";
+    const char *logQl = "<_ip/ip>";
     const char *event = "2001:db8:#:$:CCCC:DDDD:EEEE:FFFF";
 
     auto parseOp = getParserOp(logQl);
@@ -228,13 +240,13 @@ TEST(hlpTests_IPaddress, IPV6_failed)
     bool ret = parseOp(event, result);
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
-    ASSERT_TRUE(result.find("server.ip") == result.end());
+    ASSERT_TRUE(result.find("_ip") == result.end());
 }
 
-// Test: parsing JSON objects
+// Test: parsing json objects
 TEST(hlpTests_json, success_parsing)
 {
-    const char *logQl = "<_field1/JSON> - <_field2/JSON>";
+    const char *logQl = "<_field1/json> - <_field2/json>";
     const char *event = "{\"String\":\"This is a string\"} - "
                         "{\"String\":\"This is another string\"}";
 
@@ -251,7 +263,7 @@ TEST(hlpTests_json, success_parsing)
 
 TEST(hlpTests_json, failed_incomplete_json)
 {
-    const char *logQl = "<_json/JSON>";
+    const char *logQl = "<_json/json>";
     const char *event = "{\"String\":{\"This is a string\"}";
 
     auto parseOp = getParserOp(logQl);
@@ -264,7 +276,7 @@ TEST(hlpTests_json, failed_incomplete_json)
 
 TEST(hlpTests_json, success_array)
 {
-    const char *logQl = "<_json/JSON>";
+    const char *logQl = "<_json/json>";
     const char *event = "{\"String\": [ {\"SecondString\":\"This is a "
                         "string\"}, {\"ThirdString\":\"This is a string\"} ] }";
 
@@ -280,7 +292,7 @@ TEST(hlpTests_json, success_array)
 
 TEST(hlpTests_json, failed_not_string)
 {
-    const char *logQl = "<_json/JSON>";
+    const char *logQl = "<_json/json>";
     const char *event = "{somestring}, {\"String\":\"This is another string\"}";
 
     auto parseOp = getParserOp(logQl);
@@ -294,7 +306,7 @@ TEST(hlpTests_json, failed_not_string)
 // Test: parsing maps objects
 TEST(hlpTests_map, success_test)
 {
-    const char *logQl = "<_map/MAP/ /=>-<_dummy>";
+    const char *logQl = "<_map/map/ /=>-<_dummy>";
     const char *event = "key1=Value1 Key2=Value2-dummy";
 
     ParserFn parseOp = getParserOp(logQl);
@@ -310,14 +322,14 @@ TEST(hlpTests_map, success_test)
 
 TEST(hlpTests_map, end_mark_test)
 {
-    const char *logQl = "<_map/MAP/ /=/.> <_dummy>";
+    const char *logQl = "<_map/map/ /=/.> <_dummy>";
     const char *event = "key1=Value1 Key2=Value2. dummy";
 
     ParserFn parseOp = getParserOp(logQl);
     ParseResult result;
     bool ret = parseOp(event, result);
 
-    ASSERT_EQ(true, static_cast<bool>(parseOp));
+    ASSERT_TRUE(static_cast<bool>(parseOp));
     ASSERT_EQ("{\"key1\":\"Value1\",\"Key2\":\"Value2\"}",
               std::any_cast<JsonString>(result["_map"]).jsonString);
     ASSERT_EQ("dummy", std::any_cast<std::string>(result["_dummy"]));
@@ -325,7 +337,7 @@ TEST(hlpTests_map, end_mark_test)
 
 TEST(hlpTests_map, incomplete_map_test)
 {
-    const char *logQl = "<_map/MAP/ /=>";
+    const char *logQl = "<_map/map/ /=>";
     const char *event1 = "key1=Value1 Key2=";
     const char *event2 = "key1=Value1 Key2";
     const char *event3 = "key1=Value1 =Value2";
@@ -338,7 +350,7 @@ TEST(hlpTests_map, incomplete_map_test)
     bool ret2 = parseOp(event2, result2);
     bool ret3 = parseOp(event3, result3);
 
-    ASSERT_EQ(true, static_cast<bool>(parseOp));
+    ASSERT_TRUE(static_cast<bool>(parseOp));
     ASSERT_TRUE(result1.empty());
     ASSERT_TRUE(result2.empty());
     ASSERT_TRUE(result3.empty());
@@ -346,7 +358,7 @@ TEST(hlpTests_map, incomplete_map_test)
 
 TEST(hlpTests_Timestamp, ansic)
 {
-    static const char *logQl = "[<timestamp/ANSIC>]";
+    static const char *logQl = "[<_ts/timestamp/ANSIC>]";
     static const char *ansicTs = "[Mon Jan 2 15:04:05 2006]";
     static const char *ansimTs = "[Mon Jan 2 15:04:05.123456 2006]";
 
@@ -355,27 +367,27 @@ TEST(hlpTests_Timestamp, ansic)
     bool ret = parseOp(ansicTs, result);
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
-    ASSERT_EQ(2006, std::any_cast<int>(result["timestamp.year"]));
-    ASSERT_EQ(1, std::any_cast<unsigned>(result["timestamp.month"]));
-    ASSERT_EQ(2, std::any_cast<unsigned>(result["timestamp.day"]));
-    ASSERT_EQ(15, std::any_cast<long>(result["timestamp.hour"]));
-    ASSERT_EQ(4, std::any_cast<long>(result["timestamp.minutes"]));
-    ASSERT_EQ(5, std::any_cast<double>(result["timestamp.seconds"]));
+    ASSERT_EQ(2006, std::any_cast<int>(result["_ts.year"]));
+    ASSERT_EQ(1, std::any_cast<unsigned>(result["_ts.month"]));
+    ASSERT_EQ(2, std::any_cast<unsigned>(result["_ts.day"]));
+    ASSERT_EQ(15, std::any_cast<long>(result["_ts.hour"]));
+    ASSERT_EQ(4, std::any_cast<long>(result["_ts.minutes"]));
+    ASSERT_EQ(5, std::any_cast<double>(result["_ts.seconds"]));
 
     ParseResult resultMillis;
     ret = parseOp(ansimTs, resultMillis);
-    ASSERT_EQ(2006, std::any_cast<int>(resultMillis["timestamp.year"]));
-    ASSERT_EQ(1, std::any_cast<unsigned>(resultMillis["timestamp.month"]));
-    ASSERT_EQ(2, std::any_cast<unsigned>(resultMillis["timestamp.day"]));
-    ASSERT_EQ(15, std::any_cast<long>(resultMillis["timestamp.hour"]));
-    ASSERT_EQ(4, std::any_cast<long>(resultMillis["timestamp.minutes"]));
+    ASSERT_EQ(2006, std::any_cast<int>(resultMillis["_ts.year"]));
+    ASSERT_EQ(1, std::any_cast<unsigned>(resultMillis["_ts.month"]));
+    ASSERT_EQ(2, std::any_cast<unsigned>(resultMillis["_ts.day"]));
+    ASSERT_EQ(15, std::any_cast<long>(resultMillis["_ts.hour"]));
+    ASSERT_EQ(4, std::any_cast<long>(resultMillis["_ts.minutes"]));
     ASSERT_EQ(5.123456,
-              std::any_cast<double>(resultMillis["timestamp.seconds"]));
+              std::any_cast<double>(resultMillis["_ts.seconds"]));
 }
 
 TEST(hlpTests_Timestamp, apache)
 {
-    static const char *logQl = "[<timestamp/APACHE>]";
+    static const char *logQl = "[<_ts/timestamp/APACHE>]";
     static const char *apacheTs = "[Tue Feb 11 15:04:05 2020]";
 
     auto parseOp = getParserOp(logQl);
@@ -383,18 +395,18 @@ TEST(hlpTests_Timestamp, apache)
     bool ret = parseOp(apacheTs, result);
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
-    ASSERT_EQ(2020, std::any_cast<int>(result["timestamp.year"]));
-    ASSERT_EQ(2, std::any_cast<unsigned>(result["timestamp.month"]));
-    ASSERT_EQ(11, std::any_cast<unsigned>(result["timestamp.day"]));
-    ASSERT_EQ(15, std::any_cast<long>(result["timestamp.hour"]));
-    ASSERT_EQ(4, std::any_cast<long>(result["timestamp.minutes"]));
-    ASSERT_EQ(5, std::any_cast<double>(result["timestamp.seconds"]));
+    ASSERT_EQ(2020, std::any_cast<int>(result["_ts.year"]));
+    ASSERT_EQ(2, std::any_cast<unsigned>(result["_ts.month"]));
+    ASSERT_EQ(11, std::any_cast<unsigned>(result["_ts.day"]));
+    ASSERT_EQ(15, std::any_cast<long>(result["_ts.hour"]));
+    ASSERT_EQ(4, std::any_cast<long>(result["_ts.minutes"]));
+    ASSERT_EQ(5, std::any_cast<double>(result["_ts.seconds"]));
 }
 
 TEST(hlpTests_Timestamp, rfc1123)
 {
-    static const char *logQl = "[<timestamp/RFC1123>]";
-    static const char *logQlz = "[<timestamp/RFC1123Z>]";
+    static const char *logQl = "[<_ts/timestamp/RFC1123>]";
+    static const char *logQlz = "[<_ts/timestamp/RFC1123Z>]";
     static const char *rfc1123Ts = "[Mon, 02 Jan 2006 15:04:05 MST]";
     static const char *rfc1123zTs = "[Mon, 02 Jan 2006 15:04:05 -0700]";
 
@@ -403,12 +415,12 @@ TEST(hlpTests_Timestamp, rfc1123)
     bool ret = parseOp(rfc1123Ts, result);
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
-    ASSERT_EQ(2006, std::any_cast<int>(result["timestamp.year"]));
-    ASSERT_EQ(1, std::any_cast<unsigned>(result["timestamp.month"]));
-    ASSERT_EQ(2, std::any_cast<unsigned>(result["timestamp.day"]));
-    ASSERT_EQ(15, std::any_cast<long>(result["timestamp.hour"]));
-    ASSERT_EQ(4, std::any_cast<long>(result["timestamp.minutes"]));
-    ASSERT_EQ(5, std::any_cast<double>(result["timestamp.seconds"]));
+    ASSERT_EQ(2006, std::any_cast<int>(result["_ts.year"]));
+    ASSERT_EQ(1, std::any_cast<unsigned>(result["_ts.month"]));
+    ASSERT_EQ(2, std::any_cast<unsigned>(result["_ts.day"]));
+    ASSERT_EQ(15, std::any_cast<long>(result["_ts.hour"]));
+    ASSERT_EQ(4, std::any_cast<long>(result["_ts.minutes"]));
+    ASSERT_EQ(5, std::any_cast<double>(result["_ts.seconds"]));
 
     auto parseOpz = getParserOp(logQlz);
     ASSERT_EQ(true, static_cast<bool>(parseOpz));
@@ -416,17 +428,17 @@ TEST(hlpTests_Timestamp, rfc1123)
     ParseResult resultz;
     ret = parseOpz(rfc1123zTs, resultz);
 
-    ASSERT_EQ(2006, std::any_cast<int>(resultz["timestamp.year"]));
-    ASSERT_EQ(1, std::any_cast<unsigned>(resultz["timestamp.month"]));
-    ASSERT_EQ(2, std::any_cast<unsigned>(resultz["timestamp.day"]));
-    ASSERT_EQ(15, std::any_cast<long>(resultz["timestamp.hour"]));
-    ASSERT_EQ(4, std::any_cast<long>(resultz["timestamp.minutes"]));
-    ASSERT_EQ(5, std::any_cast<double>(resultz["timestamp.seconds"]));
+    ASSERT_EQ(2006, std::any_cast<int>(resultz["_ts.year"]));
+    ASSERT_EQ(1, std::any_cast<unsigned>(resultz["_ts.month"]));
+    ASSERT_EQ(2, std::any_cast<unsigned>(resultz["_ts.day"]));
+    ASSERT_EQ(15, std::any_cast<long>(resultz["_ts.hour"]));
+    ASSERT_EQ(4, std::any_cast<long>(resultz["_ts.minutes"]));
+    ASSERT_EQ(5, std::any_cast<double>(resultz["_ts.seconds"]));
 }
 
 TEST(hlpTests_Timestamp, rfc3339)
 {
-    static const char *logQl = "[<timestamp/RFC3339>]";
+    static const char *logQl = "[<_ts/timestamp/RFC3339>]";
     static const char *rfc3339Ts = "[2006-01-02T15:04:05Z07:00]";
     static const char *rfc3339nanoTs = "[2006-01-02T15:04:05.999999999Z07:00]";
 
@@ -435,29 +447,29 @@ TEST(hlpTests_Timestamp, rfc3339)
     bool ret = parseOp(rfc3339Ts, result);
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
-    ASSERT_EQ(2006, std::any_cast<int>(result["timestamp.year"]));
-    ASSERT_EQ(1, std::any_cast<unsigned>(result["timestamp.month"]));
-    ASSERT_EQ(2, std::any_cast<unsigned>(result["timestamp.day"]));
-    ASSERT_EQ(15, std::any_cast<long>(result["timestamp.hour"]));
-    ASSERT_EQ(4, std::any_cast<long>(result["timestamp.minutes"]));
-    ASSERT_EQ(5, std::any_cast<double>(result["timestamp.seconds"]));
+    ASSERT_EQ(2006, std::any_cast<int>(result["_ts.year"]));
+    ASSERT_EQ(1, std::any_cast<unsigned>(result["_ts.month"]));
+    ASSERT_EQ(2, std::any_cast<unsigned>(result["_ts.day"]));
+    ASSERT_EQ(15, std::any_cast<long>(result["_ts.hour"]));
+    ASSERT_EQ(4, std::any_cast<long>(result["_ts.minutes"]));
+    ASSERT_EQ(5, std::any_cast<double>(result["_ts.seconds"]));
 
     ParseResult resultNano;
     ret = parseOp(rfc3339nanoTs, resultNano);
 
-    ASSERT_EQ(2006, std::any_cast<int>(resultNano["timestamp.year"]));
-    ASSERT_EQ(1, std::any_cast<unsigned>(resultNano["timestamp.month"]));
-    ASSERT_EQ(2, std::any_cast<unsigned>(resultNano["timestamp.day"]));
-    ASSERT_EQ(15, std::any_cast<long>(resultNano["timestamp.hour"]));
-    ASSERT_EQ(4, std::any_cast<long>(resultNano["timestamp.minutes"]));
+    ASSERT_EQ(2006, std::any_cast<int>(resultNano["_ts.year"]));
+    ASSERT_EQ(1, std::any_cast<unsigned>(resultNano["_ts.month"]));
+    ASSERT_EQ(2, std::any_cast<unsigned>(resultNano["_ts.day"]));
+    ASSERT_EQ(15, std::any_cast<long>(resultNano["_ts.hour"]));
+    ASSERT_EQ(4, std::any_cast<long>(resultNano["_ts.minutes"]));
     ASSERT_EQ(5.999999999,
-              std::any_cast<double>(resultNano["timestamp.seconds"]));
+              std::any_cast<double>(resultNano["_ts.seconds"]));
 }
 
 TEST(hlpTests_Timestamp, rfc822)
 {
-    static const char *logQl = "[<timestamp/RFC822>]";
-    static const char *logQlz = "[<timestamp/RFC822Z>]";
+    static const char *logQl = "[<_ts/timestamp/RFC822>]";
+    static const char *logQlz = "[<_ts/timestamp/RFC822Z>]";
     static const char *rfc822Ts = "[02 Jan 06 15:04 MST]";
     static const char *rfc822zTs = "[02 Jan 06 15:04 -0700]";
 
@@ -466,13 +478,13 @@ TEST(hlpTests_Timestamp, rfc822)
     bool ret = parseOp(rfc822Ts, result);
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
-    ASSERT_EQ(2006, std::any_cast<int>(result["timestamp.year"]));
-    ASSERT_EQ(1, std::any_cast<unsigned>(result["timestamp.month"]));
-    ASSERT_EQ(2, std::any_cast<unsigned>(result["timestamp.day"]));
-    ASSERT_EQ(15, std::any_cast<long>(result["timestamp.hour"]));
-    ASSERT_EQ(4, std::any_cast<long>(result["timestamp.minutes"]));
-    ASSERT_EQ(0, std::any_cast<double>(result["timestamp.seconds"]));
-    ASSERT_EQ("MST", std::any_cast<std::string>(result["timestamp.timezone"]));
+    ASSERT_EQ(2006, std::any_cast<int>(result["_ts.year"]));
+    ASSERT_EQ(1, std::any_cast<unsigned>(result["_ts.month"]));
+    ASSERT_EQ(2, std::any_cast<unsigned>(result["_ts.day"]));
+    ASSERT_EQ(15, std::any_cast<long>(result["_ts.hour"]));
+    ASSERT_EQ(4, std::any_cast<long>(result["_ts.minutes"]));
+    ASSERT_EQ(0, std::any_cast<double>(result["_ts.seconds"]));
+    ASSERT_EQ("MST", std::any_cast<std::string>(result["_ts.timezone"]));
 
     auto parseOpz = getParserOp(logQlz);
     ASSERT_EQ(true, static_cast<bool>(parseOpz));
@@ -480,19 +492,19 @@ TEST(hlpTests_Timestamp, rfc822)
     ParseResult resultz;
     ret = parseOpz(rfc822zTs, resultz);
 
-    ASSERT_EQ(2006, std::any_cast<int>(resultz["timestamp.year"]));
-    ASSERT_EQ(1, std::any_cast<unsigned>(resultz["timestamp.month"]));
-    ASSERT_EQ(2, std::any_cast<unsigned>(resultz["timestamp.day"]));
-    ASSERT_EQ(15, std::any_cast<long>(resultz["timestamp.hour"]));
-    ASSERT_EQ(4, std::any_cast<long>(resultz["timestamp.minutes"]));
-    ASSERT_EQ(0, std::any_cast<double>(resultz["timestamp.seconds"]));
+    ASSERT_EQ(2006, std::any_cast<int>(resultz["_ts.year"]));
+    ASSERT_EQ(1, std::any_cast<unsigned>(resultz["_ts.month"]));
+    ASSERT_EQ(2, std::any_cast<unsigned>(resultz["_ts.day"]));
+    ASSERT_EQ(15, std::any_cast<long>(resultz["_ts.hour"]));
+    ASSERT_EQ(4, std::any_cast<long>(resultz["_ts.minutes"]));
+    ASSERT_EQ(0, std::any_cast<double>(resultz["_ts.seconds"]));
     ASSERT_EQ("-0700",
-              std::any_cast<std::string>(resultz["timestamp.timezone"]));
+              std::any_cast<std::string>(resultz["_ts.timezone"]));
 }
 
 TEST(hlpTests_Timestamp, rfc850)
 {
-    static const char *logQl = "[<timestamp/RFC850>]";
+    static const char *logQl = "[<_ts/timestamp/RFC850>]";
     static const char *rfc850Ts = "[Monday, 02-Jan-06 15:04:05 MST]";
 
     auto parseOp = getParserOp(logQl);
@@ -500,18 +512,18 @@ TEST(hlpTests_Timestamp, rfc850)
     bool ret = parseOp(rfc850Ts, result);
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
-    ASSERT_EQ(2006, std::any_cast<int>(result["timestamp.year"]));
-    ASSERT_EQ(1, std::any_cast<unsigned>(result["timestamp.month"]));
-    ASSERT_EQ(2, std::any_cast<unsigned>(result["timestamp.day"]));
-    ASSERT_EQ(15, std::any_cast<long>(result["timestamp.hour"]));
-    ASSERT_EQ(4, std::any_cast<long>(result["timestamp.minutes"]));
-    ASSERT_EQ(5, std::any_cast<double>(result["timestamp.seconds"]));
-    ASSERT_EQ("MST", std::any_cast<std::string>(result["timestamp.timezone"]));
+    ASSERT_EQ(2006, std::any_cast<int>(result["_ts.year"]));
+    ASSERT_EQ(1, std::any_cast<unsigned>(result["_ts.month"]));
+    ASSERT_EQ(2, std::any_cast<unsigned>(result["_ts.day"]));
+    ASSERT_EQ(15, std::any_cast<long>(result["_ts.hour"]));
+    ASSERT_EQ(4, std::any_cast<long>(result["_ts.minutes"]));
+    ASSERT_EQ(5, std::any_cast<double>(result["_ts.seconds"]));
+    ASSERT_EQ("MST", std::any_cast<std::string>(result["_ts.timezone"]));
 }
 
 TEST(hlpTests_Timestamp, ruby)
 {
-    static const char *logQl = "[<timestamp/RubyDate>]";
+    static const char *logQl = "[<_ts/timestamp/RubyDate>]";
     static const char *rubyTs = "[Mon Jan 02 15:04:05 -0700 2006]";
 
     auto parseOp = getParserOp(logQl);
@@ -519,19 +531,19 @@ TEST(hlpTests_Timestamp, ruby)
     bool ret = parseOp(rubyTs, result);
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
-    ASSERT_EQ(2006, std::any_cast<int>(result["timestamp.year"]));
-    ASSERT_EQ(1, std::any_cast<unsigned>(result["timestamp.month"]));
-    ASSERT_EQ(2, std::any_cast<unsigned>(result["timestamp.day"]));
-    ASSERT_EQ(15, std::any_cast<long>(result["timestamp.hour"]));
-    ASSERT_EQ(4, std::any_cast<long>(result["timestamp.minutes"]));
-    ASSERT_EQ(5, std::any_cast<double>(result["timestamp.seconds"]));
+    ASSERT_EQ(2006, std::any_cast<int>(result["_ts.year"]));
+    ASSERT_EQ(1, std::any_cast<unsigned>(result["_ts.month"]));
+    ASSERT_EQ(2, std::any_cast<unsigned>(result["_ts.day"]));
+    ASSERT_EQ(15, std::any_cast<long>(result["_ts.hour"]));
+    ASSERT_EQ(4, std::any_cast<long>(result["_ts.minutes"]));
+    ASSERT_EQ(5, std::any_cast<double>(result["_ts.seconds"]));
     ASSERT_EQ("-0700",
-              std::any_cast<std::string>(result["timestamp.timezone"]));
+              std::any_cast<std::string>(result["_ts.timezone"]));
 }
 
 TEST(hlpTests_Timestamp, stamp)
 {
-    static const char *logQl = "[<timestamp/Stamp>]";
+    static const char *logQl = "[<_ts/timestamp/Stamp>]";
     static const char *stampTs = "[Jan 2 15:04:05]";
     static const char *stampmilliTs = "[Jan 2 15:04:05.000]";
     static const char *stampmicroTs = "[Jan 2 15:04:05.000000]";
@@ -542,40 +554,40 @@ TEST(hlpTests_Timestamp, stamp)
     bool ret = parseOp(stampTs, result);
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
-    ASSERT_EQ(1, std::any_cast<unsigned>(result["timestamp.month"]));
-    ASSERT_EQ(2, std::any_cast<unsigned>(result["timestamp.day"]));
-    ASSERT_EQ(15, std::any_cast<long>(result["timestamp.hour"]));
-    ASSERT_EQ(4, std::any_cast<long>(result["timestamp.minutes"]));
-    ASSERT_EQ(5, std::any_cast<double>(result["timestamp.seconds"]));
+    ASSERT_EQ(1, std::any_cast<unsigned>(result["_ts.month"]));
+    ASSERT_EQ(2, std::any_cast<unsigned>(result["_ts.day"]));
+    ASSERT_EQ(15, std::any_cast<long>(result["_ts.hour"]));
+    ASSERT_EQ(4, std::any_cast<long>(result["_ts.minutes"]));
+    ASSERT_EQ(5, std::any_cast<double>(result["_ts.seconds"]));
 
     ParseResult resultMillis;
     ret = parseOp(stampmilliTs, resultMillis);
-    ASSERT_EQ(1, std::any_cast<unsigned>(resultMillis["timestamp.month"]));
-    ASSERT_EQ(2, std::any_cast<unsigned>(resultMillis["timestamp.day"]));
-    ASSERT_EQ(15, std::any_cast<long>(resultMillis["timestamp.hour"]));
-    ASSERT_EQ(4, std::any_cast<long>(resultMillis["timestamp.minutes"]));
-    ASSERT_EQ(5, std::any_cast<double>(resultMillis["timestamp.seconds"]));
+    ASSERT_EQ(1, std::any_cast<unsigned>(resultMillis["_ts.month"]));
+    ASSERT_EQ(2, std::any_cast<unsigned>(resultMillis["_ts.day"]));
+    ASSERT_EQ(15, std::any_cast<long>(resultMillis["_ts.hour"]));
+    ASSERT_EQ(4, std::any_cast<long>(resultMillis["_ts.minutes"]));
+    ASSERT_EQ(5, std::any_cast<double>(resultMillis["_ts.seconds"]));
 
     ParseResult resultMicros;
     ret = parseOp(stampmicroTs, resultMicros);
-    ASSERT_EQ(1, std::any_cast<unsigned>(resultMicros["timestamp.month"]));
-    ASSERT_EQ(2, std::any_cast<unsigned>(resultMicros["timestamp.day"]));
-    ASSERT_EQ(15, std::any_cast<long>(resultMicros["timestamp.hour"]));
-    ASSERT_EQ(4, std::any_cast<long>(resultMicros["timestamp.minutes"]));
-    ASSERT_EQ(5, std::any_cast<double>(resultMicros["timestamp.seconds"]));
+    ASSERT_EQ(1, std::any_cast<unsigned>(resultMicros["_ts.month"]));
+    ASSERT_EQ(2, std::any_cast<unsigned>(resultMicros["_ts.day"]));
+    ASSERT_EQ(15, std::any_cast<long>(resultMicros["_ts.hour"]));
+    ASSERT_EQ(4, std::any_cast<long>(resultMicros["_ts.minutes"]));
+    ASSERT_EQ(5, std::any_cast<double>(resultMicros["_ts.seconds"]));
 
     ParseResult resultNanos;
     ret = parseOp(stampnanoTs, resultNanos);
-    ASSERT_EQ(1, std::any_cast<unsigned>(resultNanos["timestamp.month"]));
-    ASSERT_EQ(2, std::any_cast<unsigned>(resultNanos["timestamp.day"]));
-    ASSERT_EQ(15, std::any_cast<long>(resultNanos["timestamp.hour"]));
-    ASSERT_EQ(4, std::any_cast<long>(resultNanos["timestamp.minutes"]));
-    ASSERT_EQ(5, std::any_cast<double>(resultNanos["timestamp.seconds"]));
+    ASSERT_EQ(1, std::any_cast<unsigned>(resultNanos["_ts.month"]));
+    ASSERT_EQ(2, std::any_cast<unsigned>(resultNanos["_ts.day"]));
+    ASSERT_EQ(15, std::any_cast<long>(resultNanos["_ts.hour"]));
+    ASSERT_EQ(4, std::any_cast<long>(resultNanos["_ts.minutes"]));
+    ASSERT_EQ(5, std::any_cast<double>(resultNanos["_ts.seconds"]));
 }
 
 TEST(hlpTests_Timestamp, Unix)
 {
-    static const char *logQl = "[<timestamp/UnixDate>]";
+    static const char *logQl = "[<_ts/timestamp/UnixDate>]";
     static const char *unixTs = "[Mon Jan 2 15:04:05 MST 2006]";
 
     auto parseOp = getParserOp(logQl);
@@ -583,17 +595,17 @@ TEST(hlpTests_Timestamp, Unix)
     bool ret = parseOp(unixTs, result);
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
-    ASSERT_EQ(2006, std::any_cast<int>(result["timestamp.year"]));
-    ASSERT_EQ(1, std::any_cast<unsigned>(result["timestamp.month"]));
-    ASSERT_EQ(2, std::any_cast<unsigned>(result["timestamp.day"]));
-    ASSERT_EQ(15, std::any_cast<long>(result["timestamp.hour"]));
-    ASSERT_EQ(4, std::any_cast<long>(result["timestamp.minutes"]));
-    ASSERT_EQ(5, std::any_cast<double>(result["timestamp.seconds"]));
+    ASSERT_EQ(2006, std::any_cast<int>(result["_ts.year"]));
+    ASSERT_EQ(1, std::any_cast<unsigned>(result["_ts.month"]));
+    ASSERT_EQ(2, std::any_cast<unsigned>(result["_ts.day"]));
+    ASSERT_EQ(15, std::any_cast<long>(result["_ts.hour"]));
+    ASSERT_EQ(4, std::any_cast<long>(result["_ts.minutes"]));
+    ASSERT_EQ(5, std::any_cast<double>(result["_ts.seconds"]));
 }
 
 TEST(hlpTests_Timestamp, Unix_fail)
 {
-    static const char *logQl = "[<timestamp/UnixDate>]";
+    static const char *logQl = "[<_ts/timestamp/UnixDate>]";
     static const char *unixTs = "[Mon Jan 2 15:04:05 MST 1960]";
 
     auto parseOp = getParserOp(logQl);
@@ -606,7 +618,7 @@ TEST(hlpTests_Timestamp, Unix_fail)
 
 TEST(hlpTests_Timestamp, specific_format)
 {
-    static const char *logQl = "[<timestamp>] - "
+    static const char *logQl = "[<_ts/timestamp>] - "
                                "[<_ansicTs/timestamp>] - "
                                "[<_unixTs/timestamp>] - "
                                "[<_stampTs/timestamp>]";
@@ -620,14 +632,14 @@ TEST(hlpTests_Timestamp, specific_format)
     bool ret = parseOp(event, result);
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
-    ASSERT_EQ(2006, std::any_cast<int>(result["timestamp.year"]));
-    ASSERT_EQ(1, std::any_cast<unsigned>(result["timestamp.month"]));
-    ASSERT_EQ(2, std::any_cast<unsigned>(result["timestamp.day"]));
-    ASSERT_EQ(15, std::any_cast<long>(result["timestamp.hour"]));
-    ASSERT_EQ(4, std::any_cast<long>(result["timestamp.minutes"]));
-    ASSERT_EQ(5, std::any_cast<double>(result["timestamp.seconds"]));
+    ASSERT_EQ(2006, std::any_cast<int>(result["_ts.year"]));
+    ASSERT_EQ(1, std::any_cast<unsigned>(result["_ts.month"]));
+    ASSERT_EQ(2, std::any_cast<unsigned>(result["_ts.day"]));
+    ASSERT_EQ(15, std::any_cast<long>(result["_ts.hour"]));
+    ASSERT_EQ(4, std::any_cast<long>(result["_ts.minutes"]));
+    ASSERT_EQ(5, std::any_cast<double>(result["_ts.seconds"]));
     ASSERT_EQ("-0700",
-              std::any_cast<std::string>(result["timestamp.timezone"]));
+              std::any_cast<std::string>(result["_ts.timezone"]));
 
     ASSERT_EQ(2006, std::any_cast<int>(result["_ansicTs.year"]));
     ASSERT_EQ(1, std::any_cast<unsigned>(result["_ansicTs.month"]));
@@ -652,22 +664,22 @@ TEST(hlpTests_Timestamp, specific_format)
 
 TEST(hlpTests_Timestamp, kitchen)
 {
-    static const char *logQl = "[<timestamp/Kitchen>]";
+    static const char *logQl = "[<_ts/timestamp/Kitchen>]";
     static const char *kitchenTs = "[3:04AM]";
     auto parseOp = getParserOp(logQl);
     ParseResult result;
     bool ret = parseOp(kitchenTs, result);
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
-    ASSERT_EQ(3, std::any_cast<long>(result["timestamp.hour"]));
-    ASSERT_EQ(4, std::any_cast<long>(result["timestamp.minutes"]));
+    ASSERT_EQ(3, std::any_cast<long>(result["_ts.hour"]));
+    ASSERT_EQ(4, std::any_cast<long>(result["_ts.minutes"]));
 
     kitchenTs = "[3:04PM]";
     ret = parseOp(kitchenTs, result);
 
     ASSERT_EQ(true, static_cast<bool>(parseOp));
-    ASSERT_EQ(15, std::any_cast<long>(result["timestamp.hour"]));
-    ASSERT_EQ(4, std::any_cast<long>(result["timestamp.minutes"]));
+    ASSERT_EQ(15, std::any_cast<long>(result["_ts.hour"]));
+    ASSERT_EQ(4, std::any_cast<long>(result["_ts.minutes"]));
 }
 
 // Test: domain parsing
@@ -829,7 +841,7 @@ TEST(hlpTests_domain, valid_content)
 
 TEST(hlpTests_filepath, windows_path)
 {
-    const char *logQl = "<_file/FilePath>";
+    const char *logQl = "<_file/filepath>";
     ParserFn parseOp = getParserOp(logQl);
     ParseResult result;
 
@@ -891,7 +903,7 @@ TEST(hlpTests_filepath, windows_path)
 
 TEST(hlpTests_filepath, unix_path)
 {
-    const char *logQl = "<_file/FilePath>";
+    const char *logQl = "<_file/filepath>";
     ParserFn parseOp = getParserOp(logQl);
     ParseResult result;
 
@@ -925,7 +937,7 @@ TEST(hlpTests_filepath, unix_path)
 
 TEST(hlpTests_filepath, force_unix_format)
 {
-    const char *logQl = "<_file/FilePath/UNIX>";
+    const char *logQl = "<_file/filepath/UNIX>";
     ParserFn parseOp = getParserOp(logQl);
     ParseResult result;
 
@@ -953,7 +965,7 @@ TEST(hlpTests_filepath, force_unix_format)
 
 TEST(hlpTests_UserAgent, user_agent_firefox)
 {
-    const char *logQl = "[<userAgent>] <_>";
+    const char *logQl = "[<_userAgent/useragent>] <_>";
     const char *userAgent =
         "[Mozilla/5.0 (Macintosh; Intel Mac OS X x.y; "
         "rv:42.0) Gecko/20100101 Firefox/42.0] the rest of the log";
@@ -962,14 +974,14 @@ TEST(hlpTests_UserAgent, user_agent_firefox)
     ParseResult result;
     auto ret = parseOp(userAgent, result);
 
-    ASSERT_EQ(std::any_cast<std::string>(result["userAgent.original"]),
+    ASSERT_EQ(std::any_cast<std::string>(result["_userAgent.original"]),
               "Mozilla/5.0 (Macintosh; Intel Mac OS X x.y; "
               "rv:42.0) Gecko/20100101 Firefox/42.0");
 }
 
 TEST(hlpTests_UserAgent, user_agent_chrome)
 {
-    const char *logQl = "[<userAgent>] <_>";
+    const char *logQl = "[<_userAgent/useragent>] <_>";
     const char *userAgent =
         "[Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like "
         "Gecko) Chrome/51.0.2704.103 Safari/537.36] the rest of the log";
@@ -978,14 +990,14 @@ TEST(hlpTests_UserAgent, user_agent_chrome)
     ParseResult result;
     auto ret = parseOp(userAgent, result);
 
-    ASSERT_EQ(std::any_cast<std::string>(result["userAgent.original"]),
+    ASSERT_EQ(std::any_cast<std::string>(result["_userAgent.original"]),
               "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like "
               "Gecko) Chrome/51.0.2704.103 Safari/537.36");
 }
 
 TEST(hlpTests_UserAgent, user_agent_edge)
 {
-    const char *logQl = "[<userAgent>] <_>";
+    const char *logQl = "[<_userAgent/useragent>] <_>";
     const char *userAgent =
         "[Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, "
         "like Gecko) Chrome/91.0.4472.124 Safari/537.36 Edg/91.0.864.59] the "
@@ -996,14 +1008,14 @@ TEST(hlpTests_UserAgent, user_agent_edge)
     auto ret = parseOp(userAgent, result);
 
     ASSERT_EQ(
-        std::any_cast<std::string>(result["userAgent.original"]),
+        std::any_cast<std::string>(result["_userAgent.original"]),
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, "
         "like Gecko) Chrome/91.0.4472.124 Safari/537.36 Edg/91.0.864.59");
 }
 
 TEST(hlpTests_UserAgent, user_agent_opera)
 {
-    const char *logQl = "[<userAgent>] <_>";
+    const char *logQl = "[<_userAgent/useragent>] <_>";
     const char *userAgent =
         "[Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like "
         "Gecko) Chrome/51.0.2704.106 Safari/537.36 OPR/38.0.2220.41] the rest "
@@ -1013,14 +1025,14 @@ TEST(hlpTests_UserAgent, user_agent_opera)
     ParseResult result;
     auto ret = parseOp(userAgent, result);
 
-    ASSERT_EQ(std::any_cast<std::string>(result["userAgent.original"]),
+    ASSERT_EQ(std::any_cast<std::string>(result["_userAgent.original"]),
               "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like "
               "Gecko) Chrome/51.0.2704.106 Safari/537.36 OPR/38.0.2220.41");
 }
 
 TEST(hlpTests_UserAgent, user_agent_safari)
 {
-    const char *logQl = "[<userAgent>] <_>";
+    const char *logQl = "[<_userAgent/useragent>] <_>";
     const char *userAgent =
         "[Mozilla/5.0 (iPhone; CPU iPhone OS 13_5_1 like Mac OS X) "
         "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1.1 Mobile/15E148 "
@@ -1030,7 +1042,7 @@ TEST(hlpTests_UserAgent, user_agent_safari)
     ParseResult result;
     auto ret = parseOp(userAgent, result);
 
-    ASSERT_EQ(std::any_cast<std::string>(result["userAgent.original"]),
+    ASSERT_EQ(std::any_cast<std::string>(result["_userAgent.original"]),
               "Mozilla/5.0 (iPhone; CPU iPhone OS 13_5_1 like Mac OS X) "
               "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1.1 "
               "Mobile/15E148 Safari/604.1");
@@ -1038,27 +1050,27 @@ TEST(hlpTests_UserAgent, user_agent_safari)
 
 TEST(hlpTests_ParseAny, success)
 {
-    const char* logQl = "{<any> }";
+    const char* logQl = "{<_toend/toend> }";
     const char *anyMessage = "{Lorem ipsum dolor sit amet, consectetur adipiscing elit }";
 
     ParserFn parseOp = getParserOp(logQl);
     ParseResult result;
     bool ret = parseOp(anyMessage, result);
 
-    ASSERT_EQ(std::any_cast<std::string>(result["any"]),
+    ASSERT_EQ(std::any_cast<std::string>(result["_toend"]),
               "Lorem ipsum dolor sit amet, consectetur adipiscing elit }");
 }
 
 TEST(hlpTests_ParseAny, failed)
 {
-    const char* logQl = "{ <any> }";
+    const char* logQl = "{ <_toend/toend> }";
     const char *anyMessage = "{ Lorem {ipsum} dolor sit [amet], consectetur adipiscing elit }";
 
     ParserFn parseOp = getParserOp(logQl);
     ParseResult result;
     bool ret = parseOp(anyMessage, result);
 
-    ASSERT_EQ(std::any_cast<std::string>(result["any"]),
+    ASSERT_EQ(std::any_cast<std::string>(result["_toend"]),
               "Lorem {ipsum} dolor sit [amet], consectetur adipiscing elit }");
 }
 
@@ -1089,68 +1101,67 @@ TEST(hlpTests_ParseKeyword, success_end_token)
 
 TEST(hlpTests_ParseNumber, success_long)
 {
-    const char* logQl = " <file.size> <vulnerability.score.temporal>";
+    const char* logQl = " <_n1/number> <_n2/number>";
     const char* event =" 125 -125";
 
     ParserFn parseOp = getParserOp(logQl);
     ParseResult result;
     bool ret = parseOp(event, result);
 
-    ASSERT_EQ(true, static_cast<bool>(ret));
-    ASSERT_EQ(std::any_cast<long>(result["file.size"]), 125);
-    ASSERT_EQ(std::any_cast<long>(result["vulnerability.score.temporal"]),
-              -125);
+    ASSERT_TRUE(static_cast<bool>(ret));
+    ASSERT_EQ(std::any_cast<long>(result["_n1"]), 125);
+    ASSERT_EQ(std::any_cast<long>(result["_n2"]), -125);
 }
 
 TEST(hlpTests_ParseNumber, success_float)
 {
-    const char* logQl = " <vulnerability.score.temporal> ";
+    const char* logQl = " <_float/number> ";
     const char* event =" 125.256 ";
 
     ParserFn parseOp = getParserOp(logQl);
     ParseResult result;
     bool ret = parseOp(event, result);
 
-    ASSERT_EQ(true, static_cast<bool>(ret));
-    ASSERT_EQ(std::any_cast<float>(result["vulnerability.score.temporal"]),
+    ASSERT_TRUE(static_cast<bool>(ret));
+    ASSERT_EQ(std::any_cast<float>(result["_float"]),
               125.256f);
 }
 
 TEST(hlpTests_ParseNumber, failed_long)
 {
-    const char* logQl = " <file.size> ";
+    const char* logQl = " <_size/number> ";
     const char* event =" 10E2 ";
 
     ParserFn parseOp = getParserOp(logQl);
     ParseResult result;
     bool ret = parseOp(event, result);
 
-    ASSERT_EQ(false, static_cast<bool>(ret));
+    ASSERT_FALSE(static_cast<bool>(ret));
 
     event =" 9223372036854775808 ";
     ret = parseOp(event, result);
 
-    ASSERT_EQ(false, static_cast<bool>(ret));
-    ASSERT_EQ(result.find("file.size"), result.end());
+    ASSERT_FALSE(static_cast<bool>(ret));
+    ASSERT_EQ(result.find("_size"), result.end());
 }
 
 TEST(hlpTests_ParseNumber, failed_float)
 {
-    const char* logQl = " <vulnerability.score.temporal> ";
+    const char* logQl = " <_float/number> ";
     const char* event =" .125.256 ";
 
     ParserFn parseOp = getParserOp(logQl);
     ParseResult result;
     bool ret = parseOp(event, result);
 
-    ASSERT_EQ(false, static_cast<bool>(ret));
-    ASSERT_EQ(result.find("vulnerability.score.temporal"), result.end());
+    ASSERT_FALSE(static_cast<bool>(ret));
+    ASSERT_EQ(result.find("_float"), result.end());
 
     event =" 10E63 ";
     ret = parseOp(event, result);
 
-    ASSERT_EQ(false, static_cast<bool>(ret));
-    ASSERT_EQ(result.find("vulnerability.score.temporal"), result.end());
+    ASSERT_FALSE(static_cast<bool>(ret));
+    ASSERT_EQ(result.find("_float"), result.end());
 }
 
 TEST(hlpTests_QuotedString, success)
