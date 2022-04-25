@@ -12,6 +12,10 @@
 
 #include "testUtils.hpp"
 #include "opBuilderHelperFilter.hpp"
+#include "base/baseTypes.hpp"
+
+using namespace builder::internals::builders;
+using namespace base;
 
 using namespace builder::internals::builders;
 
@@ -19,7 +23,7 @@ using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
 
 auto createEvent = [](const char * json){
-    return std::make_shared<Base::EventHandler>(std::make_shared<json::Document>(json));
+    return std::make_shared<EventHandler>(std::make_shared<json::Document>(json));
 };
 
 TEST(opBuilderHelperIntGreaterThanEqual, Builds)
