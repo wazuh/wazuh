@@ -1,5 +1,4 @@
 add_executable(catalog_test
-  catalog_test.hpp
   catalog_test.cpp
   jsonTestAssets.hpp
 )
