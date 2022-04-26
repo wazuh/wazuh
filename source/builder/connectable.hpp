@@ -187,7 +187,11 @@ struct Connectable
                         },
                         [](auto eptr) {},
                         []() {})
-                    .distinct_until_changed()
+                    .filter([](base::Event event){
+                        // TODO: This is not only executed in the OUTPUT_DECODER but in all subgraph ends.
+                        event->setDecoded();
+                        return true;
+                    })
                     .tap([=](auto event) { trFn(" sent event"); },
                          [](auto eptr) {},
                          []() {});
