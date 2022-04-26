@@ -26,7 +26,15 @@
 #include "stageBuilderCheck.hpp"
 #include "stageBuilderOutputs.hpp"
 
-using namespace builder::internals::builders;
+using namespace base;
+namespace bld = builder::internals::builders;
+
+using FakeTrFn = std::function<void(std::string)>;
+static FakeTrFn tr = [](std::string msg){};
+
+auto createEvent = [](const char * json){
+    return std::make_shared<EventHandler>(std::make_shared<Document>(json));
+};
 
 TEST(AssetBuilderOutput, BuildsAllNonRegistered)
 {
@@ -45,30 +53,30 @@ TEST(AssetBuilderOutput, BuildsAllNonRegistered)
         ]
     })"};
 
-    ASSERT_THROW(builders::assetBuilderOutput(doc), std::_Nested_exception<std::runtime_error>);
+    ASSERT_THROW(bld::assetBuilderOutput(doc), std::_Nested_exception<std::runtime_error>);
 }
 
 TEST(AssetBuilderOutput, Builds)
 {
-    BuilderVariant c = opBuilderConditionValue;
+    BuilderVariant c = bld::opBuilderConditionValue;
     Registry::registerBuilder("condition.value", c);
-    c = opBuilderConditionReference;
+    c = bld::opBuilderConditionReference;
     Registry::registerBuilder("condition.reference", c);
-    c = opBuilderHelperExists;
+    c = bld::opBuilderHelperExists;
     Registry::registerBuilder("helper.exists", c);
-    c = opBuilderHelperNotExists;
+    c = bld::opBuilderHelperNotExists;
     Registry::registerBuilder("helper.not_exists", c);
-    c = opBuilderCondition;
+    c = bld::opBuilderCondition;
     Registry::registerBuilder("condition", c);
-    c = combinatorBuilderChain;
+    c = bld::combinatorBuilderChain;
     Registry::registerBuilder("combinator.chain", c);
-    c = opBuilderFileOutput;
+    c = bld::opBuilderFileOutput;
     Registry::registerBuilder("file", c);
-    c = combinatorBuilderBroadcast;
+    c = bld::combinatorBuilderBroadcast;
     Registry::registerBuilder("combinator.broadcast", c);
-    c = stageBuilderOutputs;
+    c = bld::stageBuilderOutputs;
     Registry::registerBuilder("outputs", c);
-    c = stageBuilderCheck;
+    c = bld::stageBuilderCheck;
     Registry::registerBuilder("check", c);
 
     Document doc{R"({
@@ -86,7 +94,7 @@ TEST(AssetBuilderOutput, Builds)
         ]
     })"};
 
-    ASSERT_NO_THROW(builders::assetBuilderOutput(doc));
+    ASSERT_NO_THROW(bld::assetBuilderOutput(doc));
 }
 
 TEST(AssetBuilderOutput, BuildsOperates)
@@ -109,27 +117,27 @@ TEST(AssetBuilderOutput, BuildsOperates)
     auto input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"value"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field1":"value"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"value"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"value1"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"value"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"value"}
             )"));
             s.on_completed();
         }).publish();
-    ConnectableT conn = assetBuilderOutput(doc);
+    ConnectableT conn = bld::assetBuilderOutput(doc);
     Observable output = conn.connect(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
