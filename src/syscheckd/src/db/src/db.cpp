@@ -194,7 +194,7 @@ FIMDBErrorCode fim_db_init(int storage,
                                                                                .get<uint32_t>());
                         }
 
-                        json["data"]["key_path"] = json["data"]["attributes"]["path"];
+                        json["data"]["path"] = json["data"]["attributes"]["path"];
                         json["data"]["attributes"].erase("path");
                         json["data"]["arch"] = json["data"]["attributes"]["arch"];
                         json["data"]["attributes"].erase("arch");
@@ -309,6 +309,7 @@ FIMDBErrorCode fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_ent
             }
         }
 
+        FIMDB::instance().logFunction(LOG_ERROR, "AAAAAAA");
         const std::unique_ptr<cJSON, CJsonDeleter> jsInput
         {
             cJSON_Parse((*syncItem->toJSON()).dump().c_str())

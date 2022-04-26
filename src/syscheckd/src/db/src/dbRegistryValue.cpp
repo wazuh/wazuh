@@ -11,7 +11,6 @@
 
 #include "dbRegistryValue.hpp"
 #include "fimCommonDefs.h"
-#include "hashHelper.h"
 
 void RegistryValue::createFimEntry()
 {
@@ -25,6 +24,7 @@ void RegistryValue::createFimEntry()
         if (value)
         {
             value->path = const_cast<char*>(m_path.c_str());
+            value->hash_full_path = const_cast<char*>(m_hashpath.c_str());
             value->size = m_size;
             value->name = const_cast<char*>(m_identifier.c_str());
             std::snprintf(value->hash_md5, sizeof(value->hash_md5), "%s", m_md5.c_str());
@@ -60,7 +60,6 @@ void RegistryValue::createJSON()
     nlohmann::json conf;
     nlohmann::json data;
     nlohmann::json options;
-    Utils::HashData hash;
 
     conf["table"] = FIMDB_REGISTRY_VALUE_TABLENAME;
     data["path"] = m_path;
@@ -74,16 +73,7 @@ void RegistryValue::createJSON()
     data["hash_sha1"] = m_sha1;
     data["hash_sha256"] = m_sha256;
     data["type"] = m_type;
-
-    // Hash used in sync messages containing arch, path, name and "value"
-    hash.update("value", 6);
-    const auto& valueString = data["arch"].get<std::string>();
-    hash.update(valueString.c_str(), valueString.size());
-    const auto& valueString2 = data["path"].get<std::string>();
-    hash.update(valueString2.c_str(), valueString2.size());
-    const auto& valueString3 = data["name"].get<std::string>();
-    hash.update(valueString3.c_str(), valueString3.size());
-    data["hash_full_path"] = Utils::asciiToHex(hash.hash());
+    data["hash_full_path"] = m_hashpath;
 
     conf["data"] = nlohmann::json::array({data});
 

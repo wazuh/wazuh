@@ -73,6 +73,7 @@ static void registry_key_transaction_callback(ReturnTypeCallback resultType,
     cJSON *json_event = NULL;
     cJSON *json_path = NULL;
     cJSON *json_arch = NULL;
+    cJSON *json_hash = NULL;
     cJSON *old_data = NULL;
     cJSON *old_attributes = NULL;
     cJSON *changed_attributes = NULL;
@@ -82,6 +83,7 @@ static void registry_key_transaction_callback(ReturnTypeCallback resultType,
     fim_registry_key* key = event_data->key;
     char *path = NULL;
     int arch = -1;
+    char *hash_full_path;
 
     // Do not process if it's the first scan
     if (_base_line == 0) {
@@ -104,12 +106,17 @@ static void registry_key_transaction_callback(ReturnTypeCallback resultType,
         if (json_arch = cJSON_GetObjectItem(dbsync_event, "arch"), json_arch == NULL) {
             goto end;
         }
+        if (json_hash = cJSON_GetObjectItem(dbsync_event, "hash_full_path"), json_hash == NULL) {
+            goto end;
+        }
         path = cJSON_GetStringValue(json_path);
         arch = (strcmp(cJSON_GetStringValue(json_arch), "[x32]") == 0) ? ARCH_32BIT: ARCH_64BIT;
+        hash_full_path = cJSON_GetStringValue(json_hash);
 
     } else {
         path = key->path;
         arch = key->arch;
+        hash_full_path = key->hash_full_path;
     }
 
     configuration = fim_registry_configuration(path, arch);
@@ -154,7 +161,8 @@ static void registry_key_transaction_callback(ReturnTypeCallback resultType,
     cJSON_AddItemToObject(json_event, "data", data);
 
     cJSON_AddStringToObject(data, "path", path);
-    cJSON_AddNumberToObject(data, "version", 2.0);
+    cJSON_AddStringToObject(data, "index", hash_full_path);
+    cJSON_AddNumberToObject(data, "version", 3.0);
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[event_data->evt_data->mode]);
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[event_data->evt_data->type]);
     cJSON_AddStringToObject(data, "arch", arch == ARCH_32BIT ? "[x32]" : "[x64]");
@@ -204,6 +212,7 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType,
     cJSON *json_path = NULL;
     cJSON *json_arch = NULL;
     cJSON *json_name = NULL;
+    cJSON *json_hash = NULL;
     cJSON *old_attributes = NULL;
     cJSON *old_data = NULL;
     cJSON *changed_attributes = NULL;
@@ -214,6 +223,7 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType,
     fim_val_txn_context_t *event_data = (fim_val_txn_context_t *) user_data;
     char* diff = event_data->diff;
     fim_registry_value_data *value = event_data->data;
+    char *hash_full_path;
 
     // Do not process if it's the first scan
     if (_base_line == 0) {
@@ -228,7 +238,7 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType,
         dbsync_event = result_json;
     }
 
-    // In case of deletions, key is NULL, so we need to get the path and arch from the json event
+    // In case of deletions, value is NULL, so we need to get the path and arch from the json event
     if (value == NULL) {
         if (json_path = cJSON_GetObjectItem(dbsync_event, "path"), json_path == NULL) {
             goto end;
@@ -239,13 +249,18 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType,
         if (json_name = cJSON_GetObjectItem(dbsync_event, "name"), json_name == NULL) {
             goto end;
         }
+        if (json_hash = cJSON_GetObjectItem(dbsync_event, "hash_full_path"), json_hash == NULL) {
+            goto end;
+        }
         path = cJSON_GetStringValue(json_path);
         arch = (strcmp(cJSON_GetStringValue(json_arch), "[x32]") == 0) ? ARCH_32BIT: ARCH_64BIT;
         name = cJSON_GetStringValue(json_name);
+        hash_full_path = cJSON_GetStringValue(json_hash);
     } else {
         path = value->path;
         arch = value->arch;
         name = value->name;
+        hash_full_path = value->hash_full_path;
     }
 
     configuration = fim_registry_configuration(path, arch);
@@ -289,7 +304,8 @@ static void registry_value_transaction_callback(ReturnTypeCallback resultType,
     cJSON_AddItemToObject(json_event, "data", data);
 
     cJSON_AddStringToObject(data, "path", path);
-    cJSON_AddNumberToObject(data, "version", 2.0);
+    cJSON_AddStringToObject(data, "index", hash_full_path);
+    cJSON_AddNumberToObject(data, "version", 3.0);
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[event_data->evt_data->mode]);
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[event_data->evt_data->type]);
     cJSON_AddStringToObject(data, "arch", arch == ARCH_32BIT ? "[x32]" : "[x64]");
@@ -835,6 +851,8 @@ void fim_read_values(HKEY key_handle,
     size_t value_path_length;
     registry_t *configuration = NULL;
     char* diff = NULL;
+    os_sha1 hash_full_path;
+    char* arch_string;
 
     value_data.arch = arch;
     value_data.path = path;
@@ -881,6 +899,14 @@ void fim_read_values(HKEY key_handle,
         if (fim_check_restrict(new.registry_entry.value->name, configuration->restrict_value)) {
             return;
         }
+
+        arch_string = (arch == ARCH_32BIT) ? "[x32]" : "[x64]";
+
+        // Hash containing "value", arch, key path and value name
+        // Index used in wazuh manager DB
+        OS_SHA1_strings(hash_full_path, "value", arch_string, new.registry_entry.value->path,
+                        new.registry_entry.value->name, NULL);
+        new.registry_entry.value->hash_full_path = hash_full_path;
 
         fim_registry_calculate_hashes(&new, configuration, data_buffer);
 
@@ -936,6 +962,8 @@ void fim_open_key(HKEY root_key_handle,
     fim_entry new;
     registry_t *configuration;
     int result_transaction = -1;
+    os_sha1 hash_full_path;
+    char* arch_string;
 
     if (root_key_handle == NULL || full_key == NULL || sub_key == NULL) {
         return;
@@ -1011,6 +1039,13 @@ void fim_open_key(HKEY root_key_handle,
     if (new.registry_entry.key == NULL) {
         return;
     }
+
+    arch_string = (arch == ARCH_32BIT) ? "[x32]" : "[x64]";
+
+    // Hash containing "key", arch and key path
+    // Index used in wazuh manager DB
+    OS_SHA1_strings(hash_full_path, "key", arch_string, new.registry_entry.key->path, NULL);
+    new.registry_entry.key->hash_full_path = hash_full_path;
 
     txn_ctx_reg->key = new.registry_entry.key;
 

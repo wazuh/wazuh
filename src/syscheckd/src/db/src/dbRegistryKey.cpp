@@ -11,7 +11,6 @@
 
 #include "dbRegistryKey.hpp"
 #include "fimCommonDefs.h"
-#include "hashHelper.h"
 
 void RegistryKey::createFimEntry()
 {
@@ -46,6 +45,7 @@ void RegistryKey::createFimEntry()
             key->last_event = m_lastEvent;
             key->mtime = m_time;
             key->path = const_cast<char*>(m_identifier.c_str());
+            key->hash_full_path = const_cast<char*>(m_hashpath.c_str());
             key->perm = const_cast<char*>(m_perm.c_str());
             key->scanned =  m_scanned;
             key->uid = static_cast<char*>(std::calloc(uid_size + 1, sizeof(char)));
@@ -88,7 +88,6 @@ void RegistryKey::createJSON()
     nlohmann::json conf;
     nlohmann::json data;
     nlohmann::json options;
-    Utils::HashData hash;
 
     conf["table"] = FIMDB_REGISTRY_KEY_TABLENAME;
     data["path"] = m_identifier;
@@ -102,14 +101,7 @@ void RegistryKey::createJSON()
     data["user_name"] = m_username;
     data["group_name"] = m_groupname;
     data["mtime"] = m_time;
-
-    // Hash used in sync messages containing "key", arch and path
-    hash.update("key", 4);
-    const auto& valueString = data["arch"].get<std::string>();
-    hash.update(valueString.c_str(), valueString.size());
-    const auto& valueString2 = data["path"].get<std::string>();
-    hash.update(valueString2.c_str(), valueString2.size());
-    data["hash_full_path"] = Utils::asciiToHex(hash.hash());
+    data["hash_full_path"] = m_hashpath;
 
     conf["data"] = nlohmann::json::array({data});
 

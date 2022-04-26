@@ -65,6 +65,7 @@ class RegistryKey final : public DBItem
             FIMDBCreator<OS_TYPE>::encodeString(m_username);
 
             m_time = fim->registry_entry.key->mtime;
+            m_hashpath = fim->registry_entry.key->hash_full_path;
             createJSON();
             createFimEntry();
         }
@@ -80,6 +81,7 @@ class RegistryKey final : public DBItem
             m_perm = fim.at("perm");
             m_username = fim.at("user_name");
             m_time = fim.at("mtime");
+            m_hashpath = fim.at("hash_full_path");
             createFimEntry();
             createJSON();
         }
@@ -105,6 +107,7 @@ class RegistryKey final : public DBItem
         time_t                                              m_time;
         std::unique_ptr<fim_entry, FimRegistryKeyDeleter>   m_fimEntry;
         std::unique_ptr<nlohmann::json>                     m_statementConf;
+        std::string                                         m_hashpath;
 
         void createFimEntry();
         void createJSON();
