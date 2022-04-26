@@ -80,7 +80,7 @@ void load_limits(void);
 
 bool exceeded_eps_limit(void);
 
-void encrease_eps(void);
+void encrease_event_counter(void);
 
 /** Global definitions **/
 int today;
@@ -1543,7 +1543,7 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
 
         /* Receive message from queue */
         if (!exceeded_eps_limit() && (msg = queue_pop_ex(decode_queue_syscheck_input), msg)) {
-            encrease_eps();
+            encrease_event_counter();
 
             int res = 0;
             os_calloc(1, sizeof(Eventinfo), lf);
@@ -1593,7 +1593,7 @@ void * w_decode_syscollector_thread(__attribute__((unused)) void * args){
 
         /* Receive message from queue */
         if (!exceeded_eps_limit() && (msg = queue_pop_ex(decode_queue_syscollector_input), msg)) {
-            encrease_eps();
+            encrease_event_counter();
 
             os_calloc(1, sizeof(Eventinfo), lf);
             os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
@@ -1638,7 +1638,7 @@ void * w_decode_rootcheck_thread(__attribute__((unused)) void * args){
 
         /* Receive message from queue */
         if (!exceeded_eps_limit() && (msg = queue_pop_ex(decode_queue_rootcheck_input), msg)) {
-            encrease_eps();
+            encrease_event_counter();
 
             os_calloc(1, sizeof(Eventinfo), lf);
             os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
@@ -1682,7 +1682,7 @@ void * w_decode_sca_thread(__attribute__((unused)) void * args){
 
         /* Receive message from queue */
         if (!exceeded_eps_limit() && (msg = queue_pop_ex(decode_queue_sca_input), msg)) {
-            encrease_eps();
+            encrease_event_counter();
 
             os_calloc(1, sizeof(Eventinfo), lf);
             os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
@@ -1725,7 +1725,7 @@ void * w_decode_hostinfo_thread(__attribute__((unused)) void * args){
 
         /* Receive message from queue */
         if (!exceeded_eps_limit() && (msg = queue_pop_ex(decode_queue_hostinfo_input), msg)) {
-            encrease_eps();
+            encrease_event_counter();
 
             os_calloc(1, sizeof(Eventinfo), lf);
             os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
@@ -1772,7 +1772,7 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
 
         /* Receive message from queue */
         if (!exceeded_eps_limit() && (msg = queue_pop_ex(decode_queue_event_input), msg)) {
-            encrease_eps();
+            encrease_event_counter();
 
             os_calloc(1, sizeof(Eventinfo), lf);
             os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
@@ -1822,7 +1822,7 @@ void * w_decode_winevt_thread(__attribute__((unused)) void * args) {
 
         /* Receive message from queue */
         if (!exceeded_eps_limit() && (msg = queue_pop_ex(decode_queue_winevt_input), msg)) {
-            encrease_eps();
+            encrease_event_counter();
 
             os_calloc(1, sizeof(Eventinfo), lf);
             os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
@@ -1862,7 +1862,7 @@ void * w_dispatch_dbsync_thread(__attribute__((unused)) void * args) {
 
     for (;;) {
         if (!exceeded_eps_limit() && (msg = queue_pop_ex(dispatch_dbsync_input))) {
-            encrease_eps();
+            encrease_event_counter();
 
             assert(msg != NULL);
 
@@ -1893,7 +1893,7 @@ void * w_dispatch_upgrade_module_thread(__attribute__((unused)) void * args) {
 
     while (true) {
         if (!exceeded_eps_limit() && (msg = queue_pop_ex(upgrade_module_input))) {
-            encrease_eps();
+            encrease_event_counter();
 
             assert (msg != NULL);
 
@@ -2467,12 +2467,18 @@ void load_limits(void) {
         if ((timeframe_eps = cJSON_GetObjectItem(analysisd_limits, "timeframe_eps"), timeframe_eps) && cJSON_IsNumber(timeframe_eps)) {
             limits.timeframe = (timeframe_eps->valueint > EPS_LIMITS_MAX_TIMEFRAME ? EPS_LIMITS_MAX_TIMEFRAME : \
                 (timeframe_eps->valueint < EPS_LIMITS_MIN_TIMEFRAME ? EPS_LIMITS_MIN_TIMEFRAME : timeframe_eps->valueint));
+            if (limits.timeframe != (unsigned int)timeframe_eps->valueint) {
+                mwarn("timeframe limit exceeded, default value set: %d", limits.timeframe);
+            }
         }
 
         cJSON *max_eps;
         if ((max_eps = cJSON_GetObjectItem(analysisd_limits, "max_eps"), max_eps) && cJSON_IsNumber(max_eps)) {
             limits.eps = (max_eps->valueint > EPS_LIMITS_MAX_EPS ? EPS_LIMITS_MAX_EPS : \
                 (max_eps->valueint < EPS_LIMITS_MIN_EPS ? EPS_LIMITS_MIN_EPS : max_eps->valueint));
+            if (limits.eps != (unsigned int)max_eps->valueint) {
+                mwarn("eps limit exceeded, default value set: %d", limits.eps);
+            }
         }
 
         limits.max_eps = limits.eps * limits.timeframe;
@@ -2497,7 +2503,7 @@ bool exceeded_eps_limit(void) {
     return false;
 }
 
-void encrease_eps(void) {
+void encrease_event_counter(void) {
 
     w_mutex_lock(&limit_eps_mutex);
     limits.current_eps++;
