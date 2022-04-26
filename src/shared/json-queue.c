@@ -107,7 +107,7 @@ void jqueue_close(file_queue * queue) {
  * @param queue pointer to the file_queue struct
  * @post The flag variable may be set to CRALERT_READ_FAILED if the read operation got no data.
  * @post The read position is restored if failed to get a JSON object.
- * @retval NULL No data read or could not get a valid JSON object. Pointer to the JSON object otherwise.
+ * @retval NULL No data read or could not get a valid JSON object or read overlong alert. Pointer to the JSON object otherwise.
  */
 cJSON * jqueue_parse_json(file_queue * queue) {
     cJSON * object = NULL;
@@ -126,18 +126,16 @@ cJSON * jqueue_parse_json(file_queue * queue) {
             if ((object = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), object) && (*jsonErrPtr == '\0')) {   
                 return object;
             }
-            // The read JSON is invalid                       
-            if (object){        //check si hace falta este if, que devuelve cuando falla arriba?
-                cJSON_Delete(object);
-            }
+            
+            // The read JSON is invalid                                   
+            cJSON_Delete(object);
 
             merror("Invalid JSON alert read from '%s': '%s'", queue->file_name, buffer);
             return NULL;
         }
 
         while (strlen(buffer) == OS_MAXSTR)
-        {
-            
+        {            
             if(fgets(buffer, OS_MAXSTR + 1, queue->fp)){
 
                 if (strchr(buffer, '\n')){
@@ -150,7 +148,7 @@ cJSON * jqueue_parse_json(file_queue * queue) {
             }
         }
                 
-        mdebug2("Can't read from '%s'. Retrying", queue->file_name);
+        mdebug2("Can't read from '%s'. Trying again", queue->file_name);
 
         if (current_pos >= 0) {
             if (fseek(queue->fp, current_pos, SEEK_SET) != 0) {
