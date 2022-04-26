@@ -118,6 +118,17 @@ public:
                 std::get<internals::types::AssetBuilder>(
                     internals::Registry::getBuilder("decoder")));
 
+            // TODO This works, but make sure this decoder is always connected last
+            decoderGraph.addNode(internals::types::ConnectableT {
+                "zzz_ByPassDecoder",
+                std::vector<std::string> {},
+                [](base::Observable o) {
+                    return o.filter([](base::Event e) {
+                        return !e->isDecoded();
+                    });
+                },
+                internals::types::ConnectableT::Tracer {"zzz_ByPassDecoder"}}
+            );
             subGraphs.push_back(std::make_tuple(
                 "INPUT_DECODER", decoderGraph, "OUTPUT_DECODER"));
         }
