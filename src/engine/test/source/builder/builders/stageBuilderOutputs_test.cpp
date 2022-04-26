@@ -19,10 +19,15 @@
 #include "opBuilderFileOutput.hpp"
 #include "stageBuilderOutputs.hpp"
 
-using namespace builder::internals::builders;
+using namespace base;
+namespace bld = builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
+
+auto createEvent = [](const char * json){
+    return std::make_shared<EventHandler>(std::make_shared<Document>(json));
+};
 
 TEST(StageBuilderOutputs, BuildsAllNonRegistered)
 {
@@ -42,9 +47,9 @@ TEST(StageBuilderOutputs, BuildsAllNonRegistered)
 
 TEST(StageBuilderOutputs, Builds)
 {
-    BuilderVariant c = opBuilderFileOutput;
+    BuilderVariant c = bld::opBuilderFileOutput;
     Registry::registerBuilder("file", c);
-    c = combinatorBuilderBroadcast;
+    c = bld::combinatorBuilderBroadcast;
     Registry::registerBuilder("combinator.broadcast", c);
 
     Document doc{R"({
@@ -77,16 +82,16 @@ TEST(StageBuilderOutputs, BuildsOperates)
     auto input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"value"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"value"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"value"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"value"}
             )"));
             s.on_completed();
