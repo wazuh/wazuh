@@ -19,7 +19,15 @@
 #include "opBuilderHelperFilter.hpp"
 #include "stageBuilderCheck.hpp"
 
-using namespace builder::internals::builders;
+using namespace base;
+namespace bld = builder::internals::builders;
+
+using FakeTrFn = std::function<void(std::string)>;
+static FakeTrFn tr = [](std::string msg){};
+
+auto createEvent = [](const char * json){
+    return std::make_shared<EventHandler>(std::make_shared<Document>(json));
+};
 
 TEST(AssetBuilderFilter, BuildsAllNonRegistered)
 {
@@ -31,24 +39,24 @@ TEST(AssetBuilderFilter, BuildsAllNonRegistered)
         ]
     })"};
 
-    ASSERT_THROW(builders::assetBuilderFilter(doc), std::_Nested_exception<std::runtime_error>);
+    ASSERT_THROW(bld::assetBuilderFilter(doc), std::_Nested_exception<std::runtime_error>);
 }
 
 TEST(AssetBuilderFilter, Builds)
 {
-    BuilderVariant c = opBuilderConditionValue;
+    BuilderVariant c = bld::opBuilderConditionValue;
     Registry::registerBuilder("condition.value", c);
-    c = opBuilderConditionReference;
+    c = bld::opBuilderConditionReference;
     Registry::registerBuilder("condition.reference", c);
-    c = opBuilderHelperExists;
+    c = bld::opBuilderHelperExists;
     Registry::registerBuilder("helper.exists", c);
-    c = opBuilderHelperNotExists;
+    c = bld::opBuilderHelperNotExists;
     Registry::registerBuilder("helper.not_exists", c);
-    c = opBuilderCondition;
+    c = bld::opBuilderCondition;
     Registry::registerBuilder("condition", c);
-    c = stageBuilderCheck;
+    c = bld::stageBuilderCheck;
     Registry::registerBuilder("allow", c);
-    c = combinatorBuilderChain;
+    c = bld::combinatorBuilderChain;
     Registry::registerBuilder("combinator.chain", c);
 
     Document doc{R"({
@@ -59,7 +67,7 @@ TEST(AssetBuilderFilter, Builds)
         ]
     })"};
 
-    builders::assetBuilderFilter(doc);
+    bld::assetBuilderFilter(doc);
 }
 
 TEST(AssetBuilderFilter, BuildsOperates)
@@ -72,22 +80,22 @@ TEST(AssetBuilderFilter, BuildsOperates)
         ]
     })"};
 
-    auto filter = builders::assetBuilderFilter(doc);
+    auto filter = bld::assetBuilderFilter(doc);
 
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"({
+            s.on_next(createEvent(R"({
                 "field1": "value",
                 "field2": 2,
                 "field3": "value",
                 "field4": true,
                 "field5": "+exists"
             })"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"value"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"({
+            s.on_next(createEvent(R"({
                 "field":"value",
                 "field1": "value",
                 "field2": 2,
@@ -96,7 +104,7 @@ TEST(AssetBuilderFilter, BuildsOperates)
                 "field5": "+exists",
                 "field6": "+exists"
             })"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"otherfield":1}
             )"));
             s.on_completed();
@@ -109,6 +117,6 @@ TEST(AssetBuilderFilter, BuildsOperates)
     ASSERT_EQ(expected.size(), 2);
     for (auto e : expected)
     {
-        ASSERT_STREQ(e->get("/field").GetString(), "value");
+        ASSERT_STREQ(e->getEvent()->get("/field").GetString(), "value");
     }
 }
