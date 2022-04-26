@@ -14,8 +14,8 @@
 #include "opBuilderHelperFilter.hpp"
 #include "base/baseTypes.hpp"
 
-using namespace builder::internals::builders;
 using namespace base;
+namespace bld = builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
@@ -31,7 +31,7 @@ TEST(opBuilderHelperIntGreaterThan, Builds)
             {"field_test": "+i_lt/10"}
     })"};
 
-    ASSERT_NO_THROW(opBuilderHelperIntGreaterThan(doc.get("/check"), tr));
+    ASSERT_NO_THROW(bld::opBuilderHelperIntGreaterThan(doc.get("/check"), tr));
 }
 
 TEST(opBuilderHelperIntGreaterThan, Builds_error_bad_parameter)
@@ -41,7 +41,7 @@ TEST(opBuilderHelperIntGreaterThan, Builds_error_bad_parameter)
             {"field_test": "+i_lt/test"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIntGreaterThan(doc.get("/check"), tr),
+    ASSERT_THROW(bld::opBuilderHelperIntGreaterThan(doc.get("/check"), tr),
                  std::invalid_argument);
 }
 
@@ -52,7 +52,7 @@ TEST(opBuilderHelperIntGreaterThan, Builds_error_more_parameters)
             {"field_test": "+i_lt/10/10"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIntGreaterThan(doc.get("/check"), tr), std::runtime_error);
+    ASSERT_THROW(bld::opBuilderHelperIntGreaterThan(doc.get("/check"), tr), std::runtime_error);
 }
 
 TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_ok)
@@ -79,7 +79,7 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_ok)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntGreaterThan(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperIntGreaterThan(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -113,7 +113,7 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_true)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntGreaterThan(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperIntGreaterThan(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -147,7 +147,7 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_false)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntGreaterThan(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperIntGreaterThan(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -192,7 +192,7 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_ref_true)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntGreaterThan(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperIntGreaterThan(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -241,7 +241,7 @@ TEST(opBuilderHelperIntGreaterThan, Exec_greater_than_ref_false)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntGreaterThan(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperIntGreaterThan(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -284,7 +284,7 @@ TEST(opBuilderHelperIntGreaterThan, Exec_dynamics_int_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperIntGreaterThan(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperIntGreaterThan(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -359,7 +359,7 @@ TEST(opBuilderHelperIntGreaterThan, Exec_multilevel_dynamics_int_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperIntGreaterThan(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperIntGreaterThan(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 

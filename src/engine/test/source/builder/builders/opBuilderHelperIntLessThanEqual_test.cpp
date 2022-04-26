@@ -14,8 +14,8 @@
 #include "opBuilderHelperFilter.hpp"
 #include "base/baseTypes.hpp"
 
-namespace bl = builder::internals::builders;
 using namespace base;
+namespace bld = builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
@@ -31,7 +31,7 @@ TEST(opBuilderHelperIntLessThanEqual, Builds)
             {"field_test": "+i_lt/10"}
     })"};
 
-    ASSERT_NO_THROW(bl::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr));
+    ASSERT_NO_THROW(bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr));
 }
 
 TEST(opBuilderHelperIntLessThanEqual, Builds_error_bad_parameter)
@@ -41,7 +41,7 @@ TEST(opBuilderHelperIntLessThanEqual, Builds_error_bad_parameter)
             {"field_test": "+i_lt/test"}
     })"};
 
-    ASSERT_THROW(bl::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr),
+    ASSERT_THROW(bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr),
                  std::invalid_argument);
 }
 
@@ -52,7 +52,7 @@ TEST(opBuilderHelperIntLessThanEqual, Builds_error_more_parameters)
             {"field_test": "+i_lt/10/10"}
     })"};
 
-    ASSERT_THROW(bl::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr), std::runtime_error);
+    ASSERT_THROW(bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr), std::runtime_error);
 }
 
 TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_ok)
@@ -79,7 +79,7 @@ TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_ok)
             )"));
             s.on_completed();
         });
-    Lifter lift = bl::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -115,7 +115,7 @@ TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_true)
             )"));
             s.on_completed();
         });
-    Lifter lift = bl::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -151,7 +151,7 @@ TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_false)
             )"));
             s.on_completed();
         });
-    Lifter lift = bl::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -196,7 +196,7 @@ TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_ref_true)
             )"));
             s.on_completed();
         });
-    Lifter lift = bl::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -247,7 +247,7 @@ TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_ref_false)
             )"));
             s.on_completed();
         });
-    Lifter lift = bl::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -290,7 +290,7 @@ TEST(opBuilderHelperIntLessThanEqual, Exec_dynamics_int_ok)
             s.on_completed();
         });
 
-    Lifter lift = bl::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -367,7 +367,7 @@ TEST(opBuilderHelperIntLessThanEqual, Exec_multilevel_dynamics_int_ok)
             s.on_completed();
         });
 
-    Lifter lift = bl::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 

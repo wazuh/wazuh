@@ -14,8 +14,8 @@
 #include "opBuilderHelperMap.hpp"
 #include "base/baseTypes.hpp"
 
-using namespace builder::internals::builders;
 using namespace base;
+namespace bld = builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
@@ -31,7 +31,7 @@ TEST(opBuilderHelperIntCalc, Builds)
             {"field_test": "+i_calc/sum/10"}
     })"};
 
-    ASSERT_NO_THROW(opBuilderHelperIntCalc(doc.get("/normalice"), tr));
+    ASSERT_NO_THROW(bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr));
 }
 
 TEST(opBuilderHelperIntCalc, Builds_error_bad_parameter)
@@ -41,7 +41,7 @@ TEST(opBuilderHelperIntCalc, Builds_error_bad_parameter)
             {"field_test": "+i_calc/test/test"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIntCalc(doc.get("/normalice"), tr), std::runtime_error);
+    ASSERT_THROW(bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr), std::runtime_error);
 }
 
 TEST(opBuilderHelperIntCalc, Builds_error_less_parameters)
@@ -51,7 +51,7 @@ TEST(opBuilderHelperIntCalc, Builds_error_less_parameters)
             {"field_test": "+i_calc/10"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIntCalc(doc.get("/normalice"), tr), std::runtime_error);
+    ASSERT_THROW(bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr), std::runtime_error);
 }
 
 
@@ -62,7 +62,7 @@ TEST(opBuilderHelperIntCalc, Builds_error_more_parameters)
             {"field_test": "+i_calc/10/10/10"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIntCalc(doc.get("/normalice"), tr), std::runtime_error);
+    ASSERT_THROW(bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr), std::runtime_error);
 }
 
 TEST(opBuilderHelperIntCalc, Builds_error_bad_operator)
@@ -72,7 +72,7 @@ TEST(opBuilderHelperIntCalc, Builds_error_bad_operator)
             {"field_test": "+i_calc/^/10"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIntCalc(doc.get("/normalice"), tr), std::runtime_error);
+    ASSERT_THROW(bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr), std::runtime_error);
 }
 
 TEST(opBuilderHelperIntCalc, Builds_error_zero_division)
@@ -82,7 +82,7 @@ TEST(opBuilderHelperIntCalc, Builds_error_zero_division)
             {"field_test": "+i_calc/div/0"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIntCalc(doc.get("/normalice"), tr), std::runtime_error);
+    ASSERT_THROW(bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr), std::runtime_error);
 }
 
 TEST(opBuilderHelperIntCalc, Exec_equal_ok)
@@ -109,7 +109,7 @@ TEST(opBuilderHelperIntCalc, Exec_equal_ok)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntCalc(doc.get("/normalice"), tr);
+    Lifter lift = bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -153,7 +153,7 @@ TEST(opBuilderHelperIntCalc, Exec_sum_int)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntCalc(doc.get("/normalice"), tr);
+    Lifter lift = bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -199,7 +199,7 @@ TEST(opBuilderHelperIntCalc, Exec_sub_int)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntCalc(doc.get("/normalice"), tr);
+    Lifter lift = bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -245,7 +245,7 @@ TEST(opBuilderHelperIntCalc, Exec_mult_int)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntCalc(doc.get("/normalice"), tr);
+    Lifter lift = bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -291,7 +291,7 @@ TEST(opBuilderHelperIntCalc, Exec_div_int)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntCalc(doc.get("/normalice"), tr);
+    Lifter lift = bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -343,7 +343,7 @@ TEST(opBuilderHelperIntCalc, Exec_sum_ref)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntCalc(doc.get("/normalice"), tr);
+    Lifter lift = bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -397,7 +397,7 @@ TEST(opBuilderHelperIntCalc, Exec_sub_ref)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntCalc(doc.get("/normalice"), tr);
+    Lifter lift = bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -451,7 +451,7 @@ TEST(opBuilderHelperIntCalc, Exec_mult_ref)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntCalc(doc.get("/normalice"), tr);
+    Lifter lift = bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -505,7 +505,7 @@ TEST(opBuilderHelperIntCalc, Exec_div_ref)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntCalc(doc.get("/normalice"), tr);
+    Lifter lift = bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -559,7 +559,7 @@ TEST(opBuilderHelperIntCalc, Exec_div_ref_zero)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntCalc(doc.get("/normalice"), tr);
+    Lifter lift = bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -616,7 +616,7 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_sum)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperIntCalc(doc.get("/normalice"), tr);
+    Lifter lift = bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -666,7 +666,7 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_sub)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperIntCalc(doc.get("/normalice"), tr);
+    Lifter lift = bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -716,7 +716,7 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_mul)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperIntCalc(doc.get("/normalice"), tr);
+    Lifter lift = bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -766,7 +766,7 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_div)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperIntCalc(doc.get("/normalice"), tr);
+    Lifter lift = bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 

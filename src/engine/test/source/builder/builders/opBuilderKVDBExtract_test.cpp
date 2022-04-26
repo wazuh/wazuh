@@ -17,10 +17,14 @@
 
 namespace
 {
-using namespace builder::internals::builders;
+using namespace base;
+namespace bld = builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg) {
+static FakeTrFn tr = [](std::string msg){};
+
+auto createEvent = [](const char * json){
+    return std::make_shared<EventHandler>(std::make_shared<json::Document>(json));
 };
 
 class opBuilderKVDBExtractTest : public ::testing::Test
@@ -47,7 +51,7 @@ TEST_F(opBuilderKVDBExtractTest, Builds)
         "map":
             {"field2extract": "+kvdb_extract/TEST_DB/ref_key"}
     })"};
-    ASSERT_NO_THROW(opBuilderKVDBExtract(doc.get("/map"), tr));
+    ASSERT_NO_THROW(bld::opBuilderKVDBExtract(doc.get("/map"), tr));
 }
 
 // Build incorrect number of arguments
@@ -57,7 +61,7 @@ TEST_F(opBuilderKVDBExtractTest, Builds_incorrect_number_of_arguments)
         "check":
             {"field2match": "+kvdb_extract/TEST_DB"}
     })"};
-    ASSERT_THROW(opBuilderKVDBExtract(doc.get("/check"), tr),
+    ASSERT_THROW(bld::opBuilderKVDBExtract(doc.get("/check"), tr),
                  std::runtime_error);
 }
 
@@ -68,7 +72,7 @@ TEST_F(opBuilderKVDBExtractTest, Builds_incorrect_invalid_db)
         "check":
             {"field2match": "+kvdb_extract/INVALID_DB/ref_key"}
     })"};
-    ASSERT_THROW(opBuilderKVDBExtract(doc.get("/check"), tr),
+    ASSERT_THROW(bld::opBuilderKVDBExtract(doc.get("/check"), tr),
                  std::runtime_error);
 }
 
@@ -86,26 +90,26 @@ TEST_F(opBuilderKVDBExtractTest, Static_key)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"dummy_field": "qwe"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"dummy_field": "ASD123asd"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"dummy_field": "ASD"}
             )"));
             s.on_completed();
         });
 
-    Lifter lift = opBuilderKVDBExtract(doc.get("/map"), tr);
+    Lifter lift = bld::opBuilderKVDBExtract(doc.get("/map"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_STREQ(expected[0]->get("/field2extract").GetString(), "VALUE");
-    ASSERT_STREQ(expected[1]->get("/field2extract").GetString(), "VALUE");
-    ASSERT_STREQ(expected[2]->get("/field2extract").GetString(), "VALUE");
+    ASSERT_STREQ(expected[0]->getEvent()->get("/field2extract").GetString(), "VALUE");
+    ASSERT_STREQ(expected[1]->getEvent()->get("/field2extract").GetString(), "VALUE");
+    ASSERT_STREQ(expected[2]->getEvent()->get("/field2extract").GetString(), "VALUE");
 }
 
 // Dynamic key
@@ -122,30 +126,30 @@ TEST_F(opBuilderKVDBExtractTest, Dynamic)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"key": "KEY"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"inexistent_key": "KEY"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"invalid_string": 123}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"invalid_key": "INVALID_KEY"}
             )"));
             s.on_completed();
         });
 
-    Lifter lift = opBuilderKVDBExtract(doc.get("/map"), tr);
+    Lifter lift = bld::opBuilderKVDBExtract(doc.get("/map"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 4);
-    ASSERT_STREQ(expected[0]->get("/field2extract").GetString(), "VALUE");
-    ASSERT_FALSE(expected[1]->exists("/field2extract"));
-    ASSERT_FALSE(expected[2]->exists("/field2extract"));
-    ASSERT_FALSE(expected[3]->exists("/field2extract"));
+    ASSERT_STREQ(expected[0]->getEvent()->get("/field2extract").GetString(), "VALUE");
+    ASSERT_FALSE(expected[1]->getEvent()->exists("/field2extract"));
+    ASSERT_FALSE(expected[2]->getEvent()->exists("/field2extract"));
+    ASSERT_FALSE(expected[3]->getEvent()->exists("/field2extract"));
 }
 
 // Multi level key
@@ -162,26 +166,26 @@ TEST_F(opBuilderKVDBExtractTest, Multi_level_key)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                  {"a":{"b":{"key":"KEY"}}}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                  {"a":{"b":{"inexistent_key":"KEY"}}}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                  {"a":{"b":{"invalid_key":"INVALID_KEY"}}}
             )"));
             s.on_completed();
         });
 
-    Lifter lift = opBuilderKVDBExtract(doc.get("/map"), tr);
+    Lifter lift = bld::opBuilderKVDBExtract(doc.get("/map"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_STREQ(expected[0]->get("/field2extract").GetString(), "VALUE");
-    ASSERT_FALSE(expected[1]->exists("/field2extract"));
-    ASSERT_FALSE(expected[2]->exists("/field2extract"));
+    ASSERT_STREQ(expected[0]->getEvent()->get("/field2extract").GetString(), "VALUE");
+    ASSERT_FALSE(expected[1]->getEvent()->exists("/field2extract"));
+    ASSERT_FALSE(expected[2]->getEvent()->exists("/field2extract"));
 }
 
 // Multi level target
@@ -198,26 +202,26 @@ TEST_F(opBuilderKVDBExtractTest, Multi_level_target)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"not_fieldToCreate": "qwe"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"not_fieldToCreate": "ASD123asd"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"not_fieldToCreate": "ASD"}
             )"));
             s.on_completed();
         });
 
-    Lifter lift = opBuilderKVDBExtract(doc.get("/map"), tr);
+    Lifter lift = bld::opBuilderKVDBExtract(doc.get("/map"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_STREQ(expected[0]->get("/a/b/field2extract").GetString(), "VALUE");
-    ASSERT_STREQ(expected[1]->get("/a/b/field2extract").GetString(), "VALUE");
-    ASSERT_STREQ(expected[2]->get("/a/b/field2extract").GetString(), "VALUE");
+    ASSERT_STREQ(expected[0]->getEvent()->get("/a/b/field2extract").GetString(), "VALUE");
+    ASSERT_STREQ(expected[1]->getEvent()->get("/a/b/field2extract").GetString(), "VALUE");
+    ASSERT_STREQ(expected[2]->getEvent()->get("/a/b/field2extract").GetString(), "VALUE");
 }
 
 // Existent target
@@ -234,21 +238,21 @@ TEST_F(opBuilderKVDBExtractTest, Existent_target)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"dummy_data": "dummy_value"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field2extract": "PRE_VALUE"}
             )"));
             s.on_completed();
         });
 
-    Lifter lift = opBuilderKVDBExtract(doc.get("/map"), tr);
+    Lifter lift = bld::opBuilderKVDBExtract(doc.get("/map"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_STREQ(expected[0]->get("/field2extract").GetString(), "VALUE");
-    ASSERT_STREQ(expected[0]->get("/field2extract").GetString(), "VALUE");
+    ASSERT_STREQ(expected[0]->getEvent()->get("/field2extract").GetString(), "VALUE");
+    ASSERT_STREQ(expected[0]->getEvent()->get("/field2extract").GetString(), "VALUE");
 }
 } // namespace
