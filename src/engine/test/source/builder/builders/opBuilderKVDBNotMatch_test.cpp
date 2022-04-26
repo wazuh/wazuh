@@ -15,10 +15,14 @@
 #include "testUtils.hpp"
 #include <kvdb/kvdbManager.hpp>
 
-using namespace builder::internals::builders;
+using namespace base;
+namespace bld = builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg) {
+static FakeTrFn tr = [](std::string msg){};
+
+auto createEvent = [](const char * json){
+    return std::make_shared<EventHandler>(std::make_shared<json::Document>(json));
 };
 
 namespace
@@ -47,7 +51,7 @@ TEST_F(opBuilderKVDBNotMatchTest, Builds)
         "check":
             {"field2match": "+kvdb_not_match/TEST_DB"}
     })"};
-    ASSERT_NO_THROW(opBuilderKVDBNotMatch(doc.get("/check"), tr));
+    ASSERT_NO_THROW(bld::opBuilderKVDBNotMatch(doc.get("/check"), tr));
 }
 
 // Build incorrect number of arguments
@@ -57,7 +61,7 @@ TEST_F(opBuilderKVDBNotMatchTest, Builds_incorrect_number_of_arguments)
         "check":
             {"field2match": "+kvdb_not_match"}
     })"};
-    ASSERT_THROW(opBuilderKVDBNotMatch(doc.get("/check"), tr),
+    ASSERT_THROW(bld::opBuilderKVDBNotMatch(doc.get("/check"), tr),
                  std::runtime_error);
 }
 
@@ -68,7 +72,7 @@ TEST_F(opBuilderKVDBNotMatchTest, Builds_incorrect_invalid_db)
         "check":
             {"field2match": "+kvdb_not_match/INVALID_DB"}
     })"};
-    ASSERT_THROW(opBuilderKVDBNotMatch(doc.get("/check"), tr),
+    ASSERT_THROW(bld::opBuilderKVDBNotMatch(doc.get("/check"), tr),
                  std::runtime_error);
 }
 
@@ -87,28 +91,28 @@ TEST_F(opBuilderKVDBNotMatchTest, Static_string_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field2match":"KEY"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field2match":"INEXISTENT_KEY"}
             )"));
             // Other fields will be ignored
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"otherfield":"KEY"}
             )"));
             s.on_completed();
         });
 
-    Lifter lift = opBuilderKVDBNotMatch(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderKVDBNotMatch(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_STREQ(expected[0]->get("/field2match").GetString(),
+    ASSERT_STREQ(expected[0]->getEvent()->get("/field2match").GetString(),
                  "INEXISTENT_KEY");
-    ASSERT_STREQ(expected[1]->get("/otherfield").GetString(), "KEY");
+    ASSERT_STREQ(expected[1]->getEvent()->get("/otherfield").GetString(), "KEY");
 }
 
 TEST_F(opBuilderKVDBNotMatchTest, Multilevel_target)
@@ -124,28 +128,28 @@ TEST_F(opBuilderKVDBNotMatchTest, Multilevel_target)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"a": {"b":{"field2match":"KEY"}}}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"a": {"b":{"field2match":"INEXISTENT_KEY"}}}
             )"));
             // Other fields will continue
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"a": {"b":{"otherfield":"KEY"}}}
             )"));
             s.on_completed();
         });
 
-    Lifter lift = opBuilderKVDBNotMatch(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderKVDBNotMatch(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_STREQ(expected[0]->get("/a/b/field2match").GetString(),
+    ASSERT_STREQ(expected[0]->getEvent()->get("/a/b/field2match").GetString(),
                  "INEXISTENT_KEY");
-    ASSERT_STREQ(expected[1]->get("/a/b/otherfield").GetString(), "KEY");
+    ASSERT_STREQ(expected[1]->getEvent()->get("/a/b/otherfield").GetString(), "KEY");
 }
 
 } // namespace
