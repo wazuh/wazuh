@@ -309,7 +309,6 @@ FIMDBErrorCode fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_ent
             }
         }
 
-        FIMDB::instance().logFunction(LOG_ERROR, "AAAAAAA");
         const std::unique_ptr<cJSON, CJsonDeleter> jsInput
         {
             cJSON_Parse((*syncItem->toJSON()).dump().c_str())

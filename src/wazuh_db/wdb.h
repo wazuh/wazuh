@@ -476,7 +476,6 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data);
 int wdb_fim_update_entry(wdb_t * wdb, const char * file, const sk_sum_t * sum);
 
 int wdb_fim_delete(wdb_t * wdb, const char * file);
-int wdb_fim_delete_registry(wdb_t * wdb, const char * file);
 
 /* Insert configuration assessment entry. Returns ID on success or -1 on error. */
 int wdb_rootcheck_insert(wdb_t * wdb, const rk_event_t *event);

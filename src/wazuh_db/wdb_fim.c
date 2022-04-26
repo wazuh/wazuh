@@ -503,7 +503,8 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
     json_path = cJSON_GetObjectItem(data, "path");
 
     // Fallback for RSync format. Windows registries comes with both path and index fields,
-    // path corresponds to the key_path, and index is the hash used as full_path.
+    // path corresponds to the key_path, and index is the hash used as full_path,
+    // It is included in the 3.0 version code
     if (!json_path) {
         json_path = cJSON_GetObjectItem(data, "index");
     }

@@ -405,6 +405,7 @@ static int setup_registry_key_data(void **state) {
     const char *plain_event = "{\"type\":\"event\","
         "\"data\":{"
             "\"path\":\"HKEY_LOCAL_MACHINE\\\\software\\\\test\","
+            "\"index\":\"234567890ABCDEF1234567890ABCDEF123456111\","
             "\"arch\":\"[x64]\","
             "\"mode\":\"scheduled\","
             "\"type\":\"added\","
@@ -460,6 +461,7 @@ static int setup_registry_value_data(void **state) {
     const char *plain_event = "{\"type\":\"event\","
         "\"data\":{"
             "\"path\":\"HKEY_LOCAL_MACHINE\\\\software\\\\test\","
+            "\"index\":\"234567890ABCDEF1234567890ABCDEF123456111\","
             "\"arch\":\"[x64]\","
             "\"value_name\":\"some:value\","
             "\"value_type\":\"REG_SZ\","
@@ -3088,9 +3090,7 @@ static void test_fim_process_alert_remove_registry_key(void **state) {
 
     /* Inside fim_send_db_save */
     expect_any(__wrap_wdbc_query_ex, *sock);
-    expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck delete_registry "
-        "{\"arch\":\"[x64]\","
-        "\"path\":\"HKEY_LOCAL_MACHINE\\\\software\\\\test\"}");
+    expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck delete 234567890ABCDEF1234567890ABCDEF123456111");
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result);
     will_return(__wrap_wdbc_query_ex, 0);
@@ -3143,10 +3143,7 @@ static void test_fim_process_alert_remove_registry_value(void **state) {
 
     /* Inside fim_send_db_save */
     expect_any(__wrap_wdbc_query_ex, *sock);
-    expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck delete_registry "
-        "{\"arch\":\"[x64]\","
-        "\"path\":\"HKEY_LOCAL_MACHINE\\\\software\\\\test\","
-        "\"value_name\":\"some:value\"}");
+    expect_string(__wrap_wdbc_query_ex, query, "agent 007 syscheck delete 234567890ABCDEF1234567890ABCDEF123456111");
     expect_any(__wrap_wdbc_query_ex, len);
     will_return(__wrap_wdbc_query_ex, result);
     will_return(__wrap_wdbc_query_ex, 0);
@@ -3176,6 +3173,25 @@ static void test_fim_process_alert_remove_registry_value(void **state) {
     assert_int_equal(input->lf->decoder_info->id, 0);
 }
 
+static void test_fim_process_alert_no_hash(void **state) {
+    fim_data_t *input = *state;
+    _sdb sdb = {.socket = 10};
+    const char *result = "This is a mock query result, it wont go anywhere";
+    int ret;
+
+    cJSON *data = cJSON_GetObjectItem(input->event, "data");
+    cJSON_DeleteItemFromObject(data, "index");
+
+    if(input->lf->agent_id = strdup("007"), input->lf->agent_id == NULL)
+        fail();
+
+    expect_string(__wrap__mdebug1, formatted_msg, "No member 'index' in Syscheck JSON payload");
+
+    ret = fim_process_alert(&sdb, input->lf, data);
+
+    assert_int_equal(ret, -1);
+}
+
 static void test_fim_process_alert_null_event(void **state) {
     fim_data_t *input = *state;
     _sdb sdb = {.socket = 10};
@@ -3185,7 +3201,7 @@ static void test_fim_process_alert_null_event(void **state) {
         fail();
 
     /* Inside fim_send_db_save */
-    expect_string(__wrap__mdebug1, formatted_msg, "No member 'type' in Syscheck JSON payload");
+    expect_string(__wrap__mdebug1, formatted_msg, "No member 'type' in Syscheck attributes JSON payload");
 
     ret = fim_process_alert(&sdb, input->lf, NULL);
 
@@ -3394,7 +3410,7 @@ static void test_decode_fim_event_null_item(void **state) {
     if(lf->agent_id = strdup("007"), lf->agent_id == NULL)
         fail();
 
-    expect_string(__wrap__mdebug1, formatted_msg, "No member 'type' in Syscheck JSON payload");
+    expect_string(__wrap__mdebug1, formatted_msg, "No member 'type' in Syscheck attributes JSON payload");
     expect_string(__wrap__merror, formatted_msg, "Can't generate fim alert for event: '"
         "{\"type\":\"event\","
         "\"data\":{"
@@ -3873,6 +3889,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_process_alert_null_event, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_process_alert_remove_registry_key, setup_registry_key_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_process_alert_remove_registry_value, setup_registry_value_data, teardown_fim_data),
+        cmocka_unit_test_setup_teardown(test_fim_process_alert_no_hash, setup_registry_key_data, teardown_fim_data),
 
 
         /* decode_fim_event */
