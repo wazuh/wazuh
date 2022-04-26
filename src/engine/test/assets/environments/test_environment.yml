@@ -1,5 +1,7 @@
 decoders:
   - decoder_test
+  - decoder_test_index_1
+  - decoder_test_index_2
 rules:
   - rule_test
 filters:
