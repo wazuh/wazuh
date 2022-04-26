@@ -12,8 +12,8 @@
 #include <gtest/gtest.h>
 #include "base/baseTypes.hpp"
 
-using namespace builder::internals::builders;
 using namespace base;
+namespace bld = builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg) {
@@ -34,8 +34,8 @@ TEST(opBuilderHelperIPCIDR, Builds)
             {"field2check": "+ip_cidr/192.168.0.0/255.255.0.0"}
     })"};
 
-    ASSERT_NO_THROW(opBuilderHelperIPCIDR(doc.get("/check"), tr));
-    ASSERT_NO_THROW(opBuilderHelperIPCIDR(doc2.get("/check"), tr));
+    ASSERT_NO_THROW(bld::opBuilderHelperIPCIDR(doc.get("/check"), tr));
+    ASSERT_NO_THROW(bld::opBuilderHelperIPCIDR(doc2.get("/check"), tr));
 }
 
 TEST(opBuilderHelperIPCIDR, Builds_incorrect_number_of_arguments)
@@ -45,7 +45,7 @@ TEST(opBuilderHelperIPCIDR, Builds_incorrect_number_of_arguments)
             {"field2check": "+ip_cidr/192.168.0.0/255.255.0.0/123"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIPCIDR(doc.get("/check"), tr),
+    ASSERT_THROW(bld::opBuilderHelperIPCIDR(doc.get("/check"), tr),
                  std::runtime_error);
 }
 
@@ -56,7 +56,7 @@ TEST(opBuilderHelperIPCIDR, Builds_invalid_arguments)
             {"field2check": "+ip_cidr/192.168.0.0/256.255.0.0"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIPCIDR(doc.get("/check"), tr),
+    ASSERT_THROW(bld::opBuilderHelperIPCIDR(doc.get("/check"), tr),
                  std::runtime_error);
 
     Document doc2 {R"({
@@ -64,7 +64,7 @@ TEST(opBuilderHelperIPCIDR, Builds_invalid_arguments)
             {"field2check": "+ip_cidr/192.168.0.-1/255.255.0.0.1"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIPCIDR(doc2.get("/check"), tr),
+    ASSERT_THROW(bld::opBuilderHelperIPCIDR(doc2.get("/check"), tr),
                  std::runtime_error);
 
     Document doc3 {R"({
@@ -72,7 +72,7 @@ TEST(opBuilderHelperIPCIDR, Builds_invalid_arguments)
             {"field2check": "+ip_cidr/192.168.0.1/33"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIPCIDR(doc3.get("/check"), tr),
+    ASSERT_THROW(bld::opBuilderHelperIPCIDR(doc3.get("/check"), tr),
                  std::runtime_error);
 }
 
@@ -113,7 +113,7 @@ TEST(opBuilderHelperIPCIDR, chack_ip_range)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperIPCIDR(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperIPCIDR(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });

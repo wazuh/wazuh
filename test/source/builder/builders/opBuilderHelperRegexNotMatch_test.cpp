@@ -15,8 +15,8 @@
 #include "testUtils.hpp"
 #include "base/baseTypes.hpp"
 
-using namespace builder::internals::builders;
 using namespace base;
+namespace bld = builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
@@ -32,7 +32,7 @@ TEST(opBuilderHelperRegexNotMatch, Builds)
             {"field": "+r_not_match/regexp"}
     })"};
 
-    ASSERT_NO_THROW(opBuilderHelperRegexNotMatch(doc.get("/check"), tr));
+    ASSERT_NO_THROW(bld::opBuilderHelperRegexNotMatch(doc.get("/check"), tr));
 }
 
 TEST(opBuilderHelperRegexNotMatch, NotEnoughArgumentsError)
@@ -42,7 +42,7 @@ TEST(opBuilderHelperRegexNotMatch, NotEnoughArgumentsError)
             {"field": "+r_not_match/"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperRegexNotMatch(doc.get("/check"), tr), std::runtime_error);
+    ASSERT_THROW(bld::opBuilderHelperRegexNotMatch(doc.get("/check"), tr), std::runtime_error);
 }
 
 TEST(opBuilderHelperRegexNotMatch, TooManyArgumentsError)
@@ -52,7 +52,7 @@ TEST(opBuilderHelperRegexNotMatch, TooManyArgumentsError)
             {"field": "+r_not_match/regexp/regexp2"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperRegexNotMatch(doc.get("/check"), tr), std::runtime_error);
+    ASSERT_THROW(bld::opBuilderHelperRegexNotMatch(doc.get("/check"), tr), std::runtime_error);
 }
 
 TEST(opBuilderHelperRegexMatch, InvalidRegex)
@@ -62,7 +62,7 @@ TEST(opBuilderHelperRegexMatch, InvalidRegex)
             {"field": "+r_match/(\\w{"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperRegexMatch(doc.get("/check"), tr), std::runtime_error);
+    ASSERT_THROW(bld::opBuilderHelperRegexMatch(doc.get("/check"), tr), std::runtime_error);
 }
 
 
@@ -95,7 +95,7 @@ TEST(opBuilderHelperRegexNotMatch, InvalidSrcType)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperRegexNotMatch(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperRegexNotMatch(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -128,7 +128,7 @@ TEST(opBuilderHelperRegexNotMatch, StringRegexMatch)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperRegexNotMatch(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperRegexNotMatch(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -160,7 +160,7 @@ TEST(opBuilderHelperRegexNotMatch, NumericRegexMatch)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperRegexNotMatch(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperRegexNotMatch(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -189,7 +189,7 @@ TEST(opBuilderHelperRegexNotMatch, AdvancedRegexMatch)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperRegexNotMatch(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperRegexNotMatch(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -221,7 +221,7 @@ TEST(opBuilderHelperRegexNotMatch, NestedFieldRegexMatch)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperRegexNotMatch(doc.get("/map"), tr);
+    Lifter lift = bld::opBuilderHelperRegexNotMatch(doc.get("/map"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -250,7 +250,7 @@ TEST(opBuilderHelperRegexNotMatch, FieldNotExistsRegexNotMatch)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperRegexNotMatch(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperRegexNotMatch(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });

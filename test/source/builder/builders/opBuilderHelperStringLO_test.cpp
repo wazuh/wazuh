@@ -14,8 +14,8 @@
 #include "opBuilderHelperMap.hpp"
 #include "base/baseTypes.hpp"
 
-using namespace builder::internals::builders;
 using namespace base;
+namespace bld = builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
@@ -31,7 +31,7 @@ TEST(opBuilderHelperStringLO, Builds)
         "normalize":
             {"field2normalize": "+s_lo/abcd"}
     })"};
-    ASSERT_NO_THROW(opBuilderHelperStringLO(doc.get("/normalize"), tr));
+    ASSERT_NO_THROW(bld::opBuilderHelperStringLO(doc.get("/normalize"), tr));
 }
 
 // Build incorrect number of arguments
@@ -41,7 +41,7 @@ TEST(opBuilderHelperStringLO, Builds_incorrect_number_of_arguments)
         "normalize":
             {"field2normalize": "+s_lo/test_value/test_value2"}
     })"};
-    ASSERT_THROW(opBuilderHelperStringLO(doc.get("/normalize"), tr), std::runtime_error);
+    ASSERT_THROW(bld::opBuilderHelperStringLO(doc.get("/normalize"), tr), std::runtime_error);
 }
 
 // Test ok: static values
@@ -67,7 +67,7 @@ TEST(opBuilderHelperStringLO, Static_string_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringLO(doc.get("/normalize"), tr);
+    Lifter lift = bld::opBuilderHelperStringLO(doc.get("/normalize"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -100,7 +100,7 @@ TEST(opBuilderHelperStringLO, Dynamics_string_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringLO(doc.get("/normalize"), tr);
+    Lifter lift = bld::opBuilderHelperStringLO(doc.get("/normalize"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -132,7 +132,7 @@ TEST(opBuilderHelperStringLO, Multilevel_dst)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringLO(doc.get("/normalize"), tr);
+    Lifter lift = bld::opBuilderHelperStringLO(doc.get("/normalize"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -164,7 +164,7 @@ TEST(opBuilderHelperStringLO, Exist_dst)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringLO(doc.get("/normalize"), tr);
+    Lifter lift = bld::opBuilderHelperStringLO(doc.get("/normalize"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -193,7 +193,7 @@ TEST(opBuilderHelperStringLO, Not_exist_src)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringLO(doc.get("/normalize"), tr);
+    Lifter lift = bld::opBuilderHelperStringLO(doc.get("/normalize"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -224,7 +224,7 @@ TEST(opBuilderHelperStringLO, Src_not_string)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringLO(doc.get("/normalize"), tr);
+    Lifter lift = bld::opBuilderHelperStringLO(doc.get("/normalize"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -256,7 +256,7 @@ TEST(opBuilderHelperStringLO, Multilevel_src)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringLO(doc.get("/normalize"), tr);
+    Lifter lift = bld::opBuilderHelperStringLO(doc.get("/normalize"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -288,7 +288,7 @@ TEST(opBuilderHelperStringLO, MultiLevel_dst)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringLO(doc.get("/normalize"), tr);
+    Lifter lift = bld::opBuilderHelperStringLO(doc.get("/normalize"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
