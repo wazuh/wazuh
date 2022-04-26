@@ -14,8 +14,8 @@
 #include "opBuilderHelperFilter.hpp"
 #include "base/baseTypes.hpp"
 
-using namespace builder::internals::builders;
 using namespace base;
+namespace bld = builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
@@ -31,7 +31,7 @@ TEST(opBuilderHelperStringEQ, Builds)
         "check":
             {"field2check": "+s_eq/test_value"}
     })"};
-    ASSERT_NO_THROW(opBuilderHelperStringEQ(doc.get("/check"), tr));
+    ASSERT_NO_THROW(bld::opBuilderHelperStringEQ(doc.get("/check"), tr));
 }
 
 // Build incorrect number of arguments
@@ -41,7 +41,7 @@ TEST(opBuilderHelperStringEQ, Builds_incorrect_number_of_arguments)
         "check":
             {"field2check": "+s_eq/test_value/test_value2"}
     })"};
-    ASSERT_THROW(opBuilderHelperStringEQ(doc.get("/check"), tr), std::runtime_error);
+    ASSERT_THROW(bld::opBuilderHelperStringEQ(doc.get("/check"), tr), std::runtime_error);
 }
 
 // Test ok: static values
@@ -73,7 +73,7 @@ TEST(opBuilderHelperStringEQ, Static_string_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringEQ(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperStringEQ(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -111,7 +111,7 @@ TEST(opBuilderHelperStringEQ, Static_number_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringEQ(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperStringEQ(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -164,7 +164,7 @@ TEST(opBuilderHelperStringEQ, Dynamics_string_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringEQ(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperStringEQ(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -226,7 +226,7 @@ TEST(opBuilderHelperStringEQ, MultiLevel_dynamics_string_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringEQ(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperStringEQ(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -289,7 +289,7 @@ TEST(opBuilderHelperStringEQ, Dynamics_number_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringEQ(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperStringEQ(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });

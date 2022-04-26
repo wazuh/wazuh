@@ -14,8 +14,8 @@
 #include "opBuilderHelperMap.hpp"
 #include "base/baseTypes.hpp"
 
-using namespace builder::internals::builders;
 using namespace base;
+namespace bld = builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
@@ -31,7 +31,7 @@ TEST(opBuilderHelperStringUP, Builds)
         "normalize":
             {"field2normalize": "+s_up/abcd"}
     })"};
-    ASSERT_NO_THROW(opBuilderHelperStringUP(doc.get("/normalize"), tr));
+    ASSERT_NO_THROW(bld::opBuilderHelperStringUP(doc.get("/normalize"), tr));
 }
 
 // Build incorrect number of arguments
@@ -41,7 +41,7 @@ TEST(opBuilderHelperStringUP, Builds_incorrect_number_of_arguments)
         "normalize":
             {"field2normalize": "+s_up/test_value/test_value2"}
     })"};
-    ASSERT_THROW(opBuilderHelperStringUP(doc.get("/normalize"), tr), std::runtime_error);
+    ASSERT_THROW(bld::opBuilderHelperStringUP(doc.get("/normalize"), tr), std::runtime_error);
 }
 
 // Test ok: static values
@@ -67,7 +67,7 @@ TEST(opBuilderHelperStringUP, Static_string_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringUP(doc.get("/normalize"), tr);
+    Lifter lift = bld::opBuilderHelperStringUP(doc.get("/normalize"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -101,7 +101,7 @@ TEST(opBuilderHelperStringUP, Dynamics_string_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringUP(doc.get("/normalize"), tr);
+    Lifter lift = bld::opBuilderHelperStringUP(doc.get("/normalize"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -133,7 +133,7 @@ TEST(opBuilderHelperStringUP, Multilevel_src)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringLO(doc.get("/normalize"), tr);
+    Lifter lift = bld::opBuilderHelperStringLO(doc.get("/normalize"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -165,7 +165,7 @@ TEST(opBuilderHelperStringUP, Multilevel_dst)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringUP(doc.get("/normalize"), tr);
+    Lifter lift = bld::opBuilderHelperStringUP(doc.get("/normalize"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -197,7 +197,7 @@ TEST(opBuilderHelperStringUP, Exist_dst)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringUP(doc.get("/normalize"), tr);
+    Lifter lift = bld::opBuilderHelperStringUP(doc.get("/normalize"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -226,7 +226,7 @@ TEST(opBuilderHelperStringUP, Not_exist_src)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringUP(doc.get("/normalize"), tr);
+    Lifter lift = bld::opBuilderHelperStringUP(doc.get("/normalize"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -257,7 +257,7 @@ TEST(opBuilderHelperStringUP, Src_not_string)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringUP(doc.get("/normalize"), tr);
+    Lifter lift = bld::opBuilderHelperStringUP(doc.get("/normalize"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });

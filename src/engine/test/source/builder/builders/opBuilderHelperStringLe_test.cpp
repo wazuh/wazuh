@@ -14,10 +14,8 @@
 #include "opBuilderHelperFilter.hpp"
 #include "base/baseTypes.hpp"
 
-using namespace builder::internals::builders;
 using namespace base;
-
-using namespace builder::internals::builders;
+namespace bld = builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
@@ -33,7 +31,7 @@ TEST(opBuilderHelperStringLE, Builds)
         "check":
             {"field2check": "+s_le/abcd"}
     })"};
-    ASSERT_NO_THROW(opBuilderHelperStringLE(doc.get("/check"), tr));
+    ASSERT_NO_THROW(bld::opBuilderHelperStringLE(doc.get("/check"), tr));
 }
 
 // Build incorrect number of arguments
@@ -43,7 +41,7 @@ TEST(opBuilderHelperStringLE, Builds_incorrect_number_of_arguments)
         "check":
             {"field2check": "+s_le/test_value/test_value2"}
     })"};
-    ASSERT_THROW(opBuilderHelperStringLE(doc.get("/check"), tr), std::runtime_error);
+    ASSERT_THROW(bld::opBuilderHelperStringLE(doc.get("/check"), tr), std::runtime_error);
 }
 
 // Test ok: static values
@@ -97,7 +95,7 @@ TEST(opBuilderHelperStringLE, Static_string_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringLE(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperStringLE(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -133,7 +131,7 @@ TEST(opBuilderHelperStringLE, Static_number_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringLE(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperStringLE(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -177,7 +175,7 @@ TEST(opBuilderHelperStringLE, Dynamics_string_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringLE(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperStringLE(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
