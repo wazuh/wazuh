@@ -67,6 +67,7 @@ async def test_response_init():
         assert response.content is None
 
 
+@pytest.mark.asyncio
 async def test_response_read():
     """Test for the 'read' method that belongs to the Response class. This method waits until a response is received."""
 
@@ -77,6 +78,7 @@ async def test_response_read():
         wait_mock.assert_called_once()
 
 
+@pytest.mark.asyncio
 async def test_response_write():
     """Test for the 'write' method that belongs to the Response class. It sets the content of a response and its
     availability."""
