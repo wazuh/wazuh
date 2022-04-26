@@ -112,40 +112,73 @@ public:
         // Build decoder subgraph
         if (asset.exists("/decoders"))
         {
+            // Generate unconnected decoder subgraph
             auto decoderGraph = this->assetBuilder(
                 "decoder",
                 asset.get("/decoders"),
                 std::get<internals::types::AssetBuilder>(
                     internals::Registry::getBuilder("decoder")));
 
-            // TODO This works, but make sure this decoder is always connected last
+            // Adds the bypass decoders
+            std::vector<std::string> bypassParents {};
+            auto byPassLifter = [](base::Observable o) {
+                return o.filter([](base::Event e) { return !e->isDecoded(); });
+            };
+            // Return true if `decoderName` has a child in `g` subgraph
+            auto hasChilds = [](std::string_view decoderName,
+                                const internals::Graph& g) -> bool {
+                for (auto assetNode : g.m_nodes)
+                {
+                    for (auto parent : assetNode.second.m_parents)
+                    {
+                        if (parent == decoderName)
+                        {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            };
+
+            // Search in decoderGragh, decoders with children and add to bypass
+            // parents
+            for (auto& assetNode : decoderGraph.m_nodes)
+            {
+                if (hasChilds(assetNode.first, decoderGraph))
+                {
+                    bypassParents.push_back(assetNode.first);
+                }
+            }
+            // Adds the bypassDecoder
             decoderGraph.addNode(internals::types::ConnectableT {
                 "zzz_ByPassDecoder",
+                bypassParents,
+                byPassLifter,
+                internals::types::ConnectableT::Tracer {"zzz_ByPassDecoder"}});
+            decoderGraph.addNode(internals::types::ConnectableT {
+                "zzz_rootByPassDecoder",
                 std::vector<std::string> {},
-                [](base::Observable o) {
-                    return o.filter([](base::Event e) {
-                        return !e->isDecoded();
-                    });
-                },
-                internals::types::ConnectableT::Tracer {"zzz_ByPassDecoder"}}
-            );
+                byPassLifter,
+                internals::types::ConnectableT::Tracer {
+                    "zzz_rootByPassDecoder"}});
+
             subGraphs.push_back(std::make_tuple(
                 "INPUT_DECODER", decoderGraph, "OUTPUT_DECODER"));
-        }
+                }
 
-        // Build rule subgraph
-        if (asset.exists("/rules"))
-        {
-            auto ruleGraph = this->assetBuilder(
-                "rule",
-                asset.get("/rules"),
-                std::get<internals::types::AssetBuilder>(
-                    internals::Registry::getBuilder("rule")));
-            // TODO: proper implement that rules are the first choice.
-            // As it is a set ordered by name, to check rules before
-            // outputs an A has been added to the name
-            subGraphs.push_back(
-                std::make_tuple("INPUT_ARULE", ruleGraph, "OUTPUT_RULE"));
+            // Build rule subgraph
+            if (asset.exists("/rules"))
+            {
+                auto ruleGraph = this->assetBuilder(
+                    "rule",
+                    asset.get("/rules"),
+                    std::get<internals::types::AssetBuilder>(
+                        internals::Registry::getBuilder("rule")));
+                // TODO: proper implement that rules are the first choice.
+                // As it is a set ordered by name, to check rules before
+                // outputs an A has been added to the name
+                subGraphs.push_back(
+                    std::make_tuple("INPUT_ARULE", ruleGraph, "OUTPUT_RULE"));
         }
 
         // Build output subgraph
