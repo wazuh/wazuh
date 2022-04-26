@@ -29,6 +29,7 @@ void RegistryValueTest::SetUp()
     value->size = 4925;
     value->type = 0;
     value->path = const_cast<char*>("pathTestRegistry");
+    value->hash_full_path = const_cast<char*>("00a7ee53218b25b5364c8773f37a38c93eae3880");
     value->arch = 0;
     fimEntryTest->registry_entry.value = value;
 }
@@ -74,6 +75,7 @@ TEST_F(RegistryValueTest, getFIMEntryWithFimCtr)
     ASSERT_EQ(registryEntry->registry_entry.value->mode, fimEntryTest->registry_entry.value->mode);
     ASSERT_EQ(registryEntry->registry_entry.value->scanned, fimEntryTest->registry_entry.value->scanned);
     ASSERT_EQ(std::strcmp(registryEntry->registry_entry.value->name, fimEntryTest->registry_entry.value->name), 0);
+    ASSERT_EQ(std::strcmp(registryEntry->registry_entry.value->hash_full_path, fimEntryTest->registry_entry.value->hash_full_path), 0);
     ASSERT_EQ(registryEntry->registry_entry.value->size, fimEntryTest->registry_entry.value->size);
     ASSERT_EQ(registryEntry->registry_entry.value->type, fimEntryTest->registry_entry.value->type);
 
@@ -93,6 +95,7 @@ TEST_F(RegistryValueTest, getFIMEntryWithJSONCtr)
     ASSERT_EQ(registryEntry->registry_entry.value->mode, fimEntryTest->registry_entry.value->mode);
     ASSERT_EQ(registryEntry->registry_entry.value->scanned, fimEntryTest->registry_entry.value->scanned);
     ASSERT_EQ(std::strcmp(registryEntry->registry_entry.value->name, fimEntryTest->registry_entry.value->name), 0);
+    ASSERT_EQ(std::strcmp(registryEntry->registry_entry.value->hash_full_path, fimEntryTest->registry_entry.value->hash_full_path), 0);
     ASSERT_EQ(registryEntry->registry_entry.value->size, fimEntryTest->registry_entry.value->size);
     ASSERT_EQ(registryEntry->registry_entry.value->type, fimEntryTest->registry_entry.value->type);
 
@@ -121,7 +124,7 @@ TEST_F(RegistryValueTest, getJSONWithJSONCtrOldData)
     auto oldData = R"(
             {
             "data":[{"arch":"[x32]","checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a","hash_md5":"4b531524aa13c8a54614100b570b3dc7",
-            "hash_full_path":"19a0530d376943cedf7c32fe84dda0392cb8ea0d","hash_sha1":"7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
+            "hash_full_path":"00a7ee53218b25b5364c8773f37a38c93eae3880","hash_sha1":"7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
             "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a","last_event":1596489275,
             "name":"testRegistry","path":"pathTestRegistry","scanned":1,"size":4925,"type":0}],"table":"registry_data",
             "options":{"return_old_data": true, "ignore":["last_event"]}

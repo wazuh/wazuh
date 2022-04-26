@@ -25,7 +25,7 @@ class RegistryKeyTest : public testing::Test {
         const nlohmann::json expectedValue = R"(
             {
                 "data":[{"arch":"[x64]","checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a","gid":0,"group_name":"root",
-                "hash_full_path":"466330db6ceee9352ed2978536a05b127fb2d29a","last_event":1596489275,"mtime":1578075431,
+                "hash_full_path":"00a7ee53218b25b5364c8773f37a38c93eae3880","last_event":1596489275,"mtime":1578075431,
                 "path":"HKEY_LOCAL_MACHINE\\SOFTWARE","perm":"-rw-rw-r--",
                 "scanned":1,"uid":0, "user_name":"fakeUser"}],"table":"registry_key"
             }
@@ -35,7 +35,7 @@ class RegistryKeyTest : public testing::Test {
         {
             "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "gid":0, "group_name":"root", "arch":1,
             "last_event":1596489275, "mode":0, "mtime":1578075431, "path":"HKEY_LOCAL_MACHINE\\SOFTWARE", "perm":"-rw-rw-r--",
-            "scanned":1, "uid":0, "user_name":"fakeUser"
+            "scanned":1, "uid":0, "user_name":"fakeUser", "hash_full_path":"00a7ee53218b25b5364c8773f37a38c93eae3880"
         }
     )"_json;
 };
