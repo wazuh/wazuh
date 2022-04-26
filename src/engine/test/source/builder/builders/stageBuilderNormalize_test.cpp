@@ -16,10 +16,15 @@
 #include "opBuilderMapValue.hpp"
 #include "stageBuilderNormalize.hpp"
 
-using namespace builder::internals::builders;
+using namespace base;
+namespace bld = builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
+
+auto createEvent = [](const char * json){
+    return std::make_shared<EventHandler>(std::make_shared<Document>(json));
+};
 
 TEST(StageBuilderNormalize, BuildsAllNonRegistered)
 {
@@ -32,18 +37,18 @@ TEST(StageBuilderNormalize, BuildsAllNonRegistered)
         ]
     })"};
 
-    ASSERT_THROW(builders::stageBuilderNormalize(doc.get("/normalize"), tr), std::_Nested_exception<std::runtime_error>);
+    ASSERT_THROW(bld::stageBuilderNormalize(doc.get("/normalize"), tr), std::_Nested_exception<std::runtime_error>);
 }
 
 TEST(StageBuilderNormalize, Builds)
 {
-    BuilderVariant c = opBuilderMapValue;
+    BuilderVariant c = bld::opBuilderMapValue;
     Registry::registerBuilder("map.value", c);
-    c = opBuilderMapReference;
+    c = bld::opBuilderMapReference;
     Registry::registerBuilder("map.reference", c);
-    c = opBuilderMap;
+    c = bld::opBuilderMap;
     Registry::registerBuilder("map", c);
-    c = combinatorBuilderChain;
+    c = bld::combinatorBuilderChain;
     Registry::registerBuilder("combinator.chain", c);
 
     Document doc{R"({
@@ -74,7 +79,7 @@ TEST(StageBuilderNormalize, BuildsOperates)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"({
+            s.on_next(createEvent(R"({
                 "field1": "value",
                 "field2": 2,
                 "field3": "value",
@@ -82,10 +87,10 @@ TEST(StageBuilderNormalize, BuildsOperates)
                 "field5": "+exists"
             })"));
             // TODO: fix json interfaces to dont throw
-            // s.on_next(std::make_shared<json::Document>(R"(
+            // s.on_next(createEvent(R"(
             //     {"field":"values"}
             // )"));
-            s.on_next(std::make_shared<json::Document>(R"({
+            s.on_next(createEvent(R"({
                 "field1": "value",
                 "field2": 2,
                 "field3": "value",
@@ -93,7 +98,7 @@ TEST(StageBuilderNormalize, BuildsOperates)
                 "field5": "+exists",
                 "field6": "+exists"
             })"));
-            // s.on_next(std::make_shared<json::Document>(R"(
+            // s.on_next(createEvent(R"(
             //     {"otherfield":1}
             // )"));
             s.on_completed();
@@ -106,9 +111,9 @@ TEST(StageBuilderNormalize, BuildsOperates)
     ASSERT_EQ(expected.size(), 2);
     for (auto e : expected)
     {
-        ASSERT_STREQ(e->get("/mapped/field1").GetString(), "value");
-        ASSERT_EQ(e->get("/mapped/field2").GetInt(), 2);
-        ASSERT_STREQ(e->get("/mapped/field3").GetString(), "value");
-        ASSERT_TRUE(e->get("/mapped/field4").GetBool());
+        ASSERT_STREQ(e->getEvent()->get("/mapped/field1").GetString(), "value");
+        ASSERT_EQ(e->getEvent()->get("/mapped/field2").GetInt(), 2);
+        ASSERT_STREQ(e->getEvent()->get("/mapped/field3").GetString(), "value");
+        ASSERT_TRUE(e->getEvent()->get("/mapped/field4").GetBool());
     }
 }
