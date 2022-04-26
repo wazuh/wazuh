@@ -24,7 +24,15 @@
 #include "opBuilderMapValue.hpp"
 #include "stageBuilderNormalize.hpp"
 
-using namespace builder::internals::builders;
+using namespace base;
+namespace bld = builder::internals::builders;
+
+using FakeTrFn = std::function<void(std::string)>;
+static FakeTrFn tr = [](std::string msg){};
+
+auto createEvent = [](const char * json){
+    return std::make_shared<EventHandler>(std::make_shared<Document>(json));
+};
 
 TEST(AssetBuilderRule, BuildsAllNonRegistered)
 {
@@ -38,33 +46,33 @@ TEST(AssetBuilderRule, BuildsAllNonRegistered)
         ]
     })"};
 
-    ASSERT_THROW(builders::assetBuilderRule(doc), std::_Nested_exception<std::runtime_error>);
+    ASSERT_THROW(bld::assetBuilderRule(doc), std::_Nested_exception<std::runtime_error>);
 }
 
 TEST(AssetBuilderRule, Builds)
 {
-    BuilderVariant c = opBuilderMapValue;
+    BuilderVariant c = bld::opBuilderMapValue;
     Registry::registerBuilder("map.value", c);
-    c = opBuilderMapReference;
+    c = bld::opBuilderMapReference;
     Registry::registerBuilder("map.reference", c);
-    c = opBuilderMap;
+    c = bld::opBuilderMap;
     Registry::registerBuilder("map", c);
-    c = combinatorBuilderChain;
+    c = bld::combinatorBuilderChain;
     Registry::registerBuilder("combinator.chain", c);
-    c = stageBuilderNormalize;
+    c = bld::stageBuilderNormalize;
     Registry::registerBuilder("normalize", c);
 
-    c = opBuilderConditionValue;
+    c = bld::opBuilderConditionValue;
     Registry::registerBuilder("condition.value", c);
-    c = opBuilderConditionReference;
+    c = bld::opBuilderConditionReference;
     Registry::registerBuilder("condition.reference", c);
-    c = opBuilderHelperExists;
+    c = bld::opBuilderHelperExists;
     Registry::registerBuilder("helper.exists", c);
-    c = opBuilderHelperNotExists;
+    c = bld::opBuilderHelperNotExists;
     Registry::registerBuilder("helper.not_exists", c);
-    c = opBuilderCondition;
+    c = bld::opBuilderCondition;
     Registry::registerBuilder("condition", c);
-    c = stageBuilderCheck;
+    c = bld::stageBuilderCheck;
     Registry::registerBuilder("check", c);
 
     Document doc{R"({
@@ -77,7 +85,7 @@ TEST(AssetBuilderRule, Builds)
         ]
     })"};
 
-    ASSERT_NO_THROW(builders::assetBuilderRule(doc));
+    ASSERT_NO_THROW(bld::assetBuilderRule(doc));
 }
 
 TEST(AssetBuilderRule, BuildsOperates)
@@ -92,23 +100,23 @@ TEST(AssetBuilderRule, BuildsOperates)
         ]
     })"};
 
-    auto rule = builders::assetBuilderRule(doc);
+    auto rule = bld::assetBuilderRule(doc);
 
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
             // TODO: fix json interface to not throw exception
-            s.on_next(std::make_shared<json::Document>(R"({
+            s.on_next(createEvent(R"({
                 "field1": "value",
                 "field2": 2,
                 "field3": "value",
                 "field4": true,
                 "field5": "+exists"
             })"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"value"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"({
+            s.on_next(createEvent(R"({
                 "field":"value",
                 "field1": "value",
                 "field2": 2,
@@ -117,7 +125,7 @@ TEST(AssetBuilderRule, BuildsOperates)
                 "field5": "+exists",
                 "field6": "+exists"
             })"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"otherfield":1}
             )"));
             s.on_completed();
@@ -130,6 +138,6 @@ TEST(AssetBuilderRule, BuildsOperates)
     ASSERT_EQ(expected.size(), 2);
     for (auto e : expected)
     {
-        ASSERT_STREQ(e->get("/mapped/field").GetString(), "value");
+        ASSERT_STREQ(e->getEvent()->get("/mapped/field").GetString(), "value");
     }
 }
