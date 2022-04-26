@@ -14,10 +14,15 @@
 
 #include "opBuilderMapReference.hpp"
 
-using namespace builder::internals::builders;
+using namespace base;
+namespace bld = builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
+
+auto createEvent = [](const char * json){
+    return std::make_shared<EventHandler>(std::make_shared<Document>(json));
+};
 
 TEST(opBuilderMapReference, Builds)
 {
@@ -25,7 +30,7 @@ TEST(opBuilderMapReference, Builds)
         "normalize":
             {"field": "$other_field"}
     })"};
-    ASSERT_NO_THROW(opBuilderMapReference(doc.get("/normalize"), tr));
+    ASSERT_NO_THROW(bld::opBuilderMapReference(doc.get("/normalize"), tr));
 }
 
 TEST(opBuilderMapReference, BuildsOperates)
@@ -39,22 +44,22 @@ TEST(opBuilderMapReference, BuildsOperates)
         [=](auto s)
         {
             // TODO: Fix json to return false instead of throw
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"other_field":"referenced"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"value"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"values"}
             )"));
             s.on_completed();
         });
-    Lifter lift1 = opBuilderMapReference(doc.get("/normalize"), tr);
+    Lifter lift1 = bld::opBuilderMapReference(doc.get("/normalize"), tr);
 
     Observable output = lift1(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_STREQ(expected[0]->get("/field").GetString(), "referenced");
+    ASSERT_STREQ(expected[0]->getEvent()->get("/field").GetString(), "referenced");
 }
