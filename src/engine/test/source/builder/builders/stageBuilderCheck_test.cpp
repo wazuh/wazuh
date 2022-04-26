@@ -24,7 +24,7 @@ using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
 
 auto createEvent = [](const char * json){
-    return std::make_shared<EventHandler>(std::make_shared<json::Document>(json));
+    return std::make_shared<EventHandler>(std::make_shared<Document>(json));
 };
 
 TEST(StageBuilderCheck, BuildsAllNonRegistered)
@@ -55,7 +55,7 @@ TEST(StageBuilderCheck, Builds)
     Registry::registerBuilder("helper.not_exists", c);
     c = bld::opBuilderCondition;
     Registry::registerBuilder("condition", c);
-    c = combinatorBuilderChain;
+    c = bld::combinatorBuilderChain;
     Registry::registerBuilder("combinator.chain", c);
 
     Document doc{R"({
@@ -90,17 +90,17 @@ TEST(StageBuilderCheck, BuildsOperates)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"({
+            s.on_next(createEvent(R"({
                 "field1": "value",
                 "field2": 2,
                 "field3": "value",
                 "field4": true,
                 "field5": "+exists"
             })"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"values"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"({
+            s.on_next(createEvent(R"({
                 "field1": "value",
                 "field2": 2,
                 "field3": "value",
@@ -108,7 +108,7 @@ TEST(StageBuilderCheck, BuildsOperates)
                 "field5": "+exists",
                 "field6": "+exists"
             })"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"otherfield":1}
             )"));
             s.on_completed();
