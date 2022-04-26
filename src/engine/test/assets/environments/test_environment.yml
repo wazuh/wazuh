@@ -1,7 +1,8 @@
 decoders:
-  - decoder_test
-  - decoder_test_index_1
-  - decoder_test_index_2
+  - decoder_test                 # [Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: user#xxx
+  - decoder_test_index_1         # [Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: user#one
+  - decoder_test_index_2         # [Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: notuser#two
+  - decoder_test_index_2_child_1 # [Mon Jan 2 15:04:05 2006] host test_decoder_example[1234]: user#two
 rules:
   - rule_test
 filters:
