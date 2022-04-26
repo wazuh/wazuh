@@ -14,10 +14,15 @@
 
 #include "opBuilderMapValue.hpp"
 
-using namespace builder::internals::builders;
+using namespace base;
+namespace bld = builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
+
+auto createEvent = [](const char * json){
+    return std::make_shared<EventHandler>(std::make_shared<Document>(json));
+};
 
 TEST(opBuilderMapValue, Builds)
 {
@@ -31,7 +36,7 @@ TEST(opBuilderMapValue, Builds)
     const auto & arr = doc.begin()->value.GetArray();
     for (auto it = arr.Begin(); it != arr.end(); ++it)
     {
-        ASSERT_NO_THROW(opBuilderMapValue(*it, tr));
+        ASSERT_NO_THROW(bld::opBuilderMapValue(*it, tr));
     }
 }
 
@@ -48,23 +53,23 @@ TEST(opBuilderMapValue, BuildsOperates)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"value"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"values"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"otherfield":"value"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"otherfield":1}
             )"));
             s.on_completed();
         });
-    Lifter lift1 = opBuilderMapValue(doc.get("/normalize/0"), tr);
-    Lifter lift2 = opBuilderMapValue(doc.get("/normalize/1"), tr);
-    Lifter lift3 = opBuilderMapValue(doc.get("/normalize/2"), tr);
+    Lifter lift1 = bld::opBuilderMapValue(doc.get("/normalize/0"), tr);
+    Lifter lift2 = bld::opBuilderMapValue(doc.get("/normalize/1"), tr);
+    Lifter lift3 = bld::opBuilderMapValue(doc.get("/normalize/2"), tr);
 
     Observable output = lift3(lift2(lift1(input)));
     vector<Event> expected;
@@ -72,9 +77,9 @@ TEST(opBuilderMapValue, BuildsOperates)
     ASSERT_EQ(expected.size(), 4);
     for (auto got : expected)
     {
-        ASSERT_STREQ(got->get("/mapped/string").GetString(), "value");
-        ASSERT_EQ(got->get("/mapped/int").GetInt(), 1);
-        ASSERT_TRUE(got->get("/mapped/bool").GetBool());
+        ASSERT_STREQ(got->getEvent()->get("/mapped/string").GetString(), "value");
+        ASSERT_EQ(got->getEvent()->get("/mapped/int").GetInt(), 1);
+        ASSERT_TRUE(got->getEvent()->get("/mapped/bool").GetBool());
     }
 }
 
