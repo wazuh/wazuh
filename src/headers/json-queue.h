@@ -10,8 +10,6 @@
 #ifndef JSON_QUEUE_H
 #define JSON_QUEUE_H
 
-#define MAX_INODE_CHANGE   3
-
 #include <external/cJSON/cJSON.h>
 #include "file-queue.h"
 
