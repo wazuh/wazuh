@@ -34,12 +34,7 @@ base::Lifter stageBuilderCheck(const base::DocumentValue &def, types::TracerFn t
 
     // Build all conditions
     std::vector<base::Lifter> conditions;
-    // Implicit XOR condition in front
-    conditions.push_back([](base::Observable o) {
-        return o.filter([](base::Event e) {
-            // Insert cout for check if the event was discarded
-            return e->getDecoded(); });
-    });
+
     for (auto it = def.Begin(); it != def.End(); ++it)
     {
         try
