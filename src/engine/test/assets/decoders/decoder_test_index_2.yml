@@ -1,0 +1,9 @@
+name: decoder_test_index_2
+parents:
+  - decoder_test
+
+check:
+  - index: +s_eq/two
+
+normalize:
+  - decoded.by: 2
