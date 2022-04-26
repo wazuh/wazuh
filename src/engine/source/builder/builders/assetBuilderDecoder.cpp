@@ -36,6 +36,12 @@ types::ConnectableT assetBuilderDecoder(const base::Document &def)
 
     std::vector<base::Lifter> stages;
 
+    // Implicit XOR condition in front
+    stages.push_back([](base::Observable o) {
+        return o.filter([](base::Event e) {
+            return !e->isDecoded(); });
+    });
+
     // Needed to build stages in a for loop popping its attributes
     std::map<std::string, const base::DocumentValue &> attributes;
     try
@@ -76,6 +82,7 @@ types::ConnectableT assetBuilderDecoder(const base::Document &def)
         try
         {
             for (const base::DocumentValue &parentName :
+                // TODO Check if this is an array
                  attributes.at("parents").GetArray())
             {
                 parents.push_back(parentName.GetString());
