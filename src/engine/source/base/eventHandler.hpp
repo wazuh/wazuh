@@ -39,21 +39,19 @@ public:
     }
 
     /**
-     * @brief Get the Decoded
+     * @brief Checks if the event was decoded
      *
-     * @return bool
+     * @return return true if it reached the end of the decoding stage
      */
-    bool getDecoded() {
+    bool isDecoded() {
         return is_decoded;
     }
 
     /**
-     * @brief Set the Decoded
-     *
-     * @param decoded
+     * @brief Changes event status to decoded
      */
-    void setDecoded(bool decoded) {
-        is_decoded = decoded;
+    void setDecoded() {
+        is_decoded = true;
     }
 };
 
