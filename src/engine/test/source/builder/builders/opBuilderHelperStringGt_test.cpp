@@ -14,8 +14,8 @@
 #include "opBuilderHelperFilter.hpp"
 #include "base/baseTypes.hpp"
 
-using namespace builder::internals::builders;
 using namespace base;
+namespace bld = builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
@@ -31,7 +31,7 @@ TEST(opBuilderHelperStringGT, Builds)
         "check":
             {"field2check": "+s_gt/abcd"}
     })"};
-    ASSERT_NO_THROW(opBuilderHelperStringGT(doc.get("/check"), tr));
+    ASSERT_NO_THROW(bld::opBuilderHelperStringGT(doc.get("/check"), tr));
 }
 
 // Build incorrect number of arguments
@@ -41,7 +41,7 @@ TEST(opBuilderHelperStringGT, Builds_incorrect_number_of_arguments)
         "check":
             {"field2check": "+s_gt/test_value/test_value2"}
     })"};
-    ASSERT_THROW(opBuilderHelperStringGT(doc.get("/check"), tr), std::runtime_error);
+    ASSERT_THROW(bld::opBuilderHelperStringGT(doc.get("/check"), tr), std::runtime_error);
 }
 
 // Test ok: static values
@@ -95,7 +95,7 @@ TEST(opBuilderHelperStringGT, Static_string_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringGT(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperStringGT(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -135,7 +135,7 @@ TEST(opBuilderHelperStringGT, Static_number_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringGT(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperStringGT(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -178,7 +178,7 @@ TEST(opBuilderHelperStringGT, Dynamics_string_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperStringGT(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperStringGT(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });

@@ -17,10 +17,15 @@
 #include "opBuilderHelperFilter.hpp"
 #include "stageBuilderCheck.hpp"
 
-using namespace builder::internals::builders;
+using namespace base;
+namespace bld = builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
+
+auto createEvent = [](const char * json){
+    return std::make_shared<EventHandler>(std::make_shared<json::Document>(json));
+};
 
 TEST(StageBuilderCheck, BuildsAllNonRegistered)
 {
@@ -40,15 +45,15 @@ TEST(StageBuilderCheck, BuildsAllNonRegistered)
 
 TEST(StageBuilderCheck, Builds)
 {
-    BuilderVariant c = opBuilderConditionValue;
+    BuilderVariant c = bld::opBuilderConditionValue;
     Registry::registerBuilder("condition.value", c);
-    c = opBuilderConditionReference;
+    c = bld::opBuilderConditionReference;
     Registry::registerBuilder("condition.reference", c);
-    c = opBuilderHelperExists;
+    c = bld::opBuilderHelperExists;
     Registry::registerBuilder("helper.exists", c);
-    c = opBuilderHelperNotExists;
+    c = bld::opBuilderHelperNotExists;
     Registry::registerBuilder("helper.not_exists", c);
-    c = opBuilderCondition;
+    c = bld::opBuilderCondition;
     Registry::registerBuilder("condition", c);
     c = combinatorBuilderChain;
     Registry::registerBuilder("combinator.chain", c);

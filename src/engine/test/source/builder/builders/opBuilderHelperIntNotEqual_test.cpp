@@ -14,8 +14,8 @@
 #include "opBuilderHelperFilter.hpp"
 #include "base/baseTypes.hpp"
 
-using namespace builder::internals::builders;
 using namespace base;
+namespace bld = builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
@@ -31,7 +31,7 @@ TEST(opBuilderHelperIntNotEqual, Builds)
             {"field_test": "+i_ne/10"}
     })"};
 
-    ASSERT_NO_THROW(opBuilderHelperIntNotEqual(doc.get("/check"), tr));
+    ASSERT_NO_THROW(bld::opBuilderHelperIntNotEqual(doc.get("/check"), tr));
 }
 
 TEST(opBuilderHelperIntNotEqual, Builds_error_bad_parameter)
@@ -41,7 +41,7 @@ TEST(opBuilderHelperIntNotEqual, Builds_error_bad_parameter)
             {"field_test": "+i_ne/test"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIntNotEqual(doc.get("/check"), tr), std::invalid_argument);
+    ASSERT_THROW(bld::opBuilderHelperIntNotEqual(doc.get("/check"), tr), std::invalid_argument);
 }
 
 TEST(opBuilderHelperIntNotEqual, Builds_error_more_parameters)
@@ -51,7 +51,7 @@ TEST(opBuilderHelperIntNotEqual, Builds_error_more_parameters)
             {"field_test": "+i_ne/10/10"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIntNotEqual(doc.get("/check"), tr), std::runtime_error);
+    ASSERT_THROW(bld::opBuilderHelperIntNotEqual(doc.get("/check"), tr), std::runtime_error);
 }
 
 TEST(opBuilderHelperIntNotEqual, Exec_not_equal_ok)
@@ -78,7 +78,7 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_ok)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntNotEqual(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperIntNotEqual(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -113,7 +113,7 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_true)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntNotEqual(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperIntNotEqual(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -148,7 +148,7 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_false)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntNotEqual(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperIntNotEqual(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -193,7 +193,7 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_ref_true)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntNotEqual(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperIntNotEqual(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -242,7 +242,7 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_ref_false)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntNotEqual(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperIntNotEqual(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -285,7 +285,7 @@ TEST(opBuilderHelperIntNotEqual, Exec_dynamics_int_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperIntNotEqual(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperIntNotEqual(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -362,7 +362,7 @@ TEST(opBuilderHelperIntNotEqual, Exec_multilevel_dynamics_int_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperIntNotEqual(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderHelperIntNotEqual(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
 
