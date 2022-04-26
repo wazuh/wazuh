@@ -15,10 +15,15 @@
 #include "opBuilderMapValue.hpp"
 #include "opBuilderHelperFilter.hpp"
 
-using namespace builder::internals::builders;
+using namespace base;
+namespace bld = builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
+
+auto createEvent = [](const char * json){
+    return std::make_shared<EventHandler>(std::make_shared<Document>(json));
+};
 
 TEST(opBuilderMap, BuildsAllNonRegistered)
 {
@@ -33,13 +38,13 @@ TEST(opBuilderMap, BuildsAllNonRegistered)
     const auto & arr = doc.begin()->value.GetArray();
     for (auto it = arr.Begin(); it != arr.end(); ++it)
     {
-        ASSERT_THROW(opBuilderMap(*it, tr), invalid_argument);
+        ASSERT_THROW(bld::opBuilderMap(*it, tr), invalid_argument);
     }
 }
 
 TEST(opBuilderMap, BuildsValue)
 {
-    BuilderVariant c = opBuilderMapValue;
+    BuilderVariant c = bld::opBuilderMapValue;
     Registry::registerBuilder("map.value", c);
     Document doc{R"({
         "normalize": [
@@ -51,14 +56,14 @@ TEST(opBuilderMap, BuildsValue)
     const auto & arr = doc.begin()->value.GetArray();
     for (auto it = arr.Begin(); it != arr.end(); ++it)
     {
-        ASSERT_NO_THROW(opBuilderMap(*it, tr));
+        ASSERT_NO_THROW(bld::opBuilderMap(*it, tr));
     }
 }
 
 TEST(opBuilderMap, BuildsReference)
 {
-    BuilderVariant c = opBuilderMapReference;
+    BuilderVariant c = bld::opBuilderMapReference;
     Registry::registerBuilder("map.reference", c);
     Document doc{R"({"normalize": {"ref": "$ref"}})"};
-    ASSERT_NO_THROW(opBuilderMap(doc.get("/normalize"), tr));
+    ASSERT_NO_THROW(bld::opBuilderMap(doc.get("/normalize"), tr));
 }
