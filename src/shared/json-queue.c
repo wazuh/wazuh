@@ -79,6 +79,7 @@ cJSON * jqueue_next(file_queue * queue) {
         }
 
         // If the inode has changed, reopen and retry to open  
+
         if (buf.st_ino != queue->f_status.st_ino) {
             mdebug2("jqueue_next(): Alert file inode changed. Reloading.");
 
