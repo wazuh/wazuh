@@ -14,10 +14,15 @@
 
 #include "opBuilderConditionReference.hpp"
 
-using namespace builder::internals::builders;
+using namespace base;
+namespace bld = builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
+
+auto createEvent = [](const char * json){
+    return std::make_shared<EventHandler>(std::make_shared<Document>(json));
+};
 
 TEST(opBuilderConditionReference, Builds)
 {
@@ -38,24 +43,24 @@ TEST(opBuilderConditionReference, BuildsOperatesString)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "field":"value1",
                     "otherfield":"value1"
                 }
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "field":"value1",
                     "otherfield":"value2"
                 }
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "otherfield":"value1"
                 }
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "field":"value1"
                 }
@@ -67,8 +72,8 @@ TEST(opBuilderConditionReference, BuildsOperatesString)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_STREQ(expected[0]->get("/field").GetString(), "value1");
-    ASSERT_STREQ(expected[0]->get("/otherfield").GetString(), "value1");
+    ASSERT_STREQ(expected[0]->getEvent()->get("/field").GetString(), "value1");
+    ASSERT_STREQ(expected[0]->getEvent()->get("/otherfield").GetString(), "value1");
 }
 
 TEST(opBuilderConditionReference, BuildsOperatesInt)
@@ -81,24 +86,24 @@ TEST(opBuilderConditionReference, BuildsOperatesInt)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "field":1,
                     "otherfield":1
                 }
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "field":1,
                     "otherfield":2
                 }
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "otherfield":"value1"
                 }
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "field":"value1"
                 }
@@ -110,8 +115,8 @@ TEST(opBuilderConditionReference, BuildsOperatesInt)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_EQ(expected[0]->get("/field").GetInt(), 1);
-    ASSERT_EQ(expected[0]->get("/otherfield").GetInt(), 1);
+    ASSERT_EQ(expected[0]->getEvent()->get("/field").GetInt(), 1);
+    ASSERT_EQ(expected[0]->getEvent()->get("/otherfield").GetInt(), 1);
 }
 
 TEST(opBuilderConditionReference, BuildsOperatesBool)
@@ -124,24 +129,24 @@ TEST(opBuilderConditionReference, BuildsOperatesBool)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "field":true,
                     "otherfield":true
                 }
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "field":true,
                     "otherfield":false
                 }
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "otherfield":"value1"
                 }
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "field":"value1"
                 }
@@ -153,8 +158,8 @@ TEST(opBuilderConditionReference, BuildsOperatesBool)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_TRUE(expected[0]->get("/field").GetBool());
-    ASSERT_TRUE(expected[0]->get("/otherfield").GetBool());
+    ASSERT_TRUE(expected[0]->getEvent()->get("/field").GetBool());
+    ASSERT_TRUE(expected[0]->getEvent()->get("/otherfield").GetBool());
 }
 
 TEST(opBuilderConditionReference, BuildsOperatesNull)
@@ -167,24 +172,24 @@ TEST(opBuilderConditionReference, BuildsOperatesNull)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "field":null,
                     "otherfield":null
                 }
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "field":null,
                     "otherfield":false
                 }
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "otherfield":"value1"
                 }
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "field":"value1"
                 }
@@ -196,7 +201,7 @@ TEST(opBuilderConditionReference, BuildsOperatesNull)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_EQ(expected[0]->get("/field"), rapidjson::Value{});
+    ASSERT_EQ(expected[0]->getEvent()->get("/field"), rapidjson::Value{});
 }
 
 TEST(opBuilderConditionReference, BuildsOperatesArray)
@@ -209,24 +214,24 @@ TEST(opBuilderConditionReference, BuildsOperatesArray)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "field":[1, 2],
                     "otherfield":[1, 2]
                 }
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "field":[1, 2],
                     "otherfield":[1, 2, 3]
                 }
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "otherfield":"value1"
                 }
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {
                     "field":"value1"
                 }
@@ -238,11 +243,11 @@ TEST(opBuilderConditionReference, BuildsOperatesArray)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_TRUE(expected[0]->get("/field").IsArray());
-    ASSERT_EQ(expected[0]->get("/field").GetArray().Size(), expected[0]->get("/otherfield").GetArray().Size());
-    for (auto eIt = expected[0]->get("/field").GetArray().Begin(),
-              it = expected[0]->get("/otherfield").GetArray().Begin();
-         eIt != expected[0]->get("/field").GetArray().End(); ++eIt, ++it)
+    ASSERT_TRUE(expected[0]->getEvent()->get("/field").IsArray());
+    ASSERT_EQ(expected[0]->getEvent()->get("/field").GetArray().Size(), expected[0]->getEvent()->get("/otherfield").GetArray().Size());
+    for (auto eIt = expected[0]->getEvent()->get("/field").GetArray().Begin(),
+              it = expected[0]->getEvent()->get("/otherfield").GetArray().Begin();
+         eIt != expected[0]->getEvent()->get("/field").GetArray().End(); ++eIt, ++it)
     {
         ASSERT_EQ(*eIt, *it);
     }
@@ -258,7 +263,7 @@ TEST(opBuilderConditionReference, BuildsOperatesObject)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
             {
                 "field": {
                     "int": 1,
@@ -274,7 +279,7 @@ TEST(opBuilderConditionReference, BuildsOperatesObject)
                 }
             }
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
             {
                 "field": {
                     "int": 1,
@@ -290,19 +295,19 @@ TEST(opBuilderConditionReference, BuildsOperatesObject)
                 }
             }
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":true}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":1}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"1"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"otherfield":"value"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"otherfield":1}
             )"));
             s.on_completed();
@@ -312,11 +317,11 @@ TEST(opBuilderConditionReference, BuildsOperatesObject)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_TRUE(expected[0]->get("/field").IsObject());
-    ASSERT_TRUE(expected[0]->get("/otherfield").IsObject());
-    for (auto eIt = expected[0]->get("/field").GetObj().MemberBegin(),
-              it = expected[0]->get("/otherfield").GetObj().MemberBegin();
-         eIt != expected[0]->get("/field").GetObj().MemberEnd(); ++eIt, ++it)
+    ASSERT_TRUE(expected[0]->getEvent()->get("/field").IsObject());
+    ASSERT_TRUE(expected[0]->getEvent()->get("/otherfield").IsObject());
+    for (auto eIt = expected[0]->getEvent()->get("/field").GetObj().MemberBegin(),
+              it = expected[0]->getEvent()->get("/otherfield").GetObj().MemberBegin();
+         eIt != expected[0]->getEvent()->get("/field").GetObj().MemberEnd(); ++eIt, ++it)
     {
         ASSERT_EQ(eIt->name, it->name);
         ASSERT_EQ(eIt->value, it->value);
@@ -333,24 +338,24 @@ TEST(opBuilderConditionReference, BuildsOperatesOneLevel)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":2}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"({
+            s.on_next(createEvent(R"({
                 "field":{"level": 1},
                 "otherfield":{"level": 1}
             })"));
-            s.on_next(std::make_shared<json::Document>(R"({
+            s.on_next(createEvent(R"({
                 "field":{"level": 1},
                 "otherfield":{"level": 2}
             })"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":{"level": "1"}}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"otherfield":"value"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"otherfield":1}
             )"));
             s.on_completed();
@@ -360,7 +365,7 @@ TEST(opBuilderConditionReference, BuildsOperatesOneLevel)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_EQ(expected[0]->get("/field/level").GetInt(), expected[0]->get("/otherfield/level").GetInt());
+    ASSERT_EQ(expected[0]->getEvent()->get("/field/level").GetInt(), expected[0]->getEvent()->get("/otherfield/level").GetInt());
 }
 
 TEST(opBuilderConditionReference, BuildsOperatesMultiLevel)
@@ -373,24 +378,24 @@ TEST(opBuilderConditionReference, BuildsOperatesMultiLevel)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":2}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"({
+            s.on_next(createEvent(R"({
                 "field":{"multi": {"level": 1}},
                 "otherfield":{"multi": {"level": 1}}
             })"));
-            s.on_next(std::make_shared<json::Document>(R"({
+            s.on_next(createEvent(R"({
                 "field":{"multi": {"level": 1}},
                 "otherfield":{"multi": {"level": 2}}
             })"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":{"level": "1"}}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"otherfield":"value"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"otherfield":1}
             )"));
             s.on_completed();
@@ -400,5 +405,5 @@ TEST(opBuilderConditionReference, BuildsOperatesMultiLevel)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_EQ(expected[0]->get("/field/multi/level").GetInt(), expected[0]->get("/otherfield/multi/level").GetInt());
+    ASSERT_EQ(expected[0]->getEvent()->get("/field/multi/level").GetInt(), expected[0]->getEvent()->get("/otherfield/multi/level").GetInt());
 }
