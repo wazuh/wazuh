@@ -141,3 +141,8 @@ add_executable(opBuilderKVDBTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBNotMatch_test.cpp
 )
 gtest_discover_tests(opBuilderKVDBTest)
+
+add_executable(combinatorBuilderBroadcastTest
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/combinatorBuilderBroadcast_test.cpp
+)
+gtest_discover_tests(combinatorBuilderBroadcastTest)

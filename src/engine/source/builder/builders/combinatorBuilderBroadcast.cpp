@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015-2022, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -10,16 +10,18 @@
 #include "combinatorBuilderBroadcast.hpp"
 
 #include <vector>
-
 namespace builder::internals::builders
 {
 
-base::Lifter combinatorBuilderBroadcast(const std::vector<base::Lifter> & lifters)
+using base::Lifter;
+using base::Observable;
+using std::vector;
+
+Lifter combinatorBuilderBroadcast(const vector<Lifter> &lifters)
 {
-    return [=](base::Observable input) -> base::Observable
+    return [=](Observable input) -> Observable
     {
-        input = input.publish().ref_count();
-        std::vector<base::Observable> inputs;
+        vector<Observable> inputs;
         for (auto op : lifters)
         {
             inputs.push_back(op(input));
