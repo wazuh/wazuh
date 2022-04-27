@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015-2022, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -14,13 +14,16 @@
 
 namespace builder::internals::builders
 {
+
 /**
  * @brief Broadcast to multiple lifters
  *
  * @param lifters
  * @return base::Lifter
  */
-base::Lifter combinatorBuilderBroadcast(const std::vector<base::Lifter> & lifters);
+base::Lifter
+combinatorBuilderBroadcast(const std::vector<base::Lifter> &lifters);
+
 } // namespace builder::internals::builders
 
 #endif // _COMBINATOR_BUILDER_BROADCAST_H
