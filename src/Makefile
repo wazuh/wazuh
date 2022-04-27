@@ -91,7 +91,6 @@ DISABLE_STRIP_SYMBOLS?=no
 ifeq (${TARGET}, winagent)
 EXECUTABLE_FILES := $(shell find win32 -maxdepth 1 -type f -name "*.exe"  -perm /a=x)
 EXECUTABLE_FILES += $(shell find . -type f -name "*.dll" ! -path "./external/*" ! -path "./win32/*" -perm /a=x)
-EXECUTABLE_FILES := $(EXECUTABLE_FILES:./%=%)
 else
 ifeq (${uname_S}, Linux)
 EXECUTABLE_FILES := $(shell find . -maxdepth 1 -type f ! -name "*.so"  -perm /a=x)
@@ -135,7 +134,7 @@ endif
 # Debug symbols and optimization of CMake subprojects
 CMAKE_BUILD_TYPE?=Release
 ifeq (${DBG_SYM_SUPPORT},yes)
-CMAKE_BUILD_TYPE=RelWithDbgInfo
+CMAKE_BUILD_TYPE=RelWithDebInfo
 endif
 ifneq (,$(filter ${DEBUG},YES yes y Y 1))
 CMAKE_BUILD_TYPE=Debug
@@ -823,17 +822,17 @@ endif
 ifeq (,$(filter ${DISABLE_STRIP_SYMBOLS},YES yes y Y 1))
 ifeq (${uname_S}, Linux)
 ifeq (${TARGET}, winagent)
-	@-if test -n "${WIN_STRIP_TOOL_PATH}" -a -d "${WIN_STRIP_TOOL_PATH}" -a -f "${WIN_STRIP_TOOL_PATH}/cv2pdb.exe" && command -v wine > /dev/null 2>&1; then \
-		$(foreach binary, ${EXECUTABLE_FILES}, wine ${WIN_STRIP_TOOL_PATH}/cv2pdb.exe $(binary) $(binary) ${SYMBOLS_PATH}/$(basename $(notdir $(binary))).pdb;) \
+	@if test -n "${WIN_STRIP_TOOL_PATH}" -a -d "${WIN_STRIP_TOOL_PATH}" -a -f "${WIN_STRIP_TOOL_PATH}/cv2pdb.exe" && command -v wine > /dev/null 2>&1; then \
+		$(foreach binary, ${EXECUTABLE_FILES}, (${MING_BASE}objdump -h $(binary) | grep -q ".debug_info" && wine ${WIN_STRIP_TOOL_PATH}/cv2pdb.exe $(binary) $(binary) ${SYMBOLS_PATH}/$(basename $(notdir $(binary))).pdb) || true;) \
 	else \
 		$(foreach binary, ${EXECUTABLE_FILES}, ${MING_BASE}objcopy --strip-unneeded ${binary};) \
 	fi
 else
-	@-$(foreach binary, ${EXECUTABLE_FILES}, objcopy --only-keep-debug $(binary) ${SYMBOLS_PATH}/$(basename $(notdir $(binary))).debug; objcopy --strip-unneeded $(binary);)
+	@$(foreach binary, ${EXECUTABLE_FILES}, (objdump -h $(binary) | grep -q .debug_info && objcopy --only-keep-debug $(binary) ${SYMBOLS_PATH}/$(basename $(notdir $(binary))).debug && objcopy --strip-unneeded $(binary)) || true;)
 endif
 endif
 ifeq (${uname_S}, Darwin)
-	@$(foreach binary, ${EXECUTABLE_FILES}, dsymutil -o ${SYMBOLS_PATH}/$(binary).dSYM $(binary) && strip -S $(binary);)
+	@$(foreach binary, ${EXECUTABLE_FILES}, (dsymutil -s $(binary) | grep -q N_OSO && dsymutil -o ${SYMBOLS_PATH}/$(basename $(notdir $(binary))).dSYM $(binary) && strip -S $(binary)) || true;)
 endif
 endif
 
