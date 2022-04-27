@@ -13,15 +13,20 @@
 #include "register.hpp"
 
 #define GTEST_COUT std::cerr << "[          ] [ INFO ] "
+using namespace base;
+
+auto createEvent = [](const char * json){
+    return std::make_shared<EventHandler>(std::make_shared<Document>(json));
+};
 
 template<class T>
 using Op_t = std::function<T(T)>;
 template<class T>
-using Obs_t = rxcpp::observable<T>;
+using observable = rxcpp::observable<T>;
 template<class T>
 using Sub_t = rxcpp::subscriber<T>;
 template<class T>
-using Con_t = builder::internals::Connectable<Obs_t<T>>;
+using Con_t = builder::internals::Connectable<observable<T>>;
 
 TEST(Builder, EnvironmentSingleDecoder)
 {
@@ -53,7 +58,7 @@ TEST(Builder, EnvironmentOneofEachAsset)
 }
 
 template<class Value>
-void visit(Obs_t<Value> source,
+void visit(observable<Value> source,
            Con_t<Value> root,
            std::map<Con_t<Value>, std::set<Con_t<Value>>> &edges,
            Sub_t<Value> s)
@@ -69,7 +74,7 @@ void visit(Obs_t<Value> source,
     if (node.m_inputs.size() == 0)
         node.addInput(source);
 
-    Obs_t<Value> obs = node.connect();
+    observable<Value> obs = node.connect();
 
     // Add obs as an input to the childs
     for (Con_t<Value> n : itr->second)
@@ -90,31 +95,29 @@ void visit(Obs_t<Value> source,
 
 TEST(Builder, GraphRulesFilteredOut)
 {
-    using Event_t = std::shared_ptr<json::Document>;
-    using Obs_t = rxcpp::observable<std::shared_ptr<json::Document>>;
-    using Sub_t = rxcpp::subscriber<std::shared_ptr<json::Document>>;
-    using Con_t = builder::internals::Connectable<Obs_t>;
+    using Sub_t = rxcpp::subscriber<Event>;
+    using Con_t = builder::internals::Connectable<Observable>;
 
     int expected = 2;
-    auto source = rxcpp::observable<>::create<Event_t>(
+    auto source = rxcpp::observable<>::create<Event>(
                       [expected](const Sub_t s)
                       {
                           for (int i = 0; i < expected; i++)
                           {
                               if (i % 2 == 0)
-                                  s.on_next(std::make_shared<json::Document>(R"({"type": "int", "field": "odd",
+                                  s.on_next(createEvent(R"({"type": "int", "field": "odd",
                                   "value": 0})"));
                               else
-                                  s.on_next(std::make_shared<json::Document>(R"({"type": "int", "field": "even",
+                                  s.on_next(createEvent(R"({"type": "int", "field": "even",
                                   "value": 1})"));
                           }
                           s.on_completed();
                       })
                       .publish();
 
-    auto sub = rxcpp::subjects::subject<Event_t>();
+    auto sub = rxcpp::subjects::subject<Event>();
 
-    auto subscriber = rxcpp::make_subscriber<Event_t>([](Event_t v) { GTEST_COUT << "Got " << v->str() << std::endl;
+    auto subscriber = rxcpp::make_subscriber<Event>([](Event v) { GTEST_COUT << "Got " << v->getEvent()->str() << std::endl;
     },
                                                       []() { GTEST_COUT << "OnCompleted" << std::endl; });
 
@@ -148,31 +151,29 @@ TEST(Builder, GraphRulesFilteredOut)
 
 TEST(Builder, GraphDuplicatedExample)
 {
-    using Event_t = std::shared_ptr<json::Document>;
-    using Obs_t = rxcpp::observable<std::shared_ptr<json::Document>>;
-    using Sub_t = rxcpp::subscriber<std::shared_ptr<json::Document>>;
-    using Con_t = builder::internals::Connectable<Obs_t>;
+    using Sub_t = rxcpp::subscriber<Event>;
+    using Con_t = builder::internals::Connectable<Observable>;
 
     int expected = 2;
-    auto source = rxcpp::observable<>::create<Event_t>(
+    auto source = rxcpp::observable<>::create<Event>(
                       [expected](const Sub_t s)
                       {
                           for (int i = 0; i < expected; i++)
                           {
                               if (i % 2 == 0)
-                                  s.on_next(std::make_shared<json::Document>(R"({"type": "int", "field": "odd",
+                                  s.on_next(createEvent(R"({"type": "int", "field": "odd",
                                   "value": 0})"));
                               else
-                                  s.on_next(std::make_shared<json::Document>(R"({"type": "int", "field": "even",
+                                  s.on_next(createEvent(R"({"type": "int", "field": "even",
                                   "value": 1})"));
                           }
                           s.on_completed();
                       })
                       .publish();
 
-    auto sub = rxcpp::subjects::subject<Event_t>();
+    auto sub = rxcpp::subjects::subject<Event>();
 
-    auto subscriber = rxcpp::make_subscriber<Event_t>([](Event_t v) { GTEST_COUT << "Got " << v->str() << std::endl;
+    auto subscriber = rxcpp::make_subscriber<Event>([](Event v) { GTEST_COUT << "Got " << v->getEvent()->str() << std::endl;
     },
                                                       []() { GTEST_COUT << "OnCompleted" << std::endl; });
 
