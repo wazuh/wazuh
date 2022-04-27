@@ -344,66 +344,72 @@ TEST(StageBuilderNormalize, BuildNormalizeWithCheckNoMap)
 }
 
 // TODO: fix this test
-// TEST(StageBuilderNormalize, BuildsOperates)
-// {
-//     Document doc {R"({
-//         "normalize": [
-//             {
-//                 "map": {
-//                     "mapped.field1": "value",
-//                     "mapped.field2": 2,
-//                     "mapped.field3": "$field1",
-//                     "mapped.field4": true
-//                 }
-//             }
-//         ]
-//     })"};
+TEST(StageBuilderNormalize, BuildsOperates)
+{
+    Document doc {R"({
+        "normalize": [
+            {
+                "check": [
+                    {"field1": 1},
+                    {"field2": 2},
+                    {"field3": "$field1"},
+                    {"field4": true},
+                    {"field5": "+exists"}
+                ],
+                "map": {
+                    "field6": 2,
+                    "field7": 2,
+                    "field8": "$field1",
+                    "field9": true,
+                    "field10": false
+                }
+            },
+            {
+                "map": {
+                    "field1": "value",
+                    "field2": 3,
+                    "field3": "$field1",
+                    "field4": true,
+                    "field5": false
+                }
+            }
+        ]
+    })"};
 
-//     auto normalize = builders::stageBuilderNormalize(doc.get("/normalize"),
-//     tr);
+    auto normalize = builders::stageBuilderNormalize(doc.get("/normalize"), tr);
 
-//     Observable input = observable<>::create<Event>(
-//         [=](auto s)
-//         {
-//             s.on_next(std::make_shared<json::Document>(R"({
-//                 "map": {
-//                     "field1": "value",
-//                     "field2": 2,
-//                     "field3": "value",
-//                     "field4": true,
-//                     "field5": "+exists"
-//                 }
-//             })"));
-//             // TODO: fix json interfaces to dont throw
-//             // s.on_next(std::make_shared<json::Document>(R"(
-//             //     {"field":"values"}
-//             // )"));
-//             s.on_next(std::make_shared<json::Document>(R"({
-//                 "map": {
-//                     "field1": "value",
-//                     "field2": 2,
-//                     "field3": "value",
-//                     "field4": true,
-//                     "field5": "+exists",
-//                     "field6": "+exists"
-//                 }
-//             })"));
-//             // s.on_next(std::make_shared<json::Document>(R"(
-//             //     {"otherfield":1}
-//             // )"));
-//             s.on_completed();
-//         });
+    Observable input = observable<>::create<Event>(
+        [=](auto s)
+        {
+            s.on_next(std::make_shared<json::Document>(R"({
+                    "field1": "value",
+                    "field2": 2,
+                    "field3": "value",
+                    "field4": true,
+                    "field5": "+exists",
+                    "field6": "+exists"
+            })"));
+            s.on_next(std::make_shared<json::Document>(R"({
+                    "field1": "value",
+                    "field2": 2,
+                    "field3": "value",
+                    "field4": true,
+                    "field5": "+exists",
+                    "field6": "+exists"
+            })"));
+            s.on_completed();
+        });
 
-//     Observable output = normalize(input);
+    Observable output = normalize(input);
 
-// vector<Event> expected;
-// output.subscribe([&](Event e) { expected.push_back(e); });
-// ASSERT_EQ(expected.size(), 2);
-// for (auto e : expected)
-// {
-//     ASSERT_STREQ(e->get("/mapped/field1").GetString(), "value");
-//     ASSERT_EQ(e->get("/mapped/field2").GetInt(), 2);
-//     ASSERT_STREQ(e->get("/mapped/field3").GetString(), "value");
-//     ASSERT_TRUE(e->get("/mapped/field4").GetBool());
-// }
-// }
+    vector<Event> expected;
+    output.subscribe([&](Event e) { expected.push_back(e); });
+    ASSERT_EQ(expected.size(), 2);
+    for (auto e : expected)
+    {
+        ASSERT_STREQ(e->get("/field1").GetString(), "value");
+        ASSERT_EQ(e->get("/field2").GetInt(), 2);
+        ASSERT_STREQ(e->get("/field3").GetString(), "value");
+        ASSERT_TRUE(e->get("/field4").GetBool());
+    }
+}
