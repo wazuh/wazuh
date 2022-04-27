@@ -17,10 +17,15 @@
 
 #include "opBuilderFileOutput.hpp"
 
-using namespace builder::internals::builders;
+using namespace base;
+namespace bld = builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
+
+auto createEvent = [](const char * json){
+    return std::make_shared<EventHandler>(std::make_shared<Document>(json));
+};
 
 TEST(opBuilderFileOutput, Builds)
 {
@@ -29,7 +34,7 @@ TEST(opBuilderFileOutput, Builds)
             {"path": "value"}
     })"};
 
-    ASSERT_NO_THROW(opBuilderFileOutput(doc.get("/file"), tr));
+    ASSERT_NO_THROW(bld::opBuilderFileOutput(doc.get("/file"), tr));
 }
 
 TEST(opBuilderFileOutput, BuildsOperates)
@@ -42,21 +47,21 @@ TEST(opBuilderFileOutput, BuildsOperates)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"value"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"value"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"value"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+            s.on_next(createEvent(R"(
                 {"field":"value"}
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderFileOutput(doc.get("/file"), tr);
+    Lifter lift = bld::opBuilderFileOutput(doc.get("/file"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });

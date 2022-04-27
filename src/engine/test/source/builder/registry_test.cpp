@@ -5,6 +5,8 @@
 #include "testUtils.hpp"
 #include <json.hpp>
 
+using namespace base;
+
 using FakeTrFn = std::function<void(std::string)>;
 FakeTrFn tr = [](std::string msg){};
 
