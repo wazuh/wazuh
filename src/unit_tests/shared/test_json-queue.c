@@ -98,6 +98,38 @@ void test_jqueue_parse_json_invalid(void ** state) {
     assert_int_equal(queue->flags, 0);
 }
 
+void test_jqueue_parse_json_overlong_alert(void ** state) {
+    file_queue * queue = *state;
+    char buffer1[OS_MAXSTR + 1];
+    char buffer2[OS_MAXSTR + 1];
+    int64_t current_pos = 0;
+    cJSON * object = NULL;
+
+    snprintf(queue->file_name, MAX_FQUEUE, "%s", "/home/test");
+    
+    for (int i = 0; i < OS_MAXSTR; i++)
+    {
+        buffer1[i] = 'a';
+    }
+    buffer1[OS_MAXSTR]='\0';
+    
+    snprintf(buffer2, OS_MAXSTR, "%s\n","aaaa"); 
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, 1);
+
+    expect_value(__wrap_fgets, __stream, queue->fp);
+    will_return(__wrap_fgets, buffer1);
+    expect_value(__wrap_fgets, __stream, queue->fp);
+    will_return(__wrap_fgets, buffer2);
+    
+    expect_string(__wrap__merror, formatted_msg, "Overlong JSON alert read from '/home/test'");
+
+    object = jqueue_parse_json(queue);
+
+    assert_null(object);
+    assert_int_equal(queue->flags, 0);
+}
+
 void test_jqueue_parse_json_fgets_fail(void ** state) {
     file_queue * queue = *state;
     int64_t current_pos = 0;
@@ -118,6 +150,7 @@ int main(void) {
     const struct CMUnitTest tests[] = {
             cmocka_unit_test_setup_teardown(test_jqueue_parse_json_valid, setup_queue, teardown_queue),
             cmocka_unit_test_setup_teardown(test_jqueue_parse_json_invalid, setup_queue, teardown_queue),
+            cmocka_unit_test_setup_teardown(test_jqueue_parse_json_overlong_alert, setup_queue, teardown_queue),
             cmocka_unit_test_setup_teardown(test_jqueue_parse_json_fgets_fail, setup_queue, teardown_queue)
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
