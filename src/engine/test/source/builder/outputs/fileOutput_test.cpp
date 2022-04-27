@@ -15,7 +15,12 @@
 
 #include "test_utils.hpp"
 
-using namespace builder::internals;
+using namespace base;
+namespace bld = builder::internals;
+
+auto createEvent = [](const char * json){
+    return std::make_shared<EventHandler>(std::make_shared<Document>(json));
+};
 
 auto messageStr = R"({
     "event": {
@@ -58,20 +63,20 @@ auto compact_message =
 
 TEST(FileOutput, Create)
 {
-    auto output = outputs::FileOutput("/tmp/file");
+    auto output = bld::outputs::FileOutput("/tmp/file");
     std::filesystem::remove("/tmp/file");
 }
 
 TEST(FileOutput, Unknown_path)
 {
-    ASSERT_THROW(outputs::FileOutput("/tmp45/file"), std::invalid_argument);
+    ASSERT_THROW(bld::outputs::FileOutput("/tmp45/file"), std::invalid_argument);
 }
 
 TEST(FileOutput, Write)
 {
     auto filepath = "/tmp/file";
-    auto msg = std::make_shared<json::Document>(messageStr);
-    auto output = outputs::FileOutput(filepath);
+    auto msg = createEvent(messageStr);
+    auto output = bld::outputs::FileOutput(filepath);
     output.write(msg);
 
     std::ifstream ifs(filepath);
