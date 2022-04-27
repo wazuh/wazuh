@@ -187,7 +187,7 @@ struct Connectable
                         },
                         [](auto eptr) {},
                         []() {})
-                    .filter([](base::Event event){
+                    .filter([](auto event){
                         // TODO: This is not only executed in the OUTPUT_DECODER but in all subgraph ends.
                         event->setDecoded();
                         return true;
