@@ -93,21 +93,28 @@ STATIC void fim_send_msg(char mq, const char * location, const char * msg) {
 void fim_sync_check_eps() {
     static long n_msg_sent = 0;
 
-    if (syscheck.sync_max_eps == 0) {
-        return;
-    }
-
     if (++n_msg_sent == syscheck.sync_max_eps) {
         sleep(1);
         n_msg_sent = 0;
     }
 }
-
 // Send a state synchronization message
 void fim_send_sync_state(const char *location, const char* msg) {
-    mdebug2(FIM_DBSYNC_SEND, msg);
-    fim_send_msg(DBSYNC_MQ, location, msg);
-    fim_sync_check_eps();
+
+    if (syscheck.sync_max_eps == 0) {
+        fim_send_msg(DBSYNC_MQ, location, msg);
+        mdebug2(FIM_DBSYNC_SEND, msg);
+    } else {
+        static pthread_mutex_t sync_eps_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+        w_mutex_lock(&sync_eps_mutex);
+
+        fim_send_msg(DBSYNC_MQ, location, msg);
+        mdebug2(FIM_DBSYNC_SEND, msg);
+        fim_sync_check_eps();
+
+        w_mutex_unlock(&sync_eps_mutex);
+    }
 }
 
 // Send a message related to syscheck change/addition
