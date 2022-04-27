@@ -36,7 +36,6 @@ int setup_queue(void **state) {
     file_queue * queue;
 
     os_calloc(1, sizeof(file_queue), queue);
-    queue->read_attempts = 0;
     queue->flags = 0;
     queue->fp = (FILE *)1;
     *state = queue;
@@ -71,7 +70,6 @@ void test_jqueue_parse_json_valid(void ** state) {
 
     output = cJSON_PrintUnformatted(object);
     assert_string_equal(output, "{\"test\":\"valid_json\"}");
-    assert_int_equal(queue->read_attempts, 0);
     assert_int_equal(queue->flags, 0);
 
     os_free(output);
@@ -92,39 +90,11 @@ void test_jqueue_parse_json_invalid(void ** state) {
     expect_value(__wrap_fgets, __stream, queue->fp);
     will_return(__wrap_fgets, buffer);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Invalid JSON alert read from '/home/test'. Remaining attempts: 2");
-    will_return(__wrap_fseek, 0);
+    expect_string(__wrap__merror, formatted_msg, "Invalid JSON alert read from '/home/test': '{\"test\":\"invalid_value'");
 
     object = jqueue_parse_json(queue);
 
     assert_null(object);
-    assert_int_equal(queue->read_attempts, 1);
-    assert_int_equal(queue->flags, 0);
-}
-
-void test_jqueue_parse_json_max_attempts(void ** state) {
-    file_queue * queue = *state;
-    char buffer[OS_MAXSTR + 1];
-    int64_t current_pos = 0;
-    cJSON * object = NULL;
-
-    queue->read_attempts = 2;
-
-    snprintf(queue->file_name, MAX_FQUEUE, "%s", "/home/test");
-    snprintf(buffer, OS_MAXSTR, "%s\n", "{\"test\":\"invalid_value");
-
-    expect_any(__wrap_w_ftell, x);
-    will_return(__wrap_w_ftell, 1);
-    expect_value(__wrap_fgets, __stream, queue->fp);
-    will_return(__wrap_fgets, buffer);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "Invalid JSON alert read from '/home/test'. Remaining attempts: 0");
-    expect_string(__wrap__merror, formatted_msg, "Invalid JSON alert read from '/home/test'. Skipping it.");
-
-    object = jqueue_parse_json(queue);
-
-    assert_null(object);
-    assert_int_equal(queue->read_attempts, 0);
     assert_int_equal(queue->flags, 0);
 }
 
@@ -141,7 +111,6 @@ void test_jqueue_parse_json_fgets_fail(void ** state) {
     object = jqueue_parse_json(queue);
 
     assert_null(object);
-    assert_int_equal(queue->read_attempts, 0);
     assert_int_equal(queue->flags, CRALERT_READ_FAILED);
 }
 
@@ -149,7 +118,6 @@ int main(void) {
     const struct CMUnitTest tests[] = {
             cmocka_unit_test_setup_teardown(test_jqueue_parse_json_valid, setup_queue, teardown_queue),
             cmocka_unit_test_setup_teardown(test_jqueue_parse_json_invalid, setup_queue, teardown_queue),
-            cmocka_unit_test_setup_teardown(test_jqueue_parse_json_max_attempts, setup_queue, teardown_queue),
             cmocka_unit_test_setup_teardown(test_jqueue_parse_json_fgets_fail, setup_queue, teardown_queue)
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
