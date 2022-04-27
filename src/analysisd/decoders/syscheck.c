@@ -223,6 +223,7 @@ void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder) {
     fim_decoder->fields[FIM_REGISTRY_ARCH] = "arch";
     fim_decoder->fields[FIM_REGISTRY_VALUE_NAME] = "value_name";
     fim_decoder->fields[FIM_REGISTRY_VALUE_TYPE] = "value_type";
+    fim_decoder->fields[FIM_REGISTRY_HASH] = "hash_full_path";
     fim_decoder->fields[FIM_ENTRY_TYPE] = "entry_type";
     fim_decoder->fields[FIM_EVENT_TYPE] = "event_type";
 }
@@ -1261,7 +1262,6 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
     cJSON *audit = NULL;
     cJSON *object = NULL;
     char *entry_type = NULL;
-    char *hash_full_path = NULL;
     fim_decoders_t *decoder = NULL;
     syscheck_event_t event_type;
 
@@ -1288,7 +1288,7 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
             } else if (strcmp(object->string, "value_name") == 0) {
                 os_strdup(object->valuestring, lf->fields[FIM_REGISTRY_VALUE_NAME].value);
             } else if (strcmp(object->string, "index") == 0) {
-                os_strdup(object->valuestring, hash_full_path);
+                os_strdup(object->valuestring, lf->fields[FIM_REGISTRY_HASH].value);
             }
 
             break;
@@ -1322,12 +1322,11 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
     entry_type = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type"));
     if (entry_type == NULL) {
         mdebug1("No member 'type' in Syscheck attributes JSON payload");
-        os_free(hash_full_path);
         return -1;
     }
 
     if ((strcmp("registry_key", entry_type) == 0) || (strcmp("registry_value", entry_type) == 0)) {
-        if (hash_full_path == NULL) {
+        if (lf->fields[FIM_REGISTRY_HASH].value == NULL) {
             mdebug1("No member 'index' in Syscheck JSON payload");
             return -1;
         }
@@ -1335,13 +1334,11 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
 
     if (lf->fields[FIM_EVENT_TYPE].value == NULL) {
         mdebug1("No member 'type' in Syscheck JSON payload");
-        os_free(hash_full_path);
         return -1;
     }
 
     if (lf->fields[FIM_FILE].value == NULL) {
         mdebug1("No member 'path' in Syscheck JSON payload");
-        os_free(hash_full_path);
         return -1;
     }
 
@@ -1353,7 +1350,6 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
         decoder = fim_decoders[REGISTRY_VALUE_DECODER];
     } else {
         mdebug1("Invalid member 'type' in Syscheck attributes JSON payload");
-        os_free(hash_full_path);
         return -1;
     }
     os_strdup(entry_type, lf->fields[FIM_ENTRY_TYPE].value);
@@ -1372,7 +1368,6 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
         lf->decoder_info->id =  decoder->delete_id;
     } else {
         mdebug1("Invalid 'type' value '%s' in JSON payload.", lf->fields[FIM_EVENT_TYPE].value);
-        os_free(hash_full_path);
         return -1;
     }
 
@@ -1386,10 +1381,9 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
         if (strcmp("file", entry_type) == 0) {
             fim_send_db_delete(sdb, lf->agent_id, lf->fields[FIM_FILE].value);
         } else {
-            fim_send_db_delete(sdb, lf->agent_id, hash_full_path);
+            fim_send_db_delete(sdb, lf->agent_id, lf->fields[FIM_REGISTRY_HASH].value);
         }
     }
-    os_free(hash_full_path);
 
     return 0;
 }

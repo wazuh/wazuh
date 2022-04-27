@@ -494,7 +494,9 @@ int wdb_fim_insert_entry(wdb_t * wdb, const char * file, int ftype, const sk_sum
 
 int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
     cJSON *json_path;
-    char *path, *arch, *value_name, *full_path, *item_type;
+    char *path, *arch, *value_name, *item_type;
+    char *full_path = NULL;
+
     if (!wdb) {
         merror("WDB object cannot be null.");
         return -1;

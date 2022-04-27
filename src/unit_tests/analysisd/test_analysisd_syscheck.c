@@ -234,6 +234,8 @@ static int setup_event_info(void **state) {
         return -1;
     if(lf->decoder_info->fields[FIM_REGISTRY_VALUE_TYPE] = strdup("value_type"), lf->decoder_info->fields[FIM_REGISTRY_VALUE_TYPE] == NULL)
         return -1;
+    if(lf->decoder_info->fields[FIM_REGISTRY_HASH] = strdup("hash_full_path"), lf->decoder_info->fields[FIM_REGISTRY_HASH] == NULL)
+        return -1;
     if(lf->decoder_info->fields[FIM_ENTRY_TYPE] = strdup("entry_type"), lf->decoder_info->fields[FIM_ENTRY_TYPE] == NULL)
         return -1;
     if(lf->decoder_info->fields[FIM_EVENT_TYPE] = strdup("event_type"), lf->decoder_info->fields[FIM_EVENT_TYPE] == NULL)
@@ -1625,6 +1627,10 @@ static void test_fim_generate_alert_registry_value_alert(void **state) {
 
     input->lf->fields[FIM_REGISTRY_VALUE_TYPE].value = strdup("REG_SZ");
     if (input->lf->fields[FIM_REGISTRY_VALUE_TYPE].value == NULL)
+        fail();
+
+    input->lf->fields[FIM_REGISTRY_HASH].value = strdup("234567890ABCDEF1234567890ABCDEF123456111");
+    if (input->lf->fields[FIM_REGISTRY_HASH].value == NULL)
         fail();
 
     input->lf->fields[FIM_MODE].value = strdup("scheduled");
@@ -3110,6 +3116,7 @@ static void test_fim_process_alert_remove_registry_key(void **state) {
     assert_string_equal(input->lf->fields[FIM_GNAME].value, "group_name");
     assert_string_equal(input->lf->fields[FIM_UID].value, "uid");
     assert_string_equal(input->lf->fields[FIM_GID].value, "gid");
+    assert_string_equal(input->lf->fields[FIM_REGISTRY_HASH].value, "234567890ABCDEF1234567890ABCDEF123456111");
 
     assert_null(input->lf->fields[FIM_MD5].value);
     assert_null(input->lf->fields[FIM_SHA1].value);
@@ -3159,6 +3166,7 @@ static void test_fim_process_alert_remove_registry_value(void **state) {
     assert_string_equal(input->lf->fields[FIM_REGISTRY_ARCH].value, "[x64]");
     assert_string_equal(input->lf->fields[FIM_FILE].value, "HKEY_LOCAL_MACHINE\\software\\test");
     assert_string_equal(input->lf->fields[FIM_REGISTRY_VALUE_NAME].value, "some:value");
+    assert_string_equal(input->lf->fields[FIM_REGISTRY_HASH].value, "234567890ABCDEF1234567890ABCDEF123456111");
     assert_string_equal(input->lf->fields[FIM_SIZE].value, "4567");
     assert_string_equal(input->lf->fields[FIM_MD5].value, "hash_md5");
     assert_string_equal(input->lf->fields[FIM_SHA1].value, "hash_sha1");
