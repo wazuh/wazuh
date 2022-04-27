@@ -21,8 +21,13 @@
 namespace builder::internals::builders
 {
 
+using types::CombinatorBuilder;
 using base::DocumentValue;
 using base::Lifter;
+
+using std::invalid_argument;
+using std::runtime_error;
+using std::throw_with_nested;
 
 static Lifter normalizeMap(const DocumentValue &ref, types::TracerFn tr)
 {
@@ -30,14 +35,14 @@ static Lifter normalizeMap(const DocumentValue &ref, types::TracerFn tr)
     {
         auto msg = "Invalid \"map\" element, it should be an object.";
         WAZUH_LOG_ERROR("{}", msg);
-        std::throw_with_nested(std::invalid_argument(msg));
+        throw_with_nested(invalid_argument(msg));
     }
 
     if (ref.MemberCount() <= 0)
     {
         auto msg = "Invalid \"map\" element, it can not be empty.";
         WAZUH_LOG_ERROR("{}", msg);
-        std::throw_with_nested(std::invalid_argument(msg));
+        throw_with_nested(invalid_argument(msg));
     }
 
     // These are necessary to create the object to be sent to the map operation
@@ -72,14 +77,14 @@ static Lifter normalizeMap(const DocumentValue &ref, types::TracerFn tr)
                                    "exception on building: [{}]",
                                    e.what());
             WAZUH_LOG_ERROR("{}", msg);
-            std::throw_with_nested(std::runtime_error(msg));
+            throw_with_nested(runtime_error(msg));
         }
     }
 
     try
     {
         // Chains the "map" operations
-        return std::get<types::CombinatorBuilder>(
+        return std::get<CombinatorBuilder>(
             Registry::getBuilder("combinator.chain"))(mapOps);
     }
     catch (std::exception &e)
@@ -88,7 +93,7 @@ static Lifter normalizeMap(const DocumentValue &ref, types::TracerFn tr)
             "Stage normalize builder encountered exception on building: [{}]",
             e.what());
         WAZUH_LOG_ERROR("{}", msg);
-        std::throw_with_nested(std::runtime_error(msg));
+        throw_with_nested(runtime_error(msg));
     }
 }
 
@@ -98,7 +103,7 @@ static Lifter normalizeCheck(const DocumentValue &ref, types::TracerFn tr)
     {
         auto msg = "Invalid \"check\" object, it should be an array.";
         WAZUH_LOG_ERROR("{}", msg);
-        std::throw_with_nested(std::invalid_argument(msg));
+        throw_with_nested(invalid_argument(msg));
     }
 
     // Gets the "check" array
@@ -108,7 +113,7 @@ static Lifter normalizeCheck(const DocumentValue &ref, types::TracerFn tr)
     {
         auto msg = "Invalid \"check\" object, it can not be empty.";
         WAZUH_LOG_ERROR("{}", msg);
-        std::throw_with_nested(std::invalid_argument(msg));
+        throw_with_nested(invalid_argument(msg));
     }
 
     std::vector<Lifter> checkOps;
@@ -124,13 +129,13 @@ static Lifter normalizeCheck(const DocumentValue &ref, types::TracerFn tr)
                                "exception on building: [{}]",
                                e.what());
         WAZUH_LOG_ERROR("{}", msg);
-        std::throw_with_nested(std::runtime_error(msg));
+        throw_with_nested(runtime_error(msg));
     }
 
     try
     {
         // Chains the "check" operations
-        return std::get<types::CombinatorBuilder>(
+        return std::get<CombinatorBuilder>(
             Registry::getBuilder("combinator.chain"))(checkOps);
     }
     catch (std::exception &e)
@@ -139,7 +144,7 @@ static Lifter normalizeCheck(const DocumentValue &ref, types::TracerFn tr)
             "Stage normalize builder encountered exception on building: [{}]",
             e.what());
         WAZUH_LOG_ERROR("{}", msg);
-        std::throw_with_nested(std::runtime_error(msg));
+        throw_with_nested(runtime_error(msg));
     }
 }
 
@@ -153,7 +158,7 @@ static Lifter normalizeConditionalMap(const DocumentValue &def,
             "were expected, \"check\" and \"map\", but got: {}",
             def.MemberCount());
         WAZUH_LOG_ERROR("{}", msg);
-        std::throw_with_nested(std::invalid_argument(msg));
+        throw_with_nested(invalid_argument(msg));
     }
 
     std::vector<Lifter> conditionalMapOps;
@@ -169,7 +174,7 @@ static Lifter normalizeConditionalMap(const DocumentValue &def,
             "encountered exception on building the \"check\" object: [{}].",
             e.what());
         WAZUH_LOG_ERROR("{}", msg);
-        std::throw_with_nested(std::runtime_error(msg));
+        throw_with_nested(runtime_error(msg));
     }
 
     try
@@ -183,12 +188,12 @@ static Lifter normalizeConditionalMap(const DocumentValue &def,
             "encountered exception on building the \"map\" object: [{}].",
             e.what());
         WAZUH_LOG_ERROR("{}", msg);
-        std::throw_with_nested(std::runtime_error(msg));
+        throw_with_nested(runtime_error(msg));
     }
 
     try
     {
-        return std::get<types::CombinatorBuilder>(
+        return std::get<CombinatorBuilder>(
             Registry::getBuilder("combinator.chain"))(conditionalMapOps);
     }
     catch (std::exception &e)
@@ -197,7 +202,7 @@ static Lifter normalizeConditionalMap(const DocumentValue &def,
                                "encountered exception on building: [{}]",
                                e.what());
         WAZUH_LOG_ERROR("{}", msg);
-        std::throw_with_nested(std::runtime_error(msg));
+        throw_with_nested(runtime_error(msg));
     }
 }
 
@@ -210,7 +215,7 @@ Lifter stageBuilderNormalize(const DocumentValue &def, types::TracerFn tr)
                                "\"normalize\" to be an array but got [{}].",
                                def.GetType());
         WAZUH_LOG_ERROR("{}", msg);
-        std::throw_with_nested(std::invalid_argument(msg));
+        throw_with_nested(invalid_argument(msg));
     }
 
     // Build all the normalize operations
@@ -238,7 +243,7 @@ Lifter stageBuilderNormalize(const DocumentValue &def, types::TracerFn tr)
                 auto msg = "Stage normalize builder, there is a conditional "
                            "map object with no \"map\" element on it.";
                 WAZUH_LOG_ERROR("{}", msg);
-                std::throw_with_nested(std::invalid_argument(msg));
+                throw_with_nested(invalid_argument(msg));
             }
         }
         else
@@ -248,7 +253,7 @@ Lifter stageBuilderNormalize(const DocumentValue &def, types::TracerFn tr)
                             "element should be an object but got [{}].",
                             it->GetType());
             WAZUH_LOG_ERROR("{}", msg);
-            std::throw_with_nested(std::invalid_argument(msg));
+            throw_with_nested(invalid_argument(msg));
         }
     }
 
@@ -265,7 +270,7 @@ Lifter stageBuilderNormalize(const DocumentValue &def, types::TracerFn tr)
          * publish the result. */
         for (auto &op : normalizeOps)
         {
-            op = [&op](base::Observable in)
+            op = [op](base::Observable in)
             {
                 // Filter map and check-map outputs
                 return op(in).filter([](auto) { return false; });
@@ -275,7 +280,7 @@ Lifter stageBuilderNormalize(const DocumentValue &def, types::TracerFn tr)
         normalizeOps.push_back([](base::Observable in) { return in; });
 
         // Combine the normalize operations as broadcast
-        return std::get<types::CombinatorBuilder>(
+        return std::get<CombinatorBuilder>(
             Registry::getBuilder("combinator.broadcast"))(normalizeOps);
     }
     catch (std::exception &e)
@@ -284,7 +289,7 @@ Lifter stageBuilderNormalize(const DocumentValue &def, types::TracerFn tr)
                                "on building: [{}]",
                                e.what());
         WAZUH_LOG_ERROR("{}", msg);
-        std::throw_with_nested(std::runtime_error(msg));
+        throw_with_nested(runtime_error(msg));
     }
 }
 
