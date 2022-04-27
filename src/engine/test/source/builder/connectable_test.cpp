@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 
+#include <base/baseTypes.hpp>
+
 #include "connectable.hpp"
 #include "testUtils.hpp"
 
@@ -11,65 +13,83 @@ using namespace builder::internals;
 using namespace std;
 using namespace rxcpp;
 
-struct FakeEvent
+struct FakeEventHandler
 {
-    int n;
-    string str() const
+    struct event
     {
-        return to_string(n);
+        int num;
+        string str() const
+        {
+            return to_string(num);
+        }
+    };
+
+    struct event e;
+    bool deco;
+
+    FakeEventHandler(int n)
+        : deco {false}
+    {
+        e.num = n;
     }
-    FakeEvent(int n)
-        : n {n}
+
+    struct event* getEvent()
     {
+        return &e;
+    }
+
+    void setDecoded()
+    {
+        deco = true;
     }
 };
 
-using FakeEventType = shared_ptr<FakeEvent>;
+using FakeEventHandlerType = shared_ptr<FakeEventHandler>;
 
 TEST(ConnectableTest, Builds1)
 {
-    ASSERT_NO_THROW(Connectable<observable<FakeEventType>> {});
+    ASSERT_NO_THROW(Connectable<observable<FakeEventHandlerType>> {});
 }
 
 TEST(ConnectableTest, Builds2)
 {
-    ASSERT_NO_THROW(Connectable<observable<FakeEventType>> {"name"});
+    ASSERT_NO_THROW(Connectable<observable<FakeEventHandlerType>> {"name"});
 }
 
 TEST(ConnectableTest, Builds3)
 {
-    ASSERT_NO_THROW(Connectable<observable<FakeEventType>>(
+    ASSERT_NO_THROW(Connectable<observable<FakeEventHandlerType>>(
         "name", {}, [](auto o) { return o; }, {}));
 }
 
 TEST(ConnectableTest, AddInputConnectOperates)
 {
-    auto conn = Connectable<observable<FakeEventType>> {"name"};
+    auto conn = Connectable<observable<FakeEventHandlerType>> {"name"};
     auto input =
-        observable<>::just<FakeEventType>(make_shared<FakeEvent>(1)).publish();
+        observable<>::just<FakeEventHandlerType>(make_shared<FakeEventHandler>(1)).publish();
     ASSERT_NO_THROW(conn.addInput(input));
     decltype(conn.connect()) end;
     ASSERT_NO_THROW(end = conn.connect());
     int expected = -1;
-    end.subscribe([&](FakeEventType event) { expected = event->n; });
+    end.subscribe([&](FakeEventHandlerType event) { expected = event->e.num; });
     input.connect();
     ASSERT_EQ(expected, 1);
 }
 
 TEST(ConnectableTest, TracerGraph)
 {
-    vector<Connectable<observable<FakeEventType>>> connectables;
+    vector<Connectable<observable<FakeEventHandlerType>>> connectables;
     for (auto i = 0; i < 9; ++i)
     {
         // Build connectable as outputs so only one event will be sent by each
         // conenctable
-        connectables.push_back(Connectable<observable<FakeEventType>> {
+        connectables.push_back(Connectable<observable<FakeEventHandlerType>> {
             string("OUTPUT_") + std::to_string(i)});
     }
 
     // Manually build graph
     auto input =
-        observable<>::just<FakeEventType>(make_shared<FakeEvent>(1)).publish();
+        observable<>::just<FakeEventHandlerType>(make_shared<FakeEventHandler>(1)).publish();
     //     conn0
     //     /   \
     // conn1   conn8
