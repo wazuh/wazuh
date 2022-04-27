@@ -11,7 +11,8 @@
 #include <thread>
 #include <vector>
 
-#include "json.hpp"
+#include <baseTypes.hpp>
+
 #include "router.hpp"
 
 #define GTEST_COUT std::cerr << "[          ] [ INFO ] "
@@ -19,9 +20,12 @@
 using namespace std;
 using namespace rxcpp;
 using namespace router;
-using document_t = std::shared_ptr<json::Document>;
+using document_t = base::Event;
 using documents_t = vector<document_t>;
 
+auto createEvent = [](const char * json){
+    return std::make_shared<base::EventHandler>(std::make_shared<base::Document>(json));
+};
 struct FakeServer
 {
     explicit FakeServer(const documents_t &documents, bool verbose = false)
@@ -32,7 +36,7 @@ struct FakeServer
                   {
                       if (verbose)
                       {
-                          GTEST_COUT << "FakeServer emits " << document->str()
+                          GTEST_COUT << "FakeServer emits " << document->getEvent()->str()
                                      << endl;
                       }
                       s.on_next(document);
@@ -59,7 +63,7 @@ struct FakeBuilder
         {
             this->m_subj.get_observable().subscribe(
                 [](auto j)
-                { GTEST_COUT << "FakeBuilder got " << j->str() << endl; });
+                { GTEST_COUT << "FakeBuilder got " << j->getEvent()->str() << endl; });
         }
     }
 
@@ -133,13 +137,13 @@ TEST(RouterTest, RemoveNonExistentRoute)
 TEST(RouterTest, PassThroughSingleRoute)
 {
     documents_t input {
-        std::make_shared<json::Document>(R"({
+        createEvent(R"({
         "event": 1
     })"),
-        std::make_shared<json::Document>(R"({
+        createEvent(R"({
         "event": 2
     })"),
-        std::make_shared<json::Document>(R"({
+        createEvent(R"({
         "event": 3
     })"),
     };
@@ -156,7 +160,7 @@ TEST(RouterTest, PassThroughSingleRoute)
     ASSERT_EQ(expected.size(), 3);
     for (auto i = 0; i < 3; ++i)
     {
-        ASSERT_EQ(input[i]->str(), expected[i]->str());
+        ASSERT_EQ(input[i]->getEvent()->str(), expected[i]->getEvent()->str());
     }
 }
 
