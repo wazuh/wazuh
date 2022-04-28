@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015-2022, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -7,23 +7,25 @@
  * Foundation.
  */
 
-#include <gtest/gtest.h>
 #include "testUtils.hpp"
 
 #include <vector>
 
 #include "opBuilderMapReference.hpp"
 
+#include <gtest/gtest.h>
+
 using namespace base;
 namespace bld = builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg){};
+static FakeTrFn tr = [](std::string msg) {
+};
 
 
 TEST(opBuilderMapReference, Builds)
 {
-    Document doc{R"({
+    Document doc {R"({
         "normalize":
         [
             {
@@ -34,12 +36,12 @@ TEST(opBuilderMapReference, Builds)
             }
         ]
     })"};
-    ASSERT_NO_THROW(bld::opBuilderMapReference(doc.get("/normalize"), tr));
+    ASSERT_NO_THROW(bld::opBuilderMapReference(doc.get("/normalize/0/map"), tr));
 }
 
 TEST(opBuilderMapReference, BuildsOperates)
 {
-    Document doc{R"({
+    Document doc {R"({
         "normalize":
         [
             {
@@ -66,7 +68,7 @@ TEST(opBuilderMapReference, BuildsOperates)
             )"));
             s.on_completed();
         });
-    Lifter lift1 = bld::opBuilderMapReference(doc.get("/normalize"), tr);
+    Lifter lift1 = bld::opBuilderMapReference(doc.get("/normalize/0/map"), tr);
 
     Observable output = lift1(input);
     vector<Event> expected;
