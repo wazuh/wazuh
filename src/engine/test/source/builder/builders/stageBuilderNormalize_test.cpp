@@ -31,6 +31,8 @@ static FakeTrFn tr = [](std::string msg) {
 
 /**
 
+Example of a "normalize" configuration
+
 YML:
 
 ---
@@ -57,9 +59,11 @@ normalize:
 JSON:
 
 {
-    "normalize": [
+    "normalize":
+    [
         {
-            "map": {
+            "map":
+            {
                 "mapped.field1": "value",
                 "mapped.field2": 2,
                 "mapped.field3": "$field1",
@@ -68,14 +72,16 @@ JSON:
             }
         },
         {
-            "check": [
+            "check":
+            [
                 {"mapped.field1": "value"},
                 {"mapped.field2": 2},
                 {"mapped.field3": "$field1"},
                 {"mapped.field4": true},
                 {"mapped.field5": "+exists"}
             ],
-            "map": {
+            "map":
+            {
                 "mapped.field6": "value",
                 "mapped.field7": 2,
                 "mapped.field8": "$field1",
@@ -90,35 +96,40 @@ JSON:
 
 TEST(StageBuilderNormalize, BuildFullNormalizeNonRegistered)
 {
-    Document doc {R"({
-        "normalize": [
-            {
-                "map": {
-                    "mapped.field1": "value",
-                    "mapped.field2": 2,
-                    "mapped.field3": "$field1",
-                    "mapped.field4": true,
-                    "mapped.field5": false
+    Document doc {R"(
+        {
+            "normalize":
+            [
+                {
+                    "map":
+                    {
+                        "mapped.field1": "value",
+                        "mapped.field2": 2,
+                        "mapped.field3": "$field1",
+                        "mapped.field4": true,
+                        "mapped.field5": false
+                    }
+                },
+                {
+                    "check":
+                    [
+                        {"mapped.field1": "value"},
+                        {"mapped.field2": 2},
+                        {"mapped.field3": "$field1"},
+                        {"mapped.field4": true},
+                        {"mapped.field5": "+exists"}
+                    ],
+                    "map":
+                    {
+                        "mapped.field6": "value",
+                        "mapped.field7": 2,
+                        "mapped.field8": "$field1",
+                        "mapped.field9": true,
+                        "mapped.field10": false
+                    }
                 }
-            },
-            {
-                "check": [
-                    {"mapped.field1": "value"},
-                    {"mapped.field2": 2},
-                    {"mapped.field3": "$field1"},
-                    {"mapped.field4": true},
-                    {"mapped.field5": "+exists"}
-                ],
-                "map": {
-                    "mapped.field6": "value",
-                    "mapped.field7": 2,
-                    "mapped.field8": "$field1",
-                    "mapped.field9": true,
-                    "mapped.field10": false
-                }
-            }
-        ]
-    })"};
+            ]
+        })"};
 
     ASSERT_THROW(builders::stageBuilderNormalize(doc.get("/normalize"), tr),
                  std::_Nested_exception<std::runtime_error>);
@@ -126,6 +137,8 @@ TEST(StageBuilderNormalize, BuildFullNormalizeNonRegistered)
 
 TEST(StageBuilderNormalize, BuildFullNormalize)
 {
+    /** Operations/Stages must be registered only once in the tests (after doing
+     * so, they remain registered). */
     BuilderVariant c;
 
     // "map" operations
@@ -154,89 +167,102 @@ TEST(StageBuilderNormalize, BuildFullNormalize)
     c = combinatorBuilderBroadcast;
     Registry::registerBuilder("combinator.broadcast", c);
 
-    Document doc {R"({
-        "normalize": [
-            {
-                "map": {
-                    "mapped.field1": "value",
-                    "mapped.field2": 2,
-                    "mapped.field3": "$field1",
-                    "mapped.field4": true,
-                    "mapped.field5": false
+    Document doc {R"(
+        {
+            "normalize":
+            [
+                {
+                    "map":
+                    {
+                        "mapped.field1": "value",
+                        "mapped.field2": 2,
+                        "mapped.field3": "$field1",
+                        "mapped.field4": true,
+                        "mapped.field5": false
+                    }
+                },
+                {
+                    "check":
+                    [
+                        {"mapped.field1": "value"},
+                        {"mapped.field2": 2},
+                        {"mapped.field3": "$field1"},
+                        {"mapped.field4": true},
+                        {"mapped.field5": "+exists"}
+                    ],
+                    "map":
+                    {
+                        "mapped.field6": "value",
+                        "mapped.field7": 2,
+                        "mapped.field8": "$field1",
+                        "mapped.field9": true,
+                        "mapped.field10": false
+                    }
                 }
-            },
-            {
-                "check": [
-                    {"mapped.field1": "value"},
-                    {"mapped.field2": 2},
-                    {"mapped.field3": "$field1"},
-                    {"mapped.field4": true},
-                    {"mapped.field5": "+exists"}
-                ],
-                "map": {
-                    "mapped.field6": "value",
-                    "mapped.field7": 2,
-                    "mapped.field8": "$field1",
-                    "mapped.field9": true,
-                    "mapped.field10": false
-                }
-            }
-        ]
-    })"};
+            ]
+        })"};
 
     ASSERT_NO_THROW(builders::stageBuilderNormalize(doc.get("/normalize"), tr));
 }
 
-TEST(StageBuilderNormalize, BuildFullNormalizeReversed)
+TEST(StageBuilderNormalize, BuildFullNormalizeInverted)
 {
-    Document doc {R"({
-        "normalize": [
-            {
-                "check": [
-                    {"mapped.field1": "value"},
-                    {"mapped.field2": 2},
-                    {"mapped.field3": "$field1"},
-                    {"mapped.field4": true},
-                    {"mapped.field5": "+exists"}
-                ],
-                "map": {
-                    "mapped.field6": "value",
-                    "mapped.field7": 2,
-                    "mapped.field8": "$field1",
-                    "mapped.field9": true,
-                    "mapped.field10": false
+    Document doc {R"(
+        {
+            "normalize":
+            [
+                {
+                    "check":
+                    [
+                        {"mapped.field1": "value"},
+                        {"mapped.field2": 2},
+                        {"mapped.field3": "$field1"},
+                        {"mapped.field4": true},
+                        {"mapped.field5": "+exists"}
+                    ],
+                    "map":
+                    {
+                        "mapped.field6": "value",
+                        "mapped.field7": 2,
+                        "mapped.field8": "$field1",
+                        "mapped.field9": true,
+                        "mapped.field10": false
+                    }
+                },
+                {
+                    "map":
+                    {
+                        "mapped.field1": "value",
+                        "mapped.field2": 2,
+                        "mapped.field3": "$field1",
+                        "mapped.field4": true,
+                        "mapped.field5": false
+                    }
                 }
-            },
-            {
-                "map": {
-                    "mapped.field1": "value",
-                    "mapped.field2": 2,
-                    "mapped.field3": "$field1",
-                    "mapped.field4": true,
-                    "mapped.field5": false
-                }
-            }
-        ]
-    })"};
+            ]
+        })"};
 
     ASSERT_NO_THROW(builders::stageBuilderNormalize(doc.get("/normalize"), tr));
 }
 
 TEST(StageBuilderNormalize, BuildNormalizeMap)
 {
-    Document doc {R"({
-        "normalize": [
-            {
-                "map": {
-                    "mapped.field1": "value",
-                    "mapped.field2": 2,
-                    "mapped.field3": "$field1",
-                    "mapped.field4": true,
-                    "mapped.field5": false
+    Document doc {R"(
+        {
+            "normalize":
+            [
+                {
+                    "map":
+                    {
+                        "mapped.field1": "value",
+                        "mapped.field2": 2,
+                        "mapped.field3": "$field1",
+                        "mapped.field4": true,
+                        "mapped.field5": false
+                    }
                 }
-            }
-        ]
-    })"};
+            ]
+        })"};
 
     ASSERT_NO_THROW(builders::stageBuilderNormalize(doc.get("/normalize"), tr));
 }
@@ -244,16 +270,19 @@ TEST(StageBuilderNormalize, BuildNormalizeMap)
 TEST(StageBuilderNormalize, BuildNormalizeCheckMap)
 {
     Document doc {R"({
-        "normalize": [
+        "normalize":
+        [
             {
-                "check": [
+                "check":
+                [
                     {"mapped.field1": "value"},
                     {"mapped.field2": 2},
                     {"mapped.field3": "$field1"},
                     {"mapped.field4": true},
                     {"mapped.field5": "+exists"}
                 ],
-                "map": {
+                "map":
+                {
                     "mapped.field6": "value",
                     "mapped.field7": 2,
                     "mapped.field8": "$field1",
@@ -269,13 +298,15 @@ TEST(StageBuilderNormalize, BuildNormalizeCheckMap)
 
 TEST(StageBuilderNormalize, BuildNormalizeEmptyMap)
 {
-    Document doc {R"({
-        "normalize": [
-            {
-                "map": {}
-            }
-        ]
-    })"};
+    Document doc {R"(
+        {
+            "normalize":
+            [
+                {
+                    "map": {}
+                }
+            ]
+        })"};
 
     ASSERT_THROW(builders::stageBuilderNormalize(doc.get("/normalize"), tr),
                  std::_Nested_exception<std::invalid_argument>);
@@ -283,20 +314,22 @@ TEST(StageBuilderNormalize, BuildNormalizeEmptyMap)
 
 TEST(StageBuilderNormalize, BuildNormalizeCheckMapEmptyCheck)
 {
-    Document doc {R"({
-        "normalize": [
-            {
-                "check": [],
-                "map": {
-                    "mapped.field6": "value",
-                    "mapped.field7": 2,
-                    "mapped.field8": "$field1",
-                    "mapped.field9": true,
-                    "mapped.field10": false
+    Document doc {R"(
+        {
+            "normalize":
+            [
+                {
+                    "check": [],
+                    "map": {
+                        "mapped.field6": "value",
+                        "mapped.field7": 2,
+                        "mapped.field8": "$field1",
+                        "mapped.field9": true,
+                        "mapped.field10": false
+                    }
                 }
-            }
-        ]
-    })"};
+            ]
+        })"};
 
     ASSERT_THROW(builders::stageBuilderNormalize(doc.get("/normalize"), tr),
                  std::_Nested_exception<std::runtime_error>);
@@ -304,20 +337,23 @@ TEST(StageBuilderNormalize, BuildNormalizeCheckMapEmptyCheck)
 
 TEST(StageBuilderNormalize, BuildNormalizeCheckMapEmptyMap)
 {
-    Document doc {R"({
-        "normalize": [
-            {
-                "check": [
-                    {"mapped.field1": "value"},
-                    {"mapped.field2": 2},
-                    {"mapped.field3": "$field1"},
-                    {"mapped.field4": true},
-                    {"mapped.field5": "+exists"}
-                ],
-                "map": {}
-            }
-        ]
-    })"};
+    Document doc {R"(
+        {
+            "normalize":
+            [
+                {
+                    "check":
+                    [
+                        {"mapped.field1": "value"},
+                        {"mapped.field2": 2},
+                        {"mapped.field3": "$field1"},
+                        {"mapped.field4": true},
+                        {"mapped.field5": "+exists"}
+                    ],
+                    "map": {}
+                }
+            ]
+        })"};
 
     ASSERT_THROW(builders::stageBuilderNormalize(doc.get("/normalize"), tr),
                  std::_Nested_exception<std::runtime_error>);
@@ -325,78 +361,64 @@ TEST(StageBuilderNormalize, BuildNormalizeCheckMapEmptyMap)
 
 TEST(StageBuilderNormalize, BuildNormalizeWithCheckNoMap)
 {
-    Document doc {R"({
-        "normalize": [
-            {
-                "check": [
-                    {"mapped.field1": "value"},
-                    {"mapped.field2": 2},
-                    {"mapped.field3": "$field1"},
-                    {"mapped.field4": true},
-                    {"mapped.field5": "+exists"}
-                ]
-            }
-        ]
-    })"};
+    Document doc {R"(
+        {
+            "normalize":
+            [
+                {
+                    "check":
+                    [
+                        {"mapped.field1": "value"},
+                        {"mapped.field2": 2},
+                        {"mapped.field3": "$field1"},
+                        {"mapped.field4": true},
+                        {"mapped.field5": "+exists"}
+                    ]
+                }
+            ]
+        })"};
 
     ASSERT_THROW(builders::stageBuilderNormalize(doc.get("/normalize"), tr),
                  std::_Nested_exception<std::invalid_argument>);
 }
 
-// TODO: fix this test
-TEST(StageBuilderNormalize, BuildsOperates)
+TEST(StageBuilderNormalize, testNormalizeMap)
 {
-    Document doc {R"({
-        "normalize": [
-            {
-                "check": [
-                    {"field1": 1},
-                    {"field2": 2},
-                    {"field3": "$field1"},
-                    {"field4": true},
-                    {"field5": "+exists"}
-                ],
-                "map": {
-                    "field6": 2,
-                    "field7": 2,
-                    "field8": "$field1",
-                    "field9": true,
-                    "field10": false
+    Document doc {R"(
+        {
+            "normalize":
+            [
+                {
+                    "map":
+                    {
+                        "field1": "value",
+                        "field2": 3,
+                        "field3": "$field1",
+                        "field4": false,
+                        "field5": false
+                    }
                 }
-            },
-            {
-                "map": {
-                    "field1": "value",
-                    "field2": 3,
-                    "field3": "$field1",
-                    "field4": true,
-                    "field5": false
-                }
-            }
-        ]
-    })"};
+            ]
+        })"};
 
     auto normalize = builders::stageBuilderNormalize(doc.get("/normalize"), tr);
 
+    auto eventsCount = 3;
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(std::make_shared<json::Document>(R"({
-                    "field1": "value",
-                    "field2": 2,
-                    "field3": "value",
-                    "field4": true,
-                    "field5": "+exists",
-                    "field6": "+exists"
-            })"));
-            s.on_next(std::make_shared<json::Document>(R"({
-                    "field1": "value",
-                    "field2": 2,
-                    "field3": "value",
-                    "field4": true,
-                    "field5": "+exists",
-                    "field6": "+exists"
-            })"));
+            for (int i = 0; i < eventsCount; i++)
+            {
+                s.on_next(std::make_shared<json::Document>(R"(
+                    {
+                        "field1": "value",
+                        "field2": 2,
+                        "field3": "value3",
+                        "field4": true,
+                        "field5": "+exists",
+                        "field6": "+exists"
+                    })"));
+            }
             s.on_completed();
         });
 
@@ -404,12 +426,259 @@ TEST(StageBuilderNormalize, BuildsOperates)
 
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 2);
+    ASSERT_EQ(expected.size(), eventsCount);
     for (auto e : expected)
     {
         ASSERT_STREQ(e->get("/field1").GetString(), "value");
-        ASSERT_EQ(e->get("/field2").GetInt(), 2);
+        ASSERT_EQ(e->get("/field2").GetInt(), 3);
         ASSERT_STREQ(e->get("/field3").GetString(), "value");
+        ASSERT_FALSE(e->get("/field4").GetBool());
+    }
+}
+
+TEST(StageBuilderNormalize, testNormalizeConditionalMap)
+{
+    Document doc {R"(
+        {
+            "normalize":
+            [
+                {
+                    "check":
+                    [
+                        {"field1": "value"},
+                        {"field3": "value3"},
+                        {"field4": true}
+                    ],
+                    "map":
+                    {
+                        "field2": 3,
+                        "field3": "$field1",
+                        "field4": false
+                    }
+                }
+            ]
+        })"};
+
+    auto normalize = builders::stageBuilderNormalize(doc.get("/normalize"), tr);
+
+    auto eventsCount = 3;
+    Observable input = observable<>::create<Event>(
+        [=](auto s)
+        {
+            for (int i = 0; i < eventsCount; i++)
+            {
+                s.on_next(std::make_shared<json::Document>(R"(
+                    {
+                        "field1": "value",
+                        "field2": 2,
+                        "field3": "value3",
+                        "field4": true,
+                        "field5": "+exists",
+                        "field6": "+exists"
+                    })"));
+            }
+            s.on_completed();
+        });
+
+    Observable output = normalize(input);
+
+    vector<Event> expected;
+    output.subscribe([&](Event e) { expected.push_back(e); });
+    ASSERT_EQ(expected.size(), eventsCount);
+    for (auto e : expected)
+    {
+        ASSERT_STREQ(e->get("/field1").GetString(), "value");
+        ASSERT_EQ(e->get("/field2").GetInt(), 3);
+        ASSERT_STREQ(e->get("/field3").GetString(), "value");
+        ASSERT_FALSE(e->get("/field4").GetBool());
+    }
+}
+
+TEST(StageBuilderNormalize, testNormalizeMapAndConditionalMap)
+{
+    Document doc {R"({
+        "normalize": [
+            {
+                "check":
+                [
+                    {"field1": "value"},
+                    {"field2": 2}
+                ],
+                "map":
+                {
+                    "field2": 3
+                }
+            },
+            {
+                "map":
+                {
+                    "field3": "$field1",
+                    "field4": false
+                }
+            }
+        ]
+    })"};
+
+    auto normalize = builders::stageBuilderNormalize(doc.get("/normalize"), tr);
+
+    auto eventsCount = 3;
+    auto inputObject = std::make_shared<json::Document>(R"(
+                        {
+                                "field1": "value",
+                                "field2": 2,
+                                "field3": "value3",
+                                "field4": true,
+                                "field5": "+exists",
+                                "field6": "+exists"
+                        })");
+    Observable input = observable<>::create<Event>(
+        [=](auto s)
+        {
+            for (int i = 0; i < eventsCount; i++)
+            {
+                s.on_next(inputObject);
+            }
+            s.on_completed();
+        });
+
+    Observable output = normalize(input);
+
+    vector<Event> expected;
+    output.subscribe([&](Event e) { expected.push_back(e); });
+    ASSERT_EQ(expected.size(), eventsCount);
+    for (auto e : expected)
+    {
+        ASSERT_STREQ(e->get("/field1").GetString(), "value");
+        ASSERT_EQ(e->get("/field2").GetInt(), 3);
+        ASSERT_STREQ(e->get("/field3").GetString(), "value");
+        ASSERT_FALSE(e->get("/field4").GetBool());
+    }
+}
+
+TEST(StageBuilderNormalize, testNormalizeMapAndConditionalMapInverted)
+{
+    Document doc {R"({
+        "normalize": [
+            {
+                "map":
+                {
+                    "field3": "$field1",
+                    "field4": false
+                }
+            },
+            {
+                "check":
+                [
+                    {"field1": "value"},
+                    {"field2": 2}
+                ],
+                "map":
+                {
+                    "field2": 3
+                }
+            }
+        ]
+    })"};
+
+    auto normalize = builders::stageBuilderNormalize(doc.get("/normalize"), tr);
+
+    auto eventsCount = 3;
+    auto inputObject = std::make_shared<json::Document>(R"(
+                        {
+                                "field1": "value",
+                                "field2": 2,
+                                "field3": "value3",
+                                "field4": true,
+                                "field5": "+exists",
+                                "field6": "+exists"
+                        })");
+    Observable input = observable<>::create<Event>(
+        [=](auto s)
+        {
+            for (int i = 0; i < eventsCount; i++)
+            {
+                s.on_next(inputObject);
+            }
+            s.on_completed();
+        });
+
+    Observable output = normalize(input);
+
+    vector<Event> expected;
+    output.subscribe([&](Event e) { expected.push_back(e); });
+    ASSERT_EQ(expected.size(), eventsCount);
+    for (auto e : expected)
+    {
+        ASSERT_STREQ(e->get("/field1").GetString(), "value");
+        ASSERT_EQ(e->get("/field2").GetInt(), 3);
+        ASSERT_STREQ(e->get("/field3").GetString(), "value");
+        ASSERT_FALSE(e->get("/field4").GetBool());
+    }
+}
+
+/** This test exposes how NOT to use the "on_next" in combination with the
+ * "make_shared" to test a full "normalize" operation. */
+TEST(StageBuilderNormalize, testNormalizeWrongWayToTest)
+{
+    Document doc {R"({
+        "normalize": [
+            {
+                "check":
+                [
+                    {"field1": "value"},
+                    {"field2": 2}
+                ],
+                "map":
+                {
+                    "field2": 3
+                }
+            },
+            {
+                "map":
+                {
+                    "field3": "$field1",
+                    "field4": false
+                }
+            }
+        ]
+    })"};
+
+    auto normalize = builders::stageBuilderNormalize(doc.get("/normalize"), tr);
+
+    auto eventsCount = 3;
+    Observable input = observable<>::create<Event>(
+        [=](auto s)
+        {
+            for (int i = 0; i < eventsCount; i++)
+            {
+                /** WARNING: using the make_shared here results in unexpected
+                 * broadcast behavior. */
+                s.on_next(std::make_shared<json::Document>(R"(
+                            {
+                                    "field1": "value",
+                                    "field2": 2,
+                                    "field3": "value3",
+                                    "field4": true,
+                                    "field5": "+exists",
+                                    "field6": "+exists"
+                            })"));
+            }
+            s.on_completed();
+        });
+
+    Observable output = normalize(input);
+
+    vector<Event> expected;
+    output.subscribe([&](Event e) { expected.push_back(e); });
+    ASSERT_EQ(expected.size(), eventsCount);
+    for (auto e : expected)
+    {
+        ASSERT_STREQ(e->get("/field1").GetString(), "value");
+        /** The following values should NOT match the original ones. Given the
+         * use of the "make_shared" as the parameter of the "on_next", the
+         * broadcast operation behaves in an erroneous way. */
+        ASSERT_EQ(e->get("/field2").GetInt(), 2);
+        ASSERT_STREQ(e->get("/field3").GetString(), "value3");
         ASSERT_TRUE(e->get("/field4").GetBool());
     }
 }
