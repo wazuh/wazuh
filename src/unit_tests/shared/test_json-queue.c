@@ -90,7 +90,7 @@ void test_jqueue_parse_json_invalid(void ** state) {
     expect_value(__wrap_fgets, __stream, queue->fp);
     will_return(__wrap_fgets, buffer);
 
-    expect_string(__wrap__merror, formatted_msg, "Invalid JSON alert read from '/home/test': '{\"test\":\"invalid_value'");
+    expect_string(__wrap__mwarn, formatted_msg, "Invalid JSON alert read from '/home/test': '{\"test\":\"invalid_value'");
 
     object = jqueue_parse_json(queue);
 
@@ -122,7 +122,7 @@ void test_jqueue_parse_json_overlong_alert(void ** state) {
     expect_value(__wrap_fgets, __stream, queue->fp);
     will_return(__wrap_fgets, buffer2);
     
-    expect_string(__wrap__merror, formatted_msg, "Overlong JSON alert read from '/home/test'");
+    expect_string(__wrap__mwarn, formatted_msg, "Overlong JSON alert read from '/home/test'");
 
     object = jqueue_parse_json(queue);
 
@@ -146,12 +146,47 @@ void test_jqueue_parse_json_fgets_fail(void ** state) {
     assert_int_equal(queue->flags, CRALERT_READ_FAILED);
 }
 
+void test_jqueue_parse_json_fgets_fail_and_retry(void ** state) {
+    file_queue * queue = *state;
+    char buffer[OS_MAXSTR + 1];
+    int64_t current_pos = 0;
+    cJSON * object = NULL;
+
+    snprintf(queue->file_name, MAX_FQUEUE, "%s", "/home/test");
+    
+    for (int i = 0; i < OS_MAXSTR; i++)
+    {
+        buffer[i] = 'a';
+    }
+    buffer[OS_MAXSTR]='\0';
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, 1);
+
+    expect_value(__wrap_fgets, __stream, queue->fp);
+    will_return(__wrap_fgets, buffer);
+
+    expect_value(__wrap_fgets, __stream, queue->fp);
+    will_return(__wrap_fgets, NULL);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Can't read from '/home/test'. Trying again");
+
+    will_return(__wrap_fseek, 1);
+
+    object = jqueue_parse_json(queue);
+
+    assert_null(object);
+    assert_int_equal(queue->flags, CRALERT_READ_FAILED);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
             cmocka_unit_test_setup_teardown(test_jqueue_parse_json_valid, setup_queue, teardown_queue),
             cmocka_unit_test_setup_teardown(test_jqueue_parse_json_invalid, setup_queue, teardown_queue),
             cmocka_unit_test_setup_teardown(test_jqueue_parse_json_overlong_alert, setup_queue, teardown_queue),
-            cmocka_unit_test_setup_teardown(test_jqueue_parse_json_fgets_fail, setup_queue, teardown_queue)
+            cmocka_unit_test_setup_teardown(test_jqueue_parse_json_fgets_fail, setup_queue, teardown_queue),
+            cmocka_unit_test_setup_teardown(test_jqueue_parse_json_fgets_fail_and_retry, setup_queue, teardown_queue)
+
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
