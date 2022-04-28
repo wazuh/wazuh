@@ -997,6 +997,9 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     mdebug1("FTS_Init completed.");
 
+    /* Initialize EPS limits file check */
+    Config.eps_limits_file_check = getDefine_Int("analysisd", "eps_limits_file_check", 1, 600);
+
     /* Create message handler thread */
     w_create_thread(ad_input_main, &m_queue);
 
@@ -1073,7 +1076,7 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     memset(&limits, 0, sizeof(limits));
     unsigned int interval = 0;
-    unsigned int check_limits_file_interval = 0;
+    unsigned int check_limits_file_interval = Config.eps_limits_file_check;
 
     while (1) {
 
@@ -1093,7 +1096,7 @@ void OS_ReadMSG_analysisd(int m_queue)
         }
 
         check_limits_file_interval++;
-        if (check_limits_file_interval >= EPS_LIMITS_FILE_CHECK) {
+        if (check_limits_file_interval >= Config.eps_limits_file_check) {
             check_limits_file_interval = 0;
             load_limits();
         }

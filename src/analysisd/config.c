@@ -59,6 +59,8 @@ int GlobalConf(const char *cfgfile)
     Config.white_list = NULL;
     Config.hostname_white_list = NULL;
 
+    Config.eps_limits_file_check = 60;
+
     /* Default actions -- only log above level 1 */
     Config.mailbylevel = 7;
     Config.logbylevel  = 1;
@@ -261,6 +263,7 @@ cJSON *getAnalysisInternalOptions(void) {
     cJSON_AddNumberToObject(analysisd,"show_hidden_labels",Config.show_hidden_labels);
     cJSON_AddNumberToObject(analysisd,"rlimit_nofile",nofile);
     cJSON_AddNumberToObject(analysisd,"min_rotate_interval",Config.min_rotate_interval);
+    cJSON_AddNumberToObject(analysisd,"eps_limits_file_check",Config.eps_limits_file_check);
 #ifdef LIBGEOIP_ENABLED
     cJSON_AddNumberToObject(analysisd,"geoip_jsonout",Config.geoip_jsonout);
 #endif

@@ -115,6 +115,9 @@ typedef struct __Config {
     int min_rotate_interval;
     ssize_t max_output_size;
     long queue_size;
+
+    // EPS limits configuration
+    unsigned int eps_limits_file_check;
 } _Config;
 
 
