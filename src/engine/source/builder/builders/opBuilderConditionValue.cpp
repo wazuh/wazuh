@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015-2022, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -10,8 +10,6 @@
 #include "opBuilderConditionValue.hpp"
 
 #include <fmt/format.h>
-
-using namespace std;
 
 namespace builder::internals::builders
 {
@@ -27,10 +25,13 @@ base::Lifter opBuilderConditionValue(const base::DocumentValue &def,
 
     std::string field =
         json::formatJsonPath(def.MemberBegin()->name.GetString());
+
     // TODO: build document with value only
-    base::Document value {def};
-    std::string successTrace = fmt::format("{} Condition Success", value.str());
-    std::string failureTrace = fmt::format("{} Condition Failure", value.str());
+    base::Document doc {def};
+    const std::string successTrace =
+        fmt::format("{} Condition Success", doc.str());
+    const std::string failureTrace =
+        fmt::format("{} Condition Failure", doc.str());
 
     // Return Lifter
     return [=](base::Observable o)
@@ -39,7 +40,7 @@ base::Lifter opBuilderConditionValue(const base::DocumentValue &def,
         return o.filter(
             [=](base::Event e)
             {
-                if (e->getEvent()->equals(field, value.begin()->value))
+                if (e->getEvent()->equals(field, doc.begin()->value))
                 {
                     tr(successTrace);
                     return true;
