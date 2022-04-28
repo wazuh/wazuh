@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015-2022, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -7,40 +7,45 @@
  * Foundation.
  */
 
-#include <gtest/gtest.h>
 #include "testUtils.hpp"
 
+#include "opBuilderHelperFilter.hpp"
 #include "opBuilderMap.hpp"
 #include "opBuilderMapReference.hpp"
 #include "opBuilderMapValue.hpp"
-#include "opBuilderHelperFilter.hpp"
+
+#include <gtest/gtest.h>
 
 using namespace base;
 namespace bld = builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg){};
+static FakeTrFn tr = [](std::string msg) {
+};
 
 TEST(opBuilderMap, BuildsAllNonRegistered)
 {
-    Document doc{R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "string": "value",
-                    "int": 1,
-                    "bool": true,
-                    "reference": "$field"
-                }
-            }
-        ]
+    Document doc {R"({
+        "map":
+        {
+            "string": "value",
+            "int": 1,
+            "bool": true,
+            "reference": "$field"
+        }
     })"};
-    const auto & arr = doc.begin()->value.GetArray();
-    for (auto it = arr.Begin(); it != arr.end(); ++it)
+
+    auto docAllocator = doc.getAllocator();
+    const auto &obj = doc.begin()->value.GetObject();
+    for (auto it = obj.MemberBegin(); it != obj.MemberEnd(); ++it)
     {
-        ASSERT_THROW(bld::opBuilderMap(*it, tr), invalid_argument);
+
+        rapidjson::Value pairKeyValue(rapidjson::kObjectType);
+        DocumentValue val(it->value, docAllocator);
+        DocumentValue key(it->name, docAllocator);
+        pairKeyValue.AddMember(key.Move(), val.Move(), docAllocator);
+
+        ASSERT_THROW(opBuilderMap(pairKeyValue, tr), std::invalid_argument);
     }
 }
 
@@ -48,23 +53,26 @@ TEST(opBuilderMap, BuildsValue)
 {
     BuilderVariant c = bld::opBuilderMapValue;
     Registry::registerBuilder("map.value", c);
-    Document doc{R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "string": "value",
-                    "int": 1,
-                    "bool": true
-                }
-            }
-        ]
+    Document doc {R"({
+        "map":
+        {
+            "string": "value",
+            "int": 1,
+            "bool": true
+        }
     })"};
-    const auto & arr = doc.begin()->value.GetArray();
-    for (auto it = arr.Begin(); it != arr.end(); ++it)
+
+    auto docAllocator = doc.getAllocator();
+    const auto &obj = doc.begin()->value.GetObject();
+    for (auto it = obj.MemberBegin(); it != obj.MemberEnd(); ++it)
     {
-        ASSERT_NO_THROW(bld::opBuilderMap(*it, tr));
+
+        rapidjson::Value pairKeyValue(rapidjson::kObjectType);
+        DocumentValue val(it->value, docAllocator);
+        DocumentValue key(it->name, docAllocator);
+        pairKeyValue.AddMember(key.Move(), val.Move(), docAllocator);
+
+        ASSERT_NO_THROW(opBuilderMap(pairKeyValue, tr));
     }
 }
 
@@ -72,16 +80,23 @@ TEST(opBuilderMap, BuildsReference)
 {
     BuilderVariant c = bld::opBuilderMapReference;
     Registry::registerBuilder("map.reference", c);
-    Document doc{R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "ref": "$ref"
-                }
-            }
-        ]
+    Document doc {R"({
+        "map":
+        {
+            "ref": "$ref"
+        }
     })"};
-    ASSERT_NO_THROW(opBuilderMap(doc.get("/normalize"), tr));
+
+    auto docAllocator = doc.getAllocator();
+    const auto &obj = doc.begin()->value.GetObject();
+    for (auto it = obj.MemberBegin(); it != obj.MemberEnd(); ++it)
+    {
+
+        rapidjson::Value pairKeyValue(rapidjson::kObjectType);
+        DocumentValue val(it->value, docAllocator);
+        DocumentValue key(it->name, docAllocator);
+        pairKeyValue.AddMember(key.Move(), val.Move(), docAllocator);
+
+        ASSERT_NO_THROW(opBuilderMap(pairKeyValue, tr));
+    }
 }
