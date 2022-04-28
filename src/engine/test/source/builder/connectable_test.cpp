@@ -4,7 +4,6 @@
 #include <string>
 #include <vector>
 
-#include <base/baseTypes.hpp>
 
 #include "connectable.hpp"
 #include "testUtils.hpp"
@@ -41,6 +40,11 @@ struct FakeEventHandler
     void setDecoded()
     {
         deco = true;
+    }
+
+    bool isDecoded()
+    {
+        return deco;
     }
 };
 
@@ -84,8 +88,12 @@ TEST(ConnectableTest, TracerGraph)
         // Build connectable as outputs so only one event will be sent by each
         // conenctable
         connectables.push_back(Connectable<observable<FakeEventHandlerType>> {
-            string("OUTPUT_") + std::to_string(i)});
+            string("connectable_obs_") + std::to_string(i)});
     }
+
+    auto lifterFilter = [](observable<FakeEventHandlerType> o) {
+        return o.filter([](FakeEventHandlerType e) { return !e->isDecoded(); });
+    };
 
     // Manually build graph
     auto input =
@@ -106,25 +114,25 @@ TEST(ConnectableTest, TracerGraph)
     connectables[0].addInput(input);
     auto obs = connectables[0].connect();
     obs = obs.publish().ref_count();
-    connectables[1].addInput(obs);
-    connectables[8].addInput(obs);
+    connectables[1].addInput(lifterFilter(obs));
+    connectables[8].addInput(lifterFilter(obs));
     obs = connectables[1].connect();
-    connectables[2].addInput(obs);
+    connectables[2].addInput(lifterFilter(obs));
     obs = connectables[8].connect();
-    connectables[2].addInput(obs);
+    connectables[2].addInput(lifterFilter(obs));
     obs = connectables[2].connect();
     obs = obs.publish().ref_count();
-    connectables[3].addInput(obs);
-    connectables[4].addInput(obs);
+    connectables[3].addInput(lifterFilter(obs));
+    connectables[4].addInput(lifterFilter(obs));
     obs = connectables[4].connect().publish().ref_count();
-    connectables[5].addInput(obs);
-    connectables[7].addInput(obs);
+    connectables[5].addInput(lifterFilter(obs));
+    connectables[7].addInput(lifterFilter(obs));
     obs = connectables[5].connect();
-    connectables[6].addInput(obs);
+    connectables[6].addInput(lifterFilter(obs));
     obs = connectables[7].connect();
-    connectables[6].addInput(obs);
+    connectables[6].addInput(lifterFilter(obs));
     obs = connectables[6].connect();
-    connectables[3].addInput(obs);
+    connectables[3].addInput(lifterFilter(obs));
     auto end = connectables[3].connect();
 
     // Push only sent events by each connectable in expected order
@@ -134,17 +142,16 @@ TEST(ConnectableTest, TracerGraph)
         conn.m_tracer.m_out.subscribe(
             [&, name = conn.m_name](string msg)
             {
-                // GTEST_COUT << msg << endl;
-                if (msg.find("sent") != string::npos)
-                {
-                    expected.push_back(stoi(name.substr(name.size() - 1)));
-                }
+                GTEST_COUT << msg << endl;
+                expected.push_back(stoi(name.substr(name.size() - 1)));
             });
     }
-    end.subscribe();
+    end.subscribe([](FakeEventHandlerType e){
+        e->setDecoded();
+    });
     input.connect();
-    ASSERT_EQ(expected.size(), 9);
-    for (auto i = 0; i < 9; ++i)
+    ASSERT_EQ(expected.size(), 4);
+    for (auto i = 0; i < 4; ++i)
     {
         ASSERT_EQ(expected[i], i);
     }
