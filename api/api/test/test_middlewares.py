@@ -72,6 +72,7 @@ async def test_middlewares_unlock_ip_ko():
 
 @pytest.mark.parametrize('request_info', [
     {'path': '/security/user/authenticate', 'method': 'GET', 'remote': 'ip'},
+    {'path': '/security/user/authenticate', 'method': 'POST', 'remote': 'ip'},
     {'path': '/security/user/authenticate/run_as', 'method': 'POST', 'remote': 'ip'},
 ])
 @pytest.mark.parametrize('stats', [

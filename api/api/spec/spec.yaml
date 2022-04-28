@@ -11,7 +11,7 @@ info:
 
     Wazuh API endpoints require authentication in order to be used. Therefore, all calls must include a JSON Web Token.
     JWT is an open standard (RFC 7519) that defines a compact and self-contained way for securely transmitting
-    information between parties as a JSON object. Perform a call with `basicAuth` to `GET /security/user/authenticate`
+    information between parties as a JSON object. Perform a call with `basicAuth` to `POST /security/user/authenticate`
     and obtain a JWT token in order to run any endpoint.
 
     JWT tokens have a default duration of 900 seconds. To change this value, you must perform a call with a valid
@@ -20,7 +20,7 @@ info:
 
     Login with USER and PASSWORD:
 
-    `curl -u <USER>:<PASSWORD> -k -X GET "https://<HOST_IP>:55000/security/user/authenticate"`
+    `curl -u <USER>:<PASSWORD> -k -X POST "https://<HOST_IP>:55000/security/user/authenticate"`
     ```json
     {
         "data": {
@@ -14790,13 +14790,54 @@ paths:
           $ref: '#/components/responses/TooManyRequestsResponse'
 
   /security/user/authenticate:
-    get:
+    post:
       tags:
         - Security
       summary: "Login"
       description: "This method should be called to get an API token. This token will expire after
       auth_token_exp_timeout seconds (default: 900). This value can be changed using PUT /security/config"
       operationId: api.controllers.security_controller.login_user
+      parameters:
+        - $ref: '#/components/parameters/raw'
+      security:
+        - basicAuth: []
+      responses:
+        '200':
+          description: "Login successful"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Token'
+              example:
+                data:
+                  token: "<generated_token>"
+                  error: 0
+            text/plain:
+              schema:
+                type: string
+              example: "<generated_token>"
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/InvalidCredentialsResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    get:
+      tags:
+        - Security
+      summary: "Login"
+      deprecated: true
+      description: "This method should be called to get an API token. This token will expire after
+      auth_token_exp_timeout seconds (default: 900). This value can be changed using PUT /security/config"
+      operationId: api.controllers.security_controller.deprecated_login_user
       parameters:
         - $ref: '#/components/parameters/raw'
       security:
