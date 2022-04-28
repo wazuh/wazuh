@@ -31,7 +31,7 @@ static FakeTrFn tr = [](std::string msg) {
 
 /**
 
-Example of a "normalize" configuration
+Example of a (dummy) "normalize" configuration
 
 YML:
 
@@ -680,5 +680,55 @@ TEST(StageBuilderNormalize, testNormalizeWrongWayToTest)
         ASSERT_EQ(e->get("/field2").GetInt(), 2);
         ASSERT_STREQ(e->get("/field3").GetString(), "value3");
         ASSERT_TRUE(e->get("/field4").GetBool());
+    }
+}
+
+TEST(StageBuilderNormalize, unexistandReferencedField)
+{
+    Document doc {R"({
+        "normalize": [
+            {
+                "map":
+                {
+                    "field3": "$field10",
+                    "field4": false,
+                    "field8": "$field9"
+                }
+            }
+        ]
+    })"};
+
+    auto normalize = builders::stageBuilderNormalize(doc.get("/normalize"), tr);
+
+    auto eventsCount = 3;
+    Observable input = observable<>::create<Event>(
+        [=](auto s)
+        {
+            for (int i = 0; i < eventsCount; i++)
+            {
+                /** WARNING: using the make_shared here results in unexpected
+                 * broadcast behavior. */
+                s.on_next(std::make_shared<json::Document>(R"(
+                            {
+                                    "field1": "value",
+                                    "field2": 2,
+                                    "field3": "value3",
+                                    "field4": true,
+                                    "field5": "+exists",
+                                    "field6": "+exists"
+                            })"));
+            }
+            s.on_completed();
+        });
+
+    Observable output = normalize(input);
+
+    vector<Event> expected;
+    output.subscribe([&](Event e) { expected.push_back(e); });
+    ASSERT_EQ(expected.size(), eventsCount);
+
+    for (auto e : expected)
+    {
+        std::cout << e->prettyStr() << std::endl;
     }
 }

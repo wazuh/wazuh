@@ -24,11 +24,6 @@
 namespace builder::internals::builders
 {
 
-using builder::combinatorBuilderBroadcast;
-using builder::combinatorBuilderChain;
-using builder::opBuilderMap;
-using builder::stageBuilderCheck;
-
 using types::CombinatorBuilder;
 using base::DocumentValue;
 using base::Lifter;
