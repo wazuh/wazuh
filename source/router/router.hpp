@@ -18,7 +18,6 @@
 #include <fmt/format.h>
 #include <rxcpp/rx.hpp>
 
-//#include <eventHandler.hpp>
 #include <baseTypes.hpp>
 
 namespace router
