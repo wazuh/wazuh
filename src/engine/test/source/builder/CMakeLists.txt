@@ -111,13 +111,25 @@ add_executable(stageBuilderOutputsTest
 )
 gtest_discover_tests(stageBuilderOutputsTest)
 
-add_executable(assetBuilderTest
+add_executable(assetBuilderDecoderTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/assetBuilderDecoder_test.cpp
+)
+gtest_discover_tests(assetBuilderDecoderTest)
+
+add_executable(assetBuilderOutputTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/assetBuilderOutput_test.cpp
+)
+gtest_discover_tests(assetBuilderOutputTest)
+
+add_executable(assetBuilderFilterTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/assetBuilderFilter_test.cpp
+)
+gtest_discover_tests(assetBuilderFilterTest)
+
+add_executable(assetBuilderRuleTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/assetBuilderRule_test.cpp
 )
-gtest_discover_tests(assetBuilderTest)
+gtest_discover_tests(assetBuilderRuleTest)
 
 add_executable(opBuilderConditionTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderCondition_test.cpp
