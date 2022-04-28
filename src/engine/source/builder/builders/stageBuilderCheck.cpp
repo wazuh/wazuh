@@ -21,7 +21,8 @@
 namespace builder::internals::builders
 {
 
-base::Lifter stageBuilderCheck(const base::DocumentValue &def, types::TracerFn tr)
+base::Lifter stageBuilderCheck(const base::DocumentValue &def,
+                                types::TracerFn tr)
 {
     // Assert value is as expected
     if (!def.IsArray())
