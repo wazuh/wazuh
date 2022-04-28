@@ -110,6 +110,5 @@ extern int num_rule_matching_threads;
 #define EPS_LIMITS_MIN_TIMEFRAME 1
 #define EPS_LIMITS_MAX_EPS 100000
 #define EPS_LIMITS_MIN_EPS 0
-#define EPS_LIMITS_FILE_CHECK 10
 
 #endif /* LOGAUDIT_H */
