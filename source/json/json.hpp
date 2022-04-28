@@ -151,18 +151,20 @@ public:
      * @param path json path of the value that will be set.
      * @param v new value that will be set.
      */
-    void set(const std::string &path, const Value &v)
+    bool set(const std::string &path, const Value &v)
     {
         auto ptr = rapidjson::Pointer(path.c_str());
         if (ptr.IsValid())
         {
             ptr.Set(m_doc, v);
+            return true;
         }
         else
         {
             throw invalid_argument(
                 "Error, received invalid path in set function: " + path);
         }
+        return false;
     }
 
     /**
@@ -171,7 +173,7 @@ public:
      * @param to
      * @param from
      */
-    void set(const std::string &to, const std::string &from)
+    bool set(const std::string &to, const std::string &from)
     {
         auto toPtr = rapidjson::Pointer(to.c_str());
         auto fromPtr = rapidjson::Pointer(from.c_str());
@@ -183,14 +185,9 @@ public:
             {
                 // Static cast is used to ensure new allocation is made
                 toPtr.Set(this->m_doc, static_cast<const Value &>(*fromValue));
+                return true;
             }
-            else
-            {
-                // TODO: Handle this situation correctly
-                std::cout
-                    << "Trace: Mapping from reference failed. Source field \""
-                    << from << "\" not found." << std::endl;
-            }
+            // TODO: Is there anything else to do if else?
         }
         else
         {
@@ -198,6 +195,7 @@ public:
                 "Error, received invalid path in set function: " + to + " -> " +
                 from);
         }
+        return false;
     }
 
     /**

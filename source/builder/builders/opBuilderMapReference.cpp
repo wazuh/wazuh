@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015-2022, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -12,8 +12,6 @@
 #include <string>
 
 #include <fmt/format.h>
-
-using namespace std;
 
 namespace builder::internals::builders
 {
@@ -44,21 +42,21 @@ base::Lifter opBuilderMapReference(const base::DocumentValue &def,
     reference = json::formatJsonPath(reference);
 
     // Debug trace
-    base::Document value{def};
-    std::string successTrace = fmt::format("{} Mapping Success", value.str());
-    std::string failureTrace = fmt::format("{} Mapping Failure", value.str());
+    base::Document doc {def};
+    const std::string successTrace =
+        fmt::format("{} Mapping Success", doc.str());
+    const std::string failureTrace =
+        fmt::format("{} Mapping Failure", doc.str());
 
     // Return Lifter
     return [=](base::Observable o)
     {
         // Append rxcpp operation
-        return o.map(
-            [=](base::Event e)
-            {
-                e->getEvent()->set(field, reference);
-                tr(successTrace);
-                return e;
-            });
+        return o.map([=](base::Event e) {
+            e->getEvent()->set(field, reference) ? tr(successTrace)
+                                                 : tr(failureTrace);
+            return e;
+        });
     };
 }
 
