@@ -952,7 +952,7 @@ static void test_fim_audit_json(void **state) {
 static void test_fim_check_ignore_strncasecmp(void **state) {
    int ret;
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6204): Ignoring 'file' '/EtC/dumPDateS' due to '/etc/dumpdates'");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6204): Ignoring path '/EtC/dumPDateS' due to pattern '/etc/dumpdates'");
 
     ret = fim_check_ignore("/EtC/dumPDateS");
 
@@ -968,7 +968,7 @@ static void test_fim_check_ignore_strncasecmp(void **state) {
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
 
-    snprintf(debug_msg, OS_MAXSTR, "(6204): Ignoring 'file' '%s' due to '%s'", expanded_path, syscheck.ignore[0]);
+    snprintf(debug_msg, OS_MAXSTR, "(6204): Ignoring path '%s' due to pattern '%s'", expanded_path, syscheck.ignore[0]);
 
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
@@ -983,9 +983,9 @@ static void test_fim_check_ignore_regex(void **state) {
    int ret;
 
 #ifndef TEST_WINAGENT
-    expect_string(__wrap__mdebug2, formatted_msg, "(6205): Ignoring 'file' '/test/files/test.swp' due to sregex '.log$|.swp$'");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6205): Ignoring path '/test/files/test.swp' due to sregex '.log$|.swp$'");
 #else
-    expect_string(__wrap__mdebug2, formatted_msg, "(6205): Ignoring 'file' '/test/files/test.swp' due to sregex '.log$|.htm$|.jpg$|.png$|.chm$|.pnf$|.evtx$|.swp$'");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6205): Ignoring path '/test/files/test.swp' due to sregex '.log$|.htm$|.jpg$|.png$|.chm$|.pnf$|.evtx$|.swp$'");
 #endif
 
     ret = fim_check_ignore("/test/files/test.swp");
@@ -1743,7 +1743,7 @@ static void test_fim_checker_fim_regular_ignore(void **state) {
     expect_string(__wrap_HasFilesystem, path, "/etc/mtab");
     will_return(__wrap_HasFilesystem, 0);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6204): Ignoring 'file' '/etc/mtab' due to '/etc/mtab'");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6204): Ignoring path '/etc/mtab' due to pattern '/etc/mtab'");
 
     fim_checker(path, &evt_data, NULL);
 }
@@ -2602,7 +2602,7 @@ static void test_fim_checker_fim_regular_ignore(void **state) {
     expect_string(__wrap_HasFilesystem, path, expanded_path);
     will_return(__wrap_HasFilesystem, 0);
 
-    snprintf(debug_msg, OS_MAXSTR, "(6204): Ignoring 'file' '%s' due to '%s'", expanded_path, expanded_path);
+    snprintf(debug_msg, OS_MAXSTR, "(6204): Ignoring path '%s' due to pattern '%s'", expanded_path, expanded_path);
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
     fim_checker(expanded_path, &evt_data, NULL);
