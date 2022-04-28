@@ -80,7 +80,7 @@ VALUES ('Smokedetector', '-', 'x86', 'CVE-2019-1020011', 'PACKAGE', 'PENDING', '
 
 INSERT INTO vuln_cves (name, version, architecture, cve, type, status, detection_time, severity, cvss2_score,
                        cvss3_score, reference, external_references, condition, title, published, updated)
-VALUES ('Mozilla Firefox 53.0 (x64 en-US)', '53.0', 'x64', 'CVE-2021-38503', 'PACKAGE', 'OBSOLETE', '1623656949', 'Critical', 7.5, 10,
+VALUES ('Mozilla Firefox 53.0 (x64 en-US)', '53.0', 'x64', 'CVE-2021-38503', 'PACKAGE', 'OBSOLETE', '1623656949', 'High', 7.5, 10,
         'ab712fb636baccbb7484f7b3daf5b4c0ce485960',
         '["https://www.mozilla.org/security/advisories/mfsa2021-48/","https://bugzilla.mozilla.org/show_bug.cgi?id=1729517","https://lists.debian.org/debian-lts-announce/2021/12/msg00030.html"]',
         'Package unfixed',
