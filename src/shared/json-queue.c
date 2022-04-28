@@ -130,7 +130,7 @@ cJSON * jqueue_parse_json(file_queue * queue) {
             // The read JSON is invalid                                   
             cJSON_Delete(object);
 
-            merror("Invalid JSON alert read from '%s': '%s'", queue->file_name, buffer);
+            mwarn("Invalid JSON alert read from '%s': '%s'", queue->file_name, buffer);
             return NULL;
         }
 
@@ -139,11 +139,10 @@ cJSON * jqueue_parse_json(file_queue * queue) {
             if(fgets(buffer, OS_MAXSTR + 1, queue->fp)){
 
                 if (strchr(buffer, '\n')){
-                    merror("Overlong JSON alert read from '%s'", queue->file_name);
+                    mwarn("Overlong JSON alert read from '%s'", queue->file_name);
                     return NULL;
                 }
             } else {
-                queue->flags = CRALERT_READ_FAILED;
                 break;
             }
         }
