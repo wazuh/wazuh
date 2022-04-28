@@ -13,6 +13,9 @@
 #include <string>
 #include <vector>
 
+#include "combinatorBuilderBroadcast.hpp"
+#include "combinatorBuilderChain.hpp"
+#include "opBuilderMap.hpp"
 #include "registry.hpp"
 #include "stageBuilderCheck.hpp"
 
@@ -21,15 +24,21 @@
 namespace builder::internals::builders
 {
 
+using builder::combinatorBuilderBroadcast;
+using builder::combinatorBuilderChain;
+using builder::opBuilderMap;
+using builder::stageBuilderCheck;
+
 using types::CombinatorBuilder;
 using base::DocumentValue;
 using base::Lifter;
+using types::TracerFn;
 
 using std::invalid_argument;
 using std::runtime_error;
 using std::throw_with_nested;
 
-static Lifter normalizeMap(const DocumentValue &ref, types::TracerFn tr)
+static Lifter normalizeMap(const DocumentValue &ref, TracerFn tr)
 {
     if (!ref.IsObject())
     {
@@ -67,9 +76,7 @@ static Lifter normalizeMap(const DocumentValue &ref, types::TracerFn tr)
             DocumentValue val(it->value, docAllocator);
             DocumentValue key(it->name, docAllocator);
             pairKeyValue.AddMember(key.Move(), val.Move(), docAllocator);
-
-            mapOps.push_back(std::get<types::OpBuilder>(
-                Registry::getBuilder("map"))(pairKeyValue, tr));
+            mapOps.push_back(opBuilderMap(pairKeyValue, tr));
         }
         catch (std::exception &e)
         {
@@ -84,8 +91,7 @@ static Lifter normalizeMap(const DocumentValue &ref, types::TracerFn tr)
     try
     {
         // Chains the "map" operations
-        return std::get<CombinatorBuilder>(
-            Registry::getBuilder("combinator.chain"))(mapOps);
+        return combinatorBuilderChain(mapOps);
     }
     catch (std::exception &e)
     {
@@ -97,7 +103,7 @@ static Lifter normalizeMap(const DocumentValue &ref, types::TracerFn tr)
     }
 }
 
-static Lifter normalizeCheck(const DocumentValue &ref, types::TracerFn tr)
+static Lifter normalizeCheck(const DocumentValue &ref, TracerFn tr)
 {
     if (!ref.IsArray())
     {
@@ -120,8 +126,7 @@ static Lifter normalizeCheck(const DocumentValue &ref, types::TracerFn tr)
 
     try
     {
-        checkOps.push_back(std::get<types::OpBuilder>(
-            Registry::getBuilder("check"))(checkArray, tr));
+        checkOps.push_back(stageBuilderCheck(checkArray, tr));
     }
     catch (std::exception &e)
     {
@@ -135,8 +140,7 @@ static Lifter normalizeCheck(const DocumentValue &ref, types::TracerFn tr)
     try
     {
         // Chains the "check" operations
-        return std::get<CombinatorBuilder>(
-            Registry::getBuilder("combinator.chain"))(checkOps);
+        return combinatorBuilderChain(checkOps);
     }
     catch (std::exception &e)
     {
@@ -148,9 +152,9 @@ static Lifter normalizeCheck(const DocumentValue &ref, types::TracerFn tr)
     }
 }
 
-static Lifter normalizeConditionalMap(const DocumentValue &def,
-                                      types::TracerFn tr)
+static Lifter normalizeConditionalMap(const DocumentValue &def, TracerFn tr)
 {
+    // Normalize stage must always have exactly two elements: "check" and "map"
     if (def.MemberCount() != 2)
     {
         auto msg = fmt::format(
@@ -165,6 +169,7 @@ static Lifter normalizeConditionalMap(const DocumentValue &def,
 
     try
     {
+        // First chain the "check" operations
         conditionalMapOps.push_back(normalizeCheck(def["check"], tr));
     }
     catch (std::exception &e)
@@ -179,6 +184,7 @@ static Lifter normalizeConditionalMap(const DocumentValue &def,
 
     try
     {
+        // Second chain the "map" operations
         conditionalMapOps.push_back(normalizeMap(def["map"], tr));
     }
     catch (std::exception &e)
@@ -193,8 +199,10 @@ static Lifter normalizeConditionalMap(const DocumentValue &def,
 
     try
     {
-        return std::get<CombinatorBuilder>(
-            Registry::getBuilder("combinator.chain"))(conditionalMapOps);
+        /** The "check" and "map" operations are chained (in that order) so if a
+         * check fails, then the pipeline aborts its flow. If all the checks
+         * pass, then the pipeline performs the "map" operations. */
+        return combinatorBuilderChain(conditionalMapOps);
     }
     catch (std::exception &e)
     {
@@ -206,8 +214,11 @@ static Lifter normalizeConditionalMap(const DocumentValue &def,
     }
 }
 
-Lifter stageBuilderNormalize(const DocumentValue &def, types::TracerFn tr)
+Lifter stageBuilderNormalize(const DocumentValue &def, TracerFn tr)
 {
+    bool doMap = false;
+    bool doConditionalMap = false;
+
     // Assert value is as expected
     if (!def.IsArray())
     {
@@ -231,11 +242,48 @@ Lifter stageBuilderNormalize(const DocumentValue &def, types::TracerFn tr)
             {
                 if (obj.HasMember("check"))
                 {
-                    normalizeOps.push_back(normalizeConditionalMap(obj, tr));
+                    if (doConditionalMap)
+                    {
+                        auto msg = fmt::format(
+                            "Stage normalize builder, expected only one "
+                            "conditional map but got more than one.");
+                        WAZUH_LOG_ERROR("{}", msg);
+                        throw_with_nested(invalid_argument(msg));
+                    }
+                    else
+                    {
+                        normalizeOps.push_back(
+                            normalizeConditionalMap(obj, tr));
+                        doConditionalMap = true;
+                    }
                 }
                 else
                 {
-                    normalizeOps.push_back(normalizeMap(obj["map"], tr));
+                    if (obj.MemberCount() != 1)
+                    {
+                        auto msg = fmt::format(
+                            "Stage normalize builder, expected only a"
+                            "\"map\" object but got more than one objects.");
+                        WAZUH_LOG_ERROR("{}", msg);
+                        throw_with_nested(invalid_argument(msg));
+                    }
+                    else
+                    {
+                        if (doMap)
+                        {
+                            auto msg = fmt::format(
+                                "Stage normalize builder, expected only one "
+                                "\"map\" object but got more than one.");
+                            WAZUH_LOG_ERROR("{}", msg);
+                            throw_with_nested(invalid_argument(msg));
+                        }
+                        else
+                        {
+                            normalizeOps.push_back(
+                                normalizeMap(obj["map"], tr));
+                            doMap = true;
+                        }
+                    }
                 }
             }
             else
@@ -259,29 +307,35 @@ Lifter stageBuilderNormalize(const DocumentValue &def, types::TracerFn tr)
 
     try
     {
-        /** As the map and check-map (conditional map) operations run in
-         * parallel, some special considerations must be taken. The map one
-         * always produces an output and modifies the input object while the
-         * check-map operation may not produce any output. To handle this
-         * situation, these operations can not be serialized (chained) so they
-         * should be combined with the broadcast operation. This leads to
-         * another situation, only one observable should be emitted so both
-         * outputs should be filtered and a dummy one had to be created to
-         * publish the result. */
-        for (auto &op : normalizeOps)
+        /** The normalize operations will only be broadcasted if both the "map"
+         * (inconditional) and "conditional map" are present, as the conditional
+         * map could abort the pipeline flow. */
+        if (doMap && doConditionalMap)
         {
-            op = [op](base::Observable in)
+            /** As the map and check-map (conditional map) operations run in
+             * parallel, some special considerations must be taken. The map one
+             * always produces an output and modifies the input object while the
+             * check-map operation may not produce any output. To handle this
+             * situation, these operations can not be serialized (chained) so
+             * they should be combined with the broadcast operation. This leads
+             * to another situation, only one observable should be emitted so
+             * both outputs should be filtered and a dummy one had to be created
+             * to publish the result. */
+            for (auto &op : normalizeOps)
             {
-                // Filter map and check-map outputs
-                return op(in).filter([](auto) { return false; });
-            };
-        }
-        // Append a dummy observable publisher to the list of operations
-        normalizeOps.push_back([](base::Observable in) { return in; });
+                op = [op](base::Observable in)
+                {
+                    // Filter map and check-map outputs
+                    return op(in).filter([](auto) { return false; });
+                };
+            }
+            // Append a dummy observable publisher to the list of operations
+            normalizeOps.push_back([](base::Observable in) { return in; });
 
-        // Combine the normalize operations as broadcast
-        return std::get<CombinatorBuilder>(
-            Registry::getBuilder("combinator.broadcast"))(normalizeOps);
+            // Combine the normalize operations as broadcast
+            return combinatorBuilderBroadcast(normalizeOps);
+        }
+        return normalizeOps.back();
     }
     catch (std::exception &e)
     {
