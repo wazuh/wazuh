@@ -822,8 +822,13 @@ endif
 ifeq (,$(filter ${DISABLE_STRIP_SYMBOLS},YES yes y Y 1))
 ifeq (${uname_S}, Linux)
 ifeq (${TARGET}, winagent)
-	@if test -n "${WIN_STRIP_TOOL_PATH}" -a -d "${WIN_STRIP_TOOL_PATH}" -a -f "${WIN_STRIP_TOOL_PATH}/cv2pdb.exe" && command -v wine > /dev/null 2>&1; then \
-		$(foreach binary, ${EXECUTABLE_FILES}, (${MING_BASE}objdump -h $(binary) | grep -q ".debug_info" && wine ${WIN_STRIP_TOOL_PATH}/cv2pdb.exe $(binary) $(binary) ${SYMBOLS_PATH}/$(basename $(notdir $(binary))).pdb) || true;) \
+	@if test -n "${WIN_STRIP_TOOL_PATH}"; then \
+		if test -d "${WIN_STRIP_TOOL_PATH}" -a -f "${WIN_STRIP_TOOL_PATH}/cv2pdb.exe" && command -v wine > /dev/null 2>&1; then \
+			$(foreach binary, ${EXECUTABLE_FILES}, (${MING_BASE}objdump -h $(binary) | grep -q ".debug_info" && wine ${WIN_STRIP_TOOL_PATH}/cv2pdb.exe $(binary) $(binary) ${SYMBOLS_PATH}/$(basename $(notdir $(binary))).pdb) || true;) \
+		else \
+			echo "bad cv2pdb path or wine not installed!"; \
+			return 1; \
+		fi \
 	else \
 		$(foreach binary, ${EXECUTABLE_FILES}, ${MING_BASE}objcopy --strip-unneeded ${binary};) \
 	fi
