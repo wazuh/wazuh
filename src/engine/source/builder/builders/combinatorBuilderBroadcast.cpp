@@ -10,18 +10,18 @@
 #include "combinatorBuilderBroadcast.hpp"
 
 #include <vector>
+
 namespace builder::internals::builders
 {
 
 using base::Lifter;
 using base::Observable;
-using std::vector;
 
-Lifter combinatorBuilderBroadcast(const vector<Lifter> &lifters)
+Lifter combinatorBuilderBroadcast(const std::vector<Lifter> &lifters)
 {
     return [=](Observable input) -> Observable
     {
-        vector<Observable> inputs;
+        std::vector<Observable> inputs;
         for (auto op : lifters)
         {
             inputs.push_back(op(input));

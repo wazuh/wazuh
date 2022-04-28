@@ -40,10 +40,9 @@ TEST(CombinatorBuilderBroadcastTest, combinedBroadcastEventsCount)
         lifters.push_back([](Observable in) { return in; });
     }
 
-    Lifter chain = std::get<types::CombinatorBuilder>(
-        Registry::getBuilder("combinator.broadcast"))(lifters);
+    Lifter chain = builders::combinatorBuilderBroadcast(lifters);
 
-    auto eventsCount = 5;
+    auto eventsCount = 4;
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
@@ -84,10 +83,9 @@ TEST(CombinatorBuilderBroadcastTest, combinedBroadcastSingleEmition)
     // Create dummy observable publisher (Single broadcast output)
     lifters.push_back([](Observable in) { return in; });
 
-    Lifter chain = std::get<types::CombinatorBuilder>(
-        Registry::getBuilder("combinator.broadcast"))(lifters);
+    Lifter chain = builders::combinatorBuilderBroadcast(lifters);
 
-    auto eventsCount = 5;
+    auto eventsCount = 4;
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
