@@ -2,17 +2,16 @@
 
 #include "gtest/gtest.h"
 
-using namespace std;
 using namespace logicExpression;
 
 TEST(LogicExpression, buildDijstraEvaluator)
 {
-    // True if: (pair or odd and not i>5) and i>1
-    // tldr: true if 3,5 or pair>1
+    // True if: (even or odd and not i>5) and i>1
+    // tldr: true if 3,5 or even>1
 
-    auto fakeTermBuilder = [](string s) -> function<bool(int)>
+    auto fakeTermBuilder = [](std::string s) -> std::function<bool(int)>
     {
-        if (s == "PAIR")
+        if (s == "EVEN")
         {
             return [](int i)
             {
@@ -42,13 +41,13 @@ TEST(LogicExpression, buildDijstraEvaluator)
         }
         else
         {
-            throw runtime_error(
+            throw std::runtime_error(
                 "Error test fakeBuilder, got unexpected term: " + s);
         }
     };
 
-    auto expression = "(PAIR OR ODD AND NOT GREAT5) AND GREAT1";
-    function<bool(int)> evaluator;
+    auto expression = "(EVEN OR ODD AND NOT GREAT5) AND GREAT1";
+    std::function<bool(int)> evaluator;
     EXPECT_NO_THROW(evaluator = buildDijstraEvaluator<int>(expression, fakeTermBuilder));
 
     EXPECT_FALSE(evaluator(0));
