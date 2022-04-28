@@ -6,11 +6,13 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#include <gtest/gtest.h>
+
+#include <baseTypes.hpp>
 
 #include "opBuilderHelperFilter.hpp"
 #include "testUtils.hpp"
-#include <gtest/gtest.h>
-#include "base/baseTypes.hpp"
+
 
 using namespace base;
 namespace bld = builder::internals::builders;
