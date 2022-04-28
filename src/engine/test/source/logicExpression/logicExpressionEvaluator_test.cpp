@@ -2,7 +2,6 @@
 
 #include "gtest/gtest.h"
 
-using namespace std;
 using namespace logicExpression::evaluator;
 
 TEST(LogicExpressionEvaluator, ExpressionConstructs)
@@ -12,7 +11,7 @@ TEST(LogicExpressionEvaluator, ExpressionConstructs)
     EXPECT_NO_THROW(expression =
                         Expression<int>::create([](int) { return true; }));
     EXPECT_TRUE(expression->m_function(0));
-    EXPECT_THROW(expression = Expression<int>::create(TERM), runtime_error);
+    EXPECT_THROW(expression = Expression<int>::create(TERM), std::runtime_error);
 
     EXPECT_NO_THROW(expression = Expression<int>::create(OR));
     EXPECT_NO_THROW(expression = Expression<int>::create(AND));
@@ -31,7 +30,7 @@ TEST(LogicExpressionEvaluator, ExpressionUtils)
     EXPECT_TRUE(expr1 == expr2);
 
     // Visitor Pre-Order
-    vector<int> expected = {TERM, NOT, TERM, OR};
+    std::vector<int> expected = {TERM, NOT, TERM, OR};
     auto it = expected.end() - 1;
     auto visitor = [&it](const Expression<int>& expr)
     {
@@ -59,7 +58,7 @@ TEST(LogicExpressionEvaluator, getDijstraEvaluator)
     root->m_right->m_right->m_left =
         Expression<int>::create([](int i) { return i > 5; });
 
-    function<bool(int)> evaluator;
+    std::function<bool(int)> evaluator;
     ASSERT_NO_THROW(evaluator = getDijstraEvaluator<int>(root));
 
     EXPECT_FALSE(evaluator(0));

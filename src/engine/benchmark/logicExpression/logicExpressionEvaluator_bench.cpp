@@ -1,13 +1,11 @@
 #include <benchmark/benchmark.h>
 #include <logicExpression/logicExpression.hpp>
 
-using namespace std;
-
 static void BM_DijkstraEvaluator(benchmark::State& state)
 {
-    auto fakeTermBuilder = [](string s) -> function<bool(int)>
+    auto fakeTermBuilder = [](std::string s) -> std::function<bool(int)>
     {
-        if (s == "PAIR")
+        if (s == "EVEN")
         {
             return [](int i)
             {
@@ -37,14 +35,14 @@ static void BM_DijkstraEvaluator(benchmark::State& state)
         }
         else
         {
-            throw runtime_error(
+            throw std::runtime_error(
                 "Error test fakeBuilder, got unexpected term: " + s);
         }
     };
 
     // Build function
     auto evaluator = logicExpression::buildDijstraEvaluator<int>(
-        "(PAIR OR ODD AND NOT GREAT5) AND GREAT1", fakeTermBuilder);
+        "(EVEN OR ODD AND NOT GREAT5) AND GREAT1", fakeTermBuilder);
 
     // Benchamark
     for (auto _ : state)

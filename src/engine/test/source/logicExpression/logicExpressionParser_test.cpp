@@ -2,7 +2,6 @@
 
 #include "gtest/gtest.h"
 
-using namespace std;
 using namespace logicExpression::parser;
 
 TEST(LogicExpressionParser, TokenConstructs)
@@ -52,7 +51,7 @@ TEST(LogicExpressionParser, TokenConstructs)
 TEST(LogicExpressionParser, ParseToken)
 {
     // Empty token string
-    EXPECT_THROW(Token::parseToken("", 0), runtime_error);
+    EXPECT_THROW(Token::parseToken("", 0), std::runtime_error);
 
     Token tk;
 
@@ -151,14 +150,14 @@ TEST(LogicExpressionParser, TokenUtils)
     // Two not operator tokens
     tk1 = Token(TokenType::PARENTHESIS_OPEN, "(", 0);
     tk2 = Token(TokenType::PARENTHESIS_CLOSE, ")", 0);
-    EXPECT_THROW(tk1 >= tk2, logic_error);
-    EXPECT_THROW(tk2 >= tk1, logic_error);
+    EXPECT_THROW(tk1 >= tk2, std::logic_error);
+    EXPECT_THROW(tk2 >= tk1, std::logic_error);
 
     // One token operator and one not operator
     tk1 = Token(TokenType::PARENTHESIS_OPEN, "(", 0);
     tk2 = Token(TokenType::OPERATOR_NOT, "NOT", 0);
-    EXPECT_THROW(tk1 >= tk2, logic_error);
-    EXPECT_THROW(tk2 >= tk1, logic_error);
+    EXPECT_THROW(tk1 >= tk2, std::logic_error);
+    EXPECT_THROW(tk2 >= tk1, std::logic_error);
 
     // Operators
     EXPECT_TRUE(Token(TokenType::OPERATOR_NOT, "NOT", 0) >=
@@ -175,19 +174,19 @@ TEST(LogicExpressionParser, ExpressionConstructs)
     auto expr = Expression::create();
 
     // From Token stack
-    stack<Token> tokens;
+    std::stack<Token> tokens;
 
     // Error token
     tokens.push(Token(TokenType::ERROR_TYPE, "", 0));
-    EXPECT_THROW(Expression::create(tokens), logic_error);
+    EXPECT_THROW(Expression::create(tokens), std::logic_error);
     tokens.pop();
 
     // Parenthesis
     tokens.push(Token(TokenType::PARENTHESIS_OPEN, "(", 0));
-    EXPECT_THROW(Expression::create(tokens), logic_error);
+    EXPECT_THROW(Expression::create(tokens), std::logic_error);
     tokens.pop();
     tokens.push(Token(TokenType::PARENTHESIS_CLOSE, ")", 0));
-    EXPECT_THROW(Expression::create(tokens), logic_error);
+    EXPECT_THROW(Expression::create(tokens), std::logic_error);
     tokens.pop();
 
     // Term
@@ -203,7 +202,7 @@ TEST(LogicExpressionParser, ExpressionConstructs)
     // Unbalanced expression
     tokens.push(Token(TokenType::TERM, "term", 0));
     tokens.push(Token(TokenType::OPERATOR_AND, "AND", 0));
-    EXPECT_THROW(Expression::create(tokens), logic_error);
+    EXPECT_THROW(Expression::create(tokens), std::logic_error);
 }
 
 TEST(LogicExpressionParser, ExpressionUtils)
@@ -225,7 +224,7 @@ TEST(LogicExpressionParser, ExpressionUtils)
         ++i;
     };
 
-    stack<Token> tokens;
+    std::stack<Token> tokens;
     tokens.push(Token(TokenType::TERM, "term", 2));
     tokens.push(Token(TokenType::TERM, "term", 1));
     tokens.push(Token(TokenType::OPERATOR_AND, "AND", 0));
@@ -233,9 +232,9 @@ TEST(LogicExpressionParser, ExpressionUtils)
     EXPECT_NO_THROW(Expression::visitPreOrder(root, visitor));
 
     // To dot
-    string dot;
+    std::string dot;
     EXPECT_NO_THROW(dot = Expression::toDotString(root));
-    string expected = R"(digraph G {
+    std::string expected = R"(digraph G {
 AND_00;
 AND_00 -> term_10;
 term_10;
@@ -248,7 +247,7 @@ term_11;
 
 TEST(LogicExpressionParser, ParseErrors)
 {
-    const vector<string> expressions = {
+    const std::vector<std::string> expressions = {
         R"(event.type=="test" AND (something)unexpectedTerm)",
         R"(event.type=="test" AND OR (something))",
         R"(AND term)",
@@ -264,13 +263,13 @@ TEST(LogicExpressionParser, ParseErrors)
 
     for (auto &expression : expressions)
     {
-        EXPECT_THROW(parse(expression), runtime_error);
+        EXPECT_THROW(parse(expression), std::runtime_error);
     }
 }
 
 TEST(LogicExpressionParser, Parse)
 {
-    const vector<string> expressions = {
+    const std::vector<std::string> expressions = {
         R"(onlyOneTerm)",
         R"(term AND term)",
         R"(term OR term)",
@@ -284,7 +283,7 @@ TEST(LogicExpressionParser, Parse)
         R"(term OR NOT term AND term)",
     };
 
-    const vector<string> expectedGraph = {
+    const std::vector<std::string> expectedGraph = {
         R"(digraph G {
 onlyOneTerm_00;
 }
