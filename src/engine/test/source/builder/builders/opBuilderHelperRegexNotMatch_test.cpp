@@ -8,12 +8,15 @@
  */
 
 #include <gtest/gtest.h>
-#include <re2/re2.h>
 #include <vector>
+
+#include <re2/re2.h>
+
+#include <baseTypes.hpp>
 
 #include "opBuilderHelperFilter.hpp"
 #include "testUtils.hpp"
-#include "base/baseTypes.hpp"
+
 
 using namespace base;
 namespace bld = builder::internals::builders;
