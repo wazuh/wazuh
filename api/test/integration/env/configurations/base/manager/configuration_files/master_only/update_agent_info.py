@@ -83,5 +83,5 @@ def add_agent_group_relationships(agent_groups_file: str) -> None:
 
 
 if __name__ == "__main__":
-    create_and_send_query('/tmp/configuration_files/master_only/agent_info.yaml')
-    add_agent_group_relationships('/tmp/configuration_files/master_only/agent_groups.yaml')
+    create_and_send_query('/tmp_volume/configuration_files/master_only/agent_info.yaml')
+    add_agent_group_relationships('/tmp_volume/configuration_files/master_only/agent_groups.yaml')
