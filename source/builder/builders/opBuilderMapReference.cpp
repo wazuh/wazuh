@@ -33,7 +33,7 @@ base::Lifter opBuilderMapReference(const base::DocumentValue &def,
                                  "definition must be a string.");
     }
 
-    // Estract and prepare field and reference
+    // Extract and prepare the field and reference
     std::string field {
         json::formatJsonPath(def.MemberBegin()->name.GetString())};
     std::string reference {def.MemberBegin()->value.GetString()};
