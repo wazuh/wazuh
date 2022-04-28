@@ -94,10 +94,10 @@ void expect_fim_db_remove_path(const char *path, int ret_val) {
     will_return(__wrap_fim_db_remove_path, ret_val);
 }
 
-void __wrap_fim_db_file_update(__attribute__((unused)) fim_entry* new,
+int __wrap_fim_db_file_update(__attribute__((unused)) fim_entry* new,
                               __attribute__((unused)) callback_context_t callback)
 {
-    function_called();
+    return mock_type(int);
 }
 
 int __wrap_fim_db_file_pattern_search(const char* pattern,

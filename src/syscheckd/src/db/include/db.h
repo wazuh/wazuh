@@ -102,7 +102,7 @@ int fim_db_get_count_file_entry();
  * @param data The information linked to the path to be created or updated.
  * @param callback Callback to send the fim message.
  */
-void fim_db_file_update(fim_entry* data, callback_context_t callback);
+FIMDBErrorCode fim_db_file_update(fim_entry* data, callback_context_t callback);
 
 /**
  * @brief Find entries using the inode.
@@ -110,6 +110,8 @@ void fim_db_file_update(fim_entry* data, callback_context_t callback);
  * @param inode Inode.
  * @param dev Device.
  * @param data Pointer to the data structure where the callback context will be stored.
+ *
+ * @return FIMDB_OK on success.
  */
 FIMDBErrorCode fim_db_file_inode_search(unsigned long long int inode, unsigned long int dev, callback_context_t data);
 

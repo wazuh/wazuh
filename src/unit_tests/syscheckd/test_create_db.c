@@ -1308,7 +1308,7 @@ static void test_fim_file_add(void **state) {
 
     expect_get_data(strdup("user"), strdup("group"), file_path, 1);
 
-    expect_function_call(__wrap_fim_db_file_update);
+    will_return(__wrap_fim_db_file_update, 0);
 
     fim_file(file_path, &configuration, &evt_data, NULL, NULL);
 }
@@ -1426,7 +1426,7 @@ static void test_fim_file_modify(void **state) {
                                         "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", OS_BINARY,
                                         0x400, 0);
 
-    expect_function_call(__wrap_fim_db_file_update);;
+    will_return(__wrap_fim_db_file_update, 0);
 
     fim_file(file_path, &configuration, &evt_data, NULL, NULL);
 }
@@ -1532,7 +1532,7 @@ static void test_fim_file_error_on_insert(void **state) {
     expect_value(__wrap_OS_MD5_SHA1_SHA256_File, max_size, 0x400);
     will_return(__wrap_OS_MD5_SHA1_SHA256_File, 0);
 
-    expect_function_call(__wrap_fim_db_file_update);;
+    will_return(__wrap_fim_db_file_update, 0);
 
     fim_file(file_path, &configuration, &evt_data, NULL, NULL);
 }
@@ -1723,7 +1723,7 @@ static void test_fim_checker_fim_regular(void **state) {
     will_return(__wrap_get_user, strdup("user"));
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, strdup("group"));
-    expect_function_call(__wrap_fim_db_file_update);;
+    will_return(__wrap_fim_db_file_update, 0);
 
     fim_checker(path, &evt_data, NULL, NULL, NULL);
 }
@@ -1758,7 +1758,7 @@ static void test_fim_checker_fim_regular_warning(void **state) {
 
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, strdup("group"));
-    expect_function_call(__wrap_fim_db_file_update);;
+    will_return(__wrap_fim_db_file_update, 0);
 
     fim_checker(path, &evt_data, NULL, NULL, NULL);
 }
@@ -1938,7 +1938,7 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
 
     expect_value(__wrap_get_group, gid, 0);
     will_return(__wrap_get_group, strdup("group"));
-    expect_function_call(__wrap_fim_db_file_update);;
+    will_return(__wrap_fim_db_file_update, 0);
 
     fim_checker(path, &evt_data, NULL, NULL, NULL);
 }
@@ -2352,7 +2352,7 @@ static void test_fim_checker_fim_regular(void **state) {
     will_return(__wrap_HasFilesystem, 0);
     // Inside fim_file
     expect_get_data(strdup("user"), "group", expanded_path, 0);
-    expect_function_call(__wrap_fim_db_file_update);
+    will_return(__wrap_fim_db_file_update, 0);
     expect_string(__wrap_w_get_file_attrs, file_path, expanded_path);
     will_return(__wrap_w_get_file_attrs, 123456);
     fim_checker(expanded_path, &evt_data, NULL, NULL, NULL);
@@ -2447,7 +2447,7 @@ static void test_fim_checker_fim_regular_warning(void **state) {
     expect_string(__wrap_w_get_file_attrs, file_path, expanded_path);
     will_return(__wrap_w_get_file_attrs, 123456);
 
-    expect_function_call(__wrap_fim_db_file_update);
+    will_return(__wrap_fim_db_file_update, 0);
 
     fim_checker(expanded_path, &evt_data, NULL, NULL, NULL);
 }

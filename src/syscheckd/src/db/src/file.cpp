@@ -145,9 +145,9 @@ nlohmann::json DB::createJsonEvent(const nlohmann::json& fileJson, const nlohman
     }
 
     // Last event
-    if (resultJson[0].contains("last_event"))
+    if (resultJson.contains("last_event"))
     {
-        jsonEvent["data"]["timestamp"] = resultJson[0].at("last_event");
+        jsonEvent["data"]["timestamp"] = resultJson.at("last_event");
     }
     else
     {
@@ -155,10 +155,10 @@ nlohmann::json DB::createJsonEvent(const nlohmann::json& fileJson, const nlohman
     }
 
     // Old data attributes
-    if (resultJson[0].contains("old"))
+    if (resultJson.contains("old"))
     {
 
-        nlohmann::json old_data = resultJson[0].at("old");
+        nlohmann::json old_data = resultJson.at("old");
         nlohmann::json changed_attributes = nlohmann::json::array();
 
         jsonEvent["data"]["old_attributes"]["type"] = "file";
@@ -572,8 +572,9 @@ int fim_db_get_count_file_entry()
     return count;
 }
 
-void fim_db_file_update(fim_entry* data, callback_context_t callback)
+FIMDBErrorCode fim_db_file_update(fim_entry* data, callback_context_t callback)
 {
+    auto retVal { FIMDB_ERR };
 
     if (!data || !callback.callback)
     {
@@ -590,6 +591,7 @@ void fim_db_file_update(fim_entry* data, callback_context_t callback)
                 const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
                 callback.callback(spJson.get(), callback.context);
             });
+            retVal = FIMDB_OK;
         }
         // LCOV_EXCL_START
         catch (DbSync::max_rows_error& max_row)
@@ -603,6 +605,8 @@ void fim_db_file_update(fim_entry* data, callback_context_t callback)
 
         // LCOV_EXCL_STOP
     }
+
+    return retVal;
 }
 
 FIMDBErrorCode fim_db_file_inode_search(const unsigned long long int inode,
