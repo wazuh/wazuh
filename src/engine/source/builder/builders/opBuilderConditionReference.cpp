@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015-2022, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -42,14 +42,12 @@ base::Lifter opBuilderConditionReference(const base::DocumentValue &def,
         reference.erase(0, 1);
     }
     reference = json::formatJsonPath(reference);
-    std::string successTrace =
-        fmt::format("{{{}: {}}} Condition Success",
-                    def.MemberBegin()->name.GetString(),
-                    def.MemberBegin()->value.GetString());
-    std::string failureTrace =
-        fmt::format("{{{}: {}}} Condition Failure",
-                    def.MemberBegin()->name.GetString(),
-                    def.MemberBegin()->value.GetString());
+
+    types::Document doc {def};
+    const std::string successTrace =
+        fmt::format("{} Condition Success", doc.str());
+    const std::string failureTrace =
+        fmt::format("{} Condition Failure", doc.str());
 
     // Return Lifter
     return [=](base::Observable o)

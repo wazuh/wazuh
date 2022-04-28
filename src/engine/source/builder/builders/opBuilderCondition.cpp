@@ -20,18 +20,15 @@
 namespace builder::internals::builders
 {
 
-base::Lifter opBuilderCondition(const base::DocumentValue & def, types::TracerFn tr)
 {
-    // Check that input is as expected and throw exception otherwise
-    if (!def.IsObject())
-    {
-        auto msg = fmt::format("Expexted type 'Object' but got [{}]", def.GetType());
+            fmt::format("Expexted type 'Object' but got [{}]", def.GetType());
         WAZUH_LOG_ERROR("{}", msg);
         throw std::invalid_argument(std::move(msg));
     }
     if (def.GetObject().MemberCount() != 1)
     {
-        auto msg = fmt::format("Expected single key but got: [{}]", def.GetObject().MemberCount());
+        auto msg = fmt::format("Expected single key but got: [{}]",
+                               def.GetObject().MemberCount());
         WAZUH_LOG_ERROR("{}", msg);
         throw std::invalid_argument(std::move(msg));
     }
@@ -44,27 +41,32 @@ base::Lifter opBuilderCondition(const base::DocumentValue & def, types::TracerFn
         switch (vStr[0])
         {
             case syntax::FUNCTION_HELPER_ANCHOR:
-                return std::get<types::OpBuilder>(Registry::getBuilder("helper." + vStr.substr(1, vStr.find("/") - 1)))(
-                    def, tr);
+                return std::get<types::OpBuilder>(Registry::getBuilder(
+                    "helper." + vStr.substr(1, vStr.find("/") - 1)))(def, tr);
                 break;
             case syntax::REFERENCE_ANCHOR:
-                return std::get<types::OpBuilder>(Registry::getBuilder("condition.reference"))(def, tr);
+                return std::get<types::OpBuilder>(
+                    Registry::getBuilder("condition.reference"))(def, tr);
                 break;
             default:
-                return std::get<types::OpBuilder>(Registry::getBuilder("condition.value"))(def, tr);
+                return std::get<types::OpBuilder>(
+                    Registry::getBuilder("condition.value"))(def, tr);
         }
     }
     else if (v->value.IsArray())
     {
-        return std::get<types::OpBuilder>(Registry::getBuilder("condition.array"))(def, tr);
+        return std::get<types::OpBuilder>(
+            Registry::getBuilder("condition.array"))(def, tr);
     }
     else if (v->value.IsObject())
     {
-        return std::get<types::OpBuilder>(Registry::getBuilder("condition.object"))(def, tr);
+        return std::get<types::OpBuilder>(
+            Registry::getBuilder("condition.object"))(def, tr);
     }
     else
     {
-        return std::get<types::OpBuilder>(Registry::getBuilder("condition.value"))(def, tr);
+        return std::get<types::OpBuilder>(
+            Registry::getBuilder("condition.value"))(def, tr);
     }
 }
 
