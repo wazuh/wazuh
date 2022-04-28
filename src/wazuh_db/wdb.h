@@ -18,6 +18,7 @@
 #include "external/sqlite/sqlite3.h"
 #include "syscheck_op.h"
 #include "rootcheck_op.h"
+#include "wazuh_modules/wm_task_general.h"
 #include "wazuhdb_op.h"
 
 #define WDB_AGENT_EMPTY 0
@@ -199,8 +200,9 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_AGENT_EXISTS,
     WDB_STMT_TASK_INSERT_TASK,
     WDB_STMT_TASK_GET_LAST_AGENT_TASK,
-    WDB_STMT_TASK_GET_LAST_AGENT_UPGRADE_TASK,
+    WDB_STMT_TASK_GET_LAST_AGENT_TASK_BY_COMMAND,
     WDB_STMT_TASK_UPDATE_TASK_STATUS,
+    WDB_STMT_TASK_GET_TASK_BY_ID,
     WDB_STMT_TASK_GET_TASK_BY_STATUS,
     WDB_STMT_TASK_DELETE_OLD_TASKS,
     WDB_STMT_TASK_DELETE_TASK,
@@ -1864,27 +1866,32 @@ bool wdb_delete_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data)
 void wdb_select_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data, char *output);
 
 /**
- * @brief Function to parse the insert upgrade request.
+ * @brief Function to parse the insert task request.
  *
  * @param [in] wdb The global struct database.
- * @param parameters JSON with the parameters
- * @param command Command to be insert in task
+ * @param parameters JSON with the parameters.
+ * @param command Command to be inserted in the task.
  * @param [out] output Response of the query.
  * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
  */
-int wdb_parse_task_upgrade(wdb_t* wdb, const cJSON *parameters, const char *command, char* output);
+int wdb_parse_insert_task(wdb_t* wdb, const cJSON *parameters, const char *command, char* output);
 
 /**
- * @brief Function to parse the upgrade_get_status request.
+ * @brief Function to parse the get_status request. Within the JSON with parameters, the function
+ *        could receive the task id or, the cluster node and the agent id. If the task id is received, the
+ *        function will return the status of this particular task without taking into account the cluster
+ *        node and the agent id. Otherways, the function will return the last task status filtering
+ *        bu the task command.
  *
  * @param [in] wdb The global struct database.
- * @param parameters JSON with the parameters
+ * @param parameters JSON with the parameters.
+ * @param command Command to filter the task.
  * @param [out] output Response of the query.
  * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
  */
-int wdb_parse_task_upgrade_get_status(wdb_t* wdb, const cJSON *parameters, char* output);
+int wdb_parse_task_get_status(wdb_t* wdb, const cJSON *parameters, const char *command, char* output);
 
 /**
  * @brief Function to parse the upgrade_update_status request.
@@ -2030,12 +2037,22 @@ int wdb_task_insert_task(wdb_t* wdb, int agent_id, const char *node, const char 
 /**
  * Get the status of an upgrade task from the tasks DB.
  * @param wdb The task struct database
- * @param agent_id ID of the agent where the task is being executed.
- * @param node Node that executed the command.
+ * @param task_id ID of the task to be queried.
  * @param status String where the status of the task will be stored.
  * @return 0 when succeed, !=0 otherwise.
  * */
-int wdb_task_get_upgrade_task_status(wdb_t* wdb, int agent_id, const char *node, char **status);
+int wdb_task_get_task_status_by_id(wdb_t* wdb, int task_id, char **status);
+
+/**
+ * Get the status of an upgrade task from the tasks DB.
+ * @param wdb The task struct database
+ * @param agent_id ID of the agent where the task is being executed.
+ * @param node Node that executed the command.
+ * @param command Command to filter the task.
+ * @param status String where the status of the task will be stored.
+ * @return 0 when succeed, !=0 otherwise.
+ * */
+int wdb_task_get_last_task_status(wdb_t* wdb, int agent_id, const char *node, const char *command, char **status);
 
 /**
  * Update the status of a upgrade task in the tasks DB.

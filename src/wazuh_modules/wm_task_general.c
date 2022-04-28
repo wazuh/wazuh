@@ -37,12 +37,21 @@ const char *task_manager_json_keys[] = {
 };
 
 const char *task_manager_commands_list[] = {
-    [WM_TASK_UPGRADE] = "upgrade",
-    [WM_TASK_UPGRADE_CUSTOM] = "upgrade_custom",
-    [WM_TASK_UPGRADE_GET_STATUS] = "upgrade_get_status",
-    [WM_TASK_UPGRADE_UPDATE_STATUS] = "upgrade_update_status",
-    [WM_TASK_UPGRADE_RESULT] = "upgrade_result",
-    [WM_TASK_UPGRADE_CANCEL_TASKS] = "upgrade_cancel_tasks",
+    [WM_TASK_UPGRADE] = "upgrade", //DONE
+    [WM_TASK_UPGRADE_CUSTOM] = "upgrade_custom", //DONE
+    [WM_TASK_UPGRADE_GET_STATUS] = "upgrade_get_status", //DONE
+    [WM_TASK_UPGRADE_UPDATE_STATUS] = "upgrade_update_status", //DONE
+    [WM_TASK_UPGRADE_RESULT] = "upgrade_result", //DONE
+    [WM_TASK_UPGRADE_CANCEL_TASKS] = "upgrade_cancel_tasks", //DONE
+    [WM_TASK_SYSCOLLECTOR_SCAN] = "syscollector_scan", //DONE
+    [WM_TASK_SYSCOLLECTOR_GET_STATUS] = "syscollector_get_status",
+    [WM_TASK_SYSCOLLECTOR_UPDATE_STATUS] = "syscollector_update_status",
+    [WM_TASK_SYSCOLLECTOR_CANCEL_TASK] = "syscollector_cancel_task",
+    [WM_TASK_VULN_DET_FEEDS_UPDATE] = "vuln_det_feeds_update", //DONE
+    [WM_TASK_VULN_DET_SCAN] = "vuln_det_scan", //DONE
+    [WM_TASK_VULN_DET_GET_STATUS] = "vuln_det_get_status",
+    [WM_TASK_VULN_DET_UPDATE_STATUS] = "vuln_det_update_status",
+    [WM_TASK_VULN_DET_CANCEL_TASK] = "vuln_det_cancel_task",
     [WM_TASK_SET_TIMEOUT] = "set_timeout",
     [WM_TASK_DELETE_OLD] = "delete_old"
 };

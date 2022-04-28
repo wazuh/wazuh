@@ -953,7 +953,11 @@ int wdb_parse(char * input, char * output, int peer) {
 
         *next++ = '\0';
 
-        if (!strcmp("upgrade", query)) {
+        if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE], query) ||
+            !strcmp(task_manager_commands_list[WM_TASK_UPGRADE_CUSTOM], query) ||
+            !strcmp(task_manager_commands_list[WM_TASK_SYSCOLLECTOR_SCAN], query) ||
+            !strcmp(task_manager_commands_list[WM_TASK_VULN_DET_FEEDS_UPDATE], query) ||
+            !strcmp(task_manager_commands_list[WM_TASK_VULN_DET_SCAN], query)) {
             if (!next) {
                 mdebug1("Task DB Invalid DB query syntax.");
                 mdebug2("Task DB query error near: %s", query);
@@ -969,10 +973,10 @@ int wdb_parse(char * input, char * output, int peer) {
                 return OS_INVALID;
             }
 
-            result = wdb_parse_task_upgrade(wdb, parameters_json, "upgrade", output);
+            result = wdb_parse_insert_task(wdb, parameters_json, query, output);
             cJSON_Delete(parameters_json);
 
-        } else if (!strcmp("upgrade_custom", query)) {
+        } else if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE_GET_STATUS], query)) {
             if (!next) {
                 mdebug1("Task DB Invalid DB query syntax.");
                 mdebug2("Task DB query error near: %s", query);
@@ -988,29 +992,10 @@ int wdb_parse(char * input, char * output, int peer) {
                 return OS_INVALID;
             }
 
-            result = wdb_parse_task_upgrade(wdb, parameters_json, "upgrade_custom", output);
+            result = wdb_parse_task_get_status(wdb, parameters_json, query, output);
             cJSON_Delete(parameters_json);
 
-        } else if (!strcmp("upgrade_get_status", query)) {
-            if (!next) {
-                mdebug1("Task DB Invalid DB query syntax.");
-                mdebug2("Task DB query error near: %s", query);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
-                wdb_leave(wdb);
-                return OS_INVALID;
-            }
-
-            // Detect parameters
-            if (parameters_json = cJSON_ParseWithOpts(next, &json_err, 0), !parameters_json) {
-                snprintf(output, OS_MAXSTR + 1, "err Invalid command parameters, near '%.32s'", next);
-                wdb_leave(wdb);
-                return OS_INVALID;
-            }
-
-            result = wdb_parse_task_upgrade_get_status(wdb, parameters_json, output);
-            cJSON_Delete(parameters_json);
-
-        } else if (!strcmp("upgrade_update_status", query)) {
+        } else if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE_UPDATE_STATUS], query)) {
             if (!next) {
                 mdebug1("Task DB Invalid DB query syntax.");
                 mdebug2("Task DB query error near: %s", query);
@@ -1029,7 +1014,7 @@ int wdb_parse(char * input, char * output, int peer) {
             result = wdb_parse_task_upgrade_update_status(wdb, parameters_json, output);
             cJSON_Delete(parameters_json);
 
-        } else if (!strcmp("upgrade_result", query)) {
+        } else if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE_RESULT], query)) {
             if (!next) {
                 mdebug1("Task DB Invalid DB query syntax.");
                 mdebug2("Task DB query error near: %s", query);
@@ -1048,7 +1033,7 @@ int wdb_parse(char * input, char * output, int peer) {
             result = wdb_parse_task_upgrade_result(wdb, parameters_json, output);
             cJSON_Delete(parameters_json);
 
-        } else if (!strcmp("upgrade_cancel_tasks", query)) {
+        } else if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE_CANCEL_TASKS], query)) {
             if (!next) {
                 mdebug1("Task DB Invalid DB query syntax.");
                 mdebug2("Task DB query error near: %s", query);
@@ -5656,7 +5641,7 @@ int wdb_parse_dbsync(wdb_t * wdb, char * input, char * output) {
     return ret_val;
 }
 
-int wdb_parse_task_upgrade(wdb_t* wdb, const cJSON *parameters, const char *command, char* output) {
+int wdb_parse_insert_task(wdb_t* wdb, const cJSON *parameters, const char *command, char* output) {
     int result = OS_INVALID;
     int agent_id = OS_INVALID;
     char *node = NULL;
@@ -5705,27 +5690,47 @@ int wdb_parse_task_upgrade(wdb_t* wdb, const cJSON *parameters, const char *comm
     return result;
 }
 
-int wdb_parse_task_upgrade_get_status(wdb_t* wdb, const cJSON *parameters, char* output) {
+int wdb_parse_task_get_status(wdb_t* wdb, const cJSON *parameters, const char *command, char* output) {
     int result = OS_INVALID;
+    int task_id = OS_INVALID;
     int agent_id = OS_INVALID;
     char *node = NULL;
     char *task_status = NULL;
 
+    cJSON *task_id_json = cJSON_GetObjectItem(parameters, "task_id");
+    if (task_id_json) {
+        if (task_id_json->type != cJSON_Number) {
+            snprintf(output, OS_MAXSTR + 1, "err Error get task status: 'parsing task_id error'");
+            return OS_INVALID;
+        }
+        task_id = task_id_json->valueint;
+    }
     cJSON *agent_id_json = cJSON_GetObjectItem(parameters, "agent");
-    if (!agent_id_json || (agent_id_json->type != cJSON_Number)) {
-        snprintf(output, OS_MAXSTR + 1, "err Error get upgrade task status: 'parsing agent error'");
-        return OS_INVALID;
+    if (agent_id_json) {
+        if (agent_id_json->type != cJSON_Number) {
+            snprintf(output, OS_MAXSTR + 1, "err Error get upgrade task status: 'parsing agent error'");
+            return OS_INVALID;
+        }
+        agent_id = agent_id_json->valueint;
     }
-    agent_id = agent_id_json->valueint;
-
     cJSON *node_json = cJSON_GetObjectItem(parameters, "node");
-    if (!node_json || (node_json->type != cJSON_String)) {
-        snprintf(output, OS_MAXSTR + 1, "err Error get upgrade task status: 'parsing node error'");
-        return OS_INVALID;
+    if (node_json) {
+        if (node_json->type != cJSON_String) {
+            snprintf(output, OS_MAXSTR + 1, "err Error get upgrade task status: 'parsing node error'");
+            return OS_INVALID;
+        }
+        node = node_json->valuestring;
     }
-    node = node_json->valuestring;
 
-    result = wdb_task_get_upgrade_task_status(wdb, agent_id, node, &task_status);
+    if (task_id != OS_INVALID) {
+        result = wdb_task_get_task_status_by_id(wdb, task_id, &task_status);
+    }
+    else {
+        const char* task_command = !strcmp(task_manager_commands_list[WM_TASK_UPGRADE_GET_STATUS], command) ? task_manager_commands_list[WM_TASK_UPGRADE] :
+                                   !strcmp(task_manager_commands_list[WM_TASK_SYSCOLLECTOR_GET_STATUS], command) ? task_manager_commands_list[WM_TASK_SYSCOLLECTOR_SCAN] :
+                                   task_manager_commands_list[WM_TASK_VULN_DET_SCAN];
+        result = wdb_task_get_last_task_status(wdb, agent_id, node, task_command, &task_status);
+    }
 
     cJSON *response = cJSON_CreateObject();
     char *out = NULL;

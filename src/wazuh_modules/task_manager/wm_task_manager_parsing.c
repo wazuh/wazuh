@@ -177,6 +177,33 @@ wm_task_manager_task* wm_task_manager_parse_message(const char *msg) {
     } else if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE_CANCEL_TASKS], command_json->valuestring)) {
         task->command = WM_TASK_UPGRADE_CANCEL_TASKS;
         task->parameters = wm_task_manager_parse_upgrade_cancel_tasks_parameters(origin_json);
+    } else if (!strcmp(task_manager_commands_list[WM_TASK_SYSCOLLECTOR_SCAN], command_json->valuestring)) {
+        task->command = WM_TASK_SYSCOLLECTOR_SCAN;
+        task->parameters = wm_task_manager_parse_syscollector_scan_parameters(origin_json);
+    } else if (!strcmp(task_manager_commands_list[WM_TASK_SYSCOLLECTOR_GET_STATUS], command_json->valuestring)) {
+        task->command = WM_TASK_SYSCOLLECTOR_GET_STATUS;
+        task->parameters = wm_task_manager_parse_syscollector_get_status_parameters(origin_json);
+    } else if (!strcmp(task_manager_commands_list[WM_TASK_SYSCOLLECTOR_UPDATE_STATUS], command_json->valuestring)) {
+        task->command = WM_TASK_SYSCOLLECTOR_UPDATE_STATUS;
+        task->parameters = wm_task_manager_parse_syscollector_update_status_parameters(origin_json);
+    } else if (!strcmp(task_manager_commands_list[WM_TASK_SYSCOLLECTOR_CANCEL_TASK], command_json->valuestring)) {
+        task->command = WM_TASK_SYSCOLLECTOR_CANCEL_TASK;
+        task->parameters = wm_task_manager_parse_syscollector_cancel_task_parameters(origin_json);
+    } else if (!strcmp(task_manager_commands_list[WM_TASK_VULN_DET_FEEDS_UPDATE], command_json->valuestring)) {
+        task->command = WM_TASK_VULN_DET_FEEDS_UPDATE;
+        task->parameters = wm_task_manager_parse_vuln_det_feeds_update_parameters(origin_json);
+    } else if (!strcmp(task_manager_commands_list[WM_TASK_VULN_DET_SCAN], command_json->valuestring)) {
+        task->command = WM_TASK_VULN_DET_SCAN;
+        task->parameters = wm_task_manager_parse_vuln_det_scan_parameters(origin_json);
+    } else if (!strcmp(task_manager_commands_list[WM_TASK_VULN_DET_GET_STATUS], command_json->valuestring)) {
+        task->command = WM_TASK_VULN_DET_GET_STATUS;
+        task->parameters = wm_task_manager_parse_vuln_det_get_status_parameters(origin_json);
+    } else if (!strcmp(task_manager_commands_list[WM_TASK_VULN_DET_UPDATE_STATUS], command_json->valuestring)) {
+        task->command = WM_TASK_VULN_DET_UPDATE_STATUS;
+        task->parameters = wm_task_manager_parse_vuln_det_update_status_parameters(origin_json);
+    } else if (!strcmp(task_manager_commands_list[WM_TASK_VULN_DET_CANCEL_TASK], command_json->valuestring)) {
+        task->command = WM_TASK_VULN_DET_CANCEL_TASK;
+        task->parameters = wm_task_manager_parse_vuln_det_cancel_task_parameters(origin_json);
     } else {
         task->command = WM_TASK_UNKNOWN;
         cJSON_Delete(event_json);
