@@ -350,7 +350,7 @@
 #define VU_OVAL_UPDATE_ERROR        "(5513): CVE database could not be updated."
 #define VU_CREATE_DB_ERROR          "(5514): The database could not be checked or created."
 #define VU_SOFTWARE_REQUEST_ERROR   "(5515): Agent '%.3d' software could not be requested."
-#define VU_NO_AGENT_ERROR           "(5516): The agent '%.3zu' information could not be processed."
+#define VU_NO_AGENT_ERROR           "(5516): The agent '%.3d' information could not be processed."
 #define VU_CREATE_HASH_ERRO         "(5517): The '%s' hash table could not be created."
 #define VU_SYSC_SCAN_REQUEST_ERROR  "(5518): Last software scan from the agent '%.3d' could not be requested."
 #define VU_NO_SYSC_SCANS            "(5519): No package inventory found for agent '%.3d', so their vulnerabilities will not be checked."
