@@ -243,23 +243,31 @@ FIMDBErrorCode fim_db_init(int storage,
     return retVal;
 }
 
-void fim_run_integrity()
+FIMDBErrorCode fim_run_integrity()
 {
+    auto retval { FIMDB_ERR };
+
     try
     {
         DB::instance().runIntegrity();
+        retval = FIMDB_OK;
     }
     catch (const std::exception& err)
     {
         FIMDB::instance().logFunction(LOG_ERROR, err.what());
     }
+
+    return retval;
 }
 
-void fim_sync_push_msg(const char* msg)
+FIMDBErrorCode fim_sync_push_msg(const char* msg)
 {
+    auto retval { FIMDB_ERR };
+
     try
     {
         DB::instance().pushMessage(msg);
+        retval = FIMDB_OK;
     }
     // LCOV_EXCL_START
     catch (const std::exception& err)
@@ -268,6 +276,8 @@ void fim_sync_push_msg(const char* msg)
     }
 
     // LCOV_EXCL_STOP
+
+    return retval;
 }
 
 TXN_HANDLE fim_db_transaction_start(const char* table, result_callback_t row_callback, void* user_data)

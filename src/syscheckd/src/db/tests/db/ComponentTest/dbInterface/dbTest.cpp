@@ -93,8 +93,10 @@ TEST_F(DBTestFixture, TestFimSyncPushMsg)
     EXPECT_CALL(*mockSync, syncMsg("fim_file", testing::_)).Times(1);
     EXPECT_NO_THROW(
     {
-        fim_run_integrity();
-        fim_sync_push_msg(test);
+        auto result = fim_run_integrity();
+        ASSERT_EQ(result, FIMDB_OK);
+        result = fim_sync_push_msg(test);
+        ASSERT_EQ(result, FIMDB_OK);
     });
 }
 
@@ -106,7 +108,8 @@ TEST_F(DBTestFixture, TestFimRunIntegrity)
 
     EXPECT_NO_THROW(
     {
-        fim_run_integrity();
+        auto result = fim_run_integrity();
+        ASSERT_EQ(result, FIMDB_OK);
     });
 }
 
@@ -119,8 +122,10 @@ TEST_F(DBTestFixture, TestFimRunIntegrityInitTwice)
 
     EXPECT_NO_THROW(
     {
-        fim_run_integrity();
-        fim_run_integrity();
+        auto result = fim_run_integrity();
+        ASSERT_EQ(result, FIMDB_OK);
+        result = fim_run_integrity();
+        ASSERT_EQ(result, FIMDB_ERR);
     });
 }
 
