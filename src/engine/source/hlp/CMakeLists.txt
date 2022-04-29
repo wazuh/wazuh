@@ -31,9 +31,12 @@ target_include_directories(hlp
 ####################################################################################################
 # Test tool
 ####################################################################################################
+set(THREADS_PREFER_PTHREAD_FLAG ON)
 
 add_executable(hlpCli
     tools/hlpCli.cpp
 )
 
-target_link_libraries(hlpCli yaml-cpp hlp base)
+find_package(Threads REQUIRED)
+
+target_link_libraries(hlpCli PUBLIC yaml-cpp hlp base PRIVATE Threads::Threads)

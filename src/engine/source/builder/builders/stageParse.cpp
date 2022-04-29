@@ -32,7 +32,9 @@ any2Json(std::any const& anyVal, std::string const& path, json::Document* doc)
     auto& type = anyVal.type();
     if (type == typeid(void))
     {
-        doc->set(path, {nullptr, doc->getAllocator()});
+        json::Value val;
+        val.SetNull();
+        doc->set(path, val);
     }
     else if (type == typeid(long))
     {
