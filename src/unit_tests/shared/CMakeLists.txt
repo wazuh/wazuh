@@ -78,6 +78,9 @@ list(APPEND shared_tests_flags " ")
 list(APPEND shared_tests_names "test_buffer_op")
 list(APPEND shared_tests_flags " ")
 
+list(APPEND shared_tests_names "test_cloud_limits")
+list(APPEND shared_tests_flags " ")
+
 list(APPEND shared_tests_names "test_utf8_op")
 list(APPEND shared_tests_flags " ")
 
