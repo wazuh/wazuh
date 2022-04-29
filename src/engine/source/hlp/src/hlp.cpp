@@ -4,14 +4,14 @@
 #include <unordered_map>
 #include <vector>
 
-#include <rapidjson/document.h>
-
 #include "hlpDetails.hpp"
 #include "logQLParser.hpp"
 #include "specificParsers.hpp"
+
 #include <hlp/hlp.hpp>
 #include <logging/logging.hpp>
 #include <profile/profile.hpp>
+#include <rapidjson/document.h>
 
 namespace hlp
 {
@@ -144,6 +144,7 @@ Parser createParserFromExpresion(Expression const &exp)
     parser.type = ParserType::Any;
     if (parser.name[0] == '_')
     {
+        //TODO: temporary fields should be trimmed on the final event
         if (parser.name.size() != 1)
         {
             // We have a temp capture with the format <_temp/type/typeN>
@@ -169,6 +170,7 @@ Parser createParserFromExpresion(Expression const &exp)
         {
             parser.type = it->second;
         }
+        //TODO: modify in order to show error to usr (no parser found)
     }
 
     setParserOptions(parser, args);
