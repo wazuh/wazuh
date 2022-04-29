@@ -172,10 +172,9 @@ int req_push(char * buffer, size_t length) {
 #endif
 
         // Send ACK, only in UDP mode
-
         if (agt->server[agt->rip_id].protocol == IPPROTO_UDP) {
-            mdebug2("req_push(): Sending ack (%s).", counter);
             // Example: #!-req 16 ack
+            mdebug2("req_push(): Sending ack (%s).", counter);
             snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s ack", counter);
             send_msg(response, -1);
         }
@@ -211,6 +210,8 @@ int req_push(char * buffer, size_t length) {
                 OSHash_Delete(req_table, counter);
                 w_mutex_unlock(&mutex_table);
 
+                snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s err Too many requests", counter);
+                send_msg(response, -1);
                 req_free(node);
                 return -1;
             } else {
@@ -239,8 +240,6 @@ void * req_receiver(__attribute__((unused)) void * arg) {
     char *buffer = NULL;
     char response[REQ_RESPONSE_LENGTH];
     int rlen;
-
-
 
     while (1) {
 

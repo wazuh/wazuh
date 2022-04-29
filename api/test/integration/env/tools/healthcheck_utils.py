@@ -2,19 +2,20 @@ import json
 import os
 import re
 import socket
-import time
 import subprocess
+import time
 
 # Configuration
-protocol = 'https'
-host = 'localhost'
-port = '55000'
-user = 'testing'
-password = 'wazuh'
+PROTOCOL = 'https'
+HOST = 'localhost'
+PORT = '55000'
+USER = 'testing'
+PASSWORD = 'wazuh'
 
 # Variables
-base_url = "{}://{}:{}".format(protocol, host, port)
-login_url = "{}/security/user/authenticate".format(base_url)
+LOGIN_METHOD = "POST"
+BASE_URL = f"{PROTOCOL}://{HOST}:{PORT}"
+LOGIN_URL = f"{BASE_URL}/security/user/authenticate"
 
 HEALTHCHECK_TOKEN_FILE = '/tmp_volume/healthcheck/healthcheck.token'
 OSSEC_LOG_PATH = '/var/ossec/logs/ossec.log'
@@ -29,11 +30,13 @@ def get_login_header(user, password):
     return {'Authorization': f'Basic {b64encode(basic_auth).decode()}'}
 
 
-def get_response(url, headers):
-    """Get API result for GET request.
+def get_response(request_method, url, headers):
+    """Make a Wazuh API request and get its response.
 
     Parameters
     ----------
+    request_method : str
+        Request method to be used in the API request.
     url : str
         URL of the API (+ endpoint and parameters if needed).
     headers : dict
@@ -44,11 +47,13 @@ def get_response(url, headers):
     Dict
         API response for the request.
     """
+    import requests
     import urllib3
+
     # Disable insecure https warnings (for self-signed SSL certificates)
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-    from requests import get
-    request_result = get(url, headers=headers, verify=False)
+
+    request_result = getattr(requests, request_method.lower())(url, headers=headers, verify=False)
 
     if request_result.status_code == 200:
         return json.loads(request_result.content.decode())
@@ -123,7 +128,7 @@ def get_manager_health_base(env_mode):
 
 def get_api_health():
     if not os.path.exists(HEALTHCHECK_TOKEN_FILE):
-        if get_response(login_url, get_login_header(user, password)):
+        if get_response(LOGIN_METHOD, LOGIN_URL, get_login_header(USER, PASSWORD)):
             open(HEALTHCHECK_TOKEN_FILE, mode='w').close()
             return 0
         else:

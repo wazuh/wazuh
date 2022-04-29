@@ -46,6 +46,7 @@ typedef struct test_struct {
     int server_client_socket;
     int client_socket;
     int server_socket;
+    int timeout;
     char *ret;
     char *msg;
     char socket_path[256];
@@ -60,6 +61,7 @@ static int test_setup(void **state) {
 
     os_calloc(1, sizeof(struct addrinfo), init_data->addr);
     os_calloc(1, sizeof(struct sockaddr), init_data->addr->ai_addr);
+    init_data->timeout = 1;
 
     strncpy(init_data->socket_path, "/tmp/tmp_file-XXXXXX", 256);
 
@@ -634,6 +636,53 @@ void test_get_ip_from_resolved_hostname_no_ip(void ** state){
     assert_string_equal(ret, "");
 }
 
+// Tests external_socket_connect
+
+void test_external_socket_connect_success(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    const int msg_size = 1;
+
+    will_return(__wrap_socket, 4);
+    will_return(__wrap_connect, 0);
+    will_return(__wrap_getsockopt, 0);
+    will_return(__wrap_fcntl, 0);
+    will_return(__wrap_setsockopt, 0);
+    will_return(__wrap_setsockopt, 0);
+
+    int ret = external_socket_connect(data->socket_path, data->timeout);
+    assert_int_equal(ret, 4);
+}
+
+
+void test_external_socket_connect_failed_sent_timeout(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    const int msg_size = 1;
+
+    will_return(__wrap_socket, 4);
+    will_return(__wrap_connect, 0);
+    will_return(__wrap_getsockopt, 0);
+    will_return(__wrap_fcntl, 0);
+    will_return(__wrap_setsockopt, -1);
+
+    int ret = external_socket_connect(data->socket_path, data->timeout);
+    assert_int_equal(ret, -1);
+}
+
+void test_external_socket_connect_failed_receive_timeout(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    const int msg_size = 1;
+
+    will_return(__wrap_socket, 4);
+    will_return(__wrap_connect, 0);
+    will_return(__wrap_getsockopt, 0);
+    will_return(__wrap_fcntl, 0);
+    will_return(__wrap_setsockopt, 0);
+    will_return(__wrap_setsockopt, -1);
+
+    int ret = external_socket_connect(data->socket_path, data->timeout);
+    assert_int_equal(ret, -1);
+}
+
 void get_ipv4_string_fail_size(void ** state) {
 
     char address[IPSIZE] = {0};
@@ -935,6 +984,11 @@ int main(void) {
         /* Test for get_ip_from_resolved_hostname */
         cmocka_unit_test(test_get_ip_from_resolved_hostname_ip),
         cmocka_unit_test(test_get_ip_from_resolved_hostname_no_ip),
+
+        /* Test for external_socket_connect */
+        cmocka_unit_test_setup_teardown(test_external_socket_connect_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_external_socket_connect_failed_sent_timeout, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_external_socket_connect_failed_receive_timeout, test_setup, test_teardown),
 
         /* Test get_ipv4_string */
         cmocka_unit_test(get_ipv4_string_fail_size),

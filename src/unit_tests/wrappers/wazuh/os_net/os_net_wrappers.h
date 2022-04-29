@@ -52,6 +52,8 @@ int __wrap_wnet_select(int sock, int timeout);
 
 uint32_t __wrap_wnet_order(uint32_t value);
 
+int __wrap_external_socket_connect(char *socket_path, int response_timeout);
+
 int __wrap_get_ipv4_numeric(const char *address, struct in_addr *addr);
 
 int __wrap_get_ipv6_numeric(const char *address, struct in6_addr *addr6);

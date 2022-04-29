@@ -86,7 +86,6 @@ def test_check_cluster_config_ko(read_config, message):
     with patch('wazuh.core.cluster.utils.get_ossec_conf', return_value=read_config) as m:
         with pytest.raises(WazuhException, match=rf'.* 3004 .* {message}'):
             configuration = wazuh.core.cluster.utils.read_config()
-
             for key in m.return_value["cluster"]:
                 if key in configuration:
                     configuration[key] = m.return_value["cluster"][key]
@@ -113,13 +112,13 @@ def test_check_cluster_status():
 
 
 @patch('os.path.getmtime', return_value=45)
-@patch('wazuh.core.cluster.cluster.md5', return_value="hash")
+@patch('wazuh.core.cluster.cluster.blake2b', return_value="hash")
 @patch("wazuh.core.cluster.cluster.path.join", return_value="/mock/foo/bar")
 @patch('wazuh.core.cluster.cluster.walk', return_value=[('/foo/bar', (), ('spam', 'eggs', '.merged'))])
-def test_walk_dir(walk_mock, path_join_mock, md5_mock, getmtime_mock):
+def test_walk_dir(walk_mock, path_join_mock, blake2b_mock, getmtime_mock):
     """Check the different outputs of the walk_files function."""
 
-    all_mocks = [walk_mock, path_join_mock, md5_mock, getmtime_mock]
+    all_mocks = [walk_mock, path_join_mock, blake2b_mock, getmtime_mock]
 
     def reset_mocks(mocks):
         """Auxiliary function to reset the necessary mocks."""
@@ -131,7 +130,7 @@ def test_walk_dir(walk_mock, path_join_mock, md5_mock, getmtime_mock):
                             excluded_extensions=[".xml", ".txt"], get_cluster_item_key="") == {}
     walk_mock.assert_called_once_with(path_join_mock.return_value, topdown=True)
     path_join_mock.assert_called_once_with(common.WAZUH_PATH, '/foo/bar')
-    md5_mock.assert_not_called()
+    blake2b_mock.assert_not_called()
     getmtime_mock.assert_not_called()
 
     reset_mocks(all_mocks)
@@ -147,7 +146,7 @@ def test_walk_dir(walk_mock, path_join_mock, md5_mock, getmtime_mock):
                                      call('/mock/foo/bar', 'eggs'), call('/foo/bar', 'eggs'),
                                      call('/mock/foo/bar', '.merged'),
                                      call('/foo/bar', '.merged')], any_order=True)
-    md5_mock.assert_not_called()
+    blake2b_mock.assert_not_called()
     getmtime_mock.assert_has_calls([call(path_join_mock.return_value), call(path_join_mock.return_value)])
 
     reset_mocks(all_mocks)
@@ -156,14 +155,14 @@ def test_walk_dir(walk_mock, path_join_mock, md5_mock, getmtime_mock):
                             excluded_extensions=[".xml", ".txt"], get_cluster_item_key="",
                             previous_status={path_join_mock.return_value: {'mod_time': 35}}) == {
                '/mock/foo/bar': {'mod_time': 45, 'cluster_item_key': '', 'merged': True, 'merge_type': 'agent-groups',
-                                 'merge_name': '/mock/foo/bar', 'md5': 'hash'}}
+                                 'merge_name': '/mock/foo/bar', 'blake2_hash': 'hash'}}
 
     walk_mock.assert_called_once_with(path_join_mock.return_value, topdown=True)
     path_join_mock.assert_has_calls([call(common.WAZUH_PATH, '/foo/bar'),
                                      call('/mock/foo/bar', 'eggs'), call('/foo/bar', 'eggs'),
                                      call('/mock/foo/bar', '.merged'),
                                      call('/foo/bar', '.merged')], any_order=True)
-    md5_mock.assert_has_calls([call(path_join_mock.return_value), call(path_join_mock.return_value)])
+    blake2b_mock.assert_has_calls([call(path_join_mock.return_value), call(path_join_mock.return_value)])
     getmtime_mock.assert_has_calls([call(path_join_mock.return_value), call(path_join_mock.return_value)])
 
     reset_mocks(all_mocks)
@@ -173,14 +172,14 @@ def test_walk_dir(walk_mock, path_join_mock, md5_mock, getmtime_mock):
                             excluded_extensions=[".xml", ".txt"], get_cluster_item_key="",
                             previous_status={path_join_mock.return_value: {'mod_mock_time': 35}}) == {
                '/mock/foo/bar': {'mod_time': 45, 'cluster_item_key': '', 'merged': True, 'merge_type': 'agent-groups',
-                                 'merge_name': '/mock/foo/bar', 'md5': 'hash'}}
+                                 'merge_name': '/mock/foo/bar', 'blake2_hash': 'hash'}}
 
     walk_mock.assert_called_once_with(path_join_mock.return_value, topdown=True)
     path_join_mock.assert_has_calls([call(common.WAZUH_PATH, '/foo/bar'),
                                      call('/mock/foo/bar', 'eggs'), call('/foo/bar', 'eggs'),
                                      call('/mock/foo/bar', '.merged'),
                                      call('/foo/bar', '.merged')], any_order=True)
-    md5_mock.assert_has_calls([call(path_join_mock.return_value), call(path_join_mock.return_value)])
+    blake2b_mock.assert_has_calls([call(path_join_mock.return_value), call(path_join_mock.return_value)])
     getmtime_mock.assert_has_calls([call(path_join_mock.return_value), call(path_join_mock.return_value)])
 
 
@@ -401,10 +400,10 @@ def test_compare_files(wazuh_db_query_mock, mock_get_cluster_items):
     """Check the different outputs of the compare_files function."""
     mock_get_cluster_items.return_value = {'files': {'key': {'extra_valid': True}}}
 
-    seq = {'some/path3/': {'cluster_item_key': 'key', 'md5': 'md5 value'},
-           'some/path2/': {'cluster_item_key': "key", 'md5': 'md5 value'}}
-    condition = {'some/path2/': {'cluster_item_key': 'key', 'md5': 'md5 def value'},
-                 'some/path4/': {'cluster_item_key': "key", 'md5': 'md5 value'}}
+    seq = {'some/path3/': {'cluster_item_key': 'key', 'blake2_hash': 'blake2_hash value'},
+           'some/path2/': {'cluster_item_key': "key", 'blake2_hash': 'blake2_hash value'}}
+    condition = {'some/path2/': {'cluster_item_key': 'key', 'blake2_hash': 'blake2_hash def value'},
+                 'some/path4/': {'cluster_item_key': "key", 'blake2_hash': 'blake2_hash value'}}
 
     # First condition
     with patch('wazuh.core.cluster.cluster.merge_info', return_values=[1, "random/path/"]):
@@ -415,10 +414,10 @@ def test_compare_files(wazuh_db_query_mock, mock_get_cluster_items):
         assert count["shared"] == 1
 
     # Second condition
-    condition = {'some/path5/': {'cluster_item_key': 'key', 'md5': 'md5 def value'},
-                 'some/path4/': {'cluster_item_key': "key", 'md5': 'md5 value'},
+    condition = {'some/path5/': {'cluster_item_key': 'key', 'blake_hash': 'blake2_hash def value'},
+                 'some/path4/': {'cluster_item_key': "key", 'blake_hash': 'blake2_hash value'},
                  os.path.relpath(common.GROUPS_PATH, common.WAZUH_PATH): {'cluster_item_key': "key",
-                                                                          'md5': 'md5 value'}}
+                                                                          'blake_hash': 'blake2_hash value'}}
 
     files, count = cluster.compare_files(seq, condition, 'worker1')
     assert count["missing"] == 2
@@ -437,12 +436,12 @@ def test_compare_files_ko(wazuh_db_query_mock, logger_mock, mock_get_cluster_ite
     """Check the different outputs of the compare_files function."""
     mock_get_cluster_items.return_value = {'files': {'key': {'extra_valid': True}}}
 
-    seq = {'some/path3/': {'cluster_item_key': 'key', 'md5': 'md5 value'},
-           'some/path2/': {'cluster_item_key': "key", 'md5': 'md5 value'}}
-    condition = {'some/path2/': {'cluster_item_key': 'key', 'md5': 'md5 def value'},
-                 'some/path4/': {'cluster_item_key': "key", 'md5': 'md5 value'},
+    seq = {'some/path3/': {'cluster_item_key': 'key', 'blake_hash': 'blake_hash value'},
+           'some/path2/': {'cluster_item_key': "key", 'blake_hash': 'blake_hash value'}}
+    condition = {'some/path2/': {'cluster_item_key': 'key', 'blake_hash': 'blake_hash def value'},
+                 'some/path4/': {'cluster_item_key': "key", 'blake_hash': 'blake_hash value'},
                  os.path.relpath(common.GROUPS_PATH, common.WAZUH_PATH): {'cluster_item_key': "key",
-                                                                          'md5': 'md5 value'}}
+                                                                          'blake_hash': 'blake_hash value'}}
 
     # Test the exception
     with pytest.raises(Exception):

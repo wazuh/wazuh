@@ -59,15 +59,6 @@ static const struct {
 // Dispatch local request
 static char* local_dispatch(const char *input);
 
-// Add a new agent
-static cJSON* local_add(const char *id,
-                        const char *name,
-                        const char *ip,
-                        const char *groups,
-                        const char *key,
-                        const char *key_hash,
-                        authd_force_options_t *force_options);
-
 // Remove an agent
 static cJSON* local_remove(const char *id, int purge);
 

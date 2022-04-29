@@ -225,7 +225,7 @@ static void test_WinExecdRun_ok(void **state) {
 
     will_return(__wrap_wpclose, 0);
 
-    WinExecdRun(message);
+    ExecdRun(message);
 }
 
 static void test_WinExecdRun_timeout_not_repeated(void **state) {
@@ -402,7 +402,7 @@ static void test_WinExecdRun_timeout_not_repeated(void **state) {
                                                                                     "}"
                                                                                 "}' to the timeout list, with a timeout of '10s'.");
 
-    WinExecdRun(message);
+    ExecdRun(message);
 }
 
 static void test_WinExecdRun_timeout_repeated(void **state) {
@@ -552,7 +552,7 @@ static void test_WinExecdRun_timeout_repeated(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, "Command already received, updating time of addition to now.");
 
-    WinExecdRun(message);
+    ExecdRun(message);
 }
 
 static void test_WinExecdRun_wpopenv_err(void **state) {
@@ -625,7 +625,7 @@ static void test_WinExecdRun_wpopenv_err(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "(1317): Could not launch command Success (0)");
 
-    WinExecdRun(message);
+    ExecdRun(message);
 }
 
 static void test_WinExecdRun_fgets_err(void **state) {
@@ -734,7 +734,7 @@ static void test_WinExecdRun_fgets_err(void **state) {
 
     will_return(__wrap_wpclose, 0);
 
-    WinExecdRun(message);
+    ExecdRun(message);
 }
 
 static void test_WinExecdRun_get_command_err(void **state) {
@@ -782,7 +782,7 @@ static void test_WinExecdRun_get_command_err(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "(1311): Invalid command name 'restart-wazuh0' provided.");
 
-    WinExecdRun(message);
+    ExecdRun(message);
 }
 
 static void test_WinExecdRun_get_name_err(void **state) {
@@ -794,7 +794,7 @@ static void test_WinExecdRun_get_name_err(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "(1316): Invalid AR command: '{}'");
 
-    WinExecdRun(message);
+    ExecdRun(message);
 }
 
 static void test_WinExecdRun_json_err(void **state) {
@@ -806,7 +806,7 @@ static void test_WinExecdRun_json_err(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "(1315): Invalid JSON message: 'unknown'");
 
-    WinExecdRun(message);
+    ExecdRun(message);
 }
 
 int main(void) {

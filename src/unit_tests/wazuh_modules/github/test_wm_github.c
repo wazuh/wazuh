@@ -35,7 +35,7 @@ unsigned int __wrap_sleep(unsigned int __seconds) {
     return mock_type(unsigned int);
 }
 
-unsigned int __wrap_localtime_r(__attribute__ ((__unused__)) const time_t *t, __attribute__ ((__unused__)) struct tm *tm) {
+unsigned int __wrap_gmtime_r(__attribute__ ((__unused__)) const time_t *t, __attribute__ ((__unused__)) struct tm *tm) {
     return mock_type(unsigned int);
 }
 
@@ -212,14 +212,17 @@ void test_github_scan_failure_action_1(void **state) {
     os_calloc(1, sizeof(wm_github_fail), data->github_config->fails);
     data->github_config->fails->fails = 1;
     os_strdup("test_org", data->github_config->fails->org_name);
+    os_strdup("test_event", data->github_config->fails->event_type);
     data->github_config->fails->next = NULL;
     char *org_name = "test_org";
+    char *event_type = "test_event";
     char *error_msg = "test_error";
     int queue_fd = 1;
 
-    wm_github_scan_failure_action(&data->github_config->fails, org_name, error_msg, queue_fd);
+    wm_github_scan_failure_action(&data->github_config->fails, org_name, event_type, error_msg, queue_fd);
 
     assert_string_equal(data->github_config->fails->org_name, "test_org");
+    assert_string_equal(data->github_config->fails->event_type, "test_event");
     assert_int_equal(data->github_config->fails->fails, 2);
 }
 
@@ -228,19 +231,25 @@ void test_github_scan_failure_action_2(void **state) {
     os_calloc(1, sizeof(wm_github_fail), data->github_config->fails);
     data->github_config->fails->fails = 1;
     os_strdup("test_org", data->github_config->fails->org_name);
+    os_strdup("test_event", data->github_config->fails->event_type);
     os_calloc(1, sizeof(wm_github_fail), data->github_config->fails->next);
     data->github_config->fails->next->fails = 1;
     os_strdup("test_org2", data->github_config->fails->next->org_name);
+    os_strdup("test_event2", data->github_config->fails->next->event_type);
     data->github_config->fails->next->next = NULL;
     char *org_name = "test_org3";
+    char *event_type = "test_event3";
     char *error_msg = "test_error";
     int queue_fd = 1;
 
-    wm_github_scan_failure_action(&data->github_config->fails, org_name, error_msg, queue_fd);
+    wm_github_scan_failure_action(&data->github_config->fails, org_name, event_type, error_msg, queue_fd);
 
     assert_string_equal(data->github_config->fails->org_name, "test_org");
+    assert_string_equal(data->github_config->fails->event_type, "test_event");
     assert_string_equal(data->github_config->fails->next->org_name, "test_org2");
+    assert_string_equal(data->github_config->fails->next->event_type, "test_event2");
     assert_string_equal(data->github_config->fails->next->next->org_name, "test_org3");
+    assert_string_equal(data->github_config->fails->next->next->event_type, "test_event3");
     assert_int_equal(data->github_config->fails->fails, 1);
     assert_int_equal(data->github_config->fails->next->fails, 1);
     assert_int_equal(data->github_config->fails->next->next->fails, 1);
@@ -251,8 +260,10 @@ void test_github_scan_failure_action_3(void **state) {
     os_calloc(1, sizeof(wm_github_fail), data->github_config->fails);
     data->github_config->fails->fails = 2;
     os_strdup("test_org", data->github_config->fails->org_name);
+    os_strdup("test_event", data->github_config->fails->event_type);
     data->github_config->fails->next = NULL;
     char *org_name = "test_org";
+    char *event_type = "test_event";
     char *error_msg = "test_error";
     int queue_fd = 1;
     wm_max_eps = 1;
@@ -261,17 +272,18 @@ void test_github_scan_failure_action_3(void **state) {
 
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, 1);
-    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\",\"organization\":\"test_org\",\"response\":\"Unknown error\"}}");
+    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\",\"organization\":\"test_org\",\"event_type\":\"test_event\",\"response\":\"Unknown error\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, "github");
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
     will_return(__wrap_wm_sendmsg, result);
 
-    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:github");
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending GitHub internal message: '{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\",\"organization\":\"test_org\",\"response\":\"Unknown error\"}}'");
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:github");
+    expect_string(__wrap__mtwarn, formatted_msg, "Sending GitHub internal message: '{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\",\"organization\":\"test_org\",\"event_type\":\"test_event\",\"response\":\"Unknown error\"}}'");
 
-    wm_github_scan_failure_action(&data->github_config->fails, org_name, error_msg, queue_fd);
+    wm_github_scan_failure_action(&data->github_config->fails, org_name, event_type, error_msg, queue_fd);
 
     assert_string_equal(data->github_config->fails->org_name, "test_org");
+    assert_string_equal(data->github_config->fails->event_type, "test_event");
     assert_int_equal(data->github_config->fails->fails, 3);
 }
 
@@ -280,8 +292,10 @@ void test_github_scan_failure_action_4(void **state) {
     os_calloc(1, sizeof(wm_github_fail), data->github_config->fails);
     data->github_config->fails->fails = 2;
     os_strdup("test_org", data->github_config->fails->org_name);
+    os_strdup("test_event", data->github_config->fails->event_type);
     data->github_config->fails->next = NULL;
     char *org_name = "test_org";
+    char *event_type = "test_event";
     char *error_msg = "{\"test\":\"test_error\"}";
     int queue_fd = 1;
     wm_max_eps = 1;
@@ -290,17 +304,18 @@ void test_github_scan_failure_action_4(void **state) {
 
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, 1);
-    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\",\"organization\":\"test_org\",\"response\":\"{\\\"test\\\":\\\"test_error\\\"}\"}}");
+    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\",\"organization\":\"test_org\",\"event_type\":\"test_event\",\"response\":\"{\\\"test\\\":\\\"test_error\\\"}\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, "github");
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
     will_return(__wrap_wm_sendmsg, result);
 
-    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:github");
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending GitHub internal message: '{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\",\"organization\":\"test_org\",\"response\":\"{\\\"test\\\":\\\"test_error\\\"}\"}}'");
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:github");
+    expect_string(__wrap__mtwarn, formatted_msg, "Sending GitHub internal message: '{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\",\"organization\":\"test_org\",\"event_type\":\"test_event\",\"response\":\"{\\\"test\\\":\\\"test_error\\\"}\"}}'");
 
-    wm_github_scan_failure_action(&data->github_config->fails, org_name, error_msg, queue_fd);
+    wm_github_scan_failure_action(&data->github_config->fails, org_name, event_type, error_msg, queue_fd);
 
     assert_string_equal(data->github_config->fails->org_name, "test_org");
+    assert_string_equal(data->github_config->fails->event_type, "test_event");
     assert_int_equal(data->github_config->fails->fails, 3);
 }
 
@@ -309,8 +324,10 @@ void test_github_scan_failure_action_error(void **state) {
     os_calloc(1, sizeof(wm_github_fail), data->github_config->fails);
     data->github_config->fails->fails = 2;
     os_strdup("test_org", data->github_config->fails->org_name);
+    os_strdup("test_event", data->github_config->fails->event_type);
     data->github_config->fails->next = NULL;
     char *org_name = "test_org";
+    char *event_type = "test_event";
     char *error_msg = "test_error";
     int queue_fd = 1;
     wm_max_eps = 1;
@@ -319,20 +336,21 @@ void test_github_scan_failure_action_error(void **state) {
 
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, 1);
-    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\",\"organization\":\"test_org\",\"response\":\"Unknown error\"}}");
+    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\",\"organization\":\"test_org\",\"event_type\":\"test_event\",\"response\":\"Unknown error\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, "github");
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
     will_return(__wrap_wm_sendmsg, result);
 
-    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:github");
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending GitHub internal message: '{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\",\"organization\":\"test_org\",\"response\":\"Unknown error\"}}'");
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:github");
+    expect_string(__wrap__mtwarn, formatted_msg, "Sending GitHub internal message: '{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\",\"organization\":\"test_org\",\"event_type\":\"test_event\",\"response\":\"Unknown error\"}}'");
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mterror, formatted_msg, "(1210): Queue 'queue/sockets/queue' not accessible: 'Success'");
 
-    wm_github_scan_failure_action(&data->github_config->fails, org_name, error_msg, queue_fd);
+    wm_github_scan_failure_action(&data->github_config->fails, org_name, event_type, error_msg, queue_fd);
 
     assert_string_equal(data->github_config->fails->org_name, "test_org");
+    assert_string_equal(data->github_config->fails->event_type, "test_event");
     assert_int_equal(data->github_config->fails->fails, 3);
 }
 
@@ -340,13 +358,15 @@ void test_github_scan_failure_action_org_null(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     data->github_config->fails = NULL;
     char *org_name = "test_org";
+    char *event_type = "test_event";
     char *error_msg = "test_error";
     int queue_fd = 1;
     wm_max_eps = 1;
 
-    wm_github_scan_failure_action(&data->github_config->fails, org_name, error_msg, queue_fd);
+    wm_github_scan_failure_action(&data->github_config->fails, org_name, event_type, error_msg, queue_fd);
 
     assert_string_equal(data->github_config->fails->org_name, "test_org");
+    assert_string_equal(data->github_config->fails->event_type, "test_event");
     assert_int_equal(data->github_config->fails->fails, 1);
 }
 
@@ -368,13 +388,25 @@ void test_github_execute_scan(void **state) {
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mtdebug1, formatted_msg, "Scanning organization: 'test_org'");
 
-    expect_string(__wrap_wm_state_io, tag, "github-test_org");
+    expect_string(__wrap_wm_state_io, tag, "github-test_org-git");
     expect_value(__wrap_wm_state_io, op, WM_IO_READ);
     expect_any(__wrap_wm_state_io, state);
     expect_any(__wrap_wm_state_io, size);
     will_return(__wrap_wm_state_io, 1);
 
-    expect_string(__wrap_wm_state_io, tag, "github-test_org");
+    expect_string(__wrap_wm_state_io, tag, "github-test_org-git");
+    expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
+    expect_any(__wrap_wm_state_io, state);
+    expect_any(__wrap_wm_state_io, size);
+    will_return(__wrap_wm_state_io, 1);
+
+    expect_string(__wrap_wm_state_io, tag, "github-test_org-web");
+    expect_value(__wrap_wm_state_io, op, WM_IO_READ);
+    expect_any(__wrap_wm_state_io, state);
+    expect_any(__wrap_wm_state_io, size);
+    will_return(__wrap_wm_state_io, 1);
+
+    expect_string(__wrap_wm_state_io, tag, "github-test_org-web");
     expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
     expect_any(__wrap_wm_state_io, state);
     expect_any(__wrap_wm_state_io, size);
@@ -403,7 +435,7 @@ void test_github_execute_scan_no_initial_scan(void **state) {
     os_strdup("test_token", data->github_config->auth->api_token);
     os_strdup("test_org", data->github_config->auth->org_name);
     data->github_config->auth->next = NULL;
-    os_strdup("all", data->github_config->event_type);
+    os_strdup("git", data->github_config->event_type);
     os_calloc(1, sizeof(curl_response), data->response);
     data->response->status_code = 404;
     data->response->body = NULL;
@@ -413,21 +445,21 @@ void test_github_execute_scan_no_initial_scan(void **state) {
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mtdebug1, formatted_msg, "Scanning organization: 'test_org'");
 
-    expect_string(__wrap_wm_state_io, tag, "github-test_org");
+    expect_string(__wrap_wm_state_io, tag, "github-test_org-git");
     expect_value(__wrap_wm_state_io, op, WM_IO_READ);
     expect_any(__wrap_wm_state_io, state);
     expect_any(__wrap_wm_state_io, size);
     will_return(__wrap_wm_state_io, 1);
 
 #ifndef WIN32
-    will_return(__wrap_localtime_r, 1);
+    will_return(__wrap_gmtime_r, 1);
 #endif
 
     will_return(__wrap_strftime,"2021-05-07 12:24:56");
     will_return(__wrap_strftime, 20);
 
 #ifndef WIN32
-    will_return(__wrap_localtime_r, 1);
+    will_return(__wrap_gmtime_r, 1);
 #endif
 
     will_return(__wrap_strftime,"2021-05-07 12:34:56");
@@ -459,7 +491,7 @@ void test_github_execute_scan_status_code_200(void **state) {
     os_strdup("test_token", data->github_config->auth->api_token);
     os_strdup("test_org", data->github_config->auth->org_name);
     data->github_config->auth->next = NULL;
-    os_strdup("all", data->github_config->event_type);
+    os_strdup("web", data->github_config->event_type);
     os_calloc(1, sizeof(curl_response), data->response);
     data->response->status_code = 200;
     data->response->body = NULL;
@@ -469,21 +501,21 @@ void test_github_execute_scan_status_code_200(void **state) {
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mtdebug1, formatted_msg, "Scanning organization: 'test_org'");
 
-    expect_string(__wrap_wm_state_io, tag, "github-test_org");
+    expect_string(__wrap_wm_state_io, tag, "github-test_org-web");
     expect_value(__wrap_wm_state_io, op, WM_IO_READ);
     expect_any(__wrap_wm_state_io, state);
     expect_any(__wrap_wm_state_io, size);
     will_return(__wrap_wm_state_io, 1);
 
 #ifndef WIN32
-    will_return(__wrap_localtime_r, 1);
+    will_return(__wrap_gmtime_r, 1);
 #endif
 
     will_return(__wrap_strftime,"2021-05-07 12:24:56");
     will_return(__wrap_strftime, 20);
 
 #ifndef WIN32
-    will_return(__wrap_localtime_r, 1);
+    will_return(__wrap_gmtime_r, 1);
 #endif
 
     will_return(__wrap_strftime,"2021-05-07 12:34:56");
@@ -518,7 +550,7 @@ void test_github_execute_scan_status_code_200_null(void **state) {
     os_strdup("test_token", data->github_config->auth->api_token);
     os_strdup("test_org", data->github_config->auth->org_name);
     data->github_config->auth->next = NULL;
-    os_strdup("all", data->github_config->event_type);
+    os_strdup("git", data->github_config->event_type);
     os_calloc(1, sizeof(curl_response), data->response);
     data->response->status_code = 200;
     os_strdup("{\"github\":{\"actor\":\"wazuh\"}}", data->response->body);
@@ -529,21 +561,21 @@ void test_github_execute_scan_status_code_200_null(void **state) {
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mtdebug1, formatted_msg, "Scanning organization: 'test_org'");
 
-    expect_string(__wrap_wm_state_io, tag, "github-test_org");
+    expect_string(__wrap_wm_state_io, tag, "github-test_org-git");
     expect_value(__wrap_wm_state_io, op, WM_IO_READ);
     expect_any(__wrap_wm_state_io, state);
     expect_any(__wrap_wm_state_io, size);
     will_return(__wrap_wm_state_io, 1);
 
 #ifndef WIN32
-    will_return(__wrap_localtime_r, 1);
+    will_return(__wrap_gmtime_r, 1);
 #endif
 
     will_return(__wrap_strftime,"2021-05-07 12:24:56");
     will_return(__wrap_strftime, 20);
 
 #ifndef WIN32
-    will_return(__wrap_localtime_r, 1);
+    will_return(__wrap_gmtime_r, 1);
 #endif
 
     will_return(__wrap_strftime,"2021-05-07 12:34:56");
@@ -568,7 +600,7 @@ void test_github_execute_scan_status_code_200_null(void **state) {
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mtdebug2, formatted_msg, "Sending GitHub log: '{\"integration\":\"github\",\"github\":{\"actor\":\"wazuh\"}}'");
 
-    expect_string(__wrap_wm_state_io, tag, "github-test_org");
+    expect_string(__wrap_wm_state_io, tag, "github-test_org-git");
     expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
     expect_any(__wrap_wm_state_io, state);
     expect_any(__wrap_wm_state_io, size);
@@ -591,7 +623,7 @@ void test_github_execute_scan_max_size_reached(void **state) {
     os_strdup("test_token", data->github_config->auth->api_token);
     os_strdup("test_org", data->github_config->auth->org_name);
     data->github_config->auth->next = NULL;
-    os_strdup("all", data->github_config->event_type);
+    os_strdup("web", data->github_config->event_type);
     os_calloc(1, sizeof(curl_response), data->response);
     data->response->status_code = 200;
     data->response->max_size_reached = true;
@@ -601,21 +633,21 @@ void test_github_execute_scan_max_size_reached(void **state) {
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mtdebug1, formatted_msg, "Scanning organization: 'test_org'");
 
-    expect_string(__wrap_wm_state_io, tag, "github-test_org");
+    expect_string(__wrap_wm_state_io, tag, "github-test_org-web");
     expect_value(__wrap_wm_state_io, op, WM_IO_READ);
     expect_any(__wrap_wm_state_io, state);
     expect_any(__wrap_wm_state_io, size);
     will_return(__wrap_wm_state_io, 1);
 
 #ifndef WIN32
-    will_return(__wrap_localtime_r, 1);
+    will_return(__wrap_gmtime_r, 1);
 #endif
 
     will_return(__wrap_strftime,"2021-05-07 12:24:56");
     will_return(__wrap_strftime, 20);
 
 #ifndef WIN32
-    will_return(__wrap_localtime_r, 1);
+    will_return(__wrap_gmtime_r, 1);
 #endif
 
     will_return(__wrap_strftime,"2021-05-07 12:34:56");
@@ -633,7 +665,7 @@ void test_github_execute_scan_max_size_reached(void **state) {
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mtdebug1, formatted_msg, "Libcurl error, reached maximum response size.");
 
-    expect_string(__wrap_wm_state_io, tag, "github-test_org");
+    expect_string(__wrap_wm_state_io, tag, "github-test_org-web");
     expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
     expect_any(__wrap_wm_state_io, state);
     expect_any(__wrap_wm_state_io, size);
@@ -754,7 +786,7 @@ void test_read_default_configuration(void **state) {
     assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),0);
     wm_github *module_data = (wm_github*)test->module->data;
     assert_int_equal(module_data->enabled, 1);
-    assert_int_equal(module_data->interval, 600);
+    assert_int_equal(module_data->interval, 60);
     assert_int_equal(module_data->time_delay, 1);
     assert_int_equal(module_data->only_future_events, 1);
     assert_string_equal(module_data->auth->org_name, "Wazuh");

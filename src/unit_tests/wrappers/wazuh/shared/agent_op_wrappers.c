@@ -23,6 +23,18 @@ int __wrap_auth_connect() {
     return mock();
 }
 
+int __wrap_w_request_agent_add_clustered(__attribute__((unused)) char *err_response,
+                                         __attribute__((unused)) const char *name,
+                                         __attribute__((unused)) const char *ip,
+                                         __attribute__((unused)) const char *groups,
+                                         __attribute__((unused)) const char *key_hash,
+                                         __attribute__((unused)) char **id,
+                                         __attribute__((unused)) char **key,
+                                         __attribute__((unused)) const int force,
+                                         __attribute__((unused)) const char *agent_id) {
+    return mock();
+}
+
 char* __wrap_get_agent_id_from_name(__attribute__((unused)) char *agent_name) {
     return mock_type(char*);
 }

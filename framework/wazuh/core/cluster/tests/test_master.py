@@ -5,8 +5,6 @@
 import asyncio
 import logging
 import sys
-import threading
-import time
 from collections import defaultdict
 from contextvars import ContextVar
 from datetime import datetime, timezone
@@ -1704,7 +1702,7 @@ def test_master_to_dict(get_running_loop_mock):
 @freeze_time("2021-11-02")
 @patch('asyncio.sleep')
 @patch('wazuh.core.cluster.master.cluster.run_in_pool', return_value=[])
-async def test_master_file_status_update_ok(run_in_pool_mock, sleep_mock):
+async def test_master_file_status_update_ok(run_in_pool_mock, asyncio_sleep_mock):
     """Check if the file status is properly obtained."""
 
     master_class = master.Master(performance_test=False, concurrency_test=False,
@@ -1737,38 +1735,31 @@ async def test_master_file_status_update_ok(run_in_pool_mock, sleep_mock):
         def clear(self):
             self._clear = True
 
-    async def final_function():
-        """Auxiliary method."""
-
-        await master_class.file_status_update()
-
-    def middle_function():
-        """Auxiliary method."""
-
-        _loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(_loop)
-
-        _loop.run_until_complete(final_function())
-        _loop.close()
+    async def sleep_mock(recalculate_integrity):
+        raise Exception()
 
     logger_mock = LoggerMock()
     master_class.integrity_already_executed = IntegrityExecutedMock()
+    asyncio_sleep_mock.side_effect = sleep_mock
 
     with patch("wazuh.core.cluster.master.Master.setup_task_logger",
-               return_value=logger_mock) as setup_task_logger_mock:
-        _thread = threading.Thread(target=middle_function)
-        _thread.daemon = True
-        _thread.start()
-        time.sleep(5)
+                    return_value=logger_mock) as setup_task_logger_mock:
+        # Test the 'try'
+        try:
+            await master_class.file_status_update()
+        except Exception:
+            assert "Starting." in logger_mock._info
+            assert "Finished in 0.000s. Calculated metadata of 0 files." in logger_mock._info
+            # assert "Error calculating local file integrity: " in logger_mock._error
+            setup_task_logger_mock.assert_called_once_with('Local integrity')
+            assert master_class.integrity_control == run_in_pool_mock.return_value
 
+        # Test the 'except'
         run_in_pool_mock.side_effect = Exception
-        time.sleep(5)
-
-        assert "Starting." in logger_mock._info
-        assert "Finished in 0.000s. Calculated metadata of 0 files." in logger_mock._info
-        assert "Error calculating local file integrity: " in logger_mock._error
-        setup_task_logger_mock.assert_called_once_with('Local integrity')
-        assert master_class.integrity_control == run_in_pool_mock.return_value
+        try:
+            await master_class.file_status_update()
+        except Exception:
+            assert "Error calculating local file integrity: " in logger_mock._error
 
 
 @patch('asyncio.get_running_loop', return_value=loop)

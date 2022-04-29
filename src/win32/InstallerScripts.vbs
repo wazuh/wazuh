@@ -27,7 +27,7 @@ Const ForWriting = 2
 
 ' Custom parameters
 strArgs = Session.Property("CustomActionData")
-args = Split(strArgs, ",")
+args = Split(strArgs, "/+/")
 
 home_dir= Replace(args(0), Chr(34), "")
 WAZUH_MANAGER = Replace(args(1), Chr(34), "")

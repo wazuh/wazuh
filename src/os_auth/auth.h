@@ -175,6 +175,24 @@ w_err_t w_auth_add_agent(char *response,
                          char **id,
                          char **key);
 
+/**
+ * @brief Adds new agent from a local request
+ * @param id Agent ID of the agent to be registered
+ * @param ip Agent IP of the agent to be registered
+ * @param groups Groups to which the agent belongs
+ * @param key Agent key if was already registered
+ * @param key_hash Hash of the agent key
+ * @param force_options Options to decide if forcing the insertion
+ * @return JSON object with the response
+ * */
+cJSON* local_add(const char *id,
+                        const char *name,
+                        const char *ip,
+                        const char *groups,
+                        const char *key,
+                        const char *key_hash,
+                        authd_force_options_t *force_options);
+
 extern char shost[512];
 extern keystore keys;
 extern volatile int write_pending;

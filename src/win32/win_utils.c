@@ -175,7 +175,7 @@ int local_start()
     }
 
     /* Read execd config */
-    if (!WinExecd_Start()) {
+    if (!WinExecdStart()) {
         agt->execdq = -1;
     }
 

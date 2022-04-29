@@ -4,6 +4,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import io
 import os
 import sys
 import json
@@ -224,11 +225,11 @@ def test_decompress_file_snappy_skip(log_key: str, aws_bucket: aws_s3.AWSBucket)
 @pytest.mark.parametrize('log_key, skip_on_error, expected_exception', [
     ('test.snappy', False, SystemExit),
 ])
-def test_decompress_file_ko(log_key: str, skip_on_error: bool, expected_exception: Exception,
-                            aws_bucket: aws_s3.AWSBucket):
+def test_decompress_snappy_ko(log_key: str, skip_on_error: bool, expected_exception: Exception,
+                              aws_bucket: aws_s3.AWSBucket):
     """
     Test that the decompress_file method raises an exception when used with
-    invalid arguments.
+    a snappy compressed file.
 
     Parameters
     ----------
@@ -242,8 +243,26 @@ def test_decompress_file_ko(log_key: str, skip_on_error: bool, expected_exceptio
         Instance of the AWSBucket class.
     """
     aws_bucket.skip_on_error = skip_on_error
-    with patch('io.BytesIO'), pytest.raises(expected_exception):
+    with patch('io.BytesIO'), pytest.raises(expected_exception) as e:
         aws_bucket.decompress_file(log_key)
+    assert e.value.code == 8
+
+
+def test_decompress_file_ko(bad_compressed_file, aws_bucket: aws_s3.AWSBucket):
+    """
+    Test that the decompress_file method exits with exit code 8 when
+    decompressing a corrupted file.
+
+    Parameters
+    ----------
+    bad_compressed_file : NamedTemporaryFile
+        Corrupted zip or gzip file.
+    """
+    with patch(
+            'io.BytesIO', return_value=io.TextIOWrapper(bad_compressed_file)),\
+         pytest.raises(SystemExit) as e:
+        aws_bucket.decompress_file(bad_compressed_file.name)
+    assert e.value.code == 8
 
 
 @pytest.mark.parametrize('log_file, skip_on_error', [
