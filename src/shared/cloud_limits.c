@@ -20,28 +20,30 @@ time_t last_mod_date = 0;
 /*
  * load json objects from limits.conf file.
  */
-cJSON *load_limits_file(const char *object_name) {
+int load_limits_file(const char *daemon_name, cJSON ** daemon_obj) {
 
-    if (!object_name) {
+    if (!daemon_name) {
         mdebug2("Invalid daemon name is null");
-        return NULL;
+        return LIMITS_NULL_NAME;
     }
 
-    time_t cur_mod_date;
+    time_t cur_mod_date = 0;
     if ((cur_mod_date = File_DateofChange(OSSEC_LIMITS)) == -1) {
         mdebug2("File %s doesn't found", OSSEC_LIMITS);
-        return NULL;
+        last_mod_date = 0;
+        return LIMITS_FILE_NOT_FOUND;
     }
 
     if (cur_mod_date == last_mod_date) {
         mdebug2("File %s doesn't change", OSSEC_LIMITS);
-        return NULL;
+        return LIMITS_FILE_DOESNT_CHANGE;
     }
 
     FILE *fp;
     if (fp = fopen(OSSEC_LIMITS, "r"), !fp) {
         mdebug2("Could not open file '%s'",OSSEC_LIMITS);
-        return NULL;
+        last_mod_date = 0;
+        return LIMITS_OPEN_FILE_FAIL;
     }
 
     char buf[OS_MAXSTR + 1];
@@ -49,7 +51,8 @@ cJSON *load_limits_file(const char *object_name) {
     if (fgets(buf, OS_MAXSTR, fp) == NULL) {
         mdebug2("Could not read file '%s'",OSSEC_LIMITS);
         fclose(fp);
-        return NULL;
+        last_mod_date = 0;
+        return LIMITS_READ_FILE_FAIL;
     }
 
     last_mod_date = cur_mod_date;
@@ -60,32 +63,42 @@ cJSON *load_limits_file(const char *object_name) {
         mdebug2("Invalid format file '%s', json '%s'",OSSEC_LIMITS, json_err);
         cJSON_Delete(file_json);
         fclose(fp);
-        return NULL;
+        return LIMITS_JSON_FORMAT_FAIL;
     }
     fclose(fp);
 
-    if (!strcmp(object_name, "file")) {
-        return file_json;
+    if (!strcmp(daemon_name, "file")) {
+        if (daemon_obj) {
+            *daemon_obj = file_json;
+        }
+        return LIMITS_SUCCESS;
     }
 
     cJSON *limits_json = cJSON_GetObjectItem(file_json, "limits");
     if (!cJSON_IsObject(limits_json)) {
         mdebug2("limits object doesn't found into '%s'", OSSEC_LIMITS);
         cJSON_Delete(file_json);
-        return NULL;
+        return LIMITS_JSON_LIMIT_NOT_FOUND;
     }
 
-    if (!strcmp(object_name, "limits")) {
-        return limits_json;
+    if (!strcmp(daemon_name, "limits")) {
+        if (daemon_obj) {
+            *daemon_obj = limits_json;
+        }
+        return LIMITS_SUCCESS;
     }
 
-    cJSON *daemon_json = cJSON_GetObjectItem(limits_json, object_name);
+    cJSON *daemon_json = cJSON_GetObjectItem(limits_json, daemon_name);
     if (!cJSON_IsObject(daemon_json)) {
-        mdebug2("daemon '%s' doesn't found into '%s'",object_name, OSSEC_LIMITS);
+        mdebug2("daemon '%s' doesn't found into '%s'",daemon_name, OSSEC_LIMITS);
         cJSON_Delete(file_json);
-        return NULL;
+        return LIMITS_JSON_DAEMON_NOT_FOUND;
     }
 
-    return daemon_json;
+    if (daemon_obj) {
+        *daemon_obj = daemon_json;
+    }
+
+    return LIMITS_SUCCESS;
 }
 
