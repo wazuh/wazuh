@@ -2515,9 +2515,7 @@ void load_limits(void) {
             mwarn("eps limit doesn't found, value set: %d", limits.eps);
         }
 
-        limits.max_eps = limits.eps * limits.timeframe;
-
-        if (limits.max_eps) {
+        if (limits.eps) {
 
             limits.enabled = true;
             if (!old_timeframe && limits.timeframe){
@@ -2541,13 +2539,17 @@ void load_limits(void) {
                     /* expand buffer */
                     memset(limits.circ_buf, 0, sizeof(unsigned int) * limits.timeframe);
                     memcpy(limits.circ_buf, buf, sizeof(unsigned int) * old_timeframe);
+                    limits.current_cell = limits.current_cell >= old_timeframe - 1 ? limits.current_cell + 1: limits.current_cell;
                 }
             }
-
+            /* caluclate new eps proccess in new timeframe */
             limits.eps_per_timeframe = 0;
             for (unsigned int i = 0; i < limits.timeframe; i++) {
                  limits.eps_per_timeframe += limits.circ_buf[i];
             }
+
+            limits.max_eps = limits.eps * limits.timeframe;
+
             mdebug1("limits eps: %d, timeframe %d, events per timeframe: %d", limits.eps, limits.timeframe, limits.max_eps);
         }
         else {
