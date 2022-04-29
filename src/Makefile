@@ -826,7 +826,7 @@ ifeq (${TARGET}, winagent)
 		if test -d "${WIN_STRIP_TOOL_PATH}" -a -f "${WIN_STRIP_TOOL_PATH}/cv2pdb.exe" && command -v wine > /dev/null 2>&1; then \
 			$(foreach binary, ${EXECUTABLE_FILES}, (${MING_BASE}objdump -h $(binary) | grep -q ".debug_info" && wine ${WIN_STRIP_TOOL_PATH}/cv2pdb.exe $(binary) $(binary) ${SYMBOLS_PATH}/$(basename $(notdir $(binary))).pdb) || true;) \
 		else \
-			echo "Error during debug symbols stripping: cv2pdb.exe or wine were not found." || false; \
+			echo "Error during debug symbols stripping: cv2pdb.exe or wine were not found." && false; \
 		fi \
 	else \
 		$(foreach binary, ${EXECUTABLE_FILES}, ${MING_BASE}objcopy --strip-unneeded ${binary};) \
