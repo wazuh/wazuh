@@ -2,6 +2,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
+import contextlib
 import functools
 import inspect
 import itertools
@@ -18,8 +19,6 @@ import uvloop
 from wazuh.core import common, exception, utils
 from wazuh.core.cluster import common as c_common
 from wazuh.core.cluster.utils import ClusterFilter, context_tag
-
-NO_RESULT = 'no_result'
 
 
 class AbstractServerHandler(c_common.Handler):
@@ -192,12 +191,11 @@ class AbstractServerHandler(c_common.Handler):
                 del self.server.clients[self.name]
             for task in self.handler_tasks:
                 task.cancel()
+        elif exc is not None:
+            self.logger.error(f"Error during handshake with incoming connection: {exc}. \n"
+                              f"{''.join(traceback.format_tb(exc.__traceback__))}", exc_info=False)
         else:
-            if exc is not None:
-                self.logger.error(f"Error during handshake with incoming connection: {exc}. \n"
-                                  f"{''.join(traceback.format_tb(exc.__traceback__))}", exc_info=False)
-            else:
-                self.logger.error("Error during handshake with incoming connection.", exc_info=False)
+            self.logger.error("Error during handshake with incoming connection.", exc_info=False)
 
     def add_request(self, broadcast_id, f, *args, **kwargs):
         """Add a request to the queue to execute a function in this server handler.
@@ -238,16 +236,16 @@ class AbstractServerHandler(c_common.Handler):
                 self.logger.error(f"Error while broadcasting function. ID: {q_item['broadcast_id']}. Error: {e}.")
                 result = e
 
-            try:
+            with contextlib.suppress(KeyError):
                 self.server.broadcast_results[q_item['broadcast_id']][self.name] = result
-            except KeyError:
-                pass
 
 
 class AbstractServer:
     """
     Define an asynchronous server. Handle connections from all clients.
     """
+
+    NO_RESULT = 'no_result'
 
     def __init__(self, performance_test: int, concurrency_test: int, configuration: Dict, cluster_items: Dict,
                  enable_ssl: bool, logger: logging.Logger = None, tag: str = "Abstract Server"):
@@ -340,7 +338,7 @@ class AbstractServer:
 
             for name, client in self.clients.items():
                 try:
-                    self.broadcast_results[broadcast_id][name] = NO_RESULT
+                    self.broadcast_results[broadcast_id][name] = AbstractServer.NO_RESULT
                     client.add_request(broadcast_id, f, *args, **kwargs)
                     self.logger.debug2(f'Added broadcast request to execute "{f.__name__}" in {name}.')
                 except Exception as e:
@@ -375,7 +373,7 @@ class AbstractServer:
             the results are ready, it is, the request was executed in all server handlers.
         """
         for name, result in self.broadcast_results.get(broadcast_id, {}).items():
-            if name in self.clients and result == NO_RESULT:
+            if name in self.clients and result == AbstractServer.NO_RESULT:
                 return False
 
         return self.broadcast_results.pop(broadcast_id, True)
