@@ -32,6 +32,9 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
                            ${CMAKE_SOURCE_DIR}/src/db/src/registry.cpp
                            ${CMAKE_SOURCE_DIR}/src/db/src/fimDBSpecializationWindows.cpp
                            )
+elseif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
+  add_definitions(-DOS_TYPE=OSType::HP_UX)
+  add_library(fimdb SHARED ${DB_SRC})
 else()
   add_definitions(-DOS_TYPE=OSType::OTHERS)
   add_library(fimdb SHARED ${DB_SRC})

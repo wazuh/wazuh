@@ -106,7 +106,7 @@ void FIMDB::runIntegrity()
         {
             m_loggingFunction(LOG_INFO, "FIM sync module started.");
             sync();
-            promise.set_value();
+            PromiseFactory<OS_TYPE>::set_value(promise);
             std::unique_lock<std::mutex> lockCv{m_fimSyncMutex};
 
             while (!m_cv.wait_for(lockCv, std::chrono::seconds{m_syncInterval}, [&]()
@@ -119,7 +119,8 @@ void FIMDB::runIntegrity()
                 // LCOV_EXCL_STOP
             }
         });
-        promise.get_future().wait();
+        PromiseFactory<OS_TYPE>::wait(promise);
+
     }
     else
     {
