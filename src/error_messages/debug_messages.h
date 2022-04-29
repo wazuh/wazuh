@@ -41,7 +41,7 @@
 #define VU_UPDATE_VU_INFO     "(5426): Inserting '%s' vulnerabilities information."
 #define VU_STOP_REFRESH_DB    "(5427): Refresh of '%s' database finished."
 #define VU_DOWNLOAD_PAGE_SUC  "(5428): Page '%d' successfully downloaded."
-#define VU_NVD_UPD_CANCEL     "(5429): The '%s' update has failed, so the NVD feed will not be updated."
+#define VU_CPEW_UPD_CANCEL     "(5429): The '%s' update has failed, so this feed will not be updated any more."
 #define VU_ENDING_UPDATE      "(5430): The update of the '%s' feed finished successfully."
 #define VU_START_SCAN         "(5431): Starting vulnerability scan."
 #define VU_AG_NEVER_CON       "(5432): Agent '%s' never connected."
@@ -98,6 +98,8 @@
 #define VU_DISCARD_DU         "(5489): '%s' vulnerability information discarded for agent '%.3d' ('KB%s'): Dynamic Updates (DU) are only available when upgrading to new Windows 10 versions."
 #define VU_REMOVED_VULN       "(5490): The vulnerability '%s' affecting '%s' was eliminated"
 #define VU_AG_BASELINE_SCAN   "(5491): A baseline scan will be run on agent '%.3d'"
+#define VU_FAILED_UPDATE      "(5492): The update of the '%s' feed failed."
+
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."

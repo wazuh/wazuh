@@ -355,7 +355,6 @@
 #define VU_SYSC_SCAN_REQUEST_ERROR  "(5518): Last software scan from the agent '%.3d' could not be requested."
 #define VU_NO_SYSC_SCANS            "(5519): No package inventory found for agent '%.3d', so their vulnerabilities will not be checked."
 #define VU_REPORT_ERROR             "(5520): The agent '%.3d' vulnerabilities could not be reported. Error: '%s'"
-#define VU_UPDATE_RETRY             "(5521): Failed when updating '%s %s' database. Retrying in '%lu' seconds."
 #define VU_API_REQ_INV              "(5522): There was no valid response to '%s' after '%d' attempts."
 #define VU_CONTENT_FEED_ERROR       "(5523): Couldn't get the content of the '%s' feed from '%s' file."
 #define VU_PARSED_FEED_ERROR        "(5524): The '%s' feed couldn't be parsed from '%s' file."
