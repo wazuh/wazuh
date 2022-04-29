@@ -10,14 +10,14 @@
 #include <fmt/format.h>
 #include <rapidjson/document.h>
 #include <rapidjson/error/en.h>
-#include <rapidjson/stringbuffer.h>
-#include <rapidjson/writer.h>
-
 #include "date/date.h"
 #include "hlpDetails.hpp"
 #include "specificParsers.hpp"
 #include "tld.hpp"
+
 #include <profile/profile.hpp>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/writer.h>
 
 // TODO For all the rfc timestamps there are variations that we don't parse
 // still, this will need a rework on how this list work

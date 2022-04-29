@@ -1,6 +1,6 @@
 #include <hlp/hlp.hpp>
 
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 
 using namespace hlp;
 
