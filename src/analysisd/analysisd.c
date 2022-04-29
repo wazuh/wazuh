@@ -1091,25 +1091,23 @@ void OS_ReadMSG_analysisd(int m_queue)
 
             w_mutex_lock(&limit_eps_mutex);
 
-            if (limits.current_cell >= limits.timeframe - 1) {
-                limits.current_cell = limits.current_cell > limits.timeframe - 1 ? limits.timeframe - 1 : limits.current_cell;
+            if (limits.current_cell >= limits.timeframe) {
 
+                limits.current_cell = limits.current_cell > limits.timeframe - 1 ? limits.timeframe - 1 : limits.current_cell;
                 /* free first element credits and remove it */
                 limits.eps_per_timeframe = limits.eps_per_timeframe > limits.circ_buf[0] ? limits.eps_per_timeframe - limits.circ_buf[0] : 0;
                 /* move back array one cell */
                 memmove(limits.circ_buf, limits.circ_buf + 1, (limits.timeframe - 1) * sizeof(unsigned int));
-                /* add last second eps */
-                limits.circ_buf[limits.current_cell] = limits.last_second_eps;
-
-            } else {
-                limits.circ_buf[limits.current_cell++] = limits.last_second_eps;
             }
+
+            /* add last second eps */
+            limits.circ_buf[limits.current_cell++] = limits.last_second_eps;
 #if 1
             for (unsigned int i = 0; i < limits.timeframe; i++) {
-                mdebug1("cell[%02d] value: %d %s", i, limits.circ_buf[i], (limits.current_cell == i ? "<" : " "));
+                mdebug1("cell[%02d] value: %d %s", i, limits.circ_buf[i], (limits.current_cell -1 == i ? "<" : " "));
             }
-            mdebug1("eps: %d, timeframe: %d, total events per timeframe: %d, processed events per timeframe: %d",
-                        limits.eps, limits.timeframe, limits.max_eps, limits.eps_per_timeframe);
+            mdebug1("eps: %d, timeframe: %d, total events per timeframe: %d, processed events per timeframe: %d, cell: %d",
+                        limits.eps, limits.timeframe, limits.max_eps, limits.eps_per_timeframe, limits.current_cell);
 #endif
             limits.last_second_eps = 0;
             w_mutex_unlock(&limit_eps_mutex);
@@ -2482,8 +2480,10 @@ void w_init_queues(){
 
 void load_limits(void) {
 
-    cJSON * analysisd_limits;
-    if (analysisd_limits = load_limits_file("wazuh-analysisd"), analysisd_limits) {
+    cJSON * analysisd_limits = NULL;
+    int err = load_limits_file("wazuh-analysisd", &analysisd_limits);
+
+    if (err == LIMITS_SUCCESS && analysisd_limits) {
 
         unsigned int old_timeframe = limits.timeframe;
         cJSON *timeframe_eps;
@@ -2531,15 +2531,14 @@ void load_limits(void) {
 
                 if (old_timeframe > limits.timeframe) {
                     /* shrink buffer */
-                    unsigned int offset = limits.current_cell > limits.timeframe ? limits.current_cell - limits.timeframe + 1 : 0;
+                    unsigned int offset = limits.current_cell > limits.timeframe ? limits.current_cell - limits.timeframe : 0;
                     memcpy(limits.circ_buf, buf + offset, sizeof(unsigned int) * limits.timeframe);
-                    limits.current_cell = limits.current_cell > limits.timeframe ? limits.timeframe - 1: limits.current_cell;
+                    limits.current_cell = limits.current_cell > limits.timeframe ? limits.timeframe : limits.current_cell;
 
                 } else {
                     /* expand buffer */
                     memset(limits.circ_buf, 0, sizeof(unsigned int) * limits.timeframe);
                     memcpy(limits.circ_buf, buf, sizeof(unsigned int) * old_timeframe);
-                    limits.current_cell = limits.current_cell >= old_timeframe - 1 ? limits.current_cell + 1: limits.current_cell;
                 }
             }
             /* caluclate new eps proccess in new timeframe */
@@ -2556,13 +2555,15 @@ void load_limits(void) {
             mwarn("eps limit disabled");
             limits_free();
         }
+
         w_mutex_unlock(&limit_eps_mutex);
         cJSON_Delete(analysisd_limits);
+
+    } else if (err == LIMITS_FILE_NOT_FOUND && limits.enabled) {
+        mwarn("eps limit disabled");
+        limits.enabled = false;
+        limits_free();
     }
-    // } else if (limits.enabled) {
-    //     limits.enabled = false;
-    //     limits_free();
-    // }
 }
 
 void limits_free(void) {
