@@ -21,9 +21,6 @@ namespace bld = builder::internals::builders;
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
 
-auto createEvent = [](const char * json){
-    return std::make_shared<EventHandler>(std::make_shared<json::Document>(json));
-};
 
 namespace
 {
@@ -88,11 +85,11 @@ TEST_F(opBuilderKVDBMatchTest, Single_level_target_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field2match":"KEY"}
             )"));
             // Other fields will be ignored
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"otherfield":"KEY"}
             )"));
             s.on_completed();
@@ -121,11 +118,11 @@ TEST_F(opBuilderKVDBMatchTest, Multilevel_target_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"a":{"b":{"field2match":"KEY"}}}
             )"));
             // Other fields will be ignored
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"a":{"b":{"otherfield":"KEY"}}}
             )"));
             s.on_completed();

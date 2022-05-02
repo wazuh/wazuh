@@ -20,10 +20,6 @@ namespace bld = builder::internals::builders;
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
 
-auto createEvent = [](const char * json){
-    return std::make_shared<EventHandler>(std::make_shared<Document>(json));
-};
-
 TEST(opBuilderConditionReference, Builds)
 {
     Document doc{R"({
@@ -43,24 +39,24 @@ TEST(opBuilderConditionReference, BuildsOperatesString)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "field":"value1",
                     "otherfield":"value1"
                 }
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "field":"value1",
                     "otherfield":"value2"
                 }
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "otherfield":"value1"
                 }
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "field":"value1"
                 }
@@ -86,24 +82,24 @@ TEST(opBuilderConditionReference, BuildsOperatesInt)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "field":1,
                     "otherfield":1
                 }
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "field":1,
                     "otherfield":2
                 }
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "otherfield":"value1"
                 }
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "field":"value1"
                 }
@@ -129,24 +125,24 @@ TEST(opBuilderConditionReference, BuildsOperatesBool)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "field":true,
                     "otherfield":true
                 }
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "field":true,
                     "otherfield":false
                 }
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "otherfield":"value1"
                 }
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "field":"value1"
                 }
@@ -172,24 +168,24 @@ TEST(opBuilderConditionReference, BuildsOperatesNull)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "field":null,
                     "otherfield":null
                 }
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "field":null,
                     "otherfield":false
                 }
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "otherfield":"value1"
                 }
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "field":"value1"
                 }
@@ -214,24 +210,24 @@ TEST(opBuilderConditionReference, BuildsOperatesArray)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "field":[1, 2],
                     "otherfield":[1, 2]
                 }
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "field":[1, 2],
                     "otherfield":[1, 2, 3]
                 }
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "otherfield":"value1"
                 }
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "field":"value1"
                 }
@@ -263,7 +259,7 @@ TEST(opBuilderConditionReference, BuildsOperatesObject)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
             {
                 "field": {
                     "int": 1,
@@ -279,7 +275,7 @@ TEST(opBuilderConditionReference, BuildsOperatesObject)
                 }
             }
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
             {
                 "field": {
                     "int": 1,
@@ -295,19 +291,19 @@ TEST(opBuilderConditionReference, BuildsOperatesObject)
                 }
             }
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field":true}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field":1}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field":"1"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"otherfield":"value"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"otherfield":1}
             )"));
             s.on_completed();
@@ -338,24 +334,24 @@ TEST(opBuilderConditionReference, BuildsOperatesOneLevel)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field":2}
             )"));
-            s.on_next(createEvent(R"({
+            s.on_next(createSharedEvent(R"({
                 "field":{"level": 1},
                 "otherfield":{"level": 1}
             })"));
-            s.on_next(createEvent(R"({
+            s.on_next(createSharedEvent(R"({
                 "field":{"level": 1},
                 "otherfield":{"level": 2}
             })"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field":{"level": "1"}}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"otherfield":"value"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"otherfield":1}
             )"));
             s.on_completed();
@@ -378,24 +374,24 @@ TEST(opBuilderConditionReference, BuildsOperatesMultiLevel)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field":2}
             )"));
-            s.on_next(createEvent(R"({
+            s.on_next(createSharedEvent(R"({
                 "field":{"multi": {"level": 1}},
                 "otherfield":{"multi": {"level": 1}}
             })"));
-            s.on_next(createEvent(R"({
+            s.on_next(createSharedEvent(R"({
                 "field":{"multi": {"level": 1}},
                 "otherfield":{"multi": {"level": 2}}
             })"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field":{"level": "1"}}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"otherfield":"value"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"otherfield":1}
             )"));
             s.on_completed();

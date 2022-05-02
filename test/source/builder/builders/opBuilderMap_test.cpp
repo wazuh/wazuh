@@ -21,10 +21,6 @@ namespace bld = builder::internals::builders;
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
 
-auto createEvent = [](const char * json){
-    return std::make_shared<EventHandler>(std::make_shared<Document>(json));
-};
-
 TEST(opBuilderMap, BuildsAllNonRegistered)
 {
     Document doc{R"({

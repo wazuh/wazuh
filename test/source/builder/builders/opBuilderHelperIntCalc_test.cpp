@@ -21,10 +21,6 @@ namespace bld = builder::internals::builders;
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
 
-auto createEvent = [](const char * json){
-    return std::make_shared<EventHandler>(std::make_shared<json::Document>(json));
-};
-
 TEST(opBuilderHelperIntCalc, Builds)
 {
     Document doc{R"({
@@ -96,16 +92,16 @@ TEST(opBuilderHelperIntCalc, Exec_equal_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":9}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":11}
             )"));
             s.on_completed();
@@ -134,22 +130,22 @@ TEST(opBuilderHelperIntCalc, Exec_sum_int)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":0}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":9}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":11}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":100}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":-100}
             )"));
             s.on_completed();
@@ -180,22 +176,22 @@ TEST(opBuilderHelperIntCalc, Exec_sub_int)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":0}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":9}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":11}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":100}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":-100}
             )"));
             s.on_completed();
@@ -226,22 +222,22 @@ TEST(opBuilderHelperIntCalc, Exec_mult_int)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":0}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":9}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":11}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":100}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":-100}
             )"));
             s.on_completed();
@@ -272,22 +268,22 @@ TEST(opBuilderHelperIntCalc, Exec_div_int)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":0}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":9}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":11}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":100}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":-100}
             )"));
             s.on_completed();
@@ -318,28 +314,28 @@ TEST(opBuilderHelperIntCalc, Exec_sum_ref)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test": 0,"field_src":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":9,"field_src":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test": 10,"field_src":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":11,"field_src":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test": 0,"field_src":-10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":9,"field_src":-10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test": 10,"field_src":-10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":11,"field_src":-10}
             )"));
             s.on_completed();
@@ -372,28 +368,28 @@ TEST(opBuilderHelperIntCalc, Exec_sub_ref)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test": 0,"field_src":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":9,"field_src":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test": 10,"field_src":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":11,"field_src":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test": 0,"field_src":-10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":9,"field_src":-10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test": 10,"field_src":-10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":11,"field_src":-10}
             )"));
             s.on_completed();
@@ -426,28 +422,28 @@ TEST(opBuilderHelperIntCalc, Exec_mult_ref)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test": 0,"field_src":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":9,"field_src":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test": 10,"field_src":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":11,"field_src":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test": 0,"field_src":-10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":9,"field_src":-10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test": 10,"field_src":-10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":11,"field_src":-10}
             )"));
             s.on_completed();
@@ -480,28 +476,28 @@ TEST(opBuilderHelperIntCalc, Exec_div_ref)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test": 0,"field_src":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":9,"field_src":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test": 10,"field_src":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":11,"field_src":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test": 0,"field_src":-10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":9,"field_src":-10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test": 10,"field_src":-10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":11,"field_src":-10}
             )"));
             s.on_completed();
@@ -534,28 +530,28 @@ TEST(opBuilderHelperIntCalc, Exec_div_ref_zero)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test": 0,"field_src":0}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":9,"field_src":0}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test": 10,"field_src":0}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":11,"field_src":0}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test": 0,"field_src":0}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":9,"field_src":0}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test": 10,"field_src":0}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":11,"field_src":0}
             )"));
             s.on_completed();
@@ -589,7 +585,7 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_sum)
         [=](auto s)
         {
             // sorted
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "parentObjt_1": {
                         "field2check": 10,
@@ -602,7 +598,7 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_sum)
                 }
             )"));
             // not sorted
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "parentObjt_2": {
                         "field2check": 11,
@@ -639,7 +635,7 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_sub)
         [=](auto s)
         {
             // sorted
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "parentObjt_1": {
                         "field2check": 10,
@@ -652,7 +648,7 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_sub)
                 }
             )"));
             // not sorted
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "parentObjt_2": {
                         "field2check": 11,
@@ -689,7 +685,7 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_mul)
         [=](auto s)
         {
             // sorted
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "parentObjt_1": {
                         "field2check": 10,
@@ -702,7 +698,7 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_mul)
                 }
             )"));
             // not sorted
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "parentObjt_2": {
                         "field2check": 11,
@@ -739,7 +735,7 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_div)
         [=](auto s)
         {
             // sorted
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "parentObjt_1": {
                         "field2check": 10,
@@ -752,7 +748,7 @@ TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_div)
                 }
             )"));
             // not sorted
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "parentObjt_2": {
                         "field2check": 11,

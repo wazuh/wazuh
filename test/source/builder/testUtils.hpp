@@ -13,9 +13,10 @@
 // Shared dependencies for Builder module
 #include <rxcpp/rx.hpp>
 
+#include <baseTypes.hpp>
+
 #include "builderTypes.hpp"
 #include "registry.hpp"
-#include "json.hpp"
 
 #define GTEST_COUT std::cout << std::boolalpha << "[          ] [ INFO ] "
 
@@ -23,5 +24,9 @@ using namespace std;
 using namespace rxcpp;
 using namespace builder::internals;
 using namespace builder::internals::types;
+
+auto createSharedEvent = [](const char * json){
+    return std::make_shared<base::EventHandler>(std::make_shared<base::Document>(json));
+};
 
 #endif // _TEST_UTILS_H
