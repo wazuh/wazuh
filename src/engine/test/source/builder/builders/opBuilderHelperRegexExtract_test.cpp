@@ -24,10 +24,6 @@ namespace bld = builder::internals::builders;
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
 
-auto createEvent = [](const char * json){
-    return std::make_shared<EventHandler>(std::make_shared<json::Document>(json));
-};
-
 TEST(opBuilderHelperRegexExtract, Builds)
 {
     Document doc{R"({
@@ -68,13 +64,13 @@ TEST(opBuilderHelperRegexExtract, String_regex_extract)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field":"exp"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field":"expregex"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field":"this is a test exp"}
             )"));
             s.on_completed();
@@ -101,13 +97,13 @@ TEST(opBuilderHelperRegexExtract, Numeric_regex_extract)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field":"123"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field":"123"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field":"123"}
             )"));
             s.on_completed();
@@ -134,10 +130,10 @@ TEST(opBuilderHelperRegexExtract, Advanced_regex_extract)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field":"client@wazuh.com"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field":"engine@wazuh.com"}
             )"));
             s.on_completed();
@@ -165,11 +161,11 @@ TEST(opBuilderHelperRegexExtract, Nested_field_regex_extract)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"~~({
+            s.on_next(createSharedEvent(R"~~({
             "test":
                 {"field": "exp"}
             })~~"));
-            s.on_next(createEvent(R"~~({
+            s.on_next(createSharedEvent(R"~~({
             "test":
                 {"field": "this is a test exp"}
             })~~"));
@@ -196,13 +192,13 @@ TEST(opBuilderHelperRegexExtract, Field_not_exists_regex_extract)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field":"exp"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field":"expregex"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field":"this is a test exp"}
             )"));
             s.on_completed();
@@ -229,11 +225,11 @@ TEST(opBuilderHelperRegexExtract, Multilevel_field_regex_extract)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"~~({
+            s.on_next(createSharedEvent(R"~~({
             "test":
                 {"field": "exp"}
             })~~"));
-            s.on_next(createEvent(R"~~({
+            s.on_next(createSharedEvent(R"~~({
             "test":
                 {"field": "this is a test exp"}
             })~~"));
@@ -260,11 +256,11 @@ TEST(opBuilderHelperRegexExtract, Multilevel_field_dst_regex_extract)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"~~({
+            s.on_next(createSharedEvent(R"~~({
             "test":
                 {"field": "exp"}
             })~~"));
-            s.on_next(createEvent(R"~~({
+            s.on_next(createSharedEvent(R"~~({
             "test":
                 {"field": "this is a test exp"}
             })~~"));

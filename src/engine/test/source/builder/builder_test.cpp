@@ -15,7 +15,7 @@
 #define GTEST_COUT std::cerr << "[          ] [ INFO ] "
 using namespace base;
 
-auto createEvent = [](const char * json){
+auto createSharedEvent = [](const char * json){
     return std::make_shared<EventHandler>(std::make_shared<Document>(json));
 };
 
@@ -105,10 +105,10 @@ TEST(Builder, GraphRulesFilteredOut)
                           for (int i = 0; i < expected; i++)
                           {
                               if (i % 2 == 0)
-                                  s.on_next(createEvent(R"({"type": "int", "field": "odd",
+                                  s.on_next(createSharedEvent(R"({"type": "int", "field": "odd",
                                   "value": 0})"));
                               else
-                                  s.on_next(createEvent(R"({"type": "int", "field": "even",
+                                  s.on_next(createSharedEvent(R"({"type": "int", "field": "even",
                                   "value": 1})"));
                           }
                           s.on_completed();
@@ -161,10 +161,10 @@ TEST(Builder, GraphDuplicatedExample)
                           for (int i = 0; i < expected; i++)
                           {
                               if (i % 2 == 0)
-                                  s.on_next(createEvent(R"({"type": "int", "field": "odd",
+                                  s.on_next(createSharedEvent(R"({"type": "int", "field": "odd",
                                   "value": 0})"));
                               else
-                                  s.on_next(createEvent(R"({"type": "int", "field": "even",
+                                  s.on_next(createSharedEvent(R"({"type": "int", "field": "even",
                                   "value": 1})"));
                           }
                           s.on_completed();

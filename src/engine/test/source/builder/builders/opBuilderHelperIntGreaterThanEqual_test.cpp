@@ -21,10 +21,6 @@ namespace bld = builder::internals::builders;
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
 
-auto createEvent = [](const char * json){
-    return std::make_shared<EventHandler>(std::make_shared<json::Document>(json));
-};
-
 TEST(opBuilderHelperIntGreaterThanEqual, Builds)
 {
     Document doc{R"({
@@ -67,16 +63,16 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_greater_than_equal_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":9}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":11}
             )"));
             s.on_completed();
@@ -103,16 +99,16 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_greater_than_equal_true)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":9}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":11}
             )"));
             s.on_completed();
@@ -139,16 +135,16 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_greater_than_equal_false)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":9}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test2":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test3":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":8}
             )"));
             s.on_completed();
@@ -172,28 +168,28 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_greater_than_equal_ref_true)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test": 10,"field_src": 10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":11,"field_src":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":11,"field_src":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":11,"field_src":"10"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":"11","field_src":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":"11","field_src":"10"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":11,"field_src":"10"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":11,"field_src":"test"}
             )"));
             s.on_completed();
@@ -221,28 +217,28 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_greater_than_equal_ref_false)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test2":11,"field_src":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":11,"field_src3":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":11,"field_src4":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test5":11,"field_src":"10"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test6":"11","field_src2":10}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_":"11","field_src":"10"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test":11,"field_src2":"10"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field_test2":11,"field_src2":"test"}
             )"));
             s.on_completed();
@@ -267,21 +263,21 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_dynamics_int_ok)
         [=](auto s)
         {
             // Greater
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "field2check":11,
                     "ref_key":10
                 }
             )"));
             // Equal
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "field2check":10,
                     "ref_key":10
                 }
             )"));
             // Less
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "field2check":10,
                     "ref_key":11
@@ -313,7 +309,7 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_multilevel_dynamics_int_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "parentObjt_2": {
                         "field2check": 10,
@@ -326,7 +322,7 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_multilevel_dynamics_int_ok)
                 }
             )"));
 
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "parentObjt_2": {
                         "field2check": 11,
@@ -339,7 +335,7 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_multilevel_dynamics_int_ok)
                 }
             )"));
 
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "parentObjt_2": {
                         "field2check":10,
@@ -352,7 +348,7 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_multilevel_dynamics_int_ok)
                 }
             )"));
 
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "parentObjt_2": {
                         "field2check":10,

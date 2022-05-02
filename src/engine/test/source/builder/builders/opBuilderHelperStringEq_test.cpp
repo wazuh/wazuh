@@ -22,10 +22,6 @@ namespace bld = builder::internals::builders;
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
 
-auto createEvent = [](const char * json){
-    return std::make_shared<EventHandler>(std::make_shared<json::Document>(json));
-};
-
 // Build ok
 TEST(opBuilderHelperStringEQ, Builds)
 {
@@ -57,19 +53,19 @@ TEST(opBuilderHelperStringEQ, Static_string_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field2check":"not_test_value"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field2check":"test_value"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"otherfield":"value"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"otherfield":"test_value"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field2check":"test_value"}
             )"));
             s.on_completed();
@@ -95,19 +91,19 @@ TEST(opBuilderHelperStringEQ, Static_number_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field2check":"not_11"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field2check":"11"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"otherfield":"11"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"otherfield":11}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field2check":"11"}
             )"));
             s.on_completed();
@@ -133,31 +129,31 @@ TEST(opBuilderHelperStringEQ, Dynamics_string_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "field2check":"not_test_value",
                     "ref_key":"test_value"
                 }
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "field2check":"test_value",
                     "ref_key":"test_value"
                 }
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "otherfield":"value",
                     "ref_key":"test_value"
                 }
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "otherfield":"test_value",
                     "ref_key":"test_value"
                 }
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "field2check":"test_value",
                     "ref_key":"test_value"
@@ -187,7 +183,7 @@ TEST(opBuilderHelperStringEQ, MultiLevel_dynamics_string_ok)
         [=](auto s)
         {
             // no
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "parentObjt_2": {
                         "field2check": "test_value",
@@ -200,7 +196,7 @@ TEST(opBuilderHelperStringEQ, MultiLevel_dynamics_string_ok)
                 }
             )"));
             // yes
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "parentObjt_2": {
                         "field2check": "not_test_value",
@@ -213,7 +209,7 @@ TEST(opBuilderHelperStringEQ, MultiLevel_dynamics_string_ok)
                 }
             )"));
             // no
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "parentObjt_2": {
                         "field2check":"test_value",
@@ -252,37 +248,37 @@ TEST(opBuilderHelperStringEQ, Dynamics_number_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "field2check":11,
                     "ref_key":11
                 }
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "field2check":"11",
                     "ref_key":11
                 }
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "otherfield":11,
                     "ref_key":11
                 }
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "otherfield":11,
                     "ref_key":11
                 }
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "field2check":11,
                     "ref_key":"11"
                 }
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "field2check":"11",
                     "not_ref_key":"11"
