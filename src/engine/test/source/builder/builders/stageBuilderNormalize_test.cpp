@@ -494,7 +494,7 @@ TEST(StageBuilderNormalize, testNormalizeConditionalMap)
     }
 }
 
-TEST(StageBuilderNormalize, testNormalizeMapAndConditionalMap)
+TEST(CombinatorBuilderBroadcastTest, testNormalizeMapAndConditionalMap)
 {
     Document doc {R"({
         "normalize": [
@@ -520,6 +520,14 @@ TEST(StageBuilderNormalize, testNormalizeMapAndConditionalMap)
     })"};
 
     auto normalize = builders::stageBuilderNormalize(doc.get("/normalize"), tr);
+
+    rxcpp::subjects::subject<Event> inputSubject;
+    inputSubject.get_observable().subscribe([](Event e) {});
+    auto inputObservable = inputSubject.get_observable();
+    auto output = normalize(inputObservable);
+
+    std::vector<Event> expected;
+    output.subscribe([&expected](Event e) { expected.push_back(e); });
 
     auto eventsCount = 3;
     auto inputObject = std::make_shared<json::Document>(R"(
@@ -531,21 +539,13 @@ TEST(StageBuilderNormalize, testNormalizeMapAndConditionalMap)
                                 "field5": "+exists",
                                 "field6": "+exists"
                         })");
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            for (int i = 0; i < eventsCount; i++)
-            {
-                s.on_next(inputObject);
-            }
-            s.on_completed();
-        });
+    for (int i = 0; i < eventsCount; i++)
+    {
+        inputSubject.get_subscriber().on_next(inputObject);
+    }
 
-    Observable output = normalize(input);
-
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), eventsCount);
+
     for (auto e : expected)
     {
         ASSERT_STREQ(e->get("/field1").GetString(), "value");
@@ -555,7 +555,7 @@ TEST(StageBuilderNormalize, testNormalizeMapAndConditionalMap)
     }
 }
 
-TEST(StageBuilderNormalize, testNormalizeMapAndConditionalMapInverted)
+TEST(CombinatorBuilderBroadcastTest, testNormalizeMapAndConditionalMapInverted)
 {
     Document doc {R"({
         "normalize": [
@@ -581,6 +581,14 @@ TEST(StageBuilderNormalize, testNormalizeMapAndConditionalMapInverted)
     })"};
 
     auto normalize = builders::stageBuilderNormalize(doc.get("/normalize"), tr);
+
+    rxcpp::subjects::subject<Event> inputSubject;
+    inputSubject.get_observable().subscribe([](Event e) {});
+    auto inputObservable = inputSubject.get_observable();
+    auto output = normalize(inputObservable);
+
+    std::vector<Event> expected;
+    output.subscribe([&expected](Event e) { expected.push_back(e); });
 
     auto eventsCount = 3;
     auto inputObject = std::make_shared<json::Document>(R"(
@@ -592,21 +600,13 @@ TEST(StageBuilderNormalize, testNormalizeMapAndConditionalMapInverted)
                                 "field5": "+exists",
                                 "field6": "+exists"
                         })");
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            for (int i = 0; i < eventsCount; i++)
-            {
-                s.on_next(inputObject);
-            }
-            s.on_completed();
-        });
+    for (int i = 0; i < eventsCount; i++)
+    {
+        inputSubject.get_subscriber().on_next(inputObject);
+    }
 
-    Observable output = normalize(input);
-
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), eventsCount);
+
     for (auto e : expected)
     {
         ASSERT_STREQ(e->get("/field1").GetString(), "value");
@@ -616,75 +616,6 @@ TEST(StageBuilderNormalize, testNormalizeMapAndConditionalMapInverted)
     }
 }
 
-/** This test exposes how NOT to use the "on_next" in combination with the
- * "make_shared" to test a full "normalize" operation. */
-TEST(StageBuilderNormalize, testNormalizeWrongWayToTest)
-{
-    Document doc {R"({
-        "normalize": [
-            {
-                "check":
-                [
-                    {"field1": "value"},
-                    {"field2": 2}
-                ],
-                "map":
-                {
-                    "field2": 3
-                }
-            },
-            {
-                "map":
-                {
-                    "field3": "$field1",
-                    "field4": false
-                }
-            }
-        ]
-    })"};
-
-    auto normalize = builders::stageBuilderNormalize(doc.get("/normalize"), tr);
-
-    auto eventsCount = 3;
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            for (int i = 0; i < eventsCount; i++)
-            {
-                /** WARNING: using the make_shared here results in unexpected
-                 * broadcast behavior. */
-                s.on_next(std::make_shared<json::Document>(R"(
-                            {
-                                    "field1": "value",
-                                    "field2": 2,
-                                    "field3": "value3",
-                                    "field4": true,
-                                    "field5": "+exists",
-                                    "field6": "+exists"
-                            })"));
-            }
-            s.on_completed();
-        });
-
-    Observable output = normalize(input);
-
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), eventsCount);
-    for (auto e : expected)
-    {
-        ASSERT_STREQ(e->get("/field1").GetString(), "value");
-        /** The following values should NOT match the original ones. Given the
-         * use of the "make_shared" as the parameter of the "on_next", the
-         * broadcast operation behaves in an erroneous way. */
-        ASSERT_EQ(e->get("/field2").GetInt(), 2);
-        ASSERT_STREQ(e->get("/field3").GetString(), "value3");
-        ASSERT_TRUE(e->get("/field4").GetBool());
-    }
-}
-
-/** This test exposes how NOT to use the "on_next" in combination with the
- * "make_shared" to test a full "normalize" operation. */
 TEST(StageBuilderNormalize, testNormalizeWrongReferenceMapI)
 {
     Document doc {R"({
@@ -712,6 +643,14 @@ TEST(StageBuilderNormalize, testNormalizeWrongReferenceMapI)
 
     auto normalize = builders::stageBuilderNormalize(doc.get("/normalize"), tr);
 
+    rxcpp::subjects::subject<Event> inputSubject;
+    inputSubject.get_observable().subscribe([](Event e) {});
+    auto inputObservable = inputSubject.get_observable();
+    auto output = normalize(inputObservable);
+
+    std::vector<Event> expected;
+    output.subscribe([&expected](Event e) { expected.push_back(e); });
+
     auto eventsCount = 3;
     auto inputObject = std::make_shared<json::Document>(R"(
                         {
@@ -722,21 +661,13 @@ TEST(StageBuilderNormalize, testNormalizeWrongReferenceMapI)
                                 "field5": "+exists",
                                 "field6": "+exists"
                         })");
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            for (int i = 0; i < eventsCount; i++)
-            {
-                s.on_next(inputObject);
-            }
-            s.on_completed();
-        });
+    for (int i = 0; i < eventsCount; i++)
+    {
+        inputSubject.get_subscriber().on_next(inputObject);
+    }
 
-    Observable output = normalize(input);
-
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), eventsCount);
+
     for (auto e : expected)
     {
         ASSERT_STREQ(e->get("/field1").GetString(), "value");
@@ -764,6 +695,7 @@ TEST(StageBuilderNormalize, testNormalizeWrongReferenceMapII)
                 ],
                 "map":
                 {
+                    "field2": 3,
                     "field3": "$fieldX"
                 }
             }
@@ -771,6 +703,14 @@ TEST(StageBuilderNormalize, testNormalizeWrongReferenceMapII)
     })"};
 
     auto normalize = builders::stageBuilderNormalize(doc.get("/normalize"), tr);
+
+    rxcpp::subjects::subject<Event> inputSubject;
+    inputSubject.get_observable().subscribe([](Event e) {});
+    auto inputObservable = inputSubject.get_observable();
+    auto output = normalize(inputObservable);
+
+    std::vector<Event> expected;
+    output.subscribe([&expected](Event e) { expected.push_back(e); });
 
     auto eventsCount = 3;
     auto inputObject = std::make_shared<json::Document>(R"(
@@ -782,25 +722,17 @@ TEST(StageBuilderNormalize, testNormalizeWrongReferenceMapII)
                                 "field5": "+exists",
                                 "field6": "+exists"
                         })");
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            for (int i = 0; i < eventsCount; i++)
-            {
-                s.on_next(inputObject);
-            }
-            s.on_completed();
-        });
+    for (int i = 0; i < eventsCount; i++)
+    {
+        inputSubject.get_subscriber().on_next(inputObject);
+    }
 
-    Observable output = normalize(input);
-
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), eventsCount);
+
     for (auto e : expected)
     {
         ASSERT_STREQ(e->get("/field1").GetString(), "value");
-        ASSERT_EQ(e->get("/field2").GetInt(), 2);
+        ASSERT_EQ(e->get("/field2").GetInt(), 3);
         ASSERT_STREQ(e->get("/field3").GetString(), "value3");
         ASSERT_FALSE(e->get("/field4").GetBool());
     }
@@ -832,6 +764,14 @@ TEST(StageBuilderNormalize, testNormalizeWrongReferenceCheck)
 
     auto normalize = builders::stageBuilderNormalize(doc.get("/normalize"), tr);
 
+    rxcpp::subjects::subject<Event> inputSubject;
+    inputSubject.get_observable().subscribe([](Event e) {});
+    auto inputObservable = inputSubject.get_observable();
+    auto output = normalize(inputObservable);
+
+    std::vector<Event> expected;
+    output.subscribe([&expected](Event e) { expected.push_back(e); });
+
     auto eventsCount = 3;
     auto inputObject = std::make_shared<json::Document>(R"(
                         {
@@ -842,21 +782,13 @@ TEST(StageBuilderNormalize, testNormalizeWrongReferenceCheck)
                                 "field5": "+exists",
                                 "field6": "+exists"
                         })");
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            for (int i = 0; i < eventsCount; i++)
-            {
-                s.on_next(inputObject);
-            }
-            s.on_completed();
-        });
+    for (int i = 0; i < eventsCount; i++)
+    {
+        inputSubject.get_subscriber().on_next(inputObject);
+    }
 
-    Observable output = normalize(input);
-
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), eventsCount);
+
     for (auto e : expected)
     {
         ASSERT_STREQ(e->get("/field1").GetString(), "value");
