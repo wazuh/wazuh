@@ -29,8 +29,8 @@ using FakeTrFn = std::function<void(std::string)>;
 TEST(CombinatorBuilderBroadcastTest, combinedBroadcastEventsCount)
 {
     // Register operation
-    BuilderVariant c = combinatorBuilderBroadcast;
-    Registry::registerBuilder("combinator.broadcast", c);
+    Registry::registerBuilder("combinator.broadcast",
+                              combinatorBuilderBroadcast);
 
     std::vector<Lifter> lifters;
 
@@ -42,21 +42,20 @@ TEST(CombinatorBuilderBroadcastTest, combinedBroadcastEventsCount)
 
     Lifter chain = builders::combinatorBuilderBroadcast(lifters);
 
-    auto eventsCount = 4;
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            for (int i = 0; i < eventsCount; i++)
-            {
-                s.on_next(std::make_shared<json::Document>(R"({})"));
-            }
-            s.on_completed();
-        });
-
-    Observable output = chain(input);
+    rxcpp::subjects::subject<Event> inputSubject;
+    inputSubject.get_observable().subscribe([](Event e) {});
+    auto inputObservable = inputSubject.get_observable();
+    auto output = chain(inputObservable);
 
     std::vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
+    output.subscribe([&expected](Event e) { expected.push_back(e); });
+
+    auto eventsCount = 4;
+    for (int i = 0; i < eventsCount; i++)
+    {
+        inputSubject.get_subscriber().on_next(
+            std::make_shared<json::Document>(R"({})"));
+    }
 
     ASSERT_EQ(expected.size(), liftersCount * eventsCount);
 }
@@ -71,35 +70,33 @@ TEST(CombinatorBuilderBroadcastTest, combinedBroadcastSingleEmition)
         lifters.push_back([](Observable in) { return in; });
     }
 
-    for (auto &lifter : lifters)
+    // Filter outputs
+    for (auto& lifter : lifters)
     {
         lifter = [lifter](Observable in)
         {
-            // Filter outputs
             return lifter(in).filter([](auto) { return false; });
         };
     }
 
     // Create dummy observable publisher (Single broadcast output)
     lifters.push_back([](Observable in) { return in; });
-
     Lifter chain = builders::combinatorBuilderBroadcast(lifters);
 
-    auto eventsCount = 4;
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            for (int i = 0; i < eventsCount; i++)
-            {
-                s.on_next(std::make_shared<json::Document>(R"({})"));
-            }
-            s.on_completed();
-        });
-
-    Observable output = chain(input);
+    rxcpp::subjects::subject<Event> inputSubject;
+    inputSubject.get_observable().subscribe([](Event e) {});
+    auto inputObservable = inputSubject.get_observable();
+    auto output = chain(inputObservable);
 
     std::vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
+    output.subscribe([&expected](Event e) { expected.push_back(e); });
+
+    auto eventsCount = 4;
+    for (int i = 0; i < eventsCount; i++)
+    {
+        inputSubject.get_subscriber().on_next(
+            std::make_shared<json::Document>(R"({})"));
+    }
 
     ASSERT_EQ(expected.size(), eventsCount);
 }
