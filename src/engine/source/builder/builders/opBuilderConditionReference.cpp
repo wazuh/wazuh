@@ -43,7 +43,7 @@ base::Lifter opBuilderConditionReference(const base::DocumentValue &def,
     }
     reference = json::formatJsonPath(reference);
 
-    types::Document doc {def};
+    base::Document doc {def};
     const std::string successTrace =
         fmt::format("{} Condition Success", doc.str());
     const std::string failureTrace =

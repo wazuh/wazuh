@@ -23,7 +23,7 @@
 #include "testUtils.hpp"
 
 using namespace base;
-namespace bld = builder::internals::builders;
+using namespace builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg) {
@@ -409,7 +409,7 @@ TEST(StageBuilderNormalize, testNormalizeMap)
         {
             for (int i = 0; i < eventsCount; i++)
             {
-                s.on_next(std::make_shared<json::Document>(R"(
+                s.on_next(createSharedEvent(R"(
                     {
                         "field1": "value",
                         "field2": 2,
@@ -429,10 +429,10 @@ TEST(StageBuilderNormalize, testNormalizeMap)
     ASSERT_EQ(expected.size(), eventsCount);
     for (auto e : expected)
     {
-        ASSERT_STREQ(e->get("/field1").GetString(), "value");
-        ASSERT_EQ(e->get("/field2").GetInt(), 3);
-        ASSERT_STREQ(e->get("/field3").GetString(), "value");
-        ASSERT_FALSE(e->get("/field4").GetBool());
+        ASSERT_STREQ(e->getEvent()->get("/field1").GetString(), "value");
+        ASSERT_EQ(e->getEvent()->get("/field2").GetInt(), 3);
+        ASSERT_STREQ(e->getEvent()->get("/field3").GetString(), "value");
+        ASSERT_FALSE(e->getEvent()->get("/field4").GetBool());
     }
 }
 
@@ -467,7 +467,7 @@ TEST(StageBuilderNormalize, testNormalizeConditionalMap)
         {
             for (int i = 0; i < eventsCount; i++)
             {
-                s.on_next(std::make_shared<json::Document>(R"(
+                s.on_next(createSharedEvent(R"(
                     {
                         "field1": "value",
                         "field2": 2,
@@ -487,14 +487,14 @@ TEST(StageBuilderNormalize, testNormalizeConditionalMap)
     ASSERT_EQ(expected.size(), eventsCount);
     for (auto e : expected)
     {
-        ASSERT_STREQ(e->get("/field1").GetString(), "value");
-        ASSERT_EQ(e->get("/field2").GetInt(), 3);
-        ASSERT_STREQ(e->get("/field3").GetString(), "value");
-        ASSERT_FALSE(e->get("/field4").GetBool());
+        ASSERT_STREQ(e->getEvent()->get("/field1").GetString(), "value");
+        ASSERT_EQ(e->getEvent()->get("/field2").GetInt(), 3);
+        ASSERT_STREQ(e->getEvent()->get("/field3").GetString(), "value");
+        ASSERT_FALSE(e->getEvent()->get("/field4").GetBool());
     }
 }
 
-TEST(CombinatorBuilderBroadcastTest, testNormalizeMapAndConditionalMap)
+TEST(StageBuilderNormalize, testNormalizeMapAndConditionalMap)
 {
     Document doc {R"({
         "normalize": [
@@ -530,7 +530,7 @@ TEST(CombinatorBuilderBroadcastTest, testNormalizeMapAndConditionalMap)
     output.subscribe([&expected](Event e) { expected.push_back(e); });
 
     auto eventsCount = 3;
-    auto inputObject = std::make_shared<json::Document>(R"(
+    auto inputObject = createSharedEvent(R"(
                         {
                                 "field1": "value",
                                 "field2": 2,
@@ -548,14 +548,14 @@ TEST(CombinatorBuilderBroadcastTest, testNormalizeMapAndConditionalMap)
 
     for (auto e : expected)
     {
-        ASSERT_STREQ(e->get("/field1").GetString(), "value");
-        ASSERT_EQ(e->get("/field2").GetInt(), 3);
-        ASSERT_STREQ(e->get("/field3").GetString(), "value");
-        ASSERT_FALSE(e->get("/field4").GetBool());
+        ASSERT_STREQ(e->getEvent()->get("/field1").GetString(), "value");
+        ASSERT_EQ(e->getEvent()->get("/field2").GetInt(), 3);
+        ASSERT_STREQ(e->getEvent()->get("/field3").GetString(), "value");
+        ASSERT_FALSE(e->getEvent()->get("/field4").GetBool());
     }
 }
 
-TEST(CombinatorBuilderBroadcastTest, testNormalizeMapAndConditionalMapInverted)
+TEST(StageBuilderNormalize, testNormalizeMapAndConditionalMapInverted)
 {
     Document doc {R"({
         "normalize": [
@@ -591,7 +591,7 @@ TEST(CombinatorBuilderBroadcastTest, testNormalizeMapAndConditionalMapInverted)
     output.subscribe([&expected](Event e) { expected.push_back(e); });
 
     auto eventsCount = 3;
-    auto inputObject = std::make_shared<json::Document>(R"(
+    auto inputObject = createSharedEvent(R"(
                         {
                                 "field1": "value",
                                 "field2": 2,
@@ -609,10 +609,10 @@ TEST(CombinatorBuilderBroadcastTest, testNormalizeMapAndConditionalMapInverted)
 
     for (auto e : expected)
     {
-        ASSERT_STREQ(e->get("/field1").GetString(), "value");
-        ASSERT_EQ(e->get("/field2").GetInt(), 3);
-        ASSERT_STREQ(e->get("/field3").GetString(), "value");
-        ASSERT_FALSE(e->get("/field4").GetBool());
+        ASSERT_STREQ(e->getEvent()->get("/field1").GetString(), "value");
+        ASSERT_EQ(e->getEvent()->get("/field2").GetInt(), 3);
+        ASSERT_STREQ(e->getEvent()->get("/field3").GetString(), "value");
+        ASSERT_FALSE(e->getEvent()->get("/field4").GetBool());
     }
 }
 
@@ -652,7 +652,7 @@ TEST(StageBuilderNormalize, testNormalizeWrongReferenceMapI)
     output.subscribe([&expected](Event e) { expected.push_back(e); });
 
     auto eventsCount = 3;
-    auto inputObject = std::make_shared<json::Document>(R"(
+    auto inputObject = createSharedEvent(R"(
                         {
                                 "field1": "value",
                                 "field2": 2,
@@ -670,10 +670,10 @@ TEST(StageBuilderNormalize, testNormalizeWrongReferenceMapI)
 
     for (auto e : expected)
     {
-        ASSERT_STREQ(e->get("/field1").GetString(), "value");
-        ASSERT_EQ(e->get("/field2").GetInt(), 3);
-        ASSERT_STREQ(e->get("/field3").GetString(), "value3");
-        ASSERT_FALSE(e->get("/field4").GetBool());
+        ASSERT_STREQ(e->getEvent()->get("/field1").GetString(), "value");
+        ASSERT_EQ(e->getEvent()->get("/field2").GetInt(), 3);
+        ASSERT_STREQ(e->getEvent()->get("/field3").GetString(), "value3");
+        ASSERT_FALSE(e->getEvent()->get("/field4").GetBool());
     }
 }
 
@@ -713,7 +713,7 @@ TEST(StageBuilderNormalize, testNormalizeWrongReferenceMapII)
     output.subscribe([&expected](Event e) { expected.push_back(e); });
 
     auto eventsCount = 3;
-    auto inputObject = std::make_shared<json::Document>(R"(
+    auto inputObject = createSharedEvent(R"(
                         {
                                 "field1": "value",
                                 "field2": 2,
@@ -731,10 +731,10 @@ TEST(StageBuilderNormalize, testNormalizeWrongReferenceMapII)
 
     for (auto e : expected)
     {
-        ASSERT_STREQ(e->get("/field1").GetString(), "value");
-        ASSERT_EQ(e->get("/field2").GetInt(), 3);
-        ASSERT_STREQ(e->get("/field3").GetString(), "value3");
-        ASSERT_FALSE(e->get("/field4").GetBool());
+        ASSERT_STREQ(e->getEvent()->get("/field1").GetString(), "value");
+        ASSERT_EQ(e->getEvent()->get("/field2").GetInt(), 3);
+        ASSERT_STREQ(e->getEvent()->get("/field3").GetString(), "value3");
+        ASSERT_FALSE(e->getEvent()->get("/field4").GetBool());
     }
 }
 
@@ -773,7 +773,7 @@ TEST(StageBuilderNormalize, testNormalizeWrongReferenceCheck)
     output.subscribe([&expected](Event e) { expected.push_back(e); });
 
     auto eventsCount = 3;
-    auto inputObject = std::make_shared<json::Document>(R"(
+    auto inputObject = createSharedEvent(R"(
                         {
                                 "field1": "value",
                                 "field2": 2,
@@ -791,14 +791,14 @@ TEST(StageBuilderNormalize, testNormalizeWrongReferenceCheck)
 
     for (auto e : expected)
     {
-        ASSERT_STREQ(e->get("/field1").GetString(), "value");
-        ASSERT_EQ(e->get("/field2").GetInt(), 2);
-        ASSERT_STREQ(e->get("/field3").GetString(), "value3");
-        ASSERT_FALSE(e->get("/field4").GetBool());
+        ASSERT_STREQ(e->getEvent()->get("/field1").GetString(), "value");
+        ASSERT_EQ(e->getEvent()->get("/field2").GetInt(), 2);
+        ASSERT_STREQ(e->getEvent()->get("/field3").GetString(), "value3");
+        ASSERT_FALSE(e->getEvent()->get("/field4").GetBool());
     }
 }
 
-TEST(CombinatorBuilderBroadcastTest, testNormalizeMultipleCheck)
+TEST(StageBuilderNormalize, testNormalizeMultipleCheck)
 {
     Document doc {R"({
         "normalize":
@@ -839,7 +839,7 @@ TEST(CombinatorBuilderBroadcastTest, testNormalizeMultipleCheck)
     output.subscribe([&expected](Event e) { expected.push_back(e); });
 
     auto eventsCount = 3;
-    auto inputObject = std::make_shared<json::Document>(R"(
+    auto inputObject = createSharedEvent(R"(
                         {
                                 "field1": "value",
                                 "field2": 2,
@@ -857,14 +857,14 @@ TEST(CombinatorBuilderBroadcastTest, testNormalizeMultipleCheck)
 
     for (auto e : expected)
     {
-        ASSERT_STREQ(e->get("/field1").GetString(), "value");
-        ASSERT_EQ(e->get("/field2").GetInt(), 3);
-        ASSERT_STREQ(e->get("/field3").GetString(), "value");
-        ASSERT_FALSE(e->get("/field4").GetBool());
+        ASSERT_STREQ(e->getEvent()->get("/field1").GetString(), "value");
+        ASSERT_EQ(e->getEvent()->get("/field2").GetInt(), 3);
+        ASSERT_STREQ(e->getEvent()->get("/field3").GetString(), "value");
+        ASSERT_FALSE(e->getEvent()->get("/field4").GetBool());
     }
 }
 
-TEST(CombinatorBuilderBroadcastTest, testNormalizeMultipleCheckII)
+TEST(StageBuilderNormalize, testNormalizeMultipleCheckII)
 {
     Document doc {R"({
         "normalize":
@@ -910,7 +910,7 @@ TEST(CombinatorBuilderBroadcastTest, testNormalizeMultipleCheckII)
     output.subscribe([&expected](Event e) { expected.push_back(e); });
 
     auto eventsCount = 3;
-    auto inputObject = std::make_shared<json::Document>(R"(
+    auto inputObject = createSharedEvent(R"(
                         {
                                 "field1": "value",
                                 "field2": 2,
@@ -928,14 +928,14 @@ TEST(CombinatorBuilderBroadcastTest, testNormalizeMultipleCheckII)
 
     for (auto e : expected)
     {
-        ASSERT_STREQ(e->get("/field1").GetString(), "value");
-        ASSERT_EQ(e->get("/field2").GetInt(), 3);
-        ASSERT_STREQ(e->get("/field3").GetString(), "value");
-        ASSERT_FALSE(e->get("/field4").GetBool());
+        ASSERT_STREQ(e->getEvent()->get("/field1").GetString(), "value");
+        ASSERT_EQ(e->getEvent()->get("/field2").GetInt(), 3);
+        ASSERT_STREQ(e->getEvent()->get("/field3").GetString(), "value");
+        ASSERT_FALSE(e->getEvent()->get("/field4").GetBool());
     }
 }
 
-TEST(CombinatorBuilderBroadcastTest, testNormalizeMultipleMapError)
+TEST(StageBuilderNormalize, testNormalizeMultipleMapError)
 {
     Document doc {R"({
         "normalize":

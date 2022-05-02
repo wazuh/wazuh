@@ -243,7 +243,7 @@ Lifter stageBuilderNormalize(const DocumentValue& def, TracerFn tr)
                     if (obj.MemberCount() != 1)
                     {
                         auto msg = fmt::format(
-                            "Stage normalize builder, expected only a"
+                            "Stage normalize builder, expected only a "
                             "\"map\" object but got more than one objects.");
                         WAZUH_LOG_ERROR("{}", msg);
                         throw_with_nested(invalid_argument(msg));
