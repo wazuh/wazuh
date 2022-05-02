@@ -11,7 +11,7 @@ class EventHandler
 
 private:
     // Control
-    bool is_decoded; ///< True if it reached the end of the decoding stage
+    bool m_isDecoded; ///< True if it reached the end of the decoding stage
     // Data
     std::shared_ptr<json::Document> event; ///< Event
 
@@ -23,7 +23,7 @@ public:
      */
     EventHandler(std::shared_ptr<json::Document> event)
         : event {event}
-        , is_decoded {false}
+        , m_isDecoded {false}
     {
         // TODO Throw exception if shared_ptr is empty
     }
@@ -44,14 +44,14 @@ public:
      * @return return true if it reached the end of the decoding stage
      */
     bool isDecoded() {
-        return is_decoded;
+        return m_isDecoded;
     }
 
     /**
      * @brief Changes event status to decoded
      */
     void setDecoded() {
-        is_decoded = true;
+        m_isDecoded = true;
     }
 };
 
