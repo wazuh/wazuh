@@ -212,7 +212,6 @@ static Lifter normalizeConditionalMap(const DocumentValue& def, TracerFn tr)
 Lifter stageBuilderNormalize(const DocumentValue& def, TracerFn tr)
 {
     bool doMap = false;
-    bool doConditionalMap = false;
 
     // Assert value is as expected
     if (!def.IsArray())
@@ -237,20 +236,7 @@ Lifter stageBuilderNormalize(const DocumentValue& def, TracerFn tr)
             {
                 if (obj.HasMember("check"))
                 {
-                    if (doConditionalMap)
-                    {
-                        auto msg = fmt::format(
-                            "Stage normalize builder, expected only one "
-                            "conditional map but got more than one.");
-                        WAZUH_LOG_ERROR("{}", msg);
-                        throw_with_nested(invalid_argument(msg));
-                    }
-                    else
-                    {
-                        normalizeOps.push_back(
-                            normalizeConditionalMap(obj, tr));
-                        doConditionalMap = true;
-                    }
+                    normalizeOps.push_back(normalizeConditionalMap(obj, tr));
                 }
                 else
                 {
@@ -305,7 +291,7 @@ Lifter stageBuilderNormalize(const DocumentValue& def, TracerFn tr)
         /** The normalize operations will only be broadcasted if both the "map"
          * (inconditional) and "conditional map" are present, as the conditional
          * map could abort the pipeline flow. */
-        if (doMap && doConditionalMap)
+        if (normalizeOps.size() > 1)
         {
             /** As the map and check-map (conditional map) operations run in
              * parallel, some special considerations must be taken. The map one
