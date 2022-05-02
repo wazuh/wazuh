@@ -17,10 +17,11 @@ namespace builder::internals::builders
 using base::Lifter;
 using base::Observable;
 
-Lifter combinatorBuilderBroadcast(const std::vector<Lifter> &lifters)
+Lifter combinatorBuilderBroadcast(const std::vector<Lifter>& lifters)
 {
     return [=](Observable input) -> Observable
     {
+        input = input.publish().ref_count();
         std::vector<Observable> inputs;
         for (auto op : lifters)
         {

@@ -33,7 +33,7 @@ using std::invalid_argument;
 using std::runtime_error;
 using std::throw_with_nested;
 
-static Lifter normalizeMap(const DocumentValue &ref, TracerFn tr)
+static Lifter normalizeMap(const DocumentValue& ref, TracerFn tr)
 {
     if (!ref.IsObject())
     {
@@ -73,7 +73,7 @@ static Lifter normalizeMap(const DocumentValue &ref, TracerFn tr)
             pairKeyValue.AddMember(key.Move(), val.Move(), docAllocator);
             mapOps.push_back(opBuilderMap(pairKeyValue, tr));
         }
-        catch (std::exception &e)
+        catch (std::exception& e)
         {
             auto msg = fmt::format("Stage normalize builder encountered "
                                    "exception on building: [{}]",
@@ -88,7 +88,7 @@ static Lifter normalizeMap(const DocumentValue &ref, TracerFn tr)
         // Chains the "map" operations
         return combinatorBuilderChain(mapOps);
     }
-    catch (std::exception &e)
+    catch (std::exception& e)
     {
         auto msg = fmt::format(
             "Stage normalize builder encountered exception on building: [{}]",
@@ -98,7 +98,7 @@ static Lifter normalizeMap(const DocumentValue &ref, TracerFn tr)
     }
 }
 
-static Lifter normalizeCheck(const DocumentValue &ref, TracerFn tr)
+static Lifter normalizeCheck(const DocumentValue& ref, TracerFn tr)
 {
     if (!ref.IsArray())
     {
@@ -123,7 +123,7 @@ static Lifter normalizeCheck(const DocumentValue &ref, TracerFn tr)
     {
         checkOps.push_back(stageBuilderCheck(checkArray, tr));
     }
-    catch (std::exception &e)
+    catch (std::exception& e)
     {
         auto msg = fmt::format("Stage normalize builder encountered "
                                "exception on building: [{}]",
@@ -137,7 +137,7 @@ static Lifter normalizeCheck(const DocumentValue &ref, TracerFn tr)
         // Chains the "check" operations
         return combinatorBuilderChain(checkOps);
     }
-    catch (std::exception &e)
+    catch (std::exception& e)
     {
         auto msg = fmt::format(
             "Stage normalize builder encountered exception on building: [{}]",
@@ -147,7 +147,7 @@ static Lifter normalizeCheck(const DocumentValue &ref, TracerFn tr)
     }
 }
 
-static Lifter normalizeConditionalMap(const DocumentValue &def, TracerFn tr)
+static Lifter normalizeConditionalMap(const DocumentValue& def, TracerFn tr)
 {
     // Normalize stage must always have exactly two elements: "check" and "map"
     if (def.MemberCount() != 2)
@@ -167,7 +167,7 @@ static Lifter normalizeConditionalMap(const DocumentValue &def, TracerFn tr)
         // First chain the "check" operations
         conditionalMapOps.push_back(normalizeCheck(def["check"], tr));
     }
-    catch (std::exception &e)
+    catch (std::exception& e)
     {
         auto msg = fmt::format(
             "Stage normalize conditional map builder "
@@ -182,7 +182,7 @@ static Lifter normalizeConditionalMap(const DocumentValue &def, TracerFn tr)
         // Second chain the "map" operations
         conditionalMapOps.push_back(normalizeMap(def["map"], tr));
     }
-    catch (std::exception &e)
+    catch (std::exception& e)
     {
         auto msg = fmt::format(
             "Stage normalize conditional map builder "
@@ -199,7 +199,7 @@ static Lifter normalizeConditionalMap(const DocumentValue &def, TracerFn tr)
          * pass, then the pipeline performs the "map" operations. */
         return combinatorBuilderChain(conditionalMapOps);
     }
-    catch (std::exception &e)
+    catch (std::exception& e)
     {
         auto msg = fmt::format("Stage normalize conditional map builder "
                                "encountered exception on building: [{}]",
@@ -209,7 +209,7 @@ static Lifter normalizeConditionalMap(const DocumentValue &def, TracerFn tr)
     }
 }
 
-Lifter stageBuilderNormalize(const DocumentValue &def, TracerFn tr)
+Lifter stageBuilderNormalize(const DocumentValue& def, TracerFn tr)
 {
     bool doMap = false;
     bool doConditionalMap = false;
@@ -316,7 +316,7 @@ Lifter stageBuilderNormalize(const DocumentValue &def, TracerFn tr)
              * to another situation, only one observable should be emitted so
              * both outputs should be filtered and a dummy one had to be created
              * to publish the result. */
-            for (auto &op : normalizeOps)
+            for (auto& op : normalizeOps)
             {
                 op = [op](base::Observable in)
                 {
@@ -332,7 +332,7 @@ Lifter stageBuilderNormalize(const DocumentValue &def, TracerFn tr)
         }
         return normalizeOps.back();
     }
-    catch (std::exception &e)
+    catch (std::exception& e)
     {
         auto msg = fmt::format("Stage normalize builder encountered exception "
                                "on building: [{}]",
