@@ -6,4 +6,5 @@ check:
   - logLine: +s_eq/user
 
 normalize:
-  - decoded.user_logline: true
+  - map:
+      decoded.user_logline: true

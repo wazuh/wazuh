@@ -6,6 +6,6 @@ check:
 
 normalize:
   - map:
-    alerted.queue: alerted_queue
-    alerted.location: alerted_location
-    alerted.message: alerted_message
+      alerted.queue: alerted_queue
+      alerted.location: alerted_location
+      alerted.message: alerted_message

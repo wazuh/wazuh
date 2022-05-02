@@ -12,15 +12,23 @@
 #include <stdexcept>
 #include <string>
 
+#include <baseTypes.hpp>
+#include <logging/logging.hpp>
+
+
 #include "registry.hpp"
 #include "syntax.hpp"
-
-#include <logging/logging.hpp>
 
 namespace builder::internals::builders
 {
 
+base::Lifter opBuilderCondition(const base::DocumentValue &def,
+                                 types::TracerFn tr)
 {
+    // Check that input is as expected and throw exception otherwise
+    if (!def.IsObject())
+    {
+        auto msg =
             fmt::format("Expexted type 'Object' but got [{}]", def.GetType());
         WAZUH_LOG_ERROR("{}", msg);
         throw std::invalid_argument(std::move(msg));
