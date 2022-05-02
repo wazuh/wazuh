@@ -21,8 +21,8 @@
 namespace builder::internals::builders
 {
 
-base::Lifter stageBuilderCheck(const base::DocumentValue &def,
-                                types::TracerFn tr)
+base::Lifter stageBuilderCheck(const base::DocumentValue& def,
+                               types::TracerFn tr)
 {
     // Assert value is as expected
     if (!def.IsArray())
@@ -43,7 +43,7 @@ base::Lifter stageBuilderCheck(const base::DocumentValue &def,
             conditions.push_back(std::get<types::OpBuilder>(
                 Registry::getBuilder("condition"))(*it, tr));
         }
-        catch (std::exception &e)
+        catch (std::exception& e)
         {
             WAZUH_LOG_ERROR(
                 "Stage check builder encountered exception on building: [{}]",
@@ -62,7 +62,7 @@ base::Lifter stageBuilderCheck(const base::DocumentValue &def,
         check = std::get<types::CombinatorBuilder>(
             Registry::getBuilder("combinator.chain"))(conditions);
     }
-    catch (std::exception &e)
+    catch (std::exception& e)
     {
         WAZUH_LOG_ERROR("Stage check builder encountered exception chaining "
                         "all conditions: [{}]",

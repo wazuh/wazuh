@@ -53,8 +53,7 @@ TEST(CombinatorBuilderBroadcastTest, combinedBroadcastEventsCount)
     auto eventsCount = 4;
     for (int i = 0; i < eventsCount; i++)
     {
-        inputSubject.get_subscriber().on_next(
-            createSharedEvent(R"({})"));
+        inputSubject.get_subscriber().on_next(createSharedEvent(R"({})"));
     }
 
     ASSERT_EQ(expected.size(), liftersCount * eventsCount);
@@ -94,8 +93,7 @@ TEST(CombinatorBuilderBroadcastTest, combinedBroadcastSingleEmition)
     auto eventsCount = 4;
     for (int i = 0; i < eventsCount; i++)
     {
-        inputSubject.get_subscriber().on_next(
-            createSharedEvent(R"({})"));
+        inputSubject.get_subscriber().on_next(createSharedEvent(R"({})"));
     }
 
     ASSERT_EQ(expected.size(), eventsCount);
