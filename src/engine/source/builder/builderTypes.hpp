@@ -17,8 +17,8 @@
 
 #include <rxcpp/rx.hpp>
 
-//#include <eventHandler.hpp>
 #include <baseTypes.hpp>
+
 #include "connectable.hpp"
 
 /**
