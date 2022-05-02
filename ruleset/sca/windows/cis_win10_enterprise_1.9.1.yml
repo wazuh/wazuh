@@ -87,3 +87,51 @@ checks:
     condition: all
     rules:
       - 'c:powershell Get-ADDefaultDomainPasswordPolicy -Current LoggedOnUser -> r:ComplexityEnabled\s+: True'
+
+  - id: 26005
+    title: "Ensure 'Relax minimum password length limits' is set to 'Enabled'"
+    description: "This policy setting determines whether the minimum password length setting can beincreased beyond the legacy limit of 14 characters. For more information please see thefollowing Microsoft Security Blog."
+    rationale: "This setting will enable the enforcement of longer and generally stronger passwords orpassphrases where MFA is not in use."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled:Computer Configuration/Policies/Windows Settings/Security Settings/AccountPolicies/Password Policy/Relax minimum password length limits"
+    compliance:
+      - cis: ["1.1.6"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SAM -> RelaxMinimumPasswordLengthLimits -> 1'
+
+  - id: 26006
+    title: "Ensure 'Account lockout duration' is set to '15 or more minute(s)"
+    description: "This policy setting determines the length of time that must pass before a locked account is unlocked and a user can try to log on again. The setting does this by specifying the number of minutes a locked out account will remain unavailable. If the value for this policy setting is configured to 0, locked out accounts will remain locked out until an administrator manually unlocks them."
+    rationale: "A denial of service (DoS) condition can be created if an attacker abuses the Account lockout threshold and repeatedly attempts to log on with a specific account. Once you configure theAccount lockout threshold setting, the account will be locked out after the specified number of failed attempts. If you configure the Account lockout duration setting to 0, then the account will remain locked out until an administrator unlocks it manually."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to 15 or more minute(s): Computer Configuration/Policies/Windows Settings/Security Settings/Account Policies/Account Lockout Policy/Account lockout duration"
+    compliance:
+      - cis: ["1.2.1"]
+      - cis_csc: ["16"]
+    condition: all
+    rules:
+      - 'c:net.exe accounts -> n:Lockout duration (minutes):\s+(\d+) compare >= 15'
+
+  - id: 26007
+    title: "Ensure 'Account lockout threshold' is set to '10 or fewer invalid logon attempt(s), but not 0'"
+    description: "This policy setting determines the number of failed logon attempts before the account is locked. Setting this policy to 0 does not conform to the benchmark as doing so disables the account lockout threshold"
+    rationale: "Setting an account lockout threshold reduces the likelihood that an online password brute force attack will be successful. Setting the account lockout threshold too low introduces risk of increased accidental lockouts and/or a malicious actor intentionally locking out accounts."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to 10 or fewer invalid login attempt(s), but not 0: Computer Configuration/Policies/Windows Settings/Security Settings/Account Policies/Account Lockout Policy/Account lockout threshold"
+    compliance:
+      - cis: [ "1.2.2" ]
+      - cis_csc: [ "16" ]
+    condition: all
+    rules:
+      - 'c:net.exe accounts -> n:Lockout threshold:\s+(\d+) compare > 0'
+      - 'c:net.exe accounts -> n:Lockout threshold:\s+(\d+) compare <= 10'
+
+  - id: 26008
+    title: "Ensure 'Reset account lockout counter after' is set to '15 or more minute(s)'"
+    description: "This policy setting determines the length of time before the Account lockout threshold resets to zero. The default value for this policy setting is Not Defined. If the Account lockout threshold is defined, this reset time must be less than or equal to the value for the Account lockout duration setting."
+    rationale: "Users can accidentally lock themselves out of their accounts if they mistype their password multiple times. To reduce the chance of such accidental lockouts, the Reset account lockout counter after setting determines the number of minutes that must elapse before the counter that tracks failed logon attempts and triggers lockouts is reset to 0."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to 15 or more minute(s): Computer Configuration/Policies/Windows Settings/Security Settings/Account Policies/Account Lockout Policy/Reset account lockout counter after"
+    compliance:
+      - cis: ["1.2.3"]
+      - cis_csc: ["16"]
+    condition: all
+    rules:
+      - 'c:net.exe accounts -> n:Lockout observation window (minutes):\s+(\d+) compare >= 15'
