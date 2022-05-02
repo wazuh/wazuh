@@ -31,7 +31,7 @@ template<class Catalog>
 class Builder
 {
 private:
-    const Catalog &m_catalog;
+    const Catalog& m_catalog;
 
     /**
      * @brief Builds a graph of asset types, graph returned only contains a node
@@ -43,13 +43,13 @@ private:
      * @return internals::Graph not connected.
      */
     internals::Graph assetBuilder(std::string atype,
-                                  const json::Value &v,
+                                  const json::Value& v,
                                   internals::types::AssetBuilder make)
     {
         internals::Graph g;
         if (v.IsArray())
         {
-            for (auto &m : v.GetArray())
+            for (auto& m : v.GetArray())
             {
                 json::Document asset = m_catalog.getAsset(atype, m.GetString());
                 g.addNode(make(asset));
@@ -82,7 +82,7 @@ public:
      *
      * @param c Catalog
      */
-    Builder(const Catalog &c)
+    Builder(const Catalog& c)
         : m_catalog(c) {};
 
     /**
@@ -101,7 +101,7 @@ public:
      * @param name name of the environment
      * @return Graph_t execution graph
      */
-    internals::Graph build(const std::string &name)
+    internals::Graph build(const std::string& name)
     {
         json::Document asset = m_catalog.getAsset("environment", name);
         // TODO: Parametrize - define constextp string
@@ -164,21 +164,21 @@ public:
 
             subGraphs.push_back(std::make_tuple(
                 "INPUT_DECODER", decoderGraph, "OUTPUT_DECODER"));
-                }
+        }
 
-            // Build rule subgraph
-            if (asset.exists("/rules"))
-            {
-                auto ruleGraph = this->assetBuilder(
-                    "rule",
-                    asset.get("/rules"),
-                    std::get<internals::types::AssetBuilder>(
-                        internals::Registry::getBuilder("rule")));
-                // TODO: proper implement that rules are the first choice.
-                // As it is a set ordered by name, to check rules before
-                // outputs an A has been added to the name
-                subGraphs.push_back(
-                    std::make_tuple("INPUT_ARULE", ruleGraph, "OUTPUT_RULE"));
+        // Build rule subgraph
+        if (asset.exists("/rules"))
+        {
+            auto ruleGraph = this->assetBuilder(
+                "rule",
+                asset.get("/rules"),
+                std::get<internals::types::AssetBuilder>(
+                    internals::Registry::getBuilder("rule")));
+            // TODO: proper implement that rules are the first choice.
+            // As it is a set ordered by name, to check rules before
+            // outputs an A has been added to the name
+            subGraphs.push_back(
+                std::make_tuple("INPUT_ARULE", ruleGraph, "OUTPUT_RULE"));
         }
 
         // Build output subgraph
@@ -246,28 +246,26 @@ public:
      * @param name Environment name to build/lift
      * @return envBuilder
      */
-    envBuilder operator()(const std::string &name)
+    envBuilder operator()(const std::string& name)
     {
         envBuilder ret;
         std::shared_ptr<internals::Graph> g =
             std::make_shared<internals::Graph>(this->build(name));
 
         // Debug sinks
-        g->visit([&](auto node)
-                 { ret.m_traceSinks[node.m_name] = node.m_tracer.m_out; });
+        g->visit([&](auto node) {
+            ret.m_traceSinks[node.m_name] = node.m_tracer.m_out;
+        });
 
         // Lifter
-        ret.m_lifter =
-            [g](base::Observable o) -> base::Observable
-        {
+        ret.m_lifter = [g](base::Observable o) -> base::Observable {
             base::Observable last;
 
             // Recursive visitor function to call all connectable lifters and
             // build the whole rxcpp pipeline
             auto visit = [&g, &last](base::Observable source,
                                      std::string root,
-                                     auto &visit_ref) -> void
-            {
+                                     auto& visit_ref) -> void {
                 // Only must be executed one, graph input
                 if (g->m_nodes[root].m_inputs.size() == 0)
                 {
@@ -276,8 +274,7 @@ public:
 
                 // Call connect.publish only if this connectable has more than
                 // one child
-                auto obs = [&g, root]() -> base::Observable
-                {
+                auto obs = [&g, root]() -> base::Observable {
                     if (g->m_edges[root].size() > 1)
                     {
                         auto o =
@@ -291,7 +288,7 @@ public:
                 }();
 
                 // Add obs as an input to the childs
-                for (auto &n : g->m_edges[root])
+                for (auto& n : g->m_edges[root])
                 {
                     g->m_nodes[n].addInput(obs);
                     if (g->m_nodes[n].m_inputs.size() ==
