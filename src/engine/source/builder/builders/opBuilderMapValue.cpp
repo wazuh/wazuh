@@ -12,8 +12,8 @@
 namespace builder::internals::builders
 {
 // TODOL DOC and test this
-base::Lifter opBuilderMapValue(const base::DocumentValue &def,
-                                types::TracerFn tr)
+base::Lifter opBuilderMapValue(const base::DocumentValue& def,
+                               types::TracerFn tr)
 {
     // Make deep copy of value
     std::string field =
@@ -31,12 +31,14 @@ base::Lifter opBuilderMapValue(const base::DocumentValue &def,
     return [=](base::Observable o)
     {
         // Append rxcpp operation
-        return o.map([=](base::Event e) {
-            e->getEvent()->set(field, doc.m_doc.MemberBegin()->value)
-                ? tr(successTrace)
-                : tr(failureTrace);
-            return e;
-        });
+        return o.map(
+            [=](base::Event e)
+            {
+                e->getEvent()->set(field, doc.m_doc.MemberBegin()->value)
+                    ? tr(successTrace)
+                    : tr(failureTrace);
+                return e;
+            });
     };
 }
 

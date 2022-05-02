@@ -131,7 +131,7 @@ TEST(StageBuilderNormalize, BuildFullNormalizeNonRegistered)
             ]
         })"};
 
-    ASSERT_THROW(builders::stageBuilderNormalize(doc.get("/normalize"), tr),
+    ASSERT_THROW(stageBuilderNormalize(doc.get("/normalize"), tr),
                  std::_Nested_exception<std::runtime_error>);
 }
 
@@ -202,7 +202,7 @@ TEST(StageBuilderNormalize, BuildFullNormalize)
             ]
         })"};
 
-    ASSERT_NO_THROW(builders::stageBuilderNormalize(doc.get("/normalize"), tr));
+    ASSERT_NO_THROW(stageBuilderNormalize(doc.get("/normalize"), tr));
 }
 
 TEST(StageBuilderNormalize, BuildFullNormalizeInverted)
@@ -242,7 +242,7 @@ TEST(StageBuilderNormalize, BuildFullNormalizeInverted)
             ]
         })"};
 
-    ASSERT_NO_THROW(builders::stageBuilderNormalize(doc.get("/normalize"), tr));
+    ASSERT_NO_THROW(stageBuilderNormalize(doc.get("/normalize"), tr));
 }
 
 TEST(StageBuilderNormalize, BuildNormalizeMap)
@@ -264,7 +264,7 @@ TEST(StageBuilderNormalize, BuildNormalizeMap)
             ]
         })"};
 
-    ASSERT_NO_THROW(builders::stageBuilderNormalize(doc.get("/normalize"), tr));
+    ASSERT_NO_THROW(stageBuilderNormalize(doc.get("/normalize"), tr));
 }
 
 TEST(StageBuilderNormalize, BuildNormalizeCheckMap)
@@ -293,7 +293,7 @@ TEST(StageBuilderNormalize, BuildNormalizeCheckMap)
         ]
     })"};
 
-    ASSERT_NO_THROW(builders::stageBuilderNormalize(doc.get("/normalize"), tr));
+    ASSERT_NO_THROW(stageBuilderNormalize(doc.get("/normalize"), tr));
 }
 
 TEST(StageBuilderNormalize, BuildNormalizeEmptyMap)
@@ -308,7 +308,7 @@ TEST(StageBuilderNormalize, BuildNormalizeEmptyMap)
             ]
         })"};
 
-    ASSERT_THROW(builders::stageBuilderNormalize(doc.get("/normalize"), tr),
+    ASSERT_THROW(stageBuilderNormalize(doc.get("/normalize"), tr),
                  std::_Nested_exception<std::invalid_argument>);
 }
 
@@ -331,7 +331,7 @@ TEST(StageBuilderNormalize, BuildNormalizeCheckMapEmptyCheck)
             ]
         })"};
 
-    ASSERT_THROW(builders::stageBuilderNormalize(doc.get("/normalize"), tr),
+    ASSERT_THROW(stageBuilderNormalize(doc.get("/normalize"), tr),
                  std::_Nested_exception<std::runtime_error>);
 }
 
@@ -355,7 +355,7 @@ TEST(StageBuilderNormalize, BuildNormalizeCheckMapEmptyMap)
             ]
         })"};
 
-    ASSERT_THROW(builders::stageBuilderNormalize(doc.get("/normalize"), tr),
+    ASSERT_THROW(stageBuilderNormalize(doc.get("/normalize"), tr),
                  std::_Nested_exception<std::runtime_error>);
 }
 
@@ -378,7 +378,7 @@ TEST(StageBuilderNormalize, BuildNormalizeWithCheckNoMap)
             ]
         })"};
 
-    ASSERT_THROW(builders::stageBuilderNormalize(doc.get("/normalize"), tr),
+    ASSERT_THROW(stageBuilderNormalize(doc.get("/normalize"), tr),
                  std::_Nested_exception<std::invalid_argument>);
 }
 
@@ -401,7 +401,7 @@ TEST(StageBuilderNormalize, testNormalizeMap)
             ]
         })"};
 
-    auto normalize = builders::stageBuilderNormalize(doc.get("/normalize"), tr);
+    auto normalize = stageBuilderNormalize(doc.get("/normalize"), tr);
 
     auto eventsCount = 3;
     Observable input = observable<>::create<Event>(
@@ -459,7 +459,7 @@ TEST(StageBuilderNormalize, testNormalizeConditionalMap)
             ]
         })"};
 
-    auto normalize = builders::stageBuilderNormalize(doc.get("/normalize"), tr);
+    auto normalize = stageBuilderNormalize(doc.get("/normalize"), tr);
 
     auto eventsCount = 3;
     Observable input = observable<>::create<Event>(
@@ -519,7 +519,7 @@ TEST(StageBuilderNormalize, testNormalizeMapAndConditionalMap)
         ]
     })"};
 
-    auto normalize = builders::stageBuilderNormalize(doc.get("/normalize"), tr);
+    auto normalize = stageBuilderNormalize(doc.get("/normalize"), tr);
 
     rxcpp::subjects::subject<Event> inputSubject;
     inputSubject.get_observable().subscribe([](Event e) {});
@@ -580,7 +580,7 @@ TEST(StageBuilderNormalize, testNormalizeMapAndConditionalMapInverted)
         ]
     })"};
 
-    auto normalize = builders::stageBuilderNormalize(doc.get("/normalize"), tr);
+    auto normalize = stageBuilderNormalize(doc.get("/normalize"), tr);
 
     rxcpp::subjects::subject<Event> inputSubject;
     inputSubject.get_observable().subscribe([](Event e) {});
@@ -641,7 +641,7 @@ TEST(StageBuilderNormalize, testNormalizeWrongReferenceMapI)
         ]
     })"};
 
-    auto normalize = builders::stageBuilderNormalize(doc.get("/normalize"), tr);
+    auto normalize = stageBuilderNormalize(doc.get("/normalize"), tr);
 
     rxcpp::subjects::subject<Event> inputSubject;
     inputSubject.get_observable().subscribe([](Event e) {});
@@ -702,7 +702,7 @@ TEST(StageBuilderNormalize, testNormalizeWrongReferenceMapII)
         ]
     })"};
 
-    auto normalize = builders::stageBuilderNormalize(doc.get("/normalize"), tr);
+    auto normalize = stageBuilderNormalize(doc.get("/normalize"), tr);
 
     rxcpp::subjects::subject<Event> inputSubject;
     inputSubject.get_observable().subscribe([](Event e) {});
@@ -762,7 +762,7 @@ TEST(StageBuilderNormalize, testNormalizeWrongReferenceCheck)
         ]
     })"};
 
-    auto normalize = builders::stageBuilderNormalize(doc.get("/normalize"), tr);
+    auto normalize = stageBuilderNormalize(doc.get("/normalize"), tr);
 
     rxcpp::subjects::subject<Event> inputSubject;
     inputSubject.get_observable().subscribe([](Event e) {});
@@ -828,7 +828,7 @@ TEST(StageBuilderNormalize, testNormalizeMultipleCheck)
         ]
     })"};
 
-    auto normalize = builders::stageBuilderNormalize(doc.get("/normalize"), tr);
+    auto normalize = stageBuilderNormalize(doc.get("/normalize"), tr);
 
     rxcpp::subjects::subject<Event> inputSubject;
     inputSubject.get_observable().subscribe([](Event e) {});
@@ -899,7 +899,7 @@ TEST(StageBuilderNormalize, testNormalizeMultipleCheckII)
         ]
     })"};
 
-    auto normalize = builders::stageBuilderNormalize(doc.get("/normalize"), tr);
+    auto normalize = stageBuilderNormalize(doc.get("/normalize"), tr);
 
     rxcpp::subjects::subject<Event> inputSubject;
     inputSubject.get_observable().subscribe([](Event e) {});
@@ -956,6 +956,6 @@ TEST(StageBuilderNormalize, testNormalizeMultipleMapError)
         ]
     })"};
 
-    ASSERT_THROW(builders::stageBuilderNormalize(doc.get("/normalize"), tr),
+    ASSERT_THROW(stageBuilderNormalize(doc.get("/normalize"), tr),
                  std::_Nested_exception<std::invalid_argument>);
 }

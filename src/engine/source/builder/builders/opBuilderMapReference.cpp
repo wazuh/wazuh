@@ -17,8 +17,8 @@ namespace builder::internals::builders
 {
 
 // TODO Add test for this
-base::Lifter opBuilderMapReference(const base::DocumentValue &def,
-                                    types::TracerFn tr)
+base::Lifter opBuilderMapReference(const base::DocumentValue& def,
+                                   types::TracerFn tr)
 {
     if (!def.MemberBegin()->name.IsString())
     {
@@ -52,11 +52,13 @@ base::Lifter opBuilderMapReference(const base::DocumentValue &def,
     return [=](base::Observable o)
     {
         // Append rxcpp operation
-        return o.map([=](base::Event e) {
-            e->getEvent()->set(field, reference) ? tr(successTrace)
-                                                 : tr(failureTrace);
-            return e;
-        });
+        return o.map(
+            [=](base::Event e)
+            {
+                e->getEvent()->set(field, reference) ? tr(successTrace)
+                                                     : tr(failureTrace);
+                return e;
+            });
     };
 }
 

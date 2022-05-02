@@ -21,12 +21,13 @@
 namespace builder::internals::builders
 {
 
-types::ConnectableT assetBuilderOutput(const base::Document & def)
+types::ConnectableT assetBuilderOutput(const base::Document& def)
 {
     // Assert document is as expected
     if (!def.m_doc.IsObject())
     {
-        auto msg = fmt::format("Expexted type 'Object' but got [{}]", def.m_doc.GetType());
+        auto msg = fmt::format("Expexted type 'Object' but got [{}]",
+                               def.m_doc.GetType());
         WAZUH_LOG_ERROR("{}", msg);
         throw std::invalid_argument(std::move(msg));
     }
@@ -34,17 +35,19 @@ types::ConnectableT assetBuilderOutput(const base::Document & def)
     std::vector<base::Lifter> stages;
 
     // Needed to build stages in a for loop popping its attributes
-    std::map<std::string, const base::DocumentValue &> attributes;
+    std::map<std::string, const base::DocumentValue&> attributes;
     try
     {
-        for (auto it = def.m_doc.MemberBegin(); it != def.m_doc.MemberEnd(); ++it)
+        for (auto it = def.m_doc.MemberBegin(); it != def.m_doc.MemberEnd();
+             ++it)
         {
             attributes.emplace(it->name.GetString(), it->value);
         }
     }
-    catch (std::exception & e)
+    catch (std::exception& e)
     {
-        const char* msg = "Output builder encountered exception in building auxiliary map.";
+        const char* msg =
+            "Output builder encountered exception in building auxiliary map.";
         WAZUH_LOG_ERROR("{} From exception: [{}]", msg, e.what());
         std::throw_with_nested(std::runtime_error(msg));
     }
@@ -56,9 +59,10 @@ types::ConnectableT assetBuilderOutput(const base::Document & def)
         name = attributes.at("name").GetString();
         attributes.erase("name");
     }
-    catch (std::exception & e)
+    catch (std::exception& e)
     {
-        const char* msg = "Output builder encountered exception building attribute name.";
+        const char* msg =
+            "Output builder encountered exception building attribute name.";
         WAZUH_LOG_ERROR("{} From exception: [{}]", msg, e.what());
         std::throw_with_nested(std::invalid_argument(msg));
     }
@@ -69,15 +73,16 @@ types::ConnectableT assetBuilderOutput(const base::Document & def)
     {
         try
         {
-            for (const base::DocumentValue & parentName : attributes.at("parents").GetArray())
+            for (const base::DocumentValue& parentName :
+                 attributes.at("parents").GetArray())
             {
                 parents.push_back(parentName.GetString());
             }
         }
-        catch (std::exception & e)
+        catch (std::exception& e)
         {
             const char* msg = "Output builder encountered exception "
-                                   "building attribute parents.";
+                              "building attribute parents.";
             WAZUH_LOG_ERROR("{} From exception: [{}]", msg, e.what());
             std::throw_with_nested(std::invalid_argument(msg));
         }
@@ -85,17 +90,19 @@ types::ConnectableT assetBuilderOutput(const base::Document & def)
     }
 
     // Create tracer
-    types::ConnectableT::Tracer tr{name};
+    types::ConnectableT::Tracer tr {name};
 
     // Stage check
     try
     {
-        stages.push_back(std::get<types::OpBuilder>(Registry::getBuilder("check"))(attributes.at("check"), tr.tracerLogger()));
+        stages.push_back(std::get<types::OpBuilder>(Registry::getBuilder(
+            "check"))(attributes.at("check"), tr.tracerLogger()));
         attributes.erase("check");
     }
-    catch (std::exception & e)
+    catch (std::exception& e)
     {
-        const char* msg = "Output builder encountered exception building stage check.";
+        const char* msg =
+            "Output builder encountered exception building stage check.";
         WAZUH_LOG_ERROR("{} From exception: [{}]", msg, e.what());
         std::throw_with_nested(std::runtime_error(msg));
     }
@@ -103,12 +110,14 @@ types::ConnectableT assetBuilderOutput(const base::Document & def)
     // Stage outputs
     try
     {
-        stages.push_back(std::get<types::OpBuilder>(Registry::getBuilder("outputs"))(attributes.at("outputs"), tr.tracerLogger()));
+        stages.push_back(std::get<types::OpBuilder>(Registry::getBuilder(
+            "outputs"))(attributes.at("outputs"), tr.tracerLogger()));
         attributes.erase("outputs");
     }
-    catch (std::exception & e)
+    catch (std::exception& e)
     {
-        const char* msg = "Output builder encountered exception building stage outputs.";
+        const char* msg =
+            "Output builder encountered exception building stage outputs.";
         WAZUH_LOG_ERROR("{} From exception: [{}]", msg, e.what());
         std::throw_with_nested(std::runtime_error(msg));
     }
@@ -119,10 +128,11 @@ types::ConnectableT assetBuilderOutput(const base::Document & def)
     {
         try
         {
-            stages.push_back(std::get<types::OpBuilder>(Registry::getBuilder(it->first))(it->second, tr.tracerLogger()));
+            stages.push_back(std::get<types::OpBuilder>(Registry::getBuilder(
+                it->first))(it->second, tr.tracerLogger()));
             toPop.push_back(it->first);
         }
-        catch (std::exception & e)
+        catch (std::exception& e)
         {
             auto msg = fmt::format(
                 "Output builder encountered exception building stage {}.",
@@ -139,7 +149,8 @@ types::ConnectableT assetBuilderOutput(const base::Document & def)
     }
     if (!attributes.empty())
     {
-        const char* msg = "Output builder, json definition contains unproccessed attributes";
+        const char* msg =
+            "Output builder, json definition contains unproccessed attributes";
         WAZUH_LOG_ERROR("{}", msg);
         throw std::invalid_argument(msg);
     }
@@ -148,11 +159,12 @@ types::ConnectableT assetBuilderOutput(const base::Document & def)
     base::Lifter output;
     try
     {
-        output = std::get<types::CombinatorBuilder>(Registry::getBuilder("combinator.chain"))(stages);
+        output = std::get<types::CombinatorBuilder>(
+            Registry::getBuilder("combinator.chain"))(stages);
     }
-    catch (std::exception & e)
+    catch (std::exception& e)
     {
-        const char *msg = "Output builder encountered exception building "
+        const char* msg = "Output builder encountered exception building "
                           "chaining all stages.";
         WAZUH_LOG_ERROR("{} From exception: [{}]", msg, e.what());
 
@@ -160,7 +172,7 @@ types::ConnectableT assetBuilderOutput(const base::Document & def)
     }
 
     // Finally return connectable
-    return types::ConnectableT{name, parents, output, tr};
+    return types::ConnectableT {name, parents, output, tr};
 }
 
 } // namespace builder::internals::builders
