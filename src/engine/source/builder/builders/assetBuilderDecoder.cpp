@@ -43,6 +43,8 @@ types::ConnectableT assetBuilderDecoder(const base::Document &def)
     });
 
     // Needed to build stages in a for loop popping its attributes
+    // FIX THIS, this pop in alphabetic order
+    // normalize is pop before parse
     std::map<std::string, const base::DocumentValue &> attributes;
     try
     {
