@@ -106,14 +106,13 @@ void test_jqueue_parse_json_overlong_alert(void ** state) {
     cJSON * object = NULL;
 
     snprintf(queue->file_name, MAX_FQUEUE, "%s", "/home/test");
-    
-    for (int i = 0; i < OS_MAXSTR; i++)
-    {
+
+    for (int i = 0; i < OS_MAXSTR; i++) {
         buffer1[i] = 'a';
     }
     buffer1[OS_MAXSTR]='\0';
-    
-    snprintf(buffer2, OS_MAXSTR, "%s\n","aaaa"); 
+
+    snprintf(buffer2, OS_MAXSTR, "%s\n","aaaa");
     expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, 1);
 
@@ -121,7 +120,7 @@ void test_jqueue_parse_json_overlong_alert(void ** state) {
     will_return(__wrap_fgets, buffer1);
     expect_value(__wrap_fgets, __stream, queue->fp);
     will_return(__wrap_fgets, buffer2);
-    
+
     expect_string(__wrap__mwarn, formatted_msg, "Overlong JSON alert read from '/home/test'");
 
     object = jqueue_parse_json(queue);
@@ -153,9 +152,8 @@ void test_jqueue_parse_json_fgets_fail_and_retry(void ** state) {
     cJSON * object = NULL;
 
     snprintf(queue->file_name, MAX_FQUEUE, "%s", "/home/test");
-    
-    for (int i = 0; i < OS_MAXSTR; i++)
-    {
+
+    for (int i = 0; i < OS_MAXSTR; i++) {
         buffer[i] = 'a';
     }
     buffer[OS_MAXSTR]='\0';
