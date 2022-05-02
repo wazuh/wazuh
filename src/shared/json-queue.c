@@ -87,6 +87,7 @@ cJSON * jqueue_next(file_queue * queue) {
                 return NULL;
             }
 
+            clearerr(queue->fp);
             return jqueue_parse_json(queue);
 
         } else {
@@ -123,22 +124,20 @@ cJSON * jqueue_parse_json(file_queue * queue) {
         if (end = strchr(buffer, '\n'), end) {
             *end = '\0';
 
-            if ((object = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), object) && (*jsonErrPtr == '\0')) {   
+            if ((object = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), object) && (*jsonErrPtr == '\0')) {
                 return object;
             }
-            
-            // The read JSON is invalid                                   
+
+            // The read JSON is invalid
             cJSON_Delete(object);
 
             mwarn("Invalid JSON alert read from '%s': '%s'", queue->file_name, buffer);
             return NULL;
         }
 
-        while (strlen(buffer) == OS_MAXSTR)
-        {            
-            if(fgets(buffer, OS_MAXSTR + 1, queue->fp)){
-
-                if (strchr(buffer, '\n')){
+        while (strlen(buffer) == OS_MAXSTR) {
+            if (fgets(buffer, OS_MAXSTR + 1, queue->fp)) {
+                if (strchr(buffer, '\n')) {
                     mwarn("Overlong JSON alert read from '%s'", queue->file_name);
                     return NULL;
                 }
@@ -146,7 +145,7 @@ cJSON * jqueue_parse_json(file_queue * queue) {
                 break;
             }
         }
-                
+
         mdebug2("Can't read from '%s'. Trying again", queue->file_name);
 
         if (current_pos >= 0) {
