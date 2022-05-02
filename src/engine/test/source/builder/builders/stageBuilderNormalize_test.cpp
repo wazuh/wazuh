@@ -38,23 +38,23 @@ YML:
 ---
 normalize:
 - map:
-    mapped.field1: value
-    mapped.field2: 2
-    mapped.field3: "$field1"
-    mapped.field4: true
-    mapped.field5: false
+    field1: value
+    field2: 2
+    field3: "$field1"
+    field4: true
+    field5: false
 - check:
-  - mapped.field1: value
-  - mapped.field2: 2
-  - mapped.field3: "$field1"
-  - mapped.field4: true
-  - mapped.field5: "+exists"
+  - field1: value
+  - field2: 2
+  - field3: "$field1"
+  - field4: true
+  - field5: "+exists"
   map:
-    mapped.field6: value
-    mapped.field7: 2
-    mapped.field8: "$field1"
-    mapped.field9: true
-    mapped.field10: false
+    field6: value
+    field7: 2
+    field8: "$field1"
+    field9: true
+    field10: false
 
 JSON:
 
@@ -64,29 +64,29 @@ JSON:
         {
             "map":
             {
-                "mapped.field1": "value",
-                "mapped.field2": 2,
-                "mapped.field3": "$field1",
-                "mapped.field4": true,
-                "mapped.field5": false
+                "field1": "value",
+                "field2": 2,
+                "field3": "$field1",
+                "field4": true,
+                "field5": false
             }
         },
         {
             "check":
             [
-                {"mapped.field1": "value"},
-                {"mapped.field2": 2},
-                {"mapped.field3": "$field1"},
-                {"mapped.field4": true},
-                {"mapped.field5": "+exists"}
+                {"field1": "value"},
+                {"field2": 2},
+                {"field3": "$field1"},
+                {"field4": true},
+                {"field5": "+exists"}
             ],
             "map":
             {
-                "mapped.field6": "value",
-                "mapped.field7": 2,
-                "mapped.field8": "$field1",
-                "mapped.field9": true,
-                "mapped.field10": false
+                "field6": "value",
+                "field7": 2,
+                "field8": "$field1",
+                "field9": true,
+                "field10": false
             }
         }
     ]
@@ -103,29 +103,29 @@ TEST(StageBuilderNormalize, BuildFullNormalizeNonRegistered)
                 {
                     "map":
                     {
-                        "mapped.field1": "value",
-                        "mapped.field2": 2,
-                        "mapped.field3": "$field1",
-                        "mapped.field4": true,
-                        "mapped.field5": false
+                        "field1": "value",
+                        "field2": 2,
+                        "field3": "$field1",
+                        "field4": true,
+                        "field5": false
                     }
                 },
                 {
                     "check":
                     [
-                        {"mapped.field1": "value"},
-                        {"mapped.field2": 2},
-                        {"mapped.field3": "$field1"},
-                        {"mapped.field4": true},
-                        {"mapped.field5": "+exists"}
+                        {"field1": "value"},
+                        {"field2": 2},
+                        {"field3": "$field1"},
+                        {"field4": true},
+                        {"field5": "+exists"}
                     ],
                     "map":
                     {
-                        "mapped.field6": "value",
-                        "mapped.field7": 2,
-                        "mapped.field8": "$field1",
-                        "mapped.field9": true,
-                        "mapped.field10": false
+                        "field6": "value",
+                        "field7": 2,
+                        "field8": "$field1",
+                        "field9": true,
+                        "field10": false
                     }
                 }
             ]
@@ -174,29 +174,29 @@ TEST(StageBuilderNormalize, BuildFullNormalize)
                 {
                     "map":
                     {
-                        "mapped.field1": "value",
-                        "mapped.field2": 2,
-                        "mapped.field3": "$field1",
-                        "mapped.field4": true,
-                        "mapped.field5": false
+                        "field1": "value",
+                        "field2": 2,
+                        "field3": "$field1",
+                        "field4": true,
+                        "field5": false
                     }
                 },
                 {
                     "check":
                     [
-                        {"mapped.field1": "value"},
-                        {"mapped.field2": 2},
-                        {"mapped.field3": "$field1"},
-                        {"mapped.field4": true},
-                        {"mapped.field5": "+exists"}
+                        {"field1": "value"},
+                        {"field2": 2},
+                        {"field3": "$field1"},
+                        {"field4": true},
+                        {"field5": "+exists"}
                     ],
                     "map":
                     {
-                        "mapped.field6": "value",
-                        "mapped.field7": 2,
-                        "mapped.field8": "$field1",
-                        "mapped.field9": true,
-                        "mapped.field10": false
+                        "field6": "value",
+                        "field7": 2,
+                        "field8": "$field1",
+                        "field9": true,
+                        "field10": false
                     }
                 }
             ]
@@ -214,29 +214,29 @@ TEST(StageBuilderNormalize, BuildFullNormalizeInverted)
                 {
                     "check":
                     [
-                        {"mapped.field1": "value"},
-                        {"mapped.field2": 2},
-                        {"mapped.field3": "$field1"},
-                        {"mapped.field4": true},
-                        {"mapped.field5": "+exists"}
+                        {"field1": "value"},
+                        {"field2": 2},
+                        {"field3": "$field1"},
+                        {"field4": true},
+                        {"field5": "+exists"}
                     ],
                     "map":
                     {
-                        "mapped.field6": "value",
-                        "mapped.field7": 2,
-                        "mapped.field8": "$field1",
-                        "mapped.field9": true,
-                        "mapped.field10": false
+                        "field6": "value",
+                        "field7": 2,
+                        "field8": "$field1",
+                        "field9": true,
+                        "field10": false
                     }
                 },
                 {
                     "map":
                     {
-                        "mapped.field1": "value",
-                        "mapped.field2": 2,
-                        "mapped.field3": "$field1",
-                        "mapped.field4": true,
-                        "mapped.field5": false
+                        "field1": "value",
+                        "field2": 2,
+                        "field3": "$field1",
+                        "field4": true,
+                        "field5": false
                     }
                 }
             ]
@@ -254,11 +254,11 @@ TEST(StageBuilderNormalize, BuildNormalizeMap)
                 {
                     "map":
                     {
-                        "mapped.field1": "value",
-                        "mapped.field2": 2,
-                        "mapped.field3": "$field1",
-                        "mapped.field4": true,
-                        "mapped.field5": false
+                        "field1": "value",
+                        "field2": 2,
+                        "field3": "$field1",
+                        "field4": true,
+                        "field5": false
                     }
                 }
             ]
@@ -275,19 +275,19 @@ TEST(StageBuilderNormalize, BuildNormalizeCheckMap)
             {
                 "check":
                 [
-                    {"mapped.field1": "value"},
-                    {"mapped.field2": 2},
-                    {"mapped.field3": "$field1"},
-                    {"mapped.field4": true},
-                    {"mapped.field5": "+exists"}
+                    {"field1": "value"},
+                    {"field2": 2},
+                    {"field3": "$field1"},
+                    {"field4": true},
+                    {"field5": "+exists"}
                 ],
                 "map":
                 {
-                    "mapped.field6": "value",
-                    "mapped.field7": 2,
-                    "mapped.field8": "$field1",
-                    "mapped.field9": true,
-                    "mapped.field10": false
+                    "field6": "value",
+                    "field7": 2,
+                    "field8": "$field1",
+                    "field9": true,
+                    "field10": false
                 }
             }
         ]
@@ -321,11 +321,11 @@ TEST(StageBuilderNormalize, BuildNormalizeCheckMapEmptyCheck)
                 {
                     "check": [],
                     "map": {
-                        "mapped.field6": "value",
-                        "mapped.field7": 2,
-                        "mapped.field8": "$field1",
-                        "mapped.field9": true,
-                        "mapped.field10": false
+                        "field6": "value",
+                        "field7": 2,
+                        "field8": "$field1",
+                        "field9": true,
+                        "field10": false
                     }
                 }
             ]
@@ -344,11 +344,11 @@ TEST(StageBuilderNormalize, BuildNormalizeCheckMapEmptyMap)
                 {
                     "check":
                     [
-                        {"mapped.field1": "value"},
-                        {"mapped.field2": 2},
-                        {"mapped.field3": "$field1"},
-                        {"mapped.field4": true},
-                        {"mapped.field5": "+exists"}
+                        {"field1": "value"},
+                        {"field2": 2},
+                        {"field3": "$field1"},
+                        {"field4": true},
+                        {"field5": "+exists"}
                     ],
                     "map": {}
                 }
@@ -368,11 +368,11 @@ TEST(StageBuilderNormalize, BuildNormalizeWithCheckNoMap)
                 {
                     "check":
                     [
-                        {"mapped.field1": "value"},
-                        {"mapped.field2": 2},
-                        {"mapped.field3": "$field1"},
-                        {"mapped.field4": true},
-                        {"mapped.field5": "+exists"}
+                        {"field1": "value"},
+                        {"field2": 2},
+                        {"field3": "$field1"},
+                        {"field4": true},
+                        {"field5": "+exists"}
                     ]
                 }
             ]
@@ -796,4 +796,166 @@ TEST(StageBuilderNormalize, testNormalizeWrongReferenceCheck)
         ASSERT_STREQ(e->get("/field3").GetString(), "value3");
         ASSERT_FALSE(e->get("/field4").GetBool());
     }
+}
+
+TEST(CombinatorBuilderBroadcastTest, testNormalizeMultipleCheck)
+{
+    Document doc {R"({
+        "normalize":
+        [
+            {
+                "check":
+                [
+                    {"field1": "value"},
+                    {"field2": 2}
+                ],
+                "map":
+                {
+                    "field2": 3
+                }
+            },
+            {
+                "check":
+                [
+                    {"field2": 3}
+                ],
+                "map":
+                {
+                    "field3": "$field1",
+                    "field4": false
+                }
+            }
+        ]
+    })"};
+
+    auto normalize = builders::stageBuilderNormalize(doc.get("/normalize"), tr);
+
+    rxcpp::subjects::subject<Event> inputSubject;
+    inputSubject.get_observable().subscribe([](Event e) {});
+    auto inputObservable = inputSubject.get_observable();
+    auto output = normalize(inputObservable);
+
+    std::vector<Event> expected;
+    output.subscribe([&expected](Event e) { expected.push_back(e); });
+
+    auto eventsCount = 3;
+    auto inputObject = std::make_shared<json::Document>(R"(
+                        {
+                                "field1": "value",
+                                "field2": 2,
+                                "field3": "value3",
+                                "field4": true,
+                                "field5": "+exists",
+                                "field6": "+exists"
+                        })");
+    for (int i = 0; i < eventsCount; i++)
+    {
+        inputSubject.get_subscriber().on_next(inputObject);
+    }
+
+    ASSERT_EQ(expected.size(), eventsCount);
+
+    for (auto e : expected)
+    {
+        ASSERT_STREQ(e->get("/field1").GetString(), "value");
+        ASSERT_EQ(e->get("/field2").GetInt(), 3);
+        ASSERT_STREQ(e->get("/field3").GetString(), "value");
+        ASSERT_FALSE(e->get("/field4").GetBool());
+    }
+}
+
+TEST(CombinatorBuilderBroadcastTest, testNormalizeMultipleCheckII)
+{
+    Document doc {R"({
+        "normalize":
+        [
+            {
+                "map":
+                {
+                    "field4": false
+                }
+            },
+            {
+                "check":
+                [
+                    {"field1": "value"},
+                    {"field2": 2}
+                ],
+                "map":
+                {
+                    "field2": 3
+                }
+            },
+            {
+                "check":
+                [
+                    {"field2": 3}
+                ],
+                "map":
+                {
+                    "field3": "$field1"
+                }
+            }
+        ]
+    })"};
+
+    auto normalize = builders::stageBuilderNormalize(doc.get("/normalize"), tr);
+
+    rxcpp::subjects::subject<Event> inputSubject;
+    inputSubject.get_observable().subscribe([](Event e) {});
+    auto inputObservable = inputSubject.get_observable();
+    auto output = normalize(inputObservable);
+
+    std::vector<Event> expected;
+    output.subscribe([&expected](Event e) { expected.push_back(e); });
+
+    auto eventsCount = 3;
+    auto inputObject = std::make_shared<json::Document>(R"(
+                        {
+                                "field1": "value",
+                                "field2": 2,
+                                "field3": "value3",
+                                "field4": true,
+                                "field5": "+exists",
+                                "field6": "+exists"
+                        })");
+    for (int i = 0; i < eventsCount; i++)
+    {
+        inputSubject.get_subscriber().on_next(inputObject);
+    }
+
+    ASSERT_EQ(expected.size(), eventsCount);
+
+    for (auto e : expected)
+    {
+        ASSERT_STREQ(e->get("/field1").GetString(), "value");
+        ASSERT_EQ(e->get("/field2").GetInt(), 3);
+        ASSERT_STREQ(e->get("/field3").GetString(), "value");
+        ASSERT_FALSE(e->get("/field4").GetBool());
+    }
+}
+
+TEST(CombinatorBuilderBroadcastTest, testNormalizeMultipleMapError)
+{
+    Document doc {R"({
+        "normalize":
+        [
+            {
+                "map":
+                {
+                    "field4": false
+                }
+            },
+            {
+                "map":
+                {
+                    "field2": 3,
+                    "field3": "$field1"
+                }
+            }
+        ]
+    })"};
+
+    ASSERT_THROW(builders::stageBuilderNormalize(doc.get("/normalize"), tr),
+                 std::_Nested_exception<std::invalid_argument>);
 }
