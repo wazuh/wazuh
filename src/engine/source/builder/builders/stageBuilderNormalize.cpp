@@ -24,10 +24,12 @@
 namespace builder::internals::builders
 {
 
-using types::CombinatorBuilder;
 using base::DocumentValue;
 using base::Lifter;
+using types::CombinatorBuilder;
 using types::TracerFn;
+
+using fmt::format;
 
 using std::invalid_argument;
 using std::runtime_error;
@@ -75,9 +77,9 @@ static Lifter normalizeMap(const DocumentValue& ref, TracerFn tr)
         }
         catch (std::exception& e)
         {
-            auto msg = fmt::format("Stage normalize builder encountered "
-                                   "exception on building: [{}]",
-                                   e.what());
+            auto msg = format("Stage normalize builder encountered exception "
+                              "on building: [{}]",
+                              e.what());
             WAZUH_LOG_ERROR("{}", msg);
             throw_with_nested(runtime_error(msg));
         }
@@ -90,7 +92,7 @@ static Lifter normalizeMap(const DocumentValue& ref, TracerFn tr)
     }
     catch (std::exception& e)
     {
-        auto msg = fmt::format(
+        auto msg = format(
             "Stage normalize builder encountered exception on building: [{}]",
             e.what());
         WAZUH_LOG_ERROR("{}", msg);
@@ -125,9 +127,9 @@ static Lifter normalizeCheck(const DocumentValue& ref, TracerFn tr)
     }
     catch (std::exception& e)
     {
-        auto msg = fmt::format("Stage normalize builder encountered "
-                               "exception on building: [{}]",
-                               e.what());
+        auto msg = format(
+            "Stage normalize builder encountered exception on building: [{}]",
+            e.what());
         WAZUH_LOG_ERROR("{}", msg);
         throw_with_nested(runtime_error(msg));
     }
@@ -139,7 +141,7 @@ static Lifter normalizeCheck(const DocumentValue& ref, TracerFn tr)
     }
     catch (std::exception& e)
     {
-        auto msg = fmt::format(
+        auto msg = format(
             "Stage normalize builder encountered exception on building: [{}]",
             e.what());
         WAZUH_LOG_ERROR("{}", msg);
@@ -152,10 +154,10 @@ static Lifter normalizeConditionalMap(const DocumentValue& def, TracerFn tr)
     // Normalize stage must always have exactly two elements: "check" and "map"
     if (def.MemberCount() != 2)
     {
-        auto msg = fmt::format(
-            "Invalid conditional map configuration, two (2) elements "
-            "were expected, \"check\" and \"map\", but got: {}",
-            def.MemberCount());
+        auto msg =
+            format("Invalid conditional map configuration, two (2) elements "
+                   "were expected, \"check\" and \"map\", but got: {}",
+                   def.MemberCount());
         WAZUH_LOG_ERROR("{}", msg);
         throw_with_nested(invalid_argument(msg));
     }
@@ -169,10 +171,9 @@ static Lifter normalizeConditionalMap(const DocumentValue& def, TracerFn tr)
     }
     catch (std::exception& e)
     {
-        auto msg = fmt::format(
-            "Stage normalize conditional map builder "
-            "encountered exception on building the \"check\" object: [{}].",
-            e.what());
+        auto msg = format("Stage normalize conditional map builder encountered "
+                          "exception on building the \"check\" object: [{}].",
+                          e.what());
         WAZUH_LOG_ERROR("{}", msg);
         throw_with_nested(runtime_error(msg));
     }
@@ -184,10 +185,9 @@ static Lifter normalizeConditionalMap(const DocumentValue& def, TracerFn tr)
     }
     catch (std::exception& e)
     {
-        auto msg = fmt::format(
-            "Stage normalize conditional map builder "
-            "encountered exception on building the \"map\" object: [{}].",
-            e.what());
+        auto msg = format("Stage normalize conditional map builder encountered "
+                          "exception on building the \"map\" object: [{}].",
+                          e.what());
         WAZUH_LOG_ERROR("{}", msg);
         throw_with_nested(runtime_error(msg));
     }
@@ -201,9 +201,9 @@ static Lifter normalizeConditionalMap(const DocumentValue& def, TracerFn tr)
     }
     catch (std::exception& e)
     {
-        auto msg = fmt::format("Stage normalize conditional map builder "
-                               "encountered exception on building: [{}]",
-                               e.what());
+        auto msg = format("Stage normalize conditional map builder encountered "
+                          "exception on building: [{}]",
+                          e.what());
         WAZUH_LOG_ERROR("{}", msg);
         throw_with_nested(runtime_error(msg));
     }
@@ -216,9 +216,9 @@ Lifter stageBuilderNormalize(const DocumentValue& def, TracerFn tr)
     // Assert value is as expected
     if (!def.IsArray())
     {
-        auto msg = fmt::format("Stage normalize builder, expected "
-                               "\"normalize\" to be an array but got [{}].",
-                               def.GetType());
+        auto msg = format("Stage normalize builder, expected \"normalize\" to "
+                          "be an array but got [{}].",
+                          def.GetType());
         WAZUH_LOG_ERROR("{}", msg);
         throw_with_nested(invalid_argument(msg));
     }
@@ -242,9 +242,9 @@ Lifter stageBuilderNormalize(const DocumentValue& def, TracerFn tr)
                 {
                     if (obj.MemberCount() != 1)
                     {
-                        auto msg = fmt::format(
-                            "Stage normalize builder, expected only a "
-                            "\"map\" object but got more than one objects.");
+                        auto msg = format(
+                            "Stage normalize builder, expected only a \"map\" "
+                            "object but got more than one objects.");
                         WAZUH_LOG_ERROR("{}", msg);
                         throw_with_nested(invalid_argument(msg));
                     }
@@ -252,7 +252,7 @@ Lifter stageBuilderNormalize(const DocumentValue& def, TracerFn tr)
                     {
                         if (doMap)
                         {
-                            auto msg = fmt::format(
+                            auto msg = format(
                                 "Stage normalize builder, expected only one "
                                 "\"map\" object but got more than one.");
                             WAZUH_LOG_ERROR("{}", msg);
@@ -277,10 +277,9 @@ Lifter stageBuilderNormalize(const DocumentValue& def, TracerFn tr)
         }
         else
         {
-            auto msg =
-                fmt::format("Stage normalize builder, each \"normalize\" array "
-                            "element should be an object but got [{}].",
-                            it->GetType());
+            auto msg = format("Stage normalize builder, each \"normalize\" "
+                              "array element should be an object but got [{}].",
+                              it->GetType());
             WAZUH_LOG_ERROR("{}", msg);
             throw_with_nested(invalid_argument(msg));
         }
@@ -320,9 +319,9 @@ Lifter stageBuilderNormalize(const DocumentValue& def, TracerFn tr)
     }
     catch (std::exception& e)
     {
-        auto msg = fmt::format("Stage normalize builder encountered exception "
-                               "on building: [{}]",
-                               e.what());
+        auto msg = format(
+            "Stage normalize builder encountered exception on building: [{}]",
+            e.what());
         WAZUH_LOG_ERROR("{}", msg);
         throw_with_nested(runtime_error(msg));
     }
