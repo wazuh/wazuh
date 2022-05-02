@@ -14,5 +14,5 @@ normalize:
       decoded.queue: decoded_queue
       decoded.location: decoded_location
       decoded.message: decoded_message
-      decoded.logline: $logLine
-      decoded.index: $index
+      decoded.logline: $labels.innerJson.intest
+      decoded.index: $labels.innerJson.intest2
