@@ -35,7 +35,7 @@ TEST(opBuilderHelperStringTrim, Builds)
             }
         ]
     })"};
-    ASSERT_NO_THROW(bld::opBuilderHelperStringTrim(doc.get("/normalize"), tr));
+    ASSERT_NO_THROW(bld::opBuilderHelperStringTrim(doc.get("/normalize/0/map"), tr));
 }
 
 // Build incorrect number of arguments
@@ -52,7 +52,7 @@ TEST(opBuilderHelperStringTrim, Builds_incorrect_number_of_arguments)
             }
         ]
     })"};
-    ASSERT_THROW(bld::opBuilderHelperStringTrim(doc.get("/normalize"), tr), std::runtime_error);
+    ASSERT_THROW(bld::opBuilderHelperStringTrim(doc.get("/normalize/0/map"), tr), std::runtime_error);
 }
 
 // Test ok: both trim
@@ -88,7 +88,7 @@ TEST(opBuilderHelperStringTrim, BothOk)
             s.on_completed();
         });
 
-    Lifter lift = bld::opBuilderHelperStringTrim(doc.get("/normalize"), tr);
+    Lifter lift = bld::opBuilderHelperStringTrim(doc.get("/normalize/0/map"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -130,7 +130,7 @@ TEST(opBuilderHelperStringTrim, Start_ok)
             s.on_completed();
         });
 
-    Lifter lift = bld::opBuilderHelperStringTrim(doc.get("/normalize"), tr);
+    Lifter lift = bld::opBuilderHelperStringTrim(doc.get("/normalize/0/map"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -174,7 +174,7 @@ TEST(opBuilderHelperStringTrim, End_ok)
             s.on_completed();
         });
 
-    Lifter lift = bld::opBuilderHelperStringTrim(doc.get("/normalize"), tr);
+    Lifter lift = bld::opBuilderHelperStringTrim(doc.get("/normalize/0/map"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -217,7 +217,7 @@ TEST(opBuilderHelperStringTrim, Multilevel_src)
             s.on_completed();
         });
 
-    Lifter lift = bld::opBuilderHelperStringTrim(doc.get("/normalize"), tr);
+    Lifter lift = bld::opBuilderHelperStringTrim(doc.get("/normalize/0/map"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -251,7 +251,7 @@ TEST(opBuilderHelperStringTrim, Not_exist_src)
             s.on_completed();
         });
 
-    Lifter lift = bld::opBuilderHelperStringTrim(doc.get("/normalize"), tr);
+    Lifter lift = bld::opBuilderHelperStringTrim(doc.get("/normalize/0/map"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -282,7 +282,7 @@ TEST(opBuilderHelperStringTrim, Src_not_string)
             s.on_completed();
         });
 
-    Lifter lift = bld::opBuilderHelperStringTrim(doc.get("/normalize"), tr);
+    Lifter lift = bld::opBuilderHelperStringTrim(doc.get("/normalize/0/map"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -323,7 +323,7 @@ TEST(opBuilderHelperStringTrim, Multilevel)
             s.on_completed();
         });
 
-    Lifter lift = bld::opBuilderHelperStringTrim(doc.get("/normalize"), tr);
+    Lifter lift = bld::opBuilderHelperStringTrim(doc.get("/normalize/0/map"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
