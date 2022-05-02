@@ -45,7 +45,7 @@ TEST(opBuilderMap, BuildsAllNonRegistered)
         DocumentValue key(it->name, docAllocator);
         pairKeyValue.AddMember(key.Move(), val.Move(), docAllocator);
 
-        ASSERT_THROW(opBuilderMap(pairKeyValue, tr), std::invalid_argument);
+        ASSERT_THROW(bld::opBuilderMap(pairKeyValue, tr), std::invalid_argument);
     }
 }
 
@@ -72,7 +72,7 @@ TEST(opBuilderMap, BuildsValue)
         DocumentValue key(it->name, docAllocator);
         pairKeyValue.AddMember(key.Move(), val.Move(), docAllocator);
 
-        ASSERT_NO_THROW(opBuilderMap(pairKeyValue, tr));
+        ASSERT_NO_THROW(bld::opBuilderMap(pairKeyValue, tr));
     }
 }
 
@@ -97,6 +97,6 @@ TEST(opBuilderMap, BuildsReference)
         DocumentValue key(it->name, docAllocator);
         pairKeyValue.AddMember(key.Move(), val.Move(), docAllocator);
 
-        ASSERT_NO_THROW(opBuilderMap(pairKeyValue, tr));
+        ASSERT_NO_THROW(bld::opBuilderMap(pairKeyValue, tr));
     }
 }

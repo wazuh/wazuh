@@ -20,9 +20,9 @@
 
 using namespace builder::internals::builders;
 
-using types::Event;
-using types::Lifter;
-using types::Observable;
+using base::Event;
+using base::Lifter;
+using base::Observable;
 
 using FakeTrFn = std::function<void(std::string)>;
 
@@ -54,7 +54,7 @@ TEST(CombinatorBuilderBroadcastTest, combinedBroadcastEventsCount)
     for (int i = 0; i < eventsCount; i++)
     {
         inputSubject.get_subscriber().on_next(
-            std::make_shared<json::Document>(R"({})"));
+            createSharedEvent(R"({})"));
     }
 
     ASSERT_EQ(expected.size(), liftersCount * eventsCount);
@@ -95,7 +95,7 @@ TEST(CombinatorBuilderBroadcastTest, combinedBroadcastSingleEmition)
     for (int i = 0; i < eventsCount; i++)
     {
         inputSubject.get_subscriber().on_next(
-            std::make_shared<json::Document>(R"({})"));
+            createSharedEvent(R"({})"));
     }
 
     ASSERT_EQ(expected.size(), eventsCount);
