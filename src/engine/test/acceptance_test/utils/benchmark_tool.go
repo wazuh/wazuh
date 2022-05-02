@@ -229,8 +229,7 @@ func connectToSock(protocol string, address string) net.Conn {
 func sendLogSock(conn net.Conn, header bool, message string) {
 	var payload []byte
 
-	ret := '\r'
-	payload = []byte("1:[123] (hostname_test_bench) any->/var/some_location:" + message + string(ret))
+	payload = []byte("1:[123] (hostname_test_bench) any->/var/some_location:" + message)
 
 	if header {
 		secMsg := new(bytes.Buffer)
