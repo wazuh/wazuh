@@ -6,4 +6,5 @@ check:
   - index: +s_eq/two
 
 normalize:
-  - decoded.by: 2
+  - map:
+      decoded.by: 2
