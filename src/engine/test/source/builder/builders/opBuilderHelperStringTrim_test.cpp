@@ -21,11 +21,6 @@ namespace bld = builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
-
-auto createEvent = [](const char * json){
-    return std::make_shared<EventHandler>(std::make_shared<json::Document>(json));
-};
-
 // Build ok
 TEST(opBuilderHelperStringTrim, Builds)
 {
@@ -57,16 +52,16 @@ TEST(opBuilderHelperStringTrim, BothOk)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"fieldToTranf": "---hi---"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"fieldToTranf": "hi---"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"fieldToTranf": "---hi"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"fieldToTranf": "hi"}
             )"));
             s.on_completed();
@@ -92,16 +87,16 @@ TEST(opBuilderHelperStringTrim, Start_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"fieldToTranf": "---hi---"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"fieldToTranf": "hi---"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"fieldToTranf": "---hi"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"fieldToTranf": "hi"}
             )"));
             s.on_completed();
@@ -129,16 +124,16 @@ TEST(opBuilderHelperStringTrim, End_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"fieldToTranf": "---hi---"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"fieldToTranf": "hi---"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"fieldToTranf": "---hi"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"fieldToTranf": "hi"}
             )"));
             s.on_completed();
@@ -165,16 +160,16 @@ TEST(opBuilderHelperStringTrim, Multilevel_src)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"fieldToTranf": {"a": {"b": "---hi---"}}}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"fieldToTranf": {"a": {"b": "hi---"}}}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"fieldToTranf": {"a": {"b": "---hi"}}}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"fieldToTranf": {"a": {"b": "hi"}}}
             )"));
             s.on_completed();
@@ -201,7 +196,7 @@ TEST(opBuilderHelperStringTrim, Not_exist_src)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"not_ext": "---hi---"}
             )"));
             s.on_completed();
@@ -225,7 +220,7 @@ TEST(opBuilderHelperStringTrim, Src_not_string)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"fieldToTranf": 15}
             )"));
             s.on_completed();
@@ -250,16 +245,16 @@ TEST(opBuilderHelperStringTrim, Multilevel)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"fieldToTranf": {"a": {"b": "---hi---"}}}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"fieldToTranf": {"a": {"b": "hi---"}}}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"fieldToTranf": {"a": {"b": "---hi"}}}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"fieldToTranf": {"a": {"b": "hi"}}}
             )"));
             s.on_completed();

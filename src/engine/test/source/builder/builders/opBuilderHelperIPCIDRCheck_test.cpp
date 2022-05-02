@@ -21,10 +21,6 @@ using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg) {
 };
 
-auto createEvent = [](const char * json){
-    return std::make_shared<EventHandler>(std::make_shared<json::Document>(json));
-};
-
 TEST(opBuilderHelperIPCIDR, Builds)
 {
     Document doc {R"({
@@ -90,26 +86,26 @@ TEST(opBuilderHelperIPCIDR, chack_ip_range)
         [=](auto s)
         {
             // Network address
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field2check":"192.168.0.0"}
             )"));
             // First address
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field2check":"192.168.0.1"}
             )"));
             // Last address
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field2check":"192.168.255.254"}
             )"));
             // Broadcast address
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field2check":"192.168.255.255"}
             )"));
             // Address out of cidr range
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field2check":"10.0.0.1"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field2check":"127.0.0.1"}
             )"));
             s.on_completed();
