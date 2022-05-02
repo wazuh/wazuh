@@ -24,10 +24,6 @@ namespace bld = builder::internals::builders;
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
 
-auto createEvent = [](const char * json){
-    return std::make_shared<EventHandler>(std::make_shared<json::Document>(json));
-};
-
 TEST(opBuilderHelperRegexNotMatch, Builds)
 {
     Document doc{R"({
@@ -80,19 +76,19 @@ TEST(opBuilderHelperRegexNotMatch, InvalidSrcType)
         [=](auto s)
         {
             // Object
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"fieldSrc": { "fieldSrc" : "child value"} }
             )"));
             // Number
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"fieldSrc":55}
             )"));
             // Array
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"fieldSrc":[123]}
             )"));
             // Not existing field
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field":"fieldSrc not exist"}
             )"));
             s.on_completed();
@@ -116,16 +112,16 @@ TEST(opBuilderHelperRegexNotMatch, StringRegexMatch)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field":"value"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field":"ex-president"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field":"this is a test exp"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field":"exp"}
             )"));
             s.on_completed();
@@ -151,13 +147,13 @@ TEST(opBuilderHelperRegexNotMatch, NumericRegexMatch)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field":"1023"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field":"19"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field":"0.123"}
             )"));
             s.on_completed();
@@ -183,10 +179,10 @@ TEST(opBuilderHelperRegexNotMatch, AdvancedRegexMatch)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field":"wazuh.com"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field":"client@wazuh.com"}
             )"));
             s.on_completed();
@@ -213,11 +209,11 @@ TEST(opBuilderHelperRegexNotMatch, NestedFieldRegexMatch)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"~~({
+            s.on_next(createSharedEvent(R"~~({
             "test":
                 {"field": "value"}
             })~~"));
-            s.on_next(createEvent(R"~~({
+            s.on_next(createSharedEvent(R"~~({
             "test":
                 {"field": "ex-president"}
             })~~"));
@@ -244,10 +240,10 @@ TEST(opBuilderHelperRegexNotMatch, FieldNotExistsRegexNotMatch)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field2":"value"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field":"value"}
             )"));
             s.on_completed();

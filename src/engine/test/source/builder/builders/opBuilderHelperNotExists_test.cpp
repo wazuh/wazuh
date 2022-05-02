@@ -22,10 +22,6 @@ namespace bld = builder::internals::builders;
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
 
-auto createEvent = [](const char * json){
-    return std::make_shared<EventHandler>(std::make_shared<json::Document>(json));
-};
-
 TEST(opBuilderHelperNotExists, Builds)
 {
     Document doc{R"({
@@ -57,21 +53,21 @@ TEST(opBuilderHelperNotExists, Exec_not_exists_ok)
         [=](auto s)
         {
             // Greater
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "field2check2":11,
                     "ref_key":10
                 }
             )"));
             // Equal
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "field":10,
                     "ref_key":10
                 }
             )"));
             // Less
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "fieldcheck":10,
                     "ref_key":11
@@ -102,7 +98,7 @@ TEST(opBuilderHelperNotExists, Exec_multilevel_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "parentObjt_2": {
                         "field2check": 10,
@@ -115,7 +111,7 @@ TEST(opBuilderHelperNotExists, Exec_multilevel_ok)
                 }
             )"));
 
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "parentObjt_2": {
                         "field2check": 11,
@@ -128,7 +124,7 @@ TEST(opBuilderHelperNotExists, Exec_multilevel_ok)
                 }
             )"));
 
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "parentObjt_2": {
                         "field2check":10,
@@ -142,7 +138,7 @@ TEST(opBuilderHelperNotExists, Exec_multilevel_ok)
             )"));
 
             // true
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {
                     "parentObjt_2": {
                         "field2check":10,

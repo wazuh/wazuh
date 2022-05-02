@@ -23,10 +23,6 @@ namespace bld = builder::internals::builders;
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
 
-auto createEvent = [](const char * json){
-    return std::make_shared<EventHandler>(std::make_shared<json::Document>(json));
-};
-
 class opBuilderKVDBExtractTest : public ::testing::Test
 {
 
@@ -90,13 +86,13 @@ TEST_F(opBuilderKVDBExtractTest, Static_key)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"dummy_field": "qwe"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"dummy_field": "ASD123asd"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"dummy_field": "ASD"}
             )"));
             s.on_completed();
@@ -126,16 +122,16 @@ TEST_F(opBuilderKVDBExtractTest, Dynamic)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"key": "KEY"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"inexistent_key": "KEY"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"invalid_string": 123}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"invalid_key": "INVALID_KEY"}
             )"));
             s.on_completed();
@@ -166,13 +162,13 @@ TEST_F(opBuilderKVDBExtractTest, Multi_level_key)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                  {"a":{"b":{"key":"KEY"}}}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                  {"a":{"b":{"inexistent_key":"KEY"}}}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                  {"a":{"b":{"invalid_key":"INVALID_KEY"}}}
             )"));
             s.on_completed();
@@ -202,13 +198,13 @@ TEST_F(opBuilderKVDBExtractTest, Multi_level_target)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"not_fieldToCreate": "qwe"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"not_fieldToCreate": "ASD123asd"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"not_fieldToCreate": "ASD"}
             )"));
             s.on_completed();
@@ -238,10 +234,10 @@ TEST_F(opBuilderKVDBExtractTest, Existent_target)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"dummy_data": "dummy_value"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field2extract": "PRE_VALUE"}
             )"));
             s.on_completed();

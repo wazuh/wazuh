@@ -22,10 +22,6 @@ namespace bld = builder::internals::builders;
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
 
-auto createEvent = [](const char * json){
-    return std::make_shared<EventHandler>(std::make_shared<json::Document>(json));
-};
-
 // Build ok
 TEST(opBuilderHelperStringLO, Builds)
 {
@@ -57,13 +53,13 @@ TEST(opBuilderHelperStringLO, Static_string_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"not_fieltToCreate": "qwe"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"not_fieltToCreate": "ASD123asd"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"not_fieltToCreate": "ASD"}
             )"));
             s.on_completed();
@@ -90,13 +86,13 @@ TEST(opBuilderHelperStringLO, Dynamics_string_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"srcField": "qwe"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"srcField": "ASD123asd"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"srcField": "ASD"}
             )"));
             s.on_completed();
@@ -122,13 +118,13 @@ TEST(opBuilderHelperStringLO, Multilevel_dst)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"a": {"b": {"c": {"srcField": "qwe"}}}}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"a": {"b": {"c": {"srcField": "ASD123asd"}}}}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"a": {"b": {"c": {"srcField": "ASD"}}}}
             )"));
             s.on_completed();
@@ -154,13 +150,13 @@ TEST(opBuilderHelperStringLO, Exist_dst)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"a": {"b": {"c": {"srcField": "qwe"}}}}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"a": {"b": {"c": {"srcField": "ASD123asd"}}}}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"a": {"b": {"c": {"srcField": "ASD"}}}}
             )"));
             s.on_completed();
@@ -186,10 +182,10 @@ TEST(opBuilderHelperStringLO, Not_exist_src)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"a": {"b": "QWE"}}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"c": {"d": "QWE123"}}
             )"));
             s.on_completed();
@@ -214,13 +210,13 @@ TEST(opBuilderHelperStringLO, Src_not_string)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"srcField": "qwe"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"srcField": "ASD123asd"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"srcField": "ASD"}
             )"));
             s.on_completed();
@@ -246,13 +242,13 @@ TEST(opBuilderHelperStringLO, Multilevel_src)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"a": {"b": {"c": {"srcField": "qwe"}}}}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"a": {"b": {"c": {"srcField": "ASD123asd"}}}}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"a": {"b": {"c": {"srcField": "ASD"}}}}
             )"));
             s.on_completed();
@@ -278,13 +274,13 @@ TEST(opBuilderHelperStringLO, MultiLevel_dst)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"a": {"b": {"c": {"srcField": "qwe"}}}}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"a": {"b": {"c": {"srcField": "ASD123asd"}}}}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"a": {"b": {"c": {"srcField": "ASD"}}}}
             )"));
             s.on_completed();

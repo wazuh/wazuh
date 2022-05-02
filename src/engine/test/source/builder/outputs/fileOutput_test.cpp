@@ -1,3 +1,6 @@
+#include <rxcpp/rx.hpp>
+#include <gtest/gtest.h>
+
 #include <algorithm>
 #include <chrono>
 #include <iostream>
@@ -8,19 +11,17 @@
 #include <fstream>
 #include <iostream>
 
-#include "outputs/file.hpp"
-#include "rxcpp/rx.hpp"
-#include "gtest/gtest.h"
 #include "json/json.hpp"
-
 #include "test_utils.hpp"
 
-using namespace base;
+#include "outputs/file.hpp"
+
 namespace bld = builder::internals;
 
-auto createEvent = [](const char * json){
-    return std::make_shared<EventHandler>(std::make_shared<Document>(json));
+auto createSharedEvent = [](const char * json){
+    return std::make_shared<base::EventHandler>(std::make_shared<base::Document>(json));
 };
+
 
 auto messageStr = R"({
     "event": {
@@ -75,7 +76,7 @@ TEST(FileOutput, Unknown_path)
 TEST(FileOutput, Write)
 {
     auto filepath = "/tmp/file";
-    auto msg = createEvent(messageStr);
+    auto msg = createSharedEvent(messageStr);
     auto output = bld::outputs::FileOutput(filepath);
     output.write(msg);
 
