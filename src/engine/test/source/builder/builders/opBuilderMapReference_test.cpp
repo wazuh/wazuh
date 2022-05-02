@@ -20,9 +20,6 @@ namespace bld = builder::internals::builders;
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
 
-auto createEvent = [](const char * json){
-    return std::make_shared<EventHandler>(std::make_shared<Document>(json));
-};
 
 TEST(opBuilderMapReference, Builds)
 {
@@ -44,13 +41,13 @@ TEST(opBuilderMapReference, BuildsOperates)
         [=](auto s)
         {
             // TODO: Fix json to return false instead of throw
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"other_field":"referenced"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field":"value"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field":"values"}
             )"));
             s.on_completed();

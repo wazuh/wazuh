@@ -23,9 +23,6 @@ using namespace router;
 using document_t = base::Event;
 using documents_t = vector<document_t>;
 
-auto createEvent = [](const char * json){
-    return std::make_shared<base::EventHandler>(std::make_shared<base::Document>(json));
-};
 struct FakeServer
 {
     explicit FakeServer(const documents_t &documents, bool verbose = false)
@@ -136,14 +133,20 @@ TEST(RouterTest, RemoveNonExistentRoute)
 
 TEST(RouterTest, PassThroughSingleRoute)
 {
+
+    auto createSharedEvent = [](const char* json) {
+        return std::make_shared<base::EventHandler>(
+            std::make_shared<base::Document>(json));
+    };
+
     documents_t input {
-        createEvent(R"({
+        createSharedEvent(R"({
         "event": 1
     })"),
-        createEvent(R"({
+        createSharedEvent(R"({
         "event": 2
     })"),
-        createEvent(R"({
+        createSharedEvent(R"({
         "event": 3
     })"),
     };

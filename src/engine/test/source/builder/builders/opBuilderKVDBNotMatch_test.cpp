@@ -21,10 +21,6 @@ namespace bld = builder::internals::builders;
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
 
-auto createEvent = [](const char * json){
-    return std::make_shared<EventHandler>(std::make_shared<json::Document>(json));
-};
-
 namespace
 {
 class opBuilderKVDBNotMatchTest : public ::testing::Test
@@ -91,14 +87,14 @@ TEST_F(opBuilderKVDBNotMatchTest, Static_string_ok)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field2match":"KEY"}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field2match":"INEXISTENT_KEY"}
             )"));
             // Other fields will be ignored
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"otherfield":"KEY"}
             )"));
             s.on_completed();
@@ -128,14 +124,14 @@ TEST_F(opBuilderKVDBNotMatchTest, Multilevel_target)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"a": {"b":{"field2match":"KEY"}}}
             )"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"a": {"b":{"field2match":"INEXISTENT_KEY"}}}
             )"));
             // Other fields will continue
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"a": {"b":{"otherfield":"KEY"}}}
             )"));
             s.on_completed();

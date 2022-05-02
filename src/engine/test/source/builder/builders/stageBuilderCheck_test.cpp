@@ -23,10 +23,6 @@ namespace bld = builder::internals::builders;
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
 
-auto createEvent = [](const char * json){
-    return std::make_shared<EventHandler>(std::make_shared<Document>(json));
-};
-
 TEST(StageBuilderCheck, BuildsAllNonRegistered)
 {
     Document doc{R"({
@@ -90,17 +86,17 @@ TEST(StageBuilderCheck, BuildsOperates)
     Observable input = observable<>::create<Event>(
         [=](auto s)
         {
-            s.on_next(createEvent(R"({
+            s.on_next(createSharedEvent(R"({
                 "field1": "value",
                 "field2": 2,
                 "field3": "value",
                 "field4": true,
                 "field5": "+exists"
             })"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"field":"values"}
             )"));
-            s.on_next(createEvent(R"({
+            s.on_next(createSharedEvent(R"({
                 "field1": "value",
                 "field2": 2,
                 "field3": "value",
@@ -108,7 +104,7 @@ TEST(StageBuilderCheck, BuildsOperates)
                 "field5": "+exists",
                 "field6": "+exists"
             })"));
-            s.on_next(createEvent(R"(
+            s.on_next(createSharedEvent(R"(
                 {"otherfield":1}
             )"));
             s.on_completed();
