@@ -190,7 +190,7 @@ base::Lifter stageBuilderParse(const base::DocumentValue &def, types::TracerFn t
                     {
                         auto resultPath =
                             json::formatJsonPath(val.first.c_str());
-                        if (!any2Json(val.second, resultPath, e->getEvent()->get()))
+                        if (!any2Json(val.second, resultPath, e->getEvent().get()))
                         {
                             // ERROR
                             return e;
