@@ -34,9 +34,12 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
                            )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
   add_definitions(-DOS_TYPE=OSType::HP_UX)
+  add_definitions(-DPROMISE_TYPE=PromiseType::SLEEP)
   add_library(fimdb SHARED ${DB_SRC})
 else()
   add_definitions(-DOS_TYPE=OSType::OTHERS)
+  add_definitions(-DPROMISE_TYPE=PromiseType::NORMAL)
+
   add_library(fimdb SHARED ${DB_SRC})
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 

@@ -18,6 +18,7 @@
 #include <functional>
 #include <iostream>
 #include "threadSafeQueue.h"
+#include "promiseFactory.h"
 namespace Utils
 {
     // *
@@ -103,15 +104,14 @@ namespace Utils
                 if (m_running)
                 {
                     std::promise<void> promise;
-                    auto fut { promise.get_future() };
                     m_queue.push
                     (
                         [&promise]()
                     {
-                        promise.set_value();
+                        PromiseFactory<PROMISE_TYPE>::set_value(promise);
                     }
                     );
-                    fut.wait();
+                    PromiseFactory<PROMISE_TYPE>::wait(promise);
                     cancel();
                 }
             }

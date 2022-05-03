@@ -16,7 +16,6 @@
 #include "fimCommonDefs.h"
 #include "encodingWindowsHelper.h"
 #include "fimDBSpecializationWindows.hpp"
-#include <future>
 
 
 constexpr auto FIM_FILE_SYNC_CONFIG_STATEMENT
@@ -171,54 +170,45 @@ template <OSType osType>
 class FIMDBCreator final
 {
     public:
-        static void setLimits(__attribute__((unused)) std::shared_ptr<DBSync> DBSyncHandler,
-                              __attribute__((unused)) const unsigned int& fileLimit,
+        static void setLimits(std::shared_ptr<DBSync> DBSyncHandler,
+                              const unsigned int& fileLimit,
                               __attribute__((unused)) const unsigned int& registryLimit)
         {
-            throw std::runtime_error
+            if (fileLimit > 0)
             {
-                "Error setting limits."
-            };
+                DBSyncHandler->setTableMaxRow("file_entry", fileLimit);
+            }
         }
 
         static std::string CreateStatement()
         {
-            throw std::runtime_error
-            {
-                "Error creating FIMDB statement."
-            };
+            return CREATE_FILE_DB_STATEMENT;
         }
 
-        static void registerRsync(__attribute__((unused)) std::shared_ptr<RemoteSync> RSyncHandler,
-                                  __attribute__((unused)) const RSYNC_HANDLE& handle,
-                                  __attribute__((unused)) std::function<void(const std::string&)> syncFileMessageFunction,
+        static void registerRsync(std::shared_ptr<RemoteSync> RSyncHandler,
+                                  const RSYNC_HANDLE& handle,
+                                  std::function<void(const std::string&)> syncFileMessageFunction,
                                   __attribute__((unused)) std::function<void(const std::string&)> syncRegistryMessageFunction,
                                   __attribute__((unused)) const bool syncRegistryEnabled)
         {
-            throw std::runtime_error
-            {
-                "Error registering synchronization."
-            };
+            RSyncHandler->registerSyncID(FIM_COMPONENT_FILE,
+                                        handle,
+                                        nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT),
+                                        syncFileMessageFunction);
         }
 
-        static void sync(__attribute__((unused)) std::shared_ptr<RemoteSync> RSyncHandler,
-                         __attribute__((unused)) const DBSYNC_HANDLE& handle,
-                         __attribute__((unused)) std::function<void(const std::string&)> syncFileMessageFunction,
-                         __attribute__((unused)) std::function<void(const std::string&)> syncRegistryMessageFunction)
+        static void sync(std::shared_ptr<RemoteSync> RSyncHandler,
+                         const DBSYNC_HANDLE& handle,
+                         std::function<void(const std::string&)> syncFileMessageFunction,
+                         __attribute__((unused)) std::function<void(const std::string&)> syncRegistryMessageFunction,
+                         __attribute__((unused)) const bool syncRegistryEnabled)
         {
-            throw std::runtime_error
-            {
-                "Error running synchronization."
-            };
+            RSyncHandler->startSync(handle,
+                                    nlohmann::json::parse(FIM_FILE_START_CONFIG_STATEMENT),
+                                    syncFileMessageFunction);
         }
 
-        static void encodeString(__attribute__((unused)) std::string& stringToEncode)
-        {
-            throw std::runtime_error
-            {
-                "Error encoding strings."
-            };
-        }
+        static void encodeString(__attribute__((unused)) std::string& stringToEncode){}
 };
 
 template <>
@@ -299,51 +289,6 @@ class FIMDBCreator<OSType::WINDOWS> final
 };
 
 template <>
-class FIMDBCreator<OSType::OTHERS> final
-{
-    public:
-        static void setLimits(std::shared_ptr<DBSync> DBSyncHandler,
-                              const unsigned int& fileLimit,
-                              __attribute__((unused)) const unsigned int& registryLimit)
-        {
-            if (fileLimit > 0)
-            {
-                DBSyncHandler->setTableMaxRow("file_entry", fileLimit);
-            }
-        }
-
-        static std::string CreateStatement()
-        {
-            return CREATE_FILE_DB_STATEMENT;
-        }
-
-        static void registerRsync(std::shared_ptr<RemoteSync> RSyncHandler,
-                                  const RSYNC_HANDLE& handle,
-                                  std::function<void(const std::string&)> syncFileMessageFunction,
-                                  __attribute__((unused)) std::function<void(const std::string&)> syncRegistryMessageFunction,
-                                  __attribute__((unused)) const bool syncRegistryEnabled)
-        {
-            RSyncHandler->registerSyncID(FIM_COMPONENT_FILE,
-                                        handle,
-                                        nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT),
-                                        syncFileMessageFunction);
-        }
-
-        static void sync(std::shared_ptr<RemoteSync> RSyncHandler,
-                         const DBSYNC_HANDLE& handle,
-                         std::function<void(const std::string&)> syncFileMessageFunction,
-                         __attribute__((unused)) std::function<void(const std::string&)> syncRegistryMessageFunction,
-                         __attribute__((unused)) const bool syncRegistryEnabled)
-        {
-            RSyncHandler->startSync(handle,
-                                    nlohmann::json::parse(FIM_FILE_START_CONFIG_STATEMENT),
-                                    syncFileMessageFunction);
-        }
-
-        static void encodeString(__attribute__((unused)) std::string& stringToEncode){}
-};
-
-template <>
 class FIMDBCreator<OSType::HP_UX> final
 {
     public:
@@ -388,62 +333,6 @@ class FIMDBCreator<OSType::HP_UX> final
         static void encodeString(__attribute__((unused)) std::string& stringToEncode){}
 };
 
-template <OSType osType>
-class PromiseFactory final
-{
-    public:
-        // LCOV_EXCL_START
-        static void set_value (__attribute__((unused)) std::promise<void>& promise)
-        {
-            throw std::runtime_error { "Invalid call for this operating system"};
-        };
-
-        static void wait (__attribute__((unused)) std::promise<void>& promise)
-        {
-            throw std::runtime_error { "Invalid call for this operating system"};
-        };
-        // LCOV_EXCL_STOP
-};
-
-template <>
-class PromiseFactory<OSType::OTHERS> final
-{
-    public:
-        static void set_value(std::promise<void>& promise) {
-            promise.set_value();
-        }
-
-        static void wait(std::promise<void>& promise)
-        {
-            promise.get_future().wait();
-        }
-};
-
-template <>
-class PromiseFactory<OSType::WINDOWS> final
-{
-    public:
-        void set_value (std::promise<void>& promise) {
-            promise.set_value();
-        }
-
-        void wait (std::promise<void>& promise)
-        {
-            promise.get_future().wait();
-        }
-};
-
-template <>
-class PromiseFactory<OSType::HP_UX> final
-{
-    public:
-        static void set_value (__attribute__((unused)) std::promise<void>& promise) {}
-
-        static void wait (__attribute__((unused)) std::promise<void>& promise)
-        {
-            std::this_thread::sleep_for(std::chrono::seconds{2});
-        }
-};
 
 template <OSType osType>
 class RegistryTypes final

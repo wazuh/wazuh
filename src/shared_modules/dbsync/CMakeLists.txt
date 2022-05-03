@@ -46,6 +46,9 @@ include_directories(${SHARED_MODULES}/common/)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
   link_directories(${INSTALL_PREFIX}/lib)
+  add_definitions(-DPROMISE_TYPE=PromiseType::SLEEP)
+else()
+  add_definitions(-DPROMISE_TYPE=PromiseType::NORMAL)
 endif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
 
 link_directories(${SRC_FOLDER})

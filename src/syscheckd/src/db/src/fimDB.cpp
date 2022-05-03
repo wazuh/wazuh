@@ -11,6 +11,7 @@
 
 #include "fimDB.hpp"
 #include "fimDBSpecialization.h"
+#include "promiseFactory.h"
 #include <future>
 
 
@@ -106,7 +107,7 @@ void FIMDB::runIntegrity()
         {
             m_loggingFunction(LOG_INFO, "FIM sync module started.");
             sync();
-            PromiseFactory<OS_TYPE>::set_value(promise);
+            PromiseFactory<PROMISE_TYPE>::set_value(promise);
             std::unique_lock<std::mutex> lockCv{m_fimSyncMutex};
 
             while (!m_cv.wait_for(lockCv, std::chrono::seconds{m_syncInterval}, [&]()
@@ -119,7 +120,7 @@ void FIMDB::runIntegrity()
                 // LCOV_EXCL_STOP
             }
         });
-        PromiseFactory<OS_TYPE>::wait(promise);
+        PromiseFactory<PROMISE_TYPE>::wait(promise);
 
     }
     else
