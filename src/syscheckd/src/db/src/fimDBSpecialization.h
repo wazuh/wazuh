@@ -170,45 +170,54 @@ template <OSType osType>
 class FIMDBCreator final
 {
     public:
-        static void setLimits(std::shared_ptr<DBSync> DBSyncHandler,
-                              const unsigned int& fileLimit,
+        static void setLimits(__attribute__((unused)) std::shared_ptr<DBSync> DBSyncHandler,
+                              __attribute__((unused)) const unsigned int& fileLimit,
                               __attribute__((unused)) const unsigned int& registryLimit)
         {
-            if (fileLimit > 0)
+            throw std::runtime_error
             {
-                DBSyncHandler->setTableMaxRow("file_entry", fileLimit);
-            }
+                "Error setting limits."
+            };
         }
 
         static std::string CreateStatement()
         {
-            return CREATE_FILE_DB_STATEMENT;
+            throw std::runtime_error
+            {
+                "Error creating FIMDB statement."
+            };
         }
 
-        static void registerRsync(std::shared_ptr<RemoteSync> RSyncHandler,
-                                  const RSYNC_HANDLE& handle,
-                                  std::function<void(const std::string&)> syncFileMessageFunction,
+        static void registerRsync(__attribute__((unused)) std::shared_ptr<RemoteSync> RSyncHandler,
+                                  __attribute__((unused)) const RSYNC_HANDLE& handle,
+                                  __attribute__((unused)) std::function<void(const std::string&)> syncFileMessageFunction,
                                   __attribute__((unused)) std::function<void(const std::string&)> syncRegistryMessageFunction,
                                   __attribute__((unused)) const bool syncRegistryEnabled)
         {
-            RSyncHandler->registerSyncID(FIM_COMPONENT_FILE,
-                                        handle,
-                                        nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT),
-                                        syncFileMessageFunction);
+            throw std::runtime_error
+            {
+                "Error registering synchronization."
+            };
         }
 
-        static void sync(std::shared_ptr<RemoteSync> RSyncHandler,
-                         const DBSYNC_HANDLE& handle,
-                         std::function<void(const std::string&)> syncFileMessageFunction,
-                         __attribute__((unused)) std::function<void(const std::string&)> syncRegistryMessageFunction,
-                         __attribute__((unused)) const bool syncRegistryEnabled)
+        static void sync(__attribute__((unused)) std::shared_ptr<RemoteSync> RSyncHandler,
+                         __attribute__((unused)) const DBSYNC_HANDLE& handle,
+                         __attribute__((unused)) std::function<void(const std::string&)> syncFileMessageFunction,
+                         __attribute__((unused)) std::function<void(const std::string&)> syncRegistryMessageFunction)
         {
-            RSyncHandler->startSync(handle,
-                                    nlohmann::json::parse(FIM_FILE_START_CONFIG_STATEMENT),
-                                    syncFileMessageFunction);
+            throw std::runtime_error
+            {
+                "Error running synchronization."
+            };
         }
 
-        static void encodeString(__attribute__((unused)) std::string& stringToEncode){}
+        static void encodeString(__attribute__((unused)) std::string& stringToEncode)
+        {
+            throw std::runtime_error
+            {
+                "Error encoding strings."
+            };
+        }
 };
 
 template <>
@@ -289,7 +298,7 @@ class FIMDBCreator<OSType::WINDOWS> final
 };
 
 template <>
-class FIMDBCreator<OSType::HP_UX> final
+class FIMDBCreator<OSType::OTHERS> final
 {
     public:
         static void setLimits(std::shared_ptr<DBSync> DBSyncHandler,
@@ -332,7 +341,6 @@ class FIMDBCreator<OSType::HP_UX> final
 
         static void encodeString(__attribute__((unused)) std::string& stringToEncode){}
 };
-
 
 template <OSType osType>
 class RegistryTypes final

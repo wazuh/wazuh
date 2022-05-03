@@ -46,8 +46,7 @@ typedef struct
 enum OSType
 {
     OTHERS,
-    WINDOWS,
-    HP_UX
+    WINDOWS
 };
 
 

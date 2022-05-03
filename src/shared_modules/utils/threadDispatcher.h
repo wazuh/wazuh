@@ -104,6 +104,7 @@ namespace Utils
                 if (m_running)
                 {
                     std::promise<void> promise;
+                    auto fut { promise.get_future() };
                     m_queue.push
                     (
                         [&promise]()

@@ -35,7 +35,7 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
         pthread
     )
 elseif (CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
-    add_definitions(-DOS_TYPE=OSType::HP_UX)
+    add_definitions(-DOS_TYPE=OSType::OTHERS)
     target_link_libraries(fimdb_test_tool
         dbsync
         fimdb

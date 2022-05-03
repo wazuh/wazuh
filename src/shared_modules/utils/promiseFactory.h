@@ -27,8 +27,7 @@ template <>
 class PromiseFactory<PromiseType::SLEEP> final
 {
     public:
-        static void set_value(__attribute__((unused)) std::promise<void>& promise) {
-        }
+        static void set_value(__attribute__((unused)) std::promise<void>& promise) {}
 
         static void wait(__attribute__((unused)) std::promise<void>& promise)
         {

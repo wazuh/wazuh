@@ -12,6 +12,9 @@ include_directories(${SRC_FOLDER}/syscheckd/src/db/src)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
   link_directories(${INSTALL_PREFIX}/lib)
+  add_definitions(-DPROMISE_TYPE=PromiseType::SLEEP)
+else()
+  add_definitions(-DPROMISE_TYPE=PromiseType::NORMAL
 endif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
 
 file(GLOB DB_SRC
@@ -33,13 +36,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
                            ${CMAKE_SOURCE_DIR}/src/db/src/fimDBSpecializationWindows.cpp
                            )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
-  add_definitions(-DOS_TYPE=OSType::HP_UX)
-  add_definitions(-DPROMISE_TYPE=PromiseType::SLEEP)
+  add_definitions(-DOS_TYPE=OSType::OTHERS)
   add_library(fimdb SHARED ${DB_SRC})
 else()
   add_definitions(-DOS_TYPE=OSType::OTHERS)
-  add_definitions(-DPROMISE_TYPE=PromiseType::NORMAL)
-
   add_library(fimdb SHARED ${DB_SRC})
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
