@@ -39,13 +39,13 @@ int __wrap_fim_db_get_count_range(fdb_t *fim_sql,
 FIMDBErrorCode __wrap_fim_db_get_path(const char *file_path, callback_context_t callback);
 void expect_fim_db_get_path(const char* path, int ret_val);
 
-void __wrap_fim_db_init(int storage,
-                        int sync_interval,
-                        fim_sync_callback_t sync_callback,
-                        logging_callback_t log_callback,
-                        int file_limit,
-                        int value_limit,
-                        int sync_registry_enable);
+FIMDBErrorCode __wrap_fim_db_init(int storage,
+                                  int sync_interval,
+                                  fim_sync_callback_t sync_callback,
+                                  logging_callback_t log_callback,
+                                  int file_limit,
+                                  int value_limit,
+                                  int sync_registry_enable);
 
 void expect_wrapper_fim_db_init(int storage,
                                 int sync_interval,
@@ -53,7 +53,7 @@ void expect_wrapper_fim_db_init(int storage,
                                 int value_limit,
                                 int sync_registry_enable);
 
-int __wrap_fim_db_remove_path(const char *path);
+FIMDBErrorCode __wrap_fim_db_remove_path(const char *path);
 
 int __wrap_fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it, char **buffer);
 
@@ -69,14 +69,14 @@ void expect_wrapper_fim_db_get_count_file_entry(int ret);
  */
 void expect_fim_db_remove_path(const char *path, int ret_val);
 
-int __wrap_fim_db_file_update(fim_entry* new, callback_context_t callback);
+FIMDBErrorCode __wrap_fim_db_file_update(fim_entry* new, callback_context_t callback);
 
-int __wrap_fim_db_file_pattern_search(const char* pattern,
+FIMDBErrorCode __wrap_fim_db_file_pattern_search(const char* pattern,
                                       __attribute__((unused)) callback_context_t callback);
 
 void expect_fim_db_file_pattern_search(const char* pattern, int ret_val);
 
-int __wrap_fim_db_file_inode_search(const unsigned long inode,
+FIMDBErrorCode __wrap_fim_db_file_inode_search(const unsigned long inode,
                                     const unsigned long dev,
                                     __attribute__((unused)) callback_context_t callback);
 void expect_fim_db_file_inode_search(const unsigned long inode,

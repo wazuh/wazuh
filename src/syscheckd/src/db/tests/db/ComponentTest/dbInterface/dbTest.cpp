@@ -195,3 +195,49 @@ TEST_F(DBTestFixture, TestSyncDeletedRowsTransactionWithInvalidParameters)
     auto result = fim_db_transaction_deleted_rows(nullptr, nullptr, nullptr);
     ASSERT_EQ(result, FIMDB_ERR);
 }
+
+TEST(DBTest, TestInvalidFimLimit)
+{
+    mockLog = new MockLoggingCall();
+    mockSync = new MockSyncMsg();
+
+    EXPECT_CALL(*mockLog,
+                loggingFunction(LOG_ERROR_EXIT,
+                                "Error, id: dbEngine: Invalid row limit, values below 0 not allowed.")).Times(1);
+    auto result
+    {
+        fim_db_init(FIM_DB_MEMORY,
+                    300,
+                    mockSyncMessage,
+                    mockLoggingFunction,
+                    -1,
+                    100000,
+                    true)
+    };
+    ASSERT_EQ(result, FIMDB_ERR);
+
+    delete mockLog;
+    delete mockSync;
+}
+
+TEST(DBTest, TestValidFimLimit)
+{
+    mockLog = new MockLoggingCall();
+    mockSync = new MockSyncMsg();
+
+    auto result
+    {
+        fim_db_init(FIM_DB_MEMORY,
+                    300,
+                    mockSyncMessage,
+                    mockLoggingFunction,
+                    100,
+                    100000,
+                    true)
+    };
+    ASSERT_EQ(result, FIMDB_OK);
+
+    delete mockLog;
+    delete mockSync;
+}
+

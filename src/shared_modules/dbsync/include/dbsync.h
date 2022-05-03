@@ -72,8 +72,6 @@ EXPORTED void dbsync_teardown(void);
  *                       and user data space returned in each callback call.
  *
  * @return Handle instance to be used in transacted operations.
- *
- * @details If the max queue size is reached then this will be processed synchronously.
  */
 EXPORTED TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
                                       const cJSON*        tables,
@@ -137,8 +135,6 @@ EXPORTED int dbsync_insert_data(const DBSYNC_HANDLE handle,
  *
  * @return 0 if succeeded,
  *         specific error code (OS dependent) otherwise.
- *
- * @details The table will work as a queue if the limit is exceeded.
  */
 EXPORTED int dbsync_set_table_max_rows(const DBSYNC_HANDLE handle,
                                        const char*         table,

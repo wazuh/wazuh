@@ -78,22 +78,26 @@ void read_internal(int debug_level)
 void fim_initialize() {
     // Create store data
 #ifndef WIN32
-    fim_db_init(syscheck.database_store,
-                syscheck.sync_interval,
-                fim_send_sync_state,
-                loggingFunction,
-                syscheck.db_entry_file_limit,
-                0,
-                false);
+    FIMDBErrorCode ret_val = fim_db_init(syscheck.database_store,
+                                         syscheck.sync_interval,
+                                         fim_send_sync_state,
+                                         loggingFunction,
+                                         syscheck.db_entry_file_limit,
+                                         0,
+                                         false);
 #else
-    fim_db_init(syscheck.database_store,
-                syscheck.sync_interval,
-                fim_send_sync_state,
-                loggingFunction,
-                syscheck.db_entry_file_limit,
-                syscheck.db_entry_registry_limit,
-                syscheck.enable_registry_synchronization);
+    FIMDBErrorCode ret_val = fim_db_init(syscheck.database_store,
+                                         syscheck.sync_interval,
+                                         fim_send_sync_state,
+                                         loggingFunction,
+                                         syscheck.db_entry_file_limit,
+                                         syscheck.db_entry_registry_limit,
+                                         syscheck.enable_registry_synchronization);
 #endif
+
+    if (ret_val != FIMDB_OK) {
+        merror_exit("Unable to initialize database.");
+    }
 
     w_rwlock_init(&syscheck.directories_lock, NULL);
     w_mutex_init(&syscheck.fim_scan_mutex, NULL);

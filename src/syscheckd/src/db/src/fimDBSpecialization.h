@@ -228,16 +228,9 @@ class FIMDBCreator<OSType::WINDOWS> final
                               const int fileLimit,
                               const int registryLimit)
         {
-            if (fileLimit > 0)
-            {
-                DBSyncHandler->setTableMaxRow("file_entry", fileLimit);
-
-            }
-            if (registryLimit > 0)
-            {
-                DBSyncHandler->setTableMaxRow("registry_key", registryLimit);
-                DBSyncHandler->setTableMaxRow("registry_data", registryLimit);
-            }
+            DBSyncHandler->setTableMaxRow("file_entry", fileLimit);
+            DBSyncHandler->setTableMaxRow("registry_key", registryLimit);
+            DBSyncHandler->setTableMaxRow("registry_data", registryLimit);
 
         }
 
@@ -305,10 +298,7 @@ class FIMDBCreator<OSType::OTHERS> final
                               const int fileLimit,
                               __attribute__((unused)) const int registryLimit)
         {
-            if (fileLimit > 0)
-            {
-                DBSyncHandler->setTableMaxRow("file_entry", fileLimit);
-            }
+            DBSyncHandler->setTableMaxRow("file_entry", fileLimit);
         }
 
         static std::string CreateStatement()

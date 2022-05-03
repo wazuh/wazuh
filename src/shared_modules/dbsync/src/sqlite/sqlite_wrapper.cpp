@@ -38,7 +38,6 @@ static sqlite3* openSQLiteDb(const std::string& path)
     {
         sqlite3_open_v2(path.c_str(), &pDb, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nullptr)
     };
-    sqlite3_extended_result_codes(pDb, 1);
     checkSqliteResult(result, "Unspecified type during initialization of SQLite.");
     return pDb;
 }
