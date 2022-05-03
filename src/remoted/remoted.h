@@ -43,17 +43,43 @@ typedef struct message_t {
     size_t counter;
 } message_t;
 
-/* Status structure */
+/* Status structures */
+
+typedef struct ctrl_msgs_t {
+    uint64_t keepalive_count;
+    uint32_t startup_count;
+    uint32_t shutdown_count;
+    uint32_t request_count;
+} ctrl_msgs_t;
+
+typedef struct recv_msgs_t {
+    uint64_t evt_count;
+    uint64_t ctrl_count;
+    uint32_t ping_count;
+    uint32_t unknown_count;
+    uint32_t dequeued_count;
+    uint32_t discarded_count;
+    ctrl_msgs_t ctrl_breakdown;
+} recv_msgs_t;
+
+typedef struct sent_msgs_t {
+    uint64_t queued_count;
+    uint64_t ack_count;
+    uint64_t shared_count;
+    uint32_t ar_count;
+    uint32_t cfga_count;
+    uint32_t request_count;
+    uint32_t discarded_count;
+} sent_msgs_t;
 
 typedef struct remoted_state_t {
-    unsigned int discarded_count;
-    unsigned int tcp_sessions;
-    unsigned int evt_count;
-    unsigned int ctrl_msg_count;
-    unsigned int queued_msgs;
-    unsigned long sent_bytes;
-    unsigned long recv_bytes;
-    unsigned int dequeued_after_close;
+    uint32_t tcp_sessions;
+    uint64_t recv_bytes;
+    uint64_t sent_bytes;
+    uint32_t keys_reload_count;
+    uint32_t update_shared_files_count;
+    recv_msgs_t recv_breakdown;
+    sent_msgs_t sent_breakdown;
 } remoted_state_t;
 
 /* Network buffer structure */
@@ -151,13 +177,27 @@ void rem_msgfree(message_t * message);
 void * rem_state_main();
 void rem_inc_tcp();
 void rem_dec_tcp();
-void rem_inc_evt();
-void rem_inc_ctrl_msg();
-void rem_inc_msg_queued();
-void rem_add_send(unsigned long bytes);
-void rem_inc_discarded();
 void rem_add_recv(unsigned long bytes);
-void rem_inc_dequeued();
+void rem_inc_recv_evt();
+void rem_inc_recv_ctrl();
+void rem_inc_recv_ping();
+void rem_inc_recv_unknown();
+void rem_inc_recv_dequeued();
+void rem_inc_recv_discarded();
+void rem_inc_recv_ctrl_keepalive();
+void rem_inc_recv_ctrl_startup();
+void rem_inc_recv_ctrl_shutdown();
+void rem_inc_recv_ctrl_request();
+void rem_add_send(unsigned long bytes);
+void rem_inc_send_queued();
+void rem_inc_send_ack();
+void rem_inc_send_shared();
+void rem_inc_send_ar();
+void rem_inc_send_cfga();
+void rem_inc_send_request();
+void rem_inc_send_discarded();
+void rem_inc_keys_reload();
+void rem_inc_update_shared_files();
 
 // Read config
 size_t rem_getconfig(const char * section, char ** output);
