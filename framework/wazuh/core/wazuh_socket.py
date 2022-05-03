@@ -2,15 +2,31 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.core.exception import WazuhException, WazuhInternalError
-from wazuh import common
+import asyncio
 import socket
 from json import dumps, loads
 from struct import pack, unpack
-import asyncio
+from types import MappingProxyType
 
+from wazuh import common
+from wazuh.core.exception import WazuhException, WazuhInternalError
 
 SOCKET_COMMUNICATION_PROTOCOL_VERSION = 1
+DAEMONS = MappingProxyType({
+    "authd": {"protocol": "TCP", "path": common.AUTHD_SOCKET, "header_format": "<I", "size": 4},
+    "task-manager": {"protocol": "TCP", "path": common.TASKS_SOCKET, "header_format": "<I", "size": 4},
+    "wazuh-db": {"protocol": "TCP", "path": common.WDB_SOCKET, "header_format": "<I", "size": 4}
+})
+REQUIRED_DAEMONS_FOR_SOCKET = MappingProxyType({
+    common.AR_SOCKET: {common.WazuhDaemons.DB, common.WazuhDaemons.EXEC, common.WazuhDaemons.REMOTE},
+    common.EXECQ_SOCKET: {common.WazuhDaemons.EXEC},
+    common.AUTHD_SOCKET: {common.WazuhDaemons.AUTH},
+    common.WCOM_SOCKET: {common.WazuhDaemons.EXEC},
+    common.LOGTEST_SOCKET: {common.WazuhDaemons.ANALYSIS},
+    common.UPGRADE_SOCKET: {common.WazuhDaemons.DB, common.WazuhDaemons.MODULES, common.WazuhDaemons.REMOTE},
+    common.TASKS_SOCKET: {common.WazuhDaemons.DB, common.WazuhDaemons.MODULES, common.WazuhDaemons.REMOTE},
+    common.WDB_SOCKET: {common.WazuhDaemons.DB}
+})
 
 
 class WazuhSocket:
@@ -230,32 +246,6 @@ class WazuhAsyncSocketJSON(WazuhAsyncSocket):
                 return response['data']
 
 
-daemons = {
-    "authd": {"protocol": "TCP", "path": common.AUTHD_SOCKET, "header_format": "<I", "size": 4},
-    "task-manager": {"protocol" : "TCP", "path": common.TASKS_SOCKET, "header_format": "<I", "size": 4},
-    "wazuh-db": {"protocol": "TCP", "path": common.WDB_SOCKET, "header_format": "<I", "size": 4}
-}
-
-
-async def wazuh_sendasync(daemon_name, message=None):
-    """Send a message to the specified daemon's socket and wait for its response.
-
-    Parameters
-    ----------
-    daemon_name : str
-        Name of the daemon to send the message.
-    message : str, optional
-        Message in JSON format to be sent to the daemon's socket.
-    """
-    sock = WazuhAsyncSocketJSON()
-    await sock.connect(daemons[daemon_name]['path'])
-    await sock.send(message, daemons[daemon_name]['header_format'])
-    data = await sock.receive(daemons[daemon_name]['size'])
-    await sock.close()
-
-    return data
-
-
 async def wazuh_sendsync(daemon_name=None, message=None):
     """Send a message to the specified daemon's socket and wait for its response.
 
@@ -267,12 +257,12 @@ async def wazuh_sendsync(daemon_name=None, message=None):
         Message in JSON format to be sent to the daemon's socket.
     """
     try:
-        sock = WazuhSocket(daemons[daemon_name]['path'])
+        sock = WazuhSocket(DAEMONS[daemon_name]['path'])
         if isinstance(message, dict):
             message = dumps(message)
-        sock.send(msg_bytes=message.encode(), header_format=daemons[daemon_name]['header_format'])
-        data = sock.receive(header_format=daemons[daemon_name]['header_format'],
-                            header_size=daemons[daemon_name]['size']).decode()
+        sock.send(msg_bytes=message.encode(), header_format=DAEMONS[daemon_name]['header_format'])
+        data = sock.receive(header_format=DAEMONS[daemon_name]['header_format'],
+                            header_size=DAEMONS[daemon_name]['size']).decode()
         sock.close()
     except WazuhException as e:
         raise e
