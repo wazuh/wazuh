@@ -6,6 +6,7 @@ import os
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from contextvars import ContextVar
 from copy import deepcopy
+from enum import Enum
 from functools import lru_cache, wraps
 from grp import getgrnam
 from multiprocessing import Event
@@ -251,3 +252,18 @@ LISTS_PATH = os.path.join(RULESET_PATH, 'lists')
 USER_LISTS_PATH = os.path.join(WAZUH_PATH, 'etc', 'lists')
 USER_RULES_PATH = os.path.join(WAZUH_PATH, 'etc', 'rules')
 USER_DECODERS_PATH = os.path.join(WAZUH_PATH, 'etc', 'decoders')
+
+
+# ===================================================== Wazuh daemons ==================================================
+class WazuhDaemons(Enum):
+    ANALYSIS = "wazuh-analysisd"
+    API = "wazuh-apid"
+    AUTH = "wazuh-authd"
+    CLUSTER = "wazuh-clusterd"
+    DB = "wazuh-db"
+    EXEC = "wazuh-execd"
+    LOGCOLLECTOR = "wazuh-logcollector"
+    MODULES = "wazuh-modulesd"
+    MONITOR = "wazuh-monitord"
+    REMOTE = "wazuh-remoted"
+    SYSCHECK = "wazuh-syscheckd"
