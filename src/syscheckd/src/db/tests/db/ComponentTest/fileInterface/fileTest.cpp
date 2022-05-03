@@ -277,15 +277,8 @@ TEST_F(DBTestFixture, TestFimDBFileInodeSearch)
         callback_context_t callback_data;
         callback_data.callback = callbackTestSearchPath;
         callback_data.context = test;
-        try
-        {
-            result = fim_db_file_inode_search(18277083, 2456, callback_data);
-            ASSERT_EQ(result, FIMDB_OK);
-        }
-        catch(...)
-        {
-            os_free(test);
-        }
+        result = fim_db_file_inode_search(18277083, 2456, callback_data);
+        ASSERT_EQ(result, FIMDB_OK);
         os_free(test);
         result = fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_modified);
         ASSERT_EQ(result, FIMDB_OK);
@@ -319,15 +312,8 @@ TEST_F(DBTestFixture, TestFimDBFilePatternSearch)
         test = strdup("/etc/wgetrc");
         callback_data.callback = callbackTestSearchPath;
         callback_data.context = test;
-        try
-        {
-            result = fim_db_file_pattern_search("/etc/%", callback_data);
-            ASSERT_EQ(result, FIMDB_OK);
-        }
-        catch(...)
-        {
-            os_free(test);
-        }
+        result = fim_db_file_pattern_search("/etc/%", callback_data);
+        ASSERT_EQ(result, FIMDB_OK);
         os_free(test);
     });
 }
@@ -425,15 +411,8 @@ TEST_F(DBTestFixture, TestFimDBFileInodeSearchWithBigInode)
         callback_context_t callback_data;
         callback_data.callback = callbackTestSearchPath;
         callback_data.context = test;
-        try
-        {
-            result = fim_db_file_inode_search(18277083, 2456, callback_data);
-            ASSERT_EQ(result, FIMDB_OK);
-        }
-        catch(...)
-        {
-            os_free(test);
-        }
+        result = fim_db_file_inode_search(18277083, 2456, callback_data);
+        ASSERT_EQ(result, FIMDB_OK);
         os_free(test);
         result = fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_modified);
         ASSERT_EQ(result, FIMDB_OK);
