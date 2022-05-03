@@ -224,6 +224,7 @@ int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_siz
     w_mutex_unlock(&mutex);
 
     if (retval < 0) {
+        rem_inc_send_discarded();
         mwarn("Package dropped. Could not append data into buffer.");
     }
 
