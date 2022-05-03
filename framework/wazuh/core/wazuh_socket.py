@@ -4,6 +4,7 @@
 
 import asyncio
 import socket
+from functools import wraps
 from json import dumps, loads
 from struct import pack, unpack
 from types import MappingProxyType
@@ -29,10 +30,24 @@ REQUIRED_DAEMONS_FOR_SOCKET = MappingProxyType({
 })
 
 
+def check_wazuh_daemon_health(socket_init):
+    @wraps(socket_init)
+    def wrapper(*args, **kwargs):
+        from wazuh.core.manager import check_wazuh_status
+
+        # `path` is the first positional parameter (after `self`)
+        socket_path = args[1]
+        check_wazuh_status(REQUIRED_DAEMONS_FOR_SOCKET.get(socket_path, {}))
+
+        return socket_init(*args, **kwargs)
+    return wrapper
+
+
 class WazuhSocket:
 
     MAX_SIZE = 65536
 
+    @check_wazuh_daemon_health
     def __init__(self, path):
         self.path = path
         self._connect()
@@ -72,6 +87,7 @@ class WazuhSocketJSON(WazuhSocket):
 
     MAX_SIZE = 65536
 
+    @check_wazuh_daemon_health
     def __init__(self, path):
         WazuhSocket.__init__(self, path)
 

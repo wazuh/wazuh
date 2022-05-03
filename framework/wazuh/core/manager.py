@@ -7,17 +7,18 @@ import json
 import re
 import socket
 from collections import OrderedDict
-from os.path import exists, join
+from os.path import exists
 from typing import Dict
 
 from api import configuration
 from wazuh import WazuhInternalError, WazuhError, WazuhException
 from wazuh.core import common
+from wazuh.core.cluster import cluster
 from wazuh.core.cluster.utils import get_manager_status
 from wazuh.core.utils import tail, get_utc_strptime
 from wazuh.core.wazuh_socket import WazuhSocket
 
-_re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
+_re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*] )?(.*)$")
 
 
 def status():
@@ -178,3 +179,26 @@ def parse_execd_output(output: str) -> Dict:
 def get_api_conf():
     """Return current API configuration."""
     return copy.deepcopy(configuration.api_conf)
+
+
+def check_wazuh_status(required_daemons: set):
+    """
+    There are some services that are required for wazuh to correctly process API requests. If any of those services
+    is not running, the API must raise an exception indicating that:
+        * It's not ready yet to process requests if services are restarting
+        * There's an error in any of those services that must be addressed before using the API if any service is
+          in failed status.
+        * Wazuh must be started before using the API is the services are stopped.
+    """
+    status = get_manager_status()
+
+    not_ready_daemons = {k.value: status[k.value] for k in required_daemons if status[k.value] in ('failed',
+                                                                                                   'restarting',
+                                                                                                   'stopped')}
+
+    if not_ready_daemons:
+        extra_info = {
+            'node_name': cluster.get_node().get('node', 'UNKNOWN NODE'),
+            'not_ready_daemons': ', '.join([f'{key}->{value}' for key, value in not_ready_daemons.items()])
+        }
+        raise WazuhError(1017, extra_message=extra_info)

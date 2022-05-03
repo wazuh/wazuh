@@ -196,34 +196,6 @@ class DistributedAPI:
             return exception.WazuhInternalError(1000,
                                                 dapi_errors=self.get_error_info(e))
 
-    def check_wazuh_status(self):
-        """
-        There are some services that are required for wazuh to correctly process API requests. If any of those services
-        is not running, the API must raise an exception indicating that:
-            * It's not ready yet to process requests if services are restarting
-            * There's an error in any of those services that must be addressed before using the API if any service is
-              in failed status.
-            * Wazuh must be started before using the API is the services are stopped.
-
-        The basic services wazuh needs to be running are: wazuh-modulesd, wazuh-remoted, wazuh-analysisd, wazuh-execd
-        and wazuh-db
-        """
-        if self.f == wazuh.core.manager.status:
-            return
-
-        status = wazuh.core.manager.status()
-
-        not_ready_daemons = {k: status[k] for k in self.basic_services if status[k] in ('failed',
-                                                                                        'restarting',
-                                                                                        'stopped')}
-
-        if not_ready_daemons:
-            extra_info = {
-                'node_name': self.node_info.get('node', 'UNKNOWN NODE'),
-                'not_ready_daemons': ', '.join([f'{key}->{value}' for key, value in not_ready_daemons.items()])
-            }
-            raise exception.WazuhError(1017, extra_message=extra_info)
-
     @staticmethod
     def run_local(f, f_kwargs, logger, rbac_permissions, broadcasting, nodes, current_user):
         """Run framework SDK function locally in another process."""
@@ -257,7 +229,6 @@ class DistributedAPI:
                 del self.f_kwargs['agent_list']
 
             before = time.time()
-            self.check_wazuh_status()
 
             timeout = self.api_request_timeout if not self.wait_for_complete else None
 
