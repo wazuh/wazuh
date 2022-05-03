@@ -47,7 +47,7 @@ int rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_storage
     if (result < 0) {
         rem_msgfree(message);
         mdebug2("Discarding event from host.");
-        rem_inc_discarded();
+        rem_inc_recv_discarded();
         if (!reported) {
             mwarn("Message queue is full (%zu). Events may be lost.", queue->size);
             reported = 1;

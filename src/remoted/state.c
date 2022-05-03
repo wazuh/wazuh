@@ -84,16 +84,16 @@ int rem_write_state() {
         "tcp_sessions='%u'\n"
         "\n"
         "# Events sent to Analysisd\n"
-        "evt_count='%u'\n"
+        "evt_count='%lu'\n"
         "\n"
         "# Control messages received\n"
-        "ctrl_msg_count='%u'\n"
+        "ctrl_msg_count='%lu'\n"
         "\n"
         "# Discarded messages\n"
         "discarded_count='%u'\n"
         "\n"
         "# Messages queued\n"
-        "queued_msgs='%u'\n"
+        "queued_msgs='%lu'\n"
         "\n"
         "# Total number of bytes sent\n"
         "sent_bytes='%lu'\n"
@@ -104,8 +104,8 @@ int rem_write_state() {
         "# Messages dequeued after the agent closes the connection\n"
         "dequeued_after_close='%u'\n",
         __local_name, refresh_time, rem_get_qsize(), rem_get_tsize(), state_cpy.tcp_sessions,
-        state_cpy.evt_count, state_cpy.ctrl_msg_count, state_cpy.discarded_count, state_cpy.queued_msgs,
-        state_cpy.sent_bytes, state_cpy.recv_bytes, state_cpy.dequeued_after_close);
+        state_cpy.recv_breakdown.evt_count, state_cpy.recv_breakdown.ctrl_count, state_cpy.recv_breakdown.discarded_count,
+        state_cpy.sent_breakdown.queued_count, state_cpy.sent_bytes, state_cpy.recv_bytes, state_cpy.recv_breakdown.dequeued_count);
 
     fclose(fp);
 
@@ -132,21 +132,69 @@ void rem_dec_tcp() {
     w_mutex_unlock(&state_mutex);
 }
 
-void rem_inc_evt() {
+void rem_add_recv(unsigned long bytes) {
     w_mutex_lock(&state_mutex);
-    remoted_state.evt_count++;
+    remoted_state.recv_bytes += bytes;
     w_mutex_unlock(&state_mutex);
 }
 
-void rem_inc_ctrl_msg() {
+void rem_inc_recv_evt() {
     w_mutex_lock(&state_mutex);
-    remoted_state.ctrl_msg_count++;
+    remoted_state.recv_breakdown.evt_count++;
     w_mutex_unlock(&state_mutex);
 }
 
-void rem_inc_msg_queued() {
+void rem_inc_recv_ctrl() {
     w_mutex_lock(&state_mutex);
-    remoted_state.queued_msgs++;
+    remoted_state.recv_breakdown.ctrl_count++;
+    w_mutex_unlock(&state_mutex);
+}
+
+void rem_inc_recv_ping() {
+    w_mutex_lock(&state_mutex);
+    remoted_state.recv_breakdown.ping_count++;
+    w_mutex_unlock(&state_mutex);
+}
+
+void rem_inc_recv_unknown() {
+    w_mutex_lock(&state_mutex);
+    remoted_state.recv_breakdown.unknown_count++;
+    w_mutex_unlock(&state_mutex);
+}
+
+void rem_inc_recv_dequeued() {
+    w_mutex_lock(&state_mutex);
+    remoted_state.recv_breakdown.dequeued_count++;
+    w_mutex_unlock(&state_mutex);
+}
+
+void rem_inc_recv_discarded() {
+    w_mutex_lock(&state_mutex);
+    remoted_state.recv_breakdown.discarded_count++;
+    w_mutex_unlock(&state_mutex);
+}
+
+void rem_inc_recv_ctrl_keepalive() {
+    w_mutex_lock(&state_mutex);
+    remoted_state.recv_breakdown.ctrl_breakdown.keepalive_count++;
+    w_mutex_unlock(&state_mutex);
+}
+
+void rem_inc_recv_ctrl_startup() {
+    w_mutex_lock(&state_mutex);
+    remoted_state.recv_breakdown.ctrl_breakdown.startup_count++;
+    w_mutex_unlock(&state_mutex);
+}
+
+void rem_inc_recv_ctrl_shutdown() {
+    w_mutex_lock(&state_mutex);
+    remoted_state.recv_breakdown.ctrl_breakdown.shutdown_count++;
+    w_mutex_unlock(&state_mutex);
+}
+
+void rem_inc_recv_ctrl_request() {
+    w_mutex_lock(&state_mutex);
+    remoted_state.recv_breakdown.ctrl_breakdown.request_count++;
     w_mutex_unlock(&state_mutex);
 }
 
@@ -156,20 +204,56 @@ void rem_add_send(unsigned long bytes) {
     w_mutex_unlock(&state_mutex);
 }
 
-void rem_inc_discarded() {
+void rem_inc_send_queued() {
     w_mutex_lock(&state_mutex);
-    remoted_state.discarded_count++;
+    remoted_state.sent_breakdown.queued_count++;
     w_mutex_unlock(&state_mutex);
 }
 
-void rem_add_recv(unsigned long bytes) {
+void rem_inc_send_ack() {
     w_mutex_lock(&state_mutex);
-    remoted_state.recv_bytes += bytes;
+    remoted_state.sent_breakdown.ack_count++;
     w_mutex_unlock(&state_mutex);
 }
 
-void rem_inc_dequeued() {
+void rem_inc_send_shared() {
     w_mutex_lock(&state_mutex);
-    remoted_state.dequeued_after_close++;
+    remoted_state.sent_breakdown.shared_count++;
+    w_mutex_unlock(&state_mutex);
+}
+
+void rem_inc_send_ar() {
+    w_mutex_lock(&state_mutex);
+    remoted_state.sent_breakdown.ar_count++;
+    w_mutex_unlock(&state_mutex);
+}
+
+void rem_inc_send_cfga() {
+    w_mutex_lock(&state_mutex);
+    remoted_state.sent_breakdown.cfga_count++;
+    w_mutex_unlock(&state_mutex);
+}
+
+void rem_inc_send_request() {
+    w_mutex_lock(&state_mutex);
+    remoted_state.sent_breakdown.request_count++;
+    w_mutex_unlock(&state_mutex);
+}
+
+void rem_inc_send_discarded() {
+    w_mutex_lock(&state_mutex);
+    remoted_state.sent_breakdown.discarded_count++;
+    w_mutex_unlock(&state_mutex);
+}
+
+void rem_inc_keys_reload() {
+    w_mutex_lock(&state_mutex);
+    remoted_state.keys_reload_count++;
+    w_mutex_unlock(&state_mutex);
+}
+
+void rem_inc_update_shared_files() {
+    w_mutex_lock(&state_mutex);
+    remoted_state.update_shared_files_count++;
     w_mutex_unlock(&state_mutex);
 }
