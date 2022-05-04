@@ -25,7 +25,8 @@ def test_wazuh_db_query_task__init__():
 @patch('wazuh.core.wazuh_socket.WazuhSocket.receive', return_value=b'"{\'test\':\'test\'}"')
 @patch('wazuh.core.wazuh_socket.WazuhSocket.send')
 @patch('wazuh.core.wazuh_socket.WazuhSocket.close')
-def test_send_to_tasks_socket(mock_close, mock_send, mock_receive, mock_connect):
+@patch('wazuh.core.manager.check_wazuh_status')
+def test_send_to_tasks_socket(mock_wazuh_status, mock_close, mock_send, mock_receive, mock_connect):
     """Check if the function send_to_tasks_socket works properly.
 
     Parameters
