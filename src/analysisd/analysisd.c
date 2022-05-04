@@ -76,13 +76,29 @@ static void DumpLogstats(void);
 // Message handler thread
 void * ad_input_main(void * args);
 
-void load_limits(void);
+/* Check for changes in the limits.conf file and load the limits structure */
+static void load_limits(void);
 
-void limits_free(void);
+/* Clean the values of limits strucutre */
+static void limits_free(void);
 
-bool exceeded_eps_limit(void);
+/* Get a credit to process an event by decrementing the value of the semaphore */
+static void get_eps_credit(void);
 
-void encrease_event_counter(void);
+/* Increments the last_second_eps counter */
+static void encrease_event_counter(void);
+
+/* Add 'credits' to the semaphore */
+static void generate_eps_credits(unsigned int credits);
+
+/* Remove all credits of the semaphore */
+static void clean_eps_credits();
+
+/* Increments the wait_counter counter. wait_counter=Thread counter waiting for a credit */
+static void inc_wait_counter(void);
+
+/* Decrements the wait_counter counter. wait_counter=Thread counter waiting for a credit*/
+static void dec_wait_counter(void);
 
 /** Global definitions **/
 int today;
@@ -114,6 +130,7 @@ typedef struct _limits_t {
     unsigned int eps_per_timeframe;
     unsigned int last_second_eps;
     unsigned int current_cell;
+    unsigned int wait_counter;
     unsigned int * circ_buf;
     bool enabled;
 } limits_t;
@@ -258,7 +275,10 @@ static pthread_mutex_t writer_threads_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* eps mutex */
 pthread_mutex_t limit_eps_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t wait_sem = PTHREAD_MUTEX_INITIALIZER;
 
+/* Credits EPS semaphore */
+sem_t credits_eps_semaphore;
 
 /* To translate between month (int) to month (char) */
 static const char *(month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -1005,6 +1025,12 @@ void OS_ReadMSG_analysisd(int m_queue)
     /* Initialize EPS limits file check */
     Config.eps_limits_file_check = getDefine_Int("analysisd", "eps_limits_file_check", 1, 600);
 
+    /* Initialize EPS semaphore credits */
+    sem_init(&credits_eps_semaphore, 0, 1);
+
+    memset(&limits, 0, sizeof(limits));
+    load_limits();
+
     /* Create message handler thread */
     w_create_thread(ad_input_main, &m_queue);
 
@@ -1079,23 +1105,31 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     mdebug1("Startup completed. Waiting for new messages..");
 
-    memset(&limits, 0, sizeof(limits));
-
     unsigned int check_limits_file_interval = Config.eps_limits_file_check;
 
     while (1) {
 
         sleep(1);
 
-        if (limits.max_eps) {
+        if (limits.enabled) {
 
             w_mutex_lock(&limit_eps_mutex);
 
             if (limits.current_cell >= limits.timeframe) {
 
                 limits.current_cell = limits.current_cell > limits.timeframe - 1 ? limits.timeframe - 1 : limits.current_cell;
+                limits.eps_per_timeframe += limits.last_second_eps;
                 /* free first element credits and remove it */
                 limits.eps_per_timeframe = limits.eps_per_timeframe > limits.circ_buf[0] ? limits.eps_per_timeframe - limits.circ_buf[0] : 0;
+
+                if (limits.circ_buf[0]) {
+                    if (limits.eps_per_timeframe + limits.circ_buf[0] <= limits.max_eps) {
+                        generate_eps_credits(limits.circ_buf[0]);
+                    } else if (limits.eps_per_timeframe < limits.max_eps) {
+                        generate_eps_credits(limits.max_eps - limits.eps_per_timeframe);
+                    }
+                }
+
                 /* move back array one cell */
                 memmove(limits.circ_buf, limits.circ_buf + 1, (limits.timeframe - 1) * sizeof(unsigned int));
             }
@@ -1106,8 +1140,10 @@ void OS_ReadMSG_analysisd(int m_queue)
             for (unsigned int i = 0; i < limits.timeframe; i++) {
                 mdebug1("cell[%02d] value: %d %s", i, limits.circ_buf[i], (limits.current_cell -1 == i ? "<" : " "));
             }
-            mdebug1("eps: %d, timeframe: %d, total events per timeframe: %d, processed events per timeframe: %d, cell: %d",
-                        limits.eps, limits.timeframe, limits.max_eps, limits.eps_per_timeframe, limits.current_cell);
+            int current_credits;
+            sem_getvalue(&credits_eps_semaphore, &current_credits);
+            mdebug1("eps: %d, timeframe: %d, total events per timeframe: %d, processed events per timeframe: %d, cell: %d, sem_value: %d",
+                        limits.eps, limits.timeframe, limits.max_eps, limits.eps_per_timeframe, limits.current_cell, current_credits);
 #endif
             limits.last_second_eps = 0;
             w_mutex_unlock(&limit_eps_mutex);
@@ -1563,7 +1599,8 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
     while(1) {
 
         /* Receive message from queue */
-        if (!exceeded_eps_limit() && (msg = queue_pop_ex(decode_queue_syscheck_input), msg)) {
+        if (msg = queue_pop_ex(decode_queue_syscheck_input), msg) {
+            get_eps_credit();
             encrease_event_counter();
 
             int res = 0;
@@ -1613,7 +1650,8 @@ void * w_decode_syscollector_thread(__attribute__((unused)) void * args){
     while(1) {
 
         /* Receive message from queue */
-        if (!exceeded_eps_limit() && (msg = queue_pop_ex(decode_queue_syscollector_input), msg)) {
+        if (msg = queue_pop_ex(decode_queue_syscollector_input), msg) {
+            get_eps_credit();
             encrease_event_counter();
 
             os_calloc(1, sizeof(Eventinfo), lf);
@@ -1658,7 +1696,8 @@ void * w_decode_rootcheck_thread(__attribute__((unused)) void * args){
     while(1) {
 
         /* Receive message from queue */
-        if (!exceeded_eps_limit() && (msg = queue_pop_ex(decode_queue_rootcheck_input), msg)) {
+        if (msg = queue_pop_ex(decode_queue_rootcheck_input), msg) {
+            get_eps_credit();
             encrease_event_counter();
 
             os_calloc(1, sizeof(Eventinfo), lf);
@@ -1702,7 +1741,8 @@ void * w_decode_sca_thread(__attribute__((unused)) void * args){
     while(1) {
 
         /* Receive message from queue */
-        if (!exceeded_eps_limit() && (msg = queue_pop_ex(decode_queue_sca_input), msg)) {
+        if (msg = queue_pop_ex(decode_queue_sca_input), msg) {
+            get_eps_credit();
             encrease_event_counter();
 
             os_calloc(1, sizeof(Eventinfo), lf);
@@ -1745,7 +1785,8 @@ void * w_decode_hostinfo_thread(__attribute__((unused)) void * args){
     while(1) {
 
         /* Receive message from queue */
-        if (!exceeded_eps_limit() && (msg = queue_pop_ex(decode_queue_hostinfo_input), msg)) {
+        if (msg = queue_pop_ex(decode_queue_hostinfo_input), msg) {
+            get_eps_credit();
             encrease_event_counter();
 
             os_calloc(1, sizeof(Eventinfo), lf);
@@ -1792,7 +1833,8 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
     while(1) {
 
         /* Receive message from queue */
-        if (!exceeded_eps_limit() && (msg = queue_pop_ex(decode_queue_event_input), msg)) {
+        if (msg = queue_pop_ex(decode_queue_event_input), msg) {
+            get_eps_credit();
             encrease_event_counter();
 
             os_calloc(1, sizeof(Eventinfo), lf);
@@ -1842,7 +1884,8 @@ void * w_decode_winevt_thread(__attribute__((unused)) void * args) {
     while(1) {
 
         /* Receive message from queue */
-        if (!exceeded_eps_limit() && (msg = queue_pop_ex(decode_queue_winevt_input), msg)) {
+        if (msg = queue_pop_ex(decode_queue_winevt_input), msg) {
+            get_eps_credit();
             encrease_event_counter();
 
             os_calloc(1, sizeof(Eventinfo), lf);
@@ -1882,7 +1925,8 @@ void * w_dispatch_dbsync_thread(__attribute__((unused)) void * args) {
     dbsync_context_t ctx = { .db_sock = -1, .ar_sock = -1 };
 
     for (;;) {
-        if (!exceeded_eps_limit() && (msg = queue_pop_ex(dispatch_dbsync_input))) {
+        if ((msg = queue_pop_ex(dispatch_dbsync_input))) {
+            get_eps_credit();
             encrease_event_counter();
 
             assert(msg != NULL);
@@ -1913,7 +1957,8 @@ void * w_dispatch_upgrade_module_thread(__attribute__((unused)) void * args) {
     Eventinfo * lf;
 
     while (true) {
-        if (!exceeded_eps_limit() && (msg = queue_pop_ex(upgrade_module_input))) {
+        if ((msg = queue_pop_ex(upgrade_module_input))) {
+            get_eps_credit();
             encrease_event_counter();
 
             assert (msg != NULL);
@@ -2478,7 +2523,7 @@ void w_init_queues(){
     upgrade_module_input = queue_init(getDefine_Int("analysisd", "upgrade_queue_size", 128, 2000000));
 }
 
-void load_limits(void) {
+static void load_limits(void) {
 
     cJSON * analysisd_limits = NULL;
     int err = load_limits_file("wazuh-analysisd", &analysisd_limits);
@@ -2503,7 +2548,7 @@ void load_limits(void) {
         }
 
         cJSON *eps;
-        if ((eps = cJSON_GetObjectItem(analysisd_limits, "eps"), eps) && cJSON_IsNumber(eps)) {
+        if ((eps = cJSON_GetObjectItem(analysisd_limits, "max_eps"), eps) && cJSON_IsNumber(eps)) {
 
             limits.eps = (eps->valueint > EPS_LIMITS_MAX_EPS ? EPS_LIMITS_MAX_EPS : \
                 (eps->valueint < EPS_LIMITS_MIN_EPS ? EPS_LIMITS_MIN_EPS : eps->valueint));
@@ -2517,7 +2562,6 @@ void load_limits(void) {
 
         if (limits.eps) {
 
-            limits.enabled = true;
             if (!old_timeframe && limits.timeframe){
                 /* first time */
                 os_calloc(limits.timeframe, sizeof(unsigned int), limits.circ_buf);
@@ -2546,13 +2590,21 @@ void load_limits(void) {
             for (unsigned int i = 0; i < limits.timeframe; i++) {
                  limits.eps_per_timeframe += limits.circ_buf[i];
             }
+            limits.eps_per_timeframe += limits.last_second_eps;
+            limits.last_second_eps = 0;
 
             limits.max_eps = limits.eps * limits.timeframe;
+
+            clean_eps_credits();
+
+            generate_eps_credits(limits.max_eps > limits.eps_per_timeframe ? limits.max_eps - limits.eps_per_timeframe : 0);
+
+            limits.enabled = true;
 
             mdebug1("limits eps: %d, timeframe %d, events per timeframe: %d", limits.eps, limits.timeframe, limits.max_eps);
         }
         else {
-            mwarn("eps limit disabled");
+            minfo("eps limit disabled");
             limits_free();
         }
 
@@ -2560,34 +2612,66 @@ void load_limits(void) {
         cJSON_Delete(analysisd_limits);
 
     } else if (err == LIMITS_FILE_NOT_FOUND && limits.enabled) {
-        mwarn("eps limit disabled");
-        limits.enabled = false;
+        minfo("eps limit disabled");
         limits_free();
     }
 }
 
-void limits_free(void) {
+static void limits_free(void) {
 
     if (limits.circ_buf) {
         os_free(limits.circ_buf);
     }
+    while(limits.wait_counter--) {
+        sem_post(&credits_eps_semaphore);
+    }
     memset(&limits, 0, sizeof(limits));
 }
 
-bool exceeded_eps_limit(void) {
-
-    if (limits.max_eps) {
-        if (limits.eps_per_timeframe >= limits.max_eps) {
-            return true;
-        }
-    }
-    return false;
+static void inc_wait_counter(void)
+{
+    pthread_mutex_lock(&wait_sem);
+    limits.wait_counter++;
+    pthread_mutex_unlock(&wait_sem);
 }
 
-void encrease_event_counter(void) {
+static void dec_wait_counter(void)
+{
+    pthread_mutex_lock(&wait_sem);
+    limits.wait_counter--;
+    pthread_mutex_unlock(&wait_sem);
+}
 
-    w_mutex_lock(&limit_eps_mutex);
-    limits.eps_per_timeframe++;
-    limits.last_second_eps++;
-    w_mutex_unlock(&limit_eps_mutex);
+static void get_eps_credit(void) {
+
+    if (limits.max_eps) {
+        inc_wait_counter();
+        sem_wait(&credits_eps_semaphore);
+        dec_wait_counter();
+    }
+}
+
+static void encrease_event_counter(void) {
+
+    if (limits.enabled) {
+        w_mutex_lock(&limit_eps_mutex);
+        limits.last_second_eps++;
+        w_mutex_unlock(&limit_eps_mutex);
+    }
+}
+
+static void generate_eps_credits(unsigned int credits) {
+
+    for(unsigned int i = 0; i<credits; i++) {
+        sem_post(&credits_eps_semaphore);
+    }
+}
+
+static void clean_eps_credits() {
+    int current_credits;
+
+    sem_getvalue(&credits_eps_semaphore, &current_credits);
+    while(current_credits--) {
+        sem_trywait(&credits_eps_semaphore);
+    }
 }
