@@ -11,8 +11,6 @@
 #include "testUtils.hpp"
 
 #include "opBuilderCondition.hpp"
-#include "opBuilderConditionReference.hpp"
-#include "opBuilderConditionValue.hpp"
 #include "opBuilderHelperFilter.hpp"
 
 using namespace base;
@@ -25,10 +23,6 @@ TEST(opBuilderCondition, BuildsAllNonRegistered)
 {
     Document doc{R"({
         "check": [
-            {"string": "value"},
-            {"int": 1},
-            {"bool": true},
-            {"reference": "$field"},
             {"helper1": "+exists"},
             {"helper2": "+not_exists"}
         ]
@@ -42,8 +36,8 @@ TEST(opBuilderCondition, BuildsAllNonRegistered)
 
 TEST(opBuilderCondition, BuildsValue)
 {
-    BuilderVariant c = bld::opBuilderConditionValue;
-    Registry::registerBuilder("condition.value", c);
+    BuilderVariant c = bld::middleBuilderCondition;
+    Registry::registerBuilder("middle.condition", c);
     Document doc{R"({
         "check": [
             {"string": "value"},
@@ -60,8 +54,6 @@ TEST(opBuilderCondition, BuildsValue)
 
 TEST(opBuilderCondition, BuildsReference)
 {
-    BuilderVariant c = bld::opBuilderConditionReference;
-    Registry::registerBuilder("condition.reference", c);
     Document doc{R"({"check": {"ref": "$ref"}})"};
     ASSERT_NO_THROW(bld::opBuilderCondition(doc.get("/check"), tr));
 }
@@ -69,7 +61,7 @@ TEST(opBuilderCondition, BuildsReference)
 TEST(opBuilderCondition, BuildsHelperExists)
 {
     BuilderVariant c = bld::opBuilderHelperExists;
-    Registry::registerBuilder("helper.exists", c);
+    Registry::registerBuilder("middle.helper.exists", c);
     Document doc{R"({"check": {"ref": "+exists"}})"};
     ASSERT_NO_THROW(bld::opBuilderCondition(doc.get("/check"), tr));
 }
@@ -77,7 +69,7 @@ TEST(opBuilderCondition, BuildsHelperExists)
 TEST(opBuilderCondition, BuildsHelperNotExists)
 {
     BuilderVariant c = bld::opBuilderHelperNotExists;
-    Registry::registerBuilder("helper.not_exists", c);
+    Registry::registerBuilder("middle.helper.not_exists", c);
     Document doc{R"({"check": {"ref": "+not_exists"}})"};
     ASSERT_NO_THROW(bld::opBuilderCondition(doc.get("/check"), tr));
 }

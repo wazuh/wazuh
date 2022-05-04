@@ -28,29 +28,34 @@ namespace builder::internals::builders
 {
 
 /**
- * @brief Create `exists` helper function that filters events that contains specified field.
+ * @brief Create `exists` helper function that filters events that contains
+ * specified field.
  *
  * The filter checks if a field exists in the JSON event `e`.
  * @param def The filter definition.
  * @return base::Lifter The lifter with the `exists` filter.
  */
-base::Lifter opBuilderHelperExists(const base::DocumentValue & def, types::TracerFn tr);
+std::function<bool(base::Event)>
+opBuilderHelperExists(const base::DocumentValue& def, types::TracerFn tr);
 
 /**
- * @brief Create `not_exists` helper function that filters events that not contains specified field.
+ * @brief Create `not_exists` helper function that filters events that not
+ * contains specified field.
  *
  * The filter checks if a field not exists in the JSON event `e`.
  * @param def The filter definition.
  * @return base::Lifter The lifter with the `not_exists` filter.
  */
-base::Lifter opBuilderHelperNotExists(const base::DocumentValue & def, types::TracerFn tr);
+std::function<bool(base::Event)>
+opBuilderHelperNotExists(const base::DocumentValue& def, types::TracerFn tr);
 
 //*************************************************
 //*           String filters                      *
 //*************************************************
 
 /**
- * @brief Compares a string of the event against another string that may or may not belong to the event `e`
+ * @brief Compares a string of the event against another string that may or may
+ * not belong to the event `e`
  *
  * @param key The key/path of the field to be compared
  * @param op The operator to be used for the comparison. Operators are:
@@ -65,35 +70,42 @@ base::Lifter opBuilderHelperNotExists(const base::DocumentValue & def, types::Tr
  * @param value The string to be compared against (optional)
  * @return true if the comparison is true
  * @return false in other case
- * @note If `refExpStr` is not provided, the comparison will be against the value of `expectedStr`
+ * @note If `refExpStr` is not provided, the comparison will be against the
+ * value of `expectedStr`
  */
-inline bool opBuilderHelperStringComparison(const std::string  key, char op, base::Event& e,
-                                                 std::optional<std::string> refValue,
-                                                 std::optional<std::string> value);
+inline bool opBuilderHelperStringComparison(const std::string key,
+                                            char op,
+                                            base::Event& e,
+                                            std::optional<std::string> refValue,
+                                            std::optional<std::string> value);
 
 /**
  * @brief Create `s_eq` helper function that filters events with a string
  * field equals to a value.
  *
  * The filter checks if a field in the JSON event is equal to a value.
- * Only pass events if the fields are equal (case sensitive) and the values are a string.
+ * Only pass events if the fields are equal (case sensitive) and the values are
+ * a string.
  * @param def The filter definition.
  * @return base::Lifter The lifter with the `s_eq` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
-base::Lifter opBuilderHelperStringEQ(const base::DocumentValue & def, types::TracerFn tr);
+std::function<bool(base::Event)> opBuilderHelperStringEQ(const base::DocumentValue& def,
+                                      types::TracerFn tr);
 
 /**
  * @brief Create `s_ne` helper function that filters events with a string
  * field not equals to a value.
  *
  * The filter checks if a field in the JSON event is not  equal to a value.
- * Only do not pass events if the fields are equal (case sensitive) and the values are a string.
+ * Only do not pass events if the fields are equal (case sensitive) and the
+ * values are a string.
  * @param def The filter definition.
  * @return base::Lifter The lifter with the `s_ne` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
-base::Lifter opBuilderHelperStringNE(const base::DocumentValue & def, types::TracerFn tr);
+std::function<bool(base::Event)> opBuilderHelperStringNE(const base::DocumentValue& def,
+                                      types::TracerFn tr);
 
 /**
  * @brief Create `s_gt` helper function that filters events with a string
@@ -106,20 +118,22 @@ base::Lifter opBuilderHelperStringNE(const base::DocumentValue & def, types::Tra
  * @return base::Lifter The lifter with the `s_gt` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
-base::Lifter opBuilderHelperStringGT(const base::DocumentValue & def, types::TracerFn tr);
+std::function<bool(base::Event)> opBuilderHelperStringGT(const base::DocumentValue& def,
+                                      types::TracerFn tr);
 
 /**
  * @brief Create `s_ge` helper function that filters events with a string
  * field less or equals than a value.
  *
- * The filter checks if the JSON event field <field> is greater or equals than a <value>
- * or another field <$ref>. Only pass the filter if the event has both fields
- * of type string and passes the condition.
+ * The filter checks if the JSON event field <field> is greater or equals than a
+ * <value> or another field <$ref>. Only pass the filter if the event has both
+ * fields of type string and passes the condition.
  * @param def The filter definition.
  * @return base::Lifter The lifter with the `s_ge` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
-base::Lifter opBuilderHelperStringGE(const base::DocumentValue & def, types::TracerFn tr);
+std::function<bool(base::Event)> opBuilderHelperStringGE(const base::DocumentValue& def,
+                                      types::TracerFn tr);
 
 /**
  * @brief Create `s_lt` helper function that filters events with a string
@@ -132,28 +146,30 @@ base::Lifter opBuilderHelperStringGE(const base::DocumentValue & def, types::Tra
  * @return base::Lifter The lifter with the `s_lt` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
-base::Lifter opBuilderHelperStringLT(const base::DocumentValue & def, types::TracerFn tr);
+std::function<bool(base::Event)> opBuilderHelperStringLT(const base::DocumentValue& def,
+                                      types::TracerFn tr);
 
 /**
  * @brief Create `s_le` helper function that filters events with a string
  * field less or equals than a value.
  *
- * The filter checks if the JSON event field <field> is less or equals than a <value>
- * or another field <$ref>. Only pass the filter if the event has both fields
- * of type string and passes the condition.
+ * The filter checks if the JSON event field <field> is less or equals than a
+ * <value> or another field <$ref>. Only pass the filter if the event has both
+ * fields of type string and passes the condition.
  * @param def The filter definition.
  * @return base::Lifter The lifter with the `s_le` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
-base::Lifter opBuilderHelperStringLE(const base::DocumentValue & def, types::TracerFn tr);
+std::function<bool(base::Event)> opBuilderHelperStringLE(const base::DocumentValue& def,
+                                      types::TracerFn tr);
 
 //*************************************************
 //*              Int filters                      *
 //*************************************************
 
 /**
- * @brief Compares a integer of the event against another integer that may or may not
- * belong to the event `e`
+ * @brief Compares a integer of the event against another integer that may or
+ * may not belong to the event `e`
  *
  * @param field The key/path of the field to be compared
  * @param op The operator to be used for the comparison. Operators are:
@@ -168,11 +184,12 @@ base::Lifter opBuilderHelperStringLE(const base::DocumentValue & def, types::Tra
  * @param value The integer to be compared against (optional)
  * @return true if the comparison is true
  * @return false in other case
- * @note If `refValue` is not provided, the comparison will be against the value of
- * `value`
+ * @note If `refValue` is not provided, the comparison will be against the value
+ * of `value`
  */
-inline bool opBuilderHelperIntComparison(const std::string field, char op,
-                                         base::Event & e,
+inline bool opBuilderHelperIntComparison(const std::string field,
+                                         char op,
+                                         base::Event& e,
                                          std::optional<std::string> refValue,
                                          std::optional<int> value);
 
@@ -186,7 +203,8 @@ inline bool opBuilderHelperIntComparison(const std::string field, char op,
  * @return base::Lifter The lifter with the `i_eq` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
-base::Lifter opBuilderHelperIntEqual(const base::DocumentValue & def, types::TracerFn tr);
+std::function<bool(base::Event)> opBuilderHelperIntEqual(const base::DocumentValue& def,
+                                      types::TracerFn tr);
 
 /**
  * @brief Builds helper integer not equal operation.
@@ -198,7 +216,8 @@ base::Lifter opBuilderHelperIntEqual(const base::DocumentValue & def, types::Tra
  * @return base::Lifter The lifter with the `i_ne` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
-base::Lifter opBuilderHelperIntNotEqual(const base::DocumentValue & def, types::TracerFn tr);
+std::function<bool(base::Event)> opBuilderHelperIntNotEqual(const base::DocumentValue& def,
+                                         types::TracerFn tr);
 
 /**
  * @brief Builds helper integer less than operation.
@@ -210,19 +229,23 @@ base::Lifter opBuilderHelperIntNotEqual(const base::DocumentValue & def, types::
  * @return base::Lifter The lifter with the `i_lt` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
-base::Lifter opBuilderHelperIntLessThan(const base::DocumentValue & def, types::TracerFn tr);
+std::function<bool(base::Event)> opBuilderHelperIntLessThan(const base::DocumentValue& def,
+                                         types::TracerFn tr);
 
 /**
  * @brief Builds helper integer less than equal operation.
- * Checks that the field is less than equal to an integer or another numeric field
+ * Checks that the field is less than equal to an integer or another numeric
+ * field
  *
  * The filter checks if a field in the JSON event is less than equal a value.
- * Only pass events if the fields are less than equal and the values are a integer.
+ * Only pass events if the fields are less than equal and the values are a
+ * integer.
  * @param def Definition of the operation to be built
  * @return base::Lifter The lifter with the `i_le` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
-base::Lifter opBuilderHelperIntLessThanEqual(const base::DocumentValue & def, types::TracerFn tr);
+std::function<bool(base::Event)> opBuilderHelperIntLessThanEqual(const base::DocumentValue& def,
+                                              types::TracerFn tr);
 
 /**
  * @brief Builds helper integer greater than operation.
@@ -235,19 +258,24 @@ base::Lifter opBuilderHelperIntLessThanEqual(const base::DocumentValue & def, ty
  * @throw std::runtime_error if the parameter is not a integer.
  */
 
-base::Lifter opBuilderHelperIntGreaterThan(const base::DocumentValue & def, types::TracerFn tr);
+std::function<bool(base::Event)> opBuilderHelperIntGreaterThan(const base::DocumentValue& def,
+                                            types::TracerFn tr);
 
 /**
  * @brief Builds helper integer greater than equal operation.
- * Checks that the field is greater than equal to an integer or another numeric field
+ * Checks that the field is greater than equal to an integer or another numeric
+ * field
  *
  * The filter checks if a field in the JSON event is greater than equal a value.
- * Only pass events if the fields are greater than equal and the values are a integer.
+ * Only pass events if the fields are greater than equal and the values are a
+ * integer.
  * @param def Definition of the operation to be built
  * @return base::Lifter The lifter with the `i_ge` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
-base::Lifter opBuilderHelperIntGreaterThanEqual(const base::DocumentValue & def, types::TracerFn tr);
+std::function<bool(base::Event)>
+opBuilderHelperIntGreaterThanEqual(const base::DocumentValue& def,
+                                   types::TracerFn tr);
 
 /**
  * @brief Builds helper regex match operation.
@@ -256,7 +284,8 @@ base::Lifter opBuilderHelperIntGreaterThanEqual(const base::DocumentValue & def,
  * @param def Definition of the operation to be built
  * @return base::Lifter The lifter with the `regex` filter.
  */
-base::Lifter opBuilderHelperRegexMatch(const base::DocumentValue & def, types::TracerFn tr);
+std::function<bool(base::Event)> opBuilderHelperRegexMatch(const base::DocumentValue& def,
+                                        types::TracerFn tr);
 
 /**
  * @brief Builds helper regex not match operation.
@@ -265,7 +294,8 @@ base::Lifter opBuilderHelperRegexMatch(const base::DocumentValue & def, types::T
  * @param def Definition of the operation to be built
  * @return base::Lifter The lifter with the `regex_not` filter.
  */
-base::Lifter opBuilderHelperRegexNotMatch(const base::DocumentValue & def, types::TracerFn tr);
+std::function<bool(base::Event)> opBuilderHelperRegexNotMatch(const base::DocumentValue& def,
+                                           types::TracerFn tr);
 
 /**
  * @brief Create `ip_cidr` helper function that filters events if the field
@@ -275,7 +305,8 @@ base::Lifter opBuilderHelperRegexNotMatch(const base::DocumentValue & def, types
  * @return base::Lifter The lifter with the `ip_cidr` filter.
  * @throw  std::runtime_error if the parameter is not a cidr.
  */
-base::Lifter opBuilderHelperIPCIDR(const base::DocumentValue & def, types::TracerFn tr);
+std::function<bool(base::Event)> opBuilderHelperIPCIDR(const base::DocumentValue& def,
+                                    types::TracerFn tr);
 
 } // namespace builder::internals::builders
 

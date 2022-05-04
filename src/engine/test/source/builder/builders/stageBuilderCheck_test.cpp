@@ -7,13 +7,11 @@
  * Foundation.
  */
 
-#include <gtest/gtest.h>
 #include "testUtils.hpp"
+#include <gtest/gtest.h>
 
 #include "combinatorBuilderChain.hpp"
 #include "opBuilderCondition.hpp"
-#include "opBuilderConditionReference.hpp"
-#include "opBuilderConditionValue.hpp"
 #include "opBuilderHelperFilter.hpp"
 #include "stageBuilderCheck.hpp"
 
@@ -21,11 +19,12 @@ using namespace base;
 namespace bld = builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg){};
+static FakeTrFn tr = [](std::string msg) {
+};
 
 TEST(StageBuilderCheck, BuildsAllNonRegistered)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check": [
             {"field1": "value"},
             {"field2": 2},
@@ -36,25 +35,24 @@ TEST(StageBuilderCheck, BuildsAllNonRegistered)
         ]
     })"};
 
-    ASSERT_THROW(builders::stageBuilderCheck(doc.get("/check"), tr), std::_Nested_exception<std::runtime_error>);
+    ASSERT_THROW(builders::stageBuilderCheck(doc.get("/check"), tr),
+                 std::_Nested_exception<std::runtime_error>);
 }
 
 TEST(StageBuilderCheck, Builds)
 {
-    BuilderVariant c = bld::opBuilderConditionValue;
-    Registry::registerBuilder("condition.value", c);
-    c = bld::opBuilderConditionReference;
-    Registry::registerBuilder("condition.reference", c);
-    c = bld::opBuilderHelperExists;
-    Registry::registerBuilder("helper.exists", c);
-    c = bld::opBuilderHelperNotExists;
-    Registry::registerBuilder("helper.not_exists", c);
-    c = bld::opBuilderCondition;
+    BuilderVariant c = bld::opBuilderCondition;
     Registry::registerBuilder("condition", c);
+    c = bld::opBuilderHelperExists;
+    Registry::registerBuilder("middle.helper.exists", c);
+    c = bld::opBuilderHelperNotExists;
+    Registry::registerBuilder("middle.helper.not_exists", c);
+    c = bld::middleBuilderCondition;
+    Registry::registerBuilder("middle.condition", c);
     c = bld::combinatorBuilderChain;
     Registry::registerBuilder("combinator.chain", c);
 
-    Document doc{R"({
+    Document doc {R"({
         "check": [
             {"field1": "value"},
             {"field2": 2},
@@ -70,7 +68,7 @@ TEST(StageBuilderCheck, Builds)
 
 TEST(StageBuilderCheck, BuildsOperates)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check": [
             {"field1": "value"},
             {"field2": 2},

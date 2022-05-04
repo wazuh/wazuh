@@ -11,9 +11,9 @@
 #define _BUILDER_TYPES_H
 
 #include <functional>
+#include <memory>
 #include <variant>
 #include <vector>
-#include <memory>
 
 #include <rxcpp/rx.hpp>
 
@@ -27,12 +27,18 @@
  */
 namespace builder::internals::types
 {
+
 using ConnectableT = Connectable<base::Observable>;
-using AssetBuilder = std::function<ConnectableT(const base::Document &)>;
+using AssetBuilder = std::function<ConnectableT(const base::Document&)>;
 using TracerFn = std::function<void(std::string)>;
-using OpBuilder = std::function<base::Lifter(const base::DocumentValue &, TracerFn)>;
-using CombinatorBuilder = std::function<base::Lifter(std::vector<base::Lifter>)>;
-using BuilderVariant = std::variant<AssetBuilder, OpBuilder, CombinatorBuilder>;
+using OpBuilder =
+    std::function<base::Lifter(const base::DocumentValue&, TracerFn)>;
+using CombinatorBuilder =
+    std::function<base::Lifter(std::vector<base::Lifter>)>;
+using MiddleBuilderCondition =
+    std::function<std::function<bool(Event)>(const DocumentValue&, TracerFn)>;
+using BuilderVariant = std::
+    variant<AssetBuilder, OpBuilder, CombinatorBuilder, MiddleBuilderCondition>;
 
 } // namespace builder::internals::types
 

@@ -7,15 +7,13 @@
  * Foundation.
  */
 
-#include <gtest/gtest.h>
 #include "testUtils.hpp"
+#include <gtest/gtest.h>
 
 #include "assetBuilderFilter.hpp"
 
 #include "combinatorBuilderChain.hpp"
 #include "opBuilderCondition.hpp"
-#include "opBuilderConditionReference.hpp"
-#include "opBuilderConditionValue.hpp"
 #include "opBuilderHelperFilter.hpp"
 #include "stageBuilderCheck.hpp"
 
@@ -27,7 +25,7 @@ static FakeTrFn tr = [](std::string msg){};
 
 TEST(AssetBuilderFilter, BuildsAllNonRegistered)
 {
-    Document doc{R"({
+    Document doc {R"({
         "name": "test",
         "after": [ "decoder" ],
         "allow": [
@@ -40,14 +38,12 @@ TEST(AssetBuilderFilter, BuildsAllNonRegistered)
 
 TEST(AssetBuilderFilter, Builds)
 {
-    BuilderVariant c = bld::opBuilderConditionValue;
-    Registry::registerBuilder("condition.value", c);
-    c = bld::opBuilderConditionReference;
-    Registry::registerBuilder("condition.reference", c);
-    c = bld::opBuilderHelperExists;
+    BuilderVariant c = bld::opBuilderHelperExists;
     Registry::registerBuilder("helper.exists", c);
     c = bld::opBuilderHelperNotExists;
     Registry::registerBuilder("helper.not_exists", c);
+    c = bld::middleBuilderCondition;
+    Registry::registerBuilder("middle.condition", c);
     c = bld::opBuilderCondition;
     Registry::registerBuilder("condition", c);
     c = bld::stageBuilderCheck;
@@ -55,7 +51,7 @@ TEST(AssetBuilderFilter, Builds)
     c = bld::combinatorBuilderChain;
     Registry::registerBuilder("combinator.chain", c);
 
-    Document doc{R"({
+    Document doc {R"({
         "name": "test",
         "after": [ "decoder" ],
         "allow": [
@@ -68,7 +64,7 @@ TEST(AssetBuilderFilter, Builds)
 
 TEST(AssetBuilderFilter, BuildsOperates)
 {
-    Document doc{R"({
+    Document doc {R"({
         "name": "test",
         "after": [ "decoder" ],
         "allow": [

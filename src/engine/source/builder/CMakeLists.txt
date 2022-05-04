@@ -26,8 +26,6 @@ add_library(builders OBJECT
     builders/combinatorBuilderBroadcast.cpp
     builders/combinatorBuilderChain.cpp
     builders/opBuilderCondition.cpp
-    builders/opBuilderConditionReference.cpp
-    builders/opBuilderConditionValue.cpp
     builders/opBuilderFileOutput.cpp
     builders/opBuilderHelperFilter.cpp
     builders/opBuilderHelperMap.cpp

@@ -111,7 +111,10 @@ TEST(opBuilderHelperIPCIDR, chack_ip_range)
             s.on_completed();
         });
 
-    Lifter lift = bld::opBuilderHelperIPCIDR(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(bld::opBuilderHelperIPCIDR(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });

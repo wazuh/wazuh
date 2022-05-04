@@ -30,7 +30,7 @@ include_directories(
 )
 
 #TODO do this better
-link_libraries(gtest engine_test_main hlp kvdb builders)
+link_libraries(gtest engine_test_main hlp kvdb builders logicExpression)
 
 ####################################################################################################
 # Builder targets
@@ -108,6 +108,8 @@ gtest_discover_tests(stageBuilderNormalizeTest)
 
 add_executable(stageBuilderOutputsTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/stageBuilderOutputs_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/stageBuilderExpressionCheck_test.cpp
+  ${ENGINE_SOURCE_DIR}/builder/builders/stageBuilderExpressionCheck.cpp
 )
 gtest_discover_tests(stageBuilderOutputsTest)
 

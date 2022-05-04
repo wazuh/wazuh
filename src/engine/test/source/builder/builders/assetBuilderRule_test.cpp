@@ -14,8 +14,6 @@
 
 #include "combinatorBuilderChain.hpp"
 #include "opBuilderCondition.hpp"
-#include "opBuilderConditionReference.hpp"
-#include "opBuilderConditionValue.hpp"
 #include "opBuilderHelperFilter.hpp"
 #include "stageBuilderCheck.hpp"
 
@@ -64,14 +62,12 @@ TEST(AssetBuilderRule, Builds)
     c = bld::stageBuilderNormalize;
     Registry::registerBuilder("normalize", c);
 
-    c = bld::opBuilderConditionValue;
-    Registry::registerBuilder("condition.value", c);
-    c = bld::opBuilderConditionReference;
-    Registry::registerBuilder("condition.reference", c);
     c = bld::opBuilderHelperExists;
     Registry::registerBuilder("helper.exists", c);
     c = bld::opBuilderHelperNotExists;
     Registry::registerBuilder("helper.not_exists", c);
+    c = bld::middleBuilderCondition;
+    Registry::registerBuilder("middle.condition", c);
     c = bld::opBuilderCondition;
     Registry::registerBuilder("condition", c);
     c = bld::stageBuilderCheck;
