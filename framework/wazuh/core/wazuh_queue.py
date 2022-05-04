@@ -7,7 +7,7 @@ import socket
 
 from wazuh.core.common import origin_module
 from wazuh.core.exception import WazuhInternalError, WazuhError
-from wazuh.core.wazuh_socket import create_wazuh_socket_message, check_wazuh_daemon_health
+from wazuh.core.wazuh_socket import create_wazuh_socket_message, check_wazuh_daemons_health
 
 
 def create_wazuh_queue_socket_msg(flag: str, str_agent_id: str, msg: str, is_restart: bool = False):
@@ -55,7 +55,7 @@ class WazuhQueue:
     OS_MAXSTR = 6144  # OS_SIZE_6144
     MAX_MSG_SIZE = OS_MAXSTR + 256
 
-    @check_wazuh_daemon_health
+    @check_wazuh_daemons_health
     def __init__(self, path):
         self.path = path
         self._connect()

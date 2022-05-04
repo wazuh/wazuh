@@ -30,7 +30,19 @@ REQUIRED_DAEMONS_FOR_SOCKET = MappingProxyType({
 })
 
 
-def check_wazuh_daemon_health(socket_init):
+def check_wazuh_daemons_health(socket_init):
+    """Check if the required Wazuh daemons for the given socket are running.
+
+    Parameters
+    ----------
+    socket_init: callable
+        Function that will initialize the socket connection with a path to it.
+
+    Raises
+    ------
+    WazuhError(1017)
+        If one or more required daemons are not running.
+    """
     @wraps(socket_init)
     def wrapper(*args, **kwargs):
         from wazuh.core.manager import check_wazuh_status
@@ -47,7 +59,7 @@ class WazuhSocket:
 
     MAX_SIZE = 65536
 
-    @check_wazuh_daemon_health
+    @check_wazuh_daemons_health
     def __init__(self, path, max_size=0):
         self.path = path
         self.MAX_SIZE = max_size or self.MAX_SIZE
@@ -88,7 +100,7 @@ class WazuhSocketJSON(WazuhSocket):
 
     MAX_SIZE = 65536
 
-    @check_wazuh_daemon_health
+    @check_wazuh_daemons_health
     def __init__(self, path, max_size=0):
         WazuhSocket.__init__(self, path, max_size=max_size)
 

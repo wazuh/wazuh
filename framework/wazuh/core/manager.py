@@ -185,13 +185,22 @@ def get_api_conf():
 
 
 def check_wazuh_status(required_daemons: set):
-    """
-    There are some services that are required for wazuh to correctly process API requests. If any of those services
+    """There are some services that are required for wazuh to correctly process API requests. If any of those services
     is not running, the API must raise an exception indicating that:
         * It's not ready yet to process requests if services are restarting
         * There's an error in any of those services that must be addressed before using the API if any service is
           in failed status.
         * Wazuh must be started before using the API is the services are stopped.
+
+    Parameters
+    ----------
+    required_daemons: set of WazuhDaemons
+        Set of instances of the class `WazuhDaemons`
+
+    Raises
+    ------
+    WazuhError(1017)
+        If any of the `required_daemons` is not running.
     """
     status = get_manager_status()
 
