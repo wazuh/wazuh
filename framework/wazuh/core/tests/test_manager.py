@@ -4,8 +4,8 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
-from unittest.mock import patch
 from datetime import timezone, datetime
+from unittest.mock import patch
 
 import pytest
 
@@ -13,6 +13,7 @@ with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         from wazuh.core.manager import *
         from wazuh.core.exception import WazuhException
+        from wazuh.core.common import WazuhDaemons
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'manager')
 ossec_log_path = '{0}/ossec_log.log'.format(test_data_path)
@@ -215,36 +216,25 @@ def test_get_api_config():
     result = get_api_conf()
     assert result == {'experimental_features': True}
 
-# TODO Adapt these tests
-# @pytest.mark.parametrize('api_request', [
-#     agent.get_agents_summary_status,
-#     wazuh.core.manager.status
-# ])
-# @patch('wazuh.core.manager.get_manager_status', return_value={process: 'running' for process in get_manager_status()})
-# def test_DistributedAPI_check_wazuh_status(status_mock, api_request):
-#     """Test `check_wazuh_status` method from class DistributedAPI."""
-#     dapi = DistributedAPI(f=api_request, logger=logger)
-#     data = dapi.check_wazuh_status()
-#     assert data is None
-#
-#
-# @pytest.mark.parametrize('status_value', [
-#     'failed',
-#     'restarting',
-#     'stopped'
-# ])
-# @patch('wazuh.core.cluster.cluster.get_node', return_value={'node': 'random_node'})
-# def test_DistributedAPI_check_wazuh_status_exception(node_info_mock, status_value):
-#     """Test exceptions from `check_wazuh_status` method from class DistributedAPI."""
-#     statuses = {process: status_value for process in sorted(get_manager_status())}
-#     with patch('wazuh.core.manager.get_manager_status',
-#                return_value=statuses):
-#         dapi = DistributedAPI(f=agent.get_agents_summary_status, logger=logger)
-#         try:
-#             dapi.check_wazuh_status()
-#         except WazuhError as e:
-#             assert e.code == 1017
-#             assert statuses
-#             assert e._extra_message['node_name'] == 'random_node'
-#             extra_message = ', '.join([f'{key}->{statuses[key]}' for key in dapi.basic_services if key in statuses])
-#             assert e._extra_message['not_ready_daemons'] == extra_message
+
+@pytest.mark.parametrize('required_daemons', [
+    {WazuhDaemons.AUTH, WazuhDaemons.DB},
+    {WazuhDaemons.SYSCHECK}
+])
+@patch('wazuh.core.manager.get_manager_status', return_value={process: 'running' for process in get_manager_status()})
+def test_check_wazuh_status(status_mock, required_daemons):
+    """Test `check_wazuh_status` function."""
+    check_wazuh_status(required_daemons)
+
+
+@patch('wazuh.core.cluster.cluster.get_node', return_value={'node': 'random_node'})
+def test_DistributedAPI_check_wazuh_status_exception(node_info_mock):
+    """Test exceptions from `check_wazuh_status` function."""
+    required_daemons = {WazuhDaemons.DB, WazuhDaemons.AUTH}
+    try:
+        check_wazuh_status(required_daemons)
+    except WazuhError as e:
+        assert e.code == 1017
+        assert e._extra_message['node_name'] == 'random_node'
+        extra_message = ', '.join([f'{daemon.value}->{"stopped"}' for daemon in required_daemons])
+        assert e._extra_message['not_ready_daemons'] == extra_message

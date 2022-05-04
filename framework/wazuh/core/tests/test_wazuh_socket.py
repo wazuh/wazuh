@@ -6,9 +6,10 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from wazuh.core.exception import WazuhException
+from wazuh.core.common import WDB_SOCKET
+from wazuh.core.exception import WazuhException, WazuhError
 from wazuh.core.wazuh_socket import WazuhSocket, WazuhSocketJSON, SOCKET_COMMUNICATION_PROTOCOL_VERSION, \
-    create_wazuh_socket_message
+    create_wazuh_socket_message, REQUIRED_DAEMONS_FOR_SOCKET
 
 
 @patch('wazuh.core.wazuh_socket.WazuhSocket._connect')
@@ -180,3 +181,19 @@ def test_create_wazuh_socket_message(origin, command, parameters):
     assert response_message.get('origin') == origin
     assert response_message.get('command') == command
     assert response_message.get('parameters') == parameters
+
+
+@pytest.mark.parametrize("socket_path, expected_args", [
+    (WDB_SOCKET, REQUIRED_DAEMONS_FOR_SOCKET[WDB_SOCKET]),
+    ("not_a_Wazuh_socket", set())
+])
+@patch("socket.socket")
+def test_check_wazuh_daemons_health(socket_mock, socket_path, expected_args):
+    """Test decorator to check Wazuh daemons health before trying to connect to related socket."""
+    with patch("wazuh.core.manager.check_wazuh_status") as wazuh_status_mock:
+        WazuhSocket(socket_path)
+        wazuh_status_mock.assert_called_once_with(expected_args)
+
+    # Expect the 1017 exception if the daemon is not running
+    with pytest.raises(WazuhError, match=".* 1017 .*"):
+        WazuhSocket(WDB_SOCKET)
