@@ -256,14 +256,20 @@ USER_DECODERS_PATH = os.path.join(WAZUH_PATH, 'etc', 'decoders')
 
 # ===================================================== Wazuh daemons ==================================================
 class WazuhDaemons(Enum):
+    AGENTLESS = "wazuh-agentlessd"
     ANALYSIS = "wazuh-analysisd"
     API = "wazuh-apid"
     AUTH = "wazuh-authd"
     CLUSTER = "wazuh-clusterd"
     DB = "wazuh-db"
+    DBD = "wazuh-dbd"
     EXEC = "wazuh-execd"
     LOGCOLLECTOR = "wazuh-logcollector"
     MODULES = "wazuh-modulesd"
     MONITOR = "wazuh-monitord"
     REMOTE = "wazuh-remoted"
     SYSCHECK = "wazuh-syscheckd"
+    CSYSLOG = "wazuh-csyslogd"
+    INTEGRATOR = "wazuh-integratord"
+    MAIL = "wazuh-maild"
+    REPORT = "wazuh-reportd"

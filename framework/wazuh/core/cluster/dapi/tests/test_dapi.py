@@ -7,7 +7,6 @@ import logging
 import os
 import sys
 from asyncio import TimeoutError
-from typing import Iterator
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -29,7 +28,6 @@ with patch('wazuh.common.wazuh_uid'):
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh.core.cluster.dapi.dapi import DistributedAPI, APIRequestQueue, SendSyncRequestQueue
-        from wazuh.core.manager import get_manager_status
         from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
         from wazuh import agent, cluster, ciscat, manager, WazuhError, WazuhInternalError
         from wazuh.core.exception import WazuhClusterError
@@ -182,9 +180,6 @@ def test_DistributedAPI_distribute_function_exception():
             self.affected_items = []
             self.failed_items = {Exception("test_get_error_info"): "abc"}
 
-    dapi_kwargs = {'f': manager.restart, 'logger': logger}
-    raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1017)
-
     logger_ = logging.getLogger("wazuh")
     with patch("wazuh.core.cluster.dapi.dapi.get_node_wrapper", side_effect=WazuhError(4000)):
         dapi = DistributedAPI(f=agent.get_agents_summary_status, logger=logger_)
@@ -238,14 +233,12 @@ def test_DistributedAPI_local_request_errors():
 
     # Test execute_local_request when the dapi function (dapi.f) raises a JSONDecodeError
     with patch('wazuh.cluster.get_nodes_info', side_effect=json.decoder.JSONDecodeError('test', 'test', 1)):
-        with patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.check_wazuh_status'):
-            dapi_kwargs = {'f': cluster.get_nodes_info, 'logger': logger, 'is_async': True}
-            raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=3036)
+        dapi_kwargs = {'f': cluster.get_nodes_info, 'logger': logger, 'is_async': True}
+        raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=3036)
 
 
-@patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.check_wazuh_status', side_effect=None)
 @patch('asyncio.wait_for', new=AsyncMock(return_value='Testing'))
-def test_DistributedAPI_local_request(mock_local_request):
+def test_DistributedAPI_local_request():
     """Test `local_request` method from class DistributedAPI and check the behaviour when an error raise."""
     dapi_kwargs = {'f': manager.status, 'logger': logger}
     raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
@@ -459,40 +452,6 @@ def test_DistributedAPI_get_solver_node(mock_cluster_status, mock_agents_overvie
             dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
                            'f_kwargs': {'node_list': '*'}, 'broadcasting': True, 'nodes': ['master']}
             raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
-
-
-@pytest.mark.parametrize('api_request', [
-    agent.get_agents_summary_status,
-    wazuh.core.manager.status
-])
-@patch('wazuh.core.manager.get_manager_status', return_value={process: 'running' for process in get_manager_status()})
-def test_DistributedAPI_check_wazuh_status(status_mock, api_request):
-    """Test `check_wazuh_status` method from class DistributedAPI."""
-    dapi = DistributedAPI(f=api_request, logger=logger)
-    data = dapi.check_wazuh_status()
-    assert data is None
-
-
-@pytest.mark.parametrize('status_value', [
-    'failed',
-    'restarting',
-    'stopped'
-])
-@patch('wazuh.core.cluster.cluster.get_node', return_value={'node': 'random_node'})
-def test_DistributedAPI_check_wazuh_status_exception(node_info_mock, status_value):
-    """Test exceptions from `check_wazuh_status` method from class DistributedAPI."""
-    statuses = {process: status_value for process in sorted(get_manager_status())}
-    with patch('wazuh.core.manager.get_manager_status',
-               return_value=statuses):
-        dapi = DistributedAPI(f=agent.get_agents_summary_status, logger=logger)
-        try:
-            dapi.check_wazuh_status()
-        except WazuhError as e:
-            assert e.code == 1017
-            assert statuses
-            assert e._extra_message['node_name'] == 'random_node'
-            extra_message = ', '.join([f'{key}->{statuses[key]}' for key in dapi.basic_services if key in statuses])
-            assert e._extra_message['not_ready_daemons'] == extra_message
 
 
 @patch("asyncio.Queue")
