@@ -103,16 +103,15 @@ namespace Utils
             {
                 if (m_running)
                 {
-                    std::promise<void> promise;
-                    auto fut { promise.get_future() };
+                    auto promise { PromiseFactory<PROMISE_TYPE>::getPromiseObject() };
                     m_queue.push
                     (
                         [&promise]()
                     {
-                        PromiseFactory<PROMISE_TYPE>::set_value(promise);
+                        promise->set_value();
                     }
                     );
-                    PromiseFactory<PROMISE_TYPE>::wait(promise);
+                    promise->wait();
                     cancel();
                 }
             }
