@@ -10,6 +10,7 @@
 
 #include <shared.h>
 #include "remoted.h"
+#include "state.h"
 
 static w_queue_t * queue;
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;

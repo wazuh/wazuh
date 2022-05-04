@@ -11,6 +11,7 @@
 */
 
 #include "remoted.h"
+#include "state.h"
 #include <pthread.h>
 
 remoted_state_t remoted_state;

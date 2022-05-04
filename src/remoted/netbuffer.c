@@ -13,6 +13,7 @@
 #include <shared.h>
 #include <os_net/os_net.h>
 #include "remoted.h"
+#include "state.h"
 
 extern wnotify_t * notify;
 
