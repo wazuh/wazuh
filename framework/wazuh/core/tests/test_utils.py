@@ -1230,8 +1230,9 @@ def test_WazuhDBQuery_protected_filter_date(mock_socket_conn, mock_isfile, mock_
     ([{'id': i} for i in range(30000)], {'items': [{'id': str(i).zfill(3)} for i in range(30000)], 'totalItems': 0})
 ])
 @patch("wazuh.core.database.isfile", return_value=True)
+@patch('wazuh.core.manager.check_wazuh_status')
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_general_run(mock_socket_conn, mock_isfile, execute_value, expected_result):
+def test_WazuhDBQuery_general_run(mock_socket_conn, mock_wazuh_status, mock_isfile, execute_value, expected_result):
     """Test utils.WazuhDBQuery.general_run function."""
     with patch('wazuh.core.utils.WazuhDBBackend.execute', return_value=execute_value):
         query = WazuhDBQueryAgents(offset=0, limit=None, sort=None, search=None, select={'id'},
@@ -1249,8 +1250,9 @@ def test_WazuhDBQuery_general_run(mock_socket_conn, mock_isfile, execute_value, 
      {'items': [{'id': str(i).zfill(3)} for i in range(15001, 30000)], 'totalItems': 14999})
 ])
 @patch("wazuh.core.database.isfile", return_value=True)
+@patch('wazuh.core.manager.check_wazuh_status')
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_oversized_run(mock_socket_conn, mock_isfile, execute_value, rbac_ids, negate,
+def test_WazuhDBQuery_oversized_run(mock_socket_conn, mock_wazuh_status, mock_isfile, execute_value, rbac_ids, negate,
                                     final_rbac_ids, expected_result):
     """Test utils.WazuhDBQuery.oversized_run function."""
     with patch('wazuh.core.utils.WazuhDBBackend.execute', side_effect=[execute_value, final_rbac_ids]):
