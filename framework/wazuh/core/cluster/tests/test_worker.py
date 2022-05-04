@@ -652,8 +652,9 @@ def test_worker_handler_sync_integrity_ok_from_master(logger_mock):
 
 
 @pytest.mark.asyncio
-@patch("wazuh.core.wdb.socket.socket")
-async def test_worker_compare_agent_groups_checksums(socket_mock):
+@patch("wazuh.core.manager.check_wazuh_status")
+@patch("wazuh.core.wazuh_socket.socket.socket")
+async def test_worker_compare_agent_groups_checksums(socket_mock, wazuh_status_mock):
     """Check all the possible cases in the checksums comparison."""
 
     class LoggerMock:
@@ -882,9 +883,10 @@ async def test_worker_handler_sync_integrity(request_permission_mock, run_in_poo
 
 
 @pytest.mark.asyncio
-@patch("wazuh.core.wdb.socket.socket")
+@patch("wazuh.core.wazuh_socket.socket.socket")
+@patch("wazuh.core.manager.check_wazuh_status")
 @patch("wazuh.core.cluster.worker.WorkerHandler.general_agent_sync_task")
-async def test_worker_handler_setup_sync_agent_info(general_agent_sync_mock, socket_mock):
+async def test_worker_handler_setup_sync_agent_info(general_agent_sync_mock, wazuh_status_mock, socket_mock):
     """Check that the agent-info task is properly configured."""
     wdb_conn = WazuhDBConnection()
     w_handler = get_worker_handler()
@@ -901,9 +903,10 @@ async def test_worker_handler_setup_sync_agent_info(general_agent_sync_mock, soc
 
 
 @pytest.mark.asyncio
-@patch("wazuh.core.wdb.socket.socket")
+@patch("wazuh.core.wazuh_socket.socket.socket")
+@patch("wazuh.core.manager.check_wazuh_status")
 @patch("wazuh.core.cluster.worker.WorkerHandler.general_agent_sync_task")
-async def test_worker_handler_setup_sync_agent_groups(general_agent_sync_mock, socket_mock):
+async def test_worker_handler_setup_sync_agent_groups(general_agent_sync_mock, wazuh_status_mock, socket_mock):
     """Check that the agent-groups task is properly configured."""
     wdb_conn = WazuhDBConnection()
     w_handler = get_worker_handler()
@@ -920,8 +923,9 @@ async def test_worker_handler_setup_sync_agent_groups(general_agent_sync_mock, s
 
 
 @pytest.mark.asyncio
-@patch("wazuh.core.wdb.socket.socket")
-async def test_worker_handler_general_agent_sync_task(socket_mock):
+@patch("wazuh.core.manager.check_wazuh_status")
+@patch("wazuh.core.wazuh_socket.socket.socket")
+async def test_worker_handler_general_agent_sync_task(socket_mock, wazuh_status_mock):
     """Check the functionality of the main loop for the tasks related
     to sending information from the workers database to the master."""
 
