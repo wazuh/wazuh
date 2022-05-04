@@ -7,8 +7,8 @@
  * Foundation.
  */
 
-#include <gtest/gtest.h>
 #include "testUtils.hpp"
+#include <gtest/gtest.h>
 
 #include <filesystem>
 #include <fstream>
@@ -19,8 +19,6 @@
 #include "combinatorBuilderBroadcast.hpp"
 #include "combinatorBuilderChain.hpp"
 #include "opBuilderCondition.hpp"
-#include "opBuilderConditionReference.hpp"
-#include "opBuilderConditionValue.hpp"
 #include "opBuilderFileOutput.hpp"
 #include "opBuilderHelperFilter.hpp"
 #include "stageBuilderCheck.hpp"
@@ -34,7 +32,7 @@ static FakeTrFn tr = [](std::string msg){};
 
 TEST(AssetBuilderOutput, BuildsAllNonRegistered)
 {
-    Document doc{R"({
+    Document doc {R"({
         "name": "test",
         "check": [
             {"field": "value"}
@@ -54,14 +52,12 @@ TEST(AssetBuilderOutput, BuildsAllNonRegistered)
 
 TEST(AssetBuilderOutput, Builds)
 {
-    BuilderVariant c = bld::opBuilderConditionValue;
-    Registry::registerBuilder("condition.value", c);
-    c = bld::opBuilderConditionReference;
-    Registry::registerBuilder("condition.reference", c);
-    c = bld::opBuilderHelperExists;
+    BuilderVariant c = bld::opBuilderHelperExists;
     Registry::registerBuilder("helper.exists", c);
     c = bld::opBuilderHelperNotExists;
     Registry::registerBuilder("helper.not_exists", c);
+    c = bld::middleBuilderCondition;
+    Registry::registerBuilder("middle.condition", c);
     c = bld::opBuilderCondition;
     Registry::registerBuilder("condition", c);
     c = bld::combinatorBuilderChain;
@@ -75,7 +71,7 @@ TEST(AssetBuilderOutput, Builds)
     c = bld::stageBuilderCheck;
     Registry::registerBuilder("check", c);
 
-    Document doc{R"({
+    Document doc {R"({
         "name": "test",
         "check": [
             {"field": "value"}
@@ -95,7 +91,7 @@ TEST(AssetBuilderOutput, Builds)
 
 TEST(AssetBuilderOutput, BuildsOperates)
 {
-    Document doc{R"({
+    Document doc {R"({
         "name": "test",
         "check": [
             {"field": "value"}
@@ -147,8 +143,8 @@ TEST(AssetBuilderOutput, BuildsOperates)
 {"field":"value"}
 )";
 
-    string filepath1{"/tmp/stageOutputsTest1.txt"};
-    string filepath2{"/tmp/stageOutputsTest2.txt"};
+    string filepath1 {"/tmp/stageOutputsTest1.txt"};
+    string filepath2 {"/tmp/stageOutputsTest2.txt"};
     std::ifstream ifs(filepath1);
     std::stringstream buffer;
     buffer << ifs.rdbuf();
