@@ -353,12 +353,14 @@ def test_DistributedAPI_forward_request_errors(mock_client_execute, mock_get_sol
        new=AsyncMock(side_effect=WazuhInternalError(1001)))
 def test_DistributedAPI_logger():
     """Test custom logger inside DistributedAPI class."""
+    log_file_path = '/tmp/dapi_test.log'
     new_logger = logging.getLogger('dapi_test')
-    fh = logging.FileHandler('/tmp/dapi_test.log')
+    fh = logging.FileHandler(log_file_path)
     fh.setLevel(logging.DEBUG)
     new_logger.addHandler(fh)
     dapi_kwargs = {'f': agent.get_agents_summary_status, 'logger': new_logger}
     raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1001)
+    os.remove(log_file_path)
 
 
 @patch('wazuh.core.cluster.local_client.LocalClient.send_file', new=AsyncMock(return_value='{"Testing": 1}'))
