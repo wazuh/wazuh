@@ -12,6 +12,7 @@
 #define LOGAUDIT_H
 
 #include <sys/types.h>
+#include <semaphore.h>
 
 #include "decoders/decoder.h"
 #include "rules.h"
