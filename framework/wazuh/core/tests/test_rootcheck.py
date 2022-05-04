@@ -170,8 +170,9 @@ def test_WazuhDBQueryRootcheck_format_data_into_dictionary(mock_info, mock_backe
 
 @patch('wazuh.core.agent.Agent.get_basic_information')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('wazuh.core.manager.check_wazuh_status')
 @patch('socket.socket.connect')
-def test_last_scan(mock_connect, mock_send, mock_info):
+def test_last_scan(mock_connect, mock_wazuh_status, mock_send, mock_info):
     """Check if last_scan function returns expected datetime according to the database"""
     result = rootcheck.last_scan('001')
     assert result == {'end': '2020-10-27T12:29:40Z', 'start': '2020-10-27T12:19:40Z'}
