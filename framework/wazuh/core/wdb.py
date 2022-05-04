@@ -5,15 +5,15 @@
 import datetime
 import json
 import re
-import socket
 import struct
 from typing import List
 
 from wazuh.core import common
 from wazuh.core.common import MAX_SOCKET_BUFFER_SIZE
-from wazuh.core.exception import WazuhInternalError, WazuhError
+from wazuh.core.exception import WazuhInternalError, WazuhError, WazuhException
+from wazuh.core.wazuh_socket import WazuhSocket
 
-DATE_FORMAT = re.compile(r'\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}')
+DATE_FORMAT = re.compile(r'\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}')
 
 
 class WazuhDBConnection:
@@ -29,13 +29,16 @@ class WazuhDBConnection:
         self.request_slice = request_slice
         self.max_size = max_size
         try:
-            self.__conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            self.__conn.connect(self.socket_path)
-        except OSError as e:
-            raise WazuhInternalError(2005, e)
+            self.socket = WazuhSocket(self.socket_path, max_size=max_size)
+            self.__conn = self.socket.s
+        except WazuhException as e:
+            raise WazuhInternalError(2005, e.message) if e.code == 1013 else e
 
     def close(self):
-        self.__conn.close()
+        try:
+            self.socket.close()
+        except AttributeError:
+            pass
 
     def __del__(self):
         self.close()

@@ -127,8 +127,11 @@ def validate_ossec_conf():
         try:
             wcom_socket = WazuhSocket(wcom_socket_path)
         except WazuhException as e:
-            extra_msg = f'Socket: WAZUH_PATH/queue/sockets/com. Error {e.message}'
-            raise WazuhInternalError(1013, extra_message=extra_msg)
+            if e.code == 1017:
+                raise WazuhError(1017, extra_message=e.message)
+            else:
+                extra_msg = f'Socket: WAZUH_PATH/queue/sockets/com. Error {e.message}'
+                raise WazuhInternalError(1013, extra_message=extra_msg)
     else:
         raise WazuhInternalError(1901)
 

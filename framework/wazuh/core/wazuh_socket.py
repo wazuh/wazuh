@@ -37,7 +37,7 @@ def check_wazuh_daemon_health(socket_init):
 
         # `path` is the first positional parameter (after `self`)
         socket_path = args[1]
-        check_wazuh_status(REQUIRED_DAEMONS_FOR_SOCKET.get(socket_path, {}))
+        check_wazuh_status(REQUIRED_DAEMONS_FOR_SOCKET.get(socket_path, set()))
 
         return socket_init(*args, **kwargs)
     return wrapper
@@ -48,8 +48,9 @@ class WazuhSocket:
     MAX_SIZE = 65536
 
     @check_wazuh_daemon_health
-    def __init__(self, path):
+    def __init__(self, path, max_size=0):
         self.path = path
+        self.MAX_SIZE = max_size or self.MAX_SIZE
         self._connect()
 
     def _connect(self):
@@ -88,8 +89,8 @@ class WazuhSocketJSON(WazuhSocket):
     MAX_SIZE = 65536
 
     @check_wazuh_daemon_health
-    def __init__(self, path):
-        WazuhSocket.__init__(self, path)
+    def __init__(self, path, max_size=0):
+        WazuhSocket.__init__(self, path, max_size=max_size)
 
     def send(self, msg, header_format="<I"):
         return WazuhSocket.send(self, msg_bytes=dumps(msg).encode(), header_format=header_format)
