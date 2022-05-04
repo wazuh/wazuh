@@ -14,16 +14,18 @@
 
 #include "testUtils.hpp"
 #include "opBuilderHelperFilter.hpp"
+#include "testUtils.hpp"
 
 using namespace base;
 namespace bld = builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg){};
+static FakeTrFn tr = [](std::string msg) {
+};
 
 TEST(opBuilderHelperIntLessThanEqual, Builds)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field_test": "+i_lt/10"}
     })"};
@@ -33,7 +35,7 @@ TEST(opBuilderHelperIntLessThanEqual, Builds)
 
 TEST(opBuilderHelperIntLessThanEqual, Builds_error_bad_parameter)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field_test": "+i_lt/test"}
     })"};
@@ -44,7 +46,7 @@ TEST(opBuilderHelperIntLessThanEqual, Builds_error_bad_parameter)
 
 TEST(opBuilderHelperIntLessThanEqual, Builds_error_more_parameters)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field_test": "+i_lt/10/10"}
     })"};
@@ -54,7 +56,7 @@ TEST(opBuilderHelperIntLessThanEqual, Builds_error_more_parameters)
 
 TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_ok)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field_test": "+i_lt/10"}
     })"};
@@ -76,7 +78,11 @@ TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_ok)
             )"));
             s.on_completed();
         });
-    Lifter lift = bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(
+            bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -90,7 +96,7 @@ TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_ok)
 
 TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_true)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field_test": "+i_lt/10"}
     })"};
@@ -112,7 +118,11 @@ TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_true)
             )"));
             s.on_completed();
         });
-    Lifter lift = bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(
+            bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -126,7 +136,7 @@ TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_true)
 
 TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_false)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field_test": "+i_lt/10"}
     })"};
@@ -148,7 +158,11 @@ TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_false)
             )"));
             s.on_completed();
         });
-    Lifter lift = bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(
+            bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -159,7 +173,7 @@ TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_false)
 
 TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_ref_true)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field_test": "+i_lt/$field_src"}
     })"};
@@ -193,7 +207,11 @@ TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_ref_true)
             )"));
             s.on_completed();
         });
-    Lifter lift = bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(
+            bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -210,7 +228,7 @@ TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_ref_true)
 
 TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_ref_false)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field_test": "+i_lt/$field_src"}
     })"};
@@ -244,7 +262,11 @@ TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_ref_false)
             )"));
             s.on_completed();
         });
-    Lifter lift = bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(
+            bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -255,7 +277,7 @@ TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_ref_false)
 
 TEST(opBuilderHelperIntLessThanEqual, Exec_dynamics_int_ok)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field2check": "+i_eq/$ref_key"}
     })"};
@@ -287,7 +309,11 @@ TEST(opBuilderHelperIntLessThanEqual, Exec_dynamics_int_ok)
             s.on_completed();
         });
 
-    Lifter lift = bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(
+            bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -302,7 +328,7 @@ TEST(opBuilderHelperIntLessThanEqual, Exec_dynamics_int_ok)
 
 TEST(opBuilderHelperIntLessThanEqual, Exec_multilevel_dynamics_int_ok)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"parentObjt_1.field2check": "+i_eq/$parentObjt_2.ref_key"}
     })"};
@@ -364,7 +390,11 @@ TEST(opBuilderHelperIntLessThanEqual, Exec_multilevel_dynamics_int_ok)
             s.on_completed();
         });
 
-    Lifter lift = bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(
+            bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
 

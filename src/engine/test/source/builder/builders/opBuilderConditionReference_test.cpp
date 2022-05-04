@@ -12,7 +12,7 @@
 
 #include <vector>
 
-#include "opBuilderConditionReference.hpp"
+#include "opBuilderCondition.hpp"
 
 using namespace base;
 namespace bld = builder::internals::builders;
@@ -26,7 +26,7 @@ TEST(opBuilderConditionReference, Builds)
         "check":
             {"field": "$reference"}
     })"};
-    ASSERT_NO_THROW(bld::opBuilderConditionReference(doc.get("/check"), tr));
+    ASSERT_NO_THROW(bld::opBuilderCondition(doc.get("/check"), tr));
 }
 
 TEST(opBuilderConditionReference, BuildsOperatesString)
@@ -63,7 +63,7 @@ TEST(opBuilderConditionReference, BuildsOperatesString)
             )"));
             s.on_completed();
         });
-    Lifter lift = bld::opBuilderConditionReference(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderCondition(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -106,7 +106,7 @@ TEST(opBuilderConditionReference, BuildsOperatesInt)
             )"));
             s.on_completed();
         });
-    Lifter lift = bld::opBuilderConditionReference(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderCondition(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -149,7 +149,7 @@ TEST(opBuilderConditionReference, BuildsOperatesBool)
             )"));
             s.on_completed();
         });
-    Lifter lift = bld::opBuilderConditionReference(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderCondition(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -192,7 +192,7 @@ TEST(opBuilderConditionReference, BuildsOperatesNull)
             )"));
             s.on_completed();
         });
-    Lifter lift = bld::opBuilderConditionReference(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderCondition(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -234,7 +234,7 @@ TEST(opBuilderConditionReference, BuildsOperatesArray)
             )"));
             s.on_completed();
         });
-    Lifter lift = bld::opBuilderConditionReference(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderCondition(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -308,7 +308,7 @@ TEST(opBuilderConditionReference, BuildsOperatesObject)
             )"));
             s.on_completed();
         });
-    Lifter lift = bld::opBuilderConditionReference(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderCondition(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -356,7 +356,7 @@ TEST(opBuilderConditionReference, BuildsOperatesOneLevel)
             )"));
             s.on_completed();
         });
-    Lifter lift = bld::opBuilderConditionReference(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderCondition(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -396,7 +396,7 @@ TEST(opBuilderConditionReference, BuildsOperatesMultiLevel)
             )"));
             s.on_completed();
         });
-    Lifter lift = bld::opBuilderConditionReference(doc.get("/check"), tr);
+    Lifter lift = bld::opBuilderCondition(doc.get("/check"), tr);
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
