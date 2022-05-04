@@ -11,9 +11,9 @@
 #define _BUILDER_TYPES_H
 
 #include <functional>
+#include <memory>
 #include <variant>
 #include <vector>
-#include <memory>
 
 #include <rxcpp/rx.hpp>
 
@@ -33,11 +33,14 @@ using DocumentValue = json::Value;
 using Observable = rxcpp::observable<Event>;
 using Lifter = std::function<Observable(Observable)>;
 using ConnectableT = Connectable<Observable>;
-using AssetBuilder = std::function<ConnectableT(const Document &)>;
+using AssetBuilder = std::function<ConnectableT(const Document&)>;
 using TracerFn = std::function<void(std::string)>;
-using OpBuilder = std::function<Lifter(const DocumentValue &, TracerFn)>;
+using OpBuilder = std::function<Lifter(const DocumentValue&, TracerFn)>;
 using CombinatorBuilder = std::function<Lifter(std::vector<Lifter>)>;
-using BuilderVariant = std::variant<AssetBuilder, OpBuilder, CombinatorBuilder>;
+using MiddleBuilderCondition =
+    std::function<std::function<bool(Event)>(const DocumentValue&, TracerFn)>;
+using BuilderVariant = std::
+    variant<AssetBuilder, OpBuilder, CombinatorBuilder, MiddleBuilderCondition>;
 
 } // namespace builder::internals::types
 

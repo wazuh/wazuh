@@ -10,17 +10,18 @@
 #include <gtest/gtest.h>
 #include <vector>
 
-#include "testUtils.hpp"
 #include "opBuilderHelperFilter.hpp"
+#include "testUtils.hpp"
 
 using namespace builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg){};
+static FakeTrFn tr = [](std::string msg) {
+};
 
 TEST(opBuilderHelperIntNotEqual, Builds)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field_test": "+i_ne/10"}
     })"};
@@ -30,27 +31,29 @@ TEST(opBuilderHelperIntNotEqual, Builds)
 
 TEST(opBuilderHelperIntNotEqual, Builds_error_bad_parameter)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field_test": "+i_ne/test"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIntNotEqual(doc.get("/check"), tr), std::invalid_argument);
+    ASSERT_THROW(opBuilderHelperIntNotEqual(doc.get("/check"), tr),
+                 std::invalid_argument);
 }
 
 TEST(opBuilderHelperIntNotEqual, Builds_error_more_parameters)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field_test": "+i_ne/10/10"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIntNotEqual(doc.get("/check"), tr), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperIntNotEqual(doc.get("/check"), tr),
+                 std::runtime_error);
 }
 
 TEST(opBuilderHelperIntNotEqual, Exec_not_equal_ok)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field_test": "+i_ne/10"}
     })"};
@@ -72,7 +75,10 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_ok)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntNotEqual(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(opBuilderHelperIntNotEqual(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -85,7 +91,7 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_ok)
 
 TEST(opBuilderHelperIntNotEqual, Exec_not_equal_true)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field_test": "+i_ne/10"}
     })"};
@@ -107,7 +113,10 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_true)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntNotEqual(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(opBuilderHelperIntNotEqual(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -120,7 +129,7 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_true)
 
 TEST(opBuilderHelperIntNotEqual, Exec_not_equal_false)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field_test": "+i_ne/10"}
     })"};
@@ -142,7 +151,10 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_false)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntNotEqual(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(opBuilderHelperIntNotEqual(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -153,7 +165,7 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_false)
 
 TEST(opBuilderHelperIntNotEqual, Exec_not_equal_ref_true)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field_test": "+i_ne/$field_src"}
     })"};
@@ -187,7 +199,10 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_ref_true)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntNotEqual(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(opBuilderHelperIntNotEqual(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -202,7 +217,7 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_ref_true)
 
 TEST(opBuilderHelperIntNotEqual, Exec_not_equal_ref_false)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field_test": "+i_ne/$field_src"}
     })"};
@@ -236,7 +251,10 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_ref_false)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntNotEqual(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(opBuilderHelperIntNotEqual(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -247,7 +265,7 @@ TEST(opBuilderHelperIntNotEqual, Exec_not_equal_ref_false)
 
 TEST(opBuilderHelperIntNotEqual, Exec_dynamics_int_ok)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field2check": "+i_eq/$ref_key"}
     })"};
@@ -279,7 +297,10 @@ TEST(opBuilderHelperIntNotEqual, Exec_dynamics_int_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperIntNotEqual(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(opBuilderHelperIntNotEqual(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -294,7 +315,7 @@ TEST(opBuilderHelperIntNotEqual, Exec_dynamics_int_ok)
 
 TEST(opBuilderHelperIntNotEqual, Exec_multilevel_dynamics_int_ok)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"parentObjt_1.field2check": "+i_eq/$parentObjt_2.ref_key"}
     })"};
@@ -356,7 +377,10 @@ TEST(opBuilderHelperIntNotEqual, Exec_multilevel_dynamics_int_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperIntNotEqual(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(opBuilderHelperIntNotEqual(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
 

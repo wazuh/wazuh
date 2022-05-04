@@ -7,15 +7,13 @@
  * Foundation.
  */
 
-#include <gtest/gtest.h>
 #include "testUtils.hpp"
+#include <gtest/gtest.h>
 
 #include "assetBuilderFilter.hpp"
 
 #include "combinatorBuilderChain.hpp"
 #include "opBuilderCondition.hpp"
-#include "opBuilderConditionReference.hpp"
-#include "opBuilderConditionValue.hpp"
 #include "opBuilderHelperFilter.hpp"
 #include "stageBuilderCheck.hpp"
 
@@ -23,7 +21,7 @@ using namespace builder::internals::builders;
 
 TEST(AssetBuilderFilter, BuildsAllNonRegistered)
 {
-    Document doc{R"({
+    Document doc {R"({
         "name": "test",
         "after": [ "decoder" ],
         "allow": [
@@ -31,19 +29,18 @@ TEST(AssetBuilderFilter, BuildsAllNonRegistered)
         ]
     })"};
 
-    ASSERT_THROW(builders::assetBuilderFilter(doc), std::_Nested_exception<std::runtime_error>);
+    ASSERT_THROW(builders::assetBuilderFilter(doc),
+                 std::_Nested_exception<std::runtime_error>);
 }
 
 TEST(AssetBuilderFilter, Builds)
 {
-    BuilderVariant c = opBuilderConditionValue;
-    Registry::registerBuilder("condition.value", c);
-    c = opBuilderConditionReference;
-    Registry::registerBuilder("condition.reference", c);
-    c = opBuilderHelperExists;
+    BuilderVariant c = opBuilderHelperExists;
     Registry::registerBuilder("helper.exists", c);
     c = opBuilderHelperNotExists;
     Registry::registerBuilder("helper.not_exists", c);
+    c = middleBuilderCondition;
+    Registry::registerBuilder("middle.condition", c);
     c = opBuilderCondition;
     Registry::registerBuilder("condition", c);
     c = stageBuilderCheck;
@@ -51,7 +48,7 @@ TEST(AssetBuilderFilter, Builds)
     c = combinatorBuilderChain;
     Registry::registerBuilder("combinator.chain", c);
 
-    Document doc{R"({
+    Document doc {R"({
         "name": "test",
         "after": [ "decoder" ],
         "allow": [
@@ -64,7 +61,7 @@ TEST(AssetBuilderFilter, Builds)
 
 TEST(AssetBuilderFilter, BuildsOperates)
 {
-    Document doc{R"({
+    Document doc {R"({
         "name": "test",
         "after": [ "decoder" ],
         "allow": [

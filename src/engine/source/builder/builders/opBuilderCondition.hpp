@@ -16,12 +16,44 @@ namespace builder::internals::builders
 {
 
 /**
+ * @brief Builds condition value operation.
+ * Checks that a tuple <field: value> is present in the event.
+ *
+ * @param def Definition of the operation to be built
+ * @return types::Lifter
+ */
+std::function<bool(types::Event)>
+middleBuilderConditionReference(const types::DocumentValue& def,
+                                types::TracerFn tr);
+
+/**
+ * @brief Builds condition value operation.
+ * Checks that a tuple <field: value> is present in the event.
+ *
+ * @param def Definition of the operation to be built
+ * @return types::Lifter
+ */
+std::function<bool(types::Event)>
+middleBuilderConditionValue(const types::DocumentValue& def,
+                            types::TracerFn tr);
+
+/**
  * @brief Auxiliray builder to handle proper specific condition builder
  *
  * @param def Definition of the operation to be built
  * @return types::Lifter
  */
-types::Lifter opBuilderCondition(const types::DocumentValue & def, types::TracerFn tr);
+std::function<bool(types::Event)>
+middleBuilderCondition(const types::DocumentValue& def, types::TracerFn tr);
+
+/**
+ * @brief Auxiliray builder to handle proper specific condition builder
+ *
+ * @param def Definition of the operation to be built
+ * @return types::Lifter
+ */
+types::Lifter opBuilderCondition(const types::DocumentValue& def,
+                                 types::TracerFn tr);
 
 } // namespace builder::internals::builders
 

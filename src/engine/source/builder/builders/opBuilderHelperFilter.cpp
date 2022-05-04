@@ -38,7 +38,7 @@ using builder::internals::types::DocumentValue;
  * helper function
  */
 std::tuple<std::string, opString, opString>
-getCompOpParameter(const DocumentValue &def)
+getCompOpParameter(const DocumentValue& def)
 {
     // Get destination path
     std::string field {
@@ -77,8 +77,8 @@ namespace builder::internals::builders
 {
 
 // <field>: exists
-types::Lifter opBuilderHelperExists(const types::DocumentValue &def,
-                                    types::TracerFn tr)
+std::function<bool(types::Event)>
+opBuilderHelperExists(const types::DocumentValue& def, types::TracerFn tr)
 {
     // Get Field path to check
     std::string field {
@@ -98,30 +98,25 @@ types::Lifter opBuilderHelperExists(const types::DocumentValue &def,
     std::string failureTrace = fmt::format("{{{}: +exists}} Condition Failure",
                                            def.MemberBegin()->name.GetString());
 
-    // Return Lifter
-    return [=](types::Observable o)
+    // Return Function
+    return [=](types::Event e)
     {
-        // Append rxcpp operation
-        return o.filter(
-            [=](types::Event e)
-            {
-                if (e->exists(field))
-                {
-                    tr(successTrace);
-                    return true;
-                }
-                else
-                {
-                    tr(failureTrace);
-                    return false;
-                }
-            });
+        if (e->exists(field))
+        {
+            tr(successTrace);
+            return true;
+        }
+        else
+        {
+            tr(failureTrace);
+            return false;
+        }
     };
 }
 
 // <field>: not_exists
-types::Lifter opBuilderHelperNotExists(const types::DocumentValue &def,
-                                       types::TracerFn tr)
+std::function<bool(types::Event)>
+opBuilderHelperNotExists(const types::DocumentValue& def, types::TracerFn tr)
 {
     // Get Field path to check
     std::string field {
@@ -142,24 +137,19 @@ types::Lifter opBuilderHelperNotExists(const types::DocumentValue &def,
         fmt::format("{{{}: +not_exists}} Condition Failure",
                     def.MemberBegin()->name.GetString());
 
-    // Return Lifter
-    return [=](types::Observable o)
+    // Return Function
+    return [=](types::Event e)
     {
-        // Append rxcpp operation
-        return o.filter(
-            [=](types::Event e)
-            {
-                if (!e->exists(field))
-                {
-                    tr(successTrace);
-                    return true;
-                }
-                else
-                {
-                    tr(failureTrace);
-                    return false;
-                }
-            });
+        if (!e->exists(field))
+        {
+            tr(successTrace);
+            return true;
+        }
+        else
+        {
+            tr(failureTrace);
+            return false;
+        }
     };
 }
 
@@ -169,7 +159,7 @@ types::Lifter opBuilderHelperNotExists(const types::DocumentValue &def,
 
 bool opBuilderHelperStringComparison(const std::string key,
                                      char op,
-                                     types::Event &e,
+                                     types::Event& e,
                                      std::optional<std::string> refValue,
                                      std::optional<std::string> value)
 {
@@ -183,12 +173,12 @@ bool opBuilderHelperStringComparison(const std::string key,
     //      operator on runtime
     // TODO string and int could be merged if they used the same comparators
     // Get value to compare
-    const rapidjson::Value *fieldToCompare {};
+    const rapidjson::Value* fieldToCompare {};
     try
     {
         fieldToCompare = &e->get(key);
     }
-    catch (std::exception &ex)
+    catch (std::exception& ex)
     {
         // TODO Check exception type
         return false;
@@ -206,12 +196,12 @@ bool opBuilderHelperStringComparison(const std::string key,
         // TODO Remove try catch or if nullptr after fix get method of document
         // class
         // TODO Update to use proper references
-        const rapidjson::Value *refValueToCheck {};
+        const rapidjson::Value* refValueToCheck {};
         try
         {
             refValueToCheck = &e->get(refValue.value());
         }
-        catch (std::exception &ex)
+        catch (std::exception& ex)
         {
             // TODO Check exception type
             return false;
@@ -251,8 +241,8 @@ bool opBuilderHelperStringComparison(const std::string key,
 }
 
 // <field>: s_eq/<value>
-types::Lifter opBuilderHelperStringEQ(const types::DocumentValue &def,
-                                      types::TracerFn tr)
+std::function<bool(types::Event)>
+opBuilderHelperStringEQ(const types::DocumentValue& def, types::TracerFn tr)
 {
     auto [key, refValue, value] {getCompOpParameter(def)};
 
@@ -263,32 +253,26 @@ types::Lifter opBuilderHelperStringEQ(const types::DocumentValue &def,
     std::string failureTrace =
         fmt::format("{} Condition Failure", defTmp.str());
 
-    // Return Lifter
-    return [=](types::Observable o)
+    // Return Function
+    return [=](types::Event e)
     {
-        // Append rxcpp operation
-        return o.filter(
-            [=](types::Event e)
-            {
-                // try and catch, return false
-                if (opBuilderHelperStringComparison(
-                        key, '=', e, refValue, value))
-                {
-                    tr(successTrace);
-                    return true;
-                }
-                else
-                {
-                    tr(failureTrace);
-                    return false;
-                }
-            });
+        // try and catch, return false
+        if (opBuilderHelperStringComparison(key, '=', e, refValue, value))
+        {
+            tr(successTrace);
+            return true;
+        }
+        else
+        {
+            tr(failureTrace);
+            return false;
+        }
     };
 }
 
 // <field>: s_ne/<value>
-types::Lifter opBuilderHelperStringNE(const types::DocumentValue &def,
-                                      types::TracerFn tr)
+std::function<bool(types::Event)>
+opBuilderHelperStringNE(const types::DocumentValue& def, types::TracerFn tr)
 {
     auto [key, refValue, value] {getCompOpParameter(def)};
 
@@ -299,31 +283,25 @@ types::Lifter opBuilderHelperStringNE(const types::DocumentValue &def,
     std::string failureTrace =
         fmt::format("{} Condition Failure", defTmp.str());
 
-    // Return Lifter
-    return [=](types::Observable o)
+    // Return Function
+    return [=](types::Event e)
     {
-        // Append rxcpp operation
-        return o.filter(
-            [=](types::Event e)
-            {
-                if (opBuilderHelperStringComparison(
-                        key, '!', e, refValue, value))
-                {
-                    tr(successTrace);
-                    return true;
-                }
-                else
-                {
-                    tr(failureTrace);
-                    return false;
-                }
-            });
+        if (opBuilderHelperStringComparison(key, '!', e, refValue, value))
+        {
+            tr(successTrace);
+            return true;
+        }
+        else
+        {
+            tr(failureTrace);
+            return false;
+        }
     };
 }
 
 // <field>: s_gt/<value>|$<ref>
-types::Lifter opBuilderHelperStringGT(const types::DocumentValue &def,
-                                      types::TracerFn tr)
+std::function<bool(types::Event)>
+opBuilderHelperStringGT(const types::DocumentValue& def, types::TracerFn tr)
 {
     auto [key, refValue, value] {getCompOpParameter(def)};
 
@@ -334,31 +312,25 @@ types::Lifter opBuilderHelperStringGT(const types::DocumentValue &def,
     std::string failureTrace =
         fmt::format("{} Condition Failure", defTmp.str());
 
-    // Return Lifter
-    return [=](types::Observable o)
+    // Return Function
+    return [=](types::Event e)
     {
-        // Append rxcpp operation
-        return o.filter(
-            [=](types::Event e)
-            {
-                if (opBuilderHelperStringComparison(
-                        key, '>', e, refValue, value))
-                {
-                    tr(successTrace);
-                    return true;
-                }
-                else
-                {
-                    tr(failureTrace);
-                    return false;
-                }
-            });
+        if (opBuilderHelperStringComparison(key, '>', e, refValue, value))
+        {
+            tr(successTrace);
+            return true;
+        }
+        else
+        {
+            tr(failureTrace);
+            return false;
+        }
     };
 }
 
 // <field>: s_ge/<value>|$<ref>
-types::Lifter opBuilderHelperStringGE(const types::DocumentValue &def,
-                                      types::TracerFn tr)
+std::function<bool(types::Event)>
+opBuilderHelperStringGE(const types::DocumentValue& def, types::TracerFn tr)
 {
     auto [key, refValue, value] {getCompOpParameter(def)};
 
@@ -369,31 +341,25 @@ types::Lifter opBuilderHelperStringGE(const types::DocumentValue &def,
     std::string failureTrace =
         fmt::format("{} Condition Failure", defTmp.str());
 
-    // Return Lifter
-    return [=](types::Observable o)
+    // Return Function
+    return [=](types::Event e)
     {
-        // Append rxcpp operation
-        return o.filter(
-            [=](types::Event e)
-            {
-                if (opBuilderHelperStringComparison(
-                        key, 'g', e, refValue, value))
-                {
-                    tr(successTrace);
-                    return true;
-                }
-                else
-                {
-                    tr(failureTrace);
-                    return false;
-                }
-            });
+        if (opBuilderHelperStringComparison(key, 'g', e, refValue, value))
+        {
+            tr(successTrace);
+            return true;
+        }
+        else
+        {
+            tr(failureTrace);
+            return false;
+        }
     };
 }
 
 // <field>: s_lt/<value>|$<ref>
-types::Lifter opBuilderHelperStringLT(const types::DocumentValue &def,
-                                      types::TracerFn tr)
+std::function<bool(types::Event)>
+opBuilderHelperStringLT(const types::DocumentValue& def, types::TracerFn tr)
 {
     auto [key, refValue, value] {getCompOpParameter(def)};
 
@@ -404,31 +370,25 @@ types::Lifter opBuilderHelperStringLT(const types::DocumentValue &def,
     std::string failureTrace =
         fmt::format("{} Condition Failure", defTmp.str());
 
-    // Return Lifter
-    return [=](types::Observable o)
+    // Return Function
+    return [=](types::Event e)
     {
-        // Append rxcpp operation
-        return o.filter(
-            [=](types::Event e)
-            {
-                if (opBuilderHelperStringComparison(
-                        key, '<', e, refValue, value))
-                {
-                    tr(successTrace);
-                    return true;
-                }
-                else
-                {
-                    tr(failureTrace);
-                    return false;
-                }
-            });
+        if (opBuilderHelperStringComparison(key, '<', e, refValue, value))
+        {
+            tr(successTrace);
+            return true;
+        }
+        else
+        {
+            tr(failureTrace);
+            return false;
+        }
     };
 }
 
 // <field>: s_le/<value>|$<ref>
-types::Lifter opBuilderHelperStringLE(const types::DocumentValue &def,
-                                      types::TracerFn tr)
+std::function<bool(types::Event)>
+opBuilderHelperStringLE(const types::DocumentValue& def, types::TracerFn tr)
 {
     auto [key, refValue, value] {getCompOpParameter(def)};
 
@@ -439,25 +399,19 @@ types::Lifter opBuilderHelperStringLE(const types::DocumentValue &def,
     std::string failureTrace =
         fmt::format("{} Condition Failure", defTmp.str());
 
-    // Return Lifter
-    return [=](types::Observable o)
+    // Return Function
+    return [=](types::Event e)
     {
-        // Append rxcpp operation
-        return o.filter(
-            [=](types::Event e)
-            {
-                if (opBuilderHelperStringComparison(
-                        key, 'l', e, refValue, value))
-                {
-                    tr(successTrace);
-                    return true;
-                }
-                else
-                {
-                    tr(failureTrace);
-                    return false;
-                }
-            });
+        if (opBuilderHelperStringComparison(key, 'l', e, refValue, value))
+        {
+            tr(successTrace);
+            return true;
+        }
+        else
+        {
+            tr(failureTrace);
+            return false;
+        }
     };
 }
 
@@ -467,7 +421,7 @@ types::Lifter opBuilderHelperStringLE(const types::DocumentValue &def,
 
 bool opBuilderHelperIntComparison(const std::string field,
                                   char op,
-                                  types::Event &e,
+                                  types::Event& e,
                                   std::optional<std::string> refValue,
                                   std::optional<int> value)
 {
@@ -477,12 +431,12 @@ bool opBuilderHelperIntComparison(const std::string field,
     // TODO Update to use proper references
     // TODO Same as opBuilderHelperStringComparison
     // Get value to compare
-    const rapidjson::Value *fieldValue {};
+    const rapidjson::Value* fieldValue {};
     try
     {
         fieldValue = &e->get(field);
     }
-    catch (std::exception &ex)
+    catch (std::exception& ex)
     {
         // TODO Check exception type
         return false;
@@ -500,12 +454,12 @@ bool opBuilderHelperIntComparison(const std::string field,
         // TODO Remove try catch or if nullptr after fix get method of document
         // class
         // TODO update to use proper references
-        const rapidjson::Value *refValueToCheck {};
+        const rapidjson::Value* refValueToCheck {};
         try
         {
             refValueToCheck = &e->get(refValue.value());
         }
-        catch (std::exception &ex)
+        catch (std::exception& ex)
         {
             // TODO Check exception type
             return false;
@@ -542,8 +496,8 @@ bool opBuilderHelperIntComparison(const std::string field,
 }
 
 // field: +i_eq/int|$ref/
-types::Lifter opBuilderHelperIntEqual(const types::DocumentValue &def,
-                                      types::TracerFn tr)
+std::function<bool(types::Event)>
+opBuilderHelperIntEqual(const types::DocumentValue& def, types::TracerFn tr)
 {
 
     auto [field, refValue, valuestr] {getCompOpParameter(def)};
@@ -559,31 +513,25 @@ types::Lifter opBuilderHelperIntEqual(const types::DocumentValue &def,
     std::string failureTrace =
         fmt::format("{} Condition Failure", defTmp.str());
 
-    // Return Lifter
-    return [=](types::Observable o)
+    // Return Function
+    return [=](types::Event e)
     {
-        // Append rxcpp operation
-        return o.filter(
-            [=](types::Event e)
-            {
-                if (opBuilderHelperIntComparison(
-                        field, '=', e, refValue, value))
-                {
-                    tr(successTrace);
-                    return true;
-                }
-                else
-                {
-                    tr(failureTrace);
-                    return false;
-                }
-            });
+        if (opBuilderHelperIntComparison(field, '=', e, refValue, value))
+        {
+            tr(successTrace);
+            return true;
+        }
+        else
+        {
+            tr(failureTrace);
+            return false;
+        }
     };
 }
 
 // field: +i_ne/int|$ref/
-types::Lifter opBuilderHelperIntNotEqual(const types::DocumentValue &def,
-                                         types::TracerFn tr)
+std::function<bool(types::Event)>
+opBuilderHelperIntNotEqual(const types::DocumentValue& def, types::TracerFn tr)
 {
 
     auto [field, refValue, valuestr] {getCompOpParameter(def)};
@@ -599,32 +547,26 @@ types::Lifter opBuilderHelperIntNotEqual(const types::DocumentValue &def,
     std::string failureTrace =
         fmt::format("{} Condition Failure", defTmp.str());
 
-    // Return Lifter
-    return [=](types::Observable o)
+    // Return Function
+    return [=](types::Event e)
     {
-        // Append rxcpp operation
-        return o.filter(
-            [=](types::Event e)
-            {
-                // try and catche, return false
-                if (opBuilderHelperIntComparison(
-                        field, '!', e, refValue, value))
-                {
-                    tr(successTrace);
-                    return true;
-                }
-                else
-                {
-                    tr(failureTrace);
-                    return false;
-                }
-            });
+        // try and catche, return false
+        if (opBuilderHelperIntComparison(field, '!', e, refValue, value))
+        {
+            tr(successTrace);
+            return true;
+        }
+        else
+        {
+            tr(failureTrace);
+            return false;
+        }
     };
 }
 
 // field: +i_lt/int|$ref/
-types::Lifter opBuilderHelperIntLessThan(const types::DocumentValue &def,
-                                         types::TracerFn tr)
+std::function<bool(types::Event)>
+opBuilderHelperIntLessThan(const types::DocumentValue& def, types::TracerFn tr)
 {
 
     auto [field, refValue, valuestr] {getCompOpParameter(def)};
@@ -640,32 +582,27 @@ types::Lifter opBuilderHelperIntLessThan(const types::DocumentValue &def,
     std::string failureTrace =
         fmt::format("{} Condition Failure", defTmp.str());
 
-    // Return Lifter
-    return [=](types::Observable o)
+    // Return Function
+    return [=](types::Event e)
     {
-        // Append rxcpp operation
-        return o.filter(
-            [=](types::Event e)
-            {
-                // try and catche, return false
-                if (opBuilderHelperIntComparison(
-                        field, '<', e, refValue, value))
-                {
-                    tr(successTrace);
-                    return true;
-                }
-                else
-                {
-                    tr(failureTrace);
-                    return false;
-                }
-            });
+        // try and catche, return false
+        if (opBuilderHelperIntComparison(field, '<', e, refValue, value))
+        {
+            tr(successTrace);
+            return true;
+        }
+        else
+        {
+            tr(failureTrace);
+            return false;
+        }
     };
 }
 
 // field: +i_le/int|$ref/
-types::Lifter opBuilderHelperIntLessThanEqual(const types::DocumentValue &def,
-                                              types::TracerFn tr)
+std::function<bool(types::Event)>
+opBuilderHelperIntLessThanEqual(const types::DocumentValue& def,
+                                types::TracerFn tr)
 {
 
     auto [field, refValue, valuestr] {getCompOpParameter(def)};
@@ -681,32 +618,27 @@ types::Lifter opBuilderHelperIntLessThanEqual(const types::DocumentValue &def,
     std::string failureTrace =
         fmt::format("{} Condition Failure", defTmp.str());
 
-    // Return Lifter
-    return [=](types::Observable o)
+    // Return Function
+    return [=](types::Event e)
     {
-        // Append rxcpp operation
-        return o.filter(
-            [=](types::Event e)
-            {
-                // try and catche, return false
-                if (opBuilderHelperIntComparison(
-                        field, 'l', e, refValue, value))
-                {
-                    tr(successTrace);
-                    return true;
-                }
-                else
-                {
-                    tr(failureTrace);
-                    return false;
-                }
-            });
+        // try and catche, return false
+        if (opBuilderHelperIntComparison(field, 'l', e, refValue, value))
+        {
+            tr(successTrace);
+            return true;
+        }
+        else
+        {
+            tr(failureTrace);
+            return false;
+        }
     };
 }
 
 // field: +i_gt/int|$ref/
-types::Lifter opBuilderHelperIntGreaterThan(const types::DocumentValue &def,
-                                            types::TracerFn tr)
+std::function<bool(types::Event)>
+opBuilderHelperIntGreaterThan(const types::DocumentValue& def,
+                              types::TracerFn tr)
 {
 
     auto [field, refValue, valuestr] {getCompOpParameter(def)};
@@ -722,32 +654,26 @@ types::Lifter opBuilderHelperIntGreaterThan(const types::DocumentValue &def,
     std::string failureTrace =
         fmt::format("{} Condition Failure", defTmp.str());
 
-    // Return Lifter
-    return [=](types::Observable o)
+    // Return Function
+    return [=](types::Event e)
     {
-        // Append rxcpp operation
-        return o.filter(
-            [=](types::Event e)
-            {
-                // try and catche, return false
-                if (opBuilderHelperIntComparison(
-                        field, '>', e, refValue, value))
-                {
-                    tr(successTrace);
-                    return true;
-                }
-                else
-                {
-                    tr(failureTrace);
-                    return false;
-                }
-            });
+        // try and catche, return false
+        if (opBuilderHelperIntComparison(field, '>', e, refValue, value))
+        {
+            tr(successTrace);
+            return true;
+        }
+        else
+        {
+            tr(failureTrace);
+            return false;
+        }
     };
 }
 
 // field: +i_ge/int|$ref/
-types::Lifter
-opBuilderHelperIntGreaterThanEqual(const types::DocumentValue &def,
+std::function<bool(types::Event)>
+opBuilderHelperIntGreaterThanEqual(const types::DocumentValue& def,
                                    types::TracerFn tr)
 {
 
@@ -764,26 +690,20 @@ opBuilderHelperIntGreaterThanEqual(const types::DocumentValue &def,
     std::string failureTrace =
         fmt::format("{} Condition Failure", defTmp.str());
 
-    // Return Lifter
-    return [=](types::Observable o)
+    // Return Function
+    return [=](types::Event e)
     {
-        // Append rxcpp operation
-        return o.filter(
-            [=](types::Event e)
-            {
-                // try and catche, return false
-                if (opBuilderHelperIntComparison(
-                        field, 'g', e, refValue, value))
-                {
-                    tr(successTrace);
-                    return true;
-                }
-                else
-                {
-                    tr(failureTrace);
-                    return false;
-                }
-            });
+        // try and catche, return false
+        if (opBuilderHelperIntComparison(field, 'g', e, refValue, value))
+        {
+            tr(successTrace);
+            return true;
+        }
+        else
+        {
+            tr(failureTrace);
+            return false;
+        }
     };
 }
 
@@ -792,8 +712,8 @@ opBuilderHelperIntGreaterThanEqual(const types::DocumentValue &def,
 //*************************************************
 
 // field: +r_match/regexp
-types::Lifter opBuilderHelperRegexMatch(const types::DocumentValue &def,
-                                        types::TracerFn tr)
+std::function<bool(types::Event)>
+opBuilderHelperRegexMatch(const types::DocumentValue& def, types::TracerFn tr)
 {
     // Get field
     std::string field {
@@ -815,37 +735,32 @@ types::Lifter opBuilderHelperRegexMatch(const types::DocumentValue &def,
     }
 
     // Return Lifter
-    return [field, regex_ptr](types::Observable o)
+    return [=](types::Event e)
     {
-        // Append rxcpp operations
-        return o.filter(
-            [=](types::Event e)
-            {
-                // TODO Remove try catch
-                // TODO Update to use proper reference
-                const rapidjson::Value *field_str {};
-                try
-                {
-                    field_str = &e->get(field);
-                }
-                catch (std::exception &ex)
-                {
-                    // TODO Check exception type
-                    return false;
-                }
-                if (field_str != nullptr && field_str->IsString())
-                {
-                    return (
-                        RE2::PartialMatch(field_str->GetString(), *regex_ptr));
-                }
-                return false;
-            });
+        // TODO Remove try catch
+        // TODO Update to use proper reference
+        const rapidjson::Value* field_str {};
+        try
+        {
+            field_str = &e->get(field);
+        }
+        catch (std::exception& ex)
+        {
+            // TODO Check exception type
+            return false;
+        }
+        if (field_str != nullptr && field_str->IsString())
+        {
+            return (RE2::PartialMatch(field_str->GetString(), *regex_ptr));
+        }
+        return false;
     };
 }
 
 // field: +r_not_match/regexp
-types::Lifter opBuilderHelperRegexNotMatch(const types::DocumentValue &def,
-                                           types::TracerFn tr)
+std::function<bool(types::Event)>
+opBuilderHelperRegexNotMatch(const types::DocumentValue& def,
+                             types::TracerFn tr)
 {
     // Get field
     std::string field {
@@ -874,41 +789,36 @@ types::Lifter opBuilderHelperRegexNotMatch(const types::DocumentValue &def,
         fmt::format("{} Condition Failure", defTmp.str());
 
     // Return Lifter
-    return [=](types::Observable o)
+    return [=](types::Event e)
     {
-        // Append rxcpp operations
-        return o.filter(
-            [=](types::Event e)
+        // TODO Remove try catch
+        // TODO Update to use proper reference
+        const rapidjson::Value* field_str {};
+        try
+        {
+            field_str = &e->get(field);
+        }
+        catch (std::exception& ex)
+        {
+            // TODO Check exception type
+            tr(failureTrace);
+            return false;
+        }
+        if (field_str != nullptr && field_str->IsString())
+        {
+            if (!RE2::PartialMatch(field_str->GetString(), *regex_ptr))
             {
-                // TODO Remove try catch
-                // TODO Update to use proper reference
-                const rapidjson::Value *field_str {};
-                try
-                {
-                    field_str = &e->get(field);
-                }
-                catch (std::exception &ex)
-                {
-                    // TODO Check exception type
-                    tr(failureTrace);
-                    return false;
-                }
-                if (field_str != nullptr && field_str->IsString())
-                {
-                    if (!RE2::PartialMatch(field_str->GetString(), *regex_ptr))
-                    {
-                        tr(successTrace);
-                        return true;
-                    }
-                    else
-                    {
-                        tr(failureTrace);
-                        return false;
-                    }
-                }
+                tr(successTrace);
+                return true;
+            }
+            else
+            {
                 tr(failureTrace);
                 return false;
-            });
+            }
+        }
+        tr(failureTrace);
+        return false;
     };
 }
 
@@ -918,8 +828,8 @@ types::Lifter opBuilderHelperRegexNotMatch(const types::DocumentValue &def,
 
 // path_to_ip: +ip_cidr/192.168.0.0/16
 // path_to_ip: +ip_cidr/192.168.0.0/255.255.0.0
-types::Lifter opBuilderHelperIPCIDR(const types::DocumentValue &def,
-                                    types::TracerFn tr)
+std::function<bool(types::Event)>
+opBuilderHelperIPCIDR(const types::DocumentValue& def, types::TracerFn tr)
 {
     // Get Field path to check
     std::string field {
@@ -946,7 +856,7 @@ types::Lifter opBuilderHelperIPCIDR(const types::DocumentValue &def,
     {
         network = utils::ip::IPv4ToUInt(parameters[1]);
     }
-    catch (std::exception &e)
+    catch (std::exception& e)
     {
         throw std::runtime_error("Invalid IPv4 address: " + network);
     }
@@ -956,7 +866,7 @@ types::Lifter opBuilderHelperIPCIDR(const types::DocumentValue &def,
     {
         mask = utils::ip::IPv4MaskUInt(parameters[2]);
     }
-    catch (std::exception &e)
+    catch (std::exception& e)
     {
         throw std::runtime_error("Invalid IPv4 mask: " + mask);
     }
@@ -972,50 +882,45 @@ types::Lifter opBuilderHelperIPCIDR(const types::DocumentValue &def,
         fmt::format("{} Condition Failure", defTmp.str());
 
     // Return Lifter
-    return [=](types::Observable o)
+    return [=](types::Event e)
     {
-        // Append rxcpp operations
-        return o.filter(
-            [=](types::Event e)
+        // TODO Remove try catch
+        // TODO Update to use proper reference
+        const rapidjson::Value* field_str {};
+        try
+        {
+            field_str = &e->get(field);
+        }
+        catch (std::exception& ex)
+        {
+            tr(failureTrace);
+            return false;
+        }
+        if (field_str != nullptr && field_str->IsString())
+        {
+            uint32_t ip {};
+            try
             {
-                // TODO Remove try catch
-                // TODO Update to use proper reference
-                const rapidjson::Value *field_str {};
-                try
-                {
-                    field_str = &e->get(field);
-                }
-                catch (std::exception &ex)
-                {
-                    tr(failureTrace);
-                    return false;
-                }
-                if (field_str != nullptr && field_str->IsString())
-                {
-                    uint32_t ip {};
-                    try
-                    {
-                        ip = utils::ip::IPv4ToUInt(field_str->GetString());
-                    }
-                    catch (std::exception &ex)
-                    {
-                        tr(failureTrace);
-                        return false;
-                    }
-                    if (ip >= net_lower && ip <= net_upper)
-                    {
-                        tr(successTrace);
-                        return true;
-                    }
-                    else
-                    {
-                        tr(failureTrace);
-                        return false;
-                    }
-                }
+                ip = utils::ip::IPv4ToUInt(field_str->GetString());
+            }
+            catch (std::exception& ex)
+            {
                 tr(failureTrace);
                 return false;
-            });
+            }
+            if (ip >= net_lower && ip <= net_upper)
+            {
+                tr(successTrace);
+                return true;
+            }
+            else
+            {
+                tr(failureTrace);
+                return false;
+            }
+        }
+        tr(failureTrace);
+        return false;
     };
 }
 

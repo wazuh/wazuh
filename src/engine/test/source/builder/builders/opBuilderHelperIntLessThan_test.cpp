@@ -10,17 +10,18 @@
 #include <gtest/gtest.h>
 #include <vector>
 
-#include "testUtils.hpp"
 #include "opBuilderHelperFilter.hpp"
+#include "testUtils.hpp"
 
 using namespace builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg){};
+static FakeTrFn tr = [](std::string msg) {
+};
 
 TEST(opBuilderHelperIntLessThan, Builds)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field_test": "+i_lt/10"}
     })"};
@@ -30,27 +31,29 @@ TEST(opBuilderHelperIntLessThan, Builds)
 
 TEST(opBuilderHelperIntLessThan, Builds_error_bad_parameter)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field_test": "+i_lt/test"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIntLessThan(doc.get("/check"), tr), std::invalid_argument);
+    ASSERT_THROW(opBuilderHelperIntLessThan(doc.get("/check"), tr),
+                 std::invalid_argument);
 }
 
 TEST(opBuilderHelperIntLessThan, Builds_error_more_parameters)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field_test": "+i_lt/10/10"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIntLessThan(doc.get("/check"), tr), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperIntLessThan(doc.get("/check"), tr),
+                 std::runtime_error);
 }
 
 TEST(opBuilderHelperIntLessThan, Exec_less_than_ok)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field_test": "+i_lt/10"}
     })"};
@@ -72,7 +75,10 @@ TEST(opBuilderHelperIntLessThan, Exec_less_than_ok)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntLessThan(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(opBuilderHelperIntLessThan(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -84,7 +90,7 @@ TEST(opBuilderHelperIntLessThan, Exec_less_than_ok)
 
 TEST(opBuilderHelperIntLessThan, Exec_less_than_true)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field_test": "+i_lt/10"}
     })"};
@@ -106,7 +112,10 @@ TEST(opBuilderHelperIntLessThan, Exec_less_than_true)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntLessThan(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(opBuilderHelperIntLessThan(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -118,7 +127,7 @@ TEST(opBuilderHelperIntLessThan, Exec_less_than_true)
 
 TEST(opBuilderHelperIntLessThan, Exec_less_than_false)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field_test": "+i_lt/10"}
     })"};
@@ -140,7 +149,10 @@ TEST(opBuilderHelperIntLessThan, Exec_less_than_false)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntLessThan(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(opBuilderHelperIntLessThan(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -151,7 +163,7 @@ TEST(opBuilderHelperIntLessThan, Exec_less_than_false)
 
 TEST(opBuilderHelperIntLessThan, Exec_less_than_ref_true)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field_test": "+i_lt/$field_src"}
     })"};
@@ -185,7 +197,10 @@ TEST(opBuilderHelperIntLessThan, Exec_less_than_ref_true)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntLessThan(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(opBuilderHelperIntLessThan(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -200,7 +215,7 @@ TEST(opBuilderHelperIntLessThan, Exec_less_than_ref_true)
 
 TEST(opBuilderHelperIntLessThan, Exec_less_than_ref_false)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field_test": "+i_lt/$field_src"}
     })"};
@@ -234,7 +249,10 @@ TEST(opBuilderHelperIntLessThan, Exec_less_than_ref_false)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntLessThan(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(opBuilderHelperIntLessThan(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -245,7 +263,7 @@ TEST(opBuilderHelperIntLessThan, Exec_less_than_ref_false)
 
 TEST(opBuilderHelperIntLessThan, Exec_dynamics_int_ok)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field2check": "+i_eq/$ref_key"}
     })"};
@@ -277,7 +295,10 @@ TEST(opBuilderHelperIntLessThan, Exec_dynamics_int_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperIntLessThan(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(opBuilderHelperIntLessThan(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -290,7 +311,7 @@ TEST(opBuilderHelperIntLessThan, Exec_dynamics_int_ok)
 
 TEST(opBuilderHelperIntLessThan, Exec_multilevel_dynamics_int_ok)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"parentObjt_1.field2check": "+i_eq/$parentObjt_2.ref_key"}
     })"};
@@ -352,7 +373,10 @@ TEST(opBuilderHelperIntLessThan, Exec_multilevel_dynamics_int_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperIntLessThan(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(opBuilderHelperIntLessThan(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
 

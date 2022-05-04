@@ -10,17 +10,18 @@
 #include <gtest/gtest.h>
 #include <vector>
 
-#include "testUtils.hpp"
 #include "opBuilderHelperFilter.hpp"
+#include "testUtils.hpp"
 
 using namespace builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg){};
+static FakeTrFn tr = [](std::string msg) {
+};
 
 TEST(opBuilderHelperNotExists, Builds)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field": "+not_exists"}
     })"};
@@ -30,17 +31,18 @@ TEST(opBuilderHelperNotExists, Builds)
 
 TEST(opBuilderHelperNotExists, Builds_error_bad_parameter)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field_test": "+exists/test"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIntEqual(doc.get("/check"), tr), std::invalid_argument);
+    ASSERT_THROW(opBuilderHelperIntEqual(doc.get("/check"), tr),
+                 std::invalid_argument);
 }
 
 TEST(opBuilderHelperNotExists, Exec_not_exists_ok)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field2check": "+not_exists"}
     })"};
@@ -72,7 +74,10 @@ TEST(opBuilderHelperNotExists, Exec_not_exists_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperNotExists(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(opBuilderHelperNotExists(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -86,7 +91,7 @@ TEST(opBuilderHelperNotExists, Exec_not_exists_ok)
 
 TEST(opBuilderHelperNotExists, Exec_multilevel_ok)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"parentObjt_1.field2check": "+not_exits"}
     })"};
@@ -149,7 +154,10 @@ TEST(opBuilderHelperNotExists, Exec_multilevel_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperNotExists(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(opBuilderHelperNotExists(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
 

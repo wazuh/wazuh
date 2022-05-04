@@ -7,8 +7,8 @@
  * Foundation.
  */
 
-#include <gtest/gtest.h>
 #include "testUtils.hpp"
+#include <gtest/gtest.h>
 
 #include <filesystem>
 #include <fstream>
@@ -19,8 +19,6 @@
 #include "combinatorBuilderBroadcast.hpp"
 #include "combinatorBuilderChain.hpp"
 #include "opBuilderCondition.hpp"
-#include "opBuilderConditionReference.hpp"
-#include "opBuilderConditionValue.hpp"
 #include "opBuilderFileOutput.hpp"
 #include "opBuilderHelperFilter.hpp"
 #include "stageBuilderCheck.hpp"
@@ -30,7 +28,7 @@ using namespace builder::internals::builders;
 
 TEST(AssetBuilderOutput, BuildsAllNonRegistered)
 {
-    Document doc{R"({
+    Document doc {R"({
         "name": "test",
         "check": [
             {"field": "value"}
@@ -45,19 +43,18 @@ TEST(AssetBuilderOutput, BuildsAllNonRegistered)
         ]
     })"};
 
-    ASSERT_THROW(builders::assetBuilderOutput(doc), std::_Nested_exception<std::runtime_error>);
+    ASSERT_THROW(builders::assetBuilderOutput(doc),
+                 std::_Nested_exception<std::runtime_error>);
 }
 
 TEST(AssetBuilderOutput, Builds)
 {
-    BuilderVariant c = opBuilderConditionValue;
-    Registry::registerBuilder("condition.value", c);
-    c = opBuilderConditionReference;
-    Registry::registerBuilder("condition.reference", c);
-    c = opBuilderHelperExists;
+    BuilderVariant c = opBuilderHelperExists;
     Registry::registerBuilder("helper.exists", c);
     c = opBuilderHelperNotExists;
     Registry::registerBuilder("helper.not_exists", c);
+    c = middleBuilderCondition;
+    Registry::registerBuilder("middle.condition", c);
     c = opBuilderCondition;
     Registry::registerBuilder("condition", c);
     c = combinatorBuilderChain;
@@ -71,7 +68,7 @@ TEST(AssetBuilderOutput, Builds)
     c = stageBuilderCheck;
     Registry::registerBuilder("check", c);
 
-    Document doc{R"({
+    Document doc {R"({
         "name": "test",
         "check": [
             {"field": "value"}
@@ -91,7 +88,7 @@ TEST(AssetBuilderOutput, Builds)
 
 TEST(AssetBuilderOutput, BuildsOperates)
 {
-    Document doc{R"({
+    Document doc {R"({
         "name": "test",
         "check": [
             {"field": "value"}
@@ -107,28 +104,29 @@ TEST(AssetBuilderOutput, BuildsOperates)
     })"};
 
     auto input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(std::make_shared<json::Document>(R"(
+                     [=](auto s)
+                     {
+                         s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"value"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+                         s.on_next(std::make_shared<json::Document>(R"(
                 {"field1":"value"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+                         s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"value"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+                         s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"value1"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+                         s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"value"}
             )"));
-            s.on_next(std::make_shared<json::Document>(R"(
+                         s.on_next(std::make_shared<json::Document>(R"(
                 {"field":"value"}
             )"));
-            s.on_completed();
-        }).publish();
+                         s.on_completed();
+                     })
+                     .publish();
     ConnectableT conn = assetBuilderOutput(doc);
     Observable output = conn.connect(input);
     vector<Event> expected;
@@ -143,8 +141,8 @@ TEST(AssetBuilderOutput, BuildsOperates)
 {"field":"value"}
 )";
 
-    string filepath1{"/tmp/stageOutputsTest1.txt"};
-    string filepath2{"/tmp/stageOutputsTest2.txt"};
+    string filepath1 {"/tmp/stageOutputsTest1.txt"};
+    string filepath2 {"/tmp/stageOutputsTest2.txt"};
     std::ifstream ifs(filepath1);
     std::stringstream buffer;
     buffer << ifs.rdbuf();

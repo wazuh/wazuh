@@ -14,15 +14,16 @@
 using namespace builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg){};
+static FakeTrFn tr = [](std::string msg) {
+};
 
 TEST(opBuilderHelperIPCIDR, Builds)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field2check": "+ip_cidr/192.168.0.0/24"}
     })"};
-    Document doc2{R"({
+    Document doc2 {R"({
         "check":
             {"field2check": "+ip_cidr/192.168.0.0/255.255.0.0"}
     })"};
@@ -33,42 +34,46 @@ TEST(opBuilderHelperIPCIDR, Builds)
 
 TEST(opBuilderHelperIPCIDR, Builds_incorrect_number_of_arguments)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field2check": "+ip_cidr/192.168.0.0/255.255.0.0/123"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIPCIDR(doc.get("/check"), tr), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperIPCIDR(doc.get("/check"), tr),
+                 std::runtime_error);
 }
 
 TEST(opBuilderHelperIPCIDR, Builds_invalid_arguments)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field2check": "+ip_cidr/192.168.0.0/256.255.0.0"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIPCIDR(doc.get("/check"), tr), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperIPCIDR(doc.get("/check"), tr),
+                 std::runtime_error);
 
-    Document doc2{R"({
+    Document doc2 {R"({
         "check":
             {"field2check": "+ip_cidr/192.168.0.-1/255.255.0.0.1"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIPCIDR(doc2.get("/check"), tr), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperIPCIDR(doc2.get("/check"), tr),
+                 std::runtime_error);
 
-    Document doc3{R"({
+    Document doc3 {R"({
         "check":
             {"field2check": "+ip_cidr/192.168.0.1/33"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperIPCIDR(doc3.get("/check"), tr), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperIPCIDR(doc3.get("/check"), tr),
+                 std::runtime_error);
 }
 
 // Test ok
 TEST(opBuilderHelperIPCIDR, chack_ip_range)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field2check": "+ip_cidr/192.168.0.0/16"}
     })"};
@@ -102,7 +107,10 @@ TEST(opBuilderHelperIPCIDR, chack_ip_range)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperIPCIDR(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(opBuilderHelperIPCIDR(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -110,6 +118,8 @@ TEST(opBuilderHelperIPCIDR, chack_ip_range)
     ASSERT_EQ(expected.size(), 4);
     ASSERT_STREQ(expected[0]->get("/field2check").GetString(), "192.168.0.0");
     ASSERT_STREQ(expected[1]->get("/field2check").GetString(), "192.168.0.1");
-    ASSERT_STREQ(expected[2]->get("/field2check").GetString(), "192.168.255.254");
-    ASSERT_STREQ(expected[3]->get("/field2check").GetString(), "192.168.255.255");
+    ASSERT_STREQ(expected[2]->get("/field2check").GetString(),
+                 "192.168.255.254");
+    ASSERT_STREQ(expected[3]->get("/field2check").GetString(),
+                 "192.168.255.255");
 }

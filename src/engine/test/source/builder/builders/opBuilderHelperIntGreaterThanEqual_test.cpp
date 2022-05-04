@@ -10,17 +10,18 @@
 #include <gtest/gtest.h>
 #include <vector>
 
-#include "testUtils.hpp"
 #include "opBuilderHelperFilter.hpp"
+#include "testUtils.hpp"
 
 using namespace builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg){};
+static FakeTrFn tr = [](std::string msg) {
+};
 
 TEST(opBuilderHelperIntGreaterThanEqual, Builds)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field_test": "+i_lt/10"}
     })"};
@@ -30,7 +31,7 @@ TEST(opBuilderHelperIntGreaterThanEqual, Builds)
 
 TEST(opBuilderHelperIntGreaterThanEqual, Builds_error_bad_parameter)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field_test": "+i_lt/test"}
     })"};
@@ -41,7 +42,7 @@ TEST(opBuilderHelperIntGreaterThanEqual, Builds_error_bad_parameter)
 
 TEST(opBuilderHelperIntGreaterThanEqual, Builds_error_more_parameters)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field_test": "+i_lt/10/10"}
     })"};
@@ -52,7 +53,7 @@ TEST(opBuilderHelperIntGreaterThanEqual, Builds_error_more_parameters)
 
 TEST(opBuilderHelperIntGreaterThanEqual, Exec_greater_than_equal_ok)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field_test": "+i_lt/10"}
     })"};
@@ -74,7 +75,11 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_greater_than_equal_ok)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntGreaterThanEqual(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(
+            opBuilderHelperIntGreaterThanEqual(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -88,7 +93,7 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_greater_than_equal_ok)
 
 TEST(opBuilderHelperIntGreaterThanEqual, Exec_greater_than_equal_true)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field_test": "+i_lt/10"}
     })"};
@@ -110,7 +115,11 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_greater_than_equal_true)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntGreaterThanEqual(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(
+            opBuilderHelperIntGreaterThanEqual(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -124,7 +133,7 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_greater_than_equal_true)
 
 TEST(opBuilderHelperIntGreaterThanEqual, Exec_greater_than_equal_false)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field_test": "+i_lt/10"}
     })"};
@@ -146,7 +155,11 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_greater_than_equal_false)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntGreaterThanEqual(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(
+            opBuilderHelperIntGreaterThanEqual(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -157,7 +170,7 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_greater_than_equal_false)
 
 TEST(opBuilderHelperIntGreaterThanEqual, Exec_greater_than_equal_ref_true)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field_test": "+i_lt/$field_src"}
     })"};
@@ -191,7 +204,11 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_greater_than_equal_ref_true)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntGreaterThanEqual(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(
+            opBuilderHelperIntGreaterThanEqual(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -206,7 +223,7 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_greater_than_equal_ref_true)
 
 TEST(opBuilderHelperIntGreaterThanEqual, Exec_greater_than_equal_ref_false)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field_test": "+i_lt/$field_src"}
     })"};
@@ -240,7 +257,11 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_greater_than_equal_ref_false)
             )"));
             s.on_completed();
         });
-    Lifter lift = opBuilderHelperIntGreaterThanEqual(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(
+            opBuilderHelperIntGreaterThanEqual(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -251,7 +272,7 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_greater_than_equal_ref_false)
 
 TEST(opBuilderHelperIntGreaterThanEqual, Exec_dynamics_int_ok)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field2check": "+i_eq/$ref_key"}
     })"};
@@ -283,7 +304,11 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_dynamics_int_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperIntGreaterThanEqual(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(
+            opBuilderHelperIntGreaterThanEqual(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
 
@@ -298,7 +323,7 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_dynamics_int_ok)
 
 TEST(opBuilderHelperIntGreaterThanEqual, Exec_multilevel_dynamics_int_ok)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"parentObjt_1.field2check": "+i_eq/$parentObjt_2.ref_key"}
     })"};
@@ -360,7 +385,11 @@ TEST(opBuilderHelperIntGreaterThanEqual, Exec_multilevel_dynamics_int_ok)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperIntGreaterThanEqual(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(
+            opBuilderHelperIntGreaterThanEqual(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
 

@@ -8,8 +8,8 @@
  */
 
 #include <gtest/gtest.h>
-#include <vector>
 #include <re2/re2.h>
+#include <vector>
 
 #include "opBuilderHelperFilter.hpp"
 #include "testUtils.hpp"
@@ -17,11 +17,12 @@
 using namespace builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg){};
+static FakeTrFn tr = [](std::string msg) {
+};
 
 TEST(opBuilderHelperRegexMatch, Builds)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field": "+r_match/regexp"}
     })"};
@@ -30,35 +31,38 @@ TEST(opBuilderHelperRegexMatch, Builds)
 
 TEST(opBuilderHelperRegexMatch, Not_enough_arguments_error)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field": "+r_match/"}
     })"};
-    ASSERT_THROW(opBuilderHelperRegexMatch(doc.get("/check"), tr), std::invalid_argument);
+    ASSERT_THROW(opBuilderHelperRegexMatch(doc.get("/check"), tr),
+                 std::invalid_argument);
 }
 
 TEST(opBuilderHelperRegexMatch, Too_many_arguments_error)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field": "+r_match/regexp/regexp2"}
     })"};
-    ASSERT_THROW(opBuilderHelperRegexMatch(doc.get("/check"), tr), std::invalid_argument);
+    ASSERT_THROW(opBuilderHelperRegexMatch(doc.get("/check"), tr),
+                 std::invalid_argument);
 }
 
 TEST(opBuilderHelperRegexMatch, Invalid_regex)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field": "+r_match/(\\w{"}
     })"};
 
-    ASSERT_THROW(opBuilderHelperRegexMatch(doc.get("/check"), tr), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperRegexMatch(doc.get("/check"), tr),
+                 std::runtime_error);
 }
 
 TEST(opBuilderHelperRegexMatch, Invalid_src_type)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"fieldSrc": "+r_match/\\d+"}
     })"};
@@ -85,7 +89,10 @@ TEST(opBuilderHelperRegexMatch, Invalid_src_type)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperRegexMatch(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(opBuilderHelperRegexMatch(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -95,7 +102,7 @@ TEST(opBuilderHelperRegexMatch, Invalid_src_type)
 
 TEST(opBuilderHelperRegexMatch, String_regex_match)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field": "+r_match/exp"}
     })"};
@@ -118,20 +125,26 @@ TEST(opBuilderHelperRegexMatch, String_regex_match)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperRegexMatch(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(opBuilderHelperRegexMatch(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_TRUE(RE2::PartialMatch(expected[0]->get("/field").GetString(), "exp"));
-    ASSERT_TRUE(RE2::PartialMatch(expected[1]->get("/field").GetString(), "exp"));
-    ASSERT_TRUE(RE2::PartialMatch(expected[2]->get("/field").GetString(), "exp"));
+    ASSERT_TRUE(
+        RE2::PartialMatch(expected[0]->get("/field").GetString(), "exp"));
+    ASSERT_TRUE(
+        RE2::PartialMatch(expected[1]->get("/field").GetString(), "exp"));
+    ASSERT_TRUE(
+        RE2::PartialMatch(expected[2]->get("/field").GetString(), "exp"));
 }
 
 TEST(opBuilderHelperRegexMatch, Numeric_regex_match)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field": "+r_match/123"}
     })"};
@@ -154,20 +167,26 @@ TEST(opBuilderHelperRegexMatch, Numeric_regex_match)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperRegexMatch(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(opBuilderHelperRegexMatch(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 3);
-    ASSERT_TRUE(RE2::PartialMatch(expected[0]->get("/field").GetString(), "123"));
-    ASSERT_TRUE(RE2::PartialMatch(expected[1]->get("/field").GetString(), "123"));
-    ASSERT_TRUE(RE2::PartialMatch(expected[2]->get("/field").GetString(), "123"));
+    ASSERT_TRUE(
+        RE2::PartialMatch(expected[0]->get("/field").GetString(), "123"));
+    ASSERT_TRUE(
+        RE2::PartialMatch(expected[1]->get("/field").GetString(), "123"));
+    ASSERT_TRUE(
+        RE2::PartialMatch(expected[2]->get("/field").GetString(), "123"));
 }
 
 TEST(opBuilderHelperRegexMatch, Advanced_regex_match)
 {
-    Document doc{R"~~({
+    Document doc {R"~~({
         "check":
             {"field": "+r_match/([^ @]+)@([^ @]+)"}
     })~~"};
@@ -187,7 +206,10 @@ TEST(opBuilderHelperRegexMatch, Advanced_regex_match)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperRegexMatch(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(opBuilderHelperRegexMatch(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -201,8 +223,8 @@ TEST(opBuilderHelperRegexMatch, Advanced_regex_match)
 
 TEST(opBuilderHelperRegexMatch, Nested_field_regex_match)
 {
-    Document doc{R"~~({
-        "map":
+    Document doc {R"~~({
+        "check":
             {"test/field": "+r_match/exp"}
     })~~"};
 
@@ -220,19 +242,24 @@ TEST(opBuilderHelperRegexMatch, Nested_field_regex_match)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperRegexMatch(doc.get("/map"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(opBuilderHelperRegexMatch(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
 
     ASSERT_EQ(expected.size(), 2);
-    ASSERT_TRUE(RE2::PartialMatch(expected[0]->get("/test/field").GetString(), "exp"));
-    ASSERT_TRUE(RE2::PartialMatch(expected[1]->get("/test/field").GetString(), "exp"));
+    ASSERT_TRUE(
+        RE2::PartialMatch(expected[0]->get("/test/field").GetString(), "exp"));
+    ASSERT_TRUE(
+        RE2::PartialMatch(expected[1]->get("/test/field").GetString(), "exp"));
 }
 
 TEST(opBuilderHelperRegexMatch, Field_not_exists_regex_match)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field2": "+r_match/exp"}
     })"};
@@ -249,7 +276,10 @@ TEST(opBuilderHelperRegexMatch, Field_not_exists_regex_match)
             s.on_completed();
         });
 
-    Lifter lift = opBuilderHelperRegexMatch(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(opBuilderHelperRegexMatch(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
