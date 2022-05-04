@@ -67,9 +67,9 @@ namespace Utils
     {
         public:
             AsyncDispatcher(Functor functor, const unsigned int numberOfThreads = std::thread::hardware_concurrency() ? : 1)
-                : m_functor{ functor }
-                , m_running{ true }
-                , m_numberOfThreads{ numberOfThreads }
+            : m_functor{ functor }
+            , m_running{ true }
+            , m_numberOfThreads{ numberOfThreads }
             {
                 m_threads.reserve(m_numberOfThreads);
 

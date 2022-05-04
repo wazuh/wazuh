@@ -25,7 +25,7 @@ class IWait
 
 class PromiseWaiting final : public IWait
 {
-    std::promise<void> m_promise;
+        std::promise<void> m_promise;
 
     public:
         explicit PromiseWaiting() {};
@@ -46,7 +46,7 @@ class PromiseWaiting final : public IWait
 
 class BusyWaiting final : public IWait
 {
-    std::atomic<bool> end;
+        std::atomic<bool> end;
 
     public:
         explicit BusyWaiting() : end {false} {};
