@@ -13,6 +13,7 @@
 #include <os_net/os_net.h>
 #include <request_op.h>
 #include "remoted.h"
+#include "state.h"
 #include "wazuh_modules/wmodules.h"
 
 #define COUNTER_LENGTH 64
@@ -259,6 +260,8 @@ void * req_dispatch(req_node_t * node) {
                     mwarn("Couldn't report sending error to client.");
                 }
                 goto cleanup;
+            } else {
+                rem_inc_send_request();
             }
 
             // Wait for ACK or response, only in UDP mode
@@ -317,7 +320,9 @@ void * req_dispatch(req_node_t * node) {
             // Example: #!-req 16 ack
             mdebug2("req_dispatch(): Sending ack (%s).", node->counter);
             snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s ack", node->counter);
-            send_msg(agentid, response, -1);
+            if (send_msg(agentid, response, -1) >= 0) {
+                rem_inc_send_request();
+            }
         }
 
         // Send response to local peer

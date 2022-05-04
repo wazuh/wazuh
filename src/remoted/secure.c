@@ -363,7 +363,9 @@ void * rem_keyupdate_main(__attribute__((unused)) void * args) {
 
     while (1) {
         mdebug2("Checking for keys file changes.");
-        check_keyupdate();
+        if (check_keyupdate() == 1) {
+            rem_inc_keys_reload();
+        }
         sleep(seconds);
     }
 }
