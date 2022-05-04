@@ -20,12 +20,13 @@ using namespace base;
 namespace bld = builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg){};
+static FakeTrFn tr = [](std::string msg) {
+};
 
 // Build ok
 TEST(opBuilderHelperStringLT, Builds)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field2check": "+s_lt/abcd"}
     })"};
@@ -35,7 +36,7 @@ TEST(opBuilderHelperStringLT, Builds)
 // Build incorrect number of arguments
 TEST(opBuilderHelperStringLT, Builds_incorrect_number_of_arguments)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field2check": "+s_lt/test_value/test_value2"}
     })"};
@@ -45,7 +46,7 @@ TEST(opBuilderHelperStringLT, Builds_incorrect_number_of_arguments)
 // Test ok: static values
 TEST(opBuilderHelperStringLT, Static_string_ok)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field2check": "+s_lt/ABCD"}
     })"};
@@ -93,7 +94,10 @@ TEST(opBuilderHelperStringLT, Static_string_ok)
             s.on_completed();
         });
 
-    Lifter lift = bld::opBuilderHelperStringLT(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(bld::opBuilderHelperStringLT(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -105,7 +109,7 @@ TEST(opBuilderHelperStringLT, Static_string_ok)
 // Test ok: static values (numbers, compare as string)
 TEST(opBuilderHelperStringLT, Static_number_ok)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field2check": "+s_lt/50"}
     })"};
@@ -128,7 +132,10 @@ TEST(opBuilderHelperStringLT, Static_number_ok)
             s.on_completed();
         });
 
-    Lifter lift = bld::opBuilderHelperStringLT(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(bld::opBuilderHelperStringLT(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
@@ -139,7 +146,7 @@ TEST(opBuilderHelperStringLT, Static_number_ok)
 // Test ok: dynamic values (string)
 TEST(opBuilderHelperStringLT, Dynamics_string_ok)
 {
-    Document doc{R"({
+    Document doc {R"({
         "check":
             {"field2check": "+s_lt/$ref_key"}
     })"};
@@ -171,7 +178,10 @@ TEST(opBuilderHelperStringLT, Dynamics_string_ok)
             s.on_completed();
         });
 
-    Lifter lift = bld::opBuilderHelperStringLT(doc.get("/check"), tr);
+    Lifter lift = [=](Observable input)
+    {
+        return input.filter(bld::opBuilderHelperStringLT(doc.get("/check"), tr));
+    };
     Observable output = lift(input);
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
