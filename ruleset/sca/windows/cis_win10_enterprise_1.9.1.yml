@@ -135,3 +135,206 @@ checks:
     condition: all
     rules:
       - 'c:net.exe accounts -> n:Lockout observation window (minutes):\s+(\d+) compare >= 15'
+
+  - id: 26009
+    title: "Ensure 'Accounts: Administrator account status' is set to 'Disabled'"
+    description: "This policy setting enables or disables the Administrator account during normal operation. When a computer is booted into safe mode, the Administrator account is always enabled, regardless of how this setting is configured. Note that this setting will have no impact when applied to the Domain Controllers organizational unit via group policy because Domain Controllers have no local account database. It can be configured at the domain level via group policy, similar to account lockout and password policy settings."
+    rationale: "In some organizations, it can be a daunting management challenge to maintain a regular schedule for periodic password changes for local accounts. Therefore, you may want to disable the built-in Administrator account instead of relying on regular password changes to protect it from attack. Another reason to disable this built-in account is that it cannot be locked out no matter how many failed logons it accrues, which makes it a prime target for brute force attacks that attempt to guess passwords. Also, this account has a well-known security identifier (SID) and there are third-party tools that allow authentication by using the SID rather than the account name. This capability means that even if you rename the Administrator account, an attacker could launch a brute force attack by using the SID to log on."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration/Policies/Windows Settings/Security Settings/Local Policies/Security Options/Accounts: Administrator account status"
+    compliance:
+      - cis: ["2.3.1.1"]
+      - cis_csc: ["16"]
+    condition: any
+    rules:
+      - 'c:net user administrator -> r:Account active\s+No'
+      - 'c:net user administrator -> r:The user name could not be found.'
+
+  - id: 26010
+    title: "Ensure 'Accounts: Block Microsoft accounts' is set to 'Users can't add or log on with Microsoft accounts"
+    description: "This policy setting prevents users from adding new Microsoft accounts on this computer. The recommended state for this setting is: Users can't add or log on with Microsoft accounts."
+    rationale: "Organizations that want to effectively implement identity management policies and maintain firm control of what accounts are used to log onto their computers will probably want to block Microsoft accounts. Organizations may also need to block Microsoft accounts in order to meet the requirements of compliance standards that apply to their information systems."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Users can't add or log on with Microsoft accounts : Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Accounts: Block Microsoft accounts."
+    compliance:
+      - cis: ["2.3.1.2"]
+      - cis_csc: ["16"]
+      - pci_dss: ["8.1"]
+      - tsc: ["CC6.1"]
+    references:
+      - 'CCE-36147-7'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> NoConnectedUser -> 3'
+
+  - id: 26011
+    title: "Ensure 'Accounts: Guest account status' is set to 'Disabled'"
+    description: "This policy setting determines whether the Guest account is enabled or disabled. The Guest account allows unauthenticated network users to gain access to the system."
+    rationale: "The default Guest account allows unauthenticated network users to log on as Guest with no password. These unauthorized users could access any resources that are accessible to the Guest account over the network. This capability means that any network shares with permissions that allow access to the Guest account, the Guests group, or the Everyone group will be accessible over the network, which could lead to the exposure or corruption of data."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration/Policies/Windows Settings/Security Settings/Local Policies/Security Options/Accounts: Guest account status"
+    compliance:
+      - cis: ["1.1.5"]
+      - cis_csc: ["16"]
+    condition: all
+    rules:
+      - 'c:net user guest -> r:Account active\s+No'
+
+  - id: 26012
+    title: "Ensure 'Accounts: Limit local account use of blank passwords to console logon only' is set to 'Enabled'"
+    description: "This policy setting determines whether local accounts that are not password protected can be used to log on from locations other than the physical computer console. If you enable this policy setting, local accounts that have blank passwords will not be able to log on to the network from remote client computers. Such accounts will only be able to log on at the keyboard of the computer. The recommended state for this setting is: Enabled."
+    rationale: "Blank passwords are a serious threat to computer security and should be forbidden through both organizational policy and suitable technical measures. In fact, the default settings for Active Directory domains require complex passwords of at least seven characters. However, if users with the ability to create new accounts bypass your domainbased password policies, they could create accounts with blank passwords. For example, a user could build a stand-alone computer, create one or more accounts with blank passwords, and then join the computer to the domain. The local accounts with blank passwords would still function. Anyone who knows the name of one of these unprotected accounts could then use it to log on."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Accounts: Limit local account use of blank passwords to console logon only."
+    compliance:
+      - cis: ["2.3.1.4"]
+      - cis_csc: ["16"]
+      - pci_dss: ["8.2"]
+      - tsc: ["CC6.1"]
+    references:
+      - 'CCE-37615-2'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> LimitBlankPasswordUse -> 1'
+
+  - id: 26013
+    title: "Configure 'Accounts: Rename administrator account'"
+    description: "The built-in local administrator account is a well-known account name that attackers will target. It is recommended to choose another name for this account, and to avoid names that denote administrative or elevated access accounts. Be sure to also change the default description for the local administrator (through the Computer Management console)."
+    rationale: "The Administrator account exists on all computers that run the Windows 2000 or newer operating systems. If you rename this account, it is slightly more difficult for unauthorized persons to guess this privileged user name and password combination."
+    remediation: "To establish the recommended configuration via GP, configure the following UI path: Computer Configuration/Policies/Windows Settings/Security Settings/Local Policies/Security Options/Accounts: Rename administrator account"
+    compliance:
+      - cis: ["2.3.1.5"]
+      - cis_csc: ["16"]
+    condition: all
+    rules:
+      - 'c:net user administrator -> r:The user name could not be found.'
+
+  - id: 26014
+    title: "Configure 'Accounts: Rename guest account'"
+    description: "The built-in local guest account is another well-known name to attackers. It is recommended to rename this account to something that does not indicate its purpose. Even if you disable this account, which is recommended, ensure that you rename it for added security."
+    rationale: "The Guest account exists on all computers that run the Windows 2000 or newer operating systems. If you rename this account, it is slightly more difficult for unauthorized persons to guess this privileged user name and password combination."
+    remediation: "To establish the recommended configuration via GP, configure the following UI path: Computer Configuration/Policies/Windows Settings/Security Settings/Local Policies/Security Options/Accounts: Rename guest account"
+    compliance:
+      - cis: ["2.3.1.6"]
+      - cis_csc: ["16"]
+    condition: all
+    rules:
+      - 'c:net user guest -> r:The user name could not be found.'
+
+  - id: 26015
+    title: "Ensure 'Audit: Force audit policy subcategory settings (Windows Vista or later) to override audit policy category settings' is set to 'Enabled'"
+    description: "This policy setting allows administrators to enable the more precise auditing capabilities present in Windows Vista. The Audit Policy settings available in Windows Server 2003 Active Directory do not yet contain settings for managing the new auditing subcategories. To properly apply the auditing policies prescribed in this baseline, the Audit: Force audit policy subcategory settings (Windows Vista or later) to override audit policy category settings setting needs to be configured to Enabled. The recommended state for this setting is: Enabled. *Important*: Be very cautious about audit settings that can generate a large volume of traffic. For example, if you enable either success or failure auditing for all of the Privilege Use subcategories, the high volume of audit events generated can make it difficult to find other types of entries in the Security log. Such a configuration could also have a significant impact on system performance."
+    rationale: "Prior to the introduction of auditing subcategories in Windows Vista, it was difficult to track events at a per-system or per-user level. The larger event categories created too many events and the key information that needed to be audited was difficult to find."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Audit: Force audit policy subcategory settings (Windows Vista or later) to override audit policy category settings."
+    compliance:
+      - cis: ["2.3.2.1"]
+      - cis_csc: ["6.2"]
+      - pci_dss: ["2.2.3"]
+      - nist_800_53: ["CM.1"]
+      - gpg_13: ["4.3"]
+      - gdpr_IV: ["35.7.d"]
+      - hipaa: ["164.312.b"]
+      - tsc: ["CC5.2"]
+    references:
+      - 'CCE-37850-5'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> SCENoApplyLegacyAuditPolicy -> 1'
+
+  - id: 26015
+      title: "Ensure 'Audit: Shut down system immediately if unable to log security audits' is set to 'Disabled'"
+      description: "This policy setting determines whether the system shuts down if it is unable to log Security events. It is a requirement for Trusted Computer System Evaluation Criteria (TCSEC)-C2 and Common Criteria certification to prevent auditable events from occurring if the audit system is unable to log them. Microsoft has chosen to meet this requirement by halting the system and displaying a stop message if the auditing system experiences a failure. When this policy setting is enabled, the system will be shut down if a security audit cannot be logged for any reason. The recommended state for this setting is: Disabled."
+      rationale: "If the computer is unable to record events to the Security log, critical evidence or important troubleshooting information may not be available for review after a security incident. Also, an attacker could potentially generate a large volume of Security log events to purposely force a computer shutdown."
+      remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Audit: Shut down system immediately if unable to log security audits."
+      compliance:
+        - cis: ["2.3.2.2"]
+        - cis_csc: ["6"]
+        - pci_dss: ["10.7"]
+      references:
+        - 'CCE-35907-5'
+      condition: all
+      rules:
+        - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> CrashOnAuditFail -> 0'
+
+  - id: 26016
+    title: "Ensure 'Devices: Allowed to format and eject removable media' is set to 'Administrators'"
+    description: "This policy setting determines who is allowed to format and eject removable NTFS media. You can use this policy setting to prevent unauthorized users from removing data on one computer to access it on another computer on which they have local administrator privileges. The recommended state for this setting is: Administrators."
+    rationale: "Users may be able to move data on removable disks to a different computer where they have administrative privileges. The user could then take ownership of any file, grant themselves full control, and view or modify any file. The fact that most removable storage devices will eject media by pressing a mechanical button diminishes the advantage of this policy setting."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators and Interactive Users: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Devices: Allowed to format and eject removable media."
+    compliance:
+      - cis: ["2.3.4.1"]
+      - cis_csc: ["5.1"]
+      - pci_dss: ["7.2"]
+      - tsc: ["CC6.4"]
+    references:
+      - 'CCE-37701-0'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> AllocateDASD -> 0'
+
+  - id: 26017
+      title: "Ensure 'Devices: Prevent users from installing printer drivers' is set to 'Enabled'"
+      description: "For a computer to print to a shared printer, the driver for that shared printer must be installed on the local computer. This security setting determines who is allowed to install a printer driver as part of connecting to a shared printer. The recommended state for this setting is: Enabled. Note: This setting does not affect the ability to add a local printer. This setting does not affect Administrators."
+      rationale: "It may be appropriate in some organizations to allow users to install printer drivers on their own workstations. However, you should allow only Administrators, not users, to do so on servers, because printer driver installation on a server may unintentionally cause the computer to become less stable. A malicious user could install inappropriate printer drivers in a deliberate attempt to damage the computer, or a user might accidentally install malicious software that masquerades as a printer driver. It is feasible for an attacker to disguise a Trojan horse program as a printer driver. The program may appear to users as if they must use it to print, but such a program could unleash malicious code on your computer network."
+      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Devices: Prevent users from installing printer drivers."
+      compliance:
+        - cis: ["2.3.4.2"]
+        - cis_csc: ["5.1"]
+        - pci_dss: ["2.2.4","2.2.5"]
+        - nist_800_53: ["CM.1"]
+        - tsc: ["CC6.3","CC5.2"]
+      references:
+        - 'CCE-37942-0'
+      condition: all
+      rules:
+        - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Print\Providers\LanMan Print Services\Servers -> AddPrinterDrivers -> 1'
+
+  - id: 26018
+    title: "Ensure 'Domain member: Digitally encrypt or sign secure channel data (always)' is set to 'Enabled'"
+    description: "This policy setting determines whether all secure channel traffic that is initiated by the domain member must be signed or encrypted. The recommended state for this setting is: Enabled."
+    rationale: "When a computer joins a domain, a computer account is created. After it joins the domain, the computer uses the password for that account to create a secure channel with the Domain Controller for its domain every time that it restarts. Requests that are sent on the secure channel are authenticated-and sensitive information such as passwords are encrypted-but the channel is not integrity-checked, and not all information is encrypted. Digital encryption and signing of the secure channel is a good idea where it is supported. The secure channel protects domain credentials as they are sent to the Domain Controller."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain member: Digitally encrypt or sign secure channel data (always)."
+    compliance:
+      - cis: ["2.3.6.1"]
+      - cis_csc: ["13"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1","CC6.7","CC7.2"]
+    references:
+      - 'CCE-36142-8'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> RequireSignOrSeal -> 1'
+
+  - id: 26019
+    title: "Ensure 'Domain member: Digitally encrypt secure channel data (when possible)' is set to 'Enabled'"
+    description: "This policy setting determines whether a domain member should attempt to negotiate encryption for all secure channel traffic that it initiates. The recommended state for this setting is: Enabled."
+    rationale: "When a computer joins a domain, a computer account is created. After it joins the domain, the computer uses the password for that account to create a secure channel with the Domain Controller for its domain every time that it restarts. Requests that are sent on the secure channel are authenticated-and sensitive information such as passwords are encrypted-but the channel is not integrity-checked, and not all information is encrypted. Digital encryption and signing of the secure channel is a good idea where it is supported. The secure channel protects domain credentials as they are sent to the Domain Controller."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain member: Digitally encrypt secure channel data (when possible)."
+    compliance:
+      - cis: [ "2.3.6.2" ]
+      - cis_csc: [ "13" ]
+      - pci_dss: [ "4.1" ]
+      - hipaa: [ "164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II" ]
+      - nist_800_53: [ "SC.8" ]
+      - tsc: [ "CC6.1","CC6.7","CC7.2" ]
+    references:
+      - 'CCE-37130-2'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> SealSecureChannel -> 1'
+
+  - id: 26020
+      title: "Ensure 'Domain member: Digitally sign secure channel data (when possible)' is set to 'Enabled'"
+      description: "This policy setting determines whether a domain member should attempt to negotiate whether all secure channel traffic that it initiates must be digitally signed. Digital signatures protect the traffic from being modified by anyone who captures the data as it traverses the network. The recommended state for this setting is: Enabled."
+      rationale: "When a computer joins a domain, a computer account is created. After it joins the domain, the computer uses the password for that account to create a secure channel with the Domain Controller for its domain every time that it restarts. Requests that are sent on the secure channel are authenticated-and sensitive information such as passwords are encrypted-but the channel is not integrity-checked, and not all information is encrypted. Digital encryption and signing of the secure channel is a good idea where it is supported. The secure channel protects domain credentials as they are sent to the Domain Controller."
+      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain member: Digitally sign secure channel data (when possible)."
+      compliance:
+        - cis: ["2.3.6.3"]
+        - cis_csc: ["13"]
+        - pci_dss: ["4.1"]
+        - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+        - nist_800_53: ["SC.8"]
+        - tsc: ["CC6.1","CC6.7","CC7.2"]
+      references:
+        - 'CCE-37222-7'
+      condition: all
+      rules:
+        - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> SignSecureChannel -> 1'
