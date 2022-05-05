@@ -35,8 +35,8 @@ typedef struct _agent_syscollector_t {
     uint64_t syscollector_hwinfo_queries;
     uint64_t syscollector_hwinfo_time;
     uint64_t syscollector_osinfo_queries;
-    uint64_t syscollector_osinfo_time;
-    uint64_t process_queries;
+    uint64_t syscollector_osinfo_time; ///nuevas 
+    uint64_t process_queries; //deprecated
     uint64_t process_time;
     uint64_t package_queries;
     uint64_t package_time;
@@ -228,3 +228,155 @@ typedef struct _db_stats_t {
 
     queries_breakdown_t queries_breakdown;
 } db_stats_t;
+
+void w_inc_queries_total();
+
+void w_inc_wazuhdb();
+
+void w_inc_wazuhdb_remove();
+
+void w_inc_wazuhdb_unknown();
+
+void w_inc_agent();
+
+void w_inc_agent_sql();
+
+void w_inc_agent_remove();
+
+void w_inc_agent_begin();
+
+void w_inc_agent_commit();
+
+void w_inc_agent_close();
+
+void w_inc_agent_rootcheck();
+
+void w_inc_agent_sca();
+
+void w_inc_agent_ciscat();
+
+void w_inc_agent_vul_detector();
+
+void w_inc_agent_dbsync();
+
+void w_inc_agent_unknown();
+
+void w_inc_agent_syscheck();
+
+void w_inc_agent_fim_file();
+
+void w_inc_agent_fim_registry();
+
+void w_inc_agent_syscollector_processes();
+
+void w_inc_agent_syscollector_packages();
+
+void w_inc_agent_syscollector_hotfixes();
+
+void w_inc_agent_syscollector_ports();
+
+void w_inc_agent_syscollector_network_protocol();
+
+void w_inc_agent_syscollector_network_address();
+
+void w_inc_agent_syscollector_network_iface();
+
+void w_inc_agent_syscollector_hwinfo();
+
+void w_inc_agent_syscollector_osinfo();
+
+void w_inc_agent_syscollector_deprecated_process();
+
+void w_inc_agent_syscollector_deprecated_packages();
+
+void w_inc_agent_syscollector_deprecated_hotfixes();
+
+void w_inc_agent_syscollector_deprecated_ports();
+
+void w_inc_agent_syscollector_deprecated_network_protocol();
+
+void w_inc_agent_syscollector_deprecated_network_address();
+
+void w_inc_agent_syscollector_deprecated_network_info();
+
+void w_inc_agent_syscollector_deprecated_hardware();
+
+void w_inc_agent_syscollector_deprecated_osinfo();
+
+void w_inc_global_queries();
+
+void w_inc_global_sql_queries();
+
+void w_inc_global_unknown_queries();
+
+void w_inc_global_agent_queries();
+insert_agent_queries
+
+void w_inc_global_agent_queries();
+insert_agent_time
+
+void w_inc_global_agent_queries();
+update_agent_data_queries
+
+void w_inc_global_agent_queries();
+update_agent_name_queries
+
+void w_inc_global_agent_queries();
+update_agent_group_queries
+
+void w_inc_global_agent_queries();
+update_keepalive_queries
+
+void w_inc_global_agent_queries();
+update_connection_status_queries
+
+void w_inc_global_agent_queries();
+reset_agents_connection_queries
+
+void w_inc_global_agent_queries();
+sync_agent_info_set_queries
+
+void w_inc_global_agent_queries();
+delete_agent_queries
+
+void w_inc_global_agent_queries();
+select_agent_name_queries
+
+void w_inc_global_agent_queries();
+select_agent_group_queries
+
+void w_inc_global_agent_queries();
+select_keepalive_queries
+
+void w_inc_global_agent_queries();
+find_agent_queries
+
+void w_inc_global_agent_queries();
+get_agent_info_queries
+
+void w_inc_global_agent_queries();
+get_all_agents_queries
+
+void w_inc_global_agent_queries();
+get_agents_by_connection_status_queries
+
+void w_inc_global_agent_queries();
+disconnect_agents_queries
+
+void w_inc_global_agent_queries();
+sync_agent_info_get_queries
+
+
+
+
+
+
+
+void w_inc_task_queries();
+
+void w_inc_mitre_queries();
+
+void w_inc_unknown_queries();
+
+
+
