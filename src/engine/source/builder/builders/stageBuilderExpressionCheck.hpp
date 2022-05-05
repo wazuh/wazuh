@@ -21,7 +21,7 @@ namespace builder::internals::builders
  * @param def
  * @return types::Lifter
  */
-types::Lifter stageBuilderExpressionCheck(const types::DocumentValue& def,
+base::Lifter stageBuilderExpressionCheck(const base::DocumentValue& def,
                                           types::TracerFn tr);
 
 } // namespace builder::internals::builders
