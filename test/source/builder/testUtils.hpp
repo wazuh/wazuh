@@ -25,7 +25,7 @@ using namespace rxcpp;
 using namespace builder::internals;
 using namespace builder::internals::types;
 
-auto createSharedEvent = [](const char * json){
+static auto createSharedEvent = [](const char * json){
     return std::make_shared<base::EventHandler>(std::make_shared<base::Document>(json));
 };
 
