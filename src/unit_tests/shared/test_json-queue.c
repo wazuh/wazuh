@@ -118,8 +118,12 @@ void test_jqueue_parse_json_overlong_alert(void ** state) {
 
     expect_value(__wrap_fgets, __stream, queue->fp);
     will_return(__wrap_fgets, buffer1);
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, 65537);
     expect_value(__wrap_fgets, __stream, queue->fp);
     will_return(__wrap_fgets, buffer2);
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, 65537);
 
     expect_string(__wrap__mwarn, formatted_msg, "Overlong JSON alert read from '/home/test'");
 
@@ -160,10 +164,10 @@ void test_jqueue_parse_json_fgets_fail_and_retry(void ** state) {
 
     expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, 1);
-
     expect_value(__wrap_fgets, __stream, queue->fp);
     will_return(__wrap_fgets, buffer);
-
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, 65537);
     expect_value(__wrap_fgets, __stream, queue->fp);
     will_return(__wrap_fgets, NULL);
 

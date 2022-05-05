@@ -114,6 +114,7 @@ cJSON * jqueue_parse_json(file_queue * queue) {
     cJSON * object = NULL;
     char buffer[OS_MAXSTR + 1];
     int64_t current_pos;
+    int64_t offset;
     const char * jsonErrPtr;
     char * end;
 
@@ -135,8 +136,11 @@ cJSON * jqueue_parse_json(file_queue * queue) {
             return NULL;
         }
 
-        while (strlen(buffer) == OS_MAXSTR) {
+        offset = w_ftell(queue->fp);
+        while ((offset-current_pos) == OS_MAXSTR) {
             if (fgets(buffer, OS_MAXSTR + 1, queue->fp)) {
+                current_pos = offset;
+                offset = w_ftell(queue->fp);
                 if (strchr(buffer, '\n')) {
                     mwarn("Overlong JSON alert read from '%s'", queue->file_name);
                     return NULL;
