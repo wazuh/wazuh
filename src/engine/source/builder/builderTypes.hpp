@@ -36,7 +36,7 @@ using OpBuilder =
 using CombinatorBuilder =
     std::function<base::Lifter(std::vector<base::Lifter>)>;
 using MiddleBuilderCondition =
-    std::function<std::function<bool(Event)>(const DocumentValue&, TracerFn)>;
+    std::function<std::function<bool(base::Event)>(const base::DocumentValue&, TracerFn)>;
 using BuilderVariant = std::
     variant<AssetBuilder, OpBuilder, CombinatorBuilder, MiddleBuilderCondition>;
 

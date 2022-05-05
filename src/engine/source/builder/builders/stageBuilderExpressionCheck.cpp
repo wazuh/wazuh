@@ -10,7 +10,7 @@ using namespace builder::internals;
 
 namespace builder::internals::builders
 {
-types::Lifter stageBuilderExpressionCheck(const types::DocumentValue& def,
+base::Lifter stageBuilderExpressionCheck(const base::DocumentValue& def,
                                           types::TracerFn tr)
 {
     // Assert value is as expected
@@ -27,7 +27,7 @@ types::Lifter stageBuilderExpressionCheck(const types::DocumentValue& def,
 
     // Inject builder
     auto termBuilder =
-        [=](std::string term) -> std::function<bool(types::Event)>
+        [=](std::string term) -> std::function<bool(base::Event)>
     {
         std::string field;
         std::string value;
@@ -59,7 +59,7 @@ types::Lifter stageBuilderExpressionCheck(const types::DocumentValue& def,
 
         // Transform KstringPair to object, because that is what expects the builder
         // Todo: this is a hack, we should use a proper builder
-        types::Document doc;
+        base::Document doc;
         doc.m_doc.SetObject();
         doc.m_doc.GetObject().AddMember({field.c_str(), doc.getAllocator()},
                                         {value.c_str(), doc.getAllocator()},
@@ -72,12 +72,12 @@ types::Lifter stageBuilderExpressionCheck(const types::DocumentValue& def,
     };
 
     // Evaluator function
-    auto evaluator = logicExpression::buildDijstraEvaluator<types::Event>(
+    auto evaluator = logicExpression::buildDijstraEvaluator<base::Event>(
         expression, termBuilder);
 
-    return [=](types::Observable observable) -> types::Observable
+    return [=](base::Observable observable) -> base::Observable
     {
-        return observable.filter([=](types::Event event)
+        return observable.filter([=](base::Event event)
                                  { return evaluator(event); });
     };
 }
