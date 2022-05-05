@@ -57,12 +57,15 @@ types::Lifter stageBuilderExpressionCheck(const types::DocumentValue& def,
             value = term.substr(0, pos1) + term.substr(pos2, term.size());
         }
 
+        // Transform KstringPair to object, because that is what expects the builder
+        // Todo: this is a hack, we should use a proper builder
         types::Document doc;
         doc.m_doc.SetObject();
         doc.m_doc.GetObject().AddMember({field.c_str(), doc.getAllocator()},
                                         {value.c_str(), doc.getAllocator()},
                                         doc.getAllocator());
 
+        // TODO: we need to rethink how and why we are using the registry
         auto termFunction = std::get<types::MiddleBuilderCondition>(
             Registry::getBuilder("middle.condition"))(doc.getObject(), tr);
         return termFunction;
