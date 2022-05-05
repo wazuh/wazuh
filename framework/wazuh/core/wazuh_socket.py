@@ -100,7 +100,6 @@ class WazuhSocketJSON(WazuhSocket):
 
     MAX_SIZE = 65536
 
-    @check_wazuh_daemons_health
     def __init__(self, path, max_size=0):
         WazuhSocket.__init__(self, path, max_size=max_size)
 
