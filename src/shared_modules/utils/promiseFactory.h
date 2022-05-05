@@ -23,7 +23,6 @@ class PromiseFactory final
         static std::shared_ptr<IWait> getPromiseObject()
         {
             return std::make_shared<PromiseWaiting>();
-
         }
 };
 
