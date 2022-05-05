@@ -36,8 +36,8 @@ middleBuilderConditionReference(const base::DocumentValue& def,
                                  "definition must be a string.");
     }
 
-    // Estract and prepare field and reference
-    std::string field {
+    // Extract and prepare field and reference
+    const std::string field {
         json::formatJsonPath(def.MemberBegin()->name.GetString())};
     std::string reference {def.MemberBegin()->value.GetString()};
     if (reference.front() == '$')
@@ -45,11 +45,11 @@ middleBuilderConditionReference(const base::DocumentValue& def,
         reference.erase(0, 1);
     }
     reference = json::formatJsonPath(reference);
-    std::string successTrace =
+    const std::string successTrace =
         fmt::format("{{{}: {}}} Condition Success",
                     def.MemberBegin()->name.GetString(),
                     def.MemberBegin()->value.GetString());
-    std::string failureTrace =
+    const std::string failureTrace =
         fmt::format("{{{}: {}}} Condition Failure",
                     def.MemberBegin()->name.GetString(),
                     def.MemberBegin()->value.GetString());
@@ -82,8 +82,8 @@ middleBuilderConditionValue(const base::DocumentValue& def, types::TracerFn tr)
         json::formatJsonPath(def.MemberBegin()->name.GetString());
     // TODO: build document with value only
     base::Document value {def};
-    std::string successTrace = fmt::format("{} Condition Success", value.str());
-    std::string failureTrace = fmt::format("{} Condition Failure", value.str());
+    const std::string successTrace = fmt::format("{} Condition Success", value.str());
+    const std::string failureTrace = fmt::format("{} Condition Failure", value.str());
 
     return [=](base::Event e)
     {
