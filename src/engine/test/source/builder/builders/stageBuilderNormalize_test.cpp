@@ -12,8 +12,6 @@
 #include "combinatorBuilderBroadcast.hpp"
 #include "combinatorBuilderChain.hpp"
 #include "opBuilderCondition.hpp"
-#include "opBuilderConditionReference.hpp"
-#include "opBuilderConditionValue.hpp"
 #include "opBuilderHelperFilter.hpp"
 #include "opBuilderMap.hpp"
 #include "opBuilderMapReference.hpp"
@@ -154,12 +152,10 @@ TEST(StageBuilderNormalize, BuildFullNormalize)
     Registry::registerBuilder("check", c);
     c = opBuilderCondition;
     Registry::registerBuilder("condition", c);
-    c = opBuilderConditionValue;
-    Registry::registerBuilder("condition.value", c);
-    c = opBuilderConditionReference;
-    Registry::registerBuilder("condition.reference", c);
+    c = middleBuilderCondition;
+    Registry::registerBuilder("middle.condition", c);
     c = opBuilderHelperExists;
-    Registry::registerBuilder("helper.exists", c);
+    Registry::registerBuilder("middle.helper.exists", c);
 
     // combinators
     c = combinatorBuilderChain;
