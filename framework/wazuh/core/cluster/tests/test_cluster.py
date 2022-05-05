@@ -375,7 +375,7 @@ async def test_decompress_files_ok(json_loads_mock, mkdir_with_mode_mock, remove
 @patch('zlib.decompress', return_value=Exception)
 @patch('wazuh.core.cluster.cluster.mkdir_with_mode')
 async def test_decompress_files_ko(mkdir_with_mode_mock, zlib_mock, rmtree_mock):
-    """Check if the decompressing function raising the necessary exceptions."""
+    """Check if the decompressing function is raising the necessary exceptions."""
 
     # Raising the expected Exception
     zip_dir = '/foo/bar/'
@@ -388,10 +388,13 @@ async def test_decompress_files_ko(mkdir_with_mode_mock, zlib_mock, rmtree_mock)
             os_path_exists_mock.assert_called_once()
             rmtree_mock.assert_called_once()
 
-    with pytest.raises(Exception):
+    with pytest.raises(OSError):
         with patch('builtins.open', mock_open(read_data=f'path{cluster.PATH_SEP}content'.encode())):
             with patch('os.path.exists', return_value=False):
-                cluster.decompress_files(zip_dir)
+                with patch('os.makedirs', side_effect=PermissionError) as mock_makedirs:
+                    with patch('wazuh.core.cluster.cluster.remove'):
+                        mock_makedirs.errno = 13  # Errno 13: Permission denied
+                        cluster.decompress_files(zip_dir)
 
 
 @patch('wazuh.core.cluster.cluster.get_cluster_items')
