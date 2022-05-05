@@ -483,7 +483,7 @@ void wm_vuldet_enable_rhel_json_feed(update_node **updates) {
     int8_t rhel_enabled = 0;
 
     // Search for any enabled rhel feed
-    for (int i = 0; i < CVE_JREDHAT; i++) {
+    for (int i = 0; i < CVE_JREDHAT; ++i) {
         if (updates[i] && updates[i]->dist_ref == FEED_REDHAT) {
             rhel_enabled = i;
             break;
@@ -613,10 +613,13 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
     }
 
     /**
-    *  multi_provider = NVD and MSU.
+    *  multi_provider = NVD, RedHat JSON and MSU.
     *  Those which use <path> or <url> tags.
     **/
     if (multi_provider || (p_options.multi_path || p_options.multi_url)) {
+        // Only the JSON feed of RedHat is multi_provider
+        pr_name = (strcasestr(pr_name, "redhat")) ? "jredhat" : pr_name;
+
         if (os_index = wm_vuldet_set_feed_version(pr_name, NULL, updates), os_index == OS_INVALID || os_index == OS_SUPP_SIZE) {
             goto end;
         }
