@@ -7,7 +7,7 @@ import socket
 from functools import wraps
 from json import dumps, loads
 from struct import pack, unpack
-from types import MappingProxyType
+from types import MappingProxyType, FunctionType
 
 from wazuh import common
 from wazuh.core.exception import WazuhException, WazuhInternalError
@@ -30,7 +30,7 @@ REQUIRED_DAEMONS_FOR_SOCKET = MappingProxyType({
 })
 
 
-def check_wazuh_daemons_health(socket_init):
+def check_wazuh_daemons_health(socket_init: FunctionType):
     """Check if the required Wazuh daemons for the given socket are running.
 
     Parameters
@@ -45,11 +45,13 @@ def check_wazuh_daemons_health(socket_init):
     """
     @wraps(socket_init)
     def wrapper(*args, **kwargs):
-        from wazuh.core.manager import check_wazuh_status
+        if kwargs.get("check_daemon", True):
 
-        # `path` is the first positional parameter (after `self`)
-        socket_path = args[1]
-        check_wazuh_status(REQUIRED_DAEMONS_FOR_SOCKET.get(socket_path, set()))
+            from wazuh.core.manager import check_wazuh_status
+
+            # `path` is the first positional parameter (after `self`)
+            socket_path = args[1]
+            check_wazuh_status(REQUIRED_DAEMONS_FOR_SOCKET.get(socket_path, set()))
 
         return socket_init(*args, **kwargs)
     return wrapper
@@ -60,7 +62,7 @@ class WazuhSocket:
     MAX_SIZE = 65536
 
     @check_wazuh_daemons_health
-    def __init__(self, path, max_size=0):
+    def __init__(self, path, max_size: int = 0, check_daemon: bool = True):
         self.path = path
         self.MAX_SIZE = max_size or self.MAX_SIZE
         self._connect()
@@ -285,7 +287,7 @@ async def wazuh_sendsync(daemon_name=None, message=None):
         Message in JSON format to be sent to the daemon's socket.
     """
     try:
-        sock = WazuhSocket(DAEMONS[daemon_name]['path'])
+        sock = WazuhSocket(DAEMONS[daemon_name]['path'], check_daemon=False)
         if isinstance(message, dict):
             message = dumps(message)
         sock.send(msg_bytes=message.encode(), header_format=DAEMONS[daemon_name]['header_format'])

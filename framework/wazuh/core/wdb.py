@@ -21,7 +21,7 @@ class WazuhDBConnection:
     Represents a connection to the wdb socket
     """
 
-    def __init__(self, request_slice=500, max_size=6144):
+    def __init__(self, request_slice=500, max_size=6144, check_daemon=True):
         """
         Constructor
         """
@@ -29,7 +29,8 @@ class WazuhDBConnection:
         self.request_slice = request_slice
         self.max_size = max_size
         try:
-            self.socket = WazuhSocket(self.socket_path, max_size=max_size)
+            # `WazuhSocket` is used here to force the daemon check with the decorator
+            self.socket = WazuhSocket(self.socket_path, max_size=max_size, check_daemon=check_daemon)
             self.__conn = self.socket.s
         except WazuhException as e:
             raise WazuhInternalError(2005, e.message) if e.code == 1013 else e
