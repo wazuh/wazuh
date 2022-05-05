@@ -93,8 +93,8 @@ public:
      *
      * @details The table will work as a queue if the limit is exceeded.
      */
-    virtual void setTableMaxRow(const std::string&       table,
-                                const unsigned long long maxRows);
+    virtual void setTableMaxRow(const std::string& table,
+                                const long long    maxRows);
 
     /**
      * @brief Inserts (or modifies) a database record.

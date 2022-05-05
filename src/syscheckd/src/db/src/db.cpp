@@ -123,14 +123,16 @@ int DB::countEntries(const std::string& tableName, const COUNT_SELECT_TYPE selec
 #ifdef __cplusplus
 extern "C" {
 #endif
-void fim_db_init(int storage,
-                 int sync_interval,
-                 fim_sync_callback_t sync_callback,
-                 logging_callback_t log_callback,
-                 int file_limit,
-                 int value_limit,
-                 bool sync_registry_enabled)
+FIMDBErrorCode fim_db_init(int storage,
+                           int sync_interval,
+                           fim_sync_callback_t sync_callback,
+                           logging_callback_t log_callback,
+                           int file_limit,
+                           int value_limit,
+                           bool sync_registry_enabled)
 {
+    auto retVal { FIMDBErrorCode::FIMDB_ERR };
+
     try
     {
         // LCOV_EXCL_START
@@ -232,6 +234,7 @@ void fim_db_init(int storage,
                             file_limit,
                             value_limit,
                             sync_registry_enabled);
+        retVal = FIMDBErrorCode::FIMDB_OK;
 
     }
     // LCOV_EXCL_START
@@ -242,6 +245,7 @@ void fim_db_init(int storage,
     }
 
     // LCOV_EXCL_STOP
+    return retVal;
 }
 
 void fim_run_integrity()

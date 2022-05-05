@@ -19,6 +19,7 @@
 #include <shared_mutex>
 #include "json.hpp"
 #include "commonDefs.h"
+#include "abstractLocking.hpp"
 
 namespace DbSync
 {
@@ -32,8 +33,7 @@ namespace DbSync
             // LCOV_EXCL_STOP
 
             virtual void bulkInsert(const std::string& table,
-                                    const nlohmann::json& data,
-                                    const bool inTransaction = true) = 0;
+                                    const nlohmann::json& data) = 0;
 
             virtual void refreshTableData(const nlohmann::json& data,
                                           const ResultCallback callback,
@@ -42,10 +42,10 @@ namespace DbSync
             virtual void syncTableRowData(const nlohmann::json& jsInput,
                                           const ResultCallback callback,
                                           const bool inTransaction,
-                                          std::function<void()> unlockMutex) = 0;
+                                          Utils::ILocking& mutex) = 0;
 
             virtual void setMaxRows(const std::string& table,
-                                    const unsigned long long maxRows) = 0;
+                                    const int64_t maxRows) = 0;
 
             virtual void initializeStatusField(const nlohmann::json& tableNames) = 0;
 

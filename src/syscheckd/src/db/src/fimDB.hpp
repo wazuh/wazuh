@@ -56,7 +56,9 @@ constexpr auto CREATE_FILE_DB_STATEMENT
     hash_sha1 TEXT,
     hash_sha256 TEXT,
     mtime INTEGER,
-    PRIMARY KEY(path)) WITHOUT ROWID;)"
+    PRIMARY KEY(path)) WITHOUT ROWID;
+    CREATE INDEX IF NOT EXISTS path_index ON file_entry (path);
+    CREATE INDEX IF NOT EXISTS inode_index ON file_entry (dev, inode);)"
 };
 
 constexpr auto CREATE_REGISTRY_KEY_DB_STATEMENT
@@ -73,7 +75,8 @@ constexpr auto CREATE_REGISTRY_KEY_DB_STATEMENT
     scanned INTEGER,
     last_event INTEGER,
     checksum TEXT NOT NULL,
-    PRIMARY KEY (arch, path)) WITHOUT ROWID;)"
+    PRIMARY KEY (arch, path)) WITHOUT ROWID;
+    CREATE INDEX IF NOT EXISTS path_index ON registry_key (path);)"
 };
 
 constexpr auto CREATE_REGISTRY_VALUE_DB_STATEMENT
@@ -92,7 +95,8 @@ constexpr auto CREATE_REGISTRY_VALUE_DB_STATEMENT
     checksum TEXT NOT NULL,
     PRIMARY KEY(path, arch, name)
     FOREIGN KEY (path) REFERENCES registry_key(path)
-    FOREIGN KEY (arch) REFERENCES registry_key(arch)) WITHOUT ROWID;)"
+    FOREIGN KEY (arch) REFERENCES registry_key(arch)) WITHOUT ROWID;
+    CREATE INDEX IF NOT EXISTS key_name_index ON registry_data (path, name);)"
 };
 
 constexpr auto CREATE_REGISTRY_VIEW_STATEMENT
@@ -161,8 +165,8 @@ class FIMDB
                   std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,
                   std::shared_ptr<DBSync> dbsyncHandler,
                   std::shared_ptr<RemoteSync> rsyncHandler,
-                  unsigned int fileLimit,
-                  unsigned int registryLimit = 0,
+                  int fileLimit,
+                  int registryLimit = 0,
                   bool syncRegistryEnabled = true);
 
         /**

@@ -27,7 +27,7 @@ class MockDBSyncHandler: public DBSync
                           const std::string& path,
                           const std::string& sqlStatement): DBSync(hostType, dbType, path, sqlStatement) {};
         ~MockDBSyncHandler() {};
-        MOCK_METHOD(void, setTableMaxRow, (const std::string&, const unsigned long long), (override));
+        MOCK_METHOD(void, setTableMaxRow, (const std::string&, const long long), (override));
         MOCK_METHOD(void, insertData, (const nlohmann::json&), (override));
         MOCK_METHOD(void, deleteRows, (const nlohmann::json&), (override));
         MOCK_METHOD(void, syncRow, (const nlohmann::json&, ResultCallbackData), (override));

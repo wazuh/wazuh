@@ -294,9 +294,9 @@ int dbsync_insert_data(const DBSYNC_HANDLE handle,
     return retVal;
 }
 
-int dbsync_set_table_max_rows(const DBSYNC_HANDLE      handle,
-                              const char*              table,
-                              const unsigned long long max_rows)
+int dbsync_set_table_max_rows(const DBSYNC_HANDLE handle,
+                              const char*         table,
+                              const long long     max_rows)
 {
     auto retVal { -1 };
     std::string errorMessage;
@@ -692,8 +692,8 @@ void DBSync::insertData(const nlohmann::json& jsInsert)
     DBSyncImplementation::instance().insertBulkData(m_dbsyncHandle, jsInsert);
 }
 
-void DBSync::setTableMaxRow(const std::string&       table,
-                            const unsigned long long maxRows)
+void DBSync::setTableMaxRow(const std::string& table,
+                            const long long    maxRows)
 {
     DBSyncImplementation::instance().setMaxRows(m_dbsyncHandle, table, maxRows);
 }

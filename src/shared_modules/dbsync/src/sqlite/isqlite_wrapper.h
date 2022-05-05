@@ -39,6 +39,7 @@ namespace SQLite
             // LCOV_EXCL_STOP
             virtual void close() = 0;
             virtual void execute(const std::string& query) = 0;
+            virtual int64_t changes() const = 0;
             virtual const std::shared_ptr<sqlite3>& db() const = 0;
     };
 

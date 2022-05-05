@@ -37,19 +37,20 @@ void expect_fim_db_get_path(const char* path, int ret_val) {
     will_return(__wrap_fim_db_get_path, ret_val);
 }
 
-void __wrap_fim_db_init(int storage,
-                        int sync_interval,
-                        __attribute__((unused)) fim_sync_callback_t sync_callback,
-                        __attribute__((unused)) logging_callback_t log_callback,
-                        int file_limit,
-                        int value_limit,
-                        int sync_registry_enable
-                        ) {
+FIMDBErrorCode __wrap_fim_db_init(int storage,
+                                  int sync_interval,
+                                  __attribute__((unused)) fim_sync_callback_t sync_callback,
+                                  __attribute__((unused)) logging_callback_t log_callback,
+                                  int file_limit,
+                                  int value_limit,
+                                  int sync_registry_enable) {
     check_expected(storage);
     check_expected(sync_interval);
     check_expected(file_limit);
     check_expected(value_limit);
     check_expected(sync_registry_enable);
+
+    return mock_type(int);
 }
 
 void expect_wrapper_fim_db_init(int storage,
@@ -62,9 +63,11 @@ void expect_wrapper_fim_db_init(int storage,
     expect_value(__wrap_fim_db_init, file_limit, file_limit);
     expect_value(__wrap_fim_db_init, value_limit, value_limit);
     expect_value(__wrap_fim_db_init, sync_registry_enable, sync_registry_enable);
+
+    will_return(__wrap_fim_db_init, FIMDB_OK);
 }
 
-int __wrap_fim_db_remove_path(const char *path) {
+FIMDBErrorCode __wrap_fim_db_remove_path(const char *path) {
     check_expected(path);
 
     return mock_type(int);
@@ -94,13 +97,13 @@ void expect_fim_db_remove_path(const char *path, int ret_val) {
     will_return(__wrap_fim_db_remove_path, ret_val);
 }
 
-void __wrap_fim_db_file_update(__attribute__((unused)) fim_entry* new,
+FIMDBErrorCode __wrap_fim_db_file_update(__attribute__((unused)) fim_entry* new,
                               __attribute__((unused)) callback_context_t callback)
 {
-    function_called();
+    return mock_type(int);
 }
 
-int __wrap_fim_db_file_pattern_search(const char* pattern,
+FIMDBErrorCode __wrap_fim_db_file_pattern_search(const char* pattern,
                                       __attribute__((unused)) callback_context_t callback) {
     check_expected(pattern);
 
@@ -112,7 +115,7 @@ void expect_fim_db_file_pattern_search(const char* pattern, int ret_val) {
     will_return(__wrap_fim_db_file_pattern_search, ret_val);
 }
 
-int __wrap_fim_db_file_inode_search(const unsigned long inode,
+FIMDBErrorCode __wrap_fim_db_file_inode_search(const unsigned long inode,
                                     const unsigned long dev,
                                     __attribute__((unused)) callback_context_t callback) {
     check_expected(inode);

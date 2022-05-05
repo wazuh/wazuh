@@ -77,7 +77,7 @@ TEST_F(DBTestFixture, TestFimDBInit)
     EXPECT_NO_THROW(
     {
         const auto fileFIMTest { std::make_unique<FileItem>(insertFileStatement) };
-        fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added);
+        ASSERT_EQ(fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added), FIMDB_OK);
     });
 }
 
@@ -85,7 +85,7 @@ TEST_F(DBTestFixture, TestFimSyncPushMsg)
 {
     const auto test{R"(fim_file no_data {"begin":"a2fbef8f81af27155dcee5e3927ff6243593b91a","end":"a2fbef8f81af27155dcee5e3927ff6243593b91b","id":1})"};
     const auto fileFIMTest { std::make_unique<FileItem>(insertFileStatement) };
-    fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added);
+    ASSERT_EQ(fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added), FIMDB_OK);
     EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG_VERBOSE, std::string("Message pushed: ") + test)).Times(1);
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "FIM sync module started.")).Times(1);
     EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG, "Executing FIM sync.")).Times(1);
@@ -195,3 +195,49 @@ TEST_F(DBTestFixture, TestSyncDeletedRowsTransactionWithInvalidParameters)
     auto result = fim_db_transaction_deleted_rows(nullptr, nullptr, nullptr);
     ASSERT_EQ(result, FIMDB_ERR);
 }
+
+TEST(DBTest, TestInvalidFimLimit)
+{
+    mockLog = new MockLoggingCall();
+    mockSync = new MockSyncMsg();
+
+    EXPECT_CALL(*mockLog,
+                loggingFunction(LOG_ERROR_EXIT,
+                                "Error, id: dbEngine: Invalid row limit, values below 0 not allowed.")).Times(1);
+    auto result
+    {
+        fim_db_init(FIM_DB_MEMORY,
+                    300,
+                    mockSyncMessage,
+                    mockLoggingFunction,
+                    -1,
+                    100000,
+                    true)
+    };
+    ASSERT_EQ(result, FIMDB_ERR);
+
+    delete mockLog;
+    delete mockSync;
+}
+
+TEST(DBTest, TestValidFimLimit)
+{
+    mockLog = new MockLoggingCall();
+    mockSync = new MockSyncMsg();
+
+    auto result
+    {
+        fim_db_init(FIM_DB_MEMORY,
+                    300,
+                    mockSyncMessage,
+                    mockLoggingFunction,
+                    100,
+                    100000,
+                    true)
+    };
+    ASSERT_EQ(result, FIMDB_OK);
+
+    delete mockLog;
+    delete mockSync;
+}
+

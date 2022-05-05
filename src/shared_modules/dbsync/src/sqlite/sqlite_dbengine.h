@@ -107,6 +107,11 @@ class dbengine_error : public DbSync::dbsync_error
         {}
 };
 
+struct MaxRows final
+{
+    int64_t maxRows;
+    int64_t currentRows;
+};
 
 class SQLiteDBEngine final : public DbSync::IDbEngine
 {
@@ -117,8 +122,7 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
         ~SQLiteDBEngine();
 
         void bulkInsert(const std::string& table,
-                        const nlohmann::json& data,
-                        const bool inTransaction = true) override;
+                        const nlohmann::json& data) override;
 
         void refreshTableData(const nlohmann::json& data,
                               const DbSync::ResultCallback callback,
@@ -127,10 +131,10 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
         void syncTableRowData(const nlohmann::json& jsInput,
                               const DbSync::ResultCallback callback,
                               const bool inTransaction,
-                              std::function<void()> unlockMutex) override;
+                              Utils::ILocking& mutex) override;
 
         void setMaxRows(const std::string& table,
-                        const unsigned long long maxRows) override;
+                        const int64_t maxRows) override;
 
         void initializeStatusField(const nlohmann::json& tableNames) override;
 
@@ -161,8 +165,8 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
 
         bool loadFieldData(const std::string& table);
 
-        std::string buildInsertBulkDataSqlQuery(const std::string& table,
-                                                const nlohmann::json& data = {});
+        std::string buildInsertDataSqlQuery(const std::string& table,
+                                            const nlohmann::json& data = {});
 
         std::string buildDeleteBulkDataSqlQuery(const std::string& table,
                                                 const std::vector<std::string>& primaryKeyList);
@@ -298,12 +302,22 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
                                                const std::string&               baseTable,
                                                const std::vector<std::string>&  primaryKeys);
 
+        void updateTableRowCounter(const std::string& table,
+                                   const long long    rowModifyCount);
+
+        void insertElement(const std::string& table,
+                           const TableColumns& tableColumns,
+                           const nlohmann::json& element,
+                           const std::function<void()> callback = {});
+
         Utils::MapWrapperSafe<std::string, TableColumns> m_tableFields;
         std::deque<std::pair<std::string, std::shared_ptr<SQLite::IStatement>>> m_statementsCache;
         const std::shared_ptr<ISQLiteFactory> m_sqliteFactory;
         std::shared_ptr<SQLite::IConnection> m_sqliteConnection;
         std::mutex m_stmtMutex;
-
+        std::unique_ptr<SQLite::ITransaction> m_transaction;
+        std::mutex m_maxRowsMutex;
+        std::map<std::string, MaxRows> m_maxRows;
 };
 
 #endif // _SQLITE_DBENGINE_H
