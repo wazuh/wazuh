@@ -110,7 +110,6 @@ All notable changes to this project will be documented in this file.
 - Fixed a buffer handling bug in Remoted that left the syslog TCP server stuck. ([#12415](https://github.com/wazuh/wazuh/pull/12415))
 - Fixed a memory leak in Vulnerability Detector when discarding kernel packages. ([#12644](https://github.com/wazuh/wazuh/pull/12644))
 - Fixed a memory leak at wazuh-logtest-legacy when matching a level-0 rule. ([#12655](https://github.com/wazuh/wazuh/pull/12655))
-- Now the cluster is disabled by default when the "disabled" tag is not included. ([#12489](https://github.com/wazuh/wazuh/pull/12489))
 - Fixed a bug in the Vulnerability Detector CPE helper that may lead to produce false positives about Firefox ESR. ([#13067](https://github.com/wazuh/wazuh/pull/13067))
 
 #### Removed

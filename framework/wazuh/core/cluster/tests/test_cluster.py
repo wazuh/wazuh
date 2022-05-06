@@ -276,7 +276,6 @@ def test_update_cluster_control(failed_item, exists, expected_result):
     assert ko_files == expected_result
 
 
-
 @patch('zlib.compress', return_value=b'compressed_test_content')
 @patch('wazuh.core.cluster.cluster.get_cluster_items')
 @patch('wazuh.core.cluster.cluster.mkdir_with_mode')
