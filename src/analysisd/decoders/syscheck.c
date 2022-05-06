@@ -85,9 +85,6 @@ static void fim_send_db_save(_sdb * sdb, const char * agent_id, cJSON * data);
 // Send delete query to Wazuh DB
 void fim_send_db_delete(_sdb * sdb, const char * agent_id, const char * path);
 
-// Send delete registry query to Wazuh DB
-void fim_send_db_delete_registry(_sdb * sdb, const char * agent_id, const char * arch, const char * key_path, const char * value_name);
-
 // Send a query to Wazuh DB
 void fim_send_db_query(int * sock, const char * query);
 
@@ -226,6 +223,7 @@ void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder) {
     fim_decoder->fields[FIM_REGISTRY_ARCH] = "arch";
     fim_decoder->fields[FIM_REGISTRY_VALUE_NAME] = "value_name";
     fim_decoder->fields[FIM_REGISTRY_VALUE_TYPE] = "value_type";
+    fim_decoder->fields[FIM_REGISTRY_HASH] = "hash_full_path";
     fim_decoder->fields[FIM_ENTRY_TYPE] = "entry_type";
     fim_decoder->fields[FIM_EVENT_TYPE] = "event_type";
 }
@@ -1289,6 +1287,8 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
                 os_strdup(object->valuestring, lf->fields[FIM_REGISTRY_ARCH].value);
             } else if (strcmp(object->string, "value_name") == 0) {
                 os_strdup(object->valuestring, lf->fields[FIM_REGISTRY_VALUE_NAME].value);
+            } else if (strcmp(object->string, "index") == 0) {
+                os_strdup(object->valuestring, lf->fields[FIM_REGISTRY_HASH].value);
             }
 
             break;
@@ -1319,6 +1319,19 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
         }
     }
 
+    entry_type = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type"));
+    if (entry_type == NULL) {
+        mdebug1("No member 'type' in Syscheck attributes JSON payload");
+        return -1;
+    }
+
+    if ((strcmp("registry_key", entry_type) == 0) || (strcmp("registry_value", entry_type) == 0)) {
+        if (lf->fields[FIM_REGISTRY_HASH].value == NULL) {
+            mdebug1("No member 'index' in Syscheck JSON payload");
+            return -1;
+        }
+    }
+
     if (lf->fields[FIM_EVENT_TYPE].value == NULL) {
         mdebug1("No member 'type' in Syscheck JSON payload");
         return -1;
@@ -1326,12 +1339,6 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
 
     if (lf->fields[FIM_FILE].value == NULL) {
         mdebug1("No member 'path' in Syscheck JSON payload");
-        return -1;
-    }
-
-    entry_type = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type"));
-    if (entry_type == NULL) {
-        mdebug1("No member 'type' in Syscheck attributes JSON payload");
         return -1;
     }
 
@@ -1374,12 +1381,7 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
         if (strcmp("file", entry_type) == 0) {
             fim_send_db_delete(sdb, lf->agent_id, lf->fields[FIM_FILE].value);
         } else {
-            fim_send_db_delete_registry(sdb,
-                                        lf->agent_id,
-                                        lf->fields[FIM_REGISTRY_ARCH].value,
-                                        lf->fields[FIM_FILE].value,
-                                        lf->fields[FIM_REGISTRY_VALUE_NAME].value);
-
+            fim_send_db_delete(sdb, lf->agent_id, lf->fields[FIM_REGISTRY_HASH].value);
         }
     }
 
@@ -1422,33 +1424,6 @@ void fim_send_db_delete(_sdb * sdb, const char * agent_id, const char * path) {
     }
 
     fim_send_db_query(&sdb->socket, query);
-}
-
-void fim_send_db_delete_registry(_sdb * sdb,
-                                 const char * agent_id,
-                                 const char * arch,
-                                 const char * key_path,
-                                 const char * value_name) {
-    char query[OS_SIZE_6144];
-    cJSON * data = cJSON_CreateObject();
-    char *data_plain = NULL;
-
-    cJSON_AddStringToObject(data, "arch", arch);
-    cJSON_AddStringToObject(data, "path", key_path);
-    if (value_name != NULL) {
-        cJSON_AddStringToObject(data, "value_name", value_name);
-    }
-
-    data_plain = cJSON_PrintUnformatted(data);
-    if (snprintf(query, sizeof(query), "agent %s syscheck delete_registry %s", agent_id, data_plain) >= OS_SIZE_6144) {
-        merror("FIM decoder: Cannot build delete query: input is too long."); // LCOV_EXCL_LINE
-        goto end; // LCOV_EXCL_LINE
-    }
-
-    fim_send_db_query(&sdb->socket, query);
-end:
-    os_free(data_plain);
-    cJSON_Delete(data);
 }
 
 void fim_send_db_query(int * sock, const char * query) {

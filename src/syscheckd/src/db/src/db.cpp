@@ -172,25 +172,18 @@ FIMDBErrorCode fim_db_init(int storage,
                 if (sync_callback)
                 {
                     auto json = nlohmann::json::parse(msg);
+                    const auto component { json.at("component").get<std::string>() };
 
                     if (json.at("type") == "state")
                     {
-                        enum REG_TYPE { REG_KEY, REG_VALUE };
-                        const auto fullPath { json.at("data").at("index").get_ref<const std::string&>() };
-                        const std::string arch { Utils::startsWith(fullPath, "[x32]") ? "[x32]" : "[x64]" };
-                        const auto rawKeyValue { fullPath.substr(arch.size() + 1) };
-                        const auto keyValue { Utils::splitKeyValueNonEscapedDelimiter(rawKeyValue, ':', '\\') };
 
-                        const auto type { json.at("data").at("attributes").at("type").get<uint32_t>() };
-
-                        if (type == REG_VALUE)
+                        if (component == FIM_COMPONENT_REGISTRY_VALUE)
                         {
-                            const auto registryType { json.at("data").at("attributes").at("value_type").get<uint32_t>() };
-                            auto valueName { keyValue.second };
-                            Utils::replaceAll(valueName, "\\:", ":");
-                            json["data"]["value_name"] = valueName;
+                            const auto registryType { json.at("data").at("attributes").at("type").get<uint32_t>() };
                             json["data"]["attributes"]["value_type"] = RegistryTypes<OS_TYPE>::typeText(registryType);
                             json["data"]["attributes"]["type"] = "registry_value";
+                            json["data"]["value_name"] = json["data"]["attributes"]["name"];
+                            json["data"]["attributes"].erase("name");
                         }
                         else
                         {
@@ -201,16 +194,18 @@ FIMDBErrorCode fim_db_init(int storage,
                                                                                .get<uint32_t>());
                         }
 
+                        json["data"]["path"] = json["data"]["attributes"]["path"];
                         json["data"]["attributes"].erase("path");
+                        json["data"]["arch"] = json["data"]["attributes"]["arch"];
+                        json["data"]["attributes"].erase("arch");
+
+                        json["data"]["attributes"].erase("hash_full_path");
                         json["data"]["attributes"].erase("last_event");
-                        json["data"]["arch"] = arch;
-                        json["data"]["version"] = 2;
-                        auto key = keyValue.first;
-                        Utils::replaceAll(key, "\\\\", "\\");
-                        json["data"]["index"] = key;
+                        json["data"]["attributes"].erase("scanned");
+                        json["data"]["version"] = 3;
                     }
 
-                    sync_callback(FIM_COMPONENT_REGISTRY, json.dump().c_str());
+                    sync_callback(component.c_str(), json.dump().c_str());
                 }
             }
         };

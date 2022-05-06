@@ -26,6 +26,7 @@ void RegistryKeyTest::SetUp()
     key->last_event = 1596489275;
     key->mtime = 1578075431;
     key->path = const_cast<char*>("HKEY_LOCAL_MACHINE\\SOFTWARE");
+    key->hash_full_path = const_cast<char*>("00a7ee53218b25b5364c8773f37a38c93eae3880");
     key->perm = const_cast<char*>("-rw-rw-r--");
     key->scanned = 1;
     key->uid = const_cast<char*>("0");
@@ -71,6 +72,7 @@ TEST_F(RegistryKeyTest, getFIMEntryWithFimCtr)
     ASSERT_EQ(std::strcmp(keyEntry->registry_entry.key->gid, fimEntryTest->registry_entry.key->gid), 0);
     ASSERT_EQ(fimEntryTest->registry_entry.key->arch, fimEntryTest->registry_entry.key->arch);
     ASSERT_EQ(std::strcmp(keyEntry->registry_entry.key->path, fimEntryTest->registry_entry.key->path), 0);
+    ASSERT_EQ(std::strcmp(keyEntry->registry_entry.key->hash_full_path, fimEntryTest->registry_entry.key->hash_full_path), 0);
     ASSERT_EQ(std::strcmp(keyEntry->registry_entry.key->group_name, fimEntryTest->registry_entry.key->group_name), 0);
     ASSERT_EQ(keyEntry->registry_entry.key->last_event, fimEntryTest->registry_entry.key->last_event);
     ASSERT_EQ(keyEntry->registry_entry.key->mtime, fimEntryTest->registry_entry.key->mtime);
@@ -92,6 +94,7 @@ TEST_F(RegistryKeyTest, getFIMEntryWithJSONCtr)
     ASSERT_EQ(std::strcmp(keyEntry->registry_entry.key->gid, fimEntryTest->registry_entry.key->gid), 0);
     ASSERT_EQ(fimEntryTest->registry_entry.key->arch, fimEntryTest->registry_entry.key->arch);
     ASSERT_EQ(std::strcmp(keyEntry->registry_entry.key->path, fimEntryTest->registry_entry.key->path), 0);
+    ASSERT_EQ(std::strcmp(keyEntry->registry_entry.key->hash_full_path, fimEntryTest->registry_entry.key->hash_full_path), 0);
     ASSERT_EQ(std::strcmp(keyEntry->registry_entry.key->group_name, fimEntryTest->registry_entry.key->group_name), 0);
     ASSERT_EQ(keyEntry->registry_entry.key->last_event, fimEntryTest->registry_entry.key->last_event);
     ASSERT_EQ(keyEntry->registry_entry.key->mtime, fimEntryTest->registry_entry.key->mtime);
@@ -122,9 +125,9 @@ TEST_F(RegistryKeyTest, getJSONWithJSONCtrReportOldData)
     const nlohmann::json oldDataJson = R"(
             {
                 "data":[{"arch":"[x64]","checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a","gid":0,"group_name":"root",
-                "last_event":1596489275,"mtime":1578075431,"path":"HKEY_LOCAL_MACHINE\\SOFTWARE","perm":"-rw-rw-r--",
-                "scanned":1,"uid":0, "user_name":"fakeUser"}],"table":"registry_key","options":{"return_old_data": true,
-                "ignore":["last_event"]}
+                "hash_full_path":"00a7ee53218b25b5364c8773f37a38c93eae3880","last_event":1596489275,"mtime":1578075431,
+                "path":"HKEY_LOCAL_MACHINE\\SOFTWARE","perm":"-rw-rw-r--","scanned":1,"uid":0, "user_name":"fakeUser"}],
+                "table":"registry_key","options":{"return_old_data": true,"ignore":["last_event"]}
             }
         )"_json;
     auto key = new RegistryKey(fimEntryTest, true);

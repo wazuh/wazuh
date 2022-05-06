@@ -33,15 +33,19 @@ void RegistryKey::createFimEntry()
             {
                 std::strncpy(key->gid, std::to_string(m_gid).c_str(), gid_size);
             }
+            // LCOV_EXCL_START
             else
             {
                 throw std::runtime_error("The memory for gid parameter could not be allocated.");
             }
 
+            // LCOV_EXCL_STOP
+
             key->group_name = const_cast<char*>(m_groupname.c_str());
             key->last_event = m_lastEvent;
             key->mtime = m_time;
             key->path = const_cast<char*>(m_identifier.c_str());
+            key->hash_full_path = const_cast<char*>(m_hashpath.c_str());
             key->perm = const_cast<char*>(m_perm.c_str());
             key->scanned =  m_scanned;
             key->uid = static_cast<char*>(std::calloc(uid_size + 1, sizeof(char)));
@@ -50,24 +54,33 @@ void RegistryKey::createFimEntry()
             {
                 std::strncpy(key->uid, std::to_string(m_uid).c_str(), uid_size);
             }
+            // LCOV_EXCL_START
             else
             {
                 throw std::runtime_error("The memory for uid parameter could not be allocated.");
             }
 
+            // LCOV_EXCL_STOP
+
             key->user_name = const_cast<char*>(m_username.c_str());
             fim->registry_entry.key = key;
             m_fimEntry = std::unique_ptr<fim_entry, FimRegistryKeyDeleter>(fim);
         }
+        // LCOV_EXCL_START
         else
         {
             throw std::runtime_error("The memory for fim_registry_key could not be allocated.");
         }
+
+        // LCOV_EXCL_STOP
     }
+    // LCOV_EXCL_START
     else
     {
         throw std::runtime_error("The memory for fim_entry could not be allocated.");
     }
+
+    // LCOV_EXCL_STOP
 }
 
 void RegistryKey::createJSON()
@@ -88,6 +101,8 @@ void RegistryKey::createJSON()
     data["user_name"] = m_username;
     data["group_name"] = m_groupname;
     data["mtime"] = m_time;
+    data["hash_full_path"] = m_hashpath;
+
     conf["data"] = nlohmann::json::array({data});
 
     if (m_oldData)

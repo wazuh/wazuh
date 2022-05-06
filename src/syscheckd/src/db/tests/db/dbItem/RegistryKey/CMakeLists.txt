@@ -31,6 +31,9 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         pthread
         sqlite3
         cjson
+        crypto
+        ws2_32
+        crypt32
         -static-libgcc -static-libstdc++
     )
 else()
@@ -46,6 +49,8 @@ else()
         pthread
         sqlite3
         cjson
+        crypto
+        ssl
         dl
     )
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")

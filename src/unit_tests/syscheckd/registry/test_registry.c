@@ -873,7 +873,7 @@ static void test_fim_registry_key_transaction_callback_null_configuration(){
     _base_line = 1;
     event_data_t event_data;
     ReturnTypeCallback resultType = INSERTED;
-    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x32]\"}";
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x32]\", \"hash_full_path\":\"234567890ABCDEF1234567890ABCDEF123456111\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_key_txn_context_t user_data = {.key = NULL, .evt_data = &event_data};
 
@@ -887,7 +887,7 @@ static void test_fim_registry_key_transaction_callback_insert(){
     _base_line = 1;
     event_data_t event_data = {.mode = FIM_SCHEDULED};
     ReturnTypeCallback resultType = INSERTED;
-    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\",\"last_event\":12345}";
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\",\"last_event\":12345, \"hash_full_path\":\"234567890ABCDEF1234567890ABCDEF123456111\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_key_txn_context_t user_data = {.key = NULL, .evt_data = &event_data};
 
@@ -900,7 +900,7 @@ static void test_fim_registry_key_transaction_callback_modify(){
     _base_line = 1;
     event_data_t event_data = {.mode = FIM_SCHEDULED};
     ReturnTypeCallback resultType = MODIFIED;
-    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\",\"last_event\":12345}";
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\",\"last_event\":12345, \"hash_full_path\":\"234567890ABCDEF1234567890ABCDEF123456111\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_key_txn_context_t user_data = {.key = NULL, .evt_data = &event_data};
 
@@ -913,7 +913,7 @@ static void test_fim_registry_key_transaction_callback_delete(){
     _base_line = 1;
     event_data_t event_data = {.mode = FIM_SCHEDULED};
     ReturnTypeCallback resultType = DELETED;
-    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\",\"last_event\":12345}";
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\",\"last_event\":12345, \"hash_full_path\":\"234567890ABCDEF1234567890ABCDEF123456111\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_key_txn_context_t user_data = {.key = NULL, .evt_data = &event_data};
 
@@ -929,7 +929,7 @@ static void test_fim_registry_key_transaction_callback_max_rows(){
     key.path = "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile";
     key.arch = ARCH_64BIT;
     ReturnTypeCallback resultType = MAX_ROWS;
-    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\"}";
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\", \"hash_full_path\":\"234567890ABCDEF1234567890ABCDEF123456111\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_key_txn_context_t user_data = {.key = &key, .evt_data = &event_data};
 
@@ -962,7 +962,7 @@ static void test_fim_registry_value_transaction_callback_null_configuration(){
     _base_line = 1;
     event_data_t event_data;
     ReturnTypeCallback resultType = INSERTED;
-    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x32]\", \"name\":\"mock_name_value\"}";
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x32]\", \"name\":\"mock_name_value\", \"hash_full_path\":\"234567890ABCDEF1234567890ABCDEF123456111\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_val_txn_context_t user_data = {.data = NULL, .evt_data = &event_data, .diff = NULL};
 
@@ -976,7 +976,7 @@ static void test_fim_registry_value_transaction_callback_insert(){
     _base_line = 1;
     event_data_t event_data = {.mode = FIM_SCHEDULED};
     ReturnTypeCallback resultType = INSERTED;
-    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"arch\":\"[x64]\", \"name\":\"mock_name_value\",\"last_event\":12345}";
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"arch\":\"[x64]\", \"name\":\"mock_name_value\",\"last_event\":12345, \"hash_full_path\":\"234567890ABCDEF1234567890ABCDEF123456111\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_val_txn_context_t user_data = {.data = NULL, .evt_data = &event_data, .diff = NULL};
 
@@ -989,7 +989,7 @@ static void test_fim_registry_value_transaction_callback_modify(){
     _base_line = 1;
     event_data_t event_data = {.mode = FIM_SCHEDULED};
     ReturnTypeCallback resultType = MODIFIED;
-    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"arch\":\"[x64]\",\"name\":\"mock_name_value\",\"last_event\":12345}";
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"arch\":\"[x64]\",\"name\":\"mock_name_value\",\"last_event\":12345, \"hash_full_path\":\"234567890ABCDEF1234567890ABCDEF123456111\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_val_txn_context_t user_data = {.data = NULL, .evt_data = &event_data, .diff = NULL};
 
@@ -1002,7 +1002,7 @@ static void test_fim_registry_value_transaction_callback_modify_with_diff(){
     _base_line = 1;
     event_data_t event_data = {.mode = FIM_SCHEDULED};
     ReturnTypeCallback resultType = MODIFIED;
-    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"arch\":\"[x64]\",\"name\":\"mock_name_value\",\"last_event\":12345}";
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"arch\":\"[x64]\",\"name\":\"mock_name_value\",\"last_event\":12345, \"hash_full_path\":\"234567890ABCDEF1234567890ABCDEF123456111\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_val_txn_context_t user_data = {.data = NULL, .evt_data = &event_data, .diff = "test diff string"};
 
@@ -1015,7 +1015,7 @@ static void test_fim_registry_value_transaction_callback_delete(){
     _base_line = 1;
     event_data_t event_data = {.mode = FIM_SCHEDULED};
     ReturnTypeCallback resultType = DELETED;
-    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\", \"name\":\"mock_name_value\",\"last_event\":12345}";
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\", \"name\":\"mock_name_value\",\"last_event\":12345, \"hash_full_path\":\"234567890ABCDEF1234567890ABCDEF123456111\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_val_txn_context_t user_data = {.data = NULL, .evt_data = &event_data, .diff = NULL};
 
@@ -1032,7 +1032,7 @@ static void test_fim_registry_value_transaction_callback_max_rows(){
     value.arch = ARCH_64BIT;
     value.name = "mock_value_name";
     ReturnTypeCallback resultType = MAX_ROWS;
-    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\", \"name\":\"mock_name_value\"}";
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"arch\":\"[x64]\", \"name\":\"mock_name_value\", \"hash_full_path\":\"234567890ABCDEF1234567890ABCDEF123456111\"}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_val_txn_context_t user_data = {.data = &value, .evt_data = &event_data, .diff = NULL};
 
@@ -1049,6 +1049,7 @@ static void test_fim_registry_free_entry(){
     os_calloc(1, sizeof(fim_registry_key), key);
     key->id = 3;
     os_strdup("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", key->path);
+    os_strdup("234567890ABCDEF1234567890ABCDEF123456111", key->hash_full_path);
     os_strdup("sid (allowed): delete|write_dac|write_data|append_data|write_attributes", key->perm);
     os_strdup("100", key->uid);
     os_strdup("200", key->gid);

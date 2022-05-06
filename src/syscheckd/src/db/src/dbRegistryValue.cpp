@@ -24,6 +24,7 @@ void RegistryValue::createFimEntry()
         if (value)
         {
             value->path = const_cast<char*>(m_path.c_str());
+            value->hash_full_path = const_cast<char*>(m_hashpath.c_str());
             value->size = m_size;
             value->name = const_cast<char*>(m_identifier.c_str());
             std::snprintf(value->hash_md5, sizeof(value->hash_md5), "%s", m_md5.c_str());
@@ -36,15 +37,21 @@ void RegistryValue::createFimEntry()
             fim->registry_entry.value = value;
             m_fimEntry = std::unique_ptr<fim_entry, FimRegistryValueDeleter>(fim);
         }
+        // LCOV_EXCL_START
         else
         {
             throw std::runtime_error("The memory for fim_registry_value_data could not be allocated.");
         }
+
+        // LCOV_EXCL_STOP
     }
+    // LCOV_EXCL_START
     else
     {
         throw std::runtime_error("The memory for fim_entry could not be allocated.");
     }
+
+    // LCOV_EXCL_STOP
 }
 
 void RegistryValue::createJSON()
@@ -66,6 +73,7 @@ void RegistryValue::createJSON()
     data["hash_sha1"] = m_sha1;
     data["hash_sha256"] = m_sha256;
     data["type"] = m_type;
+    data["hash_full_path"] = m_hashpath;
 
     conf["data"] = nlohmann::json::array({data});
 

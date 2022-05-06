@@ -494,7 +494,9 @@ int wdb_fim_insert_entry(wdb_t * wdb, const char * file, int ftype, const sk_sum
 
 int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
     cJSON *json_path;
-    char *path, *arch, *value_name, *full_path, *item_type;
+    char *path, *arch, *value_name, *item_type;
+    char *full_path = NULL;
+
     if (!wdb) {
         merror("WDB object cannot be null.");
         return -1;
@@ -502,7 +504,9 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
 
     json_path = cJSON_GetObjectItem(data, "path");
 
-    // Fallback for RSync format.
+    // Fallback for RSync format. Windows registries comes with both path and index fields,
+    // path corresponds to the key_path, and index is the hash used as full_path,
+    // It is included in the 3.0 version code
     if (!json_path) {
         json_path = cJSON_GetObjectItem(data, "index");
     }
@@ -544,9 +548,6 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
         os_strdup(path, full_path);
         item_type = "registry_key";
     } else if (strncmp(item_type, "registry_", 9) == 0) {
-        int full_path_length;
-        char *path_escaped_slahes;
-        char *path_escaped;
 
         if (!cJSON_IsNumber(version)) {
             // Synchronization messages without the "version" attribute are ignored, but won't trigger any error
@@ -554,53 +555,77 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
             return 0;
         }
 
-        path_escaped_slahes = wstr_replace(path, "\\", "\\\\");
-        path_escaped = wstr_replace(path_escaped_slahes, ":", "\\:");
-        os_free(path_escaped_slahes);
         arch = cJSON_GetStringValue(cJSON_GetObjectItem(data, "arch"));
+        value_name = cJSON_GetStringValue(cJSON_GetObjectItem(data, "value_name"));
 
-        if (arch == NULL) {
-            merror("DB(%s) fim/save registry request with no arch argument.", wdb->id);
-            os_free(path_escaped);
-            return -1;
-        }
+        // Second version of the message, both registry keys and registry values
+        // work with the same component "fim_registry".
+        // full_path example: "[x32] HKEY_LOCAL_MACHINE\\\\software\\:value_name"
+        if (version->valuedouble == 2.0) {
+            int full_path_length;
+            char *path_escaped_slahes;
+            char *path_escaped;
 
-        if (strcmp(item_type + 9, "key") == 0) {
-            value_name = NULL;
-            full_path_length = snprintf(NULL, 0, "%s %s", arch, path_escaped);
+            path_escaped_slahes = wstr_replace(path, "\\", "\\\\");
+            path_escaped = wstr_replace(path_escaped_slahes, ":", "\\:");
+            os_free(path_escaped_slahes);
 
-            os_calloc(full_path_length + 1, sizeof(char), full_path);
-
-            snprintf(full_path, full_path_length + 1, "%s %s", arch, path_escaped);
-        } else if (strcmp(item_type + 9, "value") == 0) {
-            char *value_name_escaped_slashes;
-            char *value_name_escaped;
-            value_name = cJSON_GetStringValue(cJSON_GetObjectItem(data, "value_name"));
-
-            if (value_name == NULL) {
-                merror("DB(%s) fim/save registry value request with no value name argument.", wdb->id);
+            if (arch == NULL) {
+                merror("DB(%s) fim/save registry request with no arch argument.", wdb->id);
                 os_free(path_escaped);
                 return -1;
             }
 
-            value_name_escaped_slashes = wstr_replace(value_name, "\\", "\\\\");
-            value_name_escaped = wstr_replace(value_name_escaped_slashes, ":", "\\:");
-            os_free(value_name_escaped_slashes);
+            if (strcmp(item_type + 9, "key") == 0) {
+                value_name = NULL;
+                full_path_length = snprintf(NULL, 0, "%s %s", arch, path_escaped);
 
-            full_path_length = snprintf(NULL, 0, "%s %s:%s", arch, path_escaped, value_name_escaped);
+                os_calloc(full_path_length + 1, sizeof(char), full_path);
 
-            os_calloc(full_path_length + 1, sizeof(char), full_path);
+                snprintf(full_path, full_path_length + 1, "%s %s", arch, path_escaped);
+            } else if (strcmp(item_type + 9, "value") == 0) {
+                char *value_name_escaped_slashes;
+                char *value_name_escaped;
 
-            snprintf(full_path, full_path_length + 1, "%s %s:%s", arch, path_escaped, value_name_escaped);
+                if (value_name == NULL) {
+                    merror("DB(%s) fim/save registry value request with no value name argument.", wdb->id);
+                    os_free(path_escaped);
+                    return -1;
+                }
 
-            os_free(value_name_escaped);
-        } else {
-            merror("DB(%s) fim/save request with invalid '%s' type argument.", wdb->id, item_type);
+                value_name_escaped_slashes = wstr_replace(value_name, "\\", "\\\\");
+                value_name_escaped = wstr_replace(value_name_escaped_slashes, ":", "\\:");
+                os_free(value_name_escaped_slashes);
+
+                full_path_length = snprintf(NULL, 0, "%s %s:%s", arch, path_escaped, value_name_escaped);
+
+                os_calloc(full_path_length + 1, sizeof(char), full_path);
+
+                snprintf(full_path, full_path_length + 1, "%s %s:%s", arch, path_escaped, value_name_escaped);
+
+                os_free(value_name_escaped);
+            } else {
+                merror("DB(%s) fim/save request with invalid '%s' type argument.", wdb->id, item_type);
+                os_free(path_escaped);
+                return -1;
+            }
+
             os_free(path_escaped);
-            return -1;
-        }
+        } else if (version->valuedouble == 3.0) {
+            // Third version of the messages, field index its a hash formed with arch,
+            // path and value_name (if it is a value). It is used for full_path db field.
+            // Differents components for keys and values.
+            cJSON *json_index = cJSON_GetObjectItem(data, "index");
 
-        os_free(path_escaped);
+            if (!json_index) {
+                merror("DB(%s) version 3.0 fim/save request with no index argument.", wdb->id);
+                return -1;
+            }
+
+            char* index = cJSON_GetStringValue(json_index);
+
+            os_strdup(index, full_path);
+        }
     } else {
         merror("DB(%s) fim/save request with invalid '%s' type argument.", wdb->id, item_type);
         return -1;
@@ -758,72 +783,6 @@ int wdb_fim_update_entry(wdb_t * wdb, const char * file, const sk_sum_t * sum) {
         return -1;
     }
 }
-
-
-// LCOV_EXCL_STOP
-int wdb_fim_delete_registry(wdb_t *wdb, const char *data) {
-    cJSON * json_data = cJSON_Parse(data);
-    sqlite3_stmt *stmt = NULL;
-    wdb_stmt delete_stmt = WDB_STMT_FIM_DELETE_REGISTRY_KEY;
-    int retval = -1;
-
-    if (json_data == NULL) {
-        merror("Cannot parse JSON data for delete registry: %s", data);
-        return -1;
-    }
-
-    cJSON *arch_json = cJSON_GetObjectItem(json_data, "arch");
-    cJSON *key_path_json = cJSON_GetObjectItem(json_data, "path");
-    cJSON *value_name_json = cJSON_GetObjectItem(json_data, "value_name");
-
-    if (arch_json == NULL || key_path_json == NULL) {
-        merror("JSON data for delete registry without 'path' or 'arch' %s.", data);
-        goto end;
-    }
-
-    // check if all the fields sent in data are strings
-    if (cJSON_IsString(arch_json) == 0 || cJSON_IsString(key_path_json) == 0) {
-        goto end;
-    }
-
-    if (value_name_json != NULL && cJSON_IsString(value_name_json) == 0) {
-        goto end;
-    }
-
-    // If 'value_name' is not in the JSON, this means that a registry key entry needs to be deleted.
-    if (value_name_json != NULL) {
-        delete_stmt = WDB_STMT_FIM_DELETE_REGISTRY_VALUE;
-    }
-
-    if (wdb_stmt_cache(wdb, delete_stmt) < 0) {
-        merror("DB(%s) Can't cache statement", wdb->id);
-        goto end;
-    }
-
-    stmt = wdb->stmt[delete_stmt];
-
-    sqlite3_bind_text(stmt, 1, cJSON_GetStringValue(arch_json), -1, NULL);
-    sqlite3_bind_text(stmt, 2, cJSON_GetStringValue(key_path_json), -1, NULL);
-
-    if (delete_stmt == WDB_STMT_FIM_DELETE_REGISTRY_VALUE) {
-        sqlite3_bind_text(stmt, 3, cJSON_GetStringValue(value_name_json), -1, NULL);
-    }
-
-    int res = sqlite3_step(stmt);
-    if (res == SQLITE_ROW || res == SQLITE_DONE) {
-        retval = 0;
-        goto end;
-    }
-
-    mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-
-end:
-    cJSON_Delete(json_data);
-    return retval;
-}
-// LCOV_EXCL_START
-
-
 
 // Delete file entry: returns 1 if found, 0 if not, or -1 on error.
 int wdb_fim_delete(wdb_t * wdb, const char * path) {

@@ -23,6 +23,18 @@
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
 
 static const char *VALID_ENTRY = "{\"path\":\"/test\",\"timestamp\":10,\"version\":2,\"attributes\":{\"type\":\"file\"}}";
+static const char *VALUE_V3_ENTRY = "{\"arch\":\"[x32]\",\"attributes\":{\"checksum\":\"920b517a949aec0a6fa91b0556f0a60503058fbb\",\
+                                  \"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\
+                                  \"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"size\":0,\
+                                  \"type\":\"registry_value\",\"value_type\":\"REG_UNKNOWN\"},\"index\":\"00a7ee53218b25b5364c8773f37a38c93eae3880\",\
+                                  \"path\":\"HKEY_LOCAL_MACHINE\\\\System\\\\TEST\\\\key\",\
+                                  \"timestamp\":1645981428,\"value_name\":\"test_name\",\"version\":3}";
+static const char *KEY_V3_ENTRY = "{\"arch\":\"[x32]\",\"attributes\":{\"checksum\":\"6853b29eef33ff39d8b63911673cf7b078f95485\",\
+                                    \"gid\":\"0\",\"group_name\":\"SYSTEM\",\"mtime\":1645882878,\"perm\":\"perm_json\",\
+                                    \"type\":\"registry_key\",\"uid\":\"0\",\"user_name\":\"Administradores\"},\
+                                    \"index\":\"ff03d79932df0148efa6a066552badf25ea9c466\",\
+                                    \"path\":\"HKEY_LOCAL_MACHINE\\\\System\\\\TEST\\\\key\",\
+                                    \"timestamp\":1645981428,\"version\":3}";
 
 #define BASE_WIN_ALLOWED_ACE \
     "["                      \
@@ -599,6 +611,73 @@ static void test_wdb_fim_insert_entry2_registry_value_succesful(void **state) {
     assert_int_equal(ret, 0);
 }
 
+static void test_wdb_fim_insert_entry2_registry_key_succesful_v3(void **state) {
+    int ret;
+    wdb_t * wdb = *state;
+    cJSON* data = cJSON_Parse(KEY_V3_ENTRY);
+
+    if (data == NULL) {
+        fail_msg("Unable to parse base json");
+    }
+
+    expect_wdb_stmt_cache_call(1);
+
+    expect_sqlite3_bind_text_call(1, "HKEY_LOCAL_MACHINE\\System\\TEST\\key", 1);
+    expect_sqlite3_bind_text_call(2, "registry_key", 1);
+    expect_sqlite3_bind_int64_call(3, 1645981428, 0);
+    expect_sqlite3_bind_text_call(18, "[x32]", 1);
+    expect_sqlite3_bind_text_call(19, NULL, 1);
+    expect_sqlite3_bind_text_call(21, "ff03d79932df0148efa6a066552badf25ea9c466", 1);
+
+    expect_sqlite3_bind_text_call(17, "6853b29eef33ff39d8b63911673cf7b078f95485", 1);
+    expect_sqlite3_bind_text_call(7, "0", 1);
+    expect_sqlite3_bind_text_call(11, "SYSTEM", 1);
+    expect_sqlite3_bind_int_call(12, 1645882878, 1);
+    expect_sqlite3_bind_text_call(5, "perm_json", 1);
+    expect_sqlite3_bind_text_call(6, "0", 1);
+    expect_sqlite3_bind_text_call(10, "Administradores", 1);
+
+    expect_sqlite3_step_call(SQLITE_DONE);
+
+    ret = wdb_fim_insert_entry2(wdb, data);
+
+    cJSON_Delete(data);
+    assert_int_equal(ret, 0);
+}
+
+static void test_wdb_fim_insert_entry2_registry_value_succesful_v3(void **state) {
+    int ret;
+    wdb_t * wdb = *state;
+    cJSON* data = cJSON_Parse(VALUE_V3_ENTRY);
+
+    if (data == NULL) {
+        fail_msg("Unable to parse base json");
+    }
+
+    expect_wdb_stmt_cache_call(1);
+
+    expect_sqlite3_bind_text_call(1, "HKEY_LOCAL_MACHINE\\System\\TEST\\key", 1);
+    expect_sqlite3_bind_text_call(2, "registry_value", 1);
+    expect_sqlite3_bind_int64_call(3, 1645981428, 0);
+    expect_sqlite3_bind_text_call(18, "[x32]", 1);
+    expect_sqlite3_bind_text_call(19, "test_name", 1);
+    expect_sqlite3_bind_text_call(21, "00a7ee53218b25b5364c8773f37a38c93eae3880", 1);
+
+    expect_sqlite3_bind_text_call(17, "920b517a949aec0a6fa91b0556f0a60503058fbb", 1);
+    expect_sqlite3_bind_text_call(8, "d41d8cd98f00b204e9800998ecf8427e", 1);
+    expect_sqlite3_bind_text_call(9, "da39a3ee5e6b4b0d3255bfef95601890afd80709", 1);
+    expect_sqlite3_bind_text_call(14, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", 1);
+    expect_sqlite3_bind_int_call(4, 0, 1);
+    expect_sqlite3_bind_text_call(20, "REG_UNKNOWN", 1);
+
+    expect_sqlite3_step_call(SQLITE_DONE);
+
+    ret = wdb_fim_insert_entry2(wdb, data);
+
+    cJSON_Delete(data);
+    assert_int_equal(ret, 0);
+}
+
 static void test_wdb_fim_insert_entry2_success(void **state) {
     int ret;
     wdb_t * wdb = *state;
@@ -680,121 +759,6 @@ static void test_wdb_fim_insert_entry2_invalid_json_object(void **state) {
     assert_int_equal(ret, -1);
 }
 
-static void test_wdb_fim_delete_registry_key_success(void **state) {
-    wdb_t *wdb = *state;
-    const char *json_str = "{\"arch\":\"[x64]\","
-                           "\"path\":\"HKEY_LOCAL_MACHINE\\\\software\\\\test\"}";
-
-    expect_wdb_stmt_cache_call(WDB_STMT_FIM_DELETE_REGISTRY_KEY);
-
-    expect_sqlite3_bind_text_call(1, "[x64]", 1);
-    expect_sqlite3_bind_text_call(2, "HKEY_LOCAL_MACHINE\\software\\test", 1);
-
-    expect_sqlite3_step_call(SQLITE_DONE);
-
-    int ret = wdb_fim_delete_registry(wdb, json_str);
-
-    assert_int_equal(ret, 0);
-}
-
-static void test_wdb_fim_delete_registry_value_success(void **state) {
-    wdb_t *wdb = *state;
-    const char *json_str = "{\"arch\":\"[x64]\","
-                           "\"path\":\"HKEY_LOCAL_MACHINE\\\\software\\\\test\","
-                           "\"value_name\":\"some:value\"}";
-
-    expect_wdb_stmt_cache_call(WDB_STMT_FIM_DELETE_REGISTRY_VALUE);
-
-    expect_sqlite3_bind_text_call(1, "[x64]", 1);
-    expect_sqlite3_bind_text_call(2, "HKEY_LOCAL_MACHINE\\software\\test", 1);
-    expect_sqlite3_bind_text_call(3, "some:value", 1);
-
-    expect_sqlite3_step_call(SQLITE_DONE);
-
-    int ret = wdb_fim_delete_registry(wdb, json_str);
-
-    assert_int_equal(ret, 0);
-}
-
-static void test_wdb_fim_delete_registry_invalid_json(void **state) {
-    wdb_t *wdb = *state;
-    char error_msg[OS_SIZE_128] = {0};
-    const char *json_str = "this is not a json";
-
-    snprintf(error_msg, OS_SIZE_128, "Cannot parse JSON data for delete registry: %s", json_str);
-
-    expect_string(__wrap__merror, formatted_msg, error_msg);
-
-    int ret = wdb_fim_delete_registry(wdb, json_str);
-    assert_int_equal(ret, -1);
-}
-
-static void test_wdb_fim_delete_registry_json_without_pks(void **state) {
-    wdb_t *wdb = *state;
-    char error_msg[OS_SIZE_128] = {0};
-
-    const char *json_str = "{\"value_name\":\"some:value\"}";
-    snprintf(error_msg, OS_SIZE_128, "JSON data for delete registry without 'path' or 'arch' %s.", json_str);
-    expect_string(__wrap__merror, formatted_msg, error_msg);
-
-    int ret = wdb_fim_delete_registry(wdb, json_str);
-    assert_int_equal(ret, -1);
-}
-
-static void test_wdb_fim_delete_registry_invalid_arch_path(void **state) {
-    wdb_t *wdb = *state;
-    const char *json_str = "{\"arch\":3,"
-                           "\"path\":3,"
-                           "\"value_name\":\"some:value\"}";
-
-
-    int ret = wdb_fim_delete_registry(wdb, json_str);
-    assert_int_equal(ret, -1);
-}
-
-static void test_wdb_fim_delete_registry_invalid_value_name(void **state) {
-    wdb_t *wdb = *state;
-    const char *json_str = "{\"arch\":\"[x64]\","
-                           "\"path\":\"HKEY_LOCAL_MACHINE\\\\software\\\\test\","
-                           "\"value_name\":0}";
-
-
-    int ret = wdb_fim_delete_registry(wdb, json_str);
-    assert_int_equal(ret, -1);
-}
-
-
-static void test_wdb_fim_delete_registry_cache_error(void **state) {
-    wdb_t *wdb = *state;
-    const char *json_str = "{\"arch\":\"[x64]\","
-                           "\"path\":\"HKEY_LOCAL_MACHINE\\\\software\\\\test\"}";
-
-    will_return(__wrap_wdb_stmt_cache, -1);
-    expect_string(__wrap__merror, formatted_msg, "DB(000) Can't cache statement");
-
-    int ret = wdb_fim_delete_registry(wdb, json_str);
-    assert_int_equal(ret, -1);
-}
-
-static void test_wdb_fim_delete_registry_step_error(void **state) {
-    wdb_t *wdb = *state;
-    const char *json_str = "{\"arch\":\"[x64]\","
-                           "\"path\":\"HKEY_LOCAL_MACHINE\\\\software\\\\test\"}";
-
-    expect_wdb_stmt_cache_call(WDB_STMT_FIM_DELETE_REGISTRY_KEY);
-
-    expect_sqlite3_bind_text_call(1, "[x64]", 1);
-    expect_sqlite3_bind_text_call(2, "HKEY_LOCAL_MACHINE\\software\\test", 1);
-
-    expect_sqlite3_step_call(0);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): out of memory");
-
-    int ret = wdb_fim_delete_registry(wdb, json_str);
-
-    assert_int_equal(ret, -1);
-}
-
 int main(void) {
     const struct CMUnitTest tests[] = {
         // Test wdb_syscheck_save2
@@ -823,19 +787,13 @@ int main(void) {
         cmocka_unit_test(test_wdb_fim_insert_entry2_registry_succesful),
         cmocka_unit_test(test_wdb_fim_insert_entry2_registry_key_succesful),
         cmocka_unit_test(test_wdb_fim_insert_entry2_registry_value_succesful),
+        cmocka_unit_test(test_wdb_fim_insert_entry2_registry_key_succesful_v3),
+        cmocka_unit_test(test_wdb_fim_insert_entry2_registry_value_succesful_v3),
         cmocka_unit_test(test_wdb_fim_insert_entry2_success),
         cmocka_unit_test(test_wdb_fim_insert_entry2_large_inode),
         cmocka_unit_test(test_wdb_fim_insert_entry2_json_perms),
         cmocka_unit_test(test_wdb_fim_insert_entry2_invalid_json_object),
-        cmocka_unit_test(test_wdb_fim_insert_entry2_invalid_json_object),
-        cmocka_unit_test(test_wdb_fim_delete_registry_key_success),
-        cmocka_unit_test(test_wdb_fim_delete_registry_value_success),
-        cmocka_unit_test(test_wdb_fim_delete_registry_invalid_json),
-        cmocka_unit_test(test_wdb_fim_delete_registry_json_without_pks),
-        cmocka_unit_test(test_wdb_fim_delete_registry_invalid_arch_path),
-        cmocka_unit_test(test_wdb_fim_delete_registry_invalid_value_name),
-        cmocka_unit_test(test_wdb_fim_delete_registry_cache_error),
-        cmocka_unit_test(test_wdb_fim_delete_registry_step_error)
+        cmocka_unit_test(test_wdb_fim_insert_entry2_invalid_json_object)
     };
 
     return cmocka_run_group_tests(tests, setup_wdb_t, teardown_wdb_t);

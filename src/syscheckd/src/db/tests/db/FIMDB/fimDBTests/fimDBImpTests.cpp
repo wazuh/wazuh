@@ -66,7 +66,7 @@ class FimDBWinFixture : public ::testing::Test
             {
                 [](const std::string & msg)
                 {
-                    mockSyncMessage(FIM_COMPONENT_REGISTRY, msg.c_str());
+                    mockSyncMessage(FIM_COMPONENT_REGISTRY_KEY, msg.c_str());
                 }
             };
 
@@ -141,7 +141,7 @@ class FimDBFixture : public ::testing::Test
             {
                 [](const std::string & msg)
                 {
-                    mockSyncMessage(FIM_COMPONENT_REGISTRY, msg.c_str());
+                    mockSyncMessage(FIM_COMPONENT_REGISTRY_KEY, msg.c_str());
                 }
             };
 
@@ -221,6 +221,16 @@ TEST_F(FimDBFixture, registerSyncIDSuccess)
     fimDBMock.registerRSync();
 
 }
+
+#ifdef WIN32
+TEST_F(FimDBFixture, registerSyncIDSuccessWindows)
+{
+    EXPECT_CALL(*mockRSync, registerSyncID(testing::_, testing::_, testing::_, testing::_)).Times(testing::AtLeast(3));
+
+    fimDBMock.registerRSync();
+
+}
+#endif
 
 TEST_F(FimDBFixture, registerSyncIDError)
 {

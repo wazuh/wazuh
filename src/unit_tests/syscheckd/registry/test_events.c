@@ -19,8 +19,8 @@
     CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_MD5SUM | CHECK_SHA1SUM | \
     CHECK_SHA256SUM | CHECK_SEECHANGES | CHECK_TYPE
 
-fim_registry_key DEFAULT_REGISTRY_KEY = { .id = 3, .path = "HKEY_USERS\\Some\\random\\key", .perm_json = NULL, .perm = "", .uid = "110", .gid = "220", .user_name = "user_old_name", .group_name = "group_old_name", .mtime = 1100, .arch = ARCH_64BIT, .scanned = 0, .last_event = 1234, .checksum = "234567890ABCDEF1234567890ABCDEF123456789" };
-fim_registry_value_data DEFAULT_REGISTRY_VALUE = { 3, "key\\path", ARCH_64BIT, "the\\value", REG_SZ, 50, "1234567890ABCDEF1234567890ABCDEF", "1234567890ABCDEF1234567890ABCDEF12345678", "1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF", 0, 10000, "1234567890ABCDEF1234567890ABCDEF12345678", FIM_MODIFICATION };
+fim_registry_key DEFAULT_REGISTRY_KEY = { .id = 3, .path = "HKEY_USERS\\Some\\random\\key", .perm_json = NULL, .perm = "", .uid = "110", .gid = "220", .user_name = "user_old_name", .group_name = "group_old_name", .mtime = 1100, .arch = ARCH_64BIT, .scanned = 0, .last_event = 1234, .checksum = "234567890ABCDEF1234567890ABCDEF123456789", .hash_full_path = "234567890ABCDEF1234567890ABCDEF123456111"};
+fim_registry_value_data DEFAULT_REGISTRY_VALUE = { .id = 3, .path = "key\\path", .hash_full_path = "234567890ABCDEF1234567890ABCDEF123456111", .arch = ARCH_64BIT, .name = "the\\value", .type = REG_SZ, .size = 50, .hash_md5 = "1234567890ABCDEF1234567890ABCDEF", . hash_sha1 = "1234567890ABCDEF1234567890ABCDEF12345678", .hash_sha256 = "1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF", .scanned = 0, .last_event = 10000, .checksum = "1234567890ABCDEF1234567890ABCDEF12345678", .mode = FIM_MODIFICATION };
 typedef struct fim_key_txn_context_s {
     event_data_t *evt_data;
     fim_registry_key *key;
@@ -165,6 +165,7 @@ static void test_fim_registry_compare_key_attrs(void **state){
 static void test_fim_registry_compare_value_attrs(void **state){
     fim_registry_value_data new_value = { 3,
                                           "key\\path",
+                                          "234567890ABCDEF1234567890ABCDEF123456111",
                                           ARCH_64BIT,
                                           "the\\value",
                                           REG_SZ,
@@ -179,6 +180,7 @@ static void test_fim_registry_compare_value_attrs(void **state){
 
     fim_registry_value_data saved_value = { 3,
                                           "key\\path",
+                                          "234567890ABCDEF1234567890ABCDEF123456111",
                                           ARCH_64BIT,
                                           "the\\value",
                                           REG_DWORD,
