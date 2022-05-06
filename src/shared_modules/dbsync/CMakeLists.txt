@@ -76,8 +76,7 @@ elseif(UNIX AND NOT APPLE)
     set_target_properties(dbsync PROPERTIES
       LINK_FLAGS "-static-libstdc++")
   elseif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
-    set_target_properties(dbsync PROPERTIES
-      LINK_FLAGS "-static-libgcc")
+    # Do nothing for HP-UX
   else()
     set_target_properties(dbsync PROPERTIES
       LINK_FLAGS "-static-libgcc -static-libstdc++")
