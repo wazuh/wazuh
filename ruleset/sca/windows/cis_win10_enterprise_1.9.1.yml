@@ -338,3 +338,113 @@ checks:
       condition: all
       rules:
         - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> SignSecureChannel -> 1'
+
+  - id: 26021
+    title: "Ensure 'Domain member: Disable machine account password changes' is set to 'Disabled'"
+    description: "This policy setting determines whether a domain member can periodically change its computer account password. Computers that cannot automatically change their account passwords are potentially vulnerable, because an attacker might be able to determine the password for the system's domain account. The recommended state for this setting is: Disabled."
+    rationale: "The default configuration for Windows Server 2003-based computers that belong to a domain is that they are automatically required to change the passwords for their accounts every 30 days. If you disable this policy setting, computers that run Windows Server 2003 will retain the same passwords as their computer accounts. Computers that are no longer able to automatically change their account password are at risk from an attacker who could determine the password for the computer's domain account."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain member: Disable machine account password changes."
+    compliance:
+      - cis: ["2.3.6.4"]
+      - cis_csc: ["16"]
+      - pci_dss: ["8.2.4"]
+      - tsc: ["CC6.1"]
+    references:
+      - 'CCE-37508-9'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> DisablePasswordChange -> 0'
+
+  - id: 26022
+    title: "Ensure 'Domain member: Maximum machine account password age' is set to '30 or fewer days, but not 0'"
+    description: "This policy setting determines the maximum allowable age for a computer account password. By default, domain members automatically change their domain passwords every 30 days. If you increase this interval significantly so that the computers no longer change their passwords, an attacker would have more time to undertake a brute force attack against one of the computer accounts."
+    rationale: "In Active Directory-based domains, each computer has an account and password just like every user. By default, the domain members automatically change their domain password every 30 days. If you increase this interval significantly, or set it to 0 so that the computers no longer change their passwords, an attacker will have more time to undertake a brute force attack to guess the password of one or more computer accounts."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to 30 or fewer days, but not 0: Computer Configuration/Policies/Windows Settings/Security Settings/Local Policies/Security Options/Domain member: Maximum machine account password age"
+    compliance:
+      - cis: ["2.3.6.5"]
+      - cis_csc: ["5.1"]
+    condition: all
+    rules:
+      - 'c:net.exe accounts -> n:Maximum password age (days):\s+(\d+) compare <= 30'
+      - 'c:net.exe accounts -> n:Maximum password age (days):\s+(\d+) compare > 0'
+
+  - id: 26023
+      title: "Ensure 'Domain member: Require strong (Windows 2000 or later) session key' is set to 'Enabled'"
+      description: "When this policy setting is enabled, a secure channel can only be established with Domain Controllers that are capable of encrypting secure channel data with a strong (128-bit) session key. To enable this policy setting, all Domain Controllers in the domain must be able to encrypt secure channel data with a strong key, which means all Domain Controllers must be running Microsoft Windows 2000 or newer. The recommended state for this setting is: Enabled."
+      rationale: "Session keys that are used to establish secure channel communications between Domain Controllers and member computers are much stronger in Windows 2000 than they were in previous Microsoft operating systems. Whenever possible, you should take advantage of these stronger session keys to help protect secure channel communications from attacks that attempt to hijack network sessions and eavesdropping. (Eavesdropping is a form of hacking in which network data is read or altered in transit. The data can be modified to hide or change the sender, or be redirected.)"
+      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain member: Require strong (Windows 2000 or later) session key."
+      compliance:
+        - cis: ["2.3.6.6"]
+        - cis_csc: ["13"]
+        - pci_dss: ["4.1"]
+        - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+        - nist_800_53: ["SC.8"]
+        - tsc: ["CC6.1","CC6.7","CC7.2"]
+      references:
+        - 'CCE-37614-5'
+      condition: all
+      rules:
+        - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> RequireStrongKey -> 1'
+
+  - id: 26024
+    title: "Ensure 'Interactive logon: Do not require CTRL+ALT+DEL' is set to 'Disabled'"
+    description: "This policy setting determines whether users must press CTRL+ALT+DEL before they log on."
+    rationale: "Microsoft developed this feature to make it easier for users with certain types of physical impairments to log on to computers that run Windows. If users are not required to press CTRL+ALT+DEL, they are susceptible to attacks that attempt to intercept their passwords. If CTRL+ALT+DEL is required before logon, user passwords are communicated by means of a trusted path."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration/Policies/Windows Settings/Security Settings/Local Policies/Security Options/Interactive logon: Do not require CTRL+ALT+DEL "
+    compliance:
+      - cis: ["2.3.7.1"]
+      - cis_csc: ["16.2","5.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> DisableCAD -> 0'
+
+  - id: 26025
+    title: "Ensure 'Interactive logon: Don't display last signed-in' is set to 'Enabled'"
+    description: "This policy setting determines whether the account name of the last user to log on to the client computers in your organization will be displayed in each computer's respective Windows logon screen. Enable this policy setting to prevent intruders from collecting account names visually from the screens of desktop or laptop computers in your organization. The recommended state for this setting is: Enabled."
+    rationale: "An attacker with access to the console (for example, someone with physical access or someone who is able to connect to the server through Remote Desktop Services) could view the name of the last user who logged on to the server. The attacker could then try to guess the password, use a dictionary, or use a brute-force attack to try and log on."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Do not display last user name."
+    compliance:
+      - cis: ["2.3.7.2"]
+      - cis_csc: ["13"]
+      - pci_dss: ["2.2.3"]
+      - nist_800_53: ["CM.1"]
+      - gpg_13: ["4.3"]
+      - gdpr_IV: ["35.7.d"]
+      - hipaa: ["164.312.b"]
+      - tsc: ["CC5.2"]
+    references:
+      - 'CCE-36056-0'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> DontDisplayLastUserName -> 1'
+
+  - id: 26026
+    title: "Ensure 'Interactive logon: Machine account lockout threshold' is set to '10 or fewer invalid logon attempts, but not 0'"
+    description: "This security setting determines the number of failed logon attempts that causes the machine to be locked out. Failed password attempts against workstations or member servers that have been locked using either CTRL+ALT+DELETE or password protected screen savers counts as failed logon attempts. The machine lockout policy is enforced only on those machines that have BitLocker enabled for protecting OS volumes. Please ensure that appropriate recovery password backup policies are enabled."
+    rationale: "If a machine is lost or stolen, or if an insider threat attempts a brute force password attack against the computer, it is important to ensure that BitLocker will lock the computer and therefore prevent a successful attack."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to 10 or fewer invalid logon attempts, but not 0: Computer Configuration/Policies/Windows Settings/Security Settings/Local Policies/Security Options/Interactive logon: Machine account lockout threshold"
+    compliance:
+      - cis: ["2.3.7.3"]
+      - cis_csc: ["16"]
+    condition: all
+    rules:
+      - 'not r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> MaxDevicePasswordFailedAttempts -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> MaxDevicePasswordFailedAttempts -> n:^(\d+) compare <=30'
+
+  - id: 26027
+    title: "Ensure 'Interactive logon: Machine inactivity limit' is set to '900 or fewer second(s), but not 0'"
+    description: "Windows notices inactivity of a logon session, and if the amount of inactive time exceeds the inactivity limit, then the screen saver will run, locking the session. The recommended state for this setting is: 900 or fewer second(s), but not 0. Note: A value of 0 does not conform to the benchmark as it disables the machine inactivity limit."
+    rationale: "If a user forgets to lock their computer when they walk away it's possible that a passerby will hijack it."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to 900 or fewer seconds, but not 0: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Machine inactivity limit."
+    compliance:
+      - cis: ["2.3.7.4"]
+      - cis_csc: ["16.5"]
+      - pci_dss: ["8.1.8"]
+      - tsc: ["CC6.1"]
+    references:
+      - 'CCE-38235-8'
+    condition: all
+    rules:
+      - 'not r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> n:^(\d+) compare <= 900'
+
