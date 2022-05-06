@@ -17,9 +17,8 @@
 
 time_t last_mod_date = 0;
 
-/*
- * load json objects from limits.conf file.
- */
+// load json objects from limits.conf file.
+
 int load_limits_file(const char *daemon_name, cJSON ** daemon_obj) {
 
     if (!daemon_name) {

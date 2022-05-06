@@ -76,28 +76,64 @@ static void DumpLogstats(void);
 // Message handler thread
 void * ad_input_main(void * args);
 
-/* Check for changes in the limits.conf file and load the limits structure */
+/**
+ * @brief Check for changes in the limits.conf file and load the limits structure
+ *
+ * This is a private function.
+ */
 static void load_limits(void);
 
-/* Clean the values of limits strucutre */
+/**
+ * @brief Clean the values of limits strucutre
+ *
+ * This is a private function.
+ */
 static void limits_free(void);
 
-/* Get a credit to process an event by decrementing the value of the semaphore */
+/**
+ * @brief Get a credit to process an event by decrementing the value of the semaphore
+ *
+ * This is a private function.
+ */
 static void get_eps_credit(void);
 
-/* Increments the last_second_eps counter */
-static void encrease_event_counter(void);
+/**
+ * @brief Increments the current cell eps counter
+ *
+ * This is a private function.
+ */
+static void increase_event_counter(void);
 
-/* Add 'credits' to the semaphore */
+/**
+ * @brief Add 'credits' to the semaphore
+ *
+ * This is a private function.
+ *
+ * @param Credits to increase.
+ */
 static void generate_eps_credits(unsigned int credits);
 
-/* Remove all credits of the semaphore */
-static void clean_eps_credits();
+/**
+ * @brief Remove 'credits' to the semaphore
+ *
+ * This is a private function.
+ *
+ * @param Credits to remove.
+ */
+static void clean_eps_credits(unsigned int credits);
 
-/* Increments the wait_counter counter. wait_counter=Thread counter waiting for a credit */
+/**
+ * @brief Increments the wait_counter counter. wait_counter=Thread counter waiting for a credit
+ *
+ * This is a private function.
+ */
 static void inc_wait_counter(void);
 
-/* Decrements the wait_counter counter. wait_counter=Thread counter waiting for a credit*/
+/**
+ * @brief Decrements the wait_counter counter. wait_counter=Thread counter waiting for a credit
+ *
+ * This is a private function.
+ */
 static void dec_wait_counter(void);
 
 /** Global definitions **/
@@ -127,8 +163,7 @@ typedef struct _limits_t {
     unsigned int eps;
     unsigned int timeframe;
     unsigned int max_eps;
-    unsigned int eps_per_timeframe;
-    unsigned int last_second_eps;
+    unsigned int total_eps_buffer;
     unsigned int current_cell;
     unsigned int wait_counter;
     unsigned int * circ_buf;
@@ -1115,37 +1150,35 @@ void OS_ReadMSG_analysisd(int m_queue)
 
             w_mutex_lock(&limit_eps_mutex);
 
-            if (limits.current_cell >= limits.timeframe) {
+            if (limits.current_cell >= limits.timeframe - 1) {
 
                 limits.current_cell = limits.current_cell > limits.timeframe - 1 ? limits.timeframe - 1 : limits.current_cell;
-                limits.eps_per_timeframe += limits.last_second_eps;
-                /* free first element credits and remove it */
-                limits.eps_per_timeframe = limits.eps_per_timeframe > limits.circ_buf[0] ? limits.eps_per_timeframe - limits.circ_buf[0] : 0;
+                limits.total_eps_buffer = limits.total_eps_buffer + limits.circ_buf[limits.current_cell] - limits.circ_buf[0];
 
                 if (limits.circ_buf[0]) {
-                    if (limits.eps_per_timeframe + limits.circ_buf[0] <= limits.max_eps) {
+                    if (limits.total_eps_buffer + limits.circ_buf[0] <= limits.max_eps) {
                         generate_eps_credits(limits.circ_buf[0]);
-                    } else if (limits.eps_per_timeframe < limits.max_eps) {
-                        generate_eps_credits(limits.max_eps - limits.eps_per_timeframe);
+                    } else if (limits.total_eps_buffer < limits.max_eps) {
+                        generate_eps_credits(limits.max_eps - limits.total_eps_buffer);
                     }
                 }
 
-                /* move back array one cell */
                 memmove(limits.circ_buf, limits.circ_buf + 1, (limits.timeframe - 1) * sizeof(unsigned int));
+                limits.circ_buf[limits.current_cell] = 0;
+            } else {
+                limits.total_eps_buffer += limits.circ_buf[limits.current_cell++];
             }
 
-            /* add last second eps */
-            limits.circ_buf[limits.current_cell++] = limits.last_second_eps;
-#if 1
+#if 0
             for (unsigned int i = 0; i < limits.timeframe; i++) {
-                mdebug1("cell[%02d] value: %d %s", i, limits.circ_buf[i], (limits.current_cell -1 == i ? "<" : " "));
+                merror("cell[%02d] value: %d %s", i, limits.circ_buf[i], (limits.current_cell == i ? "<" : " "));
             }
+
             int current_credits;
             sem_getvalue(&credits_eps_semaphore, &current_credits);
             mdebug1("eps: %d, timeframe: %d, total events per timeframe: %d, processed events per timeframe: %d, cell: %d, sem_value: %d",
-                        limits.eps, limits.timeframe, limits.max_eps, limits.eps_per_timeframe, limits.current_cell, current_credits);
+                        limits.eps, limits.timeframe, limits.max_eps, limits.total_eps_buffer, limits.current_cell, current_credits);
 #endif
-            limits.last_second_eps = 0;
             w_mutex_unlock(&limit_eps_mutex);
         }
 
@@ -1601,7 +1634,6 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
         /* Receive message from queue */
         if (msg = queue_pop_ex(decode_queue_syscheck_input), msg) {
             get_eps_credit();
-            encrease_event_counter();
 
             int res = 0;
             os_calloc(1, sizeof(Eventinfo), lf);
@@ -1652,7 +1684,6 @@ void * w_decode_syscollector_thread(__attribute__((unused)) void * args){
         /* Receive message from queue */
         if (msg = queue_pop_ex(decode_queue_syscollector_input), msg) {
             get_eps_credit();
-            encrease_event_counter();
 
             os_calloc(1, sizeof(Eventinfo), lf);
             os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
@@ -1698,7 +1729,6 @@ void * w_decode_rootcheck_thread(__attribute__((unused)) void * args){
         /* Receive message from queue */
         if (msg = queue_pop_ex(decode_queue_rootcheck_input), msg) {
             get_eps_credit();
-            encrease_event_counter();
 
             os_calloc(1, sizeof(Eventinfo), lf);
             os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
@@ -1743,7 +1773,6 @@ void * w_decode_sca_thread(__attribute__((unused)) void * args){
         /* Receive message from queue */
         if (msg = queue_pop_ex(decode_queue_sca_input), msg) {
             get_eps_credit();
-            encrease_event_counter();
 
             os_calloc(1, sizeof(Eventinfo), lf);
             os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
@@ -1787,7 +1816,6 @@ void * w_decode_hostinfo_thread(__attribute__((unused)) void * args){
         /* Receive message from queue */
         if (msg = queue_pop_ex(decode_queue_hostinfo_input), msg) {
             get_eps_credit();
-            encrease_event_counter();
 
             os_calloc(1, sizeof(Eventinfo), lf);
             os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
@@ -1835,7 +1863,6 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
         /* Receive message from queue */
         if (msg = queue_pop_ex(decode_queue_event_input), msg) {
             get_eps_credit();
-            encrease_event_counter();
 
             os_calloc(1, sizeof(Eventinfo), lf);
             os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
@@ -1886,7 +1913,6 @@ void * w_decode_winevt_thread(__attribute__((unused)) void * args) {
         /* Receive message from queue */
         if (msg = queue_pop_ex(decode_queue_winevt_input), msg) {
             get_eps_credit();
-            encrease_event_counter();
 
             os_calloc(1, sizeof(Eventinfo), lf);
             os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
@@ -1927,7 +1953,6 @@ void * w_dispatch_dbsync_thread(__attribute__((unused)) void * args) {
     for (;;) {
         if ((msg = queue_pop_ex(dispatch_dbsync_input))) {
             get_eps_credit();
-            encrease_event_counter();
 
             assert(msg != NULL);
 
@@ -1959,7 +1984,6 @@ void * w_dispatch_upgrade_module_thread(__attribute__((unused)) void * args) {
     while (true) {
         if ((msg = queue_pop_ex(upgrade_module_input))) {
             get_eps_credit();
-            encrease_event_counter();
 
             assert (msg != NULL);
 
@@ -2563,45 +2587,53 @@ static void load_limits(void) {
         if (limits.eps) {
 
             if (!old_timeframe && limits.timeframe){
-                /* first time */
+                /* First time */
                 os_calloc(limits.timeframe, sizeof(unsigned int), limits.circ_buf);
 
             } else if (old_timeframe != limits.timeframe) {
-                /* resize buffer */
+                /* Resize buffer */
                 unsigned int buf[old_timeframe];
                 memset(buf, 0, sizeof(unsigned int) * old_timeframe);
                 memcpy(buf, limits.circ_buf,  sizeof(unsigned int) * old_timeframe);
                 os_realloc(limits.circ_buf, limits.timeframe * sizeof(unsigned int), limits.circ_buf);
 
                 if (old_timeframe > limits.timeframe) {
-                    /* shrink buffer */
-                    unsigned int offset = limits.current_cell > limits.timeframe ? limits.current_cell - limits.timeframe : 0;
+                    /* Shrink buffer */
+                    unsigned int offset = limits.current_cell + 1 > limits.timeframe ? limits.current_cell + 1 - limits.timeframe : 0;
                     memcpy(limits.circ_buf, buf + offset, sizeof(unsigned int) * limits.timeframe);
-                    limits.current_cell = limits.current_cell > limits.timeframe ? limits.timeframe : limits.current_cell;
+                    limits.current_cell = limits.current_cell + 1 >= limits.timeframe ? limits.timeframe - 1 : limits.current_cell;
 
                 } else {
-                    /* expand buffer */
+                    /* Expand buffer */
                     memset(limits.circ_buf, 0, sizeof(unsigned int) * limits.timeframe);
                     memcpy(limits.circ_buf, buf, sizeof(unsigned int) * old_timeframe);
                 }
             }
-            /* caluclate new eps proccess in new timeframe */
-            limits.eps_per_timeframe = 0;
-            for (unsigned int i = 0; i < limits.timeframe; i++) {
-                 limits.eps_per_timeframe += limits.circ_buf[i];
+
+            limits.total_eps_buffer = 0;
+            for (unsigned int i = 0; i < limits.current_cell; i++) {
+                 limits.total_eps_buffer += limits.circ_buf[i];
             }
-            limits.eps_per_timeframe += limits.last_second_eps;
-            limits.last_second_eps = 0;
 
             limits.max_eps = limits.eps * limits.timeframe;
 
-            clean_eps_credits();
+            int current_value = 0;
+            sem_getvalue(&credits_eps_semaphore, &current_value);
+            unsigned int c_value = (unsigned int) current_value;
 
-            generate_eps_credits(limits.max_eps > limits.eps_per_timeframe ? limits.max_eps - limits.eps_per_timeframe : 0);
+            if (limits.max_eps > limits.total_eps_buffer) {
+                if (c_value < limits.max_eps - limits.total_eps_buffer) {
+                    generate_eps_credits(limits.max_eps - limits.total_eps_buffer - c_value);
+                } else if (c_value > limits.max_eps - limits.total_eps_buffer){
+                    clean_eps_credits(c_value + limits.total_eps_buffer - limits.max_eps);
+                }
+            } else if (current_value) {
+                clean_eps_credits(current_value);
+            }
 
             limits.enabled = true;
 
-            mdebug1("limits eps: %d, timeframe %d, events per timeframe: %d", limits.eps, limits.timeframe, limits.max_eps);
+            minfo("eps limit enable, eps: %d, timeframe: %d, events per timeframe: %d", limits.eps, limits.timeframe, limits.max_eps);
         }
         else {
             minfo("eps limit disabled");
@@ -2618,7 +2650,6 @@ static void load_limits(void) {
 }
 
 static void limits_free(void) {
-
     if (limits.circ_buf) {
         os_free(limits.circ_buf);
     }
@@ -2628,50 +2659,43 @@ static void limits_free(void) {
     memset(&limits, 0, sizeof(limits));
 }
 
-static void inc_wait_counter(void)
-{
-    pthread_mutex_lock(&wait_sem);
-    limits.wait_counter++;
-    pthread_mutex_unlock(&wait_sem);
-}
-
-static void dec_wait_counter(void)
-{
-    pthread_mutex_lock(&wait_sem);
-    limits.wait_counter--;
-    pthread_mutex_unlock(&wait_sem);
-}
-
 static void get_eps_credit(void) {
-
-    if (limits.max_eps) {
+    if (limits.enabled) {
         inc_wait_counter();
         sem_wait(&credits_eps_semaphore);
         dec_wait_counter();
+        increase_event_counter();
     }
 }
 
-static void encrease_event_counter(void) {
+static void inc_wait_counter(void) {
+    w_mutex_lock(&wait_sem);
+    limits.wait_counter++;
+    w_mutex_unlock(&wait_sem);
+}
 
-    if (limits.enabled) {
-        w_mutex_lock(&limit_eps_mutex);
-        limits.last_second_eps++;
-        w_mutex_unlock(&limit_eps_mutex);
+static void dec_wait_counter(void) {
+    w_mutex_lock(&wait_sem);
+    limits.wait_counter--;
+    w_mutex_unlock(&wait_sem);
+}
+
+static void increase_event_counter(void) {
+    w_mutex_lock(&limit_eps_mutex);
+    if (limits.circ_buf) {
+        limits.circ_buf[limits.current_cell]++;
     }
+    w_mutex_unlock(&limit_eps_mutex);
 }
 
 static void generate_eps_credits(unsigned int credits) {
-
-    for(unsigned int i = 0; i<credits; i++) {
+    for(unsigned int i = 0; i < credits; i++) {
         sem_post(&credits_eps_semaphore);
     }
 }
 
-static void clean_eps_credits() {
-    int current_credits;
-
-    sem_getvalue(&credits_eps_semaphore, &current_credits);
-    while(current_credits--) {
+static void clean_eps_credits(unsigned int credits) {
+    for(unsigned int i = 0; i < credits; i++) {
         sem_trywait(&credits_eps_semaphore);
     }
 }
