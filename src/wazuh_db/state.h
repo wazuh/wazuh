@@ -303,80 +303,95 @@ void w_inc_agent_syscollector_deprecated_hardware();
 
 void w_inc_agent_syscollector_deprecated_osinfo();
 
-void w_inc_global_queries();
+void w_inc_global();
 
-void w_inc_global_sql_queries();
+void w_inc_global_sql();
 
-void w_inc_global_unknown_queries();
+void w_inc_global_unknown();
 
-void w_inc_global_agent_queries();
-insert_agent_queries
+void w_inc_global_agent_insert_agent();
 
-void w_inc_global_agent_queries();
-insert_agent_time
+void w_inc_global_agent_update_agent_data();
 
-void w_inc_global_agent_queries();
-update_agent_data_queries
+void w_inc_global_agent_update_agent_name();
 
-void w_inc_global_agent_queries();
-update_agent_name_queries
+void w_inc_global_agent_update_agent_group();
 
-void w_inc_global_agent_queries();
-update_agent_group_queries
+void w_inc_global_agent_update_keepalive();
 
-void w_inc_global_agent_queries();
-update_keepalive_queries
+void w_inc_global_agent_update_connection_status();
 
-void w_inc_global_agent_queries();
-update_connection_status_queries
+void w_inc_global_agent_reset_agents_connection();
 
-void w_inc_global_agent_queries();
-reset_agents_connection_queries
+void w_inc_global_agent_sync_agent_info_set();
 
-void w_inc_global_agent_queries();
-sync_agent_info_set_queries
+void w_inc_global_agent_delete_agent();
 
-void w_inc_global_agent_queries();
-delete_agent_queries
+void w_inc_global_agent_select_agent_name();
 
-void w_inc_global_agent_queries();
-select_agent_name_queries
+void w_inc_global_agent_select_agent_group();
 
-void w_inc_global_agent_queries();
-select_agent_group_queries
+void w_inc_global_agent_select_keepalive();
 
-void w_inc_global_agent_queries();
-select_keepalive_queries
+void w_inc_global_agent_find_agent();
 
-void w_inc_global_agent_queries();
-find_agent_queries
+void w_inc_global_agent_get_agent_info();
 
-void w_inc_global_agent_queries();
-get_agent_info_queries
+void w_inc_global_agent_get_all_agents();
 
-void w_inc_global_agent_queries();
-get_all_agents_queries
+void w_inc_global_agent_get_agents_by_connection_status();
 
-void w_inc_global_agent_queries();
-get_agents_by_connection_status_queries
+void w_inc_global_agent_disconnect_agents();
 
-void w_inc_global_agent_queries();
-disconnect_agents_queries
+void w_inc_global_agent_sync_agent_info_get();
 
-void w_inc_global_agent_queries();
-sync_agent_info_get_queries
+void w_inc_global_group_insert_agent_group();
 
+void w_inc_global_group_delete_group();
 
+void w_inc_global_group_select_groups();
 
+void w_inc_global_group_find_group();
 
+void w_inc_global_belongs_insert_agent_belong();
 
+void w_inc_global_belongs_delete_agent_belon();
 
+void w_inc_global_belongs_delete_group_belong();
 
-void w_inc_task_queries();
+void w_inc_global_labels_set_labels();
 
-void w_inc_mitre_queries();
+void w_inc_global_labels_get_labels();
 
-void w_inc_unknown_queries();
+void w_inc_task();
+
+void w_inc_task_sql();
+
+void w_inc_task_set_timeout();
+
+void w_inc_task_delete_old();
+
+void w_inc_task_unknown();
+
+void w_inc_task_upgrade();
+
+void w_inc_task_upgrade_custom();
+
+void w_inc_task_upgrade_get_status();
+
+void w_inc_task_upgrade_update_status();
+
+void w_inc_task_upgrade_result();
+
+void w_inc_task_upgrade_cancel_tasks();
+
+void w_inc_mitre();
+
+void w_inc_mitre_sql();
+
+void w_inc_mitre_unknown();
+
+void w_inc_unknown();
 
 
 
