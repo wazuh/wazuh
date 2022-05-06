@@ -23,6 +23,15 @@
 #define LIMITS_JSON_DAEMON_NOT_FOUND    -8  ///< Return code: Daemon name section doesn't found in json
 
 
+/**
+ * @brief Get a json object from limits.conf file
+ *
+ * This is a public function.
+ *
+ * @param daemon_name String that cotain the daemon name to search.
+ * @param daemon_obj Pointer json object to fill.
+ * @return LIMITS_SUCCESS or error code.
+ */
 int load_limits_file(const char *daemon_name, cJSON ** daemon_obj);
 
 #endif
