@@ -225,6 +225,29 @@ void test_queue_pop_ex(void **state) {
     os_free(ptr);
 }
 
+void test_queue_pop_ex_no_cond_wait(void **state) {
+    w_queue_t *queue = *state;
+    int i;
+    int *ptr = NULL;
+    for (i=0; i < QUEUE_SIZE - 1; i++){
+        ptr = malloc(sizeof(int));
+        *ptr = i;
+        queue_push(queue, ptr);
+    }
+    // Pop items from full queue
+    expect_value_count(__wrap_pthread_mutex_lock, mutex,  &queue->mutex, QUEUE_SIZE);
+    expect_value_count(__wrap_pthread_mutex_unlock, mutex, &queue->mutex, QUEUE_SIZE);
+    expect_value_count(__wrap_pthread_cond_signal, cond, &queue->available_not_empty, QUEUE_SIZE - 1);
+    for(i=0; i < QUEUE_SIZE - 1; i++) {
+        ptr = queue_pop_ex_no_cond_wait(queue);
+        assert_int_equal(*ptr, i);
+        os_free(ptr);
+    }
+    // Should be empty now
+    ptr = queue_pop_ex_no_cond_wait(queue);
+    assert_ptr_equal(ptr, NULL);
+}
+
 void test_queue_pop_ex_timedwait_timeout(void **state) {
     w_queue_t *queue = *state;
     struct timespec abstime;
@@ -294,6 +317,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_queue_push_ex_block, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_queue_pop, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_queue_pop_ex, setup_queue, teardown_queue),
+        cmocka_unit_test_setup_teardown(test_queue_pop_ex_no_cond_wait, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_queue_pop_ex_timedwait_timeout, setup_queue, teardown_queue),
         cmocka_unit_test_setup_teardown(test_queue_pop_ex_timedwait_no_timeout, setup_queue, teardown_queue),
     };
