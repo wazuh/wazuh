@@ -168,3 +168,4 @@ Stay up to date on news, releases, engineering articles and more.
 Wazuh Copyright (C) 2015-2022 Wazuh Inc. (License GPLv2)
 
 Based on the OSSEC project started by Daniel Cid.
+
