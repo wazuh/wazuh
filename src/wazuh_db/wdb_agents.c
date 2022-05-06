@@ -118,7 +118,7 @@ cJSON* wdb_agents_insert_vuln_cves(wdb_t *wdb,
         os_strdup(status, status_to_insert);
     }
 
-    // The package is inserted even on an UPDATE, to replace the status with VALID
+    // On UPDATE the status is replaced with VALID and any feed related field is also updated
     sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_VULN_CVES_INSERT);
 
     if (stmt) {

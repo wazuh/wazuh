@@ -632,7 +632,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         The information inside the unzipped files_metadata.json file (integrity metadata) is compared with the
         local one (updated every self.cluster_items['intervals']['master']['recalculate_integrity'] seconds).
-        All files that are different (new, deleted, with a different MD5, etc) are classified into four groups:
+        All files that are different (new, deleted, with a different BLAKE2b, etc) are classified into four groups:
         shared, missing, extra and extra_valid.
 
         Finally, a zip containing this classification (files_metadata.json) and the files that are missing
@@ -1035,7 +1035,7 @@ class Master(server.AbstractServer):
         It updates the local files information every self.cluster_items['intervals']['worker']['sync_integrity']
         seconds.
 
-        A dictionary like {'file_path': {<MD5, merged, merged_name, etc>}, ...} is created and later
+        A dictionary like {'file_path': {<BLAKE2b, merged, merged_name, etc>}, ...} is created and later
         compared with the one received from the workers to find out which files are different, missing or removed.
         """
         file_integrity_logger = self.setup_task_logger("Local integrity")

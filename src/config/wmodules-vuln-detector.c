@@ -161,6 +161,11 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
             os_strdup(vu_feed_tag[FEED_FOCAL], upd->version);
             upd->dist_tag_ref = FEED_FOCAL;
             upd->dist_ext = vu_feed_ext[FEED_FOCAL];
+        } else if (!strcmp(version, "22") || strcasestr(version, vu_feed_tag[FEED_JAMMY])) {
+            os_index = CVE_JAMMY;
+            os_strdup(vu_feed_tag[FEED_JAMMY], upd->version);
+            upd->dist_tag_ref = FEED_JAMMY;
+            upd->dist_ext = vu_feed_ext[FEED_JAMMY];
         } else {
             merror("Invalid Ubuntu version '%s'", version);
             retval = OS_INVALID;

@@ -372,6 +372,16 @@ def test_WazuhDBQueryGroupByAgents(mock_socket_conn, send_mock, filter_fields, e
     assert result['items'] == expected_response
 
 
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_WazuhDBQueryGroup__add_sort_to_query(mock_socket_conn, send_mock):
+    """Tests if _add_sort_to_query method of WazuhDBQueryGroup works properly"""
+    query_group = WazuhDBQueryGroup()
+    query_group._add_sort_to_query()
+
+    assert 'count' in query_group.fields and query_group.fields['count'] == 'count(id_group)' 
+
+
 @patch('socket.socket.connect')
 def test_WazuhDBQueryMultigroups__init__(mock_socket_conn):
     """Tests if method __init__ of WazuhDBQueryMultigroups works properly."""

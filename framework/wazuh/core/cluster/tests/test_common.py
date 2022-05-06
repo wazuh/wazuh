@@ -67,6 +67,7 @@ async def test_response_init():
         assert response.content is None
 
 
+@pytest.mark.asyncio
 async def test_response_read():
     """Test for the 'read' method that belongs to the Response class. This method waits until a response is received."""
 
@@ -77,6 +78,7 @@ async def test_response_read():
         wait_mock.assert_called_once()
 
 
+@pytest.mark.asyncio
 async def test_response_write():
     """Test for the 'write' method that belongs to the Response class. It sets the content of a response and its
     availability."""
@@ -1035,7 +1037,7 @@ def test_wazuh_common_end_receiving_file_ko(path_exists_mock, os_remove_mock):
         with pytest.raises(exception.WazuhClusterError, match=r'.* 3027 .*'):
             os_remove_mock.side_effect = Exception
             wazuh_common.end_receiving_file("not_task_ID filepath")
-            os_remove_mock.assert_called_once_with(Exception)
+    assert os_remove_mock.call_count == 2
 
 
 @patch('json.loads')

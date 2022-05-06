@@ -1108,6 +1108,7 @@ InstallServer()
     ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/azure
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/azure/azure-logs.py ${INSTALLDIR}/wodles/azure/azure-logs.py
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/wodles/azure/azure-logs
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/azure/orm.py ${INSTALLDIR}/wodles/azure/orm.py
 
     GenerateAuthCert
 
@@ -1158,6 +1159,7 @@ InstallAgent()
 
     ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/azure
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/azure/azure-logs.py ${INSTALLDIR}/wodles/azure/azure-logs
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/azure/orm.py ${INSTALLDIR}/wodles/azure/orm.py
 }
 
 InstallWazuh()

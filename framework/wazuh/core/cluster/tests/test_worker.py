@@ -255,8 +255,9 @@ async def test_sync_files_sync_ok(compress_files_mock, unlink_mock, relpath_mock
 
 
 @pytest.mark.asyncio
+@patch("wazuh.core.cluster.cluster.compress_files", return_value="files/path/")
 @patch("wazuh.core.cluster.worker.WorkerHandler.send_request", return_value=Exception())
-async def test_sync_files_sync_ko(send_request_mock):
+async def test_sync_files_sync_ko(send_request_mock, compress_files_mock):
     """Test if the right exceptions are being risen when necessary."""
     files_to_sync = {"path1": "metadata1"}
     files_metadata = {"path2": "metadata2"}
@@ -268,6 +269,8 @@ async def test_sync_files_sync_ko(send_request_mock):
         await sync_files.sync(files_to_sync, files_metadata)
 
     send_request_mock.assert_called_once()
+    compress_files_mock.assert_called_once_with(name='Testing', list_path=files_to_sync,
+                                                cluster_control_json=files_metadata)
 
 
 # Test SyncWazuhdb class
@@ -340,8 +343,8 @@ async def test_sync_wazuh_db_sync_ko(send_string_mock, logger_debug_mock, json_d
     # Test try and if
     with pytest.raises(exception.WazuhClusterError, match=r".* 3016 .*"):
         await sync_wazuh_db.sync(start_time=10)
-        json_dumps_mock.assert_called_with({"set_data_command": "set_command", "chunks": ["get_command"]})
-        logger_debug_mock.assert_called_once_with(f"Obtained {1} chunks of data in 0.000s.")
+    json_dumps_mock.assert_called_with({"set_data_command": "set_command", "chunks": ["get_command"]})
+    logger_debug_mock.assert_called_once_with(f"Obtained {1} chunks of data in 0.000s.")
 
     send_string_mock.assert_called_with(b"")
 

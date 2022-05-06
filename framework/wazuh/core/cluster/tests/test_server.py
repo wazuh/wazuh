@@ -342,6 +342,7 @@ async def test_AbstractServer_echo(loop_mock, sleep_mock):
             mock_info.assert_called_once_with("keepalive worker_test mock")
 
 
+@pytest.mark.asyncio
 @freeze_time("2022-01-01")
 @patch("asyncio.sleep", side_effect=IndexError)
 @patch("asyncio.get_running_loop", return_value=loop)
@@ -367,6 +368,7 @@ async def test_AbstractServer_performance_test(perf_counter_mock, loop_mock, sle
         mock_info.assert_called_once_with("Received size: 20 // Time: 0")
 
 
+@pytest.mark.asyncio
 @freeze_time("2022-01-01")
 @patch("asyncio.sleep", side_effect=IndexError)
 @patch("asyncio.get_running_loop", return_value=loop)

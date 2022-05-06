@@ -790,7 +790,7 @@ class Handler(asyncio.Protocol):
         return b"ok", b"File updated"
 
     def end_file(self, data: bytes) -> Tuple[bytes, bytes]:
-        """Close file descriptor (write file in disk) and check MD5.
+        """Close file descriptor (write file in disk) and check BLAKE2b.
 
         Parameters
         ----------

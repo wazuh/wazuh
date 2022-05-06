@@ -17,7 +17,6 @@
 #   7 - Unexpected error querying/working with objects in S3
 #   8 - Failed to decompress file
 #   9 - Failed to parse file
-#   10 - Failed to execute DB cleanup
 #   11 - Unable to connect to Wazuh
 #   12 - Invalid type of bucket
 #   13 - Unexpected error sending message to Wazuh
@@ -44,6 +43,7 @@ import gzip
 import zipfile
 import re
 import io
+import zlib
 from os import path
 import operator
 from datetime import datetime
@@ -657,29 +657,20 @@ class AWSBucket(WazuhIntegration):
         :param aws_region: str
         :rtype: int
         """
-        try:
-            query_count_region = self.db_connector.execute(
-                self.sql_count_region.format(
-                    table_name=self.db_table_name,
-                    bucket_path=self.bucket_path,
-                    aws_account_id=aws_account_id,
-                    aws_region=aws_region,
-                    retain_db_records=self.retain_db_records
-                ))
-            return query_count_region.fetchone()[0]
-        except Exception as e:
-            print(
-                "ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {error_msg}".format(
-                    aws_account_id=aws_account_id,
-                    aws_region=aws_region,
-                    error_msg=e))
-            sys.exit(10)
+        query_count_region = self.db_connector.execute(
+            self.sql_count_region.format(
+                table_name=self.db_table_name,
+                bucket_path=self.bucket_path,
+                aws_account_id=aws_account_id,
+                aws_region=aws_region,
+                retain_db_records=self.retain_db_records
+            ))
+        return query_count_region.fetchone()[0]
 
     def db_maintenance(self, aws_account_id=None, aws_region=None):
         debug("+++ DB Maintenance", 1)
         try:
-            if self.db_count_region(aws_account_id, aws_region) \
-                    > self.retain_db_records:
+            if self.db_count_region(aws_account_id, aws_region) > self.retain_db_records:
                 self.db_connector.execute(self.sql_db_maintenance.format(
                     bucket_path=self.bucket_path,
                     table_name=self.db_table_name,
@@ -688,12 +679,7 @@ class AWSBucket(WazuhIntegration):
                     retain_db_records=self.retain_db_records
                 ))
         except Exception as e:
-            print(
-                "ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {error_msg}".format(
-                    aws_account_id=aws_account_id,
-                    aws_region=aws_region,
-                    error_msg=e))
-            sys.exit(10)
+            print(f"ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {e}")
 
     def marker_custom_date(self, aws_region: str, aws_account_id: str, date: datetime) -> str:
         """
@@ -845,22 +831,67 @@ class AWSBucket(WazuhIntegration):
 
         return event
 
-    def decompress_file(self, log_key):
-        def decompress_gzip(raw_object):
-            # decompress gzip file in text mode.
-            try:
-                # Python 3
-                return gzip.open(filename=raw_object, mode='rt')
-            except TypeError:
-                # Python 2
-                return gzip.GzipFile(fileobj=raw_object, mode='r')
+    def _decompress_gzip(self, raw_object: io.BytesIO):
+        """
+        Method that decompress gzip compressed data.
 
-        raw_object = io.BytesIO(self.client.get_object(Bucket=self.bucket, Key=log_key)['Body'].read())
-        if log_key[-3:] == '.gz':
-            return decompress_gzip(raw_object)
-        elif log_key[-4:] == '.zip':
+        Parameters
+        ----------
+        raw_object : io.BytesIO
+            Buffer with the gzip compressed object.
+
+        Returns
+        -------
+        file_object
+            Decompressed object.
+        """
+        try:
+            gzip_file = gzip.open(filename=raw_object, mode='rt')
+            # Ensure that the file is not corrupted by reading from it
+            gzip_file.read()
+            gzip_file.seek(0)
+            return gzip_file
+        except (gzip.BadGzipFile, zlib.error, TypeError):
+            print(f'ERROR: invalid gzip file received.')
+            if not self.skip_on_error:
+                sys.exit(8)
+
+    def _decompress_zip(self, raw_object: io.BytesIO):
+        """
+        Method that decompress zip compressed data.
+
+        Parameters
+        ----------
+        raw_object : io.BytesIO
+            Buffer with the zip compressed object.
+
+        Returns
+        -------
+        file_object
+            Decompressed object.
+        """
+        try:
             zipfile_object = zipfile.ZipFile(raw_object, compression=zipfile.ZIP_DEFLATED)
             return io.TextIOWrapper(zipfile_object.open(zipfile_object.namelist()[0]))
+        except zipfile.BadZipFile:
+            print('ERROR: invalid zip file received.')
+        if not self.skip_on_error:
+            sys.exit(8)
+
+    def decompress_file(self, log_key: str):
+        """
+        Method that returns a file stored in a bucket decompressing it if necessary.
+
+        Parameters
+        ----------
+        log_key : str
+            Name of the file that should be returned.
+        """
+        raw_object = io.BytesIO(self.client.get_object(Bucket=self.bucket, Key=log_key)['Body'].read())
+        if log_key[-3:] == '.gz':
+            return self._decompress_gzip(raw_object)
+        elif log_key[-4:] == '.zip':
+            return self._decompress_zip(raw_object)
         elif log_key[-7:] == '.snappy':
             print(f"ERROR: couldn't decompress the {log_key} file, snappy compression is not supported.")
             if not self.skip_on_error:
@@ -1749,30 +1780,21 @@ class AWSVPCFlowBucket(AWSLogsBucket):
         :type flow_log_id: str
         :rtype: int
         """
-        try:
-            query_count_region = self.db_connector.execute(
-                self.sql_count_region.format(
-                    table_name=self.db_table_name,
-                    bucket_path=self.bucket_path,
-                    aws_account_id=aws_account_id,
-                    aws_region=aws_region,
-                    flow_log_id=flow_log_id,
-                    retain_db_records=self.retain_db_records
-                ))
-            return query_count_region.fetchone()[0]
-        except Exception as e:
-            print(
-                "ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {error_msg}".format(
-                    aws_account_id=aws_account_id,
-                    aws_region=aws_region,
-                    error_msg=e))
-            sys.exit(10)
+        query_count_region = self.db_connector.execute(
+            self.sql_count_region.format(
+                table_name=self.db_table_name,
+                bucket_path=self.bucket_path,
+                aws_account_id=aws_account_id,
+                aws_region=aws_region,
+                flow_log_id=flow_log_id,
+                retain_db_records=self.retain_db_records
+            ))
+        return query_count_region.fetchone()[0]
 
     def db_maintenance(self, aws_account_id=None, aws_region=None, flow_log_id=None):
         debug("+++ DB Maintenance", 1)
         try:
-            if self.db_count_region(aws_account_id, aws_region, flow_log_id) \
-                    > self.retain_db_records:
+            if self.db_count_region(aws_account_id, aws_region, flow_log_id) > self.retain_db_records:
                 self.db_connector.execute(self.sql_db_maintenance.format(
                     table_name=self.db_table_name,
                     bucket_path=self.bucket_path,
@@ -1782,12 +1804,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                     retain_db_records=self.retain_db_records
                 ))
         except Exception as e:
-            print(
-                "ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {error_msg}".format(
-                    aws_account_id=aws_account_id,
-                    aws_region=aws_region,
-                    error_msg=e))
-            sys.exit(10)
+            print(f"ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {e}")
 
     def get_vpc_prefix(self, aws_account_id, aws_region, date, flow_log_id):
         return self.get_full_prefix(aws_account_id, aws_region) + date \
@@ -2142,7 +2159,7 @@ class AWSCustomBucket(AWSBucket):
 
     def iter_regions_and_accounts(self, account_id, regions):
         # Only <self.retain_db_records> logs for each region are stored in DB. Using self.bucket as region name
-        # would prevent to loose lots of logs from different buckets.
+        # would prevent to lose lots of logs from different buckets.
         # no iterations for accounts_id or regions on custom buckets
         self.iter_files_in_bucket()
         self.db_maintenance()
@@ -2165,21 +2182,14 @@ class AWSCustomBucket(AWSBucket):
         :type aws_account_id: str
         :rtype: int
         """
-        try:
-            query_count_custom = self.db_connector.execute(
-                self.sql_count_custom.format(
-                    table_name=self.db_table_name,
-                    bucket_path=self.bucket_path,
-                    aws_account_id= aws_account_id if aws_account_id else self.aws_account_id,
-                    retain_db_records=self.retain_db_records
-                ))
-            return query_count_custom.fetchone()[0]
-        except Exception as e:
-            print(
-                "ERROR: Failed to execute DB cleanup - Path: {bucket_path}: {error_msg}".format(
-                    bucket_path=self.bucket_path,
-                    error_msg=e))
-            sys.exit(10)
+        query_count_custom = self.db_connector.execute(
+            self.sql_count_custom.format(
+                table_name=self.db_table_name,
+                bucket_path=self.bucket_path,
+                aws_account_id= aws_account_id if aws_account_id else self.aws_account_id,
+                retain_db_records=self.retain_db_records
+            ))
+        return query_count_custom.fetchone()[0]
 
     def db_maintenance(self, aws_account_id=None, **kwargs):
         debug("+++ DB Maintenance", 1)
@@ -2188,15 +2198,11 @@ class AWSCustomBucket(AWSBucket):
                 self.db_connector.execute(self.sql_db_maintenance.format(
                     table_name=self.db_table_name,
                     bucket_path=self.bucket_path,
-                    aws_account_id= aws_account_id if aws_account_id else self.aws_account_id,
+                    aws_account_id=aws_account_id if aws_account_id else self.aws_account_id,
                     retain_db_records=self.retain_db_records
                 ))
         except Exception as e:
-            print(
-                "ERROR: Failed to execute DB cleanup - Path: {bucket_path}: {error_msg}".format(
-                    bucket_path=self.bucket_path,
-                    error_msg=e))
-            sys.exit(10)
+            print(f"ERROR: Failed to execute DB cleanup - Path: {self.bucket_path}: {e}")
 
 
 class AWSGuardDutyBucket(AWSCustomBucket):
