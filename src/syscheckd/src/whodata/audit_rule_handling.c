@@ -32,6 +32,11 @@ static void _add_whodata_directory(const char *path) {
     OSListNode *node;
     whodata_directory_t *directory;
 
+    if (whodata_directories == NULL) {
+        merror(FIM_ERROR_WHODATA_UNINITIALIZED, path);
+        return;
+    }
+
     // Search for duplicates
     for (node = OSList_GetFirstNode(whodata_directories); node != NULL;
          node = OSList_GetNextNode(whodata_directories)) {

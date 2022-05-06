@@ -451,7 +451,7 @@
 #define FIM_ERROR_WHODATA_AUDIT_SUPPORT             "(6620): Audit support not built. Whodata is not available."
 #define FIM_ERROR_WHODATA_EVENTCHANNEL              "(6621): Event Channel subscription could not be made. Whodata scan is disabled."
 #define FIM_ERROR_WHODATA_RESTORE_POLICIES          "(6622): There is no backup of audit policies. Policies will not be restored."
-
+#define FIM_ERROR_WHODATA_UNINITIALIZED             "(6623): Trying to monitor '%s' in who-data mode, but who-data is not initialized."
 
 #define FIM_ERROR_WHODATA_NOTFIND_DIRPOS            "(6625): The '%s' file does not have an associated directory."
 #define FIM_ERROR_WHODATA_HANDLER_REMOVE            "(6626): The handler '%s' could not be removed from the whodata hash table."
