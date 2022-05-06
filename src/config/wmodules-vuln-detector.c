@@ -21,6 +21,7 @@ typedef struct vu_os_feed {
     char *debian_json_path;
     char *debian_json_url;
     char *allow;
+    char *allow_package_vendors;
     int port;
     struct vu_os_feed *next;
 } vu_os_feed;
@@ -45,6 +46,7 @@ static char *wm_vuldet_provider_name(xml_node *node);
 static int wm_vuldet_provider_os_list(xml_node **node, vu_os_feed **feeds, char *pr_name);
 static void wm_vuldet_set_port_to_url(char **url, int port);
 static int wm_vuldet_add_allow_os(update_node *update, char *os_tags);
+static int wm_vuldet_add_allow_package_vendors(update_node *update, char *os_tags);
 static int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_provider, provider_options *options);
 static int wm_vuldet_provider_type(char *pr_name);
 static void wm_vuldet_remove_os_feed(vu_os_feed *feed, char full_r);
@@ -67,6 +69,7 @@ static const char *XML_URL = "url";
 static const char *XML_PATH = "path";
 static const char *XML_PORT = "port";
 static const char *XML_ALLOW = "allow";
+static const char *XML_ALLOW_PACKAGE_VENDORS = "allow_package_vendors";
 static const char *XML_UPDATE_FROM_YEAR = "update_from_year";
 static const char *XML_PROVIDER = "provider";
 static const char *XML_TIMEOUT = "download_timeout";
@@ -574,6 +577,13 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
                 goto end;
             }
 
+            // only for Redhat to set allow package vendors
+            if (os_index >= CVE_REDHAT5 && os_index <= CVE_REDHAT8) {
+                if (os_list->allow_package_vendors && wm_vuldet_add_allow_package_vendors(updates[os_index], os_list->allow_package_vendors)) {
+                    goto end;
+                }
+            }
+
             if (os_list->interval) {
                 updates[os_index]->interval = os_list->interval;
             } else if (p_options.update_interval) {
@@ -749,6 +759,9 @@ int wm_vuldet_provider_os_list(xml_node **node, vu_os_feed **feeds, char *pr_nam
                 } else if (!strcmp(node[i]->attributes[j],  XML_ALLOW)) {
                     free(feeds_it->allow);
                     os_strdup(node[i]->values[j], feeds_it->allow);
+                } else if (!strcmp(node[i]->attributes[j],  XML_ALLOW_PACKAGE_VENDORS)) {
+                    free(feeds_it->allow_package_vendors);
+                    os_strdup(node[i]->values[j], feeds_it->allow_package_vendors);
                 } else {
                     merror("Invalid attribute '%s' in '%s' option for '%s'", node[i]->attributes[j], XML_OS, WM_VULNDETECTOR_CONTEXT.name);
                     return OS_INVALID;
@@ -901,6 +914,32 @@ int wm_vuldet_add_allow_os(update_node *update, char *os_tags) {
     return 0;
 }
 
+static int wm_vuldet_add_allow_package_vendors(update_node *update, char *os_tags) {
+    char *found;
+    size_t size, len;
+
+    os_calloc(1, sizeof(char *), update->allowed_package_vendors);
+
+    for (size = 0; (found = strchr(os_tags, ',')); size++) {
+        *(found++) = '\0';
+        os_realloc(update->allowed_package_vendors, (size + 1)*sizeof(char *), update->allowed_package_vendors);
+        mtinfo("'%s' successfully added to the monitored package vendor lists.", os_tags);
+        len = strlen(os_tags) + 1;
+        os_calloc(len, sizeof(char), update->allowed_package_vendors[size]);
+        strcpy(update->allowed_package_vendors[size], os_tags);
+        update->allowed_package_vendors[size + 1] = NULL;
+        os_tags = found;
+    }
+    os_realloc(update->allowed_package_vendors, (size + 1)*sizeof(char *), update->allowed_package_vendors);
+    mtinfo("'%s' successfully added to the monitored package vendor list.", os_tags);
+    len = strlen(os_tags) + 1;
+    os_calloc(len, sizeof(char), update->allowed_package_vendors[size]);
+    strcpy(update->allowed_package_vendors[size], os_tags);
+    update->allowed_package_vendors[size + 1] = NULL;
+
+    return 0;
+}
+
 int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_provider, provider_options *options) {
     int i, j;
     int8_t rhel_enabled = (strcasestr(name, vu_feed_tag[FEED_REDHAT])) ? 1 : 0;
@@ -979,6 +1018,12 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
             }
         } else if (!strcmp(node[i]->element, XML_OS)) {
             if (multi_provider) {
+                mwarn("Invalid option '%s' for '%s' provider at '%s'", node[i]->element, name, WM_VULNDETECTOR_CONTEXT.name);
+            }
+        } else if (!strcmp(node[i]->element, XML_ALLOW_PACKAGE_VENDORS)) {
+            if (rhel_enabled) {
+                mwarn("Deprecated option '%s' for '%s' provider. Use it as attribute <os %s> instead.", node[i]->element, name, node[i]->element);
+            } else {
                 mwarn("Invalid option '%s' for '%s' provider at '%s'", node[i]->element, name, WM_VULNDETECTOR_CONTEXT.name);
             }
         } else if (strcmp(node[i]->element, XML_ENABLED)) {
