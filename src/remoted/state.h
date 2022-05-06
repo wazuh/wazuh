@@ -13,6 +13,8 @@
 
 #include <stdint.h>
 
+#define VERSION 1
+
 /* Status structures */
 
 typedef struct _ctrl_msgs_t {
@@ -57,7 +59,7 @@ typedef struct _remoted_state_t {
 
 /**
  * @brief Main function of remoted status writer
- * @return void* NULL
+ * @return NULL
  */
 void* rem_state_main();
 
@@ -177,5 +179,11 @@ void rem_inc_keys_reload();
  * @brief Increment update shared files counter
  */
 void rem_inc_update_shared_files();
+
+/**
+ * @brief Create a JSON string with all the remoted state information
+ * @return JSON string
+ */
+char* rem_create_state_json();
 
 #endif
