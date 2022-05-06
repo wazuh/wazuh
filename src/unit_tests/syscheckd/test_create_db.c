@@ -950,9 +950,12 @@ static void test_fim_audit_json(void **state) {
 
 #ifndef TEST_WINAGENT
 static void test_fim_check_ignore_strncasecmp(void **state) {
-   int ret;
+    int ret;
+    char debug_msg[OS_MAXSTR];
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6204): Ignoring path '/EtC/dumPDateS' due to pattern '/etc/dumpdates'");
+    snprintf(debug_msg, OS_MAXSTR, FIM_IGNORE_ENTRY, "/EtC/dumPDateS", "/etc/dumpdates");
+
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
     ret = fim_check_ignore("/EtC/dumPDateS");
 
@@ -968,7 +971,7 @@ static void test_fim_check_ignore_strncasecmp(void **state) {
     if(!ExpandEnvironmentStrings(path, expanded_path, OS_MAXSTR))
         fail();
 
-    snprintf(debug_msg, OS_MAXSTR, "(6204): Ignoring path '%s' due to pattern '%s'", expanded_path, syscheck.ignore[0]);
+    snprintf(debug_msg, OS_MAXSTR, FIM_IGNORE_ENTRY, expanded_path, syscheck.ignore[0]);
 
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
@@ -980,12 +983,16 @@ static void test_fim_check_ignore_strncasecmp(void **state) {
 #endif
 
 static void test_fim_check_ignore_regex(void **state) {
-   int ret;
+    int ret;
+    char debug_msg[OS_MAXSTR];
+
 
 #ifndef TEST_WINAGENT
-    expect_string(__wrap__mdebug2, formatted_msg, "(6205): Ignoring path '/test/files/test.swp' due to sregex '.log$|.swp$'");
+    snprintf(debug_msg, OS_MAXSTR, FIM_IGNORE_SREGEX, "/test/files/test.swp", ".log$|.swp$");
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 #else
-    expect_string(__wrap__mdebug2, formatted_msg, "(6205): Ignoring path '/test/files/test.swp' due to sregex '.log$|.htm$|.jpg$|.png$|.chm$|.pnf$|.evtx$|.swp$'");
+    snprintf(debug_msg, OS_MAXSTR, FIM_IGNORE_SREGEX, "/test/files/test.swp", ".log$|.htm$|.jpg$|.png$|.chm$|.pnf$|.evtx$|.swp$");
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 #endif
 
     ret = fim_check_ignore("/test/files/test.swp");
@@ -1729,6 +1736,7 @@ static void test_fim_checker_fim_regular_ignore(void **state) {
     struct stat statbuf = DEFAULT_STATBUF;
     event_data_t evt_data = { .mode = FIM_WHODATA, .w_evt = NULL, .report_event = true };
     const char *path = "/etc/mtab";
+    char debug_msg[OS_MAXSTR];
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_rwlock_unlock);
@@ -1740,10 +1748,11 @@ static void test_fim_checker_fim_regular_ignore(void **state) {
     will_return(__wrap_lstat, &statbuf);
     will_return(__wrap_lstat, 0);
 
-    expect_string(__wrap_HasFilesystem, path, "/etc/mtab");
+    expect_string(__wrap_HasFilesystem, path, path);
     will_return(__wrap_HasFilesystem, 0);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6204): Ignoring path '/etc/mtab' due to pattern '/etc/mtab'");
+    snprintf(debug_msg, OS_MAXSTR, FIM_IGNORE_ENTRY, path, path);
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
     fim_checker(path, &evt_data, NULL);
 }
@@ -2602,7 +2611,7 @@ static void test_fim_checker_fim_regular_ignore(void **state) {
     expect_string(__wrap_HasFilesystem, path, expanded_path);
     will_return(__wrap_HasFilesystem, 0);
 
-    snprintf(debug_msg, OS_MAXSTR, "(6204): Ignoring path '%s' due to pattern '%s'", expanded_path, expanded_path);
+    snprintf(debug_msg, OS_MAXSTR, FIM_IGNORE_ENTRY, expanded_path, expanded_path);
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
     fim_checker(expanded_path, &evt_data, NULL);
