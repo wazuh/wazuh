@@ -48,6 +48,9 @@ include_directories(${SHARED_MODULES}/common/)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
   link_directories(${INSTALL_PREFIX}/lib)
+  add_definitions(-DPROMISE_TYPE=PromiseType::SLEEP)
+else()
+  add_definitions(-DPROMISE_TYPE=PromiseType::NORMAL)
 endif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
 
 link_directories(${SHARED_MODULES}/dbsync/build/lib/)
@@ -74,6 +77,8 @@ elseif(UNIX AND NOT APPLE)
   if(CMAKE_SYSTEM STREQUAL "SunOS-5.10")
     set_target_properties(rsync PROPERTIES
       LINK_FLAGS "-static-libstdc++")
+  elseif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
+    # Do nothing for HP-UX
   else()
     set_target_properties(rsync PROPERTIES
       LINK_FLAGS "-static-libgcc -static-libstdc++")

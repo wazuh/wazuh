@@ -18,6 +18,7 @@
 #include <functional>
 #include <iostream>
 #include "threadSafeQueue.h"
+#include "promiseFactory.h"
 namespace Utils
 {
     // *
@@ -65,10 +66,10 @@ namespace Utils
     class AsyncDispatcher
     {
         public:
-            AsyncDispatcher(Functor functor, const unsigned int numberOfThreads = std::thread::hardware_concurrency())
-                : m_functor{ functor }
-                , m_running{ true }
-                , m_numberOfThreads{ numberOfThreads }
+            AsyncDispatcher(Functor functor, const unsigned int numberOfThreads = std::thread::hardware_concurrency() ? : 1)
+            : m_functor{ functor }
+            , m_running{ true }
+            , m_numberOfThreads{ numberOfThreads }
             {
                 m_threads.reserve(m_numberOfThreads);
 
@@ -102,16 +103,15 @@ namespace Utils
             {
                 if (m_running)
                 {
-                    std::promise<void> promise;
-                    auto fut { promise.get_future() };
+                    auto promise { PromiseFactory<PROMISE_TYPE>::getPromiseObject() };
                     m_queue.push
                     (
                         [&promise]()
                     {
-                        promise.set_value();
+                        promise->set_value();
                     }
                     );
-                    fut.wait();
+                    promise->wait();
                     cancel();
                 }
             }
