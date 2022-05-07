@@ -55,6 +55,18 @@ wm_task_manager_task* wm_task_manager_init_task() {
     return task;
 }
 
+wm_task_manager_syscollector* wm_task_manager_init_syscollector_parameters() {
+    wm_task_manager_syscollector *parameters;
+    os_calloc(1, sizeof(wm_task_manager_syscollector), parameters);
+    return parameters;
+}
+
+wm_task_manager_status* wm_task_manager_init_status_parameters() {
+    wm_task_manager_status *parameters;
+    os_calloc(1, sizeof(wm_task_manager_status), parameters);
+    return parameters;
+}
+
 void wm_task_manager_free_upgrade_parameters(wm_task_manager_upgrade* parameters) {
     if (parameters) {
         os_free(parameters->node);
@@ -95,6 +107,26 @@ void wm_task_manager_free_upgrade_cancel_tasks_parameters(wm_task_manager_upgrad
         os_free(parameters);
     }
 }
+
+void wm_task_manager_free_syscollector_tasks_parameters(wm_task_manager_syscollector *parameters) {
+    if (parameters) {
+        os_free(parameters->agent_ids);
+        os_free(parameters->error_msg);
+        os_free(parameters->module);
+        os_free(parameters->node);
+        os_free(parameters->status);
+        os_free(parameters);
+    }
+}
+
+void wm_task_manager_free_status_tasks_parameters(wm_task_manager_status *parameters) {
+    if (parameters) {
+        os_free(parameters->error_msg);
+        os_free(parameters->status);
+        os_free(parameters);
+    }
+}
+
 
 void wm_task_manager_free_task(wm_task_manager_task* task) {
     if (task) {

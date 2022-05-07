@@ -976,7 +976,9 @@ int wdb_parse(char * input, char * output, int peer) {
             result = wdb_parse_insert_task(wdb, parameters_json, query, output);
             cJSON_Delete(parameters_json);
 
-        } else if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE_GET_STATUS], query)) {
+        } else if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE_GET_STATUS], query) ||
+                   !strcmp(task_manager_commands_list[WM_TASK_SYSCOLLECTOR_GET_STATUS], query) ||
+                   !strcmp(task_manager_commands_list[WM_TASK_GET_STATUS], query)) {
             if (!next) {
                 mdebug1("Task DB Invalid DB query syntax.");
                 mdebug2("Task DB query error near: %s", query);
@@ -995,7 +997,9 @@ int wdb_parse(char * input, char * output, int peer) {
             result = wdb_parse_task_get_status(wdb, parameters_json, query, output);
             cJSON_Delete(parameters_json);
 
-        } else if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE_UPDATE_STATUS], query)) {
+        } else if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE_UPDATE_STATUS], query) ||
+                   !strcmp(task_manager_commands_list[WM_TASK_SYSCOLLECTOR_UPDATE_STATUS], query) ||
+                   !strcmp(task_manager_commands_list[WM_TASK_UPDATE_STATUS], query)) {
             if (!next) {
                 mdebug1("Task DB Invalid DB query syntax.");
                 mdebug2("Task DB query error near: %s", query);
@@ -1011,7 +1015,7 @@ int wdb_parse(char * input, char * output, int peer) {
                 return OS_INVALID;
             }
 
-            result = wdb_parse_task_upgrade_update_status(wdb, parameters_json, output);
+            result = wdb_parse_task_update_status(wdb, parameters_json, query, output);
             cJSON_Delete(parameters_json);
 
         } else if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE_RESULT], query)) {
@@ -5726,9 +5730,7 @@ int wdb_parse_task_get_status(wdb_t* wdb, const cJSON *parameters, const char *c
         result = wdb_task_get_task_status_by_id(wdb, task_id, &task_status);
     }
     else {
-        const char* task_command = !strcmp(task_manager_commands_list[WM_TASK_UPGRADE_GET_STATUS], command) ? task_manager_commands_list[WM_TASK_UPGRADE] :
-                                   !strcmp(task_manager_commands_list[WM_TASK_SYSCOLLECTOR_GET_STATUS], command) ? task_manager_commands_list[WM_TASK_SYSCOLLECTOR_SCAN] :
-                                   task_manager_commands_list[WM_TASK_VULN_DET_SCAN];
+        const char* task_command = wdb_task_command_translate(command);
         result = wdb_task_get_last_task_status(wdb, agent_id, node, task_command, &task_status);
     }
 
@@ -5751,30 +5753,26 @@ int wdb_parse_task_get_status(wdb_t* wdb, const cJSON *parameters, const char *c
     return result;
 }
 
-int wdb_parse_task_upgrade_update_status(wdb_t* wdb, const cJSON *parameters, char* output) {
+int wdb_parse_task_update_status(wdb_t* wdb, const cJSON *parameters, const char* command, char* output) {
     int result = OS_INVALID;
     int agent_id = OS_INVALID;
+    int task_id = OS_INVALID;
     char *node = NULL;
     char *status = NULL;
     char *error = NULL;
 
-    cJSON *agent_id_json = cJSON_GetObjectItem(parameters, "agent");
-    if (!agent_id_json || (agent_id_json->type != cJSON_Number)) {
-        snprintf(output, OS_MAXSTR + 1, "err Error upgrade update status task: 'parsing agent error'");
-        return OS_INVALID;
+    cJSON *task_id_json = cJSON_GetObjectItem(parameters, "task_id");
+    if (task_id_json) {
+        if (task_id_json->type != cJSON_Number) {
+            snprintf(output, OS_MAXSTR + 1, "err Error get task status: 'parsing task_id error'");
+            return OS_INVALID;
+        }
+        task_id = task_id_json->valueint;
     }
-    agent_id = agent_id_json->valueint;
-
-    cJSON *node_json = cJSON_GetObjectItem(parameters, "node");
-    if (!node_json || (node_json->type != cJSON_String)) {
-        snprintf(output, OS_MAXSTR + 1, "err Error upgrade update status task: 'parsing node error'");
-        return OS_INVALID;
-    }
-    node = node_json->valuestring;
 
     cJSON *status_json = cJSON_GetObjectItem(parameters, "status");
     if (!status_json || (status_json->type != cJSON_String)) {
-        snprintf(output, OS_MAXSTR + 1, "err Error upgrade update status task: 'parsing status error'");
+        snprintf(output, OS_MAXSTR + 1, "err Error update status task: 'parsing status error'");
         return OS_INVALID;
     }
     status = status_json->valuestring;
@@ -5784,7 +5782,27 @@ int wdb_parse_task_upgrade_update_status(wdb_t* wdb, const cJSON *parameters, ch
         error = error_json->valuestring;
     }
 
-    result = wdb_task_update_upgrade_task_status(wdb, agent_id, node, status, error);
+    if (task_id != OS_INVALID) {
+        result = wdb_task_update_task_status_by_id(wdb, task_id, status, error);
+    } else {
+        const char* task_command = wdb_task_command_translate(command);
+
+        cJSON *agent_id_json = cJSON_GetObjectItem(parameters, "agent");
+        if (!agent_id_json || (agent_id_json->type != cJSON_Number)) {
+            snprintf(output, OS_MAXSTR + 1, "err Error update status task: 'parsing agent error'");
+            return OS_INVALID;
+        }
+        agent_id = agent_id_json->valueint;
+
+        cJSON *node_json = cJSON_GetObjectItem(parameters, "node");
+        if (!node_json || (node_json->type != cJSON_String)) {
+            snprintf(output, OS_MAXSTR + 1, "err Error update status task: 'parsing node error'");
+            return OS_INVALID;
+        }
+        node = node_json->valuestring;
+
+        result = wdb_task_update_task_status(wdb, agent_id, node, status, task_command, error);
+    }
 
     cJSON *response = cJSON_CreateObject();
     char *out = NULL;

@@ -43,7 +43,7 @@ extern const char* task_statuses[];
  *	    }
  * }
  *
- * @param msg Incomming message from a connection.
+ * @param msg Incoming message from a connection.
  * @return task structure if there is no error, NULL otherwise.
  * */
 wm_task_manager_task* wm_task_manager_parse_message(const char *msg) __attribute__((nonnull));

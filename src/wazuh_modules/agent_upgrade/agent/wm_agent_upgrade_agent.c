@@ -162,7 +162,7 @@ STATIC void* wm_agent_upgrade_listen_messages(__attribute__((unused)) void *arg)
             mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_EMPTY_MESSAGE);
             break;
         default:
-            mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_INCOMMING_MESSAGE, buffer);
+            mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_INCOMING_MESSAGE, buffer);
             char* message = NULL;
             size_t length = wm_agent_upgrade_process_command(buffer, &message);
 

@@ -86,6 +86,26 @@ typedef struct _wm_task_manager_task {
     void *parameters;
 } wm_task_manager_task;
 
+/**
+ * Definition of syscollector scan tasks parameters
+ */
+typedef struct _wm_task_manager_syscollector {
+    char *node;
+    char *module;
+    int  *agent_ids;
+    char *status;
+    char *error_msg;
+} wm_task_manager_syscollector;
+
+/**
+ * Definition of get status tasks parameters
+ */
+typedef struct _wm_task_manager_status {
+    int task_id;
+    char *status;
+    char *error_msg;
+} wm_task_manager_status;
+
 extern const wm_context WM_TASK_MANAGER_CONTEXT;   // Context
 
 // Parse XML configuration
@@ -93,7 +113,7 @@ int wm_task_manager_read(const OS_XML *xml, xml_node **nodes, wmodule *module);
 
 /**
  * Do all the analysis of the incomming message and returns a response.
- * @param msg Incomming message from a connection.
+ * @param msg Incoming message from a connection.
  * @param response Response to be sent to the connection.
  * @return Size of the response string.
  * */

@@ -85,4 +85,9 @@ void wm_task_manager_free_upgrade_cancel_tasks_parameters(wm_task_manager_upgrad
  * */
 void wm_task_manager_free_task(wm_task_manager_task* task);
 
+void wm_task_manager_free_syscollector_tasks_parameters(wm_task_manager_syscollector *parameters);
+wm_task_manager_syscollector* wm_task_manager_init_syscollector_parameters();
+wm_task_manager_status* wm_task_manager_init_status_parameters();
+void wm_task_manager_free_status_tasks_parameters(wm_task_manager_status *parameters);
+
 #endif

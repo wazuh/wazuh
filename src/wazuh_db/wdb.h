@@ -1882,7 +1882,7 @@ int wdb_parse_insert_task(wdb_t* wdb, const cJSON *parameters, const char *comma
  *        could receive the task id or, the cluster node and the agent id. If the task id is received, the
  *        function will return the status of this particular task without taking into account the cluster
  *        node and the agent id. Otherways, the function will return the last task status filtering
- *        bu the task command.
+ *        by the task command.
  *
  * @param [in] wdb The global struct database.
  * @param parameters JSON with the parameters.
@@ -1902,7 +1902,7 @@ int wdb_parse_task_get_status(wdb_t* wdb, const cJSON *parameters, const char *c
  * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
  */
-int wdb_parse_task_upgrade_update_status(wdb_t* wdb, const cJSON *parameters, char* output);
+int wdb_parse_task_update_status(wdb_t* wdb, const cJSON *parameters, const char* command,  char* output);
 
 /**
  * @brief Function to parse the upgrade_result request.
@@ -2063,7 +2063,9 @@ int wdb_task_get_last_task_status(wdb_t* wdb, int agent_id, const char *node, co
  * @param error Error string of the task in case of failure.
  * @return 0 when succeed, !=0 otherwise.
  * */
-int wdb_task_update_upgrade_task_status(wdb_t* wdb, int agent_id, const char *node, const char *status, const char *error);
+int wdb_task_update_task_status(wdb_t* wdb, int agent_id, const char *node, const char *status, const char* command, const char *error);
+
+int wdb_task_update_task_status_by_id(wdb_t* wdb, int task_id, const char *status, const char* error);
 
 /**
  * Cancel the upgrade tasks of a given node in the tasks DB.
@@ -2087,6 +2089,8 @@ int wdb_task_cancel_upgrade_tasks(wdb_t* wdb, const char *node);
  * @return task_id when succeed, < 0 otherwise.
  * */
 int wdb_task_get_upgrade_task_by_agent_id(wdb_t* wdb, int agent_id, char **node, char **module, char **command, char **status, char **error, int *create_time, int *last_update_time);
+
+const char* wdb_task_command_translate(const char* command);
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }
