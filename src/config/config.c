@@ -52,6 +52,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *wlogtest = "rule_test";                 /* Wazuh Logtest */
     const char *agent_upgrade = "agent-upgrade";        /* Agent Upgrade Module */
     const char *task_manager = "task-manager";          /* Task Manager Module */
+    const char *wazuh_db = "wdb";                       /* Wazuh-DB Daemon */
 #ifndef WIN32
     const char *osfluent_forward = "fluent-forward";    /* Fluent forwarder */
     const char *osauthd = "auth";                       /* Authd Config */
@@ -231,6 +232,14 @@ static int read_main_elements(const OS_XML *xml, int modules,
         } else if (chld_node && (strcmp(node[i]->element, task_manager) == 0)) {
             #if !defined(WIN32) && !defined(CLIENT)
                 if ((modules & CWMODULE) && (Read_TaskManager(xml, node[i], d1) < 0)) {
+                    goto fail;
+                }
+            #else
+                mwarn("%s configuration is only set in the manager.", node[i]->element);
+            #endif
+        }  else if (chld_node && (strcmp(node[i]->element, wazuh_db) == 0)) {
+            #if !defined(CLIENT)
+                if ((modules & WAZUHDB) && (Read_WazuhDB(xml, chld_node) < 0)) {
                     goto fail;
                 }
             #else

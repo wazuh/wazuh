@@ -6520,14 +6520,8 @@ paths:
                         remediation: Please, use `GET /agents?select=id,name` to find all available agents
                       id:
                         - '999'
-                    - error:
-                        code: 1753
-                        message: Could not assign group. Agent status is never_connected
-                        remediation: Please select another agent or connect your agent before assigning groups
-                      id:
-                        - '011'
                   total_affected_items: 2
-                  total_failed_items: 2
+                  total_failed_items: 1
                   message: Some agents were not assigned to group2 and removed from the other groups
                   error: 2
         '400':
@@ -6722,9 +6716,10 @@ paths:
               type: object
               properties:
                 group_id:
-                  description: "Group name"
+                  description: "Group name. It can contain any of the characters between a-z, A-Z, 0-9, '_', '-' and '.'. Names '.' and '..' are restricted."
                   type: string
                   format: group_names
+                  maxLength: 128
               required:
                 - group_id
             example:
