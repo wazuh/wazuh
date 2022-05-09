@@ -187,7 +187,7 @@ def test_sort_response(response, key=None, reverse=False):
 
 
 def test_validate_data_dict_field(response, fields_dict):
-    assert fields_dict, f'Fields dict is empty'
+    assert fields_dict, "Fields dict is empty"
     for field, dikt in fields_dict.items():
         field_list = response.json()['data'][field]
 
@@ -240,6 +240,10 @@ def test_response_is_different(response, response_value, unexpected_value):
     :param unexpected_value: Response value should be different to this.
     """
     assert response_value != unexpected_value, f"{response_value} and {unexpected_value} shouldn't be the same"
+
+
+def test_save_token_raw_format(response):
+    return Box({'login_token': response.text})
 
 
 def test_save_response_data(response):

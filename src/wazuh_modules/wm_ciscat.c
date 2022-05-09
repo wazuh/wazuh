@@ -330,7 +330,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char *java_pa
     // CIS-CAT Pro V3
     if (!strcmp(ciscat_binary, WM_CISCAT_V3_BINARY_WIN)) {
         // Accepting Terms of Use
-    
+
         wm_strcat(&command, "-a", ' ');
 
         // Specify location for reports
@@ -356,7 +356,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char *java_pa
         wm_strcat(&command, "-n", ' ');
 
         // Add not selected checks
- 
+
         wm_strcat(&command, "-y", ' ');
     } else if (!strcmp(ciscat_binary, WM_CISCAT_V4_BINARY_WIN)) {
         // CIS-CAT Pro V4
@@ -376,6 +376,12 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char *java_pa
 
         // Get txt reports
         wm_strcat(&command, "-txt", ' ');
+    } else {
+        mterror(WM_CISCAT_LOGTAG, "CIS-CAT binary (%s) is neither %s nor %s. Exiting...", ciscat_binary, WM_CISCAT_V3_BINARY_WIN, WM_CISCAT_V4_BINARY_WIN);
+        ciscat->flags.error = 1;
+        os_free(ciscat_script);
+        pthread_exit(NULL);
+        return;
     }
 
     // Send rootcheck message
@@ -471,7 +477,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char *java_pa
     }
 
     // Create arguments
-    wm_strcat(&command, path, '/');    
+    wm_strcat(&command, path, '/');
     wm_strcat(&command, ciscat_binary, '/');
 
     switch (eval->type) {
@@ -497,7 +503,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char *java_pa
 
     char reports_path[PATH_MAX];
     os_snprintf(reports_path, sizeof(reports_path), "%s/%s", pwd, WM_CISCAT_REPORTS);
-    
+
     // CIS-CAT Pro V3
     if (!strcmp(ciscat_binary, WM_CISCAT_V3_BINARY)) {
         // Accepting Terms of Use
@@ -505,7 +511,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char *java_pa
         wm_strcat(&command, "-a", ' ');
 
         // Specify location for reports
-        
+
         wm_strcat(&command, "-r", ' ');
         wm_strcat(&command, reports_path, ' ');
 
@@ -531,7 +537,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char *java_pa
         wm_strcat(&command, "-y", ' ');
     } else if (!strcmp(ciscat_binary, WM_CISCAT_V4_BINARY)) {
         // CIS-CAT Pro V4
-        
+
         // Specify location for reports
 
         wm_strcat(&command, "-rd", ' ');
@@ -547,6 +553,10 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char *java_pa
 
         // Get txt reports
         wm_strcat(&command, "-txt", ' ');
+    } else {
+        mterror(WM_CISCAT_LOGTAG, "CIS-CAT binary (%s) is neither %s nor %s. Exiting...", ciscat_binary, WM_CISCAT_V3_BINARY, WM_CISCAT_V4_BINARY);
+        ciscat->flags.error = 1;
+        pthread_exit(NULL);
     }
 
     // Send rootcheck message
@@ -1592,4 +1602,3 @@ void wm_ciscat_destroy(wm_ciscat *ciscat) {
     #endif
 }
 #endif
-

@@ -19,6 +19,7 @@
 #include "syscheck_op.h"
 #include "rootcheck_op.h"
 #include "wazuhdb_op.h"
+#include "regex_op.h"
 
 #define WDB_AGENT_EMPTY 0
 #define WDB_AGENT_PENDING 1
@@ -33,8 +34,6 @@
 #define WDB_FIM_READDED 3
 #define WDB_FIM_DELETED 4
 
-#define WDB_GROUPS 0
-#define WDB_SHARED_GROUPS 1
 #define WDB_NETADDR_IPV4 0
 
 #define WDB_MULTI_GROUP_DELIM '-'
@@ -62,6 +61,39 @@
 #define VULN_CVES_TYPE_PACKAGE    "PACKAGE"
 
 #define VULN_CVES_MAX_REFERENCES OS_SIZE_20480
+
+/* wdb_exec_row_stmt modes */
+#define STMT_MULTI_COLUMN 0
+#define STMT_SINGLE_COLUMN 1
+
+/// Enumeration of agent groups sync conditions
+typedef enum wdb_groups_sync_condition_t {
+        WDB_GROUP_SYNC_STATUS,      ///< Get groups by their sync status
+        WDB_GROUP_ALL,              ///< Get all groups
+        WDB_GROUP_INVALID_CONDITION ///< Invalid condition
+} wdb_groups_sync_condition_t;
+
+/// Enumeration of agent groups set mode
+typedef enum wdb_groups_set_mode_t {
+        WDB_GROUP_OVERRIDE,     ///< Re-write the group assignment
+        WDB_GROUP_APPEND,       ///< Add group assignment to the existent one
+        WDB_GROUP_EMPTY_ONLY,   ///< Write a group assignment only if the agent doesn´t have one
+        WDB_GROUP_REMOVE,       ///< Removes a list of group assignments
+        WDB_GROUP_INVALID_MODE  ///< Invalid mode
+} wdb_groups_set_mode_t;
+
+/// Operations with the global group hash cache
+typedef enum wdb_global_group_hash_operations_t {
+    WDB_GLOBAL_GROUP_HASH_READ,  ///< Reads the global group hash value in cache if any
+    WDB_GLOBAL_GROUP_HASH_WRITE, ///< Saves a new global group hash value in cache
+    WDB_GLOBAL_GROUP_HASH_CLEAR  ///< Erases the global group hash value in cache
+} wdb_global_group_hash_operations_t;
+
+#define WDB_GROUP_MODE_EMPTY_ONLY "empty_only"
+#define WDB_GROUP_MODE_OVERRIDE "override"
+#define WDB_GROUP_MODE_APPEND "append"
+
+#define WDB_GROUP_HASH_SIZE        8 /* Size of the groups hash */
 
 #define WDB_BLOCK_SEND_TIMEOUT_S   1 /* Max time in seconds waiting for the client to receive the information sent with a blocking method*/
 #define WDB_RESPONSE_OK_SIZE     3
@@ -144,7 +176,6 @@ typedef enum wdb_stmt {
     WDB_STMT_SCA_SCAN_INFO_DELETE,
     WDB_STMT_SCA_CHECK_COMPLIANCE_DELETE,
     WDB_STMT_SCA_CHECK_RULES_DELETE,
-    WDB_STMT_SCA_CHECK_FIND,
     WDB_STMT_SCA_CHECK_DELETE_DISTINCT,
     WDB_STMT_FIM_SELECT_CHECKSUM,
     WDB_STMT_FIM_SELECT_CHECKSUM_RANGE,
@@ -156,7 +187,6 @@ typedef enum wdb_stmt {
     WDB_STMT_SYNC_UPDATE_COMPLETION,
     WDB_STMT_SYNC_SET_COMPLETION,
     WDB_STMT_SYNC_GET_INFO,
-    WDB_STMT_MITRE_NAME_GET,
     WDB_STMT_FIM_FILE_SELECT_CHECKSUM,
     WDB_STMT_FIM_FILE_SELECT_CHECKSUM_RANGE,
     WDB_STMT_FIM_FILE_CLEAR,
@@ -181,19 +211,30 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_UPDATE_AGENT_CONNECTION_STATUS,
     WDB_STMT_GLOBAL_DELETE_AGENT,
     WDB_STMT_GLOBAL_SELECT_AGENT_NAME,
-    WDB_STMT_GLOBAL_SELECT_AGENT_GROUP,
     WDB_STMT_GLOBAL_FIND_AGENT,
     WDB_STMT_GLOBAL_FIND_GROUP,
-    WDB_STMT_GLOBAL_UPDATE_AGENT_GROUP,
+    WDB_STMT_GLOBAL_UPDATE_AGENT_GROUPS_HASH,
     WDB_STMT_GLOBAL_INSERT_AGENT_GROUP,
+    WDB_STMT_GLOBAL_SELECT_GROUP_BELONG,
     WDB_STMT_GLOBAL_INSERT_AGENT_BELONG,
     WDB_STMT_GLOBAL_DELETE_AGENT_BELONG,
-    WDB_STMT_GLOBAL_DELETE_GROUP_BELONG,
+    WDB_STMT_GLOBAL_DELETE_TUPLE_BELONG,
     WDB_STMT_GLOBAL_DELETE_GROUP,
+    WDB_STMT_GLOBAL_GROUP_BELONG_FIND,
+    WDB_STMT_GLOBAL_GROUP_BELONG_GET,
     WDB_STMT_GLOBAL_SELECT_GROUPS,
     WDB_STMT_GLOBAL_SELECT_AGENT_KEEPALIVE,
     WDB_STMT_GLOBAL_SYNC_REQ_GET,
     WDB_STMT_GLOBAL_SYNC_SET,
+    WDB_STMT_GLOBAL_GROUP_SYNC_REQ_GET,
+    WDB_STMT_GLOBAL_GROUP_SYNC_ALL_GET,
+    WDB_STMT_GLOBAL_GROUP_SYNCREQ_FIND,
+    WDB_STMT_GLOBAL_AGENT_GROUPS_NUMBER_GET,
+    WDB_STMT_GLOBAL_GROUP_SYNC_SET,
+    WDB_STMT_GLOBAL_GROUP_PRIORITY_GET,
+    WDB_STMT_GLOBAL_GROUP_CSV_GET,
+    WDB_STMT_GLOBAL_GROUP_CTX_SET,
+    WDB_STMT_GLOBAL_GROUP_HASH_GET,
     WDB_STMT_GLOBAL_UPDATE_AGENT_INFO,
     WDB_STMT_GLOBAL_GET_AGENTS,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS,
@@ -271,7 +312,6 @@ typedef enum wdb_stmt {
     WDB_STMT_SIZE // This must be the last constant
 } wdb_stmt;
 
-
 struct stmt_cache {
     sqlite3_stmt *stmt;
     char *query;
@@ -294,13 +334,26 @@ typedef struct wdb_t {
     pthread_mutex_t mutex;
     struct stmt_cache_list *cache_list;
     struct wdb_t * next;
+    bool enabled;
 } wdb_t;
+
+typedef enum wdb_backup_db {
+    WDB_GLOBAL_BACKUP,
+    WDB_LAST_BACKUP
+} wdb_backup_db ;
+
+typedef struct wdb_backup_settings_node {
+    bool enabled;
+    time_t interval;
+    int max_files;
+} wdb_backup_settings_node;
 
 typedef struct wdb_config {
     int worker_pool_size;
     int commit_time_min;
     int commit_time_max;
     int open_db_limit;
+    wdb_backup_settings_node** wdb_backup_settings;
 } wdb_config;
 
 /// Enumeration of components supported by the integrity library.
@@ -317,6 +370,7 @@ typedef enum {
     WDB_SYSCOLLECTOR_NETINFO,        ///< Net info integrity monitoring.
     WDB_SYSCOLLECTOR_HWINFO,         ///< Hardware info integrity monitoring.
     WDB_SYSCOLLECTOR_OSINFO,         ///< OS info integrity monitoring.
+    WDB_GENERIC_COMPONENT,           ///< Miscellaneous component
 } wdb_component_t;
 
 extern char *schema_global_sql;
@@ -610,13 +664,14 @@ int wdb_metadata_fill_version(sqlite3 *db);
 int wdb_metadata_get_entry (wdb_t * wdb, const char *key, char *output);
 
 /**
- * @brief Checks if the table exists in the database.
+ * @brief Gets the count of the tables that match the provided name
  *
  * @param[in] wdb Database to query for the table existence.
  * @param[in] key Name of the table to find.
- * @return 1 if the table exists, 0 if the table doesn't exist or OS_INVALID on failure.
+ * @param[in] returns the count
+ * @return function success.
  */
- int wdb_metadata_table_check(wdb_t * wdb, const char * key);
+ int wdb_count_tables_with_name(wdb_t * wdb, const char * key, int* count);
 
 /* Update field date for specific fim_entry. */
 int wdb_fim_update_date_entry(wdb_t * wdb, const char *path);
@@ -782,9 +837,31 @@ int wdb_remove_database(const char * agent_id);
  *
  * @param [in] stmt The SQL statement to be executed.
  * @param [out] status The status code of the statement execution. If NULL no value is written.
- * @return JSON array with the statement execution results. NULL On error.
+ * @param [in] column_mode It could be STMT_SINGLE_COLUMN if the query returns only one column,
+ *                         or STMT_MULTI_COLUMN if the query returns more than one column.
+ * @return JSON array with the statement execution results, NULL on error.
  */
-cJSON* wdb_exec_row_stmt(sqlite3_stmt * stmt, int* status);
+cJSON* wdb_exec_row_stmt(sqlite3_stmt* stmt, int* status, bool column_mode);
+
+/**
+ * @brief Function to execute one row of an SQL statement and save the result in a single JSON array without column name like:
+ *        ["column_value_1","column_value_2", ...]. The query should return only one column in every step.
+ *
+ * @param [in] stmt The SQL statement to be executed.
+ * @param [out] status The status code of the statement execution. If NULL no value is written.
+ * @return JSON array with the statement execution results, NULL on error.
+ */
+cJSON* wdb_exec_row_stmt_single_column(sqlite3_stmt* stmt, int* status);
+
+/**
+ * @brief Function to execute one row of an SQL statement and save the result in a single JSON array with column name like:
+ *        ["column_name_1":"column_value_1","column_name_2":"column_value_2", ...].
+ *
+ * @param [in] stmt The SQL statement to be executed.
+ * @param [out] status The status code of the statement execution. If NULL no value is written.
+ * @return JSON array with the statement execution results, NULL on error.
+ */
+cJSON* wdb_exec_row_stmt_multi_column(sqlite3_stmt* stmt, int* status);
 
 /**
  * @brief Function to execute an SQL statement without a response.
@@ -796,7 +873,7 @@ int wdb_exec_stmt_silent(sqlite3_stmt* stmt);
 
 /**
  * @brief Function to execute a SQL statement and save the result in a JSON array limited by size.
- *        Each step of the statemente will be printed to know the size.
+ *        Each step of the statement will be printed to know the size.
  *        The result of each step will be placed in returned result while fits.
  *
  * @param [in] stmt The SQL statement to be executed.
@@ -804,9 +881,11 @@ int wdb_exec_stmt_silent(sqlite3_stmt* stmt);
  *                     SQLITE_DONE means the statement is completed.
  *                     SQLITE_ROW means the statement has pending elements.
  *                     SQLITE_ERROR means an error occurred.
- * @return JSON array with the statement execution results. NULL On error.
+ * @param [in] column_mode It could be STMT_SINGLE_COLUMN if the query returns only one column,
+ *                         or STMT_MULTI_COLUMN if the query returns more than one column.
+ * @return JSON array with the statement execution results, NULL on error.
  */
-cJSON * wdb_exec_stmt_sized(sqlite3_stmt * stmt, const size_t max_size, int* status);
+cJSON* wdb_exec_stmt_sized(sqlite3_stmt* stmt, const size_t max_size, int* status, bool column_mode);
 
 /**
  * @brief Function to execute a SQL statement and send the result via TCP socket.
@@ -830,7 +909,7 @@ int wdb_exec_stmt_send(sqlite3_stmt* stmt, int peer);
  * @param [in] stmt The SQL statement to be executed.
  * @return JSON array with the statement execution results. NULL On error.
  */
-cJSON * wdb_exec_stmt(sqlite3_stmt * stmt);
+cJSON* wdb_exec_stmt(sqlite3_stmt* stmt);
 
 /**
  * @brief Function to execute a SQL query and save the result in a JSON array.
@@ -839,12 +918,19 @@ cJSON * wdb_exec_stmt(sqlite3_stmt * stmt);
  * @param [in] sql The SQL query.
  * @return JSON array with the query results. NULL On error.
  */
-cJSON * wdb_exec(sqlite3 * db, const char * sql);
+cJSON* wdb_exec(sqlite3* db, const char * sql);
 
 // Execute SQL script into an database
 int wdb_sql_exec(wdb_t *wdb, const char *sql_exec);
 
 int wdb_close(wdb_t * wdb, bool commit);
+
+/**
+ * @brief Finalizes all the statements in cache for a specific database.
+ *
+ * @param wdb The database struct pointer.
+ */
+void wdb_finalize_all_statements(wdb_t * wdb);
 
 void wdb_leave(wdb_t * wdb);
 
@@ -1009,7 +1095,18 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
 int wdb_parse_global_get_agent_labels(wdb_t * wdb, char * input, char * output);
 
 /**
- * @brief Function to get all the agent information in global.db.
+ * @brief Function to get the groups integrity information in global.db.
+ *
+ * @param wdb The global struct database.
+ * @param input String with 'hash'.
+ * @param output Response of the query in JSON format.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+int wdb_parse_get_groups_integrity(wdb_t * wdb, char * input, char* output);
+
+/**
+ * @brief Function to get all the agent information.
  *
  * @param wdb The global struct database.
  * @param input String with 'agent_id'.
@@ -1108,17 +1205,6 @@ int wdb_parse_global_delete_agent_belong(wdb_t * wdb, char * input, char * outpu
 int wdb_parse_global_find_agent(wdb_t * wdb, char * input, char * output);
 
 /**
- * @brief Function to parse the update agent group request.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with the agent and group data in JSON format.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
-int wdb_parse_global_update_agent_group(wdb_t * wdb, char * input, char * output);
-
-/**
  * @brief Function to parse the find group request.
  *
  * @param [in] wdb The global struct database.
@@ -1141,33 +1227,18 @@ int wdb_parse_global_find_group(wdb_t * wdb, char * input, char * output);
 int wdb_parse_global_insert_agent_group(wdb_t * wdb, char * input, char * output);
 
 /**
- * @brief Function to parse the insert agent to belongs table request.
+ * @brief Function to parse the select group from belongs table request.
  *
  * @param [in] wdb The global struct database.
- * @param [in] input String with the group id and agent id in JSON format.
+ * @param [in] input String with the agent id in JSON format.
  * @param [out] output Response of the query.
  * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
  */
-int wdb_parse_global_insert_agent_belong(wdb_t * wdb, char * input, char * output);
+int wdb_parse_global_select_group_belong(wdb_t *wdb, char *input, char *output);
 
 /**
- * @brief Function to parse the delete group from belongs table request.
  *
- * @param [in] wdb The global struct database.
- * @param [in] input String with the group name.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
-int wdb_parse_global_delete_group_belong(wdb_t * wdb, char * input, char * output);
-
-/**
- * @brief Function to parse the delete group request.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with the group name.
- * @param [out] output Response of the query.
  * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
  */
@@ -1182,6 +1253,28 @@ int wdb_parse_global_delete_group(wdb_t * wdb, char * input, char * output);
  *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_select_groups(wdb_t * wdb, char * output);
+
+/**
+ * @brief Function to parse the get group agents request.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] input String with the group name.
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+int wdb_parse_global_get_group_agents(wdb_t * wdb, char * input, char * output);
+
+/**
+ * @brief Function to parse the set agent groups request.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] input String with the group name.
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+int wdb_parse_global_set_agent_groups(wdb_t* wdb, char* input, char* output);
 
 /**
  * @brief Function to parse the select keepalive request.
@@ -1214,6 +1307,16 @@ int wdb_parse_global_sync_agent_info_get(wdb_t * wdb, char * input, char * outpu
  * @return 0 Success: response contains the value. -1 On error: invalid DB query syntax.
  */
 int wdb_parse_global_sync_agent_info_set(wdb_t * wdb, char * input, char * output);
+
+/**
+ * @brief Function to parse sync-agent-groups-get command data.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] input String in json format with last_id and sync_condition.
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains the value. -1 On error: invalid DB query syntax.
+ */
+int wdb_parse_global_sync_agent_groups_get(wdb_t* wdb, char* input, char* output);
 
 /**
  * @brief Function to parse the disconnect-agents command data.
@@ -1259,6 +1362,99 @@ int wdb_parse_reset_agents_connection(wdb_t * wdb, char* input, char * output);
  */
 int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, char* output);
 
+/**
+ * @brief Function to parse the global backup request.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] input String with the backup command.
+ * @param [out] output Response of the query in JSON format.
+ * @retval  0 Success: Response contains the value.
+ * @retval -1 On error: Response contains details of the error.
+ */
+int wdb_parse_global_backup(wdb_t** wdb, char* input, char* output);
+
+/**
+ * @brief Function to parse the global get backup.
+ *
+ * @param [out] output Response of the query in JSON format.
+ * @retval  0 Success: Response contains a list of the available backups.
+ * @retval -1 On error: Response contains details of the error.
+ */
+int wdb_parse_global_get_backup(char* output);
+
+/**
+ * @brief Function to parse the global restore request.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] input String with the snapshot to restore. If not present, the more recent will be used.
+ * @param [out] output Response of the query in JSON format.
+ * @retval  0 Success: Response contains 'ok'.
+ * @retval -1 On error: Response contains details of the error.
+ */
+int wdb_parse_global_restore_backup(wdb_t** wdb, char* input, char* output);
+
+/**
+ * @brief Function to create a backup of the global.db.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [out] output Response of the query.
+ * @param [in] tag Adds extra information to snapshot file name, used in case of upgrades and restores.
+ * @retval  0 Success: Backup created successfully.
+ * @retval -1 On error: The backup creation failed.
+ */
+int wdb_global_create_backup(wdb_t* wdb, char* output, const char* tag);
+
+/**
+ * @brief Function to delete old backups in case the amount exceeds the max_files limit.
+ *
+ * @retval  0 Success: The method exited without errors.
+ * @retval -1 On error: The method failed in reading the backup folder.
+ */
+int wdb_global_remove_old_backups();
+
+/**
+ * @brief Function to get a list of the available backups of global.db.
+ *
+ * @retval cJSON* Success: The list of all snapshots found, or empty if none was found.
+ * @retval NULL On error: The list of snapshots couldn't be retrieved.
+ */
+cJSON* wdb_global_get_backups();
+
+/**
+ * @brief Method to restore a backup of global.db.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] snapshot The backup file name to be restored. If not present, the last one will be used.
+ * @param [in] save_pre_restore_state If FALSE or not present, the database will be overwritten with the snapshot. If TRUE,
+ *                                    the database will be saved before restoring the snapshot.
+ * @param [out] output A message related to the result of the operation.
+ * @retval  0 Success: Backup restored successfully.
+ * @retval -1 On error: The backup couldn't be restored.
+ */
+int wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_restore_state, char* output);
+
+/**
+ * @brief Function to check if there is at least one backup configuration node enabled.
+ *
+ * @retval true If there is at least one backup enabled, false otherwise.
+ */
+bool wdb_check_backup_enabled();
+
+/**
+ * @brief Method to get the most recent global.db backup time and name
+ *
+ * @param most_recent_backup_name [out] The name of the most recent backup. Must be freed by the caller, ignored if NULL.
+ * @retval Last modification time of the most recent backup on success, OS_INVALID on error.
+ */
+time_t wdb_global_get_most_recent_backup(char **most_recent_backup_name);
+
+/**
+ * @brief Method to get oldest global.db backup time and name
+ *
+ * @param oldest_backup_name [out] The name of the oldest backup. Must be freed by the caller, ignored if NULL.
+ * @retval Last modification time of the oldest backup on success, OS_INVALID on error.
+ */
+time_t wdb_global_get_oldest_backup(char **oldest_backup_name);
 // Functions for database integrity
 
 int wdbi_checksum(wdb_t * wdb, wdb_component_t component, os_sha1 hexdigest);
@@ -1310,6 +1506,27 @@ void wdbi_set_last_completion(wdb_t * wdb, wdb_component_t component, long times
 
 int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component);
 
+/**
+ * @brief Method to obtain and cache the hash of the whole group_local_hash column in agent table.
+ *        If the cache is empty, the global group hash is calculated and stored.
+ *
+ * @param wdb The DB pointer structure.
+ * @param hexdigest Variable to return the global group hash.
+ * @return int OS_SUCCESS if the hexdigest variable was written with the global group hash value, OS_INVALID otherwise.
+ */
+int wdb_get_global_group_hash(wdb_t * wdb, os_sha1 hexdigest);
+
+/**
+ * @brief Method to perform all the required operations over the global group hash cache.
+ *
+ * @param operation      WDB_GLOBAL_GROUP_HASH_READ : OS_INVALID if there is no value in cache. OS_SUCCESS if a value was found and stored in hexdigest
+ *                       WDB_GLOBAL_GROUP_HASH_WRITE: OS_SUCCESS after writting the hexdigest value in global_group_hash.
+ *                       WDB_GLOBAL_GROUP_HASH_CLEAR: OS_SUCCESS after clearing the global group hash cache.
+ * @param hexdigest Input/Output variable, see "operation".
+ * @return int OS_INVALID in case of an unsupported "operation". See "operation" for the rest of cases.
+ */
+int wdb_global_group_hash_cache(wdb_global_group_hash_operations_t operation, os_sha1 hexdigest);
+
 // Functions to manage scan_info table, this table contains the timestamp of every scan of syscheck ¿and syscollector?
 
 int wdb_scan_info_update(wdb_t * wdb, const char *module, const char *field, long value);
@@ -1334,35 +1551,26 @@ wdb_t * wdb_backup(wdb_t *wdb, int version);
 int wdb_create_backup(const char * agent_id, int version);
 
 /**
- * @brief Function to backup Global DB in case of an upgrade failure.
+ * @brief Function to recreate Global DB in case of an upgrading an old version.
  *
  * @param [in] wdb The global.db database to backup.
- * @param [in] version The global.db database version to backup.
  * @return wdb The new empty global.db database on success or NULL on error
  */
-wdb_t * wdb_backup_global(wdb_t *wdb, int version);
+wdb_t * wdb_recreate_global(wdb_t *wdb);
 
 /**
- * @brief Function to create the Global DB backup file.
+ * @brief Check if the db version is older than 3.10
  *
- * @param [in] wdb The global.db database to backup.
- * @param [in] version The global.db database version to backup.
- * @return wdb OS_SUCCESS on success or OS_INVALID on error.
+ * This is a hacky way to check if the database version is older than 3.10
+ * For newer versions of the db the table "agent" must have a tuple with id=0(manager) and last_keepalive=9999/12/31 23:59:59 UTC.
+ * If this value is missing it means that the db is older than 3.10 or is corrupt
+ *
+ * @return Db version is older than 3.10.
+ * @retval 1 the db is older than 3.10
+ * @retval 0 the db is newer than 3.10.
+ * @retval 0 The table "agent" is missing or an error occurred.
  */
-int wdb_create_backup_global(int version);
-
-/**
- * @brief Check the agent 0 status in the global database
- *
- * The table "agent" must have a tuple with id=0 and last_keepalive=9999/12/31 23:59:59 UTC.
- * Otherwise, the database is either corrupt or old.
- *
- * @return Number of tuples matching that condition.
- * @retval 1 The agent 0 status is OK.
- * @retval 0 No tuple matching conditions exists.
- * @retval -1 The table "agent" is missing or an error occurred.
- */
-int wdb_upgrade_check_manager_keepalive(wdb_t *wdb);
+bool wdb_is_older_than_v310(wdb_t *wdb);
 
 /**
  * @brief Query the checksum of a data range
@@ -1613,14 +1821,25 @@ int wdb_global_delete_agent_belong(wdb_t *wdb, int id);
 cJSON* wdb_global_find_agent(wdb_t *wdb, const char *name, const char *ip);
 
 /**
- * @brief Function to update an agent group.
+ * @brief Function to update the agent's groups_hash column. It reads the group column, calculates and stores its hash
+ *        but if the group column is NULL, the method returns without modifying groups_hash.
  *
  * @param [in] wdb The Global struct database.
  * @param [in] id The agent ID
- * @param [in] group The group to be set
+ * @param [in] groups_string The comma separated groups string to hash and store in groups_hash column. If not set,
+ *                           it will be read from 'group' column.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_update_agent_group(wdb_t *wdb, int id, char *group);
+int wdb_global_update_agent_groups_hash(wdb_t* wdb, int agent_id, char* groups_string);
+
+/**
+ * @brief Function to update the agent's groups_hash column for all agents. It gets all agents and calls
+ *        wdb_global_update_agent_groups_hash() for each one.
+ *
+ * @param [in] wdb The Global struct database.
+ * @return Returns 0 on success or -1 on error.
+ */
+int wdb_global_adjust_v4(wdb_t* wdb);
 
 /**
  * @brief Function to get a group id using the group name.
@@ -1641,23 +1860,43 @@ cJSON* wdb_global_find_group(wdb_t *wdb, char* group_name);
 int wdb_global_insert_agent_group(wdb_t *wdb, char* group_name);
 
 /**
+ * @brief Function to get groups of a specified agent from the belongs table.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] id_agent The agent id.
+ * @return JSON with agent groups on success. NULL on error.
+ */
+cJSON* wdb_global_select_group_belong(wdb_t *wdb, int id_agent);
+
+/**
  * @brief Function to insert an agent to the belongs table.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] id_group The group id.
+ * @param [in] id_agent The agent id.
+ * @param [in] priority The group priority.
+ * @return Returns 0 on success or -1 on error.
+ */
+int wdb_global_insert_agent_belong(wdb_t *wdb, int id_group, int id_agent, int priority);
+
+/**
+ * @brief Function to remove an agent-group tuple from the belongs table.
  *
  * @param [in] wdb The Global struct database.
  * @param [in] id_group The group id.
  * @param [in] id_agent The agent id.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_global_insert_agent_belong(wdb_t *wdb, int id_group, int id_agent);
+int wdb_global_delete_tuple_belong(wdb_t *wdb, int id_group, int id_agent);
 
 /**
- * @brief Function to delete a group from belongs table using the group name.
+ * @brief Function to check if a group is empty.
  *
  * @param [in] wdb The Global struct database.
  * @param [in] group_name The group name.
- * @return Returns 0 on success or -1 on error.
+ * @return Returns true if the group is empty, false if it isn´t empty or error.
  */
-int wdb_global_delete_group_belong(wdb_t *wdb, char* group_name);
+bool wdb_is_group_empty(wdb_t *wdb, char* group_name);
 
 /**
  * @brief Function to delete a group by using the name.
@@ -1675,6 +1914,17 @@ int wdb_global_delete_group(wdb_t *wdb, char* group_name);
  * @return JSON with all the groups on success. NULL on error.
  */
 cJSON* wdb_global_select_groups(wdb_t *wdb);
+
+/**
+ * @brief Function to get all agents that belong to a group
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [out] status wdbc_result to represent if all agents has being obtained or any error occurred.
+ * @param [in] group_name The name of the group to get the agents from
+ * @param [in] last_agent_id ID where to start querying.
+ * @retval JSON with agents IDs on success, NULL on error.
+ */
+cJSON* wdb_global_get_group_agents(wdb_t *wdb,  wdbc_result* status, char* group_name, int last_agent_id);
 
 /**
  * @brief Function to get an agent keepalive using the agent name and register ip.
@@ -1717,6 +1967,146 @@ wdbc_result wdb_global_sync_agent_info_get(wdb_t *wdb, int* last_agent_id, char 
  * @return 0 On success. -1 On error.
  */
 int wdb_global_sync_agent_info_set(wdb_t *wdb, cJSON *agent_info);
+
+/**
+ * @brief Gets each agent matching the sync condition and all their groups.
+ *        Response is prepared in one chunk,
+ *        if the size of the chunk exceeds WDB_MAX_RESPONSE_SIZE parsing stops and reports the amount of agents obtained.
+ *        Multiple calls to this function can be required to fully obtain all agents and groups.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] condition The condition of the agents to be requested.
+ *              WDB_GROUP_SYNC_STATUS for agents tagged as sync_req,
+ *              WDB_GROUP_CKS_MISMATCH for agents with difference between the CKS in the master and the worker.
+ * @param [in] last_agent_id ID where to start querying.
+ * @param [in] set_synced Indicates if the obtained groups must be set as synced.
+ * @param [in] get_hash Indicates if the response must append the group_hash once all the groups have been obtained.
+ * @param [in] agent_registration_delta Minimum amount of seconds since the registration time for the agent to be included in the result.
+ * @param [out] output A cJSON pointer where the response is written. Must be de-allocated by the caller.
+ * @return wdbc_result to represent if all agents has being obtained.
+ */
+wdbc_result wdb_global_sync_agent_groups_get(wdb_t* wdb,
+                                             wdb_groups_sync_condition_t condition,
+                                             int last_agent_id,
+                                             bool set_synced,
+                                             bool get_hash,
+                                             int agent_registration_delta,
+                                             cJSON** output);
+
+/**
+ * @brief Function to update group_sync_status of a particular agent.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] id The agent ID
+ * @param [in] sync_status The value of sync_status
+ * @return OS_SUCCESS On success. OS_ERROR On error.
+ */
+int wdb_global_set_agent_groups_sync_status(wdb_t *wdb,
+                                            int id,
+                                            const char* sync_status);
+
+/**
+ * @brief It gets all the groups of an agent and returns them in a comma sepparated string
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] id ID of the agent to obtain the group.
+ * @return char* String with the groups of the agent in CSV format. Must be de-allocated by the caller. It returns NULL on error.
+ */
+char* wdb_global_calculate_agent_group_csv(wdb_t *wdb, int id);
+
+/**
+ * @brief Sets the group information in the agent table.
+ * @param [in] wdb The Global struct database.
+ * @param [in] id ID of the agent to set the information.
+ * @param [in] csv String with all the groups sepparated by comma to be inserted in the group column.
+ * @param [in] hash Hash calculus from the csv string to be inserted in the group_hash column.
+ * @param [in] sync_status Tag of the sync status to be inserted in the group_sync_status column.
+ * @return wdbc_result representing the status of the command.
+ */
+wdbc_result wdb_global_set_agent_group_context(wdb_t *wdb, int id, char* csv, char* hash, char* sync_status);
+
+/**
+ * @brief Verifies if at least one entry in the Global DB has the group_sync_status as "syncreq".
+ *        If not, it compares a received hash that represents the group column against a calculated hash.
+ *
+ * @param wdb The Global struct database.
+ * @param hash Received group column hash.
+ * @return cJSON* Returns a cJSON object with the groups integrity status or NULL on error.
+ */
+cJSON* wdb_global_get_groups_integrity(wdb_t *wdb, os_sha1 hash);
+
+/**
+ * @brief Gets the maximum priority of the groups of an agent.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] id ID of the agent to obtain the priority.
+ * @return Numeric representation of the group priority.
+ */
+int wdb_global_get_agent_max_group_priority(wdb_t *wdb, int id);
+
+/**
+ * @brief Writes groups to an agent.
+ *        If the group doesn´t exists it creates it.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] id ID of the agent to add new groups.
+ * @param [in] j_groups JSON array with all the groups of the agent.
+ * @param [in] priority Initial priority to insert the groups.
+ * @return wdbc_result representing the status of the command.
+ */
+wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, int priority);
+
+/**
+ * @brief Deletes groups of an agent.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] id ID of the agent to remove the groups.
+ * @param [in] j_groups JSON array with all the groups to remove from the agent.
+ * @return wdbc_result representing the status of the command.
+ */
+wdbc_result wdb_global_unassign_agent_group(wdb_t *wdb, int id, cJSON* j_groups);
+
+/**
+ * @brief Returns the number of groups that are assigned to an agent.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] agent_id ID of the agent to get the groups number from.
+ * @return int Returns the groups number or -1 on error.
+ */
+int wdb_global_groups_number_get(wdb_t *wdb, int agent_id);
+
+/**
+ * @brief Verifies that the group name satisfies with a predefined pattern.
+ *
+ * @param group_name Group name to be validated.
+ * @return w_err_t OS_SUCCESS if valid. OS_INVALID otherwise.
+ */
+w_err_t wdb_global_validate_group_name(const char *group_name);
+
+/**
+ * @brief Verifies that the number of groups to be assigned is less or equal to 128 and
+ *        there's no group longer than 255 characters nor contains a comma as part of its name.
+ *
+ * @param [in] wdb The Global struct database.
+ * @param [in] j_groups JSON array with all the groups to be assigned to an agent.
+ * @param [in] agent_id ID of the agent to add new groups.
+ * @return wdbc_result representing the status of the command.
+ */
+w_err_t wdb_global_validate_groups(wdb_t *wdb, cJSON *j_groups, int agent_id);
+
+/**
+ * @brief Sets the belongship af a set of agents.
+ *          If any of the groups doesn´t exist, this command creates it.
+ * @param [in] wdb The Global struct database.
+ * @param [in] mode The mode in which the write will be performed.
+ *               WDB_GROUP_OVERRIDE The existing groups will be overwritten.
+                 WDB_GROUP_APPEND The existing groups are conserved and new ones are added.
+                 WDB_GROUP_EMPTY_ONLY The groups are written only if the agent doesn´t have any group.
+ * @param [in] sync_status The sync_status tag used to insert the groups.
+ * @param [in] j_agents_group_info JSON structure with all the agent_ids and the groups to insert.
+ * @return wdbc_result representing the status of the command.
+ */
+wdbc_result wdb_global_set_agent_groups(wdb_t *wdb, wdb_groups_set_mode_t mode, char* sync_status, cJSON* j_agents_group_info);
 
 /**
  * @brief Function to get the information of a particular agent stored in Wazuh DB.
@@ -2086,5 +2476,27 @@ int wdb_task_get_upgrade_task_by_agent_id(wdb_t* wdb, int agent_id, char **node,
  * */
 
 sqlite3_stmt * wdb_get_cache_stmt(wdb_t * wdb, char const *query);
+
+/**
+ * @brief Method to parse the "wazuhdb getconfig" commands.
+ *
+ * @param config_source Where the config will be read from: "internal" or "wdb" section
+ * @return cJSON* Returns a cJSON object with the configuration requested or NULL on error.
+ */
+cJSON* wdb_parse_get_config(char* config_source);
+
+/**
+ * @brief Method to read the internal wazuh-db configuration.
+ *
+ * @return cJSON* Returns a cJSON object with the configuration requested.
+ */
+cJSON* wdb_get_internal_config();
+
+/**
+ * @brief Method to read the wdb configuration section.
+ *
+ * @return cJSON* Returns a cJSON object with the configuration requested.
+ */
+cJSON* wdb_get_config();
 
 #endif

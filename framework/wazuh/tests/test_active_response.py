@@ -69,7 +69,7 @@ def test_run_command(mock_get_agents_info, mock_close, mock_send, mock_conn, mes
     """
     with patch('wazuh.core.agent.Agent.get_basic_information',
                return_value=agent_info_exception_and_version(send_exception, version)):
-        with patch('wazuh.core.agent.Agent.getconfig', return_value=agent_config(send_exception)):
+        with patch('wazuh.core.agent.Agent.get_config', return_value=agent_config(send_exception)):
             if message_exception:
                 ret = run_command(agent_list=agent_id, command=command, arguments=arguments, custom=custom, alert=alert)
                 assert ret.render()['data']['failed_items'][0]['error']['code'] == message_exception
