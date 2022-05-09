@@ -193,7 +193,6 @@ int OS_RemoveAgent(const char *u_id) {
     /* Remove counter for ID */
     OS_RemoveCounter(u_id);
     OS_RemoveAgentTimestamp(u_id);
-    OS_RemoveAgentGroup(u_id);
     return 1;
 }
 
@@ -676,37 +675,6 @@ void OS_RemoveAgentTimestamp(const char *id)
     fclose(file.fp);
     OS_MoveFile(file.name, TIMESTAMP_FILE);
     free(file.name);
-}
-
-void OS_RemoveAgentGroup(const char *id)
-{
-    char group_file[OS_FLSIZE + 1];
-    snprintf(group_file, OS_FLSIZE, "%s/%s", GROUPS_DIR, id);
-
-    FILE *fp;
-    char group[OS_SIZE_65536 + 1] = {0};
-    fp = fopen(group_file,"r");
-
-    if(!fp){
-        mdebug1("At OS_RemoveAgentGroup(): Could not open file '%s'",group_file);
-    } else {
-        if(fgets(group, OS_SIZE_65536, fp)!=NULL ) {
-            fclose(fp);
-            fp = NULL;
-            unlink(group_file);
-
-            char *endl = strchr(group, '\n');
-
-            if (endl) {
-                *endl = '\0';
-            }
-
-        }
-
-        if(fp){
-            fclose(fp);
-        }
-    }
 }
 
 void FormatID(char *id) {

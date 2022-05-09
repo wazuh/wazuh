@@ -23,7 +23,6 @@ fi
 
 cp -rf /tmp_volume/configuration_files/config/* /var/ossec/
 chown root:wazuh /var/ossec/etc/client.keys
-chown -R wazuh:wazuh /var/ossec/queue/agent-groups
 chown -R wazuh:wazuh /var/ossec/queue/db
 chown -R wazuh:wazuh /var/ossec/etc/shared
 chmod --reference=/var/ossec/etc/shared/default /var/ossec/etc/shared/group*
