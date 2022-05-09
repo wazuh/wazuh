@@ -171,6 +171,9 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
             free(tmp_ar->command);
         }
         fclose(fp);
+        os_free(tmp_ar->agent_id);
+        os_free(tmp_ar->rules_id);
+        os_free(tmp_ar->rules_group);
         free(tmp_ar);
         free(tmp_location);
         return (0);
