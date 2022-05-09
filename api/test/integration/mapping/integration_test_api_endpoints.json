@@ -2771,6 +2771,18 @@
         "path": "api/test/integration/env/configurations/base/manager/configuration_files/master_only",
         "files": [
             {
+                "name": "agent_groups.yaml",
+                "tag": "agent",
+                "tests": [
+                    "test_agent_DELETE_endpoints.tavern.yaml",
+                    "test_agent_GET_endpoints.tavern.yaml",
+                    "test_agent_POST_endpoints.tavern.yaml",
+                    "test_agent_PUT_endpoints.tavern.yaml",
+                    "test_rbac_black_agent_endpoints.tavern.yaml",
+                    "test_rbac_white_agent_endpoints.tavern.yaml"
+                ]
+            },
+            {
                 "name": "agent_info.yaml",
                 "tag": "agent",
                 "tests": [
