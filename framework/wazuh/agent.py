@@ -925,8 +925,7 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
 
         # Add non active agents to failed_items
         non_active_agents = [agent['id'] for agent in data['items'] if agent['status'] != 'active']
-        [result.add_failed_item(id_=agent, error=WazuhError(1707))
-         for agent in non_active_agents]
+        [result.add_failed_item(id_=agent, error=WazuhError(1707)) for agent in non_active_agents]
         non_active_agents = set(non_active_agents)
 
         # Add non eligible agents to failed_items
@@ -945,7 +944,7 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
         eligible_agents = agent_list - not_found_agents - non_active_agents - non_eligible_agents
 
         # Transform the format of the agent ids to the general format
-        eligible_agents = sorted([int(agent) for agent in eligible_agents])
+        eligible_agents = [int(agent) for agent in eligible_agents]
 
         agents_result_chunks = [eligible_agents[x:x + 500] for x in range(0, len(eligible_agents), 500)]
 
@@ -980,6 +979,8 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
                 # Upgrade error for all agents, internal server error
                 else:
                     raise WazuhInternalError(error_code, cmd_error=True, extra_message=agent_result['message'])
+
+    result.affected_items.sort(key=operator.itemgetter('agent'))
 
     return result
 
@@ -1031,8 +1032,7 @@ def get_upgrade_result(agent_list: list = None, filters: dict = None, q: str = N
 
         # Add non active agents to failed_items
         non_active_agents = [agent['id'] for agent in data['items'] if agent['status'] != 'active']
-        [result.add_failed_item(id_=agent, error=WazuhError(1707))
-         for agent in non_active_agents]
+        [result.add_failed_item(id_=agent, error=WazuhError(1707)) for agent in non_active_agents]
         non_active_agents = set(non_active_agents)
 
         # Add non eligible agents to failed_items
@@ -1048,7 +1048,7 @@ def get_upgrade_result(agent_list: list = None, filters: dict = None, q: str = N
         eligible_agents = agent_list - not_found_agents - non_active_agents - non_eligible_agents
 
         # Transform the format of the agent ids to the general format
-        eligible_agents = sorted([int(agent) for agent in eligible_agents])
+        eligible_agents = [int(agent) for agent in eligible_agents]
 
         agents_result_chunks = [eligible_agents[x:x + 500] for x in range(0, len(eligible_agents), 500)]
 
@@ -1073,6 +1073,8 @@ def get_upgrade_result(agent_list: list = None, filters: dict = None, q: str = N
                 # Upgrade error for all agents, internal server error
                 else:
                     raise WazuhInternalError(error_code, cmd_error=True, extra_message=task_result['message'])
+
+    result.affected_items.sort(key=operator.itemgetter('agent'))
 
     return result
 
