@@ -187,7 +187,7 @@ def test_sort_response(response, key=None, reverse=False):
 
 
 def test_validate_data_dict_field(response, fields_dict):
-    assert fields_dict, f'Fields dict is empty'
+    assert fields_dict, "Fields dict is empty"
     for field, dikt in fields_dict.items():
         field_list = response.json()['data'][field]
 
