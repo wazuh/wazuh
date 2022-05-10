@@ -63,8 +63,7 @@ def raise_if_exc_routine(dapi_kwargs, expected_error=None):
 
 @pytest.mark.parametrize('kwargs', [
     {'f_kwargs': {'select': ['id']}, 'rbac_permissions': {'mode': 'black'}, 'nodes': ['worker1'],
-     'basic_services': ('wazuh-modulesd', 'wazuh-db'), 'request_type': 'local_master'},
-    {'request_type': 'local_master'}
+     'request_type': 'local_master'}, {'request_type': 'local_master'}
 ])
 @patch('wazuh.core.cluster.dapi.dapi.common.WAZUH_INSTALL_TYPE', return_value='local')
 def test_DistributedAPI(install_type_mock, kwargs):

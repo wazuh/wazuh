@@ -1887,7 +1887,7 @@ async def test_agent_groups_update(sleep_mock):
     class WazuhDBConnectionMock:
         """Auxiliary class."""
 
-        def __init__(self):
+        def __init__(self, check_daemon=False):
             pass
 
         def run_wdb_command(self):

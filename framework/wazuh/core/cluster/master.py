@@ -688,14 +688,14 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         logger = self.task_loggers['Agent-groups send full']
         sync_object = c_common.SyncWazuhdb(manager=self, logger=logger,
-                                           data_retriever=WazuhDBConnection().run_wdb_command,
+                                           data_retriever=WazuhDBConnection(check_daemon=False).run_wdb_command,
                                            get_data_command='global sync-agent-groups-get ',
                                            get_payload={"condition": "all", "set_synced": False,
                                                         "get_global_hash": False, "last_id": 0}, pivot_key='last_id')
         local_agent_groups_information = await sync_object.retrieve_information()
 
         sync_object = c_common.SyncWazuhdb(manager=self, logger=logger, cmd=b'syn_g_m_w_c',
-                                           data_retriever=WazuhDBConnection().run_wdb_command,
+                                           data_retriever=WazuhDBConnection(check_daemon=False).run_wdb_command,
                                            set_data_command='global set-agent-groups',
                                            set_payload={'mode': 'override', 'sync_status': 'synced'})
 
@@ -712,7 +712,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         A worker node cannot send two consecutive times the same group information.
         """
         logger = self.task_loggers['Agent-groups send']
-        wdb_conn = WazuhDBConnection()
+        wdb_conn = WazuhDBConnection(check_daemon=False)
         sync_object = c_common.SyncWazuhdb(manager=self, logger=logger, cmd=b'syn_g_m_w',
                                            data_retriever=wdb_conn.run_wdb_command,
                                            set_data_command='global set-agent-groups',
@@ -1177,7 +1177,7 @@ class Master(server.AbstractServer):
         It looks like this: ['[{"data":[{"id":1,"group":["default","group1"]}]}]'].
         """
         logger = self.setup_task_logger('Local agent-groups')
-        wdb_conn = WazuhDBConnection()
+        wdb_conn = WazuhDBConnection(check_daemon=False)
         sync_object = c_common.SyncWazuhdb(manager=self, logger=logger, cmd=b'syn_g_m_w',
                                            data_retriever=wdb_conn.run_wdb_command,
                                            get_data_command='global sync-agent-groups-get ',

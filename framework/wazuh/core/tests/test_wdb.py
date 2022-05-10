@@ -162,7 +162,7 @@ def test_run_wdb_command(connect_mock, wazuh_status_mock):
 def test_run_wdb_command_ko(connect_mock, wdb_response):
     """Test `WazuhDBConnection.run_wdb_command` method expected exceptions."""
     with patch('wazuh.core.wdb.WazuhDBConnection._send', return_value=wdb_response):
-        wdb_con = WazuhDBConnection()
+        wdb_con = WazuhDBConnection(check_daemon=False)
         with pytest.raises(exception.WazuhInternalError, match=".* 2007 .*") as expected_exc:
             wdb_con.run_wdb_command("global sync-agent-info-get ")
 

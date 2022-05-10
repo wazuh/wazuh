@@ -662,7 +662,8 @@ async def test_handler_update_chunks_wdb(send_request_mock):
     send_request_mock.assert_has_calls(
         [call(command=b'ERROR',
               data=b'error processing info chunks in process pool: '
-                   b'Error 2005 - Could not connect to wdb socket: [Errno 2] No such file or directory')])
+                   b'Error 2005 - Could not connect to wdb socket: Unable to connect with socket: '
+                   b'[Errno 2] No such file or directory')])
 
 
 @pytest.mark.asyncio
@@ -1357,7 +1358,7 @@ def test_sync_wazuh_db_init():
 
 
 @pytest.mark.asyncio
-@patch("wazuh.core.wdb.socket.socket")
+@patch("wazuh.core.wazuh_socket.socket.socket")
 async def test_sync_wazuh_db_retrieve_information(socket_mock):
     """Check the proper functionality of the function in charge of
     obtaining the information from the database of the manager nodes."""
@@ -1371,7 +1372,7 @@ async def test_sync_wazuh_db_retrieve_information(socket_mock):
         else:
             return 'ok', {'id': counter}
 
-    wdb_conn = WazuhDBConnection()
+    wdb_conn = WazuhDBConnection(check_daemon=False)
     logger = logging.getLogger("wazuh")
     handler = cluster_common.Handler(fernet_key, cluster_items)
     sync_object = cluster_common.SyncWazuhdb(manager=handler, logger=logger, cmd=b'syn_a_w_m',

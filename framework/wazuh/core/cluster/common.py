@@ -1532,7 +1532,7 @@ def send_data_to_wdb(data, timeout, info_type='agent-info'):
         Dict containing number of updated chunks, error messages (if any) and time spent.
     """
     result = {'updated_chunks': 0, 'error_messages': {'chunks': [], 'others': []}, 'time_spent': 0}
-    wdb_conn = WazuhDBConnection()
+    wdb_conn = WazuhDBConnection(check_daemon=False)
     before = perf_counter()
 
     try:
