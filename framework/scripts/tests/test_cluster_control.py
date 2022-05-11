@@ -93,7 +93,9 @@ async def test_print_nodes(local_client_mock, get_agents_mock, print_table_mock,
                                     'sync_integrity_free': 'True',
                                     'last_sync_agentinfo': {'date_start_master': '0', 'date_end_master': '0',
                                                             'n_synced_chunks': 0},
-                                    'sync_agent_info_free': 'True'}}}})
+                                    'last_sync_agentgroups': {'date_start_master': '0', 'date_end_master': '0',
+                                                              'n_synced_chunks': 0},
+                                    'sync_agent_info_free': 'True', 'sync_agent_groups_free': 'True'}}}})
 async def test_print_health(get_health_mock, local_client_mock, get_utc_strptime_mock, print_mock):
     """Test if the current status of the cluster is properly printed."""
 
@@ -126,17 +128,20 @@ async def test_print_health(get_health_mock, local_client_mock, get_utc_strptime
                                       f"Synchronized files: Shared: "
                                       f"{worker_status['last_sync_integrity']['total_files']['shared']} | Missing: "
                                       f"{worker_status['last_sync_integrity']['total_files']['missing']} | Extra: "
-                                      f"{worker_status['last_sync_integrity']['total_files']['extra']} | Extra valid: "
-                                      f"{worker_status['last_sync_integrity']['total_files']['extra_valid']}.\n     "
-                                      f"           Extra valid files correctly updated in master: "
-                                      f"{worker_status['last_sync_integrity']['total_extra_valid']}.\n            "
+                                      f"{worker_status['last_sync_integrity']['total_files']['extra']}.\n            "
                                       f"Agents-info:\n                Last synchronization: 0.001s ("
                                       f"{worker_status['last_sync_agentinfo']['date_start_master']} - "
                                       f"{worker_status['last_sync_agentinfo']['date_start_master']}).\n         "
                                       f"       Number of synchronized chunks: "
                                       f"{worker_status['last_sync_agentinfo']['n_synced_chunks']}.\n                "
-                                      f"Permission to synchronize agent-info: {worker_status['sync_agent_info_free']}"
-                                      f".\n")])
+                                      f"Permission to synchronize agent-info: {worker_status['sync_agent_info_free']}.\n            "
+                                      f"Agent-groups:\n                Last synchronization: 0.001s ("
+                                      f"{worker_status['last_sync_agentgroups']['date_start_master']} - "
+                                      f"{worker_status['last_sync_agentgroups']['date_start_master']}).\n         "
+                                      f"       Number of synchronized chunks: "
+                                      f"{worker_status['last_sync_agentgroups']['n_synced_chunks']}.\n                "
+                                      f"Permission to synchronize agent-groups: {worker_status['sync_agent_groups_free']}.\n"
+                                      )])
 
     local_client_mock.assert_called_once_with()
     get_health_mock.assert_called_once_with(local_client_mock.return_value, filter_node=filter_node)
@@ -144,7 +149,9 @@ async def test_print_health(get_health_mock, local_client_mock, get_utc_strptime
         [call(worker_status['last_sync_integrity']['date_end_master'], '%Y-%m-%dT%H:%M:%S.%fZ'),
          call(worker_status['last_sync_integrity']['date_start_master'], '%Y-%m-%dT%H:%M:%S.%fZ'),
          call(worker_status['last_sync_agentinfo']['date_end_master'], '%Y-%m-%dT%H:%M:%S.%fZ'),
-         call(worker_status['last_sync_agentinfo']['date_start_master'], '%Y-%m-%dT%H:%M:%S.%fZ')])
+         call(worker_status['last_sync_agentinfo']['date_start_master'], '%Y-%m-%dT%H:%M:%S.%fZ'),
+         call(worker_status['last_sync_agentgroups']['date_end_master'], '%Y-%m-%dT%H:%M:%S.%fZ'),
+         call(worker_status['last_sync_agentgroups']['date_start_master'], '%Y-%m-%dT%H:%M:%S.%fZ')])
 
     more = False
     print_mock.reset_mock()
@@ -156,7 +163,8 @@ async def test_print_health(get_health_mock, local_client_mock, get_utc_strptime
                                        f"({get_health_mock.return_value['nodes']['wazuh_worker2']['info']['ip']}): "
                                        f"Integrity check: {worker_status['last_check_integrity']['date_end_master']} "
                                        f"| Integrity sync: {worker_status['last_sync_integrity']['date_end_master']} |"
-                                       f" Agents-info: {worker_status['last_sync_agentinfo']['date_end_master']} | "
+                                       f" Agents-info: {worker_status['last_sync_agentinfo']['date_end_master']} |"
+                                       f" Agents-groups: {worker_status['last_sync_agentgroups']['date_end_master']} | "
                                        f"Last keep alive: {worker_status['last_keep_alive']}.\n")
 
 
@@ -166,21 +174,30 @@ def test_usage(basename_mock, print_mock):
     """Test if the usage is being correctly printed."""
     cluster_control.usage()
 
-    print_mock.assert_called_once_with(f"\n    {basename_mock.return_value} [-h] [-d] [-fn [FILTER_NODE ...]] [-fs "
-                                       f"[FILTER_STATUS ...]][-a | -l | -i [HEALTH]]\n    Usage:\n    \t-l         "
-                                       f"                           # List all nodes present in a cluster\n    \t-l"
-                                       f" -fn <node_name>                    # List certain nodes that belong to the"
-                                       f" cluster\n    \t-a                                    # List all agents "
-                                       f"connected to the cluster\n    \t-a -fn <node_name>                    "
-                                       f"# Check which agents are reporting to certain nodes\n    \t-a -fs "
-                                       f"<agent_status>                 # List agents with certain status\n    \t-a "
-                                       f"-fn <node_name> <agent_status>     # List agents reporting to certain node "
-                                       f"and with certain status\n    \t-i                                    "
-                                       f"# Check cluster health\n    \t-i -fn <node_name>                    "
-                                       f"# Check certain node's health\n    \n\n    Params:\n    \t-l, --list\n    "
-                                       f"\t-d, --debug\n    \t-h, --help\n    \t-fn, --filter-node\n    \t-fs, "
-                                       f"--filter-agent-status\n    \t-a, --list-agents\n    \t-i, --health\n    \n"
-                                       f"    ")
+    msg = """
+    {0} [-h] [-d] [-fn [FILTER_NODE ...]] [-fs [FILTER_STATUS ...]][-a | -l | -i [HEALTH]]
+    Usage:
+    \t-l                                    # List all nodes present in a cluster
+    \t-l -fn <node_name>                    # List certain nodes that belong to the cluster
+    \t-a                                    # List all agents connected to the cluster
+    \t-a -fn <node_name>                    # Check which agents are reporting to certain nodes
+    \t-a -fs <agent_status>                 # List agents with certain status
+    \t-a -fn <node_name> <agent_status>     # List agents reporting to certain node and with certain status
+    \t-i                                    # Check cluster health
+    \t-i -fn <node_name>                    # Check certain node's health
+
+
+    Params:
+    \t-l, --list
+    \t-d, --debug
+    \t-h, --help
+    \t-fn, --filter-node
+    \t-fs, --filter-agent-status
+    \t-a, --list-agents
+    \t-i, --health
+
+    """.format(basename_mock.return_value)
+    print_mock.assert_called_once_with(msg)
 
     basename_mock.assert_called_once_with(sys.argv[0])
 
