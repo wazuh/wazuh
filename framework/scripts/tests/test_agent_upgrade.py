@@ -37,6 +37,7 @@ def test_get_script_arguments(mock_ArgumentParser):
         call('-s', '--silent', action='store_true', help='Do not show output.'),
         call('-l', '--list_outdated', action='store_true', help='Generates a list with all outdated agents.'),
         call('-f', '--file', type=str, help='Custom WPK filename.'),
+        call('-d', '--debug', action='store_true', help='Debug mode.'),
         call('-x', '--execute', type=str, help='Executable filename in the WPK custom file. [Default: upgrade.sh]'),
         call('--http', action='store_true', help='Uses http protocol instead of https.')
     ])
