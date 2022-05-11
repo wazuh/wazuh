@@ -186,7 +186,6 @@ async def test_unset_group(print_mock):
             print_mock.reset_mock()
 
             await agent_groups.unset_group(agent_id='999', quiet=True)
-            get_stdin_mock.assert_has_calls([call("Do you want to delete all groups of agent '999'? [y/N]: ")])
             print_mock.assert_has_calls([call("a")])
             print_mock.reset_mock()
 
