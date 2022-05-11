@@ -232,7 +232,8 @@ def test_ClusterLogger():
     """Verify that ClusterLogger defines the logger used by wazuh-clusterd."""
     current_logger_path = os.path.join(os.path.dirname(__file__), 'testing.log')
     cluster_logger = utils.ClusterLogger(foreground_mode=False, log_path=current_logger_path,
-                                         tag='{asctime} {levelname}: [{tag}] [{subtag}] {message}', debug_level=1)
+                                         tag='%(asctime)s %(levelname)s: [%(tag)s] [%(subtag)s] %(message)s',
+                                         debug_level=1)
     cluster_logger.setup_logger()
 
     assert cluster_logger.logger.level == logging.DEBUG
