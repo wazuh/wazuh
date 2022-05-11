@@ -1169,7 +1169,7 @@ void OS_ReadMSG_analysisd(int m_queue)
                 limits.total_eps_buffer += limits.circ_buf[limits.current_cell++];
             }
 
-#if 0
+#if 1
             for (unsigned int i = 0; i < limits.timeframe; i++) {
                 merror("cell[%02d] value: %d %s", i, limits.circ_buf[i], (limits.current_cell == i ? "<" : " "));
             }
@@ -2561,7 +2561,7 @@ static void load_limits(void) {
 
         if ((timeframe_eps = cJSON_GetObjectItem(analysisd_limits, "timeframe_eps"), timeframe_eps) && cJSON_IsNumber(timeframe_eps)) {
 
-            limits.timeframe = (timeframe_eps->valueint > EPS_LIMITS_MAX_TIMEFRAME ? EPS_LIMITS_MAX_TIMEFRAME : \
+            limits.timeframe = (timeframe_eps->valueint > EPS_LIMITS_MAX_TIMEFRAME ? EPS_LIMITS_MAX_TIMEFRAME :
                 (timeframe_eps->valueint < EPS_LIMITS_MIN_TIMEFRAME ? EPS_LIMITS_MIN_TIMEFRAME : timeframe_eps->valueint));
             if (limits.timeframe != (unsigned int)timeframe_eps->valueint) {
                 mwarn("timeframe limit exceeded, value set: %d", limits.timeframe);
@@ -2574,7 +2574,7 @@ static void load_limits(void) {
         cJSON *eps;
         if ((eps = cJSON_GetObjectItem(analysisd_limits, "max_eps"), eps) && cJSON_IsNumber(eps)) {
 
-            limits.eps = (eps->valueint > EPS_LIMITS_MAX_EPS ? EPS_LIMITS_MAX_EPS : \
+            limits.eps = (eps->valueint > EPS_LIMITS_MAX_EPS ? EPS_LIMITS_MAX_EPS :
                 (eps->valueint < EPS_LIMITS_MIN_EPS ? EPS_LIMITS_MIN_EPS : eps->valueint));
             if (limits.eps != (unsigned int)eps->valueint) {
                 mwarn("eps limit exceeded, value set: %d", limits.eps);
