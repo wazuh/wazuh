@@ -1,0 +1,24 @@
+<group name="qa,test,">
+
+  <rule id="10001" level="0" noalert="1">
+    <decoded_as>ow_test</decoded_as>
+    <description>Base rule to test.</description>
+  </rule>
+
+  <rule id="10002" level="12">
+    <if_sid>10001</if_sid>
+    <match>rule to be overwritten</match>
+    <description>Rule that will be overwritten.</description>
+  </rule>
+
+  <rule id="10003" level="12" frequency="2" timeframe="120" ignore="60">
+    <if_matched_sid>10002</if_matched_sid>
+    <description>Add rule to the list.</description>
+  </rule>
+
+  <rule id="10002" level="12" overwrite="yes">
+    <match>rule overwrite yes</match>
+    <description>Rule to replace the original.</description>
+  </rule>
+
+</group>
