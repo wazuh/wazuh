@@ -20,7 +20,7 @@ from wazuh.core.utils import clean_pid_files
 def set_logging(foreground_mode=False, debug_mode=0):
     cluster_logger = cluster_utils.ClusterLogger(foreground_mode=foreground_mode, log_path='logs/cluster.log',
                                                  debug_level=debug_mode,
-                                                 tag='{asctime} {levelname}: [{tag}] [{subtag}] {message}')
+                                                 tag='%(asctime)s %(levelname)s: [%(tag)s] [%(subtag)s] %(message)s')
     cluster_logger.setup_logger()
     return cluster_logger
 
