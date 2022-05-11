@@ -18,7 +18,7 @@ def test_set_logging():
         assert wazuh_clusterd.set_logging(foreground_mode=False, debug_mode=0)
         clusterlogger_mock.assert_called_once_with(
             foreground_mode=False, log_path='logs/cluster.log', debug_level=0,
-            tag='{asctime} {levelname}: [{tag}] [{subtag}] {message}')
+            tag='%(asctime)s %(levelname)s: [%(tag)s] [%(subtag)s] %(message)s')
 
 
 @patch('builtins.print')
