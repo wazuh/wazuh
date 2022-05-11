@@ -1217,11 +1217,11 @@ class WazuhDBQuery(object):
         #    group=webserver
         self.query_regex = re.compile(
             # A ( character.
-            r'(\()?' +
+            r"(\()?" +
             # Field name: name of the field to look on DB.
-            r'([\w.]+)' +
+            r"([\w.]+)" +
             # Operator: looks for '=', '!=', '<', '>' or '~'.
-            '([' + ''.join(self.query_operators.keys()) + "]{1,2})" +
+            rf"([{''.join(self.query_operators.keys())}]{{1,2}})" +
             # Value: A string.
             r"((?:(?:\((?:\[[\[\]\w _\-.,:?\\/'\"=@%<>]*]|[\[\]\w _\-.:?\\/'\"=@%<>]*)\))*"
             r"(?:\[[\[\]\w _\-.,:?\\/'\"=@%<>]*]|[\[\]\w _\-.:?\\/'\"=@%<>]+)"
@@ -1229,7 +1229,7 @@ class WazuhDBQuery(object):
             # A ) character.
             r"(\))?" +
             # Separator: looks for ';', ',' or nothing.
-            "([" + ''.join(self.query_separators.keys()) + "])?"
+            rf"([{''.join(self.query_separators.keys())}])?"
         )
         self.date_regex = re.compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}")
         self.date_fields = date_fields
