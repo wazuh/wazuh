@@ -118,7 +118,7 @@ cJSON* wdb_agents_insert_vuln_cves(wdb_t *wdb,
         os_strdup(status, status_to_insert);
     }
 
-    // The package is inserted even on an UPDATE, to replace the status with VALID
+    // On UPDATE the status is replaced with VALID and any feed related field is also updated
     sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_VULN_CVES_INSERT);
 
     if (stmt) {
@@ -249,7 +249,7 @@ wdbc_result wdb_agents_remove_vuln_cves_by_status(wdb_t *wdb, const char* status
 
     //Execute SQL query limited by size
     int sql_status = SQLITE_ERROR;
-    cJSON* cves = wdb_exec_stmt_sized(stmt, WDB_MAX_RESPONSE_SIZE, &sql_status);
+    cJSON* cves = wdb_exec_stmt_sized(stmt, WDB_MAX_RESPONSE_SIZE, &sql_status, STMT_MULTI_COLUMN);
 
     if (SQLITE_DONE == sql_status) wdb_res = WDBC_OK;
     else if (SQLITE_ROW == sql_status) wdb_res = WDBC_DUE;

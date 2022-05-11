@@ -13,7 +13,6 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-
 cJSON_bool __wrap_cJSON_AddItemToArray(__attribute__ ((__unused__)) cJSON *array,
                                  __attribute__ ((__unused__)) cJSON *item) {
     function_called();

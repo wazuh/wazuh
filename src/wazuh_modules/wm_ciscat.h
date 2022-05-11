@@ -18,6 +18,10 @@
 #define WM_CISCAT_LOGTAG ARGV0 ":ciscat"
 #define WM_CISCAT_DEFAULT_DIR     "wodles/ciscat"
 #define WM_CISCAT_DEFAULT_DIR_WIN "wodles\\ciscat"
+#define WM_CISCAT_V3_BINARY "CIS-CAT.sh"
+#define WM_CISCAT_V3_BINARY_WIN "CIS-CAT.BAT"
+#define WM_CISCAT_V4_BINARY "Assessor-CLI.sh"
+#define WM_CISCAT_V4_BINARY_WIN "Assessor-CLI.bat"
 #define WM_CISCAT_REPORTS "tmp"
 
 #define WM_CISCAT_PROFILE       "<Profile id="
@@ -71,6 +75,7 @@ typedef struct wm_ciscat {
     unsigned int timeout;           // Default execution time limit (seconds)
     char *java_path;                // Path to Java Runtime Environment
     char *ciscat_path;              // Path to CIS-CAT scanner tool
+    char *ciscat_binary;            // Binary Name of CIS-CAT scanner tool
     wm_ciscat_flags flags;          // Default flags
     wm_ciscat_state state;          // Running state
     wm_ciscat_eval *evals;          // Evaluations (linked list)

@@ -58,7 +58,7 @@ packaging==20.9
 pathlib==1.0.1
 protobuf==3.17.3
 proto-plus==1.19.0
-psutil==5.7.0
+psutil==5.8.0
 pyasn1==0.4.8
 pyasn1-modules==0.2.8
 pycparser==2.20

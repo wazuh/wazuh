@@ -353,6 +353,21 @@ stages:
       json:
         <<: *error_spec
 
+    # POST /groups
+  - name: Try to create a group with a forbidden name
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      json:
+        group_id: "ar.conf"
+    response:
+      status_code: 400
+      json:
+        error: 1713
+
 ---
 test_name: POST /agents/insert
 

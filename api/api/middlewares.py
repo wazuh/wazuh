@@ -4,7 +4,6 @@
 
 from json import JSONDecodeError
 from logging import getLogger
-from datetime import datetime
 
 from aiohttp import web
 from aiohttp.web_exceptions import HTTPException
@@ -25,13 +24,6 @@ logger = getLogger('wazuh-api')
 
 def _cleanup_detail_field(detail):
     return ' '.join(str(detail).replace("\n\n", ". ").replace("\n", "").split())
-
-
-@web.middleware
-async def set_user_name(request, handler):
-    if 'token_info' in request:
-        request['user'] = request['token_info']['sub']
-    return await handler(request)
 
 
 @web.middleware

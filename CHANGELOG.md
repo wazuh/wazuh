@@ -110,7 +110,7 @@ All notable changes to this project will be documented in this file.
 - Fixed a buffer handling bug in Remoted that left the syslog TCP server stuck. ([#12415](https://github.com/wazuh/wazuh/pull/12415))
 - Fixed a memory leak in Vulnerability Detector when discarding kernel packages. ([#12644](https://github.com/wazuh/wazuh/pull/12644))
 - Fixed a memory leak at wazuh-logtest-legacy when matching a level-0 rule. ([#12655](https://github.com/wazuh/wazuh/pull/12655))
-- Now the cluster is disabled by default when the "disabled" tag is not included. ([#12489](https://github.com/wazuh/wazuh/pull/12489))
+- Fixed a bug in the Vulnerability Detector CPE helper that may lead to produce false positives about Firefox ESR. ([#13067](https://github.com/wazuh/wazuh/pull/13067))
 
 #### Removed
 
@@ -202,6 +202,7 @@ All notable changes to this project will be documented in this file.
 - Fixed how the AWS Config module parses the dates used to request logs from AWS. ([#12324](https://github.com/wazuh/wazuh/pull/12324))
 - Let Logcollector audit format parse logs with a custom name_format. ([#12676](https://github.com/wazuh/wazuh/pull/12676))
 - Fixed Agent bootstrap issue that might lead to startup timeout when it cannot resolve a manager hostname. ([#12704](https://github.com/wazuh/wazuh/pull/12704))
+- Fixed a bug in the agent's leaky bucket throughput regulator that could leave it stuck if the time is advanced on Windows. ([#13088](https://github.com/wazuh/wazuh/pull/13088))
 
 #### Removed
 - Removed oscap module files as it was already deprecated since v4.0.0. ([#10900](https://github.com/wazuh/wazuh/pull/10900))
@@ -233,6 +234,7 @@ All notable changes to this project will be documented in this file.
 - Added `POST /security/user/authenticate/run_as` endpoint to API bruteforce blocking system. ([#12085](https://github.com/wazuh/wazuh/pull/12085))
 - Added new API endpoint to obtain summaries of agent vulnerabilities' inventory items. ([#12638](https://github.com/wazuh/wazuh/pull/12638))
 - Added fields external_references, condition, title, published and updated to GET /vulnerability/{agent_id} API endpoint. ([#12727](https://github.com/wazuh/wazuh/pull/12727))
+- Added the possibility to include strings in brackets in values of the `q` parameter. ([#13262](https://github.com/wazuh/wazuh/pull/13262]))
 
 #### Changed
 
@@ -354,6 +356,7 @@ All notable changes to this project will be documented in this file.
 - Updated SCA policy for CentOS 8. ([#8751](https://github.com/wazuh/wazuh/pull/8751))
 - Updated SonicWall rules decoder. ([#11263](https://github.com/wazuh/wazuh/pull/11263))
 - Updated SSHD ruleset. ([#11388](https://github.com/wazuh/wazuh/pull/11388))
+- From file 0580-win-security_rules.xml, rules with id 60198 and 60199 are moved to file 0585-win-application_rules.xml, with rule ids 61071 and 61072 respectively. ([#8552](https://github.com/wazuh/wazuh/pull/8552))
 
 #### Fixed
 

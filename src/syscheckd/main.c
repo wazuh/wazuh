@@ -294,6 +294,15 @@ int main(int argc, char **argv)
                     dir_it->options |= REALTIME_ACTIVE;
                 }
             }
+
+            OSList_foreach(node_it, syscheck.wildcards) {
+                dir_it = node_it->data;
+                if (dir_it->options & WHODATA_ACTIVE) {
+                    dir_it->options &= ~WHODATA_ACTIVE;
+                    dir_it->options |= REALTIME_ACTIVE;
+                }
+            }
+
             w_mutex_lock(&syscheck.fim_realtime_mutex);
             if (syscheck.realtime == NULL) {
                 realtime_start();

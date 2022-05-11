@@ -60,7 +60,7 @@ def get_token_login_api():
     str
         API token
     """
-    response = requests.get(login_url, headers=login_headers, verify=False)
+    response = requests.post(login_url, headers=login_headers, verify=False)
     if response.status_code == 200:
         return json.loads(response.content.decode())['data']['token']
     else:

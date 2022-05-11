@@ -97,13 +97,13 @@ class AbstractClientManager:
         while True:
             try:
                 transport, protocol = await self.loop.create_connection(
-                                    protocol_factory=lambda: self.handler_class(loop=self.loop, on_con_lost=on_con_lost,
-                                                                                name=self.name, logger=self.logger,
-                                                                                fernet_key=self.configuration['key'],
-                                                                                cluster_items=self.cluster_items,
-                                                                                manager=self, **self.extra_args),
-                                    host=self.configuration['nodes'][0], port=self.configuration['port'],
-                                    ssl=ssl_context)
+                    protocol_factory=lambda: self.handler_class(loop=self.loop, on_con_lost=on_con_lost,
+                                                                name=self.name, logger=self.logger,
+                                                                fernet_key=self.configuration['key'],
+                                                                cluster_items=self.cluster_items,
+                                                                manager=self, **self.extra_args),
+                    host=self.configuration['nodes'][0], port=self.configuration['port'],
+                    ssl=ssl_context)
                 self.client = protocol
             except ConnectionRefusedError:
                 self.logger.error("Could not connect to master. Trying again in 10 seconds.")
@@ -137,8 +137,6 @@ class AbstractClient(common.Handler):
 
         Parameters
         ----------
-        loop : uvloop.EventLoopPolicy
-            Asyncio loop.
         on_con_lost : asyncio.Future object
             Low-level callback to notify when the connection has ended.
         name : str
@@ -156,11 +154,11 @@ class AbstractClient(common.Handler):
         """
         super().__init__(fernet_key=fernet_key, logger=logger, tag=f"{tag} {name}", cluster_items=cluster_items)
         self.loop = loop
+        self.server = manager
         self.name = name
         self.on_con_lost = on_con_lost
         self.connected = False
         self.client_data = self.name.encode()
-        self.manager = manager
 
     def connection_result(self, future_result):
         """Callback function called when the master sends a response to the hello command sent by the worker.
