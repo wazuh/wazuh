@@ -2,15 +2,20 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import sys
-from getopt import GetoptError
-from this import s
-from unittest.mock import call, patch, MagicMock, ANY
 import pytest
-from wazuh.core.exception import WazuhError
+import sys
+from unittest.mock import call, patch, MagicMock
 
-import wazuh.agent as agent
-import scripts.agent_groups as agent_groups
+with patch('wazuh.core.common.wazuh_uid'):
+    with patch('wazuh.core.common.wazuh_gid'):
+        sys.modules['wazuh.rbac.orm'] = MagicMock()
+        import wazuh.rbac.decorators
+        from wazuh.tests.util import RBAC_bypasser
+
+        del sys.modules['wazuh.rbac.orm']
+        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+        from scripts import agent_groups
+        from wazuh import agent
 
 
 @patch('scripts.agent_groups.exit')
