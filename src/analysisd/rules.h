@@ -220,6 +220,9 @@ typedef struct _RuleInfo {
     char ** mitre_technique_id;
 
     bool internal_saving;      ///< Used to free RuleInfo structure in wazuh-logtest
+
+    /* Pointer to the rule which overwrites this one if it exists */
+    struct _RuleInfo *rule_overwrite;
 } RuleInfo;
 
 typedef struct _rules_tmp_params_t {

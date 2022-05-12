@@ -2169,6 +2169,8 @@ RuleInfo *zerorulemember(int id, int level, int maxsize, int frequency,
 
     ruleinfo_pt->internal_saving = false;
 
+    ruleinfo_pt->rule_overwrite = NULL;
+
     return (ruleinfo_pt);
 }
 
