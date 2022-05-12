@@ -45,11 +45,37 @@ int* __wrap_wdb_get_all_agents(bool include_manager, __attribute__((unused)) int
     return mock_ptr_type(int*);
 }
 
+int __wrap_wdb_set_agent_groups_csv(int id,
+                                    __attribute__((unused)) char *groups_csv,
+                                    __attribute__((unused)) char *mode,
+                                    __attribute__((unused)) char *sync_status,
+                                    __attribute__((unused)) int *sock) {
+    check_expected(id);
+    return mock();
+}
+
+int __wrap_wdb_set_agent_groups(int id,
+                                __attribute__((unused)) char** groups_array,
+                                char* mode,
+                                char* sync_status,
+                                __attribute__((unused)) int *sock) {
+    check_expected(id);
+    check_expected(mode);
+    check_expected(sync_status);
+    return mock();
+}
+
 int __wrap_wdb_update_agent_keepalive(int id, const char *connection_status, const char *sync_status, __attribute__((unused)) int *sock) {
     check_expected(id);
     check_expected(connection_status);
     check_expected(sync_status);
     return mock();
+}
+
+char* __wrap_wdb_get_agent_group(int id,
+                                 __attribute__((unused)) int *wdb_sock) {
+    check_expected(id);
+    return mock_type(char *);
 }
 
 int __wrap_wdb_update_agent_data(agent_info_data *agent_data, __attribute__((unused)) int *sock) {

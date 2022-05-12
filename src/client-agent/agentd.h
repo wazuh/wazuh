@@ -53,8 +53,6 @@ int receive_msg(void);
 /* Receiver messages for Windows */
 #ifdef WIN32
 DWORD WINAPI receiver_thread(LPVOID none);
-#else
-void *receiver_thread(void *none);
 #endif
 
 /* Initialize agent buffer */
@@ -139,7 +137,6 @@ int verifyRemoteConf();
 
 // Clear merged.mg hash cache value.
 void clear_merged_hash_cache();
-
 
 size_t agcom_dispatch(char * command, char ** output);
 size_t agcom_getconfig(const char * section, char ** output);

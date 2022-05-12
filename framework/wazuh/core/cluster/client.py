@@ -97,13 +97,13 @@ class AbstractClientManager:
         while True:
             try:
                 transport, protocol = await self.loop.create_connection(
-                                    protocol_factory=lambda: self.handler_class(loop=self.loop, on_con_lost=on_con_lost,
-                                                                                name=self.name, logger=self.logger,
-                                                                                fernet_key=self.configuration['key'],
-                                                                                cluster_items=self.cluster_items,
-                                                                                manager=self, **self.extra_args),
-                                    host=self.configuration['nodes'][0], port=self.configuration['port'],
-                                    ssl=ssl_context)
+                    protocol_factory=lambda: self.handler_class(loop=self.loop, on_con_lost=on_con_lost,
+                                                                name=self.name, logger=self.logger,
+                                                                fernet_key=self.configuration['key'],
+                                                                cluster_items=self.cluster_items,
+                                                                manager=self, **self.extra_args),
+                    host=self.configuration['nodes'][0], port=self.configuration['port'],
+                    ssl=ssl_context)
                 self.client = protocol
             except ConnectionRefusedError:
                 self.logger.error("Could not connect to master. Trying again in 10 seconds.")
@@ -137,8 +137,6 @@ class AbstractClient(common.Handler):
 
         Parameters
         ----------
-        loop : uvloop.EventLoopPolicy
-            Asyncio loop.
         on_con_lost : asyncio.Future object
             Low-level callback to notify when the connection has ended.
         name : str
@@ -156,11 +154,11 @@ class AbstractClient(common.Handler):
         """
         super().__init__(fernet_key=fernet_key, logger=logger, tag=f"{tag} {name}", cluster_items=cluster_items)
         self.loop = loop
+        self.server = manager
         self.name = name
         self.on_con_lost = on_con_lost
         self.connected = False
         self.client_data = self.name.encode()
-        self.manager = manager
 
     def connection_result(self, future_result):
         """Callback function called when the master sends a response to the hello command sent by the worker.
@@ -175,7 +173,7 @@ class AbstractClient(common.Handler):
             self.logger.error(f"Could not connect to master: {response_msg}.")
             self.transport.close()
         else:
-            self.logger.info("Sucessfully connected to master.")
+            self.logger.info("Successfully connected to master.")
             self.connected = True
 
     def connection_made(self, transport):
@@ -205,7 +203,7 @@ class AbstractClient(common.Handler):
             self.logger.info('The master closed the connection')
         else:
             self.logger.error(f"Connection closed due to an unhandled error: {exc}\n"
-                              f"{''.join(traceback.format_tb(exc.__traceback__))}")
+                              f"{''.join(traceback.format_tb(exc.__traceback__))}", exc_info=False)
 
         if not self.on_con_lost.done():
             self.on_con_lost.set_result(True)
@@ -232,7 +230,7 @@ class AbstractClient(common.Handler):
             Result message.
         """
         if command == b'ok-m':
-            return b"Sucessful response from master: " + payload
+            return b"Successful response from master: " + payload
         else:
             return super().process_response(command, payload)
 
@@ -316,7 +314,7 @@ class AbstractClient(common.Handler):
             result = await self.send_request(b'echo', b'a' * test_size)
             after = perf_counter()
             if len(result) != test_size:
-                self.logger.error(result)
+                self.logger.error(result, exc_info=False)
             else:
                 self.logger.info(f"Received size: {len(result)} // Time: {after - before}")
             await asyncio.sleep(3)

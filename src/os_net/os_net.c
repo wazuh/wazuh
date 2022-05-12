@@ -133,8 +133,8 @@ int OS_Bindportudp(u_int16_t _port, const char *_ip, int ipv6)
 }
 
 #ifndef WIN32
-/* Bind to a Unix domain, using DGRAM sockets */
-int OS_BindUnixDomain(const char *path, int type, int max_msg_size)
+/* Bind to a Unix domain, DGRAM sockets while allowing the caller to specify owner and permission bits. */
+int OS_BindUnixDomainWithPerms(const char *path, int type, int max_msg_size, uid_t uid, gid_t gid, mode_t mode)
 {
     struct sockaddr_un n_us;
     int ossock = 0;
@@ -156,7 +156,13 @@ int OS_BindUnixDomain(const char *path, int type, int max_msg_size)
     }
 
     /* Change permissions */
-    if (chmod(path, 0660) < 0) {
+    if (chmod(path, mode) < 0) {
+        OS_CloseSocket(ossock);
+        return (OS_SOCKTERR);
+    }
+
+    /* Change owner */
+    if (chown(path, uid, gid) < 0) {
         OS_CloseSocket(ossock);
         return (OS_SOCKTERR);
     }
@@ -178,6 +184,12 @@ int OS_BindUnixDomain(const char *path, int type, int max_msg_size)
     }
 
     return (ossock);
+}
+
+/* Bind to a Unix domain, using DGRAM sockets */
+int OS_BindUnixDomain(const char *path, int type, int max_msg_size)
+{
+    return OS_BindUnixDomainWithPerms(path, type, max_msg_size, getuid(), getgid(), 0660);
 }
 
 /* Open a client Unix domain socket
@@ -900,6 +912,30 @@ const char *get_ip_from_resolved_hostname(const char *resolved_hostname){
     tmp_str = strchr(resolved_hostname, '/');
 
     return tmp_str ? ++tmp_str : resolved_hostname;
+}
+
+int external_socket_connect(char *socket_path, int response_timeout) {
+#ifndef WIN32
+    int sock =  OS_ConnectUnixDomain(socket_path, SOCK_STREAM, OS_MAXSTR);
+
+    if (sock < 0) {
+        return sock;
+    }
+
+    if(OS_SetSendTimeout(sock, 5) < 0) {
+        close(sock);
+        return -1;
+    }
+
+    if(OS_SetRecvTimeout(sock, response_timeout, 0) < 0) {
+        close(sock);
+        return -1;
+    }
+
+    return sock;
+#else
+    return -1;
+#endif
 }
 
 int get_ipv4_numeric(const char *address, struct in_addr *addr) {

@@ -986,7 +986,7 @@ checks:
       - tsc: ["CC5.2"]
     references:
       - More detailed documentation on OpenLDAP is available at https://www.openldap.org
-    condition: none
+    condition: any
     rules:
       - 'c:rpm -q openldap-servers -> r:package openldap-servers is not installed'
 
@@ -1742,7 +1742,7 @@ checks:
       - cis_csc: ["9.4"]
       - pci_dss: ["1.1"]
       - tsc: ["CC8.1"]
-    condition: all
+    condition: any
     rules:
       - 'c:rpm -q firewalld -> r:^package firewalld is not installed'
       - 'c:systemctl is-enabled firewalld -> r:masked'

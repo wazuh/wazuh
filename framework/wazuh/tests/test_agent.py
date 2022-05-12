@@ -165,14 +165,19 @@ def test_agent_get_agents_summary_status(socket_mock, send_mock):
     summary = get_agents_summary_status(short_agent_list)
     assert isinstance(summary, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
     # Asserts are based on what it should get from the fake database
-    expected_results = {'active': 2, 'disconnected': 1, 'never_connected': 1, 'pending': 1, 'total': 5}
+    expected_results = {'connection': {'active': 2, 'disconnected': 1, 'never_connected': 1, 'pending': 1, 'total': 5},
+                        'configuration': {'synced': 2, 'not_synced': 3, 'total': 5}}
     summary_data = summary['data']
-    assert set(summary_data.keys()) == set(expected_results.keys())
-    assert summary_data['active'] == expected_results['active']
-    assert summary_data['disconnected'] == expected_results['disconnected']
-    assert summary_data['never_connected'] == expected_results['never_connected']
-    assert summary_data['pending'] == expected_results['pending']
-    assert summary_data['total'] == expected_results['total']
+
+    # For the following test cases, if summary_data has unexpected keys, a KeyError will be raised
+
+    # Check the data dictionary follows the expected keys schema
+    assert all(summary_data[key].keys() == expected_results[key].keys() for key in expected_results.keys()), \
+        'The result obtained has unexpected keys'
+    # Check that the agents count for connection and configuration statuses are the expected ones
+    assert all(all(summary_data[key][status] == expected_results[key][status] for status in
+                   summary_data[key].keys()) for key in expected_results.keys()), \
+        'The agents connection or configuration status counts are not the expected ones'
 
 
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
@@ -561,7 +566,7 @@ def test_agent_get_group_files_exceptions(mock_group_exists, mock_process_array,
 
 
 @pytest.mark.parametrize('group_id', [
-    'non-existant-group',
+    'non-existent-group',
     'invalid-group'
 ])
 @patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
@@ -584,7 +589,7 @@ def test_create_group(chown_mock, uid_mock, gid_mock, group_id):
         result = create_group(group_id)
         assert isinstance(result, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
         assert len(result.dikt) == 1, \
-            f'Result dikt lenght is "{len(result.dikt)}" instead of "1". Result dikt content is: {result.dikt}'
+            f'Result dikt length is "{len(result.dikt)}" instead of "1". Result dikt content is: {result.dikt}'
         assert result.dikt['message'] == expected_msg, \
             f'The "result.dikt[\'message\']" received is not the expected.\n' \
             f'Expected: "{expected_msg}"\n' \
@@ -600,7 +605,9 @@ def test_create_group(chown_mock, uid_mock, gid_mock, group_id):
     ('default', WazuhError, 1711),
     ('group-1', WazuhError, 1711),
     ('invalid!', WazuhError, 1722),
-    ('delete-me', WazuhInternalError, 1005)
+    ('delete-me', WazuhInternalError, 1005),
+    ('ar.conf', WazuhError, 1713),
+    ('agent-template.conf', WazuhError, 1713)
 ])
 @patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
 def test_create_group_exceptions(group_id, exception, exception_code):
@@ -672,7 +679,7 @@ def test_agent_delete_groups(socket_mock, send_mock, mock_delete, mock_remove_ag
 @patch('socket.socket.connect')
 def test_agent_delete_groups_permission_exception(socket_mock, send_mock, mock_get_groups, mock_remove_agents,
                                                   group_name):
-    """Test delete_group function when trying to delete an existant group but without enough privileges.
+    """Test delete_group function when trying to delete an existent group but without enough privileges.
 
     Parameters
     ----------
@@ -728,14 +735,14 @@ def test_agent_delete_groups_other_exceptions(mock_get_groups, group_list, expec
 
 @pytest.mark.parametrize('group_list, agent_list, num_failed', [
     (['group-1'], ['001'], 0),
-    (['group-1'], ['001', '002', '003'], 0),
-    (['group-1'], ['001', '002', '003', '100'], 1),
+    (['group-1'], ['001', '002', '003', '100'], 1)
 ])
-@patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
 @patch('wazuh.agent.Agent.add_group_to_agent')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('wazuh.core.agent.Agent.group_exists', return_value=True)
 @patch('socket.socket.connect')
-def test_assign_agents_to_group(socket_mock, send_mock, add_group_mock, group_list, agent_list, num_failed):
+def test_assign_agents_to_group(socket_mock, group_exists_mock, send_mock, add_group_mock, group_list, agent_list,
+                                num_failed):
     """Test `assign_agents_to_group` function from agent module. Does not check its raised exceptions.
 
     Parameters
@@ -744,7 +751,7 @@ def test_assign_agents_to_group(socket_mock, send_mock, add_group_mock, group_li
         List of group to apply to the agents
     agent_list : List of str
         List of agent ID's.
-    num_failed : numeric
+    num_failed : int
         Number of expected failed_items
     """
     result = assign_agents_to_group(group_list, agent_list)
@@ -754,6 +761,9 @@ def test_assign_agents_to_group(socket_mock, send_mock, add_group_mock, group_li
     # Check affected items
     assert result.total_affected_items == len(result.affected_items)
     assert set(result.affected_items).difference(set(agent_list)) == set()
+    # Check if the number of affected items matches the number of times `add_group_to_agent` was called
+    # `agent_list` must only have those agent IDs without exceptions at this level
+    assert len(result.affected_items) == add_group_mock.call_count
     # Check failed items
     assert result.total_failed_items == num_failed
 
@@ -787,7 +797,7 @@ def test_agent_assign_agents_to_group_exceptions(socket_mock, send_mock, mock_ad
     def group_exists(group_id):
         return group_id != 'none-1'
 
-    def add_group_to_agent(group_id, agent_id, force=False, replace=False, replace_list=None):
+    def add_group_to_agent(group_id, agent_id, replace=False, replace_list=None):
         return f"Agent {agent_id} assigned to {group_id}"
 
     mock_group_exists.side_effect = group_exists
@@ -800,7 +810,7 @@ def test_agent_assign_agents_to_group_exceptions(socket_mock, send_mock, mock_ad
         # Check failed items
         assert result.total_failed_items == len(group_list)
         assert result.total_failed_items == len(result.failed_items)
-        assert set(result.failed_items.keys()).difference(set([expected_error])) == set()
+        assert set(result.failed_items.keys()).difference({expected_error}) == set()
     except WazuhException as ex:
         assert catch_exception
         assert ex == expected_error
@@ -931,12 +941,12 @@ def test_agent_remove_agent_from_groups_exceptions(mock_get_groups, mock_get_age
             f'The number of "failed_items" is "{result.total_failed_items}" but was expected to be ' \
             f'"{len(group_list)}".'
         assert result.total_failed_items == len(result.failed_items), \
-            f'"total_failed_items" lenght does not match with "failed_items".'
-        assert set(result.failed_items.keys()).difference(set([expected_error])) == set(), \
+            f'"total_failed_items" length does not match with "failed_items".'
+        assert set(result.failed_items.keys()).difference({expected_error}) == set(), \
             f'The "failed_items" received does not match.\n' \
             f' - The "failed_items" received is: "{set(result.failed_items.keys())}"\n' \
-            f' - The "failed_items" expected was "{set([expected_error])}"\n' \
-            f' - The difference between them is "{set(result.failed_items.keys()).difference(set([expected_error]))}"\n'
+            f' - The "failed_items" expected was "{ {expected_error} }"\n' \
+            f' - The difference between them is "{set(result.failed_items.keys()).difference({expected_error})}"\n'
     except (WazuhError, WazuhResourceNotFound) as error:
         assert catch_exception, \
             f'No exception should be raised at this point. An AffectedItemsWazuhResult object with at least one ' \
@@ -1006,7 +1016,7 @@ def test_agent_remove_agents_from_group_exceptions(group_mock, agents_info_mock,
         # Check failed items
         assert result.total_failed_items == len(group_list)
         assert result.total_failed_items == len(result.failed_items)
-        assert set(result.failed_items.keys()).difference(set([expected_error])) == set()
+        assert set(result.failed_items.keys()).difference({expected_error}) == set()
     except (WazuhError, WazuhResourceNotFound) as error:
         assert catch_exception
         assert error == expected_error

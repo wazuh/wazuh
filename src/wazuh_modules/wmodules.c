@@ -13,9 +13,11 @@
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha1/sha1_op.h"
 #include "os_crypto/sha256/sha256_op.h"
+#include <sys/types.h>
 
 wmodule *wmodules = NULL;   // Config: linked list of all modules.
 int wm_task_nice = 0;       // Nice value for tasks.
+static gid_t wm_gid;               // Group ID.
 int wm_max_eps;             // Maximum events per second sent by OpenScap and CIS-CAT Wazuh Module
 int wm_kill_timeout;        // Time for a process to quit before killing it
 int wm_debug_level;
@@ -44,6 +46,16 @@ static const void *default_modules[] = {
 static int wm_initialize_default_modules(wmodule **wmodules);
 
 // Read XML configuration and internal options
+
+gid_t wm_getGroupID(void)
+{
+    return wm_gid;
+}
+
+void wm_setGroupID(const gid_t gid)
+{
+    wm_gid = gid;
+}
 
 int wm_config() {
 

@@ -73,6 +73,7 @@
 
   <rule id="92656" level="15">
     <if_sid>60106</if_sid>
+    <field name="win.eventdata.logonType" type="pcre2">^10$</field>
     <field name="win.eventdata.ipAddress" type="pcre2">::1|127\.0\.0\.1</field>
     <description>User: $(win.eventdata.subjectDomainName)\$(win.eventdata.targetUserName) logged using Remote Desktop Connection (RDP) from loopback address, possible exploit over reverse tunneling using stolen credentials.</description>
     <mitre>

@@ -38,10 +38,8 @@ void add_insert(const keyentry *entry,const char *group) {
     node->id = strdup(entry->id);
     node->name = strdup(entry->name);
     node->ip = strdup(entry->ip->ip);
-    node->group = NULL;
-
-    if (group != NULL)
-        node->group = strdup(group);
+    node->raw_key = strdup(entry->raw_key);
+    node->group = group ? strdup(group) : NULL;
 
     (*insert_tail) = node;
     insert_tail = &node->next;
@@ -324,7 +322,7 @@ w_err_t w_auth_validate_data(char *response,
     return result;
 }
 
-w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, const char *groups, char **id, char **key) {
+w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, char **id, char **key) {
 
     /* Add the new agent */
     int index;
@@ -333,18 +331,6 @@ w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, 
         merror("Unable to add agent: %s (internal error)", agentname);
         snprintf(response, OS_SIZE_2048, "ERROR: Internal manager error adding agent: %s", agentname);
         return OS_INVALID;
-    }
-
-    /* Add the agent to the centralized configuration group */
-    if (groups) {
-        char path[PATH_MAX];
-        if (snprintf(path, PATH_MAX, GROUPS_DIR "/%s", keys.keyentries[index]->id) >= PATH_MAX) {
-            merror("File path too large for agent '%s'.", keys.keyentries[index]->id);
-            OS_RemoveAgent(keys.keyentries[index]->id);
-            merror("Unable to set agent centralized group: %s (internal error)", groups);
-            snprintf(response, OS_SIZE_2048, "ERROR: Internal manager error setting agent centralized group: %s", groups);
-            return OS_INVALID;
-        }
     }
 
     os_strdup(keys.keyentries[index]->id, *id);
@@ -364,6 +350,7 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
     char *group = strtok_r(tmp_groups, delim, &save_ptr);
 
     while ( group != NULL ) {
+        max_multigroups++;
         DIR * dp;
         char dir[PATH_MAX + 1] = {0};
 
@@ -389,7 +376,6 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
         }
 
         group = strtok_r(NULL, delim, &save_ptr);
-        max_multigroups++;
         closedir(dp);
     }
     os_free(tmp_groups);

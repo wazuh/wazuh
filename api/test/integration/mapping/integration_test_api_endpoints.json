@@ -1371,6 +1371,27 @@
         ]
     },
     {
+        "path": "framework/wazuh/core/tests/data/test_vulnerability",
+        "files": [
+            {
+                "name": "schema_cve_test.sql",
+                "tag": "schema",
+                "tests": [
+                    "test_agent_DELETE_endpoints.tavern.yaml",
+                    "test_agent_GET_endpoints.tavern.yaml",
+                    "test_agent_POST_endpoints.tavern.yaml",
+                    "test_agent_PUT_endpoints.tavern.yaml",
+                    "test_cluster_endpoints.tavern.yaml",
+                    "test_experimental_endpoints.tavern.yaml",
+                    "test_security_DELETE_endpoints.tavern.yaml",
+                    "test_security_GET_endpoints.tavern.yaml",
+                    "test_security_POST_endpoints.tavern.yaml",
+                    "test_security_PUT_endpoints.tavern.yaml"
+                ]
+            }
+        ]
+    },
+    {
         "path": "framework/wazuh/rbac",
         "files": [
             {
@@ -2750,6 +2771,18 @@
         "path": "api/test/integration/env/configurations/base/manager/configuration_files/master_only",
         "files": [
             {
+                "name": "agent_groups.yaml",
+                "tag": "agent",
+                "tests": [
+                    "test_agent_DELETE_endpoints.tavern.yaml",
+                    "test_agent_GET_endpoints.tavern.yaml",
+                    "test_agent_POST_endpoints.tavern.yaml",
+                    "test_agent_PUT_endpoints.tavern.yaml",
+                    "test_rbac_black_agent_endpoints.tavern.yaml",
+                    "test_rbac_white_agent_endpoints.tavern.yaml"
+                ]
+            },
+            {
                 "name": "agent_info.yaml",
                 "tag": "agent",
                 "tests": [
@@ -3867,6 +3900,27 @@
         ]
     },
     {
+        "path": "api/test/integration/env/configurations/vulnerability/manager/configuration_files",
+        "files": [
+            {
+                "name": "nvd_providers.sh",
+                "tag": "nvd",
+                "tests": [
+                    "test_agent_DELETE_endpoints.tavern.yaml",
+                    "test_agent_GET_endpoints.tavern.yaml",
+                    "test_agent_POST_endpoints.tavern.yaml",
+                    "test_agent_PUT_endpoints.tavern.yaml",
+                    "test_cluster_endpoints.tavern.yaml",
+                    "test_experimental_endpoints.tavern.yaml",
+                    "test_security_DELETE_endpoints.tavern.yaml",
+                    "test_security_GET_endpoints.tavern.yaml",
+                    "test_security_POST_endpoints.tavern.yaml",
+                    "test_security_PUT_endpoints.tavern.yaml"
+                ]
+            }
+        ]
+    },
+    {
         "path": "api/test/integration/env/configurations/vulnerability/manager/healthcheck",
         "files": [
             {
@@ -3893,6 +3947,22 @@
             {
                 "name": "healthcheck_utils.py",
                 "tag": "healthcheck",
+                "tests": [
+                    "test_agent_DELETE_endpoints.tavern.yaml",
+                    "test_agent_GET_endpoints.tavern.yaml",
+                    "test_agent_POST_endpoints.tavern.yaml",
+                    "test_agent_PUT_endpoints.tavern.yaml",
+                    "test_cluster_endpoints.tavern.yaml",
+                    "test_experimental_endpoints.tavern.yaml",
+                    "test_security_DELETE_endpoints.tavern.yaml",
+                    "test_security_GET_endpoints.tavern.yaml",
+                    "test_security_POST_endpoints.tavern.yaml",
+                    "test_security_PUT_endpoints.tavern.yaml"
+                ]
+            },
+            {
+                "name": "print_active_agents.py",
+                "tag": "print",
                 "tests": [
                     "test_agent_DELETE_endpoints.tavern.yaml",
                     "test_agent_GET_endpoints.tavern.yaml",

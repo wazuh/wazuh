@@ -235,7 +235,10 @@ void *dispatch_buffer(__attribute__((unused)) void * arg){
 
         gettime(&ts1);
         time_sub(&ts1, &ts0);
-        delay(&ts1);
+
+        if (ts1.tv_sec >= 0) {
+            delay(&ts1);
+        }
     }
 }
 
@@ -243,7 +246,10 @@ void delay(struct timespec * ts_loop) {
     long interval_ns = 1000000000 / agt->events_persec;
     struct timespec ts_timeout = { interval_ns / 1000000000, interval_ns % 1000000000 };
     time_sub(&ts_timeout, ts_loop);
-    nanosleep(&ts_timeout, NULL);
+
+    if (ts_timeout.tv_sec >= 0) {
+        nanosleep(&ts_timeout, NULL);
+    }
 }
 
 int w_agentd_get_buffer_lenght() {

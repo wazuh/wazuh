@@ -25,7 +25,7 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 # Generate remoted tests
 list(APPEND remoted_names "test_manager")
 list(APPEND remoted_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,w_parser_get_agent \
-                            -Wl,--wrap,get_agent_group -Wl,--wrap,set_agent_group -Wl,--wrap,_merror \
+                            -Wl,--wrap,_merror \
                             -Wl,--wrap,MergeAppendFile -Wl,--wrap,OS_MoveFile -Wl,--wrap,w_parser_get_group \
                             -Wl,--wrap,wurl_request -Wl,--wrap,TestUnmergeFiles -Wl,--wrap,OS_MD5_File \
                             -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap,OSHash_Delete -Wl,--wrap,OSHash_Get \
@@ -34,7 +34,7 @@ list(APPEND remoted_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,w_
                             -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Add -Wl,--wrap,OSHash_Add_ex \
                             -Wl,--wrap,checkBinaryFile -Wl,--wrap,OSHash_Set -Wl,--wrap,_minfo \
                             -Wl,--wrap,opendir -Wl,--wrap,cldir_ex -Wl,--wrap,wreaddir -Wl,--wrap=_mwarn \
-                            -Wl,--wrap,closedir -Wl,--wrap,OSHash_Clean -Wl,--wrap,rmdir_ex \
+                            -Wl,--wrap,closedir -Wl,--wrap,OSHash_Clean -Wl,--wrap,rmdir_ex -Wl,--wrap,mkdir -Wl,--wrap,stat\
                             -Wl,--wrap,OS_SHA256_String -Wl,--wrap,readdir -Wl,--wrap,strerror \
                             -Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,fclose -Wl,--wrap,remove \
                             -Wl,--wrap,fgets -Wl,--wrap,fflush -Wl,--wrap,fseek -Wl,--wrap,fgetpos -Wl,--wrap=fgetc \
@@ -42,7 +42,10 @@ list(APPEND remoted_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,w_
                             -Wl,--wrap,wdb_update_agent_keepalive -Wl,--wrap,parse_agent_update_msg \
                             -Wl,--wrap,wdb_update_agent_data -Wl,--wrap,linked_queue_push_ex \
                             -Wl,--wrap,wdb_update_agent_connection_status -Wl,--wrap,SendMSG -Wl,--wrap,StartMQ \
-                            -Wl,--wrap,get_ipv4_string -Wl,--wrap,get_ipv6_string")
+                            -Wl,--wrap,get_ipv4_string -Wl,--wrap,get_ipv6_string \
+                            -Wl,--wrap,wdb_get_agent_group \
+                            -Wl,--wrap,wdb_set_agent_groups_csv -Wl,--wrap,w_is_single_node \
+                            -Wl,--wrap,wdb_remove_group_db -Wl,--wrap,wdb_get_all_agents -Wl,--wrap,wdb_get_agent_info")
 
 list(APPEND remoted_names "test_secure")
 list(APPEND remoted_flags "-Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,fclose -Wl,--wrap,remove \

@@ -161,18 +161,20 @@ def test_AbstractServerHandler_connection_lost():
                                                         cluster_items={"test": "server"})
         with patch.object(logger, "error") as mock_error_logger:
             abstract_server_handler.connection_lost(exc=None)
-            mock_error_logger.assert_called_once_with("Error during handshake with incoming connection.")
+            mock_error_logger.assert_called_once_with("Error during handshake with incoming connection.",
+                                                      exc_info=False)
 
         with patch.object(logger, "error") as mock_error_logger:
             abstract_server_handler.connection_lost(exc=Exception("Test_connection_lost"))
             mock_error_logger.assert_called_once_with(
-                "Error during handshake with incoming connection: Test_connection_lost", exc_info=True)
+                "Error during handshake with incoming connection: Test_connection_lost. \n", exc_info=False)
 
         abstract_server_handler.name = "unit"
         abstract_server_handler.server = ServerMock()
         with patch.object(logger, "error") as mock_error_logger:
             abstract_server_handler.connection_lost(exc=Exception("Test_connection_lost_if"))
-            mock_error_logger.assert_called_once_with("Error during connection with 'unit': Test_connection_lost_if.\n")
+            mock_error_logger.assert_called_once_with("Error during connection with 'unit': Test_connection_lost_if.\n",
+                                                      exc_info=False)
             assert "unit" not in abstract_server_handler.server.clients.keys()
 
         with patch.object(logger, "debug") as mock_debug_logger:
@@ -313,7 +315,7 @@ async def test_AbstractServer_check_clients_keepalive(loop_mock, sleep_mock):
                 except IndexError:
                     pass
                 mock_error.assert_called_once_with("No keep alives have been received from "
-                                                   "worker_test in the last minute. Disconnecting")
+                                                   "worker_test in the last minute. Disconnecting", exc_info=False)
 
 
 @pytest.mark.asyncio
@@ -340,6 +342,7 @@ async def test_AbstractServer_echo(loop_mock, sleep_mock):
             mock_info.assert_called_once_with("keepalive worker_test mock")
 
 
+@pytest.mark.asyncio
 @freeze_time("2022-01-01")
 @patch("asyncio.sleep", side_effect=IndexError)
 @patch("asyncio.get_running_loop", return_value=loop)
@@ -365,6 +368,7 @@ async def test_AbstractServer_performance_test(perf_counter_mock, loop_mock, sle
         mock_info.assert_called_once_with("Received size: 20 // Time: 0")
 
 
+@pytest.mark.asyncio
 @freeze_time("2022-01-01")
 @patch("asyncio.sleep", side_effect=IndexError)
 @patch("asyncio.get_running_loop", return_value=loop)

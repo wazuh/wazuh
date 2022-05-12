@@ -92,7 +92,12 @@ cJSON* wdb_agents_insert_vuln_cves(wdb_t *wdb,
                                    bool check_pkg_existence,
                                    const char* severity,
                                    double cvss2_score,
-                                   double cvss3_score) {
+                                   double cvss3_score,
+                                   const char *external_references,
+                                   const char *condition,
+                                   const char *title,
+                                   const char *published,
+                                   const char *updated) {
     char* status_to_insert = NULL;
 
     cJSON* result = cJSON_CreateObject();
@@ -113,7 +118,7 @@ cJSON* wdb_agents_insert_vuln_cves(wdb_t *wdb,
         os_strdup(status, status_to_insert);
     }
 
-    // The package is inserted even on an UPDATE, to replace the status with VALID
+    // On UPDATE the status is replaced with VALID and any feed related field is also updated
     sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_VULN_CVES_INSERT);
 
     if (stmt) {
@@ -124,9 +129,38 @@ cJSON* wdb_agents_insert_vuln_cves(wdb_t *wdb,
         sqlite3_bind_text(stmt, 5, reference, -1, NULL);
         sqlite3_bind_text(stmt, 6, type, -1, NULL);
         sqlite3_bind_text(stmt, 7, status_to_insert, -1, NULL);
-        sqlite3_bind_text(stmt, 8, severity, -1, NULL);
+        if (severity) {
+            sqlite3_bind_text(stmt, 8, severity, -1, NULL);
+        } else {
+            sqlite3_bind_null(stmt, 8);
+        }
         sqlite3_bind_double(stmt, 9, cvss2_score);
         sqlite3_bind_double(stmt, 10, cvss3_score);
+        if (external_references) {
+            sqlite3_bind_text(stmt, 11, external_references, -1, NULL);
+        } else {
+            sqlite3_bind_null(stmt, 11);
+        }
+        if (condition) {
+            sqlite3_bind_text(stmt, 12, condition, -1, NULL);
+        } else {
+            sqlite3_bind_null(stmt, 12);
+        }
+        if (title) {
+            sqlite3_bind_text(stmt, 13, title, -1, NULL);
+        } else {
+            sqlite3_bind_null(stmt, 13);
+        }
+        if (published) {
+            sqlite3_bind_text(stmt, 14, published, -1, NULL);
+        } else {
+            sqlite3_bind_null(stmt, 14);
+        }
+        if (updated) {
+            sqlite3_bind_text(stmt, 15, updated, -1, NULL);
+        } else {
+            sqlite3_bind_null(stmt, 15);
+        }
 
         if (OS_SUCCESS == wdb_exec_stmt_silent(stmt)) {
             cJSON_AddStringToObject(result, "status", "SUCCESS");
@@ -215,7 +249,7 @@ wdbc_result wdb_agents_remove_vuln_cves_by_status(wdb_t *wdb, const char* status
 
     //Execute SQL query limited by size
     int sql_status = SQLITE_ERROR;
-    cJSON* cves = wdb_exec_stmt_sized(stmt, WDB_MAX_RESPONSE_SIZE, &sql_status);
+    cJSON* cves = wdb_exec_stmt_sized(stmt, WDB_MAX_RESPONSE_SIZE, &sql_status, STMT_MULTI_COLUMN);
 
     if (SQLITE_DONE == sql_status) wdb_res = WDBC_OK;
     else if (SQLITE_ROW == sql_status) wdb_res = WDBC_DUE;
