@@ -21,4 +21,10 @@
     <description>Rule to replace the original.</description>
   </rule>
 
+
+  <rule id="10003" level="12" frequency="2" timeframe="120" ignore="60" overwrite="yes">
+    <if_matched_sid>10002</if_matched_sid>
+    <description>Add rule to the list.</description>
+  </rule>
+
 </group>
