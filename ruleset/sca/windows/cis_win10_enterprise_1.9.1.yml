@@ -448,14 +448,14 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> 0'
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> n:^(\d+) compare <= 900'
 
-#  - id: 26029
-#    title: "Configure 'Interactive logon: Message text for users attempting to log on'"
-#    description: "This policy setting specifies a text message that displays to users when they log on. Set the following group policy to a value that is consistent with the security and operational requirements of your organization."
-#    rationale: "Displaying a warning message before logon may help prevent an attack by warning the attacker about the consequences of their misconduct before it happens. It may also help to reinforce corporate policy by notifying employees of the appropriate policy during the logon process. This text is often used for legal reasons—for example, to warn users about the ramifications of misusing company information or to warn them that their actions may be audited"
-#    remediation: "To establish the recommended configuration via GP, configure the following UI path to a value that is consistent with the security and operational requirements of your organization: Computer Configuration/Policies/Windows Settings/Security Settings/Local Policies/Security Options/Interactive logon: Message text for users attempting to log on"
-#    compliance:
-#      - cis: ["2.3.7.5"]
-#      - cis_csc: ["16"]
-#    condition: all
-#    rules:
-#      - "not r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> ''"
+  - id: 26029
+    title: "Configure 'Interactive logon: Message text for users attempting to log on'"
+    description: "This policy setting specifies a text message that displays to users when they log on. Set the following group policy to a value that is consistent with the security and operational requirements of your organization."
+    rationale: "Displaying a warning message before logon may help prevent an attack by warning the attacker about the consequences of their misconduct before it happens. It may also help to reinforce corporate policy by notifying employees of the appropriate policy during the logon process. This text is often used for legal reasons—for example, to warn users about the ramifications of misusing company information or to warn them that their actions may be audited"
+    remediation: "To establish the recommended configuration via GP, configure the following UI path to a value that is consistent with the security and operational requirements of your organization: Computer Configuration/Policies/Windows Settings/Security Settings/Local Policies/Security Options/Interactive logon: Message text for users attempting to log on"
+    compliance:
+      - cis: ["2.3.7.5"]
+      - cis_csc: ["16"]
+    condition: all
+    rules:
+      - 'not c:reg query HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system /v legalnoticetext -> r:\s+legalnoticetext\s+REG_SZ\s+$'
