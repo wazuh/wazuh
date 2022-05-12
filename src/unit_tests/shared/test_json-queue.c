@@ -188,6 +188,7 @@ int main(void) {
             cmocka_unit_test_setup_teardown(test_jqueue_parse_json_overlong_alert, setup_queue, teardown_queue),
             cmocka_unit_test_setup_teardown(test_jqueue_parse_json_fgets_fail, setup_queue, teardown_queue),
             cmocka_unit_test_setup_teardown(test_jqueue_parse_json_fgets_fail_and_retry, setup_queue, teardown_queue)
+
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
