@@ -153,7 +153,7 @@ checks:
     title: "Ensure 'Accounts: Block Microsoft accounts' is set to 'Users can't add or log on with Microsoft accounts"
     description: "This policy setting prevents users from adding new Microsoft accounts on this computer. The recommended state for this setting is: Users can't add or log on with Microsoft accounts."
     rationale: "Organizations that want to effectively implement identity management policies and maintain firm control of what accounts are used to log onto their computers will probably want to block Microsoft accounts. Organizations may also need to block Microsoft accounts in order to meet the requirements of compliance standards that apply to their information systems."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Users can't add or log on with Microsoft accounts : Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Accounts: Block Microsoft accounts."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Users can't add or log on with Microsoft accounts: Computer Configuration/Policies/Windows Settings/Security Settings/Local Policies/Security Options/Accounts: Block Microsoft accounts."
     compliance:
       - cis: ["2.3.1.2"]
       - cis_csc: ["16"]
@@ -181,7 +181,7 @@ checks:
     title: "Ensure 'Accounts: Limit local account use of blank passwords to console logon only' is set to 'Enabled'"
     description: "This policy setting determines whether local accounts that are not password protected can be used to log on from locations other than the physical computer console. If you enable this policy setting, local accounts that have blank passwords will not be able to log on to the network from remote client computers. Such accounts will only be able to log on at the keyboard of the computer. The recommended state for this setting is: Enabled."
     rationale: "Blank passwords are a serious threat to computer security and should be forbidden through both organizational policy and suitable technical measures. In fact, the default settings for Active Directory domains require complex passwords of at least seven characters. However, if users with the ability to create new accounts bypass your domainbased password policies, they could create accounts with blank passwords. For example, a user could build a stand-alone computer, create one or more accounts with blank passwords, and then join the computer to the domain. The local accounts with blank passwords would still function. Anyone who knows the name of one of these unprotected accounts could then use it to log on."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Accounts: Limit local account use of blank passwords to console logon only."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration/Policies/Windows Settings/Security Settings/Local Policies/Security Options/Accounts: Limit local account use of blank passwords to console logon only."
     compliance:
       - cis: ["2.3.1.4"]
       - cis_csc: ["16"]
@@ -221,7 +221,7 @@ checks:
     title: "Ensure 'Audit: Force audit policy subcategory settings (Windows Vista or later) to override audit policy category settings' is set to 'Enabled'"
     description: "This policy setting allows administrators to enable the more precise auditing capabilities present in Windows Vista. The Audit Policy settings available in Windows Server 2003 Active Directory do not yet contain settings for managing the new auditing subcategories. To properly apply the auditing policies prescribed in this baseline, the Audit: Force audit policy subcategory settings (Windows Vista or later) to override audit policy category settings setting needs to be configured to Enabled. The recommended state for this setting is: Enabled. *Important*: Be very cautious about audit settings that can generate a large volume of traffic. For example, if you enable either success or failure auditing for all of the Privilege Use subcategories, the high volume of audit events generated can make it difficult to find other types of entries in the Security log. Such a configuration could also have a significant impact on system performance."
     rationale: "Prior to the introduction of auditing subcategories in Windows Vista, it was difficult to track events at a per-system or per-user level. The larger event categories created too many events and the key information that needed to be audited was difficult to find."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Audit: Force audit policy subcategory settings (Windows Vista or later) to override audit policy category settings."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration/Policies/Windows Settings/Security Settings/Local Policies/Security Options/Audit: Force audit policy subcategory settings (Windows Vista or later) to override audit policy category settings."
     compliance:
       - cis: ["2.3.2.1"]
       - cis_csc: ["6.2"]
@@ -237,26 +237,26 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> SCENoApplyLegacyAuditPolicy -> 1'
 
-  - id: 26015
-      title: "Ensure 'Audit: Shut down system immediately if unable to log security audits' is set to 'Disabled'"
-      description: "This policy setting determines whether the system shuts down if it is unable to log Security events. It is a requirement for Trusted Computer System Evaluation Criteria (TCSEC)-C2 and Common Criteria certification to prevent auditable events from occurring if the audit system is unable to log them. Microsoft has chosen to meet this requirement by halting the system and displaying a stop message if the auditing system experiences a failure. When this policy setting is enabled, the system will be shut down if a security audit cannot be logged for any reason. The recommended state for this setting is: Disabled."
-      rationale: "If the computer is unable to record events to the Security log, critical evidence or important troubleshooting information may not be available for review after a security incident. Also, an attacker could potentially generate a large volume of Security log events to purposely force a computer shutdown."
-      remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Audit: Shut down system immediately if unable to log security audits."
-      compliance:
-        - cis: ["2.3.2.2"]
-        - cis_csc: ["6"]
-        - pci_dss: ["10.7"]
-      references:
-        - 'CCE-35907-5'
-      condition: all
-      rules:
-        - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> CrashOnAuditFail -> 0'
-
   - id: 26016
+    title: "Ensure 'Audit: Shut down system immediately if unable to log security audits' is set to 'Disabled'"
+    description: "This policy setting determines whether the system shuts down if it is unable to log Security events. It is a requirement for Trusted Computer System Evaluation Criteria (TCSEC)-C2 and Common Criteria certification to prevent auditable events from occurring if the audit system is unable to log them. Microsoft has chosen to meet this requirement by halting the system and displaying a stop message if the auditing system experiences a failure. When this policy setting is enabled, the system will be shut down if a security audit cannot be logged for any reason. The recommended state for this setting is: Disabled."
+    rationale: "If the computer is unable to record events to the Security log, critical evidence or important troubleshooting information may not be available for review after a security incident. Also, an attacker could potentially generate a large volume of Security log events to purposely force a computer shutdown."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration/Policies/Windows Settings/Security Settings/Local Policies/Security Options/Audit: Shut down system immediately if unable to log security audits."
+    compliance:
+      - cis: ["2.3.2.2"]
+      - cis_csc: ["6"]
+      - pci_dss: ["10.7"]
+    references:
+      - 'CCE-35907-5'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> CrashOnAuditFail -> 0'
+
+  - id: 26017
     title: "Ensure 'Devices: Allowed to format and eject removable media' is set to 'Administrators'"
     description: "This policy setting determines who is allowed to format and eject removable NTFS media. You can use this policy setting to prevent unauthorized users from removing data on one computer to access it on another computer on which they have local administrator privileges. The recommended state for this setting is: Administrators."
     rationale: "Users may be able to move data on removable disks to a different computer where they have administrative privileges. The user could then take ownership of any file, grant themselves full control, and view or modify any file. The fact that most removable storage devices will eject media by pressing a mechanical button diminishes the advantage of this policy setting."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators and Interactive Users: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Devices: Allowed to format and eject removable media."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators and Interactive Users: Computer Configuration/Policies/Windows Settings/Security Settings/Local Policies/Security Options/Devices: Allowed to format and eject removable media."
     compliance:
       - cis: ["2.3.4.1"]
       - cis_csc: ["5.1"]
@@ -268,28 +268,28 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> AllocateDASD -> 0'
 
-  - id: 26017
-      title: "Ensure 'Devices: Prevent users from installing printer drivers' is set to 'Enabled'"
-      description: "For a computer to print to a shared printer, the driver for that shared printer must be installed on the local computer. This security setting determines who is allowed to install a printer driver as part of connecting to a shared printer. The recommended state for this setting is: Enabled. Note: This setting does not affect the ability to add a local printer. This setting does not affect Administrators."
-      rationale: "It may be appropriate in some organizations to allow users to install printer drivers on their own workstations. However, you should allow only Administrators, not users, to do so on servers, because printer driver installation on a server may unintentionally cause the computer to become less stable. A malicious user could install inappropriate printer drivers in a deliberate attempt to damage the computer, or a user might accidentally install malicious software that masquerades as a printer driver. It is feasible for an attacker to disguise a Trojan horse program as a printer driver. The program may appear to users as if they must use it to print, but such a program could unleash malicious code on your computer network."
-      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Devices: Prevent users from installing printer drivers."
-      compliance:
-        - cis: ["2.3.4.2"]
-        - cis_csc: ["5.1"]
-        - pci_dss: ["2.2.4","2.2.5"]
-        - nist_800_53: ["CM.1"]
-        - tsc: ["CC6.3","CC5.2"]
-      references:
-        - 'CCE-37942-0'
-      condition: all
-      rules:
-        - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Print\Providers\LanMan Print Services\Servers -> AddPrinterDrivers -> 1'
-
   - id: 26018
+    title: "Ensure 'Devices: Prevent users from installing printer drivers' is set to 'Enabled'"
+    description: "For a computer to print to a shared printer, the driver for that shared printer must be installed on the local computer. This security setting determines who is allowed to install a printer driver as part of connecting to a shared printer. The recommended state for this setting is: Enabled. Note: This setting does not affect the ability to add a local printer. This setting does not affect Administrators."
+    rationale: "It may be appropriate in some organizations to allow users to install printer drivers on their own workstations. However, you should allow only Administrators, not users, to do so on servers, because printer driver installation on a server may unintentionally cause the computer to become less stable. A malicious user could install inappropriate printer drivers in a deliberate attempt to damage the computer, or a user might accidentally install malicious software that masquerades as a printer driver. It is feasible for an attacker to disguise a Trojan horse program as a printer driver. The program may appear to users as if they must use it to print, but such a program could unleash malicious code on your computer network."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration/Policies/Windows Settings/Security Settings/Local Policies/Security Options/Devices: Prevent users from installing printer drivers."
+    compliance:
+      - cis: ["2.3.4.2"]
+      - cis_csc: ["5.1"]
+      - pci_dss: ["2.2.4","2.2.5"]
+      - nist_800_53: ["CM.1"]
+      - tsc: ["CC6.3","CC5.2"]
+    references:
+      - 'CCE-37942-0'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Print\Providers\LanMan Print Services\Servers -> AddPrinterDrivers -> 1'
+
+  - id: 26019
     title: "Ensure 'Domain member: Digitally encrypt or sign secure channel data (always)' is set to 'Enabled'"
     description: "This policy setting determines whether all secure channel traffic that is initiated by the domain member must be signed or encrypted. The recommended state for this setting is: Enabled."
     rationale: "When a computer joins a domain, a computer account is created. After it joins the domain, the computer uses the password for that account to create a secure channel with the Domain Controller for its domain every time that it restarts. Requests that are sent on the secure channel are authenticated-and sensitive information such as passwords are encrypted-but the channel is not integrity-checked, and not all information is encrypted. Digital encryption and signing of the secure channel is a good idea where it is supported. The secure channel protects domain credentials as they are sent to the Domain Controller."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain member: Digitally encrypt or sign secure channel data (always)."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration/Policies/Windows Settings/Security Settings/Local Policies/Security Options/Domain member: Digitally encrypt or sign secure channel data (always)."
     compliance:
       - cis: ["2.3.6.1"]
       - cis_csc: ["13"]
@@ -303,11 +303,11 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> RequireSignOrSeal -> 1'
 
-  - id: 26019
+  - id: 26020
     title: "Ensure 'Domain member: Digitally encrypt secure channel data (when possible)' is set to 'Enabled'"
     description: "This policy setting determines whether a domain member should attempt to negotiate encryption for all secure channel traffic that it initiates. The recommended state for this setting is: Enabled."
     rationale: "When a computer joins a domain, a computer account is created. After it joins the domain, the computer uses the password for that account to create a secure channel with the Domain Controller for its domain every time that it restarts. Requests that are sent on the secure channel are authenticated-and sensitive information such as passwords are encrypted-but the channel is not integrity-checked, and not all information is encrypted. Digital encryption and signing of the secure channel is a good idea where it is supported. The secure channel protects domain credentials as they are sent to the Domain Controller."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain member: Digitally encrypt secure channel data (when possible)."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration/Policies/Windows Settings/Security Settings/Local Policies/Security Options/Domain member: Digitally encrypt secure channel data (when possible)."
     compliance:
       - cis: [ "2.3.6.2" ]
       - cis_csc: [ "13" ]
@@ -321,29 +321,29 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> SealSecureChannel -> 1'
 
-  - id: 26020
-      title: "Ensure 'Domain member: Digitally sign secure channel data (when possible)' is set to 'Enabled'"
-      description: "This policy setting determines whether a domain member should attempt to negotiate whether all secure channel traffic that it initiates must be digitally signed. Digital signatures protect the traffic from being modified by anyone who captures the data as it traverses the network. The recommended state for this setting is: Enabled."
-      rationale: "When a computer joins a domain, a computer account is created. After it joins the domain, the computer uses the password for that account to create a secure channel with the Domain Controller for its domain every time that it restarts. Requests that are sent on the secure channel are authenticated-and sensitive information such as passwords are encrypted-but the channel is not integrity-checked, and not all information is encrypted. Digital encryption and signing of the secure channel is a good idea where it is supported. The secure channel protects domain credentials as they are sent to the Domain Controller."
-      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain member: Digitally sign secure channel data (when possible)."
-      compliance:
-        - cis: ["2.3.6.3"]
-        - cis_csc: ["13"]
-        - pci_dss: ["4.1"]
-        - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
-        - nist_800_53: ["SC.8"]
-        - tsc: ["CC6.1","CC6.7","CC7.2"]
-      references:
-        - 'CCE-37222-7'
-      condition: all
-      rules:
-        - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> SignSecureChannel -> 1'
-
   - id: 26021
+    title: "Ensure 'Domain member: Digitally sign secure channel data (when possible)' is set to 'Enabled'"
+    description: "This policy setting determines whether a domain member should attempt to negotiate whether all secure channel traffic that it initiates must be digitally signed. Digital signatures protect the traffic from being modified by anyone who captures the data as it traverses the network. The recommended state for this setting is: Enabled."
+    rationale: "When a computer joins a domain, a computer account is created. After it joins the domain, the computer uses the password for that account to create a secure channel with the Domain Controller for its domain every time that it restarts. Requests that are sent on the secure channel are authenticated-and sensitive information such as passwords are encrypted-but the channel is not integrity-checked, and not all information is encrypted. Digital encryption and signing of the secure channel is a good idea where it is supported. The secure channel protects domain credentials as they are sent to the Domain Controller."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration/Policies/Windows Settings/Security Settings/Local Policies/Security Options/Domain member: Digitally sign secure channel data (when possible)."
+    compliance:
+      - cis: ["2.3.6.3"]
+      - cis_csc: ["13"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1","CC6.7","CC7.2"]
+    references:
+      - 'CCE-37222-7'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> SignSecureChannel -> 1'
+
+  - id: 26022
     title: "Ensure 'Domain member: Disable machine account password changes' is set to 'Disabled'"
     description: "This policy setting determines whether a domain member can periodically change its computer account password. Computers that cannot automatically change their account passwords are potentially vulnerable, because an attacker might be able to determine the password for the system's domain account. The recommended state for this setting is: Disabled."
     rationale: "The default configuration for Windows Server 2003-based computers that belong to a domain is that they are automatically required to change the passwords for their accounts every 30 days. If you disable this policy setting, computers that run Windows Server 2003 will retain the same passwords as their computer accounts. Computers that are no longer able to automatically change their account password are at risk from an attacker who could determine the password for the computer's domain account."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain member: Disable machine account password changes."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration/Policies/Windows Settings/Security Settings/Local Policies/Security Options/Domain member: Disable machine account password changes."
     compliance:
       - cis: ["2.3.6.4"]
       - cis_csc: ["16"]
@@ -355,7 +355,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> DisablePasswordChange -> 0'
 
-  - id: 26022
+  - id: 26023
     title: "Ensure 'Domain member: Maximum machine account password age' is set to '30 or fewer days, but not 0'"
     description: "This policy setting determines the maximum allowable age for a computer account password. By default, domain members automatically change their domain passwords every 30 days. If you increase this interval significantly so that the computers no longer change their passwords, an attacker would have more time to undertake a brute force attack against one of the computer accounts."
     rationale: "In Active Directory-based domains, each computer has an account and password just like every user. By default, the domain members automatically change their domain password every 30 days. If you increase this interval significantly, or set it to 0 so that the computers no longer change their passwords, an attacker will have more time to undertake a brute force attack to guess the password of one or more computer accounts."
@@ -368,25 +368,25 @@ checks:
       - 'c:net.exe accounts -> n:Maximum password age (days):\s+(\d+) compare <= 30'
       - 'c:net.exe accounts -> n:Maximum password age (days):\s+(\d+) compare > 0'
 
-  - id: 26023
-      title: "Ensure 'Domain member: Require strong (Windows 2000 or later) session key' is set to 'Enabled'"
-      description: "When this policy setting is enabled, a secure channel can only be established with Domain Controllers that are capable of encrypting secure channel data with a strong (128-bit) session key. To enable this policy setting, all Domain Controllers in the domain must be able to encrypt secure channel data with a strong key, which means all Domain Controllers must be running Microsoft Windows 2000 or newer. The recommended state for this setting is: Enabled."
-      rationale: "Session keys that are used to establish secure channel communications between Domain Controllers and member computers are much stronger in Windows 2000 than they were in previous Microsoft operating systems. Whenever possible, you should take advantage of these stronger session keys to help protect secure channel communications from attacks that attempt to hijack network sessions and eavesdropping. (Eavesdropping is a form of hacking in which network data is read or altered in transit. The data can be modified to hide or change the sender, or be redirected.)"
-      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain member: Require strong (Windows 2000 or later) session key."
-      compliance:
-        - cis: ["2.3.6.6"]
-        - cis_csc: ["13"]
-        - pci_dss: ["4.1"]
-        - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
-        - nist_800_53: ["SC.8"]
-        - tsc: ["CC6.1","CC6.7","CC7.2"]
-      references:
-        - 'CCE-37614-5'
-      condition: all
-      rules:
-        - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> RequireStrongKey -> 1'
-
   - id: 26024
+    title: "Ensure 'Domain member: Require strong (Windows 2000 or later) session key' is set to 'Enabled'"
+    description: "When this policy setting is enabled, a secure channel can only be established with Domain Controllers that are capable of encrypting secure channel data with a strong (128-bit) session key. To enable this policy setting, all Domain Controllers in the domain must be able to encrypt secure channel data with a strong key, which means all Domain Controllers must be running Microsoft Windows 2000 or newer. The recommended state for this setting is: Enabled."
+    rationale: "Session keys that are used to establish secure channel communications between Domain Controllers and member computers are much stronger in Windows 2000 than they were in previous Microsoft operating systems. Whenever possible, you should take advantage of these stronger session keys to help protect secure channel communications from attacks that attempt to hijack network sessions and eavesdropping. (Eavesdropping is a form of hacking in which network data is read or altered in transit. The data can be modified to hide or change the sender, or be redirected.)"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration/Policies/Windows Settings/Security Settings/Local Policies/Security Options/Domain member: Require strong (Windows 2000 or later) session key."
+    compliance:
+      - cis: ["2.3.6.6"]
+      - cis_csc: ["13"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1","CC6.7","CC7.2"]
+    references:
+      - 'CCE-37614-5'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> RequireStrongKey -> 1'
+
+  - id: 26025
     title: "Ensure 'Interactive logon: Do not require CTRL+ALT+DEL' is set to 'Disabled'"
     description: "This policy setting determines whether users must press CTRL+ALT+DEL before they log on."
     rationale: "Microsoft developed this feature to make it easier for users with certain types of physical impairments to log on to computers that run Windows. If users are not required to press CTRL+ALT+DEL, they are susceptible to attacks that attempt to intercept their passwords. If CTRL+ALT+DEL is required before logon, user passwords are communicated by means of a trusted path."
@@ -398,11 +398,11 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> DisableCAD -> 0'
 
-  - id: 26025
+  - id: 26026
     title: "Ensure 'Interactive logon: Don't display last signed-in' is set to 'Enabled'"
     description: "This policy setting determines whether the account name of the last user to log on to the client computers in your organization will be displayed in each computer's respective Windows logon screen. Enable this policy setting to prevent intruders from collecting account names visually from the screens of desktop or laptop computers in your organization. The recommended state for this setting is: Enabled."
     rationale: "An attacker with access to the console (for example, someone with physical access or someone who is able to connect to the server through Remote Desktop Services) could view the name of the last user who logged on to the server. The attacker could then try to guess the password, use a dictionary, or use a brute-force attack to try and log on."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Do not display last user name."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration/Policies/Windows Settings/Security Settings/Local Policies/Security Options/Interactive logon: Do not display last user name."
     compliance:
       - cis: ["2.3.7.2"]
       - cis_csc: ["13"]
@@ -418,7 +418,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> DontDisplayLastUserName -> 1'
 
-  - id: 26026
+  - id: 26027
     title: "Ensure 'Interactive logon: Machine account lockout threshold' is set to '10 or fewer invalid logon attempts, but not 0'"
     description: "This security setting determines the number of failed logon attempts that causes the machine to be locked out. Failed password attempts against workstations or member servers that have been locked using either CTRL+ALT+DELETE or password protected screen savers counts as failed logon attempts. The machine lockout policy is enforced only on those machines that have BitLocker enabled for protecting OS volumes. Please ensure that appropriate recovery password backup policies are enabled."
     rationale: "If a machine is lost or stolen, or if an insider threat attempts a brute force password attack against the computer, it is important to ensure that BitLocker will lock the computer and therefore prevent a successful attack."
@@ -431,11 +431,11 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> MaxDevicePasswordFailedAttempts -> 0'
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> MaxDevicePasswordFailedAttempts -> n:^(\d+) compare <=30'
 
-  - id: 26027
+  - id: 26028
     title: "Ensure 'Interactive logon: Machine inactivity limit' is set to '900 or fewer second(s), but not 0'"
     description: "Windows notices inactivity of a logon session, and if the amount of inactive time exceeds the inactivity limit, then the screen saver will run, locking the session. The recommended state for this setting is: 900 or fewer second(s), but not 0. Note: A value of 0 does not conform to the benchmark as it disables the machine inactivity limit."
     rationale: "If a user forgets to lock their computer when they walk away it's possible that a passerby will hijack it."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to 900 or fewer seconds, but not 0: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Machine inactivity limit."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to 900 or fewer seconds, but not 0: Computer Configuration/Policies/Windows Settings/Security Settings/Local Policies/Security Options/Interactive logon: Machine inactivity limit."
     compliance:
       - cis: ["2.3.7.4"]
       - cis_csc: ["16.5"]
@@ -448,3 +448,14 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> 0'
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> n:^(\d+) compare <= 900'
 
+#  - id: 26029
+#    title: "Configure 'Interactive logon: Message text for users attempting to log on'"
+#    description: "This policy setting specifies a text message that displays to users when they log on. Set the following group policy to a value that is consistent with the security and operational requirements of your organization."
+#    rationale: "Displaying a warning message before logon may help prevent an attack by warning the attacker about the consequences of their misconduct before it happens. It may also help to reinforce corporate policy by notifying employees of the appropriate policy during the logon process. This text is often used for legal reasons—for example, to warn users about the ramifications of misusing company information or to warn them that their actions may be audited"
+#    remediation: "To establish the recommended configuration via GP, configure the following UI path to a value that is consistent with the security and operational requirements of your organization: Computer Configuration/Policies/Windows Settings/Security Settings/Local Policies/Security Options/Interactive logon: Message text for users attempting to log on"
+#    compliance:
+#      - cis: ["2.3.7.5"]
+#      - cis_csc: ["16"]
+#    condition: all
+#    rules:
+#      - "not r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> ''"
