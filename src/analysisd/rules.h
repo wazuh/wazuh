@@ -329,8 +329,17 @@ int OS_AddRule(RuleInfo *read_rule, RuleNode **r_node);
  */
 int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, OSList* log_msg);
 
-/* Add an overwrite rule */
-int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid);
+/**
+ * @brief Add an overwrite rule.
+ * @param r_node node to look for the original rule and replace it
+ * @param newrule overwritet rule information
+ * @param sid ID of the rule to be overwritten
+ * @param log_msg List to save log messages.
+ * @retval -1 Critical error.
+ * @retval  0 Not overwritten.
+ * @retval  1 Overwritten.
+ */
+int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid, OSList* log_msg);
 
 /* Mark groups (if_matched_group) */
 int OS_MarkGroup(RuleNode *r_node, RuleInfo *orig_rule);

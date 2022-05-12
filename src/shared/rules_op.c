@@ -1119,14 +1119,6 @@ int OS_ReadXMLRules(const char *rulefile,
                 k++;
             }
 
-            /* Check for valid overwrite */
-            if ((config_ruleinfo->if_sid || config_ruleinfo->if_group || config_ruleinfo->if_level)
-                && (config_ruleinfo->alert_opts & DO_OVERWRITE)) {
-                merror("Invalid use of overwrite option. "
-                       "Could not overwrite parent rule at rule '%d'.", config_ruleinfo->sigid);
-                goto cleanup;
-            }
-
             /* Check for a valid use of frequency */
             if ((config_ruleinfo->context_opts || config_ruleinfo->same_field ||
                     config_ruleinfo->different_field ||

@@ -267,7 +267,7 @@ int OS_AddRule(RuleInfo *read_rule, RuleNode **r_node)
 }
 
 /* Update rule info for overwritten ones */
-int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
+int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid, OSList* log_msg)
 {
     /* If no r_node is given, get first node */
     if (r_node == NULL) {
@@ -385,7 +385,29 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
             }
             r_node->ruleinfo->lists = newrule->lists;
 
-            /* if_sid / if_group / if_level are not overwritten */
+            /*
+                if_sid, if_group, and if_level cannot be overwritten.
+                When the new rule tries to replace the value throws a warning.
+            */
+
+            if (newrule->if_sid) {
+                if (!r_node->ruleinfo->if_sid ||
+                        (r_node->ruleinfo->if_sid && strcmp(r_node->ruleinfo->if_sid, newrule->if_sid))) {
+                    smwarn(log_msg, ANALYSISD_INV_OVERWRITE, "if_sid", sid);
+                }
+            }
+            if (newrule->if_group) {
+                if (!r_node->ruleinfo->if_group ||
+                        (r_node->ruleinfo->if_group && strcmp(r_node->ruleinfo->if_group, newrule->if_group))) {
+                    smwarn(log_msg, ANALYSISD_INV_OVERWRITE, "if_group", sid);
+                }
+            }
+            if (newrule->if_level) {
+                if (!r_node->ruleinfo->if_level ||
+                        (r_node->ruleinfo->if_level && strcmp(r_node->ruleinfo->if_level, newrule->if_level))) {
+                    smwarn(log_msg, ANALYSISD_INV_OVERWRITE, "if_level", sid);
+                }
+            }
 
             if (r_node->ruleinfo->if_matched_regex) {
                 OSRegex_FreePattern(r_node->ruleinfo->if_matched_regex);
@@ -441,7 +463,7 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
 
         /* Check if the child has a rule */
         if (r_node->child) {
-            if (OS_AddRuleInfo(r_node->child, newrule, sid)) {
+            if (OS_AddRuleInfo(r_node->child, newrule, sid, log_msg)) {
                 return (1);
             }
         }

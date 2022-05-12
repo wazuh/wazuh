@@ -1609,13 +1609,6 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                     }
                 }
 
-                /* Check for valid overwrite */
-                if ((config_ruleinfo->if_sid || config_ruleinfo->if_group || config_ruleinfo->if_level)
-                    && (config_ruleinfo->alert_opts & DO_OVERWRITE)) {
-                    smwarn(log_msg, ANALYSISD_INV_OVERWRITE, config_ruleinfo->sigid);
-                    do_skip_rule = true;
-                }
-
                 // Skip rule, without having to abort analysisd execution
                 if (do_skip_rule) {
                     w_free_rules_tmp_params(&rule_tmp_params);
@@ -1891,7 +1884,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                 OS_AddRule(config_ruleinfo, r_node);
             } else if (config_ruleinfo->alert_opts & DO_OVERWRITE) {
 
-                if (!OS_AddRuleInfo(*r_node, config_ruleinfo, config_ruleinfo->sigid)) {
+                if (!OS_AddRuleInfo(*r_node, config_ruleinfo, config_ruleinfo->sigid, log_msg)) {
 
                     // If there is no rule to overwrite, then the rule is added as any other rule
                     if (OS_AddChild(config_ruleinfo, r_node, log_msg) == -1) {
