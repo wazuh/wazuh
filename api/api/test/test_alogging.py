@@ -139,14 +139,17 @@ def test_accesslogger_log_hash_auth_context(request_path, token_info, request_bo
         test_access_logger = alogging.AccessLogger(logger=logging.getLogger('test'), log_format=MagicMock())
         test_access_logger.log(request=request, response=MagicMock(), time=0.0)
 
-        log_message = mock_logger_info.call_args.args[0].split(" ")
+        message_api_log = mock_logger_info.call_args_list[0][0][0].split(" ")
+        message_api_json = mock_logger_info.call_args_list[1][0][0]
 
         # Test authorization context hash is being logged
         if (token_info and token_info.get('hash_auth_context')) or \
                 (request_path == "/security/user/authenticate/run_as" and request_body):
-            assert log_message[1] == f"({HASH_AUTH_CONTEXT_TEST})"
+            assert message_api_log[1] == f"({HASH_AUTH_CONTEXT_TEST})"
+            assert message_api_json.get('hash_auth_context') == HASH_AUTH_CONTEXT_TEST
         else:
-            assert log_message[1] == request.remote
+            assert message_api_log[1] == request.remote
+            assert 'hash_auth_context' not in message_api_json
 
 
 @pytest.mark.parametrize('json_log', [
