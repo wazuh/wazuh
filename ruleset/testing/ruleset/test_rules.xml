@@ -1,29 +1,5 @@
 <group name="qa,test">
 
-<!-- May 27 14:49:04 testUser ow_test[13244]: overwrite and list test -->
-<!-- testing overwrite and list -->
-  <rule id="99900" level="5">
-    <match>overwrite and list test</match>
-    <description>Testing overwrite and list</description>
-  </rule>
-
-  <rule id="99900" level="7" overwrite="yes">
-    <match>overwrite and list test</match>
-    <list field="program_name" lookup="match_key">etc/lists/black_list</list>
-    <description>Successfully</description>
-  </rule>
-
-<!-- testing overwrite and field -->
-  <rule id="99901" level="3">
-    <field name="example">TEST1</field>
-    <description>Testing overwrite and field</description>
-  </rule>
-
-  <rule id="99901" level="6" overwrite="yes">
-    <field name="example">TEST2</field>
-    <description>Successfully</description>
-  </rule>
-
 <!-- Trigger alerts which depend on same_fields . Also it tests if_matched_sid -->
 <!-- Dec 25 20:45:02 MyHost test_same_fields[12345]: User 'admin' logged from '192.168.1.100' 5 this is the same_fields test -->
 <!-- Dec 25 20:45:02 MyHost test_same_fields[12345]: User 'admin' logged from '192.168.1.100' 5 this is the same_fields test -->
