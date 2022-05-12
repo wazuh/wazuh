@@ -113,12 +113,13 @@ void jqueue_close(file_queue * queue) {
 cJSON * jqueue_parse_json(file_queue * queue) {
     cJSON * object = NULL;
     char buffer[OS_MAXSTR + 1];
+    int64_t initial_pos;
     int64_t current_pos;
     int64_t offset;
     const char * jsonErrPtr;
     char * end;
 
-    current_pos = w_ftell(queue->fp);
+    initial_pos = w_ftell(queue->fp);
 
     if (fgets(buffer, OS_MAXSTR + 1, queue->fp)) {
 
@@ -136,6 +137,7 @@ cJSON * jqueue_parse_json(file_queue * queue) {
             return NULL;
         }
 
+        current_pos = initial_pos;
         offset = w_ftell(queue->fp);
         while ((offset-current_pos) == OS_MAXSTR) {
             if (fgets(buffer, OS_MAXSTR + 1, queue->fp)) {
@@ -152,8 +154,8 @@ cJSON * jqueue_parse_json(file_queue * queue) {
 
         mdebug2("Can't read from '%s'. Trying again", queue->file_name);
 
-        if (current_pos >= 0) {
-            if (fseek(queue->fp, current_pos, SEEK_SET) != 0) {
+        if (initial_pos >= 0) {
+            if (fseek(queue->fp, initial_pos, SEEK_SET) != 0) {
                 queue->flags = CRALERT_READ_FAILED;
             }
         }
