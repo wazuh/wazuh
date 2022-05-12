@@ -31,7 +31,7 @@ def send_logtest_msg(command: str = None, parameters: dict = None):
     logtest_socket.close()
     try:
         response['data']['output']['timestamp'] = datetime.strptime(
-            response['data']['output']['timestamp'], "%Y-%m-%dT%H:%M:%S.%f+0000").strftime(decimals_date_format)
+            response['data']['output']['timestamp'], "%Y-%m-%dT%H:%M:%S.%f%z").strftime(decimals_date_format)
     except KeyError:
         pass
 
