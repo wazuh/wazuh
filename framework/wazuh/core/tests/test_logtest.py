@@ -29,9 +29,9 @@ def test_send_logtest_msg(create_message_mock, close_mock, send_mock, init_mock,
         Params that will be sent to the logtest socket.
     """
     with patch('wazuh.core.logtest.WazuhSocketJSON.receive',
-               return_value={'data': {'response': True, 'output': {'timestamp': '1970-01-01T00:00:00.000000+0200'}}}):
+               return_value={'data': {'response': True, 'output': {'timestamp': '1970-01-01T00:00:00.000000-0200'}}}):
         response = send_logtest_msg(**params)
         init_mock.assert_called_with(LOGTEST_SOCKET)
         create_message_mock.assert_called_with(origin={'name': 'Logtest', 'module': 'framework'}, **params)
-        assert response == {'data': {'response': True, 'output': {'timestamp': '1970-01-01T00:00:00.000000Z'}}}
+        assert response == {'data': {'response': True, 'output': {'timestamp': '1970-01-01T02:00:00.000000Z'}}}
 
