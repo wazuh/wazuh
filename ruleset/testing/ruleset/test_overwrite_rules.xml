@@ -28,6 +28,7 @@
   <!-- 
     Second use case:
       Testing overwrite & if_matched_sid
+      Every option apart from if_matched_sid should be overwritten
   -->
 
   <rule id="999913" level="7">
@@ -42,13 +43,14 @@
   </rule>
 
   <rule id="999914" level="12" frequency="3" timeframe="120" ignore="60" overwrite="yes">
-    <if_matched_sid>999913</if_matched_sid>
+    <if_matched_sid>999910</if_matched_sid>
     <description>Overwrite if_matched_sid.</description>
   </rule>
 
   <!-- 
     Third use case:
       Testing overwrite & if_matched_group
+      Every option apart from if_matched_group should be overwritten
   -->
 
   <rule id="999915" level="7">
@@ -66,12 +68,12 @@
   </rule>
 
   <rule id="999917" level="10" frequency="3" timeframe="120" ignore="60">
-    <if_matched_group>invalid_group</if_matched_group>
+    <if_matched_group>my_group</if_matched_group>
     <description>Frequency rule.</description>
   </rule>
 
   <rule id="999917" level="12" frequency="3" timeframe="120" ignore="60" overwrite="yes">
-    <if_matched_group>my_group</if_matched_group>
+    <if_matched_group>invalid_group</if_matched_group>
     <description>Overwrite if_matched_group.</description>
   </rule>
 

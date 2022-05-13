@@ -390,21 +390,21 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid, OSList* log_msg
                 When the new rule tries to replace the value throws a warning.
             */
 
-            if (newrule->if_sid) {
+            if (newrule->if_sid && !newrule->if_matched_sid) {
                 if (!r_node->ruleinfo->if_sid ||
-                        (r_node->ruleinfo->if_sid && strcmp(r_node->ruleinfo->if_sid, newrule->if_sid))) {
+                        strcmp(r_node->ruleinfo->if_sid, newrule->if_sid)) {
                     smwarn(log_msg, ANALYSISD_INV_OVERWRITE, "if_sid", sid);
                 }
             }
-            if (newrule->if_group) {
+            if (newrule->if_group && !newrule->if_matched_group) {
                 if (!r_node->ruleinfo->if_group ||
-                        (r_node->ruleinfo->if_group && strcmp(r_node->ruleinfo->if_group, newrule->if_group))) {
+                        strcmp(r_node->ruleinfo->if_group, newrule->if_group)) {
                     smwarn(log_msg, ANALYSISD_INV_OVERWRITE, "if_group", sid);
                 }
             }
             if (newrule->if_level) {
                 if (!r_node->ruleinfo->if_level ||
-                        (r_node->ruleinfo->if_level && strcmp(r_node->ruleinfo->if_level, newrule->if_level))) {
+                        strcmp(r_node->ruleinfo->if_level, newrule->if_level)) {
                     smwarn(log_msg, ANALYSISD_INV_OVERWRITE, "if_level", sid);
                 }
             }
@@ -415,12 +415,22 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid, OSList* log_msg
             }
             r_node->ruleinfo->if_matched_regex = newrule->if_matched_regex;
 
-            if (r_node->ruleinfo->if_matched_group) {
-                OSMatch_FreePattern(r_node->ruleinfo->if_matched_group);
-                os_free(r_node->ruleinfo->if_matched_group);
+            if (newrule->if_matched_group) {
+                if (!r_node->ruleinfo->if_matched_group ||
+                        strcmp(r_node->ruleinfo->if_matched_group->raw, newrule->if_matched_group->raw)) {
+                    smwarn(log_msg, ANALYSISD_INV_OVERWRITE, "if_matched_group", sid);
+                }
+                OSMatch_FreePattern(newrule->if_matched_group);
+                os_free(newrule->if_matched_group);
             }
-            r_node->ruleinfo->if_matched_group = newrule->if_matched_group;
-            r_node->ruleinfo->if_matched_sid = newrule->if_matched_sid;
+
+            if (newrule->if_matched_sid) {
+                if (!r_node->ruleinfo->if_matched_sid ||
+                        r_node->ruleinfo->if_matched_sid != newrule->if_matched_sid) {
+                    smwarn(log_msg, ANALYSISD_INV_OVERWRITE, "if_matched_sid", sid);
+                }
+            }
+
             r_node->ruleinfo->compiled_rule = newrule->compiled_rule;
 
             if (r_node->ruleinfo->ar) {

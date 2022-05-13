@@ -1633,7 +1633,8 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                 }
 
                 /* If if_matched_group we must have a if_sid or if_group */
-                if (rule_tmp_params.if_matched_group) {
+                if (rule_tmp_params.if_matched_group &&
+                    !(config_ruleinfo->alert_opts & DO_OVERWRITE)) {
                     if (!config_ruleinfo->if_sid && !config_ruleinfo->if_group) {
                         os_strdup(rule_tmp_params.if_matched_group, config_ruleinfo->if_group);
                     }
@@ -1642,7 +1643,8 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                 /* If_matched_sid, we need to get the if_sid */
                 if (config_ruleinfo->if_matched_sid &&
                         !config_ruleinfo->if_sid &&
-                        !config_ruleinfo->if_group) {
+                        !config_ruleinfo->if_group &&
+                        !(config_ruleinfo->alert_opts & DO_OVERWRITE)) {
                     os_calloc(16, sizeof(char), config_ruleinfo->if_sid);
                     snprintf(config_ruleinfo->if_sid, 15, "%d",
                              config_ruleinfo->if_matched_sid);
@@ -1911,7 +1913,8 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
             }
 
             /* Set the event_search pointer */
-            if (config_ruleinfo->if_matched_sid) {
+            if (config_ruleinfo->if_matched_sid &&
+                !(config_ruleinfo->alert_opts & DO_OVERWRITE)) {
 
                 config_ruleinfo->event_search = (void *(*)(void *, void *, void *, void *)) Search_LastSids;
 
@@ -1920,7 +1923,8 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
             }
 
             /* Mark the rules that match if_matched_group */
-            else if (config_ruleinfo->if_matched_group) {
+            else if (config_ruleinfo->if_matched_group &&
+                    !(config_ruleinfo->alert_opts & DO_OVERWRITE)) {
                 /* Create list */
                 config_ruleinfo->group_search = OSList_Create();
                 if (!config_ruleinfo->group_search) {
