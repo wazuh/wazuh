@@ -824,7 +824,7 @@ ifeq (${TARGET}, winagent)
 		$(foreach binary, ${EXECUTABLE_FILES}, ${MING_BASE}objcopy --strip-unneeded ${binary};) \
 	fi
 else
-	@$(foreach binary, ${EXECUTABLE_FILES}, (objdump -h $(binary) | grep -q .debug_info && objcopy --only-keep-debug $(binary) ${SYMBOLS_PATH}/$(basename $(notdir $(binary))).debug && objcopy --strip-unneeded $(binary)) || true;)
+	@$(foreach binary, ${EXECUTABLE_FILES}, (objdump -h $(binary) | grep -q .debug_info && objcopy --only-keep-debug $(binary) ${SYMBOLS_PATH}/$(basename $(notdir $(binary))).debug && objcopy --strip-unneeded $(binary) && objcopy --add-gnu-debuglink=${SYMBOLS_PATH}/$(basename $(notdir $(binary))).debug $(binary)) || true;)
 endif
 endif
 ifeq (${uname_S}, Darwin)
