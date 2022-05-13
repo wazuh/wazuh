@@ -331,8 +331,6 @@ void w_inc_global_agent_select_agent_name();
 
 void w_inc_global_agent_select_agent_group();
 
-void w_inc_global_agent_select_keepalive();
-
 void w_inc_global_agent_find_agent();
 
 void w_inc_global_agent_get_agent_info();
@@ -355,11 +353,7 @@ void w_inc_global_group_find_group();
 
 void w_inc_global_belongs_insert_agent_belong();
 
-void w_inc_global_belongs_delete_agent_belon();
-
 void w_inc_global_belongs_delete_group_belong();
-
-void w_inc_global_labels_set_labels();
 
 void w_inc_global_labels_get_labels();
 

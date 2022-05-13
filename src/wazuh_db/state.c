@@ -313,12 +313,6 @@ void w_inc_global_agent_select_agent_group(){
     w_mutex_unlock(&db_stats_t_mutex);
 }
 
-void w_inc_global_agent_select_keepalive(){
-    w_mutex_lock(&db_stats_t_mutex);
-    wazuhdb_stats.queries_breakdown.global_breakdown.agent.select_keepalive_queries++;
-    w_mutex_unlock(&db_stats_t_mutex);
-}
-
 void w_inc_global_agent_find_agent(){
     w_mutex_lock(&db_stats_t_mutex);
     wazuhdb_stats.queries_breakdown.global_breakdown.agent.find_agent_queries++;
@@ -385,21 +379,9 @@ void w_inc_global_belongs_insert_agent_belong(){
     w_mutex_unlock(&db_stats_t_mutex);
 }
 
-void w_inc_global_belongs_delete_agent_belon(){
-    w_mutex_lock(&db_stats_t_mutex);
-    wazuhdb_stats.queries_breakdown.global_breakdown.belongs.delete_agent_belong_queries++;
-    w_mutex_unlock(&db_stats_t_mutex);
-}
-
 void w_inc_global_belongs_delete_group_belong(){
     w_mutex_lock(&db_stats_t_mutex);
     wazuhdb_stats.queries_breakdown.global_breakdown.belongs.delete_group_belong_queries++;
-    w_mutex_unlock(&db_stats_t_mutex);
-}
-
-void w_inc_global_labels_set_labels(){
-    w_mutex_lock(&db_stats_t_mutex);
-    wazuhdb_stats.queries_breakdown.global_breakdown.labels.set_labels_queries++;
     w_mutex_unlock(&db_stats_t_mutex);
 }
 
