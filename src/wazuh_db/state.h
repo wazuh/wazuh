@@ -355,7 +355,7 @@ void w_inc_global_group_find_group();
 
 void w_inc_global_belongs_insert_agent_belong();
 
-void w_inc_global_belongs_delete_agent_belon();
+void w_inc_global_belongs_delete_agent_belong();
 
 void w_inc_global_belongs_delete_group_belong();
 
