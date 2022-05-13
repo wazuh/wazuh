@@ -385,7 +385,7 @@ void w_inc_global_belongs_insert_agent_belong(){
     w_mutex_unlock(&db_stats_t_mutex);
 }
 
-void w_inc_global_belongs_delete_agent_belon(){
+void w_inc_global_belongs_delete_agent_belong(){
     w_mutex_lock(&db_stats_t_mutex);
     wazuhdb_stats.queries_breakdown.global_breakdown.belongs.delete_agent_belong_queries++;
     w_mutex_unlock(&db_stats_t_mutex);
