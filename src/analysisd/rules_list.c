@@ -267,7 +267,7 @@ int OS_AddRule(RuleInfo *read_rule, RuleNode **r_node)
 }
 
 /* Update rule info for overwritten ones */
-int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
+int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid, OSList* log_msg)
 {
     /* If no r_node is given, get first node */
     if (r_node == NULL) {
@@ -281,14 +281,199 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
     while (r_node) {
         /* Check if the sigid matches */
         if (r_node->ruleinfo->sigid == sid) {
-            os_remove_ruleinfo(r_node->ruleinfo);
-            r_node->ruleinfo = newrule;
+            r_node->ruleinfo->level = newrule->level;
+            r_node->ruleinfo->maxsize = newrule->maxsize;
+            r_node->ruleinfo->frequency = newrule->frequency;
+            r_node->ruleinfo->timeframe = newrule->timeframe;
+            r_node->ruleinfo->context = newrule->context;
+
+            r_node->ruleinfo->ignore_time = newrule->ignore_time;
+            r_node->ruleinfo->ignore = newrule->ignore;
+            r_node->ruleinfo->ckignore = newrule->ckignore;
+            free_strarray(r_node->ruleinfo->ignore_fields);
+            r_node->ruleinfo->ignore_fields = newrule->ignore_fields;
+            free_strarray(r_node->ruleinfo->ckignore_fields);
+            r_node->ruleinfo->ckignore_fields = newrule->ckignore_fields;
+
+            r_node->ruleinfo->alert_opts = newrule->alert_opts;
+            r_node->ruleinfo->context_opts = newrule->context_opts;
+            r_node->ruleinfo->same_field = newrule->same_field;
+            r_node->ruleinfo->different_field = newrule->different_field;
+            r_node->ruleinfo->category = newrule->category;
+            r_node->ruleinfo->decoded_as = newrule->decoded_as;
+
+            os_free(r_node->ruleinfo->group);
+            r_node->ruleinfo->group = newrule->group;
+
+            w_free_expression_t(&r_node->ruleinfo->match);
+            r_node->ruleinfo->match = newrule->match;
+            w_free_expression_t(&r_node->ruleinfo->regex);
+            r_node->ruleinfo->regex = newrule->regex;
+
+            os_free(r_node->ruleinfo->day_time);
+            r_node->ruleinfo->day_time = newrule->day_time;
+            os_free(r_node->ruleinfo->week_day);
+            r_node->ruleinfo->week_day = newrule->week_day;
+
+            w_free_expression_t(&r_node->ruleinfo->srcip);
+            r_node->ruleinfo->srcip = newrule->srcip;
+            w_free_expression_t(&r_node->ruleinfo->dstip);
+            r_node->ruleinfo->dstip = newrule->dstip;
+#ifdef LIBGEOIP_ENABLED
+            w_free_expression_t(&ruleinfo->srcgeoip);
+            r_node->ruleinfo->srcgeoip = newrule->srcgeoip;
+            w_free_expression_t(&ruleinfo->dstgeoip);
+            r_node->ruleinfo->dstgeoip = newrule->dstgeoip;
+#endif
+            w_free_expression_t(&r_node->ruleinfo->srcport);
+            r_node->ruleinfo->srcport = newrule->srcport;
+            w_free_expression_t(&r_node->ruleinfo->dstport);
+            r_node->ruleinfo->dstport = newrule->dstport;
+            w_free_expression_t(&r_node->ruleinfo->user);
+            r_node->ruleinfo->user = newrule->user;
+            w_free_expression_t(&r_node->ruleinfo->url);
+            r_node->ruleinfo->url = newrule->url;
+            w_free_expression_t(&r_node->ruleinfo->id);
+            r_node->ruleinfo->id = newrule->id;
+            w_free_expression_t(&r_node->ruleinfo->status);
+            r_node->ruleinfo->status = newrule->status;
+            w_free_expression_t(&r_node->ruleinfo->hostname);
+            r_node->ruleinfo->hostname = newrule->hostname;
+            w_free_expression_t(&r_node->ruleinfo->program_name);
+            r_node->ruleinfo->program_name = newrule->program_name;
+            w_free_expression_t(&r_node->ruleinfo->data);
+            r_node->ruleinfo->data = newrule->data;
+            w_free_expression_t(&r_node->ruleinfo->extra_data);
+            r_node->ruleinfo->extra_data = newrule->extra_data;
+            w_free_expression_t(&r_node->ruleinfo->location);
+            r_node->ruleinfo->location = newrule->location;
+            w_free_expression_t(&r_node->ruleinfo->system_name);
+            r_node->ruleinfo->system_name = newrule->system_name;
+            w_free_expression_t(&r_node->ruleinfo->protocol);
+            r_node->ruleinfo->protocol = newrule->protocol;
+            if (r_node->ruleinfo->fields) {
+                for (int i = 0; r_node->ruleinfo->fields[i]; i++) {
+                    os_free(r_node->ruleinfo->fields[i]->name);
+                    w_free_expression_t(&r_node->ruleinfo->fields[i]->regex);
+                    os_free(r_node->ruleinfo->fields[i]);
+                }
+                os_free(r_node->ruleinfo->fields);
+            }
+            r_node->ruleinfo->fields = newrule->fields;
+            w_free_expression_t(&r_node->ruleinfo->action);
+            r_node->ruleinfo->action = newrule->action;
+
+            os_free(r_node->ruleinfo->comment);
+            r_node->ruleinfo->comment = newrule->comment;
+            os_free(r_node->ruleinfo->info);
+            r_node->ruleinfo->info = newrule->info;
+            os_free(r_node->ruleinfo->cve);
+            r_node->ruleinfo->cve = newrule->cve;
+
+            if (r_node->ruleinfo->info_details) {
+                RuleInfoDetail *tmp;
+                while (r_node->ruleinfo->info_details) {
+                    tmp = r_node->ruleinfo->info_details;
+                    r_node->ruleinfo->info_details = r_node->ruleinfo->info_details->next;
+                    os_free(tmp->data);
+                    os_free(tmp);
+                }
+            }
+            r_node->ruleinfo->info_details = newrule->info_details;
+            if (r_node->ruleinfo->lists) {
+                os_remove_cdbrules(&r_node->ruleinfo->lists);
+            }
+            r_node->ruleinfo->lists = newrule->lists;
+
+            /*
+                if_sid, if_group, and if_level cannot be overwritten.
+                When the new rule tries to replace the value throws a warning.
+            */
+
+            if (newrule->if_sid && !newrule->if_matched_sid) {
+                if (!r_node->ruleinfo->if_sid ||
+                        strcmp(r_node->ruleinfo->if_sid, newrule->if_sid)) {
+                    smwarn(log_msg, ANALYSISD_INV_OVERWRITE, "if_sid", sid);
+                }
+            }
+            if (newrule->if_group && !newrule->if_matched_group) {
+                if (!r_node->ruleinfo->if_group ||
+                        strcmp(r_node->ruleinfo->if_group, newrule->if_group)) {
+                    smwarn(log_msg, ANALYSISD_INV_OVERWRITE, "if_group", sid);
+                }
+            }
+            if (newrule->if_level) {
+                if (!r_node->ruleinfo->if_level ||
+                        strcmp(r_node->ruleinfo->if_level, newrule->if_level)) {
+                    smwarn(log_msg, ANALYSISD_INV_OVERWRITE, "if_level", sid);
+                }
+            }
+
+            if (r_node->ruleinfo->if_matched_regex) {
+                OSRegex_FreePattern(r_node->ruleinfo->if_matched_regex);
+                os_free(r_node->ruleinfo->if_matched_regex);
+            }
+            r_node->ruleinfo->if_matched_regex = newrule->if_matched_regex;
+
+            if (newrule->if_matched_group) {
+                if (!r_node->ruleinfo->if_matched_group ||
+                        strcmp(r_node->ruleinfo->if_matched_group->raw, newrule->if_matched_group->raw)) {
+                    smwarn(log_msg, ANALYSISD_INV_OVERWRITE, "if_matched_group", sid);
+                }
+                OSMatch_FreePattern(newrule->if_matched_group);
+                os_free(newrule->if_matched_group);
+            }
+
+            if (newrule->if_matched_sid) {
+                if (!r_node->ruleinfo->if_matched_sid ||
+                        r_node->ruleinfo->if_matched_sid != newrule->if_matched_sid) {
+                    smwarn(log_msg, ANALYSISD_INV_OVERWRITE, "if_matched_sid", sid);
+                }
+            }
+
+            r_node->ruleinfo->compiled_rule = newrule->compiled_rule;
+
+            if (r_node->ruleinfo->ar) {
+                for (int i = 0; r_node->ruleinfo->ar[i]; i++) {
+                    os_free(r_node->ruleinfo->ar[i]->name);
+                    os_free(r_node->ruleinfo->ar[i]->command);
+                    os_free(r_node->ruleinfo->ar[i]->agent_id);
+                    os_free(r_node->ruleinfo->ar[i]->rules_id);
+                    os_free(r_node->ruleinfo->ar[i]->rules_group);
+                    os_free(r_node->ruleinfo->ar[i]->ar_cmd->name);
+                    os_free(r_node->ruleinfo->ar[i]->ar_cmd->executable);
+                    os_free(r_node->ruleinfo->ar[i]->ar_cmd->extra_args);
+                    os_free(r_node->ruleinfo->ar[i]->ar_cmd);
+                    os_free(r_node->ruleinfo->ar[i]);
+                }
+                os_free(r_node->ruleinfo->ar);
+            }
+            r_node->ruleinfo->ar = newrule->ar;
+
+            os_free(r_node->ruleinfo->file);
+            r_node->ruleinfo->file = newrule->file;
+
+            free_strarray(r_node->ruleinfo->same_fields);
+            r_node->ruleinfo->same_fields = newrule->same_fields;
+            free_strarray(r_node->ruleinfo->not_same_fields);
+            r_node->ruleinfo->not_same_fields = newrule->not_same_fields;
+
+            free_strarray(r_node->ruleinfo->mitre_id);
+            r_node->ruleinfo->mitre_id = newrule->mitre_id;
+            free_strarray(r_node->ruleinfo->mitre_tactic_id);
+            r_node->ruleinfo->mitre_tactic_id = newrule->mitre_tactic_id;
+            free_strarray(r_node->ruleinfo->mitre_technique_id);
+            r_node->ruleinfo->mitre_technique_id = newrule->mitre_technique_id;
+
+            /* Finally the reference to newrule is store so it is freed at the end */
+            r_node->ruleinfo->rule_overwrite = newrule;
+
             return (1);
         }
 
         /* Check if the child has a rule */
         if (r_node->child) {
-            if (OS_AddRuleInfo(r_node->child, newrule, sid)) {
+            if (OS_AddRuleInfo(r_node->child, newrule, sid, log_msg)) {
                 return (1);
             }
         }
@@ -426,90 +611,25 @@ void os_remove_ruleinfo(RuleInfo *ruleinfo) {
         return;
     }
 
-    if (ruleinfo->ignore_fields) {
-        for (int i = 0; ruleinfo->ignore_fields[i]; i++) {
-            os_free(ruleinfo->ignore_fields[i]);
-        }
+    free_strarray(ruleinfo->ignore_fields);
+    free_strarray(ruleinfo->ckignore_fields);
+
+    if (ruleinfo->group_search) {
+        OSList_Destroy(ruleinfo->group_search);
     }
 
-    if (ruleinfo->ckignore_fields) {
-        for (int i = 0; ruleinfo->ckignore_fields[i]; i++) {
-            os_free(ruleinfo->ckignore_fields[i]);
-        }
-    }
+    os_free(ruleinfo->sid_prev_matched);
+    os_free(ruleinfo->group_prev_matched);
+
+    os_free(ruleinfo->group);
+    w_free_expression_t(&ruleinfo->match);
+    w_free_expression_t(&ruleinfo->regex);
+
+    os_free(ruleinfo->day_time);
+    os_free(ruleinfo->week_day);
 
     w_free_expression_t(&ruleinfo->srcip);
     w_free_expression_t(&ruleinfo->dstip);
-
-    if (ruleinfo->fields) {
-        for (int i = 0; ruleinfo->fields[i]; i++) {
-            os_free(ruleinfo->fields[i]->name);
-            w_free_expression_t(&ruleinfo->fields[i]->regex);
-            os_free(ruleinfo->fields[i]);
-        }
-    }
-
-    if (ruleinfo->info_details) {
-        RuleInfoDetail *tmp;
-        while (ruleinfo->info_details) {
-            tmp = ruleinfo->info_details;
-            ruleinfo->info_details = ruleinfo->info_details->next;
-            os_free(tmp->data);
-            os_free(tmp);
-        }
-    }
-
-    if (ruleinfo->ar) {
-        for (int i = 0; ruleinfo->ar[i]; i++) {
-            os_free(ruleinfo->ar[i]->name);
-            os_free(ruleinfo->ar[i]->command);
-            os_free(ruleinfo->ar[i]->agent_id);
-            os_free(ruleinfo->ar[i]->rules_id);
-            os_free(ruleinfo->ar[i]->rules_group);
-            os_free(ruleinfo->ar[i]->ar_cmd->name);
-            os_free(ruleinfo->ar[i]->ar_cmd->executable);
-            os_free(ruleinfo->ar[i]->ar_cmd->extra_args);
-            os_free(ruleinfo->ar[i]->ar_cmd);
-            os_free(ruleinfo->ar[i]);
-        }
-    }
-
-    if (ruleinfo->lists) {
-        os_remove_cdbrules(&ruleinfo->lists);
-    }
-
-    if (ruleinfo->same_fields) {
-        for (int i = 0; ruleinfo->same_fields[i]; i++) {
-            os_free(ruleinfo->same_fields[i]);
-        }
-    }
-
-    if (ruleinfo->not_same_fields) {
-        for (int i = 0; ruleinfo->not_same_fields[i]; i++) {
-            os_free(ruleinfo->not_same_fields[i]);
-        }
-    }
-
-    if (ruleinfo->mitre_id) {
-        for (int i = 0; ruleinfo->mitre_id[i]; i++) {
-            os_free(ruleinfo->mitre_id[i]);
-        }
-    }
-
-    if (ruleinfo->mitre_tactic_id) {
-        for (int i = 0; ruleinfo->mitre_tactic_id[i]; i++) {
-            os_free(ruleinfo->mitre_tactic_id[i]);
-        }
-    }
-
-    if (ruleinfo->mitre_technique_id) {
-        for (int i = 0; ruleinfo->mitre_technique_id[i]; i++) {
-            os_free(ruleinfo->mitre_technique_id[i]);
-        }
-    }
-
-    w_free_expression_t(&ruleinfo->match);
-    w_free_expression_t(&ruleinfo->regex);
     w_free_expression_t(&ruleinfo->srcgeoip);
     w_free_expression_t(&ruleinfo->dstgeoip);
     w_free_expression_t(&ruleinfo->srcport);
@@ -525,40 +645,70 @@ void os_remove_ruleinfo(RuleInfo *ruleinfo) {
     w_free_expression_t(&ruleinfo->location);
     w_free_expression_t(&ruleinfo->system_name);
     w_free_expression_t(&ruleinfo->protocol);
+    if (ruleinfo->fields) {
+        for (int i = 0; ruleinfo->fields[i]; i++) {
+            os_free(ruleinfo->fields[i]->name);
+            w_free_expression_t(&ruleinfo->fields[i]->regex);
+            os_free(ruleinfo->fields[i]);
+        }
+        os_free(ruleinfo->fields);
+    }
     w_free_expression_t(&ruleinfo->action);
 
-    if (ruleinfo->if_matched_regex) OSRegex_FreePattern(ruleinfo->if_matched_regex);
-    os_free(ruleinfo->if_matched_regex);
-
-    if (ruleinfo->if_matched_group) OSMatch_FreePattern(ruleinfo->if_matched_group);
-    os_free(ruleinfo->if_matched_group);
-
-    os_free(ruleinfo->sid_prev_matched);
-    os_free(ruleinfo->group_search);
-    os_free(ruleinfo->group_prev_matched);
-
-    os_free(ruleinfo->ignore_fields);
-    os_free(ruleinfo->ckignore_fields);
-    os_free(ruleinfo->srcip);
-    os_free(ruleinfo->dstip);
-    os_free(ruleinfo->fields);
-    os_free(ruleinfo->group);
-    os_free(ruleinfo->day_time);
-    os_free(ruleinfo->week_day);
     os_free(ruleinfo->comment);
     os_free(ruleinfo->info);
     os_free(ruleinfo->cve);
+
+    if (ruleinfo->info_details) {
+        RuleInfoDetail *tmp;
+        while (ruleinfo->info_details) {
+            tmp = ruleinfo->info_details;
+            ruleinfo->info_details = ruleinfo->info_details->next;
+            os_free(tmp->data);
+            os_free(tmp);
+        }
+    }
+    if (ruleinfo->lists) {
+        os_remove_cdbrules(&ruleinfo->lists);
+    }
+
     os_free(ruleinfo->if_sid);
     os_free(ruleinfo->if_level);
     os_free(ruleinfo->if_group);
-    os_free(ruleinfo->ar);
-    os_free(ruleinfo->file);
-    os_free(ruleinfo->same_fields);
-    os_free(ruleinfo->not_same_fields);
-    os_free(ruleinfo->mitre_id);
-    os_free(ruleinfo->mitre_tactic_id);
-    os_free(ruleinfo->mitre_technique_id);
 
+    if (ruleinfo->if_matched_regex) {
+        OSRegex_FreePattern(ruleinfo->if_matched_regex);
+        os_free(ruleinfo->if_matched_regex);
+    }
+
+    if (ruleinfo->if_matched_group) {
+        OSMatch_FreePattern(ruleinfo->if_matched_group);
+        os_free(ruleinfo->if_matched_group);
+    }
+
+    if (ruleinfo->ar) {
+        for (int i = 0; ruleinfo->ar[i]; i++) {
+            os_free(ruleinfo->ar[i]->name);
+            os_free(ruleinfo->ar[i]->command);
+            os_free(ruleinfo->ar[i]->agent_id);
+            os_free(ruleinfo->ar[i]->rules_id);
+            os_free(ruleinfo->ar[i]->rules_group);
+            os_free(ruleinfo->ar[i]->ar_cmd->name);
+            os_free(ruleinfo->ar[i]->ar_cmd->executable);
+            os_free(ruleinfo->ar[i]->ar_cmd->extra_args);
+            os_free(ruleinfo->ar[i]->ar_cmd);
+            os_free(ruleinfo->ar[i]);
+        }
+        os_free(ruleinfo->ar);
+    }
+    os_free(ruleinfo->file);
+    free_strarray(ruleinfo->same_fields);
+    free_strarray(ruleinfo->not_same_fields);
+    free_strarray(ruleinfo->mitre_id);
+    free_strarray(ruleinfo->mitre_tactic_id);
+    free_strarray(ruleinfo->mitre_technique_id);
+
+    os_free(ruleinfo->rule_overwrite);
     os_free(ruleinfo);
 }
 

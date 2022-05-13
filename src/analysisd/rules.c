@@ -1609,13 +1609,6 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                     }
                 }
 
-                /* Check for valid overwrite */
-                if ((config_ruleinfo->if_sid || config_ruleinfo->if_group || config_ruleinfo->if_level)
-                    && (config_ruleinfo->alert_opts & DO_OVERWRITE)) {
-                    smwarn(log_msg, ANALYSISD_INV_OVERWRITE, config_ruleinfo->sigid);
-                    do_skip_rule = true;
-                }
-
                 // Skip rule, without having to abort analysisd execution
                 if (do_skip_rule) {
                     w_free_rules_tmp_params(&rule_tmp_params);
@@ -1640,7 +1633,8 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                 }
 
                 /* If if_matched_group we must have a if_sid or if_group */
-                if (rule_tmp_params.if_matched_group) {
+                if (rule_tmp_params.if_matched_group &&
+                    !(config_ruleinfo->alert_opts & DO_OVERWRITE)) {
                     if (!config_ruleinfo->if_sid && !config_ruleinfo->if_group) {
                         os_strdup(rule_tmp_params.if_matched_group, config_ruleinfo->if_group);
                     }
@@ -1649,7 +1643,8 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                 /* If_matched_sid, we need to get the if_sid */
                 if (config_ruleinfo->if_matched_sid &&
                         !config_ruleinfo->if_sid &&
-                        !config_ruleinfo->if_group) {
+                        !config_ruleinfo->if_group &&
+                        !(config_ruleinfo->alert_opts & DO_OVERWRITE)) {
                     os_calloc(16, sizeof(char), config_ruleinfo->if_sid);
                     snprintf(config_ruleinfo->if_sid, 15, "%d",
                              config_ruleinfo->if_matched_sid);
@@ -1891,7 +1886,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                 OS_AddRule(config_ruleinfo, r_node);
             } else if (config_ruleinfo->alert_opts & DO_OVERWRITE) {
 
-                if (!OS_AddRuleInfo(*r_node, config_ruleinfo, config_ruleinfo->sigid)) {
+                if (!OS_AddRuleInfo(*r_node, config_ruleinfo, config_ruleinfo->sigid, log_msg)) {
 
                     // If there is no rule to overwrite, then the rule is added as any other rule
                     if (OS_AddChild(config_ruleinfo, r_node, log_msg) == -1) {
@@ -1918,7 +1913,8 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
             }
 
             /* Set the event_search pointer */
-            if (config_ruleinfo->if_matched_sid) {
+            if (config_ruleinfo->if_matched_sid &&
+                !(config_ruleinfo->alert_opts & DO_OVERWRITE)) {
 
                 config_ruleinfo->event_search = (void *(*)(void *, void *, void *, void *)) Search_LastSids;
 
@@ -1927,7 +1923,8 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
             }
 
             /* Mark the rules that match if_matched_group */
-            else if (config_ruleinfo->if_matched_group) {
+            else if (config_ruleinfo->if_matched_group &&
+                    !(config_ruleinfo->alert_opts & DO_OVERWRITE)) {
                 /* Create list */
                 config_ruleinfo->group_search = OSList_Create();
                 if (!config_ruleinfo->group_search) {
@@ -2168,6 +2165,8 @@ RuleInfo *zerorulemember(int id, int level, int maxsize, int frequency,
     ruleinfo_pt->prev_rule = NULL;
 
     ruleinfo_pt->internal_saving = false;
+
+    ruleinfo_pt->rule_overwrite = NULL;
 
     return (ruleinfo_pt);
 }
