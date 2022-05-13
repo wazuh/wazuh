@@ -762,30 +762,21 @@ ifeq (${MAKECMDGOALS},server)
 $(error Do not use 'server' directly, use 'TARGET=server')
 endif
 server: external
-ifneq (${uname_S},HP-UX)
-	${MAKE} ${BUILD_CMAKE_PROJECTS}
-endif
-	${MAKE} ${BUILD_SERVER}
+	${MAKE} ${BUILD_SERVER} ${BUILD_CMAKE_PROJECTS}
 	@${MAKE} strip TARGET=${TARGET} DISABLE_STRIP_SYMBOLS=${DISABLE_STRIP_SYMBOLS}
 
 ifeq (${MAKECMDGOALS},local)
 $(error Do not use 'local' directly, use 'TARGET=local')
 endif
 local: external
-ifneq (${uname_S},HP-UX)
-	${MAKE} ${BUILD_CMAKE_PROJECTS}
-endif
-	${MAKE} ${BUILD_SERVER}
+	${MAKE} ${BUILD_SERVER} ${BUILD_CMAKE_PROJECTS}
 	@${MAKE} strip TARGET=${TARGET} DISABLE_STRIP_SYMBOLS=${DISABLE_STRIP_SYMBOLS}
 
 ifeq (${MAKECMDGOALS},hybrid)
 $(error Do not use 'hybrid' directly, use 'TARGET=hybrid')
 endif
 hybrid: external
-ifneq (${uname_S},HP-UX)
-	${MAKE} ${BUILD_CMAKE_PROJECTS}
-endif
-	${MAKE} ${BUILD_SERVER}
+	${MAKE} ${BUILD_SERVER} ${BUILD_CMAKE_PROJECTS}
 	@${MAKE} strip TARGET=${TARGET} DISABLE_STRIP_SYMBOLS=${DISABLE_STRIP_SYMBOLS}
 
 ifeq (${MAKECMDGOALS},agent)
@@ -793,10 +784,11 @@ $(error Do not use 'agent' directly, use 'TARGET=agent')
 endif
 agent: external
 ifneq (${uname_S},HP-UX)
-	${MAKE} ${BUILD_CMAKE_PROJECTS}
-endif
-	${MAKE} ${BUILD_AGENT}
+	${MAKE} ${BUILD_AGENT} ${BUILD_CMAKE_PROJECTS}
 	@${MAKE} strip TARGET=${TARGET} DISABLE_STRIP_SYMBOLS=${DISABLE_STRIP_SYMBOLS}
+else
+	${MAKE} ${BUILD_AGENT}
+endif
 
 ifneq (,$(filter ${USE_SELINUX},YES yes y Y 1))
 server local hybrid agent: selinux
