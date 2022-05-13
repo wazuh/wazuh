@@ -304,45 +304,48 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
     """
     utils.printHeader(moduleName=moduleName,
                       headerKey="rtr")
-
-    runCppCheck(moduleName=moduleName)
-    build_tools.makeDeps(targetName=target, srcOnly=False)
-    build_tools.makeTarget(targetName=target, tests=True, debug=True)
-    runTests(moduleName=moduleName)
-    build_tools.cleanFolder(moduleName=moduleName,
-                            additionalFolder="build")
-    build_tools.configureCMake(moduleName=moduleName, 
-                               debugMode=True,
-                               testMode=(False, True)
-                               [moduleName!="shared_modules/utils"],
-                               withAsan=False)
-    if target != "winagent":
-        build_tools.makeLib(moduleName=moduleName)
-        runValgrind(moduleName=moduleName)
-        runCoverage(moduleName=moduleName)
-    runAStyleCheck(moduleName=moduleName)
-    configPath = os.path.join(utils.currentPath(),
-                              "input/test_tool_config.json")
-    smokeTestConfig = utils.readJSONFile(jsonFilePath=configPath)
-    if target == "winagent":
-        build_tools.cleanAll()
-        build_tools.cleanExternals()
-        build_tools.makeDeps(targetName="agent", srcOnly=False)
-        build_tools.makeTarget(targetName="agent", tests=False, debug=True)
+    try:
+        runCppCheck(moduleName=moduleName)
+        build_tools.makeDeps(targetName=target, srcOnly=False)
+        build_tools.makeTarget(targetName=target, tests=True, debug=True)
+        runTests(moduleName=moduleName)
         build_tools.cleanFolder(moduleName=moduleName,
                                 additionalFolder="build")
-    if moduleName != "shared_modules/utils":
-        runASAN(moduleName=moduleName,
-                testToolConfig=smokeTestConfig)
-    if moduleName == "syscheckd":
-        runTestToolForWindows(moduleName=moduleName,
-                              testToolConfig=smokeTestConfig)
-        runTestToolCheck(moduleName=moduleName)
+        build_tools.configureCMake(moduleName=moduleName,
+                                   debugMode=True,
+                                   testMode=(False, True)
+                                   [moduleName!="shared_modules/utils"],
+                                   withAsan=False)
+        if target != "winagent":
+            build_tools.makeLib(moduleName=moduleName)
+            runValgrind(moduleName=moduleName)
+            runCoverage(moduleName=moduleName)
+        runAStyleCheck(moduleName=moduleName)
+        configPath = os.path.join(utils.currentPath(),
+                                  "input/test_tool_config.json")
+        smokeTestConfig = utils.readJSONFile(jsonFilePath=configPath)
+        if target == "winagent":
+            build_tools.cleanAll()
+            build_tools.cleanExternals()
+            build_tools.makeDeps(targetName="agent", srcOnly=False)
+            build_tools.makeTarget(targetName="agent", tests=False, debug=True)
+            build_tools.cleanFolder(moduleName=moduleName,
+                                    additionalFolder="build")
+        if moduleName != "shared_modules/utils":
+            runASAN(moduleName=moduleName,
+                    testToolConfig=smokeTestConfig)
+        if moduleName == "syscheckd":
+            runTestToolForWindows(moduleName=moduleName,
+                                  testToolConfig=smokeTestConfig)
+            runTestToolCheck(moduleName=moduleName)
 
-    if clean:
-        utils.deleteLogs(moduleName=moduleName)
-    utils.printGreen(msg="[RTR: PASSED]",
-                     module=moduleName)
+        if clean:
+            utils.deleteLogs(moduleName=moduleName)
+        utils.printGreen(msg="[RTR: PASSED]",
+                         module=moduleName)
+    except Exception as e:
+        utils.printFail(msg="[RTR: FAILED]")
+        print(e)
 
 
 def runScanBuild(targetName):
@@ -569,7 +572,7 @@ def runTestToolCheck(moduleName):
         - None
 
     Raises:
-        - ValueError: Raises an exception when fails for some reason.
+        - CalledProcessError: Raises an exception when fails some test.
     """
     path = os.path.join(utils.currentPath(),
                         "tests")
@@ -581,21 +584,20 @@ def runTestToolCheck(moduleName):
     cmd = "pytest -svx {} --moduleName={} \
            --html=ci/tests/results/results.html \
            --capture=tee-sys"
-    out = subprocess.run(cmd.format(path, moduleName),
+    try:
+        out = subprocess.run(cmd.format(path, moduleName),
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
                          shell=True,
                          check=True)
-
-    if out.returncode == 0:
-        utils.printGreen(msg="[TestTool check: PASSED]")
-    else:
-        print(out.stdout)
-        print(out.stderr)
-        utils.printFail(msg="[TestTool check: FAILED]")
+        if out.returncode == 0:
+            utils.printGreen(msg="[TestTool check: PASSED]")
+    except Exception as e:
         errorString = "Error checking test tool results. See more details {}"\
                       .format(os.path.join(pathResult, "results.html"))
-        raise ValueError(errorString)
+        utils.printFail(msg="[TestTool check: FAILED]")
+        print(errorString)
+        raise e
 
 
 def runValgrind(moduleName):

@@ -325,6 +325,7 @@ def testAtomicActions(readResultFiles, configLogging):
     testCase = "AtomicOperations"
     results = readResults(readResultFiles=readResultFiles,
                           testCase=testCase)
+    print("")
     for result in results['actions']:
         checkResult(result=result,
                     configLogging=configLogging,
@@ -356,6 +357,7 @@ def testFileTransactions(readResultFiles, configLogging, readFileTxnInputs):
     results = readResults(readResultFiles=readResultFiles,
                           testCase=testCase)
     resultTransactions = results['txnActions'][0]['data']
+    print("")
     for result in results['actions']:
         checkResult(result=result,
                     configLogging=configLogging,
@@ -402,6 +404,7 @@ def testRegistryKeytransactions(readResultFiles,
     results = readResults(readResultFiles=readResultFiles,
                           testCase=testCase)
     resultTransactions = results['txnActions'][0]['data']
+    print("")
     for result in results['actions']:
         checkResult(result=result,
                     configLogging=configLogging,
@@ -449,6 +452,7 @@ def testRegistryDatatransactions(readResultFiles,
     results = readResults(readResultFiles=readResultFiles,
                           testCase=testCase)
     resultTransactions = results['txnActions'][0]['data']
+    print("")
     for result in results['actions']:
         checkResult(result=result,
                     configLogging=configLogging,
@@ -468,3 +472,41 @@ def testRegistryDatatransactions(readResultFiles,
                         .format(testCase,
                                 operation['action'],
                                 "true"))
+
+
+def testIntegrityOps(readResultFiles, configLogging, readFileTxnInputs):
+    """
+    Check integrity operations executed in test tool for FIM module.
+
+    Steps:
+        - Read result JSON files.
+        - Read input JSON files
+        - Create structure necessary in order to test result files.
+        - Check the result and compare with input files and log
+          the information.
+
+    Fixtures:
+        - readResultFiles: Return a map with name like key and
+                           path like value.
+        - configLogging: Configure and format logging message.
+        - readFileTxnInputs: Return an array with the json files read from
+                             JSON inputs files.
+    """
+    logger = configLogging
+    testCase = "IntegrityOP"
+    inputJSONs = readFileTxnInputs
+    results = readResults(readResultFiles=readResultFiles,
+                          testCase=testCase)
+    resultTransactions = results['txnActions'][0]['data']
+    print("")
+    firstRunIntegrity = None
+    for result in results['actions']:
+        if result['action'] == "RunIntegrity":
+            if firstRunIntegrity is None:
+                firstRunIntegrity = result
+            else:
+                assert firstRunIntegrity['result'] ^ result['result']
+        else:
+            checkResult(result=result,
+                        configLogging=configLogging,
+                        testCase=testCase)

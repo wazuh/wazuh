@@ -113,7 +113,7 @@
             "args":
             [
                 "-c config.json",
-                "-a atomicFileOperations/SyncRow_1.json,atomicFileOperations/SyncRow_2.json,atomicFileOperations/CountFiles.json,atomicFileOperations/SyncRow_3.json,atomicFileOperations/DeleteFile.json,atomicFileOperations/CountFiles.json,atomicFileOperations/GetFile.json",
+                "-a atomicFileOperations/SyncRow_1.json,atomicFileOperations/SyncRow_2.json,atomicFileOperations/CountFiles.json,atomicFileOperations/RunIntegrity.json,atomicFileOperations/SyncRow_3.json,atomicFileOperations/DeleteFile.json,atomicFileOperations/PushMessage.json,atomicFileOperations/CountFiles.json,atomicFileOperations/GetFile.json",
                 "-o ./output/AtomicOperations"
             ]
         }
@@ -142,6 +142,18 @@
                 "-c configWindows.json",
                 "-a FimDBTransaction/StartTransactionRegistryData.json,FimDBTransaction/SyncTxnRowsRegistryData_1.json,FimDBTransaction/GetDeletedRows.json,FimDBTransaction/StartTransactionRegistryData.json,FimDBTransaction/SyncTxnRowsRegistryData_2.json,FimDBTransaction/GetDeletedRows.json",
                 "-o ./output/registryDataTransaction"
+            ]
+        },
+        {
+            "test_tool_name": "fimdb_test_tool",
+            "smoke_tests_path": "src/db/smokeTests",
+            "is_smoke_with_configuration": true,
+            "output_folder": "./output/IntegrityOP",
+            "args":
+            [
+                "-c configWindows.json",
+                "-a integrityOps/RunIntegrity.json,integrityOps/StartTransaction.json,integrityOps/SyncTxnRows_1.json,integrityOps/GetDeletedRows.json,integrityOps/PushMessage.json,integrityOps/StartTransactionRegistryData.json,integrityOps/SyncTxnRowsRegistryData_1.json,integrityOps/GetDeletedRows.json,integrityOps/PushMessage.json,integrityOps/StartTransactionRegistryKey.json,integrityOps/SyncTxnRowsRegistryKey_1.json,integrityOps/GetDeletedRows.json,integrityOps/PushMessage.json,integrityOps/RunIntegrity.json",
+                "-o ./output/IntegrityOP"
             ]
         }
     ]
