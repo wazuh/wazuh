@@ -141,12 +141,12 @@ cJSON * jqueue_parse_json(file_queue * queue) {
         offset = w_ftell(queue->fp);
         while ((offset-current_pos) == OS_MAXSTR) {
             if (fgets(buffer, OS_MAXSTR + 1, queue->fp)) {
-                current_pos = offset;
-                offset = w_ftell(queue->fp);
                 if (strchr(buffer, '\n')) {
                     mwarn("Overlong JSON alert read from '%s'", queue->file_name);
                     return NULL;
                 }
+                current_pos = offset;
+                offset = w_ftell(queue->fp);
             } else {
                 break;
             }
