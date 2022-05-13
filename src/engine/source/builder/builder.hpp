@@ -17,6 +17,7 @@
 #include "builderTypes.hpp"
 #include "graph.hpp"
 #include "registry.hpp"
+#include "definitions.hpp"
 
 namespace builder
 {
@@ -52,6 +53,7 @@ private:
             for (auto& m : v.GetArray())
             {
                 json::Document asset = m_catalog.getAsset(atype, m.GetString());
+                internals::substituteDefinitions(asset);
                 g.addNode(make(asset));
             }
         }

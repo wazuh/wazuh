@@ -38,6 +38,7 @@ add_library(builders OBJECT
     builders/stageBuilderOutputs.cpp
     builders/stageParse.cpp
     registry.cpp
+    definitions.cpp
 )
 
 target_include_directories(builders
