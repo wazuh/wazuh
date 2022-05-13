@@ -14,8 +14,10 @@
 #include "wazuhdb_op.h"
 
 #ifdef WIN32
-#define getuid() 0
-#define chown(x, y, z) 0
+    #define getuid() 0
+    #define chown(x, y, z) 0
+    #define Privsep_GetUser(x) -1
+    #define Privsep_GetGroup(x) -1
 #endif
 
 #define BUSY_SLEEP 1
@@ -112,7 +114,6 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_SCA_SCAN_INFO_DELETE] = "DELETE FROM sca_scan_info WHERE policy_id = ?;",
     [WDB_STMT_SCA_CHECK_COMPLIANCE_DELETE] = "DELETE FROM sca_check_compliance WHERE id_check NOT IN ( SELECT id FROM sca_check);",
     [WDB_STMT_SCA_CHECK_RULES_DELETE] = "DELETE FROM sca_check_rules WHERE id_check NOT IN ( SELECT id FROM sca_check);",
-    [WDB_STMT_SCA_CHECK_FIND] = "SELECT id FROM sca_check WHERE policy_id = ?;",
     [WDB_STMT_SCA_CHECK_DELETE_DISTINCT] = "DELETE FROM sca_check WHERE scan_id != ? AND policy_id = ?;",
     [WDB_STMT_FIM_SELECT_CHECKSUM] = "SELECT checksum FROM fim_entry ORDER BY file;",
     [WDB_STMT_FIM_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM fim_entry WHERE file BETWEEN ? and ? ORDER BY file;",
@@ -124,7 +125,6 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_SYNC_UPDATE_COMPLETION] = "UPDATE sync_info SET last_attempt = ?, last_completion = ?, last_agent_checksum = ?, last_manager_checksum = ?, n_attempts = n_attempts + 1, n_completions = n_completions + 1 WHERE component = ?;",
     [WDB_STMT_SYNC_SET_COMPLETION] = "UPDATE sync_info SET last_completion = ? WHERE component = ?;",
     [WDB_STMT_SYNC_GET_INFO] = "SELECT * FROM sync_info WHERE component = ?;",
-    [WDB_STMT_MITRE_NAME_GET] = "SELECT name FROM attack WHERE id = ?;",
     [WDB_STMT_FIM_FILE_SELECT_CHECKSUM] = "SELECT checksum FROM fim_entry WHERE type='file' ORDER BY file;",
     [WDB_STMT_FIM_FILE_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM fim_entry WHERE file BETWEEN ? and ? and type='file' ORDER BY file;",
     [WDB_STMT_FIM_FILE_CLEAR] = "DELETE FROM fim_entry WHERE type='file';",
@@ -159,19 +159,30 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_UPDATE_AGENT_CONNECTION_STATUS] = "UPDATE agent SET connection_status = ?, sync_status = ?, disconnection_time = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_DELETE_AGENT] = "DELETE FROM agent WHERE id = ?;",
     [WDB_STMT_GLOBAL_SELECT_AGENT_NAME] = "SELECT name FROM agent WHERE id = ?;",
-    [WDB_STMT_GLOBAL_SELECT_AGENT_GROUP] = "SELECT `group` FROM agent WHERE id = ?;",
     [WDB_STMT_GLOBAL_FIND_AGENT] = "SELECT id FROM agent WHERE name = ? AND (register_ip = ? OR register_ip LIKE ? || '/_%');",
     [WDB_STMT_GLOBAL_FIND_GROUP] = "SELECT id FROM `group` WHERE name = ?;",
-    [WDB_STMT_GLOBAL_UPDATE_AGENT_GROUP] = "UPDATE agent SET `group` = ? WHERE id = ?;",
-    [WDB_STMT_GLOBAL_INSERT_AGENT_GROUP] = "INSERT INTO `group` (name) VALUES(?);",
-    [WDB_STMT_GLOBAL_INSERT_AGENT_BELONG] = "INSERT INTO belongs (id_group, id_agent) VALUES(?,?);",
+    [WDB_STMT_GLOBAL_UPDATE_AGENT_GROUPS_HASH] = "UPDATE agent SET group_hash = ? WHERE id = ?;",
+    [WDB_STMT_GLOBAL_INSERT_AGENT_GROUP] = "INSERT OR IGNORE INTO `group` (name) VALUES(?);",
+    [WDB_STMT_GLOBAL_SELECT_GROUP_BELONG] = "SELECT name FROM belongs JOIN `group` ON id = id_group WHERE id_agent = ? order by priority;",
+    [WDB_STMT_GLOBAL_INSERT_AGENT_BELONG] = "INSERT OR REPLACE INTO belongs (id_group, id_agent, priority) VALUES(?,?,?);",
     [WDB_STMT_GLOBAL_DELETE_AGENT_BELONG] = "DELETE FROM belongs WHERE id_agent = ?;",
-    [WDB_STMT_GLOBAL_DELETE_GROUP_BELONG] = "DELETE FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = ?);",
+    [WDB_STMT_GLOBAL_DELETE_TUPLE_BELONG] = "DELETE FROM belongs WHERE id_group = ? and id_agent = ?;",
     [WDB_STMT_GLOBAL_DELETE_GROUP] = "DELETE FROM `group` WHERE name = ?;",
+    [WDB_STMT_GLOBAL_GROUP_BELONG_FIND] = "SELECT 1 FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = ?);",
+    [WDB_STMT_GLOBAL_GROUP_BELONG_GET] = "SELECT id_agent FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = ?) AND id_agent > ?;",
     [WDB_STMT_GLOBAL_SELECT_GROUPS] = "SELECT name FROM `group`;",
     [WDB_STMT_GLOBAL_SELECT_AGENT_KEEPALIVE] = "SELECT last_keepalive FROM agent WHERE name = ? AND (register_ip = ? OR register_ip LIKE ? || '/_%');",
     [WDB_STMT_GLOBAL_SYNC_REQ_GET] = "SELECT id, name, ip, os_name, os_version, os_major, os_minor, os_codename, os_build, os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, last_keepalive, connection_status, disconnection_time, group_config_status FROM agent WHERE id > ? AND sync_status = 'syncreq' LIMIT 1;",
     [WDB_STMT_GLOBAL_SYNC_SET] = "UPDATE agent SET sync_status = ? WHERE id = ?;",
+    [WDB_STMT_GLOBAL_GROUP_SYNC_REQ_GET] = "SELECT id FROM agent WHERE id > ? AND group_sync_status = 'syncreq' AND date_add < ? LIMIT 1;",
+    [WDB_STMT_GLOBAL_GROUP_SYNC_ALL_GET] = "SELECT id FROM agent WHERE id > ? AND date_add < ? LIMIT 1;",
+    [WDB_STMT_GLOBAL_GROUP_SYNCREQ_FIND] = "SELECT 1 FROM agent WHERE group_sync_status = 'syncreq';",
+    [WDB_STMT_GLOBAL_AGENT_GROUPS_NUMBER_GET] = "SELECT count(id_group) groups_number from belongs WHERE id_agent = ?;",
+    [WDB_STMT_GLOBAL_GROUP_SYNC_SET] = "UPDATE agent SET group_sync_status = ? WHERE id = ?;",
+    [WDB_STMT_GLOBAL_GROUP_PRIORITY_GET] = "SELECT MAX(priority) FROM belongs WHERE id_agent=?;",
+    [WDB_STMT_GLOBAL_GROUP_CSV_GET] = "SELECT `group` from agent where id = ?;",
+    [WDB_STMT_GLOBAL_GROUP_CTX_SET] = "UPDATE agent SET 'group' = ?, group_hash = ?, group_sync_status = ? WHERE id = ?;",
+    [WDB_STMT_GLOBAL_GROUP_HASH_GET] = "SELECT group_hash FROM agent WHERE group_hash IS NOT NULL ORDER BY id;",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_INFO] = "UPDATE agent SET config_sum = :config_sum, ip = :ip, manager_host = :manager_host, merged_sum = :merged_sum, name = :name, node_name = :node_name, os_arch = :os_arch, os_build = :os_build, os_codename = :os_codename, os_major = :os_major, os_minor = :os_minor, os_name = :os_name, os_platform = :os_platform, os_uname = :os_uname, os_version = :os_version, version = :version, last_keepalive = :last_keepalive, connection_status = :connection_status, disconnection_time = :disconnection_time, group_config_status = :group_config_status, sync_status = :sync_status WHERE id = :id;",
     [WDB_STMT_GLOBAL_GET_AGENTS] = "SELECT id FROM agent WHERE id > ?;",
     [WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS] = "SELECT id FROM agent WHERE id > ? AND connection_status = ?;",
@@ -296,19 +307,22 @@ wdb_t * wdb_open_global() {
 
             wdb = wdb_init(db, WDB_GLOB_NAME);
             wdb_pool_append(wdb);
-
+            w_mutex_lock(&wdb->mutex);
+            wdb->refcount++;
         }
         else {
             wdb = wdb_init(db, WDB_GLOB_NAME);
             wdb_pool_append(wdb);
-            wdb = wdb_upgrade_global(wdb);
+            w_mutex_lock(&wdb->mutex);
+            wdb->refcount++;
+            if (wdb = wdb_upgrade_global(wdb), !wdb) {
+                w_mutex_unlock(&pool_mutex);
+                return wdb;
+            }
         }
+
         wdb_enable_foreign_keys(wdb->db);
     }
-
-    // The corresponding w_mutex_unlock(&wdb->mutex) is called in wdb_leave(wdb_t * wdb)
-    w_mutex_lock(&wdb->mutex);
-    wdb->refcount++;
 
     w_mutex_unlock(&pool_mutex);
     return wdb;
@@ -833,6 +847,7 @@ wdb_t * wdb_init(sqlite3 * db, const char * id) {
     wdb->db = db;
     w_mutex_init(&wdb->mutex, NULL);
     os_strdup(id, wdb->id);
+    wdb->enabled = true;
     return wdb;
 }
 
@@ -1008,7 +1023,18 @@ int wdb_exec_stmt_silent(sqlite3_stmt* stmt) {
     }
 }
 
-cJSON* wdb_exec_row_stmt(sqlite3_stmt * stmt, int* status) {
+cJSON* wdb_exec_row_stmt(sqlite3_stmt* stmt, int* status, bool column_mode) {
+    if(STMT_SINGLE_COLUMN == column_mode) {
+        return wdb_exec_row_stmt_single_column(stmt, status);
+    } else if (STMT_MULTI_COLUMN == column_mode){
+        return wdb_exec_row_stmt_multi_column(stmt, status);
+    } else {
+        mdebug2("Invalid column mode");
+        return NULL;
+    }
+}
+
+cJSON* wdb_exec_row_stmt_multi_column(sqlite3_stmt* stmt, int* status) {
     cJSON* result = NULL;
 
     int _status = sqlite3_step(stmt);
@@ -1047,7 +1073,7 @@ cJSON* wdb_exec_row_stmt(sqlite3_stmt * stmt, int* status) {
     return result;
 }
 
-cJSON* wdb_exec_stmt_sized(sqlite3_stmt * stmt, const size_t max_size, int* status) {
+cJSON* wdb_exec_stmt_sized(sqlite3_stmt* stmt, const size_t max_size, int* status, bool column_mode) {
     if (!stmt) {
         mdebug1("Invalid SQL statement.");
         *status = SQLITE_ERROR;
@@ -1058,7 +1084,7 @@ cJSON* wdb_exec_stmt_sized(sqlite3_stmt * stmt, const size_t max_size, int* stat
     int result_size = 2; //'[]' json array
     cJSON* row = NULL;
     bool fit = true;
-    while (fit && (row = wdb_exec_row_stmt(stmt, status))) {
+    while (fit && (row = wdb_exec_row_stmt(stmt, status, column_mode))) {
         char *row_str = cJSON_PrintUnformatted(row);
         size_t row_len = strlen(row_str)+1;
         //Check if new agent fits in response
@@ -1107,7 +1133,7 @@ int wdb_exec_stmt_send(sqlite3_stmt* stmt, int peer) {
     char* payload = response + header_size;
     int payload_size = OS_MAXSTR - header_size;
 
-    while ((row = wdb_exec_row_stmt(stmt, &sql_status))) {
+    while ((row = wdb_exec_row_stmt(stmt, &sql_status, STMT_MULTI_COLUMN))) {
         bool row_fits = cJSON_PrintPreallocated(row, payload, payload_size, FALSE);
         cJSON_Delete(row);
         if (row_fits) {
@@ -1132,7 +1158,7 @@ int wdb_exec_stmt_send(sqlite3_stmt* stmt, int peer) {
     return status;
 }
 
-cJSON * wdb_exec_stmt(sqlite3_stmt * stmt) {
+cJSON* wdb_exec_stmt(sqlite3_stmt* stmt) {
     cJSON * result;
     cJSON * row;
 
@@ -1143,7 +1169,7 @@ cJSON * wdb_exec_stmt(sqlite3_stmt * stmt) {
 
     int status = SQLITE_ERROR;
     result = cJSON_CreateArray();
-    while ((row = wdb_exec_row_stmt(stmt, &status))) {
+    while ((row = wdb_exec_row_stmt(stmt, &status, STMT_MULTI_COLUMN))) {
         cJSON_AddItemToArray(result, row);
     }
 
@@ -1155,7 +1181,48 @@ cJSON * wdb_exec_stmt(sqlite3_stmt * stmt) {
     return result;
 }
 
-cJSON * wdb_exec(sqlite3 * db, const char * sql) {
+cJSON* wdb_exec_row_stmt_single_column(sqlite3_stmt* stmt, int* status) {
+    cJSON* result = NULL;
+    int _status = SQLITE_ERROR;
+
+    if (!stmt) {
+        mdebug1("Invalid SQL statement.");
+        return NULL;
+    }
+
+    _status = sqlite3_step(stmt);
+    if (SQLITE_ROW == _status) {
+        int count = sqlite3_column_count(stmt);
+        // Every step should return only one element. Extra columns will be ignored
+        if (count > 0) {
+            switch (sqlite3_column_type(stmt, 0)) {
+            case SQLITE_INTEGER:
+            case SQLITE_FLOAT:
+                result = cJSON_CreateNumber(sqlite3_column_double(stmt, 0));
+                break;
+
+            case SQLITE_TEXT:
+            case SQLITE_BLOB:
+                result = cJSON_CreateString((const char *)sqlite3_column_text(stmt, 0));
+                break;
+
+            case SQLITE_NULL:
+            default:
+                ;
+            }
+        }
+    } else if (_status != SQLITE_DONE) {
+        mdebug1("SQL statement execution failed");
+    }
+
+    if (status) {
+        *status = _status;
+    }
+
+    return result;
+}
+
+cJSON* wdb_exec(sqlite3* db, const char * sql) {
     sqlite3_stmt * stmt = NULL;
     cJSON * result = NULL;
 
@@ -1177,7 +1244,6 @@ cJSON * wdb_exec(sqlite3 * db, const char * sql) {
 
 int wdb_close(wdb_t * wdb, bool commit) {
     int result;
-    int i;
 
     w_mutex_lock(&wdb->mutex);
 
@@ -1186,24 +1252,7 @@ int wdb_close(wdb_t * wdb, bool commit) {
             wdb_commit2(wdb);
         }
 
-        for (i = 0; i < WDB_STMT_SIZE; i++) {
-            if (wdb->stmt[i]) {
-                sqlite3_finalize(wdb->stmt[i]);
-            }
-        }
-
-        struct stmt_cache_list *node_stmt = wdb->cache_list;
-        struct stmt_cache_list *temp = NULL;
-        while (node_stmt){
-            if (node_stmt->value.stmt) {
-                // value.stmt would be free in sqlite3_finalize.
-                sqlite3_finalize(node_stmt->value.stmt);
-            }
-            os_free(node_stmt->value.query);
-            temp = node_stmt->next;
-            os_free(node_stmt);
-            node_stmt = temp;
-        }
+        wdb_finalize_all_statements(wdb);
 
         result = sqlite3_close_v2(wdb->db);
         w_mutex_unlock(&wdb->mutex);
@@ -1211,22 +1260,50 @@ int wdb_close(wdb_t * wdb, bool commit) {
         if (result == SQLITE_OK) {
             wdb_pool_remove(wdb);
             wdb_destroy(wdb);
-            return 0;
+            return OS_SUCCESS;
         } else {
             merror("DB(%s) wdb_close(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-            return -1;
+            return OS_INVALID;
         }
     } else {
         w_mutex_unlock(&wdb->mutex);
         mdebug1("Couldn't close database for agent %s: refcount = %u", wdb->id, wdb->refcount);
-        return -1;
+        return OS_INVALID;
     }
 }
 
+void wdb_finalize_all_statements(wdb_t * wdb) {
+    for (int i = 0; i < WDB_STMT_SIZE; i++) {
+        if (wdb->stmt[i]) {
+            sqlite3_finalize(wdb->stmt[i]);
+            wdb->stmt[i] = NULL;
+        }
+    }
+
+    struct stmt_cache_list *node_stmt = wdb->cache_list;
+    struct stmt_cache_list *temp = NULL;
+    while (node_stmt){
+        if (node_stmt->value.stmt) {
+            // value.stmt would be free in sqlite3_finalize.
+            sqlite3_finalize(node_stmt->value.stmt);
+            node_stmt->value.stmt = NULL;
+        }
+        os_free(node_stmt->value.query);
+        node_stmt->value.query = NULL;
+        temp = node_stmt->next;
+        os_free(node_stmt);
+        node_stmt = temp;
+    }
+
+    wdb->cache_list = NULL;
+}
+
 void wdb_leave(wdb_t * wdb) {
-    wdb->refcount--;
-    wdb->last = time(NULL);
-    w_mutex_unlock(&wdb->mutex);
+    if(wdb) {
+        wdb->refcount--;
+        wdb->last = time(NULL);
+        w_mutex_unlock(&wdb->mutex);
+    }
 }
 
 wdb_t * wdb_pool_find_prev(wdb_t * wdb) {
@@ -1484,4 +1561,60 @@ sqlite3_stmt * wdb_get_cache_stmt(wdb_t * wdb, char const *query) {
         }
     }
     return ret_val;
+}
+
+cJSON* wdb_get_internal_config() {
+    cJSON* wazuh_db_config = cJSON_CreateObject();
+    cJSON *root = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(wazuh_db_config, "commit_time_max", wconfig.commit_time_max);
+    cJSON_AddNumberToObject(wazuh_db_config, "commit_time_min", wconfig.commit_time_min);
+    cJSON_AddNumberToObject(wazuh_db_config, "open_db_limit", wconfig.open_db_limit);
+    cJSON_AddNumberToObject(wazuh_db_config, "worker_pool_size", wconfig.worker_pool_size);
+
+    cJSON_AddItemToObject(root, "wazuh_db", wazuh_db_config);
+
+    return root;
+}
+
+cJSON* wdb_get_config() {
+    cJSON *root = cJSON_CreateObject();
+    cJSON* wdb_config = cJSON_CreateObject();
+    cJSON* j_wdb_backup = cJSON_CreateArray();
+
+    for (int i = 0; i < WDB_LAST_BACKUP; i++) {
+        cJSON* j_wdb_backup_settings_node = cJSON_CreateObject();
+
+        switch (i) {
+            case WDB_GLOBAL_BACKUP:
+                cJSON_AddStringToObject(j_wdb_backup_settings_node, "database", "global");
+                break;
+            default:
+                break;
+        }
+
+        cJSON_AddBoolToObject(j_wdb_backup_settings_node, "enabled", wconfig.wdb_backup_settings[i]->enabled);
+        cJSON_AddNumberToObject(j_wdb_backup_settings_node, "interval", wconfig.wdb_backup_settings[i]->interval);
+        cJSON_AddNumberToObject(j_wdb_backup_settings_node, "max_files", wconfig.wdb_backup_settings[i]->max_files);
+
+        cJSON_AddItemToArray(j_wdb_backup, j_wdb_backup_settings_node);
+    }
+
+    cJSON_AddItemToObject(wdb_config, "backup", j_wdb_backup);
+    cJSON_AddItemToObject(root, "wdb", wdb_config);
+
+    return root;
+}
+
+bool wdb_check_backup_enabled() {
+    bool result = false;
+
+    for (int i = 0; i < WDB_LAST_BACKUP; i++) {
+        if(wconfig.wdb_backup_settings[i]->enabled) {
+            result = true;
+            break;
+        }
+    }
+
+    return result;
 }

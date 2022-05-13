@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "../wrappers/externals/cJSON/cJSON_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_syscollector_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
@@ -30,6 +31,7 @@ static int test_setup(void **state) {
     init_data->wdb->id = strdup("000");
     init_data->output = calloc(256, sizeof(char));
     init_data->wdb->peer = 1234;
+    init_data->wdb->enabled = true;
 
     *state = init_data;
 
@@ -3478,7 +3480,6 @@ void test_dbsync_modify_type_exists_avoid_old_implementation(void **state) {
     os_free(query);
 }
 
-
 void test_dbsync_insert_type_exists_data_correct_null_value_variant(void **state) {
     int ret = -1;
     test_struct_t *data  = (test_struct_t *)*state;
@@ -3675,12 +3676,125 @@ void test_dbsync_modify_type_exists_data_null_value_from_json(void **state) {
     os_free(query);
 }
 
+/* Tests wdb_parse_get_config */
 
+void test_wdb_parse_get_config_internal(){
+    will_return(__wrap_wdb_get_internal_config, 1);
+    cJSON *ret = wdb_parse_get_config("internal");
+    assert_int_equal(ret, 1);
+}
+
+void test_wdb_parse_get_config_wdb(){
+    will_return(__wrap_wdb_get_config, 1);
+    cJSON *ret = wdb_parse_get_config("wdb");
+    assert_int_equal(ret, 1);
+}
+
+void test_wdb_parse_get_config_arg_null() {
+    cJSON *ret = wdb_parse_get_config(0);
+    assert_int_equal(ret, NULL);
+}
+
+void test_wdb_parse_get_config_bad_arg() {
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid configuration source for wazuh-db");
+    cJSON *ret = wdb_parse_get_config("BAD_ARG");
+    assert_int_equal(ret, NULL);
+}
+
+/* wdb_parse_global_backup */
+
+void test_wdb_parse_global_backup_invalid_syntax(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int result = OS_INVALID;
+    char *query = NULL;
+
+    os_strdup("global backup", query);
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: backup");
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for backup.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: backup");
+
+    result = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'backup'");
+    assert_int_equal(result, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_wdb_parse_global_backup_missing_action(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int result = OS_INVALID;
+    char *query = NULL;
+
+    os_strdup("", query);
+
+    result = wdb_parse_global_backup(NULL, query, data->output);
+
+    assert_string_equal(data->output, "err Missing backup action");
+    assert_int_equal(result, OS_INVALID);
+    os_free(query);
+}
+
+void test_wdb_parse_global_backup_invalid_action(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int result = OS_INVALID;
+    char *query = NULL;
+
+    os_strdup("invalid", query);
+
+    result = wdb_parse_global_backup(NULL, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid backup action: invalid");
+    assert_int_equal(result, OS_INVALID);
+    os_free(query);
+}
+
+void test_wdb_parse_global_backup_create_failed(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int result = OS_INVALID;
+    char *query = NULL;
+
+    os_strdup("global backup create", query);
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: backup create");
+
+    will_return(__wrap_wdb_global_create_backup, "ERROR MESSAGE");
+    will_return(__wrap_wdb_global_create_backup, OS_INVALID);
+    expect_string(__wrap__merror, formatted_msg, "Creating Global DB snapshot on demand failed: ERROR MESSAGE");
+
+    result = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "ERROR MESSAGE");
+    assert_int_equal(result, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_wdb_parse_global_backup_create_success(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    int result = OS_INVALID;
+    char *query = NULL;
+
+    os_strdup("global backup create", query);
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: backup create");
+
+    will_return(__wrap_wdb_global_create_backup, "ok SNAPSHOT");
+    will_return(__wrap_wdb_global_create_backup, OS_SUCCESS);
+
+    result = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "ok SNAPSHOT");
+    assert_int_equal(result, OS_SUCCESS);
+
+    os_free(query);
+}
 
 int main()
 {
-    const struct CMUnitTest tests[] =
-    {
+    const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_wdb_parse_syscheck_no_space, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_scan_info_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_scan_info_ok, test_setup, test_teardown),
@@ -3721,7 +3835,9 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_save_date_max_long, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_save_update_cache_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_save_update_success, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_save_update_insert_cache_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_save_update_insert_cache_error,
+                                        test_setup,
+                                        test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_save_update_insert_success, test_setup, test_teardown),
         /* Tests osinfo */
         cmocka_unit_test_setup_teardown(test_osinfo_syntax_error, test_setup, test_teardown),
@@ -3768,7 +3884,9 @@ int main()
         cmocka_unit_test_setup_teardown(test_vuln_cves_update_status_command_success, test_setup, test_teardown),
         // wdb_parse_agents_update_vuln_cves_status_by_type
         cmocka_unit_test_setup_teardown(test_vuln_cves_update_status_by_type_command_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_vuln_cves_update_status_by_type_command_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_vuln_cves_update_status_by_type_command_success,
+                                        test_setup,
+                                        test_teardown),
         // wdb_parse_agents_remove_vuln_cves
         cmocka_unit_test_setup_teardown(test_vuln_cves_remove_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_vuln_cves_remove_json_data_error, test_setup, test_teardown),
@@ -3844,9 +3962,19 @@ int main()
         cmocka_unit_test_setup_teardown(test_dbsync_insert_type_exists_data_correct_null_value_from_json, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_dbsync_delete_type_exists_data_null_value_from_json, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_dbsync_modify_type_exists_data_null_value_from_json, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_dbsync_modify_type_exists_avoid_old_implementation, test_setup, test_teardown)
+        cmocka_unit_test_setup_teardown(test_dbsync_modify_type_exists_avoid_old_implementation, test_setup, test_teardown),
+        /* Tests wdb_parse_get_config */
+        cmocka_unit_test(test_wdb_parse_get_config_wdb),
+        cmocka_unit_test(test_wdb_parse_get_config_internal),
+        cmocka_unit_test(test_wdb_parse_get_config_arg_null),
+        cmocka_unit_test(test_wdb_parse_get_config_bad_arg),
+        /* wdb_parse_global_backup */
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_invalid_syntax, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_missing_action, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_invalid_action, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_create_failed, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_create_success, test_setup, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
-
 }

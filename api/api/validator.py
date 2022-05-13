@@ -19,8 +19,8 @@ _base64 = re.compile(r'^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]
 _boolean = re.compile(r'^true$|^false$')
 _dates = re.compile(r'^\d{8}$')
 _empty_boolean = re.compile(r'^$|(^true$|^false$)')
-_group_names = re.compile(r'^[\w.\-]+\b(?<!\ball)$')
-_group_names_or_all = re.compile(r'^[\w.\-]+$')
+_group_names = re.compile(r'^(?!^(\.{1,2}|all)$)[\w.\-]+$')
+_group_names_or_all = re.compile(r'^(?!^\.{1,2}$)[\w.\-]+$')
 _hashes = re.compile(r'^(?:[\da-fA-F]{32})?$|(?:[\da-fA-F]{40})?$|(?:[\da-fA-F]{56})?$|(?:[\da-fA-F]{64})?$|(?:['
                      r'\da-fA-F]{96})?$|(?:[\da-fA-F]{128})?$')
 _ips = re.compile(
@@ -97,6 +97,7 @@ api_config_schema = {
             "properties": {
                 "level": {"type": "string"},
                 "path": {"type": "string"},  # Deprecated. To be removed on later versions
+                "format": {"type": "string", "enum": ["plain", "json", "plain,json", "json,plain"]}
             },
         },
         "cors": {

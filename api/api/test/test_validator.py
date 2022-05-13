@@ -33,7 +33,11 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
     ('file%1-test_name1', _names),
     ('[(Random_symbols-string123)],<>!.+:"\'|=~#', _symbols_alphanumeric_param),
     ('Group_name-2', _group_names),
+    ('.group-2', _group_names),
+    ('...', _group_names),
     ('Group_name-2', _group_names_or_all),
+    ('.Group_name-2', _group_names_or_all),
+    ('...', _group_names_or_all),
     ('all', _group_names_or_all),
     # IPs
     ('192.168.122.255', _ips),
@@ -99,6 +103,10 @@ def test_validation_check_exp_ok(exp, regex_name):
     ('file-$', _array_names),
     ('file_1$,file_2#,file-3', _array_names),
     ('all', _group_names),
+    ('.', _group_names),
+    ('..', _group_names),
+    ('.', _group_names_or_all),
+    ('..', _group_names_or_all),
     # IPs
     ('192.168.122.256', _ips),
     ('192.266.1.1', _ips),
