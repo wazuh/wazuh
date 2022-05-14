@@ -933,6 +933,12 @@ InstallCommon()
     chmod 750 ${INSTALLDIR}/.symbols
     chmod -R 640 ${INSTALLDIR}/.symbols/*
   fi
+
+  if [ "X${NUNAME}" = "XLinux" ]; then
+    ln -sf ${INSTALLDIR}/.symbols ${INSTALLDIR}/active-response/bin/.debug
+    ln -sf ${INSTALLDIR}/.symbols ${INSTALLDIR}/bin/.debug
+    ln -sf ${INSTALLDIR}/.symbols ${INSTALLDIR}/lib/.debug
+  fi
 }
 
 InstallLocal()
