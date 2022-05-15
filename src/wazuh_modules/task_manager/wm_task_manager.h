@@ -38,15 +38,6 @@ typedef enum _error_code {
 } error_code;
 
 /**
- * Definition of upgrade parameters
- */
-typedef struct _wm_task_manager_upgrade {
-    char *node;
-    char *module;
-    int *agent_ids;
-} wm_task_manager_upgrade;
-
-/**
  * Definition of upgrade get status parameters
  */
 typedef struct _wm_task_manager_upgrade_get_status {
@@ -65,11 +56,12 @@ typedef struct _wm_task_manager_upgrade_update_status {
 } wm_task_manager_upgrade_update_status;
 
 /**
- * Definition of upgrade result parameters
+ * Definition of result parameters
  */
-typedef struct _wm_task_manager_upgrade_result {
+typedef struct _wm_task_manager_result {
+    char *module;
     int *agent_ids;
-} wm_task_manager_upgrade_result;
+} wm_task_manager_result;
 
 /**
  * Definition of upgrade cancel tasks parameters
@@ -96,6 +88,17 @@ typedef struct _wm_task_manager_syscollector {
     char *status;
     char *error_msg;
 } wm_task_manager_syscollector;
+
+/**
+ * Definition of a generic task parameters
+ */
+typedef struct _wm_task_manager_generic {
+    char *node;
+    char *module;
+    int  *agent_ids;
+    char *status;
+    char *error_msg;
+} wm_task_manager_generic;
 
 /**
  * Definition of get status tasks parameters

@@ -1905,7 +1905,7 @@ int wdb_parse_task_get_status(wdb_t* wdb, const cJSON *parameters, const char *c
 int wdb_parse_task_update_status(wdb_t* wdb, const cJSON *parameters, const char* command,  char* output);
 
 /**
- * @brief Function to parse the upgrade_result request.
+ * @brief Function to parse the result request.
  *
  * @param [in] wdb The global struct database.
  * @param parameters JSON with the parameters
@@ -1913,7 +1913,7 @@ int wdb_parse_task_update_status(wdb_t* wdb, const cJSON *parameters, const char
  * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
  */
-int wdb_parse_task_upgrade_result(wdb_t* wdb, const cJSON *parameters, char* output);
+int wdb_parse_task_result(wdb_t* wdb, const cJSON *parameters, char* output);
 
 /**
  * @brief Function to parse the upgrade_cancel_tasks request.
@@ -2088,7 +2088,7 @@ int wdb_task_cancel_upgrade_tasks(wdb_t* wdb, const char *node);
  * @param last_update_time Integer where the last_update_time of the task will be stored.
  * @return task_id when succeed, < 0 otherwise.
  * */
-int wdb_task_get_upgrade_task_by_agent_id(wdb_t* wdb, int agent_id, char **node, char **module, char **command, char **status, char **error, int *create_time, int *last_update_time);
+int wdb_task_get_task_by_agent_id(wdb_t* wdb, int agent_id, const char* module, char **node, char **module_result, char **command, char **status, char **error, int *create_time, int *last_update_time);
 
 const char* wdb_task_command_translate(const char* command);
 

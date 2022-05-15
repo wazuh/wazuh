@@ -234,7 +234,7 @@ int wdb_task_update_task_status_by_id(wdb_t* wdb, int task_id, const char *statu
     return OS_SUCCESS;
 }
 
-int wdb_task_get_upgrade_task_by_agent_id(wdb_t* wdb, int agent_id, char **node, char **module, char **command, char **status, char **error, int *create_time, int *last_update_time) {
+int wdb_task_get_task_by_agent_id(wdb_t* wdb, int agent_id, const char* module, char **node, char **module_result, char **command, char **status, char **error, int *create_time, int *last_update_time) {
     sqlite3_stmt *stmt = NULL;
     int result = OS_INVALID;
     int task_id;
@@ -252,7 +252,7 @@ int wdb_task_get_upgrade_task_by_agent_id(wdb_t* wdb, int agent_id, char **node,
     stmt = wdb->stmt[WDB_STMT_TASK_GET_LAST_AGENT_TASK_BY_COMMAND];
 
     sqlite3_bind_int(stmt, 1, agent_id);
-    sqlite3_bind_text(stmt, 2, "upgrade", -1, NULL);
+    sqlite3_bind_text(stmt, 2, module, -1, NULL);
 
     if (result = wdb_step(stmt), result != SQLITE_ROW) {
         merror(DB_SQL_ERROR, sqlite3_errmsg(wdb->db));
@@ -265,7 +265,7 @@ int wdb_task_get_upgrade_task_by_agent_id(wdb_t* wdb, int agent_id, char **node,
         result = OS_NOTFOUND;
     } else {
         sqlite_strdup((char*)sqlite3_column_text(stmt, 2), *node);
-        sqlite_strdup((char*)sqlite3_column_text(stmt, 3), *module);
+        sqlite_strdup((char*)sqlite3_column_text(stmt, 3), *module_result);
         sqlite_strdup((char*)sqlite3_column_text(stmt, 4), *command);
         *create_time = sqlite3_column_int(stmt, 5);
         *last_update_time = sqlite3_column_int(stmt, 6);
