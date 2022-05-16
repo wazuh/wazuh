@@ -58,8 +58,12 @@ typedef struct _remoted_state_t {
 /* Status functions */
 
 /**
+ * @brief Listen to remoted socket for new requests
+ */
+void* remcom_main(__attribute__((unused)) void * arg) ;
+
+/**
  * @brief Main function of remoted status writer
- * @return NULL
  */
 void* rem_state_main();
 
