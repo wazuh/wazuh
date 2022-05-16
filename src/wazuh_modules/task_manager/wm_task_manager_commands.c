@@ -333,7 +333,7 @@ STATIC cJSON* wm_task_manager_command_result(wm_task_manager_result *task, const
                 wm_task_manager_parse_data_result(tmp, node_result, module_result, command_result, status, error, create_time, last_update_time, command);
                 cJSON_AddItemToArray(response, tmp);
 
-            } else if (cJSON_IsNumber(wdb_error) && (wdb_error->valueint == OS_NOTFOUND)) {
+            } else if (wdb_error && (wdb_error->type == cJSON_Number) && (wdb_error->valueint == OS_NOTFOUND)) {
                 cJSON_AddItemToArray(response, wm_task_manager_parse_data_response(WM_TASK_DATABASE_NO_TASK, agent_id, OS_INVALID, NULL));
             } else {
                 *error_code = WM_TASK_DATABASE_ERROR;
