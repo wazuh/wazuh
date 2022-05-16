@@ -1290,3 +1290,51 @@ checks:
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SharedAccess -> Start -> 4'
+
+  - id: 26082
+    title: "(L2) Ensure 'Link-Layer Topology Discovery Mapper (lltdsvc)' is set to  'Disabled'"
+    description: "Creates a Network Map, consisting of PC and device topology (connectivity) information,  and metadata describing each PC and device."
+    rationale: "The feature that this service enables could potentially be used for unauthorized discovery  and connection to network devices. Disabling the service helps to prevent responses to  requests for network topology discovery in high security environments."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Link-Layer Topology Discovery Mapper "
+    compliance:
+      - cis: ["5.9"]
+      - cis_csc: ["9.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\lltdsvc -> Start -> 4'
+
+  - id: 26083
+    title: "Ensure 'LxssManager (LxssManager)' is set to 'Disabled' or 'Not  Installed' (Automated)"
+    description: "The LXSS Manager service supports running native ELF binaries. The service provides the  infrastructure necessary for ELF binaries to run on Windows."
+    rationale: "The Linux SubSystem (LXSS) Manager allows full system access to Linux applications on  Windows, including the file system. While this can certainly have some functionality and  performance benefits for running those applications, it also creates new security risks in  the event that a hacker injects malicious code into a Linux application. For best security, it is preferred to run Linux applications on Linux, and Windows applications on Windows."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\LxssManager"
+    compliance:
+      - cis: ["5.10"]
+      - cis_csc: ["9.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LxssManager -> Start -> 4'
+
+  - id: 26084
+    title: "Ensure 'Microsoft FTP Service (FTPSVC)' is set to 'Disabled' or  'Not Installed'"
+    description: "Enables the server to be a File Transfer Protocol (FTP) server"
+    rationale: "Hosting an FTP server (especially a non-secure FTP server) from a workstation is an  increased security risk, as the attack surface of that workstation is then greatly increased"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Microsoft FTP Service"
+    compliance:
+      - cis: ["5.11"]
+      - cis_csc: ["9.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\FTPSVC -> Start -> 4'
+
+  - id: 26085
+    title: "(L2) Ensure 'Microsoft iSCSI Initiator Service (MSiSCSI)' is set to  'Disabled'"
+    description: "Manages Internet SCSI (iSCSI) sessions from this computer to remote target devices."
+    rationale: "This service is critically necessary in order to directly attach to an iSCSI device. However,  iSCSI itself uses a very weak authentication protocol (CHAP), which means that the  passwords for iSCSI communication are easily exposed, unless all of the traffic is isolated  and/or encrypted using another technology like IPsec. This service is generally more  appropriate for servers in a controlled environment then on workstations requiring high  security."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Microsoft iSCSI Initiator Service"
+    compliance:
+      - cis: ["5.12"]
+      - cis_csc: ["9.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\MSiSCSI -> Start -> 4'
