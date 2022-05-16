@@ -283,7 +283,6 @@ TEST_F(FimDBFixture, fimSyncPushMsgSuccess)
     const auto buff{reinterpret_cast<const uint8_t*>(rawData.c_str())};
 
     EXPECT_CALL(*mockRSync, pushMessage(std::vector<uint8_t> {buff, buff + rawData.size()}));
-    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG_VERBOSE, "Message pushed: " + data));
 
     fimDBMock.pushMessage(data);
 }
