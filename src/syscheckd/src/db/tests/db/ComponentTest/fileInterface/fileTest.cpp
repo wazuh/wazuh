@@ -120,10 +120,14 @@ TEST_F(DBTestFixture, TestFimDBFileUpdate)
         const auto fileFIMTest2 { std::make_unique<FileItem>(insertStatement2["data"].front()) };
         const auto fileFIMTestUpdated2 { std::make_unique<FileItem>(updateStatement2["data"].front()) };
 
-        fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added);
-        fim_db_file_update(fileFIMTestUpdated->toFimEntry(), callback_data_modified);
-        fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added);
-        fim_db_file_update(fileFIMTestUpdated2->toFimEntry(), callback_data_modified);
+        auto result = fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+        result = fim_db_file_update(fileFIMTestUpdated->toFimEntry(), callback_data_modified);
+        ASSERT_EQ(result, FIMDB_OK);
+        result = fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+        result = fim_db_file_update(fileFIMTestUpdated2->toFimEntry(), callback_data_modified);
+        ASSERT_EQ(result, FIMDB_OK);
     });
 }
 TEST_F(DBTestFixture, TestFimDBRemovePath)
@@ -133,10 +137,13 @@ TEST_F(DBTestFixture, TestFimDBRemovePath)
     const auto fileFIMTest3 { std::make_unique<FileItem>(insertStatement3["data"].front()) };
     EXPECT_NO_THROW(
     {
-        fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
-        fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added);
-        fim_db_file_update(fileFIMTest3->toFimEntry(), callback_data_added);
-        auto result = fim_db_remove_path("/etc/wgetrc");
+        auto result = fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+        result = fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+        result = fim_db_file_update(fileFIMTest3->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+        result = fim_db_remove_path("/etc/wgetrc");
         ASSERT_EQ(result, FIMDB_OK);
         result = fim_db_remove_path("/tmp/test.txt");
         ASSERT_EQ(result, FIMDB_OK);
@@ -153,14 +160,17 @@ TEST_F(DBTestFixture, TestFimDBGetPath)
 
     EXPECT_NO_THROW(
     {
-        fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
-        fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added);
-        fim_db_file_update(fileFIMTest3->toFimEntry(), callback_data_added);
+        auto result = fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+        result = fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+        result = fim_db_file_update(fileFIMTest3->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
         const auto fileFIMTest { std::make_unique<FileItem>(insertStatement1["data"].front()) };
         callback_context_t callback_data;
         callback_data.callback = callBackTestFIMEntry;
         callback_data.context = fileFIMTest->toFimEntry();
-        auto result = fim_db_get_path("/etc/wgetrc", callback_data);
+        result = fim_db_get_path("/etc/wgetrc", callback_data);
         ASSERT_EQ(result, FIMDB_OK);
     });
 }
@@ -173,31 +183,36 @@ TEST_F(DBTestFixture, TestFimDBGetCountFileEntry)
 
     EXPECT_NO_THROW(
     {
-        auto result = fim_db_get_count_file_entry();
-        ASSERT_EQ(result, 0);
-        fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
-        fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added);
-        fim_db_file_update(fileFIMTest3->toFimEntry(), callback_data_added);
-        result = fim_db_get_count_file_entry();
-        ASSERT_EQ(result, 3);
+        auto count = fim_db_get_count_file_entry();
+        ASSERT_EQ(count, 0);
+        auto result = fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+        result = fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+        result = fim_db_file_update(fileFIMTest3->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+        count = fim_db_get_count_file_entry();
+        ASSERT_EQ(count, 3);
         result = fim_db_remove_path("/etc/wgetrc");
         ASSERT_EQ(result, FIMDB_OK);
-        result = fim_db_get_count_file_entry();
-        ASSERT_EQ(result, 2);
-        fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
-        result = fim_db_get_count_file_entry();
-        ASSERT_EQ(result, 3);
-        fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_modified);
-        result = fim_db_get_count_file_entry();
-        ASSERT_EQ(result, 3);
+        count = fim_db_get_count_file_entry();
+        ASSERT_EQ(count, 2);
+        result =fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+        count = fim_db_get_count_file_entry();
+        ASSERT_EQ(count, 3);
+        result =fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_modified);
+        ASSERT_EQ(result, FIMDB_OK);
+        count = fim_db_get_count_file_entry();
+        ASSERT_EQ(count, 3);
         result = fim_db_remove_path("/etc/wgetrc");
         ASSERT_EQ(result, FIMDB_OK);
         result = fim_db_remove_path("/tmp/test.txt");
         ASSERT_EQ(result, FIMDB_OK);
         result = fim_db_remove_path("/tmp/test2.txt");
         ASSERT_EQ(result, FIMDB_OK);
-        result = fim_db_get_count_file_entry();
-        ASSERT_EQ(result, 0);
+        count = fim_db_get_count_file_entry();
+        ASSERT_EQ(count, 0);
     });
 }
 
@@ -209,31 +224,36 @@ TEST_F(DBTestFixture, TestFimDBGetCountFileInode)
 
     EXPECT_NO_THROW(
     {
-        auto result = fim_db_get_count_file_inode();
-        ASSERT_EQ(result, 0);
-        fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
-        fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added);
-        fim_db_file_update(fileFIMTest3->toFimEntry(), callback_data_added);
-        result = fim_db_get_count_file_inode();
-        ASSERT_EQ(result, 3);
+        auto count = fim_db_get_count_file_inode();
+        ASSERT_EQ(count, 0);
+        auto result = fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+        result = fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+        result = fim_db_file_update(fileFIMTest3->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+        count = fim_db_get_count_file_inode();
+        ASSERT_EQ(count, 3);
         result = fim_db_remove_path("/etc/wgetrc");
         ASSERT_EQ(result, FIMDB_OK);
-        result = fim_db_get_count_file_inode();
-        ASSERT_EQ(result, 2);
-        fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
-        result = fim_db_get_count_file_inode();
-        ASSERT_EQ(result, 3);
-        fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_modified);
-        result = fim_db_get_count_file_inode();
-        ASSERT_EQ(result, 3);
+        count = fim_db_get_count_file_inode();
+        ASSERT_EQ(count, 2);
+        result = fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+        count = fim_db_get_count_file_inode();
+        ASSERT_EQ(count, 3);
+        result = fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_modified);
+        ASSERT_EQ(result, FIMDB_OK);
+        count = fim_db_get_count_file_inode();
+        ASSERT_EQ(count, 3);
         result = fim_db_remove_path("/etc/wgetrc");
         ASSERT_EQ(result, FIMDB_OK);
         result = fim_db_remove_path("/tmp/test.txt");
         ASSERT_EQ(result, FIMDB_OK);
         result = fim_db_remove_path("/tmp/test2.txt");
         ASSERT_EQ(result, FIMDB_OK);
-        result = fim_db_get_count_file_inode();
-        ASSERT_EQ(result, 0);
+        count = fim_db_get_count_file_inode();
+        ASSERT_EQ(count, 0);
     });
 }
 
@@ -246,27 +266,26 @@ TEST_F(DBTestFixture, TestFimDBFileInodeSearch)
 
     EXPECT_NO_THROW(
     {
-        fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
-        fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added);
-        fim_db_file_update(fileFIMTest3->toFimEntry(), callback_data_added);
+        auto result = fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+        result = fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+        result = fim_db_file_update(fileFIMTest3->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
         char *test;
         test = strdup("/etc/wgetrc");
         callback_context_t callback_data;
         callback_data.callback = callbackTestSearchPath;
         callback_data.context = test;
-        try
-        {
-            fim_db_file_inode_search(18277083, 2456, callback_data);
-        }
-        catch(...)
-        {
-            os_free(test);
-        }
+        result = fim_db_file_inode_search(18277083, 2456, callback_data);
+        ASSERT_EQ(result, FIMDB_OK);
         os_free(test);
-        fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_modified);
+        result = fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_modified);
+        ASSERT_EQ(result, FIMDB_OK);
         callback_data.callback = callbackTestSearch;
         callback_data.context = NULL;
-        fim_db_file_inode_search(18457083, 2151, callback_data);
+        result = fim_db_file_inode_search(18457083, 2151, callback_data);
+        ASSERT_EQ(result, FIMDB_OK);
     });
 }
 
@@ -278,25 +297,23 @@ TEST_F(DBTestFixture, TestFimDBFilePatternSearch)
 
     EXPECT_NO_THROW(
     {
-        fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
-        fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added);
-        fim_db_file_update(fileFIMTest3->toFimEntry(), callback_data_added);
+        auto result = fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+        result = fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+        result = fim_db_file_update(fileFIMTest3->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
         callback_context_t callback_data;
         callback_data.callback = callbackTestSearch;
         callback_data.context = nullptr;
-        fim_db_file_pattern_search("/tmp/%", callback_data);
+        result = fim_db_file_pattern_search("/tmp/%", callback_data);
+        ASSERT_EQ(result, FIMDB_OK);
         char *test;
         test = strdup("/etc/wgetrc");
         callback_data.callback = callbackTestSearchPath;
         callback_data.context = test;
-        try
-        {
-            fim_db_file_pattern_search("/etc/%", callback_data);
-        }
-        catch(...)
-        {
-            os_free(test);
-        }
+        result = fim_db_file_pattern_search("/etc/%", callback_data);
+        ASSERT_EQ(result, FIMDB_OK);
         os_free(test);
     });
 }
@@ -352,8 +369,8 @@ TEST_F(DBTestFixture, TestFimDBFileUpdateNullParameters)
 
     EXPECT_NO_THROW(
     {
-        fim_db_file_update(nullptr, callback_data_added);
-        fim_db_file_update(fileFIMTest->toFimEntry(), callback_null);
+        ASSERT_EQ(fim_db_file_update(nullptr, callback_data_added), FIMDB_ERR);
+        ASSERT_EQ(fim_db_file_update(fileFIMTest->toFimEntry(), callback_null), FIMDB_ERR);
     });
 }
 
@@ -383,26 +400,25 @@ TEST_F(DBTestFixture, TestFimDBFileInodeSearchWithBigInode)
 
     EXPECT_NO_THROW(
     {
-        fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
-        fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added);
-        fim_db_file_update(fileFIMTest3->toFimEntry(), callback_data_added);
+        auto result = fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+        result = fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+        result = fim_db_file_update(fileFIMTest3->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
         char *test;
         test = strdup("/etc/wgetrc");
         callback_context_t callback_data;
         callback_data.callback = callbackTestSearchPath;
         callback_data.context = test;
-        try
-        {
-            fim_db_file_inode_search(18277083, 2456, callback_data);
-        }
-        catch(...)
-        {
-            os_free(test);
-        }
+        result = fim_db_file_inode_search(18277083, 2456, callback_data);
+        ASSERT_EQ(result, FIMDB_OK);
         os_free(test);
-        fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_modified);
+        result = fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_modified);
+        ASSERT_EQ(result, FIMDB_OK);
         callback_data.callback = callbackTestSearch;
         callback_data.context = NULL;
-        fim_db_file_inode_search(1152921500312810880, 8432, callback_data);
+        result = fim_db_file_inode_search(1152921500312810880, 8432, callback_data);
+        ASSERT_EQ(result, FIMDB_OK);
     });
 }

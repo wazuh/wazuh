@@ -103,6 +103,8 @@ int fim_db_get_count_file_entry();
  *
  * @param data The information linked to the path to be created or updated.
  * @param callback Callback to send the fim message.
+ *
+ * @return FIMDB_OK on success.
  */
 FIMDBErrorCode fim_db_file_update(fim_entry* data, callback_context_t callback);
 
@@ -121,14 +123,17 @@ FIMDBErrorCode fim_db_file_inode_search(unsigned long long int inode, unsigned l
  * @brief Push a message to the syscheck queue
  *
  * @param msg The specific message to be pushed
+ *
+ * @return FIMDB_OK on success.
  */
-void fim_sync_push_msg(const char* msg);
+FIMDBErrorCode fim_sync_push_msg(const char* msg);
 
 /**
  * @brief Thread that performs the syscheck data synchronization
  *
+ * @return FIMDB_OK on success.
  */
-void fim_run_integrity();
+FIMDBErrorCode fim_run_integrity();
 
 /*
  * @brief Function that starts a new DBSync transaction.
