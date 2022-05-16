@@ -45,9 +45,9 @@ typedef struct _sent_msgs_t {
 } sent_msgs_t;
 
 typedef struct _remoted_state_t {
-    uint32_t tcp_sessions;
     uint64_t recv_bytes;
     uint64_t sent_bytes;
+    uint32_t tcp_sessions;
     uint32_t keys_reload_count;
     uint32_t update_shared_files_count;
     recv_msgs_t recv_breakdown;
