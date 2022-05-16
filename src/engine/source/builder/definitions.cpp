@@ -4,9 +4,7 @@
 
 #include <fmt/format.h>
 
-namespace builder
-{
-namespace internals
+namespace builder::internals
 {
 
 void substituteDefinitions(base::Document& asset)
@@ -36,7 +34,8 @@ void substituteDefinitions(base::Document& asset)
          it != definitionsObject.MemberEnd();
          ++it)
     {
-        definitionsMap["$" + std::string(it->name.GetString())] = base::Document {it->value};
+        definitionsMap["$" + std::string(it->name.GetString())] =
+            base::Document {it->value};
     }
 
     asset.m_doc.RemoveMember("definitions");
@@ -79,5 +78,4 @@ void substituteDefinitions(base::Document& asset)
     asset = base::Document {jsonString.c_str()};
 }
 
-} // namespace internals
-} // namespace builder
+} // namespace builder::internals
