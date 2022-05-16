@@ -190,3 +190,5 @@ if __name__ == "__main__":
         restart_analysisd()
     if error:
         sys.exit(1)
+    else:
+        sys.exit(1)
