@@ -3,14 +3,11 @@
 
 #include "builderTypes.hpp"
 
-namespace builder
-{
-namespace internals
+namespace builder::internals
 {
 
 void substituteDefinitions(base::Document& asset);
 
-}
-} // namespace builder
+} // namespace builder::internals
 
 #endif // _DEFINITIONS_H_
