@@ -176,13 +176,6 @@ void rem_initList(int initial_size);
 void rem_setCounter(int fd, size_t counter);
 size_t rem_getCounter(int fd);
 
-/* Internal socket */
-
-/**
- * @brief Listen to remoted socket for new requests
- */
-void * remcom_main(__attribute__((unused)) void * arg) ;
-
 /** Global variables **/
 
 extern keystore keys;
