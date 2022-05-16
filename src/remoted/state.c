@@ -259,13 +259,12 @@ void rem_inc_update_shared_files() {
     w_mutex_unlock(&state_mutex);
 }
 
-char* rem_create_state_json() {
+cJSON* rem_create_state_json() {
     cJSON *_statistics = NULL;
     cJSON *_received = NULL;
     cJSON *_control = NULL;
     cJSON *_sent = NULL;
     cJSON *_queue = NULL;
-    char *rem_state = NULL;
 
     cJSON *rem_state_json = cJSON_CreateObject();
 
@@ -321,9 +320,5 @@ char* rem_create_state_json() {
     cJSON_AddNumberToObject(_statistics, "keys_reload_count", remoted_state.keys_reload_count);
     cJSON_AddNumberToObject(_statistics, "update_shared_files_count", remoted_state.update_shared_files_count);
 
-    rem_state = cJSON_PrintUnformatted(rem_state_json);
-
-    cJSON_Delete(rem_state_json);
-
-    return rem_state;
+    return rem_state_json;
 }

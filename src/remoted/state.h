@@ -184,6 +184,6 @@ void rem_inc_update_shared_files();
  * @brief Create a JSON string with all the remoted state information
  * @return JSON string
  */
-char* rem_create_state_json();
+cJSON* rem_create_state_json();
 
 #endif

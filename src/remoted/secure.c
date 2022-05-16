@@ -106,6 +106,9 @@ void HandleSecure()
     // Create Request listener thread
     w_create_thread(req_main, NULL);
 
+    // Create com request thread
+    w_create_thread(remcom_main, NULL);
+
     // Create State writer thread
     w_create_thread(rem_state_main, NULL);
 
