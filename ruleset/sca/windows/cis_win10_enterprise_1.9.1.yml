@@ -1206,3 +1206,87 @@ checks:
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> EnableVirtualization -> 1'
+
+  - id: 26075
+    title: "(L2) Ensure 'Bluetooth Audio Gateway Service (BTAGService)' is set  to 'Disabled'"
+    description: "Service supporting the audio gateway role of the Bluetooth Handsfree Profile."
+    rationale: "Bluetooth technology has inherent security risks - especially prior to the v2.1 standard.  Wireless Bluetooth traffic is not well encrypted (if at all), so in a high-security environment,  it should not be permitted, in spite of the added inconvenience of not being able to use  Bluetooth devices. "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Bluetooth Audio Gateway Service"
+    compliance:
+      - cis: ["5.1"]
+      - cis_csc: ["9.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\BTAGService -> Start -> 4'
+
+  - id: 26076
+    title: "(L2) Ensure 'Bluetooth Support Service (bthserv)' is set to 'Disabled' "
+    description: "The Bluetooth service supports discovery and association of remote Bluetooth devices"
+    rationale: "Bluetooth technology has inherent security risks - especially prior to the v2.1 standard.  Wireless Bluetooth traffic is not well encrypted (if at all), so in a high-security environment,  it should not be permitted, in spite of the added inconvenience of not being able to use  Bluetooth devices."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Bluetooth Support Service"
+    compliance:
+      - cis: ["5.2"]
+      - cis_csc: ["16"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\bthserv -> Start -> 4'
+
+  - id: 26077
+    title: "(L2) Ensure 'Downloaded Maps Manager (MapsBroker)' is set to  'Disabled'"
+    description: "Windows service for application access to downloaded maps. This service is started on-demand by application accessing downloaded maps."
+    rationale: "Mapping technologies can unwillingly reveal your location to attackers and other software  that picks up the information. In addition, automatic downloads of data from 3rd-party  sources should be minimized when not needed. Therefore this service should not be  needed in high security environments."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Downloaded Maps Manager"
+    compliance:
+      - cis: [ "5.4" ]
+      - cis_csc: [ "9.2" ]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\MapsBroker -> Start -> 4'
+
+  - id: 26078
+    title: "(L2) Ensure 'Geolocation Service (lfsvc)' is set to 'Disabled'"
+    description: "This service monitors the current location of the system and manages geofences (a  geographical location with associated events)."
+    rationale: "This setting affects the location feature (e.g. GPS or other location tracking). From a  security perspective, it’s not a good idea to reveal your location to software in most cases,  but there are legitimate uses, such as mapping software. However, they should not be used  in high security environments."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Geolocation Service "
+    compliance:
+      - cis: ["5.5"]
+      - cis_csc: ["9.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\MapsBroker -> Start -> 4'
+
+  - id: 26079
+    title: "Ensure 'IIS Admin Service (IISADMIN)' is set to 'Disabled' or 'Not  Installed'"
+    description: "Enables the server to administer the IIS metabase. The IIS metabase stores configuration  for the SMTP and FTP services"
+    rationale: "Hosting a website from a workstation is an increased security risk, as the attack surface of  that workstation is then greatly increased. If proper security mitigations are not followed,  the chance of successful attack increases significantly"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\IIS Admin Service"
+    compliance:
+      - cis: ["5.6"]
+      - cis_csc: ["9.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\IISADMIN -> Start -> 4'
+
+  - id: 26080
+    title: "Ensure 'Infrared monitor service (irmon)' is set to 'Disabled' or  'Not Installed'"
+    description: "Detects other Infrared devices that are in range and launches the file transfer application"
+    rationale: "Infrared connections can potentially be a source of data compromise - especially via the  automatic file transfer application functionality. Enterprise-managed systems should  utilize a more secure method of connection than infrared."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Infrared monitor service"
+    compliance:
+      - cis: ["5.7"]
+      - cis_csc: ["9.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\irmon -> Start -> 4'
+
+  - id: 26081
+    title: "Ensure 'Internet Connection Sharing (ICS) (SharedAccess)' is set  to 'Disabled'"
+    description: "Provides network access translation, addressing, name resolution and/or intrusion  prevention services for a home or small office network."
+    rationale: "Internet Connection Sharing (ICS) is a feature that allows someone to share their Internet  connection with other machines on the network - it was designed for home or small office  environments where only one machine has Internet access - it effectively turns that  machine into an Internet router. This feature causes the bridging of networks and likely  bypassing other, more secure pathways. It should not be used on any enterprise-managed  system."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Internet Connection Sharing (ICS) "
+    compliance:
+      - cis: ["5.8"]
+      - cis_csc: ["9.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SharedAccess -> Start -> 4'
