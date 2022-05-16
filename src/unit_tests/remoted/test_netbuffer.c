@@ -26,6 +26,7 @@
 #include "../wrappers/wazuh/shared/notify_op_wrappers.h"
 
 extern wnotify_t * notify;
+extern unsigned int send_chunk;
 
 int sock = 15;
 
@@ -51,6 +52,8 @@ static int test_setup(void ** state) {
     *state = netbuffer;
 
     os_calloc(1, sizeof(wnotify_t), notify);
+
+    send_chunk = 14;
 
     return 0;
 }
@@ -197,6 +200,9 @@ void test_nb_queue_retry_err(void ** state) {
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
     int retval = nb_queue(netbuffer, sock, msg, size);
 
     assert_int_equal(retval, -1);
@@ -212,6 +218,7 @@ void test_nb_send_ok(void ** state) {
 
     expect_memory(__wrap_bqueue_peek, queue, (bqueue_t *)netbuffer->buffers[sock].bqueue, sizeof(bqueue_t *));
     expect_value(__wrap_bqueue_peek, flags, BQUEUE_NOFLAG);
+    will_return(__wrap_bqueue_peek, 1);
     will_return(__wrap_bqueue_peek, final_msg);
     will_return(__wrap_bqueue_peek, final_size);
 
@@ -244,7 +251,7 @@ void test_nb_send_zero_ok(void ** state) {
 
     expect_memory(__wrap_bqueue_peek, queue, (bqueue_t *)netbuffer->buffers[sock].bqueue, sizeof(bqueue_t *));
     expect_value(__wrap_bqueue_peek, flags, BQUEUE_NOFLAG);
-    will_return(__wrap_bqueue_peek, "");
+    will_return(__wrap_bqueue_peek, 0);
     will_return(__wrap_bqueue_peek, 0);
 
     expect_memory(__wrap_wnotify_modify, notify, notify, sizeof(wnotify_t *));
@@ -271,6 +278,7 @@ void test_nb_send_would_block_ok(void ** state) {
 
     expect_memory(__wrap_bqueue_peek, queue, (bqueue_t *)netbuffer->buffers[sock].bqueue, sizeof(bqueue_t *));
     expect_value(__wrap_bqueue_peek, flags, BQUEUE_NOFLAG);
+    will_return(__wrap_bqueue_peek, 1);
     will_return(__wrap_bqueue_peek, final_msg);
     will_return(__wrap_bqueue_peek, final_size);
 
@@ -298,6 +306,7 @@ void test_nb_send_err(void ** state) {
 
     expect_memory(__wrap_bqueue_peek, queue, (bqueue_t *)netbuffer->buffers[sock].bqueue, sizeof(bqueue_t *));
     expect_value(__wrap_bqueue_peek, flags, BQUEUE_NOFLAG);
+    will_return(__wrap_bqueue_peek, 1);
     will_return(__wrap_bqueue_peek, final_msg);
     will_return(__wrap_bqueue_peek, final_size);
 

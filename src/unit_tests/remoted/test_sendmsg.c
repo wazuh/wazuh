@@ -15,6 +15,7 @@
 #include <stdlib.h>
 
 #include "remoted/remoted.h"
+#include "remoted/state.h"
 #include "headers/shared.h"
 
 #include "../wrappers/common.h"
@@ -77,7 +78,7 @@ void test_send_msg_tcp_ok(void ** state) {
     ssize_t crypto_size = 9;
 
     logr.global.agents_disconnection_time = 0;
-    remoted_state.queued_msgs = 0;
+    remoted_state.sent_breakdown.queued_count = 0;
 
     expect_function_call(__wrap_pthread_rwlock_rdlock);
 
@@ -113,7 +114,7 @@ void test_send_msg_tcp_ok(void ** state) {
     int ret = send_msg(agent_id, msg, msg_length);
 
     assert_int_equal(ret, 0);
-    assert_int_equal(remoted_state.queued_msgs, 1);
+    assert_int_equal(remoted_state.sent_breakdown.queued_count, 1);
 }
 
 void test_send_msg_tcp_err(void ** state) {
@@ -128,7 +129,7 @@ void test_send_msg_tcp_err(void ** state) {
     ssize_t crypto_size = 9;
 
     logr.global.agents_disconnection_time = 0;
-    remoted_state.queued_msgs = 0;
+    remoted_state.sent_breakdown.queued_count = 0;
 
     expect_function_call(__wrap_pthread_rwlock_rdlock);
 
@@ -161,7 +162,7 @@ void test_send_msg_tcp_err(void ** state) {
     int ret = send_msg(agent_id, msg, msg_length);
 
     assert_int_equal(ret, -1);
-    assert_int_equal(remoted_state.queued_msgs, 0);
+    assert_int_equal(remoted_state.sent_breakdown.queued_count, 0);
 }
 
 int main(void) {
