@@ -498,3 +498,9 @@ void w_inc_unknown(){
     wazuhdb_stats.queries_breakdown.unknown_queries++;
     w_mutex_unlock(&db_stats_t_mutex);
 }
+
+void w_inc_agent_syscheck_time(uint64_t time){
+    w_mutex_lock(&db_stats_t_mutex);
+    wazuhdb_stats.queries_breakdown.agent_breakdown.syscheck.syscheck_time += time;
+    w_mutex_unlock(&db_stats_t_mutex);
+}
