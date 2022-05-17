@@ -84,7 +84,7 @@ void * ad_input_main(void * args);
 static void load_limits(void);
 
 /**
- * @brief Clean the values of limits strucutre
+ * @brief Clean the values of limits structure
  *
  * This is a private function.
  */
@@ -114,7 +114,7 @@ static void increase_event_counter(void);
 static void generate_eps_credits(unsigned int credits);
 
 /**
- * @brief Remove 'credits' to the semaphore
+ * @brief Remove 'credits' from the semaphore
  *
  * This is a private function.
  *
@@ -1951,10 +1951,8 @@ void * w_dispatch_dbsync_thread(__attribute__((unused)) void * args) {
     dbsync_context_t ctx = { .db_sock = -1, .ar_sock = -1 };
 
     for (;;) {
-        if ((msg = queue_pop_ex(dispatch_dbsync_input))) {
+        if (msg = queue_pop_ex(dispatch_dbsync_input), msg) {
             get_eps_credit();
-
-            assert(msg != NULL);
 
             os_calloc(1, sizeof(Eventinfo), lf);
             os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
@@ -1982,10 +1980,8 @@ void * w_dispatch_upgrade_module_thread(__attribute__((unused)) void * args) {
     Eventinfo * lf;
 
     while (true) {
-        if ((msg = queue_pop_ex(upgrade_module_input))) {
+        if (msg = queue_pop_ex(upgrade_module_input), msg) {
             get_eps_credit();
-
-            assert (msg != NULL);
 
             os_calloc(1, sizeof(Eventinfo), lf);
             os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
@@ -2549,44 +2545,43 @@ void w_init_queues(){
 
 static void load_limits(void) {
 
+    w_mutex_lock(&limit_eps_mutex);
+
     cJSON * analysisd_limits = NULL;
     int err = load_limits_file("wazuh-analysisd", &analysisd_limits);
-
     if (err == LIMITS_SUCCESS && analysisd_limits) {
 
         unsigned int old_timeframe = limits.timeframe;
         cJSON *timeframe_eps;
-
-        w_mutex_lock(&limit_eps_mutex);
+        cJSON *eps;
 
         if ((timeframe_eps = cJSON_GetObjectItem(analysisd_limits, "timeframe_eps"), timeframe_eps) && cJSON_IsNumber(timeframe_eps)) {
 
             limits.timeframe = (timeframe_eps->valueint > EPS_LIMITS_MAX_TIMEFRAME ? EPS_LIMITS_MAX_TIMEFRAME :
                 (timeframe_eps->valueint < EPS_LIMITS_MIN_TIMEFRAME ? EPS_LIMITS_MIN_TIMEFRAME : timeframe_eps->valueint));
             if (limits.timeframe != (unsigned int)timeframe_eps->valueint) {
-                mwarn("timeframe limit exceeded, value set: %d", limits.timeframe);
+                mwarn("timeframe limit exceeded, value set: '%d'", limits.timeframe);
             }
         } else {
-            limits.timeframe = EPS_LIMITS_DEAULT_TIMEFRAME;
-            mwarn("timeframe doesn't found, dafault value set: %d", limits.timeframe);
+            limits.timeframe = EPS_LIMITS_DEFAULT_TIMEFRAME;
+            mwarn("timeframe not found, dafault value set: '%d'", limits.timeframe);
         }
 
-        cJSON *eps;
         if ((eps = cJSON_GetObjectItem(analysisd_limits, "max_eps"), eps) && cJSON_IsNumber(eps)) {
 
             limits.eps = (eps->valueint > EPS_LIMITS_MAX_EPS ? EPS_LIMITS_MAX_EPS :
                 (eps->valueint < EPS_LIMITS_MIN_EPS ? EPS_LIMITS_MIN_EPS : eps->valueint));
             if (limits.eps != (unsigned int)eps->valueint) {
-                mwarn("eps limit exceeded, value set: %d", limits.eps);
+                mwarn("eps limit exceeded, value set: '%d'", limits.eps);
             }
         } else {
             limits.eps = EPS_LIMITS_MIN_EPS;
-            mwarn("eps limit doesn't found, value set: %d", limits.eps);
+            mwarn("eps limit not found, value set: '%d'", limits.eps);
         }
 
         if (limits.eps) {
 
-            if (!old_timeframe && limits.timeframe){
+            if (!old_timeframe && limits.timeframe) {
                 /* First time */
                 os_calloc(limits.timeframe, sizeof(unsigned int), limits.circ_buf);
 
@@ -2633,27 +2628,26 @@ static void load_limits(void) {
 
             limits.enabled = true;
 
-            minfo("eps limit enable, eps: %d, timeframe: %d, events per timeframe: %d", limits.eps, limits.timeframe, limits.max_eps);
+            minfo("eps limit enabled, eps: '%d', timeframe: '%d', events per timeframe: '%d'", limits.eps, limits.timeframe, limits.max_eps);
         }
         else {
             minfo("eps limit disabled");
             limits_free();
         }
 
-        w_mutex_unlock(&limit_eps_mutex);
-        cJSON_Delete(analysisd_limits);
-
     } else if (err == LIMITS_FILE_NOT_FOUND && limits.enabled) {
         minfo("eps limit disabled");
         limits_free();
     }
+    cJSON_Delete(analysisd_limits);
+    w_mutex_unlock(&limit_eps_mutex);
 }
 
 static void limits_free(void) {
     if (limits.circ_buf) {
         os_free(limits.circ_buf);
     }
-    while(limits.wait_counter--) {
+    while (limits.wait_counter--) {
         sem_post(&credits_eps_semaphore);
     }
     memset(&limits, 0, sizeof(limits));
