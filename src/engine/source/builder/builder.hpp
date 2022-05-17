@@ -15,9 +15,9 @@
 #include <vector>
 
 #include "builderTypes.hpp"
+#include "definitions.hpp"
 #include "graph.hpp"
 #include "registry.hpp"
-#include "definitions.hpp"
 
 namespace builder
 {
@@ -123,12 +123,14 @@ public:
 
             // Adds the bypass decoders
             std::vector<std::string> bypassParents {};
-            auto byPassLifter = [](base::Observable o) {
+            auto byPassLifter = [](base::Observable o)
+            {
                 return o.filter([](base::Event e) { return !e->isDecoded(); });
             };
             // Return true if `decoderName` has a child in `g` subgraph
             auto hasChilds = [](std::string_view decoderName,
-                                const internals::Graph& g) -> bool {
+                                const internals::Graph& g) -> bool
+            {
                 for (auto assetNode : g.m_nodes)
                 {
                     for (auto parent : assetNode.second.m_parents)
@@ -255,19 +257,20 @@ public:
             std::make_shared<internals::Graph>(this->build(name));
 
         // Debug sinks
-        g->visit([&](auto node) {
-            ret.m_traceSinks[node.m_name] = node.m_tracer.m_out;
-        });
+        g->visit([&](auto node)
+                 { ret.m_traceSinks[node.m_name] = node.m_tracer.m_out; });
 
         // Lifter
-        ret.m_lifter = [g](base::Observable o) -> base::Observable {
+        ret.m_lifter = [g](base::Observable o) -> base::Observable
+        {
             base::Observable last;
 
             // Recursive visitor function to call all connectable lifters and
             // build the whole rxcpp pipeline
             auto visit = [&g, &last](base::Observable source,
                                      std::string root,
-                                     auto& visit_ref) -> void {
+                                     auto& visit_ref) -> void
+            {
                 // Only must be executed one, graph input
                 if (g->m_nodes[root].m_inputs.size() == 0)
                 {
@@ -276,7 +279,8 @@ public:
 
                 // Call connect.publish only if this connectable has more than
                 // one child
-                auto obs = [&g, root]() -> base::Observable {
+                auto obs = [&g, root]() -> base::Observable
+                {
                     if (g->m_edges[root].size() > 1)
                     {
                         auto o =
