@@ -99,6 +99,17 @@ void w_init_queues();
 #define WAZUH_SERVER    "wazuh-server"
 #define MAX_DECODER_ORDER_SIZE  1024
 
+/* EPS limits struct */
+typedef struct _limits_t {
+    unsigned int eps;
+    unsigned int timeframe;
+    unsigned int max_eps;
+    unsigned int total_eps_buffer;
+    unsigned int current_cell;
+    unsigned int * circ_buf;
+    bool enabled;
+} limits_t;
+
 extern OSHash *fim_agentinfo;
 extern int num_rule_matching_threads;
 
