@@ -141,7 +141,6 @@ void FIMDB::pushMessage(const std::string& data)
         try
         {
             m_rsyncHandler->pushMessage(std::vector<uint8_t> {buff, buff + rawData.size()});
-            m_loggingFunction(LOG_DEBUG_VERBOSE, "Message pushed: " + data);
         }
         // LCOV_EXCL_START
         catch (const std::exception& ex)

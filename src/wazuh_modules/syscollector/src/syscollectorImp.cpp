@@ -1655,7 +1655,6 @@ void Syscollector::push(const std::string& data)
         try
         {
             m_spRsync->pushMessage(std::vector<uint8_t> {buff, buff + rawData.size()});
-            m_logFunction(LOG_DEBUG_VERBOSE, "Message pushed: " + data);
         }
         // LCOV_EXCL_START
         catch (const std::exception& ex)
