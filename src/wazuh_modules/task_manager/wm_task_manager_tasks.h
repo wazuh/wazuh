@@ -38,12 +38,6 @@ wm_task_manager_upgrade_update_status* wm_task_manager_init_upgrade_update_statu
 wm_task_manager_result* wm_task_manager_init_result_parameters();
 
 /**
- * Initialization of wm_task_manager_upgrade_cancel_tasks
- * @param return an initialized wm_task_manager_upgrade_cancel_tasks structure
- * */
-wm_task_manager_upgrade_cancel_tasks* wm_task_manager_init_upgrade_cancel_tasks_parameters();
-
-/**
  * Initialization of wm_task_manager_task
  * @param return an initialized wm_task_manager_task structure
  * */
@@ -74,21 +68,13 @@ void wm_task_manager_free_upgrade_update_status_parameters(wm_task_manager_upgra
 void wm_task_manager_free_result_parameters(wm_task_manager_result* parameters);
 
 /**
- * Deallocate wm_task_manager_upgrade_cancel_tasks structure
- * @param parameters wm_task_manager_upgrade_cancel_tasks structure to be deallocated
- * */
-void wm_task_manager_free_upgrade_cancel_tasks_parameters(wm_task_manager_upgrade_cancel_tasks* parameters);
-
-/**
  * Deallocate wm_task_manager_task structure
  * @param task wm_task_manager_task structure to be deallocated
  * */
 void wm_task_manager_free_task(wm_task_manager_task* task);
 
-void wm_task_manager_free_syscollector_tasks_parameters(wm_task_manager_syscollector *parameters);
 void wm_task_manager_free_status_tasks_parameters(wm_task_manager_status *parameters);
 void wm_task_manager_free_generic_task_parameters(wm_task_manager_generic *parameters);
-wm_task_manager_syscollector* wm_task_manager_init_syscollector_parameters();
 wm_task_manager_status* wm_task_manager_init_status_parameters();
 wm_task_manager_generic* wm_task_manager_init_generic_parameters();
 

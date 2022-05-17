@@ -1877,6 +1877,8 @@ void wdb_select_dbsync(wdb_t * wdb, struct kv const *kv_value, const char *data,
  */
 int wdb_parse_insert_task(wdb_t* wdb, const cJSON *parameters, const char *command, char* output);
 
+int wdb_parse_insert_task_without_agent_id(wdb_t* wdb, const cJSON *parameters, const char *command, char* output);
+
 /**
  * @brief Function to parse the get_status request. Within the JSON with parameters, the function
  *        could receive the task id or, the cluster node and the agent id. If the task id is received, the

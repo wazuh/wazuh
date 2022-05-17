@@ -51,7 +51,6 @@ const char *task_manager_commands_list[] = {
     [WM_TASK_VULN_DET_SCAN] = "vuln_det_scan", //DONE
     [WM_TASK_VULN_DET_GET_STATUS] = "vuln_det_scan_get_status",
     [WM_TASK_VULN_DET_UPDATE_STATUS] = "vuln_det_scan_update_status",
-    [WM_TASK_VULN_DET_CANCEL_TASK] = "vuln_det_scan_cancel_task",
     [WM_TASK_GET_STATUS] = "get_status",
     [WM_TASK_UPDATE_STATUS] = "update_status",
     [WM_TASK_SET_TIMEOUT] = "set_timeout",

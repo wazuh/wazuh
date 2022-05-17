@@ -64,30 +64,12 @@ typedef struct _wm_task_manager_result {
 } wm_task_manager_result;
 
 /**
- * Definition of upgrade cancel tasks parameters
- */
-typedef struct _wm_task_manager_upgrade_cancel_tasks {
-    char *node;
-} wm_task_manager_upgrade_cancel_tasks;
-
-/**
  * Definition of task structure
  */
 typedef struct _wm_task_manager_task {
     command_list command;
     void *parameters;
 } wm_task_manager_task;
-
-/**
- * Definition of syscollector scan tasks parameters
- */
-typedef struct _wm_task_manager_syscollector {
-    char *node;
-    char *module;
-    int  *agent_ids;
-    char *status;
-    char *error_msg;
-} wm_task_manager_syscollector;
 
 /**
  * Definition of a generic task parameters

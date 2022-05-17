@@ -30,48 +30,6 @@
 STATIC int* wm_task_manager_parse_ids(const cJSON* ids);
 
 /**
- * Parses task parameters and returns an upgrade task from the information
- * Example:
- * {
- *      "node" : "node01",
- *      "module"    : "api",
- *      "agents"   : [1, 2, 3, 4],
- * }
- * @param origin JSON with the origin information
- * @param parameters JSON with the parameters
- * @return upgrade task if there is no error, NULL otherwise
- * */
-//STATIC wm_task_manager_upgrade* wm_task_manager_parse_upgrade_parameters(const cJSON* origin, const cJSON* parameters);
-
-/**
- * Parses task parameters and returns an upgrade get status task from the information
- * Example:
- * {
- *      "node" : "node02",
- *      "agents"   : [5],
- * }
- * @param origin JSON with the origin information
- * @param parameters JSON with the parameters
- * @return upgrade get status task if there is no error, NULL otherwise
- * */
-//STATIC wm_task_manager_upgrade_get_status* wm_task_manager_parse_upgrade_get_status_parameters(const cJSON* origin, const cJSON* parameters);
-
-/**
- * Parses task parameters and returns an upgrade update status task from the information
- * Example:
- * {
- *      "node" : "node02",
- *      "agents"   : [5],
- *      "status"   : "Failed",
- *      "error_msg"   : "SHA1 verification error"
- * }
- * @param origin JSON with the origin information
- * @param parameters JSON with the parameters
- * @return upgrade update status task if there is no error, NULL otherwise
- * */
-//STATIC wm_task_manager_upgrade_update_status* wm_task_manager_parse_upgrade_update_status_parameters(const cJSON* origin, const cJSON* parameters);
-
-/**
  * Parses task parameters and returns an result task from the information
  * Example:
  * {
@@ -81,17 +39,6 @@ STATIC int* wm_task_manager_parse_ids(const cJSON* ids);
  * @return result task if there is no error, NULL otherwise
  * */
 STATIC wm_task_manager_result* wm_task_manager_parse_result_parameters(const cJSON* parameters, command_list task_command);
-
-/**
- * Parses task parameters and returns an upgrade cancel tasks task from the information
- * Example:
- * {
- *      "node"   : "node06"
- * }
- * @param origin JSON with the origin information
- * @return upgrade cancel tasks task if there is no error, NULL otherwise
- * */
-STATIC wm_task_manager_upgrade_cancel_tasks* wm_task_manager_parse_upgrade_cancel_tasks_parameters(const cJSON* origin);
 
 /**
  * Decode status to a more understandable string
@@ -111,6 +58,10 @@ STATIC wm_task_manager_generic* wm_task_manager_parse_new_generic_task(const cJS
 STATIC wm_task_manager_generic* wm_task_manager_parse_get_status_parameters(const cJSON* origin, const cJSON* parameters);
 
 STATIC wm_task_manager_generic* wm_task_manager_parse_update_status_parameters(const cJSON* origin, const cJSON* parameters);
+
+STATIC wm_task_manager_generic* wm_task_manager_parse_vuln_det_feeds_update_parameters(const cJSON* origin);
+
+STATIC wm_task_manager_generic* wm_task_manager_parse_upgrade_cancel_tasks_parameters(const cJSON* origin);
 
 static const char *upgrade_statuses[] = {
     [WM_TASK_UPGRADE_IN_QUEUE]= "In queue",
@@ -203,7 +154,7 @@ wm_task_manager_task* wm_task_manager_parse_message(const char *msg) {
         task->parameters = wm_task_manager_parse_result_parameters(parameters_json, task->command);
     } else if (!strcmp(task_manager_commands_list[WM_TASK_VULN_DET_FEEDS_UPDATE], command_json->valuestring)) {
         task->command = WM_TASK_VULN_DET_FEEDS_UPDATE;
-        //task->parameters = wm_task_manager_parse_vuln_det_feeds_update_parameters(origin_json);
+        task->parameters = wm_task_manager_parse_vuln_det_feeds_update_parameters(origin_json);
     } else if (!strcmp(task_manager_commands_list[WM_TASK_VULN_DET_SCAN], command_json->valuestring)) {
         task->command = WM_TASK_VULN_DET_SCAN;
         //task->parameters = wm_task_manager_parse_vuln_det_scan_parameters(origin_json);
@@ -213,9 +164,6 @@ wm_task_manager_task* wm_task_manager_parse_message(const char *msg) {
     } else if (!strcmp(task_manager_commands_list[WM_TASK_VULN_DET_UPDATE_STATUS], command_json->valuestring)) {
         task->command = WM_TASK_VULN_DET_UPDATE_STATUS;
         //task->parameters = wm_task_manager_parse_vuln_det_update_status_parameters(origin_json);
-    } else if (!strcmp(task_manager_commands_list[WM_TASK_VULN_DET_CANCEL_TASK], command_json->valuestring)) {
-        task->command = WM_TASK_VULN_DET_CANCEL_TASK;
-        //task->parameters = wm_task_manager_parse_vuln_det_cancel_task_parameters(origin_json);
     } else if (!strcmp(task_manager_commands_list[WM_TASK_GET_STATUS], command_json->valuestring)) {
         task->command = WM_TASK_GET_STATUS;
         task->parameters = wm_task_manager_parse_get_status_parameters_by_id(parameters_json);
@@ -355,6 +303,34 @@ STATIC wm_task_manager_generic* wm_task_manager_parse_update_status_parameters(c
     return task_parameters;
 }
 
+STATIC wm_task_manager_generic* wm_task_manager_parse_vuln_det_feeds_update_parameters(const cJSON* origin) {
+    wm_task_manager_generic *task_parameters = wm_task_manager_init_generic_parameters();
+
+    cJSON *name_json = cJSON_GetObjectItem(origin, task_manager_json_keys[WM_TASK_NAME]);
+    cJSON *module_json = cJSON_GetObjectItem(origin, task_manager_json_keys[WM_TASK_MODULE]);
+
+    if (OS_INVALID == wm_task_parse_json_string(name_json, &task_parameters->node, task_manager_json_keys[WM_TASK_NAME]) ||
+        OS_INVALID == wm_task_parse_json_string(module_json, &task_parameters->module, task_manager_json_keys[WM_TASK_MODULE])) {
+        wm_task_manager_free_generic_task_parameters(task_parameters);
+        return NULL;
+    }
+
+    return task_parameters;
+}
+
+STATIC wm_task_manager_generic* wm_task_manager_parse_upgrade_cancel_tasks_parameters(const cJSON* origin) {
+    wm_task_manager_generic *task_parameters = wm_task_manager_init_generic_parameters();
+
+    cJSON *name_json = cJSON_GetObjectItem(origin, task_manager_json_keys[WM_TASK_NAME]);
+
+    if (OS_INVALID == wm_task_parse_json_string(name_json, &task_parameters->node, task_manager_json_keys[WM_TASK_NAME])) {
+        wm_task_manager_free_generic_task_parameters(task_parameters);
+        return NULL;
+    }
+
+    return task_parameters;
+}
+
 STATIC wm_task_manager_result* wm_task_manager_parse_result_parameters(const cJSON* parameters, command_list task_command) {
     wm_task_manager_result *task_parameters = wm_task_manager_init_result_parameters();
 
@@ -366,23 +342,6 @@ STATIC wm_task_manager_result* wm_task_manager_parse_result_parameters(const cJS
     if (!task_parameters->agent_ids) {
         mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_AGENTS]);
         wm_task_manager_free_result_parameters(task_parameters);
-        return NULL;
-    }
-
-    return task_parameters;
-}
-
-STATIC wm_task_manager_upgrade_cancel_tasks* wm_task_manager_parse_upgrade_cancel_tasks_parameters(const cJSON* origin) {
-
-    wm_task_manager_upgrade_cancel_tasks *task_parameters = wm_task_manager_init_upgrade_cancel_tasks_parameters();
-
-    cJSON *name_json = cJSON_GetObjectItem(origin, task_manager_json_keys[WM_TASK_NAME]);
-
-    if (name_json && (name_json->type == cJSON_String)) {
-        os_strdup(name_json->valuestring, task_parameters->node);
-    } else {
-        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_NAME]);
-        wm_task_manager_free_upgrade_cancel_tasks_parameters(task_parameters);
         return NULL;
     }
 
@@ -488,8 +447,6 @@ STATIC const char* wm_task_manager_decode_status(char *status) {
     }
     return NULL;
 }
-
-// Syscollector tasks parsing
 
 STATIC wm_task_manager_status* wm_task_manager_parse_get_status_parameters_by_id(const cJSON* parameters) {
     wm_task_manager_status *task_parameters = wm_task_manager_init_status_parameters();

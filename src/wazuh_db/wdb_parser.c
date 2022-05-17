@@ -956,7 +956,6 @@ int wdb_parse(char * input, char * output, int peer) {
         if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE], query) ||
             !strcmp(task_manager_commands_list[WM_TASK_UPGRADE_CUSTOM], query) ||
             !strcmp(task_manager_commands_list[WM_TASK_SYSCOLLECTOR_SCAN], query) ||
-            !strcmp(task_manager_commands_list[WM_TASK_VULN_DET_FEEDS_UPDATE], query) ||
             !strcmp(task_manager_commands_list[WM_TASK_VULN_DET_SCAN], query)) {
             if (!next) {
                 mdebug1("Task DB Invalid DB query syntax.");
@@ -974,6 +973,25 @@ int wdb_parse(char * input, char * output, int peer) {
             }
 
             result = wdb_parse_insert_task(wdb, parameters_json, query, output);
+            cJSON_Delete(parameters_json);
+
+        } else if (!strcmp(task_manager_commands_list[WM_TASK_VULN_DET_FEEDS_UPDATE], query)) {
+            if (!next) {
+                mdebug1("Task DB Invalid DB query syntax.");
+                mdebug2("Task DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                wdb_leave(wdb);
+                return OS_INVALID;
+            }
+
+            // Detect parameters
+            if (parameters_json = cJSON_ParseWithOpts(next, &json_err, 0), !parameters_json) {
+                snprintf(output, OS_MAXSTR + 1, "err Invalid command parameters, near '%.32s'", next);
+                wdb_leave(wdb);
+                return OS_INVALID;
+            }
+
+            result = wdb_parse_insert_task_without_agent_id(wdb, parameters_json, query, output);
             cJSON_Delete(parameters_json);
 
         } else if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE_GET_STATUS], query) ||
@@ -5674,6 +5692,47 @@ int wdb_parse_insert_task(wdb_t* wdb, const cJSON *parameters, const char *comma
     module = module_json->valuestring;
 
     result = wdb_task_insert_task(wdb, agent_id, node, module, command);
+
+    cJSON *response = cJSON_CreateObject();
+    char *out = NULL;
+
+    if (result >= 0) {
+        cJSON_AddNumberToObject(response, "error", OS_SUCCESS);
+        cJSON_AddNumberToObject(response, "task_id", result);
+        result = OS_SUCCESS;
+    } else {
+        cJSON_AddNumberToObject(response, "error", result);
+    }
+    out = cJSON_PrintUnformatted(response);
+
+    snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+
+    os_free(out);
+    cJSON_Delete(response);
+
+    return result;
+}
+
+int wdb_parse_insert_task_without_agent_id(wdb_t* wdb, const cJSON *parameters, const char *command, char* output) {
+    int result = OS_INVALID;
+    char *node = NULL;
+    char *module = NULL;
+
+    cJSON *node_json = cJSON_GetObjectItem(parameters, "node");
+    if (!node_json || (node_json->type != cJSON_String)) {
+        snprintf(output, OS_MAXSTR + 1, "err Error insert task: 'parsing node error'");
+        return OS_INVALID;
+    }
+    node = node_json->valuestring;
+
+    cJSON *module_json = cJSON_GetObjectItem(parameters, "module");
+    if (!module_json || (module_json->type != cJSON_String)) {
+        snprintf(output, OS_MAXSTR + 1, "err Error insert task: 'parsing module error'");
+        return OS_INVALID;
+    }
+    module = module_json->valuestring;
+
+    result = wdb_task_insert_task(wdb, OS_INVALID, node, module, command);
 
     cJSON *response = cJSON_CreateObject();
     char *out = NULL;
