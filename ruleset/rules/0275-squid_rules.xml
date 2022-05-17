@@ -97,7 +97,7 @@
     <info type="link">http://www.symantec.com/avcenter/venc/data/w32.beagle.dp.html</info>
     <info type="text">W32.Beagle.DP is a Worm that drops Trojan.Lodear and opens a back door on the compromised computer.</info>
     <mitre>
-      <id>T1108</id>
+      <id>T1505.003</id>
     </mitre>
     <group>automatic_attack,pci_dss_11.4,pci_dss_6.2,gdpr_IV_35.7.d,nist_800_53_SI.4,nist_800_53_SI.2,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -108,7 +108,7 @@
     <url>/jk/exp.wmf$|/PopupSh.ocx$</url>
     <description>Squid: Attempt to access a worm/trojan related site.</description>
     <mitre>
-      <id>T1108</id>
+      <id>T1505.003</id>
     </mitre>
     <group>automatic_attack,pci_dss_11.4,pci_dss_6.2,gdpr_IV_35.7.d,nist_800_53_SI.4,nist_800_53_SI.2,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>

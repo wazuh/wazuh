@@ -69,7 +69,7 @@
     <url>%20ONLOAD=|INPUT%20|iframe%20</url>
     <description>XSS (Cross Site Scripting) attempt.</description>
     <mitre>
-      <id>T1064</id>
+      <id>T1059.007</id>
     </mitre>
     <group>attack,pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.7,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SI.4,tsc_CC6.6,tsc_CC7.1,tsc_CC8.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -206,7 +206,7 @@
     <description>Multiple XSS (Cross Site Scripting) attempts </description>
     <description>from same source ip.</description>
     <mitre>
-      <id>T1064</id>
+      <id>T1059.007</id>
     </mitre>
     <group>attack,pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.7,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SI.4,tsc_CC6.6,tsc_CC7.1,tsc_CC8.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
