@@ -18,6 +18,12 @@ All notable changes to this project will be documented in this file.
 
 - Fixed API response when using sort in Agent upgrade related endpoints. ([#13178](https://github.com/wazuh/wazuh/pull/13178))
 
+### Ruleset
+
+#### Fixed
+
+- Fixed rule 92656, added field condition win.eventdata.logonType equals 10 to avoid false positives. ([#13409](https://github.com/wazuh/wazuh/pull/13409))
+
 
 ## [v4.3.0] - 2022-05-05
 
