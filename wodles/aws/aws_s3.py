@@ -2098,7 +2098,7 @@ class AWSCustomBucket(AWSBucket):
 
     def iter_regions_and_accounts(self, account_id, regions):
         # Only <self.retain_db_records> logs for each region are stored in DB. Using self.bucket as region name
-        # would prevent to loose lots of logs from different buckets.
+        # would prevent to lose lots of logs from different buckets.
         # no iterations for accounts_id or regions on custom buckets
         self.iter_files_in_bucket()
         self.db_maintenance()
