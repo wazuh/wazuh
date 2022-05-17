@@ -56,3 +56,16 @@ TEST(DefinitionsTest, NoDefinitionsDoesNothing)
     ASSERT_NO_THROW(builder::internals::substituteDefinitions(asset));
     ASSERT_EQ(asset.str(), expected);
 }
+
+TEST(DefinitionsTest, ScapedReference)
+{
+    // TODO: escaped dollar sign needs to be contemplated
+    GTEST_SKIP();
+}
+
+TEST(DefinitionsTest, DefinitionReservedName)
+{
+    // TODO: A definition can't have the same name as a field, could be handled
+    // in the schema
+    GTEST_SKIP();
+}
