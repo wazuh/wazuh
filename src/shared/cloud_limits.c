@@ -41,7 +41,6 @@ int load_limits_file(const char *daemon_name, cJSON ** daemon_obj) {
     FILE *fp;
     if (fp = fopen(OSSEC_LIMITS, "r"), !fp) {
         mdebug2("Could not open file '%s'", OSSEC_LIMITS);
-        last_mod_date = 0;
         return LIMITS_OPEN_FILE_FAIL;
     }
 
@@ -50,7 +49,6 @@ int load_limits_file(const char *daemon_name, cJSON ** daemon_obj) {
     if (fgets(buf, OS_MAXSTR, fp) == NULL) {
         mdebug2("Could not read file '%s'", OSSEC_LIMITS);
         fclose(fp);
-        last_mod_date = 0;
         return LIMITS_READ_FILE_FAIL;
     }
 
@@ -65,25 +63,11 @@ int load_limits_file(const char *daemon_name, cJSON ** daemon_obj) {
     }
     fclose(fp);
 
-    if (!strcmp(daemon_name, "file")) {
-        if (daemon_obj) {
-            *daemon_obj = file_json;
-        }
-        return LIMITS_SUCCESS;
-    }
-
     cJSON *limits_json = cJSON_GetObjectItem(file_json, "limits");
     if (!cJSON_IsObject(limits_json)) {
         mdebug2("Limits object not found in '%s'", OSSEC_LIMITS);
         cJSON_Delete(file_json);
         return LIMITS_JSON_LIMIT_NOT_FOUND;
-    }
-
-    if (!strcmp(daemon_name, "limits")) {
-        if (daemon_obj) {
-            *daemon_obj = limits_json;
-        }
-        return LIMITS_SUCCESS;
     }
 
     cJSON *daemon_json = cJSON_GetObjectItem(limits_json, daemon_name);

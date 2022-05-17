@@ -158,19 +158,8 @@ static unsigned int hourly_events;
 static unsigned int hourly_syscheck;
 static unsigned int hourly_firewall;
 
-/* EPS limits struct */
-typedef struct _limits_t {
-    unsigned int eps;
-    unsigned int timeframe;
-    unsigned int max_eps;
-    unsigned int total_eps_buffer;
-    unsigned int current_cell;
-    unsigned int wait_counter;
-    unsigned int * circ_buf;
-    bool enabled;
-} limits_t;
-
 limits_t limits;
+unsigned int limits_wait_counter = 0;
 
 /* Archives writer thread */
 void * w_writer_thread(__attribute__((unused)) void * args );
@@ -1064,6 +1053,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     sem_init(&credits_eps_semaphore, 0, 1);
 
     memset(&limits, 0, sizeof(limits));
+    limits_wait_counter = 0;
     load_limits();
 
     /* Create message handler thread */
@@ -1140,7 +1130,7 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     mdebug1("Startup completed. Waiting for new messages..");
 
-    unsigned int check_limits_file_interval = Config.eps_limits_file_check;
+    unsigned int check_limits_file_interval = 0;
 
     while (1) {
 
@@ -1150,9 +1140,8 @@ void OS_ReadMSG_analysisd(int m_queue)
 
             w_mutex_lock(&limit_eps_mutex);
 
-            if (limits.current_cell >= limits.timeframe - 1) {
+            if (limits.current_cell == limits.timeframe - 1) {
 
-                limits.current_cell = limits.current_cell > limits.timeframe - 1 ? limits.timeframe - 1 : limits.current_cell;
                 limits.total_eps_buffer = limits.total_eps_buffer + limits.circ_buf[limits.current_cell] - limits.circ_buf[0];
 
                 if (limits.circ_buf[0]) {
@@ -1165,13 +1154,18 @@ void OS_ReadMSG_analysisd(int m_queue)
 
                 memmove(limits.circ_buf, limits.circ_buf + 1, (limits.timeframe - 1) * sizeof(unsigned int));
                 limits.circ_buf[limits.current_cell] = 0;
-            } else {
+
+            } else if (limits.current_cell < limits.timeframe - 1) {
                 limits.total_eps_buffer += limits.circ_buf[limits.current_cell++];
+
+            } else {
+                merror("limits current_cell exceeded limits: %d", limits.current_cell);
+                limits.current_cell = limits.timeframe - 1;
             }
 
 #if 1
             for (unsigned int i = 0; i < limits.timeframe; i++) {
-                merror("cell[%02d] value: %d %s", i, limits.circ_buf[i], (limits.current_cell == i ? "<" : " "));
+                mwarn("cell[%02d] value: %d %s", i, limits.circ_buf[i], (limits.current_cell == i ? "<" : " "));
             }
 
             int current_credits;
@@ -2545,10 +2539,12 @@ void w_init_queues(){
 
 static void load_limits(void) {
 
-    w_mutex_lock(&limit_eps_mutex);
 
     cJSON * analysisd_limits = NULL;
     int err = load_limits_file("wazuh-analysisd", &analysisd_limits);
+
+    w_mutex_lock(&limit_eps_mutex);
+
     if (err == LIMITS_SUCCESS && analysisd_limits) {
 
         unsigned int old_timeframe = limits.timeframe;
@@ -2647,10 +2643,11 @@ static void limits_free(void) {
     if (limits.circ_buf) {
         os_free(limits.circ_buf);
     }
-    while (limits.wait_counter--) {
+    while (limits_wait_counter--) {
         sem_post(&credits_eps_semaphore);
     }
     memset(&limits, 0, sizeof(limits));
+    limits_wait_counter = 0;
 }
 
 static void get_eps_credit(void) {
@@ -2664,13 +2661,13 @@ static void get_eps_credit(void) {
 
 static void inc_wait_counter(void) {
     w_mutex_lock(&wait_sem);
-    limits.wait_counter++;
+    limits_wait_counter++;
     w_mutex_unlock(&wait_sem);
 }
 
 static void dec_wait_counter(void) {
     w_mutex_lock(&wait_sem);
-    limits.wait_counter--;
+    limits_wait_counter--;
     w_mutex_unlock(&wait_sem);
 }
 
