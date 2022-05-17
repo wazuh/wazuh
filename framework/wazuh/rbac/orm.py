@@ -70,6 +70,10 @@ class SecurityError(IntEnum):
     RULE_NOT_EXIST = -7
     # The relationships can not be removed
     RELATIONSHIP_ERROR = -8
+    # Protected resources
+    PROTECTED_RESOURCES = -9
+    # Database constraint error
+    CONSTRAINT_ERROR = -10
 
 
 def json_validator(data):
@@ -317,14 +321,14 @@ class User(_Base):
         return {'id': self.id, 'username': self.username,
                 'roles': self._get_roles_id(), 'allow_run_as': self.allow_run_as}
 
-    def to_dict(self):
+    def to_dict(self, session: str = None):
         """Return the information of one policy and the roles that have assigned
 
         Returns
         -------
         Dict with the information
         """
-        with UserRolesManager() as urm:
+        with UserRolesManager(session=session) as urm:
             return {'id': self.id, 'username': self.username,
                     'allow_run_as': self.allow_run_as,
                     'roles': [role.id for role in urm.get_all_roles_from_user(user_id=self.id)],
@@ -374,14 +378,14 @@ class Roles(_Base):
     def get_policies(self):
         return list(self.policies)
 
-    def to_dict(self):
+    def to_dict(self, session: str = None):
         """Return the information of one role and the users, policies and rules assigned to it
 
         Returns
         -------
         Dict with the information
         """
-        with RolesPoliciesManager() as rpm:
+        with RolesPoliciesManager(session=session) as rpm:
             return {'id': self.id, 'name': self.name,
                     'policies': [policy.id for policy in rpm.get_all_policies_from_role(role_id=self.id)],
                     'users': [user.id for user in self.users],
@@ -481,14 +485,14 @@ class Policies(_Base):
         """
         return {'id': self.id, 'name': self.name, 'policy': json.loads(self.policy)}
 
-    def to_dict(self):
+    def to_dict(self, session: str = None):
         """Return the information of one policy and the roles that have assigned
 
         Returns
         -------
         Dict with the information
         """
-        with RolesPoliciesManager() as rpm:
+        with RolesPoliciesManager(session=session) as rpm:
             return {'id': self.id, 'name': self.name, 'policy': json.loads(self.policy),
                     'roles': [role.id for role in rpm.get_all_roles_from_policy(policy_id=self.id)],
                     'resource_type': self.resource_type}
@@ -702,6 +706,15 @@ class AuthenticationManager:
     It manages users and token generation.
     """
 
+    def __init__(self, session=None):
+        self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{_db_file}", echo=False))()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.session.close()
+
     def edit_run_as(self, user_id: int, allow_run_as: bool):
         """Change the specified user's allow_run_as flag.
 
@@ -837,13 +850,13 @@ class AuthenticationManager:
         """
         try:
             if username is not None:
-                return self.session.query(User).filter_by(username=username).first().to_dict()
+                return self.session.query(User).filter_by(username=username).first().to_dict(self.session)
         except (IntegrityError, AttributeError):
             self.session.rollback()
             return False
 
     def get_user_id(self, user_id: int):
-        """Get an specified user in the system.
+        """Get a specified user in the system.
 
         Parameters
         ----------
@@ -856,7 +869,7 @@ class AuthenticationManager:
         """
         try:
             if user_id is not None:
-                return self.session.query(User).filter_by(id=user_id).first().to_dict()
+                return self.session.query(User).filter_by(id=user_id).first().to_dict(self.session)
         except (IntegrityError, AttributeError):
             self.session.rollback()
             return False
@@ -895,19 +908,21 @@ class AuthenticationManager:
                 user_ids.append(user_dict)
         return user_ids
 
-    def __enter__(self):
-        self.session = _Session()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.session.close()
-
 
 class RolesManager:
     """
     This class is the manager of the Roles, this class provided
     all the methods needed for the roles administration.
     """
+
+    def __init__(self, session=None):
+        self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{_db_file}", echo=False))()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.session.close()
 
     def get_role(self, name: str):
         """Get the information about one role specified by name
@@ -925,7 +940,7 @@ class RolesManager:
             role = self.session.query(Roles).filter_by(name=name).first()
             if not role:
                 return SecurityError.ROLE_NOT_EXIST
-            return role.to_dict()
+            return role.to_dict(self.session)
         except IntegrityError:
             return SecurityError.ROLE_NOT_EXIST
 
@@ -945,7 +960,7 @@ class RolesManager:
             role = self.session.query(Roles).filter_by(id=role_id).first()
             if not role:
                 return SecurityError.ROLE_NOT_EXIST
-            return role.to_dict()
+            return role.to_dict(self.session)
         except IntegrityError:
             return SecurityError.ROLE_NOT_EXIST
 
@@ -1091,18 +1106,20 @@ class RolesManager:
             self.session.rollback()
             return SecurityError.ALREADY_EXIST
 
-    def __enter__(self):
-        self.session = _Session()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.session.close()
-
 
 class RulesManager:
     """
         This class is Rules manager. This class provides all the methods needed for the rules administration.
         """
+
+    def __init__(self, session=None):
+        self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{_db_file}", echo=False))()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.session.close()
 
     def get_rule(self, rule_id: int):
         """Get the information about one rule specified by id.
@@ -1178,7 +1195,6 @@ class RulesManager:
         try:
             if rule is not None and not json_validator(rule):
                 return SecurityError.INVALID
-            rule_id = None
             try:
                 if check_default and \
                         self.session.query(Rules).order_by(desc(Rules.id)
@@ -1186,7 +1202,7 @@ class RulesManager:
                     rule_id = max_id_reserved + 1
             except (TypeError, AttributeError):
                 pass
-            self.session.add(Rules(name=name, rule=json.dumps(rule), rule_id=rule_id))
+            self.session.add(Rules(name=name, rule=json.dumps(rule), rule_id=rule_id, resource_type=resource_type))
             self.session.commit()
             return True
         except IntegrityError:
@@ -1298,13 +1314,6 @@ class RulesManager:
             self.session.rollback()
             return SecurityError.ALREADY_EXIST
 
-    def __enter__(self):
-        self.session = _Session()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.session.close()
-
 
 class PoliciesManager:
     """
@@ -1313,6 +1322,15 @@ class PoliciesManager:
     """
     action_regex = r'^[a-zA-Z_\-]+:[a-zA-Z_\-]+$'
     resource_regex = r'^[a-zA-Z_\-*]+:[\w_\-*]+:[\w_\-\/.*]+$'
+
+    def __init__(self, session=None):
+        self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{_db_file}", echo=False))()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.session.close()
 
     def get_policy(self, name: str):
         """Get the information about one policy specified by name
@@ -1330,7 +1348,7 @@ class PoliciesManager:
             policy = self.session.query(Policies).filter_by(name=name).first()
             if not policy:
                 return SecurityError.POLICY_NOT_EXIST
-            return policy.to_dict()
+            return policy.to_dict(self.session)
         except IntegrityError:
             return SecurityError.POLICY_NOT_EXIST
 
@@ -1350,7 +1368,7 @@ class PoliciesManager:
             policy = self.session.query(Policies).filter_by(id=policy_id).first()
             if not policy:
                 return SecurityError.POLICY_NOT_EXIST
-            return policy.to_dict()
+            return policy.to_dict(self.session)
         except IntegrityError:
             return SecurityError.POLICY_NOT_EXIST
 
@@ -1388,11 +1406,11 @@ class PoliciesManager:
         try:
             if policy is not None and not json_validator(policy):
                 return SecurityError.ALREADY_EXIST
-            if len(policy.keys()) != 3:
+            if policy is None or len(policy) != 3:
                 return SecurityError.INVALID
             # To add a policy it must have the keys actions, resources, effect
-            if 'actions' in policy.keys() and 'resources' in policy.keys():
-                if 'effect' in policy.keys():
+            if 'actions' in policy and 'resources' in policy:
+                if 'effect' in policy:
                     # The keys actions and resources must be lists and the key effect must be str
                     if isinstance(policy['actions'], list) and isinstance(policy['resources'], list) \
                             and isinstance(policy['effect'], str):
@@ -1406,7 +1424,8 @@ class PoliciesManager:
                         try:
                             if not check_default:
                                 policies = sorted([p.id for p in self.get_policies()]) or [0]
-                                policy_id = max(filter(lambda x: not (x > cloud_reserved_range), policies)) + 1
+                                policy_id = policy_id or max(filter(lambda x: not (x > cloud_reserved_range),
+                                                                    policies)) + 1
 
                             elif check_default and \
                                     self.session.query(Policies).order_by(desc(Policies.id)
@@ -1498,7 +1517,8 @@ class PoliciesManager:
             self.session.rollback()
             return False
 
-    def update_policy(self, policy_id: int, name: str, policy: dict, resource_type: ResourceType = None) \
+    def update_policy(self, policy_id: int, name: str, policy: dict, resource_type: ResourceType = None,
+                      check_default: bool = True) \
             -> Union[bool, SecurityError]:
         """Update an existent policy in the system TODO update
 
@@ -1518,7 +1538,7 @@ class PoliciesManager:
         True -> Success | False -> Failure | Invalid policy | Name already in use
         """
         try:
-            if policy_id > max_id_reserved:
+            if policy_id > max_id_reserved or not check_default:
                 policy_to_update = self.session.query(Policies).filter_by(id=policy_id).first()
                 if policy_to_update:
                     if not json_validator(policy):
@@ -1545,19 +1565,21 @@ class PoliciesManager:
             self.session.rollback()
             return SecurityError.ALREADY_EXIST
 
-    def __enter__(self):
-        self.session = _Session()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.session.close()
-
 
 class UserRolesManager:
     """
     This class is the manager of the relationship between the user and the roles, this class provided
     all the methods needed for the user-roles administration.
     """
+
+    def __init__(self, session=None):
+        self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{_db_file}", echo=False))()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.session.close()
 
     def add_role_to_user(self, user_id: int, role_id: int, position: int = None, created_at: datetime = get_utc_now(),
                          force_admin: bool = False, atomic: bool = True) -> Union[bool, SecurityError]:
@@ -1686,7 +1708,7 @@ class UserRolesManager:
         """
         try:
             role = self.session.query(Roles).filter_by(id=role_id).first()
-            return map(User.to_dict, role.users)
+            return map(partial(User.to_dict, session=self.session), role.users)
         except (IntegrityError, AttributeError):
             self.session.rollback()
             return False
@@ -1871,19 +1893,21 @@ class UserRolesManager:
 
         return False
 
-    def __enter__(self):
-        self.session = _Session()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.session.close()
-
 
 class RolesPoliciesManager:
     """
     This class is the manager of the relationship between the roles and the policies, this class provided
     all the methods needed for the roles-policies administration.
     """
+
+    def __init__(self, session=None):
+        self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{_db_file}", echo=False))()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.session.close()
 
     def add_policy_to_role(self, role_id: int, policy_id: int, position: int = None,
                            created_at: datetime = get_utc_now(), force_admin: bool = False, atomic: bool = True) -> \
@@ -2224,19 +2248,21 @@ class RolesPoliciesManager:
 
         return False
 
-    def __enter__(self):
-        self.session = _Session()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.session.close()
-
 
 class RolesRulesManager:
     """
     This class is the manager of the relationships between the roles and the rules. This class provides
     all the methods needed for the roles-rules administration.
     """
+
+    def __init__(self, session=None):
+        self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{_db_file}", echo=False))()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.session.close()
 
     def add_rule_to_role(self, rule_id: int, role_id: int, position: int = None, created_at: datetime = get_utc_now(),
                          atomic: bool = True, force_admin: bool = False) -> Union[bool, SecurityError]:
