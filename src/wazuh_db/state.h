@@ -387,5 +387,5 @@ void w_inc_mitre_unknown();
 
 void w_inc_unknown();
 
-
+void w_inc_agent_syscheck_time(uint64_t time);
 
