@@ -153,7 +153,12 @@ def main():
         os.chown(f'{common.WAZUH_PATH}/logs/cluster.log', common.wazuh_uid(), common.wazuh_gid())
         os.chmod(f'{common.WAZUH_PATH}/logs/cluster.log', 0o660)
 
-    cluster_configuration = cluster_utils.read_config(config_file=args.config_file)
+    try:
+        cluster_configuration = cluster_utils.read_config(config_file=args.config_file)
+    except Exception as e:
+        main_logger.error(e)
+        sys.exit(1)
+
     if cluster_configuration['disabled']:
         sys.exit(0)
     try:
