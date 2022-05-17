@@ -46,7 +46,7 @@ def start():
     This function exits with 0 if successful or 1 if failed because the API was already running.
     """
 
-    create_rbac_db()
+    check_database_integrity()
 
     # Spawn child processes with their own needed imports
     if 'thread_pool' not in common.mp_pools.get():
@@ -223,7 +223,7 @@ if __name__ == '__main__':
     from api.signals import modify_response_headers
     from api.uri_parser import APIUriParser
     from api.util import to_relative_path
-    from wazuh.rbac.orm import create_rbac_db
+    from wazuh.rbac.orm import check_database_integrity
 
     # Check deprecated options. To delete after expected versions
     if 'use_only_authd' in api_conf:
