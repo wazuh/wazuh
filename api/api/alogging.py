@@ -52,34 +52,32 @@ class AccessLogger(AbstractAccessLogger):
         hash_auth_context : str, optional
             Hash representing the authorization context. Default: ''
         """
+        if not hash_auth_context:
+            log_info = f'{user} {remote} "{method} {path}" with parameters {json.dumps(query)} ' \
+                       f'and body {json.dumps(body)} done in {time:.3f}s: {status}'
+            json_info = {'user': user,
+                         'ip': remote,
+                         'http_method': method,
+                         'uri': f'{method} {path}',
+                         'parameters': query,
+                         'body': body,
+                         'time': f'{time:.3f}s',
+                         'status_code': status}
+        else:
+            log_info = f'{user} ({hash_auth_context}) {remote} "{method} {path}" with parameters {json.dumps(query)} ' \
+                       f'and body {json.dumps(body)} done in {time:.3f}s: {status}'
+            json_info = {'user': user,
+                         'hash_auth_context': hash_auth_context,
+                         'ip': remote,
+                         'http_method': method,
+                         'uri': f'{method} {path}',
+                         'parameters': query,
+                         'body': body,
+                         'time': f'{time:.3f}s',
+                         'status_code': status}
 
-        self.logger.info(f'{user} '
-                         f'{f"({hash_auth_context}) " if hash_auth_context else ""}'
-                         f'{remote} '
-                         f'"{method} {path}" '
-                         f'with parameters {json.dumps(query)} and body {json.dumps(body)} '
-                         f'done in {time:.3f}s: {status}',
-                         extra={'log_type': 'log'})
-
-        self.logger.info({'user': user,
-                          'ip': remote,
-                          'http_method': method,
-                          'uri': f'{method} {path}',
-                          'parameters': query,
-                          'body': body,
-                          'time': f'{time:.3f}s',
-                          'status_code': status
-                          } if not hash_auth_context else
-                         {'user': user,
-                          'hash_auth_context': hash_auth_context,
-                          'ip': remote,
-                          'http_method': method,
-                          'uri': f'{method} {path}',
-                          'parameters': query,
-                          'body': body,
-                          'time': f'{time:.3f}s',
-                          'status_code': status},
-                         extra={'log_type': 'json'})
+        self.logger.info(log_info, extra={'log_type': 'log'})
+        self.logger.info(json_info, extra={'log_type': 'json'})
 
     def log(self, request, response, time):
         query = dict(request.query)
