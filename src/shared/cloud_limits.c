@@ -10,12 +10,12 @@
 #include "cloud_limits.h"
 
 #ifdef WAZUH_UNIT_TESTING
-#define static
 #undef OSSEC_LIMITS
 #define OSSEC_LIMITS  "./limits.conf"
 #endif
 
-time_t last_mod_date = 0;
+
+static time_t last_mod_date = 0;
 
 // load json objects from limits.conf file.
 
@@ -28,19 +28,19 @@ int load_limits_file(const char *daemon_name, cJSON ** daemon_obj) {
 
     time_t cur_mod_date = 0;
     if ((cur_mod_date = File_DateofChange(OSSEC_LIMITS)) == -1) {
-        mdebug2("File %s doesn't found", OSSEC_LIMITS);
+        mdebug2("File %s not found", OSSEC_LIMITS);
         last_mod_date = 0;
         return LIMITS_FILE_NOT_FOUND;
     }
 
     if (cur_mod_date == last_mod_date) {
-        mdebug2("File %s doesn't change", OSSEC_LIMITS);
+        mdebug2("File %s hasn't changed", OSSEC_LIMITS);
         return LIMITS_FILE_DOESNT_CHANGE;
     }
 
     FILE *fp;
     if (fp = fopen(OSSEC_LIMITS, "r"), !fp) {
-        mdebug2("Could not open file '%s'",OSSEC_LIMITS);
+        mdebug2("Could not open file '%s'", OSSEC_LIMITS);
         last_mod_date = 0;
         return LIMITS_OPEN_FILE_FAIL;
     }
@@ -48,7 +48,7 @@ int load_limits_file(const char *daemon_name, cJSON ** daemon_obj) {
     char buf[OS_MAXSTR + 1];
     memset(buf, '\0', OS_MAXSTR);
     if (fgets(buf, OS_MAXSTR, fp) == NULL) {
-        mdebug2("Could not read file '%s'",OSSEC_LIMITS);
+        mdebug2("Could not read file '%s'", OSSEC_LIMITS);
         fclose(fp);
         last_mod_date = 0;
         return LIMITS_READ_FILE_FAIL;
@@ -59,8 +59,7 @@ int load_limits_file(const char *daemon_name, cJSON ** daemon_obj) {
     cJSON *file_json = NULL;
     const char *json_err;
     if (file_json = cJSON_ParseWithOpts(buf, &json_err, 0), !file_json) {
-        mdebug2("Invalid format file '%s', json '%s'",OSSEC_LIMITS, json_err);
-        cJSON_Delete(file_json);
+        mdebug2("Invalid format file '%s', json '%s'", OSSEC_LIMITS, json_err);
         fclose(fp);
         return LIMITS_JSON_FORMAT_FAIL;
     }
@@ -75,7 +74,7 @@ int load_limits_file(const char *daemon_name, cJSON ** daemon_obj) {
 
     cJSON *limits_json = cJSON_GetObjectItem(file_json, "limits");
     if (!cJSON_IsObject(limits_json)) {
-        mdebug2("limits object doesn't found into '%s'", OSSEC_LIMITS);
+        mdebug2("Limits object not found in '%s'", OSSEC_LIMITS);
         cJSON_Delete(file_json);
         return LIMITS_JSON_LIMIT_NOT_FOUND;
     }
@@ -89,7 +88,7 @@ int load_limits_file(const char *daemon_name, cJSON ** daemon_obj) {
 
     cJSON *daemon_json = cJSON_GetObjectItem(limits_json, daemon_name);
     if (!cJSON_IsObject(daemon_json)) {
-        mdebug2("daemon '%s' doesn't found into '%s'",daemon_name, OSSEC_LIMITS);
+        mdebug2("Daemon '%s' not found in '%s'", daemon_name, OSSEC_LIMITS);
         cJSON_Delete(file_json);
         return LIMITS_JSON_DAEMON_NOT_FOUND;
     }
