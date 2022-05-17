@@ -107,9 +107,10 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/logicExpression)
 add_subdirectory(${ENGINE_SOURCE_DIR}/server)
 add_subdirectory(${ENGINE_SOURCE_DIR}/rxbk)
 add_subdirectory(${ENGINE_SOURCE_DIR}/json)
+add_subdirectory(${ENGINE_SOURCE_DIR}/wdb)
 
 #TODO isolate rxcpp
-target_link_libraries(main base builders catalog rxbk json)
+target_link_libraries(main base builders catalog rxbk json wdb)
 
 # Build test
 if(ENGINE_BUILD_TEST)
