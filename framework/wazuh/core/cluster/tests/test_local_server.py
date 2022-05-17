@@ -163,7 +163,7 @@ def test_LocalServerHandler_send_res_callback():
                 lsh = LocalServerHandler(server=None, loop=loop, fernet_key=None, cluster_items={},
                                          logger=logger)
                 lsh.send_res_callback(future=future)
-                logger_error_mock.assert_called_once_with("testing")
+                logger_error_mock.assert_called_once_with("testing", exc_info=False)
 
 
 @patch("asyncio.get_running_loop", return_value=loop)

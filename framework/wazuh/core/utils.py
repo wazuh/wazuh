@@ -5,6 +5,7 @@
 import errno
 import glob
 import hashlib
+import json
 import operator
 import os
 import re
@@ -19,7 +20,7 @@ from itertools import groupby, chain
 from os import chmod, chown, listdir, mkdir, curdir, rename, utime, remove, walk, path
 from pyexpat import ExpatError
 from shutil import Error, move, copy2
-from signal import signal, alarm, SIGALRM
+from signal import signal, alarm, SIGALRM, SIGKILL
 
 from cachetools import cached, TTLCache
 from defusedxml.ElementTree import fromstring
@@ -28,7 +29,6 @@ from defusedxml.minidom import parseString
 import wazuh.core.results as results
 from api import configuration
 from wazuh.core import common
-from wazuh.core.common import OSSEC_PIDFILE_PATH
 from wazuh.core.database import Connection
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.wdb import WazuhDBConnection
@@ -50,13 +50,15 @@ def clean_pid_files(daemon):
         Daemon's name.
     """
     regex = rf'{daemon}[\w_]*-(\d+).pid'
-    for pid_file in os.listdir(OSSEC_PIDFILE_PATH):
+    for pid_file in os.listdir(common.OSSEC_PIDFILE_PATH):
         if match := re.match(regex, pid_file):
             try:
-                os.kill(int(match.group(1)), 0)
+                os.kill(int(match.group(1)), SIGKILL)
+                print(f"{daemon}: Orphan child process {match.group(1)} was terminated.")
             except OSError:
-                print(f'{daemon}: Process {match.group(1)} not used by Wazuh, removing...')
-                os.remove(path.join(OSSEC_PIDFILE_PATH, pid_file))
+                print(f'{daemon}: Non existent process {match.group(1)}, removing from {common.WAZUH_PATH}/var/run...')
+            finally:
+                os.remove(path.join(common.OSSEC_PIDFILE_PATH, pid_file))
 
 
 def find_nth(string, substring, n):
@@ -632,6 +634,14 @@ def md5(fname):
     return hash_md5.hexdigest()
 
 
+def blake2b(fname):
+    hash_blake2b = hashlib.blake2b()
+    with open(fname, 'rb') as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_blake2b.update(chunk)
+    return hash_blake2b.hexdigest()
+
+
 def _get_hashing_algorithm(hash_algorithm):
     # check hash algorithm
     algorithm_list = hashlib.algorithms_available
@@ -1088,6 +1098,10 @@ class WazuhDBBackend(AbstractDatabaseBackend):
     """
 
     def __init__(self, agent_id=None, query_format='agent', max_size=6144, request_slice=500):
+        if query_format == 'agent' and not path.exists(path.join(common.WDB_PATH, f"{agent_id}.db")):
+            raise WazuhError(2007, extra_message=f"There is no database for agent {agent_id}. "
+                                                 "Please check if the agent has connected to the manager")
+
         self.agent_id = agent_id
         self.query_format = query_format
         self.max_size = max_size
@@ -1205,7 +1219,7 @@ class WazuhDBQuery(object):
             r'(\()?' +  # A ( character.
             r'([\w.]+)' +  # Field name: name of the field to look on DB
             '([' + ''.join(self.query_operators.keys()) + "]{1,2})" +  # Operator: looks for =, !=, <, > or ~.
-            r"([\[\]\w _\-\.:\\/']+)" +  # Value: A string.
+            r"(\[[\[\]\w _\-.,:?\\/'\"=@%<>]+]|[\[\]\w _\-.:?\\/'\"=@%<>]+)" +  # Value: A string.
             r"(\))?" +  # A ) character
             "([" + ''.join(self.query_separators.keys()) + "])?"  # Separator: looks for ;, , or nothing.
         )
@@ -1225,6 +1239,12 @@ class WazuhDBQuery(object):
         isinstance(self.backend, WazuhDBBackend) and self.backend.close_connection()
 
     def _clean_filter(self, query_filter):
+        if isinstance(query_filter['value'], str):
+            try:
+                query_filter['value'] = json.dumps(json.loads(query_filter['value']), separators=(',', ':'))
+            except ValueError:
+                pass
+
         # Replace special characters with wildcards
         for sp_char in self.special_characters:
             if isinstance(query_filter['value'], str) and sp_char in query_filter['value']:

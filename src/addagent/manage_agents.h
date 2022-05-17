@@ -48,7 +48,6 @@ int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char 
 int OS_RemoveAgent(const char *id);
 void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time_t now);
 void OS_RemoveAgentTimestamp(const char *id);
-void OS_RemoveAgentGroup(const char *id);
 void FormatID(char *id);
 
 /* Print available agents */

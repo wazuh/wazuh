@@ -199,12 +199,13 @@ void test_wdb_insert_dbsync_bind_fail(void **state)
     const char error_value[] = { "bad parameter or other API misuse" };
     char error_message[128] = { "\0" };
     sprintf(error_message, DB_AGENT_SQL_ERROR, "global", error_value);
-
+    will_return(__wrap_sqlite3_errmsg, error_value);
     expect_string(__wrap__merror, formatted_msg, error_message);
 
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
     expect_string(__wrap_sqlite3_bind_text, buffer, "data");
     will_return_always(__wrap_sqlite3_bind_text, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, error_value);
     expect_string(__wrap__merror, formatted_msg, error_message);
 
     assert_false(wdb_insert_dbsync(data->wdb, &head->current, "data|1"));

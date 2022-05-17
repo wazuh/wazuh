@@ -49,20 +49,20 @@ int _close_sock(keystore * keys, int sock);
 
 STATIC void * close_fp_main(void * args);
 
-/* Status of keypolling wodle */
+/* Status of key-request feature */
 static char key_request_available = 0;
 
 /* Decode hostinfo input queue */
 static w_queue_t * key_request_queue;
 
 /* Remote key request thread */
-void * w_key_request_thread(__attribute__((unused)) void * args);
+void * key_request_thread(__attribute__((unused)) void * args);
 
 /* Push key request */
 static void _push_request(const char *request,const char *type);
 #define push_request(x, y) if (key_request_available) _push_request(x, y);
 
-/* Connect to key polling wodle*/
+/* Connect to key-request feature */
 #define KEY_RECONNECT_INTERVAL 300 // 5 minutes
 static int key_request_connect();
 static int key_request_reconnect();
@@ -111,7 +111,7 @@ void HandleSecure()
     key_request_queue = queue_init(1024);
 
     // Create key request thread
-    w_create_thread(w_key_request_thread, NULL);
+    w_create_thread(key_request_thread, NULL);
 
     /* Create wait_for_msgs threads */
     {
@@ -488,7 +488,7 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storag
             mwarn(ENC_IP_ERROR, buffer + 1, srcip, agname);
 
             // Send key request by id
-            push_request(buffer + 1,"id");
+            push_request(buffer + 1, "id");
             if (sock_client >= 0) {
                 _close_sock(&keys, sock_client);
             }
@@ -530,7 +530,7 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storag
             mwarn(DENYIP_WARN " Source agent ID is unknown.", srcip);
 
             // Send key request by ip
-            push_request(srcip,"ip");
+            push_request(srcip, "ip");
             if (sock_client >= 0) {
                 _close_sock(&keys, sock_client);
             }
@@ -569,7 +569,7 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storag
 
         if (r == KS_ENCKEY) {
             if (ip_found) {
-                push_request(srcip,"ip");
+                push_request(srcip, "ip");
             } else {
                 push_request(buffer + 1, "id");
             }
@@ -672,7 +672,7 @@ int _close_sock(keystore * keys, int sock) {
 
 int key_request_connect() {
 #ifndef WIN32
-    return OS_ConnectUnixDomain(WM_KEY_REQUEST_SOCK, SOCK_DGRAM, OS_MAXSTR);
+    return OS_ConnectUnixDomain(KEY_REQUEST_SOCK, SOCK_DGRAM, OS_MAXSTR);
 #else
     return -1;
 #endif
@@ -685,8 +685,8 @@ static int send_key_request(int socket,const char *msg) {
 static void _push_request(const char *request,const char *type) {
     char *msg = NULL;
 
-    os_calloc(OS_MAXSTR,sizeof(char),msg);
-    snprintf(msg,OS_MAXSTR,"%s:%s",type,request);
+    os_calloc(OS_MAXSTR, sizeof(char), msg);
+    snprintf(msg, OS_MAXSTR, "%s:%s", type, request);
 
     if(queue_push_ex(key_request_queue, msg) < 0) {
         os_free(msg);
@@ -711,12 +711,12 @@ int key_request_reconnect() {
                 return socket;
             }
         }
-        mdebug1("Key-polling wodle is not available. Retrying connection in %d seconds.", KEY_RECONNECT_INTERVAL);
+        mdebug1("Key-request feature is not available. Retrying connection in %d seconds.", KEY_RECONNECT_INTERVAL);
         sleep(KEY_RECONNECT_INTERVAL);
     }
 }
 
-void * w_key_request_thread(__attribute__((unused)) void * args) {
+void * key_request_thread(__attribute__((unused)) void * args) {
     char * msg = NULL;
     int socket = -1;
 

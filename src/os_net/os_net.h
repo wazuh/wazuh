@@ -28,6 +28,7 @@ int OS_Bindportudp(u_int16_t _port, const char *_ip, int ipv6);
  * a Unix Domain socket.
  */
 int OS_BindUnixDomain(const char *path, int type, int max_msg_size) __attribute__((nonnull));
+int OS_BindUnixDomainWithPerms(const char *path, int type, int max_msg_size, uid_t uid, gid_t gid, mode_t mode) __attribute__((nonnull));
 int OS_ConnectUnixDomain(const char *path, int type, int max_msg_size) __attribute__((nonnull));
 int OS_getsocketsize(int ossock);
 
@@ -172,6 +173,15 @@ void resolve_hostname(char **hostname, int attempts);
  * @return String with the ip addres
  * */
 const char *get_ip_from_resolved_hostname(const char *resolved_hostname);
+
+/**
+ * @brief Connect to an UNIX socket setting the sending and response timeout
+ * @param socket_path Location of the UNIX socket to connect
+ * @param response_timeout Timeout to wait for a response
+ * @return Socket FD on success
+ * @return -1 on socket error
+ * */
+int external_socket_connect(char *socket_path, int response_timeout);
 
 /**
  * @brief Get the numeric form of an IPv4 address.

@@ -4,12 +4,14 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import io
 import os
 import sys
 import json
 from sqlite3 import connect
 from unittest.mock import patch, MagicMock
 import pytest
+from datetime import datetime
 
 # mock AWS libraries
 sys.modules['boto3'] = MagicMock()
@@ -223,11 +225,11 @@ def test_decompress_file_snappy_skip(log_key: str, aws_bucket: aws_s3.AWSBucket)
 @pytest.mark.parametrize('log_key, skip_on_error, expected_exception', [
     ('test.snappy', False, SystemExit),
 ])
-def test_decompress_file_ko(log_key: str, skip_on_error: bool, expected_exception: Exception,
-                            aws_bucket: aws_s3.AWSBucket):
+def test_decompress_snappy_ko(log_key: str, skip_on_error: bool, expected_exception: Exception,
+                              aws_bucket: aws_s3.AWSBucket):
     """
     Test that the decompress_file method raises an exception when used with
-    invalid arguments.
+    a snappy compressed file.
 
     Parameters
     ----------
@@ -241,8 +243,26 @@ def test_decompress_file_ko(log_key: str, skip_on_error: bool, expected_exceptio
         Instance of the AWSBucket class.
     """
     aws_bucket.skip_on_error = skip_on_error
-    with patch('io.BytesIO'), pytest.raises(expected_exception):
+    with patch('io.BytesIO'), pytest.raises(expected_exception) as e:
         aws_bucket.decompress_file(log_key)
+    assert e.value.code == 8
+
+
+def test_decompress_file_ko(bad_compressed_file, aws_bucket: aws_s3.AWSBucket):
+    """
+    Test that the decompress_file method exits with exit code 8 when
+    decompressing a corrupted file.
+
+    Parameters
+    ----------
+    bad_compressed_file : NamedTemporaryFile
+        Corrupted zip or gzip file.
+    """
+    with patch(
+            'io.BytesIO', return_value=io.TextIOWrapper(bad_compressed_file)),\
+         pytest.raises(SystemExit) as e:
+        aws_bucket.decompress_file(bad_compressed_file.name)
+    assert e.value.code == 8
 
 
 @pytest.mark.parametrize('log_file, skip_on_error', [
@@ -322,3 +342,30 @@ def test_config_format_created_date(date: str, expected_date: str, aws_config_bu
         Instance of the AWSConfigBucket class.
     """
     assert aws_config_bucket._format_created_date(date) == expected_date
+
+
+@pytest.mark.parametrize('log_file, expected_date', [
+    ({'Key' : 'AWSLogs/166157441623/elasticloadbalancing/us-west-1/2021/12/21/166157441623_elasticloadbalancing'}, 20211221),
+    ({'Key' : 'AWSLogs/875611522134/elasticloadbalancing/us-west-1/2020/01/03/166157441623_elasticloadbalancing'}, 20200103),
+    ({'Key' : '981837383623/iplogs/2020-09-20/2020-09-20-00-00-moyl.csv.gz'}, 20200920),
+    ({'Key' : '836629801214/iplogs/2021-01-18/2021-01-18-00-00-zxsb.csv.gz'}, 20210118),
+    ({'Key' : '2020/09/30/13/firehose_guardduty-1-2020-09-30-13-17-05-532e184c-1hfba.zip'}, 20200930),
+    ({'Key' : '2020/10/15/03/firehose_guardduty-1-2020-10-15-03-22-01-ea728dd1-763a4.zip'}, 20201015),
+    ({'Key' : '2021/03/18/aws-waf-logs-delivery-stream-1-2021-03-18-10-32-48-77baca34f-efad-4f14-45bd7871'}, 20210318),
+    ({'Key' : '2021/09/06/aws-waf-logs-delivery-stream-1-2021-09-06-21-02-18-8ba031bbd-babf-4c6a-83ba282c'}, 20210906),
+    ({'Key' : '2021-11-12-09-11-26-B9F9F891E8D0EB13'}, 20211112),
+    ({'Key' : '20-03-02-21-02-43-A8269E82CA8BDD21', 'LastModified' : datetime.strptime('2021/01/23', '%Y/%m/%d')}, 20210123)
+])
+def test_custom_get_creation_date(log_file: dict, expected_date: int, aws_custom_bucket : aws_s3.AWSCustomBucket):
+    """
+    Test AWSCustomBucket's get_creation_date method.
+    Parameters
+    ----------
+    log_file : dict
+        The log file introduced
+    expected_date : int
+        The date that the method should return.
+    aws_custom_bucket : aws_s3.AWSCustomBucket
+        Instance of the AWSCustomBucket class.  
+    """
+    assert aws_custom_bucket.get_creation_date(log_file) == expected_date

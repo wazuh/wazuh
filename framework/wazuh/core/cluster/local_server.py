@@ -165,7 +165,7 @@ class LocalServerHandler(server.AbstractServerHandler):
         if not future.cancelled():
             exc = future.exception()
             if exc:
-                self.logger.error(exc)
+                self.logger.error(exc, exc_info=False)
 
 
 class LocalServer(server.AbstractServer):

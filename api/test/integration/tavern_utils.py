@@ -187,7 +187,7 @@ def test_sort_response(response, key=None, reverse=False):
 
 
 def test_validate_data_dict_field(response, fields_dict):
-    assert fields_dict, f'Fields dict is empty'
+    assert fields_dict, "Fields dict is empty"
     for field, dikt in fields_dict.items():
         field_list = response.json()['data'][field]
 
@@ -207,7 +207,7 @@ def test_count_elements(response, n_expected_items):
     assert len(response.json()['data']['affected_items']) == n_expected_items
 
 
-def test_expected_value(response, key, expected_values):
+def test_expected_value(response, key, expected_values, empty_response_possible=False):
     """Iterate all items in the response and check that <key> value is within <expected_values>.
 
     Parameters
@@ -218,10 +218,17 @@ def test_expected_value(response, key, expected_values):
         Key whose value is checked.
     expected_values : str, list
         List of values which are allowed.
+    empty_response_possible : bool
+        Indicates whether the response could be empty or not. Set to True when the key value does not depend on the
+        test itself, for instance, node. Default: `False`
     """
     expected_values = set(expected_values.split(',')) if not isinstance(expected_values, list) else set(expected_values)
+    affected_items = response.json()['data']['affected_items']
 
-    for item in response.json()['data']['affected_items']:
+    if not affected_items and not empty_response_possible:
+        raise Exception("No items found in the response")
+
+    for item in affected_items:
         response_set = set(map(str, item[key])) if isinstance(item[key], list) else {str(item[key])}
         assert bool(expected_values.intersection(response_set)), \
             f'Expected values {expected_values} not found in {item[key]}'
@@ -233,6 +240,10 @@ def test_response_is_different(response, response_value, unexpected_value):
     :param unexpected_value: Response value should be different to this.
     """
     assert response_value != unexpected_value, f"{response_value} and {unexpected_value} shouldn't be the same"
+
+
+def test_save_token_raw_format(response):
+    return Box({'login_token': response.text})
 
 
 def test_save_response_data(response):

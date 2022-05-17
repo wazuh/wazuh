@@ -2,8 +2,10 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import os
 import sys
 import pytest
+import tempfile
 from unittest.mock import patch, MagicMock
 from copy import deepcopy
 
@@ -94,3 +96,37 @@ def aws_config_bucket(request):
          patch('sqlite3.connect'), \
          patch('utils.get_wazuh_version'):
         return aws_s3.AWSConfigBucket(**{k: v for i in request.param for k, v in i.items()})
+
+
+@pytest.fixture(params=deepcopy(AWS_BUCKET_PARAMS))
+def aws_custom_bucket(request):
+    """
+    Return a AWSCustomBucket instance.
+
+    Parameters
+    ----------
+    request : pytest.fixtures.SubRequest
+        Object that contains information about the current test.
+    """
+    with patch('aws_s3.AWSCustomBucket.get_client'), \
+         patch('aws_s3.AWSCustomBucket.get_sts_client'), \
+         patch('sqlite3.connect'), \
+         patch('utils.get_wazuh_version'):
+        return aws_s3.AWSCustomBucket(**{k: v for i in request.param for k, v in i.items()})   
+
+
+@pytest.fixture(params=['.gz', '.zip'])
+def bad_compressed_file(request):
+    """
+    Return an invalid zip or gzip file.
+
+    Parameters
+    request : pytest.fixtures.SubRequest
+        Object that contains information about the current test.
+    """
+    tmp_file = tempfile.NamedTemporaryFile(suffix=request.param)
+    tmp_file.write(os.urandom(512))
+
+    yield tmp_file
+
+    tmp_file.close()

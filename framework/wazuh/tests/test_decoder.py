@@ -165,17 +165,10 @@ def test_get_decoder_file_exceptions():
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1501
 
     # File permissions
-    filename = 'test2_decoders.xml'
-    old_permissions = stat.S_IMODE(os.lstat(os.path.join(
-        test_data_path, 'tests/data/decoders', filename)).st_mode)
-    try:
-        os.chmod(os.path.join(test_data_path, 'tests/data/decoders', filename), 000)
-        # UUT 3rd call forcing a permissions error opening decoder file
-        result = decoder.get_decoder_file(filename=filename)
+    with patch('builtins.open', side_effect=PermissionError):
+        result = decoder.get_decoder_file(filename='test2_decoders.xml')
         assert not result.affected_items
         assert result.render()['data']['failed_items'][0]['error']['code'] == 1502
-    finally:
-        os.chmod(os.path.join(test_data_path, 'tests/data/decoders', filename), old_permissions)
 
 
 @pytest.mark.parametrize('file, overwrite', [

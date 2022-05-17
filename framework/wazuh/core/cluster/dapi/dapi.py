@@ -692,15 +692,15 @@ class APIRequestQueue(WazuhRequestQueue):
                 task_id = b'Error in distributed API: ' + str(e).encode()
 
             if task_id.startswith(b'Error'):
-                self.logger.error(task_id.decode())
+                self.logger.error(task_id.decode(), exc_info=False)
                 result = await node.send_request(b'dapi_err', name_2.encode() + task_id)
             else:
                 result = await node.send_request(b'dapi_res', name_2.encode() + task_id)
             if not isinstance(result, WazuhException):
                 if result.startswith(b'Error'):
-                    self.logger.error(result.decode())
+                    self.logger.error(result.decode(), exc_info=False)
             else:
-                self.logger.error(result.message)
+                self.logger.error(result.message, exc_info=False)
 
 
 class SendSyncRequestQueue(WazuhRequestQueue):
@@ -738,7 +738,7 @@ class SendSyncRequestQueue(WazuhRequestQueue):
                 task_id = f'Error in SendSync (parameters {request}): {str(e)}'.encode()
 
             if task_id.startswith(b'Error'):
-                self.logger.error(task_id.decode())
+                self.logger.error(task_id.decode(), exc_info=False)
                 result = await node.send_request(b'sendsyn_err', name_2.encode() + task_id)
             else:
                 result = await node.send_request(b'sendsyn_res', name_2.encode() + task_id)

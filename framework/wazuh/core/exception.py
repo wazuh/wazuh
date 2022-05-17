@@ -4,7 +4,7 @@
 
 
 from copy import deepcopy
-from wazuh.core.common import MAX_SOCKET_BUFFER_SIZE, WAZUH_VERSION, AGENT_NAME_LEN_LIMIT
+from wazuh.core.common import MAX_SOCKET_BUFFER_SIZE, WAZUH_VERSION, AGENT_NAME_LEN_LIMIT, MAX_GROUPS_PER_MULTIGROUP
 
 GENERIC_ERROR_MSG = "Wazuh Internal Error. See log for more detail"
 DOCU_VERSION = 'current' if WAZUH_VERSION == '' else '.'.join(WAZUH_VERSION.split('.')[:2]).lstrip('v')
@@ -250,6 +250,8 @@ class WazuhException(Exception):
                               f'{DOCU_VERSION}/user-manual/agents/grouping-agents.html)'
                               'to get more information'
                },
+        1713: {'message': 'Invalid group ID. Some IDs are restricted for internal purposes',
+               'remediation': 'Please, use another group ID'},
         1722: {'message': 'Incorrect format for group_id',
                'remediation': 'Characters supported  a-z, A-Z, 0-9, ., _ and -. Max length is 255'
                },
@@ -285,7 +287,7 @@ class WazuhException(Exception):
                'remediation': 'Please update the agent, in case the problem persists contact us at: https://github.com'
                               '/wazuh/wazuh/issues'
                },
-        1737: {'message': 'Maximum number of groups per multigroup is 256',
+        1737: {'message': f"Maximum number of groups per multigroup is {MAX_GROUPS_PER_MULTIGROUP}",
                'remediation': 'Please choose another group or remove an agent from the target group'
                },
         1738: {'message': 'Agent name is too long',
@@ -301,8 +303,6 @@ class WazuhException(Exception):
         1751: {'message': 'Could not assign agent to group',
                'remediation': 'Agent already belongs to specified group, please select another agent'},
         1752: {'message': 'Could not force single group for the agent'},
-        1753: {'message': 'Could not assign group. Agent status is never_connected',
-               'remediation': 'Please select another agent or connect your agent before assigning groups'},
         1757: {'message': 'Error deleting an agent',
                'remediation': 'Please check all data fields and try again'
                },

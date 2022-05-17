@@ -1,0 +1,36 @@
+---
+agent_ids:
+  1:
+    - "default"
+    - "group1"
+  2:
+    - "default"
+    - "group2"
+  3:
+    - "default"
+    - "group3"
+  4:
+    - "default"
+  5:
+    - "default"
+    - "group1"
+    - "group2"
+  6:
+    - "default"
+    - "group2"
+    - "group3"
+  7:
+    - "default"
+    - "group1"
+    - "group3"
+  8:
+    - "default"
+    - "group1"
+    - "group2"
+    - "group3"
+  9:
+    - "default"
+    - "group1"
+  10:
+    - "default"
+    - "group2"

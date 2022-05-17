@@ -179,15 +179,16 @@ class AbstractServerHandler(c_common.Handler):
                 self.logger.debug(f"Disconnected {self.name}.")
             else:
                 self.logger.error(f"Error during connection with '{self.name}': {exc}.\n"
-                                  f"{''.join(traceback.format_tb(exc.__traceback__))}")
+                                  f"{''.join(traceback.format_tb(exc.__traceback__))}", exc_info=False)
 
             if self.name in self.server.clients:
                 del self.server.clients[self.name]
         else:
             if exc is not None:
-                self.logger.error(f"Error during handshake with incoming connection: {exc}", exc_info=True)
+                self.logger.error(f"Error during handshake with incoming connection: {exc}. \n"
+                                  f"{''.join(traceback.format_tb(exc.__traceback__))}", exc_info=False)
             else:
-                self.logger.error("Error during handshake with incoming connection.")
+                self.logger.error("Error during handshake with incoming connection.", exc_info=False)
 
 
 class AbstractServer:
@@ -344,7 +345,7 @@ class AbstractServer:
             for client_name, client in self.clients.copy().items():
                 if curr_timestamp - client.last_keepalive > self.cluster_items['intervals']['master']['max_allowed_time_without_keepalive']:
                     keep_alive_logger.error("No keep alives have been received from {} in the last minute. "
-                                            "Disconnecting".format(client_name))
+                                            "Disconnecting".format(client_name), exc_info=False)
                     client.transport.close()
             keep_alive_logger.debug("Calculated.")
             await asyncio.sleep(self.cluster_items['intervals']['master']['check_worker_lastkeepalive'])

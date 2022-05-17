@@ -23,14 +23,12 @@ int maximum_files;
 int current_files;
 int total_files;
 
-#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
 /**
  * @brief gets the type filter from the type attribute
  * @param content type attribute string
  * @return returns the configuration flags: activity, trace and/or log
  */
 STATIC int w_logcollector_get_macos_log_type(const char * content);
-#endif
 
 int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
@@ -47,10 +45,8 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_localfile_future = "only-future-events";
     const char *xml_localfile_max_size_attr = "max-size";
     const char *xml_localfile_query = "query";
-#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
     const char *xml_localfile_query_type_attr = "type";
     const char *xml_localfile_query_level_attr = "level";
-#endif
     const char *xml_localfile_label = "label";
     const char *xml_localfile_target = "target";
     const char *xml_localfile_outformat = "out_format";
@@ -139,7 +135,6 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             }
         } else if (strcmp(node[i]->element, xml_localfile_query) == 0) {
-#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
             const char * type_attr = w_get_attr_val_by_name(node[i], xml_localfile_query_type_attr);
             if (type_attr) {
                 logf[pl].query_type = w_logcollector_get_macos_log_type(type_attr);
@@ -157,7 +152,6 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                     os_strdup(level_attr, logf[pl].query_level);
                 }
             }
-#endif
             os_strdup(node[i]->content, logf[pl].query);
         } else if (strcmp(node[i]->element, xml_localfile_target) == 0) {
             // Count number of targets
@@ -359,9 +353,8 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
             } else if (strcmp(logf[pl].logformat, EVENTLOG) == 0) {
             } else if (strcmp(logf[pl].logformat, EVENTCHANNEL) == 0) {
-#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
             } else if (strcmp(logf[pl].logformat, MACOS) == 0) {
-                log_config->macos_blocks_count++;
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
                 os_calloc(1, sizeof(w_macos_log_config_t), logf[pl].macos_log);
                 w_calloc_expression_t(&logf[pl].macos_log->log_start_regex, EXP_TYPE_OSREGEX);
                 if (!w_expression_compile(logf[pl].macos_log->log_start_regex, MACOS_LOG_START_REGEX, 0)) {
@@ -370,8 +363,8 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                     os_free(logf[pl].macos_log);
                     return (OS_INVALID);
                 }
-
 #endif
+
             } else {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
@@ -475,33 +468,25 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
     /* Missing file */
     if (logf[pl].file == NULL) {
-#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
         if (strcmp(logf[pl].logformat, MACOS) == 0) {
             mwarn(LOGCOLLECTOR_MISSING_LOCATION_MACOS);
+            // Neceesary to check duplicated blocks
             os_strdup(MACOS, logf[pl].file);
         } else {
-#endif
             merror(MISS_FILE);
             os_strdup("", logf[pl].file);
             return (OS_INVALID);
-#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
         }
-#endif
     }
 
-#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
     /* Verify macos log config*/
-    if (log_config->macos_blocks_count > 1) {
-        merror(DUP_MACOS);
-        return (OS_INVALID);
-    }
-    
     if (strcmp(logf[pl].logformat, MACOS) == 0) {
 
         if (strcmp(logf[pl].file, MACOS) != 0) {
             /* Invalid macos log configuration */
             mwarn(LOGCOLLECTOR_INV_MACOS, logf[pl].file);
             os_free(logf[pl].file);
+            // Neceesary to check duplicated blocks
             w_strdup(MACOS, logf[pl].file);
         }
 
@@ -530,7 +515,6 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             mwarn(LOGCOLLECTOR_OPTION_IGNORED, MACOS, xml_localfile_alias);
         }
     }
-#endif
     /* Verify Multiline Regex Config */
     if (strcmp(logf[pl].logformat, MULTI_LINE_REGEX) == 0) {
 
@@ -752,13 +736,14 @@ void Free_Logreader(logreader * logf) {
     int i;
 
     if (logf) {
-        free(logf->ffile);
-        free(logf->file);
-        free(logf->logformat);
-        free(logf->djb_program_name);
-        free(logf->alias);
-        free(logf->query);
-        free(logf->exclude);
+        os_free(logf->ffile);
+        os_free(logf->file);
+        os_free(logf->logformat);
+        os_free(logf->djb_program_name);
+        os_free(logf->alias);
+        os_free(logf->query);
+        os_free(logf->exclude);
+        os_free(logf->query_level);
 
         if (logf->target) {
             for (i = 0; logf->target[i]; i++) {
@@ -768,7 +753,7 @@ void Free_Logreader(logreader * logf) {
             free(logf->target);
         }
 
-        free(logf->log_target);
+        os_free(logf->log_target);
 
         labels_free(logf->labels);
 
@@ -914,8 +899,6 @@ const char * multiline_attr_match_str(w_multiline_match_type_t match_type) {
     return match_str[match_type];
 }
 
-#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
-
 STATIC int w_logcollector_get_macos_log_type(const char * content) {
 
     const size_t MAX_ARRAY_SIZE = 64;
@@ -955,5 +938,3 @@ STATIC int w_logcollector_get_macos_log_type(const char * content) {
 
     return retval;
 }
-
-#endif
