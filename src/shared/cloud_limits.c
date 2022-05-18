@@ -9,12 +9,6 @@
 
 #include "cloud_limits.h"
 
-#ifdef WAZUH_UNIT_TESTING
-#undef OSSEC_LIMITS
-#define OSSEC_LIMITS  "./limits.conf"
-#endif
-
-
 static time_t last_mod_date = 0;
 
 // load json objects from limits.conf file.
@@ -28,13 +22,13 @@ int load_limits_file(const char *daemon_name, cJSON ** daemon_obj) {
 
     time_t cur_mod_date = 0;
     if ((cur_mod_date = File_DateofChange(OSSEC_LIMITS)) == -1) {
-        mdebug2("File %s not found", OSSEC_LIMITS);
+        mdebug2("File '%s' not found", OSSEC_LIMITS);
         last_mod_date = 0;
         return LIMITS_FILE_NOT_FOUND;
     }
 
     if (cur_mod_date == last_mod_date) {
-        mdebug2("File %s hasn't changed", OSSEC_LIMITS);
+        mdebug2("File '%s' hasn't changed", OSSEC_LIMITS);
         return LIMITS_FILE_DOESNT_CHANGE;
     }
 
@@ -57,7 +51,7 @@ int load_limits_file(const char *daemon_name, cJSON ** daemon_obj) {
     cJSON *file_json = NULL;
     const char *json_err;
     if (file_json = cJSON_ParseWithOpts(buf, &json_err, 0), !file_json) {
-        mdebug2("Invalid format file '%s', json '%s'", OSSEC_LIMITS, json_err);
+        mdebug2("Invalid json format file '%s'", OSSEC_LIMITS);
         fclose(fp);
         return LIMITS_JSON_FORMAT_FAIL;
     }
