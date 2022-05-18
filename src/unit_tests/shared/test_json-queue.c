@@ -62,6 +62,8 @@ void test_jqueue_parse_json_valid(void ** state) {
 
     expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, 1);
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, 23);
 
     expect_value(__wrap_fgets, __stream, queue->fp);
     will_return(__wrap_fgets, buffer);
@@ -87,6 +89,8 @@ void test_jqueue_parse_json_invalid(void ** state) {
 
     expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, 1);
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, 24);
     expect_value(__wrap_fgets, __stream, queue->fp);
     will_return(__wrap_fgets, buffer);
 
@@ -124,6 +128,8 @@ void test_jqueue_parse_json_overlong_alert(void ** state) {
     will_return(__wrap_fgets, buffer1);
     expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, 131073);
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, 131078);
     expect_value(__wrap_fgets, __stream, queue->fp);
     will_return(__wrap_fgets, buffer2);
 

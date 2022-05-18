@@ -123,7 +123,9 @@ cJSON * jqueue_parse_json(file_queue * queue) {
 
     if (fgets(buffer, OS_MAXSTR + 1, queue->fp)) {
 
-        if (end = strchr(buffer, '\n'), end) {
+        offset = w_ftell(queue->fp);
+
+        if (end = buffer + offset - initial_pos - 1, *end == '\n') {
             *end = '\0';
 
             if ((object = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), object) && (*jsonErrPtr == '\0')) {
@@ -138,15 +140,18 @@ cJSON * jqueue_parse_json(file_queue * queue) {
         }
 
         current_pos = initial_pos;
-        offset = w_ftell(queue->fp);
+
         while ((offset-current_pos) == OS_MAXSTR) {
             if (fgets(buffer, OS_MAXSTR + 1, queue->fp)) {
-                if (strchr(buffer, '\n')) {
+
+                current_pos = offset;
+                offset = w_ftell(queue->fp);
+
+                if (buffer[offset - current_pos - 1] == '\n') {
                     mwarn("Overlong JSON alert read from '%s'", queue->file_name);
                     return NULL;
                 }
-                current_pos = offset;
-                offset = w_ftell(queue->fp);
+
             } else {
                 break;
             }
