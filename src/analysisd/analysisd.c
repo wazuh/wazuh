@@ -1053,7 +1053,6 @@ void OS_ReadMSG_analysisd(int m_queue)
     sem_init(&credits_eps_semaphore, 0, 1);
 
     memset(&limits, 0, sizeof(limits));
-    limits_wait_counter = 0;
     load_limits();
 
     /* Create message handler thread */
