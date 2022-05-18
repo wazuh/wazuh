@@ -1157,7 +1157,11 @@ CPYTHON := cpython
 PYTHON_SOURCE := no
 
 ifneq (${TARGET}, winagent)
-cpu_arch := ${uname_P}
+ifeq (${uname_S},Darwin)
+        cpu_arch := ${uname_M}
+else
+        cpu_arch := ${uname_P}
+endif
 ifneq (,$(filter ${cpu_arch},unknown Unknown not))
 	cpu_arch := $(shell sh -c 'arch 2>/dev/null || echo not')
 endif
