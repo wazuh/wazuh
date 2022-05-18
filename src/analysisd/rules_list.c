@@ -452,7 +452,13 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid, OSList* log_msg
             r_node->ruleinfo->mitre_technique_id = newrule->mitre_technique_id;
 
             /* Finally the reference to newrule is store so it is freed at the end */
-            r_node->ruleinfo->rule_overwrite = newrule;
+
+            if (r_node->ruleinfo->rule_overwrite == NULL) {
+                r_node->ruleinfo->rule_overwrite = OSList_Create();
+                OSList_SetFreeDataPointer(r_node->ruleinfo->rule_overwrite, free);
+            }
+
+            OSList_PushData(r_node->ruleinfo->rule_overwrite, newrule);
 
             return (1);
         }
@@ -680,7 +686,7 @@ void os_remove_ruleinfo(RuleInfo *ruleinfo) {
     free_strarray(ruleinfo->mitre_tactic_id);
     free_strarray(ruleinfo->mitre_technique_id);
 
-    os_free(ruleinfo->rule_overwrite);
+    OSList_Destroy(ruleinfo->rule_overwrite);
     os_free(ruleinfo);
 }
 
