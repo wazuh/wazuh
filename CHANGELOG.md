@@ -1,7 +1,31 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v4.3.0]
+## [v4.3.1]
+
+### Manager
+
+#### Fixed
+
+- Fixed a crash when overwrite rules are triggered. ([#13439](https://github.com/wazuh/wazuh/pull/13439))
+- Fixed a memory leak when loading overwrite rules. ([#13439](https://github.com/wazuh/wazuh/pull/13439))
+- Fixed the use of relationship labels in overwrite rules. ([#13439](https://github.com/wazuh/wazuh/pull/13439))
+- Fixed regex used to transform into datetime in the logtest framework function. ([#13430](https://github.com/wazuh/wazuh/pull/13430))
+
+### RESTful API
+
+#### Fixed
+
+- Fixed API response when using sort in Agent upgrade related endpoints. ([#13178](https://github.com/wazuh/wazuh/pull/13178))
+
+### Ruleset
+
+#### Fixed
+
+- Fixed rule 92656, added field condition win.eventdata.logonType equals 10 to avoid false positives. ([#13409](https://github.com/wazuh/wazuh/pull/13409))
+
+
+## [v4.3.0] - 2022-05-05
 
 ### Manager
 
@@ -385,7 +409,7 @@ All notable changes to this project will be documented in this file.
 - Fixed an installation error due to missing command `hostname` on OpenSUSE Tumbleweed. ([#11455](https://github.com/wazuh/wazuh/pull/11455))
 
 
-## [v4.2.6]
+## [v4.2.6] - 2022-03-25
 
 ### Manager
 
