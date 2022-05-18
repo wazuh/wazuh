@@ -79,7 +79,10 @@ list(APPEND shared_tests_names "test_buffer_op")
 list(APPEND shared_tests_flags " ")
 
 list(APPEND shared_tests_names "test_cloud_limits")
-list(APPEND shared_tests_flags " ")
+list(APPEND shared_tests_flags "-Wl,--wrap=fopen,--wrap=fread,--wrap=fclose,--wrap=fwrite,--wrap=fflush \
+                                -Wl,--wrap=fgets,--wrap=fprintf,--wrap=fseek,--wrap=remove -Wl,--wrap,fgetpos \
+                                -Wl,--wrap=fgetc,--wrap=_mdebug2,--wrap=File_DateofChange,--wrap=cJSON_ParseWithOpts \
+                                -Wl,--wrap=cJSON_GetObjectItem,--wrap=cJSON_IsObject,--wrap=cJSON_Delete")
 
 list(APPEND shared_tests_names "test_utf8_op")
 list(APPEND shared_tests_flags " ")
