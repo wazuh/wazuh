@@ -70,8 +70,12 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,OS_
 
 list(APPEND remoted_names "test_remote-config")
 list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS}")
+
 list(APPEND remoted_names "test_syslogtcp")
 list(APPEND remoted_flags "-W")
+
+list(APPEND remoted_names "test_remote-state")
+list(APPEND remoted_flags "-Wl,--wrap,time -Wl,--wrap,rem_get_qsize -Wl,--wrap,rem_get_tsize")
 
 list(LENGTH remoted_names count)
 math(EXPR count "${count} - 1")
