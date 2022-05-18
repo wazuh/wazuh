@@ -7,7 +7,7 @@ import logging
 import os
 import re
 from datetime import datetime
-from enum import IntEnum, Enum
+from enum import IntEnum
 from functools import partial
 from shutil import chown
 from time import time
@@ -27,9 +27,12 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from api.configuration import security_conf
 from api.constants import SECURITY_PATH
-from wazuh.core.common import wazuh_uid, wazuh_gid, get_api_revision
+from wazuh.core.common import wazuh_uid, wazuh_gid
 from wazuh.core.utils import get_utc_now, safe_move
 from wazuh.rbac.utils import clear_cache
+
+CURRENT_ORM_VERSION = 1
+_new_columns = {}
 
 # Max reserved ID value
 max_id_reserved = 99
@@ -41,18 +44,11 @@ _db_file_tmp = f"{_db_file}.tmp"
 _engine = create_engine(f"sqlite:///{_db_file}", echo=False)
 _Base = declarative_base()
 _Session = sessionmaker(bind=_engine)
-_new_columns = {"resource_type"}
 
 # Required rules for role
 # Key: Role - Value: Rules
 required_rules_for_role = {1: [1, 2]}
 required_rules = {required_rule for r in required_rules_for_role.values() for required_rule in r}
-
-
-class ResourceType(Enum):
-    USER = 'user'
-    PROTECTED = 'protected'
-    DEFAULT = 'default'
 
 
 # Error codes for Roles and Policies managers
@@ -75,10 +71,6 @@ class SecurityError(IntEnum):
     RULE_NOT_EXIST = -7
     # The relationships can not be removed
     RELATIONSHIP_ERROR = -8
-    # Protected resources
-    PROTECTED_RESOURCES = -9
-    # Database constraint error
-    CONSTRAINT_ERROR = -10
 
 
 def json_validator(data):
@@ -287,21 +279,18 @@ class User(_Base):
     username = Column(String(32), nullable=False)
     password = Column(String(256), nullable=False)
     allow_run_as = Column(Boolean, default=False, nullable=False)
-    resource_type = Column(String, default=ResourceType.USER.value)
     created_at = Column('created_at', DateTime, default=get_utc_now())
     __table_args__ = (UniqueConstraint('username', name='username_restriction'),)
 
     # Relations
     roles = relationship("Roles", secondary='user_roles', passive_deletes=True, cascade="all,delete", lazy="dynamic")
 
-    def __init__(self, username, password, allow_run_as=False, created_at=get_utc_now(),
-                 resource_type: ResourceType = ResourceType.USER, user_id=None):
+    def __init__(self, username, password, allow_run_as=False, created_at=get_utc_now(), user_id=None):
         self.id = user_id
         self.username = username
         self.password = password
         self.allow_run_as = allow_run_as
         self.created_at = created_at
-        self.resource_type = resource_type.value
 
     def __repr__(self):
         return f"<User(user={self.username})"
@@ -336,8 +325,7 @@ class User(_Base):
         with UserRolesManager(session=session) as urm:
             return {'id': self.id, 'username': self.username,
                     'allow_run_as': self.allow_run_as,
-                    'roles': [role.id for role in urm.get_all_roles_from_user(user_id=self.id)],
-                    'resource_type': self.resource_type}
+                    'roles': [role.id for role in urm.get_all_roles_from_user(user_id=self.id)]}
 
 
 class Roles(_Base):
@@ -354,7 +342,6 @@ class Roles(_Base):
     # Schema
     id = Column('id', Integer, primary_key=True)
     name = Column('name', String(20), nullable=False)
-    resource_type = Column(String, default=ResourceType.USER.value)
     created_at = Column('created_at', DateTime, default=get_utc_now())
     __table_args__ = (UniqueConstraint('name', name='name_role'),
                       CheckConstraint('length(name) <= 64'))
@@ -365,11 +352,10 @@ class Roles(_Base):
     users = relationship("User", secondary='user_roles', passive_deletes=True, cascade="all,delete", lazy="dynamic")
     rules = relationship("Rules", secondary='roles_rules', passive_deletes=True, cascade="all,delete", lazy="dynamic")
 
-    def __init__(self, name, role_id=None, created_at=get_utc_now(), resource_type: ResourceType = ResourceType.USER):
+    def __init__(self, name, role_id=None, created_at=get_utc_now()):
         self.id = role_id
         self.name = name
         self.created_at = created_at
-        self.resource_type = resource_type.value
 
     def get_role(self):
         """Role's getter
@@ -394,8 +380,7 @@ class Roles(_Base):
             return {'id': self.id, 'name': self.name,
                     'policies': [policy.id for policy in rpm.get_all_policies_from_role(role_id=self.id)],
                     'users': [user.id for user in self.users],
-                    'rules': [rule.id for rule in self.rules],
-                    'resource_type': self.resource_type}
+                    'rules': [rule.id for rule in self.rules]}
 
 
 class Rules(_Base):
@@ -413,20 +398,17 @@ class Rules(_Base):
     id = Column('id', Integer, primary_key=True)
     name = Column('name', String(20), nullable=False)
     rule = Column('rule', TEXT, nullable=False)
-    resource_type = Column(String, default=ResourceType.USER.value)
     created_at = Column('created_at', DateTime, default=get_utc_now())
     __table_args__ = (UniqueConstraint('name', name='rule_name'),)
 
     # Relations
     roles = relationship("Roles", secondary='roles_rules', passive_deletes=True, cascade="all,delete", lazy="dynamic")
 
-    def __init__(self, name, rule, rule_id=None, created_at=get_utc_now(),
-                 resource_type: ResourceType = ResourceType.USER):
+    def __init__(self, name, rule, rule_id=None, created_at=get_utc_now()):
         self.id = rule_id
         self.name = name
         self.rule = rule
         self.created_at = created_at
-        self.resource_type = resource_type.value
 
     def get_rule(self):
         """Rule getter
@@ -445,8 +427,7 @@ class Rules(_Base):
         Dict with the information
         """
         return {'id': self.id, 'name': self.name, 'rule': json.loads(self.rule),
-                'roles': [role.id for role in self.roles],
-                'resource_type': self.resource_type}
+                'roles': [role.id for role in self.roles]}
 
 
 class Policies(_Base):
@@ -464,7 +445,6 @@ class Policies(_Base):
     id = Column('id', Integer, primary_key=True)
     name = Column('name', String(20), nullable=False)
     policy = Column('policy', TEXT, nullable=False)
-    resource_type = Column(String, default=ResourceType.USER.value)
     created_at = Column('created_at', DateTime, default=get_utc_now())
     __table_args__ = (UniqueConstraint('name', name='name_policy'),
                       UniqueConstraint('policy', name='policy_definition'))
@@ -473,13 +453,11 @@ class Policies(_Base):
     roles = relationship("Roles", secondary='roles_policies', passive_deletes=True, cascade="all,delete",
                          lazy="dynamic")
 
-    def __init__(self, name, policy, policy_id=None, created_at=get_utc_now(),
-                 resource_type: ResourceType = ResourceType.USER):
+    def __init__(self, name, policy, policy_id=None, created_at=get_utc_now()):
         self.id = policy_id
         self.name = name
         self.policy = policy
         self.created_at = created_at
-        self.resource_type = resource_type.value
 
     def get_policy(self):
         """Policy's getter
@@ -499,8 +477,7 @@ class Policies(_Base):
         """
         with RolesPoliciesManager(session=session) as rpm:
             return {'id': self.id, 'name': self.name, 'policy': json.loads(self.policy),
-                    'roles': [role.id for role in rpm.get_all_roles_from_policy(policy_id=self.id)],
-                    'resource_type': self.resource_type}
+                    'roles': [role.id for role in rpm.get_all_roles_from_policy(policy_id=self.id)]}
 
 
 class TokenManager:
@@ -749,8 +726,7 @@ class AuthenticationManager:
             return False
 
     def add_user(self, username: str, password: str, user_id: int = None, hash_password: bool = False,
-                 created_at: datetime = get_utc_now(), resource_type: ResourceType = ResourceType.USER,
-                 check_default: bool = True) -> bool:
+                 created_at: datetime = get_utc_now(), check_default: bool = True) -> bool:
         """Create a new user if it does not exist. TODO update
 
         Parameters
@@ -776,7 +752,6 @@ class AuthenticationManager:
             self.session.add(User(username=username,
                                   password=password if hash_password else generate_password_hash(password),
                                   created_at=created_at,
-                                  resource_type=resource_type,
                                   user_id=user_id))
             self.session.commit()
             return True
@@ -784,8 +759,8 @@ class AuthenticationManager:
             self.session.rollback()
             return False
 
-    def update_user(self, user_id: int, password: str, resource_type: ResourceType = None) -> bool:
-        """Update the password an existent user TODO update
+    def update_user(self, user_id: int, password: str) -> bool:
+        """Update the password an existent user
 
         Parameters
         ----------
@@ -801,11 +776,9 @@ class AuthenticationManager:
         try:
             user = self.session.query(User).filter_by(id=user_id).first()
             if user is not None:
-                if resource_type is not None:
-                    user.resource_type = resource_type.value
                 if password:
                     user.password = generate_password_hash(password)
-                if password or resource_type:
+                if password:
                     self.session.commit()
                     return True
             return False
@@ -983,8 +956,7 @@ class RolesManager:
             return SecurityError.ROLE_NOT_EXIST
 
     def add_role(self, name: str, role_id: int = None, created_at: datetime = get_utc_now(),
-                 resource_type: ResourceType = ResourceType.USER, check_default: bool = True) -> Union[bool,
-                                                                                                       SecurityError]:
+                 check_default: bool = True) -> Union[bool, SecurityError]:
         """Add a new role. TODO update
 
         Parameters
@@ -1005,7 +977,7 @@ class RolesManager:
                     role_id = max_id_reserved + 1
             except (TypeError, AttributeError):
                 pass
-            self.session.add(Roles(name=name, role_id=role_id, created_at=created_at, resource_type=resource_type))
+            self.session.add(Roles(name=name, role_id=role_id, created_at=created_at))
             self.session.commit()
             return True
         except IntegrityError:
@@ -1080,7 +1052,7 @@ class RolesManager:
             self.session.rollback()
             return False
 
-    def update_role(self, role_id: int, name: str, resource_type: ResourceType = None) -> Union[bool, SecurityError]:
+    def update_role(self, role_id: int, name: str) -> Union[bool, SecurityError]:
         """Update an existent role in the system TODO update
 
         Parameters
@@ -1100,9 +1072,7 @@ class RolesManager:
                 if role is not None:
                     if name is not None:
                         role.name = name
-                    if resource_type is not None:
-                        role.resource_type = resource_type.value
-                    if name or resource_type:
+                    if name:
                         self.session.commit()
                         return True
                 return SecurityError.ROLE_NOT_EXIST
@@ -1180,8 +1150,7 @@ class RulesManager:
             return SecurityError.RULE_NOT_EXIST
 
     def add_rule(self, name: str, rule: dict, rule_id: int = None, created_at: datetime = None,
-                 resource_type: ResourceType = ResourceType.USER, check_default: bool = True) -> Union[bool,
-                                                                                                       SecurityError]:
+                 check_default: bool = True) -> Union[bool, SecurityError]:
         """Add a new rule. # TODO update
 
         Parameters
@@ -1207,7 +1176,7 @@ class RulesManager:
                     rule_id = max_id_reserved + 1
             except (TypeError, AttributeError):
                 pass
-            self.session.add(Rules(name=name, rule=json.dumps(rule), rule_id=rule_id, resource_type=resource_type))
+            self.session.add(Rules(name=name, rule=json.dumps(rule), rule_id=rule_id))
             self.session.commit()
             return True
         except IntegrityError:
@@ -1281,7 +1250,7 @@ class RulesManager:
             self.session.rollback()
             return False
 
-    def update_rule(self, rule_id: int, name: str, rule: dict, resource_type: ResourceType = None) \
+    def update_rule(self, rule_id: int, name: str, rule: dict) \
             -> Union[bool, SecurityError]:
         """Update an existent rule in the system. TODO update
 
@@ -1308,9 +1277,7 @@ class RulesManager:
                         rule_to_update.name = name
                     if rule is not None:
                         rule_to_update.rule = json.dumps(rule)
-                    if resource_type is not None:
-                        rule_to_update.resource_type = resource_type.value
-                    if rule or name or resource_type:
+                    if rule or name:
                         self.session.commit()
                         return True
                 return SecurityError.RULE_NOT_EXIST
@@ -1391,7 +1358,7 @@ class PoliciesManager:
             return SecurityError.POLICY_NOT_EXIST
 
     def add_policy(self, name: str, policy: dict, policy_id: int = None, created_at: datetime = get_utc_now(),
-                   resource_type: ResourceType = ResourceType.USER, check_default: bool = True) -> Union[bool,
+                   check_default: bool = True) -> Union[bool,
                                                                                                          SecurityError]:
         """Add a new policy. TODO update
 
@@ -1440,7 +1407,7 @@ class PoliciesManager:
                         except (TypeError, AttributeError):
                             pass
                         self.session.add(Policies(name=name, policy=json.dumps(policy), policy_id=policy_id,
-                                                  created_at=created_at, resource_type=resource_type))
+                                                  created_at=created_at))
                         self.session.commit()
                         return True
                     else:
@@ -1522,8 +1489,7 @@ class PoliciesManager:
             self.session.rollback()
             return False
 
-    def update_policy(self, policy_id: int, name: str, policy: dict, resource_type: ResourceType = None,
-                      check_default: bool = True) \
+    def update_policy(self, policy_id: int, name: str, policy: dict, check_default: bool = True) \
             -> Union[bool, SecurityError]:
         """Update an existent policy in the system TODO update
 
@@ -1559,9 +1525,7 @@ class PoliciesManager:
                             if not all(re.match(self.resource_regex, res) for res in resource.split('&')):
                                 return SecurityError.INVALID
                         policy_to_update.policy = json.dumps(policy)
-                    if resource_type is not None:
-                        policy_to_update.resource_type = resource_type.value
-                    if name or policy or resource_type:
+                    if name or policy:
                         self.session.commit()
                         return True
                 return SecurityError.POLICY_NOT_EXIST
@@ -2549,8 +2513,7 @@ class DatabaseManager:
 
             with AuthenticationManager(self.sessions[database]) as auth:
                 for d_username, payload in default_users[next(iter(default_users))].items():
-                    auth.add_user(username=d_username, password=payload['password'], resource_type=ResourceType.DEFAULT,
-                                  check_default=False)
+                    auth.add_user(username=d_username, password=payload['password'], check_default=False)
                     auth.edit_run_as(user_id=auth.get_user(username=d_username)['id'],
                                      allow_run_as=payload['allow_run_as'])
 
@@ -2560,15 +2523,14 @@ class DatabaseManager:
 
             with RolesManager(self.sessions[database]) as rm:
                 for d_role_name, payload in default_roles[next(iter(default_roles))].items():
-                    rm.add_role(name=d_role_name, resource_type=ResourceType.DEFAULT, check_default=False)
+                    rm.add_role(name=d_role_name, check_default=False)
 
         with open(os.path.join(default_path, 'rules.yaml'), 'r') as stream:
             default_rules = yaml.safe_load(stream)
 
             with RulesManager(self.sessions[database]) as rum:
                 for d_rule_name, payload in default_rules[next(iter(default_rules))].items():
-                    rum.add_rule(name=d_rule_name, rule=payload['rule'], resource_type=ResourceType.DEFAULT,
-                                 check_default=False)
+                    rum.add_rule(name=d_rule_name, rule=payload['rule'], check_default=False)
 
         # Create default policies if they don't exist yet
         with open(os.path.join(default_path, "policies.yaml"), 'r') as stream:
@@ -2578,15 +2540,14 @@ class DatabaseManager:
                 for d_policy_name, payload in default_policies[next(iter(default_policies))].items():
                     for name, policy in payload['policies'].items():
                         policy_name = f'{d_policy_name}_{name}'
-                        policy_result = pm.add_policy(name=policy_name, policy=policy,
-                                                      resource_type=ResourceType.DEFAULT, check_default=False)
+                        policy_result = pm.add_policy(name=policy_name, policy=policy, check_default=False)
                         # Update policy if it exists
                         if policy_result == SecurityError.ALREADY_EXIST:
                             try:
                                 policy_id = pm.get_policy(policy_name)['id']
                                 if policy_id < max_id_reserved:
                                     pm.update_policy(policy_id=policy_id, name=policy_name, policy=policy,
-                                                     resource_type=ResourceType.DEFAULT, check_default=False)
+                                                     check_default=False)
                                 else:
                                     with RolesPoliciesManager(self.sessions[database]) as rpm:
                                         linked_roles = [role.id for role in
@@ -2598,8 +2559,7 @@ class DatabaseManager:
                                             ].index(policy_id)
 
                                         pm.delete_policy(policy_id=policy_id)
-                                        pm.add_policy(name=policy_name, policy=policy,
-                                                      resource_type=ResourceType.DEFAULT, check_default=False)
+                                        pm.add_policy(name=policy_name, policy=policy, check_default=False)
                                         policy_id = pm.get_policy(policy_name)['id']
                                         for role, position in new_positions.items():
                                             rpm.add_role_to_policy(policy_id=policy_id, role_id=role, position=position,
@@ -2649,7 +2609,7 @@ class DatabaseManager:
             return session.query(table).with_entities(*[column for column in table.__table__.columns
                                                         if column.key not in _new_columns])
 
-    def migrate_data(self, source, target, from_id: int = None, to_id: int = None, resource_type: ResourceType = None):
+    def migrate_data(self, source, target, from_id: int = None, to_id: int = None):
         """Get the resources from the `source` database filtering by IDs and insert them into the `target` database.
         This function will adapt the relationship between problematic resources if needed."""
 
@@ -2681,7 +2641,6 @@ class DatabaseManager:
                                       created_at=user.created_at,
                                       user_id=user.id,
                                       hash_password=True,
-                                      resource_type=resource_type,
                                       check_default=False)
                 auth_manager.edit_run_as(user_id=user.id, allow_run_as=user.allow_run_as)
 
@@ -2691,7 +2650,6 @@ class DatabaseManager:
                 role_manager.add_role(name=role.name,
                                       created_at=role.created_at,
                                       role_id=role.id,
-                                      resource_type=resource_type,
                                       check_default=False)
 
         old_rules = get_data(Rules, Rules.id)
@@ -2701,7 +2659,6 @@ class DatabaseManager:
                                       rule=json.loads(rule.rule),
                                       created_at=rule.created_at,
                                       rule_id=rule.id,
-                                      resource_type=resource_type,
                                       check_default=False)
 
         old_policies = get_data(Policies, Policies.id)
@@ -2711,11 +2668,10 @@ class DatabaseManager:
                                                    policy=json.loads(policy.policy),
                                                    created_at=policy.created_at,
                                                    policy_id=policy.id,
-                                                   resource_type=resource_type,
                                                    check_default=False)
                 # If the user's policy has the same body as an existing default policy it won't be inserted and its
                 # role-policy relationships will be linked to that default policy instead to replace it.
-                if status == SecurityError.ALREADY_EXIST or status == SecurityError.CONSTRAINT_ERROR:
+                if status == SecurityError.ALREADY_EXIST:
                     roles_policies = self.get_table(source, RolesPolicies).filter(
                         RolesPolicies.policy_id == policy.id).order_by(RolesPolicies.id.asc()).all()
                     new_policy_id = self.sessions[target].query(Policies).filter_by(
@@ -2838,7 +2794,7 @@ def check_database_integrity():
             _set_permissions_and_ownership(_db_file)
             db_manager.connect(_db_file)
             current_version = int(db_manager.get_database_version(_db_file))
-            expected_version = int(get_api_revision())
+            expected_version = CURRENT_ORM_VERSION
 
             # Check if an upgrade is required
             if current_version < expected_version:
@@ -2856,9 +2812,8 @@ def check_database_integrity():
 
                 # Migrate data from old database
                 db_manager.migrate_data(source=_db_file, target=_db_file_tmp, from_id=cloud_reserved_range,
-                                        to_id=max_id_reserved, resource_type=ResourceType.PROTECTED)
-                db_manager.migrate_data(source=_db_file, target=_db_file_tmp, from_id=max_id_reserved + 1,
-                                        resource_type=ResourceType.USER)
+                                        to_id=max_id_reserved)
+                db_manager.migrate_data(source=_db_file, target=_db_file_tmp, from_id=max_id_reserved + 1)
 
                 # Apply changes and replace database
                 db_manager.set_database_version(_db_file_tmp, str(expected_version))
@@ -2875,7 +2830,7 @@ def check_database_integrity():
             db_manager.create_database(_db_file)
             _set_permissions_and_ownership(_db_file)
             db_manager.insert_default_resources(_db_file)
-            db_manager.set_database_version(_db_file, get_api_revision())
+            db_manager.set_database_version(_db_file, CURRENT_ORM_VERSION)
             db_manager.close_sessions()
             logger.info(f"{_db_file} database created successfully")
     except ValueError:
