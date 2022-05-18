@@ -22,6 +22,10 @@
 #define LIMITS_JSON_LIMIT_NOT_FOUND     -7  ///< Return code: Limits section not found in json
 #define LIMITS_JSON_DAEMON_NOT_FOUND    -8  ///< Return code: Daemon name section not found in json
 
+#ifdef WAZUH_UNIT_TESTING
+#undef OSSEC_LIMITS
+#define OSSEC_LIMITS  "./limits.conf"
+#endif
 
 /**
  * @brief Get a json object from limits.conf file
