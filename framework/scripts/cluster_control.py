@@ -190,7 +190,7 @@ def usage():
     \t-a -fn <node_name> <agent_status>     # List agents reporting to certain node and with certain status
     \t-i                                    # Check cluster health
     \t-i -fn <node_name>                    # Check certain node's health
-    
+
 
     Params:
     \t-l, --list
@@ -200,12 +200,12 @@ def usage():
     \t-fs, --filter-agent-status
     \t-a, --list-agents
     \t-i, --health
-    
+
     """.format(path.basename(sys.argv[0]))
     print(msg)
 
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--debug', action='store_true', dest='debug', help="Enable debug mode")
     parser.add_argument('-fn', '--filter-node', dest='filter_node', nargs='*', type=str, help="Filter by node name")
@@ -253,3 +253,7 @@ if __name__ == '__main__':
         logging.error(e)
         if args.debug:
             raise
+
+
+if __name__ == '__main__':
+    main()

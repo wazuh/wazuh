@@ -92,9 +92,8 @@
 #define ANALYSISD_DEC_DEPRECATED_OPT_VALUE      "(7603): Deprecated value '%s' in '%s' option " \
                                                         "(decoder `%s`). Default value will be used."
 #define ANALYSISD_IGNORE_RULE                   "(7604): Rule '%d' will be ignored."
-#define ANALYSISD_INV_OVERWRITE                 "(7605): Invalid use of 'overwrite' option, it is not compatible " \
-                                                        "with 'if_sid', 'if_group' nor 'if_level' attributes. " \
-                                                        "Could not overwrite rule '%d'."
+#define ANALYSISD_INV_OVERWRITE                 "(7605): It is not possible to overwrite '%s' value " \
+                                                        "in rule '%d'. The original value is retained."
 #define ANALYSISD_SIG_ID_NOT_FOUND              "(7606): Signature ID '%d' was not found. Invalid '%s'. " \
                                                         "Rule '%d' will be ignored."
 #define ANALYSISD_INV_SIG_ID                    "(7607): Invalid '%s'. Signature ID must be an integer. " \
