@@ -201,6 +201,7 @@ typedef enum wdb_stmt {
     WDB_STMT_TASK_INSERT_TASK,
     WDB_STMT_TASK_GET_LAST_AGENT_TASK,
     WDB_STMT_TASK_GET_LAST_AGENT_TASK_BY_COMMAND,
+    WDB_STMT_TASK_GET_LAST_AGENT_TASK_BY_COMMAND_WITHOUT_AGENT_ID,
     WDB_STMT_TASK_UPDATE_TASK_STATUS,
     WDB_STMT_TASK_GET_TASK_BY_ID,
     WDB_STMT_TASK_GET_TASK_BY_STATUS,
@@ -1895,6 +1896,8 @@ int wdb_parse_insert_task_without_agent_id(wdb_t* wdb, const cJSON *parameters, 
  */
 int wdb_parse_task_get_status(wdb_t* wdb, const cJSON *parameters, const char *command, char* output);
 
+int wdb_parse_task_get_status_without_agent_id(wdb_t* wdb, const cJSON *parameters, const char *command, char* output);
+
 /**
  * @brief Function to parse the upgrade_update_status request.
  *
@@ -1905,6 +1908,8 @@ int wdb_parse_task_get_status(wdb_t* wdb, const cJSON *parameters, const char *c
  *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_task_update_status(wdb_t* wdb, const cJSON *parameters, const char* command,  char* output);
+
+int wdb_parse_task_update_status_without_agent_id(wdb_t* wdb, const cJSON *parameters, const char* command, char* output);
 
 /**
  * @brief Function to parse the result request.
@@ -2056,6 +2061,8 @@ int wdb_task_get_task_status_by_id(wdb_t* wdb, int task_id, char **status);
  * */
 int wdb_task_get_last_task_status(wdb_t* wdb, int agent_id, const char *node, const char *command, char **status);
 
+int wdb_task_get_last_task_status_without_agent_id(wdb_t* wdb, const char *node, const char *command, char **status);
+
 /**
  * Update the status of a upgrade task in the tasks DB.
  * @param wdb The task struct database
@@ -2066,6 +2073,8 @@ int wdb_task_get_last_task_status(wdb_t* wdb, int agent_id, const char *node, co
  * @return 0 when succeed, !=0 otherwise.
  * */
 int wdb_task_update_task_status(wdb_t* wdb, int agent_id, const char *node, const char *status, const char* command, const char *error);
+
+int wdb_task_update_task_status_without_agent_id(wdb_t* wdb, const char *node, const char *status, const char* command, const char *error);
 
 int wdb_task_update_task_status_by_id(wdb_t* wdb, int task_id, const char *status, const char* error);
 

@@ -57,14 +57,6 @@
 STATIC cJSON* wm_task_manager_command_result(wm_task_manager_result *task, const char* command, int *error_code) __attribute__((nonnull));
 
 /**
- * Analyze an upgrade_cancel_tasks command. Update the tasks DB when necessary.
- * @param task Upgrade cancel tasks task to be processed.
- * @param error_code Variable to store an error code if something is wrong.
- * @return JSON object with the response for this task.
- * */
-STATIC cJSON* wm_task_manager_command_upgrade_cancel_tasks(wm_task_manager_generic *task, int *error_code) __attribute__((nonnull));
-
-/**
  * Send messages to Wazuh DB.
  * @param command Command to be send.
  * @param parameters cJSON with the parameters
@@ -85,8 +77,6 @@ STATIC cJSON* wm_task_manager_command_get_status(wm_task_manager_generic *task, 
 
 STATIC cJSON* wm_task_manager_command_update_status(wm_task_manager_generic *task, const char* command, int *error_code);
 
-STATIC cJSON* wm_task_manager_command_vuln_det_feed_update(wm_task_manager_generic *task, int *error_code);
-
 STATIC cJSON* wm_task_manager_command_without_agent_id(wm_task_manager_generic *task, const char* command, int *error_code);
 
 cJSON* wm_task_manager_process_task(const wm_task_manager_task *task, int *error_code) {
@@ -103,13 +93,11 @@ cJSON* wm_task_manager_process_task(const wm_task_manager_task *task, int *error
             break;
         case WM_TASK_UPGRADE_GET_STATUS:
         case WM_TASK_SYSCOLLECTOR_GET_STATUS:
-        case WM_TASK_VULN_DET_FEEDS_UPDATE_GET_STATUS:
         case WM_TASK_VULN_DET_SCAN_GET_STATUS:
             response = wm_task_manager_command_get_status((wm_task_manager_generic *)task->parameters, task_manager_commands_list[task->command],error_code);
             break;
         case WM_TASK_UPGRADE_UPDATE_STATUS:
         case WM_TASK_SYSCOLLECTOR_UPDATE_STATUS:
-        case WM_TASK_VULN_DET_FEEDS_UPDATE_UPDATE_STATUS:
         case WM_TASK_VULN_DET_SCAN_UPDATE_STATUS:
             response = wm_task_manager_command_update_status((wm_task_manager_generic *)task->parameters, task_manager_commands_list[task->command], error_code);
             break;
@@ -119,10 +107,10 @@ cJSON* wm_task_manager_process_task(const wm_task_manager_task *task, int *error
             response = wm_task_manager_command_result((wm_task_manager_result *)task->parameters, task_manager_commands_list[task->command], error_code);
             break;
         case WM_TASK_UPGRADE_CANCEL_TASKS:
-            response = wm_task_manager_command_upgrade_cancel_tasks((wm_task_manager_generic *)task->parameters, error_code);
-            break;
         case WM_TASK_VULN_DET_FEEDS_UPDATE:
-            response = wm_task_manager_command_vuln_det_feed_update((wm_task_manager_generic *)task->parameters, error_code);
+        case WM_TASK_VULN_DET_FEEDS_UPDATE_GET_STATUS:
+        case WM_TASK_VULN_DET_FEEDS_UPDATE_UPDATE_STATUS:
+            response = wm_task_manager_command_without_agent_id((wm_task_manager_generic *)task->parameters, task_manager_commands_list[task->command], error_code);
             break;
         case WM_TASK_GET_STATUS:
             response = wm_task_manager_command_get_status_by_id((wm_task_manager_status*)task->parameters, error_code);
@@ -372,14 +360,6 @@ STATIC cJSON* wm_task_manager_command_result(wm_task_manager_result *task, const
     return response;
 }
 
-STATIC cJSON* wm_task_manager_command_upgrade_cancel_tasks(wm_task_manager_generic *task, int *error_code) {
-    return wm_task_manager_command_without_agent_id(task, task_manager_commands_list[WM_TASK_UPGRADE_CANCEL_TASKS], error_code);
-}
-
-STATIC cJSON* wm_task_manager_command_vuln_det_feed_update(wm_task_manager_generic *task, int *error_code) {
-    return wm_task_manager_command_without_agent_id(task, task_manager_commands_list[WM_TASK_VULN_DET_FEEDS_UPDATE], error_code);
-}
-
 STATIC cJSON* wm_task_manager_command_without_agent_id(wm_task_manager_generic *task, const char* command, int *error_code) {
     cJSON *response = NULL;
     cJSON *parameters = cJSON_CreateObject();
@@ -389,14 +369,21 @@ STATIC cJSON* wm_task_manager_command_without_agent_id(wm_task_manager_generic *
     if (task->module) {
         cJSON_AddStringToObject(parameters, task_manager_json_keys[WM_TASK_MODULE], task->module);
     }
+    if (task->status) {
+        cJSON_AddStringToObject(parameters, task_manager_json_keys[WM_TASK_STATUS], task->status);
+    }
+    if (task->error_msg) {
+        cJSON_AddStringToObject(parameters, task_manager_json_keys[WM_TASK_ERROR_MSG], task->error_msg);
+    }
 
     // Cancel pending tasks for this node
     if (wdb_response = wm_task_manager_send_message_to_wdb(command, parameters, error_code), wdb_response) {
 
         cJSON *wdb_error = cJSON_GetObjectItem(wdb_response, task_manager_json_keys[WM_TASK_ERROR]);
+        char* status = cJSON_GetStringValue(cJSON_GetObjectItem(wdb_response, task_manager_json_keys[WM_TASK_STATUS]));
 
         if (wdb_error && (wdb_error->type == cJSON_Number) && (wdb_error->valueint == OS_SUCCESS)) {
-            response = wm_task_manager_parse_data_response(WM_TASK_SUCCESS, OS_INVALID, OS_INVALID, NULL);
+            response = wm_task_manager_parse_data_response(WM_TASK_SUCCESS, OS_INVALID, OS_INVALID, status);
         } else {
             *error_code = WM_TASK_DATABASE_ERROR;
         }

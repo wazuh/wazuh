@@ -63,6 +63,8 @@ STATIC wm_task_manager_generic* wm_task_manager_parse_vuln_det_feeds_update_para
 
 STATIC wm_task_manager_generic* wm_task_manager_parse_upgrade_cancel_tasks_parameters(const cJSON* origin);
 
+STATIC wm_task_manager_generic* wm_task_manager_parse_update_status_parameters_without_agent_id(const cJSON* origin, const cJSON* parameters);
+
 static const char *upgrade_statuses[] = {
     [WM_TASK_UPGRADE_IN_QUEUE]= "In queue",
     [WM_TASK_UPGRADE_UPDATING] = "Updating",
@@ -160,10 +162,10 @@ wm_task_manager_task* wm_task_manager_parse_message(const char *msg) {
         task->parameters = wm_task_manager_parse_vuln_det_feeds_update_parameters(origin_json);
     } else if (!strcmp(task_manager_commands_list[WM_TASK_VULN_DET_FEEDS_UPDATE_GET_STATUS], command_json->valuestring)) {
         task->command = WM_TASK_VULN_DET_FEEDS_UPDATE_GET_STATUS;
-        task->parameters = wm_task_manager_parse_get_status_parameters(origin_json, parameters_json);
+        task->parameters = wm_task_manager_parse_vuln_det_feeds_update_parameters(origin_json);
     } else if (!strcmp(task_manager_commands_list[WM_TASK_VULN_DET_FEEDS_UPDATE_UPDATE_STATUS], command_json->valuestring)) {
         task->command = WM_TASK_VULN_DET_FEEDS_UPDATE_UPDATE_STATUS;
-        task->parameters = wm_task_manager_parse_update_status_parameters(origin_json, parameters_json);
+        task->parameters = wm_task_manager_parse_update_status_parameters_without_agent_id(origin_json, parameters_json);
     // Vulnerability detector scans tasks
     } else if (!strcmp(task_manager_commands_list[WM_TASK_VULN_DET_SCAN_PARTIAL], command_json->valuestring)) {
         task->command = WM_TASK_VULN_DET_SCAN_PARTIAL;
@@ -182,7 +184,7 @@ wm_task_manager_task* wm_task_manager_parse_message(const char *msg) {
         task->parameters = wm_task_manager_parse_update_status_parameters(origin_json, parameters_json);
     } else if (!strcmp(task_manager_commands_list[WM_TASK_VULN_DET_SCAN_RESULT], command_json->valuestring)) {
         task->command = WM_TASK_VULN_DET_SCAN_RESULT;
-        task->parameters = wm_task_manager_parse_result_parameters(origin_json, task->command);
+        task->parameters = wm_task_manager_parse_result_parameters(parameters_json, task->command);
     // Generic tasks by id
     } else if (!strcmp(task_manager_commands_list[WM_TASK_GET_STATUS], command_json->valuestring)) {
         task->command = WM_TASK_GET_STATUS;
@@ -273,7 +275,6 @@ STATIC wm_task_manager_generic* wm_task_manager_parse_new_generic_task(const cJS
 }
 
 STATIC wm_task_manager_generic* wm_task_manager_parse_get_status_parameters(const cJSON* origin, const cJSON* parameters) {
-
     wm_task_manager_generic *task_parameters = wm_task_manager_init_generic_parameters();
 
     cJSON *name_json = cJSON_GetObjectItem(origin, task_manager_json_keys[WM_TASK_NAME]);
@@ -295,7 +296,6 @@ STATIC wm_task_manager_generic* wm_task_manager_parse_get_status_parameters(cons
 }
 
 STATIC wm_task_manager_generic* wm_task_manager_parse_update_status_parameters(const cJSON* origin, const cJSON* parameters) {
-
     wm_task_manager_generic *task_parameters = wm_task_manager_init_generic_parameters();
 
     cJSON *name_json = cJSON_GetObjectItem(origin, task_manager_json_keys[WM_TASK_NAME]);
@@ -316,6 +316,26 @@ STATIC wm_task_manager_generic* wm_task_manager_parse_update_status_parameters(c
     task_parameters->agent_ids = wm_task_manager_parse_ids(agents_json);
     if (!task_parameters->agent_ids) {
         mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_PARSE_KEY_ERROR, task_manager_json_keys[WM_TASK_AGENTS]);
+        wm_task_manager_free_generic_task_parameters(task_parameters);
+        return NULL;
+    }
+
+    return task_parameters;
+}
+
+STATIC wm_task_manager_generic* wm_task_manager_parse_update_status_parameters_without_agent_id(const cJSON* origin, const cJSON* parameters) {
+    wm_task_manager_generic *task_parameters = wm_task_manager_init_generic_parameters();
+
+    cJSON *name_json = cJSON_GetObjectItem(origin, task_manager_json_keys[WM_TASK_NAME]);
+    cJSON *status_json = cJSON_GetObjectItem(parameters, task_manager_json_keys[WM_TASK_STATUS]);
+    cJSON *error_msg_json = cJSON_GetObjectItem(parameters, task_manager_json_keys[WM_TASK_ERROR_MSG]);
+
+    if (cJSON_IsString(error_msg_json)) {
+        os_strdup(error_msg_json->valuestring, task_parameters->error_msg);
+    }
+
+    if (OS_INVALID == wm_task_parse_json_string(name_json, &task_parameters->node, task_manager_json_keys[WM_TASK_NAME]) ||
+        OS_INVALID == wm_task_parse_json_string(status_json, &task_parameters->status, task_manager_json_keys[WM_TASK_STATUS])) {
         wm_task_manager_free_generic_task_parameters(task_parameters);
         return NULL;
     }
