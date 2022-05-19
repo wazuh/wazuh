@@ -57,7 +57,7 @@ STATIC char* remcom_output_builder(int error_code, const char* message, cJSON* d
 
     cJSON_AddNumberToObject(root, "error", error_code);
     cJSON_AddStringToObject(root, "message", message);
-    cJSON_AddItemToObject(root, "data", data_json);
+    cJSON_AddItemToObject(root, "data", data_json ? data_json : cJSON_CreateObject());
 
     char *msg_string = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
@@ -85,6 +85,8 @@ STATIC size_t remcom_dispatch(char * request, char ** output) {
         *output = remcom_output_builder(ERROR_EMPTY_COMMAND, error_messages[ERROR_EMPTY_COMMAND], NULL);
     }
 
+    cJSON_Delete(request_json);
+
     return strlen(*output);
 }
 
@@ -99,7 +101,7 @@ void * remcom_main(__attribute__((unused)) void * arg) {
     mdebug1("Local requests thread ready");
 
     if (sock = OS_BindUnixDomain(REMOTE_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        merror("Unable to bind to socket '%s': (%d) %s.", REMOTE_LOCAL_SOCK, errno, strerror(errno));
+        merror("Unable to bind to socket '%s': (%d) '%s'", REMOTE_LOCAL_SOCK, errno, strerror(errno));
         return NULL;
     }
 
@@ -112,20 +114,17 @@ void * remcom_main(__attribute__((unused)) void * arg) {
         switch (select(sock + 1, &fdset, NULL, NULL, NULL)) {
         case -1:
             if (errno != EINTR) {
-                merror_exit("At select(): %s", strerror(errno));
+                merror_exit("At select(): '%s'", strerror(errno));
             }
-
             continue;
-
         case 0:
             continue;
         }
 
         if (peer = accept(sock, NULL, NULL), peer < 0) {
             if (errno != EINTR) {
-                merror("At accept(): %s", strerror(errno));
+                merror("At accept(): '%s'", strerror(errno));
             }
-
             continue;
         }
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
@@ -136,16 +135,16 @@ void * remcom_main(__attribute__((unused)) void * arg) {
             break;
 
         case -1:
-            merror("At OS_RecvSecureTCP: %s", strerror(errno));
+            merror("At OS_RecvSecureTCP(): '%s'", strerror(errno));
             break;
 
         case 0:
-            mdebug1("Empty message from local client.");
+            mdebug1("Empty message from local client");
             close(peer);
             break;
 
         case OS_MAXLEN:
-            merror("Received message > %i", MAX_DYN_STR);
+            merror("Received message > '%i'", MAX_DYN_STR);
             close(peer);
             break;
 
@@ -156,9 +155,13 @@ void * remcom_main(__attribute__((unused)) void * arg) {
             close(peer);
         }
         os_free(buffer);
+
+    #ifdef WAZUH_UNIT_TESTING
+        break;
+    #endif
     }
 
-    mdebug1("Local server thread finished.");
+    mdebug1("Local requests thread finished");
 
     close(sock);
     return NULL;

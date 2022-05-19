@@ -1,7 +1,7 @@
 /*
  * Wazuh Shared Configuration Manager
  * Copyright (C) 2015, Wazuh Inc.
- * May 17, 2022.
+ * May 19, 2022.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -9,12 +9,11 @@
  * Foundation.
  */
 
-#ifndef REM_QUEUE_WRAPPERS_H
-#define REM_QUEUE_WRAPPERS_H
+#ifndef REM_STATE_WRAPPERS_H
+#define REM_STATE_WRAPPERS_H
 
-#include <stddef.h>
+#include <cJSON.h>
 
-size_t __wrap_rem_get_qsize();
-size_t __wrap_rem_get_tsize();
+cJSON* __wrap_rem_create_state_json();
 
-#endif /* REM_QUEUE_WRAPPERS_H */
+#endif /* REM_STATE_WRAPPERS_H */
