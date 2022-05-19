@@ -2537,7 +2537,6 @@ static void update_limits(void) {
 
 static void load_limits(void) {
 
-
     cJSON * analysisd_limits = NULL;
     int err = load_limits_file("wazuh-analysisd", &analysisd_limits);
 
@@ -2641,8 +2640,9 @@ static void limits_free(void) {
     if (limits.circ_buf) {
         os_free(limits.circ_buf);
     }
-    while (limits_wait_counter--) {
+    while (limits_wait_counter) {
         sem_post(&credits_eps_semaphore);
+        limits_wait_counter--;
     }
     memset(&limits, 0, sizeof(limits));
 }
