@@ -1,9 +1,11 @@
+set(ENGINE_WDB_SOURCE_DIR ${ENGINE_SOURCE_DIR}/wdb/src)
+set(ENGINE_WDB_INCLUDE_DIR ${ENGINE_SOURCE_DIR}/wdb/include)
 
 ####################################################################################################
 # Sources - Includes
 ####################################################################################################
-add_library(wdb OBJECT
-    protocol.hpp
+add_library(wdb STATIC
+    ${ENGINE_WDB_SOURCE_DIR}/protocol.hpp
 )
 
 target_include_directories(wdb

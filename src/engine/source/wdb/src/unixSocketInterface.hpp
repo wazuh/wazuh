@@ -8,13 +8,17 @@
 
 #include <logging/logging.hpp>
 
+/*
+TODO readme with socket protocol description
+*/
+
 constexpr int OS_SOCKTERR = -1;
 
 int OS_ConnectUnixDomain(const char* path)
 {
-    // https://github.com/wazuh/wazuh/blob/5bae1c1830dbf11acc8a06e01f7a5a134b767760/src/shared/wazuhdb_op.c#L29
+    // https://github.com/wazuh/wazuh/blob/v4.3.0/src/shared/wazuhdb_op.c#L29
     constexpr int type = SOCK_STREAM;
-    // https://github.com/wazuh/wazuh/blob/5bae1c1830dbf11acc8a06e01f7a5a134b767760/src/headers/defs.h#L31
+    // https://github.com/wazuh/wazuh/blob/v4.3.0/src/headers/defs.h#L31
     constexpr int max_msg_size = 6144;
 
     struct sockaddr_un n_us
