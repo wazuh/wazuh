@@ -909,7 +909,7 @@ checks:
     rules:
       - 'c:dpkg -s ntp -> r:install ok installed'
       - 'c:dpkg -s chrony -> r:install ok installed'
-      - 'c:systemctl is-enabled systemd-timescynd -> enabled'
+      - 'c:systemctl is-enabled systemd-timesyncd -> enabled'
 
   - id: 18554 
     title: "Ensure systemd-timesyncd is configured."
