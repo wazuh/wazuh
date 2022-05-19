@@ -2780,8 +2780,8 @@ class DatabaseManager:
 
 def check_database_integrity():
     def _set_permissions_and_ownership(database: str):
-        chown(_db_file, wazuh_uid(), wazuh_gid())
-        os.chmod(_db_file, 0o640)
+        chown(database, wazuh_uid(), wazuh_gid())
+        os.chmod(database, 0o640)
 
     logger = logging.getLogger("wazuh-api")
 
