@@ -923,17 +923,29 @@ InstallCommon()
 
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/backup
 
-  # Install debugging symbols if available
+  # Install debugging symbols if USER_DEBUG_SYMBOLS is "y"
   # The symbols directory in the repo should always exist, if debugging symbols
   # are not supported for this platform, it will simply be empty.
+
+  # Previously installed symbols should always be removed
   rm -rf ${INSTALLDIR}/.symbols
-  if find symbols ! -path symbols ! -name .gitignore | grep . > /dev/null ;then
-    cp -r symbols ${INSTALLDIR}/.symbols
-    chown -R 0:0 ${INSTALLDIR}/.symbols
-    chmod 750 ${INSTALLDIR}/.symbols
-    chmod -R 640 ${INSTALLDIR}/.symbols/*
+  if [ "X${USER_DEBUG_SYMBOLS}" = "Xy" ]; then
+    echo "Installing debug symbols..."
+    if ([ "X${NUNAME}" = "XLinux" ] || [ "X$DIST_NAME" = "Xdarwin" ] ); then
+      if test -d symbols && find symbols ! -path symbols ! -name .gitignore | grep -q . ;then
+        cp -r symbols ${INSTALLDIR}/.symbols
+        chown -R 0:0 ${INSTALLDIR}/.symbols
+        chmod 750 ${INSTALLDIR}/.symbols
+        chmod -R 640 ${INSTALLDIR}/.symbols/*
+      else
+        echo "ERROR: Debug symbols are not available to be installed."
+      fi
+    else
+      echo "ERROR: Debug symbols are not available for this OS."
+    fi
   fi
 
+  # Create symbolic links to GDB automatic symbols load mechanism
   if [ "X${NUNAME}" = "XLinux" ]; then
     ln -sf ${INSTALLDIR}/.symbols ${INSTALLDIR}/active-response/bin/.debug
     ln -sf ${INSTALLDIR}/.symbols ${INSTALLDIR}/bin/.debug
