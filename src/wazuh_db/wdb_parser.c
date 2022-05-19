@@ -956,7 +956,9 @@ int wdb_parse(char * input, char * output, int peer) {
         if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE], query) ||
             !strcmp(task_manager_commands_list[WM_TASK_UPGRADE_CUSTOM], query) ||
             !strcmp(task_manager_commands_list[WM_TASK_SYSCOLLECTOR_SCAN], query) ||
-            !strcmp(task_manager_commands_list[WM_TASK_VULN_DET_SCAN], query)) {
+            !strcmp(task_manager_commands_list[WM_TASK_VULN_DET_SCAN_BASELINE], query) ||
+            !strcmp(task_manager_commands_list[WM_TASK_VULN_DET_SCAN_PARTIAL], query) ||
+            !strcmp(task_manager_commands_list[WM_TASK_VULN_DET_SCAN_FULL], query)) {
             if (!next) {
                 mdebug1("Task DB Invalid DB query syntax.");
                 mdebug2("Task DB query error near: %s", query);
@@ -996,6 +998,8 @@ int wdb_parse(char * input, char * output, int peer) {
 
         } else if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE_GET_STATUS], query) ||
                    !strcmp(task_manager_commands_list[WM_TASK_SYSCOLLECTOR_GET_STATUS], query) ||
+                   !strcmp(task_manager_commands_list[WM_TASK_VULN_DET_FEEDS_UPDATE_GET_STATUS], query) ||
+                   !strcmp(task_manager_commands_list[WM_TASK_VULN_DET_SCAN_GET_STATUS], query) ||
                    !strcmp(task_manager_commands_list[WM_TASK_GET_STATUS], query)) {
             if (!next) {
                 mdebug1("Task DB Invalid DB query syntax.");
@@ -1017,6 +1021,8 @@ int wdb_parse(char * input, char * output, int peer) {
 
         } else if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE_UPDATE_STATUS], query) ||
                    !strcmp(task_manager_commands_list[WM_TASK_SYSCOLLECTOR_UPDATE_STATUS], query) ||
+                   !strcmp(task_manager_commands_list[WM_TASK_VULN_DET_FEEDS_UPDATE_UPDATE_STATUS], query) ||
+                   !strcmp(task_manager_commands_list[WM_TASK_VULN_DET_SCAN_UPDATE_STATUS], query) ||
                    !strcmp(task_manager_commands_list[WM_TASK_UPDATE_STATUS], query)) {
             if (!next) {
                 mdebug1("Task DB Invalid DB query syntax.");
@@ -1037,7 +1043,8 @@ int wdb_parse(char * input, char * output, int peer) {
             cJSON_Delete(parameters_json);
 
         } else if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE_RESULT], query) ||
-                   !strcmp(task_manager_commands_list[WM_TASK_SYSCOLLECTOR_RESULT], query)) {
+                   !strcmp(task_manager_commands_list[WM_TASK_SYSCOLLECTOR_RESULT], query) ||
+                   !strcmp(task_manager_commands_list[WM_TASK_VULN_DET_SCAN_RESULT], query)) {
             if (!next) {
                 mdebug1("Task DB Invalid DB query syntax.");
                 mdebug2("Task DB query error near: %s", query);

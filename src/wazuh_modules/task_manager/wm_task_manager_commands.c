@@ -96,18 +96,26 @@ cJSON* wm_task_manager_process_task(const wm_task_manager_task *task, int *error
         case WM_TASK_UPGRADE:
         case WM_TASK_UPGRADE_CUSTOM:
         case WM_TASK_SYSCOLLECTOR_SCAN:
+        case WM_TASK_VULN_DET_SCAN_PARTIAL:
+        case WM_TASK_VULN_DET_SCAN_BASELINE:
+        case WM_TASK_VULN_DET_SCAN_FULL:
             response = wm_task_manager_command_new_generic_task((wm_task_manager_generic *)task->parameters, task->command, error_code);
             break;
         case WM_TASK_UPGRADE_GET_STATUS:
         case WM_TASK_SYSCOLLECTOR_GET_STATUS:
+        case WM_TASK_VULN_DET_FEEDS_UPDATE_GET_STATUS:
+        case WM_TASK_VULN_DET_SCAN_GET_STATUS:
             response = wm_task_manager_command_get_status((wm_task_manager_generic *)task->parameters, task_manager_commands_list[task->command],error_code);
             break;
         case WM_TASK_UPGRADE_UPDATE_STATUS:
         case WM_TASK_SYSCOLLECTOR_UPDATE_STATUS:
+        case WM_TASK_VULN_DET_FEEDS_UPDATE_UPDATE_STATUS:
+        case WM_TASK_VULN_DET_SCAN_UPDATE_STATUS:
             response = wm_task_manager_command_update_status((wm_task_manager_generic *)task->parameters, task_manager_commands_list[task->command], error_code);
             break;
         case WM_TASK_UPGRADE_RESULT:
         case WM_TASK_SYSCOLLECTOR_RESULT:
+        case WM_TASK_VULN_DET_SCAN_RESULT:
             response = wm_task_manager_command_result((wm_task_manager_result *)task->parameters, task_manager_commands_list[task->command], error_code);
             break;
         case WM_TASK_UPGRADE_CANCEL_TASKS:

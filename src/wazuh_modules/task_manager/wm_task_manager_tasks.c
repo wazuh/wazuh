@@ -109,15 +109,21 @@ void wm_task_manager_free_task(wm_task_manager_task* task) {
                 case WM_TASK_UPGRADE_CUSTOM:
                 case WM_TASK_SYSCOLLECTOR_SCAN:
                 case WM_TASK_VULN_DET_FEEDS_UPDATE:
+                case WM_TASK_VULN_DET_FEEDS_UPDATE_GET_STATUS:
+                case WM_TASK_VULN_DET_FEEDS_UPDATE_UPDATE_STATUS:
                 case WM_TASK_UPGRADE_GET_STATUS:
                 case WM_TASK_UPGRADE_UPDATE_STATUS:
                 case WM_TASK_SYSCOLLECTOR_GET_STATUS:
                 case WM_TASK_SYSCOLLECTOR_UPDATE_STATUS:
                 case WM_TASK_UPGRADE_CANCEL_TASKS:
+                case WM_TASK_VULN_DET_SCAN_BASELINE:
+                case WM_TASK_VULN_DET_SCAN_PARTIAL:
+                case WM_TASK_VULN_DET_SCAN_FULL:
                     wm_task_manager_free_generic_task_parameters((wm_task_manager_generic*)task->parameters);
                     break;
                 case WM_TASK_UPGRADE_RESULT:
                 case WM_TASK_SYSCOLLECTOR_RESULT:
+                case WM_TASK_VULN_DET_SCAN_RESULT:
                     wm_task_manager_free_result_parameters((wm_task_manager_result*)task->parameters);
                     break;
                 case WM_TASK_GET_STATUS:

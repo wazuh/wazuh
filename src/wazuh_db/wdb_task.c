@@ -387,6 +387,8 @@ const char* wdb_task_command_translate(const char *command) {
         return task_manager_commands_list[WM_TASK_SYSCOLLECTOR_SCAN];
     } else if (!strncmp(command, task_manager_commands_list[WM_TASK_VULN_DET_SCAN], strlen(task_manager_commands_list[WM_TASK_VULN_DET_SCAN]))) {
         return task_manager_commands_list[WM_TASK_VULN_DET_SCAN];
+    } else if (!strncmp(command, task_manager_commands_list[WM_TASK_VULN_DET_FEEDS_UPDATE], strlen(task_manager_commands_list[WM_TASK_VULN_DET_FEEDS_UPDATE]))) {
+        return task_manager_commands_list[WM_TASK_VULN_DET_FEEDS_UPDATE];
     } else {
         return NULL;
     }

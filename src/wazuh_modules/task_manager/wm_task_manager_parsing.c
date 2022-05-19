@@ -122,6 +122,7 @@ wm_task_manager_task* wm_task_manager_parse_message(const char *msg) {
     // Create task
     task = wm_task_manager_init_task();
 
+    // Upgrade tasks
     if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE], command_json->valuestring)) {
         task->command = WM_TASK_UPGRADE;
         task->parameters = wm_task_manager_parse_new_generic_task(origin_json, parameters_json);
@@ -140,6 +141,7 @@ wm_task_manager_task* wm_task_manager_parse_message(const char *msg) {
     } else if (!strcmp(task_manager_commands_list[WM_TASK_UPGRADE_CANCEL_TASKS], command_json->valuestring)) {
         task->command = WM_TASK_UPGRADE_CANCEL_TASKS;
         task->parameters = wm_task_manager_parse_upgrade_cancel_tasks_parameters(origin_json);
+    // Syscollector tasks
     } else if (!strcmp(task_manager_commands_list[WM_TASK_SYSCOLLECTOR_SCAN], command_json->valuestring)) {
         task->command = WM_TASK_SYSCOLLECTOR_SCAN;
         task->parameters = wm_task_manager_parse_new_generic_task(origin_json, parameters_json);
@@ -152,18 +154,36 @@ wm_task_manager_task* wm_task_manager_parse_message(const char *msg) {
     } else if (!strcmp(task_manager_commands_list[WM_TASK_SYSCOLLECTOR_RESULT], command_json->valuestring)) {
         task->command = WM_TASK_SYSCOLLECTOR_RESULT;
         task->parameters = wm_task_manager_parse_result_parameters(parameters_json, task->command);
+    // Vulnerability detector feeds update tasks
     } else if (!strcmp(task_manager_commands_list[WM_TASK_VULN_DET_FEEDS_UPDATE], command_json->valuestring)) {
         task->command = WM_TASK_VULN_DET_FEEDS_UPDATE;
         task->parameters = wm_task_manager_parse_vuln_det_feeds_update_parameters(origin_json);
-    } else if (!strcmp(task_manager_commands_list[WM_TASK_VULN_DET_SCAN], command_json->valuestring)) {
-        task->command = WM_TASK_VULN_DET_SCAN;
-        //task->parameters = wm_task_manager_parse_vuln_det_scan_parameters(origin_json);
-    } else if (!strcmp(task_manager_commands_list[WM_TASK_VULN_DET_GET_STATUS], command_json->valuestring)) {
-        task->command = WM_TASK_VULN_DET_GET_STATUS;
-        //task->parameters = wm_task_manager_parse_vuln_det_get_status_parameters(origin_json);
-    } else if (!strcmp(task_manager_commands_list[WM_TASK_VULN_DET_UPDATE_STATUS], command_json->valuestring)) {
-        task->command = WM_TASK_VULN_DET_UPDATE_STATUS;
-        //task->parameters = wm_task_manager_parse_vuln_det_update_status_parameters(origin_json);
+    } else if (!strcmp(task_manager_commands_list[WM_TASK_VULN_DET_FEEDS_UPDATE_GET_STATUS], command_json->valuestring)) {
+        task->command = WM_TASK_VULN_DET_FEEDS_UPDATE_GET_STATUS;
+        task->parameters = wm_task_manager_parse_get_status_parameters(origin_json, parameters_json);
+    } else if (!strcmp(task_manager_commands_list[WM_TASK_VULN_DET_FEEDS_UPDATE_UPDATE_STATUS], command_json->valuestring)) {
+        task->command = WM_TASK_VULN_DET_FEEDS_UPDATE_UPDATE_STATUS;
+        task->parameters = wm_task_manager_parse_update_status_parameters(origin_json, parameters_json);
+    // Vulnerability detector scans tasks
+    } else if (!strcmp(task_manager_commands_list[WM_TASK_VULN_DET_SCAN_PARTIAL], command_json->valuestring)) {
+        task->command = WM_TASK_VULN_DET_SCAN_PARTIAL;
+        task->parameters = wm_task_manager_parse_new_generic_task(origin_json, parameters_json);
+    } else if (!strcmp(task_manager_commands_list[WM_TASK_VULN_DET_SCAN_BASELINE], command_json->valuestring)) {
+        task->command = WM_TASK_VULN_DET_SCAN_BASELINE;
+        task->parameters = wm_task_manager_parse_new_generic_task(origin_json, parameters_json);
+    } else if (!strcmp(task_manager_commands_list[WM_TASK_VULN_DET_SCAN_FULL], command_json->valuestring)) {
+        task->command = WM_TASK_VULN_DET_SCAN_FULL;
+        task->parameters = wm_task_manager_parse_new_generic_task(origin_json, parameters_json);
+    } else if (!strcmp(task_manager_commands_list[WM_TASK_VULN_DET_SCAN_GET_STATUS], command_json->valuestring)) {
+        task->command = WM_TASK_VULN_DET_SCAN_GET_STATUS;
+        task->parameters = wm_task_manager_parse_get_status_parameters(origin_json, parameters_json);
+    } else if (!strcmp(task_manager_commands_list[WM_TASK_VULN_DET_SCAN_UPDATE_STATUS], command_json->valuestring)) {
+        task->command = WM_TASK_VULN_DET_SCAN_UPDATE_STATUS;
+        task->parameters = wm_task_manager_parse_update_status_parameters(origin_json, parameters_json);
+    } else if (!strcmp(task_manager_commands_list[WM_TASK_VULN_DET_SCAN_RESULT], command_json->valuestring)) {
+        task->command = WM_TASK_VULN_DET_SCAN_RESULT;
+        task->parameters = wm_task_manager_parse_result_parameters(origin_json, task->command);
+    // Generic tasks by id
     } else if (!strcmp(task_manager_commands_list[WM_TASK_GET_STATUS], command_json->valuestring)) {
         task->command = WM_TASK_GET_STATUS;
         task->parameters = wm_task_manager_parse_get_status_parameters_by_id(parameters_json);
