@@ -77,6 +77,13 @@ static void DumpLogstats(void);
 void * ad_input_main(void * args);
 
 /**
+ * @brief Update and validate limits
+ *
+ * This is a private function.
+ */
+static void update_limits(void);
+
+/**
  * @brief Check for changes in the limits.conf file and load the limits structure
  *
  * This is a private function.
@@ -1135,47 +1142,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     while (1) {
 
         sleep(1);
-
-        if (limits.enabled) {
-
-            w_mutex_lock(&limit_eps_mutex);
-
-            if (limits.current_cell == limits.timeframe - 1) {
-
-                limits.total_eps_buffer = limits.total_eps_buffer + limits.circ_buf[limits.current_cell] - limits.circ_buf[0];
-
-                if (limits.circ_buf[0]) {
-                    if (limits.total_eps_buffer + limits.circ_buf[0] <= limits.max_eps) {
-                        generate_eps_credits(limits.circ_buf[0]);
-                    } else if (limits.total_eps_buffer < limits.max_eps) {
-                        generate_eps_credits(limits.max_eps - limits.total_eps_buffer);
-                    }
-                }
-
-                memmove(limits.circ_buf, limits.circ_buf + 1, (limits.timeframe - 1) * sizeof(unsigned int));
-                limits.circ_buf[limits.current_cell] = 0;
-
-            } else if (limits.current_cell < limits.timeframe - 1) {
-                limits.total_eps_buffer += limits.circ_buf[limits.current_cell++];
-
-            } else {
-                merror("limits current_cell exceeded limits: %d", limits.current_cell);
-                limits.current_cell = limits.timeframe - 1;
-            }
-
-#if 1
-            for (unsigned int i = 0; i < limits.timeframe; i++) {
-                mwarn("cell[%02d] value: %d %s", i, limits.circ_buf[i], (limits.current_cell == i ? "<" : " "));
-            }
-
-            int current_credits;
-            sem_getvalue(&credits_eps_semaphore, &current_credits);
-            mdebug1("eps: %d, timeframe: %d, total events per timeframe: %d, processed events per timeframe: %d, cell: %d, sem_value: %d",
-                        limits.eps, limits.timeframe, limits.max_eps, limits.total_eps_buffer, limits.current_cell, current_credits);
-#endif
-            w_mutex_unlock(&limit_eps_mutex);
-        }
-
+        update_limits();
         check_limits_file_interval++;
         if (check_limits_file_interval >= Config.eps_limits_file_check) {
             check_limits_file_interval = 0;
@@ -2535,6 +2502,37 @@ void w_init_queues(){
 
     /* Initialize upgrade module message queue */
     upgrade_module_input = queue_init(getDefine_Int("analysisd", "upgrade_queue_size", 128, 2000000));
+}
+
+static void update_limits(void) {
+
+    if (limits.enabled) {
+        w_mutex_lock(&limit_eps_mutex);
+
+        if (limits.current_cell == limits.timeframe - 1) {
+
+            limits.total_eps_buffer = limits.total_eps_buffer + limits.circ_buf[limits.current_cell] - limits.circ_buf[0];
+
+            if (limits.circ_buf[0]) {
+                if (limits.total_eps_buffer + limits.circ_buf[0] <= limits.max_eps) {
+                    generate_eps_credits(limits.circ_buf[0]);
+                } else if (limits.total_eps_buffer < limits.max_eps) {
+                    generate_eps_credits(limits.max_eps - limits.total_eps_buffer);
+                }
+            }
+
+            memmove(limits.circ_buf, limits.circ_buf + 1, (limits.timeframe - 1) * sizeof(unsigned int));
+            limits.circ_buf[limits.current_cell] = 0;
+
+        } else if (limits.current_cell < limits.timeframe - 1) {
+            limits.total_eps_buffer += limits.circ_buf[limits.current_cell++];
+
+        } else {
+            merror("limits current_cell exceeded limits: %d", limits.current_cell);
+            limits.current_cell = limits.timeframe - 1;
+        }
+        w_mutex_unlock(&limit_eps_mutex);
+    }
 }
 
 static void load_limits(void) {
