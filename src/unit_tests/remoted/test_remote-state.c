@@ -142,7 +142,7 @@ void test_rem_create_state_json(void ** state) {
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        // Test w_get_pri_header_len
+        // Test rem_create_state_json
         cmocka_unit_test_setup_teardown(test_rem_create_state_json, test_setup, test_teardown),
     };
 
