@@ -931,8 +931,8 @@ InstallCommon()
   rm -rf ${INSTALLDIR}/.symbols
   if [ "X${USER_DEBUG_SYMBOLS}" = "Xy" ]; then
     echo "Installing debug symbols..."
-    if ([ "X${NUNAME}" = "XLinux" ] || [ "X$DIST_NAME" = "Xdarwin" ] ); then
-      if test -d symbols && find symbols ! -path symbols ! -name .gitignore | grep -q . ;then
+    if [ "X${NUNAME}" = "XLinux" -o "X${NUNAME}" = "XDarwin" ]; then
+      if test -d symbols && find symbols ! -path symbols ! -name .gitignore | grep -q . ; then
         cp -r symbols ${INSTALLDIR}/.symbols
         chown -R 0:0 ${INSTALLDIR}/.symbols
         chmod 750 ${INSTALLDIR}/.symbols
