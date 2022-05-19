@@ -51,6 +51,13 @@
 #include "output/zeromq.h"
 #endif
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 /** Prototypes **/
 void OS_ReadMSG(int m_queue);
 static void LoopRule(RuleNode *curr_node, FILE *flog);
@@ -88,28 +95,28 @@ static void update_limits(void);
  *
  * This is a private function.
  */
-static void load_limits(void);
+STATIC void load_limits(void);
 
 /**
  * @brief Clean the values of limits structure
  *
  * This is a private function.
  */
-static void limits_free(void);
+STATIC void limits_free(void);
 
 /**
  * @brief Get a credit to process an event by decrementing the value of the semaphore
  *
  * This is a private function.
  */
-static void get_eps_credit(void);
+STATIC void get_eps_credit(void);
 
 /**
  * @brief Increments the current cell eps counter
  *
  * This is a private function.
  */
-static void increase_event_counter(void);
+STATIC void increase_event_counter(void);
 
 /**
  * @brief Add 'credits' to the semaphore
@@ -118,7 +125,7 @@ static void increase_event_counter(void);
  *
  * @param Credits to increase.
  */
-static void generate_eps_credits(unsigned int credits);
+STATIC void generate_eps_credits(unsigned int credits);
 
 /**
  * @brief Remove 'credits' from the semaphore
@@ -127,21 +134,21 @@ static void generate_eps_credits(unsigned int credits);
  *
  * @param Credits to remove.
  */
-static void clean_eps_credits(unsigned int credits);
+STATIC void clean_eps_credits(unsigned int credits);
 
 /**
  * @brief Increments the wait_counter counter. wait_counter=Thread counter waiting for a credit
  *
  * This is a private function.
  */
-static void inc_wait_counter(void);
+STATIC void inc_wait_counter(void);
 
 /**
  * @brief Decrements the wait_counter counter. wait_counter=Thread counter waiting for a credit
  *
  * This is a private function.
  */
-static void dec_wait_counter(void);
+STATIC void dec_wait_counter(void);
 
 /** Global definitions **/
 int today;
@@ -2535,7 +2542,7 @@ static void update_limits(void) {
     }
 }
 
-static void load_limits(void) {
+STATIC void load_limits(void) {
 
     cJSON * analysisd_limits = NULL;
     int err = load_limits_file("wazuh-analysisd", &analysisd_limits);
@@ -2636,7 +2643,7 @@ static void load_limits(void) {
     w_mutex_unlock(&limit_eps_mutex);
 }
 
-static void limits_free(void) {
+STATIC void limits_free(void) {
     if (limits.circ_buf) {
         os_free(limits.circ_buf);
     }
@@ -2647,7 +2654,7 @@ static void limits_free(void) {
     memset(&limits, 0, sizeof(limits));
 }
 
-static void get_eps_credit(void) {
+STATIC void get_eps_credit(void) {
     if (limits.enabled) {
         inc_wait_counter();
         sem_wait(&credits_eps_semaphore);
@@ -2656,19 +2663,19 @@ static void get_eps_credit(void) {
     }
 }
 
-static void inc_wait_counter(void) {
+STATIC void inc_wait_counter(void) {
     w_mutex_lock(&wait_sem);
     limits_wait_counter++;
     w_mutex_unlock(&wait_sem);
 }
 
-static void dec_wait_counter(void) {
+STATIC void dec_wait_counter(void) {
     w_mutex_lock(&wait_sem);
     limits_wait_counter--;
     w_mutex_unlock(&wait_sem);
 }
 
-static void increase_event_counter(void) {
+STATIC void increase_event_counter(void) {
     w_mutex_lock(&limit_eps_mutex);
     if (limits.circ_buf) {
         limits.circ_buf[limits.current_cell]++;
@@ -2676,13 +2683,13 @@ static void increase_event_counter(void) {
     w_mutex_unlock(&limit_eps_mutex);
 }
 
-static void generate_eps_credits(unsigned int credits) {
+STATIC void generate_eps_credits(unsigned int credits) {
     for(unsigned int i = 0; i < credits; i++) {
         sem_post(&credits_eps_semaphore);
     }
 }
 
-static void clean_eps_credits(unsigned int credits) {
+STATIC void clean_eps_credits(unsigned int credits) {
     for(unsigned int i = 0; i < credits; i++) {
         sem_trywait(&credits_eps_semaphore);
     }
