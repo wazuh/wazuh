@@ -228,9 +228,11 @@ def get_cluster_items():
         # Rebase permissions.
         list(map(lambda x: setitem(x, 'permissions', int(x['permissions'], base=0)),
                  filter(lambda x: 'permissions' in x, cluster_items['files'].values())))
+        list(map(lambda x: setitem(x, 'permissions', int(x['permissions'], base=0)),
+                 filter(lambda x: 'permissions' in x, cluster_items['client_keys'].values())))
         return cluster_items
     except Exception as e:
-        raise WazuhError(3005, str(e))
+        raise WazuhError(3005, str(e)) from e
 
 
 @lru_cache()

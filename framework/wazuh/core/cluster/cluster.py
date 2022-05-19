@@ -197,7 +197,7 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
     return walk_files
 
 
-def get_files_status(previous_status=None, get_hash=True):
+def get_files_status(previous_status=None, get_hash=True, key='files'):
     """Get all files and metadata inside the directories listed in cluster.json['files'].
 
     Parameters
@@ -215,16 +215,16 @@ def get_files_status(previous_status=None, get_hash=True):
     if previous_status is None:
         previous_status = {}
 
-    cluster_items = get_cluster_items()
+    cluster_items = get_cluster_items()[key]
 
     final_items = {}
-    for file_path, item in cluster_items['files'].items():
-        if file_path == "excluded_files" or file_path == "excluded_extensions":
+    for file_path, item in cluster_items.items():
+        if file_path in ["excluded_files", "excluded_extensions"]:
             continue
         try:
             final_items.update(
-                walk_dir(file_path, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
-                         cluster_items['files']['excluded_extensions'], file_path, previous_status, get_hash))
+                walk_dir(file_path, item['recursive'], item['files'], cluster_items['excluded_files'],
+                         cluster_items['excluded_extensions'], file_path, previous_status, get_hash))
         except Exception as e:
             logger.warning(f"Error getting file status: {e}.")
 

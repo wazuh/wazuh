@@ -68,6 +68,23 @@ class ReceiveIntegrityTask(c_common.ReceiveFileTask):
         self.wazuh_common.sync_integrity_free[0] = True
 
 
+class ReceiveClientKeysIntegrityTask(c_common.ReceiveFileTask):
+    """TODO"""
+
+    def __init__(self, *args, **kwargs):
+        """TODO"""
+        super().__init__(*args, **kwargs)
+
+    def set_up_coro(self) -> Callable:
+        """TODO"""
+        return self.wazuh_common.check_client_keys_integrity
+
+    def done_callback(self, future=None):
+        """TODO"""
+        super().done_callback(future)
+        self.wazuh_common.sync_client_keys_integrity_free[0] = True
+
+
 class ReceiveExtraValidTask(c_common.ReceiveFileTask):
     """
     Define the process and variables necessary to receive and process extra valid files from the worker.
@@ -219,6 +236,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.sync_agent_info_free = True
         self.sync_agent_groups_free = True
         self.sync_integrity_free = [True, utils.get_utc_now()]
+        self.sync_client_keys_integrity_free = [True, utils.get_utc_now()]
+
 
         # Variable used to check whether integrity sync process includes extra_valid files.
         self.extra_valid_requested = False
@@ -226,9 +245,12 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         # Sync status variables. Used in cluster_control -i and GET/cluster/healthcheck.
         default_date = utils.get_date_from_timestamp(0)
         self.integrity_check_status = {'date_start_master': default_date, 'date_end_master': default_date}
+        self.client_keys_integrity_check_status = {'date_start_master': default_date, 'date_end_master': default_date}
         self.integrity_sync_status = {'date_start_master': default_date, 'tmp_date_start_master': default_date,
                                       'date_end_master': default_date, 'total_extra_valid': 0,
                                       'total_files': {'missing': 0, 'shared': 0, 'extra': 0, 'extra_valid': 0}}
+        self.client_keys_integrity_sync_status = {
+            'date_start_master': default_date, 'tmp_date_start_master': default_date, 'date_end_master': default_date}
         self.sync_agent_info_status = {'date_start_master': default_date, 'date_end_master': default_date,
                                        'n_synced_chunks': 0}
         self.sync_agent_groups_status = {'date_start_master': default_date, 'date_end_master': default_date,
@@ -255,6 +277,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         return {'info': {'name': self.name, 'type': self.node_type, 'version': self.version, 'ip': self.ip},
                 'status': {'sync_integrity_free': self.sync_integrity_free[0],
+                           'sync_client_keys_integrity_free': self.sync_client_keys_integrity_free[0],
                            'last_check_integrity': {key: value for key, value in self.integrity_check_status.items() if
                                                     not key.startswith('tmp')},
                            'last_sync_integrity': {key: value for key, value in self.integrity_sync_status.items() if
@@ -284,16 +307,18 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             Response message.
         """
         self.logger.debug(f"Command received: {command}")
-        if command == b'syn_i_w_m_p' or command == b'syn_a_w_m_p' or command == b'syn_g_w_m_p':
+        if command in {b'syn_i_w_m_p', b'syn_c_w_m_p', b'syn_a_w_m_p', b'syn_g_w_m_p'}:
             return self.get_permission(command)
-        elif command == b'syn_i_w_m' or command == b'syn_e_w_m' or command == b'syn_a_w_m' or command == b'syn_g_w_m':
+        elif command in {b'syn_i_w_m', b'syn_c_w_m', b'syn_e_w_m', b'syn_a_w_m', b'syn_g_w_m'}:
             return self.setup_sync_integrity(command, data)
         elif command == b'syn_w_g_c':
             return self.setup_send_info(command)
-        elif command == b'syn_i_w_m_e' or command == b'syn_e_w_m_e':
+        elif command in {b'syn_i_w_m_e', b'syn_c_w_m_e', b'syn_e_w_m_e'}:
             return self.end_receiving_integrity_checksums(data.decode())
         elif command == b'syn_i_w_m_r':
             return self.process_sync_error_from_worker(data)
+        elif command == b'syn_c_w_m_r':
+            return self.process_client_keys_sync_error_from_worker(data)
         elif command == b'syn_w_g_e':
             logger = self.task_loggers['Agent-groups send']
             start_time = self.send_agent_groups_status['date_start']
@@ -373,15 +398,14 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             result = self.process_request(command=command, data=data)
 
         # If command was dapi or dapi_fwd, wait for response.
-        if command == b'dapi' or command == b'dapi_fwd':
+        if command in {b'dapi', b'dapi_fwd'}:
             try:
                 timeout = None if wait_for_complete \
                     else self.cluster_items['intervals']['communication']['timeout_dapi_request']
                 await asyncio.wait_for(self.server.pending_api_requests[request_id]['Event'].wait(), timeout=timeout)
                 request_result = self.server.pending_api_requests[request_id]['Response']
-            except asyncio.TimeoutError:
-                raise exception.WazuhClusterError(3021)
-        # Otherwise, immediately return the result obtained before.
+            except asyncio.TimeoutError as e:
+                raise exception.WazuhClusterError(3021) from e
         else:
             status, request_result = result
             if status != b'ok':
@@ -413,6 +437,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         self.task_loggers = {'Integrity check': self.setup_task_logger('Integrity check'),
                              'Integrity sync': self.setup_task_logger('Integrity sync'),
+                             'Client keys integrity check': self.setup_task_logger('Client keys integrity check'),
+                             'Client keys integrity sync': self.setup_task_logger('Client keys integrity sync'),
                              'Agent-info sync': self.setup_task_logger('Agent-info sync'),
                              'Agent-groups sync': self.setup_task_logger('Agent-groups sync'),
                              'Agent-groups send': self.setup_task_logger('Agent-groups send'),
@@ -545,6 +571,17 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                 self.sync_integrity_free[0] = True
 
             permission = self.sync_integrity_free[0]
+        elif sync_type == b'syn_c_w_m_p':
+            if not self.sync_client_keys_integrity_free[0] and \
+                (utils.get_utc_now() - self.sync_client_keys_integrity_free[1]).total_seconds() > \
+                    self.cluster_items['intervals']['master']['max_locked_client_keys_integrity_time']:
+                self.logger.warning(
+                    f'Automatically releasing Client keys integrity check permissions'
+                    f'flag ({sync_type}) after being locked out for more than '
+                    f'{self.cluster_items["intervals"]["master"]["max_locked_client_keys_integrity_time"]}s.')
+                self.sync_client_keys_integrity_free[0] = True
+
+            permission = self.sync_client_keys_integrity_free[0]
         elif sync_type == b'syn_a_w_m_p':
             permission = self.sync_agent_info_free
         elif sync_type == b'syn_g_w_m_p':
@@ -573,6 +610,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         if sync_type == b'syn_i_w_m':
             self.sync_integrity_free, sync_function = [False, utils.get_utc_now()], ReceiveIntegrityTask
+        elif sync_type == b'syn_c_w_m':
+            self.sync_client_keys_integrity_free, sync_function = \
+                [False, utils.get_utc_now()], ReceiveClientKeysIntegrityTask
         elif sync_type == b'syn_e_w_m':
             sync_function = ReceiveExtraValidTask
         elif sync_type == b'syn_a_w_m':
@@ -624,6 +664,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             Response message.
         """
         self.sync_integrity_free[0] = True
+        return super().error_receiving_file(error_msg.decode())
+
+    def process_client_keys_sync_error_from_worker(self, error_msg: bytes) -> Tuple[bytes, bytes]:
+        """TODO"""
+        self.sync_client_keys_integrity_free[0] = True
         return super().error_receiving_file(error_msg.decode())
 
     def end_receiving_integrity_checksums(self, task_and_file_names: str) -> Tuple[bytes, bytes]:
@@ -890,6 +935,122 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                     self.integrity_sync_status['date_end_master'] = \
                         self.integrity_sync_status['date_end_master'].strftime(DECIMALS_DATE_FORMAT)
 
+    async def check_client_keys_integrity(self, task_id: str, received_file: asyncio.Event):
+        """TODO"""
+        logger = self.task_loggers['Client keys integrity check']
+        date_start_master = utils.get_utc_now()
+        logger.info("Starting.")
+
+        logger.debug("Waiting to receive Client keys zip file from worker.")
+        try:
+            await asyncio.wait_for(
+                received_file.wait(),
+                timeout=self.cluster_items['intervals']['communication']['timeout_receiving_client_keys'])
+        except Exception as e:
+            # Notify the sending node to stop its task.
+            await self.send_request(
+                command=b'cancel_task',
+                data=task_id.encode() + b' ' + json.dumps(timeout_exc := exception.WazuhClusterError(3039),
+                                                          cls=c_common.WazuhJSONEncoder).encode())
+            raise timeout_exc from e
+
+        # Full path where the zip sent by the worker is located.
+        received_filename = self.sync_tasks[task_id].filename
+        if isinstance(received_filename, Exception):
+            raise received_filename
+
+        logger.debug(f"Received Client keys from worker: '{received_filename}'")
+
+        # Path to metadata file (files_metadata.json) and to zipdir (directory with decompressed files).
+        files_metadata, decompressed_files_path = await wazuh.core.cluster.cluster.async_decompress_files(
+            received_filename)
+        # There are no files inside decompressed_files_path, only files_metadata.json which has already been loaded.
+        shutil.rmtree(decompressed_files_path)
+
+        total_time = (utils.get_utc_now() - date_start_master).total_seconds()
+        self.client_keys_integrity_check_status.update(
+            {'date_start_master': date_start_master.strftime(DECIMALS_DATE_FORMAT),
+             'date_end_master': utils.get_utc_now().strftime(DECIMALS_DATE_FORMAT)})
+
+        client_keys_relative_path = str(list(self.server.client_keys_integrity_control.keys())[0])
+        if files_metadata[client_keys_relative_path]['blake2_hash'] == \
+                self.server.client_keys_integrity_control[client_keys_relative_path]['blake2_hash']:
+            logger.info(f"Finished in {total_time:.3f}s. Received metadata of Client keys file. "
+                        f"Sync not required.")
+            await self.send_request(command=b'syn_m_cc_ok', data=b'')
+        else:
+            logger.info(f"Finished in {total_time:.3f}s. Received metadata of Client keys file. "
+                        f"Sync required.")
+            await self.sync_client_keys_integrity(task_id)
+
+    async def sync_client_keys_integrity(self, task_id: str):
+        """TODO"""
+        logger = self.task_loggers['Client keys integrity sync']
+        logger.info("Starting.")
+        self.client_keys_integrity_sync_status.update({'tmp_date_start_master': utils.get_utc_now()})
+
+        # Compress client.keys
+        logger.info("The Client keys file needs to be updated in worker. Compressing file to be synced in worker.")
+        worker_files_ko = {'shared': self.server.client_keys_integrity_control, 'missing': {}, 'extra': {}}
+        master_files_paths = worker_files_ko['shared'].keys() | worker_files_ko['missing'].keys()
+        compressed_data = await cluster.run_in_pool(
+            self.loop, self.server.task_pool, wazuh.core.cluster.cluster.compress_files, self.name,
+            master_files_paths, worker_files_ko, self.current_zip_limit)
+
+        time_to_send = 0
+
+        try:
+            # Start the synchronization process with the worker and get a taskID.
+            task_id = await self.send_request(command=b'syn_m_cc', data=b'')
+            if isinstance(task_id, Exception) or task_id.startswith(b'Error'):
+                exc_info = task_id if isinstance(task_id, Exception) else \
+                    exception.WazuhClusterError(3016, extra_message=str(task_id))
+                task_id = b'None'
+                raise exc_info
+
+            # Send zip file to the worker.
+            time_to_send = time.perf_counter()
+            await self.send_file(compressed_data, task_id)
+            time_to_send = time.perf_counter() - time_to_send
+            logger.debug("Zip with Client keys to be synced sent to worker.")
+
+            # Notify what is the zip path for the current taskID.
+            result = await self.send_request(command=b'syn_m_c_e', data=task_id + b' ' + os.path.relpath(
+                compressed_data, common.WAZUH_PATH).encode())
+
+            if isinstance(result, Exception):
+                raise result
+            elif result.startswith(b'Error'):
+                raise exception.WazuhClusterError(3016, extra_message=result.decode())
+        except exception.WazuhException as e:
+            # Notify error to worker and delete its received file.
+            self.logger.error(f"Error sending Client keys information: {e}")
+            await self.send_request(
+                command=b'syn_m_c_r', data=task_id + b' ' + json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
+        except Exception as e:
+            # Notify error to worker and delete its received file.
+            self.logger.error(f"Error sending Client keys information: {e}")
+            exc_info = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)),
+                                  cls=c_common.WazuhJSONEncoder).encode()
+            await self.send_request(command=b'syn_m_c_r', data=task_id + b' ' + exc_info)
+        finally:
+            try:
+                self.interrupted_tasks.remove(task_id)
+            except KeyError:
+                pass
+
+            # Remove local file.
+            os.unlink(compressed_data)
+            logger.debug("Finished sending Client keys to worker.")
+            self.client_keys_integrity_sync_status['date_end_master'] = utils.get_utc_now()
+            logger.info("Finished in {:.3f}s.".format(
+                (self.client_keys_integrity_sync_status['date_end_master'] -
+                    self.client_keys_integrity_sync_status['tmp_date_start_master']).total_seconds()))
+            self.client_keys_integrity_sync_status['date_start_master'] = self.client_keys_integrity_sync_status[
+                'tmp_date_start_master'].strftime(DECIMALS_DATE_FORMAT)
+            self.client_keys_integrity_sync_status['date_end_master'] = \
+                self.client_keys_integrity_sync_status['date_end_master'].strftime(DECIMALS_DATE_FORMAT)
+
     async def sync_extra_valid(self, task_id: str, received_file: asyncio.Event):
         """Run extra valid sync process and set up necessary parameters.
 
@@ -996,7 +1157,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                     full_path = os.path.join(common.WAZUH_PATH, file_path)
                     item_key = data['cluster_item_key']
 
-                    # Only valid client.keys is the local one (master).
+                    # Only valid Client keys is the local one (master).
                     if os.path.basename(file_path) == 'client.keys':
                         raise exception.WazuhClusterError(3007)
 
@@ -1113,6 +1274,7 @@ class Master(server.AbstractServer):
         self.agent_groups_control = {}
         self.agent_groups_control_workers = set()
         self.integrity_control = {}
+        self.client_keys_integrity_control = {}
         self.handler_class = MasterHandler
         try:
             self.task_pool = ProcessPoolExecutor(
@@ -1129,7 +1291,8 @@ class Master(server.AbstractServer):
         self.integrity_already_executed = []
         self.dapi = dapi.APIRequestQueue(server=self)
         self.sendsync = dapi.SendSyncRequestQueue(server=self)
-        self.tasks.extend([self.dapi.run, self.sendsync.run, self.file_status_update, self.agent_groups_update])
+        self.tasks.extend([self.dapi.run, self.sendsync.run, self.file_status_update,
+                           self.client_keys_status_update, self.agent_groups_update])
         # pending API requests waiting for a response
         self.pending_api_requests = {}
 
@@ -1206,6 +1369,30 @@ class Master(server.AbstractServer):
                 sync_object.logger.error(f"Error getting agent-groups from WDB: {e}")
 
             await asyncio.sleep(self.cluster_items['intervals']['master']['sync_agent_groups'])
+
+    async def client_keys_status_update(self):
+        """Asynchronous task in charge of obtaining data related to Client keys file.
+
+        It updates the local variable client_keys_integrity_control
+        every self.cluster_items['intervals']['master']['recalculate_client_keys_integrity'] seconds.
+
+        A dictionary like {'file_path': {<blake2_hash, merged, merged_name, etc>}, ...} is created and later
+        compared with the one received from the workers to find out which files are different, missing or removed.
+        """
+        client_keys_integrity_logger = self.setup_task_logger("Local Client keys integrity")
+        while True:
+            before = perf_counter()
+            client_keys_integrity_logger.info("Starting.")
+            try:
+                self.client_keys_integrity_control = await cluster.run_in_pool(self.loop, self.task_pool,
+                                                                   wazuh.core.cluster.cluster.get_files_status,
+                                                                   self.client_keys_integrity_control, True, 'client_keys')
+            except Exception as e:
+                client_keys_integrity_logger.error(f"Error calculating Client keys integrity: {e}")
+            after = perf_counter()
+            client_keys_integrity_logger.info(f"Finished in {(after - before):.3f}s.")
+
+            await asyncio.sleep(self.cluster_items['intervals']['master']['recalculate_client_keys_integrity'])
 
     async def file_status_update(self):
         """Asynchronous task that obtain files status periodically.
