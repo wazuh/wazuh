@@ -7,11 +7,10 @@ import functools
 import inspect
 import itertools
 import logging
-import os
 import ssl
 import traceback
 from time import perf_counter
-from typing import Tuple, Dict
+from typing import Tuple, Dict, Type
 from uuid import uuid4
 
 import uvloop
@@ -26,8 +25,8 @@ class AbstractServerHandler(c_common.Handler):
     Define abstract server protocol. Handle communication with a single client.
     """
 
-    def __init__(self, server, loop: asyncio.AbstractEventLoop, fernet_key: str,
-                 cluster_items: Dict, logger: logging.Logger = None, tag: str = "Client"):
+    def __init__(self, server, loop: asyncio.AbstractEventLoop, cluster_items: Dict, logger: logging.Logger = None,
+                 tag: str = "Client"):
         """Class constructor.
 
         Parameters
@@ -36,8 +35,6 @@ class AbstractServerHandler(c_common.Handler):
             Abstract server object that created this handler.
         loop : asyncio.AbstractEventLoop
             Asyncio loop.
-        fernet_key : str
-            Key used to encrypt and decrypt messages.
         cluster_items : dict
             Cluster.json object containing cluster internal variables.
         logger : Logger object
@@ -45,8 +42,7 @@ class AbstractServerHandler(c_common.Handler):
         tag : str
             Log tag.
         """
-        super().__init__(fernet_key=fernet_key, logger=logger, tag=f"{tag} {str(uuid4().hex[:8])}",
-                         cluster_items=cluster_items)
+        super().__init__(logger=logger, tag=f"{tag} {str(uuid4().hex[:8])}", cluster_items=cluster_items)
         self.server = server
         self.loop = loop
         self.last_keepalive = utils.get_utc_now().timestamp()
@@ -248,7 +244,7 @@ class AbstractServer:
     NO_RESULT = 'no_result'
 
     def __init__(self, performance_test: int, concurrency_test: int, configuration: Dict, cluster_items: Dict,
-                 enable_ssl: bool, logger: logging.Logger = None, tag: str = "Abstract Server"):
+                 logger: logging.Logger = None, tag: str = "Abstract Server", ssl_context: Type[ssl.SSLContext] = None):
         """Class constructor.
 
         Parameters
@@ -261,23 +257,22 @@ class AbstractServer:
             ossec.conf cluster configuration.
         cluster_items : dict
             cluster.json cluster internal configuration.
-        enable_ssl : bool
-            Whether to enable asyncio's SSL support.
         logger : Logger object
             Logger to use.
         tag : str
             Log tag.
+        ssl_context : ssl.SSLContext
+            An SSLContext instance with loaded cert chain.
         """
         self.clients = {}
         self.performance = performance_test
         self.concurrency = concurrency_test
         self.configuration = configuration
         self.cluster_items = cluster_items
-        self.enable_ssl = enable_ssl
         self.tag = tag
         self.logger = logging.getLogger('wazuh') if not logger else logger
-        # logging tag
-        context_tag.set(self.tag)
+        self.ssl_context = ssl_context
+        context_tag.set(self.tag)  # logging tag
         self.tasks = [self.check_clients_keepalive]
         self.handler_class = AbstractServerHandler
         self.loop = asyncio.get_running_loop()
@@ -533,19 +528,13 @@ class AbstractServer:
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         self.loop.set_exception_handler(c_common.asyncio_exception_handler)
 
-        if self.enable_ssl:
-            ssl_context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
-            ssl_context.load_cert_chain(certfile=os.path.join(common.WAZUH_PATH, 'etc', 'sslmanager.cert'),
-                                        keyfile=os.path.join(common.WAZUH_PATH, 'etc', 'sslmanager.key'))
-        else:
-            ssl_context = None
-
         try:
             server = await self.loop.create_server(
                 protocol_factory=lambda: self.handler_class(server=self, loop=self.loop, logger=self.logger,
-                                                            fernet_key=self.configuration['key'],
                                                             cluster_items=self.cluster_items),
-                host=self.configuration['bind_addr'], port=self.configuration['port'], ssl=ssl_context)
+                host=self.configuration['bind_addr'],
+                port=self.configuration['port'],
+                ssl=self.ssl_context)
         except OSError as e:
             self.logger.error(f"Could not start master: {e}")
             raise KeyboardInterrupt

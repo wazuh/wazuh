@@ -4,6 +4,7 @@
 import asyncio
 import sys
 from unittest.mock import call, patch
+import ssl
 
 import pytest
 import scripts.wazuh_clusterd as wazuh_clusterd
@@ -109,25 +110,24 @@ async def test_master_main():
             assert second == range(1)
 
     class MasterMock:
-        def __init__(self, performance_test, concurrency_test, configuration, enable_ssl, logger, cluster_items):
+        def __init__(self, performance_test, concurrency_test, configuration, logger, cluster_items, ssl_context):
             assert performance_test == 'test_performance'
             assert concurrency_test == 'concurrency_test'
             assert configuration == {'test': 'config'}
-            assert enable_ssl is True
             assert logger == 'test_logger'
             assert cluster_items == {'node': 'item'}
+            assert ssl_context == 'ssl'
             self.task_pool = TaskPoolMock()
 
         def start(self):
             return 'MASTER_START'
 
     class LocalServerMasterMock:
-        def __init__(self, performance_test, logger, concurrency_test, node, configuration, enable_ssl, cluster_items):
+        def __init__(self, performance_test, logger, concurrency_test, node, configuration, cluster_items):
             assert performance_test == 'test_performance'
             assert logger == 'test_logger'
             assert concurrency_test == 'concurrency_test'
             assert configuration == {'test': 'config'}
-            assert enable_ssl is True
             assert cluster_items == {'node': 'item'}
 
         def start(self):
@@ -143,7 +143,7 @@ async def test_master_main():
         with patch('wazuh.core.cluster.master.Master', MasterMock):
             with patch('wazuh.core.cluster.local_server.LocalServerMaster', LocalServerMasterMock):
                 await wazuh_clusterd.master_main(args=args, cluster_config={'test': 'config'},
-                                                 cluster_items={'node': 'item'}, logger='test_logger')
+                                                 cluster_items={'node': 'item'}, logger='test_logger', context='ssl')
 
 
 @pytest.mark.asyncio
@@ -153,10 +153,9 @@ async def test_worker_main(asyncio_sleep_mock):
     import wazuh.core.cluster.utils as cluster_utils
 
     class Arguments:
-        def __init__(self, performance_test, concurrency_test, ssl, send_file, send_string):
+        def __init__(self, performance_test, concurrency_test, send_file, send_string):
             self.performance_test = performance_test
             self.concurrency_test = concurrency_test
-            self.ssl = ssl
             self.send_file = send_file
             self.send_string = send_string
 
@@ -168,12 +167,11 @@ async def test_worker_main(asyncio_sleep_mock):
             pass
 
     class WorkerMock:
-        def __init__(self, performance_test, concurrency_test, configuration,
-                     enable_ssl, logger, cluster_items, file, string, task_pool):
+        def __init__(self, performance_test, concurrency_test, configuration, logger, cluster_items, file, string,
+                     task_pool):
             assert performance_test == 'test_performance'
             assert concurrency_test == 'concurrency_test'
             assert configuration == {'test': 'config'}
-            assert enable_ssl is True
             assert file is True
             assert string is True
             assert logger == 'test_logger'
@@ -184,12 +182,11 @@ async def test_worker_main(asyncio_sleep_mock):
             return 'WORKER_START'
 
     class LocalServerWorkerMock:
-        def __init__(self, performance_test, logger, concurrency_test, node, configuration, enable_ssl, cluster_items):
+        def __init__(self, performance_test, logger, concurrency_test, node, configuration, cluster_items):
             assert performance_test == 'test_performance'
             assert logger == 'test_logger'
             assert concurrency_test == 'concurrency_test'
             assert configuration == {'test': 'config'}
-            assert enable_ssl is True
             assert cluster_items == {'intervals': {'worker': {'connection_retry': 34}}}
 
         def start(self):
@@ -202,8 +199,8 @@ async def test_worker_main(asyncio_sleep_mock):
 
     wazuh_clusterd.cluster_utils = cluster_utils
     wazuh_clusterd.main_logger = LoggerMock
-    args = Arguments(performance_test='test_performance', concurrency_test='concurrency_test', ssl=True,
-                     send_file=True, send_string=True)
+    args = Arguments(performance_test='test_performance', concurrency_test='concurrency_test', send_file=True,
+                     send_string=True)
 
     with patch.object(wazuh_clusterd, 'main_logger') as main_logger_mock:
         with patch('concurrent.futures.ProcessPoolExecutor', side_effect=FileNotFoundError) as processpoolexecutor_mock:
@@ -246,7 +243,6 @@ def test_get_script_arguments(argument_parser_mock):
              call('--concurrency_test', type=int, dest='concurrency_test', help='==SUPPRESS=='),
              call('--string', help='==SUPPRESS==', type=int, dest='send_string'),
              call('--file', help='==SUPPRESS==', type=str, dest='send_file'),
-             call('--ssl', help='Enable communication over SSL', action='store_true', dest='ssl', default=False),
              call('-f', help='Run in foreground', action='store_true', dest='foreground'),
              call('-d', help='Enable debug messages. Use twice to increase verbosity.', action='count',
                   dest='debug_level'),
@@ -257,6 +253,8 @@ def test_get_script_arguments(argument_parser_mock):
                   default=common.OSSEC_CONF)])
 
 
+@patch('wazuh.core.cluster.cluster.clean_up')
+@patch('scripts.wazuh_clusterd.clean_pid_files')
 @patch('scripts.wazuh_clusterd.sys.exit', side_effect=sys.exit)
 @patch('scripts.wazuh_clusterd.os.getpid', return_value=543)
 @patch('scripts.wazuh_clusterd.os.setgid')
@@ -265,7 +263,8 @@ def test_get_script_arguments(argument_parser_mock):
 @patch('scripts.wazuh_clusterd.os.chown')
 @patch('scripts.wazuh_clusterd.os.path.exists', return_value=True)
 @patch('builtins.print')
-def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock, setgid_mock, getpid_mock, exit_mock):
+def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock, setgid_mock, getpid_mock, exit_mock,
+              clean_pid_files_mock, clean_up_mock):
     """Check and set the behavior of wazuh_clusterd main function."""
     import wazuh.core.cluster.utils as cluster_utils
     from wazuh.core import common, pyDaemonModule
@@ -287,7 +286,12 @@ def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock,
         def error(self, msg):
             pass
 
+    class SSLMock:
+        def load_cert_chain(self):
+            pass
+
     args = Arguments(config_file='test', test_config=True, foreground=False, root=False)
+    ssl_mock = SSLMock()
     wazuh_clusterd.main_logger = LoggerMock()
     wazuh_clusterd.args = args
     wazuh_clusterd.common = common
@@ -297,7 +301,8 @@ def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock,
         with patch.object(common, 'wazuh_gid', return_value='gid_test'):
 
             with patch.object(wazuh_clusterd.cluster_utils, 'read_config',
-                              return_value={'disabled': False, 'node_type': 'master'}):
+                              return_value={'disabled': False, 'node_type': 'master', 'certfile': 'testing_path',
+                                            'keyfile': 'testing_path', 'password': None}):
                 with patch.object(wazuh_clusterd.main_logger, 'error') as main_logger_mock:
                     with patch.object(wazuh_clusterd.main_logger, 'info') as main_logger_info_mock:
                         with patch.object(wazuh_clusterd.cluster_utils, 'read_config', side_effect=Exception):
@@ -341,11 +346,25 @@ def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock,
                                 main_logger_mock.assert_called_once_with('Cluster is already running.', exc_info=False)
                                 exit_mock.assert_called_once_with(1)
                                 main_logger_mock.reset_mock()
+                                exit_mock.reset_mock()
 
                             with patch('wazuh.core.cluster.utils.get_cluster_status', return_value={'running': 'no'}):
-                                with patch('wazuh.core.cluster.cluster.clean_up') as clean_up_mock:
-                                    with patch('scripts.wazuh_clusterd.clean_pid_files') as clean_pid_files_mock:
-                                        with patch.object(wazuh_clusterd.pyDaemonModule, 'pyDaemon') as pyDaemon_mock:
+                                with patch.object(wazuh_clusterd.pyDaemonModule, 'pyDaemon') as pyDaemon_mock:
+                                    with pytest.raises(SystemExit):
+                                        wazuh_clusterd.main()
+                                    main_logger_mock.assert_any_call(
+                                        'SSL certificates could not be loaded: [Errno 2] No such file or directory')
+                                    exit_mock.assert_called_once_with(1)
+                                    exit_mock.reset_mock()
+                                    clean_up_mock.assert_called_once()
+                                    clean_up_mock.reset_mock()
+                                    clean_pid_files_mock.assert_called_once_with('wazuh-clusterd')
+                                    clean_pid_files_mock.reset_mock()
+                                    pyDaemon_mock.assert_called_once()
+                                    pyDaemon_mock.reset_mock()
+                                    with patch('ssl.create_default_context',
+                                               return_value=ssl_mock) as create_default_context_mock:
+                                        with patch.object(ssl_mock, 'load_cert_chain') as load_cert_chain_mock:
                                             with patch.object(wazuh_clusterd.pyDaemonModule,
                                                               'create_pid') as create_pid_mock:
                                                 with patch.object(wazuh_clusterd.pyDaemonModule, 'delete_child_pids'):
@@ -362,6 +381,11 @@ def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock,
                                                         getpid_mock.assert_called()
                                                         create_pid_mock.assert_called_once_with('wazuh-clusterd', 543)
                                                         delete_pid_mock.assert_called_once_with('wazuh-clusterd', 543)
+                                                        create_default_context_mock.assert_called_once_with(
+                                                            purpose=ssl.Purpose.CLIENT_AUTH)
+                                                        load_cert_chain_mock.assert_called_once_with(
+                                                            certfile="testing_path", keyfile="testing_path",
+                                                            password=None)
 
                                                         args.foreground = True
                                                         wazuh_clusterd.main()
