@@ -1359,7 +1359,7 @@ class PoliciesManager:
 
     def add_policy(self, name: str, policy: dict, policy_id: int = None, created_at: datetime = get_utc_now(),
                    check_default: bool = True) -> Union[bool,
-                                                                                                         SecurityError]:
+                                                        SecurityError]:
         """Add a new policy. TODO update
 
         Parameters
@@ -2672,7 +2672,7 @@ class DatabaseManager:
                 # If the user's policy has the same body as an existing default policy it won't be inserted and its
                 # role-policy relationships will be linked to that default policy instead to replace it.
                 if status == SecurityError.ALREADY_EXIST:
-                    roles_policies = self.get_table(source, RolesPolicies).filter(
+                    roles_policies = self.get_table(self.sessions[source], RolesPolicies).filter(
                         RolesPolicies.policy_id == policy.id).order_by(RolesPolicies.id.asc()).all()
                     new_policy_id = self.sessions[target].query(Policies).filter_by(
                         policy=str(policy.policy)).first().id
