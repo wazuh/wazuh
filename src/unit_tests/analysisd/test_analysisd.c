@@ -29,6 +29,7 @@ void inc_wait_counter(void);
 void dec_wait_counter(void);
 void get_eps_credit(void);
 void load_limits(void);
+void update_limits(void);
 
 // Setup / Teardown
 static int test_setup(void **state) {
@@ -46,6 +47,7 @@ static int test_teardown(void **state) {
     if (limits.circ_buf) {
         os_free(limits.circ_buf);
     }
+    memset(&limits, 0, sizeof(limits));
     return OS_SUCCESS;
 }
 
@@ -371,6 +373,43 @@ void test_load_limits_eps_max_exceeded(void ** state)
     assert_true(limits.enabled);
 }
 
+void test_update_limits_current_cell_less_than_timeframe(void ** state)
+{
+    limits.current_cell = 5;
+    update_limits();
+}
+
+void test_update_limits_current_cell_timeframe_limit(void ** state)
+{
+    limits.current_cell = limits.timeframe - 1;
+    limits.circ_buf[0] = 0;
+    update_limits();
+}
+
+void test_update_limits_current_cell_timeframe_limit_rest_element(void ** state)
+{
+    limits.current_cell = limits.timeframe - 1;
+    limits.circ_buf[0] = 5;
+    update_limits();
+}
+
+void test_update_limits_current_cell_timeframe_limit_complete_diff(void ** state)
+{
+    limits.current_cell = limits.timeframe - 1;
+    limits.total_eps_buffer = 99;
+    limits.circ_buf[0] = 10;
+    limits.circ_buf[limits.timeframe - 1] = 5;
+    update_limits();
+}
+
+void test_update_limits_current_cell_exceeded(void ** state)
+{
+    limits.current_cell = limits.timeframe + 1;
+    expect_string(__wrap__merror, formatted_msg, "limits current_cell exceeded limits: '11'");
+
+    update_limits();
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -401,6 +440,12 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_load_limits_eps_not_number, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_load_limits_eps_min_exceeded, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_load_limits_eps_max_exceeded, test_setup, test_teardown),
+        // Test update_limits
+        cmocka_unit_test_setup_teardown(test_update_limits_current_cell_less_than_timeframe, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_update_limits_current_cell_timeframe_limit, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_update_limits_current_cell_timeframe_limit_rest_element, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_update_limits_current_cell_timeframe_limit_complete_diff, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_update_limits_current_cell_exceeded, test_setup, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
