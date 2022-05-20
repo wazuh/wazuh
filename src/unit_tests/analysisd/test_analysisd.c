@@ -43,6 +43,12 @@ static int test_setup(void **state) {
     return OS_SUCCESS;
 }
 
+static int test_setup_empty(void **state) {
+    memset(&limits, 0, sizeof(limits));
+
+    return OS_SUCCESS;
+}
+
 static int test_teardown(void **state) {
     if (limits.circ_buf) {
         os_free(limits.circ_buf);
@@ -167,6 +173,26 @@ void test_limits_free_ok(void ** state)
 
 // load_limits
 void test_load_limits_ok(void ** state)
+{
+    cJSON *output = cJSON_CreateArray();
+    cJSON_AddNumberToObject(output, "timeframe_eps", 5);
+    cJSON_AddNumberToObject(output, "max_eps", 100);
+
+    expect_string(__wrap_load_limits_file, daemon_name, "wazuh-analysisd");
+    will_return(__wrap_load_limits_file, output);
+    will_return(__wrap_load_limits_file, 0);
+
+    expect_string(__wrap__minfo, formatted_msg, "eps limit enabled, eps: '100', timeframe: '5', events per timeframe: '500'");
+
+    load_limits();
+
+    assert_int_equal(limits.max_eps, 500);
+    assert_int_equal(limits.eps, 100);
+    assert_int_equal(limits.timeframe, 5);
+    assert_true(limits.enabled);
+}
+
+void test_load_limits_ok_first(void ** state)
 {
     cJSON *output = cJSON_CreateArray();
     cJSON_AddNumberToObject(output, "timeframe_eps", 5);
@@ -410,6 +436,236 @@ void test_update_limits_current_cell_exceeded(void ** state)
     update_limits();
 }
 
+void test_load_limits_resize_shrink_max_current_cel(void ** state)
+{
+    cJSON *output = cJSON_CreateArray();
+    cJSON_AddNumberToObject(output, "timeframe_eps", 5);
+    cJSON_AddNumberToObject(output, "max_eps", 100);
+    limits.current_cell = 9;
+    for (unsigned int i = 0; i <= limits.current_cell; i++) {
+        limits.circ_buf[i] = i;
+    }
+
+    expect_string(__wrap_load_limits_file, daemon_name, "wazuh-analysisd");
+    will_return(__wrap_load_limits_file, output);
+    will_return(__wrap_load_limits_file, 0);
+
+    expect_string(__wrap__minfo, formatted_msg, "eps limit enabled, eps: '100', timeframe: '5', events per timeframe: '500'");
+
+    load_limits();
+
+    assert_int_equal(limits.max_eps, 500);
+    assert_int_equal(limits.eps, 100);
+    assert_int_equal(limits.timeframe, 5);
+    assert_true(limits.enabled);
+    assert_int_equal(limits.circ_buf[0], 5);
+    assert_int_equal(limits.circ_buf[1], 6);
+    assert_int_equal(limits.circ_buf[2], 7);
+    assert_int_equal(limits.circ_buf[3], 8);
+    assert_int_equal(limits.circ_buf[4], 9);
+}
+
+void test_load_limits_resize_shrink_min_current_cel(void ** state)
+{
+    cJSON *output = cJSON_CreateArray();
+    cJSON_AddNumberToObject(output, "timeframe_eps", 5);
+    cJSON_AddNumberToObject(output, "max_eps", 100);
+    limits.current_cell = 0;
+    limits.circ_buf[0] = 0;
+    for (unsigned int i = 0; i <= limits.current_cell; i++) {
+        
+    }
+    limits.current_cell = 0;
+
+    expect_string(__wrap_load_limits_file, daemon_name, "wazuh-analysisd");
+    will_return(__wrap_load_limits_file, output);
+    will_return(__wrap_load_limits_file, 0);
+
+    expect_string(__wrap__minfo, formatted_msg, "eps limit enabled, eps: '100', timeframe: '5', events per timeframe: '500'");
+
+    load_limits();
+
+    assert_int_equal(limits.max_eps, 500);
+    assert_int_equal(limits.eps, 100);
+    assert_int_equal(limits.timeframe, 5);
+    assert_true(limits.enabled);
+    assert_int_equal(limits.circ_buf[0], 0);
+    assert_int_equal(limits.current_cell, 0);
+    assert_int_equal(limits.total_eps_buffer, 0);
+}
+
+void test_load_limits_resize_shrink_current_cel_half(void ** state)
+{
+    cJSON *output = cJSON_CreateArray();
+    cJSON_AddNumberToObject(output, "timeframe_eps", 5);
+    cJSON_AddNumberToObject(output, "max_eps", 100);
+    limits.current_cell = 9;
+    for (unsigned int i = 0; i <= limits.current_cell; i++) {
+        limits.circ_buf[i] = i;
+    }
+    limits.current_cell = 4;
+
+    expect_string(__wrap_load_limits_file, daemon_name, "wazuh-analysisd");
+    will_return(__wrap_load_limits_file, output);
+    will_return(__wrap_load_limits_file, 0);
+
+    expect_string(__wrap__minfo, formatted_msg, "eps limit enabled, eps: '100', timeframe: '5', events per timeframe: '500'");
+
+    load_limits();
+
+    assert_int_equal(limits.max_eps, 500);
+    assert_int_equal(limits.eps, 100);
+    assert_int_equal(limits.timeframe, 5);
+    assert_true(limits.enabled);
+    assert_int_equal(limits.circ_buf[0], 0);
+    assert_int_equal(limits.circ_buf[1], 1);
+    assert_int_equal(limits.circ_buf[2], 2);
+    assert_int_equal(limits.circ_buf[3], 3);
+    assert_int_equal(limits.circ_buf[4], 4);
+    assert_int_equal(limits.current_cell, 4);
+    assert_int_equal(limits.total_eps_buffer, 6);
+}
+
+void test_load_limits_resize_generate_credits(void ** state)
+{
+    int current_credits;
+    sem_init(&credits_eps_semaphore, 0, 0);
+
+    limits.current_cell = 9;
+    for (unsigned int i = 0; i <= limits.current_cell; i++) {
+        limits.circ_buf[i] = 10;
+    }
+
+    cJSON *output = cJSON_CreateArray();
+    cJSON_AddNumberToObject(output, "timeframe_eps", 20);
+    cJSON_AddNumberToObject(output, "max_eps", 100);
+    expect_string(__wrap_load_limits_file, daemon_name, "wazuh-analysisd");
+    will_return(__wrap_load_limits_file, output);
+    will_return(__wrap_load_limits_file, 0);
+
+    expect_string(__wrap__minfo, formatted_msg, "eps limit enabled, eps: '100', timeframe: '20', events per timeframe: '2000'");
+
+    load_limits();
+
+    assert_int_equal(limits.max_eps, 2000);
+    assert_int_equal(limits.eps, 100);
+    assert_int_equal(limits.timeframe, 20);
+    assert_true(limits.enabled);
+    assert_int_equal(limits.circ_buf[0], 10);
+    assert_int_equal(limits.circ_buf[1], 10);
+    assert_int_equal(limits.circ_buf[2], 10);
+    assert_int_equal(limits.circ_buf[3], 10);
+    assert_int_equal(limits.circ_buf[4], 10);
+    assert_int_equal(limits.circ_buf[5], 10);
+    assert_int_equal(limits.circ_buf[6], 10);
+    assert_int_equal(limits.circ_buf[7], 10);
+    assert_int_equal(limits.circ_buf[8], 10);
+    assert_int_equal(limits.circ_buf[9], 10);
+    assert_int_equal(limits.circ_buf[10], 0);
+    assert_int_equal(limits.circ_buf[11], 0);
+    assert_int_equal(limits.circ_buf[12], 0);
+    assert_int_equal(limits.circ_buf[13], 0);
+    assert_int_equal(limits.circ_buf[14], 0);
+    assert_int_equal(limits.circ_buf[15], 0);
+    assert_int_equal(limits.circ_buf[16], 0);
+    assert_int_equal(limits.circ_buf[17], 0);
+    assert_int_equal(limits.circ_buf[18], 0);
+    assert_int_equal(limits.circ_buf[19], 0);
+    assert_int_equal(limits.current_cell, 9);
+    assert_int_equal(limits.total_eps_buffer, 90);
+    sem_getvalue(&credits_eps_semaphore, &current_credits);
+    assert_int_equal(1900, current_credits);
+    sem_destroy(&credits_eps_semaphore);
+}
+
+void test_load_limits_resize_clean_credits(void ** state)
+{
+    int current_credits;
+    sem_init(&credits_eps_semaphore, 0, 55);
+
+    limits.current_cell = 9;
+    for (unsigned int i = 0; i <= limits.current_cell; i++) {
+        limits.circ_buf[i] = 0;
+    }
+
+    limits.circ_buf[limits.current_cell] = 45;
+
+    cJSON *output = cJSON_CreateArray();
+    cJSON_AddNumberToObject(output, "timeframe_eps", 10);
+    cJSON_AddNumberToObject(output, "max_eps", 5);
+    expect_string(__wrap_load_limits_file, daemon_name, "wazuh-analysisd");
+    will_return(__wrap_load_limits_file, output);
+    will_return(__wrap_load_limits_file, 0);
+
+    expect_string(__wrap__minfo, formatted_msg, "eps limit enabled, eps: '5', timeframe: '10', events per timeframe: '50'");
+
+    load_limits();
+
+    assert_int_equal(limits.max_eps, 50);
+    assert_int_equal(limits.eps, 5);
+    assert_int_equal(limits.timeframe, 10);
+    assert_true(limits.enabled);
+    assert_int_equal(limits.circ_buf[0], 0);
+    assert_int_equal(limits.circ_buf[1], 0);
+    assert_int_equal(limits.circ_buf[2], 0);
+    assert_int_equal(limits.circ_buf[3], 0);
+    assert_int_equal(limits.circ_buf[4], 0);
+    assert_int_equal(limits.circ_buf[5], 0);
+    assert_int_equal(limits.circ_buf[6], 0);
+    assert_int_equal(limits.circ_buf[7], 0);
+    assert_int_equal(limits.circ_buf[8], 0);
+    assert_int_equal(limits.circ_buf[9], 45);
+    assert_int_equal(limits.current_cell, 9);
+    assert_int_equal(limits.total_eps_buffer, 0);
+    sem_getvalue(&credits_eps_semaphore, &current_credits);
+    assert_int_equal(5, current_credits);
+    sem_destroy(&credits_eps_semaphore);
+}
+
+void test_load_limits_resize_clean_all_credits(void ** state)
+{
+    int current_credits;
+    sem_init(&credits_eps_semaphore, 0, 10);
+
+    limits.current_cell = 9;
+    for (unsigned int i = 0; i <= limits.current_cell; i++) {
+        limits.circ_buf[i] = 0;
+    }
+    limits.circ_buf[limits.current_cell - 1] = 45;
+    limits.circ_buf[limits.current_cell] = 45;
+
+    cJSON *output = cJSON_CreateArray();
+    cJSON_AddNumberToObject(output, "timeframe_eps", 10);
+    cJSON_AddNumberToObject(output, "max_eps", 5);
+    expect_string(__wrap_load_limits_file, daemon_name, "wazuh-analysisd");
+    will_return(__wrap_load_limits_file, output);
+    will_return(__wrap_load_limits_file, 0);
+
+    expect_string(__wrap__minfo, formatted_msg, "eps limit enabled, eps: '5', timeframe: '10', events per timeframe: '50'");
+
+    load_limits();
+
+    assert_int_equal(limits.max_eps, 50);
+    assert_int_equal(limits.eps, 5);
+    assert_int_equal(limits.timeframe, 10);
+    assert_true(limits.enabled);
+    assert_int_equal(limits.circ_buf[0], 0);
+    assert_int_equal(limits.circ_buf[1], 0);
+    assert_int_equal(limits.circ_buf[2], 0);
+    assert_int_equal(limits.circ_buf[3], 0);
+    assert_int_equal(limits.circ_buf[4], 0);
+    assert_int_equal(limits.circ_buf[5], 0);
+    assert_int_equal(limits.circ_buf[6], 0);
+    assert_int_equal(limits.circ_buf[7], 0);
+    assert_int_equal(limits.circ_buf[8], 45);
+    assert_int_equal(limits.circ_buf[9], 45);
+    assert_int_equal(limits.current_cell, 9);
+    assert_int_equal(limits.total_eps_buffer, 45);
+    sem_getvalue(&credits_eps_semaphore, &current_credits);
+    assert_int_equal(0, current_credits);
+    sem_destroy(&credits_eps_semaphore);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -440,6 +696,13 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_load_limits_eps_not_number, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_load_limits_eps_min_exceeded, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_load_limits_eps_max_exceeded, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_load_limits_ok_first, test_setup_empty, test_teardown),
+        cmocka_unit_test_setup_teardown(test_load_limits_resize_shrink_max_current_cel, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_load_limits_resize_shrink_min_current_cel, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_load_limits_resize_shrink_current_cel_half, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_load_limits_resize_generate_credits, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_load_limits_resize_clean_credits, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_load_limits_resize_clean_all_credits, test_setup, test_teardown),
         // Test update_limits
         cmocka_unit_test_setup_teardown(test_update_limits_current_cell_less_than_timeframe, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_update_limits_current_cell_timeframe_limit, test_setup, test_teardown),

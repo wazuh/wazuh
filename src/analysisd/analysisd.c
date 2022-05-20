@@ -2606,7 +2606,7 @@ STATIC void load_limits(void) {
             }
 
             limits.total_eps_buffer = 0;
-            for (unsigned int i = 0; i < limits.current_cell; i++) {
+            for (unsigned int i = 0; i <= limits.current_cell; i++) {
                  limits.total_eps_buffer += limits.circ_buf[i];
             }
 
@@ -2625,6 +2625,8 @@ STATIC void load_limits(void) {
             } else if (current_value) {
                 clean_eps_credits(current_value);
             }
+
+            limits.total_eps_buffer -= limits.circ_buf[limits.current_cell];
 
             limits.enabled = true;
 
