@@ -322,7 +322,7 @@ def api_test(request):
         # Get the environment current status
         global environment_status
         environment_status = get_health()
-        down_env()
+        # down_env()
 
     request.addfinalizer(clean_up_env)
 
