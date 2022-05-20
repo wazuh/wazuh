@@ -399,43 +399,6 @@ void test_load_limits_eps_max_exceeded(void ** state)
     assert_true(limits.enabled);
 }
 
-void test_update_limits_current_cell_less_than_timeframe(void ** state)
-{
-    limits.current_cell = 5;
-    update_limits();
-}
-
-void test_update_limits_current_cell_timeframe_limit(void ** state)
-{
-    limits.current_cell = limits.timeframe - 1;
-    limits.circ_buf[0] = 0;
-    update_limits();
-}
-
-void test_update_limits_current_cell_timeframe_limit_rest_element(void ** state)
-{
-    limits.current_cell = limits.timeframe - 1;
-    limits.circ_buf[0] = 5;
-    update_limits();
-}
-
-void test_update_limits_current_cell_timeframe_limit_complete_diff(void ** state)
-{
-    limits.current_cell = limits.timeframe - 1;
-    limits.total_eps_buffer = 99;
-    limits.circ_buf[0] = 10;
-    limits.circ_buf[limits.timeframe - 1] = 5;
-    update_limits();
-}
-
-void test_update_limits_current_cell_exceeded(void ** state)
-{
-    limits.current_cell = limits.timeframe + 1;
-    expect_string(__wrap__merror, formatted_msg, "limits current_cell exceeded limits: '11'");
-
-    update_limits();
-}
-
 void test_load_limits_resize_shrink_max_current_cel(void ** state)
 {
     cJSON *output = cJSON_CreateArray();
@@ -472,9 +435,6 @@ void test_load_limits_resize_shrink_min_current_cel(void ** state)
     cJSON_AddNumberToObject(output, "max_eps", 100);
     limits.current_cell = 0;
     limits.circ_buf[0] = 0;
-    for (unsigned int i = 0; i <= limits.current_cell; i++) {
-        
-    }
     limits.current_cell = 0;
 
     expect_string(__wrap_load_limits_file, daemon_name, "wazuh-analysisd");
@@ -664,6 +624,80 @@ void test_load_limits_resize_clean_all_credits(void ** state)
     sem_getvalue(&credits_eps_semaphore, &current_credits);
     assert_int_equal(0, current_credits);
     sem_destroy(&credits_eps_semaphore);
+}
+
+void test_update_limits_current_cell_less_than_timeframe(void ** state)
+{
+    limits.current_cell = 5;
+    limits.circ_buf[limits.current_cell] = 25;
+    update_limits();
+
+    assert_int_equal(limits.max_eps, 100);
+    assert_int_equal(limits.eps, 10);
+    assert_int_equal(limits.timeframe, 10);
+    assert_int_equal(limits.current_cell, 6);
+    assert_int_equal(limits.total_eps_buffer, 25);
+}
+
+void test_update_limits_current_cell_timeframe_limit(void ** state)
+{
+    limits.current_cell = limits.timeframe - 1;
+    limits.circ_buf[0] = 0;
+    limits.total_eps_buffer = 20;
+    update_limits();
+
+    assert_int_equal(limits.max_eps, 100);
+    assert_int_equal(limits.eps, 10);
+    assert_int_equal(limits.timeframe, 10);
+    assert_int_equal(limits.current_cell, limits.timeframe - 1);
+    assert_int_equal(limits.total_eps_buffer, 20);
+}
+
+void test_update_limits_current_cell_timeframe_limit_rest_element(void ** state)
+{
+    limits.current_cell = limits.timeframe - 1;
+    limits.circ_buf[0] = 5;
+    unsigned int aux = limits.total_eps_buffer + limits.circ_buf[limits.current_cell] - limits.circ_buf[0];
+
+    update_limits();
+
+    assert_int_equal(limits.max_eps, 100);
+    assert_int_equal(limits.eps, 10);
+    assert_int_equal(limits.timeframe, 10);
+    assert_int_equal(limits.current_cell, limits.timeframe - 1);
+    assert_int_equal(limits.total_eps_buffer, aux);
+}
+
+void test_update_limits_current_cell_timeframe_limit_complete_diff(void ** state)
+{
+    limits.current_cell = limits.timeframe - 1;
+    limits.total_eps_buffer = 99;
+    limits.circ_buf[0] = 10;
+    limits.circ_buf[limits.current_cell] = 5;
+    unsigned int aux = limits.total_eps_buffer + limits.circ_buf[limits.current_cell] - limits.circ_buf[0];
+
+    update_limits();
+
+    assert_int_equal(limits.max_eps, 100);
+    assert_int_equal(limits.eps, 10);
+    assert_int_equal(limits.timeframe, 10);
+    assert_int_equal(limits.current_cell, limits.timeframe - 1);
+    assert_int_equal(limits.total_eps_buffer, aux);
+}
+
+void test_update_limits_current_cell_exceeded(void ** state)
+{
+    limits.current_cell = limits.timeframe + 1;
+    limits.total_eps_buffer = 5;
+    expect_string(__wrap__merror, formatted_msg, "limits current_cell exceeded limits: '11'");
+
+    update_limits();
+
+    assert_int_equal(limits.max_eps, 100);
+    assert_int_equal(limits.eps, 10);
+    assert_int_equal(limits.timeframe, 10);
+    assert_int_equal(limits.current_cell, limits.timeframe - 1);
+    assert_int_equal(limits.total_eps_buffer, 5);
 }
 
 int main(void)
