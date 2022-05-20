@@ -23,8 +23,6 @@ with patch('wazuh.common.wazuh_uid'):
         import wazuh.core.cluster.client as client
         from wazuh import WazuhException
 
-fernet_key = "00000000000000000000000000000000"
-
 cluster_items = {'intervals': {'worker': {'keep_alive': 1, 'max_failed_keepalive_attempts': 0, "connection_retry": 2}}}
 configuration = {"node_name": "manager", "nodes": [0], "port": 1515}
 

@@ -52,7 +52,6 @@ cluster_items = {"etc/": {"permissions": "0o640", "source": "master", "files": [
                                }
                  }
 
-fernet_key = "00000000000000000000000000000000"
 wazuh_common = cluster_common.WazuhCommon()
 in_buffer = cluster_common.InBuffer()
 
@@ -908,22 +907,21 @@ def test_handler_data_received_ok():
 
     # Test first else and first nested if
     with patch('wazuh.core.cluster.common.Handler.get_messages', return_value=[(b"bytes1", 123, b"bytes2", b"bytes3")]):
-        with patch('cryptography.fernet.Fernet.decrypt', return_value="decrypted payload"):
-            # Test second nested if and the else inside of it
-            with patch('asyncio.WriteTransport.write') as write_mock:
-                handler.box = {123: asyncio.WriteTransport}
-                handler.data_received(b"message")
-                write_mock.assert_called_once()
-
-            # Test second nested if and the if inside of it
-            handler.box = {123: None}
+        # Test second nested if and the else inside of it
+        with patch('asyncio.WriteTransport.write') as write_mock:
+            handler.box = {123: asyncio.WriteTransport}
             handler.data_received(b"message")
-            assert 123 not in handler.box
+            write_mock.assert_called_once()
 
-            # Test second nested else
-            with patch('wazuh.core.cluster.common.Handler.dispatch') as dispatch_mock:
-                handler.data_received(b"message")
-                dispatch_mock.assert_called_once_with(b"bytes1", 123, b"bytes2")
+        # Test second nested if and the if inside of it
+        handler.box = {123: None}
+        handler.data_received(b"message")
+        assert 123 not in handler.box
+
+        # Test second nested else
+        with patch('wazuh.core.cluster.common.Handler.dispatch') as dispatch_mock:
+            handler.data_received(b"message")
+            dispatch_mock.assert_called_once_with(b"bytes1", 123, b"bytes2")
 
 
 @patch('wazuh.core.cluster.common.Handler.msg_build', return_value=["msg"])
