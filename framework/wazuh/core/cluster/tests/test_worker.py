@@ -449,11 +449,11 @@ def test_worker_handler_process_request_ok(logger_mock):
 def test_worker_handler_process_request_ko(create_task_mock, logger_mock):
     """Test the correct exception raise at method 'process_request'."""
 
-    with pytest.raises(exception.WazuhClusterError, match=r".* 3025 .*"):
+    with pytest.raises(exception.WazuhClusterError, match=r".* 3018 .*"):
         worker_handler.process_request(command=b"dapi_err", data=b"data 2")
     logger_mock.assert_called_with("Command received: 'b'dapi_err''")
 
-    with pytest.raises(exception.WazuhClusterError, match=r".* 3025 .*"):
+    with pytest.raises(exception.WazuhClusterError, match=r".* 3018 .*"):
         worker_handler.process_request(command=b"sendsyn_err", data=b"data 2")
     logger_mock.assert_called_with("Command received: 'b'sendsyn_err''")
 
