@@ -315,35 +315,23 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
     ar_command *tmp_command;
 
     /* Allocate the active-response command */
-    tmp_command = (ar_command *) calloc(1, sizeof(ar_command));
-    if (!tmp_command) {
-        merror(MEM_ERROR, errno, strerror(errno));
-        return (-1);
-    }
-
-    tmp_command->name = NULL;
-    tmp_command->executable = NULL;
-    tmp_command->timeout_allowed = 0;
-    tmp_command->extra_args = NULL;
+    os_calloc(1, sizeof(ar_command), tmp_command);
 
     /* Search for the commands */
     while (node[i]) {
         if (!node[i]->element) {
             merror(XML_ELEMNULL);
-            free(tmp_command);
-            return (OS_INVALID);
+            goto end;
         } else if (!node[i]->content) {
             merror(XML_VALUENULL, node[i]->element);
-            free(tmp_command);
-            return (OS_INVALID);
+            goto end;
         }
         if (strcmp(node[i]->element, command_name) == 0) {
             // The command name must not start with '!'
 
             if (node[i]->content[0] == '!') {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                free(tmp_command);
-                return (OS_INVALID);
+                goto end;
             }
 
             tmp_command->name = strdup(node[i]->content);
@@ -358,31 +346,35 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
                 tmp_command->timeout_allowed = 0;
             } else {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                free(tmp_command);
-                return (OS_INVALID);
+                goto end;
             }
         } else if (strcmp(node[i]->element, extra_args) == 0) {
             tmp_command->extra_args = strdup(node[i]->content);
         } else {
             merror(XML_INVELEM, node[i]->element);
-            free(tmp_command);
-            return (OS_INVALID);
+            goto end;
         }
         i++;
     }
 
     if (!tmp_command->name || !tmp_command->executable) {
         merror(AR_CMD_MISS);
-        free(tmp_command);
-        return (-1);
+        goto end;
     }
 
     /* Add command to the list */
     if (!OSList_AddData(l1, (void *)tmp_command)) {
         merror(LIST_ADD_ERROR);
-        free(tmp_command);
-        return (-1);
+        goto end;
     }
 
     return (0);
+
+end:
+    os_free(tmp_command->name);
+    os_free(tmp_command->executable);
+    os_free(tmp_command->extra_args);
+    os_free(tmp_command);
+
+    return (OS_INVALID);
 }
