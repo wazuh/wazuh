@@ -1,6 +1,77 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v4.4.0]
+
+### Manager
+
+#### Changed
+
+- wazuh-logtest now shows warnings about ruleset issues. ([#10822](https://github.com/wazuh/wazuh/pull/10822))
+- Modulesd memory is now managed by jemalloc, this helps reduce memory fragmentation. ([#12206](https://github.com/wazuh/wazuh/pull/12206))
+- The manager now refuses multiple connections from the same agent. ([#11702](https://github.com/wazuh/wazuh/pull/11702))
+- Updated the Vulnerability Detector configuration reporting to include MSU and skip JSON Red Hat feed. ([#12117](https://github.com/wazuh/wazuh/pull/12117))
+- Improved the shared configuration file handling performance. ([#12352](https://github.com/wazuh/wazuh/pull/12352))
+- The agent group data is now natively handled by Wazuh DB. ([#11753](https://github.com/wazuh/wazuh/pull/11753))
+
+#### Fixed
+
+- Fixed wazuh-dbd halt procedure. ([#10873](https://github.com/wazuh/wazuh/pull/10873))
+- Fixed compilation warnings in the manager. ([#12098](https://github.com/wazuh/wazuh/pull/12098))
+- Fixed a bug in the manager that did not send shared folders correctly to agents belonging to multiple groups. ([#12516](https://github.com/wazuh/wazuh/pull/12516))
+- Fixed the Active Response decoders to support back the top entries for source IP in reports. ([#12834](https://github.com/wazuh/wazuh/pull/12834))
+- Fixed the feed update interval option of Vulnerability Detector for the JSON Red Hat feed. ([#13338](https://github.com/wazuh/wazuh/pull/13338))
+
+#### Removed
+
+- Removed the unused internal option `wazuh_db.sock_queue_size`. ([#12409](https://github.com/wazuh/wazuh/pull/12409))
+
+### Agent
+
+#### Added
+
+- Added support of CPU frequency data provided by Syscollector on Raspberry Pi. ([#11756](https://github.com/wazuh/wazuh/pull/11756))
+- Added support for IPv6 address collection in the agent. ([#11450](https://github.com/wazuh/wazuh/pull/11450))
+- Added the process startup time data provided by Syscollector on macOS. ([#11833](https://github.com/wazuh/wazuh/pull/11833))
+- Added support of package retrieval in Syscollector for OpenSUSE Tumbleweed and Fedora 34. ([#11571](https://github.com/wazuh/wazuh/pull/11571))
+- Added the process startup time data provided by Syscollector on macOS. Thanks to @LubinLew. ([#11640](https://github.com/wazuh/wazuh/pull/11640))
+- Added support for package data provided by Syscollector on Solaris. ([#11796](https://github.com/wazuh/wazuh/pull/11796))
+- Added support for delta events in Syscollector when data gets changed. ([#10843](https://github.com/wazuh/wazuh/pull/10843))
+- Added support for pre-installed Windows packages in Syscollector. ([#12035](https://github.com/wazuh/wazuh/pull/12035))
+- Added support for IPv6 on agent-manager connection and enrollment. ([#11268](https://github.com/wazuh/wazuh/pull/11268))
+- Added support for CIS-CAT Pro v3 and v4 to the CIS-CAT integration module. Thanks to @hustliyilin. ([#12582](https://github.com/wazuh/wazuh/pull/12582))
+
+#### Changed
+
+- Improved the free RAM data provided by Syscollector. ([#11587](https://github.com/wazuh/wazuh/pull/11587))
+- The Windows installer (MSI) now provides signed DLL files. ([#12752](https://github.com/wazuh/wazuh/pull/12752))
+- Changed the group ownership of the Modulesd process to root. ([#12748](https://github.com/wazuh/wazuh/pull/12748))
+- Some parts of Agentd and Execd have got refactored. ([#12750](https://github.com/wazuh/wazuh/pull/12750))
+
+#### Fixed
+
+- Fixed collection of maximum user data length. Thanks to @LubinLew. ([#7687](https://github.com/wazuh/wazuh/pull/7687))
+- Fixed missing fields in Syscollector on Windows 10. ([#10772](https://github.com/wazuh/wazuh/pull/10772))
+- Fixed the process startup time data provided by Syscollector on Linux. Thanks to @LubinLew. ([#11227](https://github.com/wazuh/wazuh/pull/11227))
+- Fixed network data reporting by Syscollector related to tunnel or VPN interfaces. ([#11837](https://github.com/wazuh/wazuh/pull/11837))
+- Skipped V9FS file system at Rootcheck to prevent false positives on WSL. ([#12066](https://github.com/wazuh/wazuh/pull/12066))
+- Fixed double file handle closing in Logcollector on Windows. ([#9067](https://github.com/wazuh/wazuh/pull/9067))
+- Fixed a bug in Syscollector that may prevent the agent from stopping when the manager connection is lost. ([#11949](https://github.com/wazuh/wazuh/pull/11949))
+- Fixed internal exception handling issues on Solaris 10. ([#12148](https://github.com/wazuh/wazuh/pull/12148))
+- Fixed duplicate error message IDs in the log. ([#12300](https://github.com/wazuh/wazuh/pull/12300))
+- Fixed compilation warnings in the agent. ([#12691](https://github.com/wazuh/wazuh/pull/12691))
+
+### Other
+
+#### Added
+
+- Added unit tests to the component in Analysisd that extracts the IP address from events. ([#12733](https://github.com/wazuh/wazuh/pull/12733))
+
+#### Changed
+
+- Prevented the Ruleset test suite from restarting the manager. ([#10773](https://github.com/wazuh/wazuh/pull/10773))
+
+
 ## [v4.3.2]
 
 ### Manager
