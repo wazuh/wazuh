@@ -27,6 +27,7 @@
 #include <register.hpp>
 #include <router.hpp>
 #include <hlp/hlp.hpp>
+#include <wdb/wdb.hpp>
 
 #define WAIT_DEQUEUE_TIMEOUT_USEC (1 * 1000000)
 

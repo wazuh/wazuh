@@ -5,7 +5,7 @@ set(ENGINE_WDB_INCLUDE_DIR ${ENGINE_SOURCE_DIR}/wdb/include)
 # Sources - Includes
 ####################################################################################################
 add_library(wdb STATIC
-    ${ENGINE_WDB_SOURCE_DIR}/protocol.hpp
+    ${ENGINE_WDB_SOURCE_DIR}/unixSocketInterface.hpp
 )
 
 target_include_directories(wdb
@@ -14,6 +14,7 @@ target_include_directories(wdb
     ${ENGINE_SOURCE_DIR}/json
     PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}
+    ${ENGINE_WDB_INCLUDE_DIR}
 )
 
 target_link_libraries(wdb base)
