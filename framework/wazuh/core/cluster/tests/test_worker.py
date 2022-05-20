@@ -43,15 +43,13 @@ def get_worker_handler():
     """Return the needed WorkerHandler object. This is an auxiliary method."""
 
     with patch('asyncio.get_running_loop', return_value=loop):
-        abstract_client = client.AbstractClientManager(configuration=configuration,
-                                                       cluster_items=cluster_items,
-                                                       enable_ssl=False, performance_test=False, logger=None,
-                                                       concurrency_test=False, file='None', string=20)
+        abstract_client = client.AbstractClientManager(configuration=configuration, cluster_items=cluster_items,
+                                                       performance_test=False, logger=None, concurrency_test=False,
+                                                       file='None', string=20)
 
-    return worker.WorkerHandler(cluster_name='Testing', node_type='master', version='4.0.0',
-                                loop=loop, on_con_lost=None, name='Testing',
-                                fernet_key='01234567891011121314151617181920', logger=logger,
-                                manager=abstract_client, cluster_items=cluster_items)
+    return worker.WorkerHandler(cluster_name='Testing', node_type='master', version='4.0.0', loop=loop,
+                                on_con_lost=None, name='Testing', logger=logger, manager=abstract_client,
+                                cluster_items=cluster_items)
 
 
 sync_task = cluster_common.SyncTask(b"cmd", logging.getLogger("wazuh"), get_worker_handler())
@@ -1347,9 +1345,8 @@ def test_worker_init(api_request_queue, running_loop_mock):
     """Check if the object Worker is being properly initialized."""
 
     task_pool = {'task_pool': ''}
-    nested_worker = worker.Worker(configuration=configuration, cluster_items=cluster_items, enable_ssl=False,
-                                  performance_test=False, logger=None, concurrency_test=False, file='None', string=20,
-                                  task_pool=task_pool)
+    nested_worker = worker.Worker(configuration=configuration, cluster_items=cluster_items, performance_test=False,
+                                  logger=None, concurrency_test=False, file='None', string=20, task_pool=task_pool)
 
     assert nested_worker.cluster_name == "wazuh"
     assert nested_worker.node_type == "master"
@@ -1386,9 +1383,8 @@ def test_worker_add_tasks(api_request_queue, acm_mock, running_loop_mock):
 
     task_pool = {'task_pool': ''}
 
-    nested_worker = worker.Worker(configuration=configuration, cluster_items=cluster_items, enable_ssl=False,
-                                  performance_test=False, logger=None, concurrency_test=False, file='None', string=20,
-                                  task_pool=task_pool)
+    nested_worker = worker.Worker(configuration=configuration, cluster_items=cluster_items, performance_test=False,
+                                  logger=None, concurrency_test=False, file='None', string=20, task_pool=task_pool)
 
     nested_worker.client = ClientMock()
     nested_worker.dapi = DapiMock()
@@ -1401,9 +1397,8 @@ def test_worker_get_node(api_request_queue, running_loop_mock):
     """Check if the basic cluster information is returned."""
     task_pool = {'task_pool': ''}
 
-    nested_worker = worker.Worker(configuration=configuration, cluster_items=cluster_items, enable_ssl=False,
-                                  performance_test=False, logger=None, concurrency_test=False, file='None', string=20,
-                                  task_pool=task_pool)
+    nested_worker = worker.Worker(configuration=configuration, cluster_items=cluster_items, performance_test=False,
+                                  logger=None, concurrency_test=False, file='None', string=20, task_pool=task_pool)
 
     assert nested_worker.get_node() == {'type': nested_worker.configuration['node_type'],
                                         'cluster': nested_worker.configuration['name'],

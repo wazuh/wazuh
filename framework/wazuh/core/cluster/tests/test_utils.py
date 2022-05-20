@@ -20,6 +20,9 @@ default_cluster_config = {
     'node_type': 'master',
     'name': 'wazuh',
     'node_name': 'node01',
+    'certfile': 'test_path',
+    'keyfile': 'test_path',
+    'password': None,
     'key': '',
     'port': 1516,
     'bind_addr': '0.0.0.0',
@@ -28,7 +31,8 @@ default_cluster_config = {
 }
 
 
-def test_read_cluster_config():
+@patch('os.path.join', return_value='test_path')
+def test_read_cluster_config(join_mock):
     """Verify that read_cluster function returns, in this case, the default configuration."""
     config = utils.read_cluster_config()
     assert config == default_cluster_config

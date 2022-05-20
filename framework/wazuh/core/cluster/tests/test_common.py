@@ -416,7 +416,7 @@ def test_handler_init():
             pass
 
     with patch('wazuh.core.cluster.utils.context_tag', ContextVar('', default="")) as cv:
-        handler = cluster_common.Handler(None, cluster_items)
+        handler = cluster_common.Handler(cluster_items)
 
         assert isinstance(handler.counter, int)
         assert handler.box == {}
@@ -429,7 +429,6 @@ def test_handler_init():
         assert handler.in_file == {}
         assert handler.in_str == {}
         assert handler.request_chunk == 5242880
-        assert handler.my_fernet is None
         assert handler.logger == logging.getLogger("wazuh")
         assert handler.tag == "Handler"
         assert handler.cluster_items == cluster_items
@@ -437,14 +436,13 @@ def test_handler_init():
         assert handler.interrupted_tasks == set()
         assert cv.get() == handler.tag
 
-    # Check other logger and my_fernet behaviors
-    assert isinstance(cluster_common.Handler(fernet_key, cluster_items).my_fernet, cryptography.fernet.Fernet)
-    assert isinstance(cluster_common.Handler(None, cluster_items, logger=LoggerMock()).logger, LoggerMock)
+    # Check other logger behaviors
+    assert isinstance(cluster_common.Handler(cluster_items, logger=LoggerMock()).logger, LoggerMock)
 
 
 def test_handler_push():
     """Test if a message is being properly sent to peer."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
 
     handler.transport = asyncio.WriteTransport
     with patch('asyncio.WriteTransport.write') as write_mock:
@@ -454,7 +452,7 @@ def test_handler_push():
 
 def test_handler_next_counter():
     """Test if the counter is being properly increased."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
 
     assert handler.next_counter() == (handler.counter + 1) % (2 ** 32) - 1
 
@@ -462,7 +460,7 @@ def test_handler_next_counter():
 @patch('struct.pack', return_value=b"v1")
 def test_handler_msg_build_ok(pack_mock):
     """Test if a message is being built with the right header and payload."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
 
     # Test first if
     assert isinstance(handler.msg_build(b"command", 12345, b"data"), list)
@@ -475,12 +473,12 @@ def test_handler_msg_build_ok(pack_mock):
     assert isinstance(handler.msg_build(b"command", 12345, b"000000000000000000000"), list)
     assert isinstance(handler.msg_build(b"command", 12345, b"data")[0], bytearray)
 
-    assert pack_mock.call_count == 13
+    assert pack_mock.call_count == 5
 
 
 def test_handler_msg_build_ko():
     """Test the 'message_build' method and check if it is raising the exceptions properly."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
 
     with pytest.raises(exception.WazuhClusterError, match=r'.* 3024 .*'):
         handler.msg_build(b"much much longer command", 12345, b"data")
@@ -488,7 +486,7 @@ def test_handler_msg_build_ko():
 
 def test_handler_msg_parse():
     """Test if an incoming message is being properly parsed."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
 
     # self.in_buffer is False
     assert handler.msg_parse() is False
@@ -507,35 +505,26 @@ def test_handler_msg_parse():
 
 def test_handler_get_messages_ok():
     """Test the proper decryption of the received data and returns it in separate yields."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
     yield_value = None
 
-    with patch('cryptography.fernet.Fernet.decrypt', return_value="decrypted payload"):
-        with patch('wazuh.core.cluster.common.Handler.msg_parse', return_value=True) as handler_mock:
+    with patch('wazuh.core.cluster.common.Handler.msg_parse', return_value=True) as handler_mock:
+        # Test if
+        handler.in_msg.total = handler.in_msg.received
+        handler.in_msg.cmd = 'send_str'
+        handler.in_msg.counter = 1
+        handler.in_msg.payload = b'test'
+        handler.in_msg.flag_divided = 'd'
+        for i in handler.get_messages():
+            handler_mock.return_value = False
+            yield_value = i
+        assert yield_value == ('send_str', 1, b'test', 'd')
 
-            # Test if
-            handler.in_msg.total = handler.in_msg.received
-            for i in handler.get_messages():
-                handler_mock.return_value = False
-                yield_value = i
-            assert yield_value == ('', 0, 'decrypted payload', b'')
-
-            # Test else
-            handler.in_msg.total = handler.in_msg.received + 10
-            handler_mock.return_value = True
-            for _ in handler.get_messages():
-                handler_mock.return_value = False
-
-
-@patch('wazuh.core.cluster.common.Handler.msg_parse', return_value=True)
-@patch('cryptography.fernet.Fernet.decrypt', side_effect=cryptography.fernet.InvalidToken)
-def test_handler_get_messages_ko(decrypt_mock, msg_parse_mock):
-    """Test whether the exception were correctly raised."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
-
-    with pytest.raises(exception.WazuhClusterError, match=r'.* 3025 .*'):
-        handler.in_msg.total = 0
-        list(handler.get_messages())
+        # Test else
+        handler.in_msg.total = handler.in_msg.received + 10
+        handler_mock.return_value = True
+        for _ in handler.get_messages():
+            handler_mock.return_value = False
 
 
 @pytest.mark.asyncio
@@ -545,7 +534,7 @@ def test_handler_get_messages_ko(decrypt_mock, msg_parse_mock):
 @patch('wazuh.core.cluster.common.Handler.msg_build', return_value=["some", "messages"])
 async def test_handler_send_request_ok(msg_build_mock, next_counter_mock, wait_for_mock, push_mock):
     """Test if a request is being properly sent."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
 
     assert (await handler.send_request(b'some bytes', b'some data') == "some value")
     assert next_counter_mock.return_value not in handler.box
@@ -564,7 +553,7 @@ async def test_handler_send_request_ok(msg_build_mock, next_counter_mock, wait_f
 @pytest.mark.asyncio
 async def test_handler_send_request_ko():
     """Test the 'send_request' method proper exception raise."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
 
     with patch('wazuh.core.cluster.common.Handler.msg_build', side_effect=MemoryError):
         with pytest.raises(exception.WazuhClusterError, match=r'.* 3026 .*'):
@@ -583,7 +572,7 @@ async def test_handler_get_chunks_in_task_id(send_request_mock):
         def __init__(self):
             self.payload = b'{"Objective": "fix_behavior"}'
 
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
     handler.in_str[b'17'] = TaskMock()
     assert await handler.get_chunks_in_task_id(task_id=b'17', error_command=b'') == {"Objective": "fix_behavior"}
 
@@ -634,7 +623,7 @@ async def test_handler_update_chunks_wdb(send_request_mock):
             self.task_pool = task_pool
 
     logger = LoggerMock()
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
     handler.server = ServerMock(None)
 
     with patch('wazuh.core.cluster.cluster.run_in_pool',
@@ -674,7 +663,7 @@ async def test_handler_update_chunks_wdb(send_request_mock):
 async def test_handler_send_result_to_manager(send_request_mock):
     """Check that the results are sent correctly."""
 
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
     assert await handler.send_result_to_manager(command=b'testing', result={'dict': '0'}) == b"some data"
     send_request_mock.assert_has_calls([call(command=b'testing', data=b'{"dict": "0"}')])
 
@@ -700,7 +689,7 @@ async def test_handler_sync_wazuh_db_information(get_chunks_in_task_id_mock, upd
 
     logger = LoggerMock()
     sync_dict = {'date_start_master': 0, 'date_end_master': 0, 'n_synced_chunks': 0}
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
     with patch.object(LoggerMock, "info") as logger_info_mock:
         assert await handler.sync_wazuh_db_information(task_id=b'1', info_type='info', logger=logger,
                                                        command=b'command',
@@ -728,7 +717,7 @@ async def test_handler_send_file_ok(send_request_mock, os_path_exists_mock):
             """Auxiliary method."""
             return b""
 
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
     handler.request_chunk = 17
     handler.interrupted_tasks.add(b'abcd')
 
@@ -743,7 +732,7 @@ async def test_handler_send_file_ok(send_request_mock, os_path_exists_mock):
 @pytest.mark.asyncio
 async def test_handler_send_file_ko():
     """Test the 'send_file' method exception raise."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
 
     with pytest.raises(exception.WazuhClusterError, match=r'.* 3034 .*'):
         await handler.send_file("some_file.txt")
@@ -752,7 +741,7 @@ async def test_handler_send_file_ko():
 @pytest.mark.asyncio
 async def test_handler_send_string():
     """Test if a large string can be correctly sent to peer."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
 
     with patch('wazuh.core.cluster.common.Handler.send_request', return_value=b"some data"):
         assert (await handler.send_string(b"something") == b"some data")
@@ -766,7 +755,7 @@ async def test_handler_send_string():
 
 def test_handler_get_manager():
     """Test if the exception is being properly raised."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
 
     with pytest.raises(NotImplementedError):
         handler.get_manager()
@@ -792,7 +781,7 @@ async def test_handler_forward_dapi_response_ok():
             async def send_request(data, res):
                 return res
 
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
     handler.in_str = {b"string_id": in_buffer, b"other_string": "some value"}
     mock_manager = ParentManager()
 
@@ -817,7 +806,7 @@ async def test_handler_forward_dapi_response_ko():
             async def send_string(data):
                 return data
 
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
     handler.in_str = {b"string_id": in_buffer, b"other_string": "some value"}
     mock_manager = ParentManager()
 
@@ -855,7 +844,7 @@ async def test_handler_forward_sendsync_response_ok():
             async def send_request(data, res):
                 return res
 
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
     handler.in_str = {b"string_id": in_buffer, b"other_string": "some value"}
     mock_manager = ParentManager()
 
@@ -880,7 +869,7 @@ async def test_handler_forward_sendsync_response_ko():
             async def send_request(data, res):
                 return res
 
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
     handler.in_str = {b"string_id": in_buffer, b"other_string": "some value"}
     mock_manager = ParentManager()
 
@@ -904,7 +893,7 @@ async def test_handler_forward_sendsync_response_ko():
 
 def test_handler_data_received_ok():
     """Test if the data received from other peers is being properly handled."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
 
     # Test first if
     with patch('wazuh.core.cluster.common.Handler.get_messages', return_value=[(b"bytes1", 123, b"bytes2", b"d")]):
@@ -937,23 +926,12 @@ def test_handler_data_received_ok():
                 dispatch_mock.assert_called_once_with(b"bytes1", 123, b"bytes2")
 
 
-def test_handler_data_received_ko():
-    """Test the 'data_received' function exceptions."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
-
-    with patch('wazuh.core.cluster.common.Handler.get_messages', return_value=[(b"bytes1", 123, b"bytes2", b"bytes3")]):
-        with patch('cryptography.fernet.Fernet.decrypt', side_effect=cryptography.fernet.InvalidToken):
-            with pytest.raises(exception.WazuhClusterError, match=r'.* 3025 .*'):
-                handler.div_msg_box = {123: b"bytes"}
-                handler.data_received(b"message")
-
-
 @patch('wazuh.core.cluster.common.Handler.msg_build', return_value=["msg"])
 @patch('wazuh.core.cluster.common.Handler.push')
 @patch('wazuh.core.cluster.common.Handler.process_request', return_value=(b"command", b"payload"))
 def test_handler_dispatch(process_request_mock, push_mock, msg_build_mock):
     """Test if a message is properly processed and a response is sent."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
 
     # Test the first try and if
     handler.dispatch(b"command", 123, b"payload")
@@ -975,7 +953,7 @@ def test_handler_dispatch(process_request_mock, push_mock, msg_build_mock):
 
 def test_handler_close():
     """Test if the connection is properly closed."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
 
     class TransportMock:
 
@@ -995,7 +973,7 @@ def test_handler_close():
 
 def test_handler_process_request():
     """Check if request commands are correctly defined."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
 
     with patch('wazuh.core.cluster.common.Handler.echo') as echo_mock:
         handler.process_request(b"echo", b"data")
@@ -1028,7 +1006,7 @@ def test_handler_process_request():
 
 def test_handler_process_response():
     """Check if response commands are correctly defined."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
 
     assert handler.process_response(b'ok', b"payload") == b"payload"
 
@@ -1040,14 +1018,14 @@ def test_handler_process_response():
 
 def test_handler_echo():
     """Test if response command to 'echo' are defined."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
 
     assert handler.echo(b"data") == (b"ok", b"data")
 
 
 def test_handler_receive_file():
     """Test if a descriptor file is created for an incoming file."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
 
     assert handler.receive_file(b"data") == (b"ok ", b"Ready to receive new file")
     assert "fd" in handler.in_file[b"data"]
@@ -1058,7 +1036,7 @@ def test_handler_receive_file():
 
 def test_handler_update_file():
     """Test if a file's content is being updated."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
 
     with patch('builtins.open'):
         with open(os.path.join(os.getcwd(), "no_file.txt")) as f:
@@ -1068,7 +1046,7 @@ def test_handler_update_file():
 
 def test_handler_end_file():
     """Test if a file descriptor is closed and MD5 checked."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
 
     class ChecksumMock:
 
@@ -1097,7 +1075,7 @@ def test_handler_end_file():
 @patch('json.loads')
 def test_handler_cancel_task(json_loads_mock, task_name):
     """Test if task_id is added to handler.interrupted_tasks when cancel_task() is executed."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
 
     assert handler.cancel_task(f'{task_name} error_details'.encode()) == (b'ok', b'Request received correctly')
     json_loads_mock.assert_called_once_with(b'error_details', object_hook=ANY)
@@ -1109,7 +1087,7 @@ def test_handler_cancel_task(json_loads_mock, task_name):
 
 def test_handler_receive_str():
     """Test if a bytearray is created with the string size."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
 
     reply, name = handler.receive_str(b"10")
     assert reply == b"ok"
@@ -1119,7 +1097,7 @@ def test_handler_receive_str():
 
 def test_handler_str_upd():
     """Test if a string content is updated."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
 
     with patch('wazuh.core.cluster.common.InBuffer.receive_data'):
         handler.in_str = {b"string_id": in_buffer}
@@ -1128,7 +1106,7 @@ def test_handler_str_upd():
 
 def test_handler_process_error_str():
     """Test if an item is being deleted from self.in_str."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
 
     # Test no conditioned return
     assert handler.process_error_str(b"120") == (b'ok', b'None')
@@ -1142,14 +1120,14 @@ def test_handler_process_error_str():
 
 def test_handler_process_unknown_cmd():
     """Test if a message is defined when an unknown command is received."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
 
     assert handler.process_unknown_cmd(b"unknown") == (b'err', "unknown command 'b'unknown''".encode())
 
 
 def test_handler_process_error_from_peer():
     """Test if errors in requests are properly handled."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
 
     with patch('json.loads', return_value="some value"):
         assert handler.process_error_from_peer(b"data to decode") == "some value"
@@ -1159,7 +1137,7 @@ def test_handler_process_error_from_peer():
 
 def test_handler_setup_task_logger():
     """Test if a logger is being defined."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
 
     class TaskLoggerMock:
         def __init__(self):
@@ -1181,7 +1159,7 @@ def test_handler_setup_task_logger():
 @patch("asyncio.wait_for")
 async def test_handler_wait_for_file(wait_for_mock):
     """Check if wait_for is called with expected parameters."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
     await handler.wait_for_file(asyncio.Event(), 'test')
     wait_for_mock.assert_called_once_with(ANY, timeout=120)
 
@@ -1190,7 +1168,7 @@ async def test_handler_wait_for_file(wait_for_mock):
 @patch('wazuh.core.cluster.common.Handler.send_request')
 async def test_handler_wait_for_file_ko(send_request_mock):
     """Check if expected exception is raised."""
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
     with pytest.raises(exception.WazuhClusterError, match='.* 3039 .*'):
         with patch("asyncio.wait_for", side_effect=asyncio.TimeoutError):
             await handler.wait_for_file(asyncio.Event(), 'test')
@@ -1329,7 +1307,7 @@ def test_wazuh_common_get_node():
 def test_sync_task_init():
     """Test '__init__' method from the SyncTask class."""
     sync_task = cluster_common.SyncTask(b"cmd", logging.getLogger("wazuh"),
-                                        cluster_common.Handler(fernet_key, cluster_items))
+                                        cluster_common.Handler(cluster_items))
 
     assert sync_task.cmd == b"cmd"
     assert sync_task.logger == logging.getLogger("wazuh")
@@ -1343,7 +1321,7 @@ async def test_sync_task_request_permission(send_request_mock):
     is not."""
 
     sync_task = cluster_common.SyncTask(b"cmd", logging.getLogger("wazuh"),
-                                        cluster_common.Handler(fernet_key, cluster_items))
+                                        cluster_common.Handler(cluster_items))
 
     # Test first condition
     with patch.object(logging.getLogger("wazuh"), "error") as logger_mock:
@@ -1371,7 +1349,7 @@ def test_sync_wazuh_db_init():
     """Test the '__init__' method from the SyncWazuhdb class."""
 
     sync_wazuh_db = cluster_common.SyncWazuhdb(
-        manager=cluster_common.Handler(fernet_key, cluster_items), logger=logging.getLogger("wazuh"), cmd=b"cmd",
+        manager=cluster_common.Handler(cluster_items), logger=logging.getLogger("wazuh"), cmd=b"cmd",
         data_retriever=None, get_data_command="get_command", set_data_command="set_command", pivot_key=None)
 
     assert sync_wazuh_db.get_data_command == "get_command"
@@ -1396,7 +1374,7 @@ async def test_sync_wazuh_db_retrieve_information(socket_mock):
 
     wdb_conn = WazuhDBConnection()
     logger = logging.getLogger("wazuh")
-    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler = cluster_common.Handler(cluster_items)
     sync_object = cluster_common.SyncWazuhdb(manager=handler, logger=logger, cmd=b'syn_a_w_m',
                                              data_retriever=wdb_conn.run_wdb_command,
                                              get_data_command='global sync-agent-info-get ',
@@ -1435,7 +1413,7 @@ async def test_sync_wazuh_db_sync_ok(perf_counter_mock, json_dumps_mock):
     """Check if the information is being properly sent to the master/worker node."""
 
     sync_wazuh_db = cluster_common.SyncWazuhdb(
-        manager=cluster_common.Handler(fernet_key, cluster_items), logger=logging.getLogger("wazuh"), cmd=b"cmd",
+        manager=cluster_common.Handler(cluster_items), logger=logging.getLogger("wazuh"), cmd=b"cmd",
         data_retriever=None, get_data_command="get_command", set_data_command="set_command", pivot_key=None)
 
     # Test try and if
@@ -1458,7 +1436,7 @@ async def test_sync_wazuh_db_sync_ok(perf_counter_mock, json_dumps_mock):
 
     # Test except
     with patch("wazuh.core.cluster.common.Handler.send_string", return_value=b'Error 1'):
-        sync_wazuh_db.server = cluster_common.Handler(fernet_key, cluster_items)
+        sync_wazuh_db.server = cluster_common.Handler(cluster_items)
         with pytest.raises(exception.WazuhClusterError, match=r".* 3016 .*"):
             await sync_wazuh_db.sync(start_time=10, chunks=['a'])
 
@@ -1671,7 +1649,7 @@ def test_as_wazuh_object_ko():
 
 def get_handler():
     """Return a Handler object. This is an auxiliary method."""
-    return cluster_common.Handler(fernet_key=fernet_key, cluster_items=cluster_items, logger=logging.getLogger("wazuh"))
+    return cluster_common.Handler(cluster_items=cluster_items, logger=logging.getLogger("wazuh"))
 
 
 # Test SyncTask class methods

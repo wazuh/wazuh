@@ -51,16 +51,15 @@ def exit_handler(signum, frame):
 #
 # Master main
 #
-async def master_main(args, cluster_config, cluster_items, logger):
+async def master_main(args, cluster_config, cluster_items, logger, context):
     from wazuh.core.cluster import master, local_server
     cluster_utils.context_tag.set('Master')
     my_server = master.Master(performance_test=args.performance_test, concurrency_test=args.concurrency_test,
-                              configuration=cluster_config, enable_ssl=args.ssl, logger=logger,
-                              cluster_items=cluster_items)
+                              configuration=cluster_config, logger=logger, cluster_items=cluster_items,
+                              ssl_context=context)
     my_local_server = local_server.LocalServerMaster(performance_test=args.performance_test, logger=logger,
                                                      concurrency_test=args.concurrency_test, node=my_server,
-                                                     configuration=cluster_config, enable_ssl=args.ssl,
-                                                     cluster_items=cluster_items)
+                                                     configuration=cluster_config, cluster_items=cluster_items)
     # Spawn pool processes
     if my_server.task_pool is not None:
         my_server.task_pool.map(cluster_utils.process_spawn_sleep, range(my_server.task_pool._max_workers))
@@ -89,14 +88,12 @@ async def worker_main(args, cluster_config, cluster_items, logger):
         task_pool = None
 
     while True:
-        my_client = worker.Worker(configuration=cluster_config, enable_ssl=args.ssl,
-                                  performance_test=args.performance_test, concurrency_test=args.concurrency_test,
-                                  file=args.send_file, string=args.send_string, logger=logger,
-                                  cluster_items=cluster_items, task_pool=task_pool)
+        my_client = worker.Worker(configuration=cluster_config, performance_test=args.performance_test,
+                                  concurrency_test=args.concurrency_test, file=args.send_file, string=args.send_string,
+                                  logger=logger, cluster_items=cluster_items, task_pool=task_pool)
         my_local_server = local_server.LocalServerWorker(performance_test=args.performance_test, logger=logger,
                                                          concurrency_test=args.concurrency_test, node=my_client,
-                                                         configuration=cluster_config, enable_ssl=args.ssl,
-                                                         cluster_items=cluster_items)
+                                                         configuration=cluster_config, cluster_items=cluster_items)
 
         try:
             await asyncio.gather(my_client.start(), my_local_server.start())
@@ -131,7 +128,6 @@ def get_script_arguments():
     # implemented in worker nodes.
     parser.add_argument('--file', help=argparse.SUPPRESS, type=str, dest='send_file')
     ####################################################################################################################
-    parser.add_argument('--ssl', help="Enable communication over SSL", action='store_true', dest='ssl', default=False)
     parser.add_argument('-f', help="Run in foreground", action='store_true', dest='foreground')
     parser.add_argument('-d', help="Enable debug messages. Use twice to increase verbosity.", action='count',
                         dest='debug_level')
@@ -185,6 +181,17 @@ def main():
     if not args.foreground:
         pyDaemonModule.pyDaemon()
 
+    if cluster_configuration['node_type'] != 'worker':
+        try:
+            import ssl
+            ssl_context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
+            ssl_context.load_cert_chain(certfile=cluster_configuration['certfile'],
+                                        keyfile=cluster_configuration['keyfile'],
+                                        password=cluster_configuration['password'])
+        except Exception as e:
+            main_logger.error(f"SSL certificates could not be loaded: {e}")
+            sys.exit(1)
+
     # Drop privileges to wazuh
     if not args.root:
         os.setgid(common.wazuh_gid())
@@ -195,9 +202,11 @@ def main():
     if args.foreground:
         print(f"Starting cluster in foreground (pid: {pid})")
 
-    main_function = master_main if cluster_configuration['node_type'] == 'master' else worker_main
     try:
-        asyncio.run(main_function(args, cluster_configuration, cluster_items, main_logger))
+        if cluster_configuration['node_type'] == 'worker':
+            asyncio.run(worker_main(args, cluster_configuration, cluster_items, main_logger))
+        else:
+            asyncio.run(master_main(args, cluster_configuration, cluster_items, main_logger, ssl_context))
     except KeyboardInterrupt:
         main_logger.info("SIGINT received. Bye!")
     except MemoryError:
