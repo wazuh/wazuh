@@ -216,6 +216,7 @@ int wdb_parse(char * input, char * output, int peer) {
     int result = 0;
     struct timeval begin;
     struct timeval end;
+    struct timeval diff;
 
     w_inc_queries_total();
 
@@ -313,7 +314,8 @@ int wdb_parse(char * input, char * output, int peer) {
                 gettimeofday(&begin, 0);
                 result = wdb_parse_syscheck(wdb, WDB_FIM, next, output);
                 gettimeofday(&end, 0);
-                w_inc_agent_syscheck_time(((end.tv_sec - begin.tv_sec)*1000000 + (end.tv_usec - begin.tv_usec)));
+                timersub(&end,&begin,&diff);
+                w_inc_agent_syscheck_time(diff);
             }
         } else if (strcmp(query, "fim_file") == 0) {
             w_inc_agent_fim_file();
