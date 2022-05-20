@@ -8,9 +8,11 @@
  * Foundation.
  */
 
+#include <sys/time.h>
+
 typedef struct _agent_syscheck_t {
     uint64_t syscheck_queries;
-    uint64_t syscheck_time;
+    struct timeval syscheck_time;
     uint64_t fim_file_queries;
     uint64_t fim_file_time;
     uint64_t fim_registry_queries;
@@ -387,5 +389,5 @@ void w_inc_mitre_unknown();
 
 void w_inc_unknown();
 
-void w_inc_agent_syscheck_time(uint64_t time);
+void w_inc_agent_syscheck_time(struct timeval time);
 
