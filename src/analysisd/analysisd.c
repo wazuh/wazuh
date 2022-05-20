@@ -88,7 +88,7 @@ void * ad_input_main(void * args);
  *
  * This is a private function.
  */
-static void update_limits(void);
+STATIC void update_limits(void);
 
 /**
  * @brief Check for changes in the limits.conf file and load the limits structure
@@ -2511,7 +2511,7 @@ void w_init_queues(){
     upgrade_module_input = queue_init(getDefine_Int("analysisd", "upgrade_queue_size", 128, 2000000));
 }
 
-static void update_limits(void) {
+STATIC void update_limits(void) {
 
     if (limits.enabled) {
         w_mutex_lock(&limit_eps_mutex);
@@ -2535,7 +2535,7 @@ static void update_limits(void) {
             limits.total_eps_buffer += limits.circ_buf[limits.current_cell++];
 
         } else {
-            merror("limits current_cell exceeded limits: %d", limits.current_cell);
+            merror("limits current_cell exceeded limits: '%d'", limits.current_cell);
             limits.current_cell = limits.timeframe - 1;
         }
         w_mutex_unlock(&limit_eps_mutex);
