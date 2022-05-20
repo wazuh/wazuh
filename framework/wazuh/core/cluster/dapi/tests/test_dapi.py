@@ -37,6 +37,8 @@ with patch('wazuh.common.wazuh_uid'):
 logger = logging.getLogger('wazuh')
 loop = asyncio.get_event_loop()
 
+DEFAULT_REQUEST_TIMEOUT = 10
+
 
 def AsyncMock(*args, **kwargs):
     m = MagicMock(*args, **kwargs)
@@ -63,14 +65,16 @@ def raise_if_exc_routine(dapi_kwargs, expected_error=None):
 
 @pytest.fixture(scope="session", autouse=True)
 def default_session_fixture() -> Iterator[None]:
-    with patch('api.configuration.api_conf', {'intervals': {'request_timeout': 10}}):
+    with patch('api.configuration.api_conf', {'intervals': {'request_timeout': DEFAULT_REQUEST_TIMEOUT}}):
         yield
 
 
 @pytest.mark.parametrize('kwargs', [
     {'f_kwargs': {'select': ['id']}, 'rbac_permissions': {'mode': 'black'}, 'nodes': ['worker1'],
      'basic_services': ('wazuh-modulesd', 'wazuh-db'), 'request_type': 'local_master'},
-    {'request_type': 'local_master'}
+    {'request_type': 'local_master'},
+    {'api_timeout': 15},
+    {'api_timeout': 5}
 ])
 @patch('wazuh.core.cluster.dapi.dapi.common.install_type', return_value='local')
 def test_DistributedAPI(install_type_mock, kwargs):
@@ -83,6 +87,7 @@ def test_DistributedAPI(install_type_mock, kwargs):
     """
     dapi = DistributedAPI(f=agent.get_agents_summary_status, logger=logger, **kwargs)
     assert isinstance(dapi, DistributedAPI)
+    assert dapi.api_request_timeout == max(kwargs.get('api_timeout', 0), DEFAULT_REQUEST_TIMEOUT)
 
 
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.execute_local_request',
