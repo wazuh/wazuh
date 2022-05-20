@@ -1,7 +1,16 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v4.3.1]
+## [v4.3.2]
+
+### Manager
+
+#### Changed
+
+- Integratord now tries to read alerts indefinitely, instead of performing 3 attempts. ([#13437](https://github.com/wazuh/wazuh/pull/13437))
+
+
+## [v4.3.1] - 2022-05-18
 
 ### Manager
 
