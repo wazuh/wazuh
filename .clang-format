@@ -46,3 +46,7 @@ Standard: Auto
 TabWidth: '4'
 UseTab: Never
 ---
+PointerAlignment: Left
+ColumnLimit: 90
+BreakBeforeBinaryOperators: NonAssignment
+...
