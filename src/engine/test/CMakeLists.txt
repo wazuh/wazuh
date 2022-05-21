@@ -30,6 +30,7 @@ target_link_libraries(engine_test_main
     gtest
     base
     kvdb
+    wdb
     )
 
 include(GoogleTest)
