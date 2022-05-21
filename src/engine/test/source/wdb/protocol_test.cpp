@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-
+using namespace socketinterface;
 /*
 TODO:
 - Rename FILE_TEST
@@ -35,23 +35,23 @@ int OS_BindUnixDomain(const char *path)
     strncpy(n_us.sun_path, path, sizeof(n_us.sun_path) - 1);
 
     if ((ossock = socket(PF_UNIX, SOCK_STREAM, 0)) < 0) {
-        return (OS_SOCKTERR);
+        return (SOCKET_ERROR);
     }
 
     if (bind(ossock, (struct sockaddr *)&n_us, SUN_LEN(&n_us)) < 0) {
         close(ossock);
-        return (OS_SOCKTERR);
+        return (SOCKET_ERROR);
     }
 
     /* Change permissions */
     if (chmod(path, 0660) < 0) {
         close(ossock);
-        return (OS_SOCKTERR);
+        return (SOCKET_ERROR);
     }
 
     if (listen(ossock, 128) < 0) {
         close(ossock);
-        return (OS_SOCKTERR);
+        return (SOCKET_ERROR);
     }
 
     return (ossock);
@@ -78,7 +78,7 @@ int OS_AcceptTCP(int socket)
 
 TEST(wdb_procol, init)
 {
-    const char * hi = "buen dia!\n";
+    const char * hi = "Test mesg send!\n";
     char reply[1024] = {};
 
     // Create server
@@ -86,14 +86,16 @@ TEST(wdb_procol, init)
     ASSERT_GT(fd_server, 0);
 
 
-    int fd_client = OS_ConnectUnixDomain("/root/test.sock");
+    int fd_client = socketConnect("/root/test.sock");
     ASSERT_GT(fd_client, 0);
 
     std::cout << "send: " << hi << std::endl;
-    OS_SendSecureTCP(fd_client, strlen(hi), hi);
+    sendMsg(fd_client, hi, strlen(hi));
+    sendMsg(fd_client, "Hey, how are u?");
     int srv_client = OS_AcceptTCP(fd_server);
-    int recvBytes = OS_RecvSecureTCP(srv_client , reply, 1024);
-    //\x09\x00\x00\x00\x68\x6f\x6c\x61\x31\x32\x33\x0a\x00
+    int recvBytes = recvMsg(srv_client , reply, 1024);
+    std::cout << "recv (" << recvBytes  << "): "<< reply << std::endl;
+    recvBytes = recvMsg(srv_client , reply, 1024);
     std::cout << "recv (" << recvBytes  << "): "<< reply << std::endl;
 
     close(fd_client);
