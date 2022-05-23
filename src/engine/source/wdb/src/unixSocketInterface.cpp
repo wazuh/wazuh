@@ -14,10 +14,27 @@ namespace socketinterface
  * @return 0 on socket disconnected or timeout.
  * @return \ref SOCKET_ERROR otherwise (and errno is set).
  *
- * @warning This function blocks until the message is received or the socket is disconnected.
+ * @warning This function blocks until the message is received or the socket is
+ * disconnected.
  *
  */
-ssize_t recvWaitAll(int sock, void* buf, size_t size);
+static ssize_t recvWaitAll(int sock, void* buf, size_t size)
+{
+    size_t offset {}; // offset in the buffer
+    ssize_t recvb {}; // Recived bytes
+
+    for (offset = 0; offset < size; offset += recvb)
+    {
+        recvb = recv(sock, (char*)buf + offset, size - offset, 0);
+
+        if (recvb <= 0)
+        {
+            return recvb;
+        }
+    }
+
+    return offset;
+}
 
 int socketConnect(const char* path)
 {
@@ -86,7 +103,14 @@ int socketConnect(const char* path)
     return (socketFD);
 }
 
-int sendMsg(int sock, const char* msg) {
+int sendMsg(int sock, const char* msg)
+{
+    if (msg == nullptr)
+    {
+        // TODO: Maybe return a NULL_PTR_MSG code
+        return 0;
+    }
+
     return sendMsg(sock, msg, strlen(msg));
 }
 
@@ -96,18 +120,21 @@ int sendMsg(int sock, const char* msg, uint32_t size)
     char* buffer {nullptr};
     size_t bufferSize {sizeof(uint32_t) + size}; // Header + Message
 
-    if (sock < 0 || msg == nullptr || size == 0)
+    // TODO: Why a SOCKET_ERROR is returned if the msg is NULL or messageless? Maybe a 0
+    // should be returned in such cases.
+    if (sock <= 0 || msg == nullptr || size == 0)
     {
         return (SOCKET_ERROR);
     }
 
-    buffer = (char*) malloc(bufferSize);
+    buffer = (char*)malloc(bufferSize);
     // Adds header
     *(uint32_t*)buffer = size;
     // Appends message
     memcpy(buffer + sizeof(uint32_t), msg, size);
-    errno = 0;
-    retval = send(sock, buffer, bufferSize, 0) == (ssize_t)bufferSize ? 0 : SOCKET_ERROR;
+    errno = 0; // TODO: Is this necessary?
+    retval = send(sock, buffer, bufferSize, 0) == (ssize_t)bufferSize ? bufferSize
+                                                                      : SOCKET_ERROR;
     free(buffer);
 
     return retval;
@@ -150,24 +177,6 @@ int recvMsg(int sock, char* outBuffer, uint32_t bufferSize)
     }
 
     return recvb;
-}
-
-ssize_t recvWaitAll(int sock, void* buf, size_t size)
-{
-    size_t offset {}; // offset in the buffer
-    ssize_t recvb {}; // Recived bytes
-
-    for (offset = 0; offset < size; offset += recvb)
-    {
-        recvb = recv(sock, (char*) buf + offset, size - offset, 0);
-
-        if (recvb <= 0)
-        {
-            return recvb;
-        }
-    }
-
-    return offset;
 }
 
 } // namespace socketinterface
