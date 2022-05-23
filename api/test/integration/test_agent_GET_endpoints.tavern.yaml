@@ -2008,7 +2008,6 @@ stages:
       error: !anyint
       data:
         bind_addr: !anystr
-        disabled: !anybool
         hidden: !anystr
         key: !anystr
         name: !anystr
