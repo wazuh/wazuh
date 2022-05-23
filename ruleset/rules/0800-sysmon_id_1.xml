@@ -358,7 +358,7 @@
 
   <rule id="92036" level="3">
     <if_sid>92032</if_sid>
-    <list field="win.eventdata.originalFileName" lookup="match_key">etc/lists/uncommon-cmd-opened-process</list>
+    <field name="win.eventdata.originalFileName" type="pcre2">(?i)(SystemPropertiesAdvanced|net)\.EXE</field>
     <description>A $(win.eventdata.image) binary was started by a Windows cmd shell.</description>
     <mitre>
       <id>T1059.003</id>
