@@ -595,7 +595,7 @@ async def test_AbstractServer_start_ko(keepalive_mock, set_event_loop_policy_moc
     with patch("asyncio.get_running_loop", return_value=LoopMock()):
         with patch("logging.getLogger", return_value=logger):
             with patch.object(logger, "error") as mock_logger:
-                with pytest.raises(KeyboardInterrupt):
+                with pytest.raises(exception.WazuhClusterError, match=r'.* 3025 .*'):
                     abstract_server = AbstractServer(performance_test=1, concurrency_test=2,
                                                      configuration={"bind_addr": 3, "port": 10000},
                                                      cluster_items={"intervals":
@@ -605,4 +605,3 @@ async def test_AbstractServer_start_ko(keepalive_mock, set_event_loop_policy_moc
                                                                     },
                                                      logger=logger)
                     await abstract_server.start()
-                    mock_logger.assert_called_once_with("Could not start master: ")
