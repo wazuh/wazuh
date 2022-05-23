@@ -49,6 +49,9 @@
     <regex> "POST /\S+.php/login.php?cPath=</regex>
     <description>osCommerce login.php bypass attempt.</description>
     <group>pci_dss_6.5,pci_dss_11.4,pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_SI.4,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.6,tsc_CC7.1,tsc_CC8.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
    </rule>
 
   <!-- osCommerce file manager login.php bypass
@@ -72,7 +75,7 @@
     <regex> "GET /\S+/cache/external\S+.php</regex>
     <description>TimThumb backdoor access attempt.</description>
     <mitre>
-      <id>T1108</id>
+      <id>T1505.003</id>
     </mitre>
     <group>pci_dss_6.5,pci_dss_11.4,pci_dss_10.2.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_SI.4,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.6,tsc_CC7.1,tsc_CC8.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
    </rule>
@@ -85,6 +88,10 @@
     <regex> "GET /\S+cart.php?\S+templatefile=../</regex>
     <description>Cart.php directory transversal attempt.</description>
     <group>pci_dss_6.5,pci_dss_11.4,pci_dss_10.2.4,pci_dss_6.5.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_SI.4,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.6,tsc_CC7.1,tsc_CC8.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <mitre>
+      <id>T1210</id>
+      <id>T1190</id>
+    </mitre>
    </rule>
 
   <!-- MSSQL IIS inject rules -->
@@ -113,6 +120,9 @@
     <regex>] "POST \S+wp-login.php| "POST /administrator</regex>
     <description>CMS (WordPress or Joomla) login attempt.</description>
    <group>pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.10,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_SI.4,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.6,tsc_CC7.1,tsc_CC8.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <mitre>
+      <id>T1110.001</id>
+    </mitre>
   </rule>
 
   <!-- If we see frequent wp-login POST's, it is likely a bot. -->
@@ -220,6 +230,9 @@
     <same_source_ip />
     <description>High amount of POST requests in a small period of time (likely bot).</description>
    <group>pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SI.4,tsc_CC6.6,tsc_CC7.1,tsc_CC8.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <mitre>
+      <id>T1498</id>
+    </mitre>
    </rule>
 
   <!-- Anomaly rules - Used on common web attacks -->
