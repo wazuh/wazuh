@@ -32,7 +32,7 @@ IndentCaseLabels: 'true'
 IndentWidth: '4'
 PointerAlignment: Left
 SortIncludes: 'true'
-SpaceAfterCStyleCast: 'true'
+SpaceAfterCStyleCast: 'false'
 SpaceAfterLogicalNot: 'false'
 SpaceAfterTemplateKeyword: 'false'
 SpaceBeforeAssignmentOperators: 'true'
@@ -46,7 +46,3 @@ Standard: Auto
 TabWidth: '4'
 UseTab: Never
 ---
-PointerAlignment: Left
-ColumnLimit: 90
-BreakBeforeBinaryOperators: NonAssignment
-...
