@@ -209,7 +209,7 @@ def test_usage(basename_mock, print_mock):
 @patch('argparse.ArgumentParser')
 @patch('wazuh.core.cluster.cluster.check_cluster_config')
 @patch('wazuh.core.cluster.utils.read_config', return_value='')
-@patch('wazuh.core.cluster.utils.get_cluster_status', return_value={'enabled': 'no', 'running': 'yes'})
+@patch('wazuh.core.cluster.utils.get_cluster_status', return_value={'running': 'no'})
 def test_main(get_cluster_status_mock, read_config_mock, check_cluster_config, parser_mock, logging_mock,
               logging_error_mock, asyncio_run_mock, exit_mock):
     """Test the main function."""
@@ -268,7 +268,7 @@ def test_main(get_cluster_status_mock, read_config_mock, check_cluster_config, p
         cluster_control.main()
         logging_error_mock.assert_has_calls([call('Cluster is not running.'), call('Wrong arguments.')])
         usage_mock.assert_called_once_with()
-        exit_mock.assert_called_with(1)
+        assert exit_mock.call_args_list[0] == call(1)
 
         exit_mock.reset_mock()
         read_config_mock.assert_called_once_with()
@@ -304,12 +304,12 @@ def test_main(get_cluster_status_mock, read_config_mock, check_cluster_config, p
                                              'help': 'Show usage', 'name': '--usage', 'nargs': None,  'type': None}]
 
         # Test the fifth condition
-        get_cluster_status_mock.return_value['enabled'] = 'yes'
+        get_cluster_status_mock.return_value['running'] = 'yes'
         args_mock.filter_status = False
         args_mock.usage = True
 
         cluster_control.main()
-        exit_mock.assert_called_with(0)
+        assert exit_mock.call_args_list[0] == call(0)
 
         # Test the first exception
         usage_mock.side_effect = KeyboardInterrupt()

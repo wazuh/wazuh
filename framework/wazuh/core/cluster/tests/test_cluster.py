@@ -106,11 +106,6 @@ def test_get_node():
         assert get_node["type"] == test_dict["node_type"]
 
 
-def test_check_cluster_status():
-    """Check the correct output of the check_cluster_status function."""
-    assert isinstance(cluster.check_cluster_status(), bool)
-
-
 @patch('os.path.getmtime', return_value=45)
 @patch('wazuh.core.cluster.cluster.blake2b', return_value="hash")
 @patch("wazuh.core.cluster.cluster.path.join", return_value="/mock/foo/bar")
