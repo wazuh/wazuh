@@ -73,10 +73,10 @@ void add_x509_ext(X509 *cert, X509V3_CTX *ctx, int ext_nid, const char *value);
  * @param x509 Smart pointer to a valid X509 certificate.
  * @param key_name Path to store the key.
  * @param cert_name Pat to store the certificate.
- * @return true In case of success.
- * @return false In case of failure.
+ * @retval 0 Success
+ * @retval 1 Failure
  */
-bool dump_key_cert(const std::unique_ptr<EVP_PKEY, smartDeleter>& key,
+int dump_key_cert(const std::unique_ptr<EVP_PKEY, smartDeleter>& key,
                    const std::unique_ptr<X509, smartDeleter>& x509,
                    const std::string& key_name,
                    const std::string& cert_name);
@@ -94,9 +94,7 @@ int main(int argc, char ** argv)
     const auto key_name { argv[1] };
     const auto cert_name { argv[2] };
 
-    /* Generate the key. */
     std::cout << "Generating RSA key..." << std::endl;
-
     auto pkey = generate_key();
 
     if(pkey == nullptr)
@@ -104,9 +102,7 @@ int main(int argc, char ** argv)
         return 1;
     }
 
-    /* Generate the certificate. */
     std::cout << "Generating x509 certificate..." << std::endl;
-
     auto x509 = generate_cert(pkey);
 
     if(x509 == nullptr)
@@ -114,15 +110,14 @@ int main(int argc, char ** argv)
         return 1;
     }
 
-    /* Write the private key and certificate out to disk. */
     std::cout << "Writing key and certificate to disk..." << std::endl;
-
     if (dump_key_cert(pkey, x509, key_name, cert_name)) {
-        std::cout << "Successfuly created key and certificate." << std::endl;
-        return 0;
+        std::cerr << "Cannot dump key and certificate into disk." << std::endl;
+        return 1;
     }
 
-    return 1;
+    std::cout << "Successfuly created key and certificate." << std::endl;
+    return 0;
 }
 
 std::unique_ptr<EVP_PKEY, smartDeleter> generate_key(int bits)
@@ -218,44 +213,44 @@ void add_x509_ext(X509* cert, X509V3_CTX *ctx, int ext_nid, const char *value)
     X509_EXTENSION_free(ex);
 }
 
-bool dump_key_cert(const std::unique_ptr<EVP_PKEY, smartDeleter>& key,
+int dump_key_cert(const std::unique_ptr<EVP_PKEY, smartDeleter>& key,
                    const std::unique_ptr<X509, smartDeleter>& x509,
                    const std::string& key_name,
                    const std::string& cert_name)
 {
-    /* Open the PEM file for writing the key to disk. */
     FILE* key_file = fopen(key_name.c_str(), "wb");
+
     if(!key_file)
     {
         std::cerr << "Cannot open " << key_name << "." << std::endl;
-        return false;
+        return 1;
     }
 
-    bool ret = PEM_write_PrivateKey(key_file, key.get(), NULL, NULL, 0, NULL, NULL);
-    fclose(key_file);
-
-    if(!ret)
+    if(!PEM_write_PrivateKey(key_file, key.get(), NULL, NULL, 0, NULL, NULL))
     {
         std::cerr << "Cannot dump private key." << std::endl;
-        return false;
+        fclose(key_file);
+
+        return 1;
     }
 
     FILE* x509_file = fopen(cert_name.c_str(), "wb");
     if(!x509_file)
     {
         std::cerr << "Cannot open " << cert_name << "." << std::endl;
-        return false;
+        return 1;
     }
 
-    /* Write the certificate to disk. */
-    ret = PEM_write_X509(x509_file, x509.get());
-    fclose(x509_file);
-
-    if(!ret)
+    if(!PEM_write_X509(x509_file, x509.get()))
     {
         std::cerr << "Cannot dump certificate." << std::endl;
-        return false;
+        fclose(x509_file);
+
+        return 1;
     }
 
-    return true;
+    fclose(key_file);
+    fclose(x509_file);
+
+    return 0;
 }
