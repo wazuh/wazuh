@@ -155,7 +155,7 @@ int sendMsg(int sock, const char* msg, uint32_t size)
     // Send the message
     errno = 0;
     int retval = send(sock, buffer, bufferSize, 0) == static_cast<ssize_t>(bufferSize)
-                     ? bufferSize
+                     ? bufferSize - HEADER_SIZE
                      : SOCKET_ERROR;
     free(buffer);
 
