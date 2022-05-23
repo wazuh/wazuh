@@ -286,12 +286,12 @@ class User(_Base):
     # Relations
     roles = relationship("Roles", secondary='user_roles', passive_deletes=True, cascade="all,delete", lazy="dynamic")
 
-    def __init__(self, username, password, allow_run_as=False, created_at=get_utc_now(), user_id=None):
+    def __init__(self, username, password, allow_run_as=False, created_at=None, user_id=None):
         self.id = user_id
         self.username = username
         self.password = password
         self.allow_run_as = allow_run_as
-        self.created_at = created_at
+        self.created_at = created_at or get_utc_now()
 
     def __repr__(self):
         return f"<User(user={self.username})"
@@ -353,10 +353,10 @@ class Roles(_Base):
     users = relationship("User", secondary='user_roles', passive_deletes=True, cascade="all,delete", lazy="dynamic")
     rules = relationship("Rules", secondary='roles_rules', passive_deletes=True, cascade="all,delete", lazy="dynamic")
 
-    def __init__(self, name, role_id=None, created_at=get_utc_now()):
+    def __init__(self, name, role_id=None, created_at=None):
         self.id = role_id
         self.name = name
-        self.created_at = created_at
+        self.created_at = created_at or get_utc_now()
 
     def get_role(self):
         """Role's getter
@@ -405,11 +405,11 @@ class Rules(_Base):
     # Relations
     roles = relationship("Roles", secondary='roles_rules', passive_deletes=True, cascade="all,delete", lazy="dynamic")
 
-    def __init__(self, name, rule, rule_id=None, created_at=get_utc_now()):
+    def __init__(self, name, rule, rule_id=None, created_at=None):
         self.id = rule_id
         self.name = name
         self.rule = rule
-        self.created_at = created_at
+        self.created_at = created_at or get_utc_now()
 
     def get_rule(self):
         """Rule getter
@@ -454,11 +454,11 @@ class Policies(_Base):
     roles = relationship("Roles", secondary='roles_policies', passive_deletes=True, cascade="all,delete",
                          lazy="dynamic")
 
-    def __init__(self, name, policy, policy_id=None, created_at=get_utc_now()):
+    def __init__(self, name, policy, policy_id=None, created_at=None):
         self.id = policy_id
         self.name = name
         self.policy = policy
-        self.created_at = created_at
+        self.created_at = created_at or get_utc_now()
 
     def get_policy(self):
         """Policy's getter
@@ -727,7 +727,7 @@ class AuthenticationManager:
             return False
 
     def add_user(self, username: str, password: str, user_id: int = None, hash_password: bool = False,
-                 created_at: datetime = get_utc_now(), check_default: bool = True) -> bool:
+                 created_at: datetime = None, check_default: bool = True) -> bool:
         """Create a new user if it does not exist.
 
         Parameters
@@ -962,7 +962,7 @@ class RolesManager:
         except IntegrityError:
             return SecurityError.ROLE_NOT_EXIST
 
-    def add_role(self, name: str, role_id: int = None, created_at: datetime = get_utc_now(),
+    def add_role(self, name: str, role_id: int = None, created_at: datetime = None,
                  check_default: bool = True) -> Union[bool, SecurityError]:
         """Add a new role.
 
@@ -1372,7 +1372,7 @@ class PoliciesManager:
         except IntegrityError:
             return SecurityError.POLICY_NOT_EXIST
 
-    def add_policy(self, name: str, policy: dict, policy_id: int = None, created_at: datetime = get_utc_now(),
+    def add_policy(self, name: str, policy: dict, policy_id: int = None, created_at: datetime = None,
                    check_default: bool = True) -> Union[bool,
                                                         SecurityError]:
         """Add a new policy.
@@ -1569,7 +1569,7 @@ class UserRolesManager:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.session.close()
 
-    def add_role_to_user(self, user_id: int, role_id: int, position: int = None, created_at: datetime = get_utc_now(),
+    def add_role_to_user(self, user_id: int, role_id: int, position: int = None, created_at: datetime = None,
                          force_admin: bool = False, atomic: bool = True) -> Union[bool, SecurityError]:
         """Add a relation between one specified user and one specified role.
 
@@ -1629,7 +1629,7 @@ class UserRolesManager:
                         elif position > max_position + 1:
                             position = max_position + 1
                     user_role.level = position
-                    user_role.created_at = created_at
+                    user_role.created_at = created_at or get_utc_now()
 
                     atomic and self.session.commit()
                     return True
@@ -1900,7 +1900,7 @@ class RolesPoliciesManager:
         self.session.close()
 
     def add_policy_to_role(self, role_id: int, policy_id: int, position: int = None,
-                           created_at: datetime = get_utc_now(), force_admin: bool = False, atomic: bool = True) -> \
+                           created_at: datetime = None, force_admin: bool = False, atomic: bool = True) -> \
             Union[bool, SecurityError]:
         """Add a relation between one specified policy and one specified role
 
@@ -2256,8 +2256,8 @@ class RolesRulesManager:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.session.close()
 
-    def add_rule_to_role(self, rule_id: int, role_id: int, position: int = None, created_at: datetime = get_utc_now(),
-                         atomic: bool = True, force_admin: bool = False) -> Union[bool, SecurityError]:
+    def add_rule_to_role(self, rule_id: int, role_id: int, created_at: datetime = None, atomic: bool = True,
+                         force_admin: bool = False) -> Union[bool, SecurityError]:
         """Add a relation between one specified role and one specified rule.
 
         Parameters
@@ -2292,7 +2292,7 @@ class RolesRulesManager:
                 if self.session.query(RolesRules).filter_by(rule_id=rule_id, role_id=role_id).first() is None:
                     role.rules.append(rule)
                     role_rule = self.session.query(RolesRules).filter_by(rule_id=rule_id, role_id=role_id).first()
-                    role_rule.created_at = created_at
+                    role_rule.created_at = created_at or get_utc_now()
                     atomic and self.session.commit()
                     return True
                 else:
