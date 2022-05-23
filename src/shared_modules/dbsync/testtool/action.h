@@ -14,21 +14,10 @@
 #include <mutex>
 #include "dbsync.h"
 #include "makeUnique.h"
+#include "cjsonSmartDeleter.hpp"
 
 namespace TestDeleters
 {
-    struct CJsonDeleter final
-    {
-        void operator()(char* json)
-        {
-            cJSON_free(json);
-        }
-        void operator()(cJSON* json)
-        {
-            cJSON_Delete(json);
-        }
-    };
-
     struct ResultDeleter final
     {
         void operator()(cJSON* json)
@@ -49,7 +38,7 @@ struct InsertDataAction final : public IAction
 {
     void execute(std::unique_ptr<TestContext>& ctx, const nlohmann::json& value) override
     {
-        const std::unique_ptr<cJSON, TestDeleters::CJsonDeleter> jsInput
+        const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInput
         {
             cJSON_Parse(value.at("body").dump().c_str())
         };
@@ -74,7 +63,7 @@ struct UpdateWithSnapshotAction final : public IAction
 {
     void execute(std::unique_ptr<TestContext>& ctx, const nlohmann::json& value) override
     {
-        const std::unique_ptr<cJSON, TestDeleters::CJsonDeleter> currentSnapshotPtr
+        const std::unique_ptr<cJSON, CJsonSmartDeleter> currentSnapshotPtr
         {
             cJSON_Parse(value["body"].dump().c_str())
         };
@@ -90,7 +79,7 @@ struct UpdateWithSnapshotAction final : public IAction
             const std::string outputFileName{ ctx->outputPath + "/" + oFileName.str() };
 
             std::ofstream outputFile{ outputFileName };
-            const std::unique_ptr<char, TestDeleters::CJsonDeleter> snapshotDiff{ cJSON_Print(snapshotLambdaPtr.get()) };
+            const std::unique_ptr<char, CJsonSmartFree> snapshotDiff{ cJSON_Print(snapshotLambdaPtr.get()) };
             outputFile << snapshotDiff.get() << std::endl;
         }
     }
@@ -111,7 +100,7 @@ static void txnCallback(ReturnTypeCallback type, const cJSON* json, void* user_d
         std::stringstream oFileName;
         oFileName << "txn_" << reinterpret_cast<size_t>(ctx->txnContext) << ".json";
         const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
-        const std::unique_ptr<char, TestDeleters::CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(json)};
+        const std::unique_ptr<char, CJsonSmartFree> spJsonBytes{cJSON_PrintUnformatted(json)};
         const auto newJson{nlohmann::json::parse(spJsonBytes.get())};
         nlohmann::json jsonResult;
         jsonResult.push_back(newJson);
@@ -127,7 +116,7 @@ struct CreateTransactionAction final : public IAction
     void execute(std::unique_ptr<TestContext>& ctx,
                  const nlohmann::json& value) override
     {
-        const std::unique_ptr<cJSON, TestDeleters::CJsonDeleter> jsonTables
+        const std::unique_ptr<cJSON, CJsonSmartDeleter> jsonTables
         {
             cJSON_Parse(value["body"]["tables"].dump().c_str())
         };
@@ -218,7 +207,7 @@ static void getCallbackCtx(ReturnTypeCallback /*type*/,
         jsonResult = nlohmann::json::parse(inputFile);
     }
 
-    const std::unique_ptr<char, TestDeleters::CJsonDeleter> spJsonBytes{cJSON_PrintUnformatted(json)};
+    const std::unique_ptr<char, CJsonSmartFree> spJsonBytes{cJSON_PrintUnformatted(json)};
     const auto& newJson { nlohmann::json::parse(spJsonBytes.get()) };
     jsonResult.push_back(newJson);
 
@@ -233,7 +222,7 @@ struct GetDeletedRowsAction final : public IAction
                  const nlohmann::json& value) override
     {
         const auto options = value.contains("options") ? value["options"] : nlohmann::json::object();
-        const std::unique_ptr<cJSON, TestDeleters::CJsonDeleter> jsOptions
+        const std::unique_ptr<cJSON, CJsonSmartDeleter> jsOptions
         {
             cJSON_Parse(options.dump().c_str())
         };
@@ -264,7 +253,7 @@ struct SyncRowAction final : public IAction
     void execute(std::unique_ptr<TestContext>& ctx,
                  const nlohmann::json& value) override
     {
-        const std::unique_ptr<cJSON, TestDeleters::CJsonDeleter> jsInput
+        const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInput
         {
             cJSON_Parse(value["body"].dump().c_str())
         };
@@ -293,7 +282,7 @@ struct SyncTxnRowsAction final : public IAction
     void execute(std::unique_ptr<TestContext>& ctx,
                  const nlohmann::json& value) override
     {
-        const std::unique_ptr<cJSON, TestDeleters::CJsonDeleter> jsInput
+        const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInput
         {
             cJSON_Parse(value["body"].dump().c_str())
         };
@@ -319,7 +308,7 @@ struct DeleteRowsAction final : public IAction
     void execute(std::unique_ptr<TestContext>& ctx,
                  const nlohmann::json& value) override
     {
-        const std::unique_ptr<cJSON, TestDeleters::CJsonDeleter> jsInput
+        const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInput
         {
             cJSON_Parse(value.at("body").dump().c_str())
         };
@@ -345,7 +334,7 @@ struct SelectRowsAction final : public IAction
     void execute(std::unique_ptr<TestContext>& ctx,
                  const nlohmann::json& value) override
     {
-        const std::unique_ptr<cJSON, TestDeleters::CJsonDeleter> jsInput
+        const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInput
         {
             cJSON_Parse(value.at("body").dump().c_str())
         };
@@ -375,7 +364,7 @@ struct AddTableRelationship final : public IAction
     void execute(std::unique_ptr<TestContext>& ctx,
                  const nlohmann::json& value) override
     {
-        const std::unique_ptr<cJSON, TestDeleters::CJsonDeleter> jsInput
+        const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInput
         {
             cJSON_Parse(value.at("body").dump().c_str())
         };

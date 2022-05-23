@@ -13,6 +13,7 @@
 #define _DBSYNC_WRAPPER_H
 
 #include "dbsync.h"
+#include "rsync_exception.h"
 
 namespace RSync
 {

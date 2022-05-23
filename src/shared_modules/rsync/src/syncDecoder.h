@@ -13,6 +13,7 @@
 #define _MSGDECODER_SYNC_H
 
 #include <iostream>
+#include <mutex>
 #include "commonDefs.h"
 #include "rsync_exception.h"
 #include "messageDecoderFactory.h"

@@ -14,6 +14,7 @@
 #include "stringHelper.h"
 #include "hashHelper.h"
 #include "messageCreatorFactory.h"
+#include "messageController.hpp"
 
 using namespace RSync;
 
@@ -58,58 +59,66 @@ void RSyncImplementation::startRSync(const RSYNC_HANDLE handle,
     const auto& jsStartParamsTable  { jsStartParams.at("table")              };
     const auto& firstQuery          { jsStartParams.find("first_query")      };
     const auto& lastQuery           { jsStartParams.find("last_query")       };
+    const auto& component           { jsStartParams.at("component").get_ref<const std::string&>() };
+    const auto& itSyncOnDemand      { jsStartParams.find("sync_on_demand")   };
 
-    if (!jsStartParamsTable.empty() && firstQuery != jsStartParams.end() && lastQuery != jsStartParams.end())
+    const auto syncOnDemand { itSyncOnDemand != jsStartParams.end()&& itSyncOnDemand->get<bool>() };
+
+    if (syncOnDemand || !MessageController::instance().waitToStartSync(component))
     {
-        const auto& jsFirstLastOutput { executeSelectQuery(spDBSyncWrapper, jsStartParamsTable, firstQuery.value(), lastQuery.value()) };
-        const auto& jsonFirstQueryResult { jsFirstLastOutput.at("first_result") };
-        const auto& jsonLastQueryResult  { jsFirstLastOutput.at("last_result") };
-
-        auto messageCreator { FactoryMessageCreator<SplitContext, MessageType::CHECKSUM>::create() };
-
-        ChecksumContext checksumCtx;
-        // In this case, 'size' field will not be used because of the checksum type (CHECKSUM_COMPLETE).
-        checksumCtx.size = 0;
-        checksumCtx.rightCtx.id = std::time(nullptr);
-
-        if (!jsonFirstQueryResult.empty() && !jsonLastQueryResult.empty())
+        if (!jsStartParamsTable.empty() && firstQuery != jsStartParams.end() && lastQuery != jsStartParams.end())
         {
-            const auto& indexField { jsStartParams.at("index").get_ref<const std::string&>() };
-            const auto& begin      { jsonFirstQueryResult.at(indexField) };
-            const auto& end        { jsonLastQueryResult.at(indexField)  };
+            const auto& jsFirstLastOutput { executeSelectQuery(spDBSyncWrapper, jsStartParamsTable, firstQuery.value(), lastQuery.value()) };
+            const auto& jsonFirstQueryResult { jsFirstLastOutput.at("first_result") };
+            const auto& jsonLastQueryResult  { jsFirstLastOutput.at("last_result") };
 
-            checksumCtx.type           = CHECKSUM_COMPLETE;
-            checksumCtx.rightCtx.type  = IntegrityMsgType::INTEGRITY_CHECK_GLOBAL;
+            auto messageCreator { FactoryMessageCreator<SplitContext, MessageType::CHECKSUM>::create() };
 
-            if (begin.is_string())
+            ChecksumContext checksumCtx {};
+            // In this case, 'size' field will not be used because of the checksum type (CHECKSUM_COMPLETE).
+            checksumCtx.size = 0;
+            checksumCtx.rightCtx.id = std::time(nullptr);
+
+            if (!jsonFirstQueryResult.empty() && !jsonLastQueryResult.empty())
             {
-                checksumCtx.rightCtx.begin = begin;
-                checksumCtx.rightCtx.end   = end;
-                fillChecksum(spDBSyncWrapper, jsStartParams, begin, end, checksumCtx);
+                const auto& indexField { jsStartParams.at("index").get_ref<const std::string&>() };
+                const auto& begin      { jsonFirstQueryResult.at(indexField) };
+                const auto& end        { jsonLastQueryResult.at(indexField)  };
+
+                checksumCtx.type           = CHECKSUM_COMPLETE;
+                checksumCtx.rightCtx.type  = IntegrityMsgType::INTEGRITY_CHECK_GLOBAL;
+
+                if (begin.is_string())
+                {
+                    checksumCtx.rightCtx.begin = begin;
+                    checksumCtx.rightCtx.end   = end;
+                    fillChecksum(spDBSyncWrapper, jsStartParams, begin, end, checksumCtx);
+                }
+                else
+                {
+                    const auto beginNumber{begin.get<unsigned long>()};
+                    const auto endNumber{end.get<unsigned long>()};
+                    const auto beginString{std::to_string(beginNumber)};
+                    const auto endString{std::to_string(endNumber)};
+                    checksumCtx.rightCtx.begin = beginString;
+                    checksumCtx.rightCtx.end   = endString;
+                    fillChecksum(spDBSyncWrapper, jsStartParams, beginString, endString, checksumCtx);
+                }
             }
             else
             {
-                const auto beginNumber{begin.get<unsigned long>()};
-                const auto endNumber{end.get<unsigned long>()};
-                const auto beginString{std::to_string(beginNumber)};
-                const auto endString{std::to_string(endNumber)};
-                checksumCtx.rightCtx.begin = beginString;
-                checksumCtx.rightCtx.end   = endString;
-                fillChecksum(spDBSyncWrapper, jsStartParams, beginString, endString, checksumCtx);
+                checksumCtx.rightCtx.type = IntegrityMsgType::INTEGRITY_CLEAR;
             }
+
+            // rightCtx will have the final checksum based on fillChecksum method. After processing all checksum select data
+            // checksumCtx.rightCtx will have the needed (final) information
+            messageCreator->send(callbackWrapper, jsStartParams, checksumCtx.rightCtx);
+            MessageController::instance().refreshLastMsgTime(component);
         }
         else
         {
-            checksumCtx.rightCtx.type = IntegrityMsgType::INTEGRITY_CLEAR;
+            throw rsync_error { INPUT_JSON_INCOMPLETE };
         }
-
-        // rightCtx will have the final checksum based on fillChecksum method. After processing all checksum select data
-        // checksumCtx.rightCtx will have the needed (final) information
-        messageCreator->send(callbackWrapper, jsStartParams, checksumCtx.rightCtx);
-    }
-    else
-    {
-        throw rsync_error { INPUT_JSON_INCOMPLETE };
     }
 }
 
@@ -131,7 +140,7 @@ void callbackDBSync(ReturnTypeCallback /*resultType*/, const cJSON* resultJson, 
     if (userData && resultJson)
     {
         std::function<void(const nlohmann::json&)>* callback { static_cast<std::function<void(const nlohmann::json&)>*>(userData) };
-        const std::unique_ptr<char, CJsonDeleter> spJsonBytes{ cJSON_PrintUnformatted(resultJson) };
+        const std::unique_ptr<char, CJsonSmartFree> spJsonBytes{ cJSON_PrintUnformatted(resultJson) };
         const auto& json { nlohmann::json::parse(spJsonBytes.get()) };
         (*callback)(json);
     }
@@ -167,6 +176,7 @@ void RSyncImplementation::registerSyncId(const RSYNC_HANDLE handle,
                 {
                     throw rsync_error { INVALID_OPERATION };
                 }
+
             }
             catch (const std::exception& e)
             {
@@ -175,7 +185,20 @@ void RSyncImplementation::registerSyncId(const RSYNC_HANDLE handle,
 
         }
     };
-    ctx->m_msgDispatcher.addCallback(messageHeaderID, registerCallback);
+
+    auto syncInterval { std::chrono::seconds(0) };
+    const auto itInterval { syncConfiguration.find("minimal_sync_interval") };
+
+    if (itInterval != syncConfiguration.end())
+    {
+        const auto intervalValue { itInterval->get<int32_t>() };
+        syncInterval = std::chrono::seconds(intervalValue > 0 ? intervalValue : 0);
+    }
+
+    MessageController::instance().setComponentContext(syncConfiguration.at("component").get_ref<const std::string&>(),
+                                                      syncInterval);
+
+    ctx->m_msgDispatcher.setCallback(messageHeaderID, registerCallback);
 }
 
 
@@ -185,6 +208,7 @@ void RSyncImplementation::push(const RSYNC_HANDLE handle, const std::vector<unsi
     {
         remoteSyncContext(handle)
     };
+
     spRSyncContext->m_msgDispatcher.push(data);
 }
 
@@ -224,6 +248,8 @@ void RSyncImplementation::sendChecksumFail(const std::shared_ptr<DBSyncWrapper>&
     {
         throw rsync_error { UNEXPECTED_SIZE };
     }
+
+    MessageController::instance().refreshLastMsgTime(jsonSyncConfiguration.at("component").get_ref<const std::string&>());
 }
 
 size_t RSyncImplementation::getRangeCount(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
@@ -255,7 +281,7 @@ size_t RSyncImplementation::getRangeCount(const std::shared_ptr<DBSyncWrapper>& 
     queryParam["distinct_opt"] = querySelect.at("distinct_opt");
     queryParam["order_by_opt"] = querySelect.at("order_by_opt");
 
-    const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(selectData.dump().c_str()) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson{ cJSON_Parse(selectData.dump().c_str()) };
     spDBSyncWrapper->select(spJson.get(), { callbackDBSync, &sizeRange });
 
     return size;
@@ -316,7 +342,7 @@ void RSyncImplementation::fillChecksum(const std::shared_ptr<DBSyncWrapper>& spD
     queryParam["distinct_opt"] = querySelect.at("distinct_opt");
     queryParam["order_by_opt"] = querySelect.at("order_by_opt");
 
-    const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(selectData.dump().c_str()) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson{ cJSON_Parse(selectData.dump().c_str()) };
     spDBSyncWrapper->select(spJson.get(), { callbackDBSync, &calcChecksum });
 
     // rightCtx field will have the final checksum
@@ -362,7 +388,7 @@ nlohmann::json RSyncImplementation::getRowData(const std::shared_ptr<DBSyncWrapp
     queryParam["distinct_opt"] = querySelect.at("distinct_opt");
     queryParam["order_by_opt"] = querySelect.at("order_by_opt");
 
-    const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(selectData.dump().c_str()) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson{ cJSON_Parse(selectData.dump().c_str()) };
     spDBSyncWrapper->select(spJson.get(), { callbackDBSync, &getRowData });
     return rowData;
 }
@@ -400,6 +426,8 @@ void RSyncImplementation::sendAllData(const std::shared_ptr<DBSyncWrapper>& spDB
         [&callbackWrapper, &messageCreator, &jsonSyncConfiguration] (const nlohmann::json & resultJSON)
         {
             messageCreator->send(callbackWrapper, jsonSyncConfiguration, resultJSON);
+            MessageController::instance()
+            .refreshLastMsgTime(jsonSyncConfiguration.at("component").get_ref<const std::string&>());
         }
     };
     nlohmann::json selectData;
@@ -417,7 +445,7 @@ void RSyncImplementation::sendAllData(const std::shared_ptr<DBSyncWrapper>& spDB
     queryParam["distinct_opt"] = querySelect.at("distinct_opt");
     queryParam["order_by_opt"] = querySelect.at("order_by_opt");
 
-    const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(selectData.dump().c_str()) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson{ cJSON_Parse(selectData.dump().c_str()) };
     spDBSyncWrapper->select(spJson.get(), { callbackDBSync, &sendRowData });
 
 }

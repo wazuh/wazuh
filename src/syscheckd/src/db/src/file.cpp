@@ -15,7 +15,7 @@
 #include "db.hpp"
 #include "fimDB.hpp"
 #include "dbFileItem.hpp"
-
+#include "cjsonSmartDeleter.hpp"
 
 static const char* FIM_EVENT_TYPE_ARRAY[] =
 {
@@ -38,20 +38,6 @@ enum SEARCH_FIELDS
     SEARCH_FIELD_INODE,
     SEARCH_FIELD_DEV
 };
-
-// LCOV_EXCL_START
-struct CJsonDeleter
-{
-    void operator()(char* json)
-    {
-        cJSON_free(json);
-    }
-    void operator()(cJSON* json)
-    {
-        cJSON_Delete(json);
-    }
-};
-// LCOV_EXCL_STOP
 
 nlohmann::json DB::createJsonEvent(const nlohmann::json& fileJson, const nlohmann::json& resultJson, ReturnTypeCallback type, create_json_event_ctx* ctx)
 {
@@ -591,7 +577,7 @@ FIMDBErrorCode fim_db_file_update(fim_entry* data, callback_context_t callback)
             create_json_event_ctx* ctx { reinterpret_cast<create_json_event_ctx*>(callback.context)};
             DB::instance().updateFile(*file->toJSON(), ctx, [callback](const nlohmann::json jsonResult)
             {
-                const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
+                const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson{ cJSON_Parse(jsonResult.dump().c_str()) };
                 callback.callback(spJson.get(), callback.context);
             });
             retVal = FIMDB_OK;
