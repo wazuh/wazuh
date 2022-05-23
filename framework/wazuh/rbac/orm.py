@@ -333,7 +333,7 @@ class Roles(_Base):
     """
     Roles table, in this table we are going to save all the information about the policies. The data that we will
     store is:
-        id: ID of the policy, this is self assigned
+        role_id: ID of the policy, this is self assigned
         name: The name of the policy
         policy: The capabilities of the policy
         created_at: Date of the policy creation
@@ -728,14 +728,20 @@ class AuthenticationManager:
 
     def add_user(self, username: str, password: str, user_id: int = None, hash_password: bool = False,
                  created_at: datetime = get_utc_now(), check_default: bool = True) -> bool:
-        """Create a new user if it does not exist. TODO update
+        """Create a new user if it does not exist.
 
         Parameters
         ----------
         username : str
-            Unique user name
+            Unique username.
         password : str
             Password provided by user. It will be stored hashed
+        user_id : int
+            User ID.
+        hash_password : bool
+            Hash the password before saving it to the database if `True`. Save it raw otherwise.
+        created_at : datetime
+            Date when the resource was created.
         check_default : bool
             Flag that indicates if the user ID can be less than max_id_reserved
 
@@ -958,12 +964,16 @@ class RolesManager:
 
     def add_role(self, name: str, role_id: int = None, created_at: datetime = get_utc_now(),
                  check_default: bool = True) -> Union[bool, SecurityError]:
-        """Add a new role. TODO update
+        """Add a new role.
 
         Parameters
         ----------
         name : str
             Name of the new role
+        role_id : int
+            Role ID.
+        created_at : datetime
+            Date when the resource was created.
         check_default : bool
             Flag that indicates if the user ID can be less than max_id_reserved
 
@@ -1054,7 +1064,7 @@ class RolesManager:
             return False
 
     def update_role(self, role_id: int, name: str) -> Union[bool, SecurityError]:
-        """Update an existent role in the system TODO update
+        """Update an existent role in the system.
 
         Parameters
         ----------
@@ -1152,7 +1162,7 @@ class RulesManager:
 
     def add_rule(self, name: str, rule: dict, rule_id: int = None, created_at: datetime = None,
                  check_default: bool = True) -> Union[bool, SecurityError]:
-        """Add a new rule. # TODO update
+        """Add a new rule.
 
         Parameters
         ----------
@@ -1160,6 +1170,10 @@ class RulesManager:
             Name of the new rule.
         rule : dict
             Rule dictionary.
+        rule_id : int
+            Rule ID.
+        created_at : datetime
+            Date when the resource was created.
         check_default : bool
             Flag that indicates if the user ID can be less than max_id_reserved
 
@@ -1177,7 +1191,7 @@ class RulesManager:
                     rule_id = max_id_reserved + 1
             except (TypeError, AttributeError):
                 pass
-            self.session.add(Rules(name=name, rule=json.dumps(rule), rule_id=rule_id))
+            self.session.add(Rules(name=name, rule=json.dumps(rule), rule_id=rule_id, created_at=created_at))
             self.session.commit()
             return True
         except IntegrityError:
@@ -1253,7 +1267,7 @@ class RulesManager:
 
     def update_rule(self, rule_id: int, name: str, rule: dict) \
             -> Union[bool, SecurityError]:
-        """Update an existent rule in the system. TODO update
+        """Update an existent rule in the system.
 
         Parameters
         ----------
@@ -1361,7 +1375,7 @@ class PoliciesManager:
     def add_policy(self, name: str, policy: dict, policy_id: int = None, created_at: datetime = get_utc_now(),
                    check_default: bool = True) -> Union[bool,
                                                         SecurityError]:
-        """Add a new policy. TODO update
+        """Add a new policy.
 
         Parameters
         ----------
@@ -1369,6 +1383,10 @@ class PoliciesManager:
             Name of the new policy
         policy : dict
             Policy of the new policy
+        policy_id : int
+            Policy ID.
+        created_at : datetime
+            Date when the resource was created.
         check_default : bool
             Flag that indicates if the user ID can be less than max_id_reserved
 
@@ -1492,7 +1510,7 @@ class PoliciesManager:
 
     def update_policy(self, policy_id: int, name: str, policy: dict, check_default: bool = True) \
             -> Union[bool, SecurityError]:
-        """Update an existent policy in the system TODO update
+        """Update an existent policy in the system.
 
         Parameters
         ----------
@@ -1563,6 +1581,8 @@ class UserRolesManager:
             ID of the role
         position : int
             Order to be applied in case of multiples roles in the same user
+        created_at : datetime
+            Date when the resource was created.
         force_admin : bool
             By default, changing an administrator user is not allowed. If True, it will be applied to admin users too
         atomic : bool
@@ -1892,6 +1912,8 @@ class RolesPoliciesManager:
             ID of the policy
         position : int
             Order to be applied in case of multiples roles in the same user
+        created_at : datetime
+            Date when the resource was created.
         force_admin : bool
             By default, changing an administrator roles is not allowed. If True, it will be applied to admin roles too
         atomic : bool
@@ -1944,7 +1966,7 @@ class RolesPoliciesManager:
                         elif position > max_position + 1:
                             position = max_position + 1
                     role_policy.level = position
-                    role_policy.created_at = created_at
+                    role_policy.created_at = created_at or get_utc_now()
 
                     atomic and self.session.commit()
                     return True
@@ -2244,6 +2266,8 @@ class RolesRulesManager:
             ID of the rule
         role_id : int
             ID of the role
+        created_at : datetime
+            Date when the resource was created.
         atomic : bool
             This parameter indicates if the operation is atomic. If this function is called within
             a loop or a function composed of several operations, atomicity cannot be guaranteed.
@@ -2488,24 +2512,53 @@ class DatabaseManager:
         self.sessions = {}
 
     def close_sessions(self):
+        """Close all the stored database connections."""
         for session in self.sessions:
             self.sessions[session].close()
 
         for engine in self.engines:
             self.engines[engine].dispose()
 
-    def connect(self, database: str):
-        self.engines[database] = create_engine(f"sqlite:///{database}", echo=False)
-        self.sessions[database] = sessionmaker(bind=self.engines[database])()
+    def connect(self, database_path: str):
+        """Create database engine and session and bind them.
+
+        Parameters
+        ----------
+        database_path : str
+            Path to the database to connect to.
+        """
+        self.engines[database_path] = create_engine(f"sqlite:///{database_path}", echo=False)
+        self.sessions[database_path] = sessionmaker(bind=self.engines[database_path])()
 
     def create_database(self, database: str):
+        """Create the given database.
+
+        Parameters
+        ----------
+        database : str
+            Name of the stored database.
+        """
         # This is the actual sqlite database creation
         _Base.metadata.create_all(self.engines[database])
 
     def get_database_version(self, database: str):
+        """Get the given database version.
+
+        Parameters
+        ----------
+        database : str
+            Name of the stored database.
+        """
         return str(self.sessions[database].execute("pragma user_version").first()[0])
 
     def insert_default_resources(self, database: str):
+        """Insert default security resources into the given database.
+
+        Parameters
+        ----------
+        database : str
+            Name of the stored database.
+        """
         default_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'default')
 
         # Create default users if they don't exist yet
@@ -2600,7 +2653,20 @@ class DatabaseManager:
                                               rule_id=rum.get_rule_by_name(d_rule_name)['id'], force_admin=True)
 
     @staticmethod
-    def get_table(session, table: object):
+    def get_table(session, table):
+        """Return the proper `Table` object depending on the database version.
+
+        Parameters
+        ----------
+        session : Session
+            Database session from which to extract data.
+        table : Table
+            Database table to return.
+
+        Returns
+        -------
+        SQLAlchemy table object
+        """
         try:
             # Try to use the current table schema
             session.query(table).first()
@@ -2788,11 +2854,11 @@ class DatabaseManager:
                                                    created_at=role_rule.created_at,
                                                    force_admin=True)
 
-    def rollback(self, database):
+    def rollback(self, database: str):
         """Abort any pending change for the current session."""
         self.sessions[database].rollback()
 
-    def set_database_version(self, database, version):
+    def set_database_version(self, database: str, version: int):
         """Set the new value for the database version."""
         self.sessions[database].execute(f'pragma user_version={version}')
 
