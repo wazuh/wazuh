@@ -16,7 +16,6 @@ with patch('wazuh.core.common.getgrnam'):
                 from wazuh.core.results import WazuhResult
 
 default_cluster_config = {
-    'disabled': True,
     'node_type': 'master',
     'name': 'wazuh',
     'node_name': 'node01',
@@ -50,21 +49,12 @@ def test_read_cluster_config():
     with patch('wazuh.core.cluster.utils.get_ossec_conf', return_value={'cluster': default_cluster_config}):
         utils.read_config.cache_clear()
         default_cluster_config.pop('hidden')
-        default_cluster_config['disabled'] = 'no'
         config = utils.read_cluster_config()
         config_simple = utils.read_config()
         assert config == config_simple
         assert config == default_cluster_config
 
         default_cluster_config['node_type'] = 'client'
-        config = utils.read_cluster_config()
-        assert config == default_cluster_config
-
-        default_cluster_config['disabled'] = 'None'
-        with pytest.raises(WazuhError, match='.* 3004 .*'):
-            utils.read_cluster_config()
-
-        default_cluster_config['disabled'] = 'yes'
         config = utils.read_cluster_config()
         assert config == default_cluster_config
 
@@ -145,11 +135,11 @@ def test_get_cluster_status():
     """Check if cluster is enabled and running. Also check that cluster is shown as not running when a
     WazuhInternalError is raised."""
     status = utils.get_cluster_status()
-    assert {'enabled': 'no', 'running': 'no'} == status
+    assert {'running': 'no'} == status
 
     with patch('wazuh.core.cluster.utils.get_manager_status', side_effect=WazuhInternalError(1913)):
         status = utils.get_cluster_status()
-        assert {'enabled': 'no', 'running': 'no'} == status
+        assert {'running': 'no'} == status
 
 
 def test_manager_restart():
