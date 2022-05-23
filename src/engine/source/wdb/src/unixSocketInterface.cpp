@@ -4,6 +4,10 @@
 namespace socketinterface
 {
 
+// Namespace of private functions
+namespace
+{
+
 /**
  * @brief Receive a message from a stream socket, full message (MSG_WAITALL)
  *
@@ -18,7 +22,7 @@ namespace socketinterface
  * disconnected.
  *
  */
-static ssize_t recvWaitAll(int sock, void* buf, size_t size)
+ssize_t recvWaitAll(int sock, void* buf, size_t size)
 {
     size_t offset {}; // offset in the buffer
     ssize_t recvb {}; // Recived bytes
@@ -27,22 +31,23 @@ static ssize_t recvWaitAll(int sock, void* buf, size_t size)
     {
         recvb = recv(sock, (char*)buf + offset, size - offset, 0);
 
-        if (recvb <= 0)
+        switch (recvb)
         {
-            return recvb;
+            // Socket disconnected
+            case 0: return 0;
+            case -1: return SOCKET_ERROR;
         }
     }
 
     return offset;
 }
+} // namespace
 
 int socketConnect(const char* path)
 {
-    // https://github.com/wazuh/wazuh/blob/v4.3.0/src/shared/wazuhdb_op.c#L29
-    // https://github.com/wazuh/wazuh/blob/v4.3.0/src/headers/defs.h#L31
+
     /* Socket options */
     constexpr int SOCK_TYPE {SOCK_STREAM};
-    constexpr int MAX_BUF_SIZE {6144};
 
     /* Config the socket address */
     struct sockaddr_un sAddr
@@ -61,7 +66,8 @@ int socketConnect(const char* path)
     }
 
     /* Connect to the UNIX domain */
-    if (connect(socketFD, (struct sockaddr*)&sAddr, SUN_LEN(&sAddr)) < 0)
+    if (connect(socketFD, reinterpret_cast<struct sockaddr*>(&sAddr), SUN_LEN(&sAddr))
+        < 0)
     {
         WAZUH_LOG_ERROR("Cannot connect: {} ({})", strerror(errno), errno);
         close(socketFD);
@@ -79,9 +85,9 @@ int socketConnect(const char* path)
         }
 
         /* Set maximum message size only recve sock */
-        if (len < MAX_BUF_SIZE)
+        if (len < SOCKET_BUFFER_MAX_SIZE)
         {
-            len = MAX_BUF_SIZE;
+            len = SOCKET_BUFFER_MAX_SIZE;
             if (setsockopt(socketFD, SOL_SOCKET, SO_RCVBUF, (const void*)&len, optlen)
                 == -1)
             {
@@ -116,25 +122,37 @@ int sendMsg(int sock, const char* msg)
 
 int sendMsg(int sock, const char* msg, uint32_t size)
 {
-    int retval {SOCKET_ERROR};
     char* buffer {nullptr};
-    size_t bufferSize {sizeof(uint32_t) + size}; // Header + Message
+    size_t bufferSize {HEADER_SIZE + size}; // Header + Message
 
-    // TODO: Why a SOCKET_ERROR is returned if the msg is NULL or messageless? Maybe a 0
-    // should be returned in such cases.
-    if (sock <= 0 || msg == nullptr || size == 0)
+    // Validate
+    if (sock <= 0)
     {
-        return (SOCKET_ERROR);
+        return INVALID_SOCKET;
+    }
+    else if (msg == nullptr)
+    {
+        return NULL_PTR;
+    }
+    else if (size == 0)
+    {
+        return SIZE_ZERO;
+    }
+    else if (size > MSG_MAX_SIZE)
+    {
+        return SIZE_TOO_LONG;
     }
 
-    buffer = (char*)malloc(bufferSize);
-    // Adds header
+    buffer = static_cast<char*>(malloc(bufferSize));
+    // Appends header
     *(uint32_t*)buffer = size;
     // Appends message
-    memcpy(buffer + sizeof(uint32_t), msg, size);
-    errno = 0; // TODO: Is this necessary?
-    retval = send(sock, buffer, bufferSize, 0) == (ssize_t)bufferSize ? bufferSize
-                                                                      : SOCKET_ERROR;
+    memcpy(buffer + HEADER_SIZE, msg, size);
+    // Send the message
+    errno = 0;
+    int retval = send(sock, buffer, bufferSize, 0) == static_cast<ssize_t>(bufferSize)
+                     ? bufferSize
+                     : SOCKET_ERROR;
     free(buffer);
 
     return retval;
@@ -145,10 +163,19 @@ int recvMsg(int sock, char* outBuffer, uint32_t bufferSize)
     uint32_t msgsize; // Message size (Header readed)
     ssize_t recvb;    // Number of bytes received
 
-    if (sock < 0 || outBuffer == nullptr || bufferSize == 0)
+    if (sock <= 0)
     {
-        return (SOCKET_ERROR);
+        return (INVALID_SOCKET);
     }
+    else if (outBuffer == nullptr)
+    {
+        return (NULL_PTR);
+    }
+    else if (bufferSize <= 1)
+    {
+        return (SIZE_ZERO);
+    }
+
     /* Get header */
     recvb = recvWaitAll(sock, &msgsize, sizeof(msgsize));
 
@@ -157,21 +184,21 @@ int recvMsg(int sock, char* outBuffer, uint32_t bufferSize)
     {
         case -1: return SOCKET_ERROR; break;
 
-        case 0: return recvb; break;
+        case 0: return 0; break;
     }
 
     /* Reserve last byte for null-termination */
     if (msgsize >= bufferSize)
     {
         /* Error: the payload length is too long */
-        return SOCKET_ERROR;
+        return SIZE_TOO_LONG;
     }
 
     /* Get payload */
     recvb = recvWaitAll(sock, outBuffer, msgsize);
 
     /* Terminate string */
-    if (recvb == (int32_t)msgsize && msgsize < bufferSize)
+    if (recvb == static_cast<int32_t>(msgsize) && msgsize < bufferSize)
     {
         outBuffer[msgsize] = '\0';
     }
