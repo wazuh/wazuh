@@ -1,5 +1,5 @@
 add_executable(wdb_test
-    protocol_test.cpp
+    unixSocketInterface_test.cpp
 )
 
 target_include_directories(wdb_test
