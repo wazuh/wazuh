@@ -2850,13 +2850,15 @@ def check_database_integrity():
             db_manager.set_database_version(_db_file, CURRENT_ORM_VERSION)
             db_manager.close_sessions()
             logger.info(f"{_db_file} database created successfully")
-    except ValueError:
+    except ValueError as e:
         logger.error("Error retrieving the current Wazuh revision. Aborting database integrity check")
         db_manager.close_sessions()
+        raise e
     except Exception as e:
         logger.error("Error during the database migration. Restoring the previous database file")
         logger.error(f"Error details: {str(e)}")
         db_manager.close_sessions()
+        raise e
     else:
         logger.info("RBAC database integrity check finished successfully")
     finally:

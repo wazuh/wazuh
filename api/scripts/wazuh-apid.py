@@ -45,8 +45,10 @@ def start():
     If another Wazuh API is running, this function fails.
     This function exits with 0 if successful or 1 if failed because the API was already running.
     """
-
-    check_database_integrity()
+    try:
+        check_database_integrity()
+    except Exception as db_integrity_exc:
+        raise APIError(2011, details=str(db_integrity_exc))
 
     # Spawn child processes with their own needed imports
     if 'thread_pool' not in common.mp_pools.get():
