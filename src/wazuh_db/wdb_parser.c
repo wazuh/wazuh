@@ -326,7 +326,11 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", query);
                 result = -1;
             } else {
+                gettimeofday(&begin, 0);
                 result = wdb_parse_syscheck(wdb, WDB_FIM_FILE, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end,&begin,&diff);
+                w_inc_agent_fim_file_time(diff);
             }
         } else if (strcmp(query, "fim_registry") == 0) {
             w_inc_agent_fim_registry();
@@ -337,7 +341,11 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", query);
                 result = -1;
             } else {
+                gettimeofday(&begin, 0);
                 result = wdb_parse_syscheck(wdb, WDB_FIM_REGISTRY, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end,&begin,&diff);
+                w_inc_agent_fim_registry_time(diff);
             }
         } else if (strcmp(query, "sca") == 0) {
             w_inc_agent_sca();
@@ -348,12 +356,16 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
+                gettimeofday(&begin, 0);
                 result = wdb_parse_sca(wdb, next, output);
                 if (result < 0){
                     merror("Unable to update 'sca_check' table for agent '%s'", sagent_id);
                 } else {
                     result = 0;
                 }
+                gettimeofday(&end, 0);
+                timersub(&end,&begin,&diff);
+                w_inc_agent_sca_time(diff);
             }
         } else if (strcmp(query, "netinfo") == 0) {
             w_inc_agent_syscollector_deprecated_network_info();
@@ -363,11 +375,15 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
+                gettimeofday(&begin, 0);
                 if (wdb_parse_netinfo(wdb, next, output) == 0){
                     mdebug2("Updated 'sys_netiface' table for agent '%s'", sagent_id);
                 } else {
                     merror("Unable to update 'sys_netiface' table for agent '%s'", sagent_id);
                 }
+                gettimeofday(&end, 0);
+                timersub(&end,&begin,&diff);
+                w_inc_agent_syscollector_deprecated_network_info_time(diff);
             }
         } else if (strcmp(query, "netproto") == 0) {
             w_inc_agent_syscollector_deprecated_network_protocol();
@@ -377,11 +393,15 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
+                gettimeofday(&begin, 0);
                 if (wdb_parse_netproto(wdb, next, output) == 0){
                     mdebug2("Updated 'sys_netproto' table for agent '%s'", sagent_id);
                 } else {
                     merror("Unable to update 'sys_netproto' table for agent '%s'", sagent_id);
                 }
+                gettimeofday(&end, 0);
+                timersub(&end,&begin,&diff);
+                w_inc_agent_syscollector_deprecated_network_protocol_time(diff);
             }
         } else if (strcmp(query, "netaddr") == 0) {
             w_inc_agent_syscollector_deprecated_network_address();
@@ -391,11 +411,15 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
+                gettimeofday(&begin, 0);
                 if (wdb_parse_netaddr(wdb, next, output) == 0){
                     mdebug2("Updated 'sys_netaddr' table for agent '%s'", sagent_id);
                 } else {
                     merror("Unable to update 'sys_netaddr' table for agent '%s'", sagent_id);
                 }
+                gettimeofday(&end, 0);
+                timersub(&end,&begin,&diff);
+                w_inc_agent_syscollector_deprecated_network_address_time(diff);
             }
         } else if (strcmp(query, "osinfo") == 0) {
             w_inc_agent_syscollector_deprecated_osinfo();
@@ -405,7 +429,11 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
+                gettimeofday(&begin, 0);
                 result = wdb_parse_osinfo(wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end,&begin,&diff);
+                w_inc_agent_syscollector_deprecated_osinfo_time(diff);
             }
         } else if (strcmp(query, "hardware") == 0) {
             w_inc_agent_syscollector_deprecated_hardware();
@@ -415,11 +443,15 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
+                gettimeofday(&begin, 0);
                 if (wdb_parse_hardware(wdb, next, output) == 0){
                     mdebug2("Updated 'sys_hwinfo' table for agent '%s'", sagent_id);
                 } else {
                     merror("Unable to update 'sys_hwinfo' table for agent '%s'", sagent_id);
                 }
+                gettimeofday(&end, 0);
+                timersub(&end,&begin,&diff);
+                w_inc_agent_syscollector_deprecated_hardware_time(diff);
             }
         } else if (strcmp(query, "port") == 0) {
             w_inc_agent_syscollector_deprecated_ports();
@@ -429,11 +461,15 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
+                gettimeofday(&begin, 0);
                 if (wdb_parse_ports(wdb, next, output) == 0){
                     mdebug2("Updated 'sys_ports' table for agent '%s'", sagent_id);
                 } else {
                     merror("Unable to update 'sys_ports' table for agent '%s'", sagent_id);
                 }
+                gettimeofday(&end, 0);
+                timersub(&end,&begin,&diff);
+                w_inc_agent_syscollector_deprecated_ports_time(diff);
             }
         } else if (strcmp(query, "package") == 0) {
             w_inc_agent_syscollector_deprecated_packages();
@@ -443,11 +479,15 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
+                gettimeofday(&begin, 0);
                 if (wdb_parse_packages(wdb, next, output) == 0){
                     mdebug2("Updated 'sys_programs' table for agent '%s'", sagent_id);
                 } else {
                     merror("Unable to update 'sys_programs' table for agent '%s'", sagent_id);
                 }
+                gettimeofday(&end, 0);
+                timersub(&end,&begin,&diff);
+                w_inc_agent_syscollector_deprecated_packages_time(diff);
             }
         } else if (strcmp(query, "hotfix") == 0) {
             w_inc_agent_syscollector_deprecated_hotfixes();
@@ -457,11 +497,15 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
+                gettimeofday(&begin, 0);
                 if (wdb_parse_hotfixes(wdb, next, output) == 0){
                     mdebug2("Updated 'sys_hotfixes' table for agent '%s'", sagent_id);
                 } else {
                     merror("Unable to update 'sys_hotfixes' table for agent '%s'", sagent_id);
                 }
+                gettimeofday(&end, 0);
+                timersub(&end,&begin,&diff);
+                w_inc_agent_syscollector_deprecated_hotfixes_time(diff);
             }
         } else if (strcmp(query, "process") == 0) {
             w_inc_agent_syscollector_deprecated_process();
@@ -471,11 +515,15 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
+                gettimeofday(&begin, 0);
                 if (wdb_parse_processes(wdb, next, output) == 0){
                     mdebug2("Updated 'sys_processes' table for agent '%s'", sagent_id);
                 } else {
                     merror("Unable to update 'sys_processes' table for agent '%s'", sagent_id);
                 }
+                gettimeofday(&end, 0);
+                timersub(&end,&begin,&diff);
+                w_inc_agent_syscollector_deprecated_process_time(diff);
             }
         } else if (strcmp(query, "dbsync") == 0) {
             w_inc_agent_dbsync();
@@ -486,9 +534,13 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
+                gettimeofday(&begin, 0);
                 if (wdb_parse_dbsync(wdb, next, output) != OS_SUCCESS){
                     mdebug1("Unable to updated based on table deltas for agent '%s'", sagent_id);
                 }
+                gettimeofday(&end, 0);
+                timersub(&end,&begin,&diff);
+                w_inc_agent_dbsync_time(diff);
             }
         } else if (strcmp(query, "ciscat") == 0) {
             w_inc_agent_ciscat();
@@ -499,11 +551,15 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
+                gettimeofday(&begin, 0);
                 if (wdb_parse_ciscat(wdb, next, output) == 0){
                     mdebug2("Updated 'ciscat_results' table for agent '%s'", sagent_id);
                 } else {
                     merror("Unable to update 'ciscat_results' table for agent '%s'", sagent_id);
                 }
+                gettimeofday(&end, 0);
+                timersub(&end,&begin,&diff);
+                w_inc_agent_ciscat_time(diff);
             }
         } else if (strcmp(query, "rootcheck") == 0) {
             w_inc_agent_rootcheck();
@@ -514,7 +570,11 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid Rootcheck query syntax, near '%.32s'", query);
                 result = -1;
             } else {
+                gettimeofday(&begin, 0);
                 result = wdb_parse_rootcheck(wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end,&begin,&diff);
+                w_inc_agent_rootcheck_time(diff);
             }
         } else if (strcmp(query, "vuln_cves") == 0) {
             w_inc_agent_vul_detector();
@@ -525,7 +585,11 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid vuln_cves query syntax, near '%.32s'", query);
                 result = -1;
             } else {
+                gettimeofday(&begin, 0);
                 result = wdb_parse_vuln_cves(wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end,&begin,&diff);
+                w_inc_agent_vul_detector_time(diff);
             }
         } else if (strcmp(query, "sql") == 0) {
             w_inc_agent_sql();
@@ -538,6 +602,7 @@ int wdb_parse(char * input, char * output, int peer) {
             } else {
                 sql = next;
 
+                gettimeofday(&begin, 0);
                 if (data = wdb_exec(wdb->db, sql), data) {
                     out = cJSON_PrintUnformatted(data);
                     snprintf(output, OS_MAXSTR + 1, "ok %s", out);
@@ -549,6 +614,9 @@ int wdb_parse(char * input, char * output, int peer) {
                     snprintf(output, OS_MAXSTR + 1, "err Cannot execute SQL query");
                     result = -1;
                 }
+                gettimeofday(&end, 0);
+                timersub(&end,&begin,&diff);
+                w_inc_agent_sql_time(diff);
             }
         } else if (strcmp(query, "remove") == 0) {
             w_inc_agent_remove();
@@ -559,6 +627,7 @@ int wdb_parse(char * input, char * output, int peer) {
 
             w_mutex_lock(&pool_mutex);
 
+            gettimeofday(&begin, 0);
             if (wdb_close(wdb, FALSE) < 0) {
                 mdebug1("DB(%s) Cannot close database.", sagent_id);
                 snprintf(output, OS_MAXSTR + 1, "err Cannot close database");
@@ -569,12 +638,16 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Cannot remove database");
                 result = -1;
             }
+            gettimeofday(&end, 0);
+            timersub(&end,&begin,&diff);
+            w_inc_agent_remove_time(diff);
 
             w_mutex_unlock(&pool_mutex);
             return result;
         } else if (strcmp(query, "begin") == 0) {
             w_inc_agent_begin();
 
+            gettimeofday(&begin, 0);
             if (wdb_begin2(wdb) < 0) {
                 mdebug1("DB(%s) Cannot begin transaction.", sagent_id);
                 snprintf(output, OS_MAXSTR + 1, "err Cannot begin transaction");
@@ -582,9 +655,13 @@ int wdb_parse(char * input, char * output, int peer) {
             } else {
                 snprintf(output, OS_MAXSTR + 1, "ok");
             }
+            gettimeofday(&end, 0);
+            timersub(&end,&begin,&diff);
+            w_inc_agent_begin_time(diff);
         } else if (strcmp(query, "commit") == 0) {
             w_inc_agent_commit();
 
+            gettimeofday(&begin, 0);
             if (wdb_commit2(wdb) < 0) {
                 mdebug1("DB(%s) Cannot end transaction.", sagent_id);
                 snprintf(output, OS_MAXSTR + 1, "err Cannot end transaction");
@@ -592,12 +669,16 @@ int wdb_parse(char * input, char * output, int peer) {
             } else {
                 snprintf(output, OS_MAXSTR + 1, "ok");
             }
+            gettimeofday(&end, 0);
+            timersub(&end,&begin,&diff);
+            w_inc_agent_commit_time(diff);
         } else if (strcmp(query, "close") == 0) {
             w_inc_agent_close();
 
             wdb_leave(wdb);
             w_mutex_lock(&pool_mutex);
 
+            gettimeofday(&begin, 0);
             if (wdb_close(wdb, TRUE) < 0) {
                 mdebug1("DB(%s) Cannot close database.", sagent_id);
                 snprintf(output, OS_MAXSTR + 1, "err Cannot close database");
@@ -606,6 +687,9 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "ok");
                 result = 0;
             }
+            gettimeofday(&end, 0);
+            timersub(&end,&begin,&diff);
+            w_inc_agent_close_time(diff);
 
             w_mutex_unlock(&pool_mutex);
             return result;
@@ -698,7 +782,7 @@ int wdb_parse(char * input, char * output, int peer) {
                 result = -1;
             } else {
                 sql = next;
-
+                gettimeofday(&begin, 0);
                 if (data = wdb_exec(wdb->db, sql), data) {
                     out = cJSON_PrintUnformatted(data);
                     snprintf(output, OS_MAXSTR + 1, "ok %s", out);
@@ -710,6 +794,9 @@ int wdb_parse(char * input, char * output, int peer) {
                     snprintf(output, OS_MAXSTR + 1, "err Cannot execute Mitre database query; %s", sqlite3_errmsg(wdb->db));
                     result = -1;
                 }
+                gettimeofday(&end, 0);
+                timersub(&end,&begin,&diff);
+                w_inc_mitre_sql_time(diff);
             }
         } else {
             w_inc_mitre_unknown();
@@ -773,7 +860,11 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
+                gettimeofday(&begin, 0);
                 result = wdb_parse_global_insert_agent(wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin ,&diff);
+                w_inc_global_agent_insert_agent_time(diff);
             }
         } else if (strcmp(query, "update-agent-name") == 0) {
             w_inc_global_agent_update_agent_name();
@@ -783,7 +874,11 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
+                gettimeofday(&begin, 0);
                 result = wdb_parse_global_update_agent_name(wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                w_inc_global_agent_update_agent_name_time(diff);
             }
         } else if (strcmp(query, "update-agent-data") == 0) {
             w_inc_global_agent_update_agent_data();
@@ -793,7 +888,11 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
+                gettimeofday(&begin, 0);
                 result = wdb_parse_global_update_agent_data(wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                w_inc_global_agent_update_agent_data_time(diff);
             }
         } else if (strcmp(query, "get-labels") == 0) {
             w_inc_global_labels_get_labels();
@@ -813,7 +912,11 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
+                gettimeofday(&begin, 0);
                 result = wdb_parse_global_update_agent_keepalive(wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                w_inc_global_agent_update_keepalive_time(diff);
             }
         } else if (strcmp(query, "update-connection-status") == 0) {
             w_inc_global_agent_update_connection_status();
@@ -823,7 +926,11 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
+                gettimeofday(&begin, 0);
                 result = wdb_parse_global_update_connection_status(wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                w_inc_global_agent_update_connection_status_time(diff);
             }
         } else if (strcmp(query, "delete-agent") == 0) {
             w_inc_global_agent_delete_agent();
@@ -833,7 +940,11 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
+                gettimeofday(&begin, 0);
                 result = wdb_parse_global_delete_agent(wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                w_inc_global_agent_delete_agent_time(diff);
             }
         } else if (strcmp(query, "select-agent-name") == 0) {
             w_inc_global_agent_select_agent_name();
@@ -843,7 +954,11 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
+                gettimeofday(&begin, 0);
                 result = wdb_parse_global_select_agent_name(wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                w_inc_global_agent_select_agent_name_time(diff);
             }
         } else if (strcmp(query, "select-agent-group") == 0) {
             w_inc_global_agent_select_agent_group();
@@ -853,7 +968,11 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
+                gettimeofday(&begin, 0);
                 result = wdb_parse_global_select_agent_group(wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                w_inc_global_agent_select_agent_group_time(diff);
             }
         } else if (strcmp(query, "find-agent") == 0) {
             w_inc_global_agent_find_agent();
@@ -863,7 +982,11 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
+                gettimeofday(&begin, 0);
                 result = wdb_parse_global_find_agent(wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                w_inc_global_agent_find_agent_time(diff);
             }
         } else if (strcmp(query, "find-group") == 0) {
             w_inc_global_group_find_group();
@@ -873,7 +996,11 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
+                gettimeofday(&begin, 0);
                 result = wdb_parse_global_find_group(wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                w_inc_global_group_find_group_time(diff);
             }
         } else if (strcmp(query, "insert-agent-group") == 0) {
             w_inc_global_group_insert_agent_group();
@@ -883,7 +1010,11 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
+                gettimeofday(&begin, 0);
                 result = wdb_parse_global_insert_agent_group(wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                w_inc_global_group_insert_agent_group_time(diff);
             }
         } else if (strcmp(query, "select-group-belong") == 0) {
             if (!next) {
@@ -911,11 +1042,19 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
+                gettimeofday(&begin, 0);
                 result = wdb_parse_global_delete_group(wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                w_inc_global_group_delete_group_time(diff);
             }
         } else if (strcmp(query, "select-groups") == 0) {
             w_inc_global_group_select_groups();
+            gettimeofday(&begin, 0);
             result = wdb_parse_global_select_groups(wdb, output);
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_global_group_select_groups_time(diff);
         } else if (strcmp(query, "sync-agent-groups-get") == 0) {
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax for sync-agent-groups-get.");
@@ -936,7 +1075,11 @@ int wdb_parse(char * input, char * output, int peer) {
             }
         } else if (strcmp(query, "sync-agent-info-get") == 0) {
             w_inc_global_agent_sync_agent_info_get();
+            gettimeofday(&begin, 0);
             result = wdb_parse_global_sync_agent_info_get(wdb, next, output);
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_global_agent_sync_agent_info_get_time(diff);
         } else if (strcmp(query, "sync-agent-info-set") == 0) {
             w_inc_global_agent_sync_agent_info_set();
             if (!next) {
@@ -945,7 +1088,11 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
+                gettimeofday(&begin, 0);
                 result = wdb_parse_global_sync_agent_info_set(wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                w_inc_global_agent_sync_agent_info_set_time(diff);
             }
         } else if (strcmp(query, "get-groups-integrity") == 0) {
             if (!next) {
@@ -964,7 +1111,11 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
+                gettimeofday(&begin, 0);
                 result = wdb_parse_global_disconnect_agents(wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                w_inc_global_agent_disconnect_agents_time(diff);
             }
         }
         else if (strcmp(query, "get-all-agents") == 0) {
@@ -975,7 +1126,11 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
+                gettimeofday(&begin, 0);
                 result = wdb_parse_global_get_all_agents(wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                w_inc_global_agent_get_all_agents_time(diff);
             }
         }
         else if (strcmp(query, "get-agent-info") == 0) {
@@ -986,7 +1141,11 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
+                gettimeofday(&begin, 0);
                 result = wdb_parse_global_get_agent_info(wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                w_inc_global_agent_get_agent_info_time(diff);
             }
         }
         else if (strcmp(query, "reset-agents-connection") == 0) {
@@ -997,7 +1156,11 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
+                gettimeofday(&begin, 0);
                 result = wdb_parse_reset_agents_connection(wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                w_inc_global_agent_reset_agents_connection_time(diff);
             }
         }
         else if (strcmp(query, "get-agents-by-connection-status") == 0) {
@@ -1008,7 +1171,11 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
+                gettimeofday(&begin, 0);
                 result = wdb_parse_global_get_agents_by_connection_status(wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                w_inc_global_agent_get_agents_by_connection_status_time(diff);
             }
         }
         else if (strcmp(query, "backup") == 0) {
@@ -1467,6 +1634,9 @@ int wdb_parse_syscheck(wdb_t * wdb, wdb_component_t component, char * input, cha
 int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char * output) {
     char * curr;
     char * next;
+    struct timeval begin;
+    struct timeval end;
+    struct timeval diff;
     wdb_component_t component;
 
     if (strcmp(query, "syscollector_processes") == 0)
@@ -1525,7 +1695,7 @@ int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char *
     }
     else
     {
-        //ACA SE SUMARIAN LAS UNKNOWN DE AGENTS?
+        //ACA SE SUMARIAN LAS UNKNOWN DE AGENTS???????????????????????????????????????????
         mdebug2("DB(%s) Invalid Syscollector query : %s", wdb->id, query);
         snprintf(output, OS_MAXSTR + 1, "err Invalid Syscollector query syntax, near '%.32s'", query);
         return -1;
@@ -1539,6 +1709,8 @@ int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char *
 
     curr = input;
     *next++ = '\0';
+
+    gettimeofday(&begin, 0);
     if (strcmp(curr, "save2") == 0) {
         if (wdb_syscollector_save2(wdb, component, next) == -1) {
             mdebug1("DB(%s) Cannot save Syscollector.", wdb->id);
@@ -1547,6 +1719,9 @@ int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char *
         }
 
         snprintf(output, OS_MAXSTR + 1, "ok");
+        gettimeofday(&end, 0);
+        timersub(&end, &begin, &diff);
+        w_inc_agent_syscollector_times(diff, component);
         return 0;
     }
     if (strncmp(curr, "integrity_check_", 16) == 0) {
@@ -1579,6 +1754,10 @@ int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char *
             snprintf(output, OS_MAXSTR + 1, "ok ");
         }
 
+        gettimeofday(&end, 0);
+        timersub(&end, &begin, &diff);
+        w_inc_agent_syscollector_times(diff, component);
+
         return 0;
     } else if (strncmp(curr, "integrity_clear", 15) == 0) {
         switch (wdbi_query_clear(wdb, component, next)) {
@@ -1591,11 +1770,20 @@ int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char *
             snprintf(output, OS_MAXSTR + 1, "ok ");
         }
 
+        gettimeofday(&end, 0);
+        timersub(&end, &begin, &diff);
+        w_inc_agent_syscollector_times(diff, component);
+
         return 0;
     } else {
         mdebug1("DB(%s) Invalid Syscollector query syntax.", wdb->id);
         mdebug2("DB query error near: %s", curr);
         snprintf(output, OS_MAXSTR + 1, "err Invalid Syscollector query syntax, near '%.32s'", curr);
+
+        gettimeofday(&end, 0);
+        timersub(&end, &begin, &diff);
+        w_inc_agent_syscollector_times(diff, component);
+
         return -1;
     }
 }

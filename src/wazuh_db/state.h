@@ -12,141 +12,128 @@
 
 typedef struct _agent_syscheck_t {
     uint64_t syscheck_queries;
-    struct timeval syscheck_time;
     uint64_t fim_file_queries;
-    uint64_t fim_file_time;
     uint64_t fim_registry_queries;
-    uint64_t fim_registry_time;
+    struct timeval syscheck_time;
+    struct timeval fim_file_time;
+    struct timeval fim_registry_time;
 } agent_syscheck_t;
 
 typedef struct _agent_syscollector_t {
     uint64_t syscollector_processes_queries;
-    uint64_t syscollector_processes_time;
     uint64_t syscollector_packages_queries;
-    uint64_t syscollector_packages_time;
     uint64_t syscollector_hotfixes_queries;
-    uint64_t syscollector_hotfixes_time;
     uint64_t syscollector_ports_queries;
-    uint64_t syscollector_ports_time;
     uint64_t syscollector_network_protocol_queries;
-    uint64_t syscollector_network_protocol_time;
     uint64_t syscollector_network_address_queries;
-    uint64_t syscollector_network_address_time;
     uint64_t syscollector_network_iface_queries;
-    uint64_t syscollector_network_iface_time;
     uint64_t syscollector_hwinfo_queries;
-    uint64_t syscollector_hwinfo_time;
     uint64_t syscollector_osinfo_queries;
-    uint64_t syscollector_osinfo_time; ///nuevas 
-    uint64_t process_queries; //deprecated
-    uint64_t process_time;
+    uint64_t process_queries;
     uint64_t package_queries;
-    uint64_t package_time;
     uint64_t hotfix_queries;
-    uint64_t hotfix_time;
     uint64_t port_queries;
-    uint64_t port_time;
     uint64_t netproto_queries;
-    uint64_t netproto_time;
     uint64_t netaddr_queries;
-    uint64_t netaddr_time;
     uint64_t netinfo_queries;
-    uint64_t netinfo_time;
     uint64_t hardware_queries;
-    uint64_t hardware_time;
     uint64_t osinfo_queries;
-    uint64_t osinfo_time;
+    struct timeval syscollector_processes_time;
+    struct timeval syscollector_packages_time;
+    struct timeval syscollector_hotfixes_time;
+    struct timeval syscollector_ports_time;
+    struct timeval syscollector_network_protocol_time;
+    struct timeval syscollector_network_address_time;
+    struct timeval syscollector_network_iface_time;
+    struct timeval syscollector_hwinfo_time;
+    struct timeval syscollector_osinfo_time;
+    struct timeval process_time;
+    struct timeval package_time;
+    struct timeval hotfix_time;
+    struct timeval port_time;
+    struct timeval netproto_time;
+    struct timeval netaddr_time;
+    struct timeval netinfo_time;
+    struct timeval hardware_time;
+    struct timeval osinfo_time;
 } agent_syscollector_t;
 
 typedef struct _agent_breakdown_t {
     uint64_t sql_queries;
-    uint64_t sql_time;
     uint64_t remove_queries;
-    uint64_t remove_time;
     uint64_t begin_queries;
-    uint64_t begin_time;
     uint64_t commit_queries;
-    uint64_t commit_time;
     uint64_t close_queries;
-    uint64_t close_time;
     uint64_t rootcheck_queries;
-    uint64_t rootcheck_time;
     uint64_t sca_queries;
-    uint64_t sca_time;
     uint64_t ciscat_queries;
-    uint64_t ciscat_time;
     uint64_t vulnerability_detector_queries;
-    uint64_t vulnerability_detector_time;
     uint64_t dbsync_queries;
-    uint64_t dbsync_time;
     uint64_t unknown_queries;
-
+    struct timeval sql_time;
+    struct timeval remove_time;
+    struct timeval begin_time;
+    struct timeval commit_time;
+    struct timeval close_time;
+    struct timeval rootcheck_time;
+    struct timeval sca_time;
+    struct timeval ciscat_time;
+    struct timeval vulnerability_detector_time;
+    struct timeval dbsync_time;
     agent_syscheck_t syscheck;
     agent_syscollector_t syscollector;
 } agent_breakdown_t;
 
 typedef struct _global_agent_t {
     uint64_t insert_agent_queries;
-    uint64_t insert_agent_time;
     uint64_t update_agent_data_queries;
-    uint64_t update_agent_data_time;
     uint64_t update_agent_name_queries;
-    uint64_t update_agent_name_time;
-    uint64_t update_agent_group_queries;
-    uint64_t update_agent_group_time;
     uint64_t update_keepalive_queries;
-    uint64_t update_keepalive_time;
     uint64_t update_connection_status_queries;
-    uint64_t update_connection_status_time;
     uint64_t reset_agents_connection_queries;
-    uint64_t reset_agents_connection_time;
     uint64_t sync_agent_info_set_queries;
-    uint64_t sync_agent_info_set_time;
     uint64_t delete_agent_queries;
-    uint64_t delete_agent_time;
     uint64_t select_agent_name_queries;
-    uint64_t select_agent_name_time;
     uint64_t select_agent_group_queries;
-    uint64_t select_agent_group_time;
-    uint64_t select_keepalive_queries;
-    uint64_t select_keepalive_time;
     uint64_t find_agent_queries;
-    uint64_t find_agent_time;
     uint64_t get_agent_info_queries;
-    uint64_t get_agent_info_time;
     uint64_t get_all_agents_queries;
-    uint64_t get_all_agents_time;
     uint64_t get_agents_by_connection_status_queries;
-    uint64_t get_agents_by_connection_status_time;
     uint64_t disconnect_agents_queries;
-    uint64_t disconnect_agents_time;
     uint64_t sync_agent_info_get_queries;
-    uint64_t sync_agent_info_get_time;
+    struct timeval insert_agent_time;
+    struct timeval update_agent_data_time;
+    struct timeval update_agent_name_time;
+    struct timeval update_keepalive_time;
+    struct timeval update_connection_status_time;
+    struct timeval reset_agents_connection_time;
+    struct timeval sync_agent_info_set_time;
+    struct timeval delete_agent_time;
+    struct timeval select_agent_name_time;
+    struct timeval select_agent_group_time;
+    struct timeval find_agent_time;
+    struct timeval get_agent_info_time;
+    struct timeval get_all_agents_time;
+    struct timeval get_agents_by_connection_status_time;
+    struct timeval disconnect_agents_time;
+    struct timeval sync_agent_info_get_time;
 } global_agent_t;
 
 typedef struct _global_group_t {
     uint64_t insert_agent_group_queries;
-    uint64_t insert_agent_group_time;
     uint64_t delete_group_queries;
-    uint64_t delete_group_time;
     uint64_t select_groups_queries;
-    uint64_t select_groups_time;
     uint64_t find_group_queries;
-    uint64_t find_group_time;
+    struct timeval insert_agent_group_time;
+    struct timeval delete_group_time;
+    struct timeval select_groups_time;
+    struct timeval find_group_time;
 } global_group_t;
 
 typedef struct _global_belongs_t {
-    uint64_t insert_agent_belong_queries;
-    uint64_t insert_agent_belong_time;
-    uint64_t delete_agent_belong_queries;
-    uint64_t delete_agent_belong_time;
-    uint64_t delete_group_belong_queries;
-    uint64_t delete_group_belong_time;
 } global_belongs_t;
 
 typedef struct _global_labels_t {
-    uint64_t set_labels_queries;
-    uint64_t set_labels_time;
     uint64_t get_labels_queries;
     uint64_t get_labels_time;
 } global_labels_t;
@@ -191,8 +178,8 @@ typedef struct _task_breakdown_t {
 
 typedef struct _mitre_breakdown_t {
     uint64_t sql_queries;
-    uint64_t sql_time;
     uint64_t unknown_queries;
+    struct timeval sql_time;
 } mitre_breakdown_t;
 
 typedef struct _wazuhdb_breakdown_t {
@@ -317,8 +304,6 @@ void w_inc_global_agent_update_agent_data();
 
 void w_inc_global_agent_update_agent_name();
 
-void w_inc_global_agent_update_agent_group();
-
 void w_inc_global_agent_update_keepalive();
 
 void w_inc_global_agent_update_connection_status();
@@ -352,10 +337,6 @@ void w_inc_global_group_delete_group();
 void w_inc_global_group_select_groups();
 
 void w_inc_global_group_find_group();
-
-void w_inc_global_belongs_insert_agent_belong();
-
-void w_inc_global_belongs_delete_group_belong();
 
 void w_inc_global_labels_get_labels();
 
@@ -391,3 +372,84 @@ void w_inc_unknown();
 
 void w_inc_agent_syscheck_time(struct timeval time);
 
+void w_inc_agent_fim_file_time(struct timeval time);
+
+void w_inc_agent_fim_registry_time(struct timeval time);
+
+void w_inc_agent_syscollector_times(struct timeval time, wdb_component_t type);
+
+void w_inc_agent_syscollector_deprecated_process_time(struct timeval time);
+
+void w_inc_agent_syscollector_deprecated_hotfixes_time(struct timeval time);
+
+void w_inc_agent_syscollector_deprecated_packages_time(struct timeval time);
+
+void w_inc_agent_syscollector_deprecated_ports_time(struct timeval time);
+
+void w_inc_agent_syscollector_deprecated_hardware_time(struct timeval time);
+
+void w_inc_agent_syscollector_deprecated_osinfo_time(struct timeval time);
+
+void w_inc_agent_syscollector_deprecated_network_address_time(struct timeval time);
+
+void w_inc_agent_syscollector_deprecated_network_info_time(struct timeval time);
+
+void w_inc_agent_sql_time(struct timeval time);
+
+void w_inc_agent_remove_time(struct timeval time);
+
+void w_inc_agent_begin_time(struct timeval time);
+
+void w_inc_agent_commit_time(struct timeval time);
+
+void w_inc_agent_close_time(struct timeval time);
+
+void w_inc_agent_rootcheck_time(struct timeval time);
+
+void w_inc_agent_ciscat_time(struct timeval time);
+
+void w_inc_agent_dbsync_time(struct timeval time);
+
+void w_inc_agent_sca_time(struct timeval time);
+
+void w_inc_agent_vul_detector_time(struct timeval time);
+
+void w_inc_global_agent_insert_agent_time(struct timeval time);
+
+void w_inc_global_agent_update_agent_data_time(struct timeval time);
+
+void w_inc_global_agent_update_agent_name_time(struct timeval time);
+
+void w_inc_global_agent_update_keepalive_time(struct timeval time);
+
+void w_inc_global_agent_update_connection_status_time(struct timeval time);
+
+void w_inc_global_agent_reset_agents_connection_time(struct timeval time);
+
+void w_inc_global_agent_sync_agent_info_set_time(struct timeval time);
+
+void w_inc_global_agent_delete_agent_time(struct timeval time);
+
+void w_inc_global_agent_select_agent_name_time(struct timeval time);
+
+void w_inc_global_agent_select_agent_group_time(struct timeval time);
+
+void w_inc_global_agent_find_agent_time(struct timeval time);
+
+void w_inc_global_agent_get_agent_info_time(struct timeval time);
+
+void w_inc_global_agent_get_all_agents_time(struct timeval time);
+
+void w_inc_global_agent_get_agents_by_connection_status_time(struct timeval time);
+
+void w_inc_global_agent_disconnect_agents_time(struct timeval time);
+
+void w_inc_global_agent_sync_agent_info_get_time(struct timeval time);
+
+void w_inc_global_group_insert_agent_group_time(struct timeval time);
+
+void w_inc_global_group_delete_group_time(struct timeval time);
+
+void w_inc_global_group_select_groups_time(struct timeval time);
+
+void w_inc_global_group_find_group_time(struct timeval time);
