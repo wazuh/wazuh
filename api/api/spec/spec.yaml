@@ -8062,12 +8062,6 @@ paths:
                   properties:
                     data:
                       properties:
-                        enabled:
-                          description: "Whether the cluster is enabled in the Wazuh configuration"
-                          type: string
-                          enum:
-                          - "yes"
-                          - "no"
                         running:
                           description: "Whether the cluster daemon is running"
                           type: string
@@ -8076,7 +8070,6 @@ paths:
                           - "no"
               example:
                 data:
-                  enabled: "yes"
                   running: "yes"
                 error: 0
         '400':
@@ -8144,9 +8137,6 @@ paths:
                         hidden:
                           description: "Whether to hide the cluster information in the alerts"
                           type: string
-                        disabled:
-                          description: "Whether the cluster is enabled or not"
-                          type: boolean
               example:
                 data:
                   affected_items:
@@ -8159,7 +8149,6 @@ paths:
                       nodes:
                         - wazuh-master
                       hidden: no
-                      disabled: false
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
@@ -8680,7 +8669,6 @@ paths:
                         nodes:
                           - "wazuh-master"
                         hidden: no
-                        disabled: no
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
