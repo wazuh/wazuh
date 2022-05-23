@@ -224,14 +224,10 @@ GenerateAuthCert()
         # Generation auto-signed certificate if not exists
         if [ ! -f "${INSTALLDIR}/etc/sslmanager.key" ] && [ ! -f "${INSTALLDIR}/etc/sslmanager.cert" ]; then
             if [ ! "X${USER_GENERATE_AUTHD_CERT}" = "Xn" ]; then
-                if type openssl >/dev/null 2>&1; then
-                    echo "Generating self-signed certificate for wazuh-authd..."
-                    openssl req -x509 -batch -nodes -days 365 -newkey rsa:2048 -subj "/C=US/ST=California/CN=Wazuh/" -keyout ${INSTALLDIR}/etc/sslmanager.key -out ${INSTALLDIR}/etc/sslmanager.cert 2>/dev/null
+                     echo "Generating self-signed certificate for wazuh-authd..."
+                    ../tools/cert-creator/build/cert-creator ${INSTALLDIR}/etc/sslmanager.key ${INSTALLDIR}/etc/sslmanager.cert 2>/dev/null
                     chmod 640 ${INSTALLDIR}/etc/sslmanager.key
                     chmod 640 ${INSTALLDIR}/etc/sslmanager.cert
-                else
-                    echo "ERROR: OpenSSL not found. Cannot generate certificate for wazuh-authd."
-                fi
             fi
         fi
     fi
