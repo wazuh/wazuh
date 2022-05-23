@@ -375,3 +375,8 @@ StartSyncConfiguration& StartSyncConfiguration::rangeChecksum(QueryParameter& pa
     return *this;
 }
 
+StartSyncConfiguration& StartSyncConfiguration::syncOnDemand(const bool syncOnDemand)
+{
+    m_jsConfiguration["sync_on_demand"] = syncOnDemand;
+    return *this;
+}
