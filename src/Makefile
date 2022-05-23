@@ -2186,7 +2186,7 @@ install_mitre: install_python
 
 ### cert-creator ###
 
-cert-creator: ${CERT_CREATOR_DIR}cert_creation_tool.cpp
+cert-creator: ${CERT_CREATOR_DIR}cert-creator.cpp
 	cd ${CERT_CREATOR_DIR} && mkdir -p build && cd build && cmake .. && ${MAKE}
 
 ####################

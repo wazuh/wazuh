@@ -1,14 +1,14 @@
 cmake_minimum_required(VERSION 3.12.4)
-project(cert_creation_tool)
+project(cert-creator)
 set(OPENSSL_DIR "../../src/external/openssl/")
 
 include_directories(${OPENSSL_DIR}include)
 
 link_directories(${OPENSSL_DIR})
 
-add_executable(cert-creator cert_creation_tool.cpp)
+add_executable(cert-creator cert-creator.cpp)
 
-target_link_libraries(cert_creation_tool ssl)
-target_link_libraries(cert_creation_tool crypto)
-target_link_libraries(cert_creation_tool pthread)
-target_link_libraries(cert_creation_tool dl)
+target_link_libraries(cert-creator ssl)
+target_link_libraries(cert-creator crypto)
+target_link_libraries(cert-creator pthread)
+target_link_libraries(cert-creator dl)
