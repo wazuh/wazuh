@@ -63,6 +63,7 @@ RSYNC=${SHARED_MODULES}rsync/
 SHARED_UTILS_TEST=${SHARED_MODULES}utils/tests/
 SYSCOLLECTOR=wazuh_modules/syscollector/
 SYSINFO=data_provider/
+CERT_CREATOR_DIR=../tools/cert-creator/
 
 USE_PRELUDE?=no
 USE_ZEROMQ?=no
@@ -672,6 +673,7 @@ BUILD_SERVER+=wazuh-dbd -
 BUILD_SERVER+=wazuh-integratord
 BUILD_SERVER+=wazuh-modulesd
 BUILD_SERVER+=wazuh-db
+BUILD_SERVER+=cert-creator
 
 BUILD_AGENT+=wazuh-agentd
 BUILD_AGENT+=agent-auth
@@ -2182,6 +2184,10 @@ install_api: install_python
 install_mitre: install_python
 	cd ../tools/mitre && ${WPYTHON_DIR}/bin/python3 mitredb.py -d ${INSTALLDIR}/var/db/mitre.db
 
+### cert-creator ###
+
+cert-creator: ${CERT_CREATOR_DIR}cert_creation_tool.cpp
+	cd ${CERT_CREATOR_DIR} && mkdir -p build && cd build && cmake .. && ${MAKE}
 
 ####################
 #### test ##########
@@ -2453,6 +2459,7 @@ clean-internals: clean-unit-tests
 	rm -rf $(SYSINFO)build
 	rm -rf libwazuhext
 	rm -f libgcc_s.so.1
+	rm -rf $(CERT_CREATOR_DIR)build
 
 clean-unit-tests:
 	rm -f ${wrappers_syscheck_o}

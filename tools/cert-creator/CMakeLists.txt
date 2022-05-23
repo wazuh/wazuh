@@ -6,7 +6,7 @@ include_directories(${OPENSSL_DIR}include)
 
 link_directories(${OPENSSL_DIR})
 
-add_executable(cert_creation_tool cert_creation_tool.cpp)
+add_executable(cert-creator cert_creation_tool.cpp)
 
 target_link_libraries(cert_creation_tool ssl)
 target_link_libraries(cert_creation_tool crypto)
