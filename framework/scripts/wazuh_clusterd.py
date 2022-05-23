@@ -159,8 +159,6 @@ def main():
         main_logger.error(e)
         sys.exit(1)
 
-    if cluster_configuration['disabled']:
-        sys.exit(0)
     try:
         wazuh.core.cluster.cluster.check_cluster_config(cluster_configuration)
     except Exception as e:
