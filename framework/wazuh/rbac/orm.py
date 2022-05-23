@@ -33,6 +33,7 @@ from wazuh.rbac.utils import clear_cache
 
 CURRENT_ORM_VERSION = 1
 _new_columns = {}
+logger = logging.getLogger("wazuh-api")
 
 # Max reserved ID value
 max_id_reserved = 99
@@ -2672,6 +2673,8 @@ class DatabaseManager:
                 # If the user's policy has the same body as an existing default policy it won't be inserted and its
                 # role-policy relationships will be linked to that default policy instead to replace it.
                 if status == SecurityError.ALREADY_EXIST:
+                    logger.warning(f"Policy {policy.id} ({policy.name}) is part of the new default policies. "
+                                   "Attempting to migrate relationships")
                     roles_policies = self.get_table(self.sessions[source], RolesPolicies).filter(
                         RolesPolicies.policy_id == policy.id).order_by(RolesPolicies.id.asc()).all()
                     new_policy_id = self.sessions[target].query(Policies).filter_by(
@@ -2683,34 +2686,40 @@ class DatabaseManager:
                                                                    position=role_policy.level,
                                                                    created_at=role_policy.created_at,
                                                                    force_admin=True)
+                        logger.info(f"All relationships were migrated to the new policy {new_policy_id}")
 
         old_user_roles = get_data(UserRoles, UserRoles.user_id, UserRoles.role_id)
         with UserRolesManager(self.sessions[target]) as user_role_manager:
             for user_role in old_user_roles:
                 user_id = user_role.user_id
                 role_id = user_role.role_id
-                try:
-                    # Look for the ID of a default resource from the old database in the new database using its name
-                    # This allows us to keep the relationship if the related default resource now has a different id
-                    if int(user_id) <= max_id_reserved:
+                # Look for the ID of a default resource from the old database in the new database using its name
+                # This allows us to keep the relationship if the related default resource now has a different id
+                if int(user_id) <= max_id_reserved:
+                    try:
                         user_name = self.get_table(self.sessions[source], User).filter(
                             User.id == user_id).first().username
                         user_id = AuthenticationManager(self.sessions[target]).get_user(username=user_name)['id']
+                    except TypeError:
+                        logger.warning(f"User {user_id} ({user_name}) no longer exists. Removing affected "
+                                       "user-role relationships")
+                        continue
 
-                    if int(role_id) <= max_id_reserved:
+                if int(role_id) <= max_id_reserved:
+                    try:
                         role_name = self.get_table(self.sessions[source], Roles).filter(
                             Roles.id == role_id).first().name
                         role_id = RolesManager(self.sessions[target]).get_role(name=role_name)['id']
+                    except TypeError:
+                        logger.warning(f"Role {role_id} ({role_name}) no longer exists. Removing affected "
+                                       "user-role relationships")
+                        continue
 
-                    user_role_manager.add_role_to_user(user_id=user_id,
-                                                       role_id=role_id,
-                                                       position=user_role.level,
-                                                       created_at=user_role.created_at,
-                                                       force_admin=True)
-                except TypeError:
-                    # An exception will be raised if one of the resources are no longer present in any of the databases
-                    # and thus the relationship won't be added to the new database.
-                    pass
+                user_role_manager.add_role_to_user(user_id=user_id,
+                                                   role_id=role_id,
+                                                   position=user_role.level,
+                                                   created_at=user_role.created_at,
+                                                   force_admin=True)
 
         # Role-Policies relationships
         old_roles_policies = get_data(RolesPolicies, RolesPolicies.role_id, RolesPolicies.policy_id)
@@ -2718,28 +2727,33 @@ class DatabaseManager:
             for role_policy in old_roles_policies:
                 role_id = role_policy.role_id
                 policy_id = role_policy.policy_id
-                try:
-                    # Look for the ID of a default resource from the old database in the new database using its name
-                    # This allows us to keep the relationship if the related default resource now has a different id
-                    if int(role_id) <= max_id_reserved:
+                # Look for the ID of a default resource from the old database in the new database using its name
+                # This allows us to keep the relationship if the related default resource now has a different id
+                if int(role_id) <= max_id_reserved:
+                    try:
                         role_name = self.get_table(self.sessions[source], Roles).filter(
                             Roles.id == role_id).first().name
                         role_id = RolesManager(self.sessions[target]).get_role(name=role_name)['id']
+                    except TypeError:
+                        logger.warning(f"Role {role_id} ({role_name}) no longer exists. Removing affected "
+                                       "role-policy relationships")
+                        continue
 
-                    if int(policy_id) <= max_id_reserved:
+                if int(policy_id) <= max_id_reserved:
+                    try:
                         policy_name = self.get_table(self.sessions[source], Policies).filter(
                             Policies.id == policy_id).first().name
                         policy_id = PoliciesManager(self.sessions[target]).get_policy(name=policy_name)['id']
+                    except TypeError:
+                        logger.warning(f"Policy {policy_id} ({policy_name}) no longer exists. Removing affected "
+                                       "role-policy relationships")
+                        continue
 
-                    role_policy_manager.add_policy_to_role(role_id=role_id,
-                                                           policy_id=policy_id,
-                                                           position=role_policy.level,
-                                                           created_at=role_policy.created_at,
-                                                           force_admin=True)
-                except TypeError:
-                    # An exception will be raised if one of the resources are no longer present in any of the databases
-                    # and thus the relationship won't be added to the new database.
-                    pass
+                role_policy_manager.add_policy_to_role(role_id=role_id,
+                                                       policy_id=policy_id,
+                                                       position=role_policy.level,
+                                                       created_at=role_policy.created_at,
+                                                       force_admin=True)
 
         # Role-Rules relationships
         old_roles_rules = get_data(RolesRules, RolesRules.role_id, RolesRules.rule_id)
@@ -2747,27 +2761,32 @@ class DatabaseManager:
             for role_rule in old_roles_rules:
                 role_id = role_rule.role_id
                 rule_id = role_rule.rule_id
-                try:
-                    # Look for the ID of a default resource from the old database in the new database using its name
-                    # This allows us to keep the relationship if the related default resource now has a different id
-                    if int(role_id) <= max_id_reserved:
+                # Look for the ID of a default resource from the old database in the new database using its name
+                # This allows us to keep the relationship if the related default resource now has a different id
+                if int(role_id) <= max_id_reserved:
+                    try:
                         role_name = self.get_table(self.sessions[source], Roles).filter(
                             Roles.id == role_id).first().name
                         role_id = RolesManager(self.sessions[target]).get_role(name=role_name)['id']
+                    except TypeError:
+                        logger.warning(f"Role {role_id} ({role_name}) no longer exists. Removing affected "
+                                       "role-rule relationships")
+                        continue
 
-                    if int(rule_id) <= max_id_reserved:
+                if int(rule_id) <= max_id_reserved:
+                    try:
                         rule_name = self.get_table(self.sessions[source], Rules).filter(
                             Rules.id == rule_id).first().name
                         rule_id = RulesManager(self.sessions[target]).get_rule_by_name(rule_name=rule_name)['id']
+                    except TypeError:
+                        logger.warning(f"Rule {rule_id} ({rule_name}) no longer exists. Removing affected "
+                                       "role-rule relationships")
+                        continue
 
-                    role_rule_manager.add_rule_to_role(role_id=role_id,
-                                                       rule_id=rule_id,
-                                                       created_at=role_rule.created_at,
-                                                       force_admin=True)
-                except TypeError:
-                    # An exception will be raised if one of the resources are no longer present in any of the databases
-                    # and thus the relationship won't be added to the new database.
-                    pass
+                role_rule_manager.add_rule_to_role(role_id=role_id,
+                                                   rule_id=rule_id,
+                                                   created_at=role_rule.created_at,
+                                                   force_admin=True)
 
     def rollback(self, database):
         """Abort any pending change for the current session."""
@@ -2782,8 +2801,6 @@ def check_database_integrity():
     def _set_permissions_and_ownership(database: str):
         chown(database, wazuh_uid(), wazuh_gid())
         os.chmod(database, 0o640)
-
-    logger = logging.getLogger("wazuh-api")
 
     try:
         logger.info("Checking RBAC database integrity...")
