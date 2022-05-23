@@ -19,7 +19,8 @@ namespace socketinterface
 // https://github.com/wazuh/wazuh/blob/v4.3.0/src/wazuh_db/main.c#L246-L249
 constexpr int SOCKET_BUFFER_MAX_SIZE {65536}; ///< Maximum socket message size (2^16)
 constexpr int HEADER_SIZE {sizeof(uint32_t)};
-constexpr int MSG_MAX_SIZE {SOCKET_BUFFER_MAX_SIZE - HEADER_SIZE}; ///< Maximum message size (socket msg - '\0')
+constexpr int MSG_MAX_SIZE {SOCKET_BUFFER_MAX_SIZE
+                            - HEADER_SIZE}; ///< Maximum message size (socket msg - '\0')
 
 // Return codes
 constexpr int INVALID_SOCKET {-5}; ///< Invalid socket
@@ -32,7 +33,8 @@ constexpr int SOCKET_ERROR {-1};   ///< Socket error code
  * @brief Connect to a UNIX stream socket located at `path`
  *
  * @param path UNIX domain socket pathname
- * @return socket file descriptor in case of success, \ref SOCKET_ERROR otherwise.
+ * @return socket file descriptor in case of success. Otherwise, thow an runtime_error
+ * exception
  */
 int socketConnect(const char* path);
 
