@@ -11,7 +11,6 @@ import xmltodict
 import wazuh.core.configuration as configuration
 from wazuh.core import common
 from wazuh.core.cluster.cluster import get_node
-from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.rule import check_status, load_rules_from_file, format_rule_decoder_file, REQUIRED_FIELDS, \
@@ -20,8 +19,7 @@ from wazuh.core.utils import process_array, safe_move, validate_wazuh_xml, uploa
     to_relative_path
 from wazuh.rbac.decorators import expose_resources
 
-cluster_enabled = not read_cluster_config(from_import=True)['disabled']
-node_id = get_node().get('node') if cluster_enabled else 'manager'
+node_id = get_node().get('node')
 
 
 def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, gdpr=None, hipaa=None, nist_800_53=None,

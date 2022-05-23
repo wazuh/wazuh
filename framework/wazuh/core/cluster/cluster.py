@@ -102,17 +102,6 @@ def get_node():
     return data
 
 
-def check_cluster_status():
-    """Get whether cluster is enabled in current active configuration.
-
-    Returns
-    -------
-    bool
-        Whether cluster is enabled.
-    """
-    return not read_config()['disabled']
-
-
 #
 # Files
 #
