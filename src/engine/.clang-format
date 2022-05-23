@@ -1,8 +1,9 @@
-﻿---
+﻿...
+AccessModifierOffset: '-4'
 AlignAfterOpenBracket: Align
-AlignConsecutiveMacros: 'true'
 AlignConsecutiveAssignments: 'false'
 AlignConsecutiveDeclarations: 'false'
+AlignConsecutiveMacros: 'true'
 AlignEscapedNewlines: Right
 AlignOperands: 'true'
 AlignTrailingComments: 'true'
@@ -19,28 +20,29 @@ AlwaysBreakBeforeMultilineStrings: 'false'
 AlwaysBreakTemplateDeclarations: 'Yes'
 BinPackArguments: 'false'
 BinPackParameters: 'false'
+BreakBeforeBinaryOperators: NonAssignment
 BreakBeforeBraces: Allman
 BreakConstructorInitializers: BeforeComma
 BreakInheritanceList: BeforeComma
+ColumnLimit: 90
+Cpp11BracedListStyle: 'true'
 FixNamespaceComments: 'true'
 IncludeBlocks: Preserve
 IndentCaseLabels: 'true'
+IndentWidth: '4'
+PointerAlignment: Left
 SortIncludes: 'true'
-SpaceAfterCStyleCast: 'false'
+SpaceAfterCStyleCast: 'true'
 SpaceAfterLogicalNot: 'false'
 SpaceAfterTemplateKeyword: 'false'
 SpaceBeforeAssignmentOperators: 'true'
-Cpp11BracedListStyle: 'true'
-SpaceBeforeParens: ControlStatements
 SpaceBeforeCpp11BracedList: 'true'
 SpaceBeforeCtorInitializerColon: 'true'
 SpaceBeforeInheritanceColon: 'true'
+SpaceBeforeParens: ControlStatements
 SpaceInEmptyParentheses: 'false'
-Standard: Auto
 SpacesInAngles: 'false'
-IndentWidth: '4'
+Standard: Auto
 TabWidth: '4'
-AccessModifierOffset: '-4'
 UseTab: Never
-PointerAlignment: Left
-...
+---
