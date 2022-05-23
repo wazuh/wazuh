@@ -61,17 +61,20 @@ int socketConnect(const char* path)
     const int socketFD {socket(PF_UNIX, SOCK_TYPE, 0)};
     if (socketFD < 0)
     {
-        WAZUH_LOG_ERROR("Cannot create the socket: {} ({})", strerror(errno), errno);
-        return (SOCKET_ERROR);
+        const std::string msg = std::string {"Cannot create the socket: "}
+                                + strerror(errno) + " (" + std::to_string(errno) + ")";
+
+        throw std::runtime_error(msg);
     }
 
     /* Connect to the UNIX domain */
     if (connect(socketFD, reinterpret_cast<struct sockaddr*>(&sAddr), SUN_LEN(&sAddr))
         < 0)
     {
-        WAZUH_LOG_ERROR("Cannot connect: {} ({})", strerror(errno), errno);
         close(socketFD);
-        return (SOCKET_ERROR);
+        const std::string msg = std::string {"Cannot connect: "} + strerror(errno) + " ("
+                                + std::to_string(errno) + ")";
+        throw std::runtime_error(msg);
     }
 
     /* Set socket buffer maximum size */
@@ -91,10 +94,11 @@ int socketConnect(const char* path)
             if (setsockopt(socketFD, SOL_SOCKET, SO_RCVBUF, (const void*)&len, optlen)
                 == -1)
             {
-                WAZUH_LOG_ERROR(
-                    "Cannot set socket buffer size: {} ({})", strerror(errno), errno);
                 close(socketFD);
-                return SOCKET_ERROR;
+                const std::string msg = std::string {"Cannot set socket buffer size: "}
+                                        + strerror(errno) + " (" + std::to_string(errno)
+                                        + ")";
+                throw std::runtime_error(msg);
             }
         }
     }
