@@ -117,7 +117,8 @@ typedef struct __Config {
     long queue_size;
 
     // EPS limits configuration
-    unsigned int eps_limits_file_check;
+    unsigned int cfg_max_eps;
+    unsigned int cfg_timeframe_eps;
 } _Config;
 
 

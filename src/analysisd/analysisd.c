@@ -41,7 +41,6 @@
 #include "state.h"
 #include "syscheck_op.h"
 #include "lists_make.h"
-#include "cloud_limits.h"
 
 #ifdef PRELUDE_OUTPUT_ENABLED
 #include "output/prelude.h"
@@ -84,18 +83,13 @@ void * ad_input_main(void * args);
 static void update_limits(void);
 
 /**
- * @brief Check for changes in the limits.conf file and load the limits structure
+ * @brief Load the limits structure
  *
  * This is a private function.
+ * @param eps eps amount
+ * @param timeframe timeframe size
  */
-static void load_limits(void);
-
-/**
- * @brief Clean the values of limits structure
- *
- * This is a private function.
- */
-static void limits_free(void);
+static void load_limits(unsigned int eps, unsigned int timeframe);
 
 /**
  * @brief Get a credit to process an event by decrementing the value of the semaphore
@@ -120,29 +114,6 @@ static void increase_event_counter(void);
  */
 static void generate_eps_credits(unsigned int credits);
 
-/**
- * @brief Remove 'credits' from the semaphore
- *
- * This is a private function.
- *
- * @param Credits to remove.
- */
-static void clean_eps_credits(unsigned int credits);
-
-/**
- * @brief Increments the wait_counter counter. wait_counter=Thread counter waiting for a credit
- *
- * This is a private function.
- */
-static void inc_wait_counter(void);
-
-/**
- * @brief Decrements the wait_counter counter. wait_counter=Thread counter waiting for a credit
- *
- * This is a private function.
- */
-static void dec_wait_counter(void);
-
 /** Global definitions **/
 int today;
 int thishour;
@@ -166,7 +137,6 @@ static unsigned int hourly_syscheck;
 static unsigned int hourly_firewall;
 
 limits_t limits;
-unsigned int limits_wait_counter = 0;
 
 /* Archives writer thread */
 void * w_writer_thread(__attribute__((unused)) void * args );
@@ -1053,15 +1023,12 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     mdebug1("FTS_Init completed.");
 
-    /* Initialize EPS limits file check */
-    Config.eps_limits_file_check = getDefine_Int("analysisd", "eps_limits_file_check", 1, 600);
-
     /* Initialize EPS semaphore credits */
-    sem_init(&credits_eps_semaphore, 0, 1);
+    sem_init(&credits_eps_semaphore, 0, 0);
 
+    /* Initialize limits structure */
     memset(&limits, 0, sizeof(limits));
-    limits_wait_counter = 0;
-    load_limits();
+    load_limits(Config.cfg_max_eps, Config.cfg_timeframe_eps);
 
     /* Create message handler thread */
     w_create_thread(ad_input_main, &m_queue);
@@ -1137,17 +1104,9 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     mdebug1("Startup completed. Waiting for new messages..");
 
-    unsigned int check_limits_file_interval = 0;
-
     while (1) {
-
         sleep(1);
         update_limits();
-        check_limits_file_interval++;
-        if (check_limits_file_interval >= Config.eps_limits_file_check) {
-            check_limits_file_interval = 0;
-            load_limits();
-        }
     }
 }
 
@@ -2514,11 +2473,7 @@ static void update_limits(void) {
             limits.total_eps_buffer = limits.total_eps_buffer + limits.circ_buf[limits.current_cell] - limits.circ_buf[0];
 
             if (limits.circ_buf[0]) {
-                if (limits.total_eps_buffer + limits.circ_buf[0] <= limits.max_eps) {
-                    generate_eps_credits(limits.circ_buf[0]);
-                } else if (limits.total_eps_buffer < limits.max_eps) {
-                    generate_eps_credits(limits.max_eps - limits.total_eps_buffer);
-                }
+                generate_eps_credits(limits.circ_buf[0]);
             }
 
             memmove(limits.circ_buf, limits.circ_buf + 1, (limits.timeframe - 1) * sizeof(unsigned int));
@@ -2535,137 +2490,30 @@ static void update_limits(void) {
     }
 }
 
-static void load_limits(void) {
+static void load_limits(unsigned int eps, unsigned int timeframe) {
+    if (eps > 0) {
+        limits.eps = eps;
+        limits.timeframe = timeframe;
 
-    cJSON * analysisd_limits = NULL;
-    int err = load_limits_file("wazuh-analysisd", &analysisd_limits);
+        os_calloc(limits.timeframe, sizeof(unsigned int), limits.circ_buf);
 
-    w_mutex_lock(&limit_eps_mutex);
+        limits.total_eps_buffer = 0;
+        limits.max_eps = limits.eps * limits.timeframe;
 
-    if (err == LIMITS_SUCCESS && analysisd_limits) {
+        generate_eps_credits(limits.max_eps);
 
-        unsigned int old_timeframe = limits.timeframe;
-        cJSON *timeframe_eps;
-        cJSON *eps;
-
-        if ((timeframe_eps = cJSON_GetObjectItem(analysisd_limits, "timeframe_eps"), timeframe_eps) && cJSON_IsNumber(timeframe_eps)) {
-
-            limits.timeframe = (timeframe_eps->valueint > EPS_LIMITS_MAX_TIMEFRAME ? EPS_LIMITS_MAX_TIMEFRAME :
-                (timeframe_eps->valueint < EPS_LIMITS_MIN_TIMEFRAME ? EPS_LIMITS_MIN_TIMEFRAME : timeframe_eps->valueint));
-            if (limits.timeframe != (unsigned int)timeframe_eps->valueint) {
-                mwarn("timeframe limit exceeded, value set: '%d'", limits.timeframe);
-            }
-        } else {
-            limits.timeframe = EPS_LIMITS_DEFAULT_TIMEFRAME;
-            mwarn("timeframe not found, dafault value set: '%d'", limits.timeframe);
-        }
-
-        if ((eps = cJSON_GetObjectItem(analysisd_limits, "max_eps"), eps) && cJSON_IsNumber(eps)) {
-
-            limits.eps = (eps->valueint > EPS_LIMITS_MAX_EPS ? EPS_LIMITS_MAX_EPS :
-                (eps->valueint < EPS_LIMITS_MIN_EPS ? EPS_LIMITS_MIN_EPS : eps->valueint));
-            if (limits.eps != (unsigned int)eps->valueint) {
-                mwarn("eps limit exceeded, value set: '%d'", limits.eps);
-            }
-        } else {
-            limits.eps = EPS_LIMITS_MIN_EPS;
-            mwarn("eps limit not found, value set: '%d'", limits.eps);
-        }
-
-        if (limits.eps) {
-
-            if (!old_timeframe && limits.timeframe) {
-                /* First time */
-                os_calloc(limits.timeframe, sizeof(unsigned int), limits.circ_buf);
-
-            } else if (old_timeframe != limits.timeframe) {
-                /* Resize buffer */
-                unsigned int buf[old_timeframe];
-                memset(buf, 0, sizeof(unsigned int) * old_timeframe);
-                memcpy(buf, limits.circ_buf,  sizeof(unsigned int) * old_timeframe);
-                os_realloc(limits.circ_buf, limits.timeframe * sizeof(unsigned int), limits.circ_buf);
-
-                if (old_timeframe > limits.timeframe) {
-                    /* Shrink buffer */
-                    unsigned int offset = limits.current_cell + 1 > limits.timeframe ? limits.current_cell + 1 - limits.timeframe : 0;
-                    memcpy(limits.circ_buf, buf + offset, sizeof(unsigned int) * limits.timeframe);
-                    limits.current_cell = limits.current_cell + 1 >= limits.timeframe ? limits.timeframe - 1 : limits.current_cell;
-
-                } else {
-                    /* Expand buffer */
-                    memset(limits.circ_buf, 0, sizeof(unsigned int) * limits.timeframe);
-                    memcpy(limits.circ_buf, buf, sizeof(unsigned int) * old_timeframe);
-                }
-            }
-
-            limits.total_eps_buffer = 0;
-            for (unsigned int i = 0; i < limits.current_cell; i++) {
-                 limits.total_eps_buffer += limits.circ_buf[i];
-            }
-
-            limits.max_eps = limits.eps * limits.timeframe;
-
-            int current_value = 0;
-            sem_getvalue(&credits_eps_semaphore, &current_value);
-            unsigned int c_value = (unsigned int) current_value;
-
-            if (limits.max_eps > limits.total_eps_buffer) {
-                if (c_value < limits.max_eps - limits.total_eps_buffer) {
-                    generate_eps_credits(limits.max_eps - limits.total_eps_buffer - c_value);
-                } else if (c_value > limits.max_eps - limits.total_eps_buffer){
-                    clean_eps_credits(c_value + limits.total_eps_buffer - limits.max_eps);
-                }
-            } else if (current_value) {
-                clean_eps_credits(current_value);
-            }
-
-            limits.enabled = true;
-
-            minfo("eps limit enabled, eps: '%d', timeframe: '%d', events per timeframe: '%d'", limits.eps, limits.timeframe, limits.max_eps);
-        }
-        else {
-            minfo("eps limit disabled");
-            limits_free();
-        }
-
-    } else if (err == LIMITS_FILE_NOT_FOUND && limits.enabled) {
+        minfo("eps limit enabled, eps: '%d', timeframe: '%d', events per timeframe: '%d'", limits.eps, limits.timeframe, limits.max_eps);
+        limits.enabled = true;
+    } else {
         minfo("eps limit disabled");
-        limits_free();
     }
-    cJSON_Delete(analysisd_limits);
-    w_mutex_unlock(&limit_eps_mutex);
-}
-
-static void limits_free(void) {
-    if (limits.circ_buf) {
-        os_free(limits.circ_buf);
-    }
-    while (limits_wait_counter) {
-        sem_post(&credits_eps_semaphore);
-        limits_wait_counter--;
-    }
-    memset(&limits, 0, sizeof(limits));
 }
 
 static void get_eps_credit(void) {
     if (limits.enabled) {
-        inc_wait_counter();
         sem_wait(&credits_eps_semaphore);
-        dec_wait_counter();
         increase_event_counter();
     }
-}
-
-static void inc_wait_counter(void) {
-    w_mutex_lock(&wait_sem);
-    limits_wait_counter++;
-    w_mutex_unlock(&wait_sem);
-}
-
-static void dec_wait_counter(void) {
-    w_mutex_lock(&wait_sem);
-    limits_wait_counter--;
-    w_mutex_unlock(&wait_sem);
 }
 
 static void increase_event_counter(void) {
@@ -2679,11 +2527,5 @@ static void increase_event_counter(void) {
 static void generate_eps_credits(unsigned int credits) {
     for(unsigned int i = 0; i < credits; i++) {
         sem_post(&credits_eps_semaphore);
-    }
-}
-
-static void clean_eps_credits(unsigned int credits) {
-    for(unsigned int i = 0; i < credits; i++) {
-        sem_trywait(&credits_eps_semaphore);
     }
 }
