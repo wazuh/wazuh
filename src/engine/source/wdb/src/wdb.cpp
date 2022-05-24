@@ -119,7 +119,7 @@ void WazuhDB::query(std::string_view query, char* response, int length)
     }
 }
 
-QueryResult parseResult(char* result, char** payload) {
+QueryResultCodes WazuhDB::parseResult(char* result, char** payload) {
 
     // if (result == nullptr)
 
@@ -139,9 +139,9 @@ QueryResult parseResult(char* result, char** payload) {
     }
 
     // Parse code
-    auto res = QueryResultStrings.find(result);
-    if (res == QueryResultStrings.end()) {
-        return QueryResult::UNKNOWN;
+    auto res = QueryResStr2Code.find(result);
+    if (res == QueryResStr2Code.end()) {
+        return QueryResultCodes::UNKNOWN;
     }
     return res->second;
 }
