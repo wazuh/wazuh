@@ -27,6 +27,7 @@
 #include "os_err.h"
 
 int wdb_calculate_stmt_checksum(wdb_t * wdb, sqlite3_stmt * stmt, wdb_component_t component, os_sha1 hexdigest);
+extern os_sha1 global_group_hash;
 
 /* setup/teardown */
 static int setup_wdb_t(void **state) {
@@ -1526,6 +1527,187 @@ void test_wdbi_last_completion_step_fail(void **state)
 
 }
 
+// Test wdb_global_group_hash_cache
+
+void test_wdb_global_group_hash_cache_clear_success(void **state)
+{
+    wdb_global_group_hash_operations_t operation = WDB_GLOBAL_GROUP_HASH_CLEAR;
+    os_sha1 hexdigest;
+    int ret;
+
+    /* Storing a dummy hash value before clearing it */
+    snprintf(global_group_hash, sizeof(global_group_hash), "bd612e9ae2faf8a44b387eeb9f3d5a5e577c8c64");
+
+    ret = wdb_global_group_hash_cache(operation, hexdigest);
+
+    assert_int_equal(global_group_hash[0], 0);
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+void test_wdb_global_group_hash_cache_read_fail(void **state)
+{
+    wdb_global_group_hash_operations_t operation = WDB_GLOBAL_GROUP_HASH_READ;
+    os_sha1 hexdigest;
+    int ret;
+
+    /* Clearing the variable before reading it */
+    global_group_hash[0] = 0;
+
+    ret = wdb_global_group_hash_cache(operation, hexdigest);
+
+    assert_int_equal(global_group_hash[0], 0);
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_global_group_hash_cache_write_success(void **state)
+{
+    wdb_global_group_hash_operations_t operation = WDB_GLOBAL_GROUP_HASH_WRITE;
+    os_sha1 hexdigest = "bd612e9ae2faf8a44b387eeb9f3d5a5e577c8c64";
+    int ret;
+
+    ret = wdb_global_group_hash_cache(operation, hexdigest);
+
+    assert_string_equal(global_group_hash, hexdigest);
+    assert_int_equal(ret, OS_SUCCESS);
+
+    /* Clearing the variable after writing it */
+    global_group_hash[0] = 0;
+}
+
+void test_wdb_global_group_hash_cache_read_success(void **state)
+{
+    wdb_global_group_hash_operations_t operation = WDB_GLOBAL_GROUP_HASH_READ;
+    os_sha1 hexdigest;
+    int ret;
+
+    /* Storing a dummy hash value before reading it */
+    snprintf(global_group_hash, sizeof(global_group_hash), "bd612e9ae2faf8a44b387eeb9f3d5a5e577c8c64");
+
+    ret = wdb_global_group_hash_cache(operation, hexdigest);
+
+    assert_string_equal(hexdigest, "bd612e9ae2faf8a44b387eeb9f3d5a5e577c8c64");
+    assert_int_equal(ret, OS_SUCCESS);
+
+    /* Clearing the variable after reading it */
+    global_group_hash[0] = 0;
+}
+
+void test_wdb_global_group_hash_cache_invalid_mode(void **state)
+{
+    wdb_global_group_hash_operations_t operation = 3;
+    os_sha1 hexdigest;
+    int ret;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Invalid mode for global group hash operation.");
+
+    ret = wdb_global_group_hash_cache(operation, hexdigest);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+// Test wdb_get_global_group_hash
+
+void wdb_get_global_group_hash_read_success(void **state)
+{
+    wdb_t * data = *state;
+    os_sha1 hexdigest;
+    int ret;
+
+    /* Storing a dummy hash value before reading it */
+    snprintf(global_group_hash, sizeof(global_group_hash), "bd612e9ae2faf8a44b387eeb9f3d5a5e577c8c64");
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Using global group hash from cache");
+
+    ret = wdb_get_global_group_hash(data, hexdigest);
+
+    assert_int_equal(ret, OS_SUCCESS);
+
+    /* Clearing the variable after reading it */
+    global_group_hash[0] = 0;
+}
+
+void wdb_get_global_group_hash_invalid_db_structure(void **state)
+{
+    os_sha1 hexdigest;
+    int ret;
+
+    /* Clearing the variable before reading it */
+    global_group_hash[0] = 0;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Database structure not initialized. Unable to calculate global group hash.");
+
+    ret = wdb_get_global_group_hash(NULL, hexdigest);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void wdb_get_global_group_hash_invalid_statement(void **state)
+{
+    wdb_t * data = *state;
+    os_sha1 hexdigest;
+    int ret;
+
+    /* Clearing the variable before reading it */
+    global_group_hash[0] = 0;
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_HASH_GET);
+    will_return(__wrap_wdb_init_stmt_in_cache, NULL);
+
+    ret = wdb_get_global_group_hash(data, hexdigest);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void wdb_get_global_group_hash_calculate_success_no_group_hash_information(void **state)
+{
+    wdb_t * data = *state;
+    os_sha1 hexdigest;
+    int ret;
+
+    /* Clearing the variable before reading it */
+    global_group_hash[0] = 0;
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_HASH_GET);
+    will_return(__wrap_wdb_init_stmt_in_cache, 1);
+
+    will_return(__wrap_sqlite3_step, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "No group hash was found to calculate the global group hash.");
+
+    ret = wdb_get_global_group_hash(data, hexdigest);
+
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+void wdb_get_global_group_hash_calculate_success(void **state)
+{
+    wdb_t * data = *state;
+    data->id = strdup("000");
+    os_sha1 hexdigest;
+    int ret;
+
+    /* Clearing the variable before reading it */
+    global_group_hash[0] = 0;
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_HASH_GET);
+    will_return(__wrap_wdb_init_stmt_in_cache, 1);
+
+    will_return(__wrap_sqlite3_step, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    will_return(__wrap_sqlite3_step, SQLITE_OK);
+    will_return(__wrap_sqlite3_step, SQLITE_OK);
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, NULL);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) has a NULL  checksum.");
+    expect_string(__wrap__mdebug2, formatted_msg, "New global group hash calculated and stored in cache.");
+
+    ret = wdb_get_global_group_hash(data, hexdigest);
+
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         //Test wdb_calculate_stmt_checksum
@@ -1619,6 +1801,20 @@ int main(void) {
 
         // Test wdbi_last_completion
         cmocka_unit_test_setup_teardown(test_wdbi_last_completion_step_fail, setup_wdb_t, teardown_wdb_t),
+
+        // Test wdb_global_group_hash_cache
+        cmocka_unit_test(test_wdb_global_group_hash_cache_clear_success),
+        cmocka_unit_test(test_wdb_global_group_hash_cache_read_fail),
+        cmocka_unit_test(test_wdb_global_group_hash_cache_write_success),
+        cmocka_unit_test(test_wdb_global_group_hash_cache_read_success),
+        cmocka_unit_test(test_wdb_global_group_hash_cache_invalid_mode),
+
+        // Test wdb_get_global_group_hash
+        cmocka_unit_test_setup_teardown(wdb_get_global_group_hash_read_success, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(wdb_get_global_group_hash_invalid_db_structure, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(wdb_get_global_group_hash_invalid_statement, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(wdb_get_global_group_hash_calculate_success_no_group_hash_information, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(wdb_get_global_group_hash_calculate_success, setup_wdb_t, teardown_wdb_t),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

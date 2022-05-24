@@ -67,7 +67,7 @@ typedef struct authd_config_t {
  * @brief It converts a time string with the format <time><unit>, where the unit could be
  *        d (days), h (hours), m (minutes), or s (seconds), to a representation in seconds saved
  *        in a `time_t` variable.
- *        The time unit is optional. If not provided, it is asumed as seconds.
+ *        The time unit is optional. If not provided, it is assumed as seconds.
  *
  * @param syscheck String with the format <time><unit>.
  * @param interval The variable to save the time conversion.

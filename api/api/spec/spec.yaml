@@ -1711,6 +1711,16 @@ components:
                     n_synced_chunks:
                       type: integer
                       format: int32
+                last_sync_agentgroups:
+                  type: object
+                  properties:
+                    date_start_master:
+                      type: string
+                    date_end_master:
+                      type: string
+                    n_synced_chunks:
+                      type: integer
+                      format: int32
                 last_sync_integrity:
                   type: object
                   properties:
@@ -1734,6 +1744,8 @@ components:
                           type: integer
                           format: int32
                 sync_agent_info_free:
+                  type: boolean
+                sync_agent_groups_free:
                   type: boolean
                 sync_integrity_free:
                   type: boolean
@@ -6520,14 +6532,8 @@ paths:
                         remediation: Please, use `GET /agents?select=id,name` to find all available agents
                       id:
                         - '999'
-                    - error:
-                        code: 1753
-                        message: Could not assign group. Agent status is never_connected
-                        remediation: Please select another agent or connect your agent before assigning groups
-                      id:
-                        - '011'
                   total_affected_items: 2
-                  total_failed_items: 2
+                  total_failed_items: 1
                   message: Some agents were not assigned to group2 and removed from the other groups
                   error: 2
         '400':
@@ -6722,9 +6728,10 @@ paths:
               type: object
               properties:
                 group_id:
-                  description: "Group name"
+                  description: "Group name. It can contain any of the characters between a-z, A-Z, 0-9, '_', '-' and '.'. Names '.' and '..' are restricted."
                   type: string
                   format: group_names
+                  maxLength: 128
               required:
                 - group_id
             example:
@@ -7973,7 +7980,12 @@ paths:
                             extra_valid: 0
                             shared: 0
                         sync_agent_info_free: true
+                        sync_agent_groups_free: true
                         last_sync_agentinfo:
+                          date_start_master: 2021-05-27T10:50:49.174463Z
+                          date_end_master: 2021-05-27T10:50:49.175921Z
+                          n_synced_chunks: 1
+                        last_sync_agentgroups:
                           date_start_master: 2021-05-27T10:50:49.174463Z
                           date_end_master: 2021-05-27T10:50:49.175921Z
                           n_synced_chunks: 1
@@ -8000,7 +8012,12 @@ paths:
                             extra_valid: 0
                             shared: 0
                         sync_agent_info_free: true
+                        sync_agent_groups_free: true
                         last_sync_agentinfo:
+                          date_start_master: 2021-05-27T10:50:48.832800Z
+                          date_end_master: 2021-05-27T10:50:48.833854Z
+                          n_synced_chunks: 1
+                        last_sync_agentgroups:
                           date_start_master: 2021-05-27T10:50:48.832800Z
                           date_end_master: 2021-05-27T10:50:48.833854Z
                           n_synced_chunks: 1

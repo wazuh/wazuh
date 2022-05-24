@@ -20,14 +20,14 @@ from wazuh.core.utils import clean_pid_files
 def set_logging(foreground_mode=False, debug_mode=0):
     cluster_logger = cluster_utils.ClusterLogger(foreground_mode=foreground_mode, log_path='logs/cluster.log',
                                                  debug_level=debug_mode,
-                                                 tag='{asctime} {levelname}: [{tag}] [{subtag}] {message}')
+                                                 tag='%(asctime)s %(levelname)s: [%(tag)s] [%(subtag)s] %(message)s')
     cluster_logger.setup_logger()
     return cluster_logger
 
 
 def print_version():
     from wazuh.core.cluster import __version__, __author__, __wazuh_name__, __licence__
-    print("\n{} {} - {}\n\n{}".format(__wazuh_name__, __version__, __author__, __licence__))
+    print(f"\n{__wazuh_name__} {__version__} - {__author__}\n\n{__licence__}")
 
 
 def exit_handler(signum, frame):
@@ -105,13 +105,14 @@ async def worker_main(args, cluster_config, cluster_items, logger):
             await asyncio.sleep(cluster_items['intervals']['worker']['connection_retry'])
 
 
-#
-# Main
-#
-if __name__ == '__main__':
-    import wazuh.core.cluster.cluster
-    import wazuh.core.cluster.utils as cluster_utils
-    from wazuh.core import pyDaemonModule, common, configuration
+def get_script_arguments():
+    """Get script arguments.
+
+    Returns
+    -------
+    ArgumentParser object
+        Arguments passed to the script.
+    """
 
     parser = argparse.ArgumentParser()
     ####################################################################################################################
@@ -139,29 +140,27 @@ if __name__ == '__main__':
     parser.add_argument('-t', help="Test configuration", action='store_true', dest='test_config')
     parser.add_argument('-c', help="Configuration file to use", type=str, metavar='config', dest='config_file',
                         default=common.OSSEC_CONF)
-    args = parser.parse_args()
 
-    if args.version:
-        print_version()
-        sys.exit(0)
+    return parser
 
-    # Set logger
+
+def main():
+    """Main function of the wazuh_clusterd script in charge of starting the cluster process."""
+    import wazuh.core.cluster.cluster
+
+    # Set correct permissions on cluster.log file
+    if os.path.exists(f'{common.WAZUH_PATH}/logs/cluster.log'):
+        os.chown(f'{common.WAZUH_PATH}/logs/cluster.log', common.wazuh_uid(), common.wazuh_gid())
+        os.chmod(f'{common.WAZUH_PATH}/logs/cluster.log', 0o660)
+
     try:
-        debug_mode = configuration.get_internal_options_value('wazuh_clusterd', 'debug', 2, 0) or args.debug_level
-    except Exception:
-        debug_mode = 0
+        cluster_configuration = cluster_utils.read_config(config_file=args.config_file)
+    except Exception as e:
+        main_logger.error(e)
+        sys.exit(1)
 
-    # set correct permissions on cluster.log file
-    if os.path.exists('{0}/logs/cluster.log'.format(common.WAZUH_PATH)):
-        os.chown('{0}/logs/cluster.log'.format(common.WAZUH_PATH), common.wazuh_uid(), common.wazuh_gid())
-        os.chmod('{0}/logs/cluster.log'.format(common.WAZUH_PATH), 0o660)
-
-    main_logger = set_logging(foreground_mode=args.foreground, debug_mode=debug_mode)
-
-    cluster_configuration = cluster_utils.read_config(config_file=args.config_file)
     if cluster_configuration['disabled']:
         sys.exit(0)
-    cluster_items = cluster_utils.get_cluster_items()
     try:
         wazuh.core.cluster.cluster.check_cluster_config(cluster_configuration)
     except Exception as e:
@@ -196,8 +195,6 @@ if __name__ == '__main__':
     if args.foreground:
         print(f"Starting cluster in foreground (pid: {pid})")
 
-    original_sig_handler = signal.signal(signal.SIGTERM, exit_handler)
-
     main_function = master_main if cluster_configuration['node_type'] == 'master' else worker_main
     try:
         asyncio.run(main_function(args, cluster_configuration, cluster_items, main_logger))
@@ -211,3 +208,25 @@ if __name__ == '__main__':
     finally:
         pyDaemonModule.delete_child_pids('wazuh-clusterd', pid, main_logger)
         pyDaemonModule.delete_pid('wazuh-clusterd', pid)
+
+
+if __name__ == '__main__':
+    import wazuh.core.cluster.utils as cluster_utils
+    from wazuh.core import pyDaemonModule, common, configuration
+
+    cluster_items = cluster_utils.get_cluster_items()
+    original_sig_handler = signal.signal(signal.SIGTERM, exit_handler)
+
+    args = get_script_arguments().parse_args()
+    if args.version:
+        print_version()
+        sys.exit(0)
+
+    # Set logger
+    try:
+        debug_mode_ = configuration.get_internal_options_value('wazuh_clusterd', 'debug', 2, 0) or args.debug_level
+    except Exception:
+        debug_mode_ = 0
+
+    main_logger = set_logging(foreground_mode=args.foreground, debug_mode=debug_mode_)
+    main()

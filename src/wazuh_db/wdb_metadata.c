@@ -23,7 +23,7 @@ static const char *SQL_METADATA_STMT[] = {
     "INSERT INTO metadata (key, value) VALUES (?, ?);",
     "UPDATE metadata SET value = ? WHERE key = ?;",
     "SELECT value FROM metadata WHERE key = ?;",
-    "SELECT count(*) FROM sqlite_master WHERE type='table' AND name=?;"
+    "SELECT count(name) FROM sqlite_master WHERE type='table' AND name=?;"
 };
 
 int wdb_fim_fill_metadata(wdb_t *wdb, char *data) {
@@ -146,46 +146,51 @@ int wdb_metadata_update_entry (wdb_t * wdb, const char *key, const char *value) 
     }
 }
 
-int wdb_metadata_get_entry (wdb_t * wdb, const char *key, char *output) {
+int wdb_metadata_get_entry(wdb_t * wdb, const char *key, char *output) {
     sqlite3_stmt *stmt = NULL;
 
     if (sqlite3_prepare_v2(wdb->db,
-                            SQL_METADATA_STMT[WDB_STMT_METADATA_FIND],
-                            -1,
-                            &stmt,
-                            NULL) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_prepare_v2(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return -1;
+                           SQL_METADATA_STMT[WDB_STMT_METADATA_FIND],
+                           -1,
+                           &stmt,
+                           NULL) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_prepare_v2(): %s",
+               wdb->id,
+               sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
     }
 
     sqlite3_bind_text(stmt, 1, key, -1, NULL);
 
+    int ret = OS_INVALID;
     switch (sqlite3_step(stmt)) {
-        case SQLITE_ROW:
-            snprintf(output, OS_SIZE_256 + 1, "%s", (char *)sqlite3_column_text(stmt, 0));
-            sqlite3_finalize(stmt);
-            return 1;
+        case SQLITE_ROW: {
+            strncpy(output, (char *)sqlite3_column_text(stmt, 0), OS_SIZE_256);
+            ret = OS_SUCCESS;
             break;
-        case SQLITE_DONE:
-            sqlite3_finalize(stmt);
-            return 0;
+        }
+        case SQLITE_DONE: {
+            strncpy(output, "0", OS_SIZE_256);
+            ret = OS_NOTFOUND;
             break;
-        default:
-            mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-            sqlite3_finalize(stmt);
-            return -1;
+        }
+        default: {
+            mdebug1("DB(%s) sqlite3_step(): %s",
+                    wdb->id,
+                    sqlite3_errmsg(wdb->db));
+            ret = OS_INVALID;
+            break;
+        }
     }
+
+    sqlite3_finalize(stmt);
+    return ret;
 }
 
-int wdb_metadata_table_check(wdb_t * wdb, const char * key) {
+int wdb_count_tables_with_name(wdb_t * wdb, const char * key, int* count) {
     sqlite3_stmt *stmt = NULL;
-    int ret = OS_INVALID;
 
-    if (sqlite3_prepare_v2(wdb->db,
-                            SQL_METADATA_STMT[WDB_STMT_METADATA_TABLE_CHECK],
-                            -1,
-                            &stmt,
-                            NULL) != SQLITE_OK) {
+    if (sqlite3_prepare_v2(wdb->db, SQL_METADATA_STMT[WDB_STMT_METADATA_TABLE_CHECK], -1, &stmt, NULL) != SQLITE_OK) {
         merror("DB(%s) sqlite3_prepare_v2(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
@@ -196,15 +201,17 @@ int wdb_metadata_table_check(wdb_t * wdb, const char * key) {
         return OS_INVALID;
     }
 
+    int ret = OS_INVALID;
     switch (sqlite3_step(stmt)) {
-    case SQLITE_ROW:
-        ret = (int)sqlite3_column_int(stmt, 0);
-        sqlite3_finalize(stmt);
-        return ret;
-        break;
-    default:
-        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        sqlite3_finalize(stmt);
-        return OS_INVALID;
+        case SQLITE_ROW: {
+            *count = sqlite3_column_int(stmt, 0);
+            ret = OS_SUCCESS;
+        } break;
+        default: {
+            mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        }
     }
+
+    sqlite3_finalize(stmt);
+    return ret;
 }

@@ -11,9 +11,9 @@ from shutil import copyfile
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from unittest.mock import patch, MagicMock, mock_open
 from xml.etree.ElementTree import Element
-from defusedxml.ElementTree import parse
 
 import pytest
+from defusedxml.ElementTree import parse
 from freezegun import freeze_time
 
 with patch('wazuh.core.common.wazuh_uid'):
@@ -866,7 +866,8 @@ def test_WazuhDBQuery_protected_add_sort_to_query(mock_socket_conn, mock_isfile,
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch("wazuh.core.database.isfile", return_value=True)
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_add_search_to_query(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob, mock_exists):
+def test_WazuhDBQuery_protected_add_search_to_query(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob,
+                                                    mock_exists):
     """Test WazuhDBQuery._add_search_to_query function."""
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                                search={"negation": True, "value": "1"}, select=None,
@@ -930,6 +931,72 @@ def test_WazuhDBQuery_protected_add_select_to_query(mock_parse, mock_socket_conn
     mock_conn_db.assert_called_once_with()
 
 
+@pytest.mark.parametrize('q, expected_query_filters', [
+    # Simple cases
+    ('os.name=ubuntu;os.version>12e',
+     [{'value': 'ubuntu', 'operator': '=', 'field': 'os.name$0', 'separator': 'AND', 'level': 0},
+      {'value': '12e', 'operator': '>', 'field': 'os.version$0', 'separator': '', 'level': 0}]),
+    # Simple cases with brackets in values
+    ('name=Mozilla Firefox 53.0 (x64 en-US)',
+     [{'value': 'Mozilla Firefox 53.0 (x64 en-US)', 'operator': '=', 'field': 'name$0', 'separator': '', 'level': 0}]),
+    ('name=(x64 en-US) Mozilla Firefox 53.0 (x64 en-US)',
+     [{'value': '(x64 en-US) Mozilla Firefox 53.0 (x64 en-US)', 'operator': '=', 'field': 'name$0', 'separator': '',
+       'level': 0}]),
+    ('name=Mozilla Firefox 53.0 ()',
+     [{'value': 'Mozilla Firefox 53.0 ()', 'operator': '=', 'field': 'name$0', 'separator': '', 'level': 0}]),
+    ('name=Mozilla Firefox 53.0 (x64 en-US)()',
+     [{'value': 'Mozilla Firefox 53.0 (x64 en-US)()', 'operator': '=', 'field': 'name$0', 'separator': '',
+       'level': 0}]),
+    # Simple cases with lists in values
+    ('references=["https://example-link@<>=,%?"]',
+     [{'value': '["https://example-link@<>=,%?"]', 'operator': '=', 'field': 'references$0', 'separator': '',
+       'level': 0}]),
+    # Complex cases
+    ('(log=test,status=outstanding);cis=5.2 Debian Linux,pci_dss=2',
+     [{'value': 'test', 'operator': '=', 'field': 'log$0', 'separator': 'OR', 'level': 1},
+      {'value': 'outstanding', 'operator': '=', 'field': 'status$0', 'separator': 'AND', 'level': 0},
+      {'value': '5.2 Debian Linux', 'operator': '=', 'field': 'cis$0', 'separator': 'OR', 'level': 0},
+      {'value': '2', 'operator': '=', 'field': 'pci_dss$0', 'separator': '', 'level': 0}]),
+    # Complex cases with brackets in values
+    ('(name=Mozilla Firefox 53.0 (x64 en-US),version!=53.0);architecture=x64',
+     [{'value': 'Mozilla Firefox 53.0 (x64 en-US)', 'operator': '=', 'field': 'name$0', 'separator': 'OR', 'level': 1},
+      {'value': '53.0', 'operator': '!=', 'field': 'version$0', 'separator': 'AND', 'level': 0},
+      {'value': 'x64', 'operator': '=', 'field': 'architecture$0', 'separator': '', 'level': 0}]),
+    ('(log!=example,name=Mozilla Firefox 53.0 (x64 en-US) (test));cve_id<1000',
+     [{'value': 'example', 'operator': '!=', 'field': 'log$0', 'separator': 'OR', 'level': 1},
+      {'value': 'Mozilla Firefox 53.0 (x64 en-US) (test)', 'operator': '=', 'field': 'name$0', 'separator': 'AND',
+       'level': 0},
+      {'value': '1000', 'operator': '<', 'field': 'cve_id$0', 'separator': '', 'level': 0}]),
+    # Complex cases with lists in values
+    ('cve_id=CVE-2021-3996;(external_references=["https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2021-3996",'
+     '"https://mirrors.edge.kernel.org/pub/linux/utils/util-linux/v2.37/v2.37.3-ReleaseNotes",'
+     '"https://ubuntu.com/security/CVE-2021-3996","https://ubuntu.com/security/notices/USN-5279-1",'
+     '"https://www.openwall.com/lists/oss-security/2022/01/24/2"],name~Kernel)',
+     [{'value': 'CVE-2021-3996', 'operator': '=', 'field': 'cve_id$0', 'separator': 'AND', 'level': 0},
+      {'value': '["https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2021-3996",'
+                '"https://mirrors.edge.kernel.org/pub/linux/utils/util-linux/v2.37/v2.37.3-ReleaseNotes",'
+                '"https://ubuntu.com/security/CVE-2021-3996","https://ubuntu.com/security/notices/USN-5279-1",'
+                '"https://www.openwall.com/lists/oss-security/2022/01/24/2"]',
+       'operator': '=', 'field': 'external_references$0', 'separator': 'OR', 'level': 1},
+      {'value': 'Kernel', 'operator': 'LIKE', 'field': 'name$0', 'separator': '', 'level': 0}])
+])
+@patch('wazuh.core.utils.path.exists', return_value=True)
+@patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
+def test_WazuhDBQuery_protected_parse_query_regex(mock_backend_connect, mock_exists, q, expected_query_filters):
+    """Test WazuhDBQuery._parse_query function."""
+    query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
+                               search=None, select=None, filters=None,
+                               fields={query_filter['field'].replace('$0', ''): None
+                                       for query_filter in expected_query_filters},
+                               default_sort_field=None, query=q,
+                               backend=utils.WazuhDBBackend(agent_id=1),
+                               count=5, get_data=None)
+    query._parse_query()
+    query_filters = query.query_filters
+    assert query_filters == expected_query_filters, f"The query filters are {query_filters}. " \
+                                                    f"Expected: {expected_query_filters}"
+
+
 @pytest.mark.parametrize('q, error, expected_exception', [
     ('os.name=ubuntu;os.version>12e', False, None),
     ('os.name=debian;os.version>12e),(os.name=ubuntu;os.version>12e)', False, None),
@@ -971,8 +1038,8 @@ def test_WazuhDBQuery_protected_parse_query(mock_socket_conn, mock_isfile, mock_
 @patch('wazuh.core.utils.WazuhDBBackend.connect_to_db')
 @patch("wazuh.core.database.isfile", return_value=True)
 @patch('socket.socket.connect')
-def test_WazuhDBQuery_protected_parse_legacy_filters(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob, mock_exists,
-                                                     filter_):
+def test_WazuhDBQuery_protected_parse_legacy_filters(mock_socket_conn, mock_isfile, mock_conn_db, mock_glob,
+                                                     mock_exists, filter_):
     """Test WazuhDBQuery._parse_legacy_filters function."""
     query = utils.WazuhDBQuery(offset=0, limit=1, table='agent', sort=None,
                                search=None, select=None, filters=filter_,
@@ -1235,7 +1302,7 @@ def test_WazuhDBQuery_general_run(mock_socket_conn, mock_isfile, execute_value, 
     """Test utils.WazuhDBQuery.general_run function."""
     with patch('wazuh.core.utils.WazuhDBBackend.execute', return_value=execute_value):
         query = WazuhDBQueryAgents(offset=0, limit=None, sort=None, search=None, select={'id'},
-                                         query=None, count=False, get_data=True, remove_extra_fields=False)
+                                   query=None, count=False, get_data=True, remove_extra_fields=False)
 
         assert query.general_run() == expected_result
 
@@ -1255,7 +1322,7 @@ def test_WazuhDBQuery_oversized_run(mock_socket_conn, mock_isfile, execute_value
     """Test utils.WazuhDBQuery.oversized_run function."""
     with patch('wazuh.core.utils.WazuhDBBackend.execute', side_effect=[execute_value, final_rbac_ids]):
         query = WazuhDBQueryAgents(offset=0, limit=None, sort=None, search=None, select={'id'},
-                                         query=None, count=True, get_data=True, remove_extra_fields=False)
+                                   query=None, count=True, get_data=True, remove_extra_fields=False)
         query.legacy_filters['rbac_ids'] = rbac_ids
         query.rbac_negate = negate
 

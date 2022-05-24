@@ -542,7 +542,7 @@ void wm_vuldet_enable_rhel_json_feed(update_node **updates) {
     int8_t rhel_enabled = 0;
 
     // Search for any enabled rhel feed
-    for (int i = 0; i <= CVE_JREDHAT; i++) {
+    for (int i = 0; i < CVE_JREDHAT; ++i) {
         if (updates[i] && updates[i]->dist_ref == FEED_REDHAT) {
             rhel_enabled = i;
             break;
@@ -561,10 +561,12 @@ void wm_vuldet_enable_rhel_json_feed(update_node **updates) {
         if (updates[rhel_enabled]->path || updates[rhel_enabled]->url) {
             mwarn(VU_OFFLINE_CONFLICT, updates[rhel_enabled]->dist);
         }
-        // As soon as a valid RedHat O.S. is detected, enable the RedHat JSON feed
+        // As soon as a valid RedHat O.S. is detected, enable the RedHat JSON feed and set the update interval time
         int retval;
         if (retval = wm_vuldet_set_feed_version("jredhat", NULL, updates), retval == OS_INVALID) {
             mwarn("Unable to load the RedHat JSON feed at module '%s'", WM_VULNDETECTOR_CONTEXT.name);
+        } else {
+            updates[CVE_JREDHAT]->interval = updates[rhel_enabled]->interval;
         }
     }
 }

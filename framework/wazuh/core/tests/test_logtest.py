@@ -28,10 +28,10 @@ def test_send_logtest_msg(create_message_mock, close_mock, send_mock, init_mock,
     params : dict
         Params that will be sent to the logtest socket.
     """
-    expected_response = {'data': {'response': True, 'output': {'timestamp': '1970-01-01T00:00:00.000000+0000'}}}
-    with patch('wazuh.core.logtest.WazuhSocketJSON.receive', return_value=expected_response):
+    with patch('wazuh.core.logtest.WazuhSocketJSON.receive',
+               return_value={'data': {'response': True, 'output': {'timestamp': '1970-01-01T00:00:00.000000-0200'}}}):
         response = send_logtest_msg(**params)
         init_mock.assert_called_with(LOGTEST_SOCKET)
         create_message_mock.assert_called_with(origin={'name': 'Logtest', 'module': 'framework'}, **params)
-        assert response == expected_response
+        assert response == {'data': {'response': True, 'output': {'timestamp': '1970-01-01T02:00:00.000000Z'}}}
 

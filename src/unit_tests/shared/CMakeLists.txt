@@ -55,16 +55,8 @@ list(APPEND shared_tests_flags "-Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mut
                                 -Wl,--wrap=pthread_cond_signal")
 
 list(APPEND shared_tests_names "test_agent_op")
-list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
-
-if(${TARGET} STREQUAL "server")
-list(APPEND shared_tests_names "test_set_agent_group")
-list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,getpid \
-                                -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fread \
-                                -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fprintf -Wl,--wrap,fgets \
-                                -Wl,--wrap,fgetpos -Wl,--wrap=fgetc \
-                                -Wl,--wrap,fchmod,--wrap,stat,--wrap,fileno,--wrap,umask -Wl,--wrap,unlink")
-endif()
+list(APPEND shared_tests_flags "-Wl,--wrap,wdb_get_agent_info -Wl,--wrap,_mdebug1 -Wl,--wrap,getpid\
+                                ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND shared_tests_names "test_enrollment_op")
 set(ENROLLMENT_OP_BASE_FLAGS "-Wl,--wrap=OS_IsValidIP,--wrap=_merror,--wrap=_mwarn,--wrap=check_x509_cert \

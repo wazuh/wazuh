@@ -32,12 +32,15 @@ static const char * COMPONENT_NAMES[] = {
     [WDB_SYSCOLLECTOR_NETADDRESS] = "syscollector-netaddress",
     [WDB_SYSCOLLECTOR_NETINFO] = "syscollector-netinfo",
     [WDB_SYSCOLLECTOR_HWINFO] = "syscollector-hwinfo",
-    [WDB_SYSCOLLECTOR_OSINFO] = "syscollector-osinfo"
+    [WDB_SYSCOLLECTOR_OSINFO] = "syscollector-osinfo",
+    [WDB_GENERIC_COMPONENT] = ""
 };
 
 #ifdef WAZUH_UNIT_TESTING
 /* Remove static qualifier when unit testing */
 #define static
+
+os_sha1 global_group_hash;
 
 /* Replace assert with mock_assert */
 extern void mock_assert(const int result, const char* const expression,
@@ -56,7 +59,6 @@ extern void mock_assert(const int result, const char* const expression,
  * @param[out] hexdigest
  * @retval 1 On success.
  * @retval 0 If no items were found.
- * @retval -1 On error.
  */
 int wdb_calculate_stmt_checksum(wdb_t * wdb, sqlite3_stmt * stmt, wdb_component_t component, os_sha1 hexdigest) {
 
@@ -637,4 +639,55 @@ int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component) {
 
     cJSON_Delete(j_sync_info);
     return result;
+}
+
+int wdb_get_global_group_hash(wdb_t * wdb, os_sha1 hexdigest) {
+    if (OS_SUCCESS == wdb_global_group_hash_cache(WDB_GLOBAL_GROUP_HASH_READ, hexdigest)) {
+        mdebug2("Using global group hash from cache");
+        return OS_SUCCESS;
+    } else {
+        if(!wdb) {
+            mdebug1("Database structure not initialized. Unable to calculate global group hash.");
+            return OS_INVALID;
+        }
+
+        sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_GLOBAL_GROUP_HASH_GET);
+        if (!stmt) {
+            return OS_INVALID;
+        }
+
+        if(wdb_calculate_stmt_checksum(wdb, stmt, WDB_GENERIC_COMPONENT, hexdigest)) {
+            wdb_global_group_hash_cache(WDB_GLOBAL_GROUP_HASH_WRITE, hexdigest);
+            mdebug2("New global group hash calculated and stored in cache.");
+            return OS_SUCCESS;
+        } else {
+            hexdigest[0] = 0;
+            mdebug2("No group hash was found to calculate the global group hash.");
+            return OS_SUCCESS;
+        }
+    }
+}
+
+int wdb_global_group_hash_cache(wdb_global_group_hash_operations_t operation, os_sha1 hexdigest) {
+    #ifndef WAZUH_UNIT_TESTING
+        static os_sha1 global_group_hash = {0};
+    #endif
+
+    if (WDB_GLOBAL_GROUP_HASH_READ == operation) {
+        if (global_group_hash[0] == 0) {
+            return OS_INVALID;
+        } else {
+            memcpy(hexdigest, global_group_hash, sizeof(os_sha1));
+            return OS_SUCCESS;
+        }
+    } else if (WDB_GLOBAL_GROUP_HASH_WRITE == operation) {
+        memcpy(global_group_hash, hexdigest, sizeof(os_sha1));
+        return OS_SUCCESS;
+    } else if (WDB_GLOBAL_GROUP_HASH_CLEAR == operation) {
+        global_group_hash[0] = 0;
+        return OS_SUCCESS;
+    } else {
+        mdebug2("Invalid mode for global group hash operation.");
+        return OS_INVALID;
+    }
 }
