@@ -128,7 +128,7 @@ void OS_ClearXML(OS_XML *_lxml)
     _lxml->stash_i = 0;
 }
 
-int ParseXML(OS_XML *_lxml){
+int ParseXML(OS_XML *_lxml, bool truncate_string){
     int r;
     unsigned int i;
     char *str_base = _lxml->string;
@@ -182,7 +182,7 @@ int OS_ReadXMLString(const char *string, OS_XML *_lxml){
     _lxml->string = strdup(string);
     _lxml->fp = NULL;
 
-    return ParseXML(_lxml);
+    return ParseXML(_lxml, false);
 }
 
 /* Read na XML file and generate the necessary structs */
@@ -202,7 +202,26 @@ int OS_ReadXML(const char *file, OS_XML *_lxml)
     _lxml->fp = fp;
     _lxml->string = NULL;
 
-    return ParseXML(_lxml);
+    return ParseXML(_lxml, false);
+}
+
+/* Read na XML file and generate the necessary structs */
+int OS_ReadXML_Ex(const char *file, OS_XML *_lxml) {
+    FILE *fp;
+
+    /* Initialize xml structure */
+    memset(_lxml, 0, sizeof(OS_XML));
+
+    fp = fopen(file, "r");
+    if (!fp) {
+        xml_error(_lxml, "XMLERR: File '%s' not found.", file);
+        return (-2);
+    }
+    w_file_cloexec(fp);
+    _lxml->fp = fp;
+    _lxml->string = NULL;
+
+    return ParseXML(_lxml, true);
 }
 
 static int _oscomment(OS_XML *_lxml)
