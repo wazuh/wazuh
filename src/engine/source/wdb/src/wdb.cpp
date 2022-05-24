@@ -1,5 +1,6 @@
 #include <wdb/wdb.hpp>
 
+#include <iostream>
 #include <unistd.h>
 
 #include <logging/logging.hpp>
@@ -119,22 +120,27 @@ void WazuhDB::query(std::string_view query, char* response, int length)
     }
 }
 
-QueryResultCodes WazuhDB::parseResult(char* result, char** payload) {
+QueryResultCodes WazuhDB::parseResult(char* result, char** payload)
+{
 
     // if (result == nullptr)
 
     // Separete the code result and the payload
-    char * wptr {strchr(result, ' ')};
+    char* wptr {strchr(result, ' ')};
 
-    if (wptr != nullptr) {
+    if (wptr != nullptr)
+    {
         *wptr = '\0';
         wptr++;
-    } else {
+    }
+    else
+    {
         wptr = result;
     }
 
     // Parse payload
-    if (payload) {
+    if (payload)
+    {
         *payload = wptr;
     }
 
