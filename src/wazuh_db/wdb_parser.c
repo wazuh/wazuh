@@ -13,7 +13,7 @@
 #include "wdb.h"
 #include "wdb_agents.h"
 #include "external/cJSON/cJSON.h"
-#include "state.c"
+#include "state.h"
 
 const char* SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE = "legacy";
 
@@ -314,7 +314,7 @@ int wdb_parse(char * input, char * output, int peer) {
                 gettimeofday(&begin, 0);
                 result = wdb_parse_syscheck(wdb, WDB_FIM, next, output);
                 gettimeofday(&end, 0);
-                timersub(&end,&begin,&diff);
+                timersub(&end, &begin, &diff);
                 w_inc_agent_syscheck_time(diff);
             }
         } else if (strcmp(query, "fim_file") == 0) {
@@ -329,7 +329,7 @@ int wdb_parse(char * input, char * output, int peer) {
                 gettimeofday(&begin, 0);
                 result = wdb_parse_syscheck(wdb, WDB_FIM_FILE, next, output);
                 gettimeofday(&end, 0);
-                timersub(&end,&begin,&diff);
+                timersub(&end, &begin, &diff);
                 w_inc_agent_fim_file_time(diff);
             }
         } else if (strcmp(query, "fim_registry") == 0) {
@@ -344,7 +344,7 @@ int wdb_parse(char * input, char * output, int peer) {
                 gettimeofday(&begin, 0);
                 result = wdb_parse_syscheck(wdb, WDB_FIM_REGISTRY, next, output);
                 gettimeofday(&end, 0);
-                timersub(&end,&begin,&diff);
+                timersub(&end, &begin, &diff);
                 w_inc_agent_fim_registry_time(diff);
             }
         } else if (strcmp(query, "sca") == 0) {
@@ -358,14 +358,14 @@ int wdb_parse(char * input, char * output, int peer) {
             } else {
                 gettimeofday(&begin, 0);
                 result = wdb_parse_sca(wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                w_inc_agent_sca_time(diff);
                 if (result < 0){
                     merror("Unable to update 'sca_check' table for agent '%s'", sagent_id);
                 } else {
                     result = 0;
                 }
-                gettimeofday(&end, 0);
-                timersub(&end,&begin,&diff);
-                w_inc_agent_sca_time(diff);
             }
         } else if (strcmp(query, "netinfo") == 0) {
             w_inc_agent_syscollector_deprecated_network_info();
@@ -377,12 +377,13 @@ int wdb_parse(char * input, char * output, int peer) {
             } else {
                 gettimeofday(&begin, 0);
                 if (wdb_parse_netinfo(wdb, next, output) == 0){
+                    gettimeofday(&end, 0);
                     mdebug2("Updated 'sys_netiface' table for agent '%s'", sagent_id);
                 } else {
+                    gettimeofday(&end, 0);
                     merror("Unable to update 'sys_netiface' table for agent '%s'", sagent_id);
                 }
-                gettimeofday(&end, 0);
-                timersub(&end,&begin,&diff);
+                timersub(&end, &begin, &diff);
                 w_inc_agent_syscollector_deprecated_network_info_time(diff);
             }
         } else if (strcmp(query, "netproto") == 0) {
@@ -395,12 +396,13 @@ int wdb_parse(char * input, char * output, int peer) {
             } else {
                 gettimeofday(&begin, 0);
                 if (wdb_parse_netproto(wdb, next, output) == 0){
+                    gettimeofday(&end, 0);
                     mdebug2("Updated 'sys_netproto' table for agent '%s'", sagent_id);
                 } else {
+                    gettimeofday(&end, 0);
                     merror("Unable to update 'sys_netproto' table for agent '%s'", sagent_id);
                 }
-                gettimeofday(&end, 0);
-                timersub(&end,&begin,&diff);
+                timersub(&end, &begin, &diff);
                 w_inc_agent_syscollector_deprecated_network_protocol_time(diff);
             }
         } else if (strcmp(query, "netaddr") == 0) {
@@ -413,12 +415,13 @@ int wdb_parse(char * input, char * output, int peer) {
             } else {
                 gettimeofday(&begin, 0);
                 if (wdb_parse_netaddr(wdb, next, output) == 0){
+                    gettimeofday(&end, 0);
                     mdebug2("Updated 'sys_netaddr' table for agent '%s'", sagent_id);
                 } else {
+                    gettimeofday(&end, 0);
                     merror("Unable to update 'sys_netaddr' table for agent '%s'", sagent_id);
                 }
-                gettimeofday(&end, 0);
-                timersub(&end,&begin,&diff);
+                timersub(&end, &begin, &diff);
                 w_inc_agent_syscollector_deprecated_network_address_time(diff);
             }
         } else if (strcmp(query, "osinfo") == 0) {
@@ -432,7 +435,7 @@ int wdb_parse(char * input, char * output, int peer) {
                 gettimeofday(&begin, 0);
                 result = wdb_parse_osinfo(wdb, next, output);
                 gettimeofday(&end, 0);
-                timersub(&end,&begin,&diff);
+                timersub(&end, &begin, &diff);
                 w_inc_agent_syscollector_deprecated_osinfo_time(diff);
             }
         } else if (strcmp(query, "hardware") == 0) {
@@ -445,12 +448,13 @@ int wdb_parse(char * input, char * output, int peer) {
             } else {
                 gettimeofday(&begin, 0);
                 if (wdb_parse_hardware(wdb, next, output) == 0){
+                    gettimeofday(&end, 0);
                     mdebug2("Updated 'sys_hwinfo' table for agent '%s'", sagent_id);
                 } else {
+                    gettimeofday(&end, 0);
                     merror("Unable to update 'sys_hwinfo' table for agent '%s'", sagent_id);
                 }
-                gettimeofday(&end, 0);
-                timersub(&end,&begin,&diff);
+                timersub(&end, &begin, &diff);
                 w_inc_agent_syscollector_deprecated_hardware_time(diff);
             }
         } else if (strcmp(query, "port") == 0) {
@@ -463,12 +467,13 @@ int wdb_parse(char * input, char * output, int peer) {
             } else {
                 gettimeofday(&begin, 0);
                 if (wdb_parse_ports(wdb, next, output) == 0){
+                    gettimeofday(&end, 0);
                     mdebug2("Updated 'sys_ports' table for agent '%s'", sagent_id);
                 } else {
+                    gettimeofday(&end, 0);
                     merror("Unable to update 'sys_ports' table for agent '%s'", sagent_id);
                 }
-                gettimeofday(&end, 0);
-                timersub(&end,&begin,&diff);
+                timersub(&end, &begin, &diff);
                 w_inc_agent_syscollector_deprecated_ports_time(diff);
             }
         } else if (strcmp(query, "package") == 0) {
@@ -481,12 +486,13 @@ int wdb_parse(char * input, char * output, int peer) {
             } else {
                 gettimeofday(&begin, 0);
                 if (wdb_parse_packages(wdb, next, output) == 0){
+                    gettimeofday(&end, 0);
                     mdebug2("Updated 'sys_programs' table for agent '%s'", sagent_id);
                 } else {
+                    gettimeofday(&end, 0);
                     merror("Unable to update 'sys_programs' table for agent '%s'", sagent_id);
                 }
-                gettimeofday(&end, 0);
-                timersub(&end,&begin,&diff);
+                timersub(&end, &begin, &diff);
                 w_inc_agent_syscollector_deprecated_packages_time(diff);
             }
         } else if (strcmp(query, "hotfix") == 0) {
@@ -499,12 +505,13 @@ int wdb_parse(char * input, char * output, int peer) {
             } else {
                 gettimeofday(&begin, 0);
                 if (wdb_parse_hotfixes(wdb, next, output) == 0){
+                    gettimeofday(&end, 0);
                     mdebug2("Updated 'sys_hotfixes' table for agent '%s'", sagent_id);
                 } else {
+                    gettimeofday(&end, 0);
                     merror("Unable to update 'sys_hotfixes' table for agent '%s'", sagent_id);
                 }
-                gettimeofday(&end, 0);
-                timersub(&end,&begin,&diff);
+                timersub(&end, &begin, &diff);
                 w_inc_agent_syscollector_deprecated_hotfixes_time(diff);
             }
         } else if (strcmp(query, "process") == 0) {
@@ -517,12 +524,13 @@ int wdb_parse(char * input, char * output, int peer) {
             } else {
                 gettimeofday(&begin, 0);
                 if (wdb_parse_processes(wdb, next, output) == 0){
+                    gettimeofday(&end, 0);
                     mdebug2("Updated 'sys_processes' table for agent '%s'", sagent_id);
                 } else {
+                    gettimeofday(&end, 0);
                     merror("Unable to update 'sys_processes' table for agent '%s'", sagent_id);
                 }
-                gettimeofday(&end, 0);
-                timersub(&end,&begin,&diff);
+                timersub(&end, &begin, &diff);
                 w_inc_agent_syscollector_deprecated_process_time(diff);
             }
         } else if (strcmp(query, "dbsync") == 0) {
@@ -539,7 +547,7 @@ int wdb_parse(char * input, char * output, int peer) {
                     mdebug1("Unable to updated based on table deltas for agent '%s'", sagent_id);
                 }
                 gettimeofday(&end, 0);
-                timersub(&end,&begin,&diff);
+                timersub(&end, &begin, &diff);
                 w_inc_agent_dbsync_time(diff);
             }
         } else if (strcmp(query, "ciscat") == 0) {
@@ -553,12 +561,13 @@ int wdb_parse(char * input, char * output, int peer) {
             } else {
                 gettimeofday(&begin, 0);
                 if (wdb_parse_ciscat(wdb, next, output) == 0){
+                    gettimeofday(&end, 0);
                     mdebug2("Updated 'ciscat_results' table for agent '%s'", sagent_id);
                 } else {
+                    gettimeofday(&end, 0);
                     merror("Unable to update 'ciscat_results' table for agent '%s'", sagent_id);
                 }
-                gettimeofday(&end, 0);
-                timersub(&end,&begin,&diff);
+                timersub(&end, &begin, &diff);
                 w_inc_agent_ciscat_time(diff);
             }
         } else if (strcmp(query, "rootcheck") == 0) {
@@ -573,7 +582,7 @@ int wdb_parse(char * input, char * output, int peer) {
                 gettimeofday(&begin, 0);
                 result = wdb_parse_rootcheck(wdb, next, output);
                 gettimeofday(&end, 0);
-                timersub(&end,&begin,&diff);
+                timersub(&end, &begin, &diff);
                 w_inc_agent_rootcheck_time(diff);
             }
         } else if (strcmp(query, "vuln_cves") == 0) {
@@ -588,7 +597,7 @@ int wdb_parse(char * input, char * output, int peer) {
                 gettimeofday(&begin, 0);
                 result = wdb_parse_vuln_cves(wdb, next, output);
                 gettimeofday(&end, 0);
-                timersub(&end,&begin,&diff);
+                timersub(&end, &begin, &diff);
                 w_inc_agent_vul_detector_time(diff);
             }
         } else if (strcmp(query, "sql") == 0) {
@@ -604,18 +613,19 @@ int wdb_parse(char * input, char * output, int peer) {
 
                 gettimeofday(&begin, 0);
                 if (data = wdb_exec(wdb->db, sql), data) {
+                    gettimeofday(&end, 0);
                     out = cJSON_PrintUnformatted(data);
                     snprintf(output, OS_MAXSTR + 1, "ok %s", out);
                     os_free(out);
                     cJSON_Delete(data);
                 } else {
+                    gettimeofday(&end, 0);
                     mdebug1("DB(%s) Cannot execute SQL query.", sagent_id);
                     mdebug2("DB(%s) SQL query: %s", sagent_id, sql);
                     snprintf(output, OS_MAXSTR + 1, "err Cannot execute SQL query");
                     result = -1;
                 }
-                gettimeofday(&end, 0);
-                timersub(&end,&begin,&diff);
+                timersub(&end, &begin, &diff);
                 w_inc_agent_sql_time(diff);
             }
         } else if (strcmp(query, "remove") == 0) {
@@ -639,7 +649,7 @@ int wdb_parse(char * input, char * output, int peer) {
                 result = -1;
             }
             gettimeofday(&end, 0);
-            timersub(&end,&begin,&diff);
+            timersub(&end, &begin, &diff);
             w_inc_agent_remove_time(diff);
 
             w_mutex_unlock(&pool_mutex);
@@ -649,28 +659,30 @@ int wdb_parse(char * input, char * output, int peer) {
 
             gettimeofday(&begin, 0);
             if (wdb_begin2(wdb) < 0) {
+                gettimeofday(&end, 0);
                 mdebug1("DB(%s) Cannot begin transaction.", sagent_id);
                 snprintf(output, OS_MAXSTR + 1, "err Cannot begin transaction");
                 result = -1;
             } else {
+                gettimeofday(&end, 0);
                 snprintf(output, OS_MAXSTR + 1, "ok");
             }
-            gettimeofday(&end, 0);
-            timersub(&end,&begin,&diff);
+            timersub(&end, &begin, &diff);
             w_inc_agent_begin_time(diff);
         } else if (strcmp(query, "commit") == 0) {
             w_inc_agent_commit();
 
             gettimeofday(&begin, 0);
             if (wdb_commit2(wdb) < 0) {
+                gettimeofday(&end, 0);
                 mdebug1("DB(%s) Cannot end transaction.", sagent_id);
                 snprintf(output, OS_MAXSTR + 1, "err Cannot end transaction");
                 result = -1;
             } else {
+                gettimeofday(&end, 0);
                 snprintf(output, OS_MAXSTR + 1, "ok");
             }
-            gettimeofday(&end, 0);
-            timersub(&end,&begin,&diff);
+            timersub(&end, &begin, &diff);
             w_inc_agent_commit_time(diff);
         } else if (strcmp(query, "close") == 0) {
             w_inc_agent_close();
@@ -680,15 +692,16 @@ int wdb_parse(char * input, char * output, int peer) {
 
             gettimeofday(&begin, 0);
             if (wdb_close(wdb, TRUE) < 0) {
+                gettimeofday(&end, 0);
                 mdebug1("DB(%s) Cannot close database.", sagent_id);
                 snprintf(output, OS_MAXSTR + 1, "err Cannot close database");
                 result = -1;
             } else {
+                gettimeofday(&end, 0);
                 snprintf(output, OS_MAXSTR + 1, "ok");
                 result = 0;
             }
-            gettimeofday(&end, 0);
-            timersub(&end,&begin,&diff);
+            timersub(&end, &begin, &diff);
             w_inc_agent_close_time(diff);
 
             w_mutex_unlock(&pool_mutex);
@@ -736,7 +749,11 @@ int wdb_parse(char * input, char * output, int peer) {
             }
         } else if(strcmp(query, "remove") == 0) {
             w_inc_wazuhdb_remove();
+            gettimeofday(&begin, 0);
             data = wdb_remove_multiple_agents(next);
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_wazuhdb_remove_time(diff);
             out = cJSON_PrintUnformatted(data);
             snprintf(output, OS_MAXSTR + 1, "ok %s", out);
             os_free(out);
@@ -784,18 +801,19 @@ int wdb_parse(char * input, char * output, int peer) {
                 sql = next;
                 gettimeofday(&begin, 0);
                 if (data = wdb_exec(wdb->db, sql), data) {
+                    gettimeofday(&end, 0);
                     out = cJSON_PrintUnformatted(data);
                     snprintf(output, OS_MAXSTR + 1, "ok %s", out);
                     os_free(out);
                     cJSON_Delete(data);
                 } else {
+                    gettimeofday(&end, 0);
                     mdebug1("Mitre DB Cannot execute SQL query; err database %s/%s.db: %s", WDB_DIR, WDB_MITRE_NAME, sqlite3_errmsg(wdb->db));
                     mdebug2("Mitre DB SQL query: %s", sql);
                     snprintf(output, OS_MAXSTR + 1, "err Cannot execute Mitre database query; %s", sqlite3_errmsg(wdb->db));
                     result = -1;
                 }
-                gettimeofday(&end, 0);
-                timersub(&end,&begin,&diff);
+                timersub(&end, &begin, &diff);
                 w_inc_mitre_sql_time(diff);
             }
         } else {
@@ -840,17 +858,22 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
+                gettimeofday(&begin, 0);
                 if (data = wdb_exec(wdb->db, next), data) {
+                    gettimeofday(&end, 0);
                     out = cJSON_PrintUnformatted(data);
                     snprintf(output, OS_MAXSTR + 1, "ok %s", out);
                     os_free(out);
                     cJSON_Delete(data);
                 } else {
+                    gettimeofday(&end, 0);
                     mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                     mdebug2("Global DB SQL query: %s", next);
                     snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
                     result = OS_INVALID;
                 }
+                timersub(&end, &begin, &diff);
+                w_inc_global_sql_time(diff);
             }
         } else if (strcmp(query, "insert-agent") == 0) {
             w_inc_global_agent_insert_agent();
@@ -902,7 +925,11 @@ int wdb_parse(char * input, char * output, int peer) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
+                gettimeofday(&begin, 0);
                 result = wdb_parse_global_get_agent_labels(wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                w_inc_global_labels_get_labels_time(diff);
             }
         } else if (strcmp(query, "update-keepalive") == 0) {
             w_inc_global_agent_update_keepalive();
@@ -1242,7 +1269,11 @@ int wdb_parse(char * input, char * output, int peer) {
                 return OS_INVALID;
             }
 
+            gettimeofday(&begin, 0);
             result = wdb_parse_task_upgrade(wdb, parameters_json, "upgrade", output);
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_task_upgrade_time(diff);
             cJSON_Delete(parameters_json);
 
         } else if (!strcmp("upgrade_custom", query)) {
@@ -1262,7 +1293,11 @@ int wdb_parse(char * input, char * output, int peer) {
                 return OS_INVALID;
             }
 
+            gettimeofday(&begin, 0);
             result = wdb_parse_task_upgrade(wdb, parameters_json, "upgrade_custom", output);
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_task_upgrade_custom_time(diff);
             cJSON_Delete(parameters_json);
 
         } else if (!strcmp("upgrade_get_status", query)) {
@@ -1282,7 +1317,11 @@ int wdb_parse(char * input, char * output, int peer) {
                 return OS_INVALID;
             }
 
+            gettimeofday(&begin, 0);
             result = wdb_parse_task_upgrade_get_status(wdb, parameters_json, output);
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_task_upgrade_get_status_time(diff);
             cJSON_Delete(parameters_json);
 
         } else if (!strcmp("upgrade_update_status", query)) {
@@ -1302,7 +1341,11 @@ int wdb_parse(char * input, char * output, int peer) {
                 return OS_INVALID;
             }
 
+            gettimeofday(&begin, 0);
             result = wdb_parse_task_upgrade_update_status(wdb, parameters_json, output);
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_task_upgrade_update_status_time(diff);
             cJSON_Delete(parameters_json);
 
         } else if (!strcmp("upgrade_result", query)) {
@@ -1322,7 +1365,11 @@ int wdb_parse(char * input, char * output, int peer) {
                 return OS_INVALID;
             }
 
+            gettimeofday(&begin, 0);
             result = wdb_parse_task_upgrade_result(wdb, parameters_json, output);
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_task_upgrade_result_time(diff);
             cJSON_Delete(parameters_json);
 
         } else if (!strcmp("upgrade_cancel_tasks", query)) {
@@ -1342,7 +1389,11 @@ int wdb_parse(char * input, char * output, int peer) {
                 return OS_INVALID;
             }
 
+            gettimeofday(&begin, 0);
             result = wdb_parse_task_upgrade_cancel_tasks(wdb, parameters_json, output);
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_task_upgrade_cancel_tasks_time(diff);
             cJSON_Delete(parameters_json);
 
         } else if (!strcmp("set_timeout", query)) {
@@ -1361,8 +1412,11 @@ int wdb_parse(char * input, char * output, int peer) {
                 wdb_leave(wdb);
                 return OS_INVALID;
             }
-
+            gettimeofday(&begin, 0);
             result = wdb_parse_task_set_timeout(wdb, parameters_json, output);
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_task_set_timeout_time(diff);
             cJSON_Delete(parameters_json);
 
         } else if (!strcmp("delete_old", query)) {
@@ -1382,7 +1436,11 @@ int wdb_parse(char * input, char * output, int peer) {
                 return OS_INVALID;
             }
 
+            gettimeofday(&begin, 0);
             result = wdb_parse_task_delete_old(wdb, parameters_json, output);
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_task_delete_old_time(diff);
             cJSON_Delete(parameters_json);
 
         } else if (!strcmp("sql", query)) {
@@ -1395,17 +1453,22 @@ int wdb_parse(char * input, char * output, int peer) {
             } else {
                 sql = next;
 
+                gettimeofday(&begin, 0);
                 if (data = wdb_exec(wdb->db, sql), data) {
+                    gettimeofday(&end, 0);
                     out = cJSON_PrintUnformatted(data);
                     snprintf(output, OS_MAXSTR + 1, "ok %s", out);
                     os_free(out);
                     cJSON_Delete(data);
                 } else {
+                    gettimeofday(&end, 0);
                     mdebug1("Tasks DB Cannot execute SQL query; err database %s/%s.db: %s", WDB_TASK_DIR, WDB_TASK_NAME, sqlite3_errmsg(wdb->db));
                     mdebug2("Tasks DB SQL query: %s", sql);
                     snprintf(output, OS_MAXSTR + 1, "err Cannot execute Tasks database query; %s", sqlite3_errmsg(wdb->db));
                     result = OS_INVALID;
                 }
+                timersub(&end, &begin, &diff);
+                w_inc_task_sql_time(diff);
             }
         } else {
             w_inc_task_unknown();
@@ -1695,7 +1758,7 @@ int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char *
     }
     else
     {
-        //ACA SE SUMARIAN LAS UNKNOWN DE AGENTS???????????????????????????????????????????
+        w_inc_agent_unknown();
         mdebug2("DB(%s) Invalid Syscollector query : %s", wdb->id, query);
         snprintf(output, OS_MAXSTR + 1, "err Invalid Syscollector query syntax, near '%.32s'", query);
         return -1;
@@ -1718,10 +1781,10 @@ int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char *
             return -1;
         }
 
-        snprintf(output, OS_MAXSTR + 1, "ok");
         gettimeofday(&end, 0);
         timersub(&end, &begin, &diff);
         w_inc_agent_syscollector_times(diff, component);
+        snprintf(output, OS_MAXSTR + 1, "ok");
         return 0;
     }
     if (strncmp(curr, "integrity_check_", 16) == 0) {
@@ -1738,23 +1801,26 @@ int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char *
 
         switch (wdbi_query_checksum(wdb, component, action, next)) {
         case INTEGRITY_SYNC_ERR:
+            gettimeofday(&end, 0);
             mdebug1("DB(%s) Cannot query Syscollector range checksum.", wdb->id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot perform range checksum");
             return -1;
 
         case INTEGRITY_SYNC_NO_DATA:
+            gettimeofday(&end, 0);
             snprintf(output, OS_MAXSTR + 1, "ok no_data");
             break;
 
         case INTEGRITY_SYNC_CKS_FAIL:
+            gettimeofday(&end, 0);
             snprintf(output, OS_MAXSTR + 1, "ok checksum_fail");
             break;
 
         default:
+            gettimeofday(&end, 0);
             snprintf(output, OS_MAXSTR + 1, "ok ");
         }
 
-        gettimeofday(&end, 0);
         timersub(&end, &begin, &diff);
         w_inc_agent_syscollector_times(diff, component);
 
@@ -1762,15 +1828,16 @@ int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char *
     } else if (strncmp(curr, "integrity_clear", 15) == 0) {
         switch (wdbi_query_clear(wdb, component, next)) {
         case -1:
+            gettimeofday(&end, 0);
             mdebug1("DB(%s) Cannot query Syscollector range checksum.", wdb->id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot perform range checksum");
             return -1;
 
         default:
+            gettimeofday(&end, 0);
             snprintf(output, OS_MAXSTR + 1, "ok ");
         }
 
-        gettimeofday(&end, 0);
         timersub(&end, &begin, &diff);
         w_inc_agent_syscollector_times(diff, component);
 
@@ -1779,10 +1846,6 @@ int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char *
         mdebug1("DB(%s) Invalid Syscollector query syntax.", wdb->id);
         mdebug2("DB query error near: %s", curr);
         snprintf(output, OS_MAXSTR + 1, "err Invalid Syscollector query syntax, near '%.32s'", curr);
-
-        gettimeofday(&end, 0);
-        timersub(&end, &begin, &diff);
-        w_inc_agent_syscollector_times(diff, component);
 
         return -1;
     }

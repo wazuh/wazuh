@@ -756,3 +756,75 @@ void w_inc_global_group_find_group_time(struct timeval time) {
     timeradd(&wazuhdb_stats.queries_breakdown.global_breakdown.group.find_group_time, &time, &wazuhdb_stats.queries_breakdown.global_breakdown.group.find_group_time);
     w_mutex_unlock(&db_stats_t_mutex);
 }
+
+void w_inc_global_labels_get_labels_time(struct timeval time) {
+    w_mutex_lock(&db_stats_t_mutex);
+    timeradd(&wazuhdb_stats.queries_breakdown.global_breakdown.labels.get_labels_time, &time, &wazuhdb_stats.queries_breakdown.global_breakdown.labels.get_labels_time);
+    w_mutex_unlock(&db_stats_t_mutex);
+}
+
+void w_inc_task_upgrade_time(struct timeval time) {
+    w_mutex_lock(&db_stats_t_mutex);
+    timeradd(&wazuhdb_stats.queries_breakdown.task_breakdown.upgrade.upgrade_time, &time, &wazuhdb_stats.queries_breakdown.task_breakdown.upgrade.upgrade_time);
+    w_mutex_unlock(&db_stats_t_mutex);
+}
+
+void w_inc_task_upgrade_custom_time(struct timeval time) {
+    w_mutex_lock(&db_stats_t_mutex);
+    timeradd(&wazuhdb_stats.queries_breakdown.task_breakdown.upgrade.upgrade_custom_time, &time, &wazuhdb_stats.queries_breakdown.task_breakdown.upgrade.upgrade_custom_time);
+    w_mutex_unlock(&db_stats_t_mutex);
+}
+
+void w_inc_task_upgrade_get_status_time(struct timeval time) {
+    w_mutex_lock(&db_stats_t_mutex);
+    timeradd(&wazuhdb_stats.queries_breakdown.task_breakdown.upgrade.upgrade_get_status_time, &time, &wazuhdb_stats.queries_breakdown.task_breakdown.upgrade.upgrade_get_status_time);
+    w_mutex_unlock(&db_stats_t_mutex);
+}
+
+void w_inc_task_upgrade_update_status_time(struct timeval time) {
+    w_mutex_lock(&db_stats_t_mutex);
+    timeradd(&wazuhdb_stats.queries_breakdown.task_breakdown.upgrade.upgrade_update_status_time, &time, &wazuhdb_stats.queries_breakdown.task_breakdown.upgrade.upgrade_update_status_time);
+    w_mutex_unlock(&db_stats_t_mutex);
+}
+
+void w_inc_task_upgrade_result_time(struct timeval time) {
+    w_mutex_lock(&db_stats_t_mutex);
+    timeradd(&wazuhdb_stats.queries_breakdown.task_breakdown.upgrade.upgrade_result_time, &time, &wazuhdb_stats.queries_breakdown.task_breakdown.upgrade.upgrade_result_time);
+    w_mutex_unlock(&db_stats_t_mutex);
+}
+
+void w_inc_task_upgrade_cancel_tasks_time(struct timeval time) {
+    w_mutex_lock(&db_stats_t_mutex);
+    timeradd(&wazuhdb_stats.queries_breakdown.task_breakdown.upgrade.upgrade_cancel_tasks_time, &time, &wazuhdb_stats.queries_breakdown.task_breakdown.upgrade.upgrade_cancel_tasks_time);
+    w_mutex_unlock(&db_stats_t_mutex);
+}
+
+void w_inc_task_sql_time(struct timeval time) {
+    w_mutex_lock(&db_stats_t_mutex);
+    timeradd(&wazuhdb_stats.queries_breakdown.task_breakdown.sql_time, &time, &wazuhdb_stats.queries_breakdown.task_breakdown.sql_time);
+    w_mutex_unlock(&db_stats_t_mutex);
+}
+
+void w_inc_task_set_timeout_time(struct timeval time) {
+    w_mutex_lock(&db_stats_t_mutex);
+    timeradd(&wazuhdb_stats.queries_breakdown.task_breakdown.set_timeout_time, &time, &wazuhdb_stats.queries_breakdown.task_breakdown.set_timeout_time);
+    w_mutex_unlock(&db_stats_t_mutex);
+}
+
+void w_inc_task_delete_old_time(struct timeval time) {
+    w_mutex_lock(&db_stats_t_mutex);
+    timeradd(&wazuhdb_stats.queries_breakdown.task_breakdown.delete_old_time, &time, &wazuhdb_stats.queries_breakdown.task_breakdown.delete_old_time);
+    w_mutex_unlock(&db_stats_t_mutex);
+}
+
+void w_inc_global_sql_time(struct timeval time) {
+    w_mutex_lock(&db_stats_t_mutex);
+    timeradd(&wazuhdb_stats.queries_breakdown.global_breakdown.sql_time, &time, &wazuhdb_stats.queries_breakdown.global_breakdown.sql_time);
+    w_mutex_unlock(&db_stats_t_mutex);
+}
+
+void w_inc_wazuhdb_remove_time(struct timeval time) {
+    w_mutex_lock(&db_stats_t_mutex);
+    timeradd(&wazuhdb_stats.queries_breakdown.wazuhdb_breakdown.remove_time, &time, &wazuhdb_stats.queries_breakdown.wazuhdb_breakdown.remove_time);
+    w_mutex_unlock(&db_stats_t_mutex);
+}
