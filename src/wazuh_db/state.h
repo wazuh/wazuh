@@ -134,21 +134,20 @@ typedef struct _global_group_t {
 
 typedef struct _global_belongs_t {
     uint64_t delete_agent_belong_queries;
-    uint64_t delete_agent_belong_time;
+    struct timeval delete_agent_belong_time;
 } global_belongs_t;
 
 typedef struct _global_labels_t {
     uint64_t set_labels_queries;
-    uint64_t set_labels_time;
     uint64_t get_labels_queries;
-    uint64_t get_labels_time;
+    struct timeval set_labels_time;
+    struct timeval get_labels_time;
 } global_labels_t;
 
 typedef struct _global_breakdown_t {
     uint64_t sql_queries;
-    uint64_t sql_time;
     uint64_t unknown_queries;
-
+    struct timeval sql_time;
     global_agent_t agent;
     global_group_t group;
     global_belongs_t belongs;
@@ -157,28 +156,27 @@ typedef struct _global_breakdown_t {
 
 typedef struct _task_upgrade_t {
     uint64_t upgrade_queries;
-    uint64_t upgrade_time;
     uint64_t upgrade_custom_queries;
-    uint64_t upgrade_custom_time;
     uint64_t upgrade_get_status_queries;
-    uint64_t upgrade_get_status_time;
     uint64_t upgrade_update_status_queries;
-    uint64_t upgrade_update_status_time;
     uint64_t upgrade_result_queries;
-    uint64_t upgrade_result_time;
     uint64_t upgrade_cancel_tasks_queries;
-    uint64_t upgrade_cancel_tasks_time;
+    struct timeval upgrade_time;
+    struct timeval upgrade_custom_time;
+    struct timeval upgrade_get_status_time;
+    struct timeval upgrade_update_status_time;
+    struct timeval upgrade_result_time;
+    struct timeval upgrade_cancel_tasks_time;
 } task_upgrade_t;
 
 typedef struct _task_breakdown_t {
     uint64_t sql_queries;
-    uint64_t sql_time;
     uint64_t set_timeout_queries;
-    uint64_t set_timeout_time;
     uint64_t delete_old_queries;
-    uint64_t delete_old_time;
     uint64_t unknown_queries;
-
+    struct timeval sql_time;
+    struct timeval set_timeout_time;
+    struct timeval delete_old_time;
     task_upgrade_t upgrade;
 } task_breakdown_t;
 
@@ -190,23 +188,17 @@ typedef struct _mitre_breakdown_t {
 
 typedef struct _wazuhdb_breakdown_t {
     uint64_t remove_queries;
-    uint64_t remove_time;
     uint64_t unknown_queries;
+    struct timeval remove_time;
 } wazuhdb_breakdown_t;
 
 typedef struct _queries_breakdown_t {
     uint64_t wazuhdb_queries;
-    uint64_t wazuhdb_time;
     uint64_t agent_queries;
-    uint64_t agent_time;
     uint64_t global_queries;
-    uint64_t global_time;
     uint64_t task_queries;
-    uint64_t task_time;
     uint64_t mitre_queries;
-    uint64_t mitre_time;
     uint64_t unknown_queries;
-
     wazuhdb_breakdown_t wazuhdb_breakdown;
     agent_breakdown_t agent_breakdown;
     global_breakdown_t global_breakdown;
@@ -215,12 +207,7 @@ typedef struct _queries_breakdown_t {
 } queries_breakdown_t;
 
 typedef struct _db_stats_t {
-    char *version;
-    char *deamon_name;
-    uint64_t timestamp;
     uint64_t queries_total;
-    uint64_t queries_time_total;
-
     queries_breakdown_t queries_breakdown;
 } db_stats_t;
 
@@ -467,3 +454,31 @@ void w_inc_global_group_delete_group_time(struct timeval time);
 void w_inc_global_group_select_groups_time(struct timeval time);
 
 void w_inc_global_group_find_group_time(struct timeval time);
+
+void w_inc_global_belongs_delete_agent_belong_time(struct timeval time);
+
+void w_inc_global_labels_set_labels_time(struct timeval time);
+
+void w_inc_global_labels_get_labels_time(struct timeval time);
+
+void w_inc_task_upgrade_time(struct timeval time);
+
+void w_inc_task_upgrade_custom_time(struct timeval time);
+
+void w_inc_task_upgrade_get_status_time(struct timeval time);
+
+void w_inc_task_upgrade_update_status_time(struct timeval time);
+
+void w_inc_task_upgrade_result_time(struct timeval time);
+
+void w_inc_task_upgrade_cancel_tasks_time(struct timeval time);
+
+void w_inc_task_sql_time(struct timeval time);
+
+void w_inc_task_set_timeout_time(struct timeval time);
+
+void w_inc_task_delete_old_time(struct timeval time);
+
+void w_inc_global_sql_time(struct timeval time);
+
+void w_inc_wazuhdb_remove_time(struct timeval time);
