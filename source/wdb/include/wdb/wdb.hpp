@@ -26,8 +26,6 @@ const std::map<const char*, QueryResultCodes> QueryResStr2Code = {
     {"err", QueryResultCodes::ERROR},
     {"ign", QueryResultCodes::IGNORE}};
 
-
-
 /**
  * @brief WazuhDB class
  *
