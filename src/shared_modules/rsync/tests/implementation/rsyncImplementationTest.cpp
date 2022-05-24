@@ -237,6 +237,8 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumFailToSplit)
         callback(ReturnTypeCallback::GENERIC, data);
     })));
 
+    std::atomic<uint64_t> messageCounter { 0 };
+    constexpr auto TOTAL_EXPECTED_MESSAGES { 2ull };
 
     const auto checkExpected
     {
@@ -247,6 +249,7 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumFailToSplit)
             if (0 == payload.compare(expectedResult1) || 0 == payload.compare(expectedResult2))
             {
                 retVal = ::testing::AssertionSuccess();
+                ++messageCounter;
             }
 
             return retVal;
@@ -272,6 +275,8 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumFailToSplit)
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().push(handle, data));
 
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().release());
+
+    EXPECT_EQ(TOTAL_EXPECTED_MESSAGES, messageCounter.load());
 }
 
 TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumInvalidOperation)
