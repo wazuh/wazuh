@@ -16,6 +16,7 @@ with patch('wazuh.core.common.getgrnam'):
                 from wazuh.core.results import WazuhResult
 
 default_cluster_config = {
+    'disabled': True,
     'node_type': 'master',
     'name': 'wazuh',
     'node_name': 'node01',
@@ -49,12 +50,21 @@ def test_read_cluster_config():
     with patch('wazuh.core.cluster.utils.get_ossec_conf', return_value={'cluster': default_cluster_config}):
         utils.read_config.cache_clear()
         default_cluster_config.pop('hidden')
+        default_cluster_config['disabled'] = 'no'
         config = utils.read_cluster_config()
         config_simple = utils.read_config()
         assert config == config_simple
         assert config == default_cluster_config
 
         default_cluster_config['node_type'] = 'client'
+        config = utils.read_cluster_config()
+        assert config == default_cluster_config
+
+        default_cluster_config['disabled'] = 'None'
+        with pytest.raises(WazuhError, match='.* 3004 .*'):
+            utils.read_cluster_config()
+
+        default_cluster_config['disabled'] = 'yes'
         config = utils.read_cluster_config()
         assert config == default_cluster_config
 

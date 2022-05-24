@@ -32,6 +32,7 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
 
     If some fields are missing in the ossec.conf cluster configuration, they are replaced
     with default values.
+    If there is no cluster configuration at all, the default configuration is marked as disabled.
 
     Parameters
     ----------
@@ -46,6 +47,7 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
         Dictionary with cluster configuration.
     """
     cluster_default_configuration = {
+        'disabled': False,
         'node_type': 'master',
         'name': 'wazuh',
         'node_name': 'node01',
@@ -60,7 +62,8 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
         config_cluster = get_ossec_conf(section='cluster', conf_file=config_file, from_import=from_import)['cluster']
     except WazuhException as e:
         if e.code == 1106:
-            # If no cluster configuration is present in ossec.conf, return default configuration.
+            # If no cluster configuration is present in ossec.conf, return default configuration but disabling it.
+            cluster_default_configuration['disabled'] = True
             return cluster_default_configuration
         else:
             raise WazuhError(3006, extra_message=e.message)
@@ -75,6 +78,14 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
         raise WazuhError(3004, extra_message="Cluster port must be an integer.")
 
     config_cluster['port'] = int(config_cluster['port'])
+    if config_cluster['disabled'] == 'no':
+        config_cluster['disabled'] = False
+    elif config_cluster['disabled'] == 'yes':
+        config_cluster['disabled'] = True
+    elif not isinstance(config_cluster['disabled'], bool):
+        raise WazuhError(3004,
+                         extra_message=f"Allowed values for 'disabled' field are 'yes' and 'no'. "
+                                       f"Found: '{config_cluster['disabled']}'")
 
     if config_cluster['node_type'] == 'client':
         logger.info("Deprecated node type 'client'. Using 'worker' instead.")
