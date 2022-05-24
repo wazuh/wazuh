@@ -85,12 +85,12 @@ static int testAcceptConnection(const int serverSocketFD)
 
 // TESTS SECTION
 
-TEST(wdb_procol, testSocketConnectError)
+TEST(wdb_procol, SocketConnectError)
 {
     ASSERT_THROW(socketConnect(TEST_SOCKET_PATH), std::runtime_error);
 }
 
-TEST(wdb_procol, testSocketConnect)
+TEST(wdb_procol, SocketConnect)
 {
     // Create server
     const int acceptSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
@@ -106,7 +106,7 @@ TEST(wdb_procol, testSocketConnect)
     unlink(TEST_SOCKET_PATH);
 }
 
-TEST(wdb_procol, testSendMessageError)
+TEST(wdb_procol, SendMessageError)
 {
     // Create server
     const int acceptSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
@@ -126,7 +126,7 @@ TEST(wdb_procol, testSendMessageError)
     unlink(TEST_SOCKET_PATH);
 }
 
-TEST(wdb_procol, testSendLongMessageError)
+TEST(wdb_procol, SendLongMessageError)
 {
     char msg[MSG_MAX_SIZE + 2] = {};
     memset(msg, 'x', MSG_MAX_SIZE + 1);
@@ -148,7 +148,7 @@ TEST(wdb_procol, testSendLongMessageError)
     unlink(TEST_SOCKET_PATH);
 }
 
-TEST(wdb_procol, testSendNullMessageError)
+TEST(wdb_procol, SendNullMessageError)
 {
     // Create server
     const int acceptSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
@@ -167,7 +167,7 @@ TEST(wdb_procol, testSendNullMessageError)
     unlink(TEST_SOCKET_PATH);
 }
 
-TEST(wdb_procol, testSendEmptyMessageError)
+TEST(wdb_procol, SendEmptyMessageError)
 {
     // Create server
     const int acceptSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
@@ -186,18 +186,18 @@ TEST(wdb_procol, testSendEmptyMessageError)
     unlink(TEST_SOCKET_PATH);
 }
 
-TEST(wdb_procol, testSendInvalidSocketError)
+TEST(wdb_procol, SendInvalidSocketError)
 {
     ASSERT_EQ(sendMsg(0, TEST_SEND_MESSAGE, strlen(TEST_SEND_MESSAGE)), INVALID_SOCKET);
     ASSERT_EQ(sendMsg(-5, TEST_SEND_MESSAGE, strlen(TEST_SEND_MESSAGE)), INVALID_SOCKET);
 }
 
-TEST(wdb_procol, testSendWrongSocketFDError)
+TEST(wdb_procol, SendWrongSocketFDError)
 {
     ASSERT_EQ(sendMsg(999, TEST_SEND_MESSAGE, strlen(TEST_SEND_MESSAGE)), SOCKET_ERROR);
 }
 
-TEST(wdb_procol, testSendMessage)
+TEST(wdb_procol, SendMessage)
 {
     // Create server
     const int acceptSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
@@ -216,7 +216,7 @@ TEST(wdb_procol, testSendMessage)
     unlink(TEST_SOCKET_PATH);
 }
 
-TEST(wdb_procol, testRecvMessage)
+TEST(wdb_procol, RecvMessage)
 {
     char msg[MAX_BUFFER_SIZE] = {};
 
@@ -244,37 +244,7 @@ TEST(wdb_procol, testRecvMessage)
     unlink(TEST_SOCKET_PATH);
 }
 
-TEST(wdb_procol, testSendLongestMessage)
-{
-    char msg[MSG_MAX_SIZE + 1] = {};
-    memset(msg, 'x', MSG_MAX_SIZE);
-
-    // Create server
-    const int acceptSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
-    ASSERT_GT(acceptSocketFD, 0);
-
-    // Connect client
-    const int clientSocketFD = socketConnect(TEST_SOCKET_PATH);
-    ASSERT_GT(clientSocketFD, 0);
-
-    const int serverSocketFD = testAcceptConnection(acceptSocketFD);
-    ASSERT_GT(serverSocketFD, 0);
-
-    ASSERT_EQ(sendMsg(clientSocketFD, msg, strlen(msg)), MSG_MAX_SIZE);
-
-    char recvBuff[MSG_MAX_SIZE + 1] = {};
-    int recvBytes = recvMsg(serverSocketFD, recvBuff, MSG_MAX_SIZE + 1);
-    ASSERT_EQ(recvBytes, MSG_MAX_SIZE);
-    ASSERT_STREQ(msg, recvBuff);
-
-    close(acceptSocketFD);
-    close(clientSocketFD);
-    close(serverSocketFD);
-
-    unlink(TEST_SOCKET_PATH);
-}
-
-TEST(wdb_procol, testSendRecvMessage)
+TEST(wdb_procol, SendRecvMessage)
 {
     char msg[MAX_BUFFER_SIZE] = {};
 
@@ -301,6 +271,36 @@ TEST(wdb_procol, testSendRecvMessage)
 
     recvBytes = recvMsg(clientSocketFD, msg, MAX_BUFFER_SIZE);
     ASSERT_STREQ(msg, TEST_SEND_MESSAGE);
+
+    close(acceptSocketFD);
+    close(clientSocketFD);
+    close(serverSocketFD);
+
+    unlink(TEST_SOCKET_PATH);
+}
+
+TEST(wdb_procol, SendRecvLongestMessage)
+{
+    char msg[MSG_MAX_SIZE + 1] = {};
+    memset(msg, 'x', MSG_MAX_SIZE);
+
+    // Create server
+    const int acceptSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
+    ASSERT_GT(acceptSocketFD, 0);
+
+    // Connect client
+    const int clientSocketFD = socketConnect(TEST_SOCKET_PATH);
+    ASSERT_GT(clientSocketFD, 0);
+
+    const int serverSocketFD = testAcceptConnection(acceptSocketFD);
+    ASSERT_GT(serverSocketFD, 0);
+
+    ASSERT_EQ(sendMsg(clientSocketFD, msg, strlen(msg)), MSG_MAX_SIZE);
+
+    char recvBuff[MSG_MAX_SIZE + 1] = {};
+    int recvBytes = recvMsg(serverSocketFD, recvBuff, MSG_MAX_SIZE + 1);
+    ASSERT_EQ(recvBytes, MSG_MAX_SIZE);
+    ASSERT_STREQ(msg, recvBuff);
 
     close(acceptSocketFD);
     close(clientSocketFD);
