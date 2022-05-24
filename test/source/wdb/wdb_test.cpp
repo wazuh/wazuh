@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 
+using namespace wazuhdb;
 
 TEST(wdb_connector, init)
 {
