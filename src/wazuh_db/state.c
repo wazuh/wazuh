@@ -16,6 +16,12 @@ void w_inc_wazuhdb() {
     w_mutex_unlock(&db_stats_t_mutex);
 }
 
+void w_inc_wazuhdb_get_config() {
+    w_mutex_lock(&db_stats_t_mutex);
+    wazuhdb_stats.queries_breakdown.wazuhdb_breakdown.get_config_queries++;
+    w_mutex_unlock(&db_stats_t_mutex);
+}
+
 void w_inc_wazuhdb_remove() {
     w_mutex_lock(&db_stats_t_mutex);
     wazuhdb_stats.queries_breakdown.wazuhdb_breakdown.remove_queries++;
@@ -238,6 +244,12 @@ void w_inc_global_sql() {
     w_mutex_unlock(&db_stats_t_mutex);
 }
 
+void w_inc_global_backup() {
+    w_mutex_lock(&db_stats_t_mutex);
+    wazuhdb_stats.queries_breakdown.global_breakdown.backup_queries++;
+    w_mutex_unlock(&db_stats_t_mutex);
+}
+
 void w_inc_global_unknown() {
     w_mutex_lock(&db_stats_t_mutex);
     wazuhdb_stats.queries_breakdown.global_breakdown.unknown_queries++;
@@ -340,6 +352,24 @@ void w_inc_global_agent_sync_agent_info_get() {
     w_mutex_unlock(&db_stats_t_mutex);
 }
 
+void w_inc_global_agent_sync_agent_groups_get() {
+    w_mutex_lock(&db_stats_t_mutex);
+    wazuhdb_stats.queries_breakdown.global_breakdown.agent.sync_agent_groups_get_queries++;
+    w_mutex_unlock(&db_stats_t_mutex);
+}
+
+void w_inc_global_agent_set_agent_groups() {
+    w_mutex_lock(&db_stats_t_mutex);
+    wazuhdb_stats.queries_breakdown.global_breakdown.agent.set_agent_groups_queries++;
+    w_mutex_unlock(&db_stats_t_mutex);
+}
+
+void w_inc_global_agent_get_groups_integrity() {
+    w_mutex_lock(&db_stats_t_mutex);
+    wazuhdb_stats.queries_breakdown.global_breakdown.agent.get_groups_integrity_queries++;
+    w_mutex_unlock(&db_stats_t_mutex);
+}
+
 void w_inc_global_group_insert_agent_group() {
     w_mutex_lock(&db_stats_t_mutex);
     wazuhdb_stats.queries_breakdown.global_breakdown.group.insert_agent_group_queries++;
@@ -361,6 +391,18 @@ void w_inc_global_group_select_groups() {
 void w_inc_global_group_find_group() {
     w_mutex_lock(&db_stats_t_mutex);
     wazuhdb_stats.queries_breakdown.global_breakdown.group.find_group_queries++;
+    w_mutex_unlock(&db_stats_t_mutex);
+}
+
+void w_inc_global_belongs_select_group_belong() {
+    w_mutex_lock(&db_stats_t_mutex);
+    wazuhdb_stats.queries_breakdown.global_breakdown.belongs.select_group_belong_queries++;
+    w_mutex_unlock(&db_stats_t_mutex);
+}
+
+void w_inc_global_belongs_get_group_agent() {
+    w_mutex_lock(&db_stats_t_mutex);
+    wazuhdb_stats.queries_breakdown.global_breakdown.belongs.get_group_agent_queries++;
     w_mutex_unlock(&db_stats_t_mutex);
 }
 
@@ -733,6 +775,24 @@ void w_inc_global_agent_sync_agent_info_get_time(struct timeval time) {
     w_mutex_unlock(&db_stats_t_mutex);
 }
 
+void w_inc_global_agent_sync_agent_groups_get_time(struct timeval time) {
+    w_mutex_lock(&db_stats_t_mutex);
+    timeradd(&wazuhdb_stats.queries_breakdown.global_breakdown.agent.sync_agent_groups_get_time, &time, &wazuhdb_stats.queries_breakdown.global_breakdown.agent.sync_agent_groups_get_time);
+    w_mutex_unlock(&db_stats_t_mutex);
+}
+
+void w_inc_global_agent_set_agent_groups_time(struct timeval time) {
+    w_mutex_lock(&db_stats_t_mutex);
+    timeradd(&wazuhdb_stats.queries_breakdown.global_breakdown.agent.set_agent_groups_time, &time, &wazuhdb_stats.queries_breakdown.global_breakdown.agent.set_agent_groups_time);
+    w_mutex_unlock(&db_stats_t_mutex);
+}
+
+void w_inc_global_agent_get_groups_integrity_time(struct timeval time) {
+    w_mutex_lock(&db_stats_t_mutex);
+    timeradd(&wazuhdb_stats.queries_breakdown.global_breakdown.agent.get_groups_integrity_time, &time, &wazuhdb_stats.queries_breakdown.global_breakdown.agent.get_groups_integrity_time);
+    w_mutex_unlock(&db_stats_t_mutex);
+}
+
 void w_inc_global_group_insert_agent_group_time(struct timeval time) {
     w_mutex_lock(&db_stats_t_mutex);
     timeradd(&wazuhdb_stats.queries_breakdown.global_breakdown.group.insert_agent_group_time, &time, &wazuhdb_stats.queries_breakdown.global_breakdown.group.insert_agent_group_time);
@@ -754,6 +814,18 @@ void w_inc_global_group_select_groups_time(struct timeval time) {
 void w_inc_global_group_find_group_time(struct timeval time) {
     w_mutex_lock(&db_stats_t_mutex);
     timeradd(&wazuhdb_stats.queries_breakdown.global_breakdown.group.find_group_time, &time, &wazuhdb_stats.queries_breakdown.global_breakdown.group.find_group_time);
+    w_mutex_unlock(&db_stats_t_mutex);
+}
+
+void w_inc_global_belongs_select_group_belong_time(struct timeval time) {
+    w_mutex_lock(&db_stats_t_mutex);
+    timeradd(&wazuhdb_stats.queries_breakdown.global_breakdown.belongs.select_group_belong_time, &time, &wazuhdb_stats.queries_breakdown.global_breakdown.belongs.select_group_belong_time);
+    w_mutex_unlock(&db_stats_t_mutex);
+}
+
+void w_inc_global_belongs_get_group_agent_time(struct timeval time) {
+    w_mutex_lock(&db_stats_t_mutex);
+    timeradd(&wazuhdb_stats.queries_breakdown.global_breakdown.belongs.get_group_agent_time, &time, &wazuhdb_stats.queries_breakdown.global_breakdown.belongs.get_group_agent_time);
     w_mutex_unlock(&db_stats_t_mutex);
 }
 
@@ -820,6 +892,18 @@ void w_inc_task_delete_old_time(struct timeval time) {
 void w_inc_global_sql_time(struct timeval time) {
     w_mutex_lock(&db_stats_t_mutex);
     timeradd(&wazuhdb_stats.queries_breakdown.global_breakdown.sql_time, &time, &wazuhdb_stats.queries_breakdown.global_breakdown.sql_time);
+    w_mutex_unlock(&db_stats_t_mutex);
+}
+
+void w_inc_global_backup_time(struct timeval time) {
+    w_mutex_lock(&db_stats_t_mutex);
+    timeradd(&wazuhdb_stats.queries_breakdown.global_breakdown.backup_time, &time, &wazuhdb_stats.queries_breakdown.global_breakdown.backup_time);
+    w_mutex_unlock(&db_stats_t_mutex);
+}
+
+void w_inc_wazuhdb_get_config_time(struct timeval time) {
+    w_mutex_lock(&db_stats_t_mutex);
+    timeradd(&wazuhdb_stats.queries_breakdown.wazuhdb_breakdown.get_config_time, &time, &wazuhdb_stats.queries_breakdown.wazuhdb_breakdown.get_config_time);
     w_mutex_unlock(&db_stats_t_mutex);
 }
 

@@ -738,7 +738,12 @@ int wdb_parse(char * input, char * output, int peer) {
         *next++ = '\0';
 
         if (strcmp(query, "getconfig") == 0) {
+            w_inc_wazuhdb_get_config();
+            gettimeofday(&begin, 0);
             data = wdb_parse_get_config(next);
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_wazuhdb_get_config_time(diff);
             out = cJSON_PrintUnformatted(data);
             cJSON_Delete(data);
             if (out) {
@@ -1044,22 +1049,32 @@ int wdb_parse(char * input, char * output, int peer) {
                 w_inc_global_group_insert_agent_group_time(diff);
             }
         } else if (strcmp(query, "select-group-belong") == 0) {
+            w_inc_global_belongs_select_group_belong();
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax for select-group-belong.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
+                gettimeofday(&begin, 0);
                 result = wdb_parse_global_select_group_belong(wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                void w_inc_global_belongs_select_group_belong_time(diff);
             }
         } else if (strcmp(query, "get-group-agents") == 0) {
+            w_inc_global_belongs_get_group_agent();
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax for get-group-agents.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
+                gettimeofday(&begin, 0);
                 result = wdb_parse_global_get_group_agents(wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                w_inc_global_belongs_get_group_agent_time(diff);
             }
         } else if (strcmp(query, "delete-group") == 0) {
             w_inc_global_group_delete_group();
@@ -1083,22 +1098,32 @@ int wdb_parse(char * input, char * output, int peer) {
             timersub(&end, &begin, &diff);
             w_inc_global_group_select_groups_time(diff);
         } else if (strcmp(query, "sync-agent-groups-get") == 0) {
+            w_inc_global_agent_sync_agent_groups_get();
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax for sync-agent-groups-get.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
+                gettimeofday(&begin, 0);
                 result = wdb_parse_global_sync_agent_groups_get(wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                w_inc_global_agent_sync_agent_groups_get_time(diff);
             }
         } else if (strcmp(query, "set-agent-groups") == 0) {
+            w_inc_global_agent_set_agent_groups();
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax for set-agent-groups.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
+                gettimeofday(&begin, 0);
                 result = wdb_parse_global_set_agent_groups(wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                w_inc_global_agent_set_agent_groups_time(diff);
             }
         } else if (strcmp(query, "sync-agent-info-get") == 0) {
             w_inc_global_agent_sync_agent_info_get();
@@ -1122,13 +1147,18 @@ int wdb_parse(char * input, char * output, int peer) {
                 w_inc_global_agent_sync_agent_info_set_time(diff);
             }
         } else if (strcmp(query, "get-groups-integrity") == 0) {
+            void w_inc_global_agent_get_groups_integrity();
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax for get-groups-integrity.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
+                gettimeofday(&begin, 0);
                 result = wdb_parse_get_groups_integrity(wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                w_inc_global_agent_get_groups_integrity_time(diff);
             }
         } else if (strcmp(query, "disconnect-agents") == 0) {
             w_inc_global_agent_disconnect_agents();
@@ -1206,14 +1236,19 @@ int wdb_parse(char * input, char * output, int peer) {
             }
         }
         else if (strcmp(query, "backup") == 0) {
+            w_inc_global_backup();
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax for backup.");
                 mdebug2("Global DB query error near: %s", query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = OS_INVALID;
             } else {
+                gettimeofday(&begin, 0);
                 // The "backup restore" command takes the pool_mutex to remove the wdb pointer
                 result = wdb_parse_global_backup(&wdb, next, output);
+                gettimeofday(&end, 0);
+                timersub(&end, &begin, &diff);
+                w_inc_global_backup_time(diff);
             }
         }
         else {
