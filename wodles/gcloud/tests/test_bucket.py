@@ -146,7 +146,7 @@ def get_all_table_names(db_connector) -> list[str]:
         List of table names.
     """
     table_list = db_connector.execute(
-        "SELECT name FROM sqlite_schema WHERE type ='table' AND name NOT LIKE 'sqlite_%';"
+        "SELECT name FROM sqlite_master WHERE type ='table' AND name NOT LIKE 'sqlite_%';"
     ).fetchall()
     return [table[0] for table in table_list]
 
