@@ -4,7 +4,18 @@
 #include <stdint.h>
 
 /*
-TODO readme with socket protocol description
+    Wazuh TCP protocol format
+
+    On the TCP messages the payload size must be prefixed to the actual payload:
+
+    - TCP Message: <Payload Size><Payload>
+
+    The "Payload Size" has the following format:
+    - Size: 4 bytes
+    - Sign: Unsigned
+    - Endianness: Little-endian
+
+    See: https://documentation.wazuh.com/current/development/message-format.html
 */
 
 namespace socketinterface
