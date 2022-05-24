@@ -13,6 +13,9 @@ with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         from api import alogging
 
+REQUEST_HEADERS_TEST = {'authorization': 'Basic d2F6dWg6cGFzc3dvcmQxMjM='}  # wazuh:password123
+AUTH_CONTEXT_TEST = {'auth_context': 'example'}
+HASH_AUTH_CONTEXT_TEST = '020efd3b53c1baf338cf143fad7131c3'
 
 def test_accesslogger_log_credentials():
     """Check AccessLogger is hiding confidential data from logs"""
@@ -51,8 +54,8 @@ def test_accesslogger_log_credentials():
     (None, 'wazuh')
 ])
 @patch('api.alogging.json.dumps')
-def test_accesslogger_log(mock_dumps, side_effect, user):
-    """Test expected methods are called when using log().
+def test_accesslogger_log_user(mock_dumps, side_effect, user):
+    """Test that the user is logged properly when using log().
 
     Parameters
     ----------
@@ -64,8 +67,7 @@ def test_accesslogger_log(mock_dumps, side_effect, user):
 
     # Create a class with a mocked get method for request
     class MockedRequest(MagicMock):
-        # wazuh:password123
-        headers = {'authorization': 'Basic d2F6dWg6cGFzc3dvcmQxMjM='} if side_effect is None else {}
+        headers = REQUEST_HEADERS_TEST if side_effect is None else {}
 
         def get(self, *args, **kwargs):
             return user
@@ -89,6 +91,65 @@ def test_accesslogger_log(mock_dumps, side_effect, user):
         else:
             assert json_call['user'] == user
             assert log_call.split(" ")[0] == user
+
+
+@pytest.mark.parametrize('request_path, token_info, request_body', [
+    ('/agents', {'hash_auth_context': HASH_AUTH_CONTEXT_TEST}, {}),  # Test a normal request logs the auth context hash
+    ('/security/user/authenticate/run_as', {'other_key': 'other_value'},
+     AUTH_CONTEXT_TEST),  # Test a login request generates and logs the auth context hash
+    ('/security/user/authenticate', None, {})  # Test any other call without auth context does not log the hash
+])
+def test_accesslogger_log_hash_auth_context(request_path, token_info, request_body):
+    """Test that the authorization context hash is logged properly when using log().
+
+    Parameters
+    ----------
+    request_path : str
+        Path used in the custom request.
+    token_info : dict
+        Dictionary corresponding to the token information. If token_info is None, we simulate that no token was given.
+    request_body : dict
+        Request body used in the custom request.
+    """
+
+    # Create a class with custom methods for request
+    class CustomRequest:
+        def __init__(self):
+            self.request_dict = {'token_info': token_info} if token_info else {}
+            self.path = request_path
+            self.body = request_body
+            self.query = {'q': 'test'}
+            self.remote = 'test'
+            self.method = 'test'
+            self.user = 'test'
+
+        def __contains__(self, key):
+            return key in self.request_dict
+
+        def __getitem__(self, key):
+            return self.request_dict[key]
+
+        def get(self, *args, **kwargs):
+            return getattr(self, args[0]) if args[0] in self.__dict__.keys() else args[1]
+
+    # Mock logger.info
+    with patch('logging.Logger.info') as mock_logger_info:
+        # Create an AccessLogger object and log a mocked call
+        request = CustomRequest()
+        test_access_logger = alogging.AccessLogger(logger=logging.getLogger('test'), log_format=MagicMock())
+        test_access_logger.log(request=request, response=MagicMock(), time=0.0)
+
+        message_api_log = mock_logger_info.call_args_list[0][0][0].split(" ")
+        message_api_json = mock_logger_info.call_args_list[1][0][0]
+
+        # Test authorization context hash is being logged
+        if (token_info and token_info.get('hash_auth_context')) or \
+                (request_path == "/security/user/authenticate/run_as" and request_body):
+            assert message_api_log[1] == f"({HASH_AUTH_CONTEXT_TEST})"
+            assert message_api_json.get('hash_auth_context') == HASH_AUTH_CONTEXT_TEST
+        else:
+            assert message_api_log[1] == request.remote
+            assert 'hash_auth_context' not in message_api_json
 
 
 @pytest.mark.parametrize('json_log', [
