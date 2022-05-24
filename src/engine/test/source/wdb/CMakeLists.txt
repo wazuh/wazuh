@@ -4,10 +4,8 @@ add_executable(wdb_test
 )
 
 target_include_directories(wdb_test
-#    PRIVATE
-#    ${ENGINE_SOURCE_DIR}/wdb/src
-    PUBLIC
-    ${ENGINE_SOURCE_DIR}/wdb
+    PRIVATE
+    ${ENGINE_SOURCE_DIR}/wdb/src
 )
 
 # TODO check if it's ok to add base for the json dep
