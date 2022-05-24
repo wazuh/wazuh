@@ -14,6 +14,10 @@
 #include "mail-config.h"
 #include "config.h"
 #include "string_op.h"
+#include "./analysisd/analysisd.h"
+
+int Read_Global_limits(const OS_XML *xml, XML_NODE node, _Config *Config);
+int Read_Global_limits_eps(XML_NODE node, _Config *Config);
 
 
 int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
@@ -118,7 +122,7 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
     return (0);
 }
 
-int Read_Global(XML_NODE node, void *configp, void *mailp)
+int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
 {
     int i = 0;
 
@@ -153,6 +157,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     const char *xml_max_output_size = "max_output_size";
     const char *xml_agents_disconnection_time = "agents_disconnection_time";
     const char *xml_agents_disconnection_alert_time = "agents_disconnection_alert_time";
+    const char *xml_limits = "limits";
 
 
     const char *xml_emailto = "email_to";
@@ -414,6 +419,17 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             if (Config) {
                 Config->memorysize = atoi(node[i]->content);
             }
+        } else if (strcmp(node[i]->element, xml_limits) == 0) {
+            XML_NODE chld_node = NULL;
+            if (!(chld_node = OS_GetElementsbyNode(xml, node[i]))) {
+                merror(XML_INVELEM, node[i]->element);
+                return (OS_INVALID);
+            }
+            if (Read_Global_limits(xml, chld_node, Config) < 0) {
+                OS_ClearNode(chld_node);
+                return (OS_INVALID);
+            }
+            OS_ClearNode(chld_node);
         }
         /* whitelist */
         else if (strcmp(node[i]->element, xml_white_list) == 0) {
@@ -805,4 +821,66 @@ void config_free(_Config *config) {
         free(config->node_type);
     }
 
+}
+
+int Read_Global_limits(const OS_XML *xml, XML_NODE node, _Config *Config)
+{
+    /* XML definitions */
+    const char *xml_eps = "eps";
+
+    for (int i = 0; node[i]; i++) {
+        // eps
+        if (strcmp(node[i]->element, xml_eps) == 0) {
+            XML_NODE chld_node = NULL;
+            if (!(chld_node = OS_GetElementsbyNode(xml, node[i]))) {
+                merror(XML_INVELEM, node[i]->element);
+                return (OS_INVALID);
+            }
+            if (Read_Global_limits_eps(chld_node, Config) < 0) {
+                OS_ClearNode(chld_node);
+                return (OS_INVALID);
+            }
+            OS_ClearNode(chld_node);
+        }
+    }
+    return OS_SUCCESS;
+}
+
+int Read_Global_limits_eps(XML_NODE node, _Config *Config) {
+    static const char *xml_max_eps = "maximum";
+    static const char *xml_timeframe_eps = "timeframe";
+
+    for (int i = 0; node[i]; i++) {
+        // max_eps
+        if (!strcmp(node[i]->element, xml_max_eps)) {
+            if (!OS_StrIsNum(node[i]->content)) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+
+            if (Config) {
+                Config->cfg_max_eps = (unsigned int) atoi(node[i]->content);
+                if (Config->cfg_max_eps > EPS_LIMITS_MAX_EPS) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    return(OS_INVALID);
+                }
+            }
+        }
+        // timeframe_eps
+        else if (!strcmp(node[i]->element, xml_timeframe_eps)) {
+            if (!OS_StrIsNum(node[i]->content)) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+
+            if (Config) {
+                Config->cfg_timeframe_eps = (unsigned int) atoi(node[i]->content);
+                if (Config->cfg_timeframe_eps < EPS_LIMITS_MIN_TIMEFRAME || Config->cfg_timeframe_eps > EPS_LIMITS_MAX_TIMEFRAME) {
+                    merror(XML_VALUEERR,node[i]->element, node[i]->content);
+                    return(OS_INVALID);
+                }
+            }
+        }
+    }
+    return OS_SUCCESS;
 }

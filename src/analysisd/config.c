@@ -59,7 +59,8 @@ int GlobalConf(const char *cfgfile)
     Config.white_list = NULL;
     Config.hostname_white_list = NULL;
 
-    Config.eps_limits_file_check = 60;
+    Config.cfg_max_eps = EPS_LIMITS_MIN_EPS;
+    Config.cfg_timeframe_eps = EPS_LIMITS_DEFAULT_TIMEFRAME;
 
     /* Default actions -- only log above level 1 */
     Config.mailbylevel = 7;
@@ -160,6 +161,8 @@ cJSON *getGlobalConfig(void) {
     if (Config.custom_alert_output) cJSON_AddStringToObject(global,"custom_alert_output",Config.custom_alert_output_format);
     cJSON_AddNumberToObject(global,"rotate_interval",Config.rotate_interval);
     cJSON_AddNumberToObject(global,"max_output_size",Config.max_output_size);
+    cJSON_AddNumberToObject(global,"maximum",Config.cfg_max_eps);
+    cJSON_AddNumberToObject(global,"timeframe",Config.cfg_timeframe_eps);
 
 #ifdef LIBGEOIP_ENABLED
     if (Config.geoip_db_path) cJSON_AddStringToObject(global,"geoip_db_path",Config.geoip_db_path);
@@ -263,7 +266,6 @@ cJSON *getAnalysisInternalOptions(void) {
     cJSON_AddNumberToObject(analysisd,"show_hidden_labels",Config.show_hidden_labels);
     cJSON_AddNumberToObject(analysisd,"rlimit_nofile",nofile);
     cJSON_AddNumberToObject(analysisd,"min_rotate_interval",Config.min_rotate_interval);
-    cJSON_AddNumberToObject(analysisd,"eps_limits_file_check",Config.eps_limits_file_check);
 #ifdef LIBGEOIP_ENABLED
     cJSON_AddNumberToObject(analysisd,"geoip_jsonout",Config.geoip_jsonout);
 #endif
