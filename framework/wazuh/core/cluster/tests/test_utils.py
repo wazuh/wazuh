@@ -25,7 +25,7 @@ default_cluster_config = {
     'password': None,
     'key': '',
     'port': 1516,
-    'bind_addr': '0.0.0.0',
+    'bind_addr': ['0.0.0.0'],
     'nodes': ['NODE_IP'],
     'hidden': 'no'
 }

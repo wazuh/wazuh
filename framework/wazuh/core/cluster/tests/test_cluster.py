@@ -40,7 +40,7 @@ default_cluster_configuration = {
         'node_name': 'node01',
         'key': '',
         'port': 1516,
-        'bind_addr': '0.0.0.0',
+        'bind_addr': ['0.0.0.0'],
         'nodes': ['NODE_IP'],
         'hidden': 'no'
     }
@@ -54,7 +54,7 @@ custom_cluster_configuration = {
         'node_name': 'node01',
         'key': 'a' * 32,
         'port': 1516,
-        'bind_addr': '0.0.0.0',
+        'bind_addr': ['0.0.0.0'],
         'nodes': ['172.10.0.100'],
         'hidden': False
     }

@@ -23,7 +23,7 @@ stages:
               node_type: !anystr
               key: !anystr
               port: !anyint
-              bind_addr: !anystr
+              bind_addr: !anything
               nodes: !anything
               hidden: !anystr
           failed_items: []
