@@ -20,7 +20,7 @@ enum class QueryResultCodes
 };
 
 /** Assoiates the result (string) of a query with a queryResult enum */
-const std::map<const char*, QueryResultCodes> QueryResStr2Code = {
+const std::map<std::string_view, QueryResultCodes> QueryResStr2Code = {
     {"ok", QueryResultCodes::OK},
     {"due", QueryResultCodes::DUE},
     {"err", QueryResultCodes::ERROR},
