@@ -18,10 +18,9 @@ from sqlalchemy import create_engine, UniqueConstraint, Column, DateTime, String
     CheckConstraint
 from sqlalchemy import desc
 from sqlalchemy.dialects.sqlite import TEXT
-from sqlalchemy.event import listens_for
 from sqlalchemy.exc import IntegrityError, InvalidRequestError, OperationalError
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy.orm import sessionmaker, relationship, backref
 from sqlalchemy.orm.exc import UnmappedInstanceError
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -44,7 +43,6 @@ _db_file = os.path.join(SECURITY_PATH, "rbac.db")
 _db_file_tmp = f"{_db_file}.tmp"
 _engine = create_engine(f"sqlite:///{_db_file}", echo=False)
 _Base = declarative_base()
-_Session = sessionmaker(bind=_engine)
 
 # Required rules for role
 # Key: Role - Value: Rules
@@ -89,18 +87,6 @@ def json_validator(data):
     return isinstance(data, dict)
 
 
-@listens_for(_Session, 'after_flush')
-def delete_orphans(session, instances):
-    if session.deleted:
-        query = session.query(UserRoles).filter(or_(UserRoles.user_id.is_(None), UserRoles.role_id.is_(None))).all()
-        query.extend(session.query(RolesRules).filter(or_(RolesRules.role_id.is_(None),
-                                                          RolesRules.rule_id.is_(None))).all())
-        query.extend(session.query(RolesPolicies).filter(or_(RolesPolicies.role_id.is_(None),
-                                                             RolesPolicies.policy_id.is_(None))).all())
-        for orphan in query:
-            session.delete(orphan)
-
-
 class RolesRules(_Base):
     """
     Relational table between Roles and Policies, in this table are stored the relationship between the both entities
@@ -121,8 +107,8 @@ class RolesRules(_Base):
     __table_args__ = (UniqueConstraint('role_id', 'rule_id', name='role_rule'),
                       )
 
-    roles = relationship("Roles", backref="rules_associations")
-    rules = relationship("Rules", backref="roles_associations")
+    roles = relationship("Roles", backref=backref("rules_associations", cascade="all,delete"))
+    rules = relationship("Rules", backref=backref("roles_associations", cascade="all,delete"))
 
 
 # Declare relational tables
@@ -147,8 +133,8 @@ class RolesPolicies(_Base):
     __table_args__ = (UniqueConstraint('role_id', 'policy_id', name='role_policy'),
                       )
 
-    roles = relationship("Roles", backref="policies_associations")
-    policies = relationship("Policies", backref="roles_associations")
+    roles = relationship("Roles", backref=backref("policies_associations", cascade="all,delete"))
+    policies = relationship("Policies", backref=backref("roles_associations", cascade="all,delete"))
 
 
 class UserRoles(_Base):
@@ -172,8 +158,8 @@ class UserRoles(_Base):
     __table_args__ = (UniqueConstraint('user_id', 'role_id', name='user_role'),
                       )
 
-    users = relationship("User", backref="roles_associations")
-    roles = relationship("Roles", backref="users_associations")
+    users = relationship("User", backref=backref("roles_associations", cascade="all,delete"))
+    roles = relationship("Roles", backref=backref("users_associations", cascade="all,delete"))
 
 
 # Declare basic tables
@@ -486,6 +472,14 @@ class TokenManager:
     This class is the manager of Token blacklist, this class provides
     all the methods needed for the token blacklist administration.
     """
+    def __init__(self, session: str = None):
+        self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{_db_file}", echo=False))()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.session.close()
 
     def is_token_valid(self, token_nbf_time: int, user_id: int = None, role_id: int = None, run_as: bool = False):
         """Check if specified token is valid
@@ -676,13 +670,6 @@ class TokenManager:
             self.session.rollback()
             return False
 
-    def __enter__(self):
-        self.session = _Session()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.session.close()
-
 
 class AuthenticationManager:
     """Class for dealing with authentication stuff without worrying about database.
@@ -861,7 +848,7 @@ class AuthenticationManager:
     def user_allow_run_as(self, username: str = None):
         """Get the allow_run_as's flag of specified user in the system
 
-        :param username: string Unique user name
+        :param username: string Unique username
         :return: An specified user
         """
         try:
@@ -2899,7 +2886,7 @@ def check_database_integrity():
                 db_manager.migrate_data(source=_db_file, target=_db_file_tmp, from_id=max_id_reserved + 1)
 
                 # Apply changes and replace database
-                db_manager.set_database_version(_db_file_tmp, str(expected_version))
+                db_manager.set_database_version(_db_file_tmp, expected_version)
                 db_manager.close_sessions()
                 safe_move(_db_file_tmp, _db_file,
                           ownership=(wazuh_uid(), wazuh_gid()),
