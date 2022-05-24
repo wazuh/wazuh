@@ -1,6 +1,13 @@
 
 #include "unixSocketInterface.hpp"
 
+#include <fcntl.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
+
+#include <logging/logging.hpp>
+
 namespace socketinterface
 {
 
@@ -117,8 +124,7 @@ int sendMsg(int sock, const char* msg)
 {
     if (msg == nullptr)
     {
-        // TODO: Maybe return a NULL_PTR_MSG code
-        return 0;
+        return NULL_PTR;
     }
 
     return sendMsg(sock, msg, strlen(msg));
