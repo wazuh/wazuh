@@ -2007,7 +2007,8 @@ stages:
     json:
       error: !anyint
       data:
-        bind_addr: !anystr
+        bind_addr: !anything
+        disabled: !anybool
         hidden: !anystr
         key: !anystr
         name: !anystr

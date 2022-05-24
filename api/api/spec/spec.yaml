@@ -8126,8 +8126,9 @@ paths:
                           description: "Port used by the **master** node to communicate with workers"
                           type: integer
                         bind_addr:
-                          description: "Network interface used by the **master** to listen to incoming connections"
-                          type: string
+                          description: "List of network interfaces used by the **master** to listen to incoming 
+                          connections"
+                          type: array
                         nodes:
                           description: "List of cluster master nodes. This list is used by **worker** nodes to connect
                           to the master"
@@ -8145,7 +8146,8 @@ paths:
                       node_type: master
                       key: 9d273b53510fef702b54a92e9cffc82e
                       port: 1516
-                      bind_addr: 0.0.0.0
+                      bind_addr:
+                        - 0.0.0.0
                       nodes:
                         - wazuh-master
                       hidden: no
@@ -8665,7 +8667,8 @@ paths:
                         node_type: "master"
                         key: "9d273b53510fef702b54a92e9cffc82e"
                         port: "1516"
-                        bind_addr: "0.0.0.0"
+                        bind_addr:
+                          - "0.0.0.0"
                         nodes:
                           - "wazuh-master"
                         hidden: no
@@ -9515,7 +9518,8 @@ paths:
                       node_type: "master"
                       key: "9d273b53510fef702b54a92e9cffc82e"
                       port: 1516
-                      bind_addr: "0.0.0.0"
+                      bind_addr:
+                        - "0.0.0.0"
                       nodes:
                         - "wazuh-master"
                       hidden: "no"
