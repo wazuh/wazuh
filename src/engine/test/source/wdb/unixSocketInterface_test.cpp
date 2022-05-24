@@ -2,7 +2,11 @@
 
 #include <iostream>
 
+#include <fcntl.h>
 #include <netinet/in.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
 
 #include <gtest/gtest.h>
 

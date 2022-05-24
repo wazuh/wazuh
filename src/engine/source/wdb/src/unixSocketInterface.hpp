@@ -1,12 +1,7 @@
 #ifndef _WDB_PROTOCOL_H
 #define _WDB_PROTOCOL_H
 
-#include <fcntl.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <unistd.h>
-
-#include <logging/logging.hpp>
+#include <stdint.h>
 
 /*
 TODO readme with socket protocol description
