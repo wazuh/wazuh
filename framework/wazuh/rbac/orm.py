@@ -785,7 +785,6 @@ class AuthenticationManager:
             if user is not None:
                 if password:
                     user.password = generate_password_hash(password)
-                if password:
                     self.session.commit()
                     return True
             return False
@@ -1078,16 +1077,16 @@ class RolesManager:
         True -> Success | Invalid rule | Name already in use | Role not exist
         """
         try:
-            if role_id > max_id_reserved:
-                role = self.session.query(Roles).filter_by(id=role_id).first()
-                if role is not None:
+            role_to_update = self.session.query(Roles).filter_by(id=role_id).first()
+            if role_to_update and role_to_update is not None:
+                if role_to_update.id > max_id_reserved:
+                    # Change the name of the role
                     if name is not None:
-                        role.name = name
-                    if name:
-                        self.session.commit()
-                        return True
-                return SecurityError.ROLE_NOT_EXIST
-            return SecurityError.ADMIN_RESOURCES
+                        role_to_update.name = name
+                    self.session.commit()
+                    return True
+                return SecurityError.ADMIN_RESOURCES
+            return SecurityError.ROLE_NOT_EXIST
         except IntegrityError:
             self.session.rollback()
             return SecurityError.ALREADY_EXIST
@@ -1283,20 +1282,21 @@ class RulesManager:
         True -> Success | Invalid rule | Name already in use | Rule already in use | Rule not exists
         """
         try:
-            if rule_id > max_id_reserved:
-                rule_to_update = self.session.query(Rules).filter_by(id=rule_id).first()
-                if rule_to_update is not None:
-                    if not json_validator(rule):
+            rule_to_update = self.session.query(Rules).filter_by(id=rule_id).first()
+            if rule_to_update and rule_to_update is not None:
+                if rule_to_update.id > max_id_reserved:
+                    # Rule is not a valid json
+                    if rule is not None and not json_validator(rule):
                         return SecurityError.INVALID
+                    # Change the rule
                     if name is not None:
                         rule_to_update.name = name
                     if rule is not None:
                         rule_to_update.rule = json.dumps(rule)
-                    if rule or name:
-                        self.session.commit()
-                        return True
-                return SecurityError.RULE_NOT_EXIST
-            return SecurityError.ADMIN_RESOURCES
+                    self.session.commit()
+                    return True
+                return SecurityError.ADMIN_RESOURCES
+            return SecurityError.RULE_NOT_EXIST
         except IntegrityError:
             self.session.rollback()
             return SecurityError.ALREADY_EXIST
@@ -1528,10 +1528,11 @@ class PoliciesManager:
         True -> Success | False -> Failure | Invalid policy | Name already in use
         """
         try:
-            if policy_id > max_id_reserved or not check_default:
-                policy_to_update = self.session.query(Policies).filter_by(id=policy_id).first()
-                if policy_to_update:
-                    if not json_validator(policy):
+            policy_to_update = self.session.query(Policies).filter_by(id=policy_id).first()
+            if policy_to_update and policy_to_update is not None:
+                if policy_to_update.id > max_id_reserved or not check_default:
+                    # Policy is not a valid json
+                    if policy is not None and not json_validator(policy):
                         return SecurityError.INVALID
                     if name is not None:
                         policy_to_update.name = name
@@ -1544,11 +1545,10 @@ class PoliciesManager:
                             if not all(re.match(self.resource_regex, res) for res in resource.split('&')):
                                 return SecurityError.INVALID
                         policy_to_update.policy = json.dumps(policy)
-                    if name or policy:
-                        self.session.commit()
-                        return True
-                return SecurityError.POLICY_NOT_EXIST
-            return SecurityError.ADMIN_RESOURCES
+                    self.session.commit()
+                    return True
+                return SecurityError.ADMIN_RESOURCES
+            return SecurityError.POLICY_NOT_EXIST
         except IntegrityError:
             self.session.rollback()
             return SecurityError.ALREADY_EXIST
