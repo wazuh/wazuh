@@ -102,6 +102,9 @@ typedef struct _global_agent_t {
     uint64_t get_agents_by_connection_status_queries;
     uint64_t disconnect_agents_queries;
     uint64_t sync_agent_info_get_queries;
+    uint64_t sync_agent_groups_get_queries;
+    uint64_t set_agent_groups_queries;
+    uint64_t get_groups_integrity_queries;
     struct timeval insert_agent_time;
     struct timeval update_agent_data_time;
     struct timeval update_agent_name_time;
@@ -119,6 +122,9 @@ typedef struct _global_agent_t {
     struct timeval get_agents_by_connection_status_time;
     struct timeval disconnect_agents_time;
     struct timeval sync_agent_info_get_time;
+    struct timeval sync_agent_groups_get_time;
+    struct timeval set_agent_groups_time;
+    struct timeval get_groups_integrity_time;
 } global_agent_t;
 
 typedef struct _global_group_t {
@@ -133,8 +139,12 @@ typedef struct _global_group_t {
 } global_group_t;
 
 typedef struct _global_belongs_t {
+    uint64_t select_group_belong_queries;
     uint64_t delete_agent_belong_queries;
+    uint64_t get_group_agent_queries;
+    struct timeval select_group_belong_time;
     struct timeval delete_agent_belong_time;
+    struct timeval get_group_agent_time;
 } global_belongs_t;
 
 typedef struct _global_labels_t {
@@ -146,8 +156,10 @@ typedef struct _global_labels_t {
 
 typedef struct _global_breakdown_t {
     uint64_t sql_queries;
+    uint64_t backup_queries;
     uint64_t unknown_queries;
     struct timeval sql_time;
+    struct timeval backup_time;
     global_agent_t agent;
     global_group_t group;
     global_belongs_t belongs;
@@ -187,8 +199,10 @@ typedef struct _mitre_breakdown_t {
 } mitre_breakdown_t;
 
 typedef struct _wazuhdb_breakdown_t {
+    uint64_t get_config_queries;
     uint64_t remove_queries;
     uint64_t unknown_queries;
+    struct timeval get_config_time;
     struct timeval remove_time;
 } wazuhdb_breakdown_t;
 
@@ -214,6 +228,8 @@ typedef struct _db_stats_t {
 void w_inc_queries_total();
 
 void w_inc_wazuhdb();
+
+void w_inc_wazuhdb_get_config();
 
 void w_inc_wazuhdb_remove();
 
@@ -289,6 +305,8 @@ void w_inc_global();
 
 void w_inc_global_sql();
 
+void w_inc_global_backup();
+
 void w_inc_global_unknown();
 
 void w_inc_global_agent_insert_agent();
@@ -325,6 +343,12 @@ void w_inc_global_agent_disconnect_agents();
 
 void w_inc_global_agent_sync_agent_info_get();
 
+void w_inc_global_agent_sync_agent_groups_get();
+
+void w_inc_global_agent_set_agent_groups();
+
+void w_inc_global_agent_get_groups_integrity();
+
 void w_inc_global_group_insert_agent_group();
 
 void w_inc_global_group_delete_group();
@@ -333,7 +357,11 @@ void w_inc_global_group_select_groups();
 
 void w_inc_global_group_find_group();
 
-void w_inc_global_belongs_delete_group_belong();
+void w_inc_global_belongs_select_group_belong();
+
+void w_inc_global_belongs_delete_agent_belong();
+
+void w_inc_global_belongs_get_group_agent();
 
 void w_inc_global_labels_set_labels();
 
@@ -447,6 +475,12 @@ void w_inc_global_agent_disconnect_agents_time(struct timeval time);
 
 void w_inc_global_agent_sync_agent_info_get_time(struct timeval time);
 
+void w_inc_global_agent_sync_agent_groups_get_time(struct timeval time);
+
+void w_inc_global_agent_set_agent_groups_time(struct timeval time);
+
+void w_inc_global_agent_get_groups_integrity_time(struct timeval time);
+
 void w_inc_global_group_insert_agent_group_time(struct timeval time);
 
 void w_inc_global_group_delete_group_time(struct timeval time);
@@ -455,7 +489,11 @@ void w_inc_global_group_select_groups_time(struct timeval time);
 
 void w_inc_global_group_find_group_time(struct timeval time);
 
+void w_inc_global_belongs_select_group_belong_time(struct timeval time);
+
 void w_inc_global_belongs_delete_agent_belong_time(struct timeval time);
+
+void w_inc_global_belongs_get_group_agent_time(struct timeval time);
 
 void w_inc_global_labels_set_labels_time(struct timeval time);
 
@@ -480,5 +518,9 @@ void w_inc_task_set_timeout_time(struct timeval time);
 void w_inc_task_delete_old_time(struct timeval time);
 
 void w_inc_global_sql_time(struct timeval time);
+
+void w_inc_global_backup_time(struct timeval time);
+
+void w_inc_wazuhdb_get_config_time(struct timeval time);
 
 void w_inc_wazuhdb_remove_time(struct timeval time);
