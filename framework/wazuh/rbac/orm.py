@@ -713,7 +713,7 @@ class AuthenticationManager:
             self.session.rollback()
             return False
 
-    def add_user(self, username: str, password: str, user_id: int = None, hash_password: bool = False,
+    def add_user(self, username: str, password: str, user_id: int = None, hashed_password: bool = False,
                  created_at: datetime = None, check_default: bool = True) -> bool:
         """Create a new user if it does not exist.
 
@@ -725,8 +725,8 @@ class AuthenticationManager:
             Password provided by user. It will be stored hashed
         user_id : int
             User ID.
-        hash_password : bool
-            Hash the password before saving it to the database if `True`. Save it raw otherwise.
+        hashed_password : bool
+            Hash the password before saving it to the database if `False`. Save it raw otherwise.
         created_at : datetime
             Date when the resource was created.
         check_default : bool
@@ -744,7 +744,7 @@ class AuthenticationManager:
             except (TypeError, AttributeError):
                 pass
             self.session.add(User(username=username,
-                                  password=password if hash_password else generate_password_hash(password),
+                                  password=password if hashed_password else generate_password_hash(password),
                                   created_at=created_at,
                                   user_id=user_id))
             self.session.commit()
@@ -2694,7 +2694,7 @@ class DatabaseManager:
                                       password=user.password,
                                       created_at=user.created_at,
                                       user_id=user.id,
-                                      hash_password=True,
+                                      hashed_password=True,
                                       check_default=False)
                 auth_manager.edit_run_as(user_id=user.id, allow_run_as=user.allow_run_as)
 
