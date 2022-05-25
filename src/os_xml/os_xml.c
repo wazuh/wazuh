@@ -27,7 +27,7 @@ static int _writememory(const char *str, XML_TYPE type, size_t size,
                         unsigned int parent, OS_XML *_lxml) __attribute__((nonnull));
 static int _xml_fgetc(FILE *fp, OS_XML *_lxml) __attribute__((nonnull));
 int _xml_sgetc(OS_XML *_lxml)  __attribute__((nonnull));
-static int _ReadElem(unsigned int parent, OS_XML *_lxml, unsigned int recursion_level) __attribute__((nonnull));
+static int _ReadElem(unsigned int parent, OS_XML *_lxml, unsigned int recursion_level, bool flag_truncate) __attribute__((nonnull));
 static int _getattributes(unsigned int parent, OS_XML *_lxml) __attribute__((nonnull));
 static void xml_error(OS_XML *_lxml, const char *msg, ...) __attribute__((format(printf, 2, 3), nonnull));
 
@@ -128,7 +128,7 @@ void OS_ClearXML(OS_XML *_lxml)
     _lxml->stash_i = 0;
 }
 
-int ParseXML(OS_XML *_lxml, bool truncate_string){
+int ParseXML(OS_XML *_lxml, bool flag_truncate) {
     int r;
     unsigned int i;
     char *str_base = _lxml->string;
@@ -139,7 +139,7 @@ int ParseXML(OS_XML *_lxml, bool truncate_string){
     // Reset stash
     _lxml->stash_i = 0;
 
-    if ((r = _ReadElem(0, _lxml, 0)) < 0) { /* First position */
+    if ((r = _ReadElem(0, _lxml, 0, flag_truncate)) < 0) { /* First position */
         if (r != LEOF) {
 
             if(_lxml->fp){
@@ -175,19 +175,22 @@ int ParseXML(OS_XML *_lxml, bool truncate_string){
     return (0);
 }
 
-int OS_ReadXMLString(const char *string, OS_XML *_lxml){
+int OS_ReadXMLString_Ex(const char *string, OS_XML *_lxml, bool flag_truncate){
     /* Initialize xml structure */
     memset(_lxml, 0, sizeof(OS_XML));
 
     _lxml->string = strdup(string);
     _lxml->fp = NULL;
 
-    return ParseXML(_lxml, false);
+    return ParseXML(_lxml, flag_truncate);
 }
 
-/* Read na XML file and generate the necessary structs */
-int OS_ReadXML(const char *file, OS_XML *_lxml)
-{
+int OS_ReadXMLString(const char *string, OS_XML *_lxml){
+    return OS_ReadXMLString_Ex(string, _lxml, false);
+}
+
+/* Read a XML file and generate the necessary structs */
+int OS_ReadXML_Ex(const char *file, OS_XML *_lxml, bool flag_truncate) {
     FILE *fp;
 
     /* Initialize xml structure */
@@ -202,26 +205,11 @@ int OS_ReadXML(const char *file, OS_XML *_lxml)
     _lxml->fp = fp;
     _lxml->string = NULL;
 
-    return ParseXML(_lxml, false);
+    return ParseXML(_lxml, flag_truncate);
 }
 
-/* Read na XML file and generate the necessary structs */
-int OS_ReadXML_Ex(const char *file, OS_XML *_lxml) {
-    FILE *fp;
-
-    /* Initialize xml structure */
-    memset(_lxml, 0, sizeof(OS_XML));
-
-    fp = fopen(file, "r");
-    if (!fp) {
-        xml_error(_lxml, "XMLERR: File '%s' not found.", file);
-        return (-2);
-    }
-    w_file_cloexec(fp);
-    _lxml->fp = fp;
-    _lxml->string = NULL;
-
-    return ParseXML(_lxml, true);
+int OS_ReadXML(const char *file, OS_XML *_lxml) {
+    return OS_ReadXML_Ex(file, _lxml, false);
 }
 
 static int _oscomment(OS_XML *_lxml)
@@ -253,13 +241,14 @@ static int _oscomment(OS_XML *_lxml)
     return (0);
 }
 
-static int _ReadElem(unsigned int parent, OS_XML *_lxml, unsigned int recursion_level) {
+static int _ReadElem(unsigned int parent, OS_XML *_lxml, unsigned int recursion_level, bool flag_truncate) {
     int c=0;
     unsigned int count = 0;
     unsigned int _currentlycont = 0;
     short int location = -1;
     int cmp = 0;
     int retval = -1;
+    bool ignore_content = false;
 
     int prevv = 1;
     char *elem = NULL;
@@ -296,8 +285,12 @@ static int _ReadElem(unsigned int parent, OS_XML *_lxml, unsigned int recursion_
 
         /* Max size */
         if (count >= XML_MAXSIZE) {
-            xml_error(_lxml, "XMLERR: String overflow.");
-            goto end;
+            if (flag_truncate && 1 == location) {
+                ignore_content = true;
+            } else {
+                xml_error(_lxml, "XMLERR: String overflow.");
+                goto end;
+            }
         }
 
         /* Check for comments */
@@ -373,7 +366,7 @@ static int _ReadElem(unsigned int parent, OS_XML *_lxml, unsigned int recursion_
 
         else if ((location == 2) && (c == _R_CONFE)) {
             closedelim[count] = '\0';
-                if (strcmp(closedelim, elem) != 0) {
+            if (strcmp(closedelim, elem) != 0) {
                 xml_error(_lxml, "XMLERR: Element '%s' not closed.", elem);
                 goto end;
             }
@@ -396,11 +389,12 @@ static int _ReadElem(unsigned int parent, OS_XML *_lxml, unsigned int recursion_
                 cont[count] = '\0';
                 count = 0;
                 location = 2;
+                ignore_content = false;
             } else {
                 _xml_ungetc(c, _lxml);
                 _xml_ungetc(_R_CONFS, _lxml);
 
-                if (_ReadElem(parent + 1, _lxml, recursion_level) < 0) {
+                if (_ReadElem(parent + 1, _lxml, recursion_level, flag_truncate) < 0) {
                     goto end;
                 }
                 count = 0;
@@ -408,7 +402,7 @@ static int _ReadElem(unsigned int parent, OS_XML *_lxml, unsigned int recursion_
         } else {
             if (location == 0) {
                 elem[count++] = (char) c;
-            } else if (location == 1) {
+            } else if (location == 1 && !ignore_content) {
                 cont[count++] = (char) c;
             } else if (location == 2) {
                 closedelim[count++] = (char) c;
