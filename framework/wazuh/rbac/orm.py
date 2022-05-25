@@ -2741,7 +2741,7 @@ class DatabaseManager:
                                                                    force_admin=True)
                         logger.info(f"All relationships were migrated to the new policy {new_policy_id}")
 
-        old_user_roles = get_data(UserRoles, UserRoles.user_id, UserRoles.role_id)
+        old_user_roles = sorted(get_data(UserRoles, UserRoles.user_id, UserRoles.role_id), key=lambda item: item.level)
         with UserRolesManager(self.sessions[target]) as user_role_manager:
             for user_role in old_user_roles:
                 user_id = user_role.user_id
@@ -2770,12 +2770,12 @@ class DatabaseManager:
 
                 user_role_manager.add_role_to_user(user_id=user_id,
                                                    role_id=role_id,
-                                                   position=user_role.level,
                                                    created_at=user_role.created_at,
                                                    force_admin=True)
 
         # Role-Policies relationships
-        old_roles_policies = get_data(RolesPolicies, RolesPolicies.role_id, RolesPolicies.policy_id)
+        old_roles_policies = sorted(get_data(RolesPolicies, RolesPolicies.role_id, RolesPolicies.policy_id),
+                                    key=lambda item: item.level)
         with RolesPoliciesManager(self.sessions[target]) as role_policy_manager:
             for role_policy in old_roles_policies:
                 role_id = role_policy.role_id
@@ -2804,7 +2804,6 @@ class DatabaseManager:
 
                 role_policy_manager.add_policy_to_role(role_id=role_id,
                                                        policy_id=policy_id,
-                                                       position=role_policy.level,
                                                        created_at=role_policy.created_at,
                                                        force_admin=True)
 
