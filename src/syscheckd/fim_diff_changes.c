@@ -464,6 +464,7 @@ diff_data *initialize_file_diff_data(const char *filename, const directory_t *co
     diff_data *diff;
     char buffer[PATH_MAX];
     char abs_diff_dir_path[PATH_MAX + 1];
+    os_sha1 encoded_path;
 
     os_calloc(1, sizeof(diff_data), diff);
 
@@ -483,38 +484,18 @@ diff_data *initialize_file_diff_data(const char *filename, const directory_t *co
     os_strdup(buffer, diff->file_origin);
 
 #ifdef WIN32
-    char *path_filtered = NULL;
-
-    // Remove ":" from file_origin
-    path_filtered = os_strip_char(diff->file_origin, ':');
-
-    if (path_filtered == NULL) {
-        merror(FIM_ERROR_REMOVE_COLON, diff->file_origin);
-        goto error;
-    }
-
     // Get cwd for Windows
     if (abspath(DIFF_DIR, abs_diff_dir_path, sizeof(abs_diff_dir_path)) == NULL) {
         merror(FIM_ERROR_GET_ABSOLUTE_PATH, abs_diff_dir_path, strerror(errno), errno);
-        os_free(path_filtered);
         goto error;
     }
-
-    snprintf(buffer, PATH_MAX, "%s/local/%s", abs_diff_dir_path, path_filtered);
-    os_free(path_filtered);
 #else
     strcpy(abs_diff_dir_path, DIFF_DIR);
-
-    // This snprintf is duplicated to avoid a double slash ('/') in UNIX systems
-    snprintf(buffer, PATH_MAX, "%s/local%s", DIFF_DIR, diff->file_origin);
 #endif
 
-    // Check if the full_diff_path for filename, is too long
-    if (strlen(abs_diff_dir_path) + strlen(diff->file_origin) + 14 > PATH_MAX) {
-        merror(FIM_DIFF_FILE_PATH_TOO_LONG, diff->file_origin);
-        goto error;
-    }
+    OS_SHA1_Str(buffer, -1, encoded_path);
 
+    snprintf(buffer, PATH_MAX, "%s/file/%s", abs_diff_dir_path, encoded_path);
     os_strdup(buffer, diff->compress_folder);
 
     snprintf(buffer, PATH_MAX, "%s/last-entry.gz", diff->compress_folder);
@@ -946,47 +927,39 @@ next_it:
 }
 #endif
 
-int fim_diff_process_delete_file(const char *filename){
+void fim_diff_process_delete_file(const char *filename){
     char *full_path;
+    char buffer[PATH_MAX];
     int ret;
-    os_malloc(sizeof(char) * (strlen(DIFF_DIR) + strlen(filename) + 8), full_path);
+    os_sha1 encoded_path;
 
-#ifdef WIN32
-    snprintf(full_path, PATH_MAX, "%s/local/", DIFF_DIR);
-    // Remove ":" from filename
-    char *buffer = NULL;
-    buffer = os_strip_char(filename, ':');
-    if(buffer == NULL) {
-        merror(FIM_ERROR_REMOVE_COLON, filename);
-        os_free(full_path);
-        return -1;
+    if (abspath(filename, buffer, sizeof(buffer)) == NULL) {
+        merror(FIM_ERROR_GET_ABSOLUTE_PATH, filename, strerror(errno), errno);
+        return;
     }
-    strcat(full_path, buffer);
-    os_free(buffer);
-#else
-    snprintf(full_path, PATH_MAX, "%s/local", DIFF_DIR);
-    strcat(full_path, filename);
-#endif
+
+    OS_SHA1_Str(buffer, -1, encoded_path);
+
+    os_malloc(sizeof(char) * (strlen(DIFF_DIR) + 5 + strlen(encoded_path)), full_path);
+    snprintf(full_path, PATH_MAX, "%s/file/", DIFF_DIR);
+    strcat(full_path, encoded_path);
 
     ret = fim_diff_delete_compress_folder(full_path);
     if(ret == -1){
         merror(FIM_DIFF_DELETE_DIFF_FOLDER_ERROR, full_path);
-        os_free(full_path);
-        return -1;
     } else if (ret == -2){
         mdebug2(FIM_DIFF_FOLDER_NOT_EXIST, full_path);
-        os_free(full_path);
-        return -1;
     }
 
     os_free(full_path);
-    return 0;
+    return;
 }
 
 #ifdef WIN32
-int fim_diff_process_delete_registry(const char *key_name, int arch){
+void fim_diff_process_delete_registry(const char *key_name, int arch){
     char full_path[PATH_MAX];
     os_sha1 encoded_key;
+    int ret;
 
     OS_SHA1_Str(key_name, strlen(key_name), encoded_key);
 
@@ -996,17 +969,21 @@ int fim_diff_process_delete_registry(const char *key_name, int arch){
         snprintf(full_path, PATH_MAX, "%s/registry/[x32] %s", DIFF_DIR, encoded_key);
     }
 
-    if(fim_diff_delete_compress_folder(full_path) == -1){
-        return -1;
+    ret = fim_diff_delete_compress_folder(full_path);
+    if(ret == -1){
+        merror(FIM_DIFF_DELETE_DIFF_FOLDER_ERROR, full_path);
+    } else if (ret == -2){
+        mdebug2(FIM_DIFF_FOLDER_NOT_EXIST, full_path);
     }
 
-    return 0;
+    return;
 }
 
-int fim_diff_process_delete_value(const char *key_name, const char *value_name, int arch){
+void fim_diff_process_delete_value(const char *key_name, const char *value_name, int arch){
     char full_path[PATH_MAX];
     os_sha1 encoded_key;
     os_sha1 encoded_value;
+    int ret;
 
     OS_SHA1_Str(key_name, strlen(key_name), encoded_key);
     OS_SHA1_Str(value_name, strlen(value_name), encoded_value);
@@ -1017,10 +994,13 @@ int fim_diff_process_delete_value(const char *key_name, const char *value_name, 
         snprintf(full_path, PATH_MAX, "%s/registry/[x32] %s/%s", DIFF_DIR, encoded_key, encoded_value);
     }
 
-    if(fim_diff_delete_compress_folder(full_path) == -1){
-        return -1;
+    ret = fim_diff_delete_compress_folder(full_path);
+    if(ret == -1){
+        merror(FIM_DIFF_DELETE_DIFF_FOLDER_ERROR, full_path);
+    } else if (ret == -2){
+        mdebug2(FIM_DIFF_FOLDER_NOT_EXIST, full_path);
     }
 
-    return 0;
+    return;
 }
 #endif
