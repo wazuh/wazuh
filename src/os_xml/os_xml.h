@@ -14,6 +14,7 @@
 #define OS_XML_H
 
 #include <stdio.h>
+#include <stdbool.h>
 
 /* XML Node structure */
 typedef struct _xml_node {
@@ -52,12 +53,14 @@ typedef xml_node **XML_NODE;
 
 /* Start the XML structure reading a file */
 int OS_ReadXML(const char *file, OS_XML *lxml) __attribute__((nonnull));
+int OS_ReadXML_Ex(const char *file, OS_XML *_lxml, bool flag_truncate) __attribute__((nonnull));
 
 /* Start the XML structure reading a string */
 int OS_ReadXMLString(const char *string, OS_XML *_lxml) __attribute__((nonnull));
+int OS_ReadXMLString_Ex(const char *string, OS_XML *_lxml, bool flag_truncate) __attribute__((nonnull));
 
 /* Parse the XML */
-int ParseXML(OS_XML *_lxml) __attribute__((nonnull));
+int ParseXML(OS_XML *_lxml, bool flag_truncate) __attribute__((nonnull));
 
 /* Clear the XML structure memory */
 void OS_ClearXML(OS_XML *_lxml) __attribute__((nonnull));
