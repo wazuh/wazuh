@@ -20,11 +20,15 @@ enum class QueryResultCodes
 };
 
 /** Assoiates the result (string) of a query with a queryResult enum */
-const std::map<std::string_view, QueryResultCodes> QueryResStr2Code = {
+const static std::map<std::string_view, QueryResultCodes> QueryResStr2Code = {
     {"ok", QueryResultCodes::OK},
     {"due", QueryResultCodes::DUE},
     {"err", QueryResultCodes::ERROR},
     {"ign", QueryResultCodes::IGNORE}};
+
+
+constexpr auto WDB_PATH {"queue/db/wdb"}; ///< Default wdb socket path
+constexpr auto SOCKET_NOT_CONNECTED {-1}; ///< Socket not connected (status)
 
 /**
  * @brief WazuhDB class
@@ -32,15 +36,15 @@ const std::map<std::string_view, QueryResultCodes> QueryResStr2Code = {
  * This class is used to interact with the WazuhDB database.
  *
  * @warning Not a thread-safe implementation.
+ * // TODO agregar los finals
+ * // TODO regla 3-0-5 Buscar
  */
-class WazuhDB
+class WazuhDB final
 {
 private:
-    constexpr static const char* WDB_PATH {"queue/db/wdb"}; ///< Default wdb socket path
-    constexpr static int SOCKET_NOT_CONNECTED {-1}; ///< Socket not connected (status)
 
     // State and configuration
-    std::filesystem::path m_path;    ///< WDB socket path
+    const std::filesystem::path m_path;    ///< WDB socket path
     int m_fd {SOCKET_NOT_CONNECTED}; ///< File descriptor to the wdb socket
 
 public:
