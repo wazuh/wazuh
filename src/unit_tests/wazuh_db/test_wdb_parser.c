@@ -2804,8 +2804,8 @@ void test_dbsync_modify_type_exists_data_text_null_value(void ** state) {
 
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, "data1");
-    expect_value(__wrap_sqlite3_bind_text, pos, 2);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "");
+    expect_value(__wrap_sqlite3_bind_null, index, 2);
+    will_return(__wrap_sqlite3_bind_null, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_text, pos, 3);
     expect_string(__wrap_sqlite3_bind_text, buffer, "data2");
 
@@ -3262,7 +3262,8 @@ void test_dbsync_insert_type_exists_data_return_values(void **state) {
 
     will_return_always(__wrap_sqlite3_bind_int, SQLITE_ERROR);
     will_return_always(__wrap_sqlite3_bind_text, SQLITE_ERROR);
-    will_return_always(__wrap_sqlite3_bind_int64, SQLITE_ERROR);
+    will_return_always(__wrap_sqlite3_bind_null, SQLITE_ERROR);
+
 
     expect_value(__wrap_sqlite3_bind_int, index, 1);
     expect_value(__wrap_sqlite3_bind_int, value, 0);
@@ -3279,35 +3280,25 @@ void test_dbsync_insert_type_exists_data_return_values(void **state) {
     expect_value(__wrap_sqlite3_bind_int, index, 5);
     expect_value(__wrap_sqlite3_bind_int, value, 4);
 
-    expect_value(__wrap_sqlite3_bind_text, pos, 6);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "");
+    expect_value(__wrap_sqlite3_bind_null, index, 6);
 
-    expect_value(__wrap_sqlite3_bind_int, index, 7);
-    expect_value(__wrap_sqlite3_bind_int, value, 0);
+    expect_value(__wrap_sqlite3_bind_null, index, 7);
 
-    expect_value(__wrap_sqlite3_bind_int, index, 8);
-    expect_value(__wrap_sqlite3_bind_int, value, 0);
+    expect_value(__wrap_sqlite3_bind_null, index, 8);
 
-    expect_value(__wrap_sqlite3_bind_int, index, 9);
-    expect_value(__wrap_sqlite3_bind_int, value, 0);
+    expect_value(__wrap_sqlite3_bind_null, index, 9);
 
-    expect_value(__wrap_sqlite3_bind_int64, index, 10);
-    expect_value(__wrap_sqlite3_bind_int64, value, 0);
+    expect_value(__wrap_sqlite3_bind_null, index, 10);
 
-    expect_value(__wrap_sqlite3_bind_text, pos, 11);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "");
+    expect_value(__wrap_sqlite3_bind_null, index, 11);
 
-    expect_value(__wrap_sqlite3_bind_int, index, 12);
-    expect_value(__wrap_sqlite3_bind_int, value, 0);
+    expect_value(__wrap_sqlite3_bind_null, index, 12);
 
-    expect_value(__wrap_sqlite3_bind_text, pos, 13);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "");
+    expect_value(__wrap_sqlite3_bind_null, index, 13);
 
-    expect_value(__wrap_sqlite3_bind_text, pos, 14);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "");
+    expect_value(__wrap_sqlite3_bind_null, index, 14);
 
-    expect_value(__wrap_sqlite3_bind_text, pos, 15);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "");
+    expect_value(__wrap_sqlite3_bind_null, index, 15);
 
     will_return_always(__wrap_sqlite3_errmsg, error_value);
 
@@ -3597,8 +3588,8 @@ void test_dbsync_insert_type_exists_data_correct_null_value_from_json(void **sta
     expect_value(__wrap_sqlite3_bind_text, pos, 3);
     expect_string(__wrap_sqlite3_bind_text, buffer, "_NULL_");
 
-    expect_value(__wrap_sqlite3_bind_text, pos, 4);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "");
+    expect_value(__wrap_sqlite3_bind_null, index, 4);
+    will_return(__wrap_sqlite3_bind_null, SQLITE_OK);
 
     will_return_always(__wrap_sqlite3_bind_text, SQLITE_OK);
 
@@ -3654,8 +3645,8 @@ void test_dbsync_modify_type_exists_data_null_value_from_json(void **state) {
 
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, "data1");
-    expect_value(__wrap_sqlite3_bind_text, pos, 2);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "");
+    expect_value(__wrap_sqlite3_bind_null, index, 2);
+    will_return(__wrap_sqlite3_bind_null, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_text, pos, 3);
     expect_string(__wrap_sqlite3_bind_text, buffer, "_NULL_");
 

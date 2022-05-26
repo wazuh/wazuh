@@ -168,7 +168,7 @@ static struct column_list const TABLE_OS[] = {
     { .value = { FIELD_TEXT, 17, false, false, "checksum" }, .next = &TABLE_OS[17] },
     { .value = { FIELD_TEXT, 18, false, false, "os_display_version" }, .next = &TABLE_OS[18] },
     { .value = { FIELD_INTEGER, 19, false, false, "triaged" }, .next = &TABLE_OS[19] },
-    { .value = { FIELD_TEXT, 20, false, false, "reference" }, .next = NULL },
+    { .value = { FIELD_TEXT, 20, true, false, "reference" }, .next = NULL },
 };
 #define OS_FIELD_COUNT 19
 

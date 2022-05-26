@@ -126,7 +126,8 @@ static void test_wdb_calculate_stmt_checksum_success(void **state)
 
 static void test_wdbi_checksum_wbs_null(void **state)
 {
-    expect_assert_failure(wdbi_checksum(NULL, 0, ""));
+    os_sha1 digest = "";
+    expect_assert_failure(wdbi_checksum(NULL, 0, digest));
 }
 
 static void test_wdbi_checksum_hexdigest_null(void **state)
@@ -180,7 +181,8 @@ static void test_wdbi_checksum_success(void **state)
 
 static void test_wdbi_checksum_range_wbs_null(void **state)
 {
-    expect_assert_failure(wdbi_checksum_range(NULL, 0, "test_begin", "test_end", ""));
+    os_sha1 digest = "";
+    expect_assert_failure(wdbi_checksum_range(NULL, 0, "test_begin", "test_end", digest));
 }
 
 static void test_wdbi_checksum_range_hexdigest_null(void **state)

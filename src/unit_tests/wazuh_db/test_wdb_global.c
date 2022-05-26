@@ -875,15 +875,16 @@ void test_wdb_global_get_groups_integrity_hash_mismatch(void **state)
 {
     cJSON* j_result = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
+    os_sha1 digest = "";
 
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_SYNCREQ_FIND);
     will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
     will_return(__wrap_wdb_step, SQLITE_DONE);
-    expect_string(__wrap_wdb_get_global_group_hash, hexdigest, "");
+    expect_string(__wrap_wdb_get_global_group_hash, hexdigest, digest);
     will_return(__wrap_wdb_get_global_group_hash, OS_INVALID);
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
-    j_result = wdb_global_get_groups_integrity(data->wdb, "");
+    j_result = wdb_global_get_groups_integrity(data->wdb, digest);
 
     char *result = cJSON_PrintUnformatted(j_result);
     assert_string_equal(result, "[\"hash_mismatch\"]");
@@ -895,15 +896,16 @@ void test_wdb_global_get_groups_integrity_synced(void **state)
 {
     cJSON* j_result = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
+    os_sha1 digest = "";
 
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_SYNCREQ_FIND);
     will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
     will_return(__wrap_wdb_step, SQLITE_DONE);
-    expect_string(__wrap_wdb_get_global_group_hash, hexdigest, "");
+    expect_string(__wrap_wdb_get_global_group_hash, hexdigest, digest);
     will_return(__wrap_wdb_get_global_group_hash, OS_SUCCESS);
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
-    j_result = wdb_global_get_groups_integrity(data->wdb, "");
+    j_result = wdb_global_get_groups_integrity(data->wdb, digest);
 
     char *result = cJSON_PrintUnformatted(j_result);
     assert_string_equal(result, "[\"synced\"]");
