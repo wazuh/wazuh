@@ -13,6 +13,12 @@
 
 #include "shared.h"
 
+typedef struct __eps {
+    // EPS limits configuration
+    unsigned int maximum;
+    unsigned int timeframe;
+} _eps;
+
 /* Configuration structure */
 typedef struct __Config {
     u_int8_t logall;
@@ -117,9 +123,9 @@ typedef struct __Config {
     long queue_size;
 
     // EPS limits configuration
-    unsigned int eps_limits_file_check;
-} _Config;
+    _eps eps;
 
+} _Config;
 
 void config_free(_Config *config);
 
