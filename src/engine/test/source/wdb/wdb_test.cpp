@@ -22,15 +22,16 @@ TEST(wdb_connector, connectErrorNotSocket)
     ASSERT_THROW(wdb.connect(), std::runtime_error);
 }
 
-//TEST(wdb_connector, parseResultOK)
-//{
-//    WazuhDB wdb {};
-//    char* payload = nullptr;
-//    char* message = strdup("ok test payload");
-//
-//    auto retval = wdb.parseResult(message, &payload);
-//    ASSERT_EQ(retval, wazuhdb::QueryResultCodes::OK);
-//}
+TEST(wdb_parserResult, okWithPayload)
+{
+    WazuhDB wdb {};
+
+
+    auto retval = wdb.parseResult("ok test payload");
+    ASSERT_EQ(std::get<0>(retval), QueryResultCodes::OK);
+    ASSERT_TRUE(std::get<1>(retval).has_value());
+    ASSERT_STREQ(std::get<1>(retval).value().c_str(), "test payload");
+}
 //
 //TEST(wdb_connector, parseResultDUE)
 //{

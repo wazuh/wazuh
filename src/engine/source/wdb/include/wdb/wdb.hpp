@@ -16,7 +16,7 @@ enum class QueryResultCodes
     DUE,    ///< Command processed successfully with pending data
     ERROR,  ///< An error occurred
     IGNORE, ///< Command ignored
-    UNKNOWN ///< Unknown status
+    UNKNOWN ///< Unknown status / Unknown protocol
 };
 
 /** Assoiates the result (string) of a query with a queryResult enum */
@@ -75,7 +75,14 @@ public:
      */
     std::string query(const std::string& query);
 
-    // QueryResultCodes parseResult(char* result, char** payload);
+    /**
+     * @brief   
+     *
+     * @param result
+     * @return std::tuple<QueryResultCodes, std::optional<std::string>>
+     */
+    std::tuple<QueryResultCodes, std::optional<std::string>>
+    parseResult(const std::string& result) const noexcept;
 };
 } // namespace wazuhdb
 #endif
