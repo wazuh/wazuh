@@ -26,7 +26,6 @@ const static std::map<std::string_view, QueryResultCodes> QueryResStr2Code = {
     {"err", QueryResultCodes::ERROR},
     {"ign", QueryResultCodes::IGNORE}};
 
-
 constexpr auto WDB_PATH {"queue/db/wdb"}; ///< Default wdb socket path
 constexpr auto SOCKET_NOT_CONNECTED {-1}; ///< Socket not connected (status)
 
@@ -42,10 +41,9 @@ constexpr auto SOCKET_NOT_CONNECTED {-1}; ///< Socket not connected (status)
 class WazuhDB final
 {
 private:
-
     // State and configuration
-    const std::filesystem::path m_path;    ///< WDB socket path
-    int m_fd {SOCKET_NOT_CONNECTED}; ///< File descriptor to the wdb socket
+    const std::filesystem::path m_path; ///< WDB socket path
+    int m_fd {SOCKET_NOT_CONNECTED};    ///< File descriptor to the wdb socket
 
 public:
     /** @brief Create a WazuhDB object from a path
