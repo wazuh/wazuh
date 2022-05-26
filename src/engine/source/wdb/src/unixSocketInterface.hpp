@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <map>
 
 #include <stdint.h>
 
@@ -49,6 +50,13 @@ enum class CommRetval
     SOCKET_ERROR,
 };
 
+const std::map<socketinterface::CommRetval,const std::string> CommRetval2Str = {
+    {socketinterface::CommRetval::INVALID_SOCKET, "INVALID_SOCKET"},
+    {socketinterface::CommRetval::SIZE_TOO_LONG, "SIZE_TOO_LONG"},
+    {socketinterface::CommRetval::SIZE_ZERO, "SIZE_ZERO"},
+    {socketinterface::CommRetval::SOCKET_ERROR, "SOCKET_ERROR"},
+    {socketinterface::CommRetval::SUCCESS, "SUCCESS"}};
+
 /**
  * @brief Connect to a UNIX stream socket located at `path`
  *
@@ -69,6 +77,7 @@ int socketConnect(std::string_view path);
  * @return CommRetval::SIZE_ZERO if msg is empty.
  * @return CommRetval::SOCKET_ERROR if the socket cannot be written to. (errno is set).
  *
+ * @throw RecoverableError if a broken pipe error occurs (EPIPE).
  * @warning This function blocks until the message is sent or the socket is disconnected.
  */
 CommRetval sendMsg(const int sock, const std::string& msg);
@@ -89,7 +98,9 @@ std::vector<uint8_t> recvMsg(const int sock);
  *
  * @param sock sock file descriptor.
  * @return std::string message on success.
- * @throw std::runtime_error on error.
+ *
+ * @throw RecoverableError if the remote socket is closed or if a ECONNRESET error occurs.
+ * @throw std::runtime_error on other errors.
  *
  * @warning This function blocks until the message is received or the socket is
  */

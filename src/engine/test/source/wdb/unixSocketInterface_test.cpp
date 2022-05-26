@@ -335,7 +335,13 @@ TEST(wdbTests_SocketInterface, remoteCloseBeforeRcv)
     // close remote before recv
     close(clientRemote);
 
-    ASSERT_THROW(recvString(clientLocal), RecoverableError);
+    // gracefully closed
+    ASSERT_THROW(
+        try { recvString(clientLocal); } catch (const RecoverableError& e) {
+            ASSERT_STREQ(e.what(), "recvMsg: socket disconnected");
+            throw;
+        },
+        RecoverableError);
 
     close(serverSocketFD);
     close(clientLocal);
@@ -364,6 +370,7 @@ TEST(wdbTests_SocketInterface, localSendremoteCloseBeforeRcv)
     close(clientRemote);
 
     ASSERT_THROW(recvString(clientLocal), RecoverableError);
+    ASSERT_EQ(errno, ECONNRESET);
 
     close(serverSocketFD);
     close(clientLocal);
