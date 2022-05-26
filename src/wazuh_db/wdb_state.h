@@ -15,6 +15,8 @@
 #include <sys/time.h>
 #include "wdb.h"
 
+#define VERSION 1
+
 typedef struct _agent_syscheck_t {
     uint64_t syscheck_queries;
     uint64_t fim_file_queries;
@@ -511,5 +513,7 @@ void w_inc_global_backup_time(struct timeval time);
 void w_inc_wazuhdb_get_config_time(struct timeval time);
 
 void w_inc_wazuhdb_remove_time(struct timeval time);
+
+cJSON* wdb_create_state_json();
 
 #endif
