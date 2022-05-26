@@ -10,6 +10,18 @@ TEST(wdb_connector, init)
     ASSERT_NO_THROW(WazuhDB("/dummy/path"));
 }
 
+TEST(wdb_connector, connectErrorInexistentSocket)
+{
+    auto wdb = WazuhDB("/dummy/path");
+    ASSERT_THROW(wdb.connect(), std::runtime_error);
+}
+
+TEST(wdb_connector, connectErrorNotSocket)
+{
+    auto wdb = WazuhDB("/");
+    ASSERT_THROW(wdb.connect(), std::runtime_error);
+}
+
 //TEST(wdb_connector, parseResultOK)
 //{
 //    WazuhDB wdb {};
