@@ -88,41 +88,34 @@ std::string WazuhDB::query(const std::string& query)
 
     return result;
 }
-// TODO: hacer copnstante la funcion
-// Hacer un string el result.
 
-// QueryResultCodes WazuhDB::parseResult(char* result, char** payload)
-// {
+std::tuple<QueryResultCodes, std::optional<std::string>>
+WazuhDB::parseResult(const std::string& result) const noexcept
+{
 
-//     // if (result == nullptr)
+    QueryResultCodes code {QueryResultCodes::OK};
+    std::optional<std::string> payload {};
 
-//     // Separete the code result and the payload
-//     // Pasarlo a string y hacer un split
-//     auto wptr {strchr(result, ' ')};
+    /* Split code and payload: (<code> | <code> <payload>) */
+    std::string_view codeStr {};
+    const auto splitIndex {result.find(" ")};
+    if (std::string::npos != splitIndex)
+    {
+        payload = result.length() + 1 > splitIndex ? result.substr(splitIndex + 1) : "";
+        codeStr = std::string_view {result.c_str(), splitIndex};
+    }
+    else
+    {
+        codeStr = result;
+    }
 
-//     if (wptr != nullptr)
-//     {
-//         *wptr = '\0';
-//         wptr++;
-//     }
-//     else
-//     {
-//         wptr = result;
-//     }
+    /* Map the code string to the enum */
+    {
+        const auto res {QueryResStr2Code.find(codeStr)};
+        // If key not found, the code is unknown (protocol error)
+        code = (QueryResStr2Code.end() == res) ? QueryResultCodes::UNKNOWN : res->second;
+    }
 
-//     // Parse payload
-//     if (payload)
-//     {
-//         *payload = wptr;
-//     }
-
-//     // Parse code
-//     const auto res {QueryResStr2Code.find(std::string_view {result})};
-//     if (QueryResStr2Code.end() == res)
-//     {
-//         return QueryResultCodes::UNKNOWN;
-//     }
-//     return res->second;
-// }
-
+    return std::make_tuple(code, std::move(payload));
+}
 } // namespace wazuhdb
