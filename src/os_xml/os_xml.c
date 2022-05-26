@@ -27,9 +27,19 @@ static int _writememory(const char *str, XML_TYPE type, size_t size,
                         unsigned int parent, OS_XML *_lxml) __attribute__((nonnull));
 static int _xml_fgetc(FILE *fp, OS_XML *_lxml) __attribute__((nonnull));
 int _xml_sgetc(OS_XML *_lxml)  __attribute__((nonnull));
-static int _ReadElem(unsigned int parent, OS_XML *_lxml, unsigned int recursion_level, bool flag_truncate) __attribute__((nonnull));
 static int _getattributes(unsigned int parent, OS_XML *_lxml) __attribute__((nonnull));
 static void xml_error(OS_XML *_lxml, const char *msg, ...) __attribute__((format(printf, 2, 3), nonnull));
+
+/**
+ * @brief Recursive method to read XML elements.
+ *
+ * @param parent Current depth.
+ * @param _lxml XML structure.
+ * @param recursion_level Max recursion level allowed.
+ * @param flag_truncate If TRUE, truncates the content of a tag when it's bigger than XML_MAXSIZE. Fails if set to FALSE.
+ * @return int Returns 0, -1 or -2.
+ */
+static int _ReadElem(unsigned int parent, OS_XML *_lxml, unsigned int recursion_level, bool flag_truncate) __attribute__((nonnull));
 
 /* Local fgetc */
 static int _xml_fgetc(FILE *fp, OS_XML *_lxml)
