@@ -41,118 +41,88 @@ void WazuhDB::connect()
     this->m_fd = socketinterface::socketConnect(m_path.c_str());
 };
 
-void WazuhDB::query(std::string_view query, char* response, int length)
+std::string WazuhDB::query(const std::string& query)
 {
-    // Check the query
-    if (query.empty())
+    std::string result {};
+
+    if (query.length() == 0)
     {
-        throw std::runtime_error("The query is empty");
+        WAZUH_LOG_WARN("wdb: query to send its empty");
+        return {};
     }
-    else if (length < 0)
+    else if (query.length() > socketinterface::MSG_MAX_SIZE)
     {
-        throw std::runtime_error("The response buffer length is negative");
-    }
-    else if (response == nullptr)
-    {
-        throw std::runtime_error("The response buffer is null");
+        WAZUH_LOG_WARN("wdb: query to send its too long: {}", query.c_str());
     }
 
     // Check the connection
-    if (this->m_fd == SOCKET_NOT_CONNECTED)
+    if (SOCKET_NOT_CONNECTED == this->m_fd)
     {
         WAZUH_LOG_DEBUG("Not connected to the wdb socket.. connecting");
-        // TODO TRY CATCH
+        // runtime_error if cannot connect
         this->connect();
     }
 
-    // Send the query
-    // TODO Map resolverlo con mapa, lo hago con un at y  lo chequeo afuera
-    switch (socketinterface::sendMsg(this->m_fd, query.data(), query.size()))
-    {
+    // Send the query, throw runtime_error if cannot send
+    const auto sendStatus = socketinterface::sendMsg(this->m_fd, query);
 
-        case socketinterface::INVALID_SOCKET:
-            WAZUH_LOG_ERROR("The socket is invalid");
-            return; // if reach this point there is an error in logic
-        case socketinterface::NULL_PTR:
-            WAZUH_LOG_ERROR("The pointer to query is null");
-            return; // if reach this point there is an error in logic
-        case socketinterface::SIZE_ZERO:
-            WAZUH_LOG_ERROR("The size of the query is zero");
-            return; // if reach this point there is an error in logic
-        case socketinterface::SIZE_TOO_LONG:
-            throw std::runtime_error("Query size is too long");
-            break;
-        case socketinterface::SOCKET_ERROR:
-        {
-            const auto errMsg = std::string {"Cannot send the query: "}
-                                       + strerror(errno) + " (" + std::to_string(errno)
-                                       + ")";
-            throw std::runtime_error(errMsg);
-        }
-        default: break;
+    if (socketinterface::CommRetval::SUCCESS == sendStatus)
+    {
+        // Receive the result, throw runtime_error if cannot receive
+        result = socketinterface::recvString(this->m_fd);
     }
-
-    // Go to find the response
-    switch (socketinterface::recvMsg(this->m_fd, response, length))
+    else if (socketinterface::CommRetval::SOCKET_ERROR == sendStatus)
     {
-        case socketinterface::INVALID_SOCKET:
-            WAZUH_LOG_ERROR("The socket is invalid");
-            return; // if reach this point there is an error in logic
-        case socketinterface::NULL_PTR:
-            WAZUH_LOG_ERROR("The pointer to response is null");
-            return; // if reach this point there is an error in logic
-        case socketinterface::SIZE_ZERO:
-            WAZUH_LOG_ERROR("The size of the response is zero");
-            return; // if reach this point there is an error in logic
-        case socketinterface::SIZE_TOO_LONG:
-            throw std::runtime_error("Response size is too long");
-            break;
-        case socketinterface::SOCKET_ERROR:
-        {
-            const std::string errMsg = std::string {"Cannot receive the response: "}
-                                       + strerror(errno) + " (" + std::to_string(errno)
-                                       + ")";
-            throw std::runtime_error(errMsg);
-            break;
-        }
-        case 0: throw std::runtime_error("Timeout or remote gracefully closed"); break;
-
-        default: break;
-    }
-}
-// TODO: hacer copnstante la funcion
-// Hacer un string el result.
-QueryResultCodes WazuhDB::parseResult(char* result, char** payload)
-{
-
-    // if (result == nullptr)
-
-    // Separete the code result and the payload
-    // Pasarlo a string y hacer un split
-    auto wptr {strchr(result, ' ')};
-
-    if (wptr != nullptr)
-    {
-        *wptr = '\0';
-        wptr++;
+        const auto msgError = std::string {"wdb: sendMsg failed: "} + std::strerror(errno)
+                              + " (" + std::to_string(errno) + ")";
+        throw std::runtime_error(msgError);
     }
     else
     {
-        wptr = result;
+        // INVALID_SOCKET, SIZE_ZERO, SIZE_TOO_LONG never reach here
+        const auto logicErrorStr =
+            "wdb: sendMsg reached a condition that should never happen: ";
+        throw std::logic_error(logicErrorStr
+                               + socketinterface::CommRetval2Str.at(sendStatus));
     }
 
-    // Parse payload
-    if (payload)
-    {
-        *payload = wptr;
-    }
-
-    // Parse code
-    const auto res {QueryResStr2Code.find(std::string_view {result})};
-    if (QueryResStr2Code.end() == res) {
-        return QueryResultCodes::UNKNOWN;
-    }
-    return res->second;
+    return result;
 }
+// TODO: hacer copnstante la funcion
+// Hacer un string el result.
+
+// QueryResultCodes WazuhDB::parseResult(char* result, char** payload)
+// {
+
+//     // if (result == nullptr)
+
+//     // Separete the code result and the payload
+//     // Pasarlo a string y hacer un split
+//     auto wptr {strchr(result, ' ')};
+
+//     if (wptr != nullptr)
+//     {
+//         *wptr = '\0';
+//         wptr++;
+//     }
+//     else
+//     {
+//         wptr = result;
+//     }
+
+//     // Parse payload
+//     if (payload)
+//     {
+//         *payload = wptr;
+//     }
+
+//     // Parse code
+//     const auto res {QueryResStr2Code.find(std::string_view {result})};
+//     if (QueryResStr2Code.end() == res)
+//     {
+//         return QueryResultCodes::UNKNOWN;
+//     }
+//     return res->second;
+// }
 
 } // namespace wazuhdb
