@@ -12,11 +12,10 @@
 
 using namespace socketinterface;
 
-#define MAX_BUFFER_SIZE     1024
-#define MESSAGE_HEADER_SIZE sizeof(uint32_t)
-#define TEST_SEND_MESSAGE   "Test message to be send!\n"
-#define TEST_SOCKET_PATH "/tmp/test.sock"
-
+constexpr int MAX_BUFFER_SIZE = 1024;
+constexpr int MESSAGE_HEADER_SIZE = sizeof(uint32_t);
+constexpr std::string_view TEST_SEND_MESSAGE = "Test message to be send!\n";
+constexpr std::string_view TEST_SOCKET_PATH = "/tmp/test.sock";
 
 /**
  * @brief Test auxiliar function to bind a datagram UNIX socket
@@ -24,17 +23,17 @@ using namespace socketinterface;
  * @param path Socket pathname
  * @return int Socket file descriptor
  */
-static int testBindUnixSocket(const char* path)
+static int testBindUnixSocket(std::string_view path)
 {
     int sockFD = 0;
     struct sockaddr_un n_us;
 
     /* Make sure the path isn't there */
-    unlink(path);
+    unlink(path.data());
 
     memset(&n_us, 0, sizeof(n_us));
     n_us.sun_family = AF_UNIX;
-    strncpy(n_us.sun_path, path, sizeof(n_us.sun_path) - 1);
+    strncpy(n_us.sun_path, path.data(), sizeof(n_us.sun_path) - 1);
 
     if ((sockFD = socket(PF_UNIX, SOCK_STREAM, 0)) < 0)
     {
@@ -48,7 +47,7 @@ static int testBindUnixSocket(const char* path)
     }
 
     /* Change permissions */
-    if (chmod(path, 0660) < 0)
+    if (chmod(path.data(), 0660) < 0)
     {
         close(sockFD);
         return (-1);
@@ -86,12 +85,12 @@ static int testAcceptConnection(const int serverSocketFD)
 
 // TESTS SECTION
 
-TEST(wdb_procol, SocketConnectError)
+TEST(wdbTests_SocketInterface, SocketConnectError)
 {
     ASSERT_THROW(socketConnect(TEST_SOCKET_PATH), std::runtime_error);
 }
 
-TEST(wdb_procol, SocketConnect)
+TEST(wdbTests_SocketInterface, SocketConnect)
 {
     // Create server
     const int acceptSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
@@ -104,10 +103,10 @@ TEST(wdb_procol, SocketConnect)
     close(acceptSocketFD);
     close(clientSocketFD);
 
-    unlink(TEST_SOCKET_PATH);
+    unlink(TEST_SOCKET_PATH.data());
 }
 
-TEST(wdb_procol, SendMessageError)
+TEST(wdbTests_SocketInterface, SendMessageError)
 {
     // Create server
     const int acceptSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
@@ -119,16 +118,17 @@ TEST(wdb_procol, SendMessageError)
 
     // Force error
     close(clientSocketFD);
-    // ASSERT_EQ(sendMsg(clientSocketFD, TEST_SEND_MESSAGE, strlen(TEST_SEND_MESSAGE)),
+    // ASSERT_EQ(sendMsg(clientSocketFD, TEST_SEND_MESSAGE, TEST_SEND_MESSAGE.length()),
     //          -1);
-    ASSERT_EQ(sendMsg(clientSocketFD, TEST_SEND_MESSAGE), CommRetval::SOCKET_ERROR);
+    ASSERT_EQ(sendMsg(clientSocketFD, TEST_SEND_MESSAGE.data()),
+              CommRetval::SOCKET_ERROR);
 
     close(acceptSocketFD);
 
-    unlink(TEST_SOCKET_PATH);
+    unlink(TEST_SOCKET_PATH.data());
 }
 
-TEST(wdb_procol, SendLongMessageError)
+TEST(wdbTests_SocketInterface, SendLongMessageError)
 {
     char msg[MSG_MAX_SIZE + 2] = {};
     memset(msg, 'x', MSG_MAX_SIZE + 1);
@@ -147,10 +147,10 @@ TEST(wdb_procol, SendLongMessageError)
     close(acceptSocketFD);
     close(clientSocketFD);
 
-    unlink(TEST_SOCKET_PATH);
+    unlink(TEST_SOCKET_PATH.data());
 }
 
-TEST(wdb_procol, SendEmptyMessageError)
+TEST(wdbTests_SocketInterface, SendEmptyMessageError)
 {
     // Create server
     const int acceptSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
@@ -166,21 +166,21 @@ TEST(wdb_procol, SendEmptyMessageError)
     close(acceptSocketFD);
     close(clientSocketFD);
 
-    unlink(TEST_SOCKET_PATH);
+    unlink(TEST_SOCKET_PATH.data());
 }
 
-TEST(wdb_procol, SendInvalidSocketError)
+TEST(wdbTests_SocketInterface, SendInvalidSocketError)
 {
-    ASSERT_EQ(sendMsg(0, TEST_SEND_MESSAGE), CommRetval::INVALID_SOCKET);
-    ASSERT_EQ(sendMsg(-5, TEST_SEND_MESSAGE), CommRetval::INVALID_SOCKET);
+    ASSERT_EQ(sendMsg(0, TEST_SEND_MESSAGE.data()), CommRetval::INVALID_SOCKET);
+    ASSERT_EQ(sendMsg(-5, TEST_SEND_MESSAGE.data()), CommRetval::INVALID_SOCKET);
 }
 
-TEST(wdb_procol, SendWrongSocketFDError)
+TEST(wdbTests_SocketInterface, SendWrongSocketFDError)
 {
-    ASSERT_EQ(sendMsg(999, TEST_SEND_MESSAGE), CommRetval::SOCKET_ERROR);
+    ASSERT_EQ(sendMsg(999, TEST_SEND_MESSAGE.data()), CommRetval::SOCKET_ERROR);
 }
 
-TEST(wdb_procol, SendMessage)
+TEST(wdbTests_SocketInterface, SendMessage)
 {
     // Create server
     const int acceptSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
@@ -190,15 +190,15 @@ TEST(wdb_procol, SendMessage)
     const int clientSocketFD = socketConnect(TEST_SOCKET_PATH);
     ASSERT_GT(clientSocketFD, 0);
 
-    ASSERT_EQ(sendMsg(clientSocketFD, TEST_SEND_MESSAGE), CommRetval::SUCCESS);
+    ASSERT_EQ(sendMsg(clientSocketFD, TEST_SEND_MESSAGE.data()), CommRetval::SUCCESS);
 
     close(acceptSocketFD);
     close(clientSocketFD);
 
-    unlink(TEST_SOCKET_PATH);
+    unlink(TEST_SOCKET_PATH.data());
 }
 
-TEST(wdb_procol, RecvMessage)
+TEST(wdbTests_SocketInterface, RecvMessage)
 {
 
     // Create server
@@ -212,21 +212,21 @@ TEST(wdb_procol, RecvMessage)
     const int serverSocketFD = testAcceptConnection(acceptSocketFD);
     ASSERT_GT(serverSocketFD, 0);
 
-    const int msgLen = strlen(TEST_SEND_MESSAGE);
-    ASSERT_EQ(sendMsg(serverSocketFD, TEST_SEND_MESSAGE), CommRetval::SUCCESS);
+    const int msgLen = TEST_SEND_MESSAGE.length();
+    ASSERT_EQ(sendMsg(serverSocketFD, TEST_SEND_MESSAGE.data()), CommRetval::SUCCESS);
 
     auto payload = recvString(clientSocketFD);
     const char* msg = static_cast<const char*>(payload.data());
-    ASSERT_STREQ(msg, TEST_SEND_MESSAGE);
+    ASSERT_STREQ(msg, TEST_SEND_MESSAGE.data());
 
     close(acceptSocketFD);
     close(serverSocketFD);
     close(clientSocketFD);
 
-    unlink(TEST_SOCKET_PATH);
+    unlink(TEST_SOCKET_PATH.data());
 }
 
-TEST(wdb_procol, SendRecvMessage)
+TEST(wdbTests_SocketInterface, SendRecvMessage)
 {
     char msg[MAX_BUFFER_SIZE] = {};
 
@@ -241,25 +241,25 @@ TEST(wdb_procol, SendRecvMessage)
     const int serverSocketFD = testAcceptConnection(acceptSocketFD);
     ASSERT_GT(serverSocketFD, 0);
 
-    const int msgLen = strlen(TEST_SEND_MESSAGE);
-    ASSERT_EQ(sendMsg(clientSocketFD, TEST_SEND_MESSAGE), CommRetval::SUCCESS);
+    const int msgLen = TEST_SEND_MESSAGE.length();
+    ASSERT_EQ(sendMsg(clientSocketFD, TEST_SEND_MESSAGE.data()), CommRetval::SUCCESS);
 
     auto payload = recvString(serverSocketFD);
-    ASSERT_STREQ(payload.c_str(), TEST_SEND_MESSAGE);
+    ASSERT_STREQ(payload.c_str(), TEST_SEND_MESSAGE.data());
 
-    ASSERT_EQ(sendMsg(serverSocketFD, TEST_SEND_MESSAGE), CommRetval::SUCCESS);
+    ASSERT_EQ(sendMsg(serverSocketFD, TEST_SEND_MESSAGE.data()), CommRetval::SUCCESS);
 
     payload = recvString(clientSocketFD);
-    ASSERT_STREQ(payload.c_str(), TEST_SEND_MESSAGE);
+    ASSERT_STREQ(payload.c_str(), TEST_SEND_MESSAGE.data());
 
     close(acceptSocketFD);
     close(clientSocketFD);
     close(serverSocketFD);
 
-    unlink(TEST_SOCKET_PATH);
+    unlink(TEST_SOCKET_PATH.data());
 }
 
-TEST(wdb_procol, SendRecvLongestMessage)
+TEST(wdbTests_SocketInterface, SendRecvLongestMessage)
 {
     char msg[MSG_MAX_SIZE + 1] = {};
     memset(msg, 'x', MSG_MAX_SIZE);
@@ -285,10 +285,10 @@ TEST(wdb_procol, SendRecvLongestMessage)
     close(clientSocketFD);
     close(serverSocketFD);
 
-    unlink(TEST_SOCKET_PATH);
+    unlink(TEST_SOCKET_PATH.data());
 }
 
-TEST(wdb_procol, remoteCloseBeforeSend)
+TEST(wdbTests_SocketInterface, remoteCloseBeforeSend)
 {
 
     // Create server
@@ -306,7 +306,7 @@ TEST(wdb_procol, remoteCloseBeforeSend)
     // close remote before send
     close(clientRemote);
 
-    ASSERT_THROW(sendMsg(clientLocal, TEST_SEND_MESSAGE), RecoverableError);
+    ASSERT_THROW(sendMsg(clientLocal, TEST_SEND_MESSAGE.data()), RecoverableError);
 
     // Broken pipe
     ASSERT_EQ(errno, EPIPE);
@@ -314,10 +314,10 @@ TEST(wdb_procol, remoteCloseBeforeSend)
     close(serverSocketFD);
     close(clientLocal);
 
-    unlink(TEST_SOCKET_PATH);
+    unlink(TEST_SOCKET_PATH.data());
 }
 
-TEST(wdb_procol, remoteCloseBeforeRcv)
+TEST(wdbTests_SocketInterface, remoteCloseBeforeRcv)
 {
 
     // Create server
@@ -340,10 +340,10 @@ TEST(wdb_procol, remoteCloseBeforeRcv)
     close(serverSocketFD);
     close(clientLocal);
 
-    unlink(TEST_SOCKET_PATH);
+    unlink(TEST_SOCKET_PATH.data());
 }
 
-TEST(wdb_procol, localSendremoteCloseBeforeRcv)
+TEST(wdbTests_SocketInterface, localSendremoteCloseBeforeRcv)
 {
 
     // Create server
@@ -359,7 +359,7 @@ TEST(wdb_procol, localSendremoteCloseBeforeRcv)
     ASSERT_GT(clientRemote, 0);
 
     // Send to remote
-    ASSERT_EQ(sendMsg(clientLocal, TEST_SEND_MESSAGE), CommRetval::SUCCESS);
+    ASSERT_EQ(sendMsg(clientLocal, TEST_SEND_MESSAGE.data()), CommRetval::SUCCESS);
     // Remote dont read and close the socket
     close(clientRemote);
 
@@ -368,5 +368,5 @@ TEST(wdb_procol, localSendremoteCloseBeforeRcv)
     close(serverSocketFD);
     close(clientLocal);
 
-    unlink(TEST_SOCKET_PATH);
+    unlink(TEST_SOCKET_PATH.data());
 }
