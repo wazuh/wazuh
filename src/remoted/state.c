@@ -73,6 +73,7 @@ int rem_write_state() {
 
     fprintf(fp,
         "# State file for %s\n"
+        "# THIS FILE WILL BE DEPRECATED IN FUTURE VERSIONS\n"
         "# %s\n"
         "\n"
         "# Queue size\n"
@@ -93,9 +94,6 @@ int rem_write_state() {
         "# Discarded messages\n"
         "discarded_count='%u'\n"
         "\n"
-        "# Messages queued\n"
-        "queued_msgs='%lu'\n"
-        "\n"
         "# Total number of bytes sent\n"
         "sent_bytes='%lu'\n"
         "\n"
@@ -106,7 +104,7 @@ int rem_write_state() {
         "dequeued_after_close='%u'\n",
         __local_name, refresh_time, rem_get_qsize(), rem_get_tsize(), state_cpy.tcp_sessions,
         state_cpy.recv_breakdown.evt_count, state_cpy.recv_breakdown.ctrl_count, state_cpy.recv_breakdown.discarded_count,
-        state_cpy.sent_breakdown.queued_count, state_cpy.sent_bytes, state_cpy.recv_bytes, state_cpy.recv_breakdown.dequeued_count);
+        state_cpy.sent_bytes, state_cpy.recv_bytes, state_cpy.recv_breakdown.dequeued_count);
 
     fclose(fp);
 
@@ -202,12 +200,6 @@ void rem_inc_recv_ctrl_request() {
 void rem_add_send(unsigned long bytes) {
     w_mutex_lock(&state_mutex);
     remoted_state.sent_bytes += bytes;
-    w_mutex_unlock(&state_mutex);
-}
-
-void rem_inc_send_queued() {
-    w_mutex_lock(&state_mutex);
-    remoted_state.sent_breakdown.queued_count++;
     w_mutex_unlock(&state_mutex);
 }
 
@@ -308,7 +300,6 @@ cJSON* rem_create_state_json() {
     _sent = cJSON_CreateObject();
     cJSON_AddItemToObject(_statistics, "messages_sent_breakdown", _sent);
 
-    cJSON_AddNumberToObject(_sent, "queued_messages", state_cpy.sent_breakdown.queued_count);
     cJSON_AddNumberToObject(_sent, "ack_messages", state_cpy.sent_breakdown.ack_count);
     cJSON_AddNumberToObject(_sent, "shared_file_messages", state_cpy.sent_breakdown.shared_count);
     cJSON_AddNumberToObject(_sent, "ar_messages", state_cpy.sent_breakdown.ar_count);

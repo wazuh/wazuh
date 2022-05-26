@@ -2259,10 +2259,6 @@ components:
           type: number
           format: float
           description: "Discarded events because they didn't match any rule in the ruleset"
-        events_edps:
-          type: number
-          format: float
-          description: "Same as `events_processed` but per second"
         events_processed:
           type: number
           format: float
@@ -2289,10 +2285,6 @@ components:
           description: "Same as `alerts_written` but focusing in [FTS alerts]
           (https://documentation.wazuh.com/4.3/user-manual/ruleset/ruleset-xml-syntax/decoders.html?highlight=fts
           #fts)"
-        hostinfo_edps:
-          type: number
-          format: float
-          description: "Hostinfo events decoded per second"
         hostinfo_events_decoded:
           type: number
           format: float
@@ -2309,14 +2301,6 @@ components:
           type: number
           format: float
           description: "Same as `total_events_decoded` but for non catalogued events"
-        other_events_edps:
-          type: number
-          format: float
-          description: "Non catalogued events decoded per second"
-        rootcheck_edps:
-          type: number
-          format: float
-          description: "Rootcheck events decoded per second"
         rootcheck_events_decoded:
           type: number
           format: float
@@ -2338,10 +2322,6 @@ components:
           format: float
           description: "After decoding, events are pushed to a _pending to process_ queue which will match the events
           against the Wazuh ruleset to raise alerts. This variable shows usage of that queue"
-        sca_edps:
-          type: number
-          format: float
-          description: "Policy monitoring events decoded per second"
         sca_events_decoded:
           type: number
           format: float
@@ -2362,10 +2342,6 @@ components:
           type: number
           format: float
           description: "Stats log queue usage"
-        syscheck_edps:
-          type: number
-          format: float
-          description: "FIM events decoded per second (EDPS = Events Decoded Per Second)"
         syscheck_events_decoded:
           type: number
           format: float
@@ -2379,10 +2355,6 @@ components:
           format: float
           description: "Percentage of use in the syscheck events queue pending to be decoded. Events are discarded when
           the queue is full"
-        syscollector_edps:
-          type: number
-          format: float
-          description: "System inventory events decoded per second"
         syscollector_events_decoded:
           type: number
           format: float
@@ -2400,10 +2372,6 @@ components:
           format: float
           description: "Total events decoded in the last 5 seconds. This number is not accumulative, the number in the
           following 5 seconds can be lower than the previous one"
-        winevt_edps:
-          type: number
-          format: float
-          description: "Windows events decoded per second"
         winevt_events_decoded:
           type: number
           format: float
@@ -2432,10 +2400,6 @@ components:
           type: number
           format: float
           description: "Number of events sent to analysisd during the last five seconds"
-        queued_msgs:
-          type: number
-          format: float
-          description: "Number of messages queued to be sent to agents during the last five seconds"
         sent_bytes:
           type: number
           format: float
@@ -9098,21 +9062,13 @@ paths:
                   affected_items:
                     - total_events_decoded: 5
                       syscheck_events_decoded: 0
-                      syscheck_edps: 0
                       syscollector_events_decoded: 0
-                      syscollector_edps: 0
                       rootcheck_events_decoded: 0
-                      rootcheck_edps: 0
                       sca_events_decoded: 0
-                      sca_edps: 0
                       hostinfo_events_decoded: 0
-                      hostinfo_edps: 0
                       winevt_events_decoded: 0
-                      winevt_edps: 0
                       other_events_decoded: 5
-                      other_events_edps: 1
                       events_processed: 5
-                      events_edps: 1
                       events_received: 5
                       events_dropped: 0
                       alerts_written: 0
@@ -9192,7 +9148,6 @@ paths:
                       evt_count: 9089.0
                       ctrl_msg_count: 2099.0
                       discarded_count: 0
-                      queued_msgs: 4210.0
                       sent_bytes: 784598.0
                       recv_bytes: 4541779.0
                       dequeued_after_close: 0.0
@@ -10505,21 +10460,13 @@ paths:
                   affected_items:
                     - total_events_decoded: 5
                       syscheck_events_decoded: 0
-                      syscheck_edps: 0
                       syscollector_events_decoded: 0
-                      syscollector_edps: 0
                       rootcheck_events_decoded: 0
-                      rootcheck_edps: 0
                       sca_events_decoded: 0
-                      sca_edps: 0
                       hostinfo_events_decoded: 0
-                      hostinfo_edps: 0
                       winevt_events_decoded: 0
-                      winevt_edps: 0
                       other_events_decoded: 5
-                      other_events_edps: 1
                       events_processed: 5
-                      events_edps: 1
                       events_received: 5
                       events_dropped: 0
                       alerts_written: 0
@@ -10596,7 +10543,6 @@ paths:
                       evt_count: 0
                       ctrl_msg_count: 0
                       discarded_count: 0
-                      queued_msgs: 0
                       sent_bytes: 0
                       recv_bytes: 0
                   total_affected_items: 0

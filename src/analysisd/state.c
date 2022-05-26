@@ -12,70 +12,26 @@
 #include "analysisd.h"
 #include "state.h"
 
-unsigned int s_events_syscheck_decoded = 0;
-unsigned int s_events_syscollector_decoded  = 0;
-unsigned int s_events_rootcheck_decoded = 0;
-unsigned int s_events_sca_decoded = 0;
-unsigned int s_events_hostinfo_decoded  = 0;
-unsigned int s_events_winevt_decoded = 0;
-unsigned int s_messages_dbsync_dispatched;
-unsigned int s_events_decoded = 0;
-unsigned int s_events_processed = 0;
-unsigned int s_events_dropped = 0 ;
-volatile unsigned int s_events_received = 0;
-unsigned int s_alerts_written  = 0;
-unsigned int s_firewall_written = 0;
-unsigned int s_fts_written = 0;
-
-float s_syscheck_queue = 0;
-float s_syscollector_queue = 0;
-float s_rootcheck_queue = 0;
-float s_sca_queue = 0;
-float s_hostinfo_queue = 0;
-float s_winevt_queue = 0;
-float s_event_queue = 0;
-float s_process_event_queue = 0;
-float s_dbsync_message_queue;
-float s_upgrade_message_queue = 0;
-
-unsigned int s_syscheck_queue_size = 0;
-unsigned int s_syscollector_queue_size = 0;
-unsigned int s_rootcheck_queue_size = 0;
-unsigned int s_sca_queue_size = 0;
-unsigned int s_hostinfo_queue_size = 0;
-unsigned int s_winevt_queue_size = 0;
-unsigned int s_event_queue_size = 0;
-unsigned int s_process_event_queue_size = 0;
-unsigned int s_dbsync_message_queue_size;
-unsigned int s_upgrade_message_queue_size = 0;
-
-float s_writer_alerts_queue = 0;
-float s_writer_archives_queue = 0;
-float s_writer_firewall_queue = 0;
-float s_writer_statistical_queue = 0;
-
-unsigned int s_writer_alerts_queue_size = 0;
-unsigned int s_writer_archives_queue_size = 0;
-unsigned int s_writer_firewall_queue_size = 0;
-unsigned int s_writer_statistical_queue_size = 0;
-
-pthread_mutex_t s_syscheck_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t s_syscollector_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t s_rootcheck_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t s_sca_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t s_hostinfo_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t s_winevt_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t s_event_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t s_process_event_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t s_event_dropped_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t s_alerts_written_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t s_firewall_written_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t s_fts_written_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t s_dbsync_mutex = PTHREAD_MUTEX_INITIALIZER;
-
+analysisd_state_t analysisd_state;
+queue_status_t queue_status;
+static pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
+static int w_analysisd_write_state();
 static int interval;
 
-void * w_analysisd_state_main(){
+/**
+ * @brief Get the number of elements divided by the size of queues
+ * Values are save in state's variables
+ */
+static void w_get_queues_size();
+
+/**
+ * @brief Obtains analysisd's queues sizes
+ * Values are save in state's variables
+ */
+static void w_get_initial_queues_size();
+
+
+void * w_analysisd_state_main() {
     interval = getDefine_Int("analysisd", "state_interval", 0, 86400);
 
     if (!interval) {
@@ -85,6 +41,8 @@ void * w_analysisd_state_main(){
 
     mdebug1("State file updating thread started.");
 
+    w_get_initial_queues_size();
+
     while (1) {
         w_analysisd_write_state();
         sleep(interval);
@@ -93,10 +51,11 @@ void * w_analysisd_state_main(){
     return NULL;
 }
 
-int w_analysisd_write_state(){
+int w_analysisd_write_state() {
     FILE * fp;
     char path[PATH_MAX - 8];
     char path_temp[PATH_MAX + 1];
+    analysisd_state_t state_cpy;
 
     if (!strcmp(__local_name, "unset")) {
         merror("At write_state(): __local_name is unset.");
@@ -115,56 +74,52 @@ int w_analysisd_write_state(){
 
     w_get_queues_size();
 
+    w_mutex_lock(&state_mutex);
+    memcpy(&state_cpy, &analysisd_state, sizeof(analysisd_state_t));
+    w_mutex_unlock(&state_mutex);
+
     fprintf(fp,
         "# State file for %s\n"
+        "# THIS FILE WILL BE DEPRECATED IN FUTURE VERSIONS\n"
         "\n"
         "# Total events decoded\n"
-        "total_events_decoded='%u'\n"
+        "total_events_decoded='%lu'\n"
         "\n"
         "# Syscheck events decoded\n"
-        "syscheck_events_decoded='%u'\n"
-        "syscheck_edps='%u'\n"
+        "syscheck_events_decoded='%lu'\n"
         "\n"
         "# Syscollector events decoded\n"
-        "syscollector_events_decoded='%u'\n"
-        "syscollector_edps='%u'\n"
+        "syscollector_events_decoded='%lu'\n"
         "\n"
         "# Rootcheck events decoded\n"
-        "rootcheck_events_decoded='%u'\n"
-        "rootcheck_edps='%u'\n"
+        "rootcheck_events_decoded='%lu'\n"
         "\n"
          "# Security configuration assessment events decoded\n"
-        "sca_events_decoded='%u'\n"
-        "sca_edps='%u'\n"
+        "sca_events_decoded='%lu'\n"
         "\n"
         "# Hostinfo events decoded\n"
-        "hostinfo_events_decoded='%u'\n"
-        "hostinfo_edps='%u'\n"
+        "hostinfo_events_decoded='%lu'\n"
         "\n"
         "# Winevt events decoded\n"
-        "winevt_events_decoded='%u'\n"
-        "winevt_edps='%u'\n"
+        "winevt_events_decoded='%lu'\n"
         "\n"
         "# Database synchronization messages dispatched\n"
-        "dbsync_messages_dispatched='%u'\n"
-        "dbsync_mdps='%u'\n"
+        "dbsync_messages_dispatched='%lu'\n"
         "\n"
         "# Other events decoded\n"
-        "other_events_decoded='%u'\n"
-        "other_events_edps='%u'\n"
+        "other_events_decoded='%lu'\n"
         "\n"
         "# Events processed (Rule matching)\n"
-        "events_processed='%u'\n"
-        "events_edps='%u'\n"
+        "events_processed='%lu'\n"
         "\n"
         "# Events received\n"
-        "events_received='%u'\n"
+        "events_received='%lu'\n"
         "\n"
         "# Events dropped\n"
-        "events_dropped='%u'\n"
+        "events_dropped='%lu'\n"
         "\n"
         "# Alerts written to disk\n"
-        "alerts_written='%u'\n"
+        "alerts_written='%lu'\n"
         "\n"
         "# Firewall alerts written to disk\n"
         "firewall_written='%u'\n"
@@ -176,138 +131,135 @@ int w_analysisd_write_state(){
         "syscheck_queue_usage='%.2f'\n"
         "\n"
         "# Syscheck queue size\n"
-        "syscheck_queue_size='%u'\n"
+        "syscheck_queue_size='%zu'\n"
         "\n"
         "# Syscollector queue\n"
         "syscollector_queue_usage='%.2f'\n"
         "\n"
         "# Syscollector queue size\n"
-        "syscollector_queue_size='%u'\n"
+        "syscollector_queue_size='%zu'\n"
         "\n"
         "# Rootcheck queue\n"
         "rootcheck_queue_usage='%.2f'\n"
         "\n"
         "# Rootcheck queue size\n"
-        "rootcheck_queue_size='%u'\n"
+        "rootcheck_queue_size='%zu'\n"
         "\n"
         "# Security configuration assessment queue\n"
         "sca_queue_usage='%.2f'\n"
         "\n"
         "# Security configuration assessment queue size\n"
-        "sca_queue_size='%u'\n"
+        "sca_queue_size='%zu'\n"
         "\n"
         "# Hostinfo queue\n"
         "hostinfo_queue_usage='%.2f'\n"
         "\n"
         "# Hostinfo queue size\n"
-        "hostinfo_queue_size='%u'\n"
+        "hostinfo_queue_size='%zu'\n"
         "\n"
         "# Winevt queue\n"
         "winevt_queue_usage='%.2f'\n"
         "\n"
         "# Winevt queue size\n"
-        "winevt_queue_size='%u'\n"
+        "winevt_queue_size='%zu'\n"
         "\n"
         "# Database synchronization message queue\n"
         "dbsync_queue_usage='%.2f'\n"
         "\n"
         "# Database synchronization message queue size\n"
-        "dbsync_queue_size='%u'\n"
+        "dbsync_queue_size='%zu'\n"
         "\n"
         "# Upgrade module message queue\n"
         "upgrade_queue_usage='%.2f'\n"
         "\n"
         "# Upgrade module message queue size\n"
-        "upgrade_queue_size='%u'\n"
+        "upgrade_queue_size='%zu'\n"
         "\n"
         "# Event queue\n"
         "event_queue_usage='%.2f'\n"
         "\n"
         "# Event queue size\n"
-        "event_queue_size='%u'\n"
+        "event_queue_size='%zu'\n"
         "\n"
         "# Rule matching queue\n"
         "rule_matching_queue_usage='%.2f'\n"
         "\n"
         "# Rule matching queue size\n"
-        "rule_matching_queue_size='%u'\n"
+        "rule_matching_queue_size='%zu'\n"
         "\n"
         "# Alerts log queue\n"
         "alerts_queue_usage='%.2f'\n"
         "\n"
         "# Alerts log queue size\n"
-        "alerts_queue_size='%u'\n"
+        "alerts_queue_size='%zu'\n"
         "\n"
         "# Firewall log queue\n"
         "firewall_queue_usage='%.2f'\n"
         "\n"
         "# Firewall log queue size\n"
-        "firewall_queue_size='%u'\n"
+        "firewall_queue_size='%zu'\n"
         "\n"
         "# Statistical log queue\n"
         "statistical_queue_usage='%.2f'\n"
         "\n"
         "# Statistical log queue size\n"
-        "statistical_queue_size='%u'\n"
+        "statistical_queue_size='%zu'\n"
         "\n"
         "# Archives log queue\n"
         "archives_queue_usage='%.2f'\n"
         "\n"
         "# Archives log queue size\n"
-        "archives_queue_size='%u'\n"
+        "archives_queue_size='%zu'\n"
         "\n",
         __local_name,
-        s_events_decoded + s_events_syscheck_decoded + s_events_syscollector_decoded + s_events_rootcheck_decoded + s_events_hostinfo_decoded + s_events_winevt_decoded + s_events_sca_decoded,
-        s_events_syscheck_decoded,
-        s_events_syscheck_decoded / interval,
-        s_events_syscollector_decoded,
-        s_events_syscollector_decoded / interval,
-        s_events_rootcheck_decoded,
-        s_events_rootcheck_decoded / interval,
-        s_events_sca_decoded,
-        s_events_sca_decoded / interval,
-        s_events_hostinfo_decoded,
-        s_events_hostinfo_decoded / interval,
-        s_events_winevt_decoded,
-        s_events_winevt_decoded / interval,
-        s_messages_dbsync_dispatched, s_messages_dbsync_dispatched / interval,
-        s_events_decoded,
-        s_events_decoded / interval,
-        s_events_processed,
-        s_events_processed / interval,
-        s_events_received,
-        s_events_dropped,
-        s_alerts_written,
-        s_firewall_written,
-        s_fts_written,
-        s_syscheck_queue,
-        s_syscheck_queue_size,
-        s_syscollector_queue,
-        s_syscollector_queue_size,
-        s_rootcheck_queue,
-        s_rootcheck_queue_size,
-        s_sca_queue,
-        s_sca_queue_size,
-        s_hostinfo_queue,
-        s_hostinfo_queue_size,
-        s_winevt_queue,
-        s_winevt_queue_size,
-        s_dbsync_message_queue, s_dbsync_message_queue_size,
-        s_upgrade_message_queue, s_upgrade_message_queue_size,
-        s_event_queue,s_event_queue_size,
-        s_process_event_queue,
-        s_process_event_queue_size,
-        s_writer_alerts_queue,
-        s_writer_alerts_queue_size,
-        s_writer_firewall_queue,
-        s_writer_firewall_queue_size,
-        s_writer_statistical_queue,
-        s_writer_statistical_queue_size,
-        s_writer_archives_queue,
-        s_writer_archives_queue_size);
-    fclose(fp);
+        state_cpy.events_received_breakdown.events_decoded_breakdown.syscheck + state_cpy.events_received_breakdown.events_decoded_breakdown.syscollector +
+        state_cpy.events_received_breakdown.events_decoded_breakdown.rootcheck + state_cpy.events_received_breakdown.events_decoded_breakdown.sca +
+        state_cpy.events_received_breakdown.events_decoded_breakdown.hostinfo + state_cpy.events_received_breakdown.events_decoded_breakdown.winevt +
+        state_cpy.events_received_breakdown.events_decoded_breakdown.events,
+        state_cpy.events_received_breakdown.events_decoded_breakdown.syscheck,
+        state_cpy.events_received_breakdown.events_decoded_breakdown.syscollector,
+        state_cpy.events_received_breakdown.events_decoded_breakdown.rootcheck,
+        state_cpy.events_received_breakdown.events_decoded_breakdown.sca,
+        state_cpy.events_received_breakdown.events_decoded_breakdown.hostinfo,
+        state_cpy.events_received_breakdown.events_decoded_breakdown.winevt,
+        state_cpy.events_received_breakdown.events_decoded_breakdown.dbsync,
+        state_cpy.events_received_breakdown.events_decoded_breakdown.events,
+        state_cpy.events_processed,
+        state_cpy.events_received,
+        state_cpy.events_received_breakdown.events_dropped_breakdown.syscheck + state_cpy.events_received_breakdown.events_dropped_breakdown.syscollector +
+        state_cpy.events_received_breakdown.events_dropped_breakdown.rootcheck + state_cpy.events_received_breakdown.events_dropped_breakdown.sca +
+        state_cpy.events_received_breakdown.events_dropped_breakdown.hostinfo + state_cpy.events_received_breakdown.events_dropped_breakdown.winevt +
+        state_cpy.events_received_breakdown.events_dropped_breakdown.events,
+        state_cpy.alerts_written,
+        state_cpy.firewall_written,
+        state_cpy.fts_written,
+        queue_status.syscheck_queue_usage,
+        queue_status.syscheck_queue_size,
+        queue_status.syscollector_queue_usage,
+        queue_status.syscollector_queue_size,
+        queue_status.rootcheck_queue_usage,
+        queue_status.rootcheck_queue_size,
+        queue_status.sca_queue_usage,
+        queue_status.sca_queue_size,
+        queue_status.hostinfo_queue_usage,
+        queue_status.hostinfo_queue_size,
+        queue_status.winevt_queue_usage,
+        queue_status.winevt_queue_size,
+        queue_status.dbsync_queue_usage, queue_status.dbsync_queue_size,
+        queue_status.upgrade_queue_usage, queue_status.upgrade_queue_size,
+        queue_status.events_queue_usage, queue_status.events_queue_size,
+        queue_status.processed_queue_usage,
+        queue_status.processed_queue_size,
+        queue_status.alerts_queue_usage,
+        queue_status.alerts_queue_size,
+        queue_status.firewall_queue_usage,
+        queue_status.firewall_queue_size,
+        queue_status.stats_queue_usage,
+        queue_status.stats_queue_size,
+        queue_status.archives_queue_usage,
+        queue_status.archives_queue_size);
 
-    w_reset_stats();
+    fclose(fp);
 
     if (rename(path_temp, path) < 0) {
         merror("Renaming %s to %s: %s", path_temp, path, strerror(errno));
@@ -320,136 +272,242 @@ int w_analysisd_write_state(){
    return 0;
 }
 
-void w_inc_syscheck_decoded_events(){
-    w_mutex_lock(&s_syscheck_mutex);
-    s_events_syscheck_decoded++;
-    w_mutex_unlock(&s_syscheck_mutex);
+void w_get_queues_size() {
+    queue_status.syscheck_queue_usage = ((decode_queue_syscheck_input->elements / (float)decode_queue_syscheck_input->size));
+    queue_status.syscollector_queue_usage = ((decode_queue_syscollector_input->elements / (float)decode_queue_syscollector_input->size));
+    queue_status.rootcheck_queue_usage = ((decode_queue_rootcheck_input->elements / (float)decode_queue_rootcheck_input->size));
+    queue_status.sca_queue_usage = ((decode_queue_sca_input->elements / (float)decode_queue_sca_input->size));
+    queue_status.hostinfo_queue_usage = ((decode_queue_hostinfo_input->elements / (float)decode_queue_hostinfo_input->size));
+    queue_status.winevt_queue_usage = ((decode_queue_winevt_input->elements / (float)decode_queue_winevt_input->size));
+    queue_status.dbsync_queue_usage = ((dispatch_dbsync_input->elements / (float)dispatch_dbsync_input->size));
+    queue_status.upgrade_queue_usage = ((upgrade_module_input->elements / (float)upgrade_module_input->size));
+    queue_status.events_queue_usage = ((decode_queue_event_input->elements / (float)decode_queue_event_input->size));
+    queue_status.processed_queue_usage = ((decode_queue_event_output->elements / (float)decode_queue_event_output->size));
+    queue_status.alerts_queue_usage = ((writer_queue_log->elements / (float)writer_queue_log->size));
+    queue_status.archives_queue_usage = ((writer_queue->elements / (float)writer_queue->size));
+    queue_status.firewall_queue_usage = ((writer_queue_log_firewall->elements / (float)writer_queue_log_firewall->size));
+    queue_status.fts_queue_usage = ((writer_queue_log_fts->elements / (float)writer_queue_log_firewall->size));
+    queue_status.stats_queue_usage = ((writer_queue_log_statistical->elements / (float)writer_queue_log_statistical->size));
 }
 
-void w_inc_syscollector_decoded_events(){
-    w_mutex_lock(&s_syscollector_mutex);
-    s_events_syscollector_decoded++;
-    w_mutex_unlock(&s_syscollector_mutex);
+void w_get_initial_queues_size() {
+    queue_status.syscheck_queue_size = decode_queue_syscheck_input->size;
+    queue_status.syscollector_queue_size = decode_queue_syscollector_input->size;
+    queue_status.rootcheck_queue_size = decode_queue_rootcheck_input->size;
+    queue_status.sca_queue_size = decode_queue_sca_input->size;
+    queue_status.hostinfo_queue_size = decode_queue_hostinfo_input->size;
+    queue_status.winevt_queue_size = decode_queue_winevt_input->size;
+    queue_status.dbsync_queue_size = dispatch_dbsync_input->size;
+    queue_status.upgrade_queue_size = upgrade_module_input->size;
+    queue_status.events_queue_size = decode_queue_event_input->size;
+    queue_status.processed_queue_size = decode_queue_event_output->size;
+    queue_status.alerts_queue_size = writer_queue_log->size;
+    queue_status.archives_queue_size = writer_queue->size;
+    queue_status.firewall_queue_size = writer_queue_log_firewall->size;
+    queue_status.fts_queue_size = writer_queue_log_fts->size;
+    queue_status.stats_queue_size = writer_queue_log_statistical->size;
 }
 
-void w_inc_rootcheck_decoded_events(){
-    w_mutex_lock(&s_rootcheck_mutex);
-    s_events_rootcheck_decoded++;
-    w_mutex_unlock(&s_rootcheck_mutex);
+void w_inc_received_events() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.events_received++;
+    w_mutex_unlock(&state_mutex);
 }
 
-void w_inc_sca_decoded_events(){
-    w_mutex_lock(&s_sca_mutex);
-    s_events_sca_decoded++;
-    w_mutex_unlock(&s_sca_mutex);
+void w_inc_syscheck_decoded_events() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.events_received_breakdown.events_decoded_breakdown.syscheck++;
+    w_mutex_unlock(&state_mutex);
 }
 
-void w_inc_hostinfo_decoded_events(){
-    w_mutex_lock(&s_hostinfo_mutex);
-    s_events_hostinfo_decoded++;
-    w_mutex_unlock(&s_hostinfo_mutex);
+void w_inc_syscollector_decoded_events() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.events_received_breakdown.events_decoded_breakdown.syscollector++;
+    w_mutex_unlock(&state_mutex);
 }
 
-void w_inc_winevt_decoded_events(){
-    w_mutex_lock(&s_winevt_mutex);
-    s_events_winevt_decoded++;
-    w_mutex_unlock(&s_winevt_mutex);
+void w_inc_rootcheck_decoded_events() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.events_received_breakdown.events_decoded_breakdown.rootcheck++;
+    w_mutex_unlock(&state_mutex);
 }
 
-void w_inc_dbsync_dispatched_messages() {
-    w_mutex_lock(&s_dbsync_mutex);
-    s_messages_dbsync_dispatched++;
-    w_mutex_unlock(&s_dbsync_mutex);
+void w_inc_sca_decoded_events() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.events_received_breakdown.events_decoded_breakdown.sca++;
+    w_mutex_unlock(&state_mutex);
 }
 
-void w_inc_decoded_events(){
-    w_mutex_lock(&s_event_mutex);
-    s_events_decoded++;
-    w_mutex_unlock(&s_event_mutex);
+void w_inc_hostinfo_decoded_events() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.events_received_breakdown.events_decoded_breakdown.hostinfo++;
+    w_mutex_unlock(&state_mutex);
 }
 
-void w_inc_processed_events(){
-    w_mutex_lock(&s_process_event_mutex);
-    s_events_processed++;
-    w_mutex_unlock(&s_process_event_mutex);
+void w_inc_winevt_decoded_events() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.events_received_breakdown.events_decoded_breakdown.winevt++;
+    w_mutex_unlock(&state_mutex);
 }
 
-void w_inc_dropped_events(){
-    w_mutex_lock(&s_event_dropped_mutex);
-    s_events_dropped++;
-    w_mutex_unlock(&s_event_dropped_mutex);
+void w_inc_dbsync_decoded_events() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.events_received_breakdown.events_decoded_breakdown.dbsync++;
+    w_mutex_unlock(&state_mutex);
 }
 
-void w_inc_alerts_written(){
-    w_mutex_lock(&s_alerts_written_mutex);
-    s_alerts_written++;
-    w_mutex_unlock(&s_alerts_written_mutex);
+void w_inc_upgrade_decoded_events() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.events_received_breakdown.events_decoded_breakdown.upgrade++;
+    w_mutex_unlock(&state_mutex);
 }
 
-void w_inc_firewall_written(){
-    w_mutex_lock(&s_firewall_written_mutex);
-    s_firewall_written++;
-    w_mutex_unlock(&s_firewall_written_mutex);
+void w_inc_events_decoded() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.events_received_breakdown.events_decoded_breakdown.events++;
+    w_mutex_unlock(&state_mutex);
 }
 
-void w_inc_fts_written(){
-    w_mutex_lock(&s_fts_written_mutex);
-    s_fts_written++;
-    w_mutex_unlock(&s_fts_written_mutex);
+void w_inc_syscheck_dropped_events() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.events_received_breakdown.events_dropped_breakdown.syscheck++;
+    w_mutex_unlock(&state_mutex);
 }
 
-void w_reset_stats(){
-    w_mutex_lock(&s_syscheck_mutex);
-    s_events_syscheck_decoded = 0;
-    w_mutex_unlock(&s_syscheck_mutex);
+void w_inc_syscollector_dropped_events() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.events_received_breakdown.events_dropped_breakdown.syscollector++;
+    w_mutex_unlock(&state_mutex);
+}
 
-    w_mutex_lock(&s_syscollector_mutex);
-    s_events_syscollector_decoded = 0;
-    w_mutex_unlock(&s_syscollector_mutex);
+void w_inc_rootcheck_dropped_events() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.events_received_breakdown.events_dropped_breakdown.rootcheck++;
+    w_mutex_unlock(&state_mutex);
+}
 
-    w_mutex_lock(&s_rootcheck_mutex);
-    s_events_rootcheck_decoded = 0;
-    w_mutex_unlock(&s_rootcheck_mutex);
+void w_inc_sca_dropped_events() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.events_received_breakdown.events_dropped_breakdown.sca++;
+    w_mutex_unlock(&state_mutex);
+}
 
-    w_mutex_lock(&s_sca_mutex);
-    s_events_sca_decoded = 0;
-    w_mutex_unlock(&s_sca_mutex);
+void w_inc_hostinfo_dropped_events() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.events_received_breakdown.events_dropped_breakdown.hostinfo++;
+    w_mutex_unlock(&state_mutex);
+}
 
-    w_mutex_lock(&s_hostinfo_mutex);
-    s_events_hostinfo_decoded = 0;
-    w_mutex_unlock(&s_hostinfo_mutex);
+void w_inc_winevt_dropped_events() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.events_received_breakdown.events_dropped_breakdown.winevt++;
+    w_mutex_unlock(&state_mutex);
+}
 
-    w_mutex_lock(&s_winevt_mutex)
-    s_events_winevt_decoded = 0;
-    w_mutex_unlock(&s_winevt_mutex);
+void w_inc_dbsync_dropped_events() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.events_received_breakdown.events_dropped_breakdown.dbsync++;
+    w_mutex_unlock(&state_mutex);
+}
 
-    w_mutex_lock(&s_dbsync_mutex)
-    s_messages_dbsync_dispatched = 0;
-    w_mutex_unlock(&s_dbsync_mutex);
+void w_inc_upgrade_dropped_events() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.events_received_breakdown.events_dropped_breakdown.upgrade++;
+    w_mutex_unlock(&state_mutex);
+}
 
-    w_mutex_lock(&s_event_mutex);
-    s_events_decoded = 0;
-    w_mutex_unlock(&s_event_mutex);
+void w_inc_events_dropped() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.events_received_breakdown.events_dropped_breakdown.events++;
+    w_mutex_unlock(&state_mutex);
+}
 
-    w_mutex_lock(&s_process_event_mutex);
-    s_events_processed = 0;
-    w_mutex_unlock(&s_process_event_mutex);
+void w_inc_syscheck_unknown_events() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.events_received_breakdown.events_unknown_breakdown.syscheck++;
+    w_mutex_unlock(&state_mutex);
+}
 
-    w_mutex_lock(&s_event_dropped_mutex);
-    s_events_dropped = 0;
-    w_mutex_unlock(&s_event_dropped_mutex);
+void w_inc_syscollector_unknown_events() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.events_received_breakdown.events_unknown_breakdown.syscollector++;
+    w_mutex_unlock(&state_mutex);
+}
 
-    w_mutex_lock(&s_alerts_written_mutex);
-    s_alerts_written = 0;
-    w_mutex_unlock(&s_alerts_written_mutex);
+void w_inc_rootcheck_unknown_events() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.events_received_breakdown.events_unknown_breakdown.rootcheck++;
+    w_mutex_unlock(&state_mutex);
+}
 
-    w_mutex_lock(&s_firewall_written_mutex);
-    s_firewall_written = 0;
-    w_mutex_unlock(&s_firewall_written_mutex);
+void w_inc_sca_unknown_events() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.events_received_breakdown.events_unknown_breakdown.sca++;
+    w_mutex_unlock(&state_mutex);
+}
 
-    w_mutex_lock(&s_fts_written_mutex);
-    s_fts_written = 0;
-    w_mutex_unlock(&s_fts_written_mutex);
+void w_inc_hostinfo_unknown_events() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.events_received_breakdown.events_unknown_breakdown.hostinfo++;
+    w_mutex_unlock(&state_mutex);
+}
 
-    s_events_received = 0;
+void w_inc_winevt_unknown_events() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.events_received_breakdown.events_unknown_breakdown.winevt++;
+    w_mutex_unlock(&state_mutex);
+}
+
+void w_inc_dbsync_unknown_events() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.events_received_breakdown.events_unknown_breakdown.dbsync++;
+    w_mutex_unlock(&state_mutex);
+}
+
+void w_inc_upgrade_unknown_events() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.events_received_breakdown.events_unknown_breakdown.upgrade++;
+    w_mutex_unlock(&state_mutex);
+}
+
+void w_inc_events_unknown() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.events_received_breakdown.events_unknown_breakdown.events++;
+    w_mutex_unlock(&state_mutex);
+}
+
+void w_inc_processed_events() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.events_processed++;
+    w_mutex_unlock(&state_mutex);
+}
+
+void w_inc_alerts_written() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.alerts_written++;
+    w_mutex_unlock(&state_mutex);
+}
+
+void w_inc_archives_written() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.archives_written++;
+    w_mutex_unlock(&state_mutex);
+}
+
+void w_inc_firewall_written() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.firewall_written++;
+    w_mutex_unlock(&state_mutex);
+}
+
+void w_inc_fts_written() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.fts_written++;
+    w_mutex_unlock(&state_mutex);
+}
+
+void w_inc_stats_written() {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.stats_written++;
+    w_mutex_unlock(&state_mutex);
 }

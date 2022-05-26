@@ -49,6 +49,48 @@ extern ListNode *os_analysisd_cdblists;
  */
 extern ListRule *os_analysisd_cdbrules;
 
+/* Archives writer queue */
+extern w_queue_t * writer_queue;
+
+/* Alerts log writer queue */
+extern w_queue_t * writer_queue_log;
+
+/* Statistical log writer queue */
+extern w_queue_t * writer_queue_log_statistical;
+
+/* Firewall log writer queue */
+extern w_queue_t * writer_queue_log_firewall;
+
+/* Decode syscheck input queue */
+extern w_queue_t * decode_queue_syscheck_input;
+
+/* Decode syscollector input queue */
+extern w_queue_t * decode_queue_syscollector_input;
+
+/* Decode rootcheck input queue */
+extern w_queue_t * decode_queue_rootcheck_input;
+
+/* Decode policy monitoring input queue */
+extern w_queue_t * decode_queue_sca_input;
+
+/* Decode hostinfo input queue */
+extern w_queue_t * decode_queue_hostinfo_input;
+
+/* Decode event input queue */
+extern w_queue_t * decode_queue_event_input;
+
+/* Decode pending event output */
+extern w_queue_t * decode_queue_event_output;
+
+/* Decode windows event input queue */
+extern w_queue_t * decode_queue_winevt_input;
+
+/* Database synchronization input queue */
+extern w_queue_t * dispatch_dbsync_input;
+
+/* Upgrade module decoder  */
+extern w_queue_t * upgrade_module_input;
+
 /**
  * @brief Listen to analysisd socket for new requests
  */
@@ -72,20 +114,6 @@ size_t asyscom_getconfig(const char * section, char ** output);
 
 
 #define WM_ANALYSISD_LOGTAG ARGV0 "" // Tag for log messages
-
-/**
- * @brief Get the number of elements divided by the size of queues
- * 
- * Values are save in state's variables
- */
-void w_get_queues_size();
-
-/**
- * @brief Obtains analysisd's queues sizes
- * 
- * Values are save in state's variables
- */
-void w_get_initial_queues_size();
 
 /**
  * @brief Initialize queues

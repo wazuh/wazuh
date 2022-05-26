@@ -35,7 +35,6 @@ typedef struct _recv_msgs_t {
 } recv_msgs_t;
 
 typedef struct _sent_msgs_t {
-    uint64_t queued_count;
     uint64_t ack_count;
     uint64_t shared_count;
     uint32_t ar_count;
@@ -138,11 +137,6 @@ void rem_inc_recv_ctrl_request();
  * @param bytes Number of bytes to increment
  */
 void rem_add_send(unsigned long bytes);
-
-/**
- * @brief Increment sent queued messages counter
- */
-void rem_inc_send_queued();
 
 /**
  * @brief Increment sent ack messages counter
