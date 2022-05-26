@@ -66,6 +66,7 @@ void WazuhDB::query(std::string_view query, char* response, int length)
     }
 
     // Send the query
+    // TODO Map resolverlo con mapa, lo hago con un at y  lo chequeo afuera
     switch (socketinterface::sendMsg(this->m_fd, query.data(), query.size()))
     {
 
@@ -83,7 +84,7 @@ void WazuhDB::query(std::string_view query, char* response, int length)
             break;
         case socketinterface::SOCKET_ERROR:
         {
-            const std::string errMsg = std::string {"Cannot send the query: "}
+            const auto errMsg = std::string {"Cannot send the query: "}
                                        + strerror(errno) + " (" + std::to_string(errno)
                                        + ")";
             throw std::runtime_error(errMsg);
@@ -119,14 +120,16 @@ void WazuhDB::query(std::string_view query, char* response, int length)
         default: break;
     }
 }
-
+// TODO: hacer copnstante la funcion
+// Hacer un string el result.
 QueryResultCodes WazuhDB::parseResult(char* result, char** payload)
 {
 
     // if (result == nullptr)
 
     // Separete the code result and the payload
-    char* wptr {strchr(result, ' ')};
+    // Pasarlo a string y hacer un split
+    auto wptr {strchr(result, ' ')};
 
     if (wptr != nullptr)
     {
@@ -145,8 +148,8 @@ QueryResultCodes WazuhDB::parseResult(char* result, char** payload)
     }
 
     // Parse code
-    auto res = QueryResStr2Code.find(result);
-    if (res == QueryResStr2Code.end()) {
+    const auto res {QueryResStr2Code.find(std::string_view {result})};
+    if (QueryResStr2Code.end() == res) {
         return QueryResultCodes::UNKNOWN;
     }
     return res->second;

@@ -1,6 +1,6 @@
 add_executable(wdb_test
     unixSocketInterface_test.cpp
-    wdb_test.cpp
+    #wdb_test.cpp
 )
 
 target_include_directories(wdb_test
