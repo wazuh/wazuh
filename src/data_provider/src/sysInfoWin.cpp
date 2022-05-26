@@ -235,6 +235,7 @@ typedef struct SMBIOSStructureHeader
     WORD Handle;
 } SMBIOSStructureHeader;
 
+/* Reference https://www.dmtf.org/sites/default/files/standards/documents/DSP0134_3.4.0.pdf */
 typedef struct SMBIOSBasboardInfoStructure
 {
     BYTE Type;
@@ -244,43 +245,113 @@ typedef struct SMBIOSBasboardInfoStructure
     BYTE Product;
     BYTE Version;
     BYTE SerialNumber;
+    BYTE AssertTag;
+    BYTE FeatureFlags;
+    BYTE LocationInChassis;
+    WORD ChassisHandle;
+    BYTE BoardType;
+    BYTE NumObjHandles;
+    WORD *ObjHandles;
 } SMBIOSBasboardInfoStructure;
 
-/* Reference: https://www.dmtf.org/sites/default/files/standards/documents/DSP0134_2.6.0.pdf */
-static std::string parseRawSmbios(const BYTE* rawData, const DWORD rawDataSize)
+/* Reference https://www.dmtf.org/sites/default/files/standards/documents/DSP0134_3.4.0.pdf */
+static bool findBaseBoardTable(PRawSMBIOSData smbiosData, SMBIOSBasboardInfoStructure** smbiosTable)
 {
-    std::string serialNumber;
-    DWORD offset{0};
-    while (offset < rawDataSize && serialNumber.empty())
+    unsigned long offset { 0 };
+    SMBIOSBasboardInfoStructure *table { nullptr };
+    auto properTermination { true };
+    auto ret { true };
+
+    while (properTermination && !table)
     {
-        SMBIOSStructureHeader header{};
-        memcpy(&header, rawData + offset, sizeof(SMBIOSStructureHeader));
-        if (BASEBOARD_INFORMATION_TYPE == header.Type)
+        properTermination = false;
+
+        // Check that the table header fits in the buffer.
+        if (offset + sizeof(SMBIOSStructureHeader) < smbiosData->Length)
         {
-            SMBIOSBasboardInfoStructure info{};
-            memcpy(&info, rawData + offset, sizeof(SMBIOSBasboardInfoStructure));
-            offset += info.FormattedAreaLength;
-            for (BYTE i = 1; i < info.SerialNumber; ++i)
+            SMBIOSStructureHeader header { };
+            memcpy(&header, &smbiosData->SMBIOSTableData[offset], sizeof(SMBIOSStructureHeader));
+
+            if (BASEBOARD_INFORMATION_TYPE == header.Type)
             {
-                const char* tmp{reinterpret_cast<const char*>(rawData + offset)};
-                const auto len{ strlen(tmp) };
-                offset += len + sizeof(char);
+                // Found table
+                table = reinterpret_cast<SMBIOSBasboardInfoStructure *>(&smbiosData->SMBIOSTableData[offset]);
             }
-            serialNumber = reinterpret_cast<const char*>(rawData + offset);
-        }
-        else
-        {
-            offset += header.FormattedAreaLength;
-            bool end{false};
-            while(!end)
+
+            // Set i to the end of the formated section.
+            offset += smbiosData->SMBIOSTableData[offset + 1];
+
+            // Look for the end of the struct that must be terminated by \0\0
+            while (offset + 1 < smbiosData->Length)
             {
-                const char* tmp{reinterpret_cast<const char*>(rawData + offset)};
-                const auto len{strlen(tmp)};
-                offset += len + sizeof(char);
-                end = !len;
+                if (!smbiosData->SMBIOSTableData[offset] && !smbiosData->SMBIOSTableData[offset + 1])
+                {
+                    properTermination = true;
+                    offset += 2;
+                    break;
+                }
+
+                ++offset;
             }
         }
     }
+
+    if (properTermination)
+    {
+        if (!table)
+        {
+            // Table wasn't found.
+            ret = false;
+        }
+    }
+    else
+    {
+        // A table wasn't double null terminated within the buffer
+        ret = false;
+    }
+
+    if (table)
+    {
+        *smbiosTable = table;
+    }
+
+    return ret;
+}
+
+static std::string parseBaseBoardInfo(const SMBIOSBasboardInfoStructure* baseBoardInfo)
+{
+    const char *str { reinterpret_cast<const char *>(baseBoardInfo) + reinterpret_cast<const SMBIOSStructureHeader *>(baseBoardInfo)->FormattedAreaLength };
+    BYTE currentStringIndex = { 1 };
+    std::string serialNumber { UNKNOWN_VALUE };
+
+    while(*str)
+    {
+        if (baseBoardInfo->SerialNumber == currentStringIndex)
+        {
+            break;
+        }
+
+        ++str;
+
+        if (!*str)
+        {
+            ++str;
+            ++currentStringIndex;
+        }
+    }
+
+    if (*str)
+    {
+        // The Serial number found in the string table fg
+        const auto size { MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, str, -1, nullptr, 0) };
+
+        if (0 != size)
+        {
+            // size has the dtring lenght plus 1 for the null-terminate string
+            serialNumber.assign(str, size - 1);
+        }
+    }
+
     return serialNumber;
 }
 
@@ -422,8 +493,17 @@ std::string SysInfo::getSerialNumber() const
                     if (pfnGetSystemFirmwareTable('RSMB', 0, spBuff.get(), size) == size)
                     {
                         PRawSMBIOSData smbios{reinterpret_cast<PRawSMBIOSData>(spBuff.get())};
-                        // Parse SMBIOS structures
-                        ret = parseRawSmbios(smbios->SMBIOSTableData, size);
+                        SMBIOSBasboardInfoStructure* baseBoardInfo { nullptr };
+
+                        // Find Baseboard table
+                        if (findBaseBoardTable(smbios, &baseBoardInfo)) {
+                            //Parse SMBIOS Base Board information
+                            ret = parseBaseBoardInfo(reinterpret_cast<const SMBIOSBasboardInfoStructure *>(baseBoardInfo));
+                        }
+                        else
+                        {
+                            ret = UNKNOWN_VALUE;
+                        }
                     }
                 }
             }
