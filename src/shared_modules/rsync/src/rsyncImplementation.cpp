@@ -18,6 +18,8 @@
 
 using namespace RSync;
 
+constexpr auto DEFAULT_SYNC_INTERVAL_VALUE { 0 };
+
 void RSyncImplementation::release()
 {
     std::lock_guard<std::mutex> lock{ m_mutex };
@@ -62,7 +64,7 @@ void RSyncImplementation::startRSync(const RSYNC_HANDLE handle,
     const auto& component           { jsStartParams.at("component").get_ref<const std::string&>() };
     const auto& itSyncOnDemand      { jsStartParams.find("sync_on_demand")   };
 
-    const auto syncOnDemand { itSyncOnDemand != jsStartParams.end()&& itSyncOnDemand->get<bool>() };
+    const auto syncOnDemand { itSyncOnDemand != jsStartParams.end() && itSyncOnDemand->get<bool>() };
 
     if (syncOnDemand || !MessageController::instance().waitToStartSync(component))
     {
@@ -186,13 +188,13 @@ void RSyncImplementation::registerSyncId(const RSYNC_HANDLE handle,
         }
     };
 
-    auto syncInterval { std::chrono::seconds(0) };
+    auto syncInterval { std::chrono::seconds(DEFAULT_SYNC_INTERVAL_VALUE) };
     const auto itInterval { syncConfiguration.find("minimal_sync_interval") };
 
     if (itInterval != syncConfiguration.end())
     {
         const auto intervalValue { itInterval->get<int32_t>() };
-        syncInterval = std::chrono::seconds(intervalValue > 0 ? intervalValue : 0);
+        syncInterval = intervalValue > 0 ? std::chrono::seconds(intervalValue) : syncInterval;
     }
 
     MessageController::instance().setComponentContext(syncConfiguration.at("component").get_ref<const std::string&>(),
