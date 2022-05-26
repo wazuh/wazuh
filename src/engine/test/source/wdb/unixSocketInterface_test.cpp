@@ -15,7 +15,8 @@ using namespace socketinterface;
 #define MAX_BUFFER_SIZE     1024
 #define MESSAGE_HEADER_SIZE sizeof(uint32_t)
 #define TEST_SEND_MESSAGE   "Test message to be send!\n"
-#define TEST_SOCKET_PATH    "/tmp/test.sock"
+#define TEST_SOCKET_PATH "/tmp/test.sock"
+
 
 /**
  * @brief Test auxiliar function to bind a datagram UNIX socket
@@ -37,26 +38,26 @@ static int testBindUnixSocket(const char* path)
 
     if ((sockFD = socket(PF_UNIX, SOCK_STREAM, 0)) < 0)
     {
-        return (SOCKET_ERROR);
+        return (-1);
     }
 
     if (bind(sockFD, (struct sockaddr*)&n_us, SUN_LEN(&n_us)) < 0)
     {
         close(sockFD);
-        return (SOCKET_ERROR);
+        return (-1);
     }
 
     /* Change permissions */
     if (chmod(path, 0660) < 0)
     {
         close(sockFD);
-        return (SOCKET_ERROR);
+        return (-1);
     }
 
     if (listen(sockFD, 1) < 0)
     {
         close(sockFD);
-        return (SOCKET_ERROR);
+        return (-1);
     }
 
     return (sockFD);
@@ -77,7 +78,7 @@ static int testAcceptConnection(const int serverSocketFD)
     const int clientSocketFD = accept(serverSocketFD, (struct sockaddr*)&_nc, &_ncl);
     if (clientSocketFD < 0)
     {
-        return (SOCKET_ERROR);
+        return (-1);
     }
 
     return (clientSocketFD);
@@ -118,8 +119,9 @@ TEST(wdb_procol, SendMessageError)
 
     // Force error
     close(clientSocketFD);
-    ASSERT_EQ(sendMsg(clientSocketFD, TEST_SEND_MESSAGE, strlen(TEST_SEND_MESSAGE)),
-              SOCKET_ERROR);
+    // ASSERT_EQ(sendMsg(clientSocketFD, TEST_SEND_MESSAGE, strlen(TEST_SEND_MESSAGE)),
+    //          -1);
+    ASSERT_EQ(sendMsg(clientSocketFD, TEST_SEND_MESSAGE), CommRetval::SOCKET_ERROR);
 
     close(acceptSocketFD);
 
@@ -140,26 +142,7 @@ TEST(wdb_procol, SendLongMessageError)
     ASSERT_GT(clientSocketFD, 0);
 
     // Force error
-    ASSERT_EQ(sendMsg(clientSocketFD, msg, strlen(msg)), SIZE_TOO_LONG);
-
-    close(acceptSocketFD);
-    close(clientSocketFD);
-
-    unlink(TEST_SOCKET_PATH);
-}
-
-TEST(wdb_procol, SendNullMessageError)
-{
-    // Create server
-    const int acceptSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
-    ASSERT_GT(acceptSocketFD, 0);
-
-    // Connect client
-    const int clientSocketFD = socketConnect(TEST_SOCKET_PATH);
-    ASSERT_GT(clientSocketFD, 0);
-
-    char* msg = nullptr;
-    ASSERT_EQ(sendMsg(clientSocketFD, msg, 1), NULL_PTR);
+    ASSERT_EQ(sendMsg(clientSocketFD, msg), CommRetval::SIZE_TOO_LONG);
 
     close(acceptSocketFD);
     close(clientSocketFD);
@@ -178,7 +161,7 @@ TEST(wdb_procol, SendEmptyMessageError)
     ASSERT_GT(clientSocketFD, 0);
 
     char msg[2] = {};
-    ASSERT_EQ(sendMsg(clientSocketFD, msg, strlen(msg)), SIZE_ZERO);
+    ASSERT_EQ(sendMsg(clientSocketFD, msg), CommRetval::SIZE_ZERO);
 
     close(acceptSocketFD);
     close(clientSocketFD);
@@ -188,13 +171,13 @@ TEST(wdb_procol, SendEmptyMessageError)
 
 TEST(wdb_procol, SendInvalidSocketError)
 {
-    ASSERT_EQ(sendMsg(0, TEST_SEND_MESSAGE, strlen(TEST_SEND_MESSAGE)), INVALID_SOCKET);
-    ASSERT_EQ(sendMsg(-5, TEST_SEND_MESSAGE, strlen(TEST_SEND_MESSAGE)), INVALID_SOCKET);
+    ASSERT_EQ(sendMsg(0, TEST_SEND_MESSAGE), CommRetval::INVALID_SOCKET);
+    ASSERT_EQ(sendMsg(-5, TEST_SEND_MESSAGE), CommRetval::INVALID_SOCKET);
 }
 
 TEST(wdb_procol, SendWrongSocketFDError)
 {
-    ASSERT_EQ(sendMsg(999, TEST_SEND_MESSAGE, strlen(TEST_SEND_MESSAGE)), SOCKET_ERROR);
+    ASSERT_EQ(sendMsg(999, TEST_SEND_MESSAGE), CommRetval::SOCKET_ERROR);
 }
 
 TEST(wdb_procol, SendMessage)
@@ -207,8 +190,7 @@ TEST(wdb_procol, SendMessage)
     const int clientSocketFD = socketConnect(TEST_SOCKET_PATH);
     ASSERT_GT(clientSocketFD, 0);
 
-    const int msgLen = strlen(TEST_SEND_MESSAGE);
-    ASSERT_EQ(sendMsg(clientSocketFD, TEST_SEND_MESSAGE, msgLen), msgLen);
+    ASSERT_EQ(sendMsg(clientSocketFD, TEST_SEND_MESSAGE), CommRetval::SUCCESS);
 
     close(acceptSocketFD);
     close(clientSocketFD);
@@ -218,7 +200,6 @@ TEST(wdb_procol, SendMessage)
 
 TEST(wdb_procol, RecvMessage)
 {
-    char msg[MAX_BUFFER_SIZE] = {};
 
     // Create server
     const int acceptSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
@@ -232,9 +213,10 @@ TEST(wdb_procol, RecvMessage)
     ASSERT_GT(serverSocketFD, 0);
 
     const int msgLen = strlen(TEST_SEND_MESSAGE);
-    ASSERT_EQ(sendMsg(serverSocketFD, TEST_SEND_MESSAGE, msgLen), msgLen);
+    ASSERT_EQ(sendMsg(serverSocketFD, TEST_SEND_MESSAGE), CommRetval::SUCCESS);
 
-    int recvBytes = recvMsg(clientSocketFD, msg, MAX_BUFFER_SIZE);
+    auto payload = recvString(clientSocketFD);
+    const char* msg = static_cast<const char*>(payload.data());
     ASSERT_STREQ(msg, TEST_SEND_MESSAGE);
 
     close(acceptSocketFD);
@@ -260,17 +242,15 @@ TEST(wdb_procol, SendRecvMessage)
     ASSERT_GT(serverSocketFD, 0);
 
     const int msgLen = strlen(TEST_SEND_MESSAGE);
-    ASSERT_EQ(sendMsg(clientSocketFD, TEST_SEND_MESSAGE, msgLen), msgLen);
+    ASSERT_EQ(sendMsg(clientSocketFD, TEST_SEND_MESSAGE), CommRetval::SUCCESS);
 
-    int recvBytes = recvMsg(serverSocketFD, msg, MAX_BUFFER_SIZE);
-    ASSERT_STREQ(msg, TEST_SEND_MESSAGE);
+    auto payload = recvString(serverSocketFD);
+    ASSERT_STREQ(payload.c_str(), TEST_SEND_MESSAGE);
 
-    bzero(msg, MAX_BUFFER_SIZE);
+    ASSERT_EQ(sendMsg(serverSocketFD, TEST_SEND_MESSAGE), CommRetval::SUCCESS);
 
-    ASSERT_EQ(sendMsg(serverSocketFD, TEST_SEND_MESSAGE, msgLen), msgLen);
-
-    recvBytes = recvMsg(clientSocketFD, msg, MAX_BUFFER_SIZE);
-    ASSERT_STREQ(msg, TEST_SEND_MESSAGE);
+    payload = recvString(clientSocketFD);
+    ASSERT_STREQ(payload.c_str(), TEST_SEND_MESSAGE);
 
     close(acceptSocketFD);
     close(clientSocketFD);
@@ -295,16 +275,98 @@ TEST(wdb_procol, SendRecvLongestMessage)
     const int serverSocketFD = testAcceptConnection(acceptSocketFD);
     ASSERT_GT(serverSocketFD, 0);
 
-    ASSERT_EQ(sendMsg(clientSocketFD, msg, strlen(msg)), MSG_MAX_SIZE);
+    ASSERT_EQ(sendMsg(clientSocketFD, msg), CommRetval::SUCCESS);
 
-    char recvBuff[MSG_MAX_SIZE + 1] = {};
-    int recvBytes = recvMsg(serverSocketFD, recvBuff, MSG_MAX_SIZE + 1);
-    ASSERT_EQ(recvBytes, MSG_MAX_SIZE);
-    ASSERT_STREQ(msg, recvBuff);
+    auto payload = recvString(serverSocketFD);
+    ASSERT_STREQ(payload.c_str(), msg);
+    ASSERT_EQ(strlen(payload.c_str()), MSG_MAX_SIZE);
 
     close(acceptSocketFD);
     close(clientSocketFD);
     close(serverSocketFD);
+
+    unlink(TEST_SOCKET_PATH);
+}
+
+TEST(wdb_procol, remoteCloseBeforeSend)
+{
+
+    // Create server
+    const int serverSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
+    ASSERT_GT(serverSocketFD, 0);
+
+    // Connect client
+    const int clientLocal = socketConnect(TEST_SOCKET_PATH);
+    ASSERT_GT(clientLocal, 0);
+
+    // Accept connection
+    const int clientRemote = testAcceptConnection(serverSocketFD);
+    ASSERT_GT(clientRemote, 0);
+
+    // close remote before send
+    close(clientRemote);
+
+    ASSERT_THROW(sendMsg(clientLocal, TEST_SEND_MESSAGE), RecoverableError);
+
+    // Broken pipe
+    ASSERT_EQ(errno, EPIPE);
+
+    close(serverSocketFD);
+    close(clientLocal);
+
+    unlink(TEST_SOCKET_PATH);
+}
+
+TEST(wdb_procol, remoteCloseBeforeRcv)
+{
+
+    // Create server
+    const int serverSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
+    ASSERT_GT(serverSocketFD, 0);
+
+    // Connect client
+    const int clientLocal = socketConnect(TEST_SOCKET_PATH);
+    ASSERT_GT(clientLocal, 0);
+
+    // Accept connection
+    const int clientRemote = testAcceptConnection(serverSocketFD);
+    ASSERT_GT(clientRemote, 0);
+
+    // close remote before recv
+    close(clientRemote);
+
+    ASSERT_THROW(recvString(clientLocal), RecoverableError);
+
+    close(serverSocketFD);
+    close(clientLocal);
+
+    unlink(TEST_SOCKET_PATH);
+}
+
+TEST(wdb_procol, localSendremoteCloseBeforeRcv)
+{
+
+    // Create server
+    const int serverSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
+    ASSERT_GT(serverSocketFD, 0);
+
+    // Connect client
+    const int clientLocal = socketConnect(TEST_SOCKET_PATH);
+    ASSERT_GT(clientLocal, 0);
+
+    // Accept connection
+    const int clientRemote = testAcceptConnection(serverSocketFD);
+    ASSERT_GT(clientRemote, 0);
+
+    // Send to remote
+    ASSERT_EQ(sendMsg(clientLocal, TEST_SEND_MESSAGE), CommRetval::SUCCESS);
+    // Remote dont read and close the socket
+    close(clientRemote);
+
+    ASSERT_THROW(recvString(clientLocal), RecoverableError);
+
+    close(serverSocketFD);
+    close(clientLocal);
 
     unlink(TEST_SOCKET_PATH);
 }

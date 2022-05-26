@@ -1,6 +1,10 @@
 #ifndef _WDB_PROTOCOL_H
 #define _WDB_PROTOCOL_H
 
+#include <stdexcept>
+#include <string>
+#include <vector>
+
 #include <stdint.h>
 
 /*
@@ -20,80 +24,76 @@
 
 namespace socketinterface
 {
-// https://github.com/wazuh/wazuh/blob/v4.3.0/src/shared/wazuhdb_op.c#L29
-// https://github.com/wazuh/wazuh/blob/v4.3.0/src/headers/defs.h#L31
-// https://github.com/wazuh/wazuh/blob/v4.3.0/src/wazuh_db/main.c#L246-L249
-constexpr int SOCKET_BUFFER_MAX_SIZE {65536}; ///< Maximum socket message size (2^16)
-constexpr int HEADER_SIZE {sizeof(uint32_t)};
-constexpr int MSG_MAX_SIZE {SOCKET_BUFFER_MAX_SIZE
-                            - HEADER_SIZE}; ///< Maximum message size (socket msg - '\0')
+constexpr auto MSG_MAX_SIZE {65536}; ///< Maximum message size (2^16)
+
+/**
+ * @brief
+ *
+ */
+class RecoverableError : public std::runtime_error
+{
+public:
+    RecoverableError(const std::string& msg)
+        : std::runtime_error(msg)
+    {
+    }
+};
 
 // Return codes
-constexpr int INVALID_SOCKET {-5}; ///< Invalid socket
-constexpr int NULL_PTR {-4};       ///< Message to send cannot be null
-constexpr int SIZE_ZERO {-3};      ///< Message canot be empty
-constexpr int SIZE_TOO_LONG {-2};  ///< Message size is too long
-constexpr int SOCKET_ERROR {-1};   ///< Socket error code
+enum class CommRetval
+{
+    SUCCESS,
+    INVALID_SOCKET,
+    SIZE_ZERO,
+    SIZE_TOO_LONG,
+    SOCKET_ERROR,
+};
 
 /**
  * @brief Connect to a UNIX stream socket located at `path`
  *
  * @param path UNIX domain socket pathname
- * @return socket file descriptor in case of success. Otherwise, thow an runtime_error
- * exception
+ * @return socket file descriptor.
+ * @throw std::runtime_error if the socket cannot be created.
  */
-int socketConnect(const char* path);
+int socketConnect(std::string_view path);
 
 /**
  * @brief Send a message to a stream socket, full message (MSG_WAITALL)
  *
  * @param sock sock file descriptor.
  * @param msg message to send.
- * @param size size of the message.
- * @return Size of the message on success.
- * @return \ref SOCKET_ERROR on socket error (and errno is set).
- * @return \ref SIZE_TOO_LONG if the message is too long.
- * @return \ref NULL_PTR if msg is a nullptr.
- * @return \ref SIZE_ZERO if msg is empty.
- * @return \ref INVALID_SOCKET if sock fd is =< 0.
+ * @return CommRetval::SUCCESS on success.
+ * @return CommRetval::INVALID_SOCKET if the socket is =< 0.
+ * @return CommRetval::SIZE_TOO_LONG if the message is too long (>= \ref MSG_MAX_SIZE).
+ * @return CommRetval::SIZE_ZERO if msg is empty.
+ * @return CommRetval::SOCKET_ERROR if the socket cannot be written to. (errno is set).
  *
  * @warning This function blocks until the message is sent or the socket is disconnected.
- * @warning This function does not check the size of the message.
  */
-int sendMsg(int sock, const char* msg, uint32_t size);
-
-/**
- * @brief Send a c-string to a stream socket, full message (MSG_WAITALL)
- *
- * @param sock sock file descriptor.
- * @param msg message to send. Will be terminated by '\0'.
- * @return Size of the message on success.
- * @return \ref SOCKET_ERROR on socket error (and errno is set).
- * @return \ref SIZE_TOO_LONG if the message is too long.
- * @return \ref NULL_PTR if msg is a nullptr.
- * @return \ref SIZE_ZERO if msg is empty.
- * @return \ref INVALID_SOCKET if sock fd is =< 0.
- *
- * @warning This function blocks until the message is sent or the socket is disconnected.
- * @warning This function does not check the size of the message.
- */
-int sendMsg(int sock, const char* msg);
+CommRetval sendMsg(const int sock, const std::string& msg);
 
 /** @brief Receive a message from a stream socket, full message (MSG_WAITALL)
  *
- * Return the message in ret buffer
  * @param sock sock file descriptor.
- * @param[out] ret buffer to store the message.
- * @param size size of the ret buffer.
- * @return Size of the message on success.
- * @return \ref SIZE_TOO_LONG if the message is too long.
- * @return \ref SOCKET_ERROR on error (and errno is set).
- * @return 0 on socket disconnected or timeout.
+ * @return vector<uint8_t> message on success.
+ * @throw std::runtime_error on error.
+
  * @warning This function blocks until the message is received or the socket is
  * disconnected.
- *
  */
-int recvMsg(int sock, char* ret, uint32_t size);
+std::vector<uint8_t> recvMsg(const int sock);
+
+/**
+ * @brief Receive a message from a stream socket, full message (MSG_WAITALL)
+ *
+ * @param sock sock file descriptor.
+ * @return std::string message on success.
+ * @throw std::runtime_error on error.
+ *
+ * @warning This function blocks until the message is received or the socket is
+ */
+std::string recvString(const int sock);
 
 } // namespace socketinterface
 
