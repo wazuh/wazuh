@@ -161,8 +161,7 @@ CommRetval sendMsg(const int sock, const std::string& msg)
         else if (EPIPE == errno)
         {
             // Recoverable case
-            WAZUH_LOG_WARN("wdb socket is disconnected: {} ({})", strerror(errno), errno);
-            throw RecoverableError("wdb socket is disconnected.");
+            throw RecoverableError("sendMsg socket is disconnected.");
         }
     }
 

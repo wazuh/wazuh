@@ -35,8 +35,6 @@ constexpr auto SOCKET_NOT_CONNECTED {-1}; ///< Socket not connected (status)
  * This class is used to interact with the WazuhDB database.
  *
  * @warning Not a thread-safe implementation.
- * // TODO agregar los finals
- * // TODO regla 3-0-5 Buscar
  */
 class WazuhDB final
 {
@@ -66,17 +64,18 @@ public:
     void connect();
 
     /**
-     * @brief Query the wdb socket
+     * @brief Send a query to the wdb socket
      *
-     * @param query Query to send to the wdb socket
-     * @param [out] response Response buffer
-     * @param length Response buffer length
-     *     *
-     * @throw std::runtime_error if cannot connect to the wdb socket
+     * @param query Query to send
+     * @return std::string Result of the query. Empty if the query is empty or too long.
+     *
+     * @throw socketinterface::RecoverableError if cannot send the query because the
+     * remote socket is closed (EPIPE, ECONNRESET or gracefully closed).
+     * @throw std::runtime_error if cannot send the query because of other reasons.
      */
-    void query(std::string_view query, char* response, int length);
+    std::string query(const std::string& query);
 
-    QueryResultCodes parseResult(char* result, char** payload);
+    // QueryResultCodes parseResult(char* result, char** payload);
 };
 } // namespace wazuhdb
 #endif
