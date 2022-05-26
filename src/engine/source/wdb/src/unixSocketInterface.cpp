@@ -29,20 +29,19 @@ namespace
  * disconnected.
  *
  */
-ssize_t recvWaitAll(int sock, void* buf, size_t size)
+ssize_t recvWaitAll(int sock, void* buf, size_t size) noexcept
 {
-    size_t offset {}; // offset in the buffer
-    ssize_t recvb {}; // Recived bytes
+    ssize_t offset {}; // offset in the buffer
+    ssize_t recvb {};  // Recived bytes
 
     for (offset = 0; offset < size; offset += recvb)
     {
         recvb = recv(sock, (char*)buf + offset, size - offset, 0);
 
-        switch (recvb)
+        if (0 >= recvb)
         {
-            // Socket disconnected
-            case 0: return 0;
-            case -1: return SOCKET_ERROR;
+            offset = recvb;
+            break;
         }
     }
 
@@ -50,26 +49,30 @@ ssize_t recvWaitAll(int sock, void* buf, size_t size)
 }
 } // namespace
 
-int socketConnect(const char* path)
+int socketConnect(std::string_view path)
 {
 
+    if (path.empty())
+    {
+        throw std::runtime_error("socketConnect: path is empty");
+    }
+
     /* Socket options */
-    constexpr int SOCK_TYPE {SOCK_STREAM};
+    const auto SOCK_TYPE {SOCK_STREAM};
 
     /* Config the socket address */
     struct sockaddr_un sAddr
     {
         .sun_family = AF_UNIX, .sun_path = {}
     };
-    // The max path length is 108 bytes
-    strncpy(sAddr.sun_path, path, sizeof(sAddr.sun_path) - 1);
+    strncpy(sAddr.sun_path, path.data(), sizeof(sAddr.sun_path) - 1);
 
     /* Get the socket fd connector */
-    const int socketFD {socket(PF_UNIX, SOCK_TYPE, 0)};
-    if (socketFD < 0)
+    const auto socketFD {socket(PF_UNIX, SOCK_TYPE, 0)};
+    if (0 > socketFD)
     {
-        const std::string msg = std::string {"Cannot create the socket: "}
-                                + strerror(errno) + " (" + std::to_string(errno) + ")";
+        const auto msg = std::string {"Cannot create the socket: "} + strerror(errno)
+                         + " (" + std::to_string(errno) + ")";
 
         throw std::runtime_error(msg);
     }
@@ -79,8 +82,8 @@ int socketConnect(const char* path)
         < 0)
     {
         close(socketFD);
-        const std::string msg = std::string {"Cannot connect: "} + strerror(errno) + " ("
-                                + std::to_string(errno) + ")";
+        const auto msg = std::string {"Cannot connect: "} + strerror(errno) + " ("
+                         + std::to_string(errno) + ")";
         throw std::runtime_error(msg);
     }
 
@@ -95,16 +98,15 @@ int socketConnect(const char* path)
         }
 
         /* Set maximum message size only recve sock */
-        if (len < SOCKET_BUFFER_MAX_SIZE)
+        if (MSG_MAX_SIZE > len)
         {
-            len = SOCKET_BUFFER_MAX_SIZE;
+            len = MSG_MAX_SIZE;
             if (setsockopt(socketFD, SOL_SOCKET, SO_RCVBUF, (const void*)&len, optlen)
                 == -1)
             {
                 close(socketFD);
-                const std::string msg = std::string {"Cannot set socket buffer size: "}
-                                        + strerror(errno) + " (" + std::to_string(errno)
-                                        + ")";
+                const auto msg = std::string {"Cannot set socket buffer size: "}
+                                 + strerror(errno) + " (" + std::to_string(errno) + ")";
                 throw std::runtime_error(msg);
             }
         }
@@ -114,106 +116,103 @@ int socketConnect(const char* path)
     if (fcntl(socketFD, F_SETFD, FD_CLOEXEC) == -1)
     {
         WAZUH_LOG_WARN(
-            "Cannot set close-on-exec flag to socket {} {}", strerror(errno), errno);
+            "Cannot set close-on-exec flag to socket: {} ({})", strerror(errno), errno);
     }
 
     return (socketFD);
 }
 
-int sendMsg(int sock, const char* msg)
+CommRetval sendMsg(const int sock, const std::string& msg)
 {
-    if (msg == nullptr)
-    {
-        return NULL_PTR;
-    }
 
-    return sendMsg(sock, msg, strlen(msg));
-}
-
-int sendMsg(int sock, const char* msg, uint32_t size)
-{
-    char* buffer {nullptr};
-    size_t bufferSize {HEADER_SIZE + size}; // Header + Message
+    auto result {CommRetval::SOCKET_ERROR};
+    auto payloadSize {static_cast<uint32_t>(msg.size())};
+    const auto HEADER_SIZE {sizeof(uint32_t)};
 
     // Validate
-    if (sock <= 0)
+    if (0 >= sock)
     {
-        return INVALID_SOCKET;
+        result = CommRetval::INVALID_SOCKET;
     }
-    else if (msg == nullptr)
+    else if (0 >= payloadSize)
     {
-        return NULL_PTR;
+        result = CommRetval::SIZE_ZERO;
     }
-    else if (size == 0)
+    else if (MSG_MAX_SIZE < payloadSize)
     {
-        return SIZE_ZERO;
+        result = CommRetval::SIZE_TOO_LONG;
     }
-    else if (size > MSG_MAX_SIZE)
+    else
     {
-        return SIZE_TOO_LONG;
+        payloadSize++; // send the null terminator
+        // MSG_NOSIGNAL prevent broken pipe signal
+        auto success {send(sock, &payloadSize, HEADER_SIZE, MSG_NOSIGNAL) == HEADER_SIZE};
+        success = success
+                  && (send(sock, msg.c_str(), payloadSize, MSG_NOSIGNAL) == payloadSize);
+
+        if (success)
+        {
+            result = CommRetval::SUCCESS;
+        }
+        else if (EAGAIN == errno || EWOULDBLOCK == errno)
+        {
+            WAZUH_LOG_WARN("wdb socket is full: {} ({})", strerror(errno), errno);
+        }
+        else if (EPIPE == errno)
+        {
+            // Recoverable case
+            WAZUH_LOG_WARN("wdb socket is disconnected: {} ({})", strerror(errno), errno);
+            throw RecoverableError("wdb socket is disconnected.");
+        }
     }
 
-    buffer = static_cast<char*>(malloc(bufferSize));
-    // Appends header
-    *(uint32_t*)buffer = size;
-    // Appends message
-    memcpy(buffer + HEADER_SIZE, msg, size);
-    // Send the message
-    errno = 0;
-    int retval = send(sock, buffer, bufferSize, 0) == static_cast<ssize_t>(bufferSize)
-                     ? bufferSize - HEADER_SIZE
-                     : SOCKET_ERROR;
-    free(buffer);
-
-    return retval;
+    return result;
 }
 
-int recvMsg(int sock, char* outBuffer, uint32_t bufferSize)
+std::vector<uint8_t> recvMsg(const int sock)
 {
-    uint32_t msgsize; // Message size (Header readed)
-    ssize_t recvb;    // Number of bytes received
+    // Check recive msg
+    const auto checkRcv = [](const ssize_t rcvBytes) {
+        if (rcvBytes < 0)
+        {
+            const auto msg = std::string {"recvMsg: recv error : "} + strerror(errno)
+                             + " (" + std::to_string(errno) + ")";
+            if (ECONNRESET == errno)
+            {
+                // recoverable case
+                throw RecoverableError(msg);
+            }
+            throw std::runtime_error(msg);
+        }
+        else if (0 == rcvBytes)
+        {
+            // Remote disconect recoverable case
+            throw RecoverableError("recvMsg: socket disconnected"); // errno is not set
+        }
+    };
 
-    if (sock <= 0)
-    {
-        return (INVALID_SOCKET);
-    }
-    else if (outBuffer == nullptr)
-    {
-        return (NULL_PTR);
-    }
-    else if (bufferSize <= 1)
-    {
-        return (SIZE_ZERO);
-    }
+    uint32_t msgSize; // Message size (Header readed)
+    auto recvb {recvWaitAll(sock, &msgSize, sizeof(msgSize))};
+    checkRcv(recvb);
 
-    /* Get header */
-    recvb = recvWaitAll(sock, &msgsize, sizeof(msgsize));
-
-    /* Verify header */
-    switch (recvb)
+    if (MSG_MAX_SIZE < msgSize)
     {
-        case -1: return SOCKET_ERROR; break;
-
-        case 0: return 0; break;
-    }
-
-    /* Reserve last byte for null-termination */
-    if (msgsize >= bufferSize)
-    {
-        /* Error: the payload length is too long */
-        return SIZE_TOO_LONG;
+        std::runtime_error("recvMsg: message size too long");
     }
 
-    /* Get payload */
-    recvb = recvWaitAll(sock, outBuffer, msgsize);
+    std::vector<uint8_t> recvMsg;
+    recvMsg.resize(msgSize + 1, '\0');
 
-    /* Terminate string */
-    if (recvb == static_cast<int32_t>(msgsize) && msgsize < bufferSize)
-    {
-        outBuffer[msgsize] = '\0';
-    }
+    recvb = recvWaitAll(sock, &(recvMsg[0]), msgSize);
+    checkRcv(recvb);
 
-    return recvb;
+    return recvMsg;
+}
+
+std::string recvString(const int sock)
+{
+    auto byteMsg {recvMsg(sock)};
+    return std::string(byteMsg.begin(), byteMsg.end());
 }
 
 } // namespace socketinterface
