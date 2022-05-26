@@ -13,6 +13,14 @@
 
 #include <utils/stringUtils.hpp>
 
+TEST(split, null_del)
+{
+    std::string test = "test";
+    std::vector<std::string> expected = {"test"};
+    std::vector<std::string> result = utils::string::split(test, '\0');
+    ASSERT_EQ(result, expected);
+}
+
 TEST(split, not_delimiter)
 {
     std::string test = "test";
