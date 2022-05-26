@@ -1,5 +1,5 @@
-#include "state.h"
-#include "shared.h"
+#include "wdb_state.h"
+#include <pthread.h>
 
 pthread_mutex_t db_stats_t_mutex = PTHREAD_MUTEX_INITIALIZER;
 db_stats_t wazuhdb_stats = {0};
