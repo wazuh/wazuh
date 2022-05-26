@@ -64,25 +64,62 @@ public:
     void connect();
 
     /**
-     * @brief Send a query to the wdb socket
+     * @brief perform a query to the wdb socket
      *
-     * @param query Query to send
+     * @param query Query to perform
      * @return std::string Result of the query. Empty if the query is empty or too long.
      *
-     * @throw socketinterface::RecoverableError if cannot send the query because the
+     * @throw socketinterface::RecoverableError if cannot perform the query because the
      * remote socket is closed (EPIPE, ECONNRESET or gracefully closed).
-     * @throw std::runtime_error if cannot send the query because of other reasons.
+     * @throw std::runtime_error if cannot perform the query because of other reasons.
      */
     std::string query(const std::string& query);
 
-    /**
-     * @brief   
+     /**
+     * @brief Try to perform a query to the wdb socket `attempts` times
      *
-     * @param result
-     * @return std::tuple<QueryResultCodes, std::optional<std::string>>
+     * @param query Query to perform
+     * @param attempts Number of attempts to perform the query
+     * @return std::string Result of the query. Empty if the query fail (And log the error).
+     */
+    std::string tryQuery(const std::string& query, const unsigned int attempts) noexcept;
+
+
+    /**
+     * @brief Parse a query result
+     *
+     * @param result Result of the query
+     * @return std::tuple<QueryResultCodes, std::optional<std::string>> Tuple with the
+     * code and the optional data (payload)
      */
     std::tuple<QueryResultCodes, std::optional<std::string>>
     parseResult(const std::string& result) const noexcept;
+
+    /**
+     * @brief Perform a query and parse result
+     *
+     * @param query Query to perform
+     * @return std::tuple<QueryResultCodes, std::optional<std::string>> Tuple with the
+     * code and the optional data (payload)
+     *
+     * @throw socketinterface::RecoverableError if cannot perform the query because the
+     * remote socket is closed (EPIPE, ECONNRESET or gracefully closed).
+     * @throw std::runtime_error if cannot perform the query because of other reasons.
+     */
+    std::tuple<QueryResultCodes, std::optional<std::string>> queryAndParseResult(
+        const std::string& query);
+
+
+    /**
+     * @brief Try perform a query and parse result `attempts` times
+     *
+     * @param query Query to perform
+     * @param attempts Number of attempts to perform the query
+     * @return std::tuple<QueryResultCodes, std::optional<std::string>> Tuple with the
+     * code and the optional data (payload)
+     */
+    std::tuple<QueryResultCodes, std::optional<std::string>> tryQueryAndParseResult(
+        const std::string& query) noexcept;
 };
 } // namespace wazuhdb
 #endif

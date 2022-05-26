@@ -53,6 +53,7 @@ std::string WazuhDB::query(const std::string& query)
     else if (query.length() > socketinterface::MSG_MAX_SIZE)
     {
         WAZUH_LOG_WARN("wdb: query to send its too long: {}", query.c_str());
+        return {};
     }
 
     // Check the connection
