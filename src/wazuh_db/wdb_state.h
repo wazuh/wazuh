@@ -8,7 +8,12 @@
  * Foundation.
  */
 
+#ifndef STATEWDB_H
+#define STATEWDB_H
+
+#include <stdint.h>
 #include <sys/time.h>
+#include "wdb.h"
 
 typedef struct _agent_syscheck_t {
     uint64_t syscheck_queries;
@@ -506,3 +511,5 @@ void w_inc_global_backup_time(struct timeval time);
 void w_inc_wazuhdb_get_config_time(struct timeval time);
 
 void w_inc_wazuhdb_remove_time(struct timeval time);
+
+#endif

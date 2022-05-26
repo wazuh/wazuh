@@ -13,7 +13,7 @@
 #include "wdb.h"
 #include "wdb_agents.h"
 #include "external/cJSON/cJSON.h"
-#include "state.h"
+#include "wdb_state.h"
 
 const char* SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE = "legacy";
 
