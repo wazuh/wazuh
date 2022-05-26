@@ -53,10 +53,9 @@ typedef xml_node **XML_NODE;
 
 /* Start the XML structure reading a file */
 int OS_ReadXML(const char *file, OS_XML *lxml) __attribute__((nonnull));
-int OS_ReadXML_Ex(const char *file, OS_XML *_lxml, bool flag_truncate) __attribute__((nonnull));
 
 /* Start the XML structure reading a file. Truncates long strings */
-int OS_ReadXML_Ex(const char *file, OS_XML *lxml) __attribute__((nonnull));
+int OS_ReadXML_Ex(const char *file, OS_XML *_lxml, bool flag_truncate) __attribute__((nonnull));
 
 /* Start the XML structure reading a string */
 int OS_ReadXMLString(const char *string, OS_XML *_lxml) __attribute__((nonnull));

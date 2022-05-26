@@ -924,7 +924,7 @@ void test_node_value_truncate_overflow(void **state) {
 
     const char *xml_path[] = { "test", NULL };
 
-    assert_int_equal(OS_ReadXML_Ex(data->xml_file_name, &data->xml), 0);
+    assert_int_equal(OS_ReadXML_Ex(data->xml_file_name, &data->xml, true), 0);
     assert_non_null(data->content5 = OS_GetContents(&data->xml, xml_path));
     assert_string_equal(data->content5[0], overflow_string+10);
 }
