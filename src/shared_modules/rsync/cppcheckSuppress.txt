@@ -1,3 +1,3 @@
 *:*src/rsyncImplementation.cpp:158
-*:*tests/implementation/rsyncImplementationTest.cpp:260
-*:*tests/interface/rsync_test.cpp:249
+*:*tests/implementation/rsyncImplementationTest.cpp:262
+*:*tests/interface/rsync_test.cpp:251
