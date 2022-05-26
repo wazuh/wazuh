@@ -172,7 +172,8 @@ CommRetval sendMsg(const int sock, const std::string& msg)
 std::vector<uint8_t> recvMsg(const int sock)
 {
     // Check recive msg
-    const auto checkRcv = [](const ssize_t rcvBytes) {
+    const auto checkRcv = [](const ssize_t rcvBytes)
+    {
         if (rcvBytes < 0)
         {
             const auto msg = std::string {"recvMsg: recv error : "} + strerror(errno)
