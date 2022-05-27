@@ -13,7 +13,6 @@
 
 #define MAX_FQUEUE  256
 #define FQ_TIMEOUT  5
-#define MAX_READ_ATTEMPTS   3
 
 /* File queue */
 typedef struct _file_queue {
@@ -21,7 +20,6 @@ typedef struct _file_queue {
     int year;
     int day;
     int flags;
-    int read_attempts;
 
     char mon[4];
     char file_name[MAX_FQUEUE + 1];
