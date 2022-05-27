@@ -39,22 +39,7 @@ MODULE_LIST = ['wazuh_modules/syscollector', 'shared_modules/dbsync',
                'shared_modules/rsync', 'shared_modules/utils',
                'data_provider', 'syscheckd']
 MODULE_LIST_STR = '|'.join(MODULE_LIST)
-
-
-def argIsValid(arg):
-    """
-    Checks if the argument being selected is a correct one.
-
-    Args:
-        - arg(str): Argument being selected in the command line.
-
-    Return
-        - validArg(bool): True is 'arg' is a correct one, False otherwise.
-
-    Raises:
-        - None
-    """
-    return arg in MODULE_LIST
+TARGET_LIST = ['agent', 'server', 'winagent']
 
 
 def currentPath():
@@ -243,7 +228,23 @@ def moduleList():
         - None
 
     Returns:
-        - moduleList(str): A list with valid modules.
+        - MODULE_LIST(array): A list with valid modules.
+
+    Raises:
+        - None
+    """
+    return MODULE_LIST
+
+
+def moduleListStr():
+    """
+    Get valid module list.
+
+    Args:
+        - None
+
+    Returns:
+        - MODULE_LIST_STR(str): A list with valid modules.
 
     Raises:
         - None
@@ -380,21 +381,17 @@ def rootPath():
     return CURRENT_DIR.parent
 
 
-def targetIsValid(arg):
+def targetList():
     """
-    Checks if the argument being selected is a correct one.
+    Get possible build targets.
 
     Args:
-        - arg(str): Argument being selected in the command line.
+        - None
 
     Returns:
-        - argValid(bool): True is 'arg' is a correct one, False otherwise.
+        - TARGET_LIST(array): Target list
 
     Raises:
         - None
     """
-    validArguments = ['agent',
-                      'server',
-                      'winagent']
-
-    return arg in validArguments
+    return TARGET_LIST

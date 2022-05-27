@@ -314,7 +314,7 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
         build_tools.configureCMake(moduleName=moduleName,
                                    debugMode=True,
                                    testMode=(False, True)
-                                   [moduleName!="shared_modules/utils"],
+                                   [moduleName != "shared_modules/utils"],
                                    withAsan=False)
         if target != "winagent":
             build_tools.makeLib(moduleName=moduleName)
@@ -529,7 +529,7 @@ def runTests(moduleName):
     currentDir = utils.moduleDirPathBuild(moduleName=moduleName)
 
     if not moduleName == "shared_modules/utils":
-        currentDir = os.path.join(utils.moduleDirPathBuild(moduleName=moduleName),
+        currentDir = os.path.join(utils.moduleDirPathBuild(moduleName),
                                   "bin")
 
     objects = os.scandir(currentDir)
@@ -539,7 +539,9 @@ def runTests(moduleName):
     for test in tests:
         path = os.path.join(currentDir, test)
         if ".exe" in test:
-            command = f'WINEPATH="/usr/i686-w64-mingw32/lib;{utils.currentPath()}" WINEARCH=win64 /usr/bin/wine {path}'
+            command = f'WINEPATH="/usr/i686-w64-mingw32/lib;\
+                        {utils.currentPath()}" \
+                        WINEARCH=win64 /usr/bin/wine {path}'
         else:
             command = path
         out = subprocess.run(command,
@@ -555,7 +557,6 @@ def runTests(moduleName):
             utils.printFail(msg="[{}: FAILED]".format(test))
             errorString = "Error Running test: {}".format(out.returncode)
             raise ValueError(errorString)
-    print("\n")
     utils.printGreen(msg="[All tests: PASSED]",
                      module=moduleName)
 
@@ -586,10 +587,10 @@ def runTestToolCheck(moduleName):
            --capture=tee-sys"
     try:
         out = subprocess.run(cmd.format(path, moduleName),
-                         stdout=subprocess.PIPE,
-                         stderr=subprocess.PIPE,
-                         shell=True,
-                         check=True)
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE,
+                             shell=True,
+                             check=True)
         if out.returncode == 0:
             utils.printGreen(msg="[TestTool check: PASSED]")
     except Exception as e:
@@ -648,6 +649,5 @@ def runValgrind(moduleName):
             utils.printFail(msg="[{} : FAILED]".format(test))
             errorString = "Error Running valgrind: {}".format(out.returncode)
             raise ValueError(errorString)
-    print("\n")
     utils.printGreen(msg="[Memory leak check: PASSED]",
                      module=moduleName)
