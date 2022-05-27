@@ -179,8 +179,8 @@ void rem_inc_keys_reload();
 void rem_inc_update_shared_files();
 
 /**
- * @brief Create a JSON string with all the remoted state information
- * @return JSON string
+ * @brief Create a JSON object with all the remoted state information
+ * @return JSON object
  */
 cJSON* rem_create_state_json();
 
