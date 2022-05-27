@@ -8,6 +8,10 @@
  * Foundation
  */
 
+#ifndef ARGV0
+#define ARGV0 "wazuh-analysisd"
+#endif
+
 #include "shared.h"
 #include "analysisd.h"
 #include "state.h"
@@ -15,6 +19,7 @@
 analysisd_state_t analysisd_state;
 queue_status_t queue_status;
 static pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int w_analysisd_write_state();
 static int interval;
 
@@ -41,7 +46,9 @@ void * w_analysisd_state_main() {
 
     mdebug1("State file updating thread started.");
 
+    w_mutex_lock(&queue_mutex);
     w_get_initial_queues_size();
+    w_mutex_unlock(&queue_mutex);
 
     while (1) {
         w_analysisd_write_state();
@@ -56,6 +63,7 @@ int w_analysisd_write_state() {
     char path[PATH_MAX - 8];
     char path_temp[PATH_MAX + 1];
     analysisd_state_t state_cpy;
+    queue_status_t queue_cpy;
 
     if (!strcmp(__local_name, "unset")) {
         merror("At write_state(): __local_name is unset.");
@@ -72,7 +80,10 @@ int w_analysisd_write_state() {
         return -1;
     }
 
+    w_mutex_lock(&queue_mutex);
     w_get_queues_size();
+    memcpy(&queue_cpy, &queue_status, sizeof(queue_status_t));
+    w_mutex_unlock(&queue_mutex);
 
     w_mutex_lock(&state_mutex);
     memcpy(&state_cpy, &analysisd_state, sizeof(analysisd_state_t));
@@ -510,4 +521,150 @@ void w_inc_stats_written() {
     w_mutex_lock(&state_mutex);
     analysisd_state.stats_written++;
     w_mutex_unlock(&state_mutex);
+}
+
+cJSON* asys_create_state_json() {
+    analysisd_state_t state_cpy;
+    queue_status_t queue_cpy;
+    cJSON *_statistics = NULL;
+    cJSON *_received = NULL;
+    cJSON *_decoded = NULL;
+    cJSON *_dropped = NULL;
+    cJSON *_unknown = NULL;
+    cJSON *_queue = NULL;
+
+    w_mutex_lock(&queue_mutex);
+    w_get_queues_size();
+    memcpy(&queue_cpy, &queue_status, sizeof(queue_status_t));
+    w_mutex_unlock(&queue_mutex);
+
+    w_mutex_lock(&state_mutex);
+    memcpy(&state_cpy, &analysisd_state, sizeof(analysisd_state_t));
+    w_mutex_unlock(&state_mutex);
+
+    cJSON *asys_state_json = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(asys_state_json, "version", VERSION);
+    cJSON_AddNumberToObject(asys_state_json, "timestamp", time(NULL));
+    cJSON_AddStringToObject(asys_state_json, "daemon_name", ARGV0);
+
+    _statistics = cJSON_CreateObject();
+    cJSON_AddItemToObject(asys_state_json, "statistics", _statistics);
+
+    cJSON_AddNumberToObject(_statistics, "events_received", state_cpy.events_received);
+
+    _received = cJSON_CreateObject();
+    cJSON_AddItemToObject(_statistics, "events_received_breakdown", _received);
+
+    cJSON_AddNumberToObject(_received, "events_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.syscheck +
+                                                         state_cpy.events_received_breakdown.events_decoded_breakdown.syscollector +
+                                                         state_cpy.events_received_breakdown.events_decoded_breakdown.rootcheck +
+                                                         state_cpy.events_received_breakdown.events_decoded_breakdown.sca +
+                                                         state_cpy.events_received_breakdown.events_decoded_breakdown.hostinfo +
+                                                         state_cpy.events_received_breakdown.events_decoded_breakdown.winevt +
+                                                         state_cpy.events_received_breakdown.events_decoded_breakdown.dbsync +
+                                                         state_cpy.events_received_breakdown.events_decoded_breakdown.upgrade +
+                                                         state_cpy.events_received_breakdown.events_decoded_breakdown.events);
+
+    _decoded = cJSON_CreateObject();
+    cJSON_AddItemToObject(_received, "events_decoded_breakdown", _decoded);
+
+    cJSON_AddNumberToObject(_decoded, "syscheck_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.syscheck);
+    cJSON_AddNumberToObject(_decoded, "syscollector_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.syscollector);
+    cJSON_AddNumberToObject(_decoded, "rootcheck_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.rootcheck);
+    cJSON_AddNumberToObject(_decoded, "sca_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.sca);
+    cJSON_AddNumberToObject(_decoded, "hostinfo_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.hostinfo);
+    cJSON_AddNumberToObject(_decoded, "winevt_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.winevt);
+    cJSON_AddNumberToObject(_decoded, "dbsync_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.dbsync);
+    cJSON_AddNumberToObject(_decoded, "upgrade_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.upgrade);
+    cJSON_AddNumberToObject(_decoded, "events_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.events);
+
+    cJSON_AddNumberToObject(_received, "events_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.syscheck +
+                                                         state_cpy.events_received_breakdown.events_dropped_breakdown.syscollector +
+                                                         state_cpy.events_received_breakdown.events_dropped_breakdown.rootcheck +
+                                                         state_cpy.events_received_breakdown.events_dropped_breakdown.sca +
+                                                         state_cpy.events_received_breakdown.events_dropped_breakdown.hostinfo +
+                                                         state_cpy.events_received_breakdown.events_dropped_breakdown.winevt +
+                                                         state_cpy.events_received_breakdown.events_dropped_breakdown.dbsync +
+                                                         state_cpy.events_received_breakdown.events_dropped_breakdown.upgrade +
+                                                         state_cpy.events_received_breakdown.events_dropped_breakdown.events);
+
+    _dropped = cJSON_CreateObject();
+    cJSON_AddItemToObject(_received, "events_dropped_breakdown", _dropped);
+
+    cJSON_AddNumberToObject(_dropped, "syscheck_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.syscheck);
+    cJSON_AddNumberToObject(_dropped, "syscollector_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.syscollector);
+    cJSON_AddNumberToObject(_dropped, "rootcheck_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.rootcheck);
+    cJSON_AddNumberToObject(_dropped, "sca_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.sca);
+    cJSON_AddNumberToObject(_dropped, "hostinfo_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.hostinfo);
+    cJSON_AddNumberToObject(_dropped, "winevt_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.winevt);
+    cJSON_AddNumberToObject(_dropped, "dbsync_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.dbsync);
+    cJSON_AddNumberToObject(_dropped, "upgrade_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.upgrade);
+    cJSON_AddNumberToObject(_dropped, "events_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.events);
+
+    cJSON_AddNumberToObject(_received, "events_unknown", state_cpy.events_received_breakdown.events_unknown_breakdown.syscheck +
+                                                         state_cpy.events_received_breakdown.events_unknown_breakdown.syscollector +
+                                                         state_cpy.events_received_breakdown.events_unknown_breakdown.rootcheck +
+                                                         state_cpy.events_received_breakdown.events_unknown_breakdown.sca +
+                                                         state_cpy.events_received_breakdown.events_unknown_breakdown.hostinfo +
+                                                         state_cpy.events_received_breakdown.events_unknown_breakdown.winevt +
+                                                         state_cpy.events_received_breakdown.events_unknown_breakdown.dbsync +
+                                                         state_cpy.events_received_breakdown.events_unknown_breakdown.upgrade +
+                                                         state_cpy.events_received_breakdown.events_unknown_breakdown.events);
+
+    _unknown = cJSON_CreateObject();
+    cJSON_AddItemToObject(_received, "events_unknown_breakdown", _unknown);
+
+    cJSON_AddNumberToObject(_unknown, "syscheck_unknown", state_cpy.events_received_breakdown.events_unknown_breakdown.syscheck);
+    cJSON_AddNumberToObject(_unknown, "syscollector_unknown", state_cpy.events_received_breakdown.events_unknown_breakdown.syscollector);
+    cJSON_AddNumberToObject(_unknown, "rootcheck_unknown", state_cpy.events_received_breakdown.events_unknown_breakdown.rootcheck);
+    cJSON_AddNumberToObject(_unknown, "sca_unknown", state_cpy.events_received_breakdown.events_unknown_breakdown.sca);
+    cJSON_AddNumberToObject(_unknown, "hostinfo_unknown", state_cpy.events_received_breakdown.events_unknown_breakdown.hostinfo);
+    cJSON_AddNumberToObject(_unknown, "winevt_unknown", state_cpy.events_received_breakdown.events_unknown_breakdown.winevt);
+    cJSON_AddNumberToObject(_unknown, "dbsync_unknown", state_cpy.events_received_breakdown.events_unknown_breakdown.dbsync);
+    cJSON_AddNumberToObject(_unknown, "upgrade_unknown", state_cpy.events_received_breakdown.events_unknown_breakdown.upgrade);
+    cJSON_AddNumberToObject(_unknown, "events_unknown", state_cpy.events_received_breakdown.events_unknown_breakdown.events);
+
+    cJSON_AddNumberToObject(_statistics, "events_processed", state_cpy.events_processed);
+    cJSON_AddNumberToObject(_statistics, "alerts_written", state_cpy.alerts_written);
+    cJSON_AddNumberToObject(_statistics, "firewall_written", state_cpy.firewall_written);
+    cJSON_AddNumberToObject(_statistics, "fts_written", state_cpy.fts_written);
+    cJSON_AddNumberToObject(_statistics, "stats_written", state_cpy.stats_written);
+    cJSON_AddNumberToObject(_statistics, "archives_written", state_cpy.archives_written);
+
+    _queue = cJSON_CreateObject();
+    cJSON_AddItemToObject(_statistics, "queue_status", _queue);
+
+    cJSON_AddNumberToObject(_queue, "syscheck_queue_usage", queue_cpy.syscheck_queue_usage);
+    cJSON_AddNumberToObject(_queue, "syscheck_queue_size", queue_cpy.syscheck_queue_size);
+    cJSON_AddNumberToObject(_queue, "syscollector_queue_usage", queue_cpy.syscollector_queue_usage);
+    cJSON_AddNumberToObject(_queue, "syscollector_queue_size", queue_cpy.syscollector_queue_size);
+    cJSON_AddNumberToObject(_queue, "rootcheck_queue_usage", queue_cpy.rootcheck_queue_usage);
+    cJSON_AddNumberToObject(_queue, "rootcheck_queue_size", queue_cpy.rootcheck_queue_size);
+    cJSON_AddNumberToObject(_queue, "sca_queue_usage", queue_cpy.sca_queue_usage);
+    cJSON_AddNumberToObject(_queue, "sca_queue_size", queue_cpy.sca_queue_size);
+    cJSON_AddNumberToObject(_queue, "hostinfo_queue_usage", queue_cpy.hostinfo_queue_usage);
+    cJSON_AddNumberToObject(_queue, "hostinfo_queue_size", queue_cpy.hostinfo_queue_size);
+    cJSON_AddNumberToObject(_queue, "winevt_queue_usage", queue_cpy.winevt_queue_usage);
+    cJSON_AddNumberToObject(_queue, "winevt_queue_size", queue_cpy.winevt_queue_size);
+    cJSON_AddNumberToObject(_queue, "dbsync_queue_usage", queue_cpy.dbsync_queue_usage);
+    cJSON_AddNumberToObject(_queue, "dbsync_queue_size", queue_cpy.dbsync_queue_size);
+    cJSON_AddNumberToObject(_queue, "upgrade_queue_usage", queue_cpy.upgrade_queue_usage);
+    cJSON_AddNumberToObject(_queue, "upgrade_queue_size", queue_cpy.upgrade_queue_size);
+    cJSON_AddNumberToObject(_queue, "events_queue_usage", queue_cpy.events_queue_usage);
+    cJSON_AddNumberToObject(_queue, "events_queue_size", queue_cpy.events_queue_size);
+    cJSON_AddNumberToObject(_queue, "processed_queue_usage", queue_cpy.processed_queue_usage);
+    cJSON_AddNumberToObject(_queue, "processed_queue_size", queue_cpy.processed_queue_size);
+    cJSON_AddNumberToObject(_queue, "alerts_queue_usage", queue_cpy.alerts_queue_usage);
+    cJSON_AddNumberToObject(_queue, "alerts_queue_size", queue_cpy.alerts_queue_size);
+    cJSON_AddNumberToObject(_queue, "firewall_queue_usage", queue_cpy.firewall_queue_usage);
+    cJSON_AddNumberToObject(_queue, "firewall_queue_size", queue_cpy.firewall_queue_size);
+    cJSON_AddNumberToObject(_queue, "fts_queue_usage", queue_cpy.fts_queue_usage);
+    cJSON_AddNumberToObject(_queue, "fts_queue_size", queue_cpy.fts_queue_size);
+    cJSON_AddNumberToObject(_queue, "stats_queue_usage", queue_cpy.stats_queue_usage);
+    cJSON_AddNumberToObject(_queue, "stats_queue_size", queue_cpy.stats_queue_size);
+    cJSON_AddNumberToObject(_queue, "archives_queue_usage", queue_cpy.archives_queue_usage);
+    cJSON_AddNumberToObject(_queue, "archives_queue_size", queue_cpy.archives_queue_size);
+
+    return asys_state_json;
 }

@@ -92,36 +92,11 @@ extern w_queue_t * dispatch_dbsync_input;
 extern w_queue_t * upgrade_module_input;
 
 /**
- * @brief Listen to analysisd socket for new requests
- */
-void * asyscom_main(__attribute__((unused)) void * arg) ;
-
-/**
- * @brief Check that request is to get a configuration
- * @param command message received from api
- * @param output the configuration to send
- * @return the size of the string "output" containing the configuration
- */
-size_t asyscom_dispatch(char * command, char ** output);
-
-/**
- * @brief Process the message received to send the configuration requested
- * @param section contains the name of configuration requested
- * @param output the configuration to send
- * @return the size of the string "output" containing the configuration
- */
-size_t asyscom_getconfig(const char * section, char ** output);
-
-
-#define WM_ANALYSISD_LOGTAG ARGV0 "" // Tag for log messages
-
-/**
  * @brief Initialize queues
  *
  * Queues: decoded event, log writer, database synchronization message and archives writer
  */
 void w_init_queues();
-
 
 #define WAZUH_SERVER    "wazuh-server"
 #define MAX_DECODER_ORDER_SIZE  1024

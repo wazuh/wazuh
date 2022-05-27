@@ -45,11 +45,11 @@ STATIC char* remcom_output_builder(int error_code, const char* message, cJSON* d
 
 /**
  * @brief Check and dexecute the input request
- * @param command message received from api
+ * @param request message received from api
  * @param output the response to send
  * @return the size of the string "output" containing the configuration
  */
-STATIC size_t remcom_dispatch(char * command, char ** output);
+STATIC size_t remcom_dispatch(char* request, char** output);
 
 
 STATIC char* remcom_output_builder(int error_code, const char* message, cJSON* data_json) {
@@ -65,7 +65,7 @@ STATIC char* remcom_output_builder(int error_code, const char* message, cJSON* d
     return msg_string;
 }
 
-STATIC size_t remcom_dispatch(char * request, char ** output) {
+STATIC size_t remcom_dispatch(char* request, char** output) {
     cJSON *request_json = NULL;
     cJSON *command_json = NULL;
     const char *json_err;
