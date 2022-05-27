@@ -254,15 +254,7 @@ void RemoteSync::startSync(const DBSYNC_HANDLE   dbsyncHandle,
                            const nlohmann::json& startConfiguration,
                            SyncCallbackData      callbackData)
 {
-    const auto callbackWrapper
-    {
-        [callbackData](const std::string & payload)
-        {
-            callbackData(payload);
-        }
-    };
-    RSyncImplementation::instance().startRSync(m_handle, std::make_shared<DBSyncWrapper>(dbsyncHandle), startConfiguration, callbackWrapper);
-
+    RSyncImplementation::instance().startRSync(m_handle, std::make_shared<DBSyncWrapper>(dbsyncHandle), startConfiguration, callbackData);
 }
 
 void RemoteSync::registerSyncID(const std::string&    messageHeaderID,
@@ -270,14 +262,7 @@ void RemoteSync::registerSyncID(const std::string&    messageHeaderID,
                                 const nlohmann::json& syncConfiguration,
                                 SyncCallbackData      callbackData)
 {
-    const auto callbackWrapper
-    {
-        [callbackData](const std::string & payload)
-        {
-            callbackData(payload);
-        }
-    };
-    RSyncImplementation::instance().registerSyncId(m_handle, messageHeaderID, std::make_shared<DBSyncWrapper>(dbsyncHandle), syncConfiguration, callbackWrapper);
+    RSyncImplementation::instance().registerSyncId(m_handle, messageHeaderID, std::make_shared<DBSyncWrapper>(dbsyncHandle), syncConfiguration, callbackData);
 }
 
 void RemoteSync::pushMessage(const std::vector<uint8_t>& payload)
