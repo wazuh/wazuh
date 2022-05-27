@@ -754,7 +754,7 @@ class AuthenticationManager:
             self.session.rollback()
             return False
 
-    def update_user(self, user_id: int, password: str) -> bool:
+    def update_user(self, user_id: int, password: str = None, name: str = None) -> bool:
         """Update the password an existent user
 
         Parameters
@@ -763,16 +763,21 @@ class AuthenticationManager:
             Unique user id
         password : str
             Password provided by user. It will be stored hashed
+        name : str
+            New username.
 
         Returns
         -------
-        True if the user has been modify successfully. False otherwise
+        True if the user has been modified successfully. False otherwise
         """
         try:
             user = self.session.query(User).filter_by(id=user_id).first()
             if user is not None:
-                if password:
+                if name is not None:
+                    user.username = name
+                if password is not None:
                     user.password = generate_password_hash(password)
+                if name is not None or password is not None:
                     self.session.commit()
                     return True
             return False
