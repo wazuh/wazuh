@@ -350,7 +350,8 @@ async def update_user(request, user_id: str, pretty=False, wait_for_complete=Fal
     User data
     """
     Body.validate_content_type(request, expected_content_type='application/json')
-    f_kwargs = await UpdateUserModel.get_kwargs(request, additional_kwargs={'user_id': user_id})
+    f_kwargs = await UpdateUserModel.get_kwargs(request, additional_kwargs={'user_id': user_id,
+                                                                            'current_user': request.get("user")})
 
     dapi = DistributedAPI(f=security.update_user,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
