@@ -1,10 +1,10 @@
 #ifndef _WDB_PROTOCOL_H
 #define _WDB_PROTOCOL_H
 
+#include <map>
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include <map>
 
 #include <stdint.h>
 
@@ -50,7 +50,7 @@ enum class CommRetval
     SOCKET_ERROR,
 };
 
-const std::map<socketinterface::CommRetval,const std::string> CommRetval2Str = {
+const std::map<socketinterface::CommRetval, const std::string> CommRetval2Str = {
     {socketinterface::CommRetval::INVALID_SOCKET, "INVALID_SOCKET"},
     {socketinterface::CommRetval::SIZE_TOO_LONG, "SIZE_TOO_LONG"},
     {socketinterface::CommRetval::SIZE_ZERO, "SIZE_ZERO"},
