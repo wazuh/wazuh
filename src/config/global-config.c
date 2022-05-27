@@ -14,7 +14,9 @@
 #include "mail-config.h"
 #include "config.h"
 #include "string_op.h"
+#ifndef CLIENT
 #include "./analysisd/analysisd.h"
+#endif
 
 int Read_Global_limits(const OS_XML *xml, XML_NODE node, _Config *Config);
 int Read_Global_limits_eps(XML_NODE node, _Config *Config);
@@ -420,6 +422,7 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
                 Config->memorysize = atoi(node[i]->content);
             }
         } else if (strcmp(node[i]->element, xml_limits) == 0) {
+#ifndef CLIENT
             XML_NODE chld_node = NULL;
             if (!(chld_node = OS_GetElementsbyNode(xml, node[i]))) {
                 merror(XML_INVELEM, node[i]->element);
@@ -430,7 +433,9 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
                 return (OS_INVALID);
             }
             OS_ClearNode(chld_node);
+#endif
         }
+
         /* whitelist */
         else if (strcmp(node[i]->element, xml_white_list) == 0) {
             /* Windows do not need it */
@@ -823,6 +828,7 @@ void config_free(_Config *config) {
 
 }
 
+#ifndef CLIENT
 int Read_Global_limits(const OS_XML *xml, XML_NODE node, _Config *Config)
 {
     /* XML definitions */
@@ -884,3 +890,4 @@ int Read_Global_limits_eps(XML_NODE node, _Config *Config) {
     }
     return OS_SUCCESS;
 }
+#endif
