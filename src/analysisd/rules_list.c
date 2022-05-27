@@ -396,6 +396,9 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid, OSList* log_msg
                     smwarn(log_msg, ANALYSISD_INV_OVERWRITE, "if_sid", sid);
                 }
             }
+
+            os_free(newrule->if_sid);
+
             if (newrule->if_group && !newrule->if_matched_group) {
                 if (!r_node->ruleinfo->if_group ||
                         strcmp(r_node->ruleinfo->if_group, newrule->if_group)) {
@@ -408,6 +411,8 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid, OSList* log_msg
                     smwarn(log_msg, ANALYSISD_INV_OVERWRITE, "if_level", sid);
                 }
             }
+
+            os_free(newrule->if_level);
 
             if (r_node->ruleinfo->if_matched_regex) {
                 OSRegex_FreePattern(r_node->ruleinfo->if_matched_regex);
