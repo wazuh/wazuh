@@ -108,6 +108,11 @@ typedef struct _analysisd_state_t {
 /* Status functions */
 
 /**
+ * @brief Listen to analysisd socket for new requests
+ */
+void * asyscom_main(__attribute__((unused)) void * arg) ;
+
+/**
  * @brief Main function of analysisd status writer
  */
 void* w_analysisd_state_main();
@@ -281,5 +286,11 @@ void w_inc_fts_written();
  * @brief Increment stats written counter
  */
 void w_inc_stats_written();
+
+/**
+ * @brief Create a JSON object with all the analysisd state information
+ * @return JSON object
+ */
+cJSON* asys_create_state_json();
 
 #endif /* STATE_A_H */
