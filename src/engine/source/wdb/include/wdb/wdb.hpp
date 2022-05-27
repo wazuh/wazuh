@@ -75,15 +75,15 @@ public:
      */
     std::string query(const std::string& query);
 
-     /**
+    /**
      * @brief Try to perform a query to the wdb socket `attempts` times
      *
      * @param query Query to perform
      * @param attempts Number of attempts to perform the query
-     * @return std::string Result of the query. Empty if the query fail (And log the error).
+     * @return std::string Result of the query. Empty if the query fail (And log the
+     * error).
      */
     std::string tryQuery(const std::string& query, const unsigned int attempts) noexcept;
-
 
     /**
      * @brief Parse a query result
@@ -106,9 +106,8 @@ public:
      * remote socket is closed (EPIPE, ECONNRESET or gracefully closed).
      * @throw std::runtime_error if cannot perform the query because of other reasons.
      */
-    std::tuple<QueryResultCodes, std::optional<std::string>> queryAndParseResult(
-        const std::string& query);
-
+    std::tuple<QueryResultCodes, std::optional<std::string>>
+    queryAndParseResult(const std::string& query);
 
     /**
      * @brief Try perform a query and parse result `attempts` times
@@ -118,8 +117,9 @@ public:
      * @return std::tuple<QueryResultCodes, std::optional<std::string>> Tuple with the
      * code and the optional data (payload)
      */
-    std::tuple<QueryResultCodes, std::optional<std::string>> tryQueryAndParseResult(
-        const std::string& query, const unsigned int attempts) noexcept;
+    std::tuple<QueryResultCodes, std::optional<std::string>>
+    tryQueryAndParseResult(const std::string& query,
+                           const unsigned int attempts) noexcept;
 };
 } // namespace wazuhdb
 #endif
