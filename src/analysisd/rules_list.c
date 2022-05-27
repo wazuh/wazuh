@@ -433,21 +433,7 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid, OSList* log_msg
 
             r_node->ruleinfo->compiled_rule = newrule->compiled_rule;
 
-            if (r_node->ruleinfo->ar) {
-                for (int i = 0; r_node->ruleinfo->ar[i]; i++) {
-                    os_free(r_node->ruleinfo->ar[i]->name);
-                    os_free(r_node->ruleinfo->ar[i]->command);
-                    os_free(r_node->ruleinfo->ar[i]->agent_id);
-                    os_free(r_node->ruleinfo->ar[i]->rules_id);
-                    os_free(r_node->ruleinfo->ar[i]->rules_group);
-                    os_free(r_node->ruleinfo->ar[i]->ar_cmd->name);
-                    os_free(r_node->ruleinfo->ar[i]->ar_cmd->executable);
-                    os_free(r_node->ruleinfo->ar[i]->ar_cmd->extra_args);
-                    os_free(r_node->ruleinfo->ar[i]->ar_cmd);
-                    os_free(r_node->ruleinfo->ar[i]);
-                }
-                os_free(r_node->ruleinfo->ar);
-            }
+            os_free(r_node->ruleinfo->ar);
             r_node->ruleinfo->ar = newrule->ar;
 
             os_free(r_node->ruleinfo->file);
