@@ -1,3 +1,15 @@
+/* wazuhdb state management functions
+ * May 27, 2022
+ *
+ * Copyright (C) 2015, Wazuh Inc.
+ * All right reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation
+*/
+
 #include "wdb_state.h"
 #include <pthread.h>
 
@@ -1001,7 +1013,7 @@ cJSON* wdb_create_state_json() {
     cJSON_AddNumberToObject(_queries_breakdown, "wazuhdb_time", get_wazuhdb_time(wdb_stats_cpy));
 
     _wazuhdb_time_breakdown = cJSON_CreateObject();
-    cJSON_AddItemToObject(_queries_breakdown, "wazuhdb_queries_breakdown", _wazuhdb_time_breakdown);
+    cJSON_AddItemToObject(_queries_breakdown, "wazuhdb_time_breakdown", _wazuhdb_time_breakdown);
 
     cJSON_AddNumberToObject(_wazuhdb_time_breakdown, "getconfig_time", timeval_to_milis(wdb_stats_cpy.queries_breakdown.wazuhdb_breakdown.get_config_time));
     cJSON_AddNumberToObject(_wazuhdb_time_breakdown, "remove_time", timeval_to_milis(wdb_stats_cpy.queries_breakdown.wazuhdb_breakdown.remove_time));
@@ -1081,24 +1093,24 @@ cJSON* wdb_create_state_json() {
     cJSON_AddNumberToObject(_agent_time_breakdown, "close_time", timeval_to_milis(wdb_stats_cpy.queries_breakdown.agent_breakdown.close_time));
 
     _syscheck_time = cJSON_CreateObject();
-    cJSON_AddItemToObject(_agent_time_breakdown, "syscheck_queries", _syscheck_time);
+    cJSON_AddItemToObject(_agent_time_breakdown, "syscheck_time", _syscheck_time);
 
     cJSON_AddNumberToObject(_syscheck_time, "syscheck_time", timeval_to_milis(wdb_stats_cpy.queries_breakdown.agent_breakdown.syscheck.syscheck_time));
     cJSON_AddNumberToObject(_syscheck_time, "fim_file_time", timeval_to_milis(wdb_stats_cpy.queries_breakdown.agent_breakdown.syscheck.fim_file_time));
     cJSON_AddNumberToObject(_syscheck_time, "fim_registry_time", timeval_to_milis(wdb_stats_cpy.queries_breakdown.agent_breakdown.syscheck.fim_registry_time));
 
     _rootcheck_time = cJSON_CreateObject();
-    cJSON_AddItemToObject(_agent_time_breakdown, "rootcheck_queries", _rootcheck_time);
+    cJSON_AddItemToObject(_agent_time_breakdown, "rootcheck_time", _rootcheck_time);
 
     cJSON_AddNumberToObject(_rootcheck_time, "rootcheck_time", timeval_to_milis(wdb_stats_cpy.queries_breakdown.agent_breakdown.rootcheck_time));
 
     _sca_time = cJSON_CreateObject();
-    cJSON_AddItemToObject(_agent_time_breakdown, "sca_queries", _sca_time);
+    cJSON_AddItemToObject(_agent_time_breakdown, "sca_time", _sca_time);
 
     cJSON_AddNumberToObject(_sca_time, "sca_time", timeval_to_milis(wdb_stats_cpy.queries_breakdown.agent_breakdown.sca_time));
 
     _ciscat_time = cJSON_CreateObject();
-    cJSON_AddItemToObject(_agent_time_breakdown, "ciscat_queries", _ciscat_time);
+    cJSON_AddItemToObject(_agent_time_breakdown, "ciscat_time", _ciscat_time);
 
     cJSON_AddNumberToObject(_ciscat_time, "ciscat_time", timeval_to_milis(wdb_stats_cpy.queries_breakdown.agent_breakdown.ciscat_time));
 
@@ -1125,7 +1137,7 @@ cJSON* wdb_create_state_json() {
     cJSON_AddNumberToObject(_syscollector_time, "osinfo_time", timeval_to_milis(wdb_stats_cpy.queries_breakdown.agent_breakdown.syscollector.osinfo_time));
 
     _vulnerability_detector_time = cJSON_CreateObject();
-    cJSON_AddItemToObject(_agent_time_breakdown, "vulnerability_detector_queries", _vulnerability_detector_time);
+    cJSON_AddItemToObject(_agent_time_breakdown, "vulnerability_detector_time", _vulnerability_detector_time);
 
     cJSON_AddNumberToObject(_vulnerability_detector_time, "vuln_cves_time", timeval_to_milis(wdb_stats_cpy.queries_breakdown.agent_breakdown.vulnerability_detector_time));
 

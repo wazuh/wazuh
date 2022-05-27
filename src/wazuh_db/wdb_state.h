@@ -17,6 +17,8 @@
 
 #define VERSION 1
 
+/* Status structures */
+
 typedef struct _agent_syscheck_t {
     uint64_t syscheck_queries;
     uint64_t fim_file_queries;
@@ -226,92 +228,271 @@ typedef struct _db_stats_t {
     queries_breakdown_t queries_breakdown;
 } db_stats_t;
 
+/* Status functions */
+
+/**
+ * @brief Increment total queries counter
+ *
+ */
 void w_inc_queries_total();
 
+/**
+ * @brief Increment total wazuhdb queries counter
+ *
+ */
 void w_inc_wazuhdb();
 
+/**
+ * @brief Increment get-config wazuhdb queries counter
+ *
+ */
 void w_inc_wazuhdb_get_config();
 
+/**
+ * @brief Increment remove wazuhdb queries counter
+ *
+ */
 void w_inc_wazuhdb_remove();
 
+/**
+ * @brief Increment unknown wazuhdb queries counter
+ *
+ */
 void w_inc_wazuhdb_unknown();
 
+/**
+ * @brief Increment total agent queries counter
+ *
+ */
 void w_inc_agent();
 
+/**
+ * @brief Increment sql agent queries counter
+ *
+ */
 void w_inc_agent_sql();
 
+/**
+ * @brief Increment remove agent queries counter
+ *
+ */
 void w_inc_agent_remove();
 
+/**
+ * @brief Increment begin agent queries counter
+ *
+ */
 void w_inc_agent_begin();
 
+/**
+ * @brief Increment commit agent queries counter
+ *
+ */
 void w_inc_agent_commit();
 
+/**
+ * @brief Increment close agent queries counter
+ *
+ */
 void w_inc_agent_close();
 
+/**
+ * @brief Increment rootcheck agent queries counter
+ *
+ */
 void w_inc_agent_rootcheck();
 
+/**
+ * @brief Increment sca agent queries counter
+ *
+ */
 void w_inc_agent_sca();
 
+/**
+ * @brief Increment ciscat agent queries counter
+ *
+ */
 void w_inc_agent_ciscat();
 
+/**
+ * @brief Increment vulnerability detector agent queries counter
+ *
+ */
 void w_inc_agent_vul_detector();
 
+/**
+ * @brief Increment dbsync agent queries counter
+ *
+ */
 void w_inc_agent_dbsync();
 
+/**
+ * @brief Increment unknown agent queries counter
+ *
+ */
 void w_inc_agent_unknown();
 
+/**
+ * @brief Increment syscheck agent queries counter
+ *
+ */
 void w_inc_agent_syscheck();
 
+/**
+ * @brief Increment fim file agent queries counter
+ *
+ */
 void w_inc_agent_fim_file();
 
+/**
+ * @brief Increment fim registry agent queries counter
+ *
+ */
 void w_inc_agent_fim_registry();
 
+/**
+ * @brief Increment syscollector processes agent queries counter
+ *
+ */
 void w_inc_agent_syscollector_processes();
 
+/**
+ * @brief Increment syscollector packages agent queries counter
+ *
+ */
 void w_inc_agent_syscollector_packages();
 
+/**
+ * @brief Increment syscollector hotfixes agent queries counter
+ *
+ */
 void w_inc_agent_syscollector_hotfixes();
 
+/**
+ * @brief Increment syscollector ports agent queries counter
+ *
+ */
 void w_inc_agent_syscollector_ports();
 
+/**
+ * @brief Increment syscollector network protocol agent queries counter
+ *
+ */
 void w_inc_agent_syscollector_network_protocol();
 
+/**
+ * @brief Increment syscollector network address agent queries counter
+ *
+ */
 void w_inc_agent_syscollector_network_address();
 
+/**
+ * @brief Increment syscollector network interface agent queries counter
+ *
+ */
 void w_inc_agent_syscollector_network_iface();
 
+/**
+ * @brief Increment syscollector hardware information agent queries counter
+ *
+ */
 void w_inc_agent_syscollector_hwinfo();
 
+
+/**
+ * @brief Increment syscollector OS information agent queries counter
+ *
+ */
 void w_inc_agent_syscollector_osinfo();
 
+/**
+ * @brief Increment deprecated syscollector processes agent queries counter
+ *
+ */
 void w_inc_agent_syscollector_deprecated_process();
 
+/**
+ * @brief Increment deprecated syscollector packages agent queries counter
+ *
+ */
 void w_inc_agent_syscollector_deprecated_packages();
 
+/**
+ * @brief Increment deprecated syscollector hotfixes agent queries counter
+ *
+ */
 void w_inc_agent_syscollector_deprecated_hotfixes();
 
+/**
+ * @brief Increment deprecated syscollector ports agent queries counter
+ *
+ */
 void w_inc_agent_syscollector_deprecated_ports();
 
+/**
+ * @brief Increment deprecated syscollector network protocol agent queries counter
+ *
+ */
 void w_inc_agent_syscollector_deprecated_network_protocol();
 
+/**
+ * @brief Increment deprecated syscollector network address agent queries counter
+ *
+ */
 void w_inc_agent_syscollector_deprecated_network_address();
 
+/**
+ * @brief Increment deprecated syscollector network information agent queries counter
+ *
+ */
 void w_inc_agent_syscollector_deprecated_network_info();
 
+/**
+ * @brief Increment deprecated syscollector hardware agent queries counter
+ *
+ */
 void w_inc_agent_syscollector_deprecated_hardware();
 
+/**
+ * @brief Increment deprecated syscollector OS information agent queries counter
+ *
+ */
 void w_inc_agent_syscollector_deprecated_osinfo();
 
+/**
+ * @brief Increment total global queries counter
+ *
+ */
 void w_inc_global();
 
+/**
+ * @brief Increment sql global queries counter
+ *
+ */
 void w_inc_global_sql();
 
+/**
+ * @brief Increment backup global queries counter
+ *
+ */
 void w_inc_global_backup();
 
+/**
+ * @brief Increment unknown global queries counter
+ *
+ */
 void w_inc_global_unknown();
 
+/**
+ * @brief Increment insert-agent global agent queries counter
+ *
+ */
 void w_inc_global_agent_insert_agent();
 
+/**
+ * @brief Increment update-agent-data global agent queries counter
+ *
+ */
 void w_inc_global_agent_update_agent_data();
 
 void w_inc_global_agent_update_agent_name();
