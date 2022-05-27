@@ -1035,7 +1035,7 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     /* Initialize limits structure */
     memset(&limits, 0, sizeof(limits));
-    load_limits(Config.cfg_max_eps, Config.cfg_timeframe_eps);
+    load_limits(Config.eps.maximum, Config.eps.timeframe);
 
     /* Create message handler thread */
     w_create_thread(ad_input_main, &m_queue);

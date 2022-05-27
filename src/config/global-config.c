@@ -14,13 +14,11 @@
 #include "mail-config.h"
 #include "config.h"
 #include "string_op.h"
-#ifndef CLIENT
-#include "./analysisd/analysisd.h"
-#endif
 
+#ifndef CLIENT
 int Read_Global_limits(const OS_XML *xml, XML_NODE node, _Config *Config);
 int Read_Global_limits_eps(XML_NODE node, _Config *Config);
-
+#endif
 
 int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
 {
@@ -421,8 +419,8 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
             if (Config) {
                 Config->memorysize = atoi(node[i]->content);
             }
-        } else if (strcmp(node[i]->element, xml_limits) == 0) {
 #ifndef CLIENT
+        } else if (strcmp(node[i]->element, xml_limits) == 0) {
             XML_NODE chld_node = NULL;
             if (!(chld_node = OS_GetElementsbyNode(xml, node[i]))) {
                 merror(XML_INVELEM, node[i]->element);
@@ -829,8 +827,7 @@ void config_free(_Config *config) {
 }
 
 #ifndef CLIENT
-int Read_Global_limits(const OS_XML *xml, XML_NODE node, _Config *Config)
-{
+int Read_Global_limits(const OS_XML *xml, XML_NODE node, _Config *Config) {
     /* XML definitions */
     const char *xml_eps = "eps";
 
@@ -853,6 +850,7 @@ int Read_Global_limits(const OS_XML *xml, XML_NODE node, _Config *Config)
 }
 
 int Read_Global_limits_eps(XML_NODE node, _Config *Config) {
+    /* XML definitions */
     static const char *xml_max_eps = "maximum";
     static const char *xml_timeframe_eps = "timeframe";
 
@@ -865,8 +863,8 @@ int Read_Global_limits_eps(XML_NODE node, _Config *Config) {
             }
 
             if (Config) {
-                Config->cfg_max_eps = (unsigned int) atoi(node[i]->content);
-                if (Config->cfg_max_eps > EPS_LIMITS_MAX_EPS) {
+                Config->eps.maximum = (unsigned int) atoi(node[i]->content);
+                if (Config->eps.maximum > EPS_LIMITS_MAX_EPS) {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     return(OS_INVALID);
                 }
@@ -880,8 +878,8 @@ int Read_Global_limits_eps(XML_NODE node, _Config *Config) {
             }
 
             if (Config) {
-                Config->cfg_timeframe_eps = (unsigned int) atoi(node[i]->content);
-                if (Config->cfg_timeframe_eps < EPS_LIMITS_MIN_TIMEFRAME || Config->cfg_timeframe_eps > EPS_LIMITS_MAX_TIMEFRAME) {
+                Config->eps.timeframe = (unsigned int) atoi(node[i]->content);
+                if (Config->eps.timeframe < EPS_LIMITS_MIN_TIMEFRAME || Config->eps.timeframe > EPS_LIMITS_MAX_TIMEFRAME) {
                     merror(XML_VALUEERR,node[i]->element, node[i]->content);
                     return(OS_INVALID);
                 }

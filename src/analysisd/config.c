@@ -59,8 +59,8 @@ int GlobalConf(const char *cfgfile)
     Config.white_list = NULL;
     Config.hostname_white_list = NULL;
 
-    Config.cfg_max_eps = EPS_LIMITS_MIN_EPS;
-    Config.cfg_timeframe_eps = EPS_LIMITS_DEFAULT_TIMEFRAME;
+    Config.eps.maximum = EPS_LIMITS_MIN_EPS;
+    Config.eps.timeframe = EPS_LIMITS_DEFAULT_TIMEFRAME;
 
     /* Default actions -- only log above level 1 */
     Config.mailbylevel = 7;
@@ -162,8 +162,8 @@ cJSON *getGlobalConfig(void) {
     cJSON_AddNumberToObject(global,"rotate_interval",Config.rotate_interval);
     cJSON_AddNumberToObject(global,"max_output_size",Config.max_output_size);
     cJSON *eps = cJSON_CreateObject();
-    cJSON_AddNumberToObject(eps,"maximum",Config.cfg_max_eps);
-    cJSON_AddNumberToObject(eps,"timeframe",Config.cfg_timeframe_eps);
+    cJSON_AddNumberToObject(eps,"maximum",Config.eps.maximum);
+    cJSON_AddNumberToObject(eps,"timeframe",Config.eps.timeframe);
     cJSON_AddItemToObject(global, "eps", eps);
 
 #ifdef LIBGEOIP_ENABLED
