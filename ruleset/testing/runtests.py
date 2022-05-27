@@ -21,8 +21,6 @@ import xml.etree.ElementTree as ET
 from coverage import getRuleIds
 from coverage import getParentDecoderNames
 
-rules_test_fname_pattern = re.compile('^test_(.*?)_rules.xml$')
-decoders_test_fname_pattern = re.compile('^test_(.*?)_decoders.xml$')
 
 class MultiOrderedDict(OrderedDict):
     def __setitem__(self, key, value):
@@ -57,12 +55,12 @@ def provisionDR():
 
     for file in os.listdir(rules_dir):
         file_fullpath = os.path.join(rules_dir, file)
-        if os.path.isfile(file_fullpath) and re.match(r'^test_(.*?_)rules.xml$',file):
+        if os.path.isfile(file_fullpath) and re.match(r'^test_(.*_)?rules.xml$',file):
             shutil.copy2(file_fullpath , args.wazuh_home + "/etc/rules")
 
     for file in os.listdir(decoders_dir):
         file_fullpath = os.path.join(decoders_dir, file)
-        if os.path.isfile(file_fullpath) and re.match(r'^test_(.*?_)decoders.xml$',file):
+        if os.path.isfile(file_fullpath) and re.match(r'^test_(.*_)?decoders.xml$',file):
             shutil.copy2(file_fullpath , args.wazuh_home + "/etc/decoders")
 
 def cleanDR():
@@ -71,12 +69,12 @@ def cleanDR():
 
     for file in os.listdir(rules_dir):
         file_fullpath = os.path.join(rules_dir, file)
-        if os.path.isfile(file_fullpath) and re.match(r'^test_(.*?_)rules.xml$',file):
+        if os.path.isfile(file_fullpath) and re.match(r'^test_(.*_)?rules.xml$',file):
             os.remove(file_fullpath)
 
     for file in os.listdir(decoders_dir):
         file_fullpath = os.path.join(decoders_dir, file)
-        if os.path.isfile(file_fullpath) and re.match(r'^test_(.*?_)decoders.xml$',file):
+        if os.path.isfile(file_fullpath) and re.match(r'^test_(.*_)?decoders.xml$',file):
             os.remove(file_fullpath)
 
 def restart_analysisd():
