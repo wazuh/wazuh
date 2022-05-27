@@ -47,12 +47,13 @@ std::string WazuhDB::query(const std::string& query)
 
     if (query.length() == 0)
     {
-        WAZUH_LOG_WARN("wdb: query to send its empty");
+        WAZUH_LOG_WARN("wdb: The query to send is empty.");
         return {};
     }
     else if (query.length() > socketinterface::MSG_MAX_SIZE)
     {
-        WAZUH_LOG_WARN("wdb: query to send its too long: {}", query.c_str());
+        // TODO: Should we print the query?
+        WAZUH_LOG_WARN("wdb: The query to send is too long: {}.", query.c_str());
         return {};
     }
 
@@ -156,4 +157,5 @@ WazuhDB::tryQueryAndParseResult(const std::string& query,
     auto result {tryQuery(query, attempts)};
     return parseResult(result);
 }
+
 } // namespace wazuhdb
