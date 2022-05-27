@@ -41,26 +41,6 @@ if [ "$TYPE" = "manager" ]; then
     fi
 fi
 
-if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1; then
-    touch ${PWD}/var/run/.restart
-    # Making sure to stop Wazuh even if the service is not active
-    systemctl is-active --quiet wazuh-$TYPE
-    if [ $? -ne 0 ]; then
-        ${PWD}/bin/wazuh-control stop
-    fi
-    systemctl restart wazuh-$TYPE
-    rm -f ${PWD}/var/run/.restart
-elif command -v service > /dev/null 2>&1; then
-    touch ${PWD}/var/run/.restart
-    # Making sure to stop Wazuh even if the service is not active
-    service wazuh-$TYPE status > /dev/null 2>&1
-    if [ $? -ne 0 ]; then
-        ${PWD}/bin/wazuh-control stop
-    fi
-    service wazuh-$TYPE restart
-    rm -f ${PWD}/var/run/.restart
-else
-    ${PWD}/bin/wazuh-control restart
-fi
+${PWD}/bin/wazuh-control restart
 
 exit $?;
