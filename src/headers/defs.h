@@ -278,11 +278,9 @@ https://www.gnu.org/licenses/gpl.html\n"
 #ifndef WIN32
 #define OSSEC_DEFINES   "etc/internal_options.conf"
 #define OSSEC_LDEFINES   "etc/local_internal_options.conf"
-#define OSSEC_LIMITS     "etc/limits.conf"
 #else
 #define OSSEC_DEFINES   "internal_options.conf"
 #define OSSEC_LDEFINES   "local_internal_options.conf"
-#define OSSEC_LIMITS     "limits.conf"
 #endif
 
 /* Log directories */
