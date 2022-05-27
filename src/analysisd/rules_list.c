@@ -672,21 +672,7 @@ void os_remove_ruleinfo(RuleInfo *ruleinfo) {
         os_free(ruleinfo->if_matched_group);
     }
 
-    if (ruleinfo->ar) {
-        for (int i = 0; ruleinfo->ar[i]; i++) {
-            os_free(ruleinfo->ar[i]->name);
-            os_free(ruleinfo->ar[i]->command);
-            os_free(ruleinfo->ar[i]->agent_id);
-            os_free(ruleinfo->ar[i]->rules_id);
-            os_free(ruleinfo->ar[i]->rules_group);
-            os_free(ruleinfo->ar[i]->ar_cmd->name);
-            os_free(ruleinfo->ar[i]->ar_cmd->executable);
-            os_free(ruleinfo->ar[i]->ar_cmd->extra_args);
-            os_free(ruleinfo->ar[i]->ar_cmd);
-            os_free(ruleinfo->ar[i]);
-        }
-        os_free(ruleinfo->ar);
-    }
+    os_free(ruleinfo->ar);
     os_free(ruleinfo->file);
     free_strarray(ruleinfo->same_fields);
     free_strarray(ruleinfo->not_same_fields);
