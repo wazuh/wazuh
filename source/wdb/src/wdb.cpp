@@ -33,7 +33,7 @@ void WazuhDB::connect()
 
     if (SOCKET_NOT_CONNECTED != this->m_fd)
     {
-        WAZUH_LOG_DEBUG("Already connected to the wdb socket.. closing it");
+        WAZUH_LOG_INFO("Reconnecting to wdb socket.");
         close(this->m_fd);
         this->m_fd = SOCKET_NOT_CONNECTED;
     }
@@ -114,7 +114,17 @@ WazuhDB::parseResult(const std::string& result) const noexcept
     {
         const auto res {QueryResStr2Code.find(codeStr)};
         // If key not found, the code is unknown (protocol error)
-        code = (QueryResStr2Code.end() == res) ? QueryResultCodes::UNKNOWN : res->second;
+        if (QueryResStr2Code.end() == res)
+        {
+            WAZUH_LOG_ERROR("wdb: Unknown query result code. Message received: {}",
+                            result);
+            payload = {};
+            code = QueryResultCodes::UNKNOWN;
+        }
+        else
+        {
+            code = res->second;
+        }
     }
 
     return std::make_tuple(code, std::move(payload));
@@ -138,6 +148,14 @@ std::string WazuhDB::tryQuery(const std::string& query,
         {
             WAZUH_LOG_DEBUG("wdb: Query failed (attempt {}): {}", i, e.what());
             disconnectError = e.what();
+            try
+            {
+                this->connect();
+            }
+            catch (const std::runtime_error& e)
+            {
+                continue;
+            }
         }
         catch (const std::exception& e)
         {
