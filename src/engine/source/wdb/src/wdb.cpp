@@ -31,7 +31,7 @@ void WazuhDB::connect()
         throw std::runtime_error(msg);
     }
 
-    if (this->m_fd != SOCKET_NOT_CONNECTED)
+    if (SOCKET_NOT_CONNECTED != this->m_fd)
     {
         WAZUH_LOG_DEBUG("Already connected to the wdb socket.. closing it");
         close(this->m_fd);
@@ -52,7 +52,6 @@ std::string WazuhDB::query(const std::string& query)
     }
     else if (query.length() > socketinterface::MSG_MAX_SIZE)
     {
-        // TODO: Should we print the query?
         WAZUH_LOG_WARN("wdb: The query to send is too long: {}.", query.c_str());
         return {};
     }
@@ -126,6 +125,7 @@ std::string WazuhDB::tryQuery(const std::string& query,
 {
 
     std::string result {};
+    std::optional<std::string> disconnectError {};
 
     for (unsigned int i = 0; i < attempts; i++)
     {
@@ -134,10 +134,22 @@ std::string WazuhDB::tryQuery(const std::string& query,
             result = this->query(query);
             break;
         }
+        catch (const socketinterface::RecoverableError& e)
+        {
+            WAZUH_LOG_DEBUG("wdb: Query failed (attempt {}): {}", i, e.what());
+            disconnectError = e.what();
+        }
         catch (const std::exception& e)
         {
-            WAZUH_LOG_ERROR("wdb: tryQuery failed: {}", e.what());
+            WAZUH_LOG_WARN(
+                "wdb: tryQuery irrecuperable failed (attempt {}): {}", i, e.what());
+            break;
         }
+    }
+
+    if (result.length() == 0 && disconnectError.has_value())
+    {
+        WAZUH_LOG_WARN("wdb: tryQuery failed: {}", disconnectError.value());
     }
 
     return result;

@@ -1,6 +1,9 @@
 #include <wdb/wdb.hpp>
 
+#include <thread>
+
 #include <gtest/gtest.h>
+#include <logging/logging.hpp>
 
 #include "socketAuxiliarFunctions.hpp"
 #include "unixSocketInterface.hpp"
@@ -67,19 +70,32 @@ TEST(wdb_connector, connectManyTimes)
 TEST(wdb_query, EmptyString)
 {
     auto wdb = WazuhDB();
+
+    // Disable warning logs for this test
+    const auto logLevel = fmtlog::getLogLevel();
+    fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Error));
+
     ASSERT_STREQ(wdb.query("").c_str(), "");
+
+    fmtlog::setLogLevel(fmtlog::LogLevel(logLevel)); // Restore log level
 }
 
 TEST(wdb_query, TooLongString)
 {
-    char msg[socketinterface::MSG_MAX_SIZE + 2] = {};
-    for (int i = 0; i < socketinterface::MSG_MAX_SIZE + 1; i++)
-    {
-        msg[i] = 'x';
-    }
+
+    char msg[socketinterface::MSG_MAX_SIZE + 2] {};
+
+    memset(msg, 'x', socketinterface::MSG_MAX_SIZE + 1);
 
     auto wdb = WazuhDB();
+
+    // Disable warning logs for this test
+    const auto logLevel = fmtlog::getLogLevel();
+    fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Error));
+
     ASSERT_STREQ(wdb.query(msg).c_str(), "");
+
+    fmtlog::setLogLevel(fmtlog::LogLevel(logLevel)); // Restore log level
 }
 
 TEST(wdb_query, ConnectAndQuery)
@@ -104,23 +120,26 @@ TEST(wdb_query, ConnectAndQuery)
 }
 
 // TODO: This does not work, but it should.
-// TEST(wdb_query, SendQueryWithoutConnect)
-// {
-//     // Create server
-//     const int serverSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
-//     ASSERT_GT(serverSocketFD, 0);
+TEST(wdb_query, SendQueryWithoutConnect)
+{
+    // Create server
+    const int serverSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
+    ASSERT_GT(serverSocketFD, 0);
 
-//     auto wdb = WazuhDB(TEST_SOCKET_PATH);
+    auto wdb = WazuhDB(TEST_SOCKET_PATH);
 
-//     const int clientRemote = testAcceptConnection(serverSocketFD);
-//     ASSERT_GT(clientRemote, 0);
+    std::thread t([&]() {
+        const int clientRemote = testAcceptConnection(serverSocketFD);
+        socketinterface::recvString(clientRemote).c_str();
+        socketinterface::sendMsg(clientRemote, TEST_RESPONSE);
+        close(clientRemote);
+    });
 
-//     ASSERT_EQ(wdb.sendQuery(TEST_MESSAGE), socketinterface::CommRetval::SUCCESS);
-//     ASSERT_STREQ(socketinterface::recvString(clientRemote).c_str(), TEST_MESSAGE);
+    ASSERT_STREQ(wdb.query(TEST_MESSAGE).c_str(), TEST_RESPONSE);
 
-//     close(clientRemote);
-//     close(serverSocketFD);
-// }
+    t.join();
+    close(serverSocketFD);
+}
 
 TEST(wdb_parserResult, OkWithPayload)
 {

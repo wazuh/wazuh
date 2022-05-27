@@ -83,7 +83,8 @@ public:
      * @return std::string Result of the query. Empty if the query fail (And log the
      * error).
      */
-    std::string tryQuery(const std::string& query, const unsigned int attempts) noexcept;
+    std::string tryQuery(const std::string& query,
+                         const unsigned int attempts = 2) noexcept;
 
     /**
      * @brief Parse a query result
@@ -119,7 +120,7 @@ public:
      */
     std::tuple<QueryResultCodes, std::optional<std::string>>
     tryQueryAndParseResult(const std::string& query,
-                           const unsigned int attempts) noexcept;
+                           const unsigned int attempts = 2) noexcept;
 };
 } // namespace wazuhdb
 #endif
