@@ -161,8 +161,10 @@ cJSON *getGlobalConfig(void) {
     if (Config.custom_alert_output) cJSON_AddStringToObject(global,"custom_alert_output",Config.custom_alert_output_format);
     cJSON_AddNumberToObject(global,"rotate_interval",Config.rotate_interval);
     cJSON_AddNumberToObject(global,"max_output_size",Config.max_output_size);
-    cJSON_AddNumberToObject(global,"maximum",Config.cfg_max_eps);
-    cJSON_AddNumberToObject(global,"timeframe",Config.cfg_timeframe_eps);
+    cJSON *eps = cJSON_CreateObject();
+    cJSON_AddNumberToObject(eps,"maximum",Config.cfg_max_eps);
+    cJSON_AddNumberToObject(eps,"timeframe",Config.cfg_timeframe_eps);
+    cJSON_AddItemToObject(global, "eps", eps);
 
 #ifdef LIBGEOIP_ENABLED
     if (Config.geoip_db_path) cJSON_AddStringToObject(global,"geoip_db_path",Config.geoip_db_path);
