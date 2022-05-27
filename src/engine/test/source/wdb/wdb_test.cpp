@@ -51,6 +51,10 @@ TEST(wdb_connector, connectManyTimes)
     const int serverSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
     ASSERT_GT(serverSocketFD, 0);
 
+    // Disable warning logs for this test
+    const auto logLevel = fmtlog::getLogLevel();
+    fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Error));
+
     auto wdb = WazuhDB(TEST_SOCKET_PATH);
     ASSERT_NO_THROW(wdb.connect());
     const int clientRemoteI = testAcceptConnection(serverSocketFD);
@@ -61,6 +65,8 @@ TEST(wdb_connector, connectManyTimes)
     ASSERT_NO_THROW(wdb.connect());
     const int clientRemoteIII = testAcceptConnection(serverSocketFD);
     ASSERT_GT(clientRemoteIII, 0);
+
+    fmtlog::setLogLevel(fmtlog::LogLevel(logLevel)); // Restore log level
 
     close(serverSocketFD);
     close(clientRemoteI);
@@ -120,7 +126,6 @@ TEST(wdb_query, ConnectAndQuery)
     close(serverSocketFD);
 }
 
-// TODO: This does not work, but it should.
 TEST(wdb_query, SendQueryWithoutConnect)
 {
     // Create server
@@ -129,18 +134,35 @@ TEST(wdb_query, SendQueryWithoutConnect)
 
     auto wdb = WazuhDB(TEST_SOCKET_PATH);
 
-    std::thread t(
-        [&]()
-        {
-            const int clientRemote = testAcceptConnection(serverSocketFD);
-            socketinterface::recvString(clientRemote).c_str();
-            socketinterface::sendMsg(clientRemote, TEST_RESPONSE);
-            close(clientRemote);
-        });
+    std::thread t([&]() {
+        const int clientRemote = testAcceptConnection(serverSocketFD);
+        socketinterface::recvString(clientRemote).c_str();
+        socketinterface::sendMsg(clientRemote, TEST_RESPONSE);
+        close(clientRemote);
+    });
 
     ASSERT_STREQ(wdb.query(TEST_MESSAGE).c_str(), TEST_RESPONSE);
 
     t.join();
+    close(serverSocketFD);
+}
+
+TEST(wdb_query, SendQueryConexionClosed)
+{
+    // Create server
+    const int serverSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
+    ASSERT_GT(serverSocketFD, 0);
+
+    auto wdb = WazuhDB(TEST_SOCKET_PATH);
+
+    std::thread t([&]() {
+        const int clientRemote = testAcceptConnection(serverSocketFD);
+        close(clientRemote);
+    });
+
+    ASSERT_THROW(wdb.query(TEST_MESSAGE), socketinterface::RecoverableError);
+    t.join();
+
     close(serverSocketFD);
 }
 
@@ -241,7 +263,14 @@ TEST(wdb_parseResult, ParseResultUnknown)
     const auto message {"xyz"};
 
     WazuhDB wdb {};
+
+    // Disable logs for this test
+    const auto logLevel = fmtlog::getLogLevel();
+    fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
+
     auto retval = wdb.parseResult(message);
+
+    fmtlog::setLogLevel(fmtlog::LogLevel(logLevel)); // Restore log level
 
     ASSERT_EQ(std::get<0>(retval), QueryResultCodes::UNKNOWN);
     ASSERT_FALSE(std::get<1>(retval));
@@ -252,9 +281,15 @@ TEST(wdb_parseResult, ParseResultUnknownWithPayload)
     const auto message {std::string("xyz") + " " + TEST_PAYLOAD};
 
     WazuhDB wdb {};
+
+    // Disable logs for this test
+    const auto logLevel = fmtlog::getLogLevel();
+    fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
+
     auto retval = wdb.parseResult(message);
 
     ASSERT_EQ(std::get<0>(retval), QueryResultCodes::UNKNOWN);
-    ASSERT_TRUE(std::get<1>(retval));
-    ASSERT_STREQ(std::get<1>(retval).value().c_str(), TEST_PAYLOAD);
+    ASSERT_FALSE(std::get<1>(retval));
+
+    fmtlog::setLogLevel(fmtlog::LogLevel(logLevel)); // Restore log level
 }
