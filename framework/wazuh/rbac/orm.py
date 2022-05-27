@@ -473,6 +473,7 @@ class TokenManager:
     This class is the manager of Token blacklist, this class provides
     all the methods needed for the token blacklist administration.
     """
+
     def __init__(self, session: str = None):
         self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{_db_file}", echo=False))()
 
@@ -2587,33 +2588,7 @@ class DatabaseManager:
                 for d_policy_name, payload in default_policies[next(iter(default_policies))].items():
                     for name, policy in payload['policies'].items():
                         policy_name = f'{d_policy_name}_{name}'
-                        policy_result = pm.add_policy(name=policy_name, policy=policy, check_default=False)
-                        # Update policy if it exists
-                        if policy_result == SecurityError.ALREADY_EXIST:
-                            try:
-                                policy_id = pm.get_policy(policy_name)['id']
-                                if policy_id < max_id_reserved:
-                                    pm.update_policy(policy_id=policy_id, name=policy_name, policy=policy,
-                                                     check_default=False)
-                                else:
-                                    with RolesPoliciesManager(self.sessions[database]) as rpm:
-                                        linked_roles = [role.id for role in
-                                                        rpm.get_all_roles_from_policy(policy_id=policy_id)]
-                                        new_positions = dict()
-                                        for role in linked_roles:
-                                            new_positions[role] = [
-                                                p.id for p in rpm.get_all_policies_from_role(role_id=role)
-                                            ].index(policy_id)
-
-                                        pm.delete_policy(policy_id=policy_id)
-                                        pm.add_policy(name=policy_name, policy=policy, check_default=False)
-                                        policy_id = pm.get_policy(policy_name)['id']
-                                        for role, position in new_positions.items():
-                                            rpm.add_role_to_policy(policy_id=policy_id, role_id=role, position=position,
-                                                                   force_admin=True)
-
-                            except (KeyError, TypeError):
-                                pass
+                        pm.add_policy(name=policy_name, policy=policy, check_default=False)
 
         # Create the relationships
         with open(os.path.join(default_path, "relationships.yaml"), 'r') as stream:
@@ -2696,30 +2671,65 @@ class DatabaseManager:
         old_users = get_data(User, User.id)
         with AuthenticationManager(self.sessions[target]) as auth_manager:
             for user in old_users:
-                auth_manager.add_user(username=user.username,
-                                      password=user.password,
-                                      created_at=user.created_at,
-                                      user_id=user.id,
-                                      hashed_password=True,
-                                      check_default=False)
-                auth_manager.edit_run_as(user_id=user.id, allow_run_as=user.allow_run_as)
+                status = auth_manager.add_user(username=user.username,
+                                               password=user.password,
+                                               created_at=user.created_at,
+                                               user_id=user.id,
+                                               hashed_password=True,
+                                               check_default=False)
+
+                if status is False:
+                    logger.warning(f"User {user.id} ({user.username}) is part of the new default users. "
+                                   f"Renaming it to '{user.username}_user'")
+
+                    auth_manager.add_user(username=f"{user.username}_user",
+                                          password=user.password,
+                                          created_at=user.created_at,
+                                          user_id=user.id,
+                                          hashed_password=True,
+                                          check_default=False)
 
         old_roles = get_data(Roles, Roles.id)
         with RolesManager(self.sessions[target]) as role_manager:
             for role in old_roles:
-                role_manager.add_role(name=role.name,
-                                      created_at=role.created_at,
-                                      role_id=role.id,
-                                      check_default=False)
+                status = role_manager.add_role(name=role.name,
+                                               created_at=role.created_at,
+                                               role_id=role.id,
+                                               check_default=False)
+
+                if status == SecurityError.ALREADY_EXIST:
+                    logger.warning(f"Role {role.id} ({role.name}) is part of the new default roles. "
+                                   f"Renaming it to '{role.name}_user'")
+
+                    role_manager.add_role(name=f"{role.name}_user",
+                                          created_at=role.created_at,
+                                          role_id=role.id,
+                                          check_default=False)
 
         old_rules = get_data(Rules, Rules.id)
         with RulesManager(self.sessions[target]) as rule_manager:
             for rule in old_rules:
-                rule_manager.add_rule(name=rule.name,
-                                      rule=json.loads(rule.rule),
-                                      created_at=rule.created_at,
-                                      rule_id=rule.id,
-                                      check_default=False)
+                status = rule_manager.add_rule(name=rule.name,
+                                               rule=json.loads(rule.rule),
+                                               created_at=rule.created_at,
+                                               rule_id=rule.id,
+                                               check_default=False)
+                # If the user's rule has the same body as an existing default rule it won't be inserted and its
+                # role-rule relationships will be linked to that default rule instead of replacing it.
+                if status == SecurityError.ALREADY_EXIST:
+                    logger.warning(f"Rule {rule.id} ({rule.name}) is part of the new default rules. "
+                                   "Attempting to migrate relationships")
+                    roles_rules = self.get_table(self.sessions[source], RolesRules).filter(
+                        RolesRules.rule_id == rule.id).order_by(RolesRules.id.asc()).all()
+                    new_rule_id = self.sessions[target].query(Rules).filter_by(
+                        rule=str(rule.rule)).first().id
+                    with RolesRulesManager(self.sessions[target]) as role_rules_manager:
+                        for role_rule in roles_rules:
+                            role_rules_manager.add_rule_to_role(role_id=role_rule.role_id,
+                                                                rule_id=new_rule_id,
+                                                                created_at=role_rule.created_at,
+                                                                force_admin=True)
+                        logger.info(f"All relationships were migrated to the new rule {new_rule_id}")
 
         old_policies = get_data(Policies, Policies.id)
         with PoliciesManager(self.sessions[target]) as policy_manager:
@@ -2730,7 +2740,7 @@ class DatabaseManager:
                                                    policy_id=policy.id,
                                                    check_default=False)
                 # If the user's policy has the same body as an existing default policy it won't be inserted and its
-                # role-policy relationships will be linked to that default policy instead to replace it.
+                # role-policy relationships will be linked to that default policy instead of replacing it.
                 if status == SecurityError.ALREADY_EXIST:
                     logger.warning(f"Policy {policy.id} ({policy.name}) is part of the new default policies. "
                                    "Attempting to migrate relationships")
