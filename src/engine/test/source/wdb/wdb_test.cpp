@@ -11,6 +11,7 @@
 using namespace wazuhdb;
 
 constexpr const char* TEST_MESSAGE = "Test Message to be queried";
+constexpr const char* TEST_PAYLOAD = "Test Query Response Payload";
 constexpr const char* TEST_RESPONSE = "Test Response to be received";
 constexpr const char* TEST_DUMMY_PATH = "/dummy/path";
 
@@ -128,12 +129,14 @@ TEST(wdb_query, SendQueryWithoutConnect)
 
     auto wdb = WazuhDB(TEST_SOCKET_PATH);
 
-    std::thread t([&]() {
-        const int clientRemote = testAcceptConnection(serverSocketFD);
-        socketinterface::recvString(clientRemote).c_str();
-        socketinterface::sendMsg(clientRemote, TEST_RESPONSE);
-        close(clientRemote);
-    });
+    std::thread t(
+        [&]()
+        {
+            const int clientRemote = testAcceptConnection(serverSocketFD);
+            socketinterface::recvString(clientRemote).c_str();
+            socketinterface::sendMsg(clientRemote, TEST_RESPONSE);
+            close(clientRemote);
+        });
 
     ASSERT_STREQ(wdb.query(TEST_MESSAGE).c_str(), TEST_RESPONSE);
 
@@ -141,54 +144,117 @@ TEST(wdb_query, SendQueryWithoutConnect)
     close(serverSocketFD);
 }
 
-TEST(wdb_parserResult, OkWithPayload)
+TEST(wdb_parseResult, ParseResultOk)
 {
-    WazuhDB wdb {};
+    const auto message {"ok"};
 
-    auto retval = wdb.parseResult("ok test payload");
+    WazuhDB wdb {};
+    auto retval = wdb.parseResult(message);
+
     ASSERT_EQ(std::get<0>(retval), QueryResultCodes::OK);
-    ASSERT_TRUE(std::get<1>(retval).has_value());
-    ASSERT_STREQ(std::get<1>(retval).value().c_str(), "test payload");
+    ASSERT_FALSE(std::get<1>(retval));
 }
 
-//
-// TEST(wdb_connector, parseResultDUE)
-//{
-//    WazuhDB wdb {};
-//    char* payload = nullptr;
-//    char* message = strdup("due test payload");
-//
-//    auto retval = wdb.parseResult(message, &payload);
-//    ASSERT_EQ(retval, wazuhdb::QueryResultCodes::DUE);
-//}
-//
-// TEST(wdb_connector, parseResultERROR)
-//{
-//    WazuhDB wdb {};
-//    char* payload = nullptr;
-//    char* message = strdup("err test payload");
-//
-//    auto retval = wdb.parseResult(message, &payload);
-//    ASSERT_EQ(retval, wazuhdb::QueryResultCodes::ERROR);
-//}
-//
-// TEST(wdb_connector, parseResultIGNORE)
-//{
-//    WazuhDB wdb {};
-//    char* payload = nullptr;
-//    char* message = strdup("ign test payload");
-//
-//    auto retval = wdb.parseResult(message, &payload);
-//    ASSERT_EQ(retval, wazuhdb::QueryResultCodes::IGNORE);
-//}
-//
-// TEST(wdb_connector, parseResultUNKNOWN)
-//{
-//    WazuhDB wdb {};
-//    char* payload = nullptr;
-//    char* message = strdup("xyz test payload");
-//
-//    auto retval = wdb.parseResult(message, &payload);
-//    ASSERT_EQ(retval, wazuhdb::QueryResultCodes::UNKNOWN);
-//}
-//
+TEST(wdb_parseResult, ParseResultOkWithPayload)
+{
+    const auto message {std::string("ok") + " " + TEST_PAYLOAD};
+
+    WazuhDB wdb {};
+    auto retval = wdb.parseResult(message);
+
+    ASSERT_EQ(std::get<0>(retval), QueryResultCodes::OK);
+    ASSERT_TRUE(std::get<1>(retval));
+    ASSERT_STREQ(std::get<1>(retval).value().c_str(), TEST_PAYLOAD);
+}
+
+TEST(wdb_parseResult, ParseResultDue)
+{
+    const auto message {"due"};
+
+    WazuhDB wdb {};
+    auto retval = wdb.parseResult(message);
+
+    ASSERT_EQ(std::get<0>(retval), QueryResultCodes::DUE);
+    ASSERT_FALSE(std::get<1>(retval));
+}
+
+TEST(wdb_parseResult, ParseResultDueWithPayload)
+{
+    const auto message {std::string("due") + " " + TEST_PAYLOAD};
+
+    WazuhDB wdb {};
+    auto retval = wdb.parseResult(message);
+
+    ASSERT_EQ(std::get<0>(retval), QueryResultCodes::DUE);
+    ASSERT_TRUE(std::get<1>(retval));
+    ASSERT_STREQ(std::get<1>(retval).value().c_str(), TEST_PAYLOAD);
+}
+
+TEST(wdb_parseResult, ParseResultError)
+{
+    const auto message {"err"};
+
+    WazuhDB wdb {};
+    auto retval = wdb.parseResult(message);
+
+    ASSERT_EQ(std::get<0>(retval), QueryResultCodes::ERROR);
+    ASSERT_FALSE(std::get<1>(retval));
+}
+
+TEST(wdb_parseResult, ParseResultErrorWithPayload)
+{
+    const auto message {std::string("err") + " " + TEST_PAYLOAD};
+
+    WazuhDB wdb {};
+    auto retval = wdb.parseResult(message);
+
+    ASSERT_EQ(std::get<0>(retval), QueryResultCodes::ERROR);
+    ASSERT_TRUE(std::get<1>(retval));
+    ASSERT_STREQ(std::get<1>(retval).value().c_str(), TEST_PAYLOAD);
+}
+
+TEST(wdb_parseResult, ParseResultIgnore)
+{
+    const auto message {"ign"};
+
+    WazuhDB wdb {};
+    auto retval = wdb.parseResult(message);
+
+    ASSERT_EQ(std::get<0>(retval), QueryResultCodes::IGNORE);
+    ASSERT_FALSE(std::get<1>(retval));
+}
+
+TEST(wdb_parseResult, ParseResultIgnoreWithPayload)
+{
+    const auto message {std::string("ign") + " " + TEST_PAYLOAD};
+
+    WazuhDB wdb {};
+    auto retval = wdb.parseResult(message);
+
+    ASSERT_EQ(std::get<0>(retval), QueryResultCodes::IGNORE);
+    ASSERT_TRUE(std::get<1>(retval));
+    ASSERT_STREQ(std::get<1>(retval).value().c_str(), TEST_PAYLOAD);
+}
+
+TEST(wdb_parseResult, ParseResultUnknown)
+{
+    const auto message {"xyz"};
+
+    WazuhDB wdb {};
+    auto retval = wdb.parseResult(message);
+
+    ASSERT_EQ(std::get<0>(retval), QueryResultCodes::UNKNOWN);
+    ASSERT_FALSE(std::get<1>(retval));
+}
+
+TEST(wdb_parseResult, ParseResultUnknownWithPayload)
+{
+    const auto message {std::string("xyz") + " " + TEST_PAYLOAD};
+
+    WazuhDB wdb {};
+    auto retval = wdb.parseResult(message);
+
+    ASSERT_EQ(std::get<0>(retval), QueryResultCodes::UNKNOWN);
+    ASSERT_TRUE(std::get<1>(retval));
+    ASSERT_STREQ(std::get<1>(retval).value().c_str(), TEST_PAYLOAD);
+}
