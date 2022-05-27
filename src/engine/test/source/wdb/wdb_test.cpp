@@ -166,6 +166,85 @@ TEST(wdb_query, SendQueryConexionClosed)
     close(serverSocketFD);
 }
 
+
+TEST(wdb_tryQuery, SendQueryOK_firstAttemp)
+{
+    // Create server
+    const int serverSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
+    ASSERT_GT(serverSocketFD, 0);
+
+    auto wdb = WazuhDB(TEST_SOCKET_PATH);
+
+    std::thread t([&]() {
+        const int clientRemote = testAcceptConnection(serverSocketFD);
+        socketinterface::recvString(clientRemote).c_str();
+        socketinterface::sendMsg(clientRemote, TEST_RESPONSE);
+        close(clientRemote);
+    });
+
+    ASSERT_STREQ(wdb.tryQuery(TEST_MESSAGE, 5).c_str(), TEST_RESPONSE);
+
+    t.join();
+    close(serverSocketFD);
+}
+
+TEST(wdb_tryQuery, SendQueryOK_retry)
+{
+    // Create server
+    const int serverSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
+    ASSERT_GT(serverSocketFD, 0);
+
+    auto wdb = WazuhDB(TEST_SOCKET_PATH);
+
+    std::thread t([&]() {
+        const int clientRemote = testAcceptConnection(serverSocketFD);
+        close(clientRemote);
+        const int clientRemoteRetry = testAcceptConnection(serverSocketFD);
+        socketinterface::recvString(clientRemoteRetry).c_str();
+        socketinterface::sendMsg(clientRemoteRetry, TEST_RESPONSE);
+        close(clientRemoteRetry);
+    });
+
+    // Disable logs for this test
+    const auto logLevel = fmtlog::getLogLevel();
+    fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Error));
+
+    ASSERT_STREQ(wdb.tryQuery(TEST_MESSAGE, 5).c_str(), TEST_RESPONSE);
+
+    fmtlog::setLogLevel(fmtlog::LogLevel(logLevel)); // Restore log level
+
+    t.join();
+    close(serverSocketFD);
+}
+
+TEST(wdb_tryQuery, SendQueryIrrecoverable)
+{
+    // Create server
+    const int serverSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
+    ASSERT_GT(serverSocketFD, 0);
+
+    auto wdb = WazuhDB(TEST_SOCKET_PATH);
+
+    std::thread t([&]() {
+        const int clientRemote = testAcceptConnection(serverSocketFD);
+        close(serverSocketFD);
+        unlink(TEST_SOCKET_PATH.data());
+        close(clientRemote);
+    });
+
+    // Disable logs for this test
+    const auto logLevel = fmtlog::getLogLevel();
+    fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Off));
+
+    // Empty string on error
+    ASSERT_STREQ(wdb.tryQuery(TEST_MESSAGE, 5).c_str(), "");
+
+    fmtlog::setLogLevel(fmtlog::LogLevel(logLevel)); // Restore log level
+
+    t.join();
+
+}
+
 TEST(wdb_parseResult, ParseResultOk)
 {
     const auto message {"ok"};
