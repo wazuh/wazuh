@@ -182,10 +182,8 @@ class OssecTester(object):
             sys.stdout.flush()
         return did_pass
 
-    def run(self, selective_test=False, geoip=False, custom=False):
+    def run(self, selective_test=False, geoip=False):
         for aFile in os.listdir(self._test_path):
-            if re.match(r'^test_(.*?).ini$',aFile) and not custom:
-                continue
             aFile = os.path.join(self._test_path, aFile)
             if aFile.endswith(".ini"):
                 if selective_test and not aFile.endswith(selective_test):
@@ -263,8 +261,6 @@ if __name__ == "__main__":
                         help='Use -g or --geoip to enable geoip tests (default: False)')
     parser.add_argument('--testfile', '-t', action='store', type=str, dest='testfile',
                         help='Use -t or --testfile to pass the ini file to test')
-    parser.add_argument('--custom-ruleset', '-c', action='store_true', dest='custom',
-                        help='Use -c or --custom-ruleset to test custom rules and decoders')
     parser.add_argument('--skip-windows-eventchannel', '-s', action='store_false', dest='windows_tests',
                         help='Use -s or --skip-windows-eventchannel to avoid modifying windows event channel rules for testing.')
     args = parser.parse_args()
@@ -288,7 +284,7 @@ if __name__ == "__main__":
     restart_analysisd()
 
     OT = OssecTester(args.wazuh_home)
-    error = OT.run(selective_test, args.geoip, args.custom)
+    error = OT.run(selective_test, args.geoip)
 
     cleanDR()
     if args.windows_tests:
