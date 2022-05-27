@@ -119,7 +119,7 @@ public:
      * code and the optional data (payload)
      */
     std::tuple<QueryResultCodes, std::optional<std::string>> tryQueryAndParseResult(
-        const std::string& query) noexcept;
+        const std::string& query, const unsigned int attempts) noexcept;
 };
 } // namespace wazuhdb
 #endif
