@@ -2885,7 +2885,7 @@ def check_database_integrity():
             if current_version < expected_version:
                 logger.info("RBAC database migration required. "
                             f"Current version is {current_version} but it should be {expected_version}. "
-                            f"Upgrading RBAC database to {expected_version} version")
+                            f"Upgrading RBAC database to version {expected_version}")
                 # Remove tmp database if present
                 os.path.exists(_db_file_tmp) and os.remove(_db_file_tmp)
 
@@ -2910,7 +2910,7 @@ def check_database_integrity():
 
         # If database does not exist it means this is a fresh installation and must be created properly
         else:
-            logger.info(f"RBAC database not found. Creating a new one")
+            logger.info(f"RBAC database not found. Initializing")
             db_manager.connect(_db_file)
             db_manager.create_database(_db_file)
             _set_permissions_and_ownership(_db_file)
@@ -2919,7 +2919,7 @@ def check_database_integrity():
             db_manager.close_sessions()
             logger.info(f"{_db_file} database created successfully")
     except ValueError as e:
-        logger.error("Error retrieving the current Wazuh revision. Aborting database integrity check")
+        logger.error("Error retrieving the current Wazuh RBAC database version. Aborting database integrity check")
         db_manager.close_sessions()
         raise e
     except Exception as e:
