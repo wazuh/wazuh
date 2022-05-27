@@ -23,10 +23,6 @@ static const char *XML_API_TOKEN = "api_token";
 static const char *XML_API_PARAMETERS = "api_parameters";
 static const char *XML_EVENT_TYPE = "event_type";
 
-static const char *EVENT_TYPE_ALL = "all";
-static const char *EVENT_TYPE_GIT = "git";
-static const char *EVENT_TYPE_WEB = "web";
-
 // Parse XML
 int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
 

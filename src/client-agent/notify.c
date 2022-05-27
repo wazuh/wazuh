@@ -182,20 +182,20 @@ void run_notify()
         snprintf(label_ip, sizeof label_ip, "#\"_agent_ip\":%s", agent_ip);
         if ((File_DateofChange(AGENTCONFIG) > 0 ) &&
                 (OS_MD5_File(AGENTCONFIG, md5sum, OS_TEXT) == 0)) {
-            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s%s\n",
+            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "%s%s / %s\n%s%s%s\n", CONTROL_HEADER,
                     getuname(), md5sum, tmp_labels, g_shared_mg_file_hash ? g_shared_mg_file_hash : no_hash_value, label_ip);
         } else {
-            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s%s\n",
+            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "%s%s\n%s%s%s\n", CONTROL_HEADER,
                     getuname(), tmp_labels, g_shared_mg_file_hash ? g_shared_mg_file_hash : no_hash_value, label_ip);
         }
     }
     else {
         if ((File_DateofChange(AGENTCONFIG) > 0 ) &&
                 (OS_MD5_File(AGENTCONFIG, md5sum, OS_TEXT) == 0)) {
-            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s\n",
+            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "%s%s / %s\n%s%s\n", CONTROL_HEADER,
                     getuname(), md5sum, tmp_labels, g_shared_mg_file_hash ? g_shared_mg_file_hash : no_hash_value);
         } else {
-            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s\n",
+            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "%s%s\n%s%s\n", CONTROL_HEADER,
                     getuname(), tmp_labels, g_shared_mg_file_hash ? g_shared_mg_file_hash : no_hash_value);
         }
     }

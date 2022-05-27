@@ -80,6 +80,7 @@ void *__wrap_OSHash_Begin(const OSHash *self, __attribute__((unused)) unsigned i
     return mock_type(OSHashNode*);
 }
 
+void *__real_OSHash_Clean(OSHash *self, void (*cleaner)(void*));
 void *__wrap_OSHash_Clean(__attribute__((unused)) OSHash *self,
                           __attribute__((unused)) void (*cleaner)(void*)) {
     return mock_type(void *);

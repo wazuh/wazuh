@@ -161,6 +161,11 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
             os_strdup(vu_feed_tag[FEED_FOCAL], upd->version);
             upd->dist_tag_ref = FEED_FOCAL;
             upd->dist_ext = vu_feed_ext[FEED_FOCAL];
+        } else if (!strcmp(version, "22") || strcasestr(version, vu_feed_tag[FEED_JAMMY])) {
+            os_index = CVE_JAMMY;
+            os_strdup(vu_feed_tag[FEED_JAMMY], upd->version);
+            upd->dist_tag_ref = FEED_JAMMY;
+            upd->dist_ext = vu_feed_ext[FEED_JAMMY];
         } else {
             merror("Invalid Ubuntu version '%s'", version);
             retval = OS_INVALID;
@@ -483,7 +488,7 @@ void wm_vuldet_enable_rhel_json_feed(update_node **updates) {
     int8_t rhel_enabled = 0;
 
     // Search for any enabled rhel feed
-    for (int i = 0; i <= CVE_JREDHAT; i++) {
+    for (int i = 0; i < CVE_JREDHAT; ++i) {
         if (updates[i] && updates[i]->dist_ref == FEED_REDHAT) {
             rhel_enabled = i;
             break;
@@ -502,10 +507,12 @@ void wm_vuldet_enable_rhel_json_feed(update_node **updates) {
         if (updates[rhel_enabled]->path || updates[rhel_enabled]->url) {
             mwarn(VU_OFFLINE_CONFLICT, updates[rhel_enabled]->dist);
         }
-        // As soon as a valid RedHat O.S. is detected, enable the RedHat JSON feed
+        // As soon as a valid RedHat O.S. is detected, enable the RedHat JSON feed and set the update interval time
         int retval;
         if (retval = wm_vuldet_set_feed_version("jredhat", NULL, updates), retval == OS_INVALID) {
             mwarn("Unable to load the RedHat JSON feed at module '%s'", WM_VULNDETECTOR_CONTEXT.name);
+        } else {
+            updates[CVE_JREDHAT]->interval = updates[rhel_enabled]->interval;
         }
     }
 }

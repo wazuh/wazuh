@@ -119,6 +119,71 @@ void test_wdb_insert_vuln_cves_error_json(void **state)
     free_strarray(external_references);
 }
 
+void test_wdb_insert_vuln_cves_null_parameters(void **state)
+{
+    cJSON *ret = NULL;
+    int id = 1;
+    const char *name = NULL;
+    const char *version = NULL;
+    const char *architecture = NULL;
+    const char *cve = NULL;
+    const char* severity = NULL;
+    double cvss2_score = 0;
+    double cvss3_score = 0;
+    const char *reference = NULL;
+    const char *type = NULL;
+    const char *status = NULL;
+    char **external_references = NULL;
+    const char *condition = NULL;
+    const char *title = NULL;
+    const char *published = NULL;
+    const char *updated = NULL;
+    bool check_pkg_existence = false;
+
+    const char *json_str = NULL;
+
+    os_strdup("{}", json_str);
+
+    will_return(__wrap_cJSON_CreateObject, 1);
+    will_return_always(__wrap_cJSON_AddStringToObject, 1);
+
+     // Adding data to JSON
+    expect_string(__wrap_cJSON_AddStringToObject, name, "name");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "version");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "architecture");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "cve");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "severity");
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "cvss2_score");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
+    will_return(__wrap_cJSON_AddNumberToObject, NULL);
+    expect_string(__wrap_cJSON_AddNumberToObject, name, "cvss3_score");
+    expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
+    will_return(__wrap_cJSON_AddNumberToObject, NULL);
+    expect_string(__wrap_cJSON_AddStringToObject, name, "reference");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "type");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "status");
+    will_return(__wrap_cJSON_AddBoolToObject, (cJSON *)0);
+    expect_string(__wrap_cJSON_AddStringToObject, name, "condition");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "title");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "published");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "updated");
+
+    // Printing JSON
+    will_return(__wrap_cJSON_PrintUnformatted, json_str);
+
+    // Calling Wazuh DB
+    will_return(__wrap_wdbc_query_parse_json, 0);
+    will_return(__wrap_wdbc_query_parse_json, (cJSON *)1);
+
+    //Cleaning  memory
+    expect_function_call(__wrap_cJSON_Delete);
+
+    ret = wdb_insert_vuln_cves(id, name, version, architecture, cve, severity, cvss2_score, cvss3_score, reference, type, status,
+                               external_references, condition, title, published, updated, check_pkg_existence, NULL);
+
+    assert_ptr_equal(1, ret);
+}
+
 void test_wdb_insert_vuln_cves_error_sql_execution(void **state)
 {
     cJSON *ret = NULL;
@@ -1340,6 +1405,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_get_sys_osinfo_success, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
         /* Tests wdb_insert_vuln_cves*/
         cmocka_unit_test_setup_teardown(test_wdb_insert_vuln_cves_error_json, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_insert_vuln_cves_null_parameters, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_insert_vuln_cves_error_sql_execution, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_insert_vuln_cves_success, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
         /* Tests wdb_update_vuln_cves_status*/

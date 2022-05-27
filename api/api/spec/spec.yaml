@@ -11,7 +11,7 @@ info:
 
     Wazuh API endpoints require authentication in order to be used. Therefore, all calls must include a JSON Web Token.
     JWT is an open standard (RFC 7519) that defines a compact and self-contained way for securely transmitting
-    information between parties as a JSON object. Perform a call with `basicAuth` to `GET /security/user/authenticate`
+    information between parties as a JSON object. Perform a call with `basicAuth` to `POST /security/user/authenticate`
     and obtain a JWT token in order to run any endpoint.
 
     JWT tokens have a default duration of 900 seconds. To change this value, you must perform a call with a valid
@@ -20,7 +20,7 @@ info:
 
     Login with USER and PASSWORD:
 
-    `curl -u <USER>:<PASSWORD> -k -X GET "https://<HOST_IP>:55000/security/user/authenticate"`
+    `curl -u <USER>:<PASSWORD> -k -X POST "https://<HOST_IP>:55000/security/user/authenticate"`
     ```json
     {
         "data": {
@@ -40,8 +40,8 @@ info:
 
     <SecurityDefinitions />
 
-  version: '4.4.0'
-  x-revision: '40400'
+  version: '4.5.0'
+  x-revision: '40500'
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
@@ -1711,6 +1711,16 @@ components:
                     n_synced_chunks:
                       type: integer
                       format: int32
+                last_sync_agentgroups:
+                  type: object
+                  properties:
+                    date_start_master:
+                      type: string
+                    date_end_master:
+                      type: string
+                    n_synced_chunks:
+                      type: integer
+                      format: int32
                 last_sync_integrity:
                   type: object
                   properties:
@@ -1734,6 +1744,8 @@ components:
                           type: integer
                           format: int32
                 sync_agent_info_free:
+                  type: boolean
+                sync_agent_groups_free:
                   type: boolean
                 sync_integrity_free:
                   type: boolean
@@ -2118,8 +2130,6 @@ components:
             type: object
 
         #Wodle sections inside WazuhConfiguration(ossec.conf)
-        agent-key-polling:
-          type: object
         aws-s3:
           type: object
         azure-logs:
@@ -2486,7 +2496,6 @@ components:
             - verify-agent-conf
             - wazuh-db
             - wazuh-modulesd
-            - wazuh-modulesd:agent-key-polling
             - wazuh-modulesd:aws-s3
             - wazuh-modulesd:azure-logs
             - wazuh-modulesd:agent-upgrade
@@ -2579,8 +2588,6 @@ components:
           wazuh-db:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:
-            $ref: '#/components/schemas/LogSummary'
-          wazuh-modulesd:agent-key-polling:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:agent-upgrade:
             $ref: '#/components/schemas/LogSummary'
@@ -4702,7 +4709,6 @@ components:
         - syscheck
         - syslog_output
         # Wodle sections
-        - agent-key-polling
         - aws-s3
         - azure-logs
         - cis-cat
@@ -4749,7 +4755,6 @@ components:
         - sca
         - wazuh-db
         - wazuh-modulesd
-        - wazuh-modulesd:agent-key-polling
         - wazuh-modulesd:aws-s3
         - wazuh-modulesd:azure-logs
         - wazuh-modulesd:agent-upgrade
@@ -6527,14 +6532,8 @@ paths:
                         remediation: Please, use `GET /agents?select=id,name` to find all available agents
                       id:
                         - '999'
-                    - error:
-                        code: 1753
-                        message: Could not assign group. Agent status is never_connected
-                        remediation: Please select another agent or connect your agent before assigning groups
-                      id:
-                        - '011'
                   total_affected_items: 2
-                  total_failed_items: 2
+                  total_failed_items: 1
                   message: Some agents were not assigned to group2 and removed from the other groups
                   error: 2
         '400':
@@ -6729,9 +6728,10 @@ paths:
               type: object
               properties:
                 group_id:
-                  description: "Group name"
+                  description: "Group name. It can contain any of the characters between a-z, A-Z, 0-9, '_', '-' and '.'. Names '.' and '..' are restricted."
                   type: string
                   format: group_names
+                  maxLength: 128
               required:
                 - group_id
             example:
@@ -7980,7 +7980,12 @@ paths:
                             extra_valid: 0
                             shared: 0
                         sync_agent_info_free: true
+                        sync_agent_groups_free: true
                         last_sync_agentinfo:
+                          date_start_master: 2021-05-27T10:50:49.174463Z
+                          date_end_master: 2021-05-27T10:50:49.175921Z
+                          n_synced_chunks: 1
+                        last_sync_agentgroups:
                           date_start_master: 2021-05-27T10:50:49.174463Z
                           date_end_master: 2021-05-27T10:50:49.175921Z
                           n_synced_chunks: 1
@@ -8007,7 +8012,12 @@ paths:
                             extra_valid: 0
                             shared: 0
                         sync_agent_info_free: true
+                        sync_agent_groups_free: true
                         last_sync_agentinfo:
+                          date_start_master: 2021-05-27T10:50:48.832800Z
+                          date_end_master: 2021-05-27T10:50:48.833854Z
+                          n_synced_chunks: 1
+                        last_sync_agentgroups:
                           date_start_master: 2021-05-27T10:50:48.832800Z
                           date_end_master: 2021-05-27T10:50:48.833854Z
                           n_synced_chunks: 1
@@ -11036,7 +11046,7 @@ paths:
               example:
                 data:
                   affected_items:
-                    - mitre_version: '4.4.0'
+                    - mitre_version: '4.5.0'
                       deprecated: 0
                       description: |-
                         [APT38](https://attack.mitre.org/groups/G0082) is a financially-motivated threat group that is backed by the North Korean regime. The group mainly targets banks and financial institutions and has targeted more than 16 organizations in at least 13 countries since at least 2014.(Citation: FireEye APT38 Oct 2018)
@@ -11298,7 +11308,7 @@ paths:
               example:
                 data:
                   affected_items:
-                    - mitre_version: '4.4.0'
+                    - mitre_version: '4.5.0'
                       deprecated: 0
                       description: "[HDoor](https://attack.mitre.org/software/S0061) is malware that
                         has been customized and used by the [Naikon](https://attack.mitre.org/groups/G0019)
@@ -11453,7 +11463,7 @@ paths:
               example:
                 data:
                   affected_items:
-                    - mitre_version: '4.4.0'
+                    - mitre_version: '4.5.0'
                       network_requirements: 0
                       remote_support: 0
                       mitre_detection: |-
@@ -14797,13 +14807,54 @@ paths:
           $ref: '#/components/responses/TooManyRequestsResponse'
 
   /security/user/authenticate:
-    get:
+    post:
       tags:
         - Security
       summary: "Login"
       description: "This method should be called to get an API token. This token will expire after
       auth_token_exp_timeout seconds (default: 900). This value can be changed using PUT /security/config"
       operationId: api.controllers.security_controller.login_user
+      parameters:
+        - $ref: '#/components/parameters/raw'
+      security:
+        - basicAuth: []
+      responses:
+        '200':
+          description: "Login successful"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Token'
+              example:
+                data:
+                  token: "<generated_token>"
+                  error: 0
+            text/plain:
+              schema:
+                type: string
+              example: "<generated_token>"
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/InvalidCredentialsResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    get:
+      tags:
+        - Security
+      summary: "Login"
+      deprecated: true
+      description: "This method should be called to get an API token. This token will expire after
+      auth_token_exp_timeout seconds (default: 900). This value can be changed using PUT /security/config"
+      operationId: api.controllers.security_controller.deprecated_login_user
       parameters:
         - $ref: '#/components/parameters/raw'
       security:

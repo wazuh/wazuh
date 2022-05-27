@@ -57,7 +57,7 @@ ssize_t __wrap_send(__attribute__((unused))int __fd, __attribute__((unused))cons
     return mock();
 }
 
-int __wrap_recv(__attribute__((unused))int __fd, __attribute__((unused))void *__buf, __attribute__((unused))size_t __n, __attribute__((unused))int __flags) {
+ssize_t __wrap_recv(__attribute__((unused))int __fd, __attribute__((unused))void *__buf, __attribute__((unused))size_t __n, __attribute__((unused))int __flags) {
 
     if(__fd == -1) {
         return mock();
@@ -82,7 +82,7 @@ int __wrap_recv(__attribute__((unused))int __fd, __attribute__((unused))void *__
     return mock();
 }
 
-int __wrap_recvfrom(__attribute__((unused))int __fd, __attribute__((unused))void *__restrict __buf, __attribute__((unused))size_t __n, __attribute__((unused))int __flags, __attribute__((unused))__SOCKADDR_ARG __addr, __attribute__((unused))socklen_t *__restrict __addr_len) {
+ssize_t __wrap_recvfrom(__attribute__((unused))int __fd, __attribute__((unused))void *__restrict __buf, __attribute__((unused))size_t __n, __attribute__((unused))int __flags, __attribute__((unused))__SOCKADDR_ARG __addr, __attribute__((unused))socklen_t *__restrict __addr_len) {
 
     if(__fd != -1) {
         char text[BUFFERSIZE];

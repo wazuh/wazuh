@@ -1286,13 +1286,17 @@ TAR := tar -xf
 GUNZIP := gunzip
 GZIP := gzip
 CURL := curl -so
-DEPS_VERSION = 17-9913
+DEPS_VERSION = 17
 RESOURCES_URL := https://packages.wazuh.com/deps/$(DEPS_VERSION)
 CPYTHON := cpython
 PYTHON_SOURCE := no
 
 ifneq (${TARGET}, winagent)
-cpu_arch := ${uname_P}
+ifeq (${uname_S},Darwin)
+        cpu_arch := ${uname_M}
+else
+        cpu_arch := ${uname_P}
+endif
 ifneq (,$(filter ${cpu_arch},unknown Unknown not))
 	cpu_arch := $(shell sh -c 'arch 2>/dev/null || echo not')
 endif
@@ -2134,7 +2138,7 @@ os_auth/%.o: os_auth/%.c
 agent-auth: addagent/validate.o os_auth/main-client.o os_auth/ssl.o os_auth/check_cert.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-wazuh-authd: addagent/validate.o os_auth/main-server.o os_auth/local-server.o os_auth/ssl.o os_auth/check_cert.o os_auth/config.o os_auth/authcom.o os_auth/auth.o
+wazuh-authd: addagent/validate.o os_auth/main-server.o os_auth/local-server.o os_auth/ssl.o os_auth/check_cert.o os_auth/config.o os_auth/authcom.o os_auth/auth.o os_auth/key_request.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 #### integratord #####
@@ -2462,10 +2466,10 @@ win32_ui_o := $(win32_ui_c:.c=.o)
 win32/ui/%.o: win32/ui/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -UOSSECHIDS -DARGV0=\"wazuh-win32ui\" -c $^ -o $@
 
-win32/wazuh-agent.exe: win32/version-app.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o ${syscheck_o} ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) ${os_execd_o} active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o
+win32/wazuh-agent.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o ${syscheck_o} ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) $(filter-out os_execd/main.o, ${os_execd_o}) active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o win32/version-app.o
 	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-win32/wazuh-agent-eventchannel.exe: win32/version-app.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o $(filter-out syscheckd/main-event.o, ${syscheck_eventchannel_o}) ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) ${os_execd_o} active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o
+win32/wazuh-agent-eventchannel.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o $(filter-out syscheckd/main-event.o, ${syscheck_eventchannel_o}) ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) $(filter-out os_execd/main.o, ${os_execd_o}) active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o win32/version-app.o
 	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 win32/manage_agents.exe: win32/version-app.o win32/win_service_rk.o ${addagent_o}

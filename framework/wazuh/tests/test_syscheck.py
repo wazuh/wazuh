@@ -191,11 +191,12 @@ def test_syscheck_clear_exception(wdb_close_mock, execute_mock, wdb_init_mock, a
     (['006'], {'version': 'Wazuh v3.9.4'}),
     (['004'], {}),
 ])
+@patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('sqlite3.connect', side_effect=get_fake_syscheck_db('schema_syscheck_test.sql'))
 @patch("wazuh.core.database.isfile", return_value=True)
 @patch("wazuh.syscheck.WazuhDBConnection.execute", return_value=[{'end': '', 'start': ''}])
 @patch('socket.socket.connect')
-def test_syscheck_last_scan(socket_mock, wdb_conn_mock, is_file_mock, db_mock, agent_id, wazuh_version):
+def test_syscheck_last_scan(socket_mock, wdb_conn_mock, is_file_mock, db_mock, exists_mock, agent_id, wazuh_version):
     """Test function `last_scan` from syscheck module.
 
     Parameters
@@ -252,9 +253,10 @@ def test_syscheck_last_scan_internal_error(glob_mock, version):
     (['000'], None,
      {'file': 'HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Services\\W32Time\\SecureTimeLimits\\RunTime'}, True)
 ])
+@patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('socket.socket.connect')
 @patch('wazuh.core.common.WDB_PATH', new=test_data_path)
-def test_syscheck_files(socket_mock, agent_id, select, filters, distinct):
+def test_syscheck_files(socket_mock, exists_mock, agent_id, select, filters, distinct):
     """Test function `files` from syscheck module.
 
     Parameters

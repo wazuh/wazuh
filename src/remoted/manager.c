@@ -142,9 +142,10 @@ STATIC bool group_changed(const char *multi_group);
  * @param agent_id. Agent id to assign a group
  * @param msg. Message from agent to process and validate current configuration files
  * @param group. Name of the found group, it will include the name of the group or 'default' group or NULL if it fails.
+ * @param wdb_sock Wazuh-DB socket.
  * @return OS_SUCCESS if it found or assigned a group, OS_INVALID otherwise
  */
-STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **group);
+STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **group, int* wdb_sock);
 
 /**
  * @brief Send a shared file to an agent
@@ -156,12 +157,6 @@ STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **group);
  * @return OS_SUCCESS if the file was sent, OS_INVALID otherwise
  */
 static int send_file_toagent(const char *agent_id, const char *group, const char *name, const char *sum, char *sharedcfg_dir);
-
-/*
- *  Read queue/agent-groups and delete this group for all the agents.
- *  Returns 0 on success or -1 on error
- */
-static int purge_group(char *group);
 
 /**
  * @brief Validate files to be shared with agents, update invalid file hash table
@@ -385,14 +380,14 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 
             os_strdup(msg, data->message);
 
-            if (OS_SUCCESS == lookfor_agent_group(key->id, data->message, &data->group)) {
+            if (OS_SUCCESS == lookfor_agent_group(key->id, data->message, &data->group, wdb_sock)) {
                 group_t *aux = NULL;
 
                 w_mutex_lock(&files_mutex);
 
                 if (aux = find_group(data->group), !aux || !aux->f_sum) {
                     if (aux = find_multi_group(data->group), !aux || !aux->f_sum) {
-                        merror("No such group '%s' for agent '%s'", data->group, key->id);
+                        mdebug1("No such group '%s' for agent '%s'", data->group, key->id);
                     }
                 }
 
@@ -635,7 +630,7 @@ STATIC void c_multi_group(char *multi_group, file_sum ***_f_sum, char *hash_mult
         group = strtok_r(multi_group, delim, &save_ptr);
 
         /* Delete agent.conf from multi group before appending to it */
-        snprintf(multi_path, PATH_MAX,"%s/%s", MULTIGROUPS_DIR, hash_multigroup);
+        snprintf(multi_path, PATH_MAX, "%s/%s", MULTIGROUPS_DIR, hash_multigroup);
         cldir_ex(multi_path);
 
         while (group != NULL) {
@@ -768,62 +763,36 @@ STATIC void process_groups() {
 }
 
 STATIC void process_multi_groups() {
-    DIR *dp;
     char ** subdir;
-    struct dirent *entry = NULL;
     char path[PATH_MAX + 1];
     OSHashNode *my_node;
     unsigned int i;
 
-    dp = opendir(GROUPS_DIR);
+    int *agents_array = wdb_get_all_agents(false, NULL);
 
-    if (!dp) {
-        mdebug1("Opening directory: '%s': %s", GROUPS_DIR, strerror(errno));
-        return;
-    }
+    if(agents_array) {
+        for(int i = 0; agents_array[i] != -1; i++ ) {
+            cJSON* j_agent_info = wdb_get_agent_info(agents_array[i], NULL);
+            if(j_agent_info) {
+                char* agent_groups = cJSON_GetStringValue(cJSON_GetObjectItem(j_agent_info->child, "group"));
+                // If we don't duplicate the group_hash, the cJSON_Delete() will remove the string pointer from m_hash
+                char* agent_groups_hash = NULL;
+                w_strdup(cJSON_GetStringValue(cJSON_GetObjectItem(j_agent_info->child, "group_hash")), agent_groups_hash);
 
-    while (entry = readdir(dp), entry) {
-        FILE *fp = NULL;
-        char groups_info[OS_SIZE_65536 + 1] = {0};
-        os_sha256 multi_group_hash;
-        char * _hash = NULL;
+                // If it's not a multigroup, skip it
+                if(agent_groups && agent_groups_hash && strstr(agent_groups, ",")) {
+                    if (OSHash_Add_ex(m_hash, agent_groups, agent_groups_hash) != 2) {
+                        os_free(agent_groups_hash);
+                        mdebug2("Couldn't add multigroup '%s' to hash table 'm_hash'", agent_groups);
+                    }
+                } else {
+                    os_free(agent_groups_hash);
+                }
 
-        // Skip "." and ".."
-        if (entry->d_name[0] == '.' && (entry->d_name[1] == '\0' || (entry->d_name[1] == '.' && entry->d_name[2] == '\0'))) {
-            continue;
-        }
-
-        snprintf(path, PATH_MAX + 1, GROUPS_DIR "/%s", entry->d_name);
-
-        fp = fopen(path,"r");
-
-        if (!fp) {
-            mdebug1("At process_multi_groups(): Could not open file '%s'", entry->d_name);
-            continue;
-        } else if (fgets(groups_info, OS_SIZE_65536, fp) != NULL) {
-            // If it's not a multigroup, skip it
-            if (!strstr(groups_info, ",")) {
-                fclose(fp);
-                continue;
-            }
-
-            char *endl = strchr(groups_info, '\n');
-            if (endl) {
-                *endl = '\0';
-            }
-
-            OS_SHA256_String(groups_info, multi_group_hash);
-
-            os_calloc(9, sizeof(char), _hash);
-            snprintf(_hash, 9, "%.8s", multi_group_hash);
-
-            if (OSHash_Add_ex(m_hash, groups_info, _hash) != 2) {
-                os_free(_hash);
-                mdebug2("Couldn't add multigroup '%s' to hash table 'm_hash'", groups_info);
+                cJSON_Delete(j_agent_info);
             }
         }
-
-        fclose(fp);
+        os_free(agents_array);
     }
 
     for (my_node = OSHash_Begin(m_hash, &i); my_node; my_node = OSHash_Next(m_hash, &i, my_node)) {
@@ -835,7 +804,6 @@ STATIC void process_multi_groups() {
             os_strdup(my_node->data, data);
         } else {
             os_free(key);
-            closedir(dp);
             return;
         }
 
@@ -910,7 +878,6 @@ STATIC void process_multi_groups() {
         os_free(data);
     }
 
-    closedir(dp);
     return;
 }
 
@@ -1139,7 +1106,7 @@ STATIC void copy_directory(const char *src_path, const char *dst_path, char *gro
         if (errno != ENOTDIR) {
             if (initial_iteration) {
                 mwarn("Could not open directory '%s'. Group folder was deleted.", src_path);
-                purge_group(group);
+                wdb_remove_group_db(group, NULL);
             } else {
                 mdebug2("Could not open directory '%s': %s (%d)", src_path, strerror(errno), errno);
             }
@@ -1336,26 +1303,17 @@ STATIC bool group_changed(const char *multi_group) {
 }
 
 /* look for agent group */
-STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group)
+STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group, int* wdb_sock)
 {
-    char group[OS_SIZE_65536];
+    char* group = NULL;
     char *end;
-    agent_group *agt_group;
-    char *message;
     char *fmsg;
+    char *message;
 
-    // Get agent group
-    if (agt_group = w_parser_get_agent(agent_id), agt_group) {
-        strncpy(group, agt_group->group, OS_SIZE_65536);
-        group[OS_SIZE_65536 - 1] = '\0';
-        set_agent_group(agent_id, group);
-    } else if (get_agent_group(agent_id, group, OS_SIZE_65536) < 0) {
-        group[0] = '\0';
-    }
-    mdebug2("Agent '%s' group is '%s'", agent_id, group);
-
-    if (group[0]) {
-        os_strdup(group, *r_group);
+    group = wdb_get_agent_group(atoi(agent_id), wdb_sock);
+    if (group) {
+        mdebug2("Agent '%s' group is '%s'", agent_id, group);
+        *r_group = group;
         return OS_SUCCESS;
     }
 
@@ -1406,11 +1364,12 @@ STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group)
         if (strcmp(file, SHAREDCFG_FILENAME) == 0) {
 
             // If group was not got, guess it by matching sum
-            mdebug2("Agent '%s' with group '%s' file '%s' MD5 '%s'", agent_id, group, SHAREDCFG_FILENAME, md5);
+            os_calloc(OS_SIZE_65536 + 1, sizeof(char), group);
+            mdebug2("Agent '%s' with file '%s' MD5 '%s'", agent_id, SHAREDCFG_FILENAME, md5);
 
             w_mutex_lock(&files_mutex);
 
-            if (!guess_agent_group || !find_group_from_file(file, md5, group) || !find_multi_group_from_file(file, md5, group)) {
+            if (!guess_agent_group || (!find_group_from_file(file, md5, group) && !find_multi_group_from_file(file, md5, group))) {
                 // If the group could not be guessed, set to "default"
                 // or if the user requested not to guess the group, through the internal
                 // option 'guess_agent_group', set to "default"
@@ -1419,8 +1378,12 @@ STATIC int lookfor_agent_group(const char *agent_id, char *msg, char **r_group)
 
             w_mutex_unlock(&files_mutex);
 
-            set_agent_group(agent_id, group);
-            os_strdup(group, *r_group);
+            wdb_set_agent_groups_csv(atoi(agent_id),
+                                 group,
+                                 WDB_GROUP_MODE_EMPTY_ONLY,
+                                 w_is_single_node(NULL) ? "synced" : "syncreq",
+                                 NULL);
+            *r_group = group;
 
             mdebug2("Group assigned: '%s'", group);
 
@@ -1608,77 +1571,6 @@ void free_pending_data(pending_data_t *data) {
     os_free(data->message);
     os_free(data->group);
     os_free(data);
-}
-
-/*
- *  Read queue/agent-groups and delete this group for all the agents.
- *  Returns 0 on success or -1 on error
- */
-static int purge_group(char *group) {
-    DIR *dp;
-    char path[PATH_MAX + 1];
-    struct dirent *entry = NULL;
-    FILE *fp = NULL;
-    char groups_info[OS_SIZE_65536 + 1] = {0};
-    char **mgroups;
-    char *new_groups = NULL;
-    unsigned int i;
-
-    dp = opendir(GROUPS_DIR);
-
-    if (!dp) {
-        mdebug1("At purge_group(): Opening directory: '%s': %s", GROUPS_DIR, strerror(errno));
-        return -1;
-    }
-
-    while (entry = readdir(dp), entry) {
-        // Skip "." and ".."
-        if ((strcmp(entry->d_name, ".") == 0) || (strcmp(entry->d_name, "..") == 0)) {
-            continue;
-        }
-
-        new_groups = NULL;
-
-        snprintf(path, PATH_MAX + 1, GROUPS_DIR "/%s", entry->d_name);
-
-        fp = fopen(path,"r+");
-
-        if (!fp) {
-            mdebug1("At purge_group(): Could not open file '%s'", entry->d_name);
-            closedir(dp);
-            return -1;
-        } else if (fgets(groups_info, OS_SIZE_65536, fp) != NULL) {
-            if (strstr(groups_info, group)) {
-                fclose(fp);
-                fp = fopen(path,"w");
-
-                if (!fp) {
-                    mdebug1("At purge_group(): Could not open file '%s'", entry->d_name);
-                    closedir(dp);
-                    return -1;
-                }
-
-                mgroups = OS_StrBreak(MULTIGROUP_SEPARATOR, groups_info, MAX_GROUPS_PER_MULTIGROUP);
-                for (i=0; mgroups[i] != NULL; i++) {
-                    if (!strcmp(mgroups[i], group)) {
-                        continue;
-                    }
-                    wm_strcat(&new_groups, mgroups[i], MULTIGROUP_SEPARATOR);
-                }
-                if (new_groups) {
-                    fwrite(new_groups, 1, strlen(new_groups), fp);
-                }
-                free_strarray(mgroups);
-            }
-        }
-
-        fclose(fp);
-        fp = NULL;
-    }
-    mdebug2("Group '%s' was deleted. Removing this group from all affected agents...", group);
-    closedir(dp);
-    os_free(new_groups);
-    return 0;
 }
 
 /* Should be called before anything here */

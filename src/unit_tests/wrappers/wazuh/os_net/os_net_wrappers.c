@@ -135,6 +135,12 @@ uint32_t __wrap_wnet_order(uint32_t value) {
     return mock();
 }
 
+int __wrap_external_socket_connect(__attribute__((unused)) char *socket_path,
+                                   __attribute__((unused)) int response_timeout) {
+
+    return (int)mock();
+}
+
 int __wrap_get_ipv4_numeric(__attribute__((unused)) const char *address,
                             __attribute__((unused)) struct in_addr *addr) {
     int ret = mock();

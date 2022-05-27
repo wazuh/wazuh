@@ -737,6 +737,20 @@ void test_os_shell_double_escape(void ** state) {
     os_free(ret2);
 }
 
+void test_strarray_size_null() {
+    assert_int_equal(strarray_size(0), 0);
+}
+
+void test_strarray_size_zero() {
+    char *str_array[] = {0};
+    assert_int_equal(strarray_size(str_array), 0);
+}
+
+void test_strarray_size() {
+    char *str_array[] = {"one", "two", "three", "four", "five", 0};
+    assert_int_equal(strarray_size(str_array), 5);
+}
+
 /* Tests */
 
 int main(void) {
@@ -809,6 +823,11 @@ int main(void) {
         cmocka_unit_test(test_os_shell_avoid_escape_all),
         cmocka_unit_test(test_os_shell_escape_backslash),
         cmocka_unit_test(test_os_shell_double_escape),
+
+        cmocka_unit_test(test_strarray_size_null),
+        cmocka_unit_test(test_strarray_size_zero),
+        cmocka_unit_test(test_strarray_size)
     };
+
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

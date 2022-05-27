@@ -353,12 +353,16 @@ def test_DistributedAPI_forward_request_errors(mock_client_execute, mock_get_sol
        new=AsyncMock(side_effect=WazuhInternalError(1001)))
 def test_DistributedAPI_logger():
     """Test custom logger inside DistributedAPI class."""
-    new_logger = logging.getLogger('dapi_test')
-    fh = logging.FileHandler('/tmp/dapi_test.log')
-    fh.setLevel(logging.DEBUG)
-    new_logger.addHandler(fh)
-    dapi_kwargs = {'f': agent.get_agents_summary_status, 'logger': new_logger}
-    raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1001)
+    log_file_path = '/tmp/dapi_test.log'
+    try:
+        new_logger = logging.getLogger('dapi_test')
+        fh = logging.FileHandler(log_file_path)
+        fh.setLevel(logging.DEBUG)
+        new_logger.addHandler(fh)
+        dapi_kwargs = {'f': agent.get_agents_summary_status, 'logger': new_logger}
+        raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1001)
+    finally:
+        os.remove(log_file_path)
 
 
 @patch('wazuh.core.cluster.local_client.LocalClient.send_file', new=AsyncMock(return_value='{"Testing": 1}'))
@@ -491,13 +495,14 @@ def test_DistributedAPI_check_wazuh_status_exception(node_info_mock, status_valu
             assert e._extra_message['not_ready_daemons'] == extra_message
 
 
-@patch("asyncio.get_event_loop")
-def test_APIRequestQueue_init(loop_mock):
+@patch("asyncio.Queue")
+def test_APIRequestQueue_init(queue_mock):
     """Test `APIRequestQueue` constructor."""
     server = DistributedAPI(f=agent.get_agents_summary_status, logger=logger)
     api_request_queue = APIRequestQueue(server=server)
     api_request_queue.add_request(b'testing')
     assert api_request_queue.server == server
+    queue_mock.assert_called_once()
 
 
 @patch("wazuh.core.cluster.common.import_module", return_value="os.path")
@@ -534,8 +539,8 @@ async def test_APIRequestQueue_run(loop_mock, import_module_mock):
         apirequest.request_queue = RequestQueueMock()
         with pytest.raises(Exception, match=".*break while true.*"):
             await apirequest.run()
-            logger_mock.assert_called_once_with("Error in DAPI. The destination node is "
-                                                "not connected or does not exist: break while true.")
+        logger_mock.assert_called_once_with("Error in DAPI request. The destination node is "
+                                            "not connected or does not exist: 'wazuh'.")
 
         node = NodeMock()
         with patch.object(node, "send_string", return_value=b"noerror"):
@@ -589,11 +594,11 @@ async def test_SendSyncRequestQueue_run(loop_mock):
         sendsync.request_queue = RequestQueueMock()
         with pytest.raises(Exception, match=".*break while true.*"):
             await sendsync.run()
-            logger_mock.assert_called_with("Error in Sendsync. The destination node is "
-                                           "not connected or does not exist: break while true.")
+        logger_mock.assert_called_once_with("Error in Sendsync. The destination node is "
+                                            "not connected or does not exist: 'wazuh'.")
 
         node = NodeMock()
-        with patch.object(node, "send_request", Exception("break while true")) as node_mock:
+        with patch.object(node, "send_request", Exception("break while true")):
             with patch("wazuh.core.cluster.dapi.dapi.wazuh_sendsync", side_effect=Exception("break while true")):
                 server.clients = {"wazuh": node}
                 sendsync.logger = logging.getLogger("sendsync")
@@ -603,7 +608,6 @@ async def test_SendSyncRequestQueue_run(loop_mock):
             with patch("wazuh.core.cluster.dapi.dapi.wazuh_sendsync", side_effect="noerror"):
                 with pytest.raises(Exception):
                     await sendsync.run()
-                    node_mock.assert_called_with(b"sendsyn_res", "request_queue*test ")
 
         with patch.object(node, "send_request", return_value=WazuhError(1000)):
             with patch("wazuh.core.cluster.dapi.dapi.wazuh_sendsync", return_value="valid"):
