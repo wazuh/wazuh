@@ -119,4 +119,41 @@ WazuhDB::parseResult(const std::string& result) const noexcept
 
     return std::make_tuple(code, std::move(payload));
 }
+
+std::string WazuhDB::tryQuery(const std::string& query,
+                              const unsigned int attempts) noexcept
+{
+
+    std::string result {};
+
+    for (unsigned int i = 0; i < attempts; i++)
+    {
+        try
+        {
+            result = this->query(query);
+            break;
+        }
+        catch (const std::exception& e)
+        {
+            WAZUH_LOG_ERROR("wdb: tryQuery failed: {}", e.what());
+        }
+    }
+
+    return result;
+}
+
+std::tuple<QueryResultCodes, std::optional<std::string>>
+WazuhDB::queryAndParseResult(const std::string& query)
+{
+    auto result {this->query(query)};
+    return this->parseResult(result);
+}
+
+std::tuple<QueryResultCodes, std::optional<std::string>>
+WazuhDB::tryQueryAndParseResult(const std::string& query,
+                                const unsigned int attempts) noexcept
+{
+    auto result {tryQuery(query, attempts)};
+    return parseResult(result);
+}
 } // namespace wazuhdb
