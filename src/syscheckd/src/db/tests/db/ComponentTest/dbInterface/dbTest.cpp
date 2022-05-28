@@ -86,7 +86,6 @@ TEST_F(DBTestFixture, TestFimSyncPushMsg)
     const auto test{R"(fim_file no_data {"begin":"a2fbef8f81af27155dcee5e3927ff6243593b91a","end":"a2fbef8f81af27155dcee5e3927ff6243593b91b","id":1})"};
     const auto fileFIMTest { std::make_unique<FileItem>(insertFileStatement) };
     ASSERT_EQ(fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added), FIMDB_OK);
-    EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG_VERBOSE, std::string("Message pushed: ") + test)).Times(1);
     EXPECT_CALL(*mockLog, loggingFunction(LOG_INFO, "FIM sync module started.")).Times(1);
     EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG, "Executing FIM sync.")).Times(1);
     EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG, "Finished FIM sync.")).Times(1);
@@ -245,4 +244,3 @@ TEST(DBTest, TestValidFimLimit)
     delete mockLog;
     delete mockSync;
 }
-

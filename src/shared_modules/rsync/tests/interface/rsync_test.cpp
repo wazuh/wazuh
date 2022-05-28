@@ -224,7 +224,10 @@ TEST_F(RSyncTest, startSyncWithIntegrityClear)
                 }
             })"
     };
+
     const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSelect{ cJSON_Parse(startConfigStmt) };
+    std::atomic<uint64_t> messageCounter { 0 };
+    constexpr auto TOTAL_EXPECTED_MESSAGES { 1ull };
 
     const auto checkExpected
     {
@@ -238,6 +241,7 @@ TEST_F(RSyncTest, startSyncWithIntegrityClear)
             if (std::string::npos != firstSegment && std::string::npos != secondSegment)
             {
                 retVal = ::testing::AssertionSuccess();
+                ++messageCounter;
             }
 
             return retVal;
@@ -254,6 +258,7 @@ TEST_F(RSyncTest, startSyncWithIntegrityClear)
     sync_callback_data_t callbackData { callbackRSyncWrapper, &callbackWrapper };
 
     ASSERT_EQ(0, rsync_start_sync(rsyncHandle, dbsyncHandle, jsSelect.get(), callbackData));
+    EXPECT_EQ(messageCounter.load(), TOTAL_EXPECTED_MESSAGES);
 }
 
 TEST_F(RSyncTest, startSyncIntegrityGlobal)
@@ -307,7 +312,10 @@ TEST_F(RSyncTest, startSyncIntegrityGlobal)
                 }
             })"
     };
+
     const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSelect{ cJSON_Parse(startConfigStmt) };
+    std::atomic<uint64_t> messageCounter { 0 };
+    constexpr auto TOTAL_EXPECTED_MESSAGES { 1ull };
 
     const auto checkExpected
     {
@@ -321,6 +329,7 @@ TEST_F(RSyncTest, startSyncIntegrityGlobal)
             if (std::string::npos != firstSegment && std::string::npos != secondSegment)
             {
                 retVal = ::testing::AssertionSuccess();
+                ++messageCounter;
             }
 
             return retVal;
@@ -339,6 +348,7 @@ TEST_F(RSyncTest, startSyncIntegrityGlobal)
     ASSERT_EQ(0, rsync_start_sync(rsyncHandle, dbsyncHandle, jsSelect.get(), callbackData));
 
     dbsync_teardown();
+    EXPECT_EQ(messageCounter.load(), TOTAL_EXPECTED_MESSAGES);
 }
 TEST_F(RSyncTest, registerSyncId)
 {
@@ -739,6 +749,9 @@ TEST_F(RSyncTest, startSyncWithIntegrityClearCPP)
             })"
     };
 
+    std::atomic<uint64_t> messageCounter{0};
+    constexpr auto TOTAL_EXPECTED_MESSAGES { 1ull };
+
     const auto checkExpected
     {
         [&](const std::string & payload) -> ::testing::AssertionResult
@@ -751,6 +764,7 @@ TEST_F(RSyncTest, startSyncWithIntegrityClearCPP)
             if (std::string::npos != firstSegment && std::string::npos != secondSegment)
             {
                 retVal = ::testing::AssertionSuccess();
+                ++messageCounter;
             }
 
             return retVal;
@@ -774,6 +788,7 @@ TEST_F(RSyncTest, startSyncWithIntegrityClearCPP)
     };
 
     EXPECT_NO_THROW(remoteSync->startSync(dbSync->handle(), nlohmann::json::parse(startConfigStmt), callbackData));
+    EXPECT_EQ(messageCounter.load(), TOTAL_EXPECTED_MESSAGES);
 }
 
 TEST_F(RSyncTest, startSyncWithIntegrityClearCPPSelectByInode)
