@@ -607,6 +607,8 @@ void w_inc_agent_syscollector_deprecated_osinfo_time(struct timeval time);
 
 void w_inc_agent_syscollector_deprecated_network_address_time(struct timeval time);
 
+void w_inc_agent_syscollector_deprecated_network_protocol_time(struct timeval time);
+
 void w_inc_agent_syscollector_deprecated_network_info_time(struct timeval time);
 
 void w_inc_agent_sql_time(struct timeval time);
@@ -628,6 +630,8 @@ void w_inc_agent_dbsync_time(struct timeval time);
 void w_inc_agent_sca_time(struct timeval time);
 
 void w_inc_agent_vul_detector_time(struct timeval time);
+
+void w_inc_mitre_sql_time(struct timeval time);
 
 void w_inc_global_agent_insert_agent_time(struct timeval time);
 
