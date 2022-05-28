@@ -387,7 +387,7 @@ void * run_worker(__attribute__((unused)) void * args) {
             *response = '\0';
 
             if (buffer[0] == '{') {
-                wdbcom_dispatch(buffer, &response);
+                wdbcom_dispatch(buffer, response);
             } else {
                 wdb_parse(buffer, response, peer);
             }

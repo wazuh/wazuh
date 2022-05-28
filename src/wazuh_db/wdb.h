@@ -2425,6 +2425,6 @@ cJSON* wdb_get_config();
  * @param request message received from api
  * @param output the response to send
  */
-void wdbcom_dispatch(char* request, char** output);
+void wdbcom_dispatch(char* request, char* output);
 
 #endif
