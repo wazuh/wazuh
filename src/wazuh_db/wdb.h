@@ -2419,4 +2419,12 @@ cJSON* wdb_get_internal_config();
  */
 cJSON* wdb_get_config();
 
+/**
+ * @brief Check and execute the input request
+ *
+ * @param request message received from api
+ * @param output the response to send
+ */
+void wdbcom_dispatch(char* request, char** output);
+
 #endif

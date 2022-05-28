@@ -1060,7 +1060,7 @@ int wdb_parse(char * input, char * output, int peer) {
                 result = wdb_parse_global_select_group_belong(wdb, next, output);
                 gettimeofday(&end, 0);
                 timersub(&end, &begin, &diff);
-                void w_inc_global_belongs_select_group_belong_time(diff);
+                w_inc_global_belongs_select_group_belong_time(diff);
             }
         } else if (strcmp(query, "get-group-agents") == 0) {
             w_inc_global_belongs_get_group_agent();
@@ -1147,7 +1147,7 @@ int wdb_parse(char * input, char * output, int peer) {
                 w_inc_global_agent_sync_agent_info_set_time(diff);
             }
         } else if (strcmp(query, "get-groups-integrity") == 0) {
-            void w_inc_global_agent_get_groups_integrity();
+            w_inc_global_agent_get_groups_integrity();
             if (!next) {
                 mdebug1("Global DB Invalid DB query syntax for get-groups-integrity.");
                 mdebug2("Global DB query error near: %s", query);

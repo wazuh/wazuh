@@ -11,7 +11,6 @@
 
 #include "wdb.h"
 #include <os_net/os_net.h>
-#include "wdb_com.h"
 
 static void wdb_help() __attribute__ ((noreturn));
 static void handler(int signum);
@@ -388,19 +387,19 @@ void * run_worker(__attribute__((unused)) void * args) {
             *response = '\0';
 
             if (buffer[0] == '{') {
-                wdbcom_dispatch(buffer, response);
+                wdbcom_dispatch(buffer, &response);
             } else {
                 wdb_parse(buffer, response, peer);
             }
             if (length = strlen(response), length > 0) {
-                    if (terminal && length < OS_MAXSTR - 1) {
-                        response[length++] = '\n';
-                    }
-                    if (OS_SendSecureTCP(peer,length,response) < 0) {
-                        merror("at run_worker(): OS_SendSecureTCP(%d): %s (%d)",
-                                peer, strerror(errno), errno);
-                    }
+                if (terminal && length < OS_MAXSTR - 1) {
+                    response[length++] = '\n';
                 }
+                if (OS_SendSecureTCP(peer, length, response) < 0) {
+                    merror("at run_worker(): OS_SendSecureTCP(%d): %s (%d)",
+                            peer, strerror(errno), errno);
+                }
+            }
             break;
         }
 

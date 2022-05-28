@@ -22,15 +22,15 @@
 
 #define timeval_to_milis(time) ((time.tv_sec * (uint64_t)1000) + (time.tv_usec / 1000))
 
-STATIC const uint64_t get_wazuhdb_time(db_stats_t stats);
+STATIC uint64_t get_wazuhdb_time(db_stats_t stats);
 
-STATIC const uint64_t get_agent_time(db_stats_t stats);
+STATIC uint64_t get_agent_time(db_stats_t stats);
 
-STATIC const uint64_t get_global_time(db_stats_t stats);
+STATIC uint64_t get_global_time(db_stats_t stats);
 
-STATIC const uint64_t get_task_time(db_stats_t stats);
+STATIC uint64_t get_task_time(db_stats_t stats);
 
-STATIC const uint64_t get_time_total(db_stats_t stats);
+STATIC uint64_t get_time_total(db_stats_t stats);
 
 pthread_mutex_t db_stats_t_mutex = PTHREAD_MUTEX_INITIALIZER;
 db_stats_t wdb_stats = {0};
@@ -1312,7 +1312,7 @@ cJSON* wdb_create_state_json() {
     return wdb_state_json;
 }
 
-STATIC const uint64_t get_wazuhdb_time(db_stats_t stats){
+STATIC uint64_t get_wazuhdb_time(db_stats_t stats){
     struct timeval task_time;
 
     timeradd(&stats.queries_breakdown.wazuhdb_breakdown.get_config_time, &stats.queries_breakdown.wazuhdb_breakdown.remove_time, &task_time);
@@ -1320,7 +1320,7 @@ STATIC const uint64_t get_wazuhdb_time(db_stats_t stats){
     return timeval_to_milis(task_time);
 }
 
-STATIC const uint64_t get_agent_time(db_stats_t stats){
+STATIC uint64_t get_agent_time(db_stats_t stats){
     struct timeval task_time;
 
     timeradd(&stats.queries_breakdown.agent_breakdown.sql_time, &stats.queries_breakdown.agent_breakdown.remove_time, &task_time);
@@ -1357,7 +1357,7 @@ STATIC const uint64_t get_agent_time(db_stats_t stats){
     return timeval_to_milis(task_time);
 }
 
-STATIC const uint64_t get_global_time(db_stats_t stats){
+STATIC uint64_t get_global_time(db_stats_t stats){
     struct timeval task_time;
 
     timeradd(&stats.queries_breakdown.global_breakdown.sql_time, &stats.queries_breakdown.global_breakdown.backup_time, &task_time);
@@ -1394,7 +1394,7 @@ STATIC const uint64_t get_global_time(db_stats_t stats){
     return timeval_to_milis(task_time);
 }
 
-STATIC const uint64_t get_task_time(db_stats_t stats){
+STATIC uint64_t get_task_time(db_stats_t stats){
     struct timeval task_time;
 
     timeradd(&stats.queries_breakdown.task_breakdown.sql_time, &stats.queries_breakdown.task_breakdown.upgrade.upgrade_time, &task_time);
@@ -1409,6 +1409,6 @@ STATIC const uint64_t get_task_time(db_stats_t stats){
     return timeval_to_milis(task_time);
 }
 
-STATIC const uint64_t get_time_total(db_stats_t stats){
+STATIC uint64_t get_time_total(db_stats_t stats){
     return get_task_time(stats) + get_global_time(stats) + get_agent_time(stats) + get_wazuhdb_time(stats) + timeval_to_milis(stats.queries_breakdown.mitre_breakdown.sql_time);
 }
