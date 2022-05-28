@@ -16,6 +16,7 @@
 #include "dbsync.hpp"
 #include "makeUnique.h"
 #include "test_inputs.h"
+#include "cjsonSmartDeleter.hpp"
 
 constexpr auto DATABASE_TEMP {"TEMP.db"};
 constexpr auto DATABASE_MEMORY {":memory:"};
@@ -28,38 +29,14 @@ class CallbackMock
         MOCK_METHOD(void, callbackMock, (ReturnTypeCallback result_type, const nlohmann::json&), ());
 };
 
-struct CJsonDeleter final
-{
-    void operator()(char* json)
-    {
-        cJSON_free(json);
-    }
-};
-
 static void callback(const ReturnTypeCallback type,
                      const cJSON* json,
                      void* ctx)
 {
     CallbackMock* wrapper { reinterpret_cast<CallbackMock*>(ctx)};
-    const std::unique_ptr<char, CJsonDeleter> spJsonBytes{ cJSON_PrintUnformatted(json) };
+    const std::unique_ptr<char, CJsonSmartFree> spJsonBytes{ cJSON_PrintUnformatted(json) };
     wrapper->callbackMock(type, nlohmann::json::parse(spJsonBytes.get()));
 }
-
-struct smartDeleterJson
-{
-    void operator()(cJSON* data)
-    {
-        cJSON_Delete(data);
-    }
-};
-
-struct CharDeleter
-{
-    void operator()(char* json)
-    {
-        cJSON_free(json);
-    }
-};
 
 static void logFunction(const char* msg)
 {
@@ -116,7 +93,7 @@ TEST_F(DBSyncTest, createTxn)
     const std::unique_ptr<DummyContext> dummyCtx { std::make_unique<DummyContext>()};
     const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsonTables { cJSON_Parse(tables) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsonTables { cJSON_Parse(tables) };
 
     callback_data_t callbackData { callback, dummyCtx.get() };
 
@@ -130,7 +107,7 @@ TEST_F(DBSyncTest, createTxnNullptr)
     const auto tables { R"({"table": "processes""})" };
     const std::unique_ptr<DummyContext> dummyCtx { std::make_unique<DummyContext>()};
     const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsonTables { cJSON_Parse(tables) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsonTables { cJSON_Parse(tables) };
 
     callback_data_t callbackData { callback, dummyCtx.get() };
     callback_data_t callbackDataNullptr { callback, nullptr };
@@ -146,7 +123,7 @@ TEST_F(DBSyncTest, createTxnNullptr)
 TEST_F(DBSyncTest, syncTxnRowNullptr)
 {
     const auto insertionSqlStmt1{ R"({"table":"processes","data":[{"pid":7,"name":"Guake"}]})"}; // Insert
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert1{ cJSON_Parse(insertionSqlStmt1) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert1{ cJSON_Parse(insertionSqlStmt1) };
     ASSERT_NE(0, dbsync_sync_txn_row(nullptr, jsInsert1.get()));
 }
 
@@ -207,7 +184,7 @@ TEST_F(DBSyncTest, dbsyncAddTableRelationship)
         }
     )"};
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsertProcess{ cJSON_Parse(insertDataProcess) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsertProcess{ cJSON_Parse(insertDataProcess) };
     EXPECT_EQ(0, dbsync_insert_data(handle, jsInsertProcess.get()));
 
     const auto insertDataSocket{ R"(
@@ -222,7 +199,7 @@ TEST_F(DBSyncTest, dbsyncAddTableRelationship)
         }
     )"};
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsertSocket{ cJSON_Parse(insertDataSocket) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsertSocket{ cJSON_Parse(insertDataSocket) };
     EXPECT_EQ(0, dbsync_insert_data(handle, jsInsertSocket.get()));
 
     const auto relationshipJson{ R"(
@@ -240,7 +217,7 @@ TEST_F(DBSyncTest, dbsyncAddTableRelationship)
             ]
         })"};
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsRelationship{ cJSON_Parse(relationshipJson) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsRelationship{ cJSON_Parse(relationshipJson) };
     EXPECT_EQ(0, dbsync_add_table_relationship(handle, jsRelationship.get()));
 
 
@@ -256,7 +233,7 @@ TEST_F(DBSyncTest, dbsyncAddTableRelationship)
             }
         })"};
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsDeleteProcess{ cJSON_Parse(deleteProcess) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsDeleteProcess{ cJSON_Parse(deleteProcess) };
     EXPECT_EQ(0, dbsync_delete_rows(handle, jsDeleteProcess.get()));
 
 }
@@ -283,7 +260,7 @@ TEST_F(DBSyncTest, AddTableRelationshipIncorrectJSON)
             ]
         })"};
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsAddRelationshipIncorrectJson{ cJSON_Parse(addRelationshipIncorrectJson) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsAddRelationshipIncorrectJson{ cJSON_Parse(addRelationshipIncorrectJson) };
     EXPECT_NE(0, dbsync_add_table_relationship(handle, jsAddRelationshipIncorrectJson.get()));
 }
 TEST_F(DBSyncTest, InsertData)
@@ -294,7 +271,7 @@ TEST_F(DBSyncTest, InsertData)
     const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert{ cJSON_Parse(insertionSqlStmt) };
 
     EXPECT_EQ(0, dbsync_insert_data(handle, jsInsert.get()));
 }
@@ -309,7 +286,7 @@ TEST_F(DBSyncTest, InsertDataWithCompoundPKs)
     const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert{ cJSON_Parse(insertionSqlStmt) };
 
     EXPECT_EQ(0, dbsync_insert_data(handle, jsInsert.get()));
 }
@@ -322,7 +299,7 @@ TEST_F(DBSyncTest, InsertMoreCompleteData)
     const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert{ cJSON_Parse(insertionSqlStmt) };
 
     EXPECT_EQ(0, dbsync_insert_data(handle, jsInsert.get()));
 }
@@ -335,7 +312,7 @@ TEST_F(DBSyncTest, InsertDataWithWrongColumnType)
     const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert{ cJSON_Parse(insertionSqlStmt) };
 
     EXPECT_NE(0, dbsync_insert_data(handle, jsInsert.get()));
 }
@@ -349,8 +326,8 @@ TEST_F(DBSyncTest, InsertDataWithInvalidInput)
 
     const auto inputNoData{ R"({"table":"processes"})"};
     const auto inputNoTable{ R"({"data":[{"pid":4,"name":"System", "tid":101}]})"};
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInputNoData{ cJSON_Parse(inputNoData) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInputNoTable{ cJSON_Parse(inputNoTable) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInputNoData{ cJSON_Parse(inputNoData) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInputNoTable{ cJSON_Parse(inputNoTable) };
 
     EXPECT_NE(0, dbsync_insert_data(handle, jsInputNoData.get()));
     EXPECT_NE(0, dbsync_insert_data(handle, jsInputNoTable.get()));
@@ -374,7 +351,7 @@ TEST_F(DBSyncTest, InsertDataInvalidHandle)
     const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert{ cJSON_Parse(insertionSqlStmt) };
 
     EXPECT_NE(0, dbsync_insert_data(reinterpret_cast<void*>(0xffffffff), jsInsert.get()));
 }
@@ -396,9 +373,9 @@ TEST_F(DBSyncTest, GetDeletedRowsOnlyPKs)
     auto syncSqlStmt2 = SyncRowQuery::builder().table("processes")
                         .data(nlohmann::json::parse(R"({"pid":7,"name":"Guake","euser":"wazuh"})"))
                         .query();
-    const std::unique_ptr<cJSON, smartDeleterJson> jsonTables { cJSON_Parse(table) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSync1 { cJSON_Parse(syncSqlStmt1.dump().c_str()) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSync2{ cJSON_Parse(syncSqlStmt2.dump().c_str()) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsonTables { cJSON_Parse(table) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSync1 { cJSON_Parse(syncSqlStmt1.dump().c_str()) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSync2{ cJSON_Parse(syncSqlStmt2.dump().c_str()) };
     const std::unique_ptr<DummyContext> dummyCtx { std::make_unique<DummyContext>()};
 
     CallbackMock wrapper;
@@ -432,10 +409,10 @@ TEST_F(DBSyncTest, GetDeletedRowsAllAttributes)
                         .data(nlohmann::json::parse(R"({"pid":7,"name":"Guake","euser":"wazuh"})"))
                         .query();
     const auto deletedOptions = GetDeletedQuery::builder().allColumns().query();
-    const std::unique_ptr<cJSON, smartDeleterJson> jsonDeletedOptions { cJSON_Parse(deletedOptions.dump().c_str()) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsonTables { cJSON_Parse(table) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSync1 { cJSON_Parse(syncSqlStmt1.dump().c_str()) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSync2{ cJSON_Parse(syncSqlStmt2.dump().c_str()) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsonDeletedOptions { cJSON_Parse(deletedOptions.dump().c_str()) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsonTables { cJSON_Parse(table) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSync1 { cJSON_Parse(syncSqlStmt1.dump().c_str()) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSync2{ cJSON_Parse(syncSqlStmt2.dump().c_str()) };
     const std::unique_ptr<DummyContext> dummyCtx { std::make_unique<DummyContext>()};
 
     CallbackMock wrapper;
@@ -466,7 +443,7 @@ TEST_F(DBSyncTest, UpdateData)
     const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert{ cJSON_Parse(insertionSqlStmt) };
 
     cJSON* jsResponse { nullptr };
 
@@ -484,8 +461,8 @@ TEST_F(DBSyncTest, UpdateDataBadInputs)
     const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsertWithoutTable{ cJSON_Parse(badSqlStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsertWithoutTable{ cJSON_Parse(badSqlStmt) };
 
     cJSON* jsResponse { nullptr };
 
@@ -506,7 +483,7 @@ TEST_F(DBSyncTest, UpdateDataCb)
     const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert{ cJSON_Parse(insertionSqlStmt) };
 
     CallbackMock wrapper;
     callback_data_t callbackData { callback, &wrapper };
@@ -522,7 +499,7 @@ TEST_F(DBSyncTest, UpdateDataCbBadInputs)
     const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert{ cJSON_Parse(insertionSqlStmt) };
 
     callback_data_t callbackData { nullptr, nullptr };
 
@@ -541,7 +518,7 @@ TEST_F(DBSyncTest, UpdateDataCbEmptyInputs)
     const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert{ cJSON_Parse(insertionSqlStmt) };
 
     CallbackMock wrapper;
     callback_data_t callbackData { callback, &wrapper };
@@ -560,7 +537,7 @@ TEST(DBSyncTestInit, InitializeWithNullFnct)
     const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert{ cJSON_Parse(insertionSqlStmt) };
 
     cJSON* jsResponse { nullptr };
 
@@ -589,7 +566,7 @@ TEST_F(DBSyncTest, UpdateDataWithLessFields)
     const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert{ cJSON_Parse(insertionSqlStmt) };
 
     cJSON* jsResponse { nullptr };
 
@@ -615,7 +592,7 @@ TEST_F(DBSyncTest, TryToInsertMoreThanMaxRows)
     const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert{ cJSON_Parse(insertionSqlStmt) };
 
     EXPECT_EQ(0, dbsync_set_table_max_rows(handle, "processes", 1));
     EXPECT_NE(0, dbsync_insert_data(handle, jsInsert.get()));
@@ -635,7 +612,7 @@ TEST_F(DBSyncTest, TryToInsertMoreThanMaxRows)
             }
         })"};
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsDeleteProcess{ cJSON_Parse(deleteProcess) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsDeleteProcess{ cJSON_Parse(deleteProcess) };
     EXPECT_EQ(0, dbsync_delete_rows(handle, jsDeleteProcess.get()));
 
     EXPECT_EQ(0, dbsync_insert_data(handle, jsInsert.get()));
@@ -653,11 +630,11 @@ TEST_F(DBSyncTest, TryToUpdateMaxRowsElements)
     EXPECT_EQ(0, dbsync_set_table_max_rows(handle, "processes", 2));
     EXPECT_NE(0, dbsync_set_table_max_rows(handle, "proceses", 2));
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert{ cJSON_Parse(insertionSqlStmt) };
     EXPECT_EQ(0, dbsync_insert_data(handle, jsInsert.get()));
 
     cJSON* jsResponse { nullptr };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate{ cJSON_Parse(updateSqlStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsUpdate{ cJSON_Parse(updateSqlStmt) };
     EXPECT_EQ(0, dbsync_update_with_snapshot(handle, jsUpdate.get(), &jsResponse));
     EXPECT_NE(nullptr, jsResponse);
     EXPECT_NO_THROW(dbsync_free_result(&jsResponse));
@@ -674,11 +651,11 @@ TEST_F(DBSyncTest, TryToUpdateMoreThanMaxRowsElements)
 
     EXPECT_EQ(0, dbsync_set_table_max_rows(handle, "processes", 2));
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert{ cJSON_Parse(insertionSqlStmt) };
     EXPECT_EQ(0, dbsync_insert_data(handle, jsInsert.get()));
 
     cJSON* jsResponse { nullptr };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate{ cJSON_Parse(updateSqlStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsUpdate{ cJSON_Parse(updateSqlStmt) };
     EXPECT_NE(0, dbsync_update_with_snapshot(handle, jsUpdate.get(), &jsResponse));
     EXPECT_EQ(nullptr, jsResponse);
 
@@ -722,10 +699,10 @@ TEST_F(DBSyncTest, syncRowInsertAndModified)
     const auto updateSqlStmt2{ R"({"table":"processes","data":[{"pid":4,"name":"Systemmm", "tid":105}]})"};  // Update
     const auto insertSqlStmt3{ R"({"table":"processes","data":[{"pid":7,"name":"Guake"}]})"};                // Insert
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert1{ cJSON_Parse(insertionSqlStmt1) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate1{ cJSON_Parse(updateSqlStmt1) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate2{ cJSON_Parse(updateSqlStmt2) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert2{ cJSON_Parse(insertSqlStmt3) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert1{ cJSON_Parse(insertionSqlStmt1) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsUpdate1{ cJSON_Parse(updateSqlStmt1) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsUpdate2{ cJSON_Parse(updateSqlStmt2) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert2{ cJSON_Parse(insertSqlStmt3) };
 
     callback_data_t callbackData { callback, &wrapper };
     callback_data_t callbackEmpty { nullptr, nullptr };
@@ -768,9 +745,9 @@ TEST_F(DBSyncTest, syncRowInsertAndModifiedWithOldData)
                         .returnOldData()
                         .data(nlohmann::json::parse(R"({"pid":4,"name":"Systemmm", "tid":105})"));
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert1{ cJSON_Parse(insertionQuery1.query().dump().c_str()) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate1{ cJSON_Parse(updateQuery1.query().dump().c_str()) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate2{ cJSON_Parse(updateQuery2.query().dump().c_str()) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert1{ cJSON_Parse(insertionQuery1.query().dump().c_str()) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsUpdate1{ cJSON_Parse(updateQuery1.query().dump().c_str()) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsUpdate2{ cJSON_Parse(updateQuery2.query().dump().c_str()) };
 
 
     EXPECT_EQ(0, dbsync_sync_row(handle, jsInsert1.get(), callbackData));  // Expect an insert event
@@ -800,10 +777,10 @@ TEST_F(DBSyncTest, syncRowIgnoreFields)
                         .ignoreColumn("tid")
                         .data(nlohmann::json::parse(R"({"pid":4,"name":"SystemIsDown", "tid":106})"));
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert1{ cJSON_Parse(insertionQuery.query().dump().c_str()) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate1{ cJSON_Parse(updateQuery1.query().dump().c_str()) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate2{ cJSON_Parse(updateQuery2.query().dump().c_str()) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsUpdate3{ cJSON_Parse(updateQuery3.query().dump().c_str()) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert1{ cJSON_Parse(insertionQuery.query().dump().c_str()) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsUpdate1{ cJSON_Parse(updateQuery1.query().dump().c_str()) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsUpdate2{ cJSON_Parse(updateQuery2.query().dump().c_str()) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsUpdate3{ cJSON_Parse(updateQuery3.query().dump().c_str()) };
 
 
     CallbackMock wrapper;
@@ -831,8 +808,8 @@ TEST_F(DBSyncTest, syncRowInvalidData)
     const auto inputNoData{ R"({"table":"processes"})"};
     const auto inputNoTable{ R"({"data":[{"pid":4,"name":"System", "tid":101}]})"};
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInputNoData{ cJSON_Parse(inputNoData) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInputNoTable{ cJSON_Parse(inputNoTable) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInputNoData{ cJSON_Parse(inputNoData) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInputNoTable{ cJSON_Parse(inputNoTable) };
 
     callback_data_t callbackData { callback, nullptr };
 
@@ -865,8 +842,8 @@ TEST_F(DBSyncTest, selectRowsDataAllNoFilter)
                                                                  {"pid":125,"name":"System3", "tid":102, "cpu_percentage":90.3},
                                                                  {"pid":300,"name":"System5", "tid":102, "cpu_percentage":30.5}]})"}; // Insert
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSelectData{ cJSON_Parse(selectData) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSelectData{ cJSON_Parse(selectData) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert{ cJSON_Parse(insertionSqlStmt) };
 
     EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"pid":4,"name":"System1", "tid":100, "cpu_percentage":10.7})"))).Times(1);
     EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"pid":115,"name":"System2", "tid":101, "cpu_percentage":55.4})"))).Times(1);
@@ -904,8 +881,8 @@ TEST_F(DBSyncTest, selectRowsDataAllFilterPid)
                                                                  {"pid":125,"name":"System3", "tid":102},
                                                                  {"pid":300,"name":"System5", "tid":102}]})"}; // Insert
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSelectData{ cJSON_Parse(selectData) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSelectData{ cJSON_Parse(selectData) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert{ cJSON_Parse(insertionSqlStmt) };
 
     EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"pid":125,"name":"System3", "tid":102})"))).Times(1);
     EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"pid":300,"name":"System5", "tid":102})"))).Times(1);
@@ -940,8 +917,8 @@ TEST_F(DBSyncTest, selectRowsDataAllFilterPidOr)
                                                                  {"pid":125,"name":"System3", "tid":102},
                                                                  {"pid":300,"name":"System5", "tid":102}]})"}; // Insert
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSelectData{ cJSON_Parse(selectData) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSelectData{ cJSON_Parse(selectData) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert{ cJSON_Parse(insertionSqlStmt) };
 
     EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"pid":120,"name":"System3", "tid":101})"))).Times(1);
     EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"pid":300,"name":"System5", "tid":102})"))).Times(1);
@@ -976,8 +953,8 @@ TEST_F(DBSyncTest, selectRowsDataAllFilterPidBetween)
                                                                  {"pid":125,"name":"System3", "tid":102},
                                                                  {"pid":300,"name":"System5", "tid":102}]})"}; // Insert
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSelectData{ cJSON_Parse(selectData) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSelectData{ cJSON_Parse(selectData) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert{ cJSON_Parse(insertionSqlStmt) };
 
     EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"pid":120,"name":"System3", "tid":101})"))).Times(1);
     EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"pid":125,"name":"System3", "tid":102})"))).Times(1);
@@ -1013,8 +990,8 @@ TEST_F(DBSyncTest, selectCount)
                                                                  {"pid":125,"name":"System3", "tid":102},
                                                                  {"pid":300,"name":"System5", "tid":102}]})"}; // Insert
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSelectData{ cJSON_Parse(selectData) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSelectData{ cJSON_Parse(selectData) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert{ cJSON_Parse(insertionSqlStmt) };
 
     EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"count":5})"))).Times(1);
 
@@ -1053,9 +1030,9 @@ TEST_F(DBSyncTest, selectInnerJoin)
                                                                {"inode":101,"path":"/usr/bin/System2", "size":654321},
                                                                {"inode":102,"path":"/usr/bin/System3", "size":321654}]})"}; // Insert files
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSelectData{ cJSON_Parse(selectData) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsertPids{ cJSON_Parse(insertPidsSqlStmt) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsertFiles{ cJSON_Parse(insertFilesSqlStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSelectData{ cJSON_Parse(selectData) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsertPids{ cJSON_Parse(insertPidsSqlStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsertFiles{ cJSON_Parse(insertFilesSqlStmt) };
 
     EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"pid":115,"name":"System2", "fid":101, "path":"/usr/bin/System2", "size":654321})"))).Times(1);
 
@@ -1090,8 +1067,8 @@ TEST_F(DBSyncTest, selectRowsDataAllFilterPid1)
                                                                  {"pid":125,"name":"System3", "tid":102},
                                                                  {"pid":300,"name":"System5", "tid":102}]})"}; // Insert
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSelectData{ cJSON_Parse(selectData) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSelectData{ cJSON_Parse(selectData) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert{ cJSON_Parse(insertionSqlStmt) };
 
     EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"pid":125,"name":"System3", "tid":102})"))).Times(1);
 
@@ -1125,8 +1102,8 @@ TEST_F(DBSyncTest, selectRowsDataAllFilterPidTid)
                                                                  {"pid":125,"name":"System3", "tid":102},
                                                                  {"pid":300,"name":"System5", "tid":102}]})"}; // Insert
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSelectData{ cJSON_Parse(selectData) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSelectData{ cJSON_Parse(selectData) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert{ cJSON_Parse(insertionSqlStmt) };
 
     EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"pid":125,"name":"System3", "tid":102})"))).Times(1);
     EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"pid":300,"name":"System5", "tid":102})"))).Times(1);
@@ -1161,8 +1138,8 @@ TEST_F(DBSyncTest, selectRowsDataNameOnlyFilterPidTid)
                                                                  {"pid":125,"name":"System3", "tid":102},
                                                                  {"pid":300,"name":"System5", "tid":102}]})"}; // Insert
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSelectData{ cJSON_Parse(selectData) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSelectData{ cJSON_Parse(selectData) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert{ cJSON_Parse(insertionSqlStmt) };
 
     EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"System3"})"))).Times(1);
     EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"System5"})"))).Times(1);
@@ -1198,8 +1175,8 @@ TEST_F(DBSyncTest, selectRowsDataNameOnly)
                                                                  {"pid":125,"name":"System3", "tid":102},
                                                                  {"pid":300,"name":"System5", "tid":102}]})"}; // Insert
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSelectData{ cJSON_Parse(selectData) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSelectData{ cJSON_Parse(selectData) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert{ cJSON_Parse(insertionSqlStmt) };
 
     EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"System1"})"))).Times(1);
     EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"System2"})"))).Times(1);
@@ -1236,8 +1213,8 @@ TEST_F(DBSyncTest, selectRowsDataNameOnlyFilterPid)
                                                                  {"pid":125,"name":"System3", "tid":102},
                                                                  {"pid":300,"name":"System5", "tid":102}]})"}; // Insert
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSelectData{ cJSON_Parse(selectData) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSelectData{ cJSON_Parse(selectData) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert{ cJSON_Parse(insertionSqlStmt) };
 
     EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"System1"})"))).Times(1);
     EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"System2"})"))).Times(1);
@@ -1272,8 +1249,8 @@ TEST_F(DBSyncTest, selectRowsDataNameTidOnly)
                                                                  {"pid":125,"name":"System3", "tid":102},
                                                                  {"pid":300,"name":"System5", "tid":102}]})"}; // Insert
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSelectData{ cJSON_Parse(selectData) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSelectData{ cJSON_Parse(selectData) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert{ cJSON_Parse(insertionSqlStmt) };
 
     EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"System1","tid":100})"))).Times(1);
     EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"System2","tid":101})"))).Times(1);
@@ -1320,9 +1297,9 @@ TEST_F(DBSyncTest, selectRowsDataNameTidOnlyPid)
                                                                  {"pid":125,"name":"System3", "tid":102},
                                                                  {"pid":300,"name":"System5", "tid":102}]})"}; // Insert
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSelectData{ cJSON_Parse(selectData) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSelectDataWithoutTable{ cJSON_Parse(selectDataWithoutTable) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsert{ cJSON_Parse(insertionSqlStmt) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSelectData{ cJSON_Parse(selectData) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSelectDataWithoutTable{ cJSON_Parse(selectDataWithoutTable) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsert{ cJSON_Parse(insertionSqlStmt) };
 
     EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"System2","tid":101})"))).Times(1);
     EXPECT_CALL(wrapper, callbackMock(SELECTED, nlohmann::json::parse(R"({"name":"System3","tid":101})"))).Times(1);
@@ -1391,11 +1368,11 @@ TEST_F(DBSyncTest, deleteSingleAndComposedData)
     };
 
     callback_data_t callbackData { callback, &wrapper };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInitialData{ cJSON_Parse(initialData) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSingleDeletion{ cJSON_Parse(singleRowToDelete) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsComposedDeletion{ cJSON_Parse(composedRowsToDelete) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsUnexistentDeletion{ cJSON_Parse(unexistentRowToDelete) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsWithoutTable{ cJSON_Parse(dataWithoutTable) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInitialData{ cJSON_Parse(initialData) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSingleDeletion{ cJSON_Parse(singleRowToDelete) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsComposedDeletion{ cJSON_Parse(composedRowsToDelete) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsUnexistentDeletion{ cJSON_Parse(unexistentRowToDelete) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsWithoutTable{ cJSON_Parse(dataWithoutTable) };
 
     EXPECT_EQ(0, dbsync_sync_row(handle, jsInitialData.get(), callbackData));  // Expect an insert event
 
@@ -1442,9 +1419,9 @@ TEST_F(DBSyncTest, deleteSingleDataByCompoundPK)
     };
 
     callback_data_t callbackData { callback, &wrapper };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInitialData{ cJSON_Parse(initialData) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsSingleDeletion{ cJSON_Parse(singleRowToDelete) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsMissingPKPID{ cJSON_Parse(singleRowWithoutCompleteCompoundPK) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInitialData{ cJSON_Parse(initialData) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSingleDeletion{ cJSON_Parse(singleRowToDelete) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsMissingPKPID{ cJSON_Parse(singleRowWithoutCompleteCompoundPK) };
 
     EXPECT_EQ(0, dbsync_sync_row(handle, jsInitialData.get(), callbackData));  // Expect an insert event
     EXPECT_EQ(0, dbsync_delete_rows(handle, jsSingleDeletion.get()));
@@ -1492,10 +1469,10 @@ TEST_F(DBSyncTest, deleteRowsByFilter)
     };
 
     callback_data_t callbackData { callback, &wrapper };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInitialData{ cJSON_Parse(initialData) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsrowDeleteByPIDFilter{ cJSON_Parse(rowDeleteByPIDFilter) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsrowDeleteByTIDFilter{ cJSON_Parse(rowDeleteByTIDFilter) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsrowDeleteByNameFilter{ cJSON_Parse(rowDeleteByNameFilter) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInitialData{ cJSON_Parse(initialData) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsrowDeleteByPIDFilter{ cJSON_Parse(rowDeleteByPIDFilter) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsrowDeleteByTIDFilter{ cJSON_Parse(rowDeleteByTIDFilter) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsrowDeleteByNameFilter{ cJSON_Parse(rowDeleteByNameFilter) };
 
     EXPECT_EQ(0, dbsync_sync_row(handle, jsInitialData.get(), callbackData));  // Expect an insert event
     EXPECT_EQ(0, dbsync_delete_rows(handle, jsrowDeleteByPIDFilter.get()));
@@ -1544,10 +1521,10 @@ TEST_F(DBSyncTest, deleteRowsWithDataMorePriorityThanFilter)
     };
 
     callback_data_t callbackData { callback, &wrapper };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInitialData{ cJSON_Parse(initialData) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsRowDeletePID4{ cJSON_Parse(rowDeletePID4) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsRowDeletePID6{ cJSON_Parse(rowDeletePID6) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsRowDeletePID8{ cJSON_Parse(rowDeletePID8) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInitialData{ cJSON_Parse(initialData) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsRowDeletePID4{ cJSON_Parse(rowDeletePID4) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsRowDeletePID6{ cJSON_Parse(rowDeletePID6) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsRowDeletePID8{ cJSON_Parse(rowDeletePID8) };
 
     EXPECT_EQ(0, dbsync_sync_row(handle, jsInitialData.get(), callbackData));  // Expect an insert event
     EXPECT_EQ(0, dbsync_delete_rows(handle, jsRowDeletePID4.get()));
@@ -1582,8 +1559,8 @@ TEST_F(DBSyncTest, deleteRowsWithNoDataAndFilterShouldFail)
     };
 
     callback_data_t callbackData { callback, &wrapper };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInitialData{ cJSON_Parse(initialData) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsRowEmpty{ cJSON_Parse(rowEmpty) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInitialData{ cJSON_Parse(initialData) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsRowEmpty{ cJSON_Parse(rowEmpty) };
 
     EXPECT_EQ(0, dbsync_sync_row(handle, jsInitialData.get(), callbackData));  // Expect an insert event
     EXPECT_NE(0, dbsync_delete_rows(handle, jsRowEmpty.get()));
@@ -1623,9 +1600,9 @@ TEST_F(DBSyncTest, deleteRowsWithWhereInFilterShouldFail)
     };
 
     callback_data_t callbackData { callback, &wrapper };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInitialData{ cJSON_Parse(initialData) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsRowWithWhere{ cJSON_Parse(rowWithWhere) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsRowWithSpace{ cJSON_Parse(rowWithSpace) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInitialData{ cJSON_Parse(initialData) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsRowWithWhere{ cJSON_Parse(rowWithWhere) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsRowWithSpace{ cJSON_Parse(rowWithSpace) };
 
     EXPECT_EQ(0, dbsync_sync_row(handle, jsInitialData.get(), callbackData));  // Expect an insert event
     EXPECT_NE(0, dbsync_delete_rows(handle, jsRowWithWhere.get())); // WHERE in 'where_filter_opt' should fail
@@ -1972,7 +1949,7 @@ TEST_F(DBSyncTest, dbsyncAddTableRelationshipCPP)
         }
     )"};
 
-    const std::unique_ptr<cJSON, smartDeleterJson> jsInsertSocket{ cJSON_Parse(insertDataSocket) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInsertSocket{ cJSON_Parse(insertDataSocket) };
     EXPECT_NO_THROW(dbSync->insertData(nlohmann::json::parse(insertDataSocket)));
 
     const auto relationshipJson { R"(
@@ -2098,7 +2075,7 @@ TEST_F(DBSyncTest, txnDestructorDoesNotOwnHandle)
     const auto tables { R"({"table": "processes"})" };
     const std::unique_ptr<DummyContext> dummyCtx { std::make_unique<DummyContext>()};
     auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
-    const std::unique_ptr<cJSON, smartDeleterJson> jsonTables { cJSON_Parse(tables) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsonTables { cJSON_Parse(tables) };
     callback_data_t callbackData { callback, dummyCtx.get() };
     TXN_HANDLE txHandle = dbsync_create_txn(handle, jsonTables.get(), 1, 100, callbackData);
     {

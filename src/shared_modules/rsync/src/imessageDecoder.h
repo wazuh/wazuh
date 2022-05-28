@@ -11,6 +11,10 @@
 
 #ifndef _IMESSAGE_DECODER_H
 #define _IMESSAGE_DECODER_H
+
+#include <vector>
+#include <string>
+
 namespace RSync
 {
     struct SyncInputData final

@@ -21,19 +21,7 @@
 #include "dbRegistryValue.hpp"
 #include "fimDBSpecialization.h"
 #include "stringHelper.h"
-
-
-struct CJsonDeleter
-{
-    void operator()(char* json)
-    {
-        cJSON_free(json);
-    }
-    void operator()(cJSON* json)
-    {
-        cJSON_Delete(json);
-    }
-};
+#include "cjsonSmartDeleter.hpp"
 
 void DB::init(const int storage,
               const int syncInterval,
@@ -282,7 +270,7 @@ FIMDBErrorCode fim_sync_push_msg(const char* msg)
 
 TXN_HANDLE fim_db_transaction_start(const char* table, result_callback_t row_callback, void* user_data)
 {
-    const std::unique_ptr<cJSON, CJsonDeleter> jsInput
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInput
     {
         cJSON_Parse(table)
     };
@@ -319,7 +307,7 @@ FIMDBErrorCode fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_ent
             }
         }
 
-        const std::unique_ptr<cJSON, CJsonDeleter> jsInput
+        const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInput
         {
             cJSON_Parse((*syncItem->toJSON()).dump().c_str())
         };
@@ -339,7 +327,7 @@ FIMDBErrorCode fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler,
 {
     auto retval {FIMDB_OK};
     callback_data_t cb_data = { .callback = res_callback, .user_data = txn_ctx };
-    const std::unique_ptr<cJSON, CJsonDeleter> jsOptions
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsOptions
     {
         cJSON_Parse(GetDeletedQuery::builder().allColumns().query().dump().c_str())
     };

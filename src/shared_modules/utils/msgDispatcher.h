@@ -39,17 +39,10 @@ namespace Utils
             // LCOV_EXCL_START
             ~MsgDispatcher() = default;
             // LCOV_EXCL_STOP
-            bool addCallback(const Key& key, const std::function<void(Value)>& callback)
+            void setCallback(const Key& key, const std::function<void(Value)>& callback)
             {
                 std::lock_guard<std::mutex> lock{ m_mutex };
-                const auto ret{ m_callbacks.find(key) == m_callbacks.end() };
-
-                if (ret)
-                {
-                    m_callbacks[key] = callback;
-                }
-
-                return ret;
+                m_callbacks[key] = callback;
             }
             void removeCallback(const Key& key)
             {
