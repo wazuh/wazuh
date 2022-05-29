@@ -168,7 +168,7 @@ CommRetval sendMsg(const int sock, const std::string& msg)
     return result;
 }
 
-std::vector<uint8_t> recvMsg(const int sock)
+std::vector<char> recvMsg(const int sock)
 {
     // Check recive msg
     const auto checkRcv = [](const ssize_t rcvBytes)
@@ -200,7 +200,7 @@ std::vector<uint8_t> recvMsg(const int sock)
         std::runtime_error("recvMsg: message size too long");
     }
 
-    std::vector<uint8_t> recvMsg;
+    std::vector<char> recvMsg;
     recvMsg.resize(msgSize + 1, '\0');
 
     recvb = recvWaitAll(sock, &(recvMsg[0]), msgSize);
@@ -212,7 +212,7 @@ std::vector<uint8_t> recvMsg(const int sock)
 std::string recvString(const int sock)
 {
     auto byteMsg {recvMsg(sock)};
-    return std::string(byteMsg.begin(), byteMsg.end());
+    return std::string(byteMsg.data());
 }
 
 } // namespace socketinterface

@@ -82,16 +82,17 @@ int socketConnect(std::string_view path);
  */
 CommRetval sendMsg(const int sock, const std::string& msg);
 
-/** @brief Receive a message from a stream socket, full message (MSG_WAITALL)
+/**
+ * @brief Receive a message from a stream socket, full message (MSG_WAITALL)
  *
  * @param sock sock file descriptor.
- * @return vector<uint8_t> message on success.
+ * @return vector<char> message on success.
  * @throw std::runtime_error on error.
 
  * @warning This function blocks until the message is received or the socket is
  * disconnected.
  */
-std::vector<uint8_t> recvMsg(const int sock);
+std::vector<char> recvMsg(const int sock);
 
 /**
  * @brief Receive a message from a stream socket, full message (MSG_WAITALL)
