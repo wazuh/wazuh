@@ -116,8 +116,11 @@ WazuhDB::parseResult(const std::string& result) const noexcept
         // If key not found, the code is unknown (protocol error)
         if (QueryResStr2Code.end() == res)
         {
-            WAZUH_LOG_ERROR("wdb: Unknown query result code. Message received: {}",
-                            result);
+            if (result.length() > 0)
+            {
+                WAZUH_LOG_ERROR("wdb: Unknown query result code. Message received: {}",
+                                result);
+            }
             payload = {};
             code = QueryResultCodes::UNKNOWN;
         }
@@ -154,6 +157,7 @@ std::string WazuhDB::tryQuery(const std::string& query,
             }
             catch (const std::runtime_error& e)
             {
+                WAZUH_LOG_ERROR("wdb: reconnect attempt {} failed: {}", i + 1, e.what());
                 continue;
             }
         }
