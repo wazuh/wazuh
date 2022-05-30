@@ -1,7 +1,16 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v4.2.6]
+## [v4.2.7]
+
+### Manager
+
+#### Fixed
+
+- Fixed a crash in Vuln Detector when scanning agents running on Windows (backport from 4.3.2). ([#13617](https://github.com/wazuh/wazuh/pull/13617))
+
+
+## [v4.2.6] - 2022-03-29
 
 ### Manager
 
@@ -10,7 +19,7 @@ All notable changes to this project will be documented in this file.
 - Fixed an integer overflow hazard in `wazuh-remoted` that caused it to drop incoming data after receiving 2^31 messages. ([#11974](https://github.com/wazuh/wazuh/pull/11974))
 
 
-## [v4.2.5]
+## [v4.2.5] - 2021-11-15
 
 ### Manager
 
