@@ -77,6 +77,64 @@ void test_asyscom_dispatch_getstats(void ** state) {
     assert_int_equal(size, strlen(response));
 }
 
+void test_asyscom_dispatch_getconfig(void ** state) {
+    char* request = "{\"command\":\"getconfig\",\"parameters\":{\"section\":\"global\"}}";
+    char *response = NULL;
+
+    cJSON* data_json = cJSON_CreateObject();
+    cJSON_AddNumberToObject(data_json, "test1", 18);
+    cJSON_AddStringToObject(data_json, "test2", "analysisd");
+
+    will_return(__wrap_getGlobalConfig, data_json);
+
+    size_t size = asyscom_dispatch(request, &response);
+
+    *state = response;
+
+    assert_non_null(response);
+    assert_string_equal(response, "{\"error\":0,\"message\":\"ok\",\"data\":{\"test1\":18,\"test2\":\"analysisd\"}}");
+    assert_int_equal(size, strlen(response));
+}
+
+void test_asyscom_dispatch_getconfig_unknown_section(void ** state) {
+    char* request = "{\"command\":\"getconfig\",\"parameters\":{\"section\":\"testtest\"}}";
+    char *response = NULL;
+
+    size_t size = asyscom_dispatch(request, &response);
+
+    *state = response;
+
+    assert_non_null(response);
+    assert_string_equal(response, "{\"error\":6,\"message\":\"Unrecognized or not configured section\",\"data\":{}}");
+    assert_int_equal(size, strlen(response));
+}
+
+void test_asyscom_dispatch_getconfig_empty_section(void ** state) {
+    char* request = "{\"command\":\"getconfig\",\"parameters\":{}}";
+    char *response = NULL;
+
+    size_t size = asyscom_dispatch(request, &response);
+
+    *state = response;
+
+    assert_non_null(response);
+    assert_string_equal(response, "{\"error\":5,\"message\":\"Empty section\",\"data\":{}}");
+    assert_int_equal(size, strlen(response));
+}
+
+void test_asyscom_dispatch_getconfig_empty_parameters(void ** state) {
+    char* request = "{\"command\":\"getconfig\"}";
+    char *response = NULL;
+
+    size_t size = asyscom_dispatch(request, &response);
+
+    *state = response;
+
+    assert_non_null(response);
+    assert_string_equal(response, "{\"error\":4,\"message\":\"Empty parameters\",\"data\":{}}");
+    assert_int_equal(size, strlen(response));
+}
+
 void test_asyscom_dispatch_unknown_command(void ** state) {
     char* request = "{\"command\":\"unknown\"}";
     char *response = NULL;
@@ -431,6 +489,10 @@ int main(void) {
         cmocka_unit_test_teardown(test_asyscom_output_builder, test_teardown),
         // Test asyscom_dispatch
         cmocka_unit_test_teardown(test_asyscom_dispatch_getstats, test_teardown),
+        cmocka_unit_test_teardown(test_asyscom_dispatch_getconfig, test_teardown),
+        cmocka_unit_test_teardown(test_asyscom_dispatch_getconfig_unknown_section, test_teardown),
+        cmocka_unit_test_teardown(test_asyscom_dispatch_getconfig_empty_section, test_teardown),
+        cmocka_unit_test_teardown(test_asyscom_dispatch_getconfig_empty_parameters, test_teardown),
         cmocka_unit_test_teardown(test_asyscom_dispatch_unknown_command, test_teardown),
         cmocka_unit_test_teardown(test_asyscom_dispatch_empty_command, test_teardown),
         cmocka_unit_test_teardown(test_asyscom_dispatch_invalid_json, test_teardown),
