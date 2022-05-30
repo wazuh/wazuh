@@ -225,7 +225,6 @@ GenerateAuthCert()
         if [ ! -f "${INSTALLDIR}/etc/sslmanager.key" ] && [ ! -f "${INSTALLDIR}/etc/sslmanager.cert" ]; then
             if [ ! "X${USER_GENERATE_AUTHD_CERT}" = "Xn" ]; then
                      echo "Generating self-signed certificate for wazuh-authd..."
-                    ../tools/cert-creator/build/cert-creator ${INSTALLDIR}/etc/sslmanager.key ${INSTALLDIR}/etc/sslmanager.cert 2>/dev/null
                     chmod 640 ${INSTALLDIR}/etc/sslmanager.key
                     chmod 640 ${INSTALLDIR}/etc/sslmanager.cert
             fi

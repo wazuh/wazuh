@@ -63,7 +63,6 @@ RSYNC=${SHARED_MODULES}rsync/
 SHARED_UTILS_TEST=${SHARED_MODULES}utils/tests/
 SYSCOLLECTOR=wazuh_modules/syscollector/
 SYSINFO=data_provider/
-CERT_CREATOR_DIR=../tools/cert-creator/
 
 USE_PRELUDE?=no
 USE_ZEROMQ?=no
@@ -673,7 +672,6 @@ BUILD_SERVER+=wazuh-dbd -
 BUILD_SERVER+=wazuh-integratord
 BUILD_SERVER+=wazuh-modulesd
 BUILD_SERVER+=wazuh-db
-BUILD_SERVER+=cert-creator
 
 BUILD_AGENT+=wazuh-agentd
 BUILD_AGENT+=agent-auth
@@ -2001,7 +1999,7 @@ os_auth/%.o: os_auth/%.c
 agent-auth: addagent/validate.o os_auth/main-client.o os_auth/ssl.o os_auth/check_cert.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-wazuh-authd: addagent/validate.o os_auth/main-server.o os_auth/local-server.o os_auth/ssl.o os_auth/check_cert.o os_auth/config.o os_auth/authcom.o os_auth/auth.o os_auth/key_request.o
+wazuh-authd: addagent/validate.o os_auth/main-server.o os_auth/local-server.o os_auth/ssl.o os_auth/check_cert.o os_auth/config.o os_auth/authcom.o os_auth/auth.o os_auth/key_request.o os_auth/generate_cert.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 #### integratord #####
@@ -2183,11 +2181,6 @@ install_api: install_python
 
 install_mitre: install_python
 	cd ../tools/mitre && ${WPYTHON_DIR}/bin/python3 mitredb.py -d ${INSTALLDIR}/var/db/mitre.db
-
-### cert-creator ###
-
-cert-creator: ${CERT_CREATOR_DIR}cert-creator.cpp
-	cd ${CERT_CREATOR_DIR} && mkdir -p build && cd build && cmake .. && ${MAKE}
 
 ####################
 #### test ##########
