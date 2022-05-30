@@ -31,8 +31,6 @@ typedef enum global_db_access {
     WDB_SELECT_GROUPS,
     WDB_DELETE_AGENT,
     WDB_DELETE_GROUP,
-    WDB_SELECT_GROUP_BELONG,
-    WDB_DELETE_AGENT_BELONG,
     WDB_SET_AGENT_GROUPS,
     WDB_RESET_AGENTS_CONNECTION,
     WDB_GET_AGENTS_BY_CONNECTION_STATUS,
@@ -207,24 +205,6 @@ int wdb_remove_agent(int id, int *sock);
  * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
  */
 int wdb_remove_group_db(const char *name, int *sock);
-
-/**
- * @brief Get groups from agent id in belongs table.
- *
- * @param id Id of the agent to get the groups from.
- * @param sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return JSON* with the information on success or NULL on failure.
- */
-cJSON* wdb_select_group_belong(int id, int *sock);
-
-/**
- * @brief Delete an agent from belongs table in global.db by using its ID.
- *
- * @param[in] id Id of the agent to be deleted.
- * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
- */
-int wdb_delete_agent_belongs(int id, int *sock);
 
 /**
  * @brief Set the groups of an agent using a comma separated string to represent the groups.

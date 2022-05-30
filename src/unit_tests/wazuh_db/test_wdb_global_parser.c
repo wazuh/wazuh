@@ -958,60 +958,6 @@ void test_wdb_parse_global_select_agent_group_success(void **state)
     assert_int_equal(ret, OS_SUCCESS);
 }
 
-/* Tests wdb_parse_global_delete_agent_belong */
-
-void test_wdb_parse_global_delete_agent_belong_syntax_error(void **state)
-{
-    int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global delete-agent-belong";
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: delete-agent-belong");
-    expect_string(__wrap__mdebug1, formatted_msg, "Global DB Invalid DB query syntax for delete-agent-belong.");
-    expect_string(__wrap__mdebug2, formatted_msg, "Global DB query error near: delete-agent-belong");
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "err Invalid DB query syntax, near 'delete-agent-belong'");
-    assert_int_equal(ret, OS_INVALID);
-}
-
-void test_wdb_parse_global_delete_agent_belong_query_error(void **state)
-{
-    int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global delete-agent-belong 1";
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: delete-agent-belong 1");
-    expect_value(__wrap_wdb_global_delete_agent_belong, id, 1);
-    will_return(__wrap_wdb_global_delete_agent_belong, OS_INVALID);
-    expect_string(__wrap__mdebug1, formatted_msg, "Error deleting agent from belongs table in global.db.");
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "err Error deleting agent from belongs table in global.db.");
-    assert_int_equal(ret, OS_INVALID);
-}
-
-void test_wdb_parse_global_delete_agent_belong_success(void **state)
-{
-    int ret = 0;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global delete-agent-belong 1";
-
-    will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: delete-agent-belong 1");
-    expect_value(__wrap_wdb_global_delete_agent_belong, id, 1);
-    will_return(__wrap_wdb_global_delete_agent_belong, OS_SUCCESS);
-
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "ok");
-    assert_int_equal(ret, OS_SUCCESS);
-}
-
 /* Tests wdb_parse_global_find_agent */
 
 void test_wdb_parse_global_find_agent_syntax_error(void **state)
@@ -2717,10 +2663,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_group_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_group_query_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_select_agent_group_success, test_setup, test_teardown),
-        /* Tests wdb_parse_global_delete_agent_belong */
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_delete_agent_belong_syntax_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_delete_agent_belong_query_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_delete_agent_belong_success, test_setup, test_teardown),
         /* Tests wdb_parse_global_find_agent */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_find_agent_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_find_agent_invalid_json, test_setup, test_teardown),

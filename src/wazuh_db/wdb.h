@@ -1142,17 +1142,6 @@ int wdb_parse_global_select_agent_name(wdb_t * wdb, char * input, char * output)
 int wdb_parse_global_select_agent_group(wdb_t * wdb, char * input, char * output);
 
 /**
- * @brief Function to parse the agent delete from belongs table request.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with 'agent_id'.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
-int wdb_parse_global_delete_agent_belong(wdb_t * wdb, char * input, char * output);
-
-/**
  * @brief Function to parse the find agent request.
  *
  * @param [in] wdb The global struct database.
