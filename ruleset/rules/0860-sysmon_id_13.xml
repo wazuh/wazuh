@@ -3,7 +3,7 @@
 -->
 
 <!--
-  Sysmon Event 13 rules ID: 92300 - 92302
+  Sysmon Event 13 rules ID: 92300 - 92399
 -->
 
 <group name="sysmon_eid13_detections,">
@@ -32,6 +32,55 @@
     <description>Registry entry to be executed on next logon was modified using command line application reg.exe</description>
     <mitre>
       <id>T1547.001</id>
+    </mitre>
+  </rule>
+
+  <rule id="92303" level="12">
+    <if_sid>92300</if_sid>
+    <field name="win.eventdata.details" type="pcre2">(?i)(VNC|tvnserver\.exe)</field>
+    <description>Registry entry to be executed on next logon points to a remote access tool</description>
+    <mitre>
+      <id>T1547.001</id>
+    </mitre>
+  </rule>
+
+  <rule id="92304" level="6">
+    <if_group>sysmon_event_13</if_group>
+    <field name="win.eventdata.targetObject" type="pcre2">(?i)CLASSES\\\\(FOLDER|MS-SETTINGS)\\\\SHELL\\\\OPEN\\\\COMMAND</field>
+    <description>Modified registry key associated to UAC bypass by auto-elevated processes</description>
+    <mitre>
+      <id>T1548.002</id>
+      <id>T1112</id>
+    </mitre>
+  </rule>
+
+  <rule id="92305" level="12">
+    <if_sid>92304</if_sid>
+    <field name="win.eventdata.details" type="pcre2">(?i)(cmd|powershell)\.exe</field>
+    <description>Command interpreter added to registry key associated to UAC bypass by auto-elevated processes</description>
+    <mitre>
+      <id>T1548.002</id>
+      <id>T1112</id>
+    </mitre>
+  </rule>
+
+  <rule id="92306" level="12">
+    <if_sid>92304</if_sid>
+    <field name="win.eventdata.image" type="pcre2">(?i)(cmd|powershell)\.exe</field>
+    <description>$(win.eventdata.image) added to the registry a subkey associated with UAC bypass by auto-elevated processes</description>
+    <mitre>
+      <id>T1548.002</id>
+      <id>T1112</id>
+    </mitre>
+  </rule>
+
+  <rule id="92307" level="3">
+    <if_group>sysmon_event_13</if_group>
+    <field name="win.eventdata.details" type="pcre2">(?i)\.exe</field>
+    <field name="win.eventdata.targetObject" type="pcre2">(?i)System\\\\CurrentControlSet\\\\Services</field>
+    <description>Evidence of New service creation found in registry under $(win.eventdata.targetObject) binary is: $(win.eventdata.details)</description>
+    <mitre>
+      <id>T1543.003</id>
     </mitre>
   </rule>
 
