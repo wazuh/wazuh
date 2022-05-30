@@ -1,13 +1,22 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v4.3.2]
+## [v4.3.3]
 
 ### Manager
 
 #### Changed
 
 - Integratord now tries to read alerts indefinitely, instead of performing 3 attempts. ([#13437](https://github.com/wazuh/wazuh/pull/13437))
+
+
+## [v4.3.2]
+
+### Manager
+
+#### Fixed
+
+- Fixed a crash in Vuln Detector when scanning agents running on Windows. ([#13616](https://github.com/wazuh/wazuh/pull/13616))
 
 
 ## [v4.3.1] - 2022-05-18
@@ -418,7 +427,16 @@ All notable changes to this project will be documented in this file.
 - Fixed an installation error due to missing command `hostname` on OpenSUSE Tumbleweed. ([#11455](https://github.com/wazuh/wazuh/pull/11455))
 
 
-## [v4.2.6] - 2022-03-25
+## [v4.2.7]
+
+### Manager
+
+#### Fixed
+
+- Fixed a crash in Vuln Detector when scanning agents running on Windows (backport from 4.3.2). ([#13617](https://github.com/wazuh/wazuh/pull/13617))
+
+
+## [v4.2.6] - 2022-03-29
 
 ### Manager
 
