@@ -140,6 +140,13 @@ LIST(APPEND analysisd_flags "-Wl,--wrap,send_rootcheck_log ${DEBUG_OP_WRAPPERS}"
 LIST(APPEND analysisd_names "test_decoder_syscollector")
 LIST(APPEND analysisd_flags "-Wl,--wrap,wdbc_query_ex ${DEBUG_OP_WRAPPERS}")
 
+list(APPEND analysisd_names "test_analysis-state")
+list(APPEND analysisd_flags "-Wl,--wrap,time")
+
+list(APPEND analysisd_names "test_asyscom")
+list(APPEND analysisd_flags "-Wl,--wrap,asys_create_state_json -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,select -Wl,--wrap,close -Wl,--wrap,accept \
+                             -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,getpid ${DEBUG_OP_WRAPPERS}")
+
 list(LENGTH analysisd_names count)
 math(EXPR count "${count} - 1")
 foreach(counter RANGE ${count})

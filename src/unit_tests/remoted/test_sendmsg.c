@@ -78,7 +78,6 @@ void test_send_msg_tcp_ok(void ** state) {
     ssize_t crypto_size = 9;
 
     logr.global.agents_disconnection_time = 0;
-    remoted_state.sent_breakdown.queued_count = 0;
 
     expect_function_call(__wrap_pthread_rwlock_rdlock);
 
@@ -104,9 +103,6 @@ void test_send_msg_tcp_ok(void ** state) {
     expect_value(__wrap_nb_queue, msg_size, crypto_size);
     will_return(__wrap_nb_queue, 0);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_function_call(__wrap_pthread_rwlock_unlock);
@@ -114,7 +110,6 @@ void test_send_msg_tcp_ok(void ** state) {
     int ret = send_msg(agent_id, msg, msg_length);
 
     assert_int_equal(ret, 0);
-    assert_int_equal(remoted_state.sent_breakdown.queued_count, 1);
 }
 
 void test_send_msg_tcp_err(void ** state) {
@@ -129,7 +124,6 @@ void test_send_msg_tcp_err(void ** state) {
     ssize_t crypto_size = 9;
 
     logr.global.agents_disconnection_time = 0;
-    remoted_state.sent_breakdown.queued_count = 0;
 
     expect_function_call(__wrap_pthread_rwlock_rdlock);
 
@@ -162,7 +156,6 @@ void test_send_msg_tcp_err(void ** state) {
     int ret = send_msg(agent_id, msg, msg_length);
 
     assert_int_equal(ret, -1);
-    assert_int_equal(remoted_state.sent_breakdown.queued_count, 0);
 }
 
 int main(void) {
