@@ -271,13 +271,17 @@ static std::string parseRawSmbios(const BYTE* rawData, const DWORD rawDataSize)
         else
         {
             offset += header.FormattedAreaLength;
-            bool end{false};
-            while(!end)
+
+            // Search for the end of the unformatted structure (\0\0)
+            while (true)
             {
-                const char* tmp{reinterpret_cast<const char*>(rawData + offset)};
-                const auto len{strlen(tmp)};
-                offset += len + sizeof(char);
-                end = !len;
+                if (!(*(rawData + offset)) && !(*(rawData + offset + 1)))
+                {
+                    offset += 2;
+                    break;
+                }
+
+                offset++;
             }
         }
     }
