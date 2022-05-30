@@ -21,7 +21,7 @@ All notable changes to this project will be documented in this file.
 - Improved security at cluster zip filenames creation. ([#10710](https://github.com/wazuh/wazuh/pull/10710))
 - Refactor of the core/common.py module. ([#12390](https://github.com/wazuh/wazuh/pull/12390))
 - Refactor format_data_into_dictionary method of WazuhDBQuerySyscheck class. ([#12497](https://github.com/wazuh/wazuh/pull/12390))
-- Limit the maximum zip size that can be created while synchronizing cluster Integrity. ([#11124](https://github.com/wazuh/wazuh/pull/11124)) 
+- Limit the maximum zip size that can be created while synchronizing cluster Integrity. ([#11124](https://github.com/wazuh/wazuh/pull/11124))
 - Refactored the functions in charge of synchronizing files in the cluster. ([#13065](https://github.com/wazuh/wazuh/pull/))
 - Changed MD5 hash function to BLAKE2 for cluster file comparison. ([#13079](https://github.com/wazuh/wazuh/pull/13079))
 - Renamed wazuh-logtest and wazuh-clusterd scripts to follow the same scheme as the other scripts (spaces symbolized with _ instead of -). ([#12926](https://github.com/wazuh/wazuh/pull/12926))
@@ -40,7 +40,7 @@ All notable changes to this project will be documented in this file.
   - Fixed code flaw regarding try, except and pass block in wazuh-clusterd. ([#11951](https://github.com/wazuh/wazuh/pull/11951))
 - Fixed framework datetime transformations to UTC. ([#10782](https://github.com/wazuh/wazuh/pull/10782))
 - Fixed a cluster error when Master-Worker tasks where not properly stopped after an exception occurred in one or both parts. ([#11866](https://github.com/wazuh/wazuh/pull/11866))
-- Fixed cluster logger issue printing 'NoneType: None' in error logs. ([#12831](https://github.com/wazuh/wazuh/pull/12831)) 
+- Fixed cluster logger issue printing 'NoneType: None' in error logs. ([#12831](https://github.com/wazuh/wazuh/pull/12831))
 - Fixed unhandled cluster error when reading a malformed configuration. ([#13419](https://github.com/wazuh/wazuh/pull/13419))
 - Fixed framework unit test failures when they are run by the root user. ([#13368](https://github.com/wazuh/wazuh/pull/13368))
 
@@ -65,7 +65,7 @@ All notable changes to this project will be documented in this file.
 - Added support for pre-installed Windows packages in Syscollector. ([#12035](https://github.com/wazuh/wazuh/pull/12035))
 - Added support for IPv6 on agent-manager connection and enrollment. ([#11268](https://github.com/wazuh/wazuh/pull/11268))
 - Added support for CIS-CAT Pro v3 and v4 to the CIS-CAT integration module. Thanks to @hustliyilin. ([#12582](https://github.com/wazuh/wazuh/pull/12582))
-- Added support for the use of the Azure integration module in Linux agents. ([#10870](https://github.com/wazuh/wazuh/pull/10870)) 
+- Added support for the use of the Azure integration module in Linux agents. ([#10870](https://github.com/wazuh/wazuh/pull/10870))
 - Added new error messages when using invalid credentials with the Azure integration. ([#11852](https://github.com/wazuh/wazuh/pull/11852))
 - Added reparse option to CloudWatchLogs and Google Cloud Storage integrations.  ([#12515](https://github.com/wazuh/wazuh/pull/12515))
 
@@ -98,7 +98,7 @@ All notable changes to this project will be documented in this file.
 - Fixed duplicate error message IDs in the log. ([#12300](https://github.com/wazuh/wazuh/pull/12300))
 - Fixed compilation warnings in the agent. ([#12691](https://github.com/wazuh/wazuh/pull/12691))
 - Fixed the `skip_on_error` parameter of the AWS integration module, which was set to `True` by default. ([#1247](https://github.com/wazuh/wazuh/pull/12147))
-- Fixed AWS DB maintenance with Load Balancer Buckets. ([#12381](https://github.com/wazuh/wazuh/pull/12381))  
+- Fixed AWS DB maintenance with Load Balancer Buckets. ([#12381](https://github.com/wazuh/wazuh/pull/12381))
 - Fixed AWS integration's `test_config_format_created_date` unit test. ([#12650](https://github.com/wazuh/wazuh/pull/12650))
 - Fixed created_date field for LB and Umbrella integrations. ([#12630](https://github.com/wazuh/wazuh/pull/12630))
 - Fixed AWS integration database maintenance error managament. ([#13185](https://github.com/wazuh/wazuh/pull/13185))
@@ -125,7 +125,7 @@ All notable changes to this project will be documented in this file.
 - Added `POST /security/user/authenticate` endpoint and marked `GET /security/user/authenticate` endpoint as deprecated. ([#10397](https://github.com/wazuh/wazuh/pull/10397))
 
 #### Fixed
-- Fixed copy functions used for the backup files and upload endpoints to prevent incorrent metadata. ([#12302](https://github.com/wazuh/wazuh/pull/12302)) 
+- Fixed copy functions used for the backup files and upload endpoints to prevent incorrent metadata. ([#12302](https://github.com/wazuh/wazuh/pull/12302))
 - Fixed a bug regarding ids not being sorted with cluster disabled in Active Response and Agent endpoints. ([#11010](https://github.com/wazuh/wazuh/pull/11010))
 - Fixed a bug where `null` values from wazuh-db where returned in API responses. ([#10736](https://github.com/wazuh/wazuh/pull/10736))
 - Connections through `WazuhQueue` will be closed gracefully in all situations. ([#12063](https://github.com/wazuh/wazuh/pull/12063))
@@ -153,13 +153,22 @@ All notable changes to this project will be documented in this file.
 - Prevented the Ruleset test suite from restarting the manager. ([#10773](https://github.com/wazuh/wazuh/pull/10773))
 
 
-## [v4.3.2]
+## [v4.3.3]
 
 ### Manager
 
 #### Changed
 
 - Integratord now tries to read alerts indefinitely, instead of performing 3 attempts. ([#13437](https://github.com/wazuh/wazuh/pull/13437))
+
+
+## [v4.3.2]
+
+### Manager
+
+#### Fixed
+
+- Fixed a crash in Vuln Detector when scanning agents running on Windows. ([#13616](https://github.com/wazuh/wazuh/pull/13616))
 
 
 ## [v4.3.1] - 2022-05-18
@@ -570,7 +579,16 @@ All notable changes to this project will be documented in this file.
 - Fixed an installation error due to missing command `hostname` on OpenSUSE Tumbleweed. ([#11455](https://github.com/wazuh/wazuh/pull/11455))
 
 
-## [v4.2.6] - 2022-03-25
+## [v4.2.7]
+
+### Manager
+
+#### Fixed
+
+- Fixed a crash in Vuln Detector when scanning agents running on Windows (backport from 4.3.2). ([#13617](https://github.com/wazuh/wazuh/pull/13617))
+
+
+## [v4.2.6] - 2022-03-29
 
 ### Manager
 
@@ -1253,6 +1271,13 @@ All notable changes to this project will be documented in this file.
 - Deprecated Debian Jessie and Wheezy for Vulnerability Detector (EOL). ([#5660](https://github.com/wazuh/wazuh/pull/5660))
 - Removed references to `manage_agents` in the installation process. ([#5840](https://github.com/wazuh/wazuh/pull/5840))
 - Removed compatibility with deprecated configuration at Vulnerability Detector. ([#5879](https://github.com/wazuh/wazuh/pull/5879))
+
+
+## [v3.13.4]
+
+### Fixed
+
+- Fixed a crash in Vuln Detector when scanning agents running on Windows (backport from 4.3.2). ([#13624](https://github.com/wazuh/wazuh/pull/13624))
 
 
 ## [v3.13.3] - 2021-04-28
