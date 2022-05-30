@@ -1,20 +1,19 @@
 import argparse
 import logging
 import os
-import pytest
 import sys
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
+import pytest
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))  # noqa: E501
 import tools
 
 
-@pytest.mark.parametrize('args', [['main', '--integration_type', 'any', '--credentials_file', 'any']])
-def test_get_script_arguments(capsys, args):
+def test_get_script_arguments(capsys):
     """Test get_script_arguments shows no messages when the required parameters were provided."""
-    with patch("sys.argv", args):
+    with patch("sys.argv", ['main', '--integration_type', 'any', '--credentials_file', 'any']):
         tools.get_script_arguments()
     stdout, stderr = capsys.readouterr()
     assert stdout == "", 'stdout was not empty'

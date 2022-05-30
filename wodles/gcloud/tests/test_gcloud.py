@@ -5,11 +5,12 @@
 
 """Unit tests for gcloud module."""
 
-import sys
 import os
-import pytest
-from unittest.mock import patch
+import sys
 from argparse import Namespace
+from unittest.mock import patch
+
+import pytest
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))  # noqa: E501
 import gcloud
@@ -18,7 +19,7 @@ import gcloud
 def get_wodle_config(integration_type: str, credentials_file: str = None, log_level: int = 1,
                      subscription: str = "subscription", project: str = 'project', max_messages: int = 100,
                      n_threads: int = 100, bucket_name: str = "test_bucket", prefix: str = "",
-                     delete_file: bool = False, only_logs_after: str = None, reparse: bool = False):
+                     delete_file: bool = False, only_logs_after: str = None, reparse: bool = False) -> dict:
     """Return a dict containing every parameter for the different supported integration types. Used to simulate
     different ossec.conf configurations.
 

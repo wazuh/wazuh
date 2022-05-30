@@ -9,13 +9,13 @@
 """Unit tests for subscriber module."""
 
 import os
-import pytest
 import sys
-from google.api_core import exceptions as google_exceptions
 from logging import Logger
 from unittest.mock import MagicMock
 from unittest.mock import call, patch
 
+import pytest
+from google.api_core import exceptions as google_exceptions
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))  # noqa: E501
 from pubsub.subscriber import WazuhGCloudSubscriber
@@ -23,6 +23,7 @@ from exceptions import GCloudError
 
 
 data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data/')
+MAX_MESSAGES = 100
 
 
 def get_wodle_config(credentials_file: str = "credentials.json", project: str = "test_project",
@@ -56,6 +57,7 @@ def test_WazuhGCloudSubscriber__init__(mock_client):
     pubsub = WazuhGCloudSubscriber(**get_wodle_config())
     for attribute in ['logger', 'subscriber', 'subscription_path']:
         assert hasattr(pubsub, attribute)
+    mock_client.assert_called_once()
 
 
 @pytest.mark.parametrize('credentials_file, errcode', [
@@ -134,16 +136,15 @@ def test_WazuhGCloudSubscriber_pull_request_ko(mock_credentials, mock_send_msg):
     """Test pull_request returns no messages when an exception is raised."""
     pubsub = WazuhGCloudSubscriber(**get_wodle_config())
     pubsub.subscriber.pull.side_effect = google_exceptions.DeadlineExceeded("placeholder")
-    assert pubsub.pull_request(max_messages=100) == 0
+    assert pubsub.pull_request(max_messages=MAX_MESSAGES) == 0
 
 
-@pytest.mark.parametrize('max_messages', [100])
 @patch('pubsub.subscriber.pubsub.subscriber.Client.from_service_account_file')
-def test_WazuhGCloudSubscriber_process_messages(mock_credentials, max_messages):
+def test_WazuhGCloudSubscriber_process_messages(mock_credentials):
     """Test process_messages invoke the pull_request function several times until the required number of messages is
     returned."""
     pubsub = WazuhGCloudSubscriber(**get_wodle_config())
     pubsub.initialize_socket = MagicMock()
-    pubsub.pull_request = MagicMock(return_value=max_messages/2)
-    assert pubsub.process_messages(max_messages=max_messages) == max_messages
-    pubsub.pull_request.assert_has_calls([call(max_messages), call(max_messages/2)])
+    pubsub.pull_request = MagicMock(return_value=MAX_MESSAGES/2)
+    assert pubsub.process_messages(max_messages=MAX_MESSAGES) == MAX_MESSAGES
+    pubsub.pull_request.assert_has_calls([call(MAX_MESSAGES), call(MAX_MESSAGES/2)])

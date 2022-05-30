@@ -94,7 +94,7 @@ def main():
             isinstance(gcloud_exception, exceptions.WazuhIntegrationInternalError) else \
             logger.error
 
-        logging_func('An exception happened while running the wodle: {gcloud_exception}', exc_info=log_level == 1)
+        logging_func(f'An exception happened while running the wodle: {gcloud_exception}', exc_info=log_level == 1)
         exit(gcloud_exception.errcode)
 
     except Exception as e:
