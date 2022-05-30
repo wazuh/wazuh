@@ -1,6 +1,13 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.13.4]
+
+### Fixed
+
+- Fixed a crash in Vuln Detector when scanning agents running on Windows (backport from 4.3.2). ([#13624](https://github.com/wazuh/wazuh/pull/13624))
+
+
 ## [v3.13.3]
 
 ### Fixed
