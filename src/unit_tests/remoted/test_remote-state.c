@@ -40,7 +40,6 @@ static int test_setup(void ** state) {
     remoted_state.recv_breakdown.ctrl_breakdown.startup_count = 48;
     remoted_state.recv_breakdown.ctrl_breakdown.shutdown_count = 12;
     remoted_state.recv_breakdown.ctrl_breakdown.request_count = 2;
-    remoted_state.sent_breakdown.queued_count = 4567;
     remoted_state.sent_breakdown.ack_count = 1114;
     remoted_state.sent_breakdown.shared_count = 2540;
     remoted_state.sent_breakdown.ar_count = 18;
@@ -116,8 +115,6 @@ void test_rem_create_state_json(void ** state) {
     assert_non_null(cJSON_GetObjectItem(statistics, "messages_sent_breakdown"));
     cJSON* sent = cJSON_GetObjectItem(statistics, "messages_sent_breakdown");
 
-    assert_non_null(cJSON_GetObjectItem(sent, "queued_messages"));
-    assert_int_equal(cJSON_GetObjectItem(sent, "queued_messages")->valueint, 4567);
     assert_non_null(cJSON_GetObjectItem(sent, "ack_messages"));
     assert_int_equal(cJSON_GetObjectItem(sent, "ack_messages")->valueint, 1114);
     assert_non_null(cJSON_GetObjectItem(sent, "shared_file_messages"));

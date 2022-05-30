@@ -164,7 +164,7 @@ void * asyscom_main(__attribute__((unused)) void * arg) {
     mdebug1("Local requests thread ready");
 
     if (sock = OS_BindUnixDomain(ANLSYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        merror("Unable to bind to socket '%s': (%d) %s.", ANLSYS_LOCAL_SOCK, errno, strerror(errno));
+        merror("Unable to bind to socket '%s': (%d) '%s'", ANLSYS_LOCAL_SOCK, errno, strerror(errno));
         return NULL;
     }
 
@@ -177,7 +177,7 @@ void * asyscom_main(__attribute__((unused)) void * arg) {
         switch (select(sock + 1, &fdset, NULL, NULL, NULL)) {
         case -1:
             if (errno != EINTR) {
-                merror_exit("At asyscom_main(): select(): %s", strerror(errno));
+                merror_exit("At select(): '%s'", strerror(errno));
             }
 
             continue;
@@ -188,7 +188,7 @@ void * asyscom_main(__attribute__((unused)) void * arg) {
 
         if (peer = accept(sock, NULL, NULL), peer < 0) {
             if (errno != EINTR) {
-                merror("At asyscom_main(): accept(): %s", strerror(errno));
+                merror("At accept(): '%s'", strerror(errno));
             }
 
             continue;
@@ -197,33 +197,37 @@ void * asyscom_main(__attribute__((unused)) void * arg) {
 
         switch (length = OS_RecvSecureTCP(peer, buffer,OS_MAXSTR), length) {
         case OS_SOCKTERR:
-            merror("At asyscom_main(): OS_RecvSecureTCP(): response size is bigger than expected");
+            merror("At OS_RecvSecureTCP(): response size is bigger than expected");
             break;
 
         case -1:
-            merror("At asyscom_main(): OS_RecvSecureTCP: %s", strerror(errno));
+            merror("At OS_RecvSecureTCP(): '%s'", strerror(errno));
             break;
 
         case 0:
-            mdebug1("Empty message from local client.");
+            mdebug1("Empty message from local client");
             close(peer);
             break;
 
         case OS_MAXLEN:
-            merror("Received message > %i", MAX_DYN_STR);
+            merror("Received message > '%i'", MAX_DYN_STR);
             close(peer);
             break;
 
         default:
             length = asyscom_dispatch(buffer, &response);
             OS_SendSecureTCP(peer, length, response);
-            free(response);
+            os_free(response);
             close(peer);
         }
-        free(buffer);
+        os_free(buffer);
+
+    #ifdef WAZUH_UNIT_TESTING
+        break;
+    #endif
     }
 
-    mdebug1("Local server thread finished.");
+    mdebug1("Local requests thread finished");
 
     close(sock);
     return NULL;
