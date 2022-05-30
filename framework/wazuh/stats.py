@@ -11,7 +11,7 @@ from wazuh.core.exception import WazuhException, WazuhResourceNotFound
 from wazuh.rbac.decorators import expose_resources
 
 cluster_enabled = True
-node_id = get_node().get('node')
+node_id = get_node().get('node') if cluster_enabled else None
 
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
