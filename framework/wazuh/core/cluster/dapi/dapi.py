@@ -106,7 +106,8 @@ class DistributedAPI:
 
         self.local_clients = []
         self.local_client_arg = local_client_arg
-        self.api_request_timeout = api_timeout if api_timeout else aconf.api_conf['intervals']['request_timeout']
+        self.api_request_timeout = max(api_timeout, aconf.api_conf['intervals']['request_timeout']) \
+            if api_timeout else aconf.api_conf['intervals']['request_timeout']
 
     def debug_log(self, message):
         """Use debug or debug2 depending on the log type.
