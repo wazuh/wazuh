@@ -185,7 +185,8 @@ if __name__ == '__main__':
         for logger_name in ('connexion.aiohttp_app', 'connexion.apis.aiohttp_api', 'wazuh-api'):
             api_logger = alogging.APILogger(
                 log_path=log_path, foreground_mode=foreground_mode, logger_name=logger_name,
-                debug_level='info' if logger_name != 'wazuh-api' and debug_mode != 'debug2' else debug_mode
+                debug_level='info' if logger_name != 'wazuh-api' and debug_mode != 'debug2' else debug_mode,
+                max_size=api_conf['logs']['max_size']
             )
             api_logger.setup_logger()
         if os.path.exists(log_path):

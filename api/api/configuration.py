@@ -46,7 +46,8 @@ default_api_configuration = {
     },
     "logs": {
         "level": "info",
-        "format": "plain"
+        "format": "plain",
+        "max_size": 0
     },
     "cors": {
         "enabled": False,

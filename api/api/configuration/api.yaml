@@ -20,9 +20,11 @@
 
 # Logging configuration
 # Values for API log level: disabled, info, warning, error, debug, debug2 (each level includes the previous level).
+# Max size will be read in bytes. Value '0' will disable the size rotation trigger
 # logs:
 #  level: "info"
 #  format: "plain"
+#  max_size: 0
 
 # Cross-origin resource sharing: https://github.com/aio-libs/aiohttp-cors#usage
 # cors:

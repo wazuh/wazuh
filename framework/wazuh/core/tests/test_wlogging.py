@@ -22,7 +22,7 @@ def test_custom_file_rotating_handler_do_rollover():
         with open(log_file, 'w') as f:
             f.write(test_str)
 
-        fh = wlogging.CustomFileRotatingHandler(filename=log_file)
+        fh = wlogging.TimeBasedFileRotatingHandler(filename=log_file)
         fh.doRollover()
         today = date.today()
         backup_file = join(tmp_dir, 'test', str(today.year),
@@ -50,13 +50,13 @@ def test_custom_file_rotating_handler_compute_archives_directory(mock_mkdir, rot
         with open(log_file, 'w') as _:
             pass
 
-        fh = wlogging.CustomFileRotatingHandler(filename=log_file)
+        fh = wlogging.TimeBasedFileRotatingHandler(filename=log_file)
         year, month, day = rotated_file.split('-')
         year = year.split('.')[2]
         month = calendar.month_abbr[int(month)]
         log_path = join(tmp_dir, 'test', year, month)
         expected_name = join(log_path, f"test.log-{int(day):02d}.gz")
-        computed_name = fh.computeArchivesDirectory(rotated_file)
+        computed_name = fh.compute_log_directory(rotated_file)
 
         assert expected_name == computed_name
         mock_mkdir.assert_called_with(log_path, 0o750)
