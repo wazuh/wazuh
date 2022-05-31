@@ -26,7 +26,7 @@ unix_sed() {
     target_file="$2"
     special_args="$3"
 
-    sed ${special_args} ${sed_expression} ${target_file} > ${target_file}.tmp
+    sed ${special_args} "${sed_expression}" "${target_file}" > ${target_file}.tmp
     cat "${target_file}.tmp" > "${target_file}"
     rm "${target_file}.tmp"
 }
@@ -103,9 +103,9 @@ add_adress_block() {
     done
 
     if [ "${use_unix_sed}" = "False" ] ; then
-        ${sed} "/<client>/r${TMP_SERVER}" ${CONF_FILE}
+        ${sed} "/<client>/r ${TMP_SERVER}" ${CONF_FILE}
     else
-        unix_sed "/<client>/r${TMP_SERVER}" ${CONF_FILE}
+        unix_sed "/<client>/r ${TMP_SERVER}" ${CONF_FILE}
     fi
 
     rm -f ${TMP_SERVER}
@@ -205,8 +205,8 @@ tolower () {
 
 # Add auto-enrollment configuration block
 add_auto_enrollment () {
-    start_config="$(grep -n "<enrollment>" ${INSTALLDIR}/etc/ossec.conf | cut -d':' -f 1)"
-    end_config="$(grep -n "</enrollment>" ${INSTALLDIR}/etc/ossec.conf | cut -d':' -f 1)"
+    start_config="$(grep -n "<enrollment>" ${CONF_FILE} | cut -d':' -f 1)"
+    end_config="$(grep -n "</enrollment>" ${CONF_FILE} | cut -d':' -f 1)"
     if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
         start_config=$(( start_config + 1 ))
         end_config=$(( end_config - 1 ))
@@ -230,9 +230,9 @@ add_auto_enrollment () {
 # Add the auto_enrollment block to the configuration file
 concat_conf() {
     if [ "${use_unix_sed}" = "False" ] ; then
-        ${sed} "/<\/crypto_method>/r${TMP_ENROLLMENT}" ${CONF_FILE}
+        ${sed} "/<\/crypto_method>/r ${TMP_ENROLLMENT}" ${CONF_FILE}
     else
-        unix_sed "/<\/crypto_method>/r${TMP_ENROLLMENT}" ${CONF_FILE}
+        unix_sed "/<\/crypto_method>/r ${TMP_ENROLLMENT}/" ${CONF_FILE}
     fi
 
     rm -f ${TMP_ENROLLMENT}
