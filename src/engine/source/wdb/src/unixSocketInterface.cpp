@@ -173,7 +173,7 @@ std::vector<char> recvMsg(const int sock)
     // Check recive msg
     const auto checkRcv = [](const ssize_t rcvBytes)
     {
-        if (rcvBytes < 0)
+        if (0 > rcvBytes)
         {
             const auto msg = std::string {"recvMsg: recv error : "} + strerror(errno)
                              + " (" + std::to_string(errno) + ")";
