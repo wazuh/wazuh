@@ -226,7 +226,7 @@ typedef struct _queries_breakdown_t {
 typedef struct _db_stats_t {
     uint64_t queries_total;
     queries_breakdown_t queries_breakdown;
-} db_stats_t;
+} wdb_state_t;
 
 /* Status functions */
 
