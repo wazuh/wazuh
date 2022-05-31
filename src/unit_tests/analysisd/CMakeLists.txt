@@ -140,8 +140,8 @@ LIST(APPEND analysisd_flags "-Wl,--wrap,send_rootcheck_log ${DEBUG_OP_WRAPPERS}"
 LIST(APPEND analysisd_names "test_decoder_syscollector")
 LIST(APPEND analysisd_flags "-Wl,--wrap,wdbc_query_ex ${DEBUG_OP_WRAPPERS}")
 
-LIST(APPEND analysisd_names "test_analysisd")
-LIST(APPEND analysisd_flags "-Wl,--wrap,load_limits_file -Wl,--wrap,_minfo -Wl,--wrap,_mwarn -Wl,--wrap,_merror")
+LIST(APPEND analysisd_names "test_limits")
+LIST(APPEND analysisd_flags "-W")
 
 list(LENGTH analysisd_names count)
 math(EXPR count "${count} - 1")

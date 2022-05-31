@@ -168,7 +168,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
         else if (strcmp(node[i]->element, oswmodule) == 0) {
             if ((modules & CWMODULE) && (Read_WModule(xml, node[i], d1, d2) < 0)) {
                 goto fail;
-            } 
+            }
 #ifndef CLIENT
             else if ((node[i]->attributes[0] && !strcmp(node[i]->attributes[0], "name")) &&
                      (node[i]->values[0] && !strcmp(node[i]->values[0], key_polling))) {
