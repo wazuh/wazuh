@@ -11,8 +11,8 @@
 # Global variables
 INSTALLDIR=${1}
 CONF_FILE="${INSTALLDIR}/etc/ossec.conf"
-TMP_ENROLLMENT="${INSTALLDIR}/tmp/autoenrollment.conf"
-TMP_SERVER="${INSTALLDIR}/tmp/server.conf"
+TMP_ENROLLMENT="${INSTALLDIR}/tmp/enrollment-configuration"
+TMP_SERVER="${INSTALLDIR}/tmp/server-configuration"
 
 
 # Set default sed alias
@@ -107,7 +107,7 @@ add_adress_block() {
     else
         unix_sed "/<client>/r${TMP_SERVER}" ${CONF_FILE}
     fi
-    
+
     rm -f ${TMP_SERVER}
 
 }
@@ -228,24 +228,11 @@ add_auto_enrollment () {
 }
 
 # Add the auto_enrollment block to the configuration file
-concat_conf(){
-    start_config="$(grep -n "<enrollment>" ${INSTALLDIR}/etc/ossec.conf | cut -d':' -f 1)"
-    end_config="$(grep -n "</enrollment>" ${INSTALLDIR}/etc/ossec.conf | cut -d':' -f 1)"
-    if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
-        # Remove the server configuration
-        if [ "${use_unix_sed}" = "False" ] ; then
-            ${sed} -e "/<enrollment>/,/<\/enrollment>/{ /<enrollment>/{p; r ${TMP_ENROLLMENT}
-            }; /<\/enrollment>/p; d }" ${CONF_FILE}
-        else
-            unix_sed "/<enrollment>/,/<\/enrollment>/{ /<enrollment>/{p; r ${TMP_ENROLLMENT}
-            }; /<\/enrollment>/p; d }" "${CONF_FILE}" "-e"
-        fi
+concat_conf() {
+    if [ "${use_unix_sed}" = "False" ] ; then
+        ${sed} "/<\/client>/e cat ${TMP_ENROLLMENT}" ${CONF_FILE}
     else
-        if [ "${use_unix_sed}" = "False" ] ; then
-            ${sed} "/<\/client>/e cat ${TMP_ENROLLMENT}" ${CONF_FILE}
-        else
-            unix_sed "/<\/client>/e cat ${TMP_ENROLLMENT}" ${CONF_FILE}
-        fi
+        unix_sed "/<\/client>/e cat ${TMP_ENROLLMENT}" ${CONF_FILE}
     fi
 
     rm -f ${TMP_ENROLLMENT}
