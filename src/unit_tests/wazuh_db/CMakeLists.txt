@@ -148,6 +148,9 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_get_cache_stmt -Wl,--wrap,wdb_step -
 list(APPEND wdb_tests_names "test_wazuh_db-config")
 list(APPEND wdb_tests_flags "${DEBUG_OP_WRAPPERS}")
 
+list(APPEND wdb_tests_names "test_wazuh_db_state")
+list(APPEND wdb_tests_flags "")
+
 # Add extra compiling flags
 add_compile_options(-Wall)
 
