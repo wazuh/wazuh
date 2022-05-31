@@ -12,8 +12,9 @@ namespace wazuhdb
 
 WazuhDB::~WazuhDB()
 {
-    if (this->m_fd > 0)
+    if (0 < this->m_fd)
     {
+        WAZUH_LOG_DEBUG("Closing the wdb conexion...");
         close(this->m_fd);
     }
 };
@@ -27,7 +28,7 @@ void WazuhDB::connect()
     }
     else if (std::filesystem::is_socket(m_path) == false)
     {
-        const std::string msg {"The wdb socket does not a socket:" + m_path.string()};
+        const std::string msg {"The wdb socket path is not a socket:" + m_path.string()};
         throw std::runtime_error(msg);
     }
 
