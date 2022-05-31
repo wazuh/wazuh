@@ -978,12 +978,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     mdebug1("FTS_Init completed.");
 
     /* Initialize EPS limits */
-    if (Config.eps.maximum > 0 && Config.eps.timeframe > 0) {
-        load_limits(Config.eps.maximum, Config.eps.timeframe);
-        minfo("EPS limit enabled, EPS: '%d', timeframe: '%d'", Config.eps.maximum, Config.eps.timeframe);
-    } else {
-        minfo("EPS limit disabled");
-    }
+    load_limits(Config.eps.maximum, Config.eps.timeframe);
 
     /* Create message handler thread */
     w_create_thread(ad_input_main, &m_queue);

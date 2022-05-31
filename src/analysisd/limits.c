@@ -39,17 +39,21 @@ STATIC pthread_mutex_t limit_eps_mutex = PTHREAD_MUTEX_INITIALIZER;
 STATIC sem_t credits_eps_semaphore;
 
 void load_limits(unsigned int eps, unsigned int timeframe) {
-    sem_init(&credits_eps_semaphore, 0, 0);
+    if (eps > 0 && timeframe > 0) {
+        limits.eps = eps;
+        limits.timeframe = timeframe;
+        limits.current_cell = 0;
 
-    limits.eps = eps;
-    limits.timeframe = timeframe;
-    limits.current_cell = 0;
+        os_calloc(limits.timeframe, sizeof(unsigned int), limits.circ_buf);
 
-    os_calloc(limits.timeframe, sizeof(unsigned int), limits.circ_buf);
+        sem_init(&credits_eps_semaphore, 0, limits.eps * limits.timeframe);
 
-    generate_eps_credits(limits.eps * limits.timeframe);
-
-    limits.enabled = true;
+        limits.enabled = true;
+        minfo("EPS limit enabled, EPS: '%d', timeframe: '%d'", eps, timeframe);
+    } else {
+        limits.enabled = false;
+        minfo("EPS limit disabled");
+    }
 }
 
 void update_limits(void) {

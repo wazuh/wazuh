@@ -93,11 +93,36 @@ void test_get_eps_credit_ok(void ** state)
 }
 
 // load_limits
+void test_load_limits_disabled(void ** state)
+{
+    int current_credits;
+    limits.enabled = false;
+
+    expect_string(__wrap__minfo, formatted_msg, "EPS limit disabled");
+
+    load_limits(0, 5);
+
+    assert_false(limits.enabled);
+}
+
+void test_load_limits_timeframe_zero(void ** state)
+{
+    int current_credits;
+    limits.enabled = false;
+
+    expect_string(__wrap__minfo, formatted_msg, "EPS limit disabled");
+
+    load_limits(100, 0);
+
+    assert_false(limits.enabled);
+}
+
 void test_load_limits_ok(void ** state)
 {
     int current_credits;
     limits.enabled = false;
-    sem_init(&credits_eps_semaphore, 0, 0);
+
+    expect_string(__wrap__minfo, formatted_msg, "EPS limit enabled, EPS: '100', timeframe: '5'");
 
     load_limits(100, 5);
 
@@ -106,22 +131,6 @@ void test_load_limits_ok(void ** state)
     assert_true(limits.enabled);
     sem_getvalue(&credits_eps_semaphore, &current_credits);
     assert_int_equal(500, current_credits);
-    sem_destroy(&credits_eps_semaphore);
-}
-
-void test_load_limits_timeframe_zero(void ** state)
-{
-    int current_credits;
-    limits.enabled = false;
-    sem_init(&credits_eps_semaphore, 0, 0);
-
-    load_limits(100, 0);
-
-    assert_int_equal(limits.eps, 100);
-    assert_int_equal(limits.timeframe, 0);
-    assert_true(limits.enabled);
-    sem_getvalue(&credits_eps_semaphore, &current_credits);
-    assert_int_equal(0, current_credits);
     sem_destroy(&credits_eps_semaphore);
 }
 
@@ -173,8 +182,9 @@ int main(void)
         // Test get_eps_credit
         cmocka_unit_test_setup_teardown(test_get_eps_credit_ok, test_setup, test_teardown),
         // Test load_limits
-        cmocka_unit_test_teardown(test_load_limits_ok, test_teardown),
+        cmocka_unit_test_teardown(test_load_limits_disabled, test_teardown),
         cmocka_unit_test_teardown(test_load_limits_timeframe_zero, test_teardown),
+        cmocka_unit_test_teardown(test_load_limits_ok, test_teardown),
         // // Test update_limits
         cmocka_unit_test_setup_teardown(test_update_limits_current_cell_less_than_timeframe, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_update_limits_current_cell_timeframe_limit, test_setup, test_teardown),
