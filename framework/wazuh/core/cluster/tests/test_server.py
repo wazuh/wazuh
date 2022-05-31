@@ -17,7 +17,6 @@ with patch('wazuh.common.wazuh_uid'):
         from wazuh.core.cluster import common as c_common
         from wazuh.core.exception import WazuhClusterError, WazuhError, WazuhResourceNotFound
 
-fernet_key = "00000000000000000000000000000000"
 asyncio.set_event_loop_policy(EventLoopPolicy())
 loop = new_event_loop()
 
@@ -25,8 +24,7 @@ loop = new_event_loop()
 def test_AbstractServerHandler_init():
     """Check the correct initialization of the AbstractServerHandler object."""
     with patch("wazuh.core.cluster.server.context_tag", ContextVar("tag", default="")) as mock_contextvar:
-        abstract_server_handler = AbstractServerHandler(server="Test", loop=loop, fernet_key=fernet_key,
-                                                        cluster_items={"test": "server"})
+        abstract_server_handler = AbstractServerHandler(server="Test", loop=loop, cluster_items={"test": "server"})
         assert abstract_server_handler.server == "Test"
         assert abstract_server_handler.loop == loop
         assert isinstance(abstract_server_handler.last_keepalive, float)
@@ -36,7 +34,7 @@ def test_AbstractServerHandler_init():
         assert abstract_server_handler.ip is None
         assert abstract_server_handler.transport is None
 
-        abstract_server_handler = AbstractServerHandler(server="Test", loop=loop, fernet_key=fernet_key,
+        abstract_server_handler = AbstractServerHandler(server="Test", loop=loop,
                                                         cluster_items={"test": "server"},
                                                         logger=Logger(name="test_logger"),
                                                         tag="NoClient")
@@ -51,8 +49,7 @@ def test_AbstractServerHandler_init():
 
 def test_AbstractServerHandler_to_dict():
     """Check the correct transformation of an AbstractServerHandler to a dict."""
-    abstract_server_handler = AbstractServerHandler(server="Test", loop=loop, fernet_key=fernet_key,
-                                                    cluster_items={"test": "server"})
+    abstract_server_handler = AbstractServerHandler(server="Test", loop=loop, cluster_items={"test": "server"})
     abstract_server_handler.ip = "111.111.111.111"
     abstract_server_handler.name = "to_dict_testing"
     assert abstract_server_handler.to_dict() == {"info": {"ip": "111.111.111.111", "name": "to_dict_testing"}}
@@ -68,8 +65,7 @@ def test_AbstractServerHandler_connection_made():
     logger = Logger("test_connection_made")
     with patch("logging.getLogger", return_value=logger):
         with patch.object(logger, "info") as mock_logger:
-            abstract_server_handler = AbstractServerHandler(server="Test", loop=loop, fernet_key=fernet_key,
-                                                            cluster_items={"test": "server"})
+            abstract_server_handler = AbstractServerHandler(server="Test", loop=loop, cluster_items={"test": "server"})
             with patch.object(asyncio.Transport, "get_extra_info", get_extra_info):
                 abstract_server_handler.connection_made(transport=transport)
                 assert abstract_server_handler.ip == "peername"
@@ -82,8 +78,7 @@ def test_AbstractServerHandler_connection_made():
 @patch("wazuh.core.cluster.common.Handler.process_request")
 def test_AbstractServerHandler_process_request(mock_process_request, mock_echo_master, mock_hello):
     """Check the behavior of the process_request function for the different commands that can be sent to it."""
-    abstract_server_handler = AbstractServerHandler(server="Test", loop=loop, fernet_key=fernet_key,
-                                                    cluster_items={"test": "server"})
+    abstract_server_handler = AbstractServerHandler(server="Test", loop=loop, cluster_items={"test": "server"})
 
     abstract_server_handler.process_request(command=b"echo-c", data=b"wazuh")
     mock_echo_master.assert_called_once_with(b"wazuh")
@@ -99,8 +94,7 @@ def test_AbstractServerHandler_process_request(mock_process_request, mock_echo_m
 def test_AbstractServerHandler_echo_master():
     """Check that the echo_master function updates the last_keepalive variable and returns a confirmation message."""
 
-    abstract_server_handler = AbstractServerHandler(server="Test", loop=loop, fernet_key=fernet_key,
-                                                    cluster_items={"test": "server"})
+    abstract_server_handler = AbstractServerHandler(server="Test", loop=loop, cluster_items={"test": "server"})
 
     assert abstract_server_handler.echo_master(data=b"wazuh") == (b"ok-m ", b"wazuh")
     abstract_server_handler.echo_master(data=b"wazuh")
@@ -117,8 +111,7 @@ def test_AbstractServerHandler_hello(create_task_mock):
             self.configuration = {"node_name": "elif_test"}
 
     loop.create_task = Mock()
-    abstract_server_handler = AbstractServerHandler(server="Test", loop=loop, fernet_key=fernet_key,
-                                                    cluster_items={"test": "server"})
+    abstract_server_handler = AbstractServerHandler(server="Test", loop=loop, cluster_items={"test": "server"})
     abstract_server_handler.server = ServerMock()
     abstract_server_handler.tag = "FixBehaviour"
     abstract_server_handler.broadcast_reader = Mock()
@@ -144,8 +137,7 @@ def test_AbstractServerHandler_hello(create_task_mock):
 @patch("wazuh.core.cluster.common.Handler.process_response")
 def test_AbstractServerHandler_process_response(process_response_mock):
     """Check that the process_response function processes the response according to the command sent."""
-    abstract_server_handler = AbstractServerHandler(server="Test", loop=loop, fernet_key=fernet_key,
-                                                    cluster_items={"test": "server"})
+    abstract_server_handler = AbstractServerHandler(server="Test", loop=loop, cluster_items={"test": "server"})
     assert abstract_server_handler.process_response(command=b"ok-c", payload=b"test") == \
            b"Successful response from client: test"
 
@@ -163,8 +155,7 @@ def test_AbstractServerHandler_connection_lost():
 
     logger = Logger("test_connection_made")
     with patch("logging.getLogger", return_value=logger):
-        abstract_server_handler = AbstractServerHandler(server="Test", loop=loop, fernet_key=fernet_key,
-                                                        cluster_items={"test": "server"})
+        abstract_server_handler = AbstractServerHandler(server="Test", loop=loop, cluster_items={"test": "server"})
         with patch.object(logger, "error") as mock_error_logger:
             abstract_server_handler.connection_lost(exc=None)
             mock_error_logger.assert_called_once_with("Error during handshake with incoming connection.",
@@ -195,8 +186,7 @@ def test_AbstractServerHandler_connection_lost():
 @patch("wazuh.core.cluster.server.functools")
 def test_AbstractServerHandler_add_request(functools_mock, queue_mock):
     """Check that requests are added to asyncio queue with expected parameters."""
-    abstract_server_handler = AbstractServerHandler(server="Test", loop=loop, fernet_key=fernet_key,
-                                                    cluster_items={"test": "server"})
+    abstract_server_handler = AbstractServerHandler(server="Test", loop=loop, cluster_items={"test": "server"})
     abstract_server_handler.add_request('test_id', 'test_f', 'test_param', keyword_param='test')
     queue_mock.return_value.put_nowait.assert_called_with({'broadcast_id': 'test_id', 'func': ANY})
     functools_mock.partial.assert_called_with('test_f', abstract_server_handler, 'test_param', keyword_param='test')
@@ -214,8 +204,8 @@ async def test_AbstractServerHandler_broadcast_reader():
     server_mock = Mock()
     logger_mock = Mock()
     server_mock.broadcast_results = {'test1': {'worker1': {}}, 'test2': {'worker1': {}}, 'test3': {'worker1': {}}}
-    abstract_server_handler = AbstractServerHandler(server=server_mock, loop=loop, fernet_key=fernet_key,
-                                                    cluster_items={"test": "server"}, logger=logger_mock)
+    abstract_server_handler = AbstractServerHandler(server=server_mock, loop=loop, cluster_items={"test": "server"},
+                                                    logger=logger_mock)
     abstract_server_handler.name = 'worker1'
 
     with patch("asyncio.Queue.get", side_effect=[{'broadcast_id': 'test1', 'func': async_mock_func},
@@ -238,21 +228,20 @@ def test_AbstractServer_init(AbstractServerHandler_mock, keepalive_mock):
     """Check the correct initialization of the AbstractServer object."""
     with patch("wazuh.core.cluster.server.context_tag", ContextVar("tag", default="")) as mock_contextvar:
         abstract_server = AbstractServer(performance_test=1, concurrency_test=2, configuration={"test3": 3},
-                                         cluster_items={"test4": 4}, enable_ssl=True)
+                                         cluster_items={"test4": 4})
 
         assert abstract_server.clients == {}
         assert abstract_server.performance == 1
         assert abstract_server.concurrency == 2
         assert abstract_server.configuration == {"test3": 3}
         assert abstract_server.cluster_items == {"test4": 4}
-        assert abstract_server.enable_ssl is True
         assert abstract_server.tag == "Abstract Server"
         assert mock_contextvar.get() == "Abstract Server"
         assert isinstance(abstract_server.logger, Logger)
 
         logger = Logger("abs")
         abstract_server = AbstractServer(performance_test=1, concurrency_test=2, configuration={"test3": 3},
-                                         cluster_items={"test4": 4}, enable_ssl=True, logger=logger, tag="test")
+                                         cluster_items={"test4": 4}, logger=logger, tag="test")
         assert abstract_server.tag == "test"
         assert mock_contextvar.get() == "test"
         assert abstract_server.logger == logger
@@ -271,7 +260,7 @@ def test_AbstractServer_broadcast(AbstractServerHandler_mock, asynckeepalive_moc
     worker1_instance = Mock()
     worker2_instance = Mock()
     abstract_server = AbstractServer(performance_test=1, concurrency_test=2, configuration={"test3": 3},
-                                     cluster_items={"test4": 4}, enable_ssl=True, logger=logger_mock)
+                                     cluster_items={"test4": 4}, logger=logger_mock)
     abstract_server.clients = {"worker1": worker1_instance, "worker2": worker2_instance}
 
     abstract_server.broadcast(test_func, "test_param", keyword_param="param")
@@ -286,7 +275,7 @@ def test_AbstractServer_broadcast_ko():
     """Verify that expected error log is printed when an exception is raised."""
     logger_mock = Mock()
     abstract_server = AbstractServer(performance_test=1, concurrency_test=2, configuration={"test3": 3},
-                                     cluster_items={"test4": 4}, enable_ssl=True, logger=logger_mock)
+                                     cluster_items={"test4": 4}, logger=logger_mock)
     abstract_server.clients = {"worker1": "test"}
 
     abstract_server.broadcast("test_f", "test_param", keyword_param="param")
@@ -305,7 +294,7 @@ def test_AbstractServer_broadcast_add(uuid_mock):
     worker1_instance = Mock()
     worker2_instance = Mock()
     abstract_server = AbstractServer(performance_test=1, concurrency_test=2, configuration={"test3": 3},
-                                     cluster_items={"test4": 4}, enable_ssl=True, logger=logger_mock)
+                                     cluster_items={"test4": 4}, logger=logger_mock)
     abstract_server.broadcast_results = {}
     abstract_server.clients = {"worker1": worker1_instance, "worker2": worker2_instance}
 
@@ -321,7 +310,7 @@ def test_AbstractServer_broadcast_add_ko(uuid_mock):
     """Check that expected error log is printed and that broadcast_results is deleted."""
     logger_mock = Mock()
     abstract_server = AbstractServer(performance_test=1, concurrency_test=2, configuration={"test3": 3},
-                                     cluster_items={"test4": 4}, enable_ssl=True, logger=logger_mock)
+                                     cluster_items={"test4": 4}, logger=logger_mock)
     abstract_server.broadcast_results = {}
     abstract_server.clients = {"worker1": "test"}
 
@@ -344,7 +333,7 @@ def test_AbstractServer_broadcast_pop(broadcast_results, expected_response):
     """Check that expected response is returned for each case."""
     logger_mock = Mock()
     abstract_server = AbstractServer(performance_test=1, concurrency_test=2, configuration={"test3": 3},
-                                     cluster_items={"test4": 4}, enable_ssl=True, logger=logger_mock)
+                                     cluster_items={"test4": 4}, logger=logger_mock)
     abstract_server.broadcast_results = broadcast_results
     abstract_server.clients = {"worker1": "test", "worker2": "test"}
 
@@ -358,7 +347,7 @@ def test_AbstractServer_to_dict():
                      "nodes": [0, 1],
                      "node_name": "worker2"}
     abstract_server = AbstractServer(performance_test=1, concurrency_test=2, configuration=configuration,
-                                     cluster_items={"test4": 4}, enable_ssl=True)
+                                     cluster_items={"test4": 4})
     assert abstract_server.to_dict() == {"info": {"ip": configuration["nodes"][0], "name": configuration['node_name']}}
 
 
@@ -367,7 +356,7 @@ def test_AbstractServer_setup_task_logger():
     """Check that a logger is created with a specific tag."""
     logger = Logger("setup_task_logger")
     abstract_server = AbstractServer(performance_test=1, concurrency_test=2, configuration={"test3": 3},
-                                     cluster_items={"test4": 4}, enable_ssl=True, logger=logger)
+                                     cluster_items={"test4": 4}, logger=logger)
     assert abstract_server.setup_task_logger(task_tag="zxf").name == "setup_task_logger.zxf"
 
     with patch.object(abstract_server.logger, "getChild") as mock_child:
@@ -381,7 +370,7 @@ def test_AbstractServer_get_connected_nodes(mock_process_array):
     """Check that all the necessary data is sent to the utils.process_array
     function to return all the information of the connected nodes."""
     abstract_server = AbstractServer(performance_test=1, concurrency_test=2, configuration={"test3": 3},
-                                     cluster_items={"test4": 4}, enable_ssl=True)
+                                     cluster_items={"test4": 4})
     basic_dict = {"info": {"first": "test"}}
 
     with patch.object(abstract_server, "to_dict", return_value=basic_dict):
@@ -398,7 +387,7 @@ def test_AbstractServer_get_connected_nodes(mock_process_array):
 def test_AbstractServer_get_connected_nodes_ko(mock_process_array):
     """Check all exceptions that can be returned by the get_connected_nodes function."""
     abstract_server = AbstractServer(performance_test=1, concurrency_test=2, configuration={"test3": 3},
-                                     cluster_items={"test4": 4}, enable_ssl=True)
+                                     cluster_items={"test4": 4})
     basic_dict = {"info": {"first": "test"}}
 
     with patch.object(abstract_server, "to_dict", return_value=basic_dict):
@@ -441,7 +430,7 @@ async def test_AbstractServer_check_clients_keepalive(sleep_mock):
             with patch("wazuh.core.cluster.server.AbstractServer.setup_task_logger",
                        return_value=logger):
                 abstract_server = AbstractServer(performance_test=1, concurrency_test=2, configuration={"test3": 3},
-                                                 cluster_items={"test4": 4}, enable_ssl=True, logger=logger)
+                                                 cluster_items={"test4": 4}, logger=logger)
                 tester = "check_clients_keepalive"
                 abstract_server.cluster_items = {"intervals": {"master": {"check_worker_lastkeepalive": tester}}}
                 try:
@@ -476,7 +465,7 @@ async def test_AbstractServer_echo(sleep_mock):
     with patch.object(logger, "debug") as mock_debug:
         with patch.object(logger, "info") as mock_info:
             abstract_server = AbstractServer(performance_test=1, concurrency_test=2, configuration={"test3": 3},
-                                             cluster_items={"test4": 4}, enable_ssl=True, logger=logger)
+                                             cluster_items={"test4": 4}, logger=logger)
             abstract_server.clients = {b"worker_test": ClientMock()}
             try:
                 await abstract_server.echo()
@@ -502,7 +491,7 @@ async def test_AbstractServer_performance_test(perf_counter_mock, sleep_mock):
     logger = Logger("test_echo")
     with patch.object(logger, "info") as mock_info:
         abstract_server = AbstractServer(performance_test=1, concurrency_test=2, configuration={"test3": 3},
-                                         cluster_items={"test4": 4}, enable_ssl=True, logger=logger)
+                                         cluster_items={"test4": 4}, logger=logger)
         abstract_server.clients = {b"worker_test": ClientMock()}
         abstract_server.performance = 2
         try:
@@ -528,7 +517,7 @@ async def test_AbstractServer_concurrency_test(perf_counter_mock, sleep_mock):
     logger = Logger("test_echo")
     with patch.object(logger, "info") as mock_info:
         abstract_server = AbstractServer(performance_test=1, concurrency_test=2, configuration={"test3": 3},
-                                         cluster_items={"test4": 4}, enable_ssl=True, logger=logger)
+                                         cluster_items={"test4": 4}, logger=logger)
         abstract_server.clients = {b"worker_test": ClientMock()}
         abstract_server.concurrency = 777
         try:
@@ -573,11 +562,10 @@ async def test_AbstractServer_start(keepalive_mock, set_event_loop_policy_mock, 
                         cluster_items = {"intervals": {"master": {"check_worker_lastkeepalive": 987}}}
                         abstract_server = AbstractServer(performance_test=1, concurrency_test=2,
                                                          configuration={"bind_addr": 3, "port": 10000},
-                                                         cluster_items=cluster_items, enable_ssl=False, logger=logger)
+                                                         cluster_items=cluster_items, logger=logger)
 
                         with patch.object(abstract_server, "handler_class"):
                             with patch.object(abstract_server, "tasks", []):
-                                abstract_server.configuration["key"] = fernet_key
                                 abstract_server.tag = "start_test"
                                 await abstract_server.start()
                                 assert mock_contextvar.get() == "start_test"
@@ -585,18 +573,6 @@ async def test_AbstractServer_start(keepalive_mock, set_event_loop_policy_mock, 
                                 eventlooppolicy_mock.assert_called_once()
                                 set_event_loop_policy_mock.assert_called_once()
                                 create_server_mock.assert_awaited_once()
-
-                    ssl_mock = SSLMock()
-                    with patch("ssl.create_default_context", return_value=ssl_mock) as create_default_context_mock:
-                        with patch.object(ssl_mock, "load_cert_chain") as load_cert_chain_mock:
-                            await AbstractServer(performance_test=1, concurrency_test=2,
-                                                 configuration={"bind_addr": 3, "port": 10000},
-                                                 cluster_items=cluster_items, enable_ssl=True,
-                                                 logger=logger).start()
-
-                            create_default_context_mock.assert_called_once_with(purpose=ssl.Purpose.CLIENT_AUTH)
-                            load_cert_chain_mock.assert_called_once_with(certfile="testing_path",
-                                                                         keyfile="testing_path")
 
 
 @pytest.mark.asyncio
@@ -627,7 +603,6 @@ async def test_AbstractServer_start_ko(keepalive_mock, set_event_loop_policy_moc
                                                                              {"check_worker_lastkeepalive": 987}
                                                                          }
                                                                     },
-                                                     enable_ssl=False, logger=logger)
-                    abstract_server.configuration["key"] = fernet_key
+                                                     logger=logger)
                     await abstract_server.start()
                     mock_logger.assert_called_once_with("Could not start master: ")

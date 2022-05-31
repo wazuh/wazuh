@@ -411,11 +411,6 @@ class WazuhException(Exception):
                'remediation': 'Check the cluster.log located at WAZUH_HOME/logs/cluster.log file to see if there are '
                               'connection errors. Restart the `wazuh-manager` service.'},
         3024: "Length of command exceeds limit defined in wazuh.cluster.common.Handler.cmd_len.",
-        3025: {'message': "Could not decrypt message",
-               'remediation': "Check the cluster key is correct in the worker's "
-                              f"[ossec.conf](https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/reference/"
-                              f"ossec-conf/cluster.html#key)"
-                              ", ensure it is the same that the master's."},
         3026: "Error sending request: Memory error. Request chunk size divided by 2.",
         3027: "Unknown received task name",
         3028: {'message': "Worker node ID already exists",

@@ -22,8 +22,7 @@ loop = new_event_loop()
 
 def test_localclienthandler_initialization():
     """Check the correct initialization of the LocalClientHandler object."""
-    lc = LocalClientHandler(loop=None, on_con_lost=None, name="Unittest",
-                            logger=None, fernet_key=None, manager=None, cluster_items=None)
+    lc = LocalClientHandler(loop=None, on_con_lost=None, name="Unittest", logger=None, manager=None, cluster_items=None)
     """Check the correct initialization of the LocalClientHandler object."""
     assert isinstance(lc.response_available, Event)
     assert lc.response == b""
@@ -31,8 +30,7 @@ def test_localclienthandler_initialization():
 
 def test_localclienthandler_connection_made():
     """Check that the connection_made function sets the transport parameter correctly."""
-    lc = LocalClientHandler(loop=None, on_con_lost=None, name="Unittest",
-                            logger=None, fernet_key=None, manager=None, cluster_items=None)
+    lc = LocalClientHandler(loop=None, on_con_lost=None, name="Unittest", logger=None, manager=None, cluster_items=None)
 
     assert lc.transport is None
     lc.connection_made(Transport())
@@ -41,16 +39,14 @@ def test_localclienthandler_connection_made():
 
 def test_localclienthandler_cancel_all_tasks():
     """Check the proper functionality of the _cancel_all_tasks function."""
-    lc = LocalClientHandler(loop=None, on_con_lost=None, name="Unittest",
-                            logger=None, fernet_key=None, manager=None, cluster_items=None)
+    lc = LocalClientHandler(loop=None, on_con_lost=None, name="Unittest", logger=None, manager=None, cluster_items=None)
     assert lc._cancel_all_tasks() is None
 
 
 @patch("asyncio.Event.set")
 def test_localclienthandler_process_request(mock_set):
     """Check each of the possible behaviors inside the _process_request function."""
-    lc = LocalClientHandler(loop=None, on_con_lost=None, name="Unittest",
-                            logger=None, fernet_key=None, manager=None, cluster_items=None)
+    lc = LocalClientHandler(loop=None, on_con_lost=None, name="Unittest", logger=None, manager=None, cluster_items=None)
     command = b"dapi_res"
     assert lc.process_request(command=command, data=b"Error") == (b"err", b"Error")
     assert lc.process_request(command=command, data=b"Testing") == \
@@ -99,8 +95,7 @@ def test_localclienthandler_process_request(mock_set):
 @patch("asyncio.Event.set")
 def test_localclienthandler_process_error_from_peer(mock_set):
     """Run the _process_error_from_peer function and check the correct value assignment for the response attribute."""
-    lc = LocalClientHandler(loop=None, on_con_lost=None, name="Unittest",
-                            logger=None, fernet_key=None, manager=None, cluster_items=None)
+    lc = LocalClientHandler(loop=None, on_con_lost=None, name="Unittest", logger=None, manager=None, cluster_items=None)
     assert lc.process_error_from_peer(data=b"None") == b"None"
     assert lc.response == b"None"
     mock_set.assert_called_once()
@@ -108,8 +103,8 @@ def test_localclienthandler_process_error_from_peer(mock_set):
 
 def test_localclienthandler_connection_lost():
     """Check that the set_result method of the on_con_lost object is called once with the defined parameters."""
-    lc = LocalClientHandler(loop=None, on_con_lost=asyncio.Future(), name="Unittest",
-                            logger=None, fernet_key=None, manager=None, cluster_items=None)
+    lc = LocalClientHandler(loop=None, on_con_lost=asyncio.Future(), name="Unittest", logger=None, manager=None,
+                            cluster_items=None)
     with patch.object(lc.on_con_lost, "set_result") as mock_set_result:
         lc.connection_lost(Exception())
         mock_set_result.assert_called_once_with(True)

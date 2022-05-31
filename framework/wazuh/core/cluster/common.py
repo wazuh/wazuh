@@ -2,7 +2,6 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
-import base64
 import datetime
 import hashlib
 import json
@@ -17,8 +16,6 @@ from importlib import import_module
 from time import perf_counter
 from typing import Tuple, Dict, Callable, List, Iterable
 from uuid import uuid4
-
-import cryptography.fernet
 
 import wazuh.core.results as wresults
 from wazuh import Wazuh
@@ -294,13 +291,11 @@ class Handler(asyncio.Protocol):
     Define common methods for echo clients and servers.
     """
 
-    def __init__(self, fernet_key: str, cluster_items: Dict, logger: logging.Logger = None, tag: str = "Handler"):
+    def __init__(self, cluster_items: Dict, logger: logging.Logger = None, tag: str = "Handler"):
         """Class constructor.
 
         Parameters
         ----------
-        fernet_key : str
-            32 length string used as key to initialize cryptography's Fernet.
         cluster_items : dict
             Cluster.json object containing cluster internal variables.
         logger : Logger object
@@ -332,8 +327,6 @@ class Handler(asyncio.Protocol):
         self.in_str = {}
         # Maximum message length to send in a single request.
         self.request_chunk = 5242880
-        # Object use to encrypt and decrypt requests.
-        self.my_fernet = cryptography.fernet.Fernet(base64.b64encode(fernet_key.encode())) if fernet_key else None
         # Logging.Logger object used to write logs.
         self.logger = logging.getLogger('wazuh') if not logger else logger
         # Logging tag.
@@ -398,14 +391,13 @@ class Handler(asyncio.Protocol):
 
         # Adds - to command until it reaches cmd length
         command = command + b' ' + b'-' * (self.cmd_len - cmd_len - 1)
-        encrypted_data = self.my_fernet.encrypt(data) if self.my_fernet is not None else data
-        encrypted_message_size = self.header_len + len(encrypted_data)
+        message_size = self.header_len + len(data)
 
         # Message size is <= request_chunk, send the message
         if len(data) <= self.request_chunk:
-            msg = bytearray(encrypted_message_size)
-            msg[:self.header_len] = struct.pack(self.header_format, counter, len(encrypted_data), command)
-            msg[self.header_len:encrypted_message_size] = encrypted_data
+            msg = bytearray(message_size)
+            msg[:self.header_len] = struct.pack(self.header_format, counter, len(data), command)
+            msg[self.header_len:message_size] = data
             return [msg]
 
         # Message size > request_chunk, send the message divided
@@ -414,7 +406,7 @@ class Handler(asyncio.Protocol):
             command = command[:-len(InBuffer.divide_flag)] + InBuffer.divide_flag
             msg_list = []
             partial_data_size = 0
-            data_size = len(encrypted_data)
+            data_size = len(data)
             while partial_data_size < data_size:
                 message_size = self.request_chunk \
                     if data_size - partial_data_size + self.header_len >= self.request_chunk \
@@ -427,8 +419,8 @@ class Handler(asyncio.Protocol):
                 msg = bytearray(message_size)
                 msg[:self.header_len] = struct.pack(self.header_format, counter, message_size - self.header_len,
                                                     command)
-                msg[self.header_len:message_size] = encrypted_data[
-                                                    partial_data_size:partial_data_size + message_size - self.header_len]
+                msg[self.header_len:message_size] = \
+                    data[partial_data_size:partial_data_size + message_size - self.header_len]
                 partial_data_size += message_size - self.header_len
                 msg_list.append(msg)
 
@@ -480,16 +472,7 @@ class Handler(asyncio.Protocol):
 
         while parsed:
             if self.in_msg.received == self.in_msg.total:
-                # Decrypt received message if it is not a part of a divided message
-                try:
-                    decrypted_payload = \
-                        self.my_fernet.decrypt(bytes(self.in_msg.payload)) \
-                            if self.my_fernet is not None and not self.in_msg.flag_divided and \
-                               self.in_msg.counter not in self.div_msg_box \
-                            else bytes(self.in_msg.payload)
-                except cryptography.fernet.InvalidToken:
-                    raise exception.WazuhClusterError(3025)
-                yield self.in_msg.cmd, self.in_msg.counter, decrypted_payload, self.in_msg.flag_divided
+                yield self.in_msg.cmd, self.in_msg.counter, bytes(self.in_msg.payload), self.in_msg.flag_divided
                 self.in_msg = InBuffer()
             else:
                 break
@@ -822,14 +805,8 @@ class Handler(asyncio.Protocol):
             else:
                 # If the message is the last part of a division, join it.
                 if counter in self.div_msg_box:
-                    payload = self.div_msg_box[counter] + payload
+                    payload = bytes(self.div_msg_box[counter] + payload)
                     del self.div_msg_box[counter]
-                    # Decrypt the joined payload
-                    try:
-                        payload = self.my_fernet.decrypt(bytes(payload)) if self.my_fernet is not \
-                                                                            None else bytes(payload)
-                    except cryptography.fernet.InvalidToken:
-                        raise exception.WazuhClusterError(3025)
 
                 # If the message is the response of a previously sent request.
                 if counter in self.box:

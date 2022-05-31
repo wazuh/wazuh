@@ -198,10 +198,7 @@ class LocalServer(server.AbstractServer):
 
         try:
             local_server = await loop.create_unix_server(
-                protocol_factory=lambda: self.handler_class(server=self,
-                                                            loop=loop,
-                                                            fernet_key='',
-                                                            logger=self.logger,
+                protocol_factory=lambda: self.handler_class(server=self, loop=loop, logger=self.logger,
                                                             cluster_items=self.cluster_items),
                 path=socket_path)
             os.chmod(socket_path, 0o660)
