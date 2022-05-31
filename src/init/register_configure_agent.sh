@@ -264,6 +264,8 @@ main () {
 
     get_deprecated_vars
 
+    edit_value_tag "port" ${WAZUH_MANAGER_PORT}
+
     if [ ! -z ${WAZUH_REGISTRATION_SERVER} ] || [ ! -z ${WAZUH_REGISTRATION_PORT} ] || [ ! -z ${WAZUH_REGISTRATION_CA} ] || [ ! -z ${WAZUH_REGISTRATION_CERTIFICATE} ] || [ ! -z ${WAZUH_REGISTRATION_KEY} ] || [ ! -z ${WAZUH_AGENT_NAME} ] || [ ! -z ${WAZUH_AGENT_GROUP} ] || [ ! -z ${ENROLLMENT_DELAY} ]; then
         add_auto_enrollment
         set_auto_enrollment_tag_value "manager_address" ${WAZUH_REGISTRATION_SERVER}
@@ -311,7 +313,6 @@ main () {
 
     # Options to be modified in ossec.conf
     edit_value_tag "protocol" "$(tolower ${WAZUH_PROTOCOL})"
-    edit_value_tag "port" ${WAZUH_MANAGER_PORT}
     edit_value_tag "notify_time" ${WAZUH_KEEP_ALIVE_INTERVAL}
     edit_value_tag "time-reconnect" ${WAZUH_TIME_RECONNECT}
 
