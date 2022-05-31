@@ -14,8 +14,8 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core import wlogging
 
 
-def test_custom_file_rotating_handler_do_rollover():
-    """Test if method doRollover of CustomFileRotatingHandler works properly."""
+def test_timebasedfilerotatinghandler_dorollover():
+    """Test if method doRollover of TimeBasedFileRotatingHandler works properly."""
     with tempfile.TemporaryDirectory() as tmp_dir:
         test_str = 'test string'
         log_file = join(tmp_dir, 'test.log')
@@ -35,13 +35,11 @@ def test_custom_file_rotating_handler_do_rollover():
 
 @pytest.mark.parametrize('rotated_file', ['test.log.2021-08-03', 'test.log.2019-07-04'])
 @patch('wazuh.core.utils.mkdir_with_mode')
-def test_custom_file_rotating_handler_compute_archives_directory(mock_mkdir, rotated_file):
-    """Test if method computeArchivesDirectory of CustomFileRotatingHandler works properly.
+def test_timebasedfilerotatinghandler_compute_log_directory(mock_mkdir, rotated_file):
+    """Test if method compute_log_directory of TimeBasedFileRotatingHandler works properly.
 
     Parameters
     ----------
-    mock_mkdir : mock
-        Mock of mkdir method.
     rotated_file : str
         Test log file used to compute the directory.
     """
@@ -64,27 +62,20 @@ def test_custom_file_rotating_handler_compute_archives_directory(mock_mkdir, rot
 
 @patch('logging.addLevelName')
 @patch('logging.Logger.addHandler')
-@patch('wazuh.core.wlogging.CustomFileRotatingHandler')
-def test_wazuh_logger_setup_logger(mock_fh, mock_add_handler, mock_add_level_name):
-    """Test if method setup_logger of WazuhLogger setups the logger attribute properly.
-
-    Parameters
-    ----------
-    mock_fh: MagicMock
-        Mock of CustomFileRotatingHandler to check if it was correctly instantiated.
-    mock_add_handler: MagicMock
-        Mock of Logger method addHandler to check if the logger has a valid file handler.
-    mock_add_level_name: MagicMock
-        Mock of logging addLevelName function to check if an additional debug level has been added.
-    """
+@patch('wazuh.core.wlogging.SizeBasedFileRotatingHandler')
+@patch('wazuh.core.wlogging.TimeBasedFileRotatingHandler')
+def test_wazuh_logger_setup_logger(mock_time_handler, mock_size_handler, mock_add_handler, mock_add_level_name):
+    """Test if method setup_logger of WazuhLogger setups the logger attribute properly."""
     tmp_dir = tempfile.TemporaryDirectory()
+    max_size = 500
     # To bypass the checking of the existence of a valid Wazuh install
-    with patch('os.path.join'):
-        w_logger = wlogging.WazuhLogger(foreground_mode=True, log_path=tmp_dir,
+    with patch('os.path.join', return_value=tmp_dir.name):
+        w_logger = wlogging.WazuhLogger(foreground_mode=True, log_path=tmp_dir.name,
                                         tag='%(test)s %(test)s: %(test)s',
-                                        debug_level=[0, 'test'])
+                                        debug_level=[0, 'test'], max_size=max_size)
     w_logger.setup_logger()
-    mock_fh.assert_called_with(filename=ANY, when='midnight')
+    mock_time_handler.assert_called_once_with(filename=tmp_dir.name, when='midnight')
+    mock_size_handler.assert_called_with(filename=tmp_dir.name, maxBytes=max_size, backupCount=1)
     mock_add_handler.assert_called()
     mock_add_level_name.assert_called()
 
@@ -96,33 +87,16 @@ def test_wazuh_logger_setup_logger(mock_fh, mock_add_handler, mock_add_level_nam
 @patch.object(wlogging.WazuhLogger, 'debug_level', create=True, new_callable=PropertyMock)
 @patch.object(wlogging.WazuhLogger, 'logger_name', create=True, new_callable=PropertyMock)
 @patch.object(wlogging.WazuhLogger, 'custom_formatter', create=True, new_callable=PropertyMock)
+@patch.object(wlogging.WazuhLogger, 'max_size', create=True, new_callable=PropertyMock)
 @patch('logging.Formatter')
-def test_wazuh_logger__init__(mock_lformatter, mock_formatter, mock_logger_name, mock_debug_level, mock_foreground_mode,
-                              mock_logger, mock_tag, mock_log_path):
-    """Test if WazuhLogger __init__ method initialize all attributes properly.
-
-    Parameters
-    ----------
-    mock_formatter: PropertyMock
-        Mock custom_formatter attribute.
-    mock_logger_name: PropertyMock
-        Mock name for the logger.
-    mock_debug_level: PropertyMock
-        Mock log level.
-    mock_foreground_mode: PropertyMock
-        Mock foreground mode.
-    mock_logger: PropertyMock
-        Mock logger attribute.
-    mock_tag: PropertyMock
-        Mock tag attribute.
-    mock_log_path: Property
-        Mock path for the log.
-    """
+def test_wazuh_logger__init__(mock_lformatter, mock_max_size, mock_formatter, mock_logger_name, mock_debug_level,
+                              mock_foreground_mode, mock_logger, mock_tag, mock_log_path):
+    """Test if WazuhLogger __init__ method initialize all attributes properly."""
     # To bypass the checking of the existence of a valid Wazuh install
     with patch('os.path.join'):
         wlogging.WazuhLogger(foreground_mode=mock_foreground_mode, log_path=mock_log_path, tag=mock_tag,
                              debug_level=mock_debug_level, logger_name=mock_logger_name,
-                             custom_formatter=mock_formatter)
+                             custom_formatter=mock_formatter, max_size=mock_max_size)
     for x in [mock_formatter, mock_logger_name, mock_debug_level, mock_foreground_mode,
               mock_logger, mock_log_path]:
         x.assert_called()
@@ -133,25 +107,14 @@ def test_wazuh_logger__init__(mock_lformatter, mock_formatter, mock_logger_name,
     ('foreground_mode', None, True),
     ('doesnt_exists', AttributeError, None)
 ])
-@patch('wazuh.core.wlogging.CustomFileRotatingHandler')
-def test_wazuh_logger_getattr(mock_fh, attribute, expected_exception, expected_value):
-    """Test if WazuhLogger __getattr__ method works properly.
-
-    Parameters
-    ----------
-    expected_value:
-        Expected result of the __getattr__(attribute) call.
-    mock_fh: MagicMock
-        Mock of CustomFileRotatingHandler function.
-    attribute: str
-        Attribute to search for with __getattr__.
-    expected_exception: None or Exception
-        Exception expected to be raised.
-    """
-    tmp_dir = tempfile.TemporaryDirectory
+@patch('wazuh.core.wlogging.SizeBasedFileRotatingHandler')
+@patch('wazuh.core.wlogging.TimeBasedFileRotatingHandler')
+def test_wazuh_logger_getattr(mock_time_handler, mock_size_handler, attribute, expected_exception, expected_value):
+    """Test if WazuhLogger __getattr__ method works properly."""
+    tmp_dir = tempfile.TemporaryDirectory()
     # To bypass the checking of the existence of a valid Wazuh install
     with patch('os.path.join'):
-        w_logger = wlogging.WazuhLogger(foreground_mode=True, log_path=tmp_dir, tag='%(test)s %(test)s: %(test)s',
+        w_logger = wlogging.WazuhLogger(foreground_mode=True, log_path=tmp_dir.name, tag='%(test)s %(test)s: %(test)s',
                                         debug_level=[0, 'test'], logger_name='test')
     w_logger.setup_logger()
 
