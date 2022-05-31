@@ -1,0 +1,8 @@
+name: decoder_dbsync
+
+check:
+  - queue: +i_eq/35
+
+normalize:
+  - result_dbsync: +dbsync
+  - clean: +cleanEvent/result_dbsync
