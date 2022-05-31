@@ -230,9 +230,9 @@ add_auto_enrollment () {
 # Add the auto_enrollment block to the configuration file
 concat_conf() {
     if [ "${use_unix_sed}" = "False" ] ; then
-        ${sed} "/<\/client>/e cat ${TMP_ENROLLMENT}" ${CONF_FILE}
+        ${sed} "/<\/crypto_method>/r${TMP_ENROLLMENT}" ${CONF_FILE}
     else
-        unix_sed "/<\/client>/e cat ${TMP_ENROLLMENT}" ${CONF_FILE}
+        unix_sed "/<\/crypto_method>/r${TMP_ENROLLMENT}" ${CONF_FILE}
     fi
 
     rm -f ${TMP_ENROLLMENT}
