@@ -6,7 +6,6 @@ import json
 from wazuh.core import common
 from wazuh.core.agent import Agent
 from wazuh.core.cluster.cluster import get_node
-from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError
 from wazuh.core.utils import WazuhVersion
 from wazuh.core.wazuh_queue import WazuhQueue
@@ -77,8 +76,7 @@ def create_json_message(command: str = '', arguments: list = None, alert: dict =
     if not command:
         raise WazuhError(1650)
 
-    cluster_enabled = not read_cluster_config()['disabled']
-    node_name = get_node().get('node') if cluster_enabled else None
+    node_name = get_node().get('node')
 
     msg_queue = json.dumps(
         create_wazuh_socket_message(origin={'name': node_name, 'module': common.origin_module.get()},

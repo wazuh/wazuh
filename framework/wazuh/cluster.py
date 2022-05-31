@@ -5,13 +5,12 @@ from wazuh.core import common
 from wazuh.core.cluster import local_client
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.control import get_health, get_nodes
-from wazuh.core.cluster.utils import get_cluster_status, read_cluster_config, read_config
+from wazuh.core.cluster.utils import get_cluster_status, read_config
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.rbac.decorators import expose_resources, async_list_handler
 
-cluster_enabled = not read_cluster_config(from_import=True)['disabled']
-node_id = get_node().get('node') if cluster_enabled else None
+node_id = get_node().get('node')
 
 
 @expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])

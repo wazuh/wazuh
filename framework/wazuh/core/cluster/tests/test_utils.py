@@ -145,11 +145,11 @@ def test_get_cluster_status():
     """Check if cluster is enabled and running. Also check that cluster is shown as not running when a
     WazuhInternalError is raised."""
     status = utils.get_cluster_status()
-    assert {'enabled': 'no', 'running': 'no'} == status
+    assert {'running': 'no'} == status
 
     with patch('wazuh.core.cluster.utils.get_manager_status', side_effect=WazuhInternalError(1913)):
         status = utils.get_cluster_status()
-        assert {'enabled': 'no', 'running': 'no'} == status
+        assert {'running': 'no'} == status
 
 
 def test_manager_restart():

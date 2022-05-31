@@ -12,7 +12,6 @@ from wazuh.core.InputValidator import InputValidator
 from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, WazuhDBQueryMultigroups, Agent, \
     WazuhDBQueryGroup, get_agents_info, get_groups, core_upgrade_agents, get_rbac_filters, send_restart_command
 from wazuh.core.cluster.cluster import get_node
-from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.core.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array, clear_temporary_caches, \
@@ -20,8 +19,7 @@ from wazuh.core.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, p
 from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.rbac.decorators import expose_resources
 
-cluster_enabled = not read_cluster_config(from_import=True)['disabled']
-node_id = get_node().get('node') if cluster_enabled else None
+node_id = get_node().get('node')
 
 # Error codes generated from upgrade socket error codes that should be excluded in upgrade functions
 # 1819 -> The WPK for this platform is not available

@@ -5,13 +5,12 @@
 
 from wazuh.core.agent import Agent, get_agents_info
 from wazuh.core.cluster.cluster import get_node
-from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.stats import get_daemons_stats_, hourly_, totals_, weekly_
 from wazuh.core.exception import WazuhException, WazuhResourceNotFound
 from wazuh.rbac.decorators import expose_resources
 
-cluster_enabled = not read_cluster_config(from_import=True)['disabled']
+cluster_enabled = True
 node_id = get_node().get('node') if cluster_enabled else None
 
 

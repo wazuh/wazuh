@@ -5,12 +5,9 @@
 import logging
 from typing import Dict
 
-from wazuh.core.cluster.cluster import get_node
-from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.common import DATABASE_LIMIT
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.task import WazuhDBQueryTask
-from wazuh.core.utils import sort_array
 from wazuh.rbac.decorators import expose_resources
 
 logger = logging.getLogger('wazuh')

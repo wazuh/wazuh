@@ -221,7 +221,7 @@ def main():
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.ERROR, format='%(levelname)s: %(message)s')
 
     cluster_status = wazuh.core.cluster.utils.get_cluster_status()
-    if cluster_status['enabled'] == 'no' or cluster_status['running'] == 'no':
+    if cluster_status['running'] == 'no':
         logging.error("Cluster is not running.")
         sys.exit(1)
 

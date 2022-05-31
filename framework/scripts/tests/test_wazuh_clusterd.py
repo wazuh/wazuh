@@ -295,7 +295,6 @@ def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock,
     wazuh_clusterd.cluster_utils = cluster_utils
     with patch.object(common, 'wazuh_uid', return_value='uid_test'):
         with patch.object(common, 'wazuh_gid', return_value='gid_test'):
-
             with patch.object(wazuh_clusterd.cluster_utils, 'read_config',
                               return_value={'disabled': False, 'node_type': 'master'}):
                 with patch.object(wazuh_clusterd.main_logger, 'error') as main_logger_mock:

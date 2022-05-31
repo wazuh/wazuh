@@ -152,11 +152,10 @@ def get_cluster_status() -> typing.Dict:
     dict
         Cluster status.
     """
-    cluster_status = {"enabled": "no" if read_cluster_config()['disabled'] else "yes"}
     try:
-        cluster_status |= {"running": "yes" if get_manager_status()['wazuh-clusterd'] == 'running' else "no"}
+        cluster_status = {"running": "yes" if get_manager_status()['wazuh-clusterd'] == 'running' else "no"}
     except WazuhInternalError:
-        cluster_status |= {"running": "no"}
+        cluster_status = {"running": "no"}
 
     return cluster_status
 
