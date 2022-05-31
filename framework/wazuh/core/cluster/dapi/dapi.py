@@ -180,6 +180,12 @@ class DistributedAPI:
                 raise
             self.logger.error(f"{e.message}")
             return e
+        except exception.WazuhClusterError as e:
+            e.dapi_errors = self.get_error_info(e)
+            if self.debug:
+                raise
+            self.logger.error(f"{e.message}")
+            return e
         except exception.WazuhError as e:
             e.dapi_errors = self.get_error_info(e)
             return e
@@ -299,6 +305,12 @@ class DistributedAPI:
 
             self.debug_log(f"Time calculating request result: {time.time() - before:.3f}s")
             return data
+        except exception.WazuhClusterError as e:
+            e.dapi_errors = self.get_error_info(e)
+            self.logger.error(f"{e.message}")
+            if self.debug:
+                raise
+            return json.dumps(e, cls=c_common.WazuhJSONEncoder)
         except (exception.WazuhError, exception.WazuhResourceNotFound) as e:
             e.dapi_errors = self.get_error_info(e)
             if self.debug:
