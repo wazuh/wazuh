@@ -1,6 +1,21 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v4.3.3]
+
+### Manager
+
+#### Fixed
+
+- Avoid creating duplicated client tags during deployment. ([#13651](https://github.com/wazuh/wazuh/pull/13651))
+
+### Agent
+
+#### Fixed
+
+- Prevented Agentd from resetting its configuration on client block re-definition. ([#13642](https://github.com/wazuh/wazuh/pull/13642))
+
+
 ## [v4.3.2]
 
 ### Manager
