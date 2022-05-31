@@ -20,6 +20,10 @@
 #define STATIC static
 #endif
 
+#ifndef ARGV0
+#define ARGV0 "wazuh-db"
+#endif
+
 #define timeval_to_milis(time) ((time.tv_sec * (uint64_t)1000) + (time.tv_usec / 1000))
 
 STATIC uint64_t get_wazuhdb_time(wdb_state_t state);
