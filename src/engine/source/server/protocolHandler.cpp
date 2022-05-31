@@ -57,14 +57,13 @@ base::Event ProtocolHandler::parse(const std::string& event)
     try
     {
         rapidjson::Value loc;
-        std::string location = event.substr(queuePos, locPos);
+        std::string location = event.substr(queuePos + 1, locPos - queuePos - 1);
         loc.SetString(location.c_str(), location.length(), allocator);
         doc.AddMember("location", loc, allocator);
     }
     catch (std::out_of_range& e)
     {
-        std::throw_with_nested(
-            ("Error parsing location using token sep :" + event));
+        std::throw_with_nested(("Error parsing location using token sep :" + event));
     }
 
     try
@@ -76,16 +75,15 @@ base::Event ProtocolHandler::parse(const std::string& event)
     }
     catch (std::out_of_range& e)
     {
-        std::throw_with_nested(
-            ("Error parsing location using token sep :" + event));
+        std::throw_with_nested(("Error parsing location using token sep :" + event));
     }
 
     // TODO Create event here
     return  std::make_shared<json::Json>(std::move(doc));
 }
 
-std::optional<std::vector<std::string>>
-ProtocolHandler::process(const char* data, const size_t length)
+std::optional<std::vector<std::string>> ProtocolHandler::process(const char* data,
+                                                                 const size_t length)
 {
     std::vector<std::string> events;
 
@@ -119,8 +117,8 @@ ProtocolHandler::process(const char* data, const size_t length)
                     try
                     {
                         // TODO: Are we moving the buffer? we should
-                        events.push_back(std::string(
-                            m_buff.begin() + sizeof(int), m_buff.end()));
+                        events.push_back(
+                            std::string(m_buff.begin() + sizeof(int), m_buff.end()));
                         m_buff.clear();
                     }
                     catch (std::exception& e)
@@ -132,9 +130,7 @@ ProtocolHandler::process(const char* data, const size_t length)
                 }
                 break;
 
-            default:
-                WAZUH_LOG_ERROR("Invalid stage value.");
-                return std::nullopt;
+            default: WAZUH_LOG_ERROR("Invalid stage value."); return std::nullopt;
         }
     }
 
