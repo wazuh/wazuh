@@ -264,7 +264,7 @@ main () {
 
     get_deprecated_vars
 
-    if [ ! -z ${WAZUH_REGISTRATION_SERVER} ] || [ ! -z ${WAZUH_REGISTRATION_PORT} ] || [ ! -z ${WAZUH_REGISTRATION_CA} ] || [ ! -z ${WAZUH_REGISTRATION_CERTIFICATE} ] || [ ! -z ${WAZUH_REGISTRATION_KEY} ] || [ ! -z ${WAZUH_AGENT_NAME} ] || [ ! -z ${WAZUH_AGENT_GROUP} ]; then
+    if [ ! -z ${WAZUH_REGISTRATION_SERVER} ] || [ ! -z ${WAZUH_REGISTRATION_PORT} ] || [ ! -z ${WAZUH_REGISTRATION_CA} ] || [ ! -z ${WAZUH_REGISTRATION_CERTIFICATE} ] || [ ! -z ${WAZUH_REGISTRATION_KEY} ] || [ ! -z ${WAZUH_AGENT_NAME} ] || [ ! -z ${WAZUH_AGENT_GROUP} ] || [ ! -z ${ENROLLMENT_DELAY} ]; then
         add_auto_enrollment
         set_auto_enrollment_tag_value "manager_address" ${WAZUH_REGISTRATION_SERVER}
         set_auto_enrollment_tag_value "port" ${WAZUH_REGISTRATION_PORT}
