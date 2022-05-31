@@ -2,9 +2,9 @@
 
 ## General information
 
-An integration test is used to check that the behavior of the different modules of an application is the expected one
-when they are integrated together. In other words, the integration tests check the correct interaction between the
-application components.
+An integration test is used to check that the behavior of the different application modules is the expected one when 
+they are integrated. In other words, the integration tests check the correct interaction between the application 
+components.
 
 The API integration tests are used to verify that the API is working properly in a complete Wazuh environment.
 This environment is built using [`docker`](https://www.docker.com/).
@@ -15,13 +15,13 @@ environment deployment.
 ## API integration tests files
 
 The API integration tests files use the [`tavern`](https://tavern.readthedocs.io/en/latest/) framework. Tavern is
-a [`pytest`](https://docs.pytest.org/en/7.1.x/) based API testing framework for HTTP, MQTT or other protocols. These
-files are writen in the `yaml` language and their names can follow the following formats:
+a [`pytest`](https://docs.pytest.org/en/7.1.x/) based API testing framework for HTTP, MQTT, or other protocols. These
+files are written in the `yaml` language and their names can follow the following formats:
 
 `test_{module}_endpoints.tavern.yaml` or `test_rbac_{rbac_mode}_{module}_endpoints.tavern.yaml`
 
-where `module` is the module where the endpoints tested belong to; and `rbac_mode` is the RBAC mode (white or black)
-used for the test (see [RBAC API integration tests](#RBAC-API-integration-tests)).
+where `module` is the module which the endpoints tested belong; and `rbac_mode` is the RBAC mode (white or black) used 
+for the test (see [RBAC API integration tests](#RBAC-API-integration-tests)).
 
 ## Docker environment
 
@@ -35,13 +35,13 @@ The Wazuh version used for the managers and non-old agents is the one specified 
 integration tests.
 
 The `docker-compose.yml` file used to deploy the environment is at `wazuh/api/test/integration/env`. The `Dockerfile`,
-`entrypoint.sh`, and other configuration files can be found at the `base` directory.
+`entrypoint.sh`, and other configuration files can be found in the `base` directory.
 
-We also use specific **configurations and healthchecks depending on the test executed**. These configurations can be
-found at the `configurations` directory. Python scripts commonly used by some of these healthchecks and files are
-located at the `tools` directory.
+We also use specific **configurations and health checks depending on the test executed**. These configurations can be
+found at the `configurations` directory. Python scripts commonly used by some of these health checks and files are
+located in the `tools` directory.
 
-Apart from this setup, we simulate 2 disconnected and 2 never connected agents.
+Apart from this setup, we simulate 2 disconnected and 2 never-connected agents.
 
 ### How is the environment deployed?
 
@@ -50,8 +50,8 @@ with `pytest <test_name>`.
 
 The `conftest.py` file is the one in charge of deploying the API integration tests environment. When a test is
 performed, the `api_test` function is also executed. This function is responsible for setting up the environment and
-clean temporary folders, stop and remove container; and save log and environment status, once the test has finished. The
-execution of `api_test` is done automatically thanks to the `pytest.fixture` decorator.
+cleaning temporary folders, stopping and removing containers; and saving log and environment status, once the test has 
+finished. The execution of `api_test` is done automatically thanks to the `pytest.fixture` decorator.
 
 In the `conftest.py` file, we can also find functions used to make the HTML report,
 configure [RBAC](#RBAC-API-integration-tests), etc.
@@ -70,18 +70,18 @@ the [`pytest` mark](https://docs.pytest.org/en/6.2.x/mark.html) used to run the 
 
 The following table shows how these marks must be used with the `pytest` command and the environment they build:
 
-| Command  | Environment  |  
-|---|---|
-|  `pytest TEST_NAME` |  Wazuh cluster environment |  
-| `pytest -m cluster TEST_NAME` | Wazuh cluster environment  |
-|  `pytest -m standalone TEST_NAME` | Wazuh environment with cluster disabled (standalone)  | 
+| Command                          | Environment                                          |  
+|----------------------------------|------------------------------------------------------|
+| `pytest TEST_NAME`               | Wazuh cluster environment                            |  
+| `pytest -m cluster TEST_NAME`    | Wazuh cluster environment                            |
+| `pytest -m standalone TEST_NAME` | Wazuh environment with cluster disabled (standalone) | 
 
-Apart from choosing the environment to be built, the marks are also used to filter the API integration tests cases. By
+Apart from choosing the environment to be built, the marks are also used to filter the API integration test cases. By
 default, tests without the `standalone` or `cluster` marks, will have both of them implicitly. Test cases with **only
-standalone** can only be passed in a Wazuh environment with cluster disabled; and cases with **only cluster** mark can
+standalone** can only be passed in a Wazuh environment with cluster disabled and cases with **only cluster** mark can
 only be passed in a Wazuh cluster environment.
 
-Talking about [RBAC API integration tests](#RBAC-API-integration-tests), they don't have any marks so there is no need
+Talking about [RBAC API integration tests](#RBAC-API-integration-tests), they don't have any marks, so there is no need
 to specify one when running them. If a mark is specified, no tests will be run due to the filters. In other words,
 **RBAC tests are always going to be performed in the default cluster setup**.
 
@@ -92,8 +92,8 @@ As said in previous sections, some test names follow the structure
 
 These tests are used to check the proper functioning of a Wazuh environment with RBAC configurations. The `conftest.py`
 file includes functions in charge of changing the RBAC mode and creating the specified RBAC resources for the test in
-execution. The `env/configurations/rbac` directory includes all the specific configurations for each RBAC API
-integration tests, for both **white** and **black** modes.
+execution. The `env/configurations/rbac` directory includes all the specific configurations for each RBAC API 
+integration test, for both **white** and **black** modes.
 
 ## Test mapping for CI
 
@@ -124,8 +124,8 @@ a new file or directory is added. More information can be found at `mapping/READ
 
 ## Tests execution
 
-In order to perform a Wazuh API integration test, we need a specific `python3` environment. This python environment
-includes the following dependencies:
+To perform a Wazuh API integration test, we need a specific `python3` environment. This python environment includes the 
+following dependencies:
 
 ```python
 pytest==5.4.3
@@ -180,6 +180,6 @@ optional arguments:
                         Specify how many times will every test be run. Default 1.
 ```
 
-The `run_test.py` script does not show the full tests output. The full reports are saved 
+The `run_test.py` script does not show the tests' full output. The full reports are saved 
 at `wazuh/api/test/integration/_test_results`. Containers' logs (`ossec.log`, `api.log` and `cluster.log`) are stored 
 at `_test_results/logs`. Reports in HTML format are also generated and can be found at `_test_results/html_reports`.
