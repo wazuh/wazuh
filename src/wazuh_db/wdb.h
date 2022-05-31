@@ -21,10 +21,6 @@
 #include "wazuhdb_op.h"
 #include "regex_op.h"
 
-#ifndef ARGV0
-#define ARGV0 "wazuh-db"
-#endif
-
 #define WDB_AGENT_EMPTY 0
 #define WDB_AGENT_PENDING 1
 #define WDB_AGENT_UPDATED 2
