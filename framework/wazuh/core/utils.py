@@ -159,16 +159,16 @@ def process_array(array, search_text=None, complementary_search=False, search_in
         array = sort_array(array, sort_by=sort_by, sort_ascending=sort_ascending,
                            allowed_sort_fields=allowed_sort_fields)
 
-    if select:
-        array = select_array(array, select=select, required_fields=required_fields,
-                             allowed_select_fields=allowed_select_fields)
-
     if search_text:
         array = search_array(array, search_text=search_text, complementary_search=complementary_search,
                              search_in_fields=search_in_fields)
 
     if q:
         array = filter_array_by_query(q, array)
+
+    if select:
+        array = select_array(array, select=select, required_fields=required_fields,
+                             allowed_select_fields=allowed_select_fields)
 
     return {'items': cut_array(array, offset=offset, limit=limit), 'totalItems': len(array)}
 
