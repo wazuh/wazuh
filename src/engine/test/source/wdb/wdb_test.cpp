@@ -172,6 +172,8 @@ TEST(wdb_tryQuery, SendQueryOK_firstAttemp)
     const int serverSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
     ASSERT_GT(serverSocketFD, 0);
 
+    const int attempts = 5;
+
     auto wdb = WazuhDB(TEST_SOCKET_PATH);
 
     std::thread t([&]() {
@@ -181,7 +183,7 @@ TEST(wdb_tryQuery, SendQueryOK_firstAttemp)
         close(clientRemote);
     });
 
-    ASSERT_STREQ(wdb.tryQuery(TEST_MESSAGE, 5).c_str(), TEST_RESPONSE);
+    ASSERT_STREQ(wdb.tryQuery(TEST_MESSAGE, attempts).c_str(), TEST_RESPONSE);
 
     t.join();
     close(serverSocketFD);
