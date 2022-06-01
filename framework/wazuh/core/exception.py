@@ -513,7 +513,7 @@ class WazuhException(Exception):
                               'authorization context) or false (disabled authentication through authorization context).'
                },
         5011: {'message': 'Administrator users can only be modified by themselves',
-               'remediation': 'Log in as the administrator user you wish to modify and try again'},
+               'remediation': 'Log in as administrator and try again'},
 
         # Security issues
         6000: {'message': 'Limit of login attempts reached. '
