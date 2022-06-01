@@ -344,6 +344,7 @@ async def test_async_decompress_files(decompress_files_mock):
     decompress_files_mock.assert_called_once_with(zip_path, 'files_metadata.json')
 
 
+@pytest.mark.asyncio
 @patch('zlib.decompress')
 @patch('os.makedirs')
 @patch('os.path.exists', side_effect=[False, True, True])
@@ -372,6 +373,7 @@ async def test_decompress_files_ok(json_loads_mock, mkdir_with_mode_mock, remove
                                             call('/foo/bar/dir/path2', 'wb'), call('/foo/bar/dir/files_metadata.json')]
 
 
+@pytest.mark.asyncio
 @patch('shutil.rmtree')
 @patch('zlib.decompress', return_value=Exception)
 @patch('wazuh.core.cluster.cluster.mkdir_with_mode')
@@ -411,20 +413,20 @@ def test_compare_files(wazuh_db_query_mock, mock_get_cluster_items):
 
     # First condition
     with patch('wazuh.core.cluster.cluster.merge_info', return_values=[1, "random/path/"]):
-        files, count = cluster.compare_files(seq, condition, 'worker1')
-        assert count["missing"] == 1
-        assert count["extra"] == 0
-        assert count["shared"] == 1
+        files = cluster.compare_files(seq, condition, 'worker1')
+        assert len(files["missing"]) == 1
+        assert len(files["extra"]) == 0
+        assert len(files["shared"]) == 1
 
     # Second condition
     condition = {'some/path5/': {'cluster_item_key': 'key', 'blake_hash': 'blake2_hash def value'},
                  'some/path4/': {'cluster_item_key': "key", 'blake_hash': 'blake2_hash value'},
                  'PATH': {'cluster_item_key': "key", 'blake_hash': 'blake2_hash value'}}
 
-    files, count = cluster.compare_files(seq, condition, 'worker1')
-    assert count["missing"] == 2
-    assert count["extra"] == 0
-    assert count["shared"] == 0
+    files = cluster.compare_files(seq, condition, 'worker1')
+    assert len(files["missing"]) == 2
+    assert len(files["extra"]) == 0
+    assert len(files["shared"]) == 0
 
 
 @patch('wazuh.core.cluster.cluster.get_cluster_items')

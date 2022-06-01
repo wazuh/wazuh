@@ -11,22 +11,21 @@ import os
 import random
 import re
 import struct
+import time
 import traceback
 from importlib import import_module
 from time import perf_counter
-from typing import Tuple, Dict, Callable, List
+from typing import Tuple, Dict, Callable, List, Iterable
 from uuid import uuid4
 
 import cryptography.fernet
 
-import wazuh.core.cluster.utils
 import wazuh.core.results as wresults
 from wazuh import Wazuh
 from wazuh.core import common, exception
 from wazuh.core import utils
-from wazuh.core.cluster import cluster
+from wazuh.core.cluster import cluster, utils as cluster_utils
 from wazuh.core.common import DECIMALS_DATE_FORMAT
-from wazuh.core.utils import get_utc_now
 from wazuh.core.wdb import WazuhDBConnection
 
 
@@ -340,7 +339,7 @@ class Handler(asyncio.Protocol):
         # Logging tag.
         self.tag = tag
         # Modify filter tags with context vars.
-        wazuh.core.cluster.utils.context_tag.set(self.tag)
+        cluster_utils.context_tag.set(self.tag)
         self.cluster_items = cluster_items
         # Transports in asyncio are an abstraction of sockets.
         self.transport = None
@@ -1156,8 +1155,33 @@ class Handler(asyncio.Protocol):
             Logger created.
         """
         task_logger = self.logger.getChild(task_tag)
-        task_logger.addFilter(wazuh.core.cluster.utils.ClusterFilter(tag=self.tag, subtag=task_tag))
+        task_logger.addFilter(cluster_utils.ClusterFilter(tag=self.tag, subtag=task_tag))
         return task_logger
+
+    async def wait_for_file(self, file, task_id):
+        """Wait until asyncio event is set.
+
+        Parameters
+        ----------
+        file : asyncio.Event
+            Event that will be set when a file is completely received.
+        task_id : str
+            ID of the task related to the file received.
+
+        Raises
+        -------
+        exc : WazuhClusterError
+            Timeout exception.
+        """
+        try:
+            await asyncio.wait_for(file.wait(),
+                                   timeout=self.cluster_items['intervals']['communication']['timeout_receiving_file'])
+        except Exception as e:
+            # Notify the sending node to stop its task.
+            exc = exception.WazuhClusterError(3039)
+            await self.send_request(command=b'cancel_task',
+                                    data=task_id.encode() + b' ' + json.dumps(exc, cls=WazuhJSONEncoder).encode())
+            raise exc from e
 
 
 class WazuhCommon:
@@ -1343,6 +1367,123 @@ class SyncTask:
 
         return False
 
+    async def sync(self, *args, **kwargs):
+        """Define sync() method. It is implemented differently for files and strings synchronization.
+
+        Parameters
+        ----------
+        args
+            Positional arguments for parent constructor class.
+        kwargs
+            Keyword arguments for parent constructor class.
+
+        Raises
+        -------
+        NotImplementedError
+            If the method is not implemented.
+        """
+        raise NotImplementedError
+
+
+class SyncFiles(SyncTask):
+    """
+    Define methods to synchronize files with a remote node.
+    """
+
+    async def sync(self, files: Iterable, files_metadata: Dict, metadata_len: int, task_pool=None,
+                   zip_limit: int = None):
+        """Send metadata and files to other node.
+
+        Parameters
+        ----------
+        files : Iterable
+            File paths which will be zipped and sent to the receiving node.
+        files_metadata : dict
+            Paths (keys) and metadata (values) of the files to be sent. This dict is included as a JSON
+            named "files_metadata.json".
+        metadata_len : int
+            Number of files inside 'files_metadata'.
+        zip_limit : int
+            Maximum size in the zip. No new files are added to the zip when this limit is about to be exceeded.
+        task_pool : ProcessPoolExecutor or None
+            Process pool object in charge of running compress function.
+
+        Returns
+        -------
+        bool
+            True if files were correctly sent to the remote node, None otherwise.
+        """
+        task_id = b'None'
+        sent_size = 0
+        time_to_send = 0
+        min_zip_size = self.server.cluster_items['intervals']['communication']['min_zip_size']
+        max_zip_size = self.server.cluster_items['intervals']['communication']['max_zip_size']
+        zip_limit_tolerance = self.server.cluster_items['intervals']['communication']['zip_limit_tolerance']
+        timeout_receiving_file = self.server.cluster_items['intervals']['communication']['timeout_receiving_file']
+
+        self.logger.debug(f"Compressing {'files and ' if files else ''}"
+                          f"'files_metadata.json' of {metadata_len} files.")
+        compressed_data = await cluster.run_in_pool(self.server.loop, task_pool, cluster.compress_files,
+                                                    self.server.name, files, files_metadata, zip_limit)
+
+        try:
+            # Start the synchronization process with other node and get a taskID.
+            task_id = await self.server.send_request(command=self.cmd, data=b'')
+            if isinstance(task_id, Exception) or task_id.startswith(b'Error'):
+                exc_info = task_id if isinstance(task_id, Exception) else \
+                    exception.WazuhClusterError(3016, extra_message=str(task_id))
+                task_id = b'None'
+                raise exc_info
+
+            # Send zip file to the master into chunks.
+            self.logger.debug("Sending zip file.")
+            time_to_send = time.perf_counter()
+            sent_size = await self.server.send_file(compressed_data, task_id)
+            time_to_send = time.perf_counter() - time_to_send
+            self.logger.debug("Zip file sent.")
+
+            # Notify what is the zip path for the current taskID.
+            result = await self.server.send_request(
+                command=self.cmd + b'_e',
+                data=task_id + b' ' + os.path.relpath(compressed_data, common.WAZUH_PATH).encode()
+            )
+
+            if isinstance(result, Exception):
+                raise result
+            elif result.startswith(b'Error'):
+                raise exception.WazuhClusterError(3016, extra_message=result.decode())
+            return True
+        except exception.WazuhException as e:
+            # Notify error to master and delete its received file.
+            self.logger.error(f"Error sending zip file: {e}")
+            await self.server.send_request(command=self.cmd + b'_r',
+                                           data=task_id + b' ' + json.dumps(e, cls=WazuhJSONEncoder).encode())
+        except Exception as e:
+            # Notify error to master and delete its received file.
+            self.logger.error(f"Error sending zip file: {e}")
+            exc_info = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)),
+                                  cls=WazuhJSONEncoder).encode()
+            await self.server.send_request(command=self.cmd + b'_r', data=task_id + b' ' + exc_info)
+        finally:
+            try:
+                # Decrease max zip size if task was interrupted (otherwise, KeyError exception raised).
+                self.server.interrupted_tasks.remove(task_id)
+                self.server.current_zip_limit = max(min_zip_size, sent_size * (1 - zip_limit_tolerance))
+                self.logger.debug(f"Decreasing sync size limit to {self.server.current_zip_limit / (1024**2):.2f} MB.")
+            except KeyError:
+                # Increase max zip size if two conditions are met:
+                #   1. Current zip limit is lower than default.
+                #   2. Time to send zip was far under timeout_receiving_file.
+                if (self.server.current_zip_limit < max_zip_size and
+                        time_to_send < timeout_receiving_file * (1 - zip_limit_tolerance)):
+                    self.server.current_zip_limit = min(max_zip_size,
+                                                        self.server.current_zip_limit * (1 / (1 - zip_limit_tolerance)))
+                    self.logger.debug(f"Increasing sync size limit to {self.server.current_zip_limit / (1024**2):.2f}"
+                                      f" MB.")
+
+            # Remove local file.
+            os.unlink(compressed_data)
+
 
 class SyncWazuhdb(SyncTask):
     """
@@ -1455,7 +1596,7 @@ class SyncWazuhdb(SyncTask):
             self.logger.debug(f"Sending chunks.")
             await self.server.send_request(command=self.cmd, data=task_id)
         else:
-            self.logger.info(f"Finished in {(get_utc_now().timestamp() - start_time):.3f}s. Updated 0 chunks.")
+            self.logger.info(f"Finished in {(utils.get_utc_now().timestamp() - start_time):.3f}s. Updated 0 chunks.")
         return True
 
 
@@ -1482,7 +1623,7 @@ def end_sending_agent_information(logger, start_time, response) -> Tuple[bytes, 
         Response message.
     """
     data = json.loads(response)
-    msg = f"Finished in {(get_utc_now().timestamp() - start_time):.3f}s. Updated {data['updated_chunks']} chunks."
+    msg = f"Finished in {(utils.get_utc_now().timestamp() - start_time):.3f}s. Updated {data['updated_chunks']} chunks."
     logger.info(msg) if not data['error_messages'] else logger.error(
         msg + f" There were {len(data['error_messages'])} chunks with errors: {data['error_messages']}")
 

@@ -89,62 +89,59 @@ class WazuhIntegration:
                  discard_regex=None, sts_endpoint=None, service_endpoint=None, iam_role_duration=None):
         # SQL queries
         self.sql_find_table_names = """
-                            SELECT
-                                tbl_name
-                            FROM
-                                sqlite_master
-                            WHERE
-                                type='table';"""
+            SELECT
+                tbl_name
+            FROM
+                sqlite_master
+            WHERE
+                type='table';"""
 
         self.sql_db_optimize = "PRAGMA optimize;"
 
         self.sql_create_metadata_table = """
-                                        CREATE table
-                                            metadata (
-                                            key 'text' NOT NULL,
-                                            value 'text' NOT NULL,
-                                            PRIMARY KEY (key, value));
-                                        """
+            CREATE TABLE metadata (
+                key 'text' NOT NULL,
+                value 'text' NOT NULL,
+                PRIMARY KEY (key, value));
+            """
 
         self.sql_get_metadata_version = """
-                                        SELECT
-                                            value
-                                        FROM
-                                            metadata
-                                        WHERE
-                                            key='version';
-                                        """
+            SELECT
+                value
+            FROM
+                metadata
+            WHERE
+                key='version';
+            """
 
         self.sql_find_table = """
-                                SELECT
-                                    tbl_name
-                                FROM
-                                    sqlite_master
-                                WHERE
-                                    type='table' AND
-                                    name='{name}';
-                                """
+            SELECT
+                tbl_name
+            FROM
+                sqlite_master
+            WHERE
+                type='table' AND
+                name=:name;
+            """
 
         self.sql_insert_version_metadata = """
-                                        INSERT INTO metadata (
-                                            key,
-                                            value)
-                                        VALUES (
-                                            'version',
-                                            '{wazuh_version}');"""
+            INSERT INTO metadata (
+                key,
+                value)
+            VALUES (
+                'version',
+                :wazuh_version);"""
 
         self.sql_update_version_metadata = """
-                                        UPDATE
-                                            metadata
-                                        SET
-                                            value='{wazuh_version}'
-                                        WHERE
-                                            key='version';
-                                        """
+            UPDATE
+                metadata
+            SET
+                value=:wazuh_version
+            WHERE
+                key='version';
+            """
 
-        self.sql_drop_table = """
-                            DROP TABLE {table};
-                            """
+        self.sql_drop_table = "DROP TABLE {table_name};"
 
         self.wazuh_path = utils.find_wazuh_path()
         self.wazuh_version = utils.get_wazuh_version()
@@ -196,7 +193,7 @@ class WazuhIntegration:
 
     def check_metadata_version(self):
         try:
-            query_metadata = self.db_connector.execute(self.sql_find_table.format(name='metadata'))
+            query_metadata = self.db_connector.execute(self.sql_find_table, {'name': 'metadata'})
             metadata = True if query_metadata.fetchone() else False
             if metadata:
                 query_version = self.db_connector.execute(self.sql_get_metadata_version)
@@ -204,13 +201,13 @@ class WazuhIntegration:
                 # update Wazuh version in metadata table
                 if metadata_version != self.wazuh_version:
                     self.old_version = metadata_version
-                    self.db_connector.execute(self.sql_update_version_metadata.format(wazuh_version=self.wazuh_version))
+                    self.db_connector.execute(self.sql_update_version_metadata, {'wazuh_version': self.wazuh_version})
                     self.db_connector.commit()
             else:
                 # create metadate table
                 self.db_connector.execute(self.sql_create_metadata_table)
                 # insert wazuh version value
-                self.db_connector.execute(self.sql_insert_version_metadata.format(wazuh_version=self.wazuh_version))
+                self.db_connector.execute(self.sql_insert_version_metadata, {'wazuh_version': self.wazuh_version})
                 self.db_connector.commit()
                 # delete old tables if its exist
                 self.delete_deprecated_tables()
@@ -403,111 +400,108 @@ class AWSBucket(WazuhIntegration):
                  discard_field, discard_regex, sts_endpoint, service_endpoint, iam_role_duration=None):
         # common SQL queries
         self.sql_already_processed = """
-                          SELECT
-                            count(*)
-                          FROM
-                            {table_name}
-                          WHERE
-                            bucket_path='{bucket_path}' AND
-                            aws_account_id='{aws_account_id}' AND
-                            aws_region='{aws_region}' AND
-                            log_key='{log_name}';"""
+            SELECT
+              count(*)
+            FROM
+              {table_name}
+            WHERE
+              bucket_path=:bucket_path AND
+              aws_account_id=:aws_account_id AND
+              aws_region=:aws_region AND
+              log_key=:log_name;"""
 
         self.sql_mark_complete = """
-                            INSERT INTO {table_name} (
-                                bucket_path,
-                                aws_account_id,
-                                aws_region,
-                                log_key,
-                                processed_date,
-                                created_date) VALUES (
-                                '{bucket_path}',
-                                '{aws_account_id}',
-                                '{aws_region}',
-                                '{log_key}',
-                                DATETIME('now'),
-                                '{created_date}');"""
+            INSERT INTO {table_name} (
+                bucket_path,
+                aws_account_id,
+                aws_region,
+                log_key,
+                processed_date,
+                created_date) VALUES (
+                :bucket_path,
+                :aws_account_id,
+                :aws_region,
+                :log_key,
+                DATETIME('now'),
+                :created_date);"""
 
         self.sql_create_table = """
-                            CREATE TABLE
-                                {table_name} (
-                                bucket_path 'text' NOT NULL,
-                                aws_account_id 'text' NOT NULL,
-                                aws_region 'text' NOT NULL,
-                                log_key 'text' NOT NULL,
-                                processed_date 'text' NOT NULL,
-                                created_date 'integer' NOT NULL,
-                                PRIMARY KEY (bucket_path, aws_account_id, aws_region, log_key));"""
+            CREATE TABLE {table_name} (
+                bucket_path 'text' NOT NULL,
+                aws_account_id 'text' NOT NULL,
+                aws_region 'text' NOT NULL,
+                log_key 'text' NOT NULL,
+                processed_date 'text' NOT NULL,
+                created_date 'integer' NOT NULL,
+                PRIMARY KEY (bucket_path, aws_account_id, aws_region, log_key));"""
 
         self.sql_find_last_log_processed = """
-                                        SELECT
-                                            created_date
-                                        FROM
-                                            {table_name}
-                                        WHERE
-                                            bucket_path='{bucket_path}' AND
-                                            aws_account_id='{aws_account_id}' AND
-                                            aws_region ='{aws_region}'
-                                        ORDER BY
-                                            created_date DESC
-                                        LIMIT 1;"""
+            SELECT
+                created_date
+            FROM
+                {table_name}
+            WHERE
+                bucket_path=:bucket_path AND
+                aws_account_id=:aws_account_id AND
+                aws_region =:aws_region
+            ORDER BY
+                created_date DESC
+            LIMIT 1;"""
 
         self.sql_find_last_key_processed = """
-                                        SELECT
-                                            log_key
-                                        FROM
-                                            {table_name}
-                                        WHERE
-                                            bucket_path='{bucket_path}' AND
-                                            aws_account_id='{aws_account_id}' AND
-                                            aws_region = '{aws_region}' AND
-                                            log_key LIKE '{prefix}%'
-                                        ORDER BY
-                                            log_key DESC
-                                        LIMIT 1;"""
+            SELECT
+                log_key
+            FROM
+                {table_name}
+            WHERE
+                bucket_path=:bucket_path AND
+                aws_account_id=:aws_account_id AND
+                aws_region = :aws_region AND
+                log_key LIKE :prefix
+            ORDER BY
+                log_key DESC
+            LIMIT 1;"""
 
         self.sql_find_first_key_processed = """
-                                        SELECT
-                                            log_key
-                                        FROM
-                                            {table_name}
-                                        WHERE
-                                            bucket_path='{bucket_path}' AND
-                                            aws_account_id='{aws_account_id}' AND
-                                            aws_region = '{aws_region}'
-                                        ORDER BY
-                                            log_key ASC
-                                        LIMIT 1;"""
+            SELECT
+                log_key
+            FROM
+                {table_name}
+            WHERE
+                bucket_path=:bucket_path AND
+                aws_account_id=:aws_account_id AND
+                aws_region = :aws_region
+            ORDER BY
+                log_key ASC
+            LIMIT 1;"""
 
-        self.sql_db_maintenance = """DELETE
-                            FROM
-                                {table_name}
-                            WHERE
-                                bucket_path='{bucket_path}' AND
-                                aws_account_id='{aws_account_id}' AND
-                                aws_region='{aws_region}' AND
-                                log_key <=
-                                (SELECT log_key
-                                    FROM
-                                    {table_name}
-                                    WHERE
-                                        bucket_path='{bucket_path}' AND
-                                        aws_account_id='{aws_account_id}' AND
-                                        aws_region='{aws_region}'
-                                    ORDER BY
-                                        log_key DESC
-                                    LIMIT 1
-                                    OFFSET {retain_db_records});"""
+        self.sql_db_maintenance = """
+            DELETE FROM {table_name}
+            WHERE
+                bucket_path=:bucket_path AND
+                aws_account_id=:aws_account_id AND
+                aws_region=:aws_region AND
+                log_key <= (SELECT log_key
+                    FROM
+                        {table_name}
+                    WHERE
+                        bucket_path=:bucket_path AND
+                        aws_account_id=:aws_account_id AND
+                        aws_region=:aws_region
+                    ORDER BY
+                        log_key DESC
+                    LIMIT 1
+                    OFFSET :retain_db_records);"""
 
         self.sql_count_region = """
-                                SELECT
-                                    count(*)
-                                FROM
-                                    {table_name}
-                                WHERE
-                                    bucket_path='{bucket_path}' AND
-                                    aws_account_id='{aws_account_id}' AND
-                                    aws_region='{aws_region}';"""
+            SELECT
+                count(*)
+            FROM
+                {table_name}
+            WHERE
+                bucket_path=:bucket_path AND
+                aws_account_id=:aws_account_id AND
+                aws_region=:aws_region;"""
 
         self.db_name = 's3_cloudtrail'
         WazuhIntegration.__init__(self, access_key=access_key,
@@ -574,44 +568,21 @@ class AWSBucket(WazuhIntegration):
             A str with the key of the last file processed, None if no file has been processed yet.
         """
         query_last_key = self.db_connector.execute(
-            self.sql_find_last_key_processed.format(table_name=self.db_table_name, bucket_path=self.bucket_path,
-                                                    aws_account_id=aws_account_id, prefix=self.prefix))
+            self.sql_find_last_key_processed.format(table_name=self.db_table_name), {'bucket_path': self.bucket_path,
+                                                                                     'aws_account_id': aws_account_id,
+                                                                                     'prefix': f'{self.prefix}%'})
         try:
             return query_last_key.fetchone()[0]
         except (TypeError, IndexError):
             # if DB is empty for a region
             return None
 
-    def _get_formatted_last_key_query(self, aws_region: str, aws_account_id: str) -> str:
-        """
-        Return the query used to fetch the last log key processed from the database formatted.
-
-        Parameters
-        ----------
-        aws_region : str
-            The region of the bucket.
-        aws_account_id : str
-            The AWS account ID used to collect the logs.
-
-        Returns
-        -------
-        str
-            The query formatted depending on the object's attributes.
-        """
-        return self.sql_find_last_key_processed.format(bucket_path=self.bucket_path,
-                                                        table_name=self.db_table_name,
-                                                        aws_region=aws_region,
-                                                        prefix=self.prefix,
-                                                        aws_account_id=aws_account_id)
-
     def already_processed(self, downloaded_file, aws_account_id, aws_region):
-        cursor = self.db_connector.execute(self.sql_already_processed.format(
-            bucket_path=self.bucket_path,
-            table_name=self.db_table_name,
-            aws_account_id=aws_account_id,
-            aws_region=aws_region,
-            log_name=downloaded_file
-        ))
+        cursor = self.db_connector.execute(self.sql_already_processed.format(table_name=self.db_table_name), {
+            'bucket_path': self.bucket_path,
+            'aws_account_id': aws_account_id,
+            'aws_region': aws_region,
+            'log_name': downloaded_file})
         return cursor.fetchone()[0] > 0
 
     def get_creation_date(self, log_key):
@@ -620,14 +591,12 @@ class AWSBucket(WazuhIntegration):
     def mark_complete(self, aws_account_id, aws_region, log_file):
         if not self.reparse:
             try:
-                self.db_connector.execute(self.sql_mark_complete.format(
-                    bucket_path=self.bucket_path,
-                    table_name=self.db_table_name,
-                    aws_account_id=aws_account_id,
-                    aws_region=aws_region,
-                    log_key=log_file['Key'],
-                    created_date=self.get_creation_date(log_file)
-                ))
+                self.db_connector.execute(self.sql_mark_complete.format(table_name=self.db_table_name), {
+                    'bucket_path': self.bucket_path,
+                    'aws_account_id': aws_account_id,
+                    'aws_region': aws_region,
+                    'log_key': log_file['Key'],
+                    'created_date': self.get_creation_date(log_file)})
             except Exception as e:
                 debug("+++ Error marking log {} as completed: {}".format(log_file['Key'], e), 2)
 
@@ -658,26 +627,21 @@ class AWSBucket(WazuhIntegration):
         :rtype: int
         """
         query_count_region = self.db_connector.execute(
-            self.sql_count_region.format(
-                table_name=self.db_table_name,
-                bucket_path=self.bucket_path,
-                aws_account_id=aws_account_id,
-                aws_region=aws_region,
-                retain_db_records=self.retain_db_records
-            ))
+            self.sql_count_region.format(table_name=self.db_table_name), {'bucket_path': self.bucket_path,
+                                                                          'aws_account_id': aws_account_id,
+                                                                          'aws_region': aws_region,
+                                                                          'retain_db_records': self.retain_db_records})
         return query_count_region.fetchone()[0]
 
     def db_maintenance(self, aws_account_id=None, aws_region=None):
         debug("+++ DB Maintenance", 1)
         try:
             if self.db_count_region(aws_account_id, aws_region) > self.retain_db_records:
-                self.db_connector.execute(self.sql_db_maintenance.format(
-                    bucket_path=self.bucket_path,
-                    table_name=self.db_table_name,
-                    aws_account_id=aws_account_id,
-                    aws_region=aws_region,
-                    retain_db_records=self.retain_db_records
-                ))
+                self.db_connector.execute(self.sql_db_maintenance.format(table_name=self.db_table_name), {
+                    'bucket_path': self.bucket_path,
+                    'aws_account_id': aws_account_id,
+                    'aws_region': aws_region,
+                    'retain_db_records': self.retain_db_records})
         except Exception as e:
             print(f"ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {e}")
 
@@ -779,7 +743,13 @@ class AWSBucket(WazuhIntegration):
             else:
                 filter_marker = self.marker_custom_date(aws_region, aws_account_id, self.default_date)
         else:
-            query_last_key = self.db_connector.execute(self._get_formatted_last_key_query(aws_region, aws_account_id))
+            query_last_key = self.db_connector.execute(
+                self.sql_find_last_key_processed.format(table_name=self.db_table_name), {
+                    'bucket_path': self.bucket_path,
+                    'aws_region': aws_region,
+                    'prefix': f'{self.prefix}%',
+                    'aws_account_id': aws_account_id
+                })
             try:
                 filter_marker = query_last_key.fetchone()[0]
             except (TypeError, IndexError):
@@ -1179,18 +1149,18 @@ class AWSConfigBucket(AWSLogsBucket):
         self.field_to_load = 'configurationItems'
         # SQL queries for AWS Config
         self.sql_find_last_key_processed_of_day = """
-                                                SELECT
-                                                    log_key
-                                                FROM
-                                                    {table_name}
-                                                WHERE
-                                                    bucket_path='{bucket_path}' AND
-                                                    aws_account_id='{aws_account_id}' AND
-                                                    aws_region = '{aws_region}' AND
-                                                    created_date = {created_date}
-                                                ORDER BY
-                                                    log_key DESC
-                                                LIMIT 1;"""
+            SELECT
+                log_key
+            FROM
+                {table_name}
+            WHERE
+                bucket_path=:bucket_path AND
+                aws_account_id=:aws_account_id AND
+                aws_region = :aws_region AND
+                created_date = :created_date
+            ORDER BY
+                log_key DESC
+            LIMIT 1;"""
         self._leading_zero_regex = re.compile(r'/(0)(?P<num>\d)')
         self._extract_date_regex = re.compile(r'\d{4}/\d{1,2}/\d{1,2}')
 
@@ -1213,12 +1183,12 @@ class AWSConfigBucket(AWSLogsBucket):
                 self.default_date.strftime('%Y%m%d')
         else:
             try:
-                query_date_last_log = self.db_connector.execute(self.sql_find_last_log_processed.format(
-                    table_name=self.db_table_name,
-                    bucket_path=self.bucket_path,
-                    aws_account_id=aws_account_id,
-                    aws_region=aws_region,
-                    prefix=self.prefix))
+                query_date_last_log = self.db_connector.execute(
+                    self.sql_find_last_log_processed.format(table_name=self.db_table_name), {
+                        'bucket_path': self.bucket_path,
+                        'aws_account_id': aws_account_id,
+                        'aws_region': aws_region,
+                        'prefix': self.prefix})
                 # query returns an integer
                 db_date = str(query_date_last_log.fetchone()[0])
                 if self.only_logs_after:
@@ -1345,11 +1315,12 @@ class AWSConfigBucket(AWSLogsBucket):
         else:
             created_date = self._format_created_date(date)
             query_last_key_of_day = self.db_connector.execute(
-                self.sql_find_last_key_processed_of_day.format(table_name=self.db_table_name,
-                                                               bucket_path=self.bucket_path,
-                                                               aws_account_id=aws_account_id,
-                                                               aws_region=aws_region,
-                                                               created_date=created_date, prefix=self.prefix))
+                self.sql_find_last_key_processed_of_day.format(table_name=self.db_table_name), {
+                    'bucket_path': self.bucket_path,
+                    'aws_account_id': aws_account_id,
+                    'aws_region': aws_region,
+                    'created_date': created_date,
+                    'prefix': self.prefix})
             try:
                 filter_marker = query_last_key_of_day.fetchone()[0]
             except (TypeError, IndexError) as e:
@@ -1551,107 +1522,105 @@ class AWSVPCFlowBucket(AWSLogsBucket):
         self.profile_name = kwargs['profile']
         # SQL queries for VPC must be after constructor call
         self.sql_already_processed = """
-                          SELECT
-                            count(*)
-                          FROM
-                            {table_name}
-                          WHERE
-                            bucket_path='{bucket_path}' AND
-                            aws_account_id='{aws_account_id}' AND
-                            aws_region='{aws_region}' AND
-                            flow_log_id='{flow_log_id}' AND
-                            log_key='{log_key}';"""
+            SELECT
+                count(*)
+            FROM
+                {table_name}
+            WHERE
+                bucket_path=:bucket_path AND
+                aws_account_id=:aws_account_id AND
+                aws_region=:aws_region AND
+                flow_log_id=:flow_log_id AND
+                log_key=:log_key;"""
 
         self.sql_mark_complete = """
-                            INSERT INTO {table_name} (
-                                bucket_path,
-                                aws_account_id,
-                                aws_region,
-                                flow_log_id,
-                                log_key,
-                                processed_date,
-                                created_date) VALUES (
-                                '{bucket_path}',
-                                '{aws_account_id}',
-                                '{aws_region}',
-                                '{flow_log_id}',
-                                '{log_key}',
-                                DATETIME('now'),
-                                '{created_date}');"""
+            INSERT INTO {table_name} (
+                bucket_path,
+                aws_account_id,
+                aws_region,
+                flow_log_id,
+                log_key,
+                processed_date,
+                created_date) 
+            VALUES (
+                :bucket_path,
+                :aws_account_id,
+                :aws_region,
+                :flow_log_id,
+                :log_key,
+                DATETIME('now'),
+                :created_date);"""
 
         self.sql_create_table = """
-                            CREATE TABLE
-                                {table_name} (
-                                bucket_path 'text' NOT NULL,
-                                aws_account_id 'text' NOT NULL,
-                                aws_region 'text' NOT NULL,
-                                flow_log_id 'text' NOT NULL,
-                                log_key 'text' NOT NULL,
-                                processed_date 'text' NOT NULL,
-                                created_date 'integer' NOT NULL,
-                                PRIMARY KEY (bucket_path, aws_account_id, aws_region, flow_log_id, log_key));"""
+            CREATE TABLE {table_name} (
+                bucket_path 'text' NOT NULL,
+                aws_account_id 'text' NOT NULL,
+                aws_region 'text' NOT NULL,
+                flow_log_id 'text' NOT NULL,
+                log_key 'text' NOT NULL,
+                processed_date 'text' NOT NULL,
+                created_date 'integer' NOT NULL,
+                PRIMARY KEY (bucket_path, aws_account_id, aws_region, flow_log_id, log_key));"""
 
         self.sql_find_last_key_processed_of_day = """
-                                                SELECT
-                                                    log_key
-                                                FROM
-                                                    {table_name}
-                                                WHERE
-                                                    bucket_path='{bucket_path}' AND
-                                                    aws_account_id='{aws_account_id}' AND
-                                                    aws_region = '{aws_region}' AND
-                                                    flow_log_id = '{flow_log_id}' AND
-                                                    created_date = {created_date}
-                                                ORDER BY
-                                                    log_key DESC
-                                                LIMIT 1;"""
+            SELECT
+                log_key
+            FROM
+                {table_name}
+            WHERE
+                bucket_path=:bucket_path AND
+                aws_account_id=:aws_account_id AND
+                aws_region = :aws_region AND
+                flow_log_id = :flow_log_id AND
+                created_date = :created_date
+            ORDER BY
+                log_key DESC
+            LIMIT 1;"""
 
         self.sql_get_date_last_log_processed = """
-                                            SELECT
-                                                created_date
-                                            FROM
-                                                {table_name}
-                                            WHERE
-                                                bucket_path='{bucket_path}' AND
-                                                aws_account_id='{aws_account_id}' AND
-                                                aws_region = '{aws_region}' AND
-                                                flow_log_id = '{flow_log_id}'
-                                            ORDER BY
-                                                log_key DESC
-                                            LIMIT 1;"""
+            SELECT
+                created_date
+            FROM
+                {table_name}
+            WHERE
+                bucket_path=:bucket_path AND
+                aws_account_id=:aws_account_id AND
+                aws_region = :aws_region AND
+                flow_log_id = :flow_log_id
+            ORDER BY
+                log_key DESC
+            LIMIT 1;"""
 
-        self.sql_db_maintenance = """DELETE
-                            FROM
-                                {table_name}
-                            WHERE
-                                bucket_path='{bucket_path}' AND
-                                aws_account_id='{aws_account_id}' AND
-                                aws_region='{aws_region}' AND
-                                flow_log_id='{flow_log_id}' AND
-                                log_key <=
-                                (SELECT log_key
-                                    FROM
-                                        {table_name}
-                                    WHERE
-                                        bucket_path='{bucket_path}' AND
-                                        aws_account_id='{aws_account_id}' AND
-                                        aws_region='{aws_region}' AND
-                                        flow_log_id='{flow_log_id}'
-                                    ORDER BY
-                                        log_key DESC
-                                    LIMIT 1
-                                    OFFSET {retain_db_records});"""
+        self.sql_db_maintenance = """
+            DELETE FROM {table_name}
+            WHERE
+                bucket_path=:bucket_path AND
+                aws_account_id=:aws_account_id AND
+                aws_region=:aws_region AND
+                flow_log_id=:flow_log_id AND
+                log_key <= (SELECT log_key
+                    FROM
+                        {table_name}
+                    WHERE
+                        bucket_path=:bucket_path AND
+                        aws_account_id=:aws_account_id AND
+                        aws_region=:aws_region AND
+                        flow_log_id=:flow_log_id
+                    ORDER BY
+                        log_key DESC
+                    LIMIT 1
+                    OFFSET :retain_db_records);"""
 
         self.sql_count_region = """
-                                SELECT
-                                    count(*)
-                                FROM
-                                    {table_name}
-                                WHERE
-                                    bucket_path='{bucket_path}' AND
-                                    aws_account_id='{aws_account_id}' AND
-                                    aws_region='{aws_region}' AND
-                                    flow_log_id='{flow_log_id}';"""
+            SELECT
+                count(*)
+            FROM
+                {table_name}
+            WHERE
+                bucket_path=:bucket_path AND
+                aws_account_id=:aws_account_id AND
+                aws_region=:aws_region AND
+                flow_log_id=:flow_log_id;"""
 
     def load_information_from_file(self, log_key):
         with self.decompress_file(log_key=log_key) as f:
@@ -1699,14 +1668,12 @@ class AWSVPCFlowBucket(AWSLogsBucket):
         return flow_logs_ids
 
     def already_processed(self, downloaded_file, aws_account_id, aws_region, flow_log_id):
-        cursor = self.db_connector.execute(self.sql_already_processed.format(
-            table_name=self.db_table_name,
-            bucket_path=self.bucket_path,
-            aws_account_id=aws_account_id,
-            aws_region=aws_region,
-            flow_log_id=flow_log_id,
-            log_key=downloaded_file
-        ))
+        cursor = self.db_connector.execute(self.sql_already_processed.format(table_name=self.db_table_name), {
+            'bucket_path': self.bucket_path,
+            'aws_account_id': aws_account_id,
+            'aws_region': aws_region,
+            'flow_log_id': flow_log_id,
+            'log_key': downloaded_file})
         return cursor.fetchone()[0] > 0
 
     def get_days_since_today(self, date):
@@ -1726,12 +1693,12 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
         if not last_date_processed:
             try:
-                query_date_last_log = self.db_connector.execute(self.sql_get_date_last_log_processed.format(
-                    table_name=self.db_table_name,
-                    bucket_path=self.bucket_path,
-                    aws_account_id=aws_account_id,
-                    aws_region=aws_region,
-                    flow_log_id=flow_log_id))
+                query_date_last_log = self.db_connector.execute(
+                    self.sql_get_date_last_log_processed.format(table_name=self.db_table_name), {
+                        'bucket_path': self.bucket_path,
+                        'aws_account_id': aws_account_id,
+                        'aws_region': aws_region,
+                        'flow_log_id': flow_log_id})
                 # query returns an integer
                 db_date = str(query_date_last_log.fetchone()[0])
                 if self.only_logs_after:
@@ -1781,28 +1748,24 @@ class AWSVPCFlowBucket(AWSLogsBucket):
         :rtype: int
         """
         query_count_region = self.db_connector.execute(
-            self.sql_count_region.format(
-                table_name=self.db_table_name,
-                bucket_path=self.bucket_path,
-                aws_account_id=aws_account_id,
-                aws_region=aws_region,
-                flow_log_id=flow_log_id,
-                retain_db_records=self.retain_db_records
-            ))
+            self.sql_count_region.format(table_name=self.db_table_name), {
+                'bucket_path': self.bucket_path,
+                'aws_account_id': aws_account_id,
+                'aws_region': aws_region,
+                'flow_log_id': flow_log_id,
+                'retain_db_records': self.retain_db_records})
         return query_count_region.fetchone()[0]
 
     def db_maintenance(self, aws_account_id=None, aws_region=None, flow_log_id=None):
         debug("+++ DB Maintenance", 1)
         try:
             if self.db_count_region(aws_account_id, aws_region, flow_log_id) > self.retain_db_records:
-                self.db_connector.execute(self.sql_db_maintenance.format(
-                    table_name=self.db_table_name,
-                    bucket_path=self.bucket_path,
-                    aws_account_id=aws_account_id,
-                    aws_region=aws_region,
-                    flow_log_id=flow_log_id,
-                    retain_db_records=self.retain_db_records
-                ))
+                self.db_connector.execute(self.sql_db_maintenance.format(table_name=self.db_table_name), {
+                    'bucket_path': self.bucket_path,
+                    'aws_account_id': aws_account_id,
+                    'aws_region': aws_region,
+                    'flow_log_id': flow_log_id,
+                    'retain_db_records': self.retain_db_records})
         except Exception as e:
             print(f"ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {e}")
 
@@ -1816,12 +1779,12 @@ class AWSVPCFlowBucket(AWSLogsBucket):
             filter_marker = self.marker_custom_date(aws_region, aws_account_id, datetime.strptime(date, self.date_format))
         else:
             query_last_key_of_day = self.db_connector.execute(
-                self.sql_find_last_key_processed_of_day.format(table_name=self.db_table_name,
-                                                               bucket_path=self.bucket_path,
-                                                               aws_account_id=aws_account_id,
-                                                               aws_region=aws_region,
-                                                               flow_log_id=flow_log_id,
-                                                               created_date=int(date.replace('/', ''))))
+                self.sql_find_last_key_processed_of_day.format(table_name=self.db_table_name), {
+                    'bucket_path': self.bucket_path,
+                    'aws_account_id': aws_account_id,
+                    'aws_region': aws_region,
+                    'flow_log_id': flow_log_id,
+                    'created_date': int(date.replace('/', ''))})
             try:
                 filter_marker = query_last_key_of_day.fetchone()[0]
             except (TypeError, IndexError) as e:
@@ -1934,15 +1897,13 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                     2)
         else:
             try:
-                self.db_connector.execute(self.sql_mark_complete.format(
-                    table_name=self.db_table_name,
-                    bucket_path=self.bucket_path,
-                    aws_account_id=aws_account_id,
-                    aws_region=aws_region,
-                    flow_log_id=flow_log_id,
-                    log_key=log_file['Key'],
-                    created_date=self.get_creation_date(log_file)
-                ))
+                self.db_connector.execute(self.sql_mark_complete.format(table_name=self.db_table_name), {
+                    'bucket_path': self.bucket_path,
+                    'aws_account_id': aws_account_id,
+                    'aws_region': aws_region,
+                    'flow_log_id': flow_log_id,
+                    'log_key': log_file['Key'],
+                    'created_date': self.get_creation_date(log_file)})
             except Exception as e:
                 debug("+++ Error marking log {} as completed: {}".format(log_file['Key'], e), 2)
 
@@ -1968,110 +1929,88 @@ class AWSCustomBucket(AWSBucket):
         self.check_prefix = True
         # SQL queries for custom buckets
         self.sql_already_processed = """
-                          SELECT
-                            count(*)
-                          FROM
-                            {table_name}
-                          WHERE
-                            bucket_path='{bucket_path}' AND
-                            aws_account_id='{aws_account_id}' AND
-                            log_key='{log_key}';"""
+            SELECT
+                count(*)
+            FROM
+                {table_name}
+            WHERE
+                bucket_path=:bucket_path AND
+                aws_account_id=:aws_account_id AND
+                log_key=:log_key;"""
 
         self.sql_mark_complete = """
-                            INSERT INTO {table_name} (
-                                bucket_path,
-                                aws_account_id,
-                                log_key,
-                                processed_date,
-                                created_date) VALUES (
-                                '{bucket_path}',
-                                '{aws_account_id}',
-                                '{log_key}',
-                                DATETIME('now'),
-                                '{created_date}');"""
+            INSERT INTO {table_name} (
+                bucket_path,
+                aws_account_id,
+                log_key,
+                processed_date,
+                created_date) 
+            VALUES (
+                :bucket_path,
+                :aws_account_id,
+                :log_key,
+                DATETIME('now'),
+                :created_date);"""
 
         self.sql_create_table = """
-                            CREATE TABLE
-                                {table_name} (
-                                bucket_path 'text' NOT NULL,
-                                aws_account_id 'text' NOT NULL,
-                                log_key 'text' NOT NULL,
-                                processed_date 'text' NOT NULL,
-                                created_date 'integer' NOT NULL,
-                                PRIMARY KEY (bucket_path, aws_account_id, log_key));"""
+            CREATE TABLE {table_name} (
+                bucket_path 'text' NOT NULL,
+                aws_account_id 'text' NOT NULL,
+                log_key 'text' NOT NULL,
+                processed_date 'text' NOT NULL,
+                created_date 'integer' NOT NULL,
+                PRIMARY KEY (bucket_path, aws_account_id, log_key));"""
 
         self.sql_find_last_log_processed = """
-                                        SELECT
-                                            created_date
-                                        FROM
-                                            {table_name}
-                                        WHERE
-                                            bucket_path='{bucket_path}' AND
-                                            aws_account_id='{aws_account_id}'
-                                        ORDER BY
-                                            created_date DESC
-                                        LIMIT 1;"""
+            SELECT
+                created_date
+            FROM
+                {table_name}
+            WHERE
+                bucket_path=:bucket_path AND
+                aws_account_id=:aws_account_id
+            ORDER BY
+                created_date DESC
+            LIMIT 1;"""
 
         self.sql_find_last_key_processed = """
-                                        SELECT
-                                            log_key
-                                        FROM
-                                            {table_name}
-                                        WHERE
-                                            bucket_path='{bucket_path}' AND
-                                            aws_account_id='{aws_account_id}' AND
-                                            log_key LIKE '{prefix}%'
-                                        ORDER BY
-                                            log_key DESC
-                                        LIMIT 1;"""
+            SELECT
+                log_key
+            FROM
+                {table_name}
+            WHERE
+                bucket_path=:bucket_path AND
+                aws_account_id=:aws_account_id AND
+                log_key LIKE :prefix
+            ORDER BY
+                log_key DESC
+            LIMIT 1;"""
 
-        self.sql_db_maintenance = """DELETE
-                            FROM
-                                {table_name}
-                            WHERE
-                                bucket_path='{bucket_path}' AND
-                                aws_account_id='{aws_account_id}' AND
-                                log_key <=
-                                (SELECT log_key
-                                    FROM
-                                        {table_name}
-                                    WHERE
-                                        bucket_path='{bucket_path}' AND
-                                        aws_account_id='{aws_account_id}'
-                                    ORDER BY
-                                        log_key DESC
-                                    LIMIT 1
-                                    OFFSET {retain_db_records});"""
+        self.sql_db_maintenance = """
+            DELETE FROM {table_name}
+            WHERE
+                bucket_path=:bucket_path AND
+                aws_account_id=:aws_account_id AND
+                log_key <=
+                (SELECT log_key
+                    FROM
+                        {table_name}
+                    WHERE
+                        bucket_path=:bucket_path AND
+                        aws_account_id=:aws_account_id
+                    ORDER BY
+                        log_key DESC
+                    LIMIT 1
+                    OFFSET :retain_db_records);"""
 
         self.sql_count_custom = """
-                                SELECT
-                                    count(*)
-                                FROM
-                                    {table_name}
-                                WHERE
-                                    bucket_path='{bucket_path}' AND
-                                    aws_account_id='{aws_account_id}';"""
-
-    def _get_formatted_last_key_query(self, aws_region: str, aws_account_id: str) -> str:
-        """
-        Return the query used to fetch the last log key processed from the database formatted.
-
-        Parameters
-        ----------
-        aws_region : str
-            The region of the bucket.
-        aws_account_id : str
-            The AWS account ID used to collect the logs.
-
-        Returns
-        -------
-        str
-            The query formatted depending on the object's attributes.
-        """
-        return self.sql_find_last_key_processed.format(bucket_path=self.bucket_path,
-                                                        table_name=self.db_table_name,
-                                                        prefix=self.prefix,
-                                                        aws_account_id=self.aws_account_id)
+            SELECT
+                count(*)
+            FROM
+                {table_name}
+            WHERE
+                bucket_path=:bucket_path AND
+                aws_account_id=:aws_account_id;"""
 
     def load_information_from_file(self, log_key):
         def json_event_generator(data):
@@ -2165,12 +2104,10 @@ class AWSCustomBucket(AWSBucket):
         self.db_maintenance()
 
     def already_processed(self, downloaded_file, aws_account_id, aws_region):
-        cursor = self.db_connector.execute(self.sql_already_processed.format(
-            table_name=self.db_table_name,
-            bucket_path=self.bucket_path,
-            aws_account_id=self.aws_account_id,
-            log_key=downloaded_file
-        ))
+        cursor = self.db_connector.execute(self.sql_already_processed.format(table_name=self.db_table_name), {
+            'bucket_path': self.bucket_path,
+            'aws_account_id': self.aws_account_id,
+            'log_key': downloaded_file})
         return cursor.fetchone()[0] > 0
 
     def mark_complete(self, aws_account_id, aws_region, log_file):
@@ -2183,24 +2120,20 @@ class AWSCustomBucket(AWSBucket):
         :rtype: int
         """
         query_count_custom = self.db_connector.execute(
-            self.sql_count_custom.format(
-                table_name=self.db_table_name,
-                bucket_path=self.bucket_path,
-                aws_account_id= aws_account_id if aws_account_id else self.aws_account_id,
-                retain_db_records=self.retain_db_records
-            ))
+            self.sql_count_custom.format(table_name=self.db_table_name), {
+                'bucket_path': self.bucket_path,
+                'aws_account_id':  aws_account_id if aws_account_id else self.aws_account_id,
+                'retain_db_records': self.retain_db_records})
         return query_count_custom.fetchone()[0]
 
     def db_maintenance(self, aws_account_id=None, **kwargs):
         debug("+++ DB Maintenance", 1)
         try:
             if self.db_count_custom(aws_account_id) > self.retain_db_records:
-                self.db_connector.execute(self.sql_db_maintenance.format(
-                    table_name=self.db_table_name,
-                    bucket_path=self.bucket_path,
-                    aws_account_id=aws_account_id if aws_account_id else self.aws_account_id,
-                    retain_db_records=self.retain_db_records
-                ))
+                self.db_connector.execute(self.sql_db_maintenance.format(table_name=self.db_table_name), {
+                    'bucket_path': self.bucket_path,
+                    'aws_account_id':  aws_account_id if aws_account_id else self.aws_account_id,
+                    'retain_db_records': self.retain_db_records})
         except Exception as e:
             print(f"ERROR: Failed to execute DB cleanup - Path: {self.bucket_path}: {e}")
 
@@ -2357,24 +2290,6 @@ class AWSLBBucket(AWSCustomBucket):
 
     def mark_complete(self, aws_account_id, aws_region, log_file):
         AWSBucket.mark_complete(self, aws_account_id, aws_region, log_file)
-
-    def _get_formatted_last_key_query(self, aws_region: str, aws_account_id: str) -> str:
-        """
-        Return the query used to fetch the last log key processed from the database formatted.
-
-        Parameters
-        ----------
-        aws_region : str
-            The region of the bucket.
-        aws_account_id : str
-            The AWS account ID used to collect the logs.
-
-        Returns
-        -------
-        str
-            The query formatted depending on the object's attributes.
-        """
-        return AWSBucket._get_formatted_last_key_query(self, aws_region, aws_account_id)
 
 
 class AWSALBBucket(AWSLBBucket):
@@ -2660,57 +2575,54 @@ class AWSService(WazuhIntegration):
 
         # SQL queries for services
         self.sql_create_table = """
-                            CREATE TABLE
-                                {table_name} (
-                                    service_name 'text' NOT NULL,
-                                    aws_account_id 'text' NOT NULL,
-                                    aws_region 'text' NOT NULL,
-                                    scan_date 'text' NOT NULL,
-                                    PRIMARY KEY (service_name, aws_account_id, aws_region, scan_date));"""
+            CREATE TABLE {table_name} (
+                    service_name 'text' NOT NULL,
+                    aws_account_id 'text' NOT NULL,
+                    aws_region 'text' NOT NULL,
+                    scan_date 'text' NOT NULL,
+                    PRIMARY KEY (service_name, aws_account_id, aws_region, scan_date));"""
 
         self.sql_insert_value = """
-                                INSERT INTO {table_name} (
-                                    service_name,
-                                    aws_account_id,
-                                    aws_region,
-                                    scan_date)
-                                VALUES
-                                    ('{service_name}',
-                                    '{aws_account_id}',
-                                    '{aws_region}',
-                                    '{scan_date}');"""
+            INSERT INTO {table_name} (
+                service_name,
+                aws_account_id,
+                aws_region,
+                scan_date)
+            VALUES (
+                :service_name,
+                :aws_account_id,
+                :aws_region,
+                :scan_date);"""
 
         self.sql_find_last_scan = """
-                                SELECT
-                                    scan_date
-                                FROM
-                                    {table_name}
-                                WHERE
-                                    service_name='{service_name}' AND
-                                    aws_account_id='{aws_account_id}' AND
-                                    aws_region='{aws_region}'
-                                ORDER BY
-                                    scan_date DESC
-                                LIMIT 1;"""
+            SELECT
+                scan_date
+            FROM
+                {table_name}
+            WHERE
+                service_name=:service_name AND
+                aws_account_id=:aws_account_id AND
+                aws_region=:aws_region
+            ORDER BY
+                scan_date DESC
+            LIMIT 1;"""
 
-        self.sql_db_maintenance = """DELETE
-                        FROM
-                            {table_name}
-                        WHERE
-                            service_name='{service_name}' AND
-                            aws_account_id='{aws_account_id}' AND
-                            aws_region='{aws_region}' AND
-                            rowid NOT IN
-                            (SELECT ROWID
-                                FROM
-                                    {table_name}
-                                WHERE
-                                    service_name='{service_name}' AND
-                                    aws_account_id='{aws_account_id}' AND
-                                    aws_region='{aws_region}'
-                                ORDER BY
-                                    scan_date DESC
-                                LIMIT {retain_db_records});"""
+        self.sql_db_maintenance = """
+            DELETE FROM {table_name}
+            WHERE
+                service_name=:service_name AND
+                aws_account_id=:aws_account_id AND
+                aws_region=:aws_region AND
+                rowid NOT IN (SELECT ROWID
+                    FROM
+                        {table_name}
+                    WHERE
+                        service_name=:service_name AND
+                        aws_account_id=:aws_account_id AND
+                        aws_region=:aws_region
+                    ORDER BY
+                        scan_date DESC
+                    LIMIT :retain_db_records);"""
 
     def get_last_log_date(self):
         date = self.only_logs_after if self.only_logs_after is not None else self.default_date.strftime('%Y%m%d')
@@ -2802,18 +2714,18 @@ class AWSInspector(AWSService):
             if self.reparse:
                 last_scan = initial_date
             else:
-                self.db_cursor.execute(self.sql_find_last_scan.format(table_name=self.db_table_name,
-                                                                      service_name=self.service_name,
-                                                                      aws_account_id=self.account_id,
-                                                                      aws_region=self.inspector_region))
+                self.db_cursor.execute(self.sql_find_last_scan.format(table_name=self.db_table_name), {
+                    'service_name': self.service_name,
+                    'aws_account_id': self.account_id,
+                    'aws_region': self.inspector_region})
                 last_scan = self.db_cursor.fetchone()[0]
         except TypeError as e:
             # write initial date if DB is empty
-            self.db_cursor.execute(self.sql_insert_value.format(table_name=self.db_table_name,
-                                                                service_name=self.service_name,
-                                                                aws_account_id=self.account_id,
-                                                                aws_region=self.inspector_region,
-                                                                scan_date=initial_date))
+            self.db_cursor.execute(self.sql_insert_value.format(table_name=self.db_table_name), {
+                'service_name': self.service_name,
+                'aws_account_id': self.account_id,
+                'aws_region': self.inspector_region,
+                'scan_date': initial_date})
             last_scan = initial_date
 
         date_last_scan = datetime.strptime(last_scan, '%Y-%m-%d %H:%M:%S.%f')
@@ -2837,23 +2749,23 @@ class AWSInspector(AWSService):
                                                                                'endDate': date_current}})
             self.send_describe_findings(response['findingArns'])
 
-        if self.sent_events:        
+        if self.sent_events:
             debug(f"+++ {self.sent_events} events collected and processed in {self.inspector_region}", 1)
         else:
             debug(f'+++ There are no new events in the "{self.inspector_region}" region', 1)
 
         # insert last scan in DB
-        self.db_cursor.execute(self.sql_insert_value.format(table_name=self.db_table_name,
-                                                            service_name=self.service_name,
-                                                            aws_account_id=self.account_id,
-                                                            aws_region=self.inspector_region,
-                                                            scan_date=date_current))
+        self.db_cursor.execute(self.sql_insert_value.format(table_name=self.db_table_name), {
+            'service_name': self.service_name,
+            'aws_account_id': self.account_id,
+            'aws_region': self.inspector_region,
+            'scan_date': date_current})
         # DB maintenance
-        self.db_cursor.execute(self.sql_db_maintenance.format(table_name=self.db_table_name,
-                                                              service_name=self.service_name,
-                                                              aws_account_id=self.account_id,
-                                                              aws_region=self.inspector_region,
-                                                              retain_db_records=self.retain_db_records))
+        self.db_cursor.execute(self.sql_db_maintenance.format(table_name=self.db_table_name), {
+            'service_name': self.service_name,
+            'aws_account_id': self.account_id,
+            'aws_region': self.inspector_region,
+            'retain_db_records': self.retain_db_records})
         # close connection with DB
         self.close_db()
 
@@ -2911,72 +2823,70 @@ class AWSCloudWatchLogs(AWSService):
                  iam_role_duration=None):
 
         self.sql_cloudwatch_create_table = """
-                                CREATE TABLE
-                                    {table_name} (
-                                        aws_region 'text' NOT NULL,
-                                        aws_log_group 'text' NOT NULL,
-                                        aws_log_stream 'text' NOT NULL,
-                                        next_token 'text',
-                                        start_time 'integer',
-                                        end_time 'integer',
-                                        PRIMARY KEY (aws_region, aws_log_group, aws_log_stream));"""
+            CREATE TABLE {table_name} (
+                    aws_region 'text' NOT NULL,
+                    aws_log_group 'text' NOT NULL,
+                    aws_log_stream 'text' NOT NULL,
+                    next_token 'text',
+                    start_time 'integer',
+                    end_time 'integer',
+                    PRIMARY KEY (aws_region, aws_log_group, aws_log_stream));"""
 
         self.sql_cloudwatch_insert = """
-                                INSERT INTO {table_name} (
-                                    aws_region,
-                                    aws_log_group,
-                                    aws_log_stream,
-                                    next_token,
-                                    start_time,
-                                    end_time)
-                                VALUES
-                                    ('{aws_region}',
-                                    '{aws_log_group}',
-                                    '{aws_log_stream}',
-                                    '{next_token}',
-                                    '{start_time}',
-                                    '{end_time}');"""
+            INSERT INTO {table_name} (
+                aws_region,
+                aws_log_group,
+                aws_log_stream,
+                next_token,
+                start_time,
+                end_time)
+            VALUES
+                (':aws_region',
+                :aws_log_group,
+                :aws_log_stream,
+                :next_token,
+                :start_time,
+                :end_time);"""
 
         self.sql_cloudwatch_update = """
-                                UPDATE
-                                    {table_name}
-                                SET
-                                    next_token='{next_token}',
-                                    start_time='{start_time}',
-                                    end_time='{end_time}'
-                                WHERE
-                                    aws_region='{aws_region}' AND
-                                    aws_log_group='{aws_log_group}' AND
-                                    aws_log_stream='{aws_log_stream}';"""
+            UPDATE
+                {table_name}
+            SET
+                next_token=:next_token,
+                start_time=:start_time,
+                end_time=:end_time
+            WHERE
+                aws_region=:aws_region AND
+                aws_log_group=:aws_log_group AND
+                aws_log_stream=:aws_log_stream;"""
 
         self.sql_cloudwatch_select = """
-                            SELECT
-                                next_token,
-                                start_time,
-                                end_time
-                            FROM
-                                '{table_name}'
-                            WHERE
-                                aws_region='{aws_region}' AND
-                                aws_log_group='{aws_log_group}' AND
-                                aws_log_stream='{aws_log_stream}'"""
+            SELECT
+                next_token,
+                start_time,
+                end_time
+            FROM
+                {table_name}
+            WHERE
+                aws_region=:aws_region AND
+                aws_log_group=:aws_log_group AND
+                aws_log_stream=:aws_log_stream"""
         self.sql_cloudwatch_select_logstreams = """
-                            SELECT
-                                aws_log_stream
-                            FROM
-                                '{table_name}'
-                            WHERE
-                                aws_region='{aws_region}' AND
-                                aws_log_group='{aws_log_group}'
-                            ORDER BY
-                                aws_log_stream;"""
+            SELECT
+                aws_log_stream
+            FROM
+                {table_name}
+            WHERE
+                aws_region=:aws_region AND
+                aws_log_group=:aws_log_group
+            ORDER BY
+                aws_log_stream;"""
         self.sql_cloudwatch_purge = """
-                            DELETE FROM
-                                {table_name}
-                            WHERE
-                                aws_region='{aws_region}' AND
-                                aws_log_group='{aws_log_group}' AND
-                                aws_log_stream='{aws_log_stream}';"""
+            DELETE FROM {table_name}
+            WHERE
+                aws_region=:aws_region AND
+                aws_log_group=:aws_log_group AND
+                aws_log_stream=:aws_log_stream;"""
 
         AWSService.__init__(self, reparse=reparse, access_key=access_key, secret_key=secret_key,
                             aws_profile=aws_profile, iam_role_arn=iam_role_arn, only_logs_after=only_logs_after,
@@ -3027,9 +2937,9 @@ class AWSCloudWatchLogs(AWSService):
                     token = None
 
                     if db_values:
-                        if self.reparse: 
+                        if self.reparse:
                             result_before = self.get_alerts_within_range(log_group=log_group, log_stream=log_stream,
-                                                                         token=None, start_time=start_time, 
+                                                                         token=None, start_time=start_time,
                                                                          end_time=None)
 
                         elif db_values['start_time'] and db_values['start_time'] > start_time:
@@ -3176,10 +3086,10 @@ class AWSCloudWatchLogs(AWSService):
         -------
         A dict containing the token, start_time and end_time of the log stream. None if no data were found in the DB.
         """
-        self.db_cursor.execute(self.sql_cloudwatch_select.format(table_name=self.db_table_name,
-                                                                 aws_region=self.region,
-                                                                 aws_log_group=log_group,
-                                                                 aws_log_stream=log_stream))
+        self.db_cursor.execute(self.sql_cloudwatch_select.format(table_name=self.db_table_name), {
+            'aws_region': self.region,
+            'aws_log_group': log_group,
+            'aws_log_stream': log_stream})
         query_result = self.db_cursor.fetchone()
         if query_result:
             return {'token': None if query_result[0] == "None" else query_result[0],
@@ -3255,22 +3165,22 @@ class AWSCloudWatchLogs(AWSService):
         debug('Saving data for log group "{}" and log stream "{}".'.format(log_group, log_stream), 1)
         debug('The saved values are "{}"'.format(values), 2)
         try:
-            self.db_cursor.execute(self.sql_cloudwatch_insert.format(table_name=self.db_table_name,
-                                                                     aws_region=self.region,
-                                                                     aws_log_group=log_group,
-                                                                     aws_log_stream=log_stream,
-                                                                     next_token=values['token'],
-                                                                     start_time=values['start_time'],
-                                                                     end_time=values['end_time']))
+            self.db_cursor.execute(self.sql_cloudwatch_insert.format(table_name=self.db_table_name), {
+                'aws_region': self.region,
+                'aws_log_group': log_group,
+                'aws_log_stream': log_stream,
+                'next_token': values['token'],
+                'start_time': values['start_time'],
+                'end_time': values['end_time']})
         except sqlite3.IntegrityError:
             debug("Some data already exists on DB for that key. Updating their values...", 2)
-            self.db_cursor.execute(self.sql_cloudwatch_update.format(table_name=self.db_table_name,
-                                                                     aws_region=self.region,
-                                                                     aws_log_group=log_group,
-                                                                     aws_log_stream=log_stream,
-                                                                     next_token=values['token'],
-                                                                     start_time=values['start_time'],
-                                                                     end_time=values['end_time']))
+            self.db_cursor.execute(self.sql_cloudwatch_update.format(table_name=self.db_table_name), {
+                'aws_region': self.region,
+                'aws_log_group': log_group,
+                'aws_log_stream': log_stream,
+                'next_token': values['token'],
+                'start_time': values['start_time'],
+                'end_time': values['end_time']})
 
     def get_log_streams(self, log_group):
         """Get the list of log streams stored in the specified log group.
@@ -3322,9 +3232,9 @@ class AWSCloudWatchLogs(AWSService):
         """
         debug('Purging the BD', 1)
         # Get the list of log streams from DB
-        self.db_cursor.execute(self.sql_cloudwatch_select_logstreams.format(table_name=self.db_table_name,
-                                                                            aws_region=self.region,
-                                                                            aws_log_group=log_group))
+        self.db_cursor.execute(self.sql_cloudwatch_select_logstreams.format(table_name=self.db_table_name), {
+            'aws_region': self.region,
+            'aws_log_group': log_group})
         query_result = self.db_cursor.fetchall()
         log_streams_sql = set()
         for log_stream in query_result:
@@ -3339,10 +3249,10 @@ class AWSCloudWatchLogs(AWSService):
             debug('Data for the following log streams will be removed from {}: "{}"'.format(self.db_table_name,
                                                                                             log_streams_to_purge), 2)
         for log_stream in log_streams_to_purge:
-            self.db_cursor.execute(self.sql_cloudwatch_purge.format(table_name=self.db_table_name,
-                                                                    aws_region=self.region,
-                                                                    aws_log_group=log_group,
-                                                                    aws_log_stream=log_stream))
+            self.db_cursor.execute(self.sql_cloudwatch_purge.format(tablename=self.db_table_name), {
+                'aws_region': self.region,
+                'aws_log_group': log_group,
+                'aws_log_stream': log_stream})
 
 
 ################################################################################
