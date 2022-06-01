@@ -137,17 +137,34 @@ def fill_dict(default: Dict, config: Dict, json_schema: Dict) -> Dict:
     dict
         Filled dictionary.
     """
+    def _update_default_config(default_config: Dict, user_config: Dict) -> Dict:
+        """Update default configuration with the values of the user one.
+
+        Parameters
+        ----------
+        default_config : dict
+            Default API configuration.
+        user_config : dict
+            User API configuration.
+
+        Returns
+        -------
+        dict
+            Merged API configuration.
+        """
+        for key, value in user_config.items():
+            if isinstance(value, dict):
+                default_config[key] = _update_default_config(default_config.get(key, {}), value)
+            else:
+                default_config[key] = value
+        return default_config
+
     try:
         validate(instance=config, schema=json_schema)
-    except ValidationError as e:
-        raise APIError(2000, details=e.message)
+    except ValidationError as validation_exc:
+        raise APIError(2000, details=validation_exc.message) from None
 
-    for k, val in filter(lambda x: isinstance(x[1], dict), config.items()):
-        for item, value in config[k].items():
-            config[k][item] = default[k][item] if value == "" else config[k][item]
-        config[k] = {**default[k], **config[k]}
-
-    return {**default, **config}
+    return _update_default_config(default, config)
 
 
 def generate_private_key(private_key_path: str, public_exponent: int = 65537,
@@ -272,7 +289,7 @@ def read_yaml_config(config_file: str = CONFIG_FILE_PATH, default_conf: dict = N
             # Replace strings for booleans
             configuration and replace_bools(configuration)
         except IOError as e:
-            raise APIError(2004, details=e.strerror)
+            raise APIError(2004, details=e.strerror) from None
     else:
         configuration = None
 
@@ -289,6 +306,14 @@ def read_yaml_config(config_file: str = CONFIG_FILE_PATH, default_conf: dict = N
 
     return configuration
 
+
+# Check if the default configuration is valid according to its jsonschema, so we are forced to update the schema if any
+# change is performed to the configuration.
+try:
+    validate(instance=default_security_configuration, schema=security_config_schema)
+    validate(instance=default_api_configuration, schema=api_config_schema)
+except ValidationError as e:
+    raise APIError(2000, details=e.message) from None
 
 # Configuration - global object
 api_conf = read_yaml_config()
