@@ -2,12 +2,15 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import calendar
-from datetime import date
-from unittest.mock import patch, ANY, PropertyMock
-import tempfile
-import pytest
-from os.path import join
 import gzip
+import re
+import tempfile
+from datetime import date
+from os.path import join, exists
+from random import randint
+from unittest.mock import patch, PropertyMock
+
+import pytest
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
@@ -60,22 +63,96 @@ def test_timebasedfilerotatinghandler_compute_log_directory(mock_mkdir, rotated_
         mock_mkdir.assert_called_with(log_path, 0o750)
 
 
+def test_sizebasedfilerotatinghandler_dorollover():
+    """Test if method doRollover of SizeBasedFileRotatingHandler works properly."""
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        test_str = 'test string'
+        log_file = join(tmp_dir, 'test.log')
+
+        fh = wlogging.SizeBasedFileRotatingHandler(filename=log_file, maxBytes=1, backupCount=1)
+
+        with open(log_file, 'w') as f:
+            f.write(test_str)
+
+        fh.doRollover()
+        today = date.today()
+        backup_file = join(tmp_dir, 'test', str(today.year),
+                           today.strftime("%b"),
+                           f"test.log-{today.day:02d}_1.gz")
+
+        with gzip.open(backup_file, 'r') as backup:
+            assert backup.read().decode() == test_str
+
+
+@patch('wazuh.core.utils.mkdir_with_mode')
+def test_sizebasedfilerotatinghandler_compute_log_directory(mock_mkdir):
+    """Test if method compute_log_directory of SizeBasedFileRotatingHandler works properly."""
+    previous_rotated_logs = randint(2, 15)
+
+    def _mock_exists(path):
+        path_regex = re.match(r".+_(\d+)\.gz", path)
+        if path_regex is None:
+            return exists(path)
+        else:
+            return False if int(path_regex.group(1)) > previous_rotated_logs else True
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        log_file = join(tmp_dir, 'test.log')
+        with open(log_file, 'w') as _:
+            pass
+
+        fh = wlogging.SizeBasedFileRotatingHandler(filename=log_file, maxBytes=1, backupCount=1)
+        today = date.today()
+        year, month, day = today.year, today.month, today.day
+        month = calendar.month_abbr[int(month)]
+
+        log_path = join(tmp_dir, 'test', str(year), month)
+
+        # Expect the first rotated log
+        expected_name = join(log_path, f"test.log-{int(day):02d}_1.gz")
+        computed_name = fh.compute_log_directory()
+
+        assert expected_name == computed_name
+        mock_mkdir.assert_called_with(log_path, 0o750)
+
+        # Expect the 4th rotated log
+        with patch("wazuh.core.wlogging.os.path.exists", new=_mock_exists):
+            expected_name = join(log_path, f"test.log-{int(day):02d}_{previous_rotated_logs + 1}.gz")
+            computed_name = fh.compute_log_directory()
+
+            assert expected_name == computed_name
+            mock_mkdir.assert_called_with(log_path, 0o750)
+
+
+@pytest.mark.parametrize('max_size', [0, 500])
 @patch('logging.addLevelName')
 @patch('logging.Logger.addHandler')
 @patch('wazuh.core.wlogging.SizeBasedFileRotatingHandler')
 @patch('wazuh.core.wlogging.TimeBasedFileRotatingHandler')
-def test_wazuh_logger_setup_logger(mock_time_handler, mock_size_handler, mock_add_handler, mock_add_level_name):
-    """Test if method setup_logger of WazuhLogger setups the logger attribute properly."""
+def test_wazuh_logger_setup_logger(mock_time_handler, mock_size_handler, mock_add_handler, mock_add_level_name,
+                                   max_size):
+    """Test if method setup_logger of WazuhLogger setups the logger attribute properly.
+
+    Parameters
+    ----------
+    max_size : int
+        `max_size` input value.
+    """
     tmp_dir = tempfile.TemporaryDirectory()
-    max_size = 500
     # To bypass the checking of the existence of a valid Wazuh install
+    # Check time handler
     with patch('os.path.join', return_value=tmp_dir.name):
         w_logger = wlogging.WazuhLogger(foreground_mode=True, log_path=tmp_dir.name,
                                         tag='%(test)s %(test)s: %(test)s',
                                         debug_level=[0, 'test'], max_size=max_size)
     w_logger.setup_logger()
-    mock_time_handler.assert_called_once_with(filename=tmp_dir.name, when='midnight')
-    mock_size_handler.assert_called_with(filename=tmp_dir.name, maxBytes=max_size, backupCount=1)
+    if max_size == 0:
+        mock_time_handler.assert_called_once_with(filename=tmp_dir.name, when='midnight')
+        assert not mock_size_handler.called, "Size handler should not be called when using time based rotation"
+    else:
+        mock_size_handler.assert_called_with(filename=tmp_dir.name, maxBytes=max_size, backupCount=1)
+        assert not mock_time_handler.called, "Time handler should not be called when using size based rotation"
+
     mock_add_handler.assert_called()
     mock_add_level_name.assert_called()
 
