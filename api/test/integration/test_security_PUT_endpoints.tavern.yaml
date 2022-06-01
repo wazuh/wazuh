@@ -421,7 +421,7 @@ stages:
         name: "testModified2"
         rule:
           MATCH:
-            normal_rule: "modifiedR"
+            normal_rule: "modifiedR2"
     response:
       status_code: 200
       json:
@@ -432,7 +432,7 @@ stages:
               name: "testModified2"
               rule:
                 MATCH:
-                  normal_rule: "modifiedR"
+                  normal_rule: "modifiedR2"
               roles: !anything
           failed_items: []
           total_affected_items: 1
