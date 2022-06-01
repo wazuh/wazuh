@@ -153,7 +153,7 @@ All notable changes to this project will be documented in this file.
 - Prevented the Ruleset test suite from restarting the manager. ([#10773](https://github.com/wazuh/wazuh/pull/10773))
 
 
-## [v4.3.3]
+## [v4.3.4]
 
 ### Manager
 
@@ -162,7 +162,22 @@ All notable changes to this project will be documented in this file.
 - Integratord now tries to read alerts indefinitely, instead of performing 3 attempts. ([#13437](https://github.com/wazuh/wazuh/pull/13437))
 
 
-## [v4.3.2]
+## [v4.3.3] - 2022-05-31
+
+### Manager
+
+#### Fixed
+
+- Avoid creating duplicated client tags during deployment. ([#13651](https://github.com/wazuh/wazuh/pull/13651))
+
+### Agent
+
+#### Fixed
+
+- Prevented Agentd from resetting its configuration on client block re-definition. ([#13642](https://github.com/wazuh/wazuh/pull/13642))
+
+
+## [v4.3.2] - 2022-05-30
 
 ### Manager
 
@@ -579,7 +594,7 @@ All notable changes to this project will be documented in this file.
 - Fixed an installation error due to missing command `hostname` on OpenSUSE Tumbleweed. ([#11455](https://github.com/wazuh/wazuh/pull/11455))
 
 
-## [v4.2.7]
+## [v4.2.7] - 2022-05-30
 
 ### Manager
 
