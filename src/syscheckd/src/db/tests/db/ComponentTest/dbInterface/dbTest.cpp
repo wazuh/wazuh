@@ -24,7 +24,7 @@ const auto insertFileStatement = R"({
 const auto insertRegistryKeyStatement = R"({
         "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "gid":0, "group_name":"root", "arch":1,
         "last_event":1596489275, "mode":0, "mtime":1578075431, "path":"HKEY_LOCAL_MACHINE\\SOFTWARE", "perm":"-rw-rw-r--",
-        "scanned":1, "uid":0, "user_name":"fakeUser"
+        "scanned":1, "uid":0, "hash_full_path":"00a7ee53218b25b5364c8773f37a38c93eae3880", "user_name":"fakeUser"
     }
 )"_json;
 
@@ -33,7 +33,7 @@ const auto insertRegistryValueStatement = R"({
         "mode":0, "size":4925, "type":0, "hash_md5":"4b531524aa13c8a54614100b570b3dc7",
         "hash_sha1":"7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
         "hash_sha256":"e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a",
-        "arch":0, "path":"/tmp/pathTestRegistry"
+        "arch":0, "hash_full_path":"00a7ee53218b25b5364c8773f37a38c93eae3880", "path":"/tmp/pathTestRegistry"
     }
 )"_json;
 
@@ -90,6 +90,10 @@ TEST_F(DBTestFixture, TestFimSyncPushMsg)
     EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG, "Executing FIM sync.")).Times(1);
     EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG, "Finished FIM sync.")).Times(1);
     EXPECT_CALL(*mockSync, syncMsg("fim_file", testing::_)).Times(1);
+#ifdef WIN32
+    EXPECT_CALL(*mockSync, syncMsg("fim_registry_key", testing::_)).Times(1);
+    EXPECT_CALL(*mockSync, syncMsg("fim_registry_value", testing::_)).Times(1);
+#endif
     EXPECT_NO_THROW(
     {
         auto result = fim_run_integrity();
