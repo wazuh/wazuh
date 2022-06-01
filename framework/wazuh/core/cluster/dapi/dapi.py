@@ -389,8 +389,8 @@ class DistributedAPI:
         result = {node: {'error': error_message}
                   }
 
-        # Give log path only in case of WazuhInternalError
-        if not isinstance(e, exception.WazuhError):
+        # Give log path only in case of WazuhInternalError or WazuhClusterError
+        if isinstance(e, (exception.WazuhInternalError, exception.WazuhClusterError)):
             log_filename = None
             for h in self.logger.handlers or self.logger.parent.handlers:
                 if hasattr(h, 'baseFilename'):
