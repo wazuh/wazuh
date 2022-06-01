@@ -9,6 +9,7 @@ SCRIPT_PATH_NAME="$0"
 
 DIR_NAME="$(cd $(dirname ${SCRIPT_PATH_NAME}); pwd -P)"
 SCRIPT_NAME="$(basename ${SCRIPT_PATH_NAME})"
+SCRIPT_NAME=`echo $SCRIPT_NAME | sed 's/\-/_/g'`
 
 case ${DIR_NAME} in
     */active-response/bin | */wodles*)

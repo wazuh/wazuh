@@ -59,15 +59,6 @@ static const struct {
 // Dispatch local request
 static char* local_dispatch(const char *input);
 
-// Add a new agent
-static cJSON* local_add(const char *id,
-                        const char *name,
-                        const char *ip,
-                        const char *groups,
-                        const char *key,
-                        const char *key_hash,
-                        authd_force_options_t *force_options);
-
 // Remove an agent
 static cJSON* local_remove(const char *id, int purge);
 
@@ -435,15 +426,6 @@ cJSON* local_add(const char *id,
     if (index = OS_AddNewAgent(&keys, id, name, _ip, key), index < 0) {
         ierror = EKEY;
         goto fail;
-    }
-
-
-    if (groups) {
-        char path[PATH_MAX];
-        if (snprintf(path, PATH_MAX, GROUPS_DIR "/%s", keys.keyentries[index]->id) >= PATH_MAX) {
-            ierror = EINVGROUP;
-            goto fail;
-        }
     }
 
     /* Add pending key to write */

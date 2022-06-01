@@ -399,6 +399,18 @@ void free_strarray(char ** array) {
     }
 }
 
+// Get the size of a string array
+size_t strarray_size(char ** array) {
+    size_t size = 0;
+
+    if (array) {
+        while (array[size]) {
+            size++;
+        }
+    }
+    return size;
+}
+
 char * wstr_delete_repeated_groups(const char * string){
     char **aux;
     char *result = NULL;

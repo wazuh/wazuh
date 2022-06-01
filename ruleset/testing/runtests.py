@@ -19,6 +19,7 @@ import signal
 rules_test_fname_pattern = re.compile('^test_(.*?)_rules.xml$')
 decoders_test_fname_pattern = re.compile('^test_(.*?)_decoders.xml$')
 
+
 class MultiOrderedDict(OrderedDict):
     def __setitem__(self, key, value):
         if isinstance(value, list) and key in self:
@@ -45,6 +46,7 @@ def getWazuhInfo(wazuh_home):
 
     return wazuh_env_vars
 
+
 def provisionDR():
     base_dir = os.path.dirname(os.path.realpath(__file__))
     rules_dir = os.path.join(base_dir, "ruleset")
@@ -60,6 +62,7 @@ def provisionDR():
         if os.path.isfile(file_fullpath) and re.match(r'^test_(.*?)_decoders.xml$',file):
             shutil.copy2(file_fullpath , args.wazuh_home + "/etc/decoders")
 
+
 def cleanDR():
     rules_dir = args.wazuh_home + "/etc/rules"
     decoders_dir = args.wazuh_home + "/etc/decoders"
@@ -73,6 +76,7 @@ def cleanDR():
         file_fullpath = os.path.join(decoders_dir, file)
         if os.path.isfile(file_fullpath) and re.match(r'^test_(.*?)_decoders.xml$',file):
             os.remove(file_fullpath)
+
 
 class OssecTester(object):
     def __init__(self, bdir):
@@ -149,9 +153,11 @@ class OssecTester(object):
                 print("")
         return self._error
 
+
 def cleanup(*args):
     cleanDR()
     sys.exit(0)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='This script tests Wazuh rules.')
@@ -162,7 +168,7 @@ if __name__ == "__main__":
     parser.add_argument('--testfile', '-t', action='store', type=str, dest='testfile',
                         help='Use -t or --testfile to pass the ini file to test')
     parser.add_argument('--custom-ruleset', '-c', action='store_true', dest='custom',
-                        help='Use -c or --custom-ruleset to test custom rules and decoders.')
+                        help='Use -c or --custom-ruleset to test custom rules and decoders')
     args = parser.parse_args()
     selective_test = False
     if args.testfile:
@@ -176,11 +182,11 @@ if __name__ == "__main__":
 
     for sig in (signal.SIGABRT, signal.SIGINT, signal.SIGTERM):
         signal.signal(sig, cleanup)
-    if args.custom:
-        provisionDR()
+
+    provisionDR()
     OT = OssecTester(args.wazuh_home)
     error = OT.run(selective_test, args.geoip, args.custom)
-    if args.custom:
-        cleanDR()
+    cleanDR()
+
     if error:
         sys.exit(1)

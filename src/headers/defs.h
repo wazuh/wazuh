@@ -120,6 +120,9 @@ https://www.gnu.org/licenses/gpl.html\n"
 // Authd local socket
 #define AUTH_LOCAL_SOCK "queue/sockets/auth"
 
+// Key request socket
+#define KEY_REQUEST_SOCK "queue/sockets/krequest"
+
 // Remote requests socket
 #define REMOTE_REQ_SOCK "queue/sockets/request"
 
@@ -150,8 +153,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define WDB_LOCAL_SOCK "queue/db/wdb"
 
 #define WM_DOWNLOAD_SOCK "queue/sockets/download"
-
-#define WM_KEY_REQUEST_SOCK "queue/sockets/krequest"
 
 // Tasks socket
 #define WM_UPGRADE_SOCK "queue/tasks/upgrade"
@@ -227,13 +228,15 @@ https://www.gnu.org/licenses/gpl.html\n"
 #endif // WAZUH_UNIT_TESTING
 
 /* Wazuh Database */
-#define WDB_DIR         "var/db"
-#define WDB2_DIR        "queue/db"
-#define WDB_GLOB_NAME   "global"
-#define WDB_MITRE_NAME  "mitre"
-#define WDB_PROF_NAME   ".template.db"
-#define WDB_TASK_DIR    "queue/tasks"
-#define WDB_TASK_NAME   "tasks"
+#define WDB_DIR                "var/db"
+#define WDB2_DIR               "queue/db"
+#define WDB_GLOB_NAME          "global"
+#define WDB_MITRE_NAME         "mitre"
+#define WDB_PROF_NAME          ".template.db"
+#define WDB_TASK_DIR           "queue/tasks"
+#define WDB_TASK_NAME          "tasks"
+#define WDB_BACKUP_FOLDER      "backup/db"
+#define WDB_GLOB_BACKUP_NAME   WDB_GLOB_NAME".db-backup"
 
 /* Diff queue */
 #define DIFF_DIR        "queue/diff"
@@ -318,7 +321,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define MULTIGROUPS_DIR   "var/multigroups"
 #define MAX_GROUP_NAME 255
 #define MULTIGROUP_SEPARATOR ','
-#define MAX_GROUPS_PER_MULTIGROUP 256
+#define MAX_GROUPS_PER_MULTIGROUP 128
 
 // Incoming directory
 #ifndef WIN32

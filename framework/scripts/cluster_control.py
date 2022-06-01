@@ -117,6 +117,7 @@ async def print_health(config, more, filter_node):
                         f"Integrity check: {node_info['status']['last_check_integrity']['date_end_master']} | " \
                         f"Integrity sync: {node_info['status']['last_sync_integrity']['date_end_master']} | " \
                         f"Agents-info: {node_info['status']['last_sync_agentinfo']['date_end_master']} | " \
+                        f"Agents-groups: {node_info['status']['last_sync_agentgroups']['date_end_master']} | " \
                         f"Last keep alive: {node_info['status']['last_keep_alive']}.\n"
 
             msg2 += "        Status:\n"
@@ -145,12 +146,8 @@ async def print_health(config, more, filter_node):
             n_shared = str(node_info['status']['last_sync_integrity']['total_files']["shared"])
             n_missing = str(node_info['status']['last_sync_integrity']['total_files']["missing"])
             n_extra = str(node_info['status']['last_sync_integrity']['total_files']["extra"])
-            n_extra_valid = str(node_info['status']['last_sync_integrity']['total_files']["extra_valid"])
             msg2 += f"                Synchronized files: Shared: {n_shared} | Missing: {n_missing} | " \
-                    f"Extra: {n_extra} | Extra valid: {n_extra_valid}.\n"
-
-            msg2 += f"                Extra valid files correctly updated in master: " \
-                    f"{node_info['status']['last_sync_integrity']['total_extra_valid']}.\n"
+                    f"Extra: {n_extra}.\n"
 
             # Agent info
             total = calculate_seconds(node_info['status']['last_sync_agentinfo']['date_start_master'],
@@ -163,6 +160,18 @@ async def print_health(config, more, filter_node):
                     f"{node_info['status']['last_sync_agentinfo']['n_synced_chunks']}.\n"
             msg2 += f"                Permission to synchronize agent-info: " \
                     f"{node_info['status']['sync_agent_info_free']}.\n"
+
+            # Agent groups
+            total = calculate_seconds(node_info['status']['last_sync_agentgroups']['date_start_master'],
+                                      node_info['status']['last_sync_agentgroups']['date_end_master'])
+            msg2 += "            Agent-groups:\n"
+            msg2 += f"                Last synchronization: {total} " \
+                    f"({node_info['status']['last_sync_agentgroups']['date_start_master']} - " \
+                    f"{node_info['status']['last_sync_agentgroups']['date_end_master']}).\n"
+            msg2 += f"                Number of synchronized chunks: " \
+                    f"{node_info['status']['last_sync_agentgroups']['n_synced_chunks']}.\n"
+            msg2 += f"                Permission to synchronize agent-groups: " \
+                    f"{node_info['status']['sync_agent_groups_free']}.\n"
 
     print(msg1)
     more and print(msg2)
@@ -181,7 +190,7 @@ def usage():
     \t-a -fn <node_name> <agent_status>     # List agents reporting to certain node and with certain status
     \t-i                                    # Check cluster health
     \t-i -fn <node_name>                    # Check certain node's health
-    
+
 
     Params:
     \t-l, --list
@@ -191,12 +200,12 @@ def usage():
     \t-fs, --filter-agent-status
     \t-a, --list-agents
     \t-i, --health
-    
+
     """.format(path.basename(sys.argv[0]))
     print(msg)
 
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--debug', action='store_true', dest='debug', help="Enable debug mode")
     parser.add_argument('-fn', '--filter-node', dest='filter_node', nargs='*', type=str, help="Filter by node name")
@@ -244,3 +253,7 @@ if __name__ == '__main__':
         logging.error(e)
         if args.debug:
             raise
+
+
+if __name__ == '__main__':
+    main()

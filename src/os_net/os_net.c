@@ -914,6 +914,30 @@ const char *get_ip_from_resolved_hostname(const char *resolved_hostname){
     return tmp_str ? ++tmp_str : resolved_hostname;
 }
 
+int external_socket_connect(char *socket_path, int response_timeout) {
+#ifndef WIN32
+    int sock =  OS_ConnectUnixDomain(socket_path, SOCK_STREAM, OS_MAXSTR);
+
+    if (sock < 0) {
+        return sock;
+    }
+
+    if(OS_SetSendTimeout(sock, 5) < 0) {
+        close(sock);
+        return -1;
+    }
+
+    if(OS_SetRecvTimeout(sock, response_timeout, 0) < 0) {
+        close(sock);
+        return -1;
+    }
+
+    return sock;
+#else
+    return -1;
+#endif
+}
+
 int get_ipv4_numeric(const char *address, struct in_addr *addr) {
     int ret = OS_INVALID;
 
