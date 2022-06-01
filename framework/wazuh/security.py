@@ -15,7 +15,7 @@ from wazuh.core.security import invalid_users_tokens, invalid_roles_tokens, inva
 from wazuh.core.utils import process_array
 from wazuh.rbac.decorators import expose_resources
 from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager, RolesPoliciesManager, \
-    UserRolesManager, RolesRulesManager, RulesManager
+    UserRolesManager, RolesRulesManager, RulesManager, max_id_reserved
 from wazuh.rbac.orm import SecurityError, max_id_reserved
 
 # Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character:
@@ -188,7 +188,7 @@ def create_user(username: str = None, password: str = None):
 
 
 @expose_resources(actions=['security:update'], resources=['user:id:{user_id}'])
-def update_user(user_id: str = None, password: str = None):
+def update_user(user_id: str = None, password: str = None, current_user: str = None):
     """Update a specified user
 
     Parameters
@@ -196,7 +196,9 @@ def update_user(user_id: str = None, password: str = None):
     user_id : list
         User ID
     password : str
-        Password for the new user
+        Password for the new user.
+    current_user : str
+        Name of the user that made the request.
 
     Returns
     -------
@@ -209,6 +211,14 @@ def update_user(user_id: str = None, password: str = None):
             raise WazuhError(5009)
         elif not _user_password.match(password):
             raise WazuhError(5007)
+
+        if int(user_id[0]) <= max_id_reserved and current_user is not None:
+            with AuthenticationManager() as auth_manager:
+                current_user_id = auth_manager.get_user(current_user)['id']
+
+            if current_user_id > max_id_reserved:
+                raise WazuhError(5011)
+
     result = AffectedItemsWazuhResult(all_msg='User was successfully updated',
                                       none_msg='User could not be updated')
     with AuthenticationManager() as auth:

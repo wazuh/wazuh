@@ -512,6 +512,8 @@ class WazuhException(Exception):
                'remediation': 'The value of the allow_run_as parameter must be true (enabled authentication through '
                               'authorization context) or false (disabled authentication through authorization context).'
                },
+        5011: {'message': 'Administrator users can only be modified by themselves',
+               'remediation': 'Log in as administrator and try again'},
 
         # Security issues
         6000: {'message': 'Limit of login attempts reached. '
