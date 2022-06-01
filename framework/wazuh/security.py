@@ -190,8 +190,8 @@ def create_user(username: str = None, password: str = None) -> AffectedItemsWazu
 
 
 @expose_resources(actions=['security:update'], resources=['user:id:{user_id}'])
-def update_user(user_id: str = None, password: str = None) -> AffectedItemsWazuhResult:
-    """Update a specified user.
+def update_user(user_id: str = None, password: str = None, current_user: str = None) -> AffectedItemsWazuhResult:
+    """Update a specified user
 
     Parameters
     ----------
@@ -199,7 +199,8 @@ def update_user(user_id: str = None, password: str = None) -> AffectedItemsWazuh
         User ID.
     password : str
         Password for the new user.
-
+    current_user : str
+        Name of the user that made the request.
     Raises
     ------
     WazuhError(4001)
@@ -221,6 +222,14 @@ def update_user(user_id: str = None, password: str = None) -> AffectedItemsWazuh
             raise WazuhError(5009)
         elif not _user_password.match(password):
             raise WazuhError(5007)
+
+        if int(user_id[0]) <= max_id_reserved and current_user is not None:
+            with AuthenticationManager() as auth_manager:
+                current_user_id = auth_manager.get_user(current_user)['id']
+
+            if current_user_id > max_id_reserved:
+                raise WazuhError(5011)
+
     result = AffectedItemsWazuhResult(all_msg='User was successfully updated',
                                       none_msg='User could not be updated')
     with AuthenticationManager() as auth:
