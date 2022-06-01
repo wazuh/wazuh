@@ -47,7 +47,10 @@ default_api_configuration = {
     "logs": {
         "level": "info",
         "format": "plain",
-        "max_size": 0
+        "max_size": {
+            "enabled": False,
+            "size": "1M"
+        }
     },
     "cors": {
         "enabled": False,

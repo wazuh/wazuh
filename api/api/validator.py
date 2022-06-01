@@ -101,7 +101,14 @@ api_config_schema = {
                 "level": {"type": "string"},
                 "path": {"type": "string"},  # Deprecated. To be removed on later versions
                 "format": {"type": "string", "enum": ["plain", "json", "plain,json", "json,plain"]},
-                "max_size": {"type": "integer"}
+                "max_size": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "enabled": {"type": "boolean"},
+                        "size": {"type": "string"}
+                    }
+                }
             },
         },
         "cors": {
