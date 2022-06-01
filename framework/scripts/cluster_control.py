@@ -101,8 +101,7 @@ async def print_health(config, more, filter_node):
     result = await control.get_health(lc, filter_node=filter_node)
     msg2 = ""
 
-    msg1 = f"Cluster name: {config['name']}\n\n"
-    msg1 += f"Last completed synchronization for connected nodes ({result['n_connected_nodes']}):\n" if not more \
+    msg1 = f"Last completed synchronization for connected nodes ({result['n_connected_nodes']}):\n" if not more \
         else f"Connected nodes ({result['n_connected_nodes']}):"
 
     for node, node_info in sorted(result["nodes"].items()):

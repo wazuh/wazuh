@@ -65,8 +65,8 @@ def get_master():
     """Auxiliary function."""
     with patch('asyncio.get_running_loop', return_value=loop):
         return master.Master(performance_test=False, concurrency_test=False,
-                             configuration={'node_name': 'master', 'nodes': ['master'],
-                                            'port': 1111, 'node_type': 'master'},
+                             configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111,
+                                            'node_type': 'master', 'bind_addr': ['0.0.0.0']},
                              cluster_items=cluster_items)
 
 
@@ -363,7 +363,6 @@ def test_master_handler_init():
             'date_end_master': datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
             'n_synced_chunks': 0}
         assert master_handler.version == ""
-        assert master_handler.cluster_name == ""
         assert master_handler.node_type == ""
         assert master_handler.task_loggers == {}
         assert master_handler.tag == "Worker"
@@ -663,9 +662,8 @@ def test_master_handler_hello_ok(super_hello_mock, mkdir_with_mode_mock, join_mo
             self.configuration = {}
 
     master_handler.server = Server()
-    master_handler.server.configuration["name"] = "cluster_name"
 
-    assert master_handler.hello(b"name cluster_name node_type version") == (b"ok", "payload")
+    assert master_handler.hello(b"name node_type version") == (b"ok", "payload")
 
     super_hello_mock.assert_called_once_with(b"name")
     mkdir_with_mode_mock.assert_called_once_with("/some/path")
@@ -681,7 +679,6 @@ def test_master_handler_hello_ok(super_hello_mock, mkdir_with_mode_mock, join_mo
     assert isinstance(master_handler.task_loggers["Agent-info sync"], logging.Logger)
 
     assert master_handler.version == "version"
-    assert master_handler.cluster_name == "cluster_name"
     assert master_handler.node_type == "node_type"
 
 
@@ -699,19 +696,12 @@ def test_master_handler_hello_ko(super_hello_mock):
             self.configuration = {}
 
     master_handler.server = Server()
-    master_handler.server.configuration["name"] = "other name"
 
-    #  Test the first exception
-    with pytest.raises(exception.WazuhClusterError, match=r".* 3030 .*"):
-        master_handler.hello(b"name cluster_name node_type version")
-
-    #  Test the second exception
-    master_handler.server.configuration["name"] = "cluster_name"
     with pytest.raises(exception.WazuhClusterError, match=r".* 3031 .*"):
-        master_handler.hello(b"name cluster_name node_type version")
+        master_handler.hello(b"name node_type version")
 
     super_hello_mock.assert_called_with(b"name")
-    assert super_hello_mock.call_count == 2
+    super_hello_mock.assert_called_once()
 
 
 def test_master_handler_get_manager():
@@ -1564,10 +1554,11 @@ def test_master_handler_connection_lost(connection_lost_mock, logger_mock):
 # Test Master class
 
 
+@patch.object(logging.getLogger("wazuh"), "info")
 @patch.object(logging.getLogger("wazuh"), "warning")
 @patch('asyncio.get_running_loop', return_value=loop)
 @patch("wazuh.core.cluster.master.ProcessPoolExecutor")
-def test_master_init(pool_executor_mock, get_running_loop_mock, warning_mock):
+def test_master_init(pool_executor_mock, get_running_loop_mock, warning_mock, info_mock):
     """Check if the Master class is being properly initialized."""
 
     class PoolExecutorMock:
@@ -1578,7 +1569,8 @@ def test_master_init(pool_executor_mock, get_running_loop_mock, warning_mock):
     pool_executor_mock.return_value = PoolExecutorMock
 
     master_class = master.Master(performance_test=False, concurrency_test=False,
-                                 configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111},
+                                 configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111,
+                                                'bind_addr': ['0.0.0.0']},
                                  cluster_items=cluster_items)
 
     assert master_class.integrity_control == {}
@@ -1586,6 +1578,7 @@ def test_master_init(pool_executor_mock, get_running_loop_mock, warning_mock):
     assert master_class.integrity_already_executed == []
     assert master_class.task_pool == PoolExecutorMock
     assert master_class.integrity_already_executed == []
+    assert master_class.loopback is False
     assert isinstance(master_class.dapi, dapi.APIRequestQueue)
     assert isinstance(master_class.sendsync, dapi.SendSyncRequestQueue)
     assert master_class.dapi.run in master_class.tasks
@@ -1593,12 +1586,21 @@ def test_master_init(pool_executor_mock, get_running_loop_mock, warning_mock):
     assert master_class.file_status_update in master_class.tasks
     assert master_class.pending_api_requests == {}
 
+    # Test loopback
+    master_class = master.Master(performance_test=False, concurrency_test=False,
+                                 configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111,
+                                                'bind_addr': ['127.0.0.1']},
+                                 cluster_items=cluster_items)
+    info_mock.assert_called_once_with('This is a master node but "bind_addr" is localhost. Some tasks are disabled.')
+    assert master_class.loopback is True
+    assert master_class.task_pool is None
+    assert master_class.tasks == []
+
     # Test the exceptions
     pool_executor_mock.side_effect = FileNotFoundError
-    master_class = master.Master(performance_test=False, concurrency_test=False,
-                                 configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111},
-                                 cluster_items=cluster_items)
-
+    master.Master(performance_test=False, concurrency_test=False,
+                  configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111, 'bind_addr': ['0.0.0.0']},
+                  cluster_items=cluster_items)
     warning_mock.assert_has_calls([call("In order to take advantage of Wazuh 4.3.0 cluster improvements, the directory "
                                         "'/dev/shm' must be accessible by the 'wazuh' user. Check that this file has "
                                         "permissions to be accessed by all users. Changing the file permissions to 777 "
@@ -1607,10 +1609,9 @@ def test_master_init(pool_executor_mock, get_running_loop_mock, warning_mock):
                                         'and higher versions.')])
 
     pool_executor_mock.side_effect = PermissionError
-    master_class = master.Master(performance_test=False, concurrency_test=False,
-                                 configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111},
-                                 cluster_items=cluster_items)
-
+    master.Master(performance_test=False, concurrency_test=False,
+                  configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111, 'bind_addr': ['0.0.0.0']},
+                  cluster_items=cluster_items)
     warning_mock.assert_has_calls([call("In order to take advantage of Wazuh 4.3.0 cluster improvements, the directory "
                                         "'/dev/shm' must be accessible by the 'wazuh' user. Check that this file has "
                                         "permissions to be accessed by all users. Changing the file permissions to 777 "
@@ -1626,7 +1627,7 @@ def test_master_to_dict(get_running_loop_mock):
 
     master_class = master.Master(performance_test=False, concurrency_test=False,
                                  configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111,
-                                                "node_type": "master"},
+                                                'node_type': 'master', 'bind_addr': ['0.0.0.0']},
                                  cluster_items=cluster_items)
 
     assert master_class.to_dict() == {
@@ -1776,69 +1777,6 @@ async def test_master_file_status_update_ok(sleep_mock):
             assert master_class.integrity_control == ['info']
 
 
-@pytest.mark.asyncio
-@freeze_time("2021-11-02")
-@patch('asyncio.sleep')
-@patch('wazuh.core.cluster.master.cluster.run_in_pool', return_value=[])
-async def test_master_file_status_update_ok(run_in_pool_mock, asyncio_sleep_mock):
-    """Check if the file status is properly obtained."""
-
-    master_class = master.Master(performance_test=False, concurrency_test=False,
-                                 configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111,
-                                                "node_type": "master"},
-                                 cluster_items=cluster_items)
-
-    class LoggerMock:
-        """Auxiliary class."""
-
-        def __init__(self):
-            self._info = []
-            self._error = []
-
-        def info(self, data):
-            """Auxiliary method."""
-            self._info.append(data)
-
-        def error(self, data):
-            """Auxiliary method."""
-            self._error.append(data)
-
-    class IntegrityExecutedMock:
-        """Auxiliary class."""
-
-        def __init__(self):
-            self._clear = False
-
-        def clear(self):
-            self._clear = True
-
-    async def sleep_mock(recalculate_integrity):
-        raise Exception()
-
-    logger_mock = LoggerMock()
-    master_class.integrity_already_executed = IntegrityExecutedMock()
-    asyncio_sleep_mock.side_effect = sleep_mock
-
-    with patch("wazuh.core.cluster.master.Master.setup_task_logger",
-               return_value=logger_mock) as setup_task_logger_mock:
-        # Test the 'try'
-        try:
-            await master_class.file_status_update()
-        except Exception:
-            assert "Starting." in logger_mock._info
-            assert "Finished in 0.000s. Calculated metadata of 0 files." in logger_mock._info
-            # assert "Error calculating local file integrity: " in logger_mock._error
-            setup_task_logger_mock.assert_called_once_with('Local integrity')
-            assert master_class.integrity_control == run_in_pool_mock.return_value
-
-        # Test the 'except'
-        run_in_pool_mock.side_effect = Exception
-        try:
-            await master_class.file_status_update()
-        except Exception:
-            assert "Error calculating local file integrity: " in logger_mock._error
-
-
 @patch('asyncio.get_running_loop', return_value=loop)
 @patch("wazuh.core.agent.Agent.get_agents_overview", return_value={'items': [{'node_name': '1'}]})
 def test_master_get_health(get_running_loop_mock, get_agent_overview_mock):
@@ -1857,7 +1795,7 @@ def test_master_get_health(get_running_loop_mock, get_agent_overview_mock):
 
     master_class = MockMaster(performance_test=False, concurrency_test=False,
                               configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111,
-                                             'node_type': 'master'},
+                                             'node_type': 'master', 'bind_addr': ['0.0.0.0']},
                               cluster_items=cluster_items)
     master_class.clients = {'1': MockDict({'testing': 'dict'})}
 
@@ -1876,9 +1814,8 @@ def test_master_get_node(get_running_loop_mock):
 
     master_class = master.Master(performance_test=False, concurrency_test=False,
                                  configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111,
-                                                "node_type": "master", "name": "master"},
+                                                'node_type': 'master', 'bind_addr': ['0.0.0.0']},
                                  cluster_items=cluster_items)
 
     assert master_class.get_node() == {'type': master_class.configuration['node_type'],
-                                       'cluster': master_class.configuration['name'],
                                        'node': master_class.configuration['node_name']}

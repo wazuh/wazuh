@@ -16,10 +16,11 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - name: !anystr
-              node_name: !anystr
+            - node_name: !anystr
               node_type: !anystr
-              key: !anystr
+              certfile: !anystr
+              keyfile: !anystr
+              password: !anystr
               port: !anyint
               bind_addr: !anything
               nodes: !anything
@@ -111,8 +112,7 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - cluster: wazuh
-              node: master-node
+            - node: master-node
               type: master
           failed_items: []
           total_affected_items: 1

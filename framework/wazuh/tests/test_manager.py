@@ -179,12 +179,13 @@ def test_ossec_log_summary():
         assert all(all(value == expected_result[key] for key, value in item.items())
                    for item in result.render()['data']['affected_items'])
 
+
 def test_get_api_config():
     """Checks that get_api_config method is returning current api_conf dict."""
     result = get_api_config().render()
 
     assert 'node_api_config' in result['data']['affected_items'][0], 'node_api_config key not found in result'
-    assert result['data']['affected_items'][0]['node_name'] == 'node01', 'Not expected node name'
+    assert 'node_name' in result['data']['affected_items'][0]
 
 
 @patch('socket.socket')

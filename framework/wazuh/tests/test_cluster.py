@@ -19,8 +19,8 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core.cluster.local_client import LocalClient
         from wazuh.core.results import WazuhResult
 
-default_config = {'disabled': True, 'node_type': 'master', 'name': 'wazuh', 'node_name': 'node01',
-                  'key': '', 'port': 1516, 'bind_addr': ['0.0.0.0'], 'nodes': ['NODE_IP'], 'hidden': 'no'}
+default_config = {'node_type': 'master', 'node_name': 'node01', 'port': 1516, 'bind_addr': ['0.0.0.0'],
+                  'nodes': ['127.0.0.1'], 'hidden': 'no'}
 
 
 @patch('wazuh.cluster.read_config', return_value=default_config)
@@ -37,12 +37,11 @@ def test_read_config_wrapper_exception(mock_read_config):
     assert list(result.failed_items.keys())[0] == WazuhError(1001)
 
 
-@patch('wazuh.cluster.read_config', return_value=default_config)
+@patch('wazuh.core.cluster.cluster.read_config', return_value=default_config)
 def test_node_wrapper(mock_read_config):
     """Verify that the node_wrapper returns the default node information."""
     result = cluster.get_node_wrapper()
-    assert result.affected_items == [{'cluster': default_config["name"],
-                                      'node': default_config["node_name"],
+    assert result.affected_items == [{'node': default_config["node_name"],
                                       'type': default_config["node_type"]}]
 
 

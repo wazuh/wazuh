@@ -38,12 +38,10 @@ def check_cluster_config(config):
 
     Following points are checked:
         - Cluster config block is not empty.
-        - len(key) == 32 and only alphanumeric characters are used.
         - node_type is 'master' or 'worker'.
         - Port is an int type.
         - 1024 < port < 65535.
         - Only 1 node is specified.
-        - Reserved IPs are not used.
 
     Parameters
     ----------
@@ -55,16 +53,9 @@ def check_cluster_config(config):
     WazuhError
         If any of above conditions is not met.
     """
-    iv = InputValidator()
-    reservated_ips = {'localhost', 'NODE_IP', '0.0.0.0', '127.0.1.1'}
+    deprecated_options = {'key', 'disabled', 'name'}
 
-    if len(config['key']) == 0:
-        raise WazuhError(3004, 'Unspecified key')
-
-    elif not iv.check_name(config['key']) or not iv.check_length(config['key'], 32, eq):
-        raise WazuhError(3004, 'Key must be 32 characters long and only have alphanumeric characters')
-
-    elif config['node_type'] != 'master' and config['node_type'] != 'worker':
+    if config['node_type'] != 'master' and config['node_type'] != 'worker':
         raise WazuhError(3004, f'Invalid node type {config["node_type"]}. Correct values are master and worker')
 
     elif not isinstance(config['port'], int):
@@ -74,14 +65,12 @@ def check_cluster_config(config):
         raise WazuhError(3004, "Port must be higher than 1024 and lower than 65535.")
 
     if len(config['nodes']) > 1:
-        logger.warning(
-            "Found more than one node in configuration. Only master node should be specified. Using {} as master.".
-                format(config['nodes'][0]))
+        logger.warning(f"Found more than one node in configuration. Only master node should be specified. "
+                       f"Using {config['nodes'][0]} as master.")
 
-    invalid_elements = list(reservated_ips & set(config['nodes']))
-
-    if len(invalid_elements) != 0:
-        raise WazuhError(3004, f"Invalid elements in node fields: {', '.join(invalid_elements)}.")
+    if config.keys() & deprecated_options:
+        logger.warning(f"The following cluster settings are deprecated and will have no effect: "
+                       f"{', '.join(sorted(config.keys() & deprecated_options))}.")
 
 
 def get_node():
@@ -90,13 +79,11 @@ def get_node():
     Returns
     -------
     data : dict
-        Dict containing current node_name, node_type and cluster_name.
+        Dict containing current node_name and node_type.
     """
     data = {}
     config_cluster = read_config()
-
     data["node"] = config_cluster["node_name"]
-    data["cluster"] = config_cluster["name"]
     data["type"] = config_cluster["node_type"]
 
     return data

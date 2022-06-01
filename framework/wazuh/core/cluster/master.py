@@ -14,6 +14,7 @@ from datetime import datetime
 from time import perf_counter
 from typing import Tuple, Dict, Callable
 from uuid import uuid4
+import socket
 
 from wazuh.core import cluster as metadata, common, exception, utils
 from wazuh.core.agent import Agent
@@ -235,7 +236,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         # Variables which will be filled when the worker sends the hello request.
         self.version = ""
-        self.cluster_name = ""
         self.node_type = ""
         self.agent_group_task = None
         # Dictionary to save loggers for each sync task.
@@ -407,7 +407,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         payload : bytes
             Response message.
         """
-        name, cluster_name, node_type, version = data.split(b' ')
+        name, node_type, version = data.split(b' ', 2)
         # Add client to global clients dictionary.
         cmd, payload = super().hello(name)
 
@@ -419,11 +419,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                              'Agent-groups send full': self.setup_task_logger('Agent-groups send full')}
 
         # Fill more information and check both name and version are correct.
-        self.version, self.cluster_name, self.node_type = version.decode(), cluster_name.decode(), node_type.decode()
+        self.version, self.node_type = version.decode(), node_type.decode()
 
-        if self.cluster_name != self.server.configuration['name']:
-            raise exception.WazuhClusterError(3030)
-        elif self.version != metadata.__version__:
+        if self.version != metadata.__version__:
             raise exception.WazuhClusterError(3031)
 
         # Create directory where zips and other files coming from or going to the worker will be managed.
@@ -1037,9 +1035,15 @@ class Master(server.AbstractServer):
         self.agent_groups_control_workers = set()
         self.integrity_control = {}
         self.handler_class = MasterHandler
+        self.loopback = False
+        if len(kwargs['configuration']['bind_addr']) == 1 and \
+                '127.0.0.1' in socket.gethostbyname(kwargs['configuration']['bind_addr'][0]):
+            self.logger.info('This is a master node but "bind_addr" is localhost. Some tasks are disabled.')
+            self.loopback = True
         try:
             self.task_pool = ProcessPoolExecutor(
-                max_workers=min(os.cpu_count(), self.cluster_items['intervals']['master']['process_pool_size']))
+                max_workers=min(os.cpu_count(), self.cluster_items['intervals']['master']['process_pool_size'])
+            ) if not self.loopback else None
         # Handle exception when the user running Wazuh cannot access /dev/shm
         except (FileNotFoundError, PermissionError):
             self.logger.warning(
@@ -1050,11 +1054,13 @@ class Master(server.AbstractServer):
                 "The Wazuh cluster will be run without the improvements added in Wazuh 4.3.0 and higher versions.")
             self.task_pool = None
         self.integrity_already_executed = []
+        self.pending_api_requests = {}
         self.dapi = dapi.APIRequestQueue(server=self)
         self.sendsync = dapi.SendSyncRequestQueue(server=self)
-        self.tasks.extend([self.dapi.run, self.sendsync.run, self.file_status_update, self.agent_groups_update])
-        # pending API requests waiting for a response
-        self.pending_api_requests = {}
+        if self.loopback:
+            self.tasks = []
+        else:
+            self.tasks.extend([self.dapi.run, self.sendsync.run, self.file_status_update, self.agent_groups_update])
 
     def to_dict(self) -> Dict:
         """Get master's healthcheck information.
@@ -1199,5 +1205,4 @@ class Master(server.AbstractServer):
         dict
             Basic node information.
         """
-        return {'type': self.configuration['node_type'], 'cluster': self.configuration['name'],
-                'node': self.configuration['node_name']}
+        return {'type': self.configuration['node_type'], 'node': self.configuration['node_name']}

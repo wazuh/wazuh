@@ -111,8 +111,7 @@ async def test_print_health(get_health_mock, local_client_mock, get_utc_strptime
 
     get_utc_strptime_mock.side_effect = seconds_mock
     await cluster_control.print_health(config=config, more=more, filter_node=filter_node)
-    print_mock.assert_has_calls([call(f"Cluster name: {config['name']}\n\n"
-                                      f"Connected nodes ({get_health_mock.return_value['n_connected_nodes']}):"),
+    print_mock.assert_has_calls([call(f"Connected nodes ({get_health_mock.return_value['n_connected_nodes']}):"),
                                  call(f"\n    wazuh_worker2 ({worker_info['ip']})\n        "
                                       f"Version: {worker_info['version']}\n        Type: {worker_info['type']}\n       "
                                       f" Active agents: {worker_info['n_active_agents']}\n        Status:\n           "
@@ -157,7 +156,7 @@ async def test_print_health(get_health_mock, local_client_mock, get_utc_strptime
     print_mock.reset_mock()
 
     await cluster_control.print_health(config=config, more=more, filter_node=filter_node)
-    print_mock.assert_called_once_with(f"Cluster name: {config['name']}\n\nLast completed synchronization for connected"
+    print_mock.assert_called_once_with(f"Last completed synchronization for connected"
                                        f" nodes ({get_health_mock.return_value['n_connected_nodes']}):\n    "
                                        f"wazuh_worker2 "
                                        f"({get_health_mock.return_value['nodes']['wazuh_worker2']['info']['ip']}): "
