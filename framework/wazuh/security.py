@@ -216,7 +216,7 @@ def update_user(user_id: str = None, password: str = None, current_user: str = N
             with AuthenticationManager() as auth_manager:
                 current_user_id = auth_manager.get_user(current_user)['id']
 
-            if int(user_id[0]) != current_user_id:
+            if current_user_id > max_id_reserved:
                 raise WazuhError(5011)
 
     result = AffectedItemsWazuhResult(all_msg='User was successfully updated',
