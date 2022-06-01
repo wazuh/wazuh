@@ -36,6 +36,9 @@ default_cluster_configuration = {
         'node_type': 'master',
         'node_name': 'node01',
         'port': 1516,
+        'certfile': '/test/path/cert.pem',
+        'keyfile': '/test/path/key.pem',
+        'password': 'test_password',
         'bind_addr': ['0.0.0.0'],
         'nodes': ['127.0.0.1'],
         'hidden': 'no'
@@ -60,10 +63,12 @@ custom_incomplete_configuration = {
 }
 
 
+@patch('os.path.exists', return_value=True)
 @patch.object(wazuh.core.cluster.cluster.logger, "warning")
-def test_check_cluster_config(mock_logger):
+def test_check_cluster_config(mock_logger, exists_mock):
     """Check if the check_cluster_config function is working properly."""
-    configuration = {'node_type': 'master', 'port': 3000, 'nodes': ['A', 'B'], 'key': 'ABCD'}
+    configuration = {'node_type': 'master', 'port': 3000, 'nodes': ['A', 'B'], 'key': 'ABCD', 'certfile': 'test',
+                     'keyfile': 'test'}
     cluster.check_cluster_config(configuration)
     assert mock_logger.call_args_list == [
         call('Found more than one node in configuration. Only master node should be specified. Using A as master.'),
@@ -72,10 +77,11 @@ def test_check_cluster_config(mock_logger):
 
 
 @pytest.mark.parametrize('read_config, message', [
-    ({'cluster': {'node_type': 'random', 'key': 'a' * 32}}, "Invalid node type"),
-    ({'cluster': {'port': 'string', 'node_type': 'master'}}, "Port has to"),
-    ({'cluster': {'port': 90}}, "Port must be"),
-    ({'cluster': {'port': 70000}}, "Port must be"),
+    ({'cluster': {'node_type': 'random', 'key': 'a' * 32, 'certfile': 'test', 'keyfile': 'test'}}, "Invalid node type"),
+    ({'cluster': {'port': 'string', 'node_type': 'master', 'certfile': 'test', 'keyfile': 'test'}}, "Port has to"),
+    ({'cluster': {'port': 90, 'certfile': 'test', 'keyfile': 'test'}}, "Port must be"),
+    ({'cluster': {'port': 70000, 'certfile': 'test', 'keyfile': 'test'}}, "Port must be"),
+    ({'cluster': {'port': 30000}}, 'The certfile '),
 ])
 def test_check_cluster_config_ko(read_config, message):
     """Check wrong configurations to check the proper exceptions are raised."""

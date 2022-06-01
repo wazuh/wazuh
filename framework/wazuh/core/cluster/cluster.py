@@ -41,6 +41,7 @@ def check_cluster_config(config):
         - node_type is 'master' or 'worker'.
         - Port is an int type.
         - 1024 < port < 65535.
+        - Certfile and keyfile paths exist.
         - Only 1 node is specified.
 
     Parameters
@@ -63,6 +64,11 @@ def check_cluster_config(config):
 
     elif not 1024 < config['port'] < 65535:
         raise WazuhError(3004, "Port must be higher than 1024 and lower than 65535.")
+
+    if config['node_type'] == 'master':
+        for file in ['certfile', 'keyfile']:
+            if not os.path.exists(config[file]):
+                raise WazuhError(3004, f'The {file} "{config[file]}" does not exist.')
 
     if len(config['nodes']) > 1:
         logger.warning(f"Found more than one node in configuration. Only master node should be specified. "
