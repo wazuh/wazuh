@@ -64,9 +64,18 @@ def raise_if_exc_routine(dapi_kwargs, expected_error=None):
             assert False, f'Unexpected exception: {e.ext}'
 
 
+class TestingLoggerParent:
+    """Class used to create the parent attribute of TestingLogger objects."""
+    def __init__(self):
+        self.handlers = []
+
+
 class TestingLogger:
+    """Class used to create custom Logger objects for testing purposes."""
     def __init__(self, logger_name):
         self.name = logger_name
+        self.handlers = []
+        self.parent = TestingLoggerParent()
 
     def error(self, message):
         pass
