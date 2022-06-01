@@ -20,7 +20,8 @@
 
 # Logging configuration
 # Values for API log level: disabled, info, warning, error, debug, debug2 (each level includes the previous level).
-# Max size will be read in bytes. Value '0' will disable the size rotation trigger
+# Values for API log max_size: <value><unit>. Valid units: K (kilobytes), M (megabytes)
+# Enabling the API log max_size will disable the time based rotation (on midnight)
 # logs:
 #  level: "info"
 #  format: "plain"
