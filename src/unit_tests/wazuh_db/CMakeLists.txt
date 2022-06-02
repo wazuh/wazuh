@@ -51,7 +51,31 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl
                              -Wl,--wrap,sqlite3_step -Wl,--wrap,wdb_global_get_groups_integrity -Wl,--wrap,wdb_global_get_backups \
                              -Wl,--wrap,wdb_global_restore_backup -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
                              -Wl,--wrap,wdb_global_select_group_belong -Wl,--wrap,wdb_global_set_agent_groups -Wl,--wrap,wdb_global_sync_agent_groups_get \
-                             -Wl,--wrap,wdb_global_get_group_agents \
+                             -Wl,--wrap,wdb_global_get_group_agents -Wl,--wrap,w_inc_queries_total -Wl,--wrap,w_inc_global -Wl,--wrap,gettimeofday \
+                             -Wl,--wrap,w_inc_global_unknown -Wl,--wrap,w_inc_global_sql -Wl,--wrap,w_inc_unknown -Wl,--wrap,w_inc_global_sql_time \
+                             -Wl,--wrap,w_inc_global_agent_insert_agent -Wl,--wrap,w_inc_global_agent_insert_agent_time -Wl,--wrap,w_inc_global_agent_update_agent_name \
+                             -Wl,--wrap,w_inc_global_agent_update_agent_name_time -Wl,--wrap,w_inc_global_agent_update_agent_data -Wl,--wrap,w_inc_global_agent_update_agent_data_time \
+                             -Wl,--wrap,w_inc_global_labels_get_labels -Wl,--wrap,w_inc_global_labels_get_labels_time -Wl,--wrap,w_inc_global_labels_set_labels \
+                             -Wl,--wrap,w_inc_global_labels_set_labels_time -Wl,--wrap,w_inc_global_agent_update_keepalive -Wl,--wrap,w_inc_global_agent_update_keepalive_time \
+                             -Wl,--wrap,w_inc_global_agent_update_connection_status -Wl,--wrap,w_inc_global_agent_update_connection_status_time \
+                             -Wl,--wrap,w_inc_global_agent_delete_agent -Wl,--wrap,w_inc_global_agent_delete_agent_time -Wl,--wrap,w_inc_global_agent_select_agent_name \
+                             -Wl,--wrap,w_inc_global_agent_select_agent_name_time -Wl,--wrap,w_inc_global_agent_select_agent_group \
+                             -Wl,--wrap,w_inc_global_agent_select_agent_group_time -Wl,--wrap,w_inc_global_belongs_delete_agent_belong \
+                             -Wl,--wrap,w_inc_global_belongs_delete_agent_belong_time -Wl,--wrap,w_inc_global_agent_find_agent -Wl,--wrap,w_inc_global_agent_find_agent_time \
+                             -Wl,--wrap,w_inc_global_group_find_group -Wl,--wrap,w_inc_global_group_find_group_time -Wl,--wrap,w_inc_global_group_insert_agent_group \
+                             -Wl,--wrap,w_inc_global_group_insert_agent_group_time -Wl,--wrap,w_inc_global_belongs_select_group_belong \
+                             -Wl,--wrap,w_inc_global_belongs_select_group_belong_time -Wl,--wrap,w_inc_global_belongs_get_group_agent \
+                             -Wl,--wrap,w_inc_global_belongs_get_group_agent_time -Wl,--wrap,w_inc_global_group_delete_group -Wl,--wrap,w_inc_global_group_delete_group_time \
+                             -Wl,--wrap,w_inc_global_group_select_groups -Wl,--wrap,w_inc_global_group_select_groups_time -Wl,--wrap,w_inc_global_agent_select_keepalive \
+                             -Wl,--wrap,w_inc_global_agent_select_keepalive_time -Wl,--wrap,w_inc_global_agent_sync_agent_info_get \
+                             -Wl,--wrap,w_inc_global_agent_sync_agent_info_get_time -Wl,--wrap,w_inc_global_agent_sync_agent_info_set \
+                             -Wl,--wrap,w_inc_global_agent_sync_agent_info_set_time -Wl,--wrap,w_inc_global_agent_set_agent_groups -Wl,--wrap,w_inc_global_agent_set_agent_groups_time \
+                             -Wl,--wrap,w_inc_global_agent_sync_agent_groups_get -Wl,--wrap,w_inc_global_agent_sync_agent_groups_get_time \
+                             -Wl,--wrap,w_inc_global_agent_get_groups_integrity -Wl,--wrap,w_inc_global_agent_get_groups_integrity_time -Wl,--wrap,w_inc_global_agent_disconnect_agents \
+                             -Wl,--wrap,w_inc_global_agent_disconnect_agents_time -Wl,--wrap,w_inc_global_agent_get_all_agents -Wl,--wrap,w_inc_global_agent_get_all_agents_time \
+                             -Wl,--wrap,w_inc_global_agent_get_agent_info -Wl,--wrap,w_inc_global_agent_get_agent_info_time -Wl,--wrap,w_inc_global_agent_reset_agents_connection \
+                             -Wl,--wrap,w_inc_global_agent_reset_agents_connection_time -Wl,--wrap,w_inc_global_agent_get_agents_by_connection_status \
+                             -Wl,--wrap,w_inc_global_agent_get_agents_by_connection_status_time -Wl,--wrap,w_inc_global_backup -Wl,--wrap,w_inc_global_backup_time \
                              ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_global")
