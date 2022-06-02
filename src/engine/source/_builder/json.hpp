@@ -55,6 +55,11 @@ public:
                             result.Offset()));
         }
     }
+    Json &operator=(const Json& other)
+    {
+        m_document.CopyFrom(other.m_document, m_document.GetAllocator());
+        return *this;
+    }
 
     // Static Helpers
     static std::string formatJsonPath(std::string_view field)

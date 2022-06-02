@@ -12,19 +12,14 @@
 
 #include <fmt/format.h>
 
-#include "_builder/connectable.hpp"
+#include "_builder/environment.hpp"
 #include "_builder/event.hpp"
 #include "_builder/json.hpp"
-#include "_builder/operation.hpp"
 
-namespace builder
-{
-namespace internals
-{
-namespace rxcppBackend
+namespace builder::internals::rxcppBackend
 {
 
-using RxcppEvent = std::shared_ptr<Result<Event<Json>>>;
+using RxcppEvent = std::shared_ptr<Result<Event>>;
 using Observable = rxcpp::observable<RxcppEvent>;
 
 class Tracer
@@ -41,13 +36,13 @@ public:
     {
     }
 
-    auto getTracerFn() -> std::function<void(std::string_view)>
+    auto getTracerFn(std::string name) -> std::function<void(const std::string&)>
     {
-        return [=](std::string_view message)
+        return [=](const std::string& message)
         {
             if (m_subscriber.is_subscribed() && m_subject.has_observers())
             {
-                m_subscriber.on_next(std::string {message});
+                m_subscriber.on_next(fmt::format("[{}] {}", name, message));
             }
         };
     }
@@ -62,14 +57,13 @@ public:
 class RxcppController
 {
 private:
-    friend RxcppController
-    buildRxcppPipeline(const std::shared_ptr<const Connectable>& definition);
+    friend RxcppController buildRxcppPipeline(Environment definition);
     friend Observable
     rxcppFactory(const Observable& input,
-                 const std::shared_ptr<const Connectable>& connectable,
+                 Environment&,
+                 Expression expression,
                  RxcppController& controller,
-                 std::function<void(std::string_view)> tracerFn,
-                 std::shared_ptr<bool> localResult);
+                 std::function<void(const std::string&)> tracerFn);
 
     rxcpp::subjects::subject<RxcppEvent> m_envSubject;
     rxcpp::subscriber<RxcppEvent> m_envInput;
@@ -118,115 +112,109 @@ public:
 
 Observable
 rxcppFactory(const Observable& input,
-             const std::shared_ptr<const Connectable>& connectable,
+             Environment& environment,
+             Expression expression,
              RxcppController& controller,
-             std::function<void(std::string_view)> tracerFn = nullptr,
-             std::shared_ptr<bool> localResult = nullptr)
+             std::function<void(const std::string&)> tracerFn = nullptr)
 {
     // Handle tracer things
-    if (connectable->isAsset())
+    if (environment.assets().find(expression->getName()) !=
+        environment.assets().end())
     {
-        auto asAsset = connectable->getPtr<ConnectableAsset>();
-        // TODO: Assets in differents subgrapsh may have the same name?
-        controller.m_tracers[asAsset->m_name] = Tracer {};
+        controller.m_tracers[expression->getName()] = Tracer {};
 
-        tracerFn = controller.m_tracers[asAsset->m_name].getTracerFn();
+        tracerFn = controller.m_tracers[expression->getName()].getTracerFn(expression->getName());
     }
 
     // Handle pipelines
-    if (connectable->isGroup())
+    std::cout << "rxcppFactory: " << expression->getName() << std::endl;
+    if (expression->isOperation())
     {
-        auto asGroup = connectable->getPtr<ConnectableGroup>();
-        switch (asGroup->m_type)
-        {
-            case ConnectableGroup::CHAIN:
-            {
-                Observable step = input;
-                int i = 0;
-                if (localResult != nullptr)
-                {
-                    auto connectable = asGroup->m_connectables[i];
-                    step = rxcppFactory(step, connectable, controller, tracerFn)
-                               .filter(
-                                   [=](RxcppEvent result)
-                                   {
-                                       *localResult = result->success();
-                                       return *localResult;
-                                   });
-                    ++i;
-                }
-                for (i; i < asGroup->m_connectables.size(); i++)
-                {
-                    auto connectable = asGroup->m_connectables[i];
-                    step = rxcppFactory(step, connectable, controller, tracerFn)
-                               .filter([](RxcppEvent result)
-                                       { return result->success(); });
-                }
-                return step;
-            }
-            case ConnectableGroup::FALLIBLE_CHAIN:
-            {
-                // Input is passed to all conectables, and subscribed to output.
-                // Regardless of result all conectables are going to operate.
-                // Because the event is handled by a shared ptr the output is
-                // simply the input.
-                Observable step1 = input.publish().ref_count();
-                auto step2 = step1;
-                for (auto& connectable : asGroup->m_connectables)
-                {
-                    rxcppFactory(step2, connectable, controller, tracerFn)
-                        .subscribe();
-                }
-                return step1.tap(
-                    [](RxcppEvent result) {
-                        *result = makeSuccess(std::move(result->popEvent()),
-                                              result->getTrace());
-                    });
-            }
-            case ConnectableGroup::FIRST_SUCCESS:
-            {
-                Observable step1 = input.publish().ref_count();
-                auto step2 = step1;
-                std::shared_ptr<bool> localResult {new bool(false)};
-                for (auto& connectable : asGroup->m_connectables)
-                {
-                    rxcppFactory(
-                        step2, connectable, controller, tracerFn, localResult)
-                        .subscribe();
-                    step2 = step1.filter([=](RxcppEvent result)
-                                         { return !*localResult; });
-                }
-                return step1.filter([=](RxcppEvent result)
-                                    { return *localResult; });
-            }
-            case ConnectableGroup::FIRST_ERROR:
-            {
-                Observable step1 = input.publish().ref_count();
-                auto step2 = step1;
-                for (auto& connectable : asGroup->m_connectables)
-                {
-                    step2 =
-                        rxcppFactory(step2, connectable, controller, tracerFn)
-                            .filter([](RxcppEvent result)
-                                    { return result->success(); });
-                }
-                step2.subscribe();
-                return step1;
-            }
 
-            default:
-                throw std::runtime_error(
-                    fmt::format("Unsupported group type: {}", asGroup->m_type));
+        if (expression->isAnd())
+        {
+            Observable step = input;
+            auto op = expression->getPtr<And>();
+            for (auto& operand : op->getOperands())
+            {
+                step = rxcppFactory(
+                           step, environment, operand, controller, tracerFn)
+                           .filter([](RxcppEvent result)
+                                   { return result->success(); });
+            }
+            return step;
+        }
+        else if (expression->isChain() || expression->isBroadcast())
+        {
+            // Input is passed to all conectables, and subscribed to output.
+            // Regardless of result all conectables are going to operate.
+            // Because the event is handled by a shared ptr the output is
+            // simply the input.
+            auto op = expression->getPtr<Operation>();
+            Observable step1 = input.publish().ref_count();
+            auto step2 = step1;
+            for (auto& operand : op->getOperands())
+            {
+                rxcppFactory(step2, environment, operand, controller, tracerFn)
+                    .subscribe();
+            }
+            return step1.map(
+                [](RxcppEvent result)
+                {
+                    result->setStatus(true);
+                    return result;
+                });
+        }
+        else if (expression->isOr())
+        {
+            auto op = expression->getPtr<Or>();
+            Observable step1 = input.publish().ref_count();
+            auto step2 = step1;
+            for (auto& operand : op->getOperands())
+            {
+                rxcppFactory(step2, environment, operand, controller, tracerFn)
+                    .subscribe();
+                step2 = step1.filter([=](RxcppEvent result)
+                                     { return result->failure(); });
+            }
+            return step1.filter([=](RxcppEvent result)
+                                { return result->success(); });
+        }
+        else if (expression->isImplication())
+        {
+            auto op = expression->getPtr<Implication>();
+            Observable step = input.publish().ref_count();
+            auto step1 = step;
+            auto condition = std::make_shared<bool>(false);
+            step1 =
+                rxcppFactory(
+                    step1, environment, op->getOperands()[0], controller, tracerFn)
+                    .filter(
+                        [condition](RxcppEvent result)
+                        {
+                            *condition = result->success();
+                            return result->success();
+                        });
+            rxcppFactory(
+                step1, environment, op->getOperands()[1], controller, tracerFn)
+                .subscribe();
+            return step.filter([condition](RxcppEvent result)
+                               { return *condition; });
+        }
+        else
+        {
+            throw std::runtime_error(fmt::format("Unsupported operation type"));
         }
     }
-    else if (connectable->isOperation())
+    else if (expression->isTerm())
     {
-        auto asOp = connectable->getPtr<ConnectableOperation<Operation>>();
-        return input.tap(
-            [op = asOp->getOperation(), tracerFn](RxcppEvent event)
+        auto term = expression->getPtr<Term<EngineOp>>();
+        return input.map(
+            [op = term->getFn(), tracer = tracerFn](RxcppEvent result)
             {
-                *event = op(event->popEvent());
-                tracerFn(event->getTrace());
+                *result = op(result->popPayload());
+                tracer(std::string{result->trace()});
+                return result;
             });
     }
     else
@@ -235,20 +223,18 @@ rxcppFactory(const Observable& input,
     }
 }
 
-RxcppController
-buildRxcppPipeline(const std::shared_ptr<const Connectable>& definition)
+RxcppController buildRxcppPipeline(Environment definition)
 {
     RxcppController controller;
     auto input = controller.m_envSubject.get_observable();
 
-    auto output = rxcppFactory(input, definition, controller);
+    auto output =
+        rxcppFactory(input, definition, definition.getExpression(), controller);
     controller.m_envOutput = output;
 
     return controller;
 }
 
-} // namespace rxcppBackend
-} // namespace internals
-} // namespace builder
+} // namespace builder::internals::rxcppBackend
 
 #endif // _RXCPP_FACTORY_H

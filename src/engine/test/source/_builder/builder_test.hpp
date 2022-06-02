@@ -101,8 +101,54 @@ std::unordered_map<std::string, std::string> decoders = {
     }
 };
 
+std::unordered_map<std::string, std::string> filters = {
+    {
+        "filter1",
+        R"({
+        "name": "filter1",
+        "parents": ["decoder1"],
+        "check": [
+            {"source": "test"}
+        ]
+        })"
+    },
+    {
+        "filter2",
+        R"({
+        "name": "filter2",
+        "parents": ["decoder4"],
+        "check": [
+            {"threat.level": 5}
+        ]
+        })"
+    }
+};
+
+std::unordered_map<std::string, std::string> rules = {
+    {
+        "rule1",
+        R"({
+        "name": "rule1",
+        "check": [
+            {"typed.letter": "A"}
+        ]
+    })"
+    },
+    {
+        "rule2",
+        R"({
+        "name": "rule2",
+        "check": [
+             {"typed.letter": "B"}
+        ]
+    })"
+    }
+};
+
 const char * enviroment = R"({
-    "decoders": ["decoder1", "decoder2", "decoder3", "decoder4", "decoder5"]
+    "decoders": ["decoder1", "decoder2", "decoder3", "decoder4", "decoder5"],
+    "filters": ["filter1", "filter2"],
+    "rules": ["rule1", "rule2"]
 })";
 struct FakeCatalog
 {
@@ -112,6 +158,10 @@ struct FakeCatalog
         {
         case 0:
             return Json{decoders[name].c_str()};
+        case 1:
+            return Json{filters[name].c_str()};
+        case 2:
+            return Json{rules[name].c_str()};
         case 4:
             return Json{enviroment};
         default:

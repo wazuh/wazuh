@@ -1,62 +1,115 @@
 #ifndef _EVENT_H
 #define _EVENT_H
 
-template<typename Payload>
-class Event
+#include <memory>
+
+#include "_builder/json.hpp"
+
+template<typename Event>
+class Result
 {
 private:
-    Payload m_payload;
+    Event m_payload;
+    std::string_view m_trace;
+    bool m_success;
 
 public:
-    // Build event from payload, steals it.
-    Event(Payload&& payload) noexcept
+    Result(Event&& payload, std::string_view trace, bool success)
         : m_payload {std::move(payload)}
+        , m_trace {trace}
+        , m_success {success}
     {
     }
 
-    // If we want payload from a temporal object, transfer ownership.
-    Payload&& payload() && noexcept
+    Result(const Result& other)
+        : m_payload {other.m_payload}
+        , m_trace {other.m_trace}
+        , m_success {other.m_success}
     {
-        return std::move(m_payload);
     }
 
-    // If we want payload from an lvalue, pass it by const reference
-    const Payload& payload() const & noexcept
-    {
-        return m_payload;
-    }
-
-    Payload& payload() & noexcept
-    {
-        return m_payload;
-    }
-
-    void updatePayload(std::function<void(Payload&)>& updater)
-    {
-        updater(m_payload);
-    }
-
-    // Payload extraction
-    Payload&& getPayload() noexcept
-    {
-        return std::move(m_payload);
-    }
-
-    // Forcing move semantics
-    Event() = delete; // This ensures a given event is always created with payload, i.e valid state for noexcept shakes.
-    Event(const Event& other) = delete;
-    Event& operator=(const Event& other) = delete;
-
-    Event(Event&& other) noexcept
+    Result(Result&& other)
         : m_payload {std::move(other.m_payload)}
+        , m_trace {other.m_trace}
+        , m_success {other.m_success}
     {
     }
 
-    Event& operator=(Event&& other) noexcept
+    Result& operator=(const Result& other)
     {
-        m_payload = std::move(other.m_payload);
+        m_payload = other.m_payload;
+        m_trace = other.m_trace;
+        m_success = other.m_success;
         return *this;
     }
+
+    Result& operator=(Result&& other)
+    {
+        m_payload = std::move(other.m_payload);
+        m_trace = other.m_trace;
+        m_success = other.m_success;
+        return *this;
+    }
+
+    operator bool() const
+    {
+        return m_success;
+    }
+
+    bool success() const
+    {
+        return m_success;
+    }
+
+    bool failure() const
+    {
+        return !m_success;
+    }
+
+    const Event& payload() const
+    {
+        return m_payload;
+    }
+
+    std::string_view trace() const
+    {
+        return m_trace;
+    }
+
+    Event popPayload()
+    {
+        return std::move(m_payload);
+    }
+
+    void setStatus(bool success)
+    {
+        m_success = success;
+    }
+
+    void setTrace(std::string_view trace)
+    {
+        m_trace = trace;
+    }
+
+    void setPayload(Event&& payload)
+    {
+        m_payload = std::move(payload);
+    }
 };
+
+template<typename Event>
+Result<Event> makeSuccess(Event&& payload, std::string_view trace = "")
+{
+    return Result<Event> {std::move(payload), trace, true};
+}
+
+template<typename Event>
+Result<Event> makeFailure(Event&& payload, std::string_view trace = "")
+{
+    return Result<Event> {std::move(payload), trace, false};
+}
+
+using Event = Json;
+using EngineOp = std::function<Result<Event>(Event&&)>;
 
 #endif // _EVENT_H
