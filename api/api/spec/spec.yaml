@@ -8118,7 +8118,7 @@ paths:
                         keyfile:
                           description: "The private key of the certificate (only needed in master node)."
                           type: string
-                        password:
+                        keyfile_password:
                           description: "Password for the private key if it is encrypted (only needed in master node)."
                           type: string
                         port:
@@ -8143,7 +8143,7 @@ paths:
                       node_type: master
                       certfile: "/var/ossec/etc/sslmanager.cert"
                       keyfile: "/var/ossec/etc/sslmanager.key"
-                      password: ""
+                      keyfile_password: ""
                       port: 1516
                       bind_addr:
                         - "0.0.0.0"

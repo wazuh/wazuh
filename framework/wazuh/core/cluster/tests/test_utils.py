@@ -20,7 +20,7 @@ default_cluster_config = {
     'node_name': 'node01',
     'certfile': 'test_path',
     'keyfile': 'test_path',
-    'password': '',
+    'keyfile_password': '',
     'port': 1516,
     'bind_addr': ['0.0.0.0'],
     'nodes': ['127.0.0.1'],

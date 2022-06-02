@@ -20,7 +20,7 @@ stages:
               node_type: !anystr
               certfile: !anystr
               keyfile: !anystr
-              password: !anystr
+              keyfile_password: !anystr
               port: !anyint
               bind_addr: !anything
               nodes: !anything

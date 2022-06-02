@@ -38,7 +38,7 @@ default_cluster_configuration = {
         'port': 1516,
         'certfile': '/test/path/cert.pem',
         'keyfile': '/test/path/key.pem',
-        'password': 'test_password',
+        'keyfile_password': 'test_password',
         'bind_addr': ['0.0.0.0'],
         'nodes': ['127.0.0.1'],
         'hidden': 'no'
