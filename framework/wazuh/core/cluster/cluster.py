@@ -67,6 +67,10 @@ def check_cluster_config(config):
 
     if config['node_type'] == 'master':
         for file in ['certfile', 'keyfile']:
+            if not config[file].startswith(common.WAZUH_PATH):
+                raise WazuhError(3004, f'The {file} path ({config[file]}) is not inside {common.WAZUH_PATH}.')
+            if '..' in config[file]:
+                raise WazuhError(3004, f'The {file} path ({config[file]}) contains "..".')
             if not os.path.exists(config[file]):
                 raise WazuhError(3004, f'The {file} "{config[file]}" does not exist.')
 

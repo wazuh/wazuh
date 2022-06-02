@@ -67,8 +67,9 @@ custom_incomplete_configuration = {
 @patch.object(wazuh.core.cluster.cluster.logger, "warning")
 def test_check_cluster_config(mock_logger, exists_mock):
     """Check if the check_cluster_config function is working properly."""
-    configuration = {'node_type': 'master', 'port': 3000, 'nodes': ['A', 'B'], 'key': 'ABCD', 'certfile': 'test',
-                     'keyfile': 'test'}
+    configuration = {'node_type': 'master', 'port': 3000, 'nodes': ['A', 'B'], 'key': 'ABCD',
+                     'certfile': os.path.join(common.WAZUH_PATH, 'test'),
+                     'keyfile': os.path.join(common.WAZUH_PATH, 'test')}
     cluster.check_cluster_config(configuration)
     assert mock_logger.call_args_list == [
         call('Found more than one node in configuration. Only master node should be specified. Using A as master.'),
@@ -81,7 +82,10 @@ def test_check_cluster_config(mock_logger, exists_mock):
     ({'cluster': {'port': 'string', 'node_type': 'master', 'certfile': 'test', 'keyfile': 'test'}}, "Port has to"),
     ({'cluster': {'port': 90, 'certfile': 'test', 'keyfile': 'test'}}, "Port must be"),
     ({'cluster': {'port': 70000, 'certfile': 'test', 'keyfile': 'test'}}, "Port must be"),
-    ({'cluster': {'port': 30000}}, 'The certfile '),
+    ({'cluster': {'port': 30000, 'certfile': os.path.join(common.WAZUH_PATH, 'test')}}, 'does not exist.'),
+    ({'cluster': {'port': 30000, 'certfile': os.path.join(common.WAZUH_PATH, '/test')}},
+     f'is not inside {common.WAZUH_PATH}.'),
+    ({'cluster': {'port': 30000, 'certfile': os.path.join(common.WAZUH_PATH, '../test')}}, 'contains ".."'),
 ])
 def test_check_cluster_config_ko(read_config, message):
     """Check wrong configurations to check the proper exceptions are raised."""

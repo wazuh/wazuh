@@ -71,10 +71,6 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
     if 'node_name' not in config_cluster:
         logger.warning('No "node_name" found in the ossec.conf. There could be errors in distributed requests.')
 
-    for value_name in set(cluster_default_configuration.keys()) - set(config_cluster.keys()):
-        # Add default configuration if not specified by the user.
-        config_cluster[value_name] = cluster_default_configuration[value_name]
-
     # If any value is missing from user's cluster configuration, add the default one.
     for value_name in set(cluster_default_configuration.keys()) - set(config_cluster.keys()):
         config_cluster[value_name] = cluster_default_configuration[value_name]
@@ -83,6 +79,10 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
         raise WazuhError(3004, extra_message="Cluster port must be an integer.")
     else:
         config_cluster['port'] = int(config_cluster['port'])
+
+    for key in ('certfile', 'keyfile'):
+        if not config_cluster[key].startswith(common.WAZUH_PATH):
+            config_cluster[key] = os.path.join(common.WAZUH_PATH, config_cluster[key])
 
     return config_cluster
 
