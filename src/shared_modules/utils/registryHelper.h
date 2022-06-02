@@ -15,6 +15,8 @@
 #define _REGISTRY_HELPER_H
 
 #include <string>
+#include <sstream>
+#include <iomanip>
 #include <windows.h>
 #include <winreg.h>
 #include <cstdio>
@@ -194,6 +196,37 @@ namespace Utils
                 catch (...)
                 {
                     ret = false;
+                }
+
+                return ret;
+            }
+
+            bool creationDateKey(std::string& time) const
+            {
+                auto ret {false};
+                FILETIME lastWirteTime { };
+                SYSTEMTIME userTime { };
+                auto result
+                {
+                    RegQueryInfoKey(m_registryKey, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &lastWirteTime)
+                };
+
+                if (ERROR_SUCCESS == result)
+                {
+                    // Convert data of structure in readable format
+                    if (FileTimeToSystemTime(&lastWirteTime, &userTime))
+                    {
+                        std::stringstream value;
+
+                        value << std::setfill('0') << std::setw(4) << userTime.wYear << "/";
+                        value << std::setfill('0') << std::setw(2) << userTime.wMonth << "/";
+                        value << std::setfill('0') << std::setw(2) << userTime.wDay << " ";
+                        value << std::setfill('0') << std::setw(2) << userTime.wHour << ":";
+                        value << std::setfill('0') << std::setw(2) << userTime.wMinute << ":";
+                        value << std::setfill('0') << std::setw(2) << userTime.wSecond;
+                        time = value.str();
+                        ret = true;
+                    }
                 }
 
                 return ret;
