@@ -9,6 +9,16 @@ All notable changes to this project will be documented in this file.
 
 - Integratord now tries to read alerts indefinitely, instead of performing 3 attempts. ([#13437](https://github.com/wazuh/wazuh/pull/13437))
 
+#### Fixed
+
+- Fixed bug on `agent_groups` CLI when removing agent groups. ([#13621](https://github.com/wazuh/wazuh/pull/13621))
+
+### RESTful API
+
+#### Fixed
+
+- Updated default timeouts for `GET /mitre/software` and `GET /mitre/techniques` to avoid timing out in slow environments. ([#13550](https://github.com/wazuh/wazuh/pull/13550))
+
 
 ## [v4.3.3] - 2022-05-31
 
