@@ -425,6 +425,124 @@ base::Expression opBuilderHelperStringTrim(const std::any& definition)
         });
 }
 
+// <field>: +s_concat/<string1>|$<ref1>/<string2>|$<ref2>
+base::Lifter opBuilderHelperStringConcat(const base::DocumentValue& def,
+                                        types::TracerFn tr)
+{
+
+    // Get field path to concat
+    std::string field {
+        json::formatJsonPath(def.MemberBegin()->name.GetString())};
+
+    // Get the raw value of parameter
+    if (!def.MemberBegin()->value.IsString())
+    {
+        // Logical error
+        throw std::runtime_error(
+            "Invalid parameter type for s_concat operator (str expected)");
+    }
+
+    // Parse parameters
+    std::string parm {def.MemberBegin()->value.GetString()};
+    auto parametersArr {utils::string::split(parm, '/')};
+    if (parametersArr.size() < 3)
+    {
+        throw std::runtime_error(
+            "Invalid number of parameters for s_concat operator");
+    }
+
+    // TODO: improve this check or delete it
+    // check if parameters arn't empty
+    for (auto param : parametersArr)
+    {
+        if (param.empty())
+        {
+            throw std::runtime_error(
+            "one parameter is an empty string");
+        }
+    }
+
+    base::Document doc {def};
+    std::string successTrace = fmt::format("{} s_concat Success", doc.str());
+    std::string failureTrace = fmt::format("{} s_concat Failure", doc.str());
+
+    // Return Lifter
+    return [=, tr = std::move(tr)](base::Observable o)
+    {
+        // Append rxcpp operation
+        return o.map(
+            [=, tr = std::move(tr)](base::Event e)
+            {
+                std::string firstString {};
+                std::string secondString {};
+                std::string result {};
+
+                //TODO: result.reserve() -> cant de chars
+                if (parametersArr[1][0] == REFERENCE_ANCHOR)
+                {
+                    auto param = json::formatJsonPath(parametersArr[1].substr(1));
+                    if(e->getEvent()->exists(param))
+                    {
+                        auto value = &e->getEvent()->get(param);
+                        if(value && value->IsString())
+                        {
+                            firstString = value->GetString();
+                        }
+                        else
+                        {
+                            tr(failureTrace);
+                            return e;
+                        }
+                    }
+                    else
+                    {
+                        tr(failureTrace);
+                        return e;
+                    }
+                }
+                else
+                {
+                    firstString = parametersArr[1];
+                }
+
+                if (parametersArr[2][0] == REFERENCE_ANCHOR)
+                {
+                    auto param = json::formatJsonPath(parametersArr[2].substr(1));
+                    if(e->getEvent()->exists(param))
+                    {
+                        auto value = &e->getEvent()->get(param);
+                        if(value && value->IsString())
+                        {
+                            secondString = value->GetString();
+                        }
+                        else
+                        {
+                            tr(failureTrace);
+                            return e;
+                        }
+                    }
+                    else
+                    {
+                        tr(failureTrace);
+                        return e;
+                    }
+                }
+                else
+                {
+                    secondString = parametersArr[2];
+                }
+
+                // Get string
+                result = firstString + secondString;
+                tr(successTrace);
+
+                e->getEvent()->set(field,rapidjson::Value(result.c_str(),
+                                            e->getEvent()->m_doc.GetAllocator()).Move());
+                return e;
+            });
+    };
+}
+
 //*************************************************
 //*           Int tranform                        *
 //*************************************************
