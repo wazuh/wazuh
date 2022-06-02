@@ -54,11 +54,13 @@ target_link_libraries(registry_test
 )
 gtest_discover_tests(registry_test)
 
-# Operation Builder test
-add_executable(operationBuilder_test
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/operationBuilder_test.cpp
-  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/operationBuilder.cpp
-  ${BUILDER_ENGINE_SOURCE_DIR}/registry.cpp
+add_executable(opBuilderHelperMapTest
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntCalc_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringConcat_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringLO_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringTrim_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringUP_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperRegexExtract_test.cpp
 )
 target_link_libraries(operationBuilder_test
   gtest_main base
