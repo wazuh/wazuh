@@ -16,10 +16,6 @@ debug = False
 
 try:
     import wazuh.agent as agent
-    from api.util import raise_if_exc
-    from wazuh.core import common
-    from wazuh.core.agent import Agent
-    from wazuh.core.cluster.dapi.dapi import DistributedAPI
     from wazuh.core.exception import WazuhError
     from wazuh.core.cluster import utils as cluster_utils
 except Exception as e:
@@ -31,12 +27,7 @@ logger = logging.getLogger('wazuh')
 
 # Functions
 def get_stdin(msg):
-    try:
-        stdin = raw_input(msg)
-    except:
-        # Python 3
-        stdin = input(msg)
-    return stdin
+    return input(msg)
 
 
 def signal_handler(n_signal, frame):
@@ -68,9 +59,7 @@ async def show_group(agent_id):
     agent_id : str
         The agent we want to know the groups for.
     """
-
-    agent_id = agent_id.split(',')
-    agent_info = await cluster_utils.forward_function(func=agent.get_agents, f_kwargs={'agent_list': agent_id})
+    agent_info = await cluster_utils.forward_function(func=agent.get_agents, f_kwargs={'agent_list': [agent_id]})
 
     check_if_exception(agent_info)
 
@@ -111,8 +100,7 @@ async def show_agents_with_group(group_id):
     group_id : str
         The group we would like to see the agents for.
     """
-    group_id = group_id.split(',')
-    result = await cluster_utils.forward_function(func=agent.get_agents_in_group, f_kwargs={'group_list': group_id})
+    result = await cluster_utils.forward_function(func=agent.get_agents_in_group, f_kwargs={'group_list': [group_id]})
     check_if_exception(result)
 
     if result.total_affected_items == 0:
@@ -131,8 +119,7 @@ async def show_group_files(group_id):
     group_id : str
         The group we want to check the configuration files for.
     """
-    group_id = group_id.split(',')
-    result = await cluster_utils.forward_function(func=agent.get_group_files, f_kwargs={'group_list': group_id})
+    result = await cluster_utils.forward_function(func=agent.get_group_files, f_kwargs={'group_list': [group_id]})
     check_if_exception(result)
 
     print("{0} files for '{1}' group:".format(result.total_affected_items, group_id))
@@ -159,14 +146,13 @@ async def unset_group(agent_id, group_id=None, quiet=False):
     quiet : bool
         No confirmation mode.
     """
-    if not quiet:
-        if group_id:
-            ans = get_stdin(f"Do you want to delete the group '{group_id}' of agent '{agent_id}'? [y/N]: ")
-        else:
-            ans = get_stdin(f"Do you want to delete all groups of agent '{agent_id}'? [y/N]: ")
-    else:
+    if quiet:
         ans = 'y'
 
+    elif group_id:
+        ans = get_stdin(f"Do you want to delete the group '{group_id}' of agent '{agent_id}'? [y/N]: ")
+    else:
+        ans = get_stdin(f"Do you want to delete all groups of agent '{agent_id}'? [y/N]: ")
     if ans.lower() == 'y':
         result = await cluster_utils.forward_function(func=agent.remove_agent_from_groups,
                                                       f_kwargs={'agent_list': [agent_id], 'group_list': [group_id]})
@@ -192,10 +178,7 @@ async def remove_group(group_id, quiet=False):
     quiet : bool
         No confirmation mode.
     """
-    if not quiet:
-        ans = get_stdin(f"Do you want to remove the '{group_id}' group? [y/N]: ")
-    else:
-        ans = 'y'
+    ans = 'y' if quiet else get_stdin(f"Do you want to remove the '{group_id}' group? [y/N]: ")
 
     msg = ''
     if ans.lower() == 'y':
@@ -233,18 +216,13 @@ async def set_group(agent_id, group_id, quiet=False, replace=False):
     replace : bool
         Force only one group.
     """
-    agent_id = agent_id.split(',')
-    group_id = group_id.split(',')
-    agent_id = [item.zfill(3) for item in agent_id]
+    agent_id = f"{int(agent_id)}".zfill(3)
 
-    if not quiet:
-        ans = get_stdin(f"Do you want to add the group '{group_id}' to the agent '{agent_id}'? [y/N]: ")
-    else:
-        ans = 'y'
+    ans = 'y' if quiet else get_stdin(f"Do you want to add the group '{group_id}' to the agent '{agent_id}'? [y/N]: ")
 
     if ans.lower() == 'y':
         result = await cluster_utils.forward_function(func=agent.assign_agents_to_group,
-                                                      f_kwargs={'group_list': group_id, 'agent_list': agent_id,
+                                                      f_kwargs={'group_list': [group_id], 'agent_list': [agent_id],
                                                                 'replace': replace})
         check_if_exception(result)
 
@@ -269,10 +247,7 @@ async def create_group(group_id, quiet=False):
     quiet : bool
         No confirmation mode.
     """
-    if not quiet:
-        ans = get_stdin(f"Do you want to create the group '{group_id}'? [y/N]: ")
-    else:
-        ans = 'y'
+    ans = 'y' if quiet else get_stdin(f"Do you want to create the group '{group_id}'? [y/N]: ")
 
     if ans.lower() == 'y':
         result = await cluster_utils.forward_function(func=agent.create_group, f_kwargs={'group_id': group_id})
@@ -298,7 +273,7 @@ def check_if_exception(result):
 
 def usage():
     msg = """
-    {0} [ -l [ -g group_id ] | -c -g group_id | -a (-i agent_id -g groupd_id | -g group_id) [-q] [-f] | -s -i agent_id | -S -i agent_id | -r (-g group_id | -i agent_id) [-q] ]
+    {0} [ -l [ -g group_id ] | -c -g group_id | -a (-i agent_id -g group_id | -g group_id) [-q] [-f] | -s -i agent_id | -S -i agent_id | -r (-g group_id | -i agent_id) [-q] ]
 
     Usage:
     \t-l                                    # List all groups
@@ -340,6 +315,38 @@ def invalid_option(msg=None):
 
     print("Try '--help' for more information.\n")
     exit(1)
+
+
+def get_script_arguments():
+    """Get script arguments.
+
+    Returns
+    -------
+    ArgumentParser object
+        Arguments passed to the script.
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-l", "--list", action='store_true', dest="list", help="List the groups.")
+    parser.add_argument("-c", "--list-files", action='store_true', dest="list_files",
+                        help="List the group's configuration files.")
+    parser.add_argument("-a", "--add", action='store_true', dest="add", help="Add new group or new agent to group.")
+    parser.add_argument("-f", "--force", action='store_true', dest="force", help="Force single group.")
+    parser.add_argument("-s", "--show-group", action='store_true', dest="show_group", help="Show group of agent.")
+    parser.add_argument("-S", "--show-sync", action='store_true', dest="show_sync",
+                        help="Show sync status of agent.")
+    parser.add_argument("-r", "--remove", action='store_true', dest="remove",
+                        help="Remove group or agent from group.")
+    parser.add_argument("-i", "--agent-id", type=str, dest="agent_id", help="Specify the agent ID.")
+    parser.add_argument("-g", "--group-id", type=str, dest="group_id", help="Specify group ID.")
+    parser.add_argument("-q", "--quiet", action='store_true', dest="quiet", help="Silent mode (no confirmation).")
+    parser.add_argument("-d", "--debug", action='store_true', dest="debug", help="Debug mode.")
+    parser.add_argument("-u", "--usage", action='store_true', dest="usage", help="Show usage.")
+
+    args = parser.parse_args()
+    if sum([args.list, args.list_files, args.add, args.show_group, args.show_sync, args.remove]) > 1:
+        invalid_option("Bad argument combination.")
+
+    return args
 
 
 async def main():
@@ -385,24 +392,7 @@ async def main():
 
 
 if __name__ == "__main__":
-
-    arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument("-l", "--list", action='store_true', dest="list", help="List the groups.")
-    arg_parser.add_argument("-c", "--list-files", action='store_true', dest="list_files",
-                            help="List the group's configuration files.")
-    arg_parser.add_argument("-a", "--add", action='store_true', dest="add", help="Add new group or new agent to group.")
-    arg_parser.add_argument("-f", "--force", action='store_true', dest="force", help="Force single group.")
-    arg_parser.add_argument("-s", "--show-group", action='store_true', dest="show_group", help="Show group of agent.")
-    arg_parser.add_argument("-S", "--show-sync", action='store_true', dest="show_sync",
-                            help="Show sync status of agent.")
-    arg_parser.add_argument("-r", "--remove", action='store_true', dest="remove",
-                            help="Remove group or agent from group.")
-    arg_parser.add_argument("-i", "--agent-id", type=str, dest="agent_id", help="Specify the agent ID.")
-    arg_parser.add_argument("-g", "--group-id", type=str, dest="group_id", help="Specify group ID.")
-    arg_parser.add_argument("-q", "--quiet", action='store_true', dest="quiet", help="Silent mode (no confirmation).")
-    arg_parser.add_argument("-d", "--debug", action='store_true', dest="debug", help="Debug mode.")
-    arg_parser.add_argument("-u", "--usage", action='store_true', dest="usage", help="Show usage.")
-    args = arg_parser.parse_args()
+    args = get_script_arguments()
 
     try:
         asyncio.run(main())

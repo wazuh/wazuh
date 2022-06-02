@@ -159,16 +159,16 @@ def process_array(array, search_text=None, complementary_search=False, search_in
         array = sort_array(array, sort_by=sort_by, sort_ascending=sort_ascending,
                            allowed_sort_fields=allowed_sort_fields)
 
-    if select:
-        array = select_array(array, select=select, required_fields=required_fields,
-                             allowed_select_fields=allowed_select_fields)
-
     if search_text:
         array = search_array(array, search_text=search_text, complementary_search=complementary_search,
                              search_in_fields=search_in_fields)
 
     if q:
         array = filter_array_by_query(q, array)
+
+    if select:
+        array = select_array(array, select=select, required_fields=required_fields,
+                             allowed_select_fields=allowed_select_fields)
 
     return {'items': cut_array(array, offset=offset, limit=limit), 'totalItems': len(array)}
 
@@ -1216,12 +1216,20 @@ class WazuhDBQuery(object):
         #    id   > 5      ),
         #    group=webserver
         self.query_regex = re.compile(
-            r'(\()?' +  # A ( character.
-            r'([\w.]+)' +  # Field name: name of the field to look on DB
-            '([' + ''.join(self.query_operators.keys()) + "]{1,2})" +  # Operator: looks for =, !=, <, > or ~.
-            r"(\[[\[\]\w _\-.,:?\\/'\"=@%<>]+]|[\[\]\w _\-.:?\\/'\"=@%<>]+)" +  # Value: A string.
-            r"(\))?" +  # A ) character
-            "([" + ''.join(self.query_separators.keys()) + "])?"  # Separator: looks for ;, , or nothing.
+            # A ( character.
+            r"(\()?" +
+            # Field name: name of the field to look on DB.
+            r"([\w.]+)" +
+            # Operator: looks for '=', '!=', '<', '>' or '~'.
+            rf"([{''.join(self.query_operators.keys())}]{{1,2}})" +
+            # Value: A string.
+            r"((?:(?:\((?:\[[\[\]\w _\-.,:?\\/'\"=@%<>]*]|[\[\]\w _\-.:?\\/'\"=@%<>]*)\))*"
+            r"(?:\[[\[\]\w _\-.,:?\\/'\"=@%<>]*]|[\[\]\w _\-.:?\\/'\"=@%<>]+)"
+            r"(?:\((?:\[[\[\]\w _\-.,:?\\/'\"=@%<>]*]|[\[\]\w _\-.:?\\/'\"=@%<>]*)\))*)+)" +
+            # A ) character.
+            r"(\))?" +
+            # Separator: looks for ';', ',' or nothing.
+            rf"([{''.join(self.query_separators.keys())}])?"
         )
         self.date_regex = re.compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}")
         self.date_fields = date_fields

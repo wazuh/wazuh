@@ -20,7 +20,7 @@ from wazuh.core.common import LOGTEST_SOCKET
 
 
 def init_argparse():
-    """Setup argpase for handle command line parameters
+    """Setup argparse for handle command line parameters.
 
     Returns:
         object: argparse parser object
@@ -82,7 +82,6 @@ def main():
         if len(ut) != 3:
             logging.error('Unit test configuration wrong syntax: %s', args.ut)
             sys.exit(1)
-
     options = dict()
     if args.verbose:
         options['rules_debug'] = True
@@ -102,6 +101,7 @@ def main():
         # Get user input
         try:
             event = input('\n')
+
         # Handle user interrupt execution or EOF
         except (EOFError, KeyboardInterrupt):
             # Exit normally if ut is not selected
@@ -114,6 +114,7 @@ def main():
             # Exit with error
             else:
                 sys.exit(1)
+
         # Avoid empty events
         if not event:
             continue
@@ -129,7 +130,6 @@ def main():
         except ConnectionError:
             logging.error('** Wazuh-logtest error when connecting with wazuh-analysisd')
             continue
-
         # Check and alert to user if new session was created
         if session_token and session_token != output['token']:
             logging.warning('New session was created with token "%s"', output['token'])
@@ -156,16 +156,16 @@ def main():
 
 
 class WazuhDeamonProtocol:
-    def __init__(self, version="1", origin_module="wazuh-logtest", module_name="wazuh-logtest"):
+    def __init__(self, version=1, origin_module="wazuh-logtest", module_name="wazuh-logtest"):
         """Class that encapsulate logic communication aspects between wazuh daemons
 
         Args:
-            version (str, optional): protocol version. Defaults to "1".
+            version (int, optional): protocol version. Defaults to 1.
             origin_module (str, optional): origin source module. Defaults to "wazuh-logtest".
             module_name (str, optional): origin source module. Defaults to "wazuh-logtest".
         """
         self.protocol = dict()
-        self.protocol['version'] = 1
+        self.protocol['version'] = version
         self.protocol['origin'] = dict()
         self.protocol['origin']['name'] = origin_module
         self.protocol['origin']['module'] = module_name
@@ -241,7 +241,7 @@ class WazuhSocket:
 
 class WazuhLogtest:
     def __init__(self, location="stdin", log_format="syslog"):
-        """Top level class to interact with wazuh-logtest feature, part of wazuh-analysisd
+        """Top level class to interact with wazuh-logtest feature, part of wazuh-analysisd.
 
         Args:
             location (str, optional): log origin. Defaults to "master->/var/log/syslog".
@@ -256,7 +256,7 @@ class WazuhLogtest:
         self.ut = [''] * 3
 
     def process_log(self, log, token=None, options=None):
-        """Send log event to wazuh-logtest and receive the outcome
+        """Send log event to wazuh-logtest and receive the outcome.
 
         Args:
             log (str): event log to process
@@ -305,7 +305,7 @@ class WazuhLogtest:
         return reply
 
     def remove_session(self, token):
-        """Remove session by token
+        """Remove session by token.
 
         Args:
             token (str): session token to remove
@@ -334,13 +334,12 @@ class WazuhLogtest:
             return True
 
     def remove_last_session(self):
-        """Remove last known session
-        """
+        """Remove last known session."""
         if self.last_token:
             self.remove_session(self.last_token)
 
     def get_last_ut(self):
-        """Get last known UT info (rule,alert,decoder)
+        """Get last known UT info (rule,alert,decoder).
 
         Returns:
             list of str: last rule,alert,decoder
@@ -348,7 +347,7 @@ class WazuhLogtest:
         return self.ut
 
     def show_output(output):
-        """Display logtest event processing outcome
+        """Display logtest event processing outcome.
 
         Args:
             output (dict): logtest outcome
@@ -357,7 +356,7 @@ class WazuhLogtest:
         WazuhLogtest.show_ossec_logtest_like(output)
 
     def show_ossec_logtest_like(output):
-        """Show wazuh-logtest output like ossec-logtest
+        """Show wazuh-logtest output like ossec-logtest.
 
         Args:
             output (dict): wazuh-logtest outcome
@@ -397,7 +396,7 @@ class WazuhLogtest:
             logging.info('**Alert to be generated.')
 
     def show_phase_info(phase_data, show_first=[], prefix=""):
-        """Show wazuh-logtest processing phase information
+        """Show wazuh-logtest processing phase information.
 
         Args:
             phase_data (dict): phase info to display
@@ -416,7 +415,7 @@ class WazuhLogtest:
                 logging.info("\t%s: '%s'", prefix + field, phase_data.pop(field))
 
     def show_last_ut_result(self, ut):
-        """Display unit test result
+        """Display unit test result.
 
         Args:
             ut (list of str): expected rule,alert,decoder
@@ -477,7 +476,7 @@ class Wazuh:
         Returns:
             str: description
         """
-        return 'Wazuh {} - Wazuh Inc.'.format(Wazuh.get_version_str())
+        return f"Wazuh {Wazuh.get_version_str()} - Wazuh Inc."
 
     def get_license():
         """Get Wazuh License statement

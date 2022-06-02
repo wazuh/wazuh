@@ -27,8 +27,6 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/mitre/mitigations"
       method: GET
-      params:
-        wait_for_complete: True
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -45,8 +43,6 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/mitre/references"
       method: GET
-      params:
-        wait_for_complete: True
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -64,7 +60,7 @@ stages:
       url: "{protocol:s}://{host:s}:{port:d}/mitre/techniques"
       method: GET
       params:
-        wait_for_complete: True
+        wait_for_complete: true
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -81,8 +77,6 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/mitre/tactics"
       method: GET
-      params:
-        wait_for_complete: True
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -99,8 +93,6 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/mitre/groups"
       method: GET
-      params:
-        wait_for_complete: True
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -118,7 +110,7 @@ stages:
       url: "{protocol:s}://{host:s}:{port:d}/mitre/software"
       method: GET
       params:
-        wait_for_complete: True
+        wait_for_complete: true
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
