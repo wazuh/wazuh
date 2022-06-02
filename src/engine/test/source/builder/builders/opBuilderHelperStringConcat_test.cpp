@@ -380,3 +380,82 @@ TEST(opBuilderHelperStringConcat, ReferenceDoesntExist)
     ASSERT_EQ(expected.size(), 1);
     ASSERT_STREQ(expected[0]->getEvent()->get("/fieldToTranf").GetString(), "something");
 }
+
+TEST(opBuilderHelperStringConcat, BasicUsageThreeArguments)
+{
+    Document doc{R"({
+        "normalize":
+        [
+            {
+                "map":
+                {
+                    "Field": "+s_concat/First/Second/Third"
+                }
+            }
+        ]
+    })"};
+
+    Observable input = observable<>::create<Event>(
+        [=](auto s)
+        {
+            s.on_next(createSharedEvent(R"(
+                {"fieldToTranf": "something"}
+            )"));
+            s.on_completed();
+        });
+
+    Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
+    Observable output = lift(input);
+    vector<Event> expected;
+    output.subscribe([&](Event e) { expected.push_back(e); });
+    ASSERT_EQ(expected.size(), 1);
+    ASSERT_STREQ(expected[0]->getEvent()->get("/Field").GetString(), "FirstSecondThird");
+}
+
+TEST(opBuilderHelperStringConcat, BasicUsageThreeArgumentsMiddleEmpty)
+{
+    Document doc{R"({
+        "normalize":
+        [
+            {
+                "map":
+                {
+                    "Field": "+s_concat/First//Third"
+                }
+            }
+        ]
+    })"};
+
+    ASSERT_THROW(bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr), std::runtime_error);
+}
+
+TEST(opBuilderHelperStringConcat, BasicUsageLotOfArguments)
+{
+    Document doc{R"({
+        "normalize":
+        [
+            {
+                "map":
+                {
+                    "Field": "+s_concat/A/B/C/D/E/F/G/H/I/J/K/L/M/N/O/P/Q/R/S/T/U/V/W/X/Y/Z"
+                }
+            }
+        ]
+    })"};
+
+    Observable input = observable<>::create<Event>(
+        [=](auto s)
+        {
+            s.on_next(createSharedEvent(R"(
+                {"fieldToTranf": "something"}
+            )"));
+            s.on_completed();
+        });
+
+    Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
+    Observable output = lift(input);
+    vector<Event> expected;
+    output.subscribe([&](Event e) { expected.push_back(e); });
+    ASSERT_EQ(expected.size(), 1);
+    ASSERT_STREQ(expected[0]->getEvent()->get("/Field").GetString(), "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+}

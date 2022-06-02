@@ -451,8 +451,10 @@ base::Lifter opBuilderHelperStringConcat(const base::DocumentValue& def,
             "Invalid number of parameters for s_concat operator");
     }
 
-    // TODO: improve this check or delete it
-    // check if parameters arn't empty
+    //removing first element (helper function name)
+    parametersArr.erase(parametersArr.begin());
+
+    // check if parameters aren't empty
     for (auto param : parametersArr)
     {
         if (param.empty())
@@ -473,20 +475,25 @@ base::Lifter opBuilderHelperStringConcat(const base::DocumentValue& def,
         return o.map(
             [=, tr = std::move(tr)](base::Event e)
             {
-                std::string firstString {};
-                std::string secondString {};
                 std::string result {};
 
-                //TODO: result.reserve() -> cant de chars
-                if (parametersArr[1][0] == REFERENCE_ANCHOR)
+                for (auto parameter : parametersArr)
                 {
-                    auto param = json::formatJsonPath(parametersArr[1].substr(1));
-                    if(e->getEvent()->exists(param))
+                    if (parameter.at(0) == REFERENCE_ANCHOR)
                     {
-                        auto value = &e->getEvent()->get(param);
-                        if(value && value->IsString())
+                        auto param = json::formatJsonPath(parameter.substr(1));
+                        if(e->getEvent()->exists(param))
                         {
-                            firstString = value->GetString();
+                            auto value = &e->getEvent()->get(param);
+                            if(value && value->IsString())
+                            {
+                                result += value->GetString();
+                            }
+                            else
+                            {
+                                tr(failureTrace);
+                                return e;
+                            }
                         }
                         else
                         {
@@ -496,44 +503,10 @@ base::Lifter opBuilderHelperStringConcat(const base::DocumentValue& def,
                     }
                     else
                     {
-                        tr(failureTrace);
-                        return e;
+                        result += parameter;
                     }
-                }
-                else
-                {
-                    firstString = parametersArr[1];
                 }
 
-                if (parametersArr[2][0] == REFERENCE_ANCHOR)
-                {
-                    auto param = json::formatJsonPath(parametersArr[2].substr(1));
-                    if(e->getEvent()->exists(param))
-                    {
-                        auto value = &e->getEvent()->get(param);
-                        if(value && value->IsString())
-                        {
-                            secondString = value->GetString();
-                        }
-                        else
-                        {
-                            tr(failureTrace);
-                            return e;
-                        }
-                    }
-                    else
-                    {
-                        tr(failureTrace);
-                        return e;
-                    }
-                }
-                else
-                {
-                    secondString = parametersArr[2];
-                }
-
-                // Get string
-                result = firstString + secondString;
                 tr(successTrace);
 
                 e->getEvent()->set(field,rapidjson::Value(result.c_str(),
