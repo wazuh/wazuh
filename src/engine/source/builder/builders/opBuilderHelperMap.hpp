@@ -56,6 +56,14 @@ base::Expression opBuilderHelperStringLO(const std::any& definition);
  */
 base::Expression opBuilderHelperStringTrim(const std::any& definition);
 
+/**
+ * @brief 
+ * 
+ * @param def 
+ * @param tr 
+ * @return base::Lifter 
+ */
+base::Lifter opBuilderHelperStringConcat(const base::DocumentValue& def, types::TracerFn tr);
 //*************************************************
 //*           Int tranform                        *
 //*************************************************
