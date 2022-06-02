@@ -271,7 +271,7 @@ void test_wazuhdb_create_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(statistics, "queries_total")->valueint, 856);
 
     assert_non_null(cJSON_GetObjectItem(statistics, "queries_time_total"));
-    assert_int_equal(cJSON_GetObjectItem(statistics, "queries_time_total")->valueint, 26862);
+    assert_int_equal(cJSON_GetObjectItem(statistics, "queries_time_total")->valueint, 25717);
 
     cJSON* queries_breakdown = cJSON_GetObjectItem(statistics, "queries_breakdown");
     assert_non_null(cJSON_GetObjectItem(queries_breakdown, "wazuhdb_queries"));
@@ -485,8 +485,6 @@ void test_wazuhdb_create_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(global_agent_queries_breakdown, "select-agent-name_queries")->valueint, 1);
     assert_non_null(cJSON_GetObjectItem(global_agent_queries_breakdown, "select-agent-group_queries"));
     assert_int_equal(cJSON_GetObjectItem(global_agent_queries_breakdown, "select-agent-group_queries")->valueint, 0);
-    assert_non_null(cJSON_GetObjectItem(global_agent_queries_breakdown, "select-keepalive_queries"));
-    assert_int_equal(cJSON_GetObjectItem(global_agent_queries_breakdown, "select-keepalive_queries")->valueint, 2);
     assert_non_null(cJSON_GetObjectItem(global_agent_queries_breakdown, "find-agent_queries"));
     assert_int_equal(cJSON_GetObjectItem(global_agent_queries_breakdown, "find-agent_queries")->valueint, 1);
     assert_non_null(cJSON_GetObjectItem(global_agent_queries_breakdown, "get-agent-info_queries"));
@@ -519,16 +517,12 @@ void test_wazuhdb_create_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(global_group_queries_breakdown, "find-group_queries")->valueint, 10);
 
     cJSON* global_belongs_queries_breakdown = cJSON_GetObjectItem(global_queries_breakdown, "belongs_queries");
-    assert_non_null(cJSON_GetObjectItem(global_belongs_queries_breakdown, "delete-agent-belong_queries"));
-    assert_int_equal(cJSON_GetObjectItem(global_belongs_queries_breakdown, "delete-agent-belong_queries")->valueint, 8);
     assert_non_null(cJSON_GetObjectItem(global_belongs_queries_breakdown, "select-group-belong_queries"));
     assert_int_equal(cJSON_GetObjectItem(global_belongs_queries_breakdown, "select-group-belong_queries")->valueint, 10);
     assert_non_null(cJSON_GetObjectItem(global_belongs_queries_breakdown, "get-group-agents_queries"));
     assert_int_equal(cJSON_GetObjectItem(global_belongs_queries_breakdown, "get-group-agents_queries")->valueint, 0);
 
     cJSON* global_labels_queries_breakdown = cJSON_GetObjectItem(global_queries_breakdown, "labels_queries");
-    assert_non_null(cJSON_GetObjectItem(global_labels_queries_breakdown, "set-labels_queries"));
-    assert_int_equal(cJSON_GetObjectItem(global_labels_queries_breakdown, "set-labels_queries")->valueint, 2);
     assert_non_null(cJSON_GetObjectItem(global_labels_queries_breakdown, "get-labels_queries"));
     assert_int_equal(cJSON_GetObjectItem(global_labels_queries_breakdown, "get-labels_queries")->valueint, 1);
 
@@ -536,7 +530,7 @@ void test_wazuhdb_create_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(global_queries_breakdown, "unknown_queries")->valueint, 0);
 
     assert_non_null(cJSON_GetObjectItem(queries_breakdown, "global_time"));
-    assert_int_equal(cJSON_GetObjectItem(queries_breakdown, "global_time")->valueint, 8080);
+    assert_int_equal(cJSON_GetObjectItem(queries_breakdown, "global_time")->valueint, 6935);
 
     cJSON* global_time_breakdown = cJSON_GetObjectItem(queries_breakdown, "global_time_breakdown");
     assert_non_null(cJSON_GetObjectItem(global_time_breakdown, "sql_time"));
@@ -563,8 +557,6 @@ void test_wazuhdb_create_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(global_agent_time_breakdown, "select-agent-name_time")->valueint, 14);
     assert_non_null(cJSON_GetObjectItem(global_agent_time_breakdown, "select-agent-group_time"));
     assert_int_equal(cJSON_GetObjectItem(global_agent_time_breakdown, "select-agent-group_time")->valueint, 152);
-    assert_non_null(cJSON_GetObjectItem(global_agent_time_breakdown, "select-keepalive_time"));
-    assert_int_equal(cJSON_GetObjectItem(global_agent_time_breakdown, "select-keepalive_time")->valueint, 1125);
     assert_non_null(cJSON_GetObjectItem(global_agent_time_breakdown, "find-agent_time"));
     assert_int_equal(cJSON_GetObjectItem(global_agent_time_breakdown, "find-agent_time")->valueint, 78);
     assert_non_null(cJSON_GetObjectItem(global_agent_time_breakdown, "get-agent-info_time"));
@@ -597,16 +589,12 @@ void test_wazuhdb_create_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(global_group_time_breakdown, "find-group_time")->valueint, 0);
 
     cJSON* global_belongs_time_breakdown = cJSON_GetObjectItem(global_time_breakdown, "belongs_time");
-    assert_non_null(cJSON_GetObjectItem(global_belongs_time_breakdown, "delete-agent-belong_time"));
-    assert_int_equal(cJSON_GetObjectItem(global_belongs_time_breakdown, "delete-agent-belong_time")->valueint, 10);
     assert_non_null(cJSON_GetObjectItem(global_belongs_time_breakdown, "select-group-belong_time"));
     assert_int_equal(cJSON_GetObjectItem(global_belongs_time_breakdown, "select-group-belong_time")->valueint, 25);
     assert_non_null(cJSON_GetObjectItem(global_belongs_time_breakdown, "get-group-agents_time"));
     assert_int_equal(cJSON_GetObjectItem(global_belongs_time_breakdown, "get-group-agents_time")->valueint, 12);
 
     cJSON* global_labels_time_breakdown = cJSON_GetObjectItem(global_time_breakdown, "labels_time");
-    assert_non_null(cJSON_GetObjectItem(global_labels_time_breakdown, "set-labels_time"));
-    assert_int_equal(cJSON_GetObjectItem(global_labels_time_breakdown, "set-labels_time")->valueint, 10);
     assert_non_null(cJSON_GetObjectItem(global_labels_time_breakdown, "get-labels_time"));
     assert_int_equal(cJSON_GetObjectItem(global_labels_time_breakdown, "get-labels_time")->valueint, 120);
 
