@@ -16,7 +16,7 @@ All notable changes to this project will be documented in this file.
 - Fixed linux compilation errors with GCC 12. ([#13459](https://github.com/wazuh/wazuh/pull/13459))
 - Fixed a crash in wazuh-analysisd when overwriting a rule with a configured active response. ([#13604](https://github.com/wazuh/wazuh/pull/13604))
 - Fixed a crash in wazuh-db ([#13566](https://github.com/wazuh/wazuh/pull/13566)) when it cannot open a database file. ([#13666](https://github.com/wazuh/wazuh/pull/13666))
-- Fixed the vulnerability feed parsing mechanism, now truncates excessively long values. ([#13566](https://github.com/wazuh/wazuh/pull/13566))
+- Fixed the vulnerability feed parsing mechanism, now truncates excessively long values (This problem was detected during Ubuntu Bionic feed update). ([#13566](https://github.com/wazuh/wazuh/pull/13566))
 
 ### RESTful API
 
