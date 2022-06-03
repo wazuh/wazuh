@@ -427,12 +427,11 @@ base::Expression opBuilderHelperStringTrim(const std::any& definition)
 
 // <field>: +s_concat/<string1>|$<ref1>/<string2>|$<ref2>
 base::Lifter opBuilderHelperStringConcat(const base::DocumentValue& def,
-                                        types::TracerFn tr)
+                                         types::TracerFn tr)
 {
 
     // Get field path to concat
-    std::string field {
-        json::formatJsonPath(def.MemberBegin()->name.GetString())};
+    std::string field {json::formatJsonPath(def.MemberBegin()->name.GetString())};
 
     // Get the raw value of parameter
     if (!def.MemberBegin()->value.IsString())
@@ -447,11 +446,10 @@ base::Lifter opBuilderHelperStringConcat(const base::DocumentValue& def,
     auto parametersArr {utils::string::split(parm, '/')};
     if (parametersArr.size() < 3)
     {
-        throw std::runtime_error(
-            "Invalid number of parameters for s_concat operator");
+        throw std::runtime_error("Invalid number of parameters for s_concat operator");
     }
 
-    //removing first element (helper function name)
+    // removing first element (helper function name)
     parametersArr.erase(parametersArr.begin());
 
     // check if parameters aren't empty
@@ -459,8 +457,7 @@ base::Lifter opBuilderHelperStringConcat(const base::DocumentValue& def,
     {
         if (param.empty())
         {
-            throw std::runtime_error(
-            "one parameter is an empty string");
+            throw std::runtime_error("one parameter is an empty string");
         }
     }
 
@@ -482,10 +479,10 @@ base::Lifter opBuilderHelperStringConcat(const base::DocumentValue& def,
                     if (parameter.at(0) == REFERENCE_ANCHOR)
                     {
                         auto param = json::formatJsonPath(parameter.substr(1));
-                        if(e->getEvent()->exists(param))
+                        if (e->getEvent()->exists(param))
                         {
                             auto value = &e->getEvent()->get(param);
-                            if(value && value->IsString())
+                            if (value && value->IsString())
                             {
                                 result += value->GetString();
                             }
@@ -509,8 +506,10 @@ base::Lifter opBuilderHelperStringConcat(const base::DocumentValue& def,
 
                 tr(successTrace);
 
-                e->getEvent()->set(field,rapidjson::Value(result.c_str(),
-                                            e->getEvent()->m_doc.GetAllocator()).Move());
+                e->getEvent()->set(
+                    field,
+                    rapidjson::Value(result.c_str(), e->getEvent()->m_doc.GetAllocator())
+                        .Move());
                 return e;
             });
     };
