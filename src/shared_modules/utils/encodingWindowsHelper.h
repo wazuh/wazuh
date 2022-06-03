@@ -15,6 +15,7 @@
 #ifndef _ENCODING_WINDOWS_HELPER_H
 #define _ENCODING_WINDOWS_HELPER_H
 
+#include <winsock2.h>
 #include <windows.h>
 #include <string>
 #include <memory>
