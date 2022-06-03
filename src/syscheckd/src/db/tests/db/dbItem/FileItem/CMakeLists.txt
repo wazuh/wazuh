@@ -32,6 +32,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         sqlite3
         cjson
         -static-libgcc -static-libstdc++
+        rsync
+        dbsync
     )
 else()
     target_link_libraries(fileitem_unit_test
@@ -47,6 +49,8 @@ else()
         sqlite3
         cjson
         dl
+        rsync
+        dbsync
     )
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 

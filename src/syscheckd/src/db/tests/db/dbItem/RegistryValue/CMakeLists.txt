@@ -35,6 +35,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         ws2_32
         crypt32
         -static-libgcc -static-libstdc++
+        rsync
+        dbsync
     )
 else()
     target_link_libraries(registryvalue_unit_test
@@ -52,6 +54,8 @@ else()
         crypto
         ssl
         dl
+        rsync
+        dbsync
     )
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
