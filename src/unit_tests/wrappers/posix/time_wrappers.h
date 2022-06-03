@@ -12,6 +12,7 @@
 #define TIME_WRAPPERS_H
 
 #include <time.h>
+#include <sys/time.h>
 
 time_t __wrap_time(time_t *t);
 char *__wrap_ctime_r(const time_t *timep, char *buf);
