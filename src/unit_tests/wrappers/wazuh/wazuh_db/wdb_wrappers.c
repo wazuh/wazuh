@@ -366,11 +366,3 @@ int __wrap_wdb_commit2(__attribute__((unused))wdb_t * wdb) {
 void __wrap_wdb_finalize_all_statements(__attribute__((unused))wdb_t * wdb) {
     function_called();
 }
-
-void __wrap_w_inc_queries_total() {
-    function_called();
-}
-
-void __wrap_w_inc_unknown() {
-    function_called();
-}

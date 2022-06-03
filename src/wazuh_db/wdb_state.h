@@ -100,7 +100,6 @@ typedef struct _global_agent_t {
     uint64_t update_keepalive_queries;
     uint64_t update_connection_status_queries;
     uint64_t reset_agents_connection_queries;
-    uint64_t sync_agent_info_set_queries;
     uint64_t delete_agent_queries;
     uint64_t select_agent_name_queries;
     uint64_t select_agent_group_queries;
@@ -110,6 +109,7 @@ typedef struct _global_agent_t {
     uint64_t get_agents_by_connection_status_queries;
     uint64_t disconnect_agents_queries;
     uint64_t sync_agent_info_get_queries;
+    uint64_t sync_agent_info_set_queries;
     uint64_t sync_agent_groups_get_queries;
     uint64_t set_agent_groups_queries;
     uint64_t get_groups_integrity_queries;
@@ -119,7 +119,6 @@ typedef struct _global_agent_t {
     struct timeval update_keepalive_time;
     struct timeval update_connection_status_time;
     struct timeval reset_agents_connection_time;
-    struct timeval sync_agent_info_set_time;
     struct timeval delete_agent_time;
     struct timeval select_agent_name_time;
     struct timeval select_agent_group_time;
@@ -129,6 +128,7 @@ typedef struct _global_agent_t {
     struct timeval get_agents_by_connection_status_time;
     struct timeval disconnect_agents_time;
     struct timeval sync_agent_info_get_time;
+    struct timeval sync_agent_info_set_time;
     struct timeval sync_agent_groups_get_time;
     struct timeval set_agent_groups_time;
     struct timeval get_groups_integrity_time;
@@ -249,10 +249,22 @@ void w_inc_wazuhdb();
 void w_inc_wazuhdb_get_config();
 
 /**
+ * @brief Increment get-config wazuhdb time counter
+ *
+ */
+void w_inc_wazuhdb_get_config_time(struct timeval time);
+
+/**
  * @brief Increment remove wazuhdb queries counter
  *
  */
 void w_inc_wazuhdb_remove();
+
+/**
+ * @brief Increment remove wazuhdb time counter
+ *
+ */
+void w_inc_wazuhdb_remove_time(struct timeval time);
 
 /**
  * @brief Increment unknown wazuhdb queries counter
@@ -273,10 +285,22 @@ void w_inc_agent();
 void w_inc_agent_sql();
 
 /**
+ * @brief Increment sql agent time counter
+ *
+ */
+void w_inc_agent_sql_time(struct timeval time);
+
+/**
  * @brief Increment remove agent queries counter
  *
  */
 void w_inc_agent_remove();
+
+/**
+ * @brief Increment remove agent time counter
+ *
+ */
+void w_inc_agent_remove_time(struct timeval time);
 
 /**
  * @brief Increment begin agent queries counter
@@ -285,10 +309,22 @@ void w_inc_agent_remove();
 void w_inc_agent_begin();
 
 /**
+ * @brief Increment begin agent time counter
+ *
+ */
+void w_inc_agent_begin_time(struct timeval time);
+
+/**
  * @brief Increment commit agent queries counter
  *
  */
 void w_inc_agent_commit();
+
+/**
+ * @brief Increment commit agent time counter
+ *
+ */
+void w_inc_agent_commit_time(struct timeval time);
 
 /**
  * @brief Increment close agent queries counter
@@ -297,10 +333,22 @@ void w_inc_agent_commit();
 void w_inc_agent_close();
 
 /**
+ * @brief Increment close agent time counter
+ *
+ */
+void w_inc_agent_close_time(struct timeval time);
+
+/**
  * @brief Increment rootcheck agent queries counter
  *
  */
 void w_inc_agent_rootcheck();
+
+/**
+ * @brief Increment rootcheck agent time counter
+ *
+ */
+void w_inc_agent_rootcheck_time(struct timeval time);
 
 /**
  * @brief Increment sca agent queries counter
@@ -309,10 +357,22 @@ void w_inc_agent_rootcheck();
 void w_inc_agent_sca();
 
 /**
+ * @brief Increment sca agent time counter
+ *
+ */
+void w_inc_agent_sca_time(struct timeval time);
+
+/**
  * @brief Increment ciscat agent queries counter
  *
  */
 void w_inc_agent_ciscat();
+
+/**
+ * @brief Increment ciscat agent time counter
+ *
+ */
+void w_inc_agent_ciscat_time(struct timeval time);
 
 /**
  * @brief Increment vulnerability detector agent queries counter
@@ -321,16 +381,22 @@ void w_inc_agent_ciscat();
 void w_inc_agent_vul_detector();
 
 /**
+ * @brief Increment vulnerability detector agent time counter
+ *
+ */
+void w_inc_agent_vul_detector_time(struct timeval time);
+
+/**
  * @brief Increment dbsync agent queries counter
  *
  */
 void w_inc_agent_dbsync();
 
 /**
- * @brief Increment unknown agent queries counter
+ * @brief Increment dbsync agent time counter
  *
  */
-void w_inc_agent_unknown();
+void w_inc_agent_dbsync_time(struct timeval time);
 
 /**
  * @brief Increment syscheck agent queries counter
@@ -339,16 +405,34 @@ void w_inc_agent_unknown();
 void w_inc_agent_syscheck();
 
 /**
+ * @brief Increment syscheck agent time counter
+ *
+ */
+void w_inc_agent_syscheck_time(struct timeval time);
+
+/**
  * @brief Increment fim file agent queries counter
  *
  */
 void w_inc_agent_fim_file();
 
 /**
+ * @brief Increment fim file agent time counter
+ *
+ */
+void w_inc_agent_fim_file_time(struct timeval time);
+
+/**
  * @brief Increment fim registry agent queries counter
  *
  */
 void w_inc_agent_fim_registry();
+
+/**
+ * @brief Increment fim registry agent time counter
+ *
+ */
+void w_inc_agent_fim_registry_time(struct timeval time);
 
 /**
  * @brief Increment syscollector processes agent queries counter
@@ -398,12 +482,17 @@ void w_inc_agent_syscollector_network_iface();
  */
 void w_inc_agent_syscollector_hwinfo();
 
-
 /**
  * @brief Increment syscollector OS information agent queries counter
  *
  */
 void w_inc_agent_syscollector_osinfo();
+
+/**
+ * @brief Increment syscollector agent time counter
+ *
+ */
+void w_inc_agent_syscollector_times(struct timeval time, int type);
 
 /**
  * @brief Increment deprecated syscollector processes agent queries counter
@@ -412,10 +501,22 @@ void w_inc_agent_syscollector_osinfo();
 void w_inc_agent_syscollector_deprecated_process();
 
 /**
+ * @brief Increment deprecated process syscollector agent time counter
+ *
+ */
+void w_inc_agent_syscollector_deprecated_process_time(struct timeval time);
+
+/**
  * @brief Increment deprecated syscollector packages agent queries counter
  *
  */
 void w_inc_agent_syscollector_deprecated_packages();
+
+/**
+ * @brief Increment deprecated packages syscollector agent time counter
+ *
+ */
+void w_inc_agent_syscollector_deprecated_packages_time(struct timeval time);
 
 /**
  * @brief Increment deprecated syscollector hotfixes agent queries counter
@@ -424,10 +525,22 @@ void w_inc_agent_syscollector_deprecated_packages();
 void w_inc_agent_syscollector_deprecated_hotfixes();
 
 /**
+ * @brief Increment deprecated hotfixes syscollector agent time counter
+ *
+ */
+void w_inc_agent_syscollector_deprecated_hotfixes_time(struct timeval time);
+
+/**
  * @brief Increment deprecated syscollector ports agent queries counter
  *
  */
 void w_inc_agent_syscollector_deprecated_ports();
+
+/**
+ * @brief Increment deprecated ports syscollector agent time counter
+ *
+ */
+void w_inc_agent_syscollector_deprecated_ports_time(struct timeval time);
 
 /**
  * @brief Increment deprecated syscollector network protocol agent queries counter
@@ -436,10 +549,22 @@ void w_inc_agent_syscollector_deprecated_ports();
 void w_inc_agent_syscollector_deprecated_network_protocol();
 
 /**
+ * @brief Increment deprecated network protocol syscollector agent time counter
+ *
+ */
+void w_inc_agent_syscollector_deprecated_network_protocol_time(struct timeval time);
+
+/**
  * @brief Increment deprecated syscollector network address agent queries counter
  *
  */
 void w_inc_agent_syscollector_deprecated_network_address();
+
+/**
+ * @brief Increment deprecated network address syscollector agent time counter
+ *
+ */
+void w_inc_agent_syscollector_deprecated_network_address_time(struct timeval time);
 
 /**
  * @brief Increment deprecated syscollector network information agent queries counter
@@ -448,16 +573,40 @@ void w_inc_agent_syscollector_deprecated_network_address();
 void w_inc_agent_syscollector_deprecated_network_info();
 
 /**
+ * @brief Increment deprecated network information syscollector agent time counter
+ *
+ */
+void w_inc_agent_syscollector_deprecated_network_info_time(struct timeval time);
+
+/**
  * @brief Increment deprecated syscollector hardware agent queries counter
  *
  */
 void w_inc_agent_syscollector_deprecated_hardware();
 
 /**
+ * @brief Increment deprecated hardware syscollector agent time counter
+ *
+ */
+void w_inc_agent_syscollector_deprecated_hardware_time(struct timeval time);
+
+/**
  * @brief Increment deprecated syscollector OS information agent queries counter
  *
  */
 void w_inc_agent_syscollector_deprecated_osinfo();
+
+/**
+ * @brief Increment deprecated OS information syscollector agent time counter
+ *
+ */
+void w_inc_agent_syscollector_deprecated_osinfo_time(struct timeval time);
+
+/**
+ * @brief Increment unknown agent queries counter
+ *
+ */
+void w_inc_agent_unknown();
 
 /**
  * @brief Increment total global queries counter
@@ -472,16 +621,22 @@ void w_inc_global();
 void w_inc_global_sql();
 
 /**
+ * @brief Increment sql global time counter
+ *
+ */
+void w_inc_global_sql_time(struct timeval time);
+
+/**
  * @brief Increment backup global queries counter
  *
  */
 void w_inc_global_backup();
 
 /**
- * @brief Increment unknown global queries counter
+ * @brief Increment backup global time counter
  *
  */
-void w_inc_global_unknown();
+void w_inc_global_backup_time(struct timeval time);
 
 /**
  * @brief Increment insert-agent global agent queries counter
@@ -490,10 +645,22 @@ void w_inc_global_unknown();
 void w_inc_global_agent_insert_agent();
 
 /**
+ * @brief Increment insert-agent global agent time counter
+ *
+ */
+void w_inc_global_agent_insert_agent_time(struct timeval time);
+
+/**
  * @brief Increment update-agent-data global agent queries counter
  *
  */
 void w_inc_global_agent_update_agent_data();
+
+/**
+ * @brief Increment update-agent-data global agent time counter
+ *
+ */
+void w_inc_global_agent_update_agent_data_time(struct timeval time);
 
 /**
  * @brief Increment update-agent-name global agent queries counter
@@ -502,10 +669,22 @@ void w_inc_global_agent_update_agent_data();
 void w_inc_global_agent_update_agent_name();
 
 /**
+ * @brief Increment update-agent-name global agent time counter
+ *
+ */
+void w_inc_global_agent_update_agent_name_time(struct timeval time);
+
+/**
  * @brief Increment update-keepalive global agent queries counter
  *
  */
 void w_inc_global_agent_update_keepalive();
+
+/**
+ * @brief Increment update-keepalive global agent time counter
+ *
+ */
+void w_inc_global_agent_update_keepalive_time(struct timeval time);
 
 /**
  * @brief Increment update-connection-status global agent queries counter
@@ -514,16 +693,22 @@ void w_inc_global_agent_update_keepalive();
 void w_inc_global_agent_update_connection_status();
 
 /**
+ * @brief Increment update-connection-status global agent time counter
+ *
+ */
+void w_inc_global_agent_update_connection_status_time(struct timeval time);
+
+/**
  * @brief Increment reset-agents-connection global agent queries counter
  *
  */
 void w_inc_global_agent_reset_agents_connection();
 
 /**
- * @brief Increment sync-agent-info-set global agent queries counter
+ * @brief Increment reset-agents-connection global agent time counter
  *
  */
-void w_inc_global_agent_sync_agent_info_set();
+void w_inc_global_agent_reset_agents_connection_time(struct timeval time);
 
 /**
  * @brief Increment delete-agent global agent queries counter
@@ -532,10 +717,22 @@ void w_inc_global_agent_sync_agent_info_set();
 void w_inc_global_agent_delete_agent();
 
 /**
+ * @brief Increment delete-agent global agent time counter
+ *
+ */
+void w_inc_global_agent_delete_agent_time(struct timeval time);
+
+/**
  * @brief Increment select-agent-name global agent queries counter
  *
  */
 void w_inc_global_agent_select_agent_name();
+
+/**
+ * @brief Increment select-agent-name global agent time counter
+ *
+ */
+void w_inc_global_agent_select_agent_name_time(struct timeval time);
 
 /**
  * @brief Increment select-agent-group global agent queries counter
@@ -544,10 +741,22 @@ void w_inc_global_agent_select_agent_name();
 void w_inc_global_agent_select_agent_group();
 
 /**
+ * @brief Increment select-agent-group global agent time counter
+ *
+ */
+void w_inc_global_agent_select_agent_group_time(struct timeval time);
+
+/**
  * @brief Increment find-agent global agent queries counter
  *
  */
 void w_inc_global_agent_find_agent();
+
+/**
+ * @brief Increment find-agent global agent time counter
+ *
+ */
+void w_inc_global_agent_find_agent_time(struct timeval time);
 
 /**
  * @brief Increment get-agent-info global agent queries counter
@@ -556,10 +765,22 @@ void w_inc_global_agent_find_agent();
 void w_inc_global_agent_get_agent_info();
 
 /**
+ * @brief Increment get-agent-info global agent time counter
+ *
+ */
+void w_inc_global_agent_get_agent_info_time(struct timeval time);
+
+/**
  * @brief Increment get-all-agents global agent queries counter
  *
  */
 void w_inc_global_agent_get_all_agents();
+
+/**
+ * @brief Increment get-all-agents global agent time counter
+ *
+ */
+void w_inc_global_agent_get_all_agents_time(struct timeval time);
 
 /**
  * @brief Increment get-agents-by-connection-status global agent queries counter
@@ -568,10 +789,22 @@ void w_inc_global_agent_get_all_agents();
 void w_inc_global_agent_get_agents_by_connection_status();
 
 /**
+ * @brief Increment get-agents-by-connection-status global agent time counter
+ *
+ */
+void w_inc_global_agent_get_agents_by_connection_status_time(struct timeval time);
+
+/**
  * @brief Increment disconnect-agents global agent queries counter
  *
  */
 void w_inc_global_agent_disconnect_agents();
+
+/**
+ * @brief Increment disconnect-agents global agent time counter
+ *
+ */
+void w_inc_global_agent_disconnect_agents_time(struct timeval time);
 
 /**
  * @brief Increment sync-agent-info-get global agent queries counter
@@ -580,10 +813,34 @@ void w_inc_global_agent_disconnect_agents();
 void w_inc_global_agent_sync_agent_info_get();
 
 /**
+ * @brief Increment sync-agent-info-get global agent time counter
+ *
+ */
+void w_inc_global_agent_sync_agent_info_get_time(struct timeval time);
+
+/**
+ * @brief Increment sync-agent-info-set global agent queries counter
+ *
+ */
+void w_inc_global_agent_sync_agent_info_set();
+
+/**
+ * @brief Increment sync-agent-info-set global agent time counter
+ *
+ */
+void w_inc_global_agent_sync_agent_info_set_time(struct timeval time);
+
+/**
  * @brief Increment sync-agent-groups-get global agent queries counter
  *
  */
 void w_inc_global_agent_sync_agent_groups_get();
+
+/**
+ * @brief Increment sync-agent-groups-get global agent time counter
+ *
+ */
+void w_inc_global_agent_sync_agent_groups_get_time(struct timeval time);
 
 /**
  * @brief Increment set-agent-groups global agent queries counter
@@ -592,10 +849,22 @@ void w_inc_global_agent_sync_agent_groups_get();
 void w_inc_global_agent_set_agent_groups();
 
 /**
+ * @brief Increment set-agent-groups global agent time counter
+ *
+ */
+void w_inc_global_agent_set_agent_groups_time(struct timeval time);
+
+/**
  * @brief Increment get-groups-integrity global agent queries counter
  *
  */
 void w_inc_global_agent_get_groups_integrity();
+
+/**
+ * @brief Increment get-groups-integrity global agent time counter
+ *
+ */
+void w_inc_global_agent_get_groups_integrity_time(struct timeval time);
 
 /**
  * @brief Increment insert-agent-group global group queries counter
@@ -604,10 +873,22 @@ void w_inc_global_agent_get_groups_integrity();
 void w_inc_global_group_insert_agent_group();
 
 /**
+ * @brief Increment insert-agent-group global group time counter
+ *
+ */
+void w_inc_global_group_insert_agent_group_time(struct timeval time);
+
+/**
  * @brief Increment delete-group global group queries counter
  *
  */
 void w_inc_global_group_delete_group();
+
+/**
+ * @brief Increment delete-group global group time counter
+ *
+ */
+void w_inc_global_group_delete_group_time(struct timeval time);
 
 /**
  * @brief Increment select-groups global group queries counter
@@ -616,10 +897,22 @@ void w_inc_global_group_delete_group();
 void w_inc_global_group_select_groups();
 
 /**
+ * @brief Increment select-groups global group time counter
+ *
+ */
+void w_inc_global_group_select_groups_time(struct timeval time);
+
+/**
  * @brief Increment find-group global group queries counter
  *
  */
 void w_inc_global_group_find_group();
+
+/**
+ * @brief Increment find-group global group time counter
+ *
+ */
+void w_inc_global_group_find_group_time(struct timeval time);
 
 /**
  * @brief Increment select-group-belong global belongs queries counter
@@ -628,16 +921,40 @@ void w_inc_global_group_find_group();
 void w_inc_global_belongs_select_group_belong();
 
 /**
+ * @brief Increment select-group-belong global belongs time counter
+ *
+ */
+void w_inc_global_belongs_select_group_belong_time(struct timeval time);
+
+/**
  * @brief Increment get-group-agent global belongs queries counter
  *
  */
 void w_inc_global_belongs_get_group_agent();
 
 /**
+ * @brief Increment get-group-agent global belongs time counter
+ *
+ */
+void w_inc_global_belongs_get_group_agent_time(struct timeval time);
+
+/**
  * @brief Increment get-labels global labels queries counter
  *
  */
 void w_inc_global_labels_get_labels();
+
+/**
+ * @brief Increment get-labels global labels time counter
+ *
+ */
+void w_inc_global_labels_get_labels_time(struct timeval time);
+
+/**
+ * @brief Increment unknown global queries counter
+ *
+ */
+void w_inc_global_unknown();
 
 /**
  * @brief Increment task queries counter
@@ -652,10 +969,22 @@ void w_inc_task();
 void w_inc_task_sql();
 
 /**
+ * @brief Increment sql task time counter
+ *
+ */
+void w_inc_task_sql_time(struct timeval time);
+
+/**
  * @brief Increment set-timeout task queries counter
  *
  */
 void w_inc_task_set_timeout();
+
+/**
+ * @brief Increment set-timeout task time counter
+ *
+ */
+void w_inc_task_set_timeout_time(struct timeval time);
 
 /**
  * @brief Increment delete-old task queries counter
@@ -664,10 +993,10 @@ void w_inc_task_set_timeout();
 void w_inc_task_delete_old();
 
 /**
- * @brief Increment unknown task queries counter
+ * @brief Increment delete-old task time counter
  *
  */
-void w_inc_task_unknown();
+void w_inc_task_delete_old_time(struct timeval time);
 
 /**
  * @brief Increment upgrade task queries counter
@@ -676,10 +1005,22 @@ void w_inc_task_unknown();
 void w_inc_task_upgrade();
 
 /**
+ * @brief Increment upgrade task time counter
+ *
+ */
+void w_inc_task_upgrade_time(struct timeval time);
+
+/**
  * @brief Increment custom upgrade task queries counter
  *
  */
 void w_inc_task_upgrade_custom();
+
+/**
+ * @brief Increment custom upgrade task time counter
+ *
+ */
+void w_inc_task_upgrade_custom_time(struct timeval time);
 
 /**
  * @brief Increment get-status upgrade task queries counter
@@ -688,10 +1029,22 @@ void w_inc_task_upgrade_custom();
 void w_inc_task_upgrade_get_status();
 
 /**
+ * @brief Increment get-status upgrade task time counter
+ *
+ */
+void w_inc_task_upgrade_get_status_time(struct timeval time);
+
+/**
  * @brief Increment update-status upgrade task queries counter
  *
  */
 void w_inc_task_upgrade_update_status();
+
+/**
+ * @brief Increment update-status upgrade task time counter
+ *
+ */
+void w_inc_task_upgrade_update_status_time(struct timeval time);
 
 /**
  * @brief Increment result upgrade task queries counter
@@ -700,10 +1053,28 @@ void w_inc_task_upgrade_update_status();
 void w_inc_task_upgrade_result();
 
 /**
+ * @brief Increment result upgrade task time counter
+ *
+ */
+void w_inc_task_upgrade_result_time(struct timeval time);
+
+/**
  * @brief Increment cancel-tasks upgrade task queries counter
  *
  */
 void w_inc_task_upgrade_cancel_tasks();
+
+/**
+ * @brief Increment cancel-tasks upgrade task time counter
+ *
+ */
+void w_inc_task_upgrade_cancel_tasks_time(struct timeval time);
+
+/**
+ * @brief Increment unknown task queries counter
+ *
+ */
+void w_inc_task_unknown();
 
 /**
  * @brief Increment mitre queries counter
@@ -718,6 +1089,12 @@ void w_inc_mitre();
 void w_inc_mitre_sql();
 
 /**
+ * @brief Increment sql mitre time counter
+ *
+ */
+void w_inc_mitre_sql_time(struct timeval time);
+
+/**
  * @brief Increment unknown mitre queries counter
  *
  */
@@ -728,384 +1105,6 @@ void w_inc_mitre_unknown();
  *
  */
 void w_inc_unknown();
-
-/**
- * @brief Increment syscheck agent time counter
- *
- */
-void w_inc_agent_syscheck_time(struct timeval time);
-
-/**
- * @brief Increment fim file agent time counter
- *
- */
-void w_inc_agent_fim_file_time(struct timeval time);
-
-/**
- * @brief Increment fim registry agent time counter
- *
- */
-void w_inc_agent_fim_registry_time(struct timeval time);
-
-/**
- * @brief Increment syscollector agent time counter
- *
- */
-void w_inc_agent_syscollector_times(struct timeval time, wdb_component_t type);
-
-/**
- * @brief Increment deprecated process syscollector agent time counter
- *
- */
-void w_inc_agent_syscollector_deprecated_process_time(struct timeval time);
-
-/**
- * @brief Increment deprecated hotfixes syscollector agent time counter
- *
- */
-void w_inc_agent_syscollector_deprecated_hotfixes_time(struct timeval time);
-
-/**
- * @brief Increment deprecated packages syscollector agent time counter
- *
- */
-void w_inc_agent_syscollector_deprecated_packages_time(struct timeval time);
-
-/**
- * @brief Increment deprecated ports syscollector agent time counter
- *
- */
-void w_inc_agent_syscollector_deprecated_ports_time(struct timeval time);
-
-/**
- * @brief Increment deprecated hardware syscollector agent time counter
- *
- */
-void w_inc_agent_syscollector_deprecated_hardware_time(struct timeval time);
-
-/**
- * @brief Increment deprecated OS information syscollector agent time counter
- *
- */
-void w_inc_agent_syscollector_deprecated_osinfo_time(struct timeval time);
-
-/**
- * @brief Increment deprecated network address syscollector agent time counter
- *
- */
-void w_inc_agent_syscollector_deprecated_network_address_time(struct timeval time);
-
-/**
- * @brief Increment deprecated network protocol syscollector agent time counter
- *
- */
-void w_inc_agent_syscollector_deprecated_network_protocol_time(struct timeval time);
-
-/**
- * @brief Increment deprecated network information syscollector agent time counter
- *
- */
-void w_inc_agent_syscollector_deprecated_network_info_time(struct timeval time);
-
-/**
- * @brief Increment sql agent time counter
- *
- */
-void w_inc_agent_sql_time(struct timeval time);
-
-/**
- * @brief Increment remove agent time counter
- *
- */
-void w_inc_agent_remove_time(struct timeval time);
-
-/**
- * @brief Increment begin agent time counter
- *
- */
-void w_inc_agent_begin_time(struct timeval time);
-
-/**
- * @brief Increment commit agent time counter
- *
- */
-void w_inc_agent_commit_time(struct timeval time);
-
-/**
- * @brief Increment close agent time counter
- *
- */
-void w_inc_agent_close_time(struct timeval time);
-
-/**
- * @brief Increment rootcheck agent time counter
- *
- */
-void w_inc_agent_rootcheck_time(struct timeval time);
-
-/**
- * @brief Increment ciscat agent time counter
- *
- */
-void w_inc_agent_ciscat_time(struct timeval time);
-
-/**
- * @brief Increment dbsync agent time counter
- *
- */
-void w_inc_agent_dbsync_time(struct timeval time);
-
-/**
- * @brief Increment sca agent time counter
- *
- */
-void w_inc_agent_sca_time(struct timeval time);
-
-/**
- * @brief Increment vulnerability detector agent time counter
- *
- */
-void w_inc_agent_vul_detector_time(struct timeval time);
-
-/**
- * @brief Increment sql mitre time counter
- *
- */
-void w_inc_mitre_sql_time(struct timeval time);
-
-/**
- * @brief Increment insert-agent global agent time counter
- *
- */
-void w_inc_global_agent_insert_agent_time(struct timeval time);
-
-/**
- * @brief Increment update-agent-data global agent time counter
- *
- */
-void w_inc_global_agent_update_agent_data_time(struct timeval time);
-
-/**
- * @brief Increment update-agent-name global agent time counter
- *
- */
-void w_inc_global_agent_update_agent_name_time(struct timeval time);
-
-/**
- * @brief Increment update-keepalive global agent time counter
- *
- */
-void w_inc_global_agent_update_keepalive_time(struct timeval time);
-
-/**
- * @brief Increment update-connection-status global agent time counter
- *
- */
-void w_inc_global_agent_update_connection_status_time(struct timeval time);
-
-/**
- * @brief Increment reset-agents-connection global agent time counter
- *
- */
-void w_inc_global_agent_reset_agents_connection_time(struct timeval time);
-
-/**
- * @brief Increment sync-agent-info-set global agent time counter
- *
- */
-void w_inc_global_agent_sync_agent_info_set_time(struct timeval time);
-
-/**
- * @brief Increment delete-agent global agent time counter
- *
- */
-void w_inc_global_agent_delete_agent_time(struct timeval time);
-
-/**
- * @brief Increment select-agent-name global agent time counter
- *
- */
-void w_inc_global_agent_select_agent_name_time(struct timeval time);
-
-/**
- * @brief Increment select-agent-group global agent time counter
- *
- */
-void w_inc_global_agent_select_agent_group_time(struct timeval time);
-
-/**
- * @brief Increment find-agent global agent time counter
- *
- */
-void w_inc_global_agent_find_agent_time(struct timeval time);
-
-/**
- * @brief Increment get-agent-info global agent time counter
- *
- */
-void w_inc_global_agent_get_agent_info_time(struct timeval time);
-
-/**
- * @brief Increment get-all-agents global agent time counter
- *
- */
-void w_inc_global_agent_get_all_agents_time(struct timeval time);
-
-/**
- * @brief Increment get-agents-by-connection-status global agent time counter
- *
- */
-void w_inc_global_agent_get_agents_by_connection_status_time(struct timeval time);
-
-/**
- * @brief Increment disconnect-agents global agent time counter
- *
- */
-void w_inc_global_agent_disconnect_agents_time(struct timeval time);
-
-/**
- * @brief Increment sync-agent-info-get global agent time counter
- *
- */
-void w_inc_global_agent_sync_agent_info_get_time(struct timeval time);
-
-/**
- * @brief Increment sync-agent-groups-get global agent time counter
- *
- */
-void w_inc_global_agent_sync_agent_groups_get_time(struct timeval time);
-
-/**
- * @brief Increment set-agent-groups global agent time counter
- *
- */
-void w_inc_global_agent_set_agent_groups_time(struct timeval time);
-
-/**
- * @brief Increment get-groups-integrity global agent time counter
- *
- */
-void w_inc_global_agent_get_groups_integrity_time(struct timeval time);
-
-/**
- * @brief Increment insert-agent-group global group time counter
- *
- */
-void w_inc_global_group_insert_agent_group_time(struct timeval time);
-
-/**
- * @brief Increment delete-group global group time counter
- *
- */
-void w_inc_global_group_delete_group_time(struct timeval time);
-
-/**
- * @brief Increment select-groups global group time counter
- *
- */
-void w_inc_global_group_select_groups_time(struct timeval time);
-
-/**
- * @brief Increment find-group global group time counter
- *
- */
-void w_inc_global_group_find_group_time(struct timeval time);
-
-/**
- * @brief Increment select-group-belong global belongs time counter
- *
- */
-void w_inc_global_belongs_select_group_belong_time(struct timeval time);
-
-/**
- * @brief Increment get-group-agent global belongs time counter
- *
- */
-void w_inc_global_belongs_get_group_agent_time(struct timeval time);
-
-/**
- * @brief Increment get-labels global labels time counter
- *
- */
-void w_inc_global_labels_get_labels_time(struct timeval time);
-
-/**
- * @brief Increment upgrade task time counter
- *
- */
-void w_inc_task_upgrade_time(struct timeval time);
-
-/**
- * @brief Increment custom upgrade task time counter
- *
- */
-void w_inc_task_upgrade_custom_time(struct timeval time);
-
-/**
- * @brief Increment get-status upgrade task time counter
- *
- */
-void w_inc_task_upgrade_get_status_time(struct timeval time);
-
-/**
- * @brief Increment update-status upgrade task time counter
- *
- */
-void w_inc_task_upgrade_update_status_time(struct timeval time);
-
-/**
- * @brief Increment result upgrade task time counter
- *
- */
-void w_inc_task_upgrade_result_time(struct timeval time);
-
-/**
- * @brief Increment cancel-tasks upgrade task time counter
- *
- */
-void w_inc_task_upgrade_cancel_tasks_time(struct timeval time);
-
-/**
- * @brief Increment sql task time counter
- *
- */
-void w_inc_task_sql_time(struct timeval time);
-
-/**
- * @brief Increment set-timeout task time counter
- *
- */
-void w_inc_task_set_timeout_time(struct timeval time);
-
-/**
- * @brief Increment delete-old task time counter
- *
- */
-void w_inc_task_delete_old_time(struct timeval time);
-
-/**
- * @brief Increment sql global time counter
- *
- */
-void w_inc_global_sql_time(struct timeval time);
-
-/**
- * @brief Increment backup global time counter
- *
- */
-void w_inc_global_backup_time(struct timeval time);
-
-/**
- * @brief Increment get-config wazuhdb time counter
- *
- */
-void w_inc_wazuhdb_get_config_time(struct timeval time);
-
-/**
- * @brief Increment remove wazuhdb time counter
- *
- */
-void w_inc_wazuhdb_remove_time(struct timeval time);
 
 /**
  * @brief Create a JSON object with all the wazuh-db state information
