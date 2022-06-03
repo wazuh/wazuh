@@ -59,21 +59,28 @@ void wdbcom_dispatch(char* request, char* output) {
     cJSON *request_json = NULL;
     cJSON *command_json = NULL;
     const char *json_err;
+    char * output_builder;
 
     if (request_json = cJSON_ParseWithOpts(request, &json_err, 0), !request_json) {
-        snprintf(output, OS_MAXSTR + 1, "%s", wdbcom_output_builder(ERROR_INVALID_INPUT, error_messages[ERROR_INVALID_INPUT], NULL));
+        output_builder = wdbcom_output_builder(ERROR_INVALID_INPUT, error_messages[ERROR_INVALID_INPUT], NULL);
+        snprintf(output, OS_MAXSTR + 1, "%s", output_builder);
+        os_free(output_builder);
         return;
     }
 
     if (command_json = cJSON_GetObjectItem(request_json, "command"), cJSON_IsString(command_json)) {
         if (strcmp(command_json->valuestring, "getstats") == 0) {
-            snprintf(output, OS_MAXSTR + 1, "%s", wdbcom_output_builder(ERROR_OK, error_messages[ERROR_OK], wdb_create_state_json()));
+            output_builder = wdbcom_output_builder(ERROR_OK, error_messages[ERROR_OK], wdb_create_state_json());
+            snprintf(output, OS_MAXSTR + 1, "%s", output_builder);
         } else {
-            snprintf(output, OS_MAXSTR + 1, "%s", wdbcom_output_builder(ERROR_UNRECOGNIZED_COMMAND, error_messages[ERROR_UNRECOGNIZED_COMMAND], NULL));
+            output_builder = wdbcom_output_builder(ERROR_UNRECOGNIZED_COMMAND, error_messages[ERROR_UNRECOGNIZED_COMMAND], NULL);
+            snprintf(output, OS_MAXSTR + 1, "%s", output_builder);
         }
     } else {
-        snprintf(output, OS_MAXSTR + 1, "%s", wdbcom_output_builder(ERROR_EMPTY_COMMAND, error_messages[ERROR_EMPTY_COMMAND], NULL));
+        output_builder = wdbcom_output_builder(ERROR_EMPTY_COMMAND, error_messages[ERROR_EMPTY_COMMAND], NULL);
+        snprintf(output, OS_MAXSTR + 1, "%s", output_builder);
     }
 
+    os_free(output_builder);
     cJSON_Delete(request_json);
 }

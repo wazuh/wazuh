@@ -175,6 +175,9 @@ list(APPEND wdb_tests_flags "${DEBUG_OP_WRAPPERS}")
 list(APPEND wdb_tests_names "test_wazuh_db_state")
 list(APPEND wdb_tests_flags "")
 
+list(APPEND wdb_tests_names "test_wdb_com")
+list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_create_state_json")
+
 # Add extra compiling flags
 add_compile_options(-Wall)
 
