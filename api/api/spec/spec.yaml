@@ -8147,7 +8147,7 @@ paths:
                       key: 9d273b53510fef702b54a92e9cffc82e
                       port: 1516
                       bind_addr:
-                        - 0.0.0.0
+                        - "0.0.0.0"
                       nodes:
                         - wazuh-master
                       hidden: no
