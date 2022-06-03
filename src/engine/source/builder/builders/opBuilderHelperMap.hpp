@@ -63,7 +63,8 @@ base::Expression opBuilderHelperStringTrim(const std::any& definition);
  * i.e : '<field>: +s_concat/<stringA>|$<referenceA>/<stringB>|$<referenceB>/...'
  * @return base::Lifter The lifter with the `concat` transformation.
  */
-base::Lifter opBuilderHelperStringConcat(const base::DocumentValue& def, types::TracerFn tr);
+base::Lifter opBuilderHelperStringConcat(const base::DocumentValue& def,
+                                         types::TracerFn tr);
 //*************************************************
 //*           Int tranform                        *
 //*************************************************
