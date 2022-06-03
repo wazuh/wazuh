@@ -26,36 +26,36 @@ static struct column_list const TABLE_HOTFIXES[] = {
 #define HOTFIXES_FIELD_COUNT 3
 
 static struct column_list const TABLE_PROCESSES[] = {
-    { .value = { FIELD_INTEGER, 1,true,false, "scan_id" }, .next = &TABLE_PROCESSES[1] },
-    { .value = { FIELD_TEXT, 2,false,false, "scan_time" }, .next = &TABLE_PROCESSES[2] },
-    { .value = { FIELD_TEXT, 3,false,true, "pid" }, .next = &TABLE_PROCESSES[3] },
-    { .value = { FIELD_TEXT, 4,false,false, "name" }, .next = &TABLE_PROCESSES[4] },
-    { .value = { FIELD_TEXT, 5,false,false, "state" }, .next = &TABLE_PROCESSES[5] },
-    { .value = { FIELD_INTEGER, 6,false,false, "ppid" }, .next = &TABLE_PROCESSES[6] },
-    { .value = { FIELD_INTEGER, 7,false,false, "utime" }, .next = &TABLE_PROCESSES[7] },
-    { .value = { FIELD_INTEGER, 8,false,false, "stime" }, .next = &TABLE_PROCESSES[8] },
-    { .value = { FIELD_TEXT, 9,false,false, "cmd" }, .next = &TABLE_PROCESSES[9] },
-    { .value = { FIELD_TEXT, 10,false,false, "argvs" }, .next = &TABLE_PROCESSES[10] },
-    { .value = { FIELD_TEXT, 11,false,false, "euser" }, .next = &TABLE_PROCESSES[11] },
-    { .value = { FIELD_TEXT, 12,false,false, "ruser" }, .next = &TABLE_PROCESSES[12] },
-    { .value = { FIELD_TEXT, 13,false,false, "suser" }, .next = &TABLE_PROCESSES[13] },
-    { .value = { FIELD_TEXT, 14,false,false, "egroup" }, .next = &TABLE_PROCESSES[14] },
-    { .value = { FIELD_TEXT, 15,false,false, "rgroup" }, .next = &TABLE_PROCESSES[15] },
-    { .value = { FIELD_TEXT, 16,false,false, "sgroup" }, .next = &TABLE_PROCESSES[16] },
-    { .value = { FIELD_TEXT, 17,false,false, "fgroup" }, .next = &TABLE_PROCESSES[17] },
-    { .value = { FIELD_INTEGER, 18,false,false, "priority" }, .next = &TABLE_PROCESSES[18] },
-    { .value = { FIELD_INTEGER, 19,false,false, "nice" }, .next = &TABLE_PROCESSES[19] },
-    { .value = { FIELD_INTEGER, 20,false,false, "size" }, .next = &TABLE_PROCESSES[20] },
-    { .value = { FIELD_INTEGER, 21,false,false, "vm_size" }, .next = &TABLE_PROCESSES[21] },
-    { .value = { FIELD_INTEGER, 22,false,false, "resident" }, .next = &TABLE_PROCESSES[22] },
-    { .value = { FIELD_INTEGER, 23,false,false, "share" }, .next = &TABLE_PROCESSES[23] },
-    { .value = { FIELD_INTEGER_LONG, 24,false,false, "start_time" }, .next = &TABLE_PROCESSES[24] },
-    { .value = { FIELD_INTEGER, 25,false,false, "pgrp" }, .next = &TABLE_PROCESSES[25] },
-    { .value = { FIELD_INTEGER, 26,false,false, "session" }, .next = &TABLE_PROCESSES[26] },
-    { .value = { FIELD_INTEGER, 27,false,false, "nlwp" }, .next = &TABLE_PROCESSES[27] },
-    { .value = { FIELD_INTEGER, 28,false,false, "tgid" }, .next = &TABLE_PROCESSES[28] },
-    { .value = { FIELD_INTEGER, 29,false,false, "tty" }, .next = &TABLE_PROCESSES[29] },
-    { .value = { FIELD_INTEGER, 30,false,false, "processor"}, .next = &TABLE_PROCESSES[30] },
+    { .value = { FIELD_INTEGER, 1, true, false, "scan_id" }, .next = &TABLE_PROCESSES[1] },
+    { .value = { FIELD_TEXT, 2, false, false, "scan_time" }, .next = &TABLE_PROCESSES[2] },
+    { .value = { FIELD_TEXT, 3, false, true, "pid" }, .next = &TABLE_PROCESSES[3] },
+    { .value = { FIELD_TEXT, 4, false, false, "name" }, .next = &TABLE_PROCESSES[4] },
+    { .value = { FIELD_TEXT, 5, false, false, "state" }, .next = &TABLE_PROCESSES[5] },
+    { .value = { FIELD_INTEGER, 6, false, false, "ppid" }, .next = &TABLE_PROCESSES[6] },
+    { .value = { FIELD_INTEGER, 7, false, false, "utime" }, .next = &TABLE_PROCESSES[7] },
+    { .value = { FIELD_INTEGER, 8, false, false, "stime" }, .next = &TABLE_PROCESSES[8] },
+    { .value = { FIELD_TEXT, 9, false, false, "cmd" }, .next = &TABLE_PROCESSES[9] },
+    { .value = { FIELD_TEXT, 10, false, false, "argvs" }, .next = &TABLE_PROCESSES[10] },
+    { .value = { FIELD_TEXT, 11, false, false, "euser" }, .next = &TABLE_PROCESSES[11] },
+    { .value = { FIELD_TEXT, 12, false, false, "ruser" }, .next = &TABLE_PROCESSES[12] },
+    { .value = { FIELD_TEXT, 13, false, false, "suser" }, .next = &TABLE_PROCESSES[13] },
+    { .value = { FIELD_TEXT, 14, false, false, "egroup" }, .next = &TABLE_PROCESSES[14] },
+    { .value = { FIELD_TEXT, 15, false, false, "rgroup" }, .next = &TABLE_PROCESSES[15] },
+    { .value = { FIELD_TEXT, 16, false, false, "sgroup" }, .next = &TABLE_PROCESSES[16] },
+    { .value = { FIELD_TEXT, 17, false, false, "fgroup" }, .next = &TABLE_PROCESSES[17] },
+    { .value = { FIELD_INTEGER, 18, false, false, "priority" }, .next = &TABLE_PROCESSES[18] },
+    { .value = { FIELD_INTEGER, 19, false, false, "nice" }, .next = &TABLE_PROCESSES[19] },
+    { .value = { FIELD_INTEGER, 20, false, false, "size" }, .next = &TABLE_PROCESSES[20] },
+    { .value = { FIELD_INTEGER, 21, false, false, "vm_size" }, .next = &TABLE_PROCESSES[21] },
+    { .value = { FIELD_INTEGER, 22, false, false, "resident" }, .next = &TABLE_PROCESSES[22] },
+    { .value = { FIELD_INTEGER, 23, false, false, "share" }, .next = &TABLE_PROCESSES[23] },
+    { .value = { FIELD_INTEGER_LONG, 24, false, false, "start_time" }, .next = &TABLE_PROCESSES[24] },
+    { .value = { FIELD_INTEGER, 25, false, false, "pgrp" }, .next = &TABLE_PROCESSES[25] },
+    { .value = { FIELD_INTEGER, 26, false, false, "session" }, .next = &TABLE_PROCESSES[26] },
+    { .value = { FIELD_INTEGER, 27, false, false, "nlwp" }, .next = &TABLE_PROCESSES[27] },
+    { .value = { FIELD_INTEGER, 28, false, false, "tgid" }, .next = &TABLE_PROCESSES[28] },
+    { .value = { FIELD_INTEGER, 29, false, false, "tty" }, .next = &TABLE_PROCESSES[29] },
+    { .value = { FIELD_INTEGER, 30, false, false, "processor"}, .next = &TABLE_PROCESSES[30] },
     { .value = { FIELD_TEXT, 31, false, false, "checksum" }, .next = NULL }
 };
 #define PROCESSES_FIELD_COUNT 30
@@ -116,12 +116,12 @@ static struct column_list const TABLE_PORTS[] = {
     { .value = { FIELD_INTEGER, 7, false, false, "remote_port" }, .next = &TABLE_PORTS[7]},
     { .value = { FIELD_INTEGER, 8, false, false, "tx_queue" }, .next = &TABLE_PORTS[8]},
     { .value = { FIELD_INTEGER, 9, false, false, "rx_queue" }, .next = &TABLE_PORTS[9]},
-    { .value = { FIELD_INTEGER_LONG,10, false, true, "inode" }, .next = &TABLE_PORTS[10]},
-    { .value = { FIELD_TEXT,11, false, false, "state" }, .next = &TABLE_PORTS[11]},
-    { .value = { FIELD_INTEGER,12, false, false, "PID" }, .next = &TABLE_PORTS[12]},
-    { .value = { FIELD_TEXT,13, false, false, "process" }, .next = &TABLE_PORTS[13]},
-    { .value = { FIELD_TEXT,14, false, false, "checksum" }, .next = &TABLE_PORTS[14]},
-    { .value = { FIELD_TEXT,15, false, false, "item_id" }, .next = NULL},
+    { .value = { FIELD_INTEGER_LONG, 10, false, true, "inode" }, .next = &TABLE_PORTS[10]},
+    { .value = { FIELD_TEXT, 11, false, false, "state" }, .next = &TABLE_PORTS[11]},
+    { .value = { FIELD_INTEGER, 12, false, false, "PID" }, .next = &TABLE_PORTS[12]},
+    { .value = { FIELD_TEXT, 13, false, false, "process" }, .next = &TABLE_PORTS[13]},
+    { .value = { FIELD_TEXT, 14, false, false, "checksum" }, .next = &TABLE_PORTS[14]},
+    { .value = { FIELD_TEXT, 15, false, false, "item_id" }, .next = NULL},
 };
 #define PORTS_FIELD_COUNT 14
 
@@ -1853,7 +1853,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
 
         curr = next;
-        pm_id = strtol(curr,NULL,10);
+        pm_id = strtol(curr, NULL, 10);
 
         result = wdb_sca_find(wdb, pm_id, result_found);
 
@@ -1862,7 +1862,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
                 snprintf(output, OS_MAXSTR + 1, "ok not found");
                 break;
             case 1:
-                snprintf(output, OS_MAXSTR + 1, "ok found %s",result_found);
+                snprintf(output, OS_MAXSTR + 1, "ok found %s", result_found);
                 break;
             default:
                 mdebug1("Cannot query Security Configuration Assessment.");
@@ -1875,7 +1875,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         int scan_id;
 
         curr = next;
-        pm_id = strtol(curr,NULL,10);
+        pm_id = strtol(curr, NULL, 10);
 
         if (next = strchr(curr, '|'), !next) {
             mdebug1("Invalid Security Configuration Assessment query syntax.");
@@ -1922,7 +1922,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             scan_id = OS_INVALID;
         else
-            scan_id = strtol(curr,NULL,10);
+            scan_id = strtol(curr, NULL, 10);
 
         if (result = wdb_sca_update(wdb, result_check, pm_id, scan_id, status_check, reason_check), result < 0) {
             mdebug1("Cannot update Security Configuration Assessment information.");
@@ -1962,84 +1962,84 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         cJSON *status = NULL;
         cJSON *reason = NULL;
 
-        if ( scan_id = cJSON_GetObjectItem(event, "id"), !scan_id) {
+        if (scan_id = cJSON_GetObjectItem(event, "id"), !scan_id) {
             mdebug1("Invalid Security Configuration Assessment query syntax. JSON object not found or invalid");
             snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
             return OS_INVALID;
         }
 
-        if ( !scan_id->valueint ) {
+        if (!scan_id->valueint) {
             mdebug1("Malformed JSON: field 'id' must be a number");
             snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
             return OS_INVALID;
         }
 
-        if ( policy_id = cJSON_GetObjectItem(event, "policy_id"), !policy_id) {
+        if (policy_id = cJSON_GetObjectItem(event, "policy_id"), !policy_id) {
             mdebug1("Malformed JSON: field 'policy_id' not found");
             snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
             return OS_INVALID;
         }
 
-        if ( !policy_id->valuestring ) {
+        if (!policy_id->valuestring) {
             mdebug1("Malformed JSON: field 'policy_id' must be a string");
             snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
             return OS_INVALID;
         }
 
-        if ( check = cJSON_GetObjectItem(event, "check"), !check) {
+        if (check = cJSON_GetObjectItem(event, "check"), !check) {
             mdebug1("Malformed JSON: field 'check' not found");
             return OS_INVALID;
 
         } else {
-            if ( id = cJSON_GetObjectItem(check, "id"), !id) {
+            if (id = cJSON_GetObjectItem(check, "id"), !id) {
                 mdebug1("Malformed JSON: field 'id' not found");
                 return OS_INVALID;
             }
 
-            if ( !id->valueint ) {
+            if (!id->valueint) {
                 mdebug1("Malformed JSON: field 'id' must be a string");
                 return OS_INVALID;
             }
 
-            if ( title = cJSON_GetObjectItem(check, "title"), !title) {
+            if (title = cJSON_GetObjectItem(check, "title"), !title) {
                 mdebug1("Malformed JSON: field 'title' not found");
                 return OS_INVALID;
             }
 
-            if ( !title->valuestring ) {
+            if (!title->valuestring) {
                 mdebug1("Malformed JSON: field 'title' must be a string");
                 return OS_INVALID;
             }
 
             description = cJSON_GetObjectItem(check, "description");
 
-            if ( description && !description->valuestring ) {
+            if (description && !description->valuestring) {
                 mdebug1("Malformed JSON: field 'description' must be a string");
                 return OS_INVALID;
             }
 
             rationale = cJSON_GetObjectItem(check, "rationale");
 
-            if ( rationale && !rationale->valuestring ) {
+            if (rationale && !rationale->valuestring) {
                 mdebug1("Malformed JSON: field 'rationale' must be a string");
                 return OS_INVALID;
             }
 
             remediation = cJSON_GetObjectItem(check, "remediation");
-            if ( remediation && !remediation->valuestring ) {
+            if (remediation && !remediation->valuestring) {
                 mdebug1("Malformed JSON: field 'remediation' must be a string");
                 return OS_INVALID;
             }
 
             reference = cJSON_GetObjectItem(check, "references");
 
-            if ( reference && !reference->valuestring ) {
+            if (reference && !reference->valuestring) {
                 mdebug1("Malformed JSON: field 'reference' must be a string");
                 return OS_INVALID;
             }
 
             file = cJSON_GetObjectItem(check, "file");
-            if ( file && !file->valuestring ) {
+            if (file && !file->valuestring) {
                 mdebug1("Malformed JSON: field 'file' must be a string");
                 return OS_INVALID;
             }
@@ -2051,53 +2051,53 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
             }
 
             directory = cJSON_GetObjectItem(check, "directory");
-            if ( directory && !directory->valuestring ) {
+            if (directory && !directory->valuestring) {
                 mdebug1("Malformed JSON: field 'directory' must be a string");
                 return OS_INVALID;
             }
 
             process = cJSON_GetObjectItem(check, "process");
-            if ( process && !process->valuestring ) {
+            if (process && !process->valuestring) {
                 mdebug1("Malformed JSON: field 'process' must be a string");
                 return OS_INVALID;
             }
 
             registry = cJSON_GetObjectItem(check, "registry");
-            if ( registry && !registry->valuestring ) {
+            if (registry && !registry->valuestring) {
                 mdebug1("Malformed JSON: field 'registry' must be a string");
                 return OS_INVALID;
             }
 
             command = cJSON_GetObjectItem(check, "command");
-            if ( command && !command->valuestring ) {
+            if (command && !command->valuestring) {
                 mdebug1("Malformed JSON: field 'command' must be a string");
                 return OS_INVALID;
             }
 
-            if ( status = cJSON_GetObjectItem(check, "status"), status) {
-                if ( reason = cJSON_GetObjectItem(check, "reason"), !reason) {
+            if (status = cJSON_GetObjectItem(check, "status"), status) {
+                if (reason = cJSON_GetObjectItem(check, "reason"), !reason) {
                     merror("Malformed JSON: field 'reason' not found");
                     return OS_INVALID;
                 }
 
-                if ( !status->valuestring ) {
+                if (!status->valuestring) {
                     merror("Malformed JSON: field 'status' must be a string");
                     return OS_INVALID;
                 }
 
-                if ( !reason->valuestring ) {
+                if (!reason->valuestring) {
                     merror("Malformed JSON: field 'reason' must be a string");
                     return OS_INVALID;
                 }
             }
 
-            if ( result_check = cJSON_GetObjectItem(check, "result"), !result_check) {
+            if (result_check = cJSON_GetObjectItem(check, "result"), !result_check) {
                 if (!status) {
                     merror("Malformed JSON: field 'result' not found");
                     return OS_INVALID;
                 }
             } else {
-                if (!result_check->valuestring ) {
+                if (!result_check->valuestring) {
                     mdebug1("Malformed JSON: field 'result' must be a string");
                     return OS_INVALID;
                 }
@@ -2135,7 +2135,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         curr = next;
         policy_id = curr;
 
-        if (result = wdb_sca_policy_delete(wdb,policy_id), result < 0) {
+        if (result = wdb_sca_policy_delete(wdb, policy_id), result < 0) {
             mdebug1("Cannot delete Security Configuration Assessment information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot delete Security Configuration Assessment information.");
         } else {
@@ -2162,9 +2162,9 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             scan_id = OS_INVALID;
         else
-            scan_id = strtol(curr,NULL,10);
+            scan_id = strtol(curr, NULL, 10);
 
-        if (result = wdb_sca_check_delete_distinct(wdb,policy_id,scan_id), result < 0) {
+        if (result = wdb_sca_check_delete_distinct(wdb, policy_id, scan_id), result < 0) {
             mdebug1("Cannot delete Security Configuration Assessment checks.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot delete Security Configuration Assessment checks.");
         } else {
@@ -2181,7 +2181,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         curr = next;
         policy_id = curr;
 
-        if (result = wdb_sca_check_delete(wdb,policy_id), result < 0) {
+        if (result = wdb_sca_check_delete(wdb, policy_id), result < 0) {
             mdebug1("Cannot delete Security Configuration Assessment information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot delete Security Configuration Assessment check information.");
         } else {
@@ -2205,7 +2205,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
                 snprintf(output, OS_MAXSTR + 1, "ok not found");
                 break;
             case 1:
-                snprintf(output, OS_MAXSTR + 1, "ok found %s",result_found);
+                snprintf(output, OS_MAXSTR + 1, "ok found %s", result_found);
                 break;
             default:
                 mdebug1("Cannot query Security Configuration Assessment.");
@@ -2227,7 +2227,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
                 snprintf(output, OS_MAXSTR + 1, "ok not found");
                 break;
             case 1:
-                snprintf(output, OS_MAXSTR + 1, "ok found %s",result_found);
+                snprintf(output, OS_MAXSTR + 1, "ok found %s", result_found);
                 break;
             default:
                 mdebug1("Cannot query Security Configuration Assessment.");
@@ -2245,7 +2245,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
                 snprintf(output, OS_MAXSTR + 1, "ok not found");
                 break;
             case 1:
-                snprintf(output, OS_MAXSTR + 1, "ok found %s",result_found);
+                snprintf(output, OS_MAXSTR + 1, "ok found %s", result_found);
                 break;
             default:
                 mdebug1("Cannot query Security Configuration Assessment.");
@@ -2267,7 +2267,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
                 snprintf(output, OS_MAXSTR + 1, "ok not found");
                 break;
             case 1:
-                snprintf(output, OS_MAXSTR + 1, "ok found %s",result_found);
+                snprintf(output, OS_MAXSTR + 1, "ok found %s", result_found);
                 break;
             default:
                 mdebug1("Cannot query Security Configuration Assessment.");
@@ -2360,7 +2360,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         *next++ = '\0';
 
         hash_file = next;
-        if (result = wdb_sca_policy_info_save(wdb,name,file,id,description,references,hash_file), result < 0) {
+        if (result = wdb_sca_policy_info_save(wdb, name, file, id, description, references, hash_file), result < 0) {
             mdebug1("Cannot save Security Configuration Assessment information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Security Configuration Assessment global information.");
         } else {
@@ -2383,7 +2383,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
             return OS_INVALID;
         }
 
-         id_check = strtol(curr,NULL,10);
+         id_check = strtol(curr, NULL, 10);
         *next++ = '\0';
 
          curr = next;
@@ -2398,7 +2398,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         *next++ = '\0';
 
          rule = next;
-        if (result = wdb_sca_rules_save(wdb,id_check,type,rule), result < 0) {
+        if (result = wdb_sca_rules_save(wdb, id_check, type, rule), result < 0) {
             mdebug1("Cannot save configuration assessment information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save configuration assessment global information.");
         } else {
@@ -2421,7 +2421,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
             return OS_INVALID;
         }
 
-        id_check = strtol(curr,NULL,10);
+        id_check = strtol(curr, NULL, 10);
         *next++ = '\0';
 
         curr = next;
@@ -2436,7 +2436,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         *next++ = '\0';
 
         value = next;
-        if (result = wdb_sca_compliance_save(wdb,id_check,key,value), result < 0) {
+        if (result = wdb_sca_compliance_save(wdb, id_check, key, value), result < 0) {
             mdebug1("Cannot save configuration assessment information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save configuration assessment global information.");
         } else {
@@ -2468,7 +2468,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             pm_start_scan = OS_INVALID;
         else
-            pm_start_scan = strtol(curr,NULL,10);
+            pm_start_scan = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -2483,7 +2483,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             pm_end_scan = OS_INVALID;
         else
-            pm_end_scan = strtol(curr,NULL,10);
+            pm_end_scan = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -2498,7 +2498,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             scan_id = OS_INVALID;
         else
-            scan_id = strtol(curr,NULL,10);
+            scan_id = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -2524,7 +2524,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             pass = OS_INVALID;
         else
-            pass = strtol(curr,NULL,10);
+            pass = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -2539,7 +2539,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             fail = OS_INVALID;
         else
-            fail = strtol(curr,NULL,10);
+            fail = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -2554,7 +2554,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             invalid = OS_INVALID;
         else
-            invalid = strtol(curr,NULL,10);
+            invalid = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -2569,7 +2569,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             total_checks = OS_INVALID;
         else
-            total_checks = strtol(curr,NULL,10);
+            total_checks = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -2584,12 +2584,12 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             score = OS_INVALID;
         else
-            score = strtol(curr,NULL,10);
+            score = strtol(curr, NULL, 10);
 
         *next++ = '\0';
 
         hash = next;
-        if (result = wdb_sca_scan_info_save(wdb,pm_start_scan,pm_end_scan,scan_id,policy_id,pass,fail,invalid,total_checks,score,hash), result < 0) {
+        if (result = wdb_sca_scan_info_save(wdb, pm_start_scan, pm_end_scan, scan_id, policy_id, pass, fail, invalid, total_checks, score, hash), result < 0) {
             mdebug1("Cannot save configuration assessment information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save configuration assessment information.");
         } else {
@@ -2622,9 +2622,9 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             pm_end_scan = OS_INVALID;
         else
-            pm_end_scan = strtol(curr,NULL,10);
+            pm_end_scan = strtol(curr, NULL, 10);
 
-        if (result = wdb_sca_scan_info_update(wdb, module,pm_end_scan), result < 0) {
+        if (result = wdb_sca_scan_info_update(wdb, module, pm_end_scan), result < 0) {
             mdebug1("Cannot save configuration assessment information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save configuration assessment information.");
         } else {
@@ -2673,7 +2673,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             pm_start_scan = OS_INVALID;
         else
-            pm_start_scan = strtol(curr,NULL,10);
+            pm_start_scan = strtol(curr, NULL, 10);
 
         curr = next;
         if (next = strchr(curr, '|'), !next) {
@@ -2686,7 +2686,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             pm_end_scan = OS_INVALID;
         else
-            pm_end_scan = strtol(curr,NULL,10);
+            pm_end_scan = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -2701,7 +2701,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             scan_id = OS_INVALID;
         else
-            scan_id = strtol(curr,NULL,10);
+            scan_id = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -2716,7 +2716,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             pass = OS_INVALID;
         else
-            pass = strtol(curr,NULL,10);
+            pass = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -2731,7 +2731,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             fail = OS_INVALID;
         else
-            fail = strtol(curr,NULL,10);
+            fail = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -2746,7 +2746,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             invalid = OS_INVALID;
         else
-            invalid = strtol(curr,NULL,10);
+            invalid = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -2761,7 +2761,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             total_checks = OS_INVALID;
         else
-            total_checks = strtol(curr,NULL,10);
+            total_checks = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -2776,13 +2776,13 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             score = OS_INVALID;
         else
-            score = strtol(curr,NULL,10);
+            score = strtol(curr, NULL, 10);
 
         *next++ = '\0';
 
         hash = next;
 
-        if (result = wdb_sca_scan_info_update_start(wdb, policy_id,pm_start_scan,pm_end_scan,scan_id,pass,fail,invalid,total_checks,score,hash), result < 0) {
+        if (result = wdb_sca_scan_info_update_start(wdb, policy_id, pm_start_scan, pm_end_scan, scan_id, pass, fail, invalid, total_checks, score, hash), result < 0) {
             mdebug1("Cannot save configuration assessment information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save configuration assessment information.");
         } else {
@@ -2926,7 +2926,7 @@ int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             mtu = OS_INVALID;
         else
-            mtu = strtol(curr,NULL,10);
+            mtu = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -2955,7 +2955,7 @@ int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             tx_packets = OS_INVALID;
         else
-            tx_packets = strtol(curr,NULL,10);
+            tx_packets = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -2970,7 +2970,7 @@ int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             rx_packets = OS_INVALID;
         else
-            rx_packets = strtol(curr,NULL,10);
+            rx_packets = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -2985,7 +2985,7 @@ int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             tx_bytes = OS_INVALID;
         else
-            tx_bytes = strtol(curr,NULL,10);
+            tx_bytes = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -3000,7 +3000,7 @@ int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             rx_bytes = OS_INVALID;
         else
-            rx_bytes = strtol(curr,NULL,10);
+            rx_bytes = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -3015,7 +3015,7 @@ int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             tx_errors = OS_INVALID;
         else
-            tx_errors = strtol(curr,NULL,10);
+            tx_errors = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -3030,7 +3030,7 @@ int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             rx_errors = OS_INVALID;
         else
-            rx_errors = strtol(curr,NULL,10);
+            rx_errors = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -3045,13 +3045,13 @@ int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             tx_dropped = OS_INVALID;
         else
-            tx_dropped = strtol(curr,NULL,10);
+            tx_dropped = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         if (!strncmp(next, "NULL", 4))
             rx_dropped = OS_INVALID;
         else
-            rx_dropped = strtol(next,NULL,10);
+            rx_dropped = strtol(next, NULL, 10);
 
         if (result = wdb_netinfo_save(wdb, scan_id, scan_time, name, adapter, type, state, mtu, mac, tx_packets, rx_packets, tx_bytes, rx_bytes, tx_errors, rx_errors, tx_dropped, rx_dropped, SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, NULL, FALSE), result < 0) {
             mdebug1("Cannot save Network information.");
@@ -3144,7 +3144,7 @@ int wdb_parse_netproto(wdb_t * wdb, char * input, char * output) {
         if (!strcmp(iface, "NULL"))
             iface = NULL;
 
-        type = strtol(curr,NULL,10);
+        type = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -3179,7 +3179,7 @@ int wdb_parse_netproto(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(next, "NULL", 4))
             metric = OS_INVALID;
         else
-            metric = strtol(next,NULL,10);
+            metric = strtol(next, NULL, 10);
 
         if (result = wdb_netproto_save(wdb, scan_id, iface, type, gateway, dhcp, metric, SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, NULL, FALSE), result < 0) {
             mdebug1("Cannot save netproto information.");
@@ -3257,7 +3257,7 @@ int wdb_parse_netaddr(wdb_t * wdb, char * input, char * output) {
         if (!strcmp(iface, "NULL"))
             iface = NULL;
 
-        proto = strtol(curr,NULL,10);
+        proto = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -3702,7 +3702,7 @@ int wdb_parse_hardware(wdb_t * wdb, char * input, char * output) {
         if (!strcmp(cpu_name, "NULL"))
             cpu_name = NULL;
 
-        cpu_cores = strtol(curr,NULL,10);
+        cpu_cores = strtol(curr, NULL, 10);
         *next++ = '\0';
         curr = next;
 
@@ -3724,7 +3724,7 @@ int wdb_parse_hardware(wdb_t * wdb, char * input, char * output) {
             return OS_INVALID;
         }
 
-        ram_total = strtol(curr,NULL,10);
+        ram_total = strtol(curr, NULL, 10);
         *next++ = '\0';
         curr = next;
 
@@ -3735,9 +3735,9 @@ int wdb_parse_hardware(wdb_t * wdb, char * input, char * output) {
             return OS_INVALID;
         }
 
-        ram_free = strtol(curr,NULL,10);
+        ram_free = strtol(curr, NULL, 10);
         *next++ = '\0';
-        ram_usage = strtol(next,NULL,10);
+        ram_usage = strtol(next, NULL, 10);
 
         if (result = wdb_hardware_save(wdb, scan_id, scan_time, serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free, ram_usage, SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, FALSE), result < 0) {
             mdebug1("wdb_parse_hardware(): Cannot save HW information.");
@@ -3852,7 +3852,7 @@ int wdb_parse_ports(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             local_port = OS_INVALID;
         else
-            local_port = strtol(curr,NULL,10);
+            local_port = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -3881,7 +3881,7 @@ int wdb_parse_ports(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             remote_port = OS_INVALID;
         else
-            remote_port = strtol(curr,NULL,10);
+            remote_port = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -3896,7 +3896,7 @@ int wdb_parse_ports(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             tx_queue = OS_INVALID;
         else
-            tx_queue = strtol(curr,NULL,10);
+            tx_queue = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -3911,7 +3911,7 @@ int wdb_parse_ports(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             rx_queue = OS_INVALID;
         else
-            rx_queue = strtol(curr,NULL,10);
+            rx_queue = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -3926,7 +3926,7 @@ int wdb_parse_ports(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             inode = OS_INVALID;
         else
-            inode = strtoll(curr,NULL,10);
+            inode = strtoll(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -3955,7 +3955,7 @@ int wdb_parse_ports(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             pid = OS_INVALID;
         else
-            pid = strtol(curr,NULL,10);
+            pid = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         if (!strncmp(next, "NULL", 4))
@@ -4267,7 +4267,7 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             pid = OS_INVALID;
         else
-            pid = strtol(curr,NULL,10);
+            pid = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -4310,7 +4310,7 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             ppid = OS_INVALID;
         else
-            ppid = strtol(curr,NULL,10);
+            ppid = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -4325,7 +4325,7 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             utime = OS_INVALID;
         else
-            utime = strtol(curr,NULL,10);
+            utime = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -4340,7 +4340,7 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             stime = OS_INVALID;
         else
-            stime = strtol(curr,NULL,10);
+            stime = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -4481,7 +4481,7 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             priority = OS_INVALID;
         else
-            priority = strtol(curr,NULL,10);
+            priority = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -4496,7 +4496,7 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             nice = 0;
         else
-            nice = strtol(curr,NULL,10);
+            nice = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -4511,7 +4511,7 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             size = OS_INVALID;
         else
-            size = strtol(curr,NULL,10);
+            size = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -4526,7 +4526,7 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             vm_size = OS_INVALID;
         else
-            vm_size = strtol(curr,NULL,10);
+            vm_size = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -4541,7 +4541,7 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             resident = OS_INVALID;
         else
-            resident = strtol(curr,NULL,10);
+            resident = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -4556,7 +4556,7 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             share = OS_INVALID;
         else
-            share = strtol(curr,NULL,10);
+            share = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -4586,7 +4586,7 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             pgrp = OS_INVALID;
         else
-            pgrp = strtol(curr,NULL,10);
+            pgrp = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -4601,7 +4601,7 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             session = OS_INVALID;
         else
-            session = strtol(curr,NULL,10);
+            session = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -4616,7 +4616,7 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             nlwp = OS_INVALID;
         else
-            nlwp = strtol(curr,NULL,10);
+            nlwp = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -4631,7 +4631,7 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             tgid = OS_INVALID;
         else
-            tgid = strtol(curr,NULL,10);
+            tgid = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -4646,13 +4646,13 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             tty = OS_INVALID;
         else
-            tty = strtol(curr,NULL,10);
+            tty = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         if (!strncmp(next, "NULL", 4))
             processor = OS_INVALID;
         else
-            processor = strtol(next,NULL,10);
+            processor = strtol(next, NULL, 10);
 
         if (result = wdb_process_save(wdb, scan_id, scan_time, pid, name, state, ppid, utime, stime, cmd, argvs, euser, ruser, suser, egroup, rgroup, sgroup, fgroup, priority, nice, size, vm_size, resident, share, start_time, pgrp, session, nlwp, tgid, tty, processor, SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, FALSE), result < 0) {
             mdebug1("Cannot save Process information.");
@@ -4774,7 +4774,7 @@ int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             pass = OS_INVALID;
         else
-            pass = strtol(curr,NULL,10);
+            pass = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -4789,7 +4789,7 @@ int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             fail = OS_INVALID;
         else
-            fail = strtol(curr,NULL,10);
+            fail = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -4804,7 +4804,7 @@ int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             error = OS_INVALID;
         else
-            error = strtol(curr,NULL,10);
+            error = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -4819,7 +4819,7 @@ int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             notchecked = OS_INVALID;
         else
-            notchecked = strtol(curr,NULL,10);
+            notchecked = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         curr = next;
@@ -4834,13 +4834,13 @@ int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output) {
         if (!strncmp(curr, "NULL", 4))
             unknown = OS_INVALID;
         else
-            unknown = strtol(curr,NULL,10);
+            unknown = strtol(curr, NULL, 10);
 
         *next++ = '\0';
         if (!strncmp(next, "NULL", 4))
             score = OS_INVALID;
         else
-            score = strtol(next,NULL,10);
+            score = strtol(next, NULL, 10);
 
         if (result = wdb_ciscat_save(wdb, scan_id, scan_time, benchmark, profile, pass, fail, error, notchecked, unknown, score), result < 0) {
             mdebug1("Cannot save CISCAT information.");
@@ -4914,7 +4914,7 @@ int wdb_parse_rootcheck(wdb_t * wdb, char * input, char * output) {
                 snprintf(output, OS_MAXSTR + 1, "err Error updating rootcheck PM tuple");
                 result = OS_INVALID;
                 break;
-            case 0:
+            case OS_SUCCESS:
                 if (wdb_rootcheck_insert(wdb, &event) < 0) {
                     merror("DB(%s) Error inserting rootcheck PM tuple on SQLite database for agent", wdb->id);
                     snprintf(output, OS_MAXSTR + 1, "err Error updating rootcheck PM tuple");
@@ -6581,7 +6581,7 @@ int wdb_parse_agents_update_vuln_cves_status(wdb_t* wdb, char* input, char* outp
         const char *new_status = cJSON_GetStringValue(cJSON_GetObjectItem(data, "new_status"));
         const char *type = cJSON_GetStringValue(cJSON_GetObjectItem(data, "type"));
 
-        if (new_status && ((type && !old_status) || (!type && old_status) )) {
+        if (new_status && ((type && !old_status) || (!type && old_status))) {
             ret = wdb_agents_update_vuln_cves_status(wdb, old_status, new_status, type);
             if (OS_SUCCESS != ret) {
                 mdebug1("DB(%s) Cannot execute vuln_cves update_status command; SQL err: %s", wdb->id, sqlite3_errmsg(wdb->db));
