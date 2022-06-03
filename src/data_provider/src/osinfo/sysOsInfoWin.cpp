@@ -8,6 +8,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#include <winsock2.h>
 #include <windows.h>
 #include <versionhelpers.h>
 #include <sysinfoapi.h>

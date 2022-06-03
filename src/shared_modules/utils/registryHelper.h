@@ -15,13 +15,13 @@
 #define _REGISTRY_HELPER_H
 
 #include <string>
-#include <sstream>
-#include <iomanip>
+#include <winsock2.h>
 #include <windows.h>
 #include <winreg.h>
 #include <cstdio>
 #include <memory>
 #include "encodingWindowsHelper.h"
+#include "windowsHelper.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -201,32 +201,23 @@ namespace Utils
                 return ret;
             }
 
-            bool creationDateKey(std::string& time) const
+            bool keyModificationDate(std::string& time) const
             {
                 auto ret {false};
-                FILETIME lastWirteTime { };
-                SYSTEMTIME userTime { };
+                FILETIME lastModificationTime { };
                 auto result
                 {
-                    RegQueryInfoKey(m_registryKey, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &lastWirteTime)
+                    RegQueryInfoKey(m_registryKey, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &lastModificationTime)
                 };
 
                 if (ERROR_SUCCESS == result)
                 {
-                    // Convert data of structure in readable format
-                    if (FileTimeToSystemTime(&lastWirteTime, &userTime))
-                    {
-                        std::stringstream value;
+                    unsigned long long fileTime { lastModificationTime.dwHighDateTime };
 
-                        value << std::setfill('0') << std::setw(4) << userTime.wYear << "/";
-                        value << std::setfill('0') << std::setw(2) << userTime.wMonth << "/";
-                        value << std::setfill('0') << std::setw(2) << userTime.wDay << " ";
-                        value << std::setfill('0') << std::setw(2) << userTime.wHour << ":";
-                        value << std::setfill('0') << std::setw(2) << userTime.wMinute << ":";
-                        value << std::setfill('0') << std::setw(2) << userTime.wSecond;
-                        time = value.str();
-                        ret = true;
-                    }
+                    // Use structure values to build 18-digit LDAP/FILETIME number
+                    fileTime = fileTime << sizeof(lastModificationTime.dwHighDateTime)*8 | lastModificationTime.dwLowDateTime;
+                    time = Utils::buildTimestamp(fileTime);
+                    ret = true;
                 }
 
                 return ret;
