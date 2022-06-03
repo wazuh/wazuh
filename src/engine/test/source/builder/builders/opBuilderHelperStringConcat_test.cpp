@@ -11,11 +11,12 @@ using namespace base;
 namespace bld = builder::internals::builders;
 
 using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg){};
+static FakeTrFn tr = [](std::string msg) {
+};
 
 TEST(opBuilderHelperStringConcat, Builds)
 {
-    Document doc{R"({
+    Document doc {R"({
         "normalize":
         [
             {
@@ -30,10 +31,9 @@ TEST(opBuilderHelperStringConcat, Builds)
     ASSERT_NO_THROW(bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr));
 }
 
-
 TEST(opBuilderHelperStringConcat, WrongNumberOfArguments)
 {
-    Document doc{R"({
+    Document doc {R"({
         "normalize":
         [
             {
@@ -45,12 +45,13 @@ TEST(opBuilderHelperStringConcat, WrongNumberOfArguments)
         ]
     })"};
 
-    ASSERT_THROW(bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr), std::runtime_error);
+    ASSERT_THROW(bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr),
+                 std::runtime_error);
 }
 
 TEST(opBuilderHelperStringConcat, EmptyArgument)
 {
-    Document doc{R"({
+    Document doc {R"({
         "normalize":
         [
             {
@@ -62,12 +63,13 @@ TEST(opBuilderHelperStringConcat, EmptyArgument)
         ]
     })"};
 
-    ASSERT_THROW(bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr), std::runtime_error);
+    ASSERT_THROW(bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr),
+                 std::runtime_error);
 }
 
 TEST(opBuilderHelperStringConcat, BasicUsage)
 {
-    Document doc{R"({
+    Document doc {R"({
         "normalize":
         [
             {
@@ -93,12 +95,13 @@ TEST(opBuilderHelperStringConcat, BasicUsage)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/fieldToTranf").GetString(), "FirstSecond");
+    ASSERT_STREQ(expected[0]->getEvent()->get("/fieldToTranf").GetString(),
+                 "FirstSecond");
 }
 
 TEST(opBuilderHelperStringConcat, SimpleWithOneReference)
 {
-    Document doc{R"({
+    Document doc {R"({
         "normalize":
         [
             {
@@ -124,12 +127,13 @@ TEST(opBuilderHelperStringConcat, SimpleWithOneReference)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/fieldResult").GetString(), "FirstSomething");
+    ASSERT_STREQ(expected[0]->getEvent()->get("/fieldResult").GetString(),
+                 "FirstSomething");
 }
 
 TEST(opBuilderHelperStringConcat, SimpleWithOneSelfReference)
 {
-    Document doc{R"({
+    Document doc {R"({
         "normalize":
         [
             {
@@ -155,12 +159,13 @@ TEST(opBuilderHelperStringConcat, SimpleWithOneSelfReference)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/fieldToTranf").GetString(), "FirstSomething");
+    ASSERT_STREQ(expected[0]->getEvent()->get("/fieldToTranf").GetString(),
+                 "FirstSomething");
 }
 
 TEST(opBuilderHelperStringConcat, DoubleWithReferences)
 {
-    Document doc{R"({
+    Document doc {R"({
         "normalize":
         [
             {
@@ -187,12 +192,13 @@ TEST(opBuilderHelperStringConcat, DoubleWithReferences)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/Result").GetString(), "SomethingOneThing");
+    ASSERT_STREQ(expected[0]->getEvent()->get("/Result").GetString(),
+                 "SomethingOneThing");
 }
 
 TEST(opBuilderHelperStringConcat, DoubleWithOneSelfReferences)
 {
-    Document doc{R"({
+    Document doc {R"({
         "normalize":
         [
             {
@@ -219,12 +225,13 @@ TEST(opBuilderHelperStringConcat, DoubleWithOneSelfReferences)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/anotherField").GetString(), "SomethingOneThing");
+    ASSERT_STREQ(expected[0]->getEvent()->get("/anotherField").GetString(),
+                 "SomethingOneThing");
 }
 
 TEST(opBuilderHelperStringConcat, DoubleWithOneSelfReferencesSecondaryAssignment)
 {
-    Document doc{R"({
+    Document doc {R"({
         "normalize":
         [
             {
@@ -251,12 +258,13 @@ TEST(opBuilderHelperStringConcat, DoubleWithOneSelfReferencesSecondaryAssignment
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/fieldToTranf").GetString(), "SomethingOneThing");
+    ASSERT_STREQ(expected[0]->getEvent()->get("/fieldToTranf").GetString(),
+                 "SomethingOneThing");
 }
 
 TEST(opBuilderHelperStringConcat, OneReferencesNotString)
 {
-    Document doc{R"({
+    Document doc {R"({
         "normalize":
         [
             {
@@ -288,7 +296,7 @@ TEST(opBuilderHelperStringConcat, OneReferencesNotString)
 
 TEST(opBuilderHelperStringConcat, OneEmptyReferenceWithPresentField)
 {
-    Document doc{R"({
+    Document doc {R"({
         "normalize":
         [
             {
@@ -320,7 +328,7 @@ TEST(opBuilderHelperStringConcat, OneEmptyReferenceWithPresentField)
 
 TEST(opBuilderHelperStringConcat, OneEmptyReference)
 {
-    Document doc{R"({
+    Document doc {R"({
         "normalize":
         [
             {
@@ -352,7 +360,7 @@ TEST(opBuilderHelperStringConcat, OneEmptyReference)
 
 TEST(opBuilderHelperStringConcat, ReferenceDoesntExist)
 {
-    Document doc{R"({
+    Document doc {R"({
         "normalize":
         [
             {
@@ -383,7 +391,7 @@ TEST(opBuilderHelperStringConcat, ReferenceDoesntExist)
 
 TEST(opBuilderHelperStringConcat, BasicUsageThreeArguments)
 {
-    Document doc{R"({
+    Document doc {R"({
         "normalize":
         [
             {
@@ -414,7 +422,7 @@ TEST(opBuilderHelperStringConcat, BasicUsageThreeArguments)
 
 TEST(opBuilderHelperStringConcat, BasicUsageThreeArgumentsMiddleEmpty)
 {
-    Document doc{R"({
+    Document doc {R"({
         "normalize":
         [
             {
@@ -426,12 +434,13 @@ TEST(opBuilderHelperStringConcat, BasicUsageThreeArgumentsMiddleEmpty)
         ]
     })"};
 
-    ASSERT_THROW(bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr), std::runtime_error);
+    ASSERT_THROW(bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr),
+                 std::runtime_error);
 }
 
 TEST(opBuilderHelperStringConcat, BasicUsageLotOfArguments)
 {
-    Document doc{R"({
+    Document doc {R"({
         "normalize":
         [
             {
@@ -457,5 +466,6 @@ TEST(opBuilderHelperStringConcat, BasicUsageLotOfArguments)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 1);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/Field").GetString(), "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+    ASSERT_STREQ(expected[0]->getEvent()->get("/Field").GetString(),
+                 "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
 }
