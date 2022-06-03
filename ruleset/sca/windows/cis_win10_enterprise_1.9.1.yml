@@ -2386,3 +2386,75 @@ checks:
     condition: all
     rules:
       - 'auditpol.exe /get /subcategory:"Plug and Play Events" -> r:Success'
+
+  - id: 26157
+    title: "Ensure 'Audit Process Creation' is set to include 'Success' "
+    description: "This subcategory reports the creation of a process and the name of the program or user that created it."
+    rationale: "Auditing these events may be useful when investigating a security incident."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Detailed Tracking\\Audit Process  Creation"
+    compliance:
+      - cis: ["17.3.2"]
+      - cis_csc: ["6.3"]
+    condition: all
+    rules:
+      - 'auditpol.exe /get /subcategory:"Process Creation" -> r:Success'
+
+  - id: 26158
+    title: "Ensure 'Audit Account Lockout' is set to include 'Failure'"
+    description: "This subcategory reports when a user's account is locked out as a result of too many failed logon attempts."
+    rationale: "Auditing these events may be useful when investigating a security incident."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Logon/Logoff\\Audit Account Lockout"
+    compliance:
+      - cis: ["17.5.1"]
+      - cis_csc: ["6.3","16.6"]
+    condition: all
+    rules:
+      - 'auditpol.exe /get /subcategory:"Process Creation" -> r:Failure'
+
+  - id: 26159
+    title: "Ensure 'Audit Group Membership' is set to include 'Success'"
+    description: "This policy allows you to audit the group membership information in the user’s logon  token. Events in this subcategory are generated on the computer on which a logon session  is created. For an interactive logon, the security audit event is generated on the computer  that the user logged on to. For a network logon, such as accessing a shared folder on the  network, the security audit event is generated on the computer hosting the resource."
+    rationale: "Auditing these events may be useful when investigating a security incident."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Logon/Logoff\\Audit Group Membership"
+    compliance:
+      - cis: ["17.5.2"]
+      - cis_csc: ["4.8","6.3","16.6"]
+    condition: all
+    rules:
+      - 'auditpol.exe /get /subcategory:"Group Membership" -> r:Success'
+
+  - id: 26160
+    title: "Ensure 'Audit Logoff' is set to include 'Success'"
+    description: "This subcategory reports when a user logs off from the system. These events occur on the  accessed computer. For interactive logons, the generation of these events occurs on the  computer that is logged on to. If a network logon takes place to access a share, these events  generate on the computer that hosts the accessed resource. If you configure this setting to  No auditing, it is difficult or impossible to determine which user has accessed or attempted  to access organization computers."
+    rationale: "Auditing these events may be useful when investigating a security incident."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Logon/Logoff\\Audit Logoff"
+    compliance:
+      - cis: ["17.5.3"]
+      - cis_csc: ["6.3","16.13","16.6"]
+    condition: all
+    rules:
+      - 'auditpol.exe /get /subcategory:"Logoff" -> r:Success'
+
+  - id: 26161
+    title: "Ensure 'Audit Logon' is set to 'Success and Failure'"
+    description: "This subcategory reports when a user attempts to log on to the system. These events occur  on the accessed computer. For interactive logons, the generation of these events occurs on  the computer that is logged on to. If a network logon takes place to access a share, these  events generate on the computer that hosts the accessed resource. If you configure this  setting to No auditing, it is difficult or impossible to determine which user has accessed or  attempted to access organization computers."
+    rationale: "Auditing these events may be useful when investigating a security incident."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Logon/Logoff\\Audit Logon"
+    compliance:
+      - cis: ["17.5.4"]
+      - cis_csc: ["6.3","16.6","16.13"]
+    condition: all
+    rules:
+      - 'auditpol.exe /get /subcategory:"Logon" -> r:Success and Failure'
+
+  - id: 26162
+    title: "Ensure 'Audit Other Logon/Logoff Events' is set to 'Success and Failure'"
+    description: "This subcategory reports other logon/logoff-related events, such as Remote Desktop  Services session disconnects and reconnects, using RunAs to run processes under a  different account, and locking and unlocking a workstation."
+    rationale: "Auditing these events may be useful when investigating a security incident."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Logon/Logoff\\Audit Other  Logon/Logoff Events "
+    compliance:
+      - cis: ["17.5.5"]
+      - cis_csc: ["To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Logon/Logoff\\Audit Other  Logon/Logoff Events"]
+    condition: all
+    rules:
+      - 'auditpol.exe /get /subcategory:"Other Logon/Logoff Events" -> r:Success and Failure'
