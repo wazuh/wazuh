@@ -20,6 +20,7 @@
 #include <system_error>
 #include <winsock2.h>
 #include <windows.h>
+#include <time.h>
 #include <ws2tcpip.h>
 #include <iphlpapi.h>
 #include <versionhelpers.h>
@@ -243,6 +244,21 @@ namespace Utils
         }
 
         return serialNumber;
+    }
+
+    static std::string buildTimestamp(const unsigned long long time)
+    {
+
+        // Format of value is 18-digit LDAP/FILETIME timestamps.
+        // 18-digit LDAP/FILETIME timestamps -> Epoch/Unix time
+        // (value/10000000ULL) - 11644473600ULL
+        const time_t epochTIme { static_cast<long int> ((time / 10000000ULL) - WINDOWS_UNIX_EPOCH_DIFF_SECONDS) };
+        std::string ret;
+        char formatString[20] = {0};
+
+        std::strftime(formatString, sizeof(formatString), "%Y/%m/%d %H:%M:%S", std::localtime(&epochTIme));
+        ret.assign(formatString);
+        return ret;
     }
 
     class NetworkWindowsHelper final
