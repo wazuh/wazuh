@@ -2652,3 +2652,95 @@ checks:
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordAgeDays -> n:^(\d+) compare <= 30'
+
+  - id: 26181
+    title: "Ensure 'Apply UAC restrictions to local accounts on network logons' is set to 'Enabled'"
+    description: "This setting controls whether local accounts can be used for remote administration via network logon (e.g., NET USE, connecting to C$, etc.). Local accounts are at high risk for credential theft when the same account and password is configured on multiple systems. Enabling this policy significantly reduces that risk. Enabled: Applies UAC token-filtering to local accounts on network logons. Membership in powerful group such as Administrators is disabled and powerful privileges are removed from the resulting access token. This configures the LocalAccountTokenFilterPolicy registry value to 0. This is the default behavior for Windows. Disabled: Allows local accounts to have full administrative rights when authenticating via network logon, by configuring the LocalAccountTokenFilterPolicy registry value to 1."
+    rationale: "Local accounts are at high risk for credential theft when the same account and password is configured on multiple systems. Ensuring this policy is Enabled significantly reduces that risk."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\MS Security Guide\\Apply UAC restrictions to local accounts on network logons."
+    compliance:
+      - cis: ["18.3.1"]
+      - cis_csc: ["5.8", "4.3"]
+      - pci_dss: ["7.1"]
+      - tsc: ["CC6.4"]
+    references:
+      - 'CCE-35486-0'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> LocalAccountTokenFilterPolicy -> 0'
+
+  - id: 26182
+    title: "Ensure 'Configure SMB v1 client driver' is set to 'Enabled: Disable driver'"
+    description: "This setting configures the start type for the Server Message Block version 1 (SMBv1) client driver service (MRxSmb10), which is recommended to be disabled. The recommended state for this setting is: Enabled: Disable driver. Note: Do not, under any circumstances, configure this overall setting as Disabled, as doing so will delete the underlying registry entry altogether, which will cause serious problems."
+    rationale: "Since September 2016, Microsoft has strongly encouraged that SMBv1 be disabled and no longer used on modern networks, as it is a 30 year old design that is much more vulnerable to attacks then much newer designs such as SMBv2 and SMBv3."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Disable driver: Computer Configuration\\Policies\\Administrative Templates\\MS Security Guide\\Configure SMB v1 client driver."
+    compliance:
+      - cis: ["18.3.2"]
+      - cis_csc: ["9.1", "9.2"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\mrxsmb10 -> Start -> 4'
+
+  - id: 26183
+    title: "Ensure 'Configure SMB v1 server' is set to 'Disabled'"
+    description: "This setting configures the server-side processing of the Server Message Block version 1 (SMBv1) protocol. The recommended state for this setting is: Disabled."
+    rationale: "Since September 2016, Microsoft has strongly encouraged that SMBv1 be disabled and no longer used on modern networks, as it is a 30 year old design that is much more vulnerable to attacks then much newer designs such as SMBv2 and SMBv3."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\MS Security Guide\\Configure SMB v1 server."
+    compliance:
+      - cis: ["18.3.3"]
+      - cis_csc: ["9.1", "9.2"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters -> SMB1 -> 0'
+
+  - id: 26184
+    title: "Ensure 'Enable Structured Exception Handling Overwrite Protection (SEHOP)' is set to 'Enabled'"
+    description: "Windows includes support for Structured Exception Handling Overwrite Protection (SEHOP). We recommend enabling this feature to improve the security profile of the computer. The recommended state for this setting is: Enabled."
+    rationale: "This feature is designed to block exploits that use the Structured Exception Handler (SEH) overwrite technique. This protection mechanism is provided at run-time. Therefore, it helps protect applications regardless of whether they have been compiled with the latest improvements, such as the /SAFESEH option."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\MS Security Guide\\Enable Structured Exception Handling Overwrite Protection (SEHOP)"
+    compliance:
+      - cis: ["18.3.4"]
+      - cis_csc: ["8.4", "8.3"]
+      - pci_dss: ["6.2"]
+      - nist_800_53: ["SI.2","SA.11","SI.4"]
+      - gpg_13: ["4.3"]
+      - gdpr_IV: ["35.7.d"]
+      - hipaa: ["164.312.b"]
+      - tsc: ["A1.2","CC6.8"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\kernel -> DisableExceptionChainValidation -> 0'
+
+  - id: 26185
+    title: "Ensure 'NetBT NodeType configuration' is set to 'Enabled: P-node (recommended)'"
+    description: "This setting determines which method NetBIOS over TCP/IP (NetBT) uses to register and resolve names. The available methods are: The B-node (broadcast) method only uses broadcasts. The P-node (point-to-point) method only uses name queries to a name server (WINS). The M-node (mixed) method broadcasts first, then queries a name server (WINS) if broadcast failed. The H-node (hybrid) method queries a name server (WINS) first, then broadcasts if the query failed. The recommended state for this setting is: Enabled: P-node (recommended) (point-to- point).                 Note: Resolution through LMHOSTS or DNS follows these methods. If the NodeType registry value is present, it overrides any DhcpNodeType registry value. If neither NodeType nor DhcpNodeType is present, the computer uses B-node (broadcast) if there are no WINS servers configured for the network, or H-node (hybrid) if there is at least one WINS server configured."
+    rationale: "In order to help mitigate the risk of NetBIOS Name Service (NBT-NS) poisoning attacks, setting the node type to P-node (point-to-point) will prevent the system from sending out NetBIOS broadcasts."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: P-node (recommended) : Computer Configuration\\Policies\\Administrative Templates\\MS Security Guide\\NetBT NodeType configuration"
+    compliance:
+      - cis: ["18.3.5"]
+      - cis_csc: ["9"]
+      - pci_dss: ["8.2.1"]
+      - tsc: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NetBT\Parameters -> NodeType -> 2'
+
+  - id: 26186
+    title: "Ensure 'WDigest Authentication' is set to 'Disabled'"
+    description: "When WDigest authentication is enabled, Lsass.exe retains a copy of the user's plaintext password in memory, where it can be at risk of theft. If this setting is not configured, WDigest authentication is disabled in Windows 8.1 and in Windows Server 2012 R2; it is enabled by default in earlier versions of Windows and Windows Server."
+    rationale: "Preventing the plaintext storage of credentials in memory may reduce opportunity for credential theft."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\MS Security Guide\\WDigest Authentication (disabling may require KB2871997)"
+    compliance:
+      - cis: ["18.3.6"]
+      - cis_csc: ["16.14"]
+      - pci_dss: ["8.2.1"]
+      - tsc: ["CC6.1"]
+    references:
+      - 'CCE-35815-0'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest -> UseLogonCredential -> 0'
