@@ -30,8 +30,6 @@ from wazuh.core.common import wazuh_uid, wazuh_gid
 from wazuh.core.utils import get_utc_now, safe_move
 from wazuh.rbac.utils import clear_cache
 
-CURRENT_ORM_VERSION = 1
-_new_columns = {}
 logger = logging.getLogger("wazuh-api")
 
 # Max reserved ID value
@@ -39,10 +37,13 @@ max_id_reserved = 99
 cloud_reserved_range = 89
 
 # Start a session and set the default security elements
-_db_file = os.path.join(SECURITY_PATH, "rbac.db")
-_db_file_tmp = f"{_db_file}.tmp"
-_engine = create_engine(f"sqlite:///{_db_file}", echo=False)
+DB_FILE = os.path.join(SECURITY_PATH, "rbac.db")
+DB_FILE_TMP = f"{DB_FILE}.tmp"
+CURRENT_ORM_VERSION = 1
+_new_columns = {}
+_engine = create_engine(f"sqlite:///{DB_FILE}", echo=False)
 _Base = declarative_base()
+
 
 # Required rules for role
 # Key: Role - Value: Rules
@@ -475,7 +476,7 @@ class TokenManager:
     """
 
     def __init__(self, session: str = None):
-        self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{_db_file}", echo=False))()
+        self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{DB_FILE}", echo=False))()
 
     def __enter__(self):
         return self
@@ -679,7 +680,7 @@ class AuthenticationManager:
     """
 
     def __init__(self, session=None):
-        self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{_db_file}", echo=False))()
+        self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{DB_FILE}", echo=False))()
 
     def __enter__(self):
         return self
@@ -894,7 +895,7 @@ class RolesManager:
     """
 
     def __init__(self, session=None):
-        self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{_db_file}", echo=False))()
+        self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{DB_FILE}", echo=False))()
 
     def __enter__(self):
         return self
@@ -1092,7 +1093,7 @@ class RulesManager:
         """
 
     def __init__(self, session=None):
-        self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{_db_file}", echo=False))()
+        self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{DB_FILE}", echo=False))()
 
     def __enter__(self):
         return self
@@ -1305,7 +1306,7 @@ class PoliciesManager:
     resource_regex = r'^[a-zA-Z_\-*]+:[\w_\-*]+:[\w_\-\/.*]+$'
 
     def __init__(self, session=None):
-        self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{_db_file}", echo=False))()
+        self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{DB_FILE}", echo=False))()
 
     def __enter__(self):
         return self
@@ -1555,7 +1556,7 @@ class UserRolesManager:
     """
 
     def __init__(self, session=None):
-        self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{_db_file}", echo=False))()
+        self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{DB_FILE}", echo=False))()
 
     def __enter__(self):
         return self
@@ -1885,7 +1886,7 @@ class RolesPoliciesManager:
     """
 
     def __init__(self, session=None):
-        self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{_db_file}", echo=False))()
+        self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{DB_FILE}", echo=False))()
 
     def __enter__(self):
         return self
@@ -2242,7 +2243,7 @@ class RolesRulesManager:
     """
 
     def __init__(self, session=None):
-        self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{_db_file}", echo=False))()
+        self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{DB_FILE}", echo=False))()
 
     def __enter__(self):
         return self
@@ -2873,12 +2874,12 @@ def check_database_integrity():
     try:
         logger.info("Checking RBAC database integrity...")
 
-        if os.path.exists(_db_file):
+        if os.path.exists(DB_FILE):
             # If db exists, fix permissions and ownership and connect to it
-            logger.info(f"{_db_file} file was detected")
-            _set_permissions_and_ownership(_db_file)
-            db_manager.connect(_db_file)
-            current_version = int(db_manager.get_database_version(_db_file))
+            logger.info(f"{DB_FILE} file was detected")
+            _set_permissions_and_ownership(DB_FILE)
+            db_manager.connect(DB_FILE)
+            current_version = int(db_manager.get_database_version(DB_FILE))
             expected_version = CURRENT_ORM_VERSION
 
             # Check if an upgrade is required
@@ -2887,37 +2888,37 @@ def check_database_integrity():
                             f"Current version is {current_version} but it should be {expected_version}. "
                             f"Upgrading RBAC database to version {expected_version}")
                 # Remove tmp database if present
-                os.path.exists(_db_file_tmp) and os.remove(_db_file_tmp)
+                os.path.exists(DB_FILE_TMP) and os.remove(DB_FILE_TMP)
 
                 # Create new tmp database and populate it with default resources
-                db_manager.connect(_db_file_tmp)
-                db_manager.create_database(_db_file_tmp)
-                _set_permissions_and_ownership(_db_file_tmp)
-                db_manager.insert_default_resources(_db_file_tmp)
+                db_manager.connect(DB_FILE_TMP)
+                db_manager.create_database(DB_FILE_TMP)
+                _set_permissions_and_ownership(DB_FILE_TMP)
+                db_manager.insert_default_resources(DB_FILE_TMP)
 
                 # Migrate data from old database
-                db_manager.migrate_data(source=_db_file, target=_db_file_tmp, from_id=cloud_reserved_range,
+                db_manager.migrate_data(source=DB_FILE, target=DB_FILE_TMP, from_id=cloud_reserved_range,
                                         to_id=max_id_reserved)
-                db_manager.migrate_data(source=_db_file, target=_db_file_tmp, from_id=max_id_reserved + 1)
+                db_manager.migrate_data(source=DB_FILE, target=DB_FILE_TMP, from_id=max_id_reserved + 1)
 
                 # Apply changes and replace database
-                db_manager.set_database_version(_db_file_tmp, expected_version)
+                db_manager.set_database_version(DB_FILE_TMP, expected_version)
                 db_manager.close_sessions()
-                safe_move(_db_file_tmp, _db_file,
+                safe_move(DB_FILE_TMP, DB_FILE,
                           ownership=(wazuh_uid(), wazuh_gid()),
                           permissions=0o640)
-                logger.info(f"{_db_file} database upgraded successfully")
+                logger.info(f"{DB_FILE} database upgraded successfully")
 
         # If database does not exist it means this is a fresh installation and must be created properly
         else:
             logger.info(f"RBAC database not found. Initializing")
-            db_manager.connect(_db_file)
-            db_manager.create_database(_db_file)
-            _set_permissions_and_ownership(_db_file)
-            db_manager.insert_default_resources(_db_file)
-            db_manager.set_database_version(_db_file, CURRENT_ORM_VERSION)
+            db_manager.connect(DB_FILE)
+            db_manager.create_database(DB_FILE)
+            _set_permissions_and_ownership(DB_FILE)
+            db_manager.insert_default_resources(DB_FILE)
+            db_manager.set_database_version(DB_FILE, CURRENT_ORM_VERSION)
             db_manager.close_sessions()
-            logger.info(f"{_db_file} database created successfully")
+            logger.info(f"{DB_FILE} database created successfully")
     except ValueError as e:
         logger.error("Error retrieving the current Wazuh RBAC database version. Aborting database integrity check")
         db_manager.close_sessions()
@@ -2931,7 +2932,7 @@ def check_database_integrity():
         logger.info("RBAC database integrity check finished successfully")
     finally:
         # Remove tmp database if present
-        os.path.exists(_db_file_tmp) and os.remove(_db_file_tmp)
+        os.path.exists(DB_FILE_TMP) and os.remove(DB_FILE_TMP)
 
 
 db_manager = DatabaseManager()
