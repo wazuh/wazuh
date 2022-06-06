@@ -247,7 +247,7 @@ void start_daemon()
 
     snprintf(diff_file_dir, PATH_MAX, "%s/file/", DIFF_DIR);
     snprintf(diff_registry_dir, PATH_MAX, "%s/registry/", DIFF_DIR);
-    snprintf(diff_local_dir, PATH_MAX, "%s/registry/", DIFF_DIR);
+    snprintf(diff_local_dir, PATH_MAX, "%s/local/", DIFF_DIR);
 
     if (cldir_ex(diff_file_dir) == -1 && errno != ENOENT) {
         merror("Unable to clear directory '%s': %s (%d)", diff_file_dir, strerror(errno), errno);

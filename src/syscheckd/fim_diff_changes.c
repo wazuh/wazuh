@@ -940,9 +940,8 @@ void fim_diff_process_delete_file(const char *filename){
 
     OS_SHA1_Str(buffer, -1, encoded_path);
 
-    os_malloc(sizeof(char) * (strlen(DIFF_DIR) + 5 + strlen(encoded_path)), full_path);
-    snprintf(full_path, PATH_MAX, "%s/file/", DIFF_DIR);
-    strcat(full_path, encoded_path);
+    snprintf(buffer, PATH_MAX, "%s/file/%s", DIFF_DIR, encoded_path);
+    os_strdup(buffer, full_path);
 
     ret = fim_diff_delete_compress_folder(full_path);
     if(ret == -1){

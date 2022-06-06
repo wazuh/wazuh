@@ -1074,6 +1074,8 @@ static void test_fim_registry_process_value_delete_event_success(void **state) {
     fim_event_mode event_mode = FIM_SCHEDULED;
     void *w_event = NULL;
     expect_fim_db_remove_registry_value_data_call(syscheck.database, data->entry->registry_entry.value, FIMDB_OK);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6355): Can't remove folder 'queue/diff/registry/[x64] b9b175e8810d3475f15976dd3b5f9210f3af6604/3f17670fd80d6563a3d4283adfe14140907b75b0', it does not exist.");
+
     fim_registry_process_value_delete_event(syscheck.database, data->entry, &mutex, &alert, &event_mode, w_event);
 }
 
@@ -1103,6 +1105,8 @@ static void test_fim_registry_process_key_delete_event_success(void **state) {
     int alert = 1;
     fim_event_mode event_mode = FIM_SCHEDULED;
     void *w_event = NULL;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6355): Can't remove folder 'queue/diff/registry/[x64] b9b175e8810d3475f15976dd3b5f9210f3af6604', it does not exist.");
 
     expect_fim_db_get_values_from_registry_key_call(syscheck.database, data->file, FIM_DB_DISK, FIMDB_OK);
 
