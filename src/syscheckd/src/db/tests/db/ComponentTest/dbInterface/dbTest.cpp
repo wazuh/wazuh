@@ -220,7 +220,7 @@ TEST(DBTest, TestInvalidFimLimit)
                     300,
                     mockSyncMessage,
                     mockLoggingFunction,
-                    100000,
+                    -1,
                     minSyncInterval,
                     -1,
                     true)
