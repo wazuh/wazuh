@@ -1160,6 +1160,7 @@ void * ad_input_main(void * args) {
                 continue;
             }
 
+            w_add_recv((unsigned long) recv);
             w_inc_received_events();
 
             if (msg[0] == SYSCHECK_MQ) {

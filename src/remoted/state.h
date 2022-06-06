@@ -13,8 +13,6 @@
 
 #include <stdint.h>
 
-#define VERSION 1
-
 /* Status structures */
 
 typedef struct _ctrl_msgs_t {

@@ -270,10 +270,8 @@ void test_wazuhdb_create_state_json(void ** state) {
     assert_non_null(cJSON_GetObjectItem(statistics, "queries_total"));
     assert_int_equal(cJSON_GetObjectItem(statistics, "queries_total")->valueint, 856);
 
-    assert_non_null(cJSON_GetObjectItem(statistics, "queries_time_total"));
-    assert_int_equal(cJSON_GetObjectItem(statistics, "queries_time_total")->valueint, 25717);
-
     cJSON* queries_breakdown = cJSON_GetObjectItem(statistics, "queries_breakdown");
+
     assert_non_null(cJSON_GetObjectItem(queries_breakdown, "wazuhdb_queries"));
     assert_int_equal(cJSON_GetObjectItem(queries_breakdown, "wazuhdb_queries")->valueint, 212);
 
@@ -284,15 +282,6 @@ void test_wazuhdb_create_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(wazuhdb_queries_breakdown, "remove_queries")->valueint, 2);
     assert_non_null(cJSON_GetObjectItem(wazuhdb_queries_breakdown, "unknown_queries"));
     assert_int_equal(cJSON_GetObjectItem(wazuhdb_queries_breakdown, "unknown_queries")->valueint, 0);
-
-    assert_non_null(cJSON_GetObjectItem(queries_breakdown, "wazuhdb_time"));
-    assert_int_equal(cJSON_GetObjectItem(queries_breakdown, "wazuhdb_time")->valueint, 364);
-
-    cJSON* wazuhdb_time_breakdown = cJSON_GetObjectItem(queries_breakdown, "wazuhdb_time_breakdown");
-    assert_non_null(cJSON_GetObjectItem(wazuhdb_time_breakdown, "getconfig_time"));
-    assert_int_equal(cJSON_GetObjectItem(wazuhdb_time_breakdown, "getconfig_time")->valueint, 232);
-    assert_non_null(cJSON_GetObjectItem(wazuhdb_time_breakdown, "remove_time"));
-    assert_int_equal(cJSON_GetObjectItem(wazuhdb_time_breakdown, "remove_time")->valueint, 132);
 
     assert_non_null(cJSON_GetObjectItem(queries_breakdown, "agent_queries"));
     assert_int_equal(cJSON_GetObjectItem(queries_breakdown, "agent_queries")->valueint, 365);
@@ -376,87 +365,6 @@ void test_wazuhdb_create_state_json(void ** state) {
     assert_non_null(cJSON_GetObjectItem(agent_queries_breakdown, "unknown_queries"));
     assert_int_equal(cJSON_GetObjectItem(agent_queries_breakdown, "unknown_queries")->valueint, 1);
 
-    assert_non_null(cJSON_GetObjectItem(queries_breakdown, "agent_time"));
-    assert_int_equal(cJSON_GetObjectItem(queries_breakdown, "agent_time")->valueint, 17947);
-
-    cJSON* agent_time_breakdown = cJSON_GetObjectItem(queries_breakdown, "agent_time_breakdown");
-    assert_non_null(cJSON_GetObjectItem(agent_time_breakdown, "sql_time"));
-    assert_int_equal(cJSON_GetObjectItem(agent_time_breakdown, "sql_time")->valueint, 1546);
-    assert_non_null(cJSON_GetObjectItem(agent_time_breakdown, "remove_time"));
-    assert_int_equal(cJSON_GetObjectItem(agent_time_breakdown, "remove_time")->valueint, 351);
-    assert_non_null(cJSON_GetObjectItem(agent_time_breakdown, "begin_time"));
-    assert_int_equal(cJSON_GetObjectItem(agent_time_breakdown, "begin_time")->valueint, 313);
-    assert_non_null(cJSON_GetObjectItem(agent_time_breakdown, "commit_time"));
-    assert_int_equal(cJSON_GetObjectItem(agent_time_breakdown, "commit_time")->valueint, 122);
-    assert_non_null(cJSON_GetObjectItem(agent_time_breakdown, "close_time"));
-    assert_int_equal(cJSON_GetObjectItem(agent_time_breakdown, "close_time")->valueint, 156);
-
-
-    cJSON* agent_syscheck_time = cJSON_GetObjectItem(agent_time_breakdown, "syscheck_time");
-    assert_non_null(cJSON_GetObjectItem(agent_syscheck_time, "syscheck_time"));
-    assert_int_equal(cJSON_GetObjectItem(agent_syscheck_time, "syscheck_time")->valueint, 641);
-    assert_non_null(cJSON_GetObjectItem(agent_syscheck_time, "fim_file_time"));
-    assert_int_equal(cJSON_GetObjectItem(agent_syscheck_time, "fim_file_time")->valueint, 35);
-    assert_non_null(cJSON_GetObjectItem(agent_syscheck_time, "fim_registry_time"));
-    assert_int_equal(cJSON_GetObjectItem(agent_syscheck_time, "fim_registry_time")->valueint, 221);
-
-    cJSON* agent_rootcheck_time = cJSON_GetObjectItem(agent_time_breakdown, "rootcheck_time");
-    assert_non_null(cJSON_GetObjectItem(agent_rootcheck_time, "rootcheck_time"));
-    assert_int_equal(cJSON_GetObjectItem(agent_rootcheck_time, "rootcheck_time")->valueint, 1146);
-
-    cJSON* agent_sca_time = cJSON_GetObjectItem(agent_time_breakdown, "sca_time");
-    assert_non_null(cJSON_GetObjectItem(agent_sca_time, "sca_time"));
-    assert_int_equal(cJSON_GetObjectItem(agent_sca_time, "sca_time")->valueint, 2351);
-
-    cJSON* agent_ciscat_time = cJSON_GetObjectItem(agent_time_breakdown, "ciscat_time");
-    assert_non_null(cJSON_GetObjectItem(agent_ciscat_time, "ciscat_time"));
-    assert_int_equal(cJSON_GetObjectItem(agent_ciscat_time, "ciscat_time")->valueint, 1896);
-
-    cJSON* agent_syscollector_time = cJSON_GetObjectItem(agent_time_breakdown, "syscollector_time");
-    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_processes_time"));
-    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_processes_time")->valueint, 356);
-    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_packages_time"));
-    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_packages_time")->valueint, 321);
-    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_hotfixes_time"));
-    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_hotfixes_time")->valueint, 1513);
-    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_ports_time"));
-    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_ports_time")->valueint, 894);
-    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_network_protocol_time"));
-    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_network_protocol_time")->valueint, 123);
-    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_network_address_time"));
-    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_network_address_time")->valueint, 984);
-    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_network_iface_time"));
-    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_network_iface_time")->valueint, 781);
-    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_hwinfo_time"));
-    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_hwinfo_time")->valueint, 843);
-    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_osinfo_time"));
-    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_osinfo_time")->valueint, 123);
-    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "process_time"));
-    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "process_time")->valueint, 145);
-    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "package_time"));
-    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "package_time")->valueint, 231);
-    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "hotfix_time"));
-    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "hotfix_time")->valueint, 512);
-    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "port_time"));
-    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "port_time")->valueint, 716);
-    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "netproto_time"));
-    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "netproto_time")->valueint, 123);
-    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "netaddr_time"));
-    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "netaddr_time")->valueint, 515);
-    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "netinfo_time"));
-    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "netinfo_time")->valueint, 651);
-    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "hardware_time"));
-    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "hardware_time")->valueint, 156);
-    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "osinfo_time"));
-    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "osinfo_time")->valueint, 153);
-
-    cJSON* agent_vuln_detector_time = cJSON_GetObjectItem(agent_time_breakdown, "vulnerability_detector_time");
-    assert_non_null(cJSON_GetObjectItem(agent_vuln_detector_time, "vuln_cves_time"));
-    assert_int_equal(cJSON_GetObjectItem(agent_vuln_detector_time, "vuln_cves_time")->valueint, 15);
-
-    assert_non_null(cJSON_GetObjectItem(agent_time_breakdown, "dbsync_time"));
-    assert_int_equal(cJSON_GetObjectItem(agent_time_breakdown, "dbsync_time")->valueint, 2);
-
     assert_non_null(cJSON_GetObjectItem(queries_breakdown, "global_queries"));
     assert_int_equal(cJSON_GetObjectItem(queries_breakdown, "global_queries")->valueint, 227);
 
@@ -529,10 +437,144 @@ void test_wazuhdb_create_state_json(void ** state) {
     assert_non_null(cJSON_GetObjectItem(global_queries_breakdown, "unknown_queries"));
     assert_int_equal(cJSON_GetObjectItem(global_queries_breakdown, "unknown_queries")->valueint, 0);
 
-    assert_non_null(cJSON_GetObjectItem(queries_breakdown, "global_time"));
-    assert_int_equal(cJSON_GetObjectItem(queries_breakdown, "global_time")->valueint, 6935);
+    assert_non_null(cJSON_GetObjectItem(queries_breakdown, "task_queries"));
+    assert_int_equal(cJSON_GetObjectItem(queries_breakdown, "task_queries")->valueint, 45);
 
-    cJSON* global_time_breakdown = cJSON_GetObjectItem(queries_breakdown, "global_time_breakdown");
+    cJSON* task_queries_breakdown = cJSON_GetObjectItem(queries_breakdown, "task_queries_breakdown");
+    assert_non_null(cJSON_GetObjectItem(task_queries_breakdown, "sql_queries"));
+    assert_int_equal(cJSON_GetObjectItem(task_queries_breakdown, "sql_queries")->valueint, 1);
+
+    cJSON* task_upgrade_queries_breakdown = cJSON_GetObjectItem(task_queries_breakdown, "upgrade_queries");
+    assert_non_null(cJSON_GetObjectItem(task_upgrade_queries_breakdown, "upgrade_queries"));
+    assert_int_equal(cJSON_GetObjectItem(task_upgrade_queries_breakdown, "upgrade_queries")->valueint, 20);
+    assert_non_null(cJSON_GetObjectItem(task_upgrade_queries_breakdown, "upgrade_custom_queries"));
+    assert_int_equal(cJSON_GetObjectItem(task_upgrade_queries_breakdown, "upgrade_custom_queries")->valueint, 2);
+    assert_non_null(cJSON_GetObjectItem(task_upgrade_queries_breakdown, "upgrade_get_status_queries"));
+    assert_int_equal(cJSON_GetObjectItem(task_upgrade_queries_breakdown, "upgrade_get_status_queries")->valueint, 10);
+    assert_non_null(cJSON_GetObjectItem(task_upgrade_queries_breakdown, "upgrade_update_status_queries"));
+    assert_int_equal(cJSON_GetObjectItem(task_upgrade_queries_breakdown, "upgrade_update_status_queries")->valueint, 0);
+    assert_non_null(cJSON_GetObjectItem(task_upgrade_queries_breakdown, "upgrade_result_queries"));
+    assert_int_equal(cJSON_GetObjectItem(task_upgrade_queries_breakdown, "upgrade_result_queries")->valueint, 2);
+    assert_non_null(cJSON_GetObjectItem(task_upgrade_queries_breakdown, "upgrade_cancel_tasks_queries"));
+    assert_int_equal(cJSON_GetObjectItem(task_upgrade_queries_breakdown, "upgrade_cancel_tasks_queries")->valueint, 4);
+
+    assert_non_null(cJSON_GetObjectItem(task_queries_breakdown, "set_timeout_queries"));
+    assert_int_equal(cJSON_GetObjectItem(task_queries_breakdown, "set_timeout_queries")->valueint, 3);
+    assert_non_null(cJSON_GetObjectItem(task_queries_breakdown, "delete_old_queries"));
+    assert_int_equal(cJSON_GetObjectItem(task_queries_breakdown, "delete_old_queries")->valueint, 2);
+    assert_non_null(cJSON_GetObjectItem(task_queries_breakdown, "unknown_queries"));
+    assert_int_equal(cJSON_GetObjectItem(task_queries_breakdown, "unknown_queries")->valueint, 1);
+
+    assert_non_null(cJSON_GetObjectItem(queries_breakdown, "mitre_queries"));
+    assert_int_equal(cJSON_GetObjectItem(queries_breakdown, "mitre_queries")->valueint, 2);
+
+    cJSON* mitre_queries_breakdown = cJSON_GetObjectItem(queries_breakdown, "mitre_queries_breakdown");
+    assert_non_null(cJSON_GetObjectItem(mitre_queries_breakdown, "sql_queries"));
+    assert_int_equal(cJSON_GetObjectItem(mitre_queries_breakdown, "sql_queries")->valueint, 2);
+    assert_non_null(cJSON_GetObjectItem(mitre_queries_breakdown, "unknown_queries"));
+    assert_int_equal(cJSON_GetObjectItem(mitre_queries_breakdown, "unknown_queries")->valueint, 0);
+
+    assert_non_null(cJSON_GetObjectItem(queries_breakdown, "unknown_queries"));
+    assert_int_equal(cJSON_GetObjectItem(queries_breakdown, "unknown_queries")->valueint, 5);
+
+    assert_non_null(cJSON_GetObjectItem(statistics, "queries_time_total"));
+    assert_int_equal(cJSON_GetObjectItem(statistics, "queries_time_total")->valueint, 25717);
+
+    cJSON* queries_time_breakdown = cJSON_GetObjectItem(statistics, "queries_time_breakdown");
+
+    assert_non_null(cJSON_GetObjectItem(queries_time_breakdown, "wazuhdb_time"));
+    assert_int_equal(cJSON_GetObjectItem(queries_time_breakdown, "wazuhdb_time")->valueint, 364);
+
+    cJSON* wazuhdb_time_breakdown = cJSON_GetObjectItem(queries_time_breakdown, "wazuhdb_time_breakdown");
+    assert_non_null(cJSON_GetObjectItem(wazuhdb_time_breakdown, "getconfig_time"));
+    assert_int_equal(cJSON_GetObjectItem(wazuhdb_time_breakdown, "getconfig_time")->valueint, 232);
+    assert_non_null(cJSON_GetObjectItem(wazuhdb_time_breakdown, "remove_time"));
+    assert_int_equal(cJSON_GetObjectItem(wazuhdb_time_breakdown, "remove_time")->valueint, 132);
+
+    assert_non_null(cJSON_GetObjectItem(queries_time_breakdown, "agent_time"));
+    assert_int_equal(cJSON_GetObjectItem(queries_time_breakdown, "agent_time")->valueint, 17947);
+
+    cJSON* agent_time_breakdown = cJSON_GetObjectItem(queries_time_breakdown, "agent_time_breakdown");
+    assert_non_null(cJSON_GetObjectItem(agent_time_breakdown, "sql_time"));
+    assert_int_equal(cJSON_GetObjectItem(agent_time_breakdown, "sql_time")->valueint, 1546);
+    assert_non_null(cJSON_GetObjectItem(agent_time_breakdown, "remove_time"));
+    assert_int_equal(cJSON_GetObjectItem(agent_time_breakdown, "remove_time")->valueint, 351);
+    assert_non_null(cJSON_GetObjectItem(agent_time_breakdown, "begin_time"));
+    assert_int_equal(cJSON_GetObjectItem(agent_time_breakdown, "begin_time")->valueint, 313);
+    assert_non_null(cJSON_GetObjectItem(agent_time_breakdown, "commit_time"));
+    assert_int_equal(cJSON_GetObjectItem(agent_time_breakdown, "commit_time")->valueint, 122);
+    assert_non_null(cJSON_GetObjectItem(agent_time_breakdown, "close_time"));
+    assert_int_equal(cJSON_GetObjectItem(agent_time_breakdown, "close_time")->valueint, 156);
+
+    cJSON* agent_syscheck_time = cJSON_GetObjectItem(agent_time_breakdown, "syscheck_time");
+    assert_non_null(cJSON_GetObjectItem(agent_syscheck_time, "syscheck_time"));
+    assert_int_equal(cJSON_GetObjectItem(agent_syscheck_time, "syscheck_time")->valueint, 641);
+    assert_non_null(cJSON_GetObjectItem(agent_syscheck_time, "fim_file_time"));
+    assert_int_equal(cJSON_GetObjectItem(agent_syscheck_time, "fim_file_time")->valueint, 35);
+    assert_non_null(cJSON_GetObjectItem(agent_syscheck_time, "fim_registry_time"));
+    assert_int_equal(cJSON_GetObjectItem(agent_syscheck_time, "fim_registry_time")->valueint, 221);
+
+    cJSON* agent_rootcheck_time = cJSON_GetObjectItem(agent_time_breakdown, "rootcheck_time");
+    assert_non_null(cJSON_GetObjectItem(agent_rootcheck_time, "rootcheck_time"));
+    assert_int_equal(cJSON_GetObjectItem(agent_rootcheck_time, "rootcheck_time")->valueint, 1146);
+
+    cJSON* agent_sca_time = cJSON_GetObjectItem(agent_time_breakdown, "sca_time");
+    assert_non_null(cJSON_GetObjectItem(agent_sca_time, "sca_time"));
+    assert_int_equal(cJSON_GetObjectItem(agent_sca_time, "sca_time")->valueint, 2351);
+
+    cJSON* agent_ciscat_time = cJSON_GetObjectItem(agent_time_breakdown, "ciscat_time");
+    assert_non_null(cJSON_GetObjectItem(agent_ciscat_time, "ciscat_time"));
+    assert_int_equal(cJSON_GetObjectItem(agent_ciscat_time, "ciscat_time")->valueint, 1896);
+
+    cJSON* agent_syscollector_time = cJSON_GetObjectItem(agent_time_breakdown, "syscollector_time");
+    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_processes_time"));
+    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_processes_time")->valueint, 356);
+    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_packages_time"));
+    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_packages_time")->valueint, 321);
+    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_hotfixes_time"));
+    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_hotfixes_time")->valueint, 1513);
+    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_ports_time"));
+    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_ports_time")->valueint, 894);
+    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_network_protocol_time"));
+    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_network_protocol_time")->valueint, 123);
+    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_network_address_time"));
+    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_network_address_time")->valueint, 984);
+    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_network_iface_time"));
+    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_network_iface_time")->valueint, 781);
+    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_hwinfo_time"));
+    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_hwinfo_time")->valueint, 843);
+    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_osinfo_time"));
+    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_osinfo_time")->valueint, 123);
+    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "process_time"));
+    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "process_time")->valueint, 145);
+    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "package_time"));
+    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "package_time")->valueint, 231);
+    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "hotfix_time"));
+    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "hotfix_time")->valueint, 512);
+    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "port_time"));
+    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "port_time")->valueint, 716);
+    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "netproto_time"));
+    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "netproto_time")->valueint, 123);
+    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "netaddr_time"));
+    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "netaddr_time")->valueint, 515);
+    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "netinfo_time"));
+    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "netinfo_time")->valueint, 651);
+    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "hardware_time"));
+    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "hardware_time")->valueint, 156);
+    assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "osinfo_time"));
+    assert_int_equal(cJSON_GetObjectItem(agent_syscollector_time, "osinfo_time")->valueint, 153);
+
+    cJSON* agent_vuln_detector_time = cJSON_GetObjectItem(agent_time_breakdown, "vulnerability_detector_time");
+    assert_non_null(cJSON_GetObjectItem(agent_vuln_detector_time, "vuln_cves_time"));
+    assert_int_equal(cJSON_GetObjectItem(agent_vuln_detector_time, "vuln_cves_time")->valueint, 15);
+
+    assert_non_null(cJSON_GetObjectItem(agent_time_breakdown, "dbsync_time"));
+    assert_int_equal(cJSON_GetObjectItem(agent_time_breakdown, "dbsync_time")->valueint, 2);
+
+    assert_non_null(cJSON_GetObjectItem(queries_time_breakdown, "global_time"));
+    assert_int_equal(cJSON_GetObjectItem(queries_time_breakdown, "global_time")->valueint, 6935);
+
+    cJSON* global_time_breakdown = cJSON_GetObjectItem(queries_time_breakdown, "global_time_breakdown");
     assert_non_null(cJSON_GetObjectItem(global_time_breakdown, "sql_time"));
     assert_int_equal(cJSON_GetObjectItem(global_time_breakdown, "sql_time")->valueint, 1);
     assert_non_null(cJSON_GetObjectItem(global_time_breakdown, "backup_time"));
@@ -598,38 +640,10 @@ void test_wazuhdb_create_state_json(void ** state) {
     assert_non_null(cJSON_GetObjectItem(global_labels_time_breakdown, "get-labels_time"));
     assert_int_equal(cJSON_GetObjectItem(global_labels_time_breakdown, "get-labels_time")->valueint, 120);
 
-    assert_non_null(cJSON_GetObjectItem(queries_breakdown, "task_queries"));
-    assert_int_equal(cJSON_GetObjectItem(queries_breakdown, "task_queries")->valueint, 45);
+    assert_non_null(cJSON_GetObjectItem(queries_time_breakdown, "task_time"));
+    assert_int_equal(cJSON_GetObjectItem(queries_time_breakdown, "task_time")->valueint, 456);
 
-    cJSON* task_queries_breakdown = cJSON_GetObjectItem(queries_breakdown, "task_queries_breakdown");
-    assert_non_null(cJSON_GetObjectItem(task_queries_breakdown, "sql_queries"));
-    assert_int_equal(cJSON_GetObjectItem(task_queries_breakdown, "sql_queries")->valueint, 1);
-
-    cJSON* task_upgrade_queries_breakdown = cJSON_GetObjectItem(task_queries_breakdown, "upgrade_queries");
-    assert_non_null(cJSON_GetObjectItem(task_upgrade_queries_breakdown, "upgrade_queries"));
-    assert_int_equal(cJSON_GetObjectItem(task_upgrade_queries_breakdown, "upgrade_queries")->valueint, 20);
-    assert_non_null(cJSON_GetObjectItem(task_upgrade_queries_breakdown, "upgrade_custom_queries"));
-    assert_int_equal(cJSON_GetObjectItem(task_upgrade_queries_breakdown, "upgrade_custom_queries")->valueint, 2);
-    assert_non_null(cJSON_GetObjectItem(task_upgrade_queries_breakdown, "upgrade_get_status_queries"));
-    assert_int_equal(cJSON_GetObjectItem(task_upgrade_queries_breakdown, "upgrade_get_status_queries")->valueint, 10);
-    assert_non_null(cJSON_GetObjectItem(task_upgrade_queries_breakdown, "upgrade_update_status_queries"));
-    assert_int_equal(cJSON_GetObjectItem(task_upgrade_queries_breakdown, "upgrade_update_status_queries")->valueint, 0);
-    assert_non_null(cJSON_GetObjectItem(task_upgrade_queries_breakdown, "upgrade_result_queries"));
-    assert_int_equal(cJSON_GetObjectItem(task_upgrade_queries_breakdown, "upgrade_result_queries")->valueint, 2);
-    assert_non_null(cJSON_GetObjectItem(task_upgrade_queries_breakdown, "upgrade_cancel_tasks_queries"));
-    assert_int_equal(cJSON_GetObjectItem(task_upgrade_queries_breakdown, "upgrade_cancel_tasks_queries")->valueint, 4);
-
-    assert_non_null(cJSON_GetObjectItem(task_queries_breakdown, "set_timeout_queries"));
-    assert_int_equal(cJSON_GetObjectItem(task_queries_breakdown, "set_timeout_queries")->valueint, 3);
-    assert_non_null(cJSON_GetObjectItem(task_queries_breakdown, "delete_old_queries"));
-    assert_int_equal(cJSON_GetObjectItem(task_queries_breakdown, "delete_old_queries")->valueint, 2);
-    assert_non_null(cJSON_GetObjectItem(task_queries_breakdown, "unknown_queries"));
-    assert_int_equal(cJSON_GetObjectItem(task_queries_breakdown, "unknown_queries")->valueint, 1);
-
-    assert_non_null(cJSON_GetObjectItem(queries_breakdown, "task_time"));
-    assert_int_equal(cJSON_GetObjectItem(queries_breakdown, "task_time")->valueint, 456);
-
-    cJSON* task_time_breakdown = cJSON_GetObjectItem(queries_breakdown, "task_time_breakdown");
+    cJSON* task_time_breakdown = cJSON_GetObjectItem(queries_time_breakdown, "task_time_breakdown");
     assert_non_null(cJSON_GetObjectItem(task_time_breakdown, "sql_time"));
     assert_int_equal(cJSON_GetObjectItem(task_time_breakdown, "sql_time")->valueint, 56);
 
@@ -652,24 +666,12 @@ void test_wazuhdb_create_state_json(void ** state) {
     assert_non_null(cJSON_GetObjectItem(task_time_breakdown, "delete_old_time"));
     assert_int_equal(cJSON_GetObjectItem(task_time_breakdown, "delete_old_time")->valueint, 12);
 
-    assert_non_null(cJSON_GetObjectItem(queries_breakdown, "mitre_queries"));
-    assert_int_equal(cJSON_GetObjectItem(queries_breakdown, "mitre_queries")->valueint, 2);
+    assert_non_null(cJSON_GetObjectItem(queries_time_breakdown, "mitre_time"));
+    assert_int_equal(cJSON_GetObjectItem(queries_time_breakdown, "mitre_time")->valueint, 15);
 
-    cJSON* mitre_queries_breakdown = cJSON_GetObjectItem(queries_breakdown, "mitre_queries_breakdown");
-    assert_non_null(cJSON_GetObjectItem(mitre_queries_breakdown, "sql_queries"));
-    assert_int_equal(cJSON_GetObjectItem(mitre_queries_breakdown, "sql_queries")->valueint, 2);
-    assert_non_null(cJSON_GetObjectItem(mitre_queries_breakdown, "unknown_queries"));
-    assert_int_equal(cJSON_GetObjectItem(mitre_queries_breakdown, "unknown_queries")->valueint, 0);
-
-    assert_non_null(cJSON_GetObjectItem(queries_breakdown, "mitre_time"));
-    assert_int_equal(cJSON_GetObjectItem(queries_breakdown, "mitre_time")->valueint, 15);
-
-    cJSON* mitre_time_breakdown = cJSON_GetObjectItem(queries_breakdown, "mitre_time_breakdown");
+    cJSON* mitre_time_breakdown = cJSON_GetObjectItem(queries_time_breakdown, "mitre_time_breakdown");
     assert_non_null(cJSON_GetObjectItem(mitre_time_breakdown, "sql_time"));
     assert_int_equal(cJSON_GetObjectItem(mitre_time_breakdown, "sql_time")->valueint, 15);
-
-    assert_non_null(cJSON_GetObjectItem(queries_breakdown, "unknown_queries"));
-    assert_int_equal(cJSON_GetObjectItem(queries_breakdown, "unknown_queries")->valueint, 5);
 }
 
 int main(void) {

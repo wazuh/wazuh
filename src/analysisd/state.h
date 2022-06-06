@@ -14,8 +14,6 @@
 
 #include <stdint.h>
 
-#define VERSION 1
-
 /* Status structures */
 
 typedef struct _queue_status_t {
@@ -94,6 +92,7 @@ typedef struct _events_recv_t {
 } events_recv_t;
 
 typedef struct _analysisd_state_t {
+    uint64_t received_bytes;
     uint64_t events_received;
     uint64_t events_processed;
     uint64_t alerts_written;
@@ -116,6 +115,12 @@ void * asyscom_main(__attribute__((unused)) void * arg) ;
  * @brief Main function of analysisd status writer
  */
 void* w_analysisd_state_main();
+
+/**
+ * @brief Increment bytes received
+ * @param bytes Number of bytes to increment
+ */
+void w_add_recv(unsigned long bytes);
 
 /**
  * @brief Increment received events counter
