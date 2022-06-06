@@ -2496,7 +2496,7 @@ checks:
     rules:
       - 'auditpol.exe /get /subcategory:"Security System Extension" -> r:Success'
 
-  - id:
+  - id: 26170
     title: "Ensure 'Audit System Integrity' is set to 'Success and Failure'"
     description: "This subcategory reports on violations of integrity of the security subsystem. Events for  this subcategory include: - 4612 : Internal resources allocated for the queuing of audit messages have been  exhausted, leading to the loss of some audits. - 4615 : Invalid use of LPC port. - 4618 : A monitored security event pattern has occurred. - 4816 : RPC detected an integrity violation while decrypting an incoming message. - 5038 : Code integrity determined that the image hash of a file is not valid. The file  could be corrupt due to unauthorized modification or the invalid hash could indicate  a potential disk device error. - 5056: A cryptographic self test was performed. - 5057: A cryptographic primitive operation failed. - 5060: Verification operation failed. - 5061: Cryptographic operation. - 5062: A kernel-mode cryptographic self test was performed. The recommended state for this setting is: Success and Failure. "
     rationale: "Auditing these events may be useful when investigating a security incident. "
@@ -2507,3 +2507,148 @@ checks:
     condition: all
     rules:
       - 'auditpol.exe /get /subcategory:"System Integrity" -> r:Success and Failure'
+
+  - id: 26171
+    title: "Ensure 'Prevent enabling lock screen camera' is set to 'Enabled'"
+    description: "Disables the lock screen camera toggle switch in PC Settings and prevents a camera from being invoked on the lock screen. The recommended state for this setting is: Enabled."
+    rationale: "Disabling the lock screen camera extends the protection afforded by the lock screen to camera features."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Control Panel\\Personalization\\Prevent enabling lock screen camera"
+    compliance:
+      - cis: ["18.1.1.1"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-35799-6'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Personalization -> NoLockScreenCamera -> 1'
+
+  - id: 26172
+    title: "Ensure 'Prevent enabling lock screen slide show' is set to 'Enabled'"
+    description: "Disables the lock screen slide show settings in PC Settings and prevents a slide show from playing on the lock screen. The recommended state for this setting is: Enabled."
+    rationale: "Disabling the lock screen slide show extends the protection afforded by the lock screen to slide show contents."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Control Panel\\Personalization\\Prevent enabling lock screen slide show"
+    compliance:
+      - cis: ["18.1.1.2"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-35800-2'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Personalization -> NoLockScreenSlideshow -> 1'
+
+  - id: 26173
+    title: "Ensure 'Allow users to enable online speech recognition services' is set to 'Disabled'"
+    description: "This policy enables the automatic learning component of input personalization that includes speech, inking, and typing. Automatic learning enables the collection of speech and handwriting patterns, typing history, contacts, and recent calendar information. It is required for the use of Cortana. Some of this collected information may be stored on the user's OneDrive, in the case of inking and typing; some of the information will be uploaded to Microsoft to personalize speech. The recommended state for this setting is: Disabled."
+    rationale: "If this setting is Enabled sensitive information could be stored in the cloud or sent to Microsoft."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Control Panel\\Allow users to enable online speech recognition services"
+    compliance:
+      - cis: ["18.1.2.2"]
+      - cis_csc: ["13"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-41387-2'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\InputPersonalization -> AllowInputPersonalization -> 0'
+
+  - id: 26174
+    title: "Ensure 'Allow Online Tips' is set to 'Disabled'"
+    description: "This policy setting configures the retrieval of online tips and help for the Settings app. The recommended state for this setting is: Disabled."
+    rationale: "Due to privacy concerns, data should never be sent to any 3rd party since this data could contain sensitive information."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Control Panel\\Allow Online Tips Note: This Group Policy path may not exist by default. It is provided by the Group Policy template ControlPanel.admx/adml that is included with the Microsoft Windows 10 Release 1709 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.1.3"]
+      - cis_csc: ["9.1"]
+      - pci_dss: ["1.3.4"]
+      - tsc: ["CC6.6"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> AllowOnlineTips -> 0'
+
+  - id: 26175
+    title: "Ensure LAPS AdmPwd GPO Extension / CSE is installed"
+    description: "In May 2015, Microsoft released the Local Administrator Password Solution (LAPS) tool, which is free and supported software that allows an organization to automatically set randomized and unique local Administrator account passwords on domain-attached workstations and Member Servers. The passwords are stored in a confidential attribute of the domain computer account and can be retrieved from Active Directory by approved Sysadmins when needed. The LAPS tool requires a small Active Directory Schema update in order to implement, as well as installation of a Group Policy Client Side Extension (CSE) on targeted computers. Please see the LAPS documentation for details. LAPS supports Windows Vista or newer workstation OSes, and Server 2003 or newer server OSes. LAPS does not support standalone computers - they must be joined to a domain. Note: Organizations that utilize 3rd-party commercial software to manage unique & complex local Administrator passwords on domain members may opt to disregard these LAPS recommendations. Note #2: LAPS is only designed to manage local Administrator passwords, and is therefore not recommended (or supported) for use directly on Domain Controllers, which do not have a traditional local Administrator account. We strongly encourage you to only deploy the LAPS CSE and LAPS GPO settings to member servers and workstations."
+    rationale: "Due to the difficulty in managing local Administrator passwords, many organizations choose to use the same password on all workstations and/or Member Servers when deploying them. This creates a serious attack surface security risk because if an attacker manages to compromise one system and learn the password to its local Administrator account, then they can leverage that account to instantly gain access to all other computers that also use that password for their local Administrator account."
+    remediation: "In order to utilize LAPS, a minor Active Directory Schema update is required, and a Group Policy Client Side Extension (CSE) must be installed on each managed computer. When LAPS is installed, the file AdmPwd.dll must be present in the following location and registered in Windows (the LAPS AdmPwd GPO Extension / CSE installation does this for you): C:\\Program Files\\LAPS\\CSE\\AdmPwd.dll"
+    compliance:
+      - cis: ["18.2.1"]
+      - cis_csc: ["16.9"]
+      - pci_dss: ["8.2"]
+      - tsc: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\GPExtensions\{D76B9641-3288-4f75-942D-087DE603E3EA}'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\GPExtensions\{D76B9641-3288-4f75-942D-087DE603E3EA} -> DllName'
+
+  - id: 26176
+    title: "Ensure 'Do not allow password expiration time longer than required by policy' is set to 'Enabled'"
+    description: "In May 2015, Microsoft released the Local Administrator Password Solution (LAPS) tool, which is free and supported software that allows an organization to automatically set randomized and unique local Administrator account passwords on domain-attached workstations and Member Servers. The passwords are stored in a confidential attribute of the domain computer account and can be retrieved from Active Directory by approved Sysadmins when needed. The LAPS tool requires a small Active Directory Schema update in order to implement, as well as installation of a Group Policy Client Side Extension (CSE) on targeted computers. Please see the LAPS documentation for details. LAPS supports Windows Vista or newer workstation OSes, and Server 2003 or newer server OSes. LAPS does not support standalone computers - they must be joined to a domain. The recommended state for this setting is: Enabled. Note: Organizations that utilize 3rd-party commercial software to manage unique & complex local Administrator passwords on domain members may opt to disregard these LAPS recommendations. Note #2: LAPS is only designed to manage local Administrator passwords, and is therefore not recommended (or supported) for use directly on Domain Controllers, which do not have a traditional local Administrator account. We strongly encourage you to only deploy the LAPS CSE and LAPS GPO settings to member servers and workstations."
+    rationale: "Due to the difficulty in managing local Administrator passwords, many organizations choose to use the same password on all workstations and/or Member Servers when deploying them. This creates a serious attack surface security risk because if an attacker manages to compromise one system and learn the password to its local Administrator account, then they can leverage that account to instantly gain access to all other computers that also use that password for their local Administrator account."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\LAPS\\Do not allow password expiration time longer than required by policy."
+    compliance:
+      - cis: ["18.2.2"]
+      - cis_csc: ["16.2", "16.10"]
+      - pci_dss: ["8.2.4"]
+      - tsc: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PwdExpirationProtectionEnabled -> 1'
+
+  - id: 26177
+    title: "Ensure 'Enable Local Admin Password Management' is set to 'Enabled'"
+    description: "In May 2015, Microsoft released the Local Administrator Password Solution (LAPS) tool, which is free and supported software that allows an organization to automatically set randomized and unique local Administrator account passwords on domain-attached workstations and Member Servers. The passwords are stored in a confidential attribute of the domain computer account and can be retrieved from Active Directory by approved Sysadmins when needed. The LAPS tool requires a small Active Directory Schema update in order to implement, as well as installation of a Group Policy Client Side Extension (CSE) on targeted computers. Please see the LAPS documentation for details. LAPS supports Windows Vista or newer workstation OSes, and Server 2003 or newer server OSes. LAPS does not support standalone computers - they must be joined to a domain. The recommended state for this setting is: Enabled. Note: Organizations that utilize 3rd-party commercial software to manage unique & complex local Administrator passwords on domain members may opt to disregard these LAPS recommendations. Note #2: LAPS is only designed to manage local Administrator passwords, and is therefore not recommended (or supported) for use directly on Domain Controllers, which do not have a traditional local Administrator account. We strongly encourage you to only deploy the LAPS CSE and LAPS GPO settings to member servers and workstations."
+    rationale: "Due to the difficulty in managing local Administrator passwords, many organizations choose to use the same password on all workstations and/or Member Servers when deploying them. This creates a serious attack surface security risk because if an attacker manages to compromise one system and learn the password to its local Administrator account, then they can leverage that account to instantly gain access to all other computers that also use that password for their local Administrator account."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\LAPS\\Enable Local Admin Password Management"
+    compliance:
+      - cis: ["18.2.3"]
+      - cis_csc: ["16.9"]
+      - pci_dss: ["8.2"]
+      - tsc: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> AdmPwdEnabled -> 1'
+
+  - id: 26178
+    title: "Ensure 'Password Settings: Password Complexity' is set to 'Enabled: Large letters + small letters + numbers + special characters'"
+    description: "In May 2015, Microsoft released the Local Administrator Password Solution (LAPS) tool, which is free and supported software that allows an organization to automatically set randomized and unique local Administrator account passwords on domain-attached workstations and Member Servers. The passwords are stored in a confidential attribute of the domain computer account and can be retrieved from Active Directory by approved Sysadmins when needed. The LAPS tool requires a small Active Directory Schema update in order to implement, as well as installation of a Group Policy Client Side Extension (CSE) on targeted computers. Please see the LAPS documentation for details. LAPS supports Windows Vista or newer workstation OSes, and Server 2003 or newer server OSes. LAPS does not support standalone computers - they must be joined to a domain. The recommended state for this setting is: Enabled: Large letters + small letters + numbers + special characters. Note: Organizations that utilize 3rd-party commercial software to manage unique & complex local Administrator passwords on domain members may opt to disregard these LAPS recommendations. Note #2: LAPS is only designed to manage local Administrator passwords, and is therefore not recommended (or supported) for use directly on Domain Controllers, which do not have a traditional local Administrator account. We strongly encourage you to only deploy the LAPS CSE and LAPS GPO settings to member servers and workstations."
+    rationale: "Due to the difficulty in managing local Administrator passwords, many organizations choose to use the same password on all workstations and/or Member Servers when deploying them. This creates a serious attack surface security risk because if an attacker manages to compromise one system and learn the password to its local Administrator account, then they can leverage that account to instantly gain access to all other computers that also use that password for their local Administrator account."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled, and configure the Password Complexity option to Large letters + small letters + numbers + special characters: Computer Configuration\\Policies\\Administrative Templates\\LAPS\\Password Settings"
+    compliance:
+      - cis: ["18.2.4"]
+      - cis_csc: ["5.7"]
+      - pci_dss: ["8.2.3"]
+      - tsc: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordComplexity -> 4'
+
+  - id: 26179
+    title: "Ensure 'Password Settings: Password Length' is set to 'Enabled: 15 or more'"
+    description: "In May 2015, Microsoft released the Local Administrator Password Solution (LAPS) tool, which is free and supported software that allows an organization to automatically set randomized and unique local Administrator account passwords on domain-attached workstations and Member Servers. The passwords are stored in a confidential attribute of the domain computer account and can be retrieved from Active Directory by approved Sysadmins when needed. The LAPS tool requires a small Active Directory Schema update in order to implement, as well as installation of a Group Policy Client Side Extension (CSE) on targeted computers. Please see the LAPS documentation for details. LAPS supports Windows Vista or newer workstation OSes, and Server 2003 or newer server OSes. LAPS does not support standalone computers - they must be joined to a domain. The recommended state for this setting is: Enabled: 15 or more. Note: Organizations that utilize 3rd-party commercial software to manage unique & complex local Administrator passwords on domain members may opt to disregard these LAPS recommendations. Note #2: LAPS is only designed to manage local Administrator passwords, and is therefore not recommended (or supported) for use directly on Domain Controllers, which do not have a traditional local Administrator account. We strongly encourage you to only deploy the LAPS CSE and LAPS GPO settings to member servers and workstations."
+    rationale: "Due to the difficulty in managing local Administrator passwords, many organizations choose to use the same password on all workstations and/or Member Servers when deploying them. This creates a serious attack surface security risk because if an attacker manages to compromise one system and learn the password to its local Administrator account, then they can leverage that account to instantly gain access to all other computers that also use that password for their local Administrator account."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled, and configure the Password Length option to 15 or more: Computer Configuration\\Policies\\Administrative Templates\\LAPS\\Password Settings"
+    compliance:
+      - cis: ["18.2.5"]
+      - cis_csc: ["5.7"]
+      - pci_dss: ["8.2.3"]
+      - tsc: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordLength -> n:^(\d+) compare >= 15'
+
+  - id: 26180
+    title: "Ensure 'Password Settings: Password Age (Days)' is set to 'Enabled: 30 or fewer'"
+    description: "In May 2015, Microsoft released the Local Administrator Password Solution (LAPS) tool, which is free and supported software that allows an organization to automatically set randomized and unique local Administrator account passwords on domain-attached workstations and Member Servers. The passwords are stored in a confidential attribute of the domain computer account and can be retrieved from Active Directory by approved Sysadmins when needed. The LAPS tool requires a small Active Directory Schema update in order to implement, as well as installation of a Group Policy Client Side Extension (CSE) on targeted computers. Please see the LAPS documentation for details. LAPS supports Windows Vista or newer workstation OSes, and Server 2003 or newer server OSes. LAPS does not support standalone computers - they must be joined to a domain. The recommended state for this setting is: Enabled: 30 or fewer. Note: Organizations that utilize 3rd-party commercial software to manage unique & complex local Administrator passwords on domain members may opt to disregard these LAPS recommendations. Note #2: LAPS is only designed to manage local Administrator passwords, and is therefore not recommended (or supported) for use directly on Domain Controllers, which do not have a traditional local Administrator account. We strongly encourage you to only deploy the LAPS CSE and LAPS GPO settings to member servers and workstations."
+    rationale: "Due to the difficulty in managing local Administrator passwords, many organizations choose to use the same password on all workstations and/or Member Servers when deploying them. This creates a serious attack surface security risk because if an attacker manages to compromise one system and learn the password to its local Administrator account, then they can leverage that account to instantly gain access to all other computers that also use that password for their local Administrator account."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled, and configure the Password Age (Days) option to 30 or fewer: Computer Configuration\\Policies\\Administrative Templates\\LAPS\\Password Settings"
+    compliance:
+      - cis: ["18.2.6"]
+      - cis_csc: ["16.5"]
+      - pci_dss: ["8.2.4"]
+      - tsc: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordAgeDays -> n:^(\d+) compare <= 30'
