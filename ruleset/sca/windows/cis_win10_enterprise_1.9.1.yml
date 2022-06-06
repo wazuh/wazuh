@@ -2435,3 +2435,15 @@ checks:
     condition: all
     rules:
       - 'auditpol.exe /get /subcategory:"Other Policy Change Events" -> r:Failure'
+
+  - id: 26165
+    title: "Ensure 'Audit Sensitive Privilege Use' is set to 'Success and Failure'"
+    description: "This subcategory reports when a user account or service uses a sensitive privilege."
+    rationale: "Auditing these events may be useful when investigating a security incident."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Success and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Privilege Use\\Audit Sensitive Privilege Use"
+    compliance:
+      - cis: ["17.8.1"]
+      - cis_csc: ["4.3","6.3"]
+    condition: all
+    rules:
+      - 'auditpol.exe /get /subcategory:"Sensitive Privilege Use" -> r:Success and Failure'
