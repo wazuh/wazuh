@@ -3217,3 +3217,33 @@ checks:
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy -> fBlockNonDomain -> 1'
+
+  - id: 26215
+    title: "Ensure 'Allow Windows to automatically connect to suggested open hotspots, to networks shared by contacts, and to hotspots offering paid services' is set to 'Disabled'"
+    description: "This policy setting determines whether users can enable the following WLAN settings: Connect to suggested open hotspots, Connect to networks shared by my contacts, and Enable paid services. - Connect to suggested open hotspots enables Windows to automatically connect users to open hotspots it knows about by crowdsourcing networks that other people using Windows have connected to. - Connect to networks shared by my contacts enables Windows to automatically connect to networks that the user's contacts have shared with them, and enables users on this device to share networks with their contacts. - Enable paid services enables Windows to temporarily connect to open hotspots to determine if paid services are available. The recommended state for this setting is: Disabled."
+    rationale: "Automatically connecting to an open hotspot or network can introduce the system to a rogue network with malicious intent."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\WLAN Service\\WLAN Settings\\Allow Windows to automatically connect to suggested open hotspots, to networks shared by contacts, and to hotspots offering paid services"
+    compliance:
+      - cis: ["18.5.23.2.1"]
+      - cis_csc: ["15.4", "15.5"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1","CC6.7","CC7.2"]
+    references:
+      - 'CCE-41378-1'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\WcmSvc\wifinetworkmanager\config -> AutoConnectAllowedOEM -> 0'
+
+  - id: 26216
+    title: "Ensure 'Turn off notifications network usage' is set to 'Enabled'"
+    description: "This policy setting blocks applications from using the network to send notifications to update tiles, tile badges, toast, or raw notifications. This policy setting turns off the connection between Windows and the Windows Push Notification Service (WNS). This policy setting also stops applications from being able to poll application services to update tiles. The recommended state for this setting is: Enabled."
+    rationale: "Windows Push Notification Services (WNS) is a mechanism to receive 3rd-party notifications and updates from the cloud/Internet. In a high security environment, external systems, especially those hosted outside the organization, should be prevented from having an impact on the secure workstations."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Start Menu and Taskbar\\Turn off notifications network usage"
+    compliance:
+      - cis: ["18.7.1.1"]
+      - cis_csc: ["15.4","15.5"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\PushNotifications -> NoCloudApplicationNotification -> 1'
