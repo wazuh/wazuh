@@ -2744,3 +2744,229 @@ checks:
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest -> UseLogonCredential -> 0'
+
+  - id: 26187
+    title: "Ensure 'MSS: (AutoAdminLogon) Enable Automatic Logon (not recommended)' is set to 'Disabled'"
+    description: "This setting is separate from the Welcome screen feature in Windows XP and Windows Vista; if that feature is disabled, this setting is not disabled. If you configure a computer for automatic logon, anyone who can physically gain access to the computer can also gain access to everything that is on the computer, including any network or networks to which the computer is connected. Also, if you enable automatic logon, the password is stored in the registry in plaintext, and the specific registry key that stores this value is remotely readable by the Authenticated Users group."
+    rationale: "If you configure a computer for automatic logon, anyone who can physically gain access to the computer can also gain access to everything that is on the computer, including any network or networks that the computer is connected to. Also, if you enable automatic logon, the password is stored in the registry in plaintext. The specific registry key that stores this setting is remotely readable by the Authenticated Users group. As a result, this entry is appropriate only if the computer is physically secured and if you ensure that untrusted users cannot remotely see the registry."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS: (AutoAdminLogon) Enable Automatic Logon (not recommended)"
+    compliance:
+      - cis: ["18.4.1"]
+      - cis_csc: ["16"]
+      - pci_dss: ["8.2.1"]
+      - tsc: ["CC6.1"]
+    references:
+      - 'CCE-35438-1'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon -> AutoAdminLogon -> 0'
+
+  - id: 26188
+    title: "Ensure 'MSS: (DisableIPSourceRouting IPv6) IP source routing protection level (protects against packet spoofing)' is set to 'Enabled: Highest protection, source routing is completely disabled'"
+    description: "IP source routing is a mechanism that allows the sender to determine the IP route that a datagram should follow through the network. The recommended state for this setting is: Enabled: Highest protection, source routing is completely disabled."
+    rationale: "An attacker could use source routed packets to obscure their identity and location. Source routing allows a computer that sends a packet to specify the route that the packet takes"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Highest protection, source routing is completely disabled: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS: (DisableIPSourceRouting IPv6) IP source routing protection level (protects against packet spoofing)"
+    compliance:
+      - cis: ["18.4.2"]
+      - cis_csc: ["9"]
+      - pci_dss: ["1.3.3"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["A1.1","CC6.1","CC7.2"]
+    references:
+      - 'CCE-33790-7'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters -> DisableIPSourceRouting -> 2'
+
+  - id: 26189
+    title: "Ensure 'MSS: (DisableIPSourceRouting) IP source routing protection level (protects against packet spoofing)' is set to 'Enabled: Highest protection, source routing is completely disabled'"
+    description: "IP source routing is a mechanism that allows the sender to determine the IP route that a datagram should take through the network. It is recommended to configure this setting to Not Defined for enterprise environments and to Highest Protection for high security environments to completely disable source routing. The recommended state for this setting is: Enabled: Highest protection, source routing is completely disabled."
+    rationale: "An attacker could use source routed packets to obscure their identity and location. Source routing allows a computer that sends a packet to specify the route that the packet takes."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Highest protection, source routing is completely disabled: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS: (DisableIPSourceRouting) IP source routing protection level (protects against packet spoofing)"
+    compliance:
+      - cis: ["18.4.3"]
+      - cis_csc: ["9"]
+      - pci_dss: ["1.3.3"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["A1.1","CC6.1","CC7.2"]
+    references:
+      - 'CCE-33816-0'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> DisableIPSourceRouting -> 2'
+
+  - id: 26190
+    title: "Ensure 'MSS: (DisableSavePassword) Prevent the dial-up password from being saved' is set to 'Enabled'"
+    description: "When you dial a phonebook or VPN entry in Dial-Up Networking, you can use the \"Save Password\" option so that your Dial-Up Networking password is cached and you will not need to enter it on successive dial attempts. For security, administrators may want to prevent users from caching passwords. The recommended state for this setting is: Enabled."
+    rationale: "An attacker who steals a mobile user's computer could automatically connect to the organization's network if the Save This Password check box is selected for the dial-up or VPN networking entry used to connect to your organization's network."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS:(DisableSavePassword) Prevent the dial-up password from being saved. Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required - it is available from this TechNet blog post: The MSS settings - Microsoft Security Guidance blog."
+    compliance:
+      - cis: ["18.4.4"]
+      - cis_csc: ["9"]
+      - pci_dss: ["8.2.1"]
+      - tsc: ["CC6.1"]
+    references:
+      - https://blogs.technet.microsoft.com/secguide/2016/10/02/the-mss-settings/
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\RasMan\Parameters -> DisableSavePassword -> 1'
+
+  - id: 26191
+    title: "Ensure 'MSS: (EnableICMPRedirect) Allow ICMP redirects to override OSPF generated routes' is set to 'Disabled'"
+    description: "Internet Control Message Protocol (ICMP) redirects cause the IPv4 stack to plumb host routes. These routes override the Open Shortest Path First (OSPF) generated routes. The recommended state for this setting is: Disabled."
+    rationale: "This behavior is expected. The problem is that the 10 minute time-out period for the ICMP redirect-plumbed routes temporarily creates a network situation in which traffic will no longer be routed properly for the affected host. Ignoring such ICMP redirects will limit the system's exposure to attacks that will impact its ability to participate on the network."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS: (EnableICMPRedirect) Allow ICMP redirects to override OSPF generated routes."
+    compliance:
+      - cis: ["18.4.5"]
+      - cis_csc: ["9"]
+      - pci_dss: ["1.3.3"]
+      - tsc: ["A1.1","CC6.1","CC7.2"]
+      - nist_800_53: ["SC.5"]
+    references:
+      - 'CCE-34597-5'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> EnableICMPRedirect -> 0'
+
+  - id: 26192
+    title: "Ensure 'MSS: (KeepAliveTime) How often keep-alive packets are sent in milliseconds' is set to 'Enabled: 300,000 or 5 minutes (recommended)'"
+    description: "This value controls how often TCP attempts to verify that an idle connection is still intact by sending a keep-alive packet. If the remote computer is still reachable, it acknowledges the keep-alive packet. The recommended state for this setting is: Enabled: 300,000 or 5 minutes (recommended)."
+    rationale: "An attacker who is able to connect to network applications could establish numerous connections to cause a DoS condition."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 300,000 or 5 minutes (recommended): Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS: (KeepAliveTime) How often keep-alive packets are sent in milliseconds. Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required - it is available from this TechNet blog post: The MSS settings - Microsoft Security Guidance blog."
+    compliance:
+      - cis: ["18.4.6"]
+      - cis_csc: ["9"]
+      - nist_800_53: ["SC.5"]
+      - pci_dss: ["1.3.3"]
+      - tsc: ["A1.1","CC6.1","CC7.2"]
+    references:
+      - https://blogs.technet.microsoft.com/secguide/2016/10/02/the-mss-settings/
+      - 'CCE-35469-6'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> KeepAliveTime -> 300000'
+
+  - id: 26193
+    title: "Ensure 'MSS: (NoNameReleaseOnDemand) Allow the computer to ignore NetBIOS name release requests except from WINS servers' is set to 'Enabled'"
+    description: "NetBIOS over TCP/IP is a network protocol that among other things provides a way to easily resolve NetBIOS names that are registered on Windows-based systems to the IP addresses that are configured on those systems. This setting determines whether the computer releases its NetBIOS name when it receives a name-release request. The recommended state for this setting is: Enabled."
+    rationale: "The NetBT protocol is designed not to use authentication, and is therefore vulnerable to spoofing. Spoofing makes a transmission appear to come from a user other than the user who performed the action. A malicious user could exploit the unauthenticated nature of the protocol to send a name-conflict datagram to a target computer, which would cause the computer to relinquish its name and not respond to queries. An attacker could send a request over the network and query a computer to release its NetBIOS name. As with any change that could affect applications, it is recommended that you test this change in a non-production environment before you change the production environment. The result of such an attack could be to cause intermittent connectivity issues on the target computer, or even to prevent the use of Network Neighborhood, domain logons, the NET SEND command, or additional NetBIOS name resolution."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS: (NoNameReleaseOnDemand) Allow the computer to ignore NetBIOS name release requests except from WINS servers."
+    compliance:
+      - cis: ["18.4.7"]
+      - cis_csc: ["9"]
+      - pci_dss: ["1.3.3"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["A1.1","CC6.1","CC7.2"]
+    references:
+      - 'CCE-35405-0'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NetBT\Parameters -> NoNameReleaseOnDemand -> 1'
+
+  - id: 26194
+    title: "Ensure 'MSS: (PerformRouterDiscovery) Allow IRDP to detect and configure Default Gateway addresses (could lead to DoS)' is set to 'Disabled'"
+    description: "This setting is used to enable or disable the Internet Router Discovery Protocol (IRDP), which allows the system to detect and configure default gateway addresses automatically as described in RFC 1256 on a per-interface basis. The recommended state for this setting is: Disabled."
+    rationale: "An attacker who has gained control of a computer on the same network segment could configure a computer on the network to impersonate a router. Other computers with IRDP enabled would then attempt to route their traffic through the already compromised computer."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS: (PerformRouterDiscovery) Allow IRDP to detect and configure Default Gateway addresses (could lead to DoS). Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required - it is available from this TechNet blog post: The MSS settings - Microsoft Security Guidance blog."
+    compliance:
+      - cis: ["18.4.8"]
+      - cis_csc: ["9"]
+      - nist_800_53: ["SC.5"]
+      - pci_dss: ["1.3.3"]
+      - tsc: ["A1.1","CC6.1","CC7.2"]
+    references:
+      - https://blogs.technet.microsoft.com/secguide/2016/10/02/the-mss-settings/
+      - 'CCE-34614-8'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> PerformRouterDiscovery -> 0'
+
+  - id: 26195
+    title: "Ensure 'MSS: (SafeDllSearchMode) Enable Safe DLL search mode (recommended)' is set to 'Enabled'"
+    description: "The DLL search order can be configured to search for DLLs that are requested by running processes in one of two ways: - Search folders specified in the system path first, and then search the current working folder. - Search current working folder first, and then search the folders specified in the system path. When enabled, the registry value is set to 1. With a setting of 1, the system first searches the folders that are specified in the system path and then searches the current working folder. When disabled the registry value is set to 0 and the system first searches the current working folder and then searches the folders that are specified in the system path. Applications will be forced to search for DLLs in the system path first. For applications that require unique versions of these DLLs that are included with the application, this entry could cause performance or stability problems. The recommended state for this setting is: Enabled."
+    rationale: "If a user unknowingly executes hostile code that was packaged with additional files that include modified versions of system DLLs, the hostile code could load its own versions of those DLLs and potentially increase the type and degree of damage the code can render."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS: (SafeDllSearchMode) Enable Safe DLL search mode (recommended)"
+    compliance:
+      - cis: ["18.4.9"]
+      - cis_csc: ["8"]
+      - pci_dss: ["2.2.3"]
+      - nist_800_53: ["CM.1"]
+      - gpg_13: ["4.3"]
+      - gdpr_IV: ["35.7.d"]
+      - hipaa: ["164.312.b"]
+      - tsc: ["CC5.2"]
+    references:
+      - 'CCE-34022-4'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager -> SafeDllSearchMode -> 1'
+
+  - id: 26196
+    title: "Ensure 'MSS: (ScreenSaverGracePeriod) The time in seconds before the screen saver grace period expires (0 recommended)' is set to 'Enabled: 5 or fewer seconds'"
+    description: "Windows includes a grace period between when the screen saver is launched and when the console is actually locked automatically when screen saver locking is enabled. The recommended state for this setting is: Enabled: 5 or fewer seconds."
+    rationale: "The default grace period that is allowed for user movement before the screen saver lock takes effect is five seconds. If you leave the default grace period configuration, your computer is vulnerable to a potential attack from someone who could approach the console and attempt to log on to the computer before the lock takes effect. An entry to the registry can be made to adjust the length of the grace period."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 5 or fewer seconds: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS: (ScreenSaverGracePeriod) The time in seconds before the screen saver grace period expires (0 recommended)"
+    compliance:
+      - cis: ["18.4.10"]
+      - cis_csc: ["16.5"]
+      - pci_dss: ["8.1.8"]
+      - tsc: ["CC6.1"]
+    references:
+      - 'CCE-34619-7'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon -> ScreenSaverGracePeriod -> n:^(\d+) compare <= 5'
+
+  - id: 26197
+    title: "Ensure 'MSS: (TcpMaxDataRetransmissions IPv6) How many times unacknowledged data is retransmitted' is set to 'Enabled: 3'"
+    description: "This setting controls the number of times that TCP retransmits an individual data segment (non-connect segment) before the connection is aborted. The retransmission time-out is doubled with each successive retransmission on a connection. It is reset when responses resume. The base time-out value is dynamically determined by the measured round-trip time on the connection. The recommended state for this setting is: Enabled: 3."
+    rationale: "A malicious user could exhaust a target computer's resources if it never sent any acknowledgment messages for data that was transmitted by the target computer."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 3: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS:(TcpMaxDataRetransmissions IPv6) How many times unacknowledged data is retransmitted. Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required - it is available from this TechNet blog post: The MSS settings - Microsoft Security Guidance blog."
+    compliance:
+      - cis: ["18.4.11"]
+      - cis_csc: ["9"]
+      - nist_800_53: ["SC.5"]
+      - pci_dss: ["1.3.3"]
+      - tsc: ["A1.1","CC6.1","CC7.2"]
+    references:
+      - https://blogs.technet.microsoft.com/secguide/2016/10/02/the-mss-settings/
+      - 'CCE-34622-1'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TCPIP6\Parameters -> TcpMaxDataRetransmissions -> 3'
+
+  - id: 26198
+    title: "Ensure 'MSS: (TcpMaxDataRetransmissions) How many times unacknowledged data is retransmitted' is set to 'Enabled: 3'"
+    description: "This setting controls the number of times that TCP retransmits an individual data segment (non-connect segment) before the connection is aborted. The retransmission time-out is doubled with each successive retransmission on a connection. It is reset when responses resume. The base time-out value is dynamically determined by the measured round-trip time on the connection. The recommended state for this setting is: Enabled: 3."
+    rationale: "A malicious user could exhaust a target computer's resources if it never sent any acknowledgment messages for data that was transmitted by the target computer."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 3: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS:(TcpMaxDataRetransmissions) How many times unacknowledged data is retransmitted. Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required - it is available from this TechNet blog post: The MSS settings - Microsoft Security Guidance blog."
+    compliance:
+      - cis: ["18.4.12"]
+      - cis_csc: ["9"]
+      - nist_800_53: ["SC.5"]
+      - pci_dss: ["1.3.3"]
+      - tsc: ["A1.1","CC6.1","CC7.2"]
+    references:
+      - https://blogs.technet.microsoft.com/secguide/2016/10/02/the-mss-settings/
+      - 'CCE-34623-9'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> TcpMaxDataRetransmissions -> 3'
+
+  - id: 26199
+    title: "Ensure 'MSS: (WarningLevel) Percentage threshold for the security event log at which the system will generate a warning' is set to 'Enabled: 90% or less'"
+    description: "This setting can generate a security audit in the Security event log when the log reaches a user-defined threshold. The recommended state for this setting is: Enabled: 90% or less."
+    rationale: "If the Security log reaches 90 percent of its capacity and the computer has not been configured to overwrite events as needed, more recent events will not be written to the log. If the log reaches its capacity and the computer has been configured to shut down when it can no longer record events to the Security log, the computer will shut down and will no longer be available to provide network services."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 90% or less: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS: (WarningLevel) Percentage threshold for the security event log at which the system will generate a warning"
+    compliance:
+      - cis: ["18.4.13"]
+      - cis_csc: ["6.3", "6.4"]
+      - pci_dss: ["10.7"]
+    references:
+      - 'CCE-35406-8'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Eventlog\Security -> WarningLevel -> n:^(\d+) compare <= 90'
