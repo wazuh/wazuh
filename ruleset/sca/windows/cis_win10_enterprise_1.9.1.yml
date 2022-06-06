@@ -2970,3 +2970,102 @@ checks:
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Eventlog\Security -> WarningLevel -> n:^(\d+) compare <= 90'
+
+  - id: 26200
+    title: "Ensure 'Turn off multicast name resolution' is set to 'Enabled'"
+    description: "LLMNR is a secondary name resolution protocol. With LLMNR, queries are sent using multicast over a local network link on a single subnet from a client computer to another client computer on the same subnet that also has LLMNR enabled. LLMNR does not require a DNS server or DNS client configuration, and provides name resolution in scenarios in which conventional DNS name resolution is not possible. The recommended state for this setting is: Enabled."
+    rationale: "An attacker can listen on a network for these LLMNR (UDP/5355) or NBT-NS (UDP/137) broadcasts and respond to them, tricking the host into thinking that it knows the location of the requested system."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\DNS Client\\Turn off multicast name resolution"
+    compliance:
+      - cis: ["18.5.4.1"]
+      - cis_csc: ["9"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-34055-4'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient -> EnableMulticast -> 0'
+
+  - id: 26201
+    title: "Ensure 'Enable Font Providers' is set to 'Disabled'"
+    description: "This policy setting determines whether Windows is allowed to download fonts and font catalog data from an online font provider. The recommended state for this setting is: Disabled."
+    rationale: "In an enterprise managed environment the IT department should be managing the changes to the system configuration, to ensure all changes are tested and approved."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Fonts\\Enable Font Providers Note: This Group Policy path may not exist by default. It is provided by the Group Policy template GroupPolicy.admx/adml that is included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.5.5.1"]
+      - cis_csc: ["3", "13"]
+      - pci_dss: ["1.3.5"]
+      - tsc: ["CC6.6"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> EnableFontProviders -> 0'
+
+  - id: 26202
+    title: "Ensure 'Enable insecure guest logons' is set to 'Disabled'"
+    description: "This policy setting determines if the SMB client will allow insecure guest logons to an SMB server. The recommended state for this setting is: Disabled."
+    rationale: "Insecure guest logons are used by file servers to allow unauthenticated access to shared folders."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Lanman Workstation\\Enable insecure guest logons"
+    compliance:
+      - cis: ["18.5.8.1"]
+      - cis_csc: ["9.1", "9.2"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1","CC6.7","CC7.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LanmanWorkstation -> AllowInsecureGuestAuth -> 0'
+
+  - id: 26203
+    title: "Ensure 'Turn on Mapper I/O (LLTDIO) driver' is set to 'Disabled'"
+    description: "This policy setting changes the operational behavior of the Mapper I/O network protocol driver. LLTDIO allows a computer to discover the topology of a network it's connected to. It also allows a computer to initiate Quality-of-Service requests such as bandwidth estimation and network health analysis. The recommended state for this setting is: Disabled."
+    rationale: "To help protect from potentially discovering and connecting to unauthorized devices, this setting should be disabled to prevent responding to network traffic for network topology discovery."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Link-Layer Topology Discovery\\Turn on Mapper I/O (LLTDIO) driver. Note: This Group Policy path is provided by the Group Policy template LinkLayerTopologyDiscovery.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
+    compliance:
+      - cis: ["18.5.9.1"]
+      - cis_csc: ["9"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-34262-6'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> AllowLLTDIOOnDomain -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> AllowLLTDIOOnPublicNet -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> EnableLLTDIO -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> ProhibitLLTDIOOnPrivateNet -> 0'
+
+  - id: 26204
+    title: "Ensure 'Turn on Responder (RSPNDR) driver' is set to 'Disabled'"
+    description: "This policy setting changes the operational behavior of the Responder network protocol driver. The Responder allows a computer to participate in Link Layer Topology Discovery requests so that it can be discovered and located on the network. It also allows a computer to participate in Quality-of-Service activities such as bandwidth estimation and network health analysis. The recommended state for this setting is: Disabled."
+    rationale: "To help protect from potentially discovering and connecting to unauthorized devices, this setting should be disabled to prevent responding to network traffic for network topology discovery."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Link-Layer Topology Discovery\\Turn on Responder (RSPNDR) driver Note: This Group Policy path is provided by the Group Policy template LinkLayerTopologyDiscovery.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
+    compliance:
+      - cis: ["18.5.9.2"]
+      - cis_csc: ["9"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-34073-7'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> AllowRspndrOnDomain -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> AllowRspndrOnPublicNet -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> EnableRspndr -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> ProhibitRspndrOnPrivateNet -> 0'
+
+  - id: 26205
+    title: "Ensure 'Turn off Microsoft Peer-to-Peer Networking Services' is set to 'Enabled'"
+    description: "The Peer Name Resolution Protocol (PNRP) allows for distributed resolution of a name to an IPv6 address and port number. The protocol operates in the context of clouds. A cloud is a set of peer computers that can communicate with each other by using the same IPv6 scope. Peer-to-Peer protocols allow for applications in the areas of RTC, collaboration, content distribution and distributed processing. The recommended state for this setting is: Enabled."
+    rationale: "This setting enhances the security of the environment and reduces the overall risk exposure related to peer-to-peer networking."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Microsoft Peer-to-Peer Networking Services\\Turn off Microsoft Peer-to-Peer Networking Services. Note: This Group Policy path is provided by the Group Policy template P2P- pnrp.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
+    compliance:
+      - cis: ["18.5.10.2"]
+      - cis_csc: ["9.1", "9.2"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-33208-0'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Peernet -> Disabled -> 1'
