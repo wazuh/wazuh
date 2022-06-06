@@ -15,8 +15,6 @@
 #include <sys/time.h>
 #include "wdb.h"
 
-#define VERSION 1
-
 /* Status structures */
 
 typedef struct _agent_syscheck_t {

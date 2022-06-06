@@ -265,7 +265,6 @@ cJSON* rem_create_state_json() {
 
     cJSON *rem_state_json = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(rem_state_json, "version", VERSION);
     cJSON_AddNumberToObject(rem_state_json, "timestamp", time(NULL));
     cJSON_AddStringToObject(rem_state_json, "daemon_name", ARGV0);
 

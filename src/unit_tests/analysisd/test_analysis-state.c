@@ -25,6 +25,7 @@ extern queue_status_t queue_status;
 /* setup/teardown */
 
 static int test_setup(void ** state) {
+    analysisd_state.received_bytes = 123654789;
     analysisd_state.events_received = 4589;
     analysisd_state.events_received_breakdown.events_decoded_breakdown.syscheck = 785;
     analysisd_state.events_received_breakdown.events_decoded_breakdown.syscollector = 458;
@@ -131,6 +132,9 @@ void test_asys_create_state_json(void ** state) {
 
     assert_non_null(cJSON_GetObjectItem(state_json, "statistics"));
     cJSON* statistics = cJSON_GetObjectItem(state_json, "statistics");
+
+    assert_non_null(cJSON_GetObjectItem(statistics, "received_bytes"));
+    assert_int_equal(cJSON_GetObjectItem(statistics, "received_bytes")->valueint, 123654789);
 
     assert_non_null(cJSON_GetObjectItem(statistics, "events_received"));
     assert_int_equal(cJSON_GetObjectItem(statistics, "events_received")->valueint, 4589);

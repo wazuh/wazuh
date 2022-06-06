@@ -319,6 +319,12 @@ void w_get_initial_queues_size() {
     queue_status.stats_queue_size = writer_queue_log_statistical->size;
 }
 
+void w_add_recv(unsigned long bytes) {
+    w_mutex_lock(&state_mutex);
+    analysisd_state.received_bytes += bytes;
+    w_mutex_unlock(&state_mutex);
+}
+
 void w_inc_received_events() {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_received++;
@@ -544,12 +550,13 @@ cJSON* asys_create_state_json() {
 
     cJSON *asys_state_json = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(asys_state_json, "version", VERSION);
     cJSON_AddNumberToObject(asys_state_json, "timestamp", time(NULL));
     cJSON_AddStringToObject(asys_state_json, "daemon_name", ARGV0);
 
     _statistics = cJSON_CreateObject();
     cJSON_AddItemToObject(asys_state_json, "statistics", _statistics);
+
+    cJSON_AddNumberToObject(_statistics, "received_bytes", state_cpy.received_bytes);
 
     cJSON_AddNumberToObject(_statistics, "events_received", state_cpy.events_received);
 
