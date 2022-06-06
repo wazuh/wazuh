@@ -2447,3 +2447,63 @@ checks:
     condition: all
     rules:
       - 'auditpol.exe /get /subcategory:"Sensitive Privilege Use" -> r:Success and Failure'
+
+  - id: 26166
+    title: "Ensure 'Audit IPsec Driver' is set to 'Success and Failure' "
+    description: "This subcategory reports on the activities of the Internet Protocol security (IPsec) driver.  Events for this subcategory include: - 4960: IPsec dropped an inbound packet that failed an integrity check. If this  problem persists, it could indicate a network issue or that packets are being  modified in transit to this computer. Verify that the packets sent from the remote  computer are the same as those received by this computer. This error might also  indicate interoperability problems with other IPsec implementations. - 4961: IPsec dropped an inbound packet that failed a replay check. If this problem  persists, it could indicate a replay attack against this computer. - 4962: IPsec dropped an inbound packet that failed a replay check. The inbound  packet had too low a sequence number to ensure it was not a replay. - 4963: IPsec dropped an inbound clear text packet that should have been secured.  This is usually due to the remote computer changing its IPsec policy without  informing this computer. This could also be a spoofing attack attempt. - 4965: IPsec received a packet from a remote computer with an incorrect Security  Parameter Index (SPI). This is usually caused by malfunctioning hardware that is  corrupting packets. If these errors persist, verify that the packets sent from the  remote computer are the same as those received by this computer. This error may  also indicate interoperability problems with other IPsec implementations. In that  case, if connectivity is not impeded, then these events can be ignored. - 5478: IPsec Services has started successfully. - 5479: IPsec Services has been shut down successfully. The shutdown of IPsec  Services can put the computer at greater risk of network attack or expose the  computer to potential security risks. - 5480: IPsec Services failed to get the complete list of network interfaces on the  computer. This poses a potential security risk because some of the network interfaces may not get the protection provided by the applied IPsec filters. Use the  IP Security Monitor snap-in to diagnose the problem. - 5483: IPsec Services failed to initialize RPC server. IPsec Services could not be  started. 477 | P a g e - 5484: IPsec Services has experienced a critical failure and has been shut down. The  shutdown of IPsec Services can put the computer at greater risk of network attack  or expose the computer to potential security risks. - 5485: IPsec Services failed to process some IPsec filters on a plug-and-play event for  network interfaces. This poses a potential security risk because some of the network  interfaces may not get the protection provided by the applied IPsec filters. Use the  IP Security Monitor snap-in to diagnose the problem. The recommended state for this setting is: Success and Failure. "
+    rationale: "Auditing these events may be useful when investigating a security incident. "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\System\\Audit IPsec Driver "
+    compliance:
+      - cis: ["17.9.1"]
+      - cis_csc: ["6.3","6.4","6.5"]
+    condition: all
+    rules:
+      - 'auditpol.exe /get /subcategory:"IPsec Driver" -> r:Success and Failure'
+
+  - id: 26167
+    title: "Ensure 'Audit Other System Events' is set to 'Success and Failure'"
+    description: "This subcategory reports on other system events. Events for this subcategory include: - 5024 : The Windows Firewall Service has started successfully. - 5025 : The Windows Firewall Service has been stopped. - 5027 : The Windows Firewall Service was unable to retrieve the security policy  from the local storage. The service will continue enforcing the current policy. - 5028 : The Windows Firewall Service was unable to parse the new security policy.  The service will continue with currently enforced policy. - 5029: The Windows Firewall Service failed to initialize the driver. The service will  continue to enforce the current policy. - 5030: The Windows Firewall Service failed to start. - 5032: Windows Firewall was unable to notify the user that it blocked an application  from accepting incoming connections on the network. - 5033 : The Windows Firewall Driver has started successfully. - 5034 : The Windows Firewall Driver has been stopped. - 5035 : The Windows Firewall Driver failed to start. - 5037 : The Windows Firewall Driver detected critical runtime error. Terminating. - 5058: Key file operation. - 5059: Key migration operation. The recommended state for this setting is: Success and Failure. "
+    rationale: "Capturing these audit events may be useful for identifying when the Windows Firewall is  not performing as expected. 480 | P a g e "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\System\\Audit Other System Events "
+    compliance:
+      - cis: ["17.9.2"]
+      - cis_csc: ["6.3","6.4","6.5","9.4"]
+    condition: all
+    rules:
+      - 'auditpol.exe /get /subcategory:"Other System Events" -> r:Success and Failure'
+
+  - id: 26168
+    title: "Ensure 'Audit Security State Change' is set to include 'Success'"
+    description: "This subcategory reports changes in security state of the system, such as when the security  subsystem starts and stops. Events for this subcategory include: - 4608: Windows is starting up. - 4609: Windows is shutting down. - 4616: The system time was changed. - 4621: Administrator recovered system from CrashOnAuditFail. Users who are not  administrators will now be allowed to log on. Some audit-able activity might not  have been recorded. The recommended state for this setting is to include: Success. "
+    rationale: "Auditing these events may be useful when investigating a security incident. "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\System\\Audit Security State Change "
+    compliance:
+      - cis: ["17.9.3"]
+      - cis_csc: ["6.3","6.4","6.5"]
+    condition: all
+    rules:
+      - 'auditpol.exe /get /subcategory:"Security State Change" -> r:Success'
+
+  - id: 26169
+    title: "Ensure 'Audit Security System Extension' is set to include 'Success'"
+    description: "This subcategory reports the loading of extension code such as authentication packages by  the security subsystem. Events for this subcategory include: - 4610: An authentication package has been loaded by the Local Security Authority. - 4611: A trusted logon process has been registered with the Local Security Authority. - 4614: A notification package has been loaded by the Security Account Manager. - 4622: A security package has been loaded by the Local Security Authority. - 4697: A service was installed in the system. The recommended state for this setting is to include: Success. "
+    rationale: "Auditing these events may be useful when investigating a security incident. "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\System\\Audit Security System  Extension "
+    compliance:
+      - cis: ["17.9.4"]
+      - cis_csc: ["6.3","6.4","6.5"]
+    condition: all
+    rules:
+      - 'auditpol.exe /get /subcategory:"Security System Extension" -> r:Success'
+
+  - id:
+    title: "Ensure 'Audit System Integrity' is set to 'Success and Failure'"
+    description: "This subcategory reports on violations of integrity of the security subsystem. Events for  this subcategory include: - 4612 : Internal resources allocated for the queuing of audit messages have been  exhausted, leading to the loss of some audits. - 4615 : Invalid use of LPC port. - 4618 : A monitored security event pattern has occurred. - 4816 : RPC detected an integrity violation while decrypting an incoming message. - 5038 : Code integrity determined that the image hash of a file is not valid. The file  could be corrupt due to unauthorized modification or the invalid hash could indicate  a potential disk device error. - 5056: A cryptographic self test was performed. - 5057: A cryptographic primitive operation failed. - 5060: Verification operation failed. - 5061: Cryptographic operation. - 5062: A kernel-mode cryptographic self test was performed. The recommended state for this setting is: Success and Failure. "
+    rationale: "Auditing these events may be useful when investigating a security incident. "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\System\\Audit System Integrity "
+    compliance:
+      - cis: ["17.9.5"]
+      - cis_csc: ["6.3","6.4","6.5"]
+    condition: all
+    rules:
+      - 'auditpol.exe /get /subcategory:"System Integrity" -> r:Success and Failure'
