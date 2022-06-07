@@ -1500,7 +1500,7 @@ checks:
     title: "Ensure 'Server (LanmanServer)' is set to 'Disabled' "
     description: "Supports file, print, and named-pipe sharing over the network for this computer. If this  service is stopped, these functions will be unavailable. The recommended state for this setting is: Disabled. "
     rationale: "In a high security environment, a secure workstation should only be a client, not a server.  Sharing workstation resources for remote access increases security risk as the attack  surface is notably higher. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Server 341 | P a g e "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Server"
     compliance:
       - cis: ["5.26"]
       - cis_csc: ["9.2"]
@@ -1536,7 +1536,7 @@ checks:
     title: "Ensure 'Special Administration Console Helper (sacsvr)' is set to'Disabled' or 'Not Installed' "
     description: "This service allows administrators to remotely access a command prompt using Emergency  Management Services. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but it is installed  by enabling an optional Windows capability (Windows Emergency Management Services  and Serial Console). "
     rationale: "Allowing the use of a remotely accessible command prompt that provides the ability to  perform remote management tasks on a computer is a security risk. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Special Administration Console Helper 347 | P a g e "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Special Administration Console Helper"
     compliance:
       - cis: ["5.29"]
       - cis_csc: ["9.2"]
@@ -1572,7 +1572,7 @@ checks:
     title: "Ensure 'Web Management Service (WMSvc)' is set to 'Disabled' or 'NotInstalled' "
     description: "The Web Management Service enables remote and delegated management capabilities for  administrators to manage for the Web server, sites and applications present on the  machine. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but is installed  by enabling an optional Windows feature (Internet Information Services - Web Management  Tools - IIS Management Service). "
     rationale: "Remote web administration of IIS on a workstation is an increased security risk, as the  attack surface of that workstation is then greatly increased. If proper security mitigations  are not followed, the chance of successful attack increases significantly. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Web Management Service 353 | P a g e "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Web Management Service"
     compliance:
       - cis: ["5.32"]
       - cis_csc: ["9.2"]
@@ -1584,7 +1584,7 @@ checks:
     title: "Ensure 'Windows Error Reporting Service (WerSvc)' is set to 'Disabled'"
     description: "Allows errors to be reported when programs stop working or responding and allows  existing solutions to be delivered. Also allows logs to be generated for diagnostic and repair  services. The recommended state for this setting is: Disabled. "
     rationale: "If a Windows Error occurs in a secure, enterprise managed environment, the error should  be reported directly to IT staff for troubleshooting and remediation. There is no benefit to  the corporation to report these errors directly to Microsoft, and there is some risk of  unknowingly exposing sensitive data as part of the error. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Windows Error Reporting Service 355 | P a g e "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Windows Error Reporting Service"
     compliance:
       - cis: ["5.33"]
       - cis_csc: ["9.2"]
@@ -1632,7 +1632,7 @@ checks:
     title: "Ensure 'Windows Push Notifications System Service (WpnService)' isset to 'Disabled' "
     description: "This service runs in session 0 and hosts the notification platform and connection provider  which handles the connection between the device and WNS server. The recommended state for this setting is: Disabled. Note: In the first two releases of Windows 10 (R1507 & R1511), the display name of this  service was initially named Windows Push Notifications Service - but it was renamed to  Windows Push Notifications System Service starting with Windows 10 R1607. "
     rationale: "Windows Push Notification Services (WNS) is a mechanism to receive 3rd-party  notifications and updates from the cloud/Internet. In a high security environment, external  systems, especially those hosted outside the organization, should be prevented from having  an impact on the secure workstations. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Windows Push Notifications System Service 363 | P a g e "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Windows Push Notifications System Service"
     compliance:
       - cis: ["5.37"]
       - cis_csc: ["9.2"]
@@ -2450,7 +2450,7 @@ checks:
 
   - id: 26166
     title: "Ensure 'Audit IPsec Driver' is set to 'Success and Failure' "
-    description: "This subcategory reports on the activities of the Internet Protocol security (IPsec) driver.  Events for this subcategory include: - 4960: IPsec dropped an inbound packet that failed an integrity check. If this  problem persists, it could indicate a network issue or that packets are being  modified in transit to this computer. Verify that the packets sent from the remote  computer are the same as those received by this computer. This error might also  indicate interoperability problems with other IPsec implementations. - 4961: IPsec dropped an inbound packet that failed a replay check. If this problem  persists, it could indicate a replay attack against this computer. - 4962: IPsec dropped an inbound packet that failed a replay check. The inbound  packet had too low a sequence number to ensure it was not a replay. - 4963: IPsec dropped an inbound clear text packet that should have been secured.  This is usually due to the remote computer changing its IPsec policy without  informing this computer. This could also be a spoofing attack attempt. - 4965: IPsec received a packet from a remote computer with an incorrect Security  Parameter Index (SPI). This is usually caused by malfunctioning hardware that is  corrupting packets. If these errors persist, verify that the packets sent from the  remote computer are the same as those received by this computer. This error may  also indicate interoperability problems with other IPsec implementations. In that  case, if connectivity is not impeded, then these events can be ignored. - 5478: IPsec Services has started successfully. - 5479: IPsec Services has been shut down successfully. The shutdown of IPsec  Services can put the computer at greater risk of network attack or expose the  computer to potential security risks. - 5480: IPsec Services failed to get the complete list of network interfaces on the  computer. This poses a potential security risk because some of the network interfaces may not get the protection provided by the applied IPsec filters. Use the  IP Security Monitor snap-in to diagnose the problem. - 5483: IPsec Services failed to initialize RPC server. IPsec Services could not be  started. 477 | P a g e - 5484: IPsec Services has experienced a critical failure and has been shut down. The  shutdown of IPsec Services can put the computer at greater risk of network attack  or expose the computer to potential security risks. - 5485: IPsec Services failed to process some IPsec filters on a plug-and-play event for  network interfaces. This poses a potential security risk because some of the network  interfaces may not get the protection provided by the applied IPsec filters. Use the  IP Security Monitor snap-in to diagnose the problem. The recommended state for this setting is: Success and Failure. "
+    description: "This subcategory reports on the activities of the Internet Protocol security (IPsec) driver.  Events for this subcategory include: - 4960: IPsec dropped an inbound packet that failed an integrity check. If this  problem persists, it could indicate a network issue or that packets are being  modified in transit to this computer. Verify that the packets sent from the remote  computer are the same as those received by this computer. This error might also  indicate interoperability problems with other IPsec implementations. - 4961: IPsec dropped an inbound packet that failed a replay check. If this problem  persists, it could indicate a replay attack against this computer. - 4962: IPsec dropped an inbound packet that failed a replay check. The inbound  packet had too low a sequence number to ensure it was not a replay. - 4963: IPsec dropped an inbound clear text packet that should have been secured.  This is usually due to the remote computer changing its IPsec policy without  informing this computer. This could also be a spoofing attack attempt. - 4965: IPsec received a packet from a remote computer with an incorrect Security  Parameter Index (SPI). This is usually caused by malfunctioning hardware that is  corrupting packets. If these errors persist, verify that the packets sent from the  remote computer are the same as those received by this computer. This error may  also indicate interoperability problems with other IPsec implementations. In that  case, if connectivity is not impeded, then these events can be ignored. - 5478: IPsec Services has started successfully. - 5479: IPsec Services has been shut down successfully. The shutdown of IPsec  Services can put the computer at greater risk of network attack or expose the  computer to potential security risks. - 5480: IPsec Services failed to get the complete list of network interfaces on the  computer. This poses a potential security risk because some of the network interfaces may not get the protection provided by the applied IPsec filters. Use the  IP Security Monitor snap-in to diagnose the problem. - 5483: IPsec Services failed to initialize RPC server. IPsec Services could not be  started.- 5484: IPsec Services has experienced a critical failure and has been shut down. The  shutdown of IPsec Services can put the computer at greater risk of network attack  or expose the computer to potential security risks. - 5485: IPsec Services failed to process some IPsec filters on a plug-and-play event for  network interfaces. This poses a potential security risk because some of the network  interfaces may not get the protection provided by the applied IPsec filters. Use the  IP Security Monitor snap-in to diagnose the problem. The recommended state for this setting is: Success and Failure. "
     rationale: "Auditing these events may be useful when investigating a security incident. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\System\\Audit IPsec Driver "
     compliance:
@@ -2463,7 +2463,7 @@ checks:
   - id: 26167
     title: "Ensure 'Audit Other System Events' is set to 'Success and Failure'"
     description: "This subcategory reports on other system events. Events for this subcategory include: - 5024 : The Windows Firewall Service has started successfully. - 5025 : The Windows Firewall Service has been stopped. - 5027 : The Windows Firewall Service was unable to retrieve the security policy  from the local storage. The service will continue enforcing the current policy. - 5028 : The Windows Firewall Service was unable to parse the new security policy.  The service will continue with currently enforced policy. - 5029: The Windows Firewall Service failed to initialize the driver. The service will  continue to enforce the current policy. - 5030: The Windows Firewall Service failed to start. - 5032: Windows Firewall was unable to notify the user that it blocked an application  from accepting incoming connections on the network. - 5033 : The Windows Firewall Driver has started successfully. - 5034 : The Windows Firewall Driver has been stopped. - 5035 : The Windows Firewall Driver failed to start. - 5037 : The Windows Firewall Driver detected critical runtime error. Terminating. - 5058: Key file operation. - 5059: Key migration operation. The recommended state for this setting is: Success and Failure. "
-    rationale: "Capturing these audit events may be useful for identifying when the Windows Firewall is  not performing as expected. 480 | P a g e "
+    rationale: "Capturing these audit events may be useful for identifying when the Windows Firewall is  not performing as expected."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\System\\Audit Other System Events "
     compliance:
       - cis: ["17.9.2"]
@@ -3247,3 +3247,139 @@ checks:
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\PushNotifications -> NoCloudApplicationNotification -> 1'
+
+  - id: 26217
+    title: "Ensure 'Include command line in process creation events' is set to 'Disabled'"
+    description: "This policy setting determines what information is logged in security audit events when a new process has been created. The recommended state for this setting is: Disabled."
+    rationale: "When this policy setting is enabled, any user who has read access to the security events can read the command-line arguments for any successfully created process. Command-line arguments may contain sensitive or private information such as passwords or user data."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Audit Process Creation\\Include command line in process creation events"
+    compliance:
+      - cis: ["18.8.3.1"]
+      - cis_csc: ["16.14"]
+      - pci_dss: ["8.2.1"]
+      - tsc: ["CC6.1"]
+    references:
+      - 'CCE-35802-8'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\Audit -> ProcessCreationIncludeCmdLine_Enabled -> 0'
+
+  - id: 26218
+    title: "Ensure 'Encryption Oracle Remediation' is set to 'Enabled: Force Updated Clients'"
+    description: "Some versions of the CredSSP protocol that is used by some applications (such as Remote Desktop Connection) are vulnerable to an encryption oracle attack against the client. This policy controls compatibility with vulnerable clients and servers and allows you to set the level of protection desired for the encryption oracle vulnerability."
+    rationale: "This setting is important to mitigate the CredSSP encryption oracle vulnerability, for which information was published by Microsoft on 03/13/2018 in CVE-2018-0886 | CredSSP Remote Code Execution Vulnerability. All versions of Windows from Windows Vista onwards are affected by this vulnerability, and will be compatible with this recommendation provided that they have been patched at least through May 2018 (or later)."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Force Updated Clients: Computer Configuration\\Policies\\Administrative Templates\\System\\Credentials Delegation\\Encryption Oracle Remediation"
+    compliance:
+      - cis: ["18.8.4.1"]
+      - cis_csc: ["16.4"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\CredSSP\Parameters -> AllowEncryptionOracle -> 1'
+
+  - id: 26219
+    title: "Ensure 'Remote host allows delegation of non-exportable credentials' is set to 'Enabled'"
+    description: "Remote host allows delegation of non-exportable credentials. When using credential delegation, devices provide an exportable version of credentials to the remote host. This exposes users to the risk of credential theft from attackers on the remote host. The Restricted Admin Mode and Windows Defender Remote Credential Guard features are two options to help protect against this risk. The recommended state for this setting is: Enabled."
+    rationale: "Restricted Admin Mode was designed to help protect administrator accounts by ensuring that reusable credentials are not stored in memory on remote devices that could potentially be compromised. Windows Defender Remote Credential Guard helps you protect your credentials over a Remote Desktop connection by redirecting Kerberos requests back to the device that is requesting the connection. Both features should be enabled and supported, as they reduce the chance of credential theft."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Credentials Delegation\\Remote host allows delegation of non-exportable credentials"
+    compliance:
+      - cis: ["18.8.4.2"]
+      - cis_csc: ["16"]
+      - pci_dss: ["8.2.1"]
+      - tsc: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CredentialsDelegation -> AllowProtectedCreds -> 1'
+
+
+  - id: 26220
+    title: "Ensure 'Turn On Virtualization Based Security' is set to 'Enabled'"
+    description: "This policy setting specifies whether Virtualization Based Security is enabled. Virtualization  Based Security uses the Windows Hypervisor to provide support for security services. The recommended state for this setting is: Enabled. Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot  enabled, which in turn requires that Windows was installed with a UEFI BIOS  configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual  machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be  exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows  Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using  Azure IaaS VMs."
+    rationale: "Kerberos, NTLM, and Credential manager isolate secrets by using virtualization-based  security. Previous versions of Windows stored secrets in the Local Security Authority  (LSA). Prior to Windows 10, the LSA stored secrets used by the operating system in its  process memory. With Windows Defender Credential Guard enabled, the LSA process in  the operating system talks to a new component called the isolated LSA process that stores  and protects those secrets. Data stored by the isolated LSA process is protected using  virtualization-based security and is not accessible to the rest of the operating system. "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\Policies\Administrative Templates\System\Device  Guard\Turn On Virtualization Based Security Note: This Group Policy path may not exist by default. It is provided by the Group Policy  template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 RTM  (Release 1507) Administrative Templates (or newer). "
+    compliance:
+      - cis: ["18.8.5.1"]
+      - cis_csc: ["16.4"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> EnableVirtualizationBasedSecurity -> 1'
+
+  - id: 26221
+    title: "Ensure 'Turn On Virtualization Based Security: Select PlatformSecurity Level' is set to 'Secure Boot and DMA Protection' "
+    description: "This policy setting specifies whether Virtualization Based Security is enabled. Virtualization  Based Security uses the Windows Hypervisor to provide support for security services. The recommended state for this setting is: Secure Boot and DMA Protection. Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot  enabled, which in turn requires that Windows was installed with a UEFI BIOS  configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual  machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be  exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows  Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using  Azure IaaS VMs."
+    rationale: "Secure Boot can help reduce the risk of bootloader attacks and in conjunction with DMA  protections to help protect data from being scraped from memory."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Secure  Boot and DMA Protection: Computer Configuration\Policies\Administrative Templates\System\Device  Guard\Turn On Virtualization Based Security: Select Platform Security Level Note: This Group Policy path may not exist by default. It is provided by the Group Policy  template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 RTM  (Release 1507) Administrative Templates (or newer). "
+    compliance:
+      - cis: ["18.8.5.2"]
+      - cis_csc: ["16.4"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> RequirePlatformSecurityFeatures -> 1'
+
+  - id: 26222
+    title: "Ensure 'Turn On Virtualization Based Security: Virtualization BasedProtection of Code Integrity' is set to 'Enabled with UEFI lock' "
+    description: "This setting enables virtualization based protection of Kernel Mode Code Integrity. When  this is enabled, kernel mode memory protections are enforced and the Code Integrity  validation path is protected by the Virtualization Based Security feature. The recommended state for this setting is: Enabled with UEFI lock. Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot  enabled, which in turn requires that Windows was installed with a UEFI BIOS  configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual  machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be  exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows  Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using  Azure IaaS VMs. "
+    rationale: "The Enabled with UEFI lock option ensures that Virtualization Based Protection of Code  Integrity cannot be disabled remotely.  "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled  with UEFI lock: Computer Configuration\Policies\Administrative Templates\System\Device  Guard\Turn On Virtualization Based Security: Virtualization Based Protection  of Code Integrity Note: This Group Policy path may not exist by default. It is provided by the Group Policy  template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 RTM  (Release 1507) Administrative Templates (or newer). "
+    compliance:
+      - cis: ["18.8.5.3"]
+      - cis_csc: ["5.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> HypervisorEnforcedCodeIntegrity -> 1'
+
+  - id: 26223
+    title: "Ensure 'Turn On Virtualization Based Security: Require UEFIMemory Attributes Table' is set to 'True (checked)' "
+    description: "This option will only enable Virtualization Based Protection of Code Integrity on devices  with UEFI firmware support for the Memory Attributes Table. Devices without the UEFI  Memory Attributes Table may have firmware that is incompatible with Virtualization  Based Protection of Code Integrity which in some cases can lead to crashes or data loss or  incompatibility with certain plug-in cards. If not setting this option the targeted devices  should be tested to ensure compatibility. The recommended state for this setting is: True (checked). Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot  enabled, which in turn requires that Windows was installed with a UEFI BIOS  configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual  machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be  exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows  Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using  Azure IaaS VMs. "
+    rationale: "This setting will help protect this control from being enabled on a system that is not  compatible which could lead to a crash or data loss.  "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to TRUE: Computer Configuration\Policies\Administrative Templates\System\Device  Guard\Turn On Virtualization Based Security: Require UEFI Memory Attributes  Table Note: This Group Policy path may not exist by default. It is provided by the Group Policy  template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 Release  1703 Administrative Templates (or newer). "
+    compliance:
+      - cis: ["18.8.5.4"]
+      - cis_csc: ["5.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> HVCIMATRequired -> 1'
+
+  - id: 26224
+    title: "Ensure 'Turn On Virtualization Based Security: Credential GuardConfiguration' is set to 'Enabled with UEFI lock' "
+    description: "This setting lets users turn on Credential Guard with virtualization-based security to help  protect credentials. The "Enabled with UEFI lock" option ensures that Credential Guard  cannot be disabled remotely. In order to disable the feature, you must set the Group Policy  to "Disabled" as well as remove the security functionality from each computer, with a  physically present user, in order to clear configuration persisted in UEFI. The recommended state for this setting is: Enabled with UEFI lock. Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot  enabled, which in turn requires that Windows was installed with a UEFI BIOS  configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual  machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be  exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows  Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using  Azure IaaS VMs. "
+    rationale: "The Enabled with UEFI lock option ensures that Credential Guard cannot be disabled  remotely.  "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled  with UEFI lock: Computer Configuration\Policies\Administrative Templates\System\Device  Guard\Turn On Virtualization Based Security: Credential Guard Configuration Note: This Group Policy path may not exist by default. It is provided by the Group Policy  template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 Release  1511 Administrative Templates (or newer). "
+    compliance:
+      - cis: ["18.8.5.5"]
+      - cis_csc: ["9.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> LsaCfgFlags -> 1'
+
+  - id: 26225
+    title: "Ensure 'Turn On Virtualization Based Security: Secure Launch Configuration' is set to 'Enabled'"
+    description: "Secure Launch protects the Virtualization Based Security environment from exploited vulnerabilities in device firmware. The recommended state for this setting is: Enabled ."
+    rationale: "Restricted Admin Mode was designed to help protect administrator accounts by ensuring that reusable credentials are not stored in memory on remote devices that could potentially be compromised. Windows Defender Remote Credential Guard helps you protect your credentials over a Remote Desktop connection by redirecting Kerberos requests back to the device that is requesting the connection. Both features should be enabled and supported, as they reduce the chance of credential theft."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Device Guard\\Turn On Virtualization Based Security: Secure Launch Configuration"
+    compliance:
+      - cis: ["18.8.5.6"]
+      - cis_csc: ["16.14"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1","CC6.7","CC7.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> ConfigureSystemGuardLaunch -> 1'
+
+  - id: 26226
+    title: "Ensure 'Boot-Start Driver Initialization Policy' is set to 'Enabled: Good, unknown and bad but critical'"
+    description: "This policy setting allows you to specify which boot-start drivers are initialized based on a classification determined by an Early Launch Antimalware boot-start driver. The Early Launch Antimalware boot-start driver can return the following classifications for each boot-start driver: - Good: The driver has been signed and has not been tampered with. - Bad: The driver has been identified as malware. It is recommended that you do not allow known bad drivers to be initialized. - Bad, but required for boot: The driver has been identified as malware, but the computer cannot successfully boot without loading this driver. - Unknown: This driver has not been attested to by your malware detection application and has not been classified by the Early Launch Antimalware boot-start driver. If you enable this policy setting you will be able to choose which boot-start drivers to initialize the next time the computer is started. If your malware detection application does not include an Early Launch Antimalware bootstart driver or if your Early Launch Antimalware boot-start driver has been disabled, this setting has no effect and all boot-start drivers are initialized. The recommended state for this setting is: Enabled: Good, unknown and bad but critical."
+    rationale: "This policy setting helps reduce the impact of malware that has already infected your system."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Good, unknown and bad but critical: Computer Configuration\\Policies\\Administrative Templates\\System\\Early Launch Antimalware\\Boot-Start Driver Initialization Policy"
+    compliance:
+      - cis: ["18.8.14.1"]
+      - cis_csc: ["8"]
+      - pci_dss: ["5.1.1"]
+      - nist_800_53: ["SI.3"]
+      - tsc: ["CC6.8"]
+    references:
+      - 'CCE-33231-2'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Policies\EarlyLaunch -> DriverLoadPolicy -> 3'
