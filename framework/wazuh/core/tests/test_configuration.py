@@ -152,17 +152,17 @@ def test_get_ossec_conf():
             conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf'))
 
     assert configuration.get_ossec_conf(conf_file=os.path.join(
-        parent_directory, tmp_path, 'configuration/ossec.conf'))['cluster']['name'] == 'wazuh'
+        parent_directory, tmp_path, 'configuration/ossec.conf'))['cluster']['node_name'] == 'master-node'
 
     assert configuration.get_ossec_conf(
         section='cluster',
         conf_file=os.path.join(parent_directory, tmp_path,
-                               'configuration/ossec.conf'))['cluster']['name'] == 'wazuh'
+                               'configuration/ossec.conf'))['cluster']['node_name'] == 'master-node'
 
     assert configuration.get_ossec_conf(
-        section='cluster', field='name',
+        section='cluster', field='node_name',
         conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf')
-    )['cluster']['name'] == 'wazuh'
+    )['cluster']['node_name'] == 'master-node'
 
     assert configuration.get_ossec_conf(
         section='integration', field='node',

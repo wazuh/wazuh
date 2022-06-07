@@ -2007,14 +2007,11 @@ stages:
     json:
       error: !anyint
       data:
-        disabled: !anystr
         bind_addr: !anything
         hidden: !anystr
-        key: !anystr
         certfile: !anystr
         keyfile: !anystr
         keyfile_password: !anystr
-        name: !anystr
         node_name: !anystr
         node_type: !anystr
         nodes: !anything
