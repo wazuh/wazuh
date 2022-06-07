@@ -338,7 +338,18 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
             runTestToolForWindows(moduleName=moduleName,
                                   testToolConfig=smokeTestConfig)
             runTestToolCheck(moduleName=moduleName)
-
+        if moduleName != "syscheckd":
+            build_tools.cleanAll()
+            build_tools.cleanExternals()
+        if target != "winagent":
+            utils.printHeader(moduleName=moduleName,
+                              headerKey="winagentTests")
+            build_tools.makeDeps(targetName="winagent",
+                                 srcOnly=False)
+            build_tools.makeTarget(targetName="winagent",
+                                   tests=True,
+                                   debug=True)
+            runTests(moduleName=moduleName)
         if clean:
             utils.deleteLogs(moduleName=moduleName)
         utils.printGreen(msg="[RTR: PASSED]",
@@ -536,29 +547,34 @@ def runTests(moduleName):
     for entry in objects:
         if entry.is_file() and bool(re.match(reg, entry.name)):
             tests.append(entry.name)
-    for test in tests:
-        path = os.path.join(currentDir, test)
-        if ".exe" in test:
-            command = f'WINEPATH="/usr/i686-w64-mingw32/lib;\
-                        {utils.currentPath()}" \
-                        WINEARCH=win64 /usr/bin/wine {path}'
-        else:
-            command = path
-        out = subprocess.run(command,
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE,
-                             shell=True,
-                             check=True)
-        if out.returncode == 0:
-            utils.printGreen(msg="[{}: PASSED]".format(test))
-        else:
-            print(out.stdout)
-            print(out.stderr)
-            utils.printFail(msg="[{}: FAILED]".format(test))
-            errorString = "Error Running test: {}".format(out.returncode)
-            raise ValueError(errorString)
-    utils.printGreen(msg="[All tests: PASSED]",
-                     module=moduleName)
+    if len(tests) > 0:
+        for test in tests:
+            path = os.path.join(currentDir, test)
+            if ".exe" in test:
+                command = f'WINEPATH="/usr/i686-w64-mingw32/lib;\
+                            {utils.currentPath()}" \
+                            WINEARCH=win64 /usr/bin/wine {path}'
+            else:
+                command = path
+            out = subprocess.run(command,
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE,
+                                 shell=True,
+                                 check=True)
+            if out.returncode == 0:
+                utils.printGreen(msg="[{}: PASSED]".format(test))
+            else:
+                print(out.stdout)
+                print(out.stderr)
+                utils.printFail(msg="[{}: FAILED]".format(test))
+                errorString = "Error Running test: {}".format(out.returncode)
+                raise ValueError(errorString)
+
+        utils.printGreen(msg="[All tests: PASSED]",
+                         module=moduleName)
+    else:
+        errorString = "Error Running tests"
+        raise ValueError(errorString)
 
 
 def runTestToolCheck(moduleName):

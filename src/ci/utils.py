@@ -31,6 +31,7 @@ HEADER_DIR = {
     'rtr':              "=============== Running RTR checks  ===============",
     'scanbuild':        "=============== Running Scanbuild   ===============",
     'tests':            "=============== Running Tests       ===============",
+    'winagentTests':    "=============== Running Windows Agent Tests =======",
     'testtool':         "=============== Running TEST TOOL   ===============",
     'valgrind':         "=============== Running Valgrind    ===============",
     'wintests':         "=============== Running TEST TOOL for Windows ====="
