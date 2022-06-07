@@ -119,7 +119,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
     Handle connection with the master node.
     """
 
-    def __init__(self, version, node_type, cluster_name, **kwargs):
+    def __init__(self, version, node_type, **kwargs):
         """Class constructor.
 
         Parameters
@@ -128,15 +128,13 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             Wazuh version. E.g., '4.0.0'.
         node_type : str
             Type of node (will always be worker but it's set as a variable in case more types are added in the future).
-        cluster_name : str
-            The cluster name.
         **kwargs
             Arguments for the parent class constructor.
         """
         super().__init__(**kwargs, tag="Worker")
         self.integrity_control = {}
         # The self.client_data will be sent to the master when doing a hello request.
-        self.client_data = f"{self.name} {cluster_name} {node_type} {version}".encode()
+        self.client_data = f"{self.name} {node_type} {version}".encode()
 
         # Flag to prevent a new Integrity check if Integrity sync is in progress.
         self.check_integrity_free = True
@@ -872,11 +870,10 @@ class Worker(client.AbstractClientManager):
         """
         self.task_pool = kwargs.pop('task_pool')
         super().__init__(**kwargs, tag="Worker")
-        self.cluster_name = self.configuration['name']
         self.version = metadata.__version__
         self.node_type = self.configuration['node_type']
         self.handler_class = WorkerHandler
-        self.extra_args = {'cluster_name': self.cluster_name, 'version': self.version, 'node_type': self.node_type}
+        self.extra_args = {'version': self.version, 'node_type': self.node_type}
         self.dapi = dapi.APIRequestQueue(server=self)
 
     def add_tasks(self) -> List[Tuple[asyncio.coroutine, Tuple]]:
@@ -900,5 +897,4 @@ class Worker(client.AbstractClientManager):
         dict
             Basic node information.
         """
-        return {'type': self.configuration['node_type'], 'cluster': self.configuration['name'],
-                'node': self.configuration['node_name']}
+        return {'type': self.configuration['node_type'], 'node': self.configuration['node_name']}

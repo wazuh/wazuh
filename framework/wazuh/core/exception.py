@@ -425,11 +425,6 @@ class WazuhException(Exception):
                "remediation": f"Check and fix the [worker name](https://documentation.wazuh.com/{DOCU_VERSION}/"
                               f"user-manual/reference/ossec-conf/cluster.html#node-name)"
                               " and restart the `wazuh-manager` service in the node"},
-        3030: {'message': 'Worker does not belong to the same cluster',
-               'remediation': f"Change the [cluster name](https://documentation.wazuh.com/{DOCU_VERSION}/"
-                              f"user-manual/reference/ossec-conf/cluster.html#name)"
-                              " in the worker configuration to match the master's and restart the `wazuh-manager` "
-                              "service"},
         3031: {'message': "Worker and master versions are not the same",
                'remediation': f"[Update](https://documentation.wazuh.com/{DOCU_VERSION}/upgrade-guide/index.html)"
                               " master and workers to the same version."},

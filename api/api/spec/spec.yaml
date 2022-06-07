@@ -7832,9 +7832,6 @@ paths:
                         node:
                           description: "Node name"
                           type: string
-                        cluster:
-                          description: "Cluster name the node belongs to"
-                          type: string
                         type:
                           description: "Node type"
                           type: string
@@ -7842,7 +7839,6 @@ paths:
                 data:
                   affected_items:
                     - node: "master-node"
-                      cluster: "wazuh"
                       type: "master"
                   total_affected_items: 1
                   total_failed_items: 0
@@ -8107,9 +8103,6 @@ paths:
                   properties:
                     data:
                       properties:
-                        name:
-                          description: "Cluster name"
-                          type: string
                         node_name:
                           description: "Node name"
                           type: string
@@ -8119,15 +8112,20 @@ paths:
                           enum:
                           - master
                           - worker
-                        key:
-                          description: "Cluster key used to encrypt messages"
+                        certfile:
+                          description: "Path of the X.509 certificate file in PEM format (only needed in master node)."
+                          type: string
+                        keyfile:
+                          description: "The private key of the certificate (only needed in master node)."
+                          type: string
+                        keyfile_password:
+                          description: "Password for the private key if it is encrypted (only needed in master node)."
                           type: string
                         port:
                           description: "Port used by the **master** node to communicate with workers"
                           type: integer
                         bind_addr:
-                          description: "List of network interfaces used by the **master** to listen to incoming 
-                          connections"
+                          description: "Network interfaces used by the **master** to listen to incoming connections"
                           type: array
                         nodes:
                           description: "List of cluster master nodes. This list is used by **worker** nodes to connect
@@ -8141,10 +8139,11 @@ paths:
               example:
                 data:
                   affected_items:
-                    - name: wazuh
-                      node_name: master-node
+                    - node_name: master-node
                       node_type: master
-                      key: 9d273b53510fef702b54a92e9cffc82e
+                      certfile: "/var/ossec/etc/sslmanager.cert"
+                      keyfile: "/var/ossec/etc/sslmanager.key"
+                      keyfile_password: ""
                       port: 1516
                       bind_addr:
                         - "0.0.0.0"

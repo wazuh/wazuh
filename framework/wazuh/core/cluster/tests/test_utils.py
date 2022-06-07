@@ -16,23 +16,21 @@ with patch('wazuh.core.common.getgrnam'):
                 from wazuh.core.results import WazuhResult
 
 default_cluster_config = {
-    'disabled': True,
     'node_type': 'master',
-    'name': 'wazuh',
     'node_name': 'node01',
     'certfile': 'test_path',
     'keyfile': 'test_path',
-    'password': None,
-    'key': '',
+    'keyfile_password': '',
     'port': 1516,
     'bind_addr': ['0.0.0.0'],
-    'nodes': ['NODE_IP'],
+    'nodes': ['127.0.0.1'],
     'hidden': 'no'
 }
 
 
+@patch('socket.gethostname', return_value='node01')
 @patch('os.path.join', return_value='test_path')
-def test_read_cluster_config(join_mock):
+def test_read_cluster_config(join_mock, gethostname_mock):
     """Verify that read_cluster function returns, in this case, the default configuration."""
     config = utils.read_cluster_config()
     assert config == default_cluster_config
@@ -54,7 +52,6 @@ def test_read_cluster_config(join_mock):
     with patch('wazuh.core.cluster.utils.get_ossec_conf', return_value={'cluster': default_cluster_config}):
         utils.read_config.cache_clear()
         default_cluster_config.pop('hidden')
-        default_cluster_config['disabled'] = 'no'
         config = utils.read_cluster_config()
         config_simple = utils.read_config()
         assert config == config_simple
@@ -64,17 +61,10 @@ def test_read_cluster_config(join_mock):
         config = utils.read_cluster_config()
         assert config == default_cluster_config
 
-        default_cluster_config['disabled'] = 'None'
+        default_cluster_config['port'] = 'abcd'
         with pytest.raises(WazuhError, match='.* 3004 .*'):
             utils.read_cluster_config()
-
-        default_cluster_config['disabled'] = 'yes'
-        config = utils.read_cluster_config()
-        assert config == default_cluster_config
-
-        default_cluster_config['port'] = 'None'
-        with pytest.raises(WazuhError, match='.* 3004 .*'):
-            utils.read_cluster_config()
+        default_cluster_config['port'] = 1516
 
 
 def test_get_manager_status():

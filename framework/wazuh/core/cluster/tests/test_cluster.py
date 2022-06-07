@@ -5,15 +5,13 @@
 import io
 import os
 import sys
-import zipfile
 import zlib
-from datetime import datetime
 from time import time
 from unittest.mock import MagicMock, mock_open, patch, call, ANY
 
 import pytest
+
 from wazuh.core import common
-from wazuh.core.utils import get_date_from_timestamp
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
@@ -26,6 +24,7 @@ with patch('wazuh.common.wazuh_uid'):
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         import wazuh.core.cluster.cluster as cluster
+        import wazuh.core.cluster.utils
         from wazuh import WazuhException
         from wazuh.core.exception import WazuhError, WazuhInternalError
 
@@ -34,25 +33,22 @@ agent_groups = b"default,windows-servers"
 # Valid configurations
 default_cluster_configuration = {
     'cluster': {
-        'disabled': 'yes',
         'node_type': 'master',
-        'name': 'wazuh',
         'node_name': 'node01',
-        'key': '',
         'port': 1516,
+        'certfile': '/test/path/cert.pem',
+        'keyfile': '/test/path/key.pem',
+        'keyfile_password': 'test_password',
         'bind_addr': ['0.0.0.0'],
-        'nodes': ['NODE_IP'],
+        'nodes': ['127.0.0.1'],
         'hidden': 'no'
     }
 }
 
 custom_cluster_configuration = {
     'cluster': {
-        'disabled': 'no',
         'node_type': 'master',
-        'name': 'wazuh',
         'node_name': 'node01',
-        'key': 'a' * 32,
         'port': 1516,
         'bind_addr': ['0.0.0.0'],
         'nodes': ['172.10.0.100'],
@@ -62,24 +58,34 @@ custom_cluster_configuration = {
 
 custom_incomplete_configuration = {
     'cluster': {
-        'key': 'a' * 32,
         'node_name': 'master'
     }
 }
 
 
+@patch('os.path.exists', return_value=True)
+@patch.object(wazuh.core.cluster.cluster.logger, "warning")
+def test_check_cluster_config(mock_logger, exists_mock):
+    """Check if the check_cluster_config function is working properly."""
+    configuration = {'node_type': 'master', 'port': 3000, 'nodes': ['A', 'B'], 'key': 'ABCD',
+                     'certfile': os.path.join(common.WAZUH_PATH, 'test'),
+                     'keyfile': os.path.join(common.WAZUH_PATH, 'test')}
+    cluster.check_cluster_config(configuration)
+    assert mock_logger.call_args_list == [
+        call('Found more than one node in configuration. Only master node should be specified. Using A as master.'),
+        call('The following cluster settings are deprecated and will have no effect: key.')
+    ]
+
+
 @pytest.mark.parametrize('read_config, message', [
-    ({'cluster': {'key': ''}}, "Unspecified key"),
-    ({'cluster': {'key': 'a' * 15}}, "Key must be"),
-    ({'cluster': {'node_type': 'random', 'key': 'a' * 32}}, "Invalid node type"),
-    ({'cluster': {'port': 'string', 'node_type': 'master'}}, "Port has to"),
-    ({'cluster': {'port': 90}}, "Port must be"),
-    ({'cluster': {'port': 70000}}, "Port must be"),
-    ({'cluster': {'port': 1516, 'nodes': ['NODE_IP'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
-    ({'cluster': {'nodes': ['localhost'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
-    ({'cluster': {'nodes': ['0.0.0.0'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
-    ({'cluster': {'nodes': ['127.0.1.1'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
-    ({'cluster': {'nodes': ['127.0.1.1', '127.0.1.2'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
+    ({'cluster': {'node_type': 'random', 'key': 'a' * 32, 'certfile': 'test', 'keyfile': 'test'}}, "Invalid node type"),
+    ({'cluster': {'port': 'string', 'node_type': 'master', 'certfile': 'test', 'keyfile': 'test'}}, "Port has to"),
+    ({'cluster': {'port': 90, 'certfile': 'test', 'keyfile': 'test'}}, "Port must be"),
+    ({'cluster': {'port': 70000, 'certfile': 'test', 'keyfile': 'test'}}, "Port must be"),
+    ({'cluster': {'port': 30000, 'certfile': os.path.join(common.WAZUH_PATH, 'test')}}, 'does not exist.'),
+    ({'cluster': {'port': 30000, 'certfile': os.path.join(common.WAZUH_PATH, '/test')}},
+     f'is not inside {common.WAZUH_PATH}.'),
+    ({'cluster': {'port': 30000, 'certfile': os.path.join(common.WAZUH_PATH, '../test')}}, 'contains ".."'),
 ])
 def test_check_cluster_config_ko(read_config, message):
     """Check wrong configurations to check the proper exceptions are raised."""
@@ -95,14 +101,12 @@ def test_check_cluster_config_ko(read_config, message):
 
 def test_get_node():
     """Check the correct output of the get_node function."""
-    test_dict = {"node_name": "master", "name": "master",
-                 "node_type": "master"}
+    test_dict = {"node_name": "master", "node_type": "master"}
 
     with patch('wazuh.core.cluster.cluster.read_config', return_value=test_dict):
         get_node = cluster.get_node()
         assert isinstance(get_node, dict)
         assert get_node["node"] == test_dict["node_name"]
-        assert get_node["cluster"] == test_dict["name"]
         assert get_node["type"] == test_dict["node_type"]
 
 

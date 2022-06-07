@@ -300,8 +300,8 @@ def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock,
     with patch.object(common, 'wazuh_uid', return_value='uid_test'):
         with patch.object(common, 'wazuh_gid', return_value='gid_test'):
             with patch.object(wazuh_clusterd.cluster_utils, 'read_config',
-                              return_value={'disabled': False, 'node_type': 'master', 'certfile': 'testing_path',
-                                            'keyfile': 'testing_path', 'password': None}):
+                              return_value={'node_type': 'master', 'certfile': 'testing_path',
+                                            'keyfile': 'testing_path', 'keyfile_password': None}):
                 with patch.object(wazuh_clusterd.main_logger, 'error') as main_logger_mock:
                     with patch.object(wazuh_clusterd.main_logger, 'info') as main_logger_info_mock:
                         with patch.object(wazuh_clusterd.cluster_utils, 'read_config', side_effect=Exception):
@@ -314,12 +314,6 @@ def test_main(print_mock, path_exists_mock, chown_mock, chmod_mock, setuid_mock,
                                                           'gid_test')
                             chmod_mock.assert_called_with(f'{common.WAZUH_PATH}/logs/cluster.log', 432)
                             exit_mock.assert_called_once_with(1)
-                            exit_mock.reset_mock()
-
-                        with patch.object(wazuh_clusterd.cluster_utils, 'read_config', return_value={'disabled': True}):
-                            with pytest.raises(SystemExit):
-                                wazuh_clusterd.main()
-                            exit_mock.assert_called_once_with(0)
                             exit_mock.reset_mock()
 
                         with patch('wazuh.core.cluster.cluster.check_cluster_config', side_effect=IndexError):

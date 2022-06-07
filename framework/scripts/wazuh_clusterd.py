@@ -155,8 +155,6 @@ def main():
         main_logger.error(e)
         sys.exit(1)
 
-    if cluster_configuration['disabled']:
-        sys.exit(0)
     try:
         wazuh.core.cluster.cluster.check_cluster_config(cluster_configuration)
     except Exception as e:
@@ -189,7 +187,7 @@ def main():
             ssl_context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
             ssl_context.load_cert_chain(certfile=cluster_configuration['certfile'],
                                         keyfile=cluster_configuration['keyfile'],
-                                        password=cluster_configuration['password'])
+                                        password=cluster_configuration['keyfile_password'])
         except Exception as e:
             main_logger.error(f"SSL certificates could not be loaded: {e}")
             sys.exit(1)

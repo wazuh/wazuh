@@ -47,17 +47,14 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
         Dictionary with cluster configuration.
     """
     cluster_default_configuration = {
-        'disabled': False,
         'node_type': 'master',
-        'name': 'wazuh',
-        'node_name': 'node01',
+        'node_name': socket.gethostname(),
         'certfile': os.path.join(common.WAZUH_PATH, 'etc', 'sslmanager.cert'),
         'keyfile': os.path.join(common.WAZUH_PATH, 'etc', 'sslmanager.key'),
-        'password': None,
-        'key': '',
+        'keyfile_password': '',
         'port': 1516,
         'bind_addr': ['0.0.0.0'],
-        'nodes': ['NODE_IP'],
+        'nodes': ['127.0.0.1'],
         'hidden': 'no'
     }
 
@@ -65,13 +62,14 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
         config_cluster = get_ossec_conf(section='cluster', conf_file=config_file, from_import=from_import)['cluster']
     except WazuhException as e:
         if e.code == 1106:
-            # If no cluster configuration is present in ossec.conf, return default configuration but disabling it.
-            cluster_default_configuration['disabled'] = True
             return cluster_default_configuration
         else:
             raise WazuhError(3006, extra_message=e.message)
     except Exception as e:
         raise WazuhError(3006, extra_message=str(e))
+
+    if 'node_name' not in config_cluster:
+        logger.warning('No "node_name" found in the ossec.conf. There could be errors in distributed requests.')
 
     # If any value is missing from user's cluster configuration, add the default one.
     for value_name in set(cluster_default_configuration.keys()) - set(config_cluster.keys()):
@@ -79,20 +77,12 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
 
     if isinstance(config_cluster['port'], str) and not config_cluster['port'].isdigit():
         raise WazuhError(3004, extra_message="Cluster port must be an integer.")
+    else:
+        config_cluster['port'] = int(config_cluster['port'])
 
-    config_cluster['port'] = int(config_cluster['port'])
-    if config_cluster['disabled'] == 'no':
-        config_cluster['disabled'] = False
-    elif config_cluster['disabled'] == 'yes':
-        config_cluster['disabled'] = True
-    elif not isinstance(config_cluster['disabled'], bool):
-        raise WazuhError(3004,
-                         extra_message=f"Allowed values for 'disabled' field are 'yes' and 'no'. "
-                                       f"Found: '{config_cluster['disabled']}'")
-
-    if config_cluster['node_type'] == 'client':
-        logger.info("Deprecated node type 'client'. Using 'worker' instead.")
-        config_cluster['node_type'] = 'worker'
+    for key in ('certfile', 'keyfile'):
+        if not config_cluster[key].startswith(common.WAZUH_PATH):
+            config_cluster[key] = os.path.join(common.WAZUH_PATH, config_cluster[key])
 
     return config_cluster
 
