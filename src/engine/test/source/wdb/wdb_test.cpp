@@ -5,8 +5,9 @@
 #include <gtest/gtest.h>
 #include <logging/logging.hpp>
 
+#include <utils/socketInterface/unixSocketInterface.hpp>
 #include "socketAuxiliarFunctions.hpp"
-#include "unixSocketInterface.hpp"
+
 
 using namespace wazuhdb;
 

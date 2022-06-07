@@ -5,7 +5,7 @@
 
 #include <logging/logging.hpp>
 
-#include "unixSocketInterface.hpp"
+#include <utils/socketInterface/unixSocketInterface.hpp>
 
 namespace wazuhdb
 {

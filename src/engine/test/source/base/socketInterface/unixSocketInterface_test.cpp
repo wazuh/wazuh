@@ -1,4 +1,3 @@
-#include "unixSocketInterface.hpp"
 
 #include <iostream>
 
@@ -7,7 +6,8 @@
 
 #include <gtest/gtest.h>
 
-#include "socketAuxiliarFunctions.hpp"
+#include <utils/socketInterface/unixSocketInterface.hpp>
+#include "testAuxiliar/socketAuxiliarFunctions.hpp"
 
 using namespace socketinterface;
 
