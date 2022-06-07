@@ -303,19 +303,6 @@ start_service()
                  continue
              fi
         fi
-        ## If wazuh-clusterd is disabled, don't try to start it.
-        if [ X"$i" = "Xwazuh-clusterd" ]; then
-             start_config="$(grep -n "<cluster>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
-             end_config="$(grep -n "</cluster>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
-             if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
-                sed -n "${start_config},${end_config}p" ${DIR}/etc/ossec.conf | grep "<disabled>yes" >/dev/null 2>&1
-                if [ $? = 0 ]; then
-                    continue
-                fi
-             else
-                continue
-             fi
-        fi
         ## If wazuh-authd is disabled, don't try to start it.
         if [ X"$i" = "Xwazuh-authd" ]; then
              start_config="$(grep -n "<auth>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
