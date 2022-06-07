@@ -31,3 +31,16 @@ graph_test.cpp
 )
 target_link_libraries(graph_test gtest_main base)
 gtest_discover_tests(graph_test)
+
+add_executable(socketInterface_test
+  socketInterface/unixSocketInterface_test.cpp
+  ${SHARED_ENGINE_SOURCE_DIR}/socketInterface/unixSocketInterface.cpp
+)
+
+target_include_directories(socketInterface_test
+    PRIVATE
+    testAuxiliar/
+)
+
+target_link_libraries(socketInterface_test gtest_main base)
+gtest_discover_tests(socketInterface_test)
