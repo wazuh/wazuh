@@ -202,15 +202,15 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
-          affected_items:
-            - id: !anyint
-              name: test_i2
-              rule:
-                FIND$:
-                  definition: "normal_rule1"
-          total_affected_items: 1
+          affected_items: []
+          total_affected_items: 0
+          failed_items:
+            - error:
+                code: 4005
+              id:
+                - test_i2
 
   # POST /security/rules
   - name: Add a too long named rule
