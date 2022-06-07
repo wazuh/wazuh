@@ -551,7 +551,7 @@ cJSON* asys_create_state_json() {
     cJSON *asys_state_json = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(asys_state_json, "timestamp", time(NULL));
-    cJSON_AddStringToObject(asys_state_json, "daemon_name", ARGV0);
+    cJSON_AddStringToObject(asys_state_json, "name", ARGV0);
 
     _statistics = cJSON_CreateObject();
     cJSON_AddItemToObject(asys_state_json, "statistics", _statistics);
