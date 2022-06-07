@@ -13,6 +13,15 @@
     },
     {
       "geoip": {
+        "field": "data.parameters.alert.data.srcip",
+        "target_field": "GeoLocation",
+        "properties": ["city_name", "country_name", "country_iso_code", "region_name", "location"],
+        "ignore_missing": true,
+        "ignore_failure": true
+      }
+    },
+    {
+      "geoip": {
         "field": "data.win.eventdata.ipAddress",
         "target_field": "GeoLocation",
         "properties": ["city_name", "country_name", "country_iso_code", "region_name", "location"],
