@@ -15,6 +15,7 @@
       "GeoLocation.continent_code",
       "GeoLocation.country_code2",
       "GeoLocation.country_code3",
+      "GeoLocation.country_iso_code",
       "GeoLocation.country_name",
       "GeoLocation.ip",
       "GeoLocation.postal_code",
@@ -598,6 +599,9 @@
             "type": "text"
           },
           "country_code3": {
+            "type": "text"
+          },
+          "country_iso_code": {
             "type": "text"
           },
           "country_name": {
