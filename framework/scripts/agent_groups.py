@@ -188,14 +188,12 @@ async def remove_group(group_id, quiet=False):
         if result.total_affected_items == 0:
             msg = list(result.failed_items.keys())[0]
         else:
-            for items in result.affected_items:
-                affected_agents = items[group_id]
-                msg = f"Group {group_id} removed."
-
-                if not affected_agents:
-                    msg += '\nNo affected agents.'
-                else:
-                    msg += f"\nAffected agents: {', '.join(affected_agents)}."
+            affected_agents = next(iter(data['affected_items'][0].values()))
+            msg = f'Group {group_id} removed.'
+            if len(affected_agents) == 0:
+                msg += "\nNo affected agents."
+            else:
+                msg += "\nAffected agents: {0}.".format(', '.join(affected_agents))
     else:
         msg = 'Cancelled.'
 

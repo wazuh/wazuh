@@ -12,6 +12,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 #include "../../headers/shared.h"
 #include "../../os_xml/os_xml.h"
@@ -420,11 +421,27 @@ void test_invalid_file(void **state) {
     assert_int_equal(data->xml.err_line, 0);
 }
 
-void test_unclosed_node(void **state) {
+void test_unclosed_node1(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     create_xml_file("<root>", data->xml_file_name, 256);
 
     assert_int_not_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
+    assert_string_equal(data->xml.err, "XMLERR: End of file and some elements were not closed.");
+    assert_int_equal(data->xml.err_line, 1);
+}
+
+void test_unclosed_node2(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    char overflow_string[XML_MAXSIZE + 10];
+    memset(overflow_string, 'c', XML_MAXSIZE + 9);
+    overflow_string[XML_MAXSIZE + 9] = '\0';
+
+    char xml_string[2 * XML_MAXSIZE];
+    snprintf(xml_string, 2 * XML_MAXSIZE - 1, "<test>%s", overflow_string);
+    create_xml_file(xml_string, data->xml_file_name, 256);
+
+    assert_int_not_equal(OS_ReadXML_Ex(data->xml_file_name, &data->xml, true), 0);
     assert_string_equal(data->xml.err, "XMLERR: End of file and some elements were not closed.");
     assert_int_equal(data->xml.err_line, 1);
 }
@@ -878,7 +895,7 @@ void test_os_get_attributes(void **state) {
     assert_null(data->content5[2]);
 }
 
-void test_node_name_overflow(void **state) {
+void test_node_name_overflow1(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
 
     char overflow_string[XML_MAXSIZE + 10];
@@ -890,6 +907,22 @@ void test_node_name_overflow(void **state) {
     create_xml_file(xml_string, data->xml_file_name, 256);
 
     assert_int_not_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
+    assert_string_equal(data->xml.err, "XMLERR: String overflow.");
+    assert_int_equal(data->xml.err_line, 1);
+}
+
+void test_node_name_overflow2(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    char overflow_string[XML_MAXSIZE + 10];
+    memset(overflow_string, 'c', XML_MAXSIZE + 9);
+    overflow_string[XML_MAXSIZE + 9] = '\0';
+
+    char xml_string[2 * XML_MAXSIZE];
+    snprintf(xml_string, 2 * XML_MAXSIZE - 1, "<%s/>", overflow_string);
+    create_xml_file(xml_string, data->xml_file_name, 256);
+
+    assert_int_not_equal(OS_ReadXML_Ex(data->xml_file_name, &data->xml, true), 0);
     assert_string_equal(data->xml.err, "XMLERR: String overflow.");
     assert_int_equal(data->xml.err_line, 1);
 }
@@ -908,6 +941,24 @@ void test_node_value_overflow(void **state) {
     assert_int_not_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
     assert_string_equal(data->xml.err, "XMLERR: String overflow.");
     assert_int_equal(data->xml.err_line, 1);
+}
+
+void test_node_value_truncate_overflow(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    char overflow_string[XML_MAXSIZE + 10];
+    memset(overflow_string, 'c', XML_MAXSIZE + 9);
+    overflow_string[XML_MAXSIZE + 9] = '\0';
+
+    char xml_string[2 * XML_MAXSIZE];
+    snprintf(xml_string, 2 * XML_MAXSIZE - 1, "<test>%s</test>", overflow_string);
+    create_xml_file(xml_string, data->xml_file_name, 256);
+
+    const char *xml_path[] = { "test", NULL };
+
+    assert_int_equal(OS_ReadXML_Ex(data->xml_file_name, &data->xml, true), 0);
+    assert_non_null(data->content5 = OS_GetContents(&data->xml, xml_path));
+    assert_string_equal(data->content5[0], overflow_string+9);
 }
 
 void test_node_attribute_name_overflow(void **state) {
@@ -1036,7 +1087,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_invalid_file, test_setup, test_teardown),
 
         // Unclosed node XML test
-        cmocka_unit_test_setup_teardown(test_unclosed_node, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_unclosed_node1, test_setup, test_teardown),
+
+        // Unclosed node XML test when truncate flag is set
+        cmocka_unit_test_setup_teardown(test_unclosed_node2, test_setup, test_teardown),
 
         // Unclosed second node XML test
         cmocka_unit_test_setup_teardown(test_unclosed_second_node, test_setup, test_teardown),
@@ -1139,10 +1193,16 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_os_get_attributes, test_setup, test_teardown),
 
         // Node name inside XML overflow test
-        cmocka_unit_test_setup_teardown(test_node_name_overflow, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_node_name_overflow1, test_setup, test_teardown),
+
+        // Node name inside XML overflow test. Node name is never truncated
+        cmocka_unit_test_setup_teardown(test_node_name_overflow2, test_setup, test_teardown),
 
         // Node value inside XML overflow test
         cmocka_unit_test_setup_teardown(test_node_value_overflow, test_setup, test_teardown),
+
+        // Node value inside XML truncate overflow test
+        cmocka_unit_test_setup_teardown(test_node_value_truncate_overflow, test_setup, test_teardown),
 
         // Node attribute name inside XML overflow test
         cmocka_unit_test_setup_teardown(test_node_attribute_name_overflow, test_setup, test_teardown),
