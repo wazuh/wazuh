@@ -49,6 +49,7 @@ def getWazuhInfo(wazuh_home):
 
     return wazuh_env_vars
 
+
 def provisionDR():
     base_dir = os.path.dirname(os.path.realpath(__file__))
     rules_dir = os.path.join(base_dir, "ruleset")
@@ -57,12 +58,13 @@ def provisionDR():
     for file in os.listdir(rules_dir):
         file_fullpath = os.path.join(rules_dir, file)
         if os.path.isfile(file_fullpath) and re.match(r'^test_(.*_)?rules.xml$',file):
-            shutil.copy2(file_fullpath , args.wazuh_home + "/etc/rules")
+            shutil.copy2(file_fullpath, args.wazuh_home + "/etc/rules")
 
     for file in os.listdir(decoders_dir):
         file_fullpath = os.path.join(decoders_dir, file)
         if os.path.isfile(file_fullpath) and re.match(r'^test_(.*_)?decoders.xml$',file):
-            shutil.copy2(file_fullpath , args.wazuh_home + "/etc/decoders")
+            shutil.copy2(file_fullpath, args.wazuh_home + "/etc/decoders")
+
 
 def cleanDR():
     rules_dir = args.wazuh_home + "/etc/rules"
@@ -78,9 +80,11 @@ def cleanDR():
         if os.path.isfile(file_fullpath) and re.match(r'^test_(.*_)?decoders.xml$',file):
             os.remove(file_fullpath)
 
+
 def restart_analysisd():
     print("Restarting wazuh-manager...")
     ret = os.system('systemctl restart wazuh-manager')
+
 
 def enable_win_eventlog_test_actions(tree):
     base_rule = tree.find('.//rule[@id="60000"]')
@@ -88,6 +92,7 @@ def enable_win_eventlog_test_actions(tree):
     base_rule.remove(base_rule.find(".//category"))
     decoded_as = ET.SubElement(base_rule,"decoded_as")
     decoded_as.text = "json"
+
 
 def disable_win_eventlog_test_actions(tree):
     base_rule = tree.find('.//rule[@id="60000"]')
@@ -97,6 +102,7 @@ def disable_win_eventlog_test_actions(tree):
     category = ET.SubElement(base_rule,"category")
     category.text = "ossec"
 
+
 def modify_win_eventlog_testing(action):
     win_base_rules_file = "/var/ossec/ruleset/rules/0575-win-base_rules.xml"
     actions = {"enable": enable_win_eventlog_test_actions, "disable": disable_win_eventlog_test_actions}
@@ -104,8 +110,10 @@ def modify_win_eventlog_testing(action):
     actions[action](tree)
     tree.write(win_base_rules_file)
 
+
 def enable_win_eventlog_tests():
     modify_win_eventlog_testing("enable")
+
 
 def disable_win_eventlog_tests():
     modify_win_eventlog_testing("disable")
@@ -135,7 +143,9 @@ def gather_failed_test_data(std_out, alert, rule, decoder, section, line_name):
 
     return failed_test
 
+
 class OssecTester(object):
+
     def __init__(self, bdir):
         self._error = False
         self._debug = False
@@ -185,6 +195,7 @@ class OssecTester(object):
             sys.stdout.flush()
         return test_status
 
+
     def run(self, selective_test=False, geoip=False):
         for a_ini_file in os.listdir(self._test_path):
             a_ini_file = os.path.join(self._test_path, a_ini_file)
@@ -215,6 +226,7 @@ class OssecTester(object):
                             self._execution_data[a_ini_file][self.runTest(value, rule, alert, decoder,t, name, negate=neg)]+=1
                 print("\n\n")
         return self._error
+
 
     def print_results(self):
         template = "|{: ^25}|{: ^10}|{: ^10}|{: ^10}|"
@@ -253,6 +265,7 @@ class OssecTester(object):
 def cleanup(*args):
     cleanDR()
     sys.exit(0)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='This script tests Wazuh rules.')
