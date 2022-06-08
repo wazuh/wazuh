@@ -57,8 +57,6 @@ int socketConnect(std::string_view path)
         throw std::runtime_error("socketConnect: path is empty");
     }
 
-    /* Socket options */
-    const auto SOCK_TYPE {SOCK_STREAM};
 
     /* Config the socket address */
     struct sockaddr_un sAddr
@@ -68,7 +66,7 @@ int socketConnect(std::string_view path)
     strncpy(sAddr.sun_path, path.data(), sizeof(sAddr.sun_path) - 1);
 
     /* Get the socket fd connector */
-    const auto socketFD {socket(PF_UNIX, SOCK_TYPE, 0)};
+    const auto socketFD {socket(PF_UNIX, SOCK_STREAM, 0)};
     if (0 > socketFD)
     {
         const auto msg = std::string {"Cannot create the socket: "} + strerror(errno)
@@ -88,6 +86,7 @@ int socketConnect(std::string_view path)
     }
 
     /* Set socket buffer maximum size */
+    // TODO: check if this is really needed
     {
         int len;
         socklen_t optlen {sizeof(len)};
