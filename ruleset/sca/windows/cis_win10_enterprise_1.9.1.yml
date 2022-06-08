@@ -4275,3 +4275,185 @@ checks:
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\CredUI -> EnumerateAdministrators -> 0'
+
+  - id: 26282
+    title: "Ensure 'Prevent the use of security questions for local accounts' is set to 'Enabled'"
+    description: "This policy setting controls whether security questions can be used to reset local account passwords. The security question feature does not apply to domain accounts, only local accounts on the workstation. The recommended state for this setting is: Enabled ."
+    rationale: "Users could establish security questions that are easily guessed or sleuthed by observing the user’s social media accounts, making it easier for a malicious actor to change the local user account password and gain access to the computer as that user account."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled:Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Credential User Interface\\Prevent the use of security questions for local accounts"
+    compliance:
+      - cis: ["18.9.15.3"]
+      - cis_csc: ["16"]
+    references:
+      - 'CCE-36512-2'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> NoLocalPasswordResetQuestions -> 1'
+
+  - id: 26283
+    title: "Ensure 'Allow Telemetry' is set to 'Enabled: 0 - Security [Enterprise Only]' or 'Enabled: 1 - Basic'"
+    description: "This policy setting determines the amount of diagnostic and usage data reported to Microsoft: - A value of 0 - Security [Enterprise Only] will send minimal data to Microsoft. This data includes Malicious Software Removal Tool (MSRT) & Windows Defender data, if enabled, and telemetry client settings. Setting a value of 0 applies to enterprise, EDU, IoT and server devices only. Setting a value of 0 for other devices is equivalent to choosing a value of 1. - A value of 1 - Basic sends only a basic amount of diagnostic and usage data. Note that setting values of 0 or 1 will degrade certain experiences on the device. - A value of 2 - Enhanced sends enhanced diagnostic and usage data. - A value of 3 - Full sends the same data as a value of 2, plus additional diagnostics data, including the files and content that may have caused the problem. Windows 10 telemetry settings apply to the Windows operating system and some first party apps. This setting does not apply to third party apps running on Windows 10. The recommended state for this setting is: Enabled: 0 - Security [Enterprise Only] or Enabled: 1 - Basic."
+    rationale: "Sending any data to a 3rd party vendor is a security concern and should only be done on an as needed basis."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 0 - Security [Enterprise Only] or Enabled: 1 - Basic: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Allow Telemetry"
+    compliance:
+      - cis: ["18.9.16.1"]
+      - cis_csc: ["13"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1","CC6.7","CC7.2"]
+    references:
+      - 'CCE-41400-3'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> AllowTelemetry -> r:^0$|^1$'
+
+
+  - id: 26284
+    title: "Ensure 'Configure Authenticated Proxy usage for the Connected User Experience and Telemetry service' is set to 'Enabled: Disable Authenticated Proxy usage'"
+    description: "This policy setting controls whether the Connected User Experience and Telemetry service can automatically use an authenticated proxy to send data back to Microsoft. The recommended state for this setting is: Enabled: Disable Authenticated Proxy usage."
+    rationale: "Sending any data to a 3rd party vendor is a security concern and should only be done on an as needed basis."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Disable Authenticated Proxy usage: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Configure Authenticated Proxy usage for the Connected User Experience and Telemetry service. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DataCollection.admx/adml that is included with the Microsoft Windows 10 Release 1703 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.9.16.2"]
+      - cis_csc: ["13"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1","CC6.7","CC7.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> DisableEnterpriseAuthProxy -> 1'
+
+
+  - id: 15730
+    title: "Ensure 'Do not show feedback notifications' is set to 'Enabled'"
+    description: "This policy setting allows an organization to prevent its devices from showing feedback questions from Microsoft."
+    rationale: "Users should not be sending any feedback to 3rd party vendors in an enterprise managed environment."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Do not show feedback notifications"
+    compliance:
+      - cis: ["18.9.16.3"]
+      - cis_csc: ["13"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1","CC6.7","CC7.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> DoNotShowFeedbackNotifications -> 1'
+
+  - id: 15731
+    title: "Ensure 'Toggle user control over Insider builds' is set to 'Disabled'"
+    description: "This policy setting determines whether users can access the Insider build controls in the Advanced Options for Windows Update. These controls are located under \"Get Insider builds,\" and enable users to make their devices available for downloading and installing Windows preview software."
+    rationale: "It can be risky for experimental features to be allowed in an enterprise managed environment because this can introduce bugs and security holes into systems, making it easier for an attacker to gain access. It is generally preferred to only use production-ready builds."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Toggle user control over Insider builds"
+    compliance:
+      - cis: ["18.9.16.4"]
+      - cis_csc: ["3"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1","CC6.7","CC7.2"]
+    references:
+      - 'CCE-41380-7'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PreviewBuilds -> AllowBuildPreview -> 0'
+
+  - id: 15732
+    title: "Ensure 'Download Mode' is NOT set to 'Enabled: Internet'"
+    description: "This policy setting specifies the download method that Delivery Optimization can use in downloads of Windows Updates, Apps and App updates. The following methods are supported: - 0 = HTTP only, no peering. - 1 = HTTP blended with peering behind the same NAT. - 2 = HTTP blended with peering across a private group. Peering occurs on devices in the same Active Directory Site (if exist) or the same domain by default. When this option is selected, peering will cross NATs. To create a custom group use Group ID in combination with Mode 2. - 3 = HTTP blended with Internet Peering. - 99 = Simple download mode with no peering. Delivery Optimization downloads using HTTP only and does not attempt to contact the Delivery Optimization cloud services. - 100 = Bypass mode. Do not use Delivery Optimization and use BITS instead."
+    rationale: "Due to privacy concerns and security risks, updates should only be downloaded directly from Microsoft, or from a trusted machine on the internal network that received its updates from a trusted source and approved by the network administrator."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to any value other than Enabled: Internet: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Delivery Optimization\\Download Mode"
+    compliance:
+      - cis: ["18.9.17.1"]
+      - cis_csc: ["4.5", "3.4", "3.5"]
+      - pci_dss: ["6.2"]
+      - nist_800_53: ["SI.2","SA.11","SI.4"]
+      - gpg_13: ["4.3"]
+      - gdpr_IV: ["35.7.d"]
+      - hipaa: ["164.312.b"]
+      - tsc: ["A1.2","CC6.8"]
+    condition: all
+    rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeliveryOptimization -> DODownloadMode -> r:^3$'
+
+  - id: 15733
+    title: "Ensure 'Application: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'"
+    description: "This policy setting controls Event Log behavior when the log file reaches its maximum size."
+    rationale: "If new events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Event Log Service\\Application\\Control Event Log behavior when the log file reaches its maximum size"
+    compliance:
+      - cis: ["18.9.26.1.1"]
+      - cis_csc: ["6.3", "6.4"]
+      - pci_dss: ["10.6.1"]
+      - nist_800_53: ["AU.6"]
+      - gpg13: ["4.12"]
+      - gdpr_IV: [35.7.d]
+      - hipaa: ["164.312.b"]
+      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3"]
+    references:
+      - 'CCE-34169-3'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application -> Retention -> 0'
+
+  - id: 15734
+    title: "Ensure 'Application: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'"
+    description: "This policy setting specifies the maximum size of the log file in kilobytes. The maximum log file size can be configured between 1 megabyte (1,024 kilobytes) and 4 terabytes (4,194,240 kilobytes) in kilobyte increments."
+    rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 32,768 or greater: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Event Log Service\\Application\\Specify the maximum log file size (KB)"
+    compliance:
+      - cis: ["18.9.26.1.2"]
+      - cis_csc: ["6.3", "6.4"]
+      - pci_dss: ["10.6.1"]
+      - nist_800_53: ["AU.6"]
+      - gpg13: ["4.12"]
+      - gdpr_IV: [35.7.d]
+      - hipaa: ["164.312.b"]
+      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3"]
+    references:
+      - 'CCE-33975-4'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application -> MaxSize -> n:^(\d+) compare >= 32768'
+
+  - id: 15735
+    title: "Ensure 'Security: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'"
+    description: "This policy setting controls Event Log behavior when the log file reaches its maximum size."
+    rationale: "If new events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Event Log Service\\Security\\Control Event Log behavior when the log file reaches its maximum size"
+    compliance:
+      - cis: ["18.9.26.2.1"]
+      - cis_csc: ["6.3", "6.4"]
+      - pci_dss: ["10.6.1"]
+      - nist_800_53: ["AU.6"]
+      - gpg13: ["4.12"]
+      - gdpr_IV: [35.7.d]
+      - hipaa: ["164.312.b"]
+      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3"]
+    references:
+      - 'CCE-35090-0'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security -> Retention -> 0'
+
+  - id: 15736
+    title: "Ensure 'Security: Specify the maximum log file size (KB)' is set to 'Enabled: 196,608 or greater'"
+    description: "This policy setting specifies the maximum size of the log file in kilobytes. The maximum log file size can be configured between 1 megabyte (1,024 kilobytes) and 4 terabytes (4,194,240 kilobytes) in kilobyte increments."
+    rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 196,608 or greater: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Event Log Service\\Security\\Specify the maximum log file size (KB)"
+    compliance:
+      - cis: ["18.9.26.2.2"]
+      - cis_csc: ["6.3", "6.4"]
+      - pci_dss: ["10.6.1"]
+      - nist_800_53: ["AU.6"]
+      - gpg13: ["4.12"]
+      - gdpr_IV: [35.7.d]
+      - hipaa: ["164.312.b"]
+      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3"]
+    references:
+      - 'CCE-33428-4'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security -> MaxSize -> n:^(\d+) compare >= 196608'
