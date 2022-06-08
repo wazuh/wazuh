@@ -153,7 +153,7 @@ class OssecTester(object):
         return cmd
 
     def runTest(self, log, rule, alert, decoder, section, name, negate=False):
-        did_pass = "failed"
+        test_status = "failed"
         self.tested_rules.add(rule)
         self.tested_decoders.add(decoder)
         p = subprocess.Popen(
@@ -181,22 +181,22 @@ class OssecTester(object):
             print(std_out)
         else:
             sys.stdout.write(".")
-            did_pass = "passed"
+            test_status = "passed"
             sys.stdout.flush()
-        return did_pass
+        return test_status
 
     def run(self, selective_test=False, geoip=False):
-        for aFile in os.listdir(self._test_path):
-            aFile = os.path.join(self._test_path, aFile)
-            if aFile.endswith(".ini"):
-                if selective_test and not aFile.endswith(selective_test):
+        for a_ini_file in os.listdir(self._test_path):
+            a_ini_file = os.path.join(self._test_path, a_ini_file)
+            if a_ini_file.endswith(".ini"):
+                if selective_test and not a_ini_file.endswith(selective_test):
                     continue
-                if geoip is False and aFile.endswith("geoip.ini"):
+                if geoip is False and a_ini_file.endswith("geoip.ini"):
                     continue
-                self._execution_data[aFile] = {"passed":0, "failed":0}
-                print("- [ File = %s ] ---------" % (aFile))
+                self._execution_data[a_ini_file] = {"passed":0, "failed":0}
+                print("- [ File = %s ] ---------" % (a_ini_file))
                 tGroup = ConfigParser.RawConfigParser(dict_type=MultiOrderedDict)
-                tGroup.read([aFile])
+                tGroup.read([a_ini_file])
                 tSections = tGroup.sections()
                 for t in tSections:
                     rule = tGroup.get(t, "rule")
@@ -212,9 +212,8 @@ class OssecTester(object):
                                 neg = True
                             else:
                                 neg = False
-                            self._execution_data[aFile][self.runTest(value, rule, alert, decoder,t, name, negate=neg)]+=1
-                print("")
-                print("")
+                            self._execution_data[a_ini_file][self.runTest(value, rule, alert, decoder,t, name, negate=neg)]+=1
+                print("\n\n")
         return self._error
 
     def print_results(self):
@@ -229,7 +228,6 @@ class OssecTester(object):
             print(template.format(test_name, passed_count, failed_count, status))
 
         if len(self._failed_tests):
-
             template = "|{: <10} |{: ^25}|{: ^25}|"
             print("\n\nFailing tests summary:")
             for failed_test in self._failed_tests:
@@ -291,7 +289,7 @@ if __name__ == "__main__":
 
     cleanDR()
     if args.windows_tests:
-            disable_win_eventlog_tests()
+        disable_win_eventlog_tests()
     restart_analysisd()
 
     rules = get_rule_ids("/var/ossec/ruleset/rules/")
@@ -303,7 +301,7 @@ if __name__ == "__main__":
     template = "|{: ^10}|{: ^10}|{: ^10}|{: ^10.2%}|"
     print(template.format("Rules", len(OT.tested_rules), len(rules), len(OT.tested_rules)/len(rules)))
     print(template.format("Decoders", len(OT.tested_decoders), len(decoders), len(OT.tested_decoders)/len(decoders)))
-    print("")
+    print("\n")
 
     OT.print_results()
 

@@ -111,7 +111,7 @@ def get_parent_decoder_names(decoders_path):
                 decoder_name = None
                 for line in decoder_file:
                     if not inside_decoder:
-                        decoder_name = re.match(decoderStartPattern, line)
+                        decoder_name = re.match(decoder_start_pattern, line)
                         if decoder_name:
                             inside_decoder = True
                             decoder_name = decoder_name.group(1)
