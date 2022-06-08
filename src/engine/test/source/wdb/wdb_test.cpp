@@ -5,11 +5,12 @@
 #include <gtest/gtest.h>
 #include <logging/logging.hpp>
 
-#include <utils/socketInterface/unixSocketInterface.hpp>
+#include <utils/socketInterface/unixStream.hpp>
 #include "socketAuxiliarFunctions.hpp"
 
 
 using namespace wazuhdb;
+namespace unixStream = base::utils::socketInterface::unixStream;
 
 constexpr const char* TEST_MESSAGE = "Test Message to be queried";
 constexpr const char* TEST_PAYLOAD = "Test Query Response Payload";
@@ -91,9 +92,9 @@ TEST(wdb_query, EmptyString)
 TEST(wdb_query, TooLongString)
 {
 
-    char msg[socketinterface::MSG_MAX_SIZE + 2] {};
+    char msg[unixStream::MSG_MAX_SIZE + 2] {};
 
-    memset(msg, 'x', socketinterface::MSG_MAX_SIZE + 1);
+    memset(msg, 'x', unixStream::MSG_MAX_SIZE + 1);
 
     auto wdb = WazuhDB();
 
@@ -118,10 +119,10 @@ TEST(wdb_query, ConnectAndQuery)
     const int clientRemote = testAcceptConnection(serverSocketFD);
     ASSERT_GT(clientRemote, 0);
 
-    socketinterface::sendMsg(clientRemote, TEST_RESPONSE);
+    unixStream::sendMsg(clientRemote, TEST_RESPONSE);
 
     ASSERT_STREQ(wdb.query(TEST_MESSAGE).c_str(), TEST_RESPONSE);
-    ASSERT_STREQ(socketinterface::recvString(clientRemote).c_str(), TEST_MESSAGE);
+    ASSERT_STREQ(unixStream::recvString(clientRemote).c_str(), TEST_MESSAGE);
 
     close(clientRemote);
     close(serverSocketFD);
@@ -137,8 +138,8 @@ TEST(wdb_query, SendQueryWithoutConnect)
 
     std::thread t([&]() {
         const int clientRemote = testAcceptConnection(serverSocketFD);
-        socketinterface::recvString(clientRemote).c_str();
-        socketinterface::sendMsg(clientRemote, TEST_RESPONSE);
+        unixStream::recvString(clientRemote).c_str();
+        unixStream::sendMsg(clientRemote, TEST_RESPONSE);
         close(clientRemote);
     });
 
@@ -161,7 +162,7 @@ TEST(wdb_query, SendQueryConexionClosed)
         close(clientRemote);
     });
 
-    ASSERT_THROW(wdb.query(TEST_MESSAGE), socketinterface::RecoverableError);
+    ASSERT_THROW(wdb.query(TEST_MESSAGE), unixStream::RecoverableError);
     t.join();
 
     close(serverSocketFD);
@@ -179,8 +180,8 @@ TEST(wdb_tryQuery, SendQueryOK_firstAttemp)
 
     std::thread t([&]() {
         const int clientRemote = testAcceptConnection(serverSocketFD);
-        socketinterface::recvString(clientRemote).c_str();
-        socketinterface::sendMsg(clientRemote, TEST_RESPONSE);
+        unixStream::recvString(clientRemote).c_str();
+        unixStream::sendMsg(clientRemote, TEST_RESPONSE);
         close(clientRemote);
     });
 
@@ -202,8 +203,8 @@ TEST(wdb_tryQuery, SendQueryOK_retry)
         const int clientRemote = testAcceptConnection(serverSocketFD);
         close(clientRemote);
         const int clientRemoteRetry = testAcceptConnection(serverSocketFD);
-        socketinterface::recvString(clientRemoteRetry).c_str();
-        socketinterface::sendMsg(clientRemoteRetry, TEST_RESPONSE);
+        unixStream::recvString(clientRemoteRetry).c_str();
+        unixStream::sendMsg(clientRemoteRetry, TEST_RESPONSE);
         close(clientRemoteRetry);
     });
 
@@ -384,8 +385,8 @@ TEST(wdb_tryQueryAndParseResult, SendQueryOK_firstAttemp_wopayload)
 
     std::thread t([&]() {
         const int clientRemote = testAcceptConnection(serverSocketFD);
-        socketinterface::recvString(clientRemote).c_str();
-        socketinterface::sendMsg(clientRemote, "ok");
+        unixStream::recvString(clientRemote).c_str();
+        unixStream::sendMsg(clientRemote, "ok");
         close(clientRemote);
     });
 
@@ -410,8 +411,8 @@ TEST(wdb_tryQueryAndParseResult, SendQueryOK_retry_wpayload)
         const int clientRemote = testAcceptConnection(serverSocketFD);
         close(clientRemote);
         const int clientRemoteRetry = testAcceptConnection(serverSocketFD);
-        socketinterface::recvString(clientRemoteRetry).c_str();
-        socketinterface::sendMsg(clientRemoteRetry, "ok payload");
+        unixStream::recvString(clientRemoteRetry).c_str();
+        unixStream::sendMsg(clientRemoteRetry, "ok payload");
         close(clientRemoteRetry);
     });
 

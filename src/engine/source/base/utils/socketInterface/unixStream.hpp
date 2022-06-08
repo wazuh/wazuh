@@ -1,5 +1,5 @@
-#ifndef _WDB_PROTOCOL_H
-#define _WDB_PROTOCOL_H
+#ifndef _SOCKINTERFACE_USTREAM_H
+#define _SOCKINTERFACE_USTREAM_H
 
 #include <map>
 #include <stdexcept>
@@ -23,7 +23,7 @@
     See: https://documentation.wazuh.com/current/development/message-format.html
 */
 
-namespace socketinterface
+namespace base::utils::socketInterface::unixStream
 {
 constexpr auto MSG_MAX_SIZE {65536}; ///< Maximum message size (2^16)
 
@@ -50,12 +50,12 @@ enum class CommRetval
     SOCKET_ERROR,
 };
 
-const std::map<socketinterface::CommRetval, const std::string> CommRetval2Str = {
-    {socketinterface::CommRetval::INVALID_SOCKET, "INVALID_SOCKET"},
-    {socketinterface::CommRetval::SIZE_TOO_LONG, "SIZE_TOO_LONG"},
-    {socketinterface::CommRetval::SIZE_ZERO, "SIZE_ZERO"},
-    {socketinterface::CommRetval::SOCKET_ERROR, "SOCKET_ERROR"},
-    {socketinterface::CommRetval::SUCCESS, "SUCCESS"}};
+const std::map<socketInterface::unixStream::CommRetval, const std::string> CommRetval2Str = {
+    {socketInterface::unixStream::CommRetval::INVALID_SOCKET, "INVALID_SOCKET"},
+    {socketInterface::unixStream::CommRetval::SIZE_TOO_LONG, "SIZE_TOO_LONG"},
+    {socketInterface::unixStream::CommRetval::SIZE_ZERO, "SIZE_ZERO"},
+    {socketInterface::unixStream::CommRetval::SOCKET_ERROR, "SOCKET_ERROR"},
+    {socketInterface::unixStream::CommRetval::SUCCESS, "SUCCESS"}};
 
 /**
  * @brief Connect to a UNIX stream socket located at `path`
