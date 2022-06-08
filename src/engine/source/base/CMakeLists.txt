@@ -71,6 +71,8 @@ add_library(base STATIC
     logging/logging.hpp
     utils/socketInterface/unixStream.cpp
     utils/socketInterface/unixStream.hpp
+    utils/socketInterface/unixDatagram.cpp
+    utils/socketInterface/unixDatagram.hpp
     utils/baseMacros.hpp
     utils/baseMacros.cpp
     utils/ipUtils.cpp
