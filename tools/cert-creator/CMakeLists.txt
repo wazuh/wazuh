@@ -3,6 +3,7 @@ project(cert-creator)
 set(OPENSSL_DIR "../../src/external/openssl/")
 
 include_directories(${OPENSSL_DIR}include)
+include_directories(${OPENSSL_DIR})
 
 link_directories(${OPENSSL_DIR})
 

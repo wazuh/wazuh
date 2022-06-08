@@ -38,13 +38,29 @@ struct smartDeleter final
     {
         BN_free(bn);
     }
+
+    void operator()(ASN1_INTEGER* asn1)
+    {
+        ASN1_INTEGER_free(asn1);
+    }
 };
+
+
+/**
+ * @brief Function to generate a random serial number.
+ *
+ * @param sn ASN1_INTEGER to store the serial number. It cannot be NULL and it must be created using the
+ *           ASN1_INTEGER_new() function.
+ *
+ * @return int 0 on success 1 on failure.
+ */
+int rand_serial(ASN1_INTEGER *sn);
 
 /**
  * @brief Generates a OpenSSL new key.
  *
  * @param bits Key size. Defaults to 2048.
- * @return EVP_PKEY structure.
+ * @return Smart pointer to a EVP_PKEY structure.
  */
 std::unique_ptr<EVP_PKEY, smartDeleter> generate_key(int bits = 2048);
 
@@ -52,7 +68,7 @@ std::unique_ptr<EVP_PKEY, smartDeleter> generate_key(int bits = 2048);
  * @brief Generates a self-signed X509 certificate.
  *
  * @param key Key that will be used to sign the certificate.
- * @return X509 structure.
+ * @return Amart pointer to a x509 structure.
  */
 std::unique_ptr<X509, smartDeleter> generate_cert(const std::unique_ptr<EVP_PKEY, smartDeleter>& key);
 
@@ -73,8 +89,6 @@ void add_x509_ext(X509 *cert, X509V3_CTX *ctx, int ext_nid, const char *value);
  * @param x509 Smart pointer to a valid X509 certificate.
  * @param key_name Path to store the key.
  * @param cert_name Pat to store the certificate.
- * @retval 0 Success
- * @retval 1 Failure
  */
 int dump_key_cert(const std::unique_ptr<EVP_PKEY, smartDeleter>& key,
                    const std::unique_ptr<X509, smartDeleter>& x509,
@@ -164,7 +178,8 @@ std::unique_ptr<EVP_PKEY, smartDeleter> generate_key(int bits)
  */
 std::unique_ptr<X509, smartDeleter> generate_cert(const std::unique_ptr<EVP_PKEY, smartDeleter>& key)
 {
-    std::unique_ptr<X509, smartDeleter> cert (X509_new());
+    std::unique_ptr<X509, smartDeleter> cert(X509_new());
+    std::unique_ptr<ASN1_INTEGER, smartDeleter> serial_number(ASN1_INTEGER_new());
     X509_NAME* name = NULL;
     X509V3_CTX ctx;
 
@@ -174,8 +189,21 @@ std::unique_ptr<X509, smartDeleter> generate_cert(const std::unique_ptr<EVP_PKEY
         return nullptr;
     }
 
-    X509_set_version(cert.get(), 2);
+    if (serial_number.get() == NULL)
+    {
+        std::cerr << "Cannot create serial number." << std::endl;
+        return nullptr;
+    }
 
+    // Assign a random serial number to the certificate
+    if (rand_serial(serial_number.get()) == 1)
+    {
+        std::cerr << "Cannot generate serial number." << std::endl;
+        return nullptr;
+    }
+
+    X509_set_version(cert.get(), 2);
+    X509_set_serialNumber(cert.get(), serial_number.get());
     X509_gmtime_adj(X509_get_notBefore(cert.get()), 0);
     X509_gmtime_adj(X509_get_notAfter(cert.get()), 31536000L);
 
@@ -251,6 +279,36 @@ int dump_key_cert(const std::unique_ptr<EVP_PKEY, smartDeleter>& key,
 
     fclose(key_file);
     fclose(x509_file);
+
+    return 0;
+}
+
+
+int rand_serial(ASN1_INTEGER *sn)
+{
+    std::unique_ptr<BIGNUM, smartDeleter> bn(BN_new());
+    if (bn.get() == NULL)
+    {
+        return 0;
+    }
+
+    /*
+    * The 159 constant is defined in openssl/apps/apps.h (SERIAL_RAND_BITS)
+    * IETF RFC 5280 says serial number must be <= 20 bytes. Use 159 bits
+    * so that the first bit will never be one, so that the DER encoding
+    * rules won't force a leading octet.
+    */
+    if (!BN_rand(bn.get(), 159, BN_RAND_TOP_ANY, BN_RAND_BOTTOM_ANY))
+    {
+        return 1;
+    }
+
+    if (sn && !BN_to_ASN1_INTEGER(bn.get(), sn))
+    {
+        BN_free(bn.get());
+        return 1;
+
+    }
 
     return 0;
 }
