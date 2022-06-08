@@ -1504,7 +1504,7 @@ static void read_controlmsg(const char *agent_id, char *msg, char *group)
         if (!aux || !aux->f_sum) {
             /* Unlock mutex */
             w_mutex_unlock(&files_mutex);
-            merror("No such group '%s' for agent '%s'", group, agent_id);
+            mdebug1("No such group '%s' for agent '%s'", group, agent_id);
             return;
         }
     }
