@@ -4,11 +4,12 @@
 #include <unistd.h>
 
 #include <logging/logging.hpp>
-
-#include <utils/socketInterface/unixSocketInterface.hpp>
+#include <utils/socketInterface/unixStream.hpp>
 
 namespace wazuhdb
 {
+
+namespace unixStreamSocket = base::utils::socketInterface::unixStream;
 
 WazuhDB::~WazuhDB()
 {
@@ -39,7 +40,7 @@ void WazuhDB::connect()
         this->m_fd = SOCKET_NOT_CONNECTED;
     }
 
-    this->m_fd = socketinterface::socketConnect(m_path.c_str());
+    this->m_fd = unixStreamSocket::socketConnect(m_path.c_str());
 };
 
 std::string WazuhDB::query(const std::string& query)
@@ -51,7 +52,7 @@ std::string WazuhDB::query(const std::string& query)
         WAZUH_LOG_WARN("wdb: The query to send is empty.");
         return {};
     }
-    else if (query.length() > socketinterface::MSG_MAX_SIZE)
+    else if (query.length() > unixStreamSocket::MSG_MAX_SIZE)
     {
         WAZUH_LOG_WARN("wdb: The query to send is too long: {}.", query.c_str());
         return {};
@@ -66,14 +67,14 @@ std::string WazuhDB::query(const std::string& query)
     }
 
     // Send the query, throw runtime_error if cannot send
-    const auto sendStatus = socketinterface::sendMsg(this->m_fd, query);
+    const auto sendStatus = unixStreamSocket::sendMsg(this->m_fd, query);
 
-    if (socketinterface::CommRetval::SUCCESS == sendStatus)
+    if (unixStreamSocket::CommRetval::SUCCESS == sendStatus)
     {
         // Receive the result, throw runtime_error if cannot receive
-        result = socketinterface::recvString(this->m_fd);
+        result = unixStreamSocket::recvString(this->m_fd);
     }
-    else if (socketinterface::CommRetval::SOCKET_ERROR == sendStatus)
+    else if (unixStreamSocket::CommRetval::SOCKET_ERROR == sendStatus)
     {
         const auto msgError = std::string {"wdb: sendMsg failed: "} + std::strerror(errno)
                               + " (" + std::to_string(errno) + ")";
@@ -85,7 +86,7 @@ std::string WazuhDB::query(const std::string& query)
         const auto logicErrorStr =
             "wdb: sendMsg reached a condition that should never happen: ";
         throw std::logic_error(logicErrorStr
-                               + socketinterface::CommRetval2Str.at(sendStatus));
+                               + unixStreamSocket::CommRetval2Str.at(sendStatus));
     }
 
     return result;
@@ -148,7 +149,7 @@ std::string WazuhDB::tryQuery(const std::string& query,
             result = this->query(query);
             break;
         }
-        catch (const socketinterface::RecoverableError& e)
+        catch (const unixStreamSocket::RecoverableError& e)
         {
             WAZUH_LOG_DEBUG("wdb: Query failed (attempt {}): {}", i, e.what());
             disconnectError = e.what();
