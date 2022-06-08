@@ -69,7 +69,7 @@ def get_rule_ids(rules_path):
     for filename in listdir(rules_path):
         if Path.isfile(rules_path + filename):
             with open(rules_path + filename,'r') as rule_file:
-                ruleSet.update( {match for match in re.findall(rule_start_pattern, rule_file.read())} )
+                rule_set.update( {match for match in re.findall(rule_start_pattern, rule_file.read())} )
 
     return rule_set
 

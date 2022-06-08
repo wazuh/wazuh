@@ -7,19 +7,20 @@
 # Foundation
 
 from __future__ import division
+from collections import OrderedDict
+import xml.etree.ElementTree as ET
 import ConfigParser
 import subprocess
 import os
 import sys
-from collections import OrderedDict
 import shutil
 import argparse
 import re
 import signal
-import xml.etree.ElementTree as ET
 
-from coverage import getRuleIds
-from coverage import getParentDecoderNames
+from coverage import get_rule_ids
+from coverage import get_parent_decoder_names
+
 
 
 class MultiOrderedDict(OrderedDict):
@@ -81,28 +82,34 @@ def restart_analysisd():
     print("Restarting wazuh-manager...")
     ret = os.system('systemctl restart wazuh-manager')
 
-def _get_win_base_rules():
-    tree = ET.parse('/var/ossec/ruleset/rules/0575-win-base_rules.xml')
-    return tree
-
-def enable_win_eventlog_tests():
-    tree = _get_win_base_rules()
+def enable_win_eventlog_test_actions(tree):
     base_rule = tree.find('.//rule[@id="60000"]')
     base_rule.remove(base_rule.find(".//decoded_as"))
     base_rule.remove(base_rule.find(".//category"))
     decoded_as = ET.SubElement(base_rule,"decoded_as")
     decoded_as.text = "json"
-    tree.write("/var/ossec/ruleset/rules/0575-win-base_rules.xml")
 
-def disable_win_eventlog_tests():
-    tree = _get_win_base_rules()
+def disable_win_eventlog_test_actions(tree):
     base_rule = tree.find('.//rule[@id="60000"]')
     base_rule.remove(base_rule.find(".//decoded_as"))
     decoded_as = ET.SubElement(base_rule,"decoded_as")
     decoded_as.text = "windows_eventchannel"
     category = ET.SubElement(base_rule,"category")
     category.text = "ossec"
-    tree.write("/var/ossec/ruleset/rules/0575-win-base_rules.xml")
+
+def modify_win_eventlog_testing(action):
+    win_base_rules_file = "/var/ossec/ruleset/rules/0575-win-base_rules.xml"
+    actions = {"enable": enable_win_eventlog_test_actions, "disable": disable_win_eventlog_test_actions}
+    tree = ET.parse(win_base_rules_file)
+    actions[action](tree)
+    tree.write(win_base_rules_file)
+
+def enable_win_eventlog_tests():
+    modify_win_eventlog_testing("enable")
+
+def disable_win_eventlog_tests():
+    modify_win_eventlog_testing("disable")
+
 
 def gather_failed_test_data(std_out, alert, rule, decoder, section, line_name):
     failed_test = {"expected_level" : alert,
@@ -291,8 +298,8 @@ if __name__ == "__main__":
             disable_win_eventlog_tests()
     restart_analysisd()
 
-    rules = getRuleIds("/var/ossec/ruleset/rules/")
-    decoders = getParentDecoderNames("/var/ossec/ruleset/decoders/")
+    rules = get_rule_ids("/var/ossec/ruleset/rules/")
+    decoders = get_parent_decoder_names("/var/ossec/ruleset/decoders/")
 
     template = "|{: ^10}|{: ^10}|{: ^10}|{: ^10}|"
     print(template.format("Component", "Tested", "Total", "Coverage"))
