@@ -3,20 +3,11 @@
 
 #include <string>
 
+#include "common.h"
 
 namespace base::utils::socketInterface::unixDatagram
 {
 constexpr auto MSG_MAX_SIZE {65536}; ///< Maximum message size (2^16)
-
-// Return codes
-enum class CommRetval
-{
-    SUCCESS,
-    INVALID_SOCKET,
-    SIZE_ZERO,
-    SIZE_TOO_LONG,
-    SOCKET_ERROR,
-};
 
 /**
  * @brief Connect to a UNIX datagram socket located at `path`

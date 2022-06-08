@@ -10,6 +10,7 @@
 #include "testAuxiliar/socketAuxiliarFunctions.hpp"
 
 using namespace base::utils::socketInterface::unixStream;
+using namespace base::utils::socketInterface;
 
 TEST(wdbTests_SocketInterface, SocketConnectError)
 {
