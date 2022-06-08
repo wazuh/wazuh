@@ -69,8 +69,8 @@ CPMAddPackage(
 
 add_library(base STATIC
     logging/logging.hpp
-    utils/socketInterface/unixSocketInterface.cpp
-    utils/socketInterface/unixSocketInterface.hpp
+    utils/socketInterface/unixStream.cpp
+    utils/socketInterface/unixStream.hpp
     utils/baseMacros.hpp
     utils/baseMacros.cpp
     utils/ipUtils.cpp
