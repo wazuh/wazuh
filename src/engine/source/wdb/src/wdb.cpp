@@ -9,6 +9,7 @@
 namespace wazuhdb
 {
 
+namespace socketCommin = base::utils::socketInterface;
 namespace unixStreamSocket = base::utils::socketInterface::unixStream;
 
 WazuhDB::~WazuhDB()
@@ -69,12 +70,12 @@ std::string WazuhDB::query(const std::string& query)
     // Send the query, throw runtime_error if cannot send
     const auto sendStatus = unixStreamSocket::sendMsg(this->m_fd, query);
 
-    if (unixStreamSocket::CommRetval::SUCCESS == sendStatus)
+    if (socketCommin::CommRetval::SUCCESS == sendStatus)
     {
         // Receive the result, throw runtime_error if cannot receive
         result = unixStreamSocket::recvString(this->m_fd);
     }
-    else if (unixStreamSocket::CommRetval::SOCKET_ERROR == sendStatus)
+    else if (socketCommin::CommRetval::SOCKET_ERROR == sendStatus)
     {
         const auto msgError = std::string {"wdb: sendMsg failed: "} + std::strerror(errno)
                               + " (" + std::to_string(errno) + ")";
@@ -86,7 +87,7 @@ std::string WazuhDB::query(const std::string& query)
         const auto logicErrorStr =
             "wdb: sendMsg reached a condition that should never happen: ";
         throw std::logic_error(logicErrorStr
-                               + unixStreamSocket::CommRetval2Str.at(sendStatus));
+                               + socketCommin::CommRetval2Str.at(sendStatus));
     }
 
     return result;

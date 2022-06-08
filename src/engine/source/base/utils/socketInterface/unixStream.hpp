@@ -1,12 +1,13 @@
 #ifndef _SOCKINTERFACE_USTREAM_H
 #define _SOCKINTERFACE_USTREAM_H
 
-#include <map>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
 #include <stdint.h>
+
+#include "common.h"
 
 /*
     Wazuh TCP protocol format
@@ -39,23 +40,6 @@ public:
     {
     }
 };
-
-// Return codes
-enum class CommRetval
-{
-    SUCCESS,
-    INVALID_SOCKET,
-    SIZE_ZERO,
-    SIZE_TOO_LONG,
-    SOCKET_ERROR,
-};
-
-const std::map<socketInterface::unixStream::CommRetval, const std::string> CommRetval2Str = {
-    {socketInterface::unixStream::CommRetval::INVALID_SOCKET, "INVALID_SOCKET"},
-    {socketInterface::unixStream::CommRetval::SIZE_TOO_LONG, "SIZE_TOO_LONG"},
-    {socketInterface::unixStream::CommRetval::SIZE_ZERO, "SIZE_ZERO"},
-    {socketInterface::unixStream::CommRetval::SOCKET_ERROR, "SOCKET_ERROR"},
-    {socketInterface::unixStream::CommRetval::SUCCESS, "SUCCESS"}};
 
 /**
  * @brief Connect to a UNIX stream socket located at `path`
