@@ -73,6 +73,7 @@ def get_rule_ids(rules_path):
 
     return rule_set
 
+
 def get_parent_decoder_names(decoders_path):
     """
     Get a set with all parent decoder names found on given directory path.
