@@ -116,13 +116,13 @@ def gather_failed_test_data(std_out, alert, rule, decoder, section, line_name):
                     "expected_rule" :  rule,
                     "expected_decoder" : decoder,
                     "section" : section,
-                    "line_name" : line_name}
+                    "line_name" : line_name,
+                    "actual_rule": "",
+                    "actual_level": "",
+                    "description": ""}
 
     if re.search(r'No decoder matched.', std_out):
         failed_test["actual_decoder"] = ""
-        failed_test["actual_rule"] = ""
-        failed_test["actual_level"] = ""
-        failed_test["description"] = ""
     else:
         decoder_search = re.search(r"Completed decoding.\n\tname:\s*\'(?P<decoder>[\w-]*)",std_out)
         failed_test["actual_decoder"] = decoder_search.group("decoder")
@@ -132,10 +132,6 @@ def gather_failed_test_data(std_out, alert, rule, decoder, section, line_name):
             failed_test["actual_rule"] = rule_search.group("rule_id")
             failed_test["actual_level"] = rule_search.group("level")
             failed_test["description"] = rule_search.group("description")
-        else:
-            failed_test["actual_rule"] = ""
-            failed_test["actual_level"] = ""
-            failed_test["description"] = ""
 
     return failed_test
 
