@@ -7,11 +7,11 @@
 # Foundation
 
 import argparse
-from os import strerror
-from os import path as Path
-from os import listdir
-import errno
 import re
+import errno
+from os import path as Path
+from os import strerror
+from os import listdir
 
 
 def check_dir(path):
