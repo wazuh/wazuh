@@ -383,7 +383,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:sh -c "df --local -P 2> /dev/null | awk ''{if (NR!=1) print $6}'' | xargs -I ''{}'' find ''{}'' -xdev -type d \\( -perm -0002 -a ! -perm -1000 \\) 2>/dev/null" -> r:^$'
+      - 'not c:sh -c "df --local -P 2> /dev/null | awk ''{if (NR!=1) print $6}'' | xargs -I ''{}'' find ''{}'' -xdev -type d \\( -perm -0002 -a ! -perm -1000 \\) 2>/dev/null" -> r:^/'
 
   # 1.1.23 Disable Automounting.
   - id: 20521
@@ -560,7 +560,7 @@ checks:
     condition: any
     rules:
       - 'c:sh -c "journalctl | grep \"protection: active\"" -> r:protection: active'
-      - 'c:sh -c "[[ -n $(grep noexec[0-9]*=off /proc/cmdline) || -z $(grep -E -i \" (pae|nx) \" /proc/cpuinfo) || -n $(grep \"\\sNX\\s.*\\sprotection:\\s\" /var/log/dmesg | grep -v active) ]] && echo \"NX Protection is not active\"" -> r:^$'
+      - 'not c:sh -c "[[ -n $(grep noexec[0-9]*=off /proc/cmdline) || -z $(grep -E -i \" (pae|nx) \" /proc/cpuinfo) || -n $(grep \"\\sNX\\s.*\\sprotection:\\s\" /var/log/dmesg | grep -v active) ]] && echo \"NX Protection is not active\"" -> r:^NX Protection is not active$'
 
   # 1.5.3 Ensure address space layout randomization (ASLR) is enabled.
   - id: 20530
@@ -1759,7 +1759,8 @@ checks:
       - tsc: ["CC8.1"]
     condition: all
     rules:
-      - "c:iptables -L -> r:^target|^Chain|^$"
+      - 'not c:sh -c "iptables -L | egrep -v  \"^target|^Chain\"" -> r:^\w+'
+      - 'not c:sh -c "ip6tables -L | egrep -v  \"^target|^Chain\"" -> r:^\w+'
       - "c:rpm -q nftables -> r:^nftables-"
 
   # 3.5.2.5 Ensure an nftables table exists.
