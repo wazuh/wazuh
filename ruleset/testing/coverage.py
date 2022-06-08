@@ -13,7 +13,8 @@ from os import listdir
 import errno
 import re
 
-def checkDir(path):
+
+def check_dir(path):
     """
     Check if given path is a directory.
 
@@ -36,7 +37,8 @@ def checkDir(path):
     if not Path.isdir(path):
         raise NotADirectoryError(errno.ENOTDIR, strerror(errno.ENOTDIR), path)
 
-def getRuleIds(rulesPath):
+
+def get_rule_ids(rules_path):
     """
     Get a set with all rule ids found on given directory path.
 
@@ -58,20 +60,20 @@ def getRuleIds(rulesPath):
     NotADirectoryError
         If path is not a directory.
     """
-    checkDir(rulesPath)
+    check_dir(rules_path)
 
-    ruleSet = set()
+    rule_set = set()
 
-    ruleStartPattern = re.compile(r'^\s*<rule\sid="(\d+)"', re.MULTILINE)
+    rule_start_pattern = re.compile(r'^\s*<rule\sid="(\d+)"', re.MULTILINE)
 
-    for filename in listdir(rulesPath):
-        if Path.isfile(rulesPath+filename):
-            with open(rulesPath+filename,'r') as ruleFile:
-                ruleSet.update( {match for match in re.findall(ruleStartPattern, ruleFile.read())} )
+    for filename in listdir(rules_path):
+        if Path.isfile(rules_path + filename):
+            with open(rules_path + filename,'r') as rule_file:
+                ruleSet.update( {match for match in re.findall(rule_start_pattern, rule_file.read())} )
 
-    return ruleSet
+    return rule_set
 
-def getParentDecoderNames(decodersPath):
+def get_parent_decoder_names(decoders_path):
     """
     Get a set with all parent decoder names found on given directory path.
 
@@ -93,55 +95,33 @@ def getParentDecoderNames(decodersPath):
     NotADirectoryError
         If path is not a directory.
     """
-    checkDir(decodersPath)
+    check_dir(decoders_path)
 
-    decoderSet = set()
-    decoderStartPattern = re.compile(r'^\s*<decoder\sname="(.+)">')
-    decoderEndPattern = re.compile(r'^\s*</decoder>')
-    parentDecoderPattern = re.compile(r'^\s*<parent>')
+    decoder_set = set()
+    decoder_start_pattern = re.compile(r'^\s*<decoder\sname="(.+)">')
+    decoder_end_pattern = re.compile(r'^\s*</decoder>')
+    parent_decoder_pattern = re.compile(r'^\s*<parent>')
 
-    for filename in listdir(decodersPath):
-        if Path.isfile(decodersPath+filename):
-            with open(decodersPath+filename,'r') as decoderFile:
-                insideDecoder = False
-                parentFound = False
-                decoderName = None
-                for line in decoderFile:
-                    if not insideDecoder:
-                        decoderName = re.match(decoderStartPattern, line)
-                        if decoderName:
-                            insideDecoder = True
-                            decoderName = decoderName.group(1)
-                    elif not parentFound and re.match(parentDecoderPattern, line):
-                        parentFound = True
-                    elif re.match(decoderEndPattern, line):
-                        if not parentFound:
-                            decoderSet.add(decoderName)
+    for filename in listdir(decoders_path):
+        if Path.isfile(decoders_path + filename):
+            with open(decoders_path + filename, 'r') as decoder_file:
+                inside_decoder = False
+                parent_found = False
+                decoder_name = None
+                for line in decoder_file:
+                    if not inside_decoder:
+                        decoder_name = re.match(decoderStartPattern, line)
+                        if decoder_name:
+                            inside_decoder = True
+                            decoder_name = decoder_name.group(1)
+                    elif not parent_found and re.match(parent_decoder_pattern, line):
+                        parent_found = True
+                    elif re.match(decoder_end_pattern, line):
+                        if not parent_found:
+                            decoder_set.add(decoder_name)
                         else:
-                            parentFound = False
+                            parent_found = False
 
-                        insideDecoder = False
+                        inside_decoder = False
 
-    return decoderSet
-
-
-def main(testsPath, rulesetPath, outputPath):
-    ruleSet = getRuleIds(rulesetPath + "rules/")
-    parentDecoderSet = getParentDecoderNames(rulesetPath + "decoders/")
-
-    print(len(ruleSet))
-    print(len(parentDecoderSet))
-
-if __name__ == "__main__":
-    # Console arguments definition
-    parser = argparse.ArgumentParser(
-        prog="mitre_mapping.py",
-        description='Script to update ruleset mitre mappings from csv file')
-
-    parser.add_argument("tests_path", help="path were ini test files are located")
-    parser.add_argument("ruleset_path", help="path were ruleset is located")
-    parser.add_argument("-o", "--output", help="output directory with coverage results", default=None)
-
-    args = parser.parse_args()
-    main(args.tests_path, args.ruleset_path, args.output)
-
+    return decoder_set
