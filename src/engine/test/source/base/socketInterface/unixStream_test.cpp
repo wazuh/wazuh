@@ -6,10 +6,10 @@
 
 #include <gtest/gtest.h>
 
-#include <utils/socketInterface/unixSocketInterface.hpp>
+#include <utils/socketInterface/unixStream.hpp>
 #include "testAuxiliar/socketAuxiliarFunctions.hpp"
 
-using namespace socketinterface;
+using namespace base::utils::socketInterface::unixStream;
 
 TEST(wdbTests_SocketInterface, SocketConnectError)
 {

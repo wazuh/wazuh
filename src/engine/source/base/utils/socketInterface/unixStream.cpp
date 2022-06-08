@@ -1,5 +1,5 @@
 
-#include "unixSocketInterface.hpp"
+#include "unixStream.hpp"
 
 #include <fcntl.h>
 #include <sys/socket.h>
@@ -8,7 +8,7 @@
 
 #include <logging/logging.hpp>
 
-namespace socketinterface
+namespace base::utils::socketInterface::unixStream
 {
 
 // Namespace of private functions
