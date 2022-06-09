@@ -110,7 +110,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/json)
 add_subdirectory(${ENGINE_SOURCE_DIR}/wdb)
 
 #TODO isolate rxcpp
-target_link_libraries(main base builders catalog rxbk json wdb)
+target_link_libraries(main base builders catalog rxbk json wdb server)
 
 # Build test
 if(ENGINE_BUILD_TEST)
