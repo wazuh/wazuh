@@ -22,7 +22,6 @@ from coverage import get_rule_ids
 from coverage import get_parent_decoder_names
 
 
-
 class MultiOrderedDict(OrderedDict):
     def __setitem__(self, key, value):
         if isinstance(value, list) and key in self:
@@ -37,7 +36,7 @@ def getWazuhInfo(wazuh_home):
     try:
         proc = subprocess.Popen([wazuh_control, "info"], stdout=subprocess.PIPE)
         (stdout, stderr) = proc.communicate()
-    except:
+    except Exception as e:
         print("Seems like there is no Wazuh installation.")
         return None
 
@@ -57,12 +56,12 @@ def provisionDR():
 
     for file in os.listdir(rules_dir):
         file_fullpath = os.path.join(rules_dir, file)
-        if os.path.isfile(file_fullpath) and re.match(r'^test_(.*_)?rules.xml$',file):
+        if os.path.isfile(file_fullpath) and re.match(r'^test_(.*_)?rules.xml$', file):
             shutil.copy2(file_fullpath, args.wazuh_home + "/etc/rules")
 
     for file in os.listdir(decoders_dir):
         file_fullpath = os.path.join(decoders_dir, file)
-        if os.path.isfile(file_fullpath) and re.match(r'^test_(.*_)?decoders.xml$',file):
+        if os.path.isfile(file_fullpath) and re.match(r'^test_(.*_)?decoders.xml$', file):
             shutil.copy2(file_fullpath, args.wazuh_home + "/etc/decoders")
 
 
@@ -72,12 +71,12 @@ def cleanDR():
 
     for file in os.listdir(rules_dir):
         file_fullpath = os.path.join(rules_dir, file)
-        if os.path.isfile(file_fullpath) and re.match(r'^test_(.*_)?rules.xml$',file):
+        if os.path.isfile(file_fullpath) and re.match(r'^test_(.*_)?rules.xml$', file):
             os.remove(file_fullpath)
 
     for file in os.listdir(decoders_dir):
         file_fullpath = os.path.join(decoders_dir, file)
-        if os.path.isfile(file_fullpath) and re.match(r'^test_(.*_)?decoders.xml$',file):
+        if os.path.isfile(file_fullpath) and re.match(r'^test_(.*_)?decoders.xml$', file):
             os.remove(file_fullpath)
 
 
@@ -90,16 +89,16 @@ def enable_win_eventlog_test_actions(tree):
     base_rule = tree.find('.//rule[@id="60000"]')
     base_rule.remove(base_rule.find(".//decoded_as"))
     base_rule.remove(base_rule.find(".//category"))
-    decoded_as = ET.SubElement(base_rule,"decoded_as")
+    decoded_as = ET.SubElement(base_rule, "decoded_as")
     decoded_as.text = "json"
 
 
 def disable_win_eventlog_test_actions(tree):
     base_rule = tree.find('.//rule[@id="60000"]')
     base_rule.remove(base_rule.find(".//decoded_as"))
-    decoded_as = ET.SubElement(base_rule,"decoded_as")
+    decoded_as = ET.SubElement(base_rule, "decoded_as")
     decoded_as.text = "windows_eventchannel"
-    category = ET.SubElement(base_rule,"category")
+    category = ET.SubElement(base_rule, "category")
     category.text = "ossec"
 
 
@@ -120,23 +119,23 @@ def disable_win_eventlog_tests():
 
 
 def gather_failed_test_data(std_out, alert, rule, decoder, section, line_name):
-    failed_test = {"expected_level" : alert,
-                    "expected_rule" :  rule,
-                    "expected_decoder" : decoder,
-                    "section" : section,
-                    "line_name" : line_name,
-                    "actual_rule": "",
-                    "actual_level": "",
-                    "description": ""}
+    failed_test = {"expected_level": alert,
+                   "expected_rule":  rule,
+                   "expected_decoder": decoder,
+                   "section": section,
+                   "line_name": line_name,
+                   "actual_rule": "",
+                   "actual_level": "",
+                   "description": ""}
 
     if re.search(r'No decoder matched.', std_out):
         failed_test["actual_decoder"] = ""
     else:
-        decoder_search = re.search(r"Completed decoding.\n\tname:\s*\'(?P<decoder>[\w-]*)",std_out)
+        decoder_search = re.search(r"Completed decoding.\n\tname:\s*\'(?P<decoder>[\w-]*)", std_out)
         failed_test["actual_decoder"] = decoder_search.group("decoder")
 
-        if re.search(r"Phase 3: Completed filtering \(rules\)",std_out):
-            rule_search = re.search(r"Completed filtering \(rules\)\.\n\tid:\s+\'(?P<rule_id>\d+)\W+level:\s*'(?P<level>\d+)\W+description:\s+'(?P<description>.*?)'",std_out)
+        if re.search(r"Phase 3: Completed filtering \(rules\)", std_out):
+            rule_search = re.search(r"Completed filtering \(rules\)\.\n\tid:\s+\'(?P<rule_id>\d+)\W+level:\s*'(?P<level>\d+)\W+description:\s+'(?P<description>.*?)'", std_out)
             failed_test["actual_rule"] = rule_search.group("rule_id")
             failed_test["actual_level"] = rule_search.group("level")
             failed_test["description"] = rule_search.group("description")
@@ -195,7 +194,6 @@ class OssecTester(object):
             sys.stdout.flush()
         return test_status
 
-
     def run(self, selective_test=False, geoip=False):
         for a_ini_file in os.listdir(self._test_path):
             a_ini_file = os.path.join(self._test_path, a_ini_file)
@@ -204,7 +202,7 @@ class OssecTester(object):
                     continue
                 if geoip is False and a_ini_file.endswith("geoip.ini"):
                     continue
-                self._execution_data[a_ini_file] = {"passed":0, "failed":0}
+                self._execution_data[a_ini_file] = {"passed": 0, "failed": 0}
                 print("- [ File = %s ] ---------" % (a_ini_file))
                 tGroup = ConfigParser.RawConfigParser(dict_type=MultiOrderedDict)
                 tGroup.read([a_ini_file])
@@ -223,10 +221,9 @@ class OssecTester(object):
                                 neg = True
                             else:
                                 neg = False
-                            self._execution_data[a_ini_file][self.runTest(value, rule, alert, decoder,t, name, negate=neg)]+=1
+                            self._execution_data[a_ini_file][self.runTest(value, rule, alert, decoder, t, name, negate=neg)] += 1
                 print("\n\n")
         return self._error
-
 
     def print_results(self):
         template = "|{: ^25}|{: ^10}|{: ^10}|{: ^10}|"
@@ -253,10 +250,10 @@ class OssecTester(object):
                     summary["summary"] = "Unexpected alert level. Expected: " + failed_test["expected_level"] + ". Got: " + failed_test["actual_level"]
 
                 print("----------------------------------------")
-                print("Failed test: "+failed_test["line_name"])
-                print("Summary: "+ summary)
-                print(template.format("","Expected","Result"))
-                print(template.format("------","------","------"))
+                print("Failed test: " + failed_test["line_name"])
+                print("Summary: " + summary)
+                print(template.format("", "Expected", "Result"))
+                print(template.format("------", "------", "------"))
                 print(template.format("Decoder", failed_test["expected_decoder"], failed_test["actual_decoder"]))
                 print(template.format("Rule", failed_test["expected_rule"], failed_test["actual_rule"]))
                 print(template.format("Level", failed_test["expected_level"], failed_test["actual_level"]))
