@@ -1236,8 +1236,7 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
     }
 
     if (syscheck->min_sync_interval >= syscheck->sync_interval) {
-        mwarn("Synchronization min_interval is higher or equal than synchronization interval. " \
-              "Synchronization may be ommitted.");
+        mwarn("Sync min_interval value higher than interval. Some synchronization turns can be skipped.");
     }
 }
 
