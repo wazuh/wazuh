@@ -1234,6 +1234,11 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
             mwarn(XML_INVELEM, node[i]->element);
         }
     }
+
+    if (syscheck->min_sync_interval >= syscheck->sync_interval) {
+        mwarn("Synchronization min_interval is higher or equal than synchronization interval. " \
+              "Synchronization may be ommitted.");
+    }
 }
 
 int read_data_unit(const char *content) {
