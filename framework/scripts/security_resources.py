@@ -6,6 +6,7 @@ import argparse
 import asyncio
 import sys
 from os import path
+from signal import signal, SIGINT
 
 try:
     from wazuh import WazuhError
@@ -13,7 +14,12 @@ try:
     from wazuh.core.cluster import utils as cluster_utils
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
-    exit()
+    sys.exit(1)
+
+
+def signal_handler(n_signal, frame):
+    print("")
+    sys.exit(1)
 
 
 async def restore_default_passwords():
@@ -59,6 +65,8 @@ async def reset_rbac_database():
 
 
 if __name__ == "__main__":
+    signal(SIGINT, signal_handler)
+
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("--change-password", action='store_true', dest='change_password',
                             help="Change the password for each default user. Empty values will leave the password "
