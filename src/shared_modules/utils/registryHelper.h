@@ -212,11 +212,13 @@ namespace Utils
 
                 if (ERROR_SUCCESS == result)
                 {
-                    unsigned long long fileTime { lastModificationTime.dwHighDateTime };
+                    ULARGE_INTEGER fileTime {};
+
+                    fileTime.LowPart = lastModificationTime.dwLowDateTime;
+                    fileTime.HighPart = lastModificationTime.dwHighDateTime;
 
                     // Use structure values to build 18-digit LDAP/FILETIME number
-                    fileTime = fileTime << sizeof(lastModificationTime.dwHighDateTime)*8 | lastModificationTime.dwLowDateTime;
-                    time = Utils::buildTimestamp(fileTime);
+                    time = Utils::buildTimestamp(fileTime.QuadPart);
                     ret = true;
                 }
 
