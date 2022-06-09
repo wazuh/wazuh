@@ -5,9 +5,8 @@
 #include <gtest/gtest.h>
 #include <logging/logging.hpp>
 
-#include <utils/socketInterface/unixStream.hpp>
 #include "socketAuxiliarFunctions.hpp"
-
+#include <utils/socketInterface/unixStream.hpp>
 
 using namespace wazuhdb;
 namespace unixStream = base::utils::socketInterface::unixStream;
@@ -38,10 +37,10 @@ TEST(wdb_connector, ConnectErrorNotSocket)
 TEST(wdb_connector, Connect)
 {
     // Create server
-    const int serverSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    auto wdb = WazuhDB(TEST_SOCKET_PATH);
+    auto wdb = WazuhDB(TEST_STREAM_SOCK_PATH);
     ASSERT_NO_THROW(wdb.connect());
 
     close(serverSocketFD);
@@ -50,14 +49,14 @@ TEST(wdb_connector, Connect)
 TEST(wdb_connector, connectManyTimes)
 {
     // Create server
-    const int serverSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     // Disable warning logs for this test
     const auto logLevel = fmtlog::getLogLevel();
     fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Error));
 
-    auto wdb = WazuhDB(TEST_SOCKET_PATH);
+    auto wdb = WazuhDB(TEST_STREAM_SOCK_PATH);
     ASSERT_NO_THROW(wdb.connect());
     const int clientRemoteI = testAcceptConnection(serverSocketFD);
     ASSERT_GT(clientRemoteI, 0);
@@ -110,10 +109,10 @@ TEST(wdb_query, TooLongString)
 TEST(wdb_query, ConnectAndQuery)
 {
     // Create server
-    const int serverSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    auto wdb = WazuhDB(TEST_SOCKET_PATH);
+    auto wdb = WazuhDB(TEST_STREAM_SOCK_PATH);
     ASSERT_NO_THROW(wdb.connect());
 
     const int clientRemote = testAcceptConnection(serverSocketFD);
@@ -131,17 +130,19 @@ TEST(wdb_query, ConnectAndQuery)
 TEST(wdb_query, SendQueryWithoutConnect)
 {
     // Create server
-    const int serverSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    auto wdb = WazuhDB(TEST_SOCKET_PATH);
+    auto wdb = WazuhDB(TEST_STREAM_SOCK_PATH);
 
-    std::thread t([&]() {
-        const int clientRemote = testAcceptConnection(serverSocketFD);
-        unixStream::recvString(clientRemote).c_str();
-        unixStream::sendMsg(clientRemote, TEST_RESPONSE);
-        close(clientRemote);
-    });
+    std::thread t(
+        [&]()
+        {
+            const int clientRemote = testAcceptConnection(serverSocketFD);
+            unixStream::recvString(clientRemote).c_str();
+            unixStream::sendMsg(clientRemote, TEST_RESPONSE);
+            close(clientRemote);
+        });
 
     ASSERT_STREQ(wdb.query(TEST_MESSAGE).c_str(), TEST_RESPONSE);
 
@@ -152,15 +153,17 @@ TEST(wdb_query, SendQueryWithoutConnect)
 TEST(wdb_query, SendQueryConexionClosed)
 {
     // Create server
-    const int serverSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    auto wdb = WazuhDB(TEST_SOCKET_PATH);
+    auto wdb = WazuhDB(TEST_STREAM_SOCK_PATH);
 
-    std::thread t([&]() {
-        const int clientRemote = testAcceptConnection(serverSocketFD);
-        close(clientRemote);
-    });
+    std::thread t(
+        [&]()
+        {
+            const int clientRemote = testAcceptConnection(serverSocketFD);
+            close(clientRemote);
+        });
 
     ASSERT_THROW(wdb.query(TEST_MESSAGE), unixStream::RecoverableError);
     t.join();
@@ -171,19 +174,21 @@ TEST(wdb_query, SendQueryConexionClosed)
 TEST(wdb_tryQuery, SendQueryOK_firstAttemp)
 {
     // Create server
-    const int serverSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     const int attempts = 5;
 
-    auto wdb = WazuhDB(TEST_SOCKET_PATH);
+    auto wdb = WazuhDB(TEST_STREAM_SOCK_PATH);
 
-    std::thread t([&]() {
-        const int clientRemote = testAcceptConnection(serverSocketFD);
-        unixStream::recvString(clientRemote).c_str();
-        unixStream::sendMsg(clientRemote, TEST_RESPONSE);
-        close(clientRemote);
-    });
+    std::thread t(
+        [&]()
+        {
+            const int clientRemote = testAcceptConnection(serverSocketFD);
+            unixStream::recvString(clientRemote).c_str();
+            unixStream::sendMsg(clientRemote, TEST_RESPONSE);
+            close(clientRemote);
+        });
 
     ASSERT_STREQ(wdb.tryQuery(TEST_MESSAGE, attempts).c_str(), TEST_RESPONSE);
 
@@ -194,19 +199,21 @@ TEST(wdb_tryQuery, SendQueryOK_firstAttemp)
 TEST(wdb_tryQuery, SendQueryOK_retry)
 {
     // Create server
-    const int serverSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    auto wdb = WazuhDB(TEST_SOCKET_PATH);
+    auto wdb = WazuhDB(TEST_STREAM_SOCK_PATH);
 
-    std::thread t([&]() {
-        const int clientRemote = testAcceptConnection(serverSocketFD);
-        close(clientRemote);
-        const int clientRemoteRetry = testAcceptConnection(serverSocketFD);
-        unixStream::recvString(clientRemoteRetry).c_str();
-        unixStream::sendMsg(clientRemoteRetry, TEST_RESPONSE);
-        close(clientRemoteRetry);
-    });
+    std::thread t(
+        [&]()
+        {
+            const int clientRemote = testAcceptConnection(serverSocketFD);
+            close(clientRemote);
+            const int clientRemoteRetry = testAcceptConnection(serverSocketFD);
+            unixStream::recvString(clientRemoteRetry).c_str();
+            unixStream::sendMsg(clientRemoteRetry, TEST_RESPONSE);
+            close(clientRemoteRetry);
+        });
 
     // Disable logs for this test
     const auto logLevel = fmtlog::getLogLevel();
@@ -223,17 +230,19 @@ TEST(wdb_tryQuery, SendQueryOK_retry)
 TEST(wdb_tryQuery, SendQueryIrrecoverable)
 {
     // Create server
-    const int serverSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    auto wdb = WazuhDB(TEST_SOCKET_PATH);
+    auto wdb = WazuhDB(TEST_STREAM_SOCK_PATH);
 
-    std::thread t([&]() {
-        const int clientRemote = testAcceptConnection(serverSocketFD);
-        close(serverSocketFD);
-        unlink(TEST_SOCKET_PATH.data());
-        close(clientRemote);
-    });
+    std::thread t(
+        [&]()
+        {
+            const int clientRemote = testAcceptConnection(serverSocketFD);
+            close(serverSocketFD);
+            unlink(TEST_STREAM_SOCK_PATH.data());
+            close(clientRemote);
+        });
 
     // Disable logs for this test
     const auto logLevel = fmtlog::getLogLevel();
@@ -378,17 +387,19 @@ TEST(wdb_parseResult, ParseResultUnknownWithPayload)
 TEST(wdb_tryQueryAndParseResult, SendQueryOK_firstAttemp_wopayload)
 {
     // Create server
-    const int serverSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    auto wdb = WazuhDB(TEST_SOCKET_PATH);
+    auto wdb = WazuhDB(TEST_STREAM_SOCK_PATH);
 
-    std::thread t([&]() {
-        const int clientRemote = testAcceptConnection(serverSocketFD);
-        unixStream::recvString(clientRemote).c_str();
-        unixStream::sendMsg(clientRemote, "ok");
-        close(clientRemote);
-    });
+    std::thread t(
+        [&]()
+        {
+            const int clientRemote = testAcceptConnection(serverSocketFD);
+            unixStream::recvString(clientRemote).c_str();
+            unixStream::sendMsg(clientRemote, "ok");
+            close(clientRemote);
+        });
 
     auto retval = wdb.tryQueryAndParseResult(TEST_MESSAGE, 5);
     ASSERT_EQ(std::get<0>(retval), QueryResultCodes::OK);
@@ -402,19 +413,21 @@ TEST(wdb_tryQueryAndParseResult, SendQueryOK_retry_wpayload)
 {
 
     // Create server
-    const int serverSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    auto wdb = WazuhDB(TEST_SOCKET_PATH);
+    auto wdb = WazuhDB(TEST_STREAM_SOCK_PATH);
 
-    std::thread t([&]() {
-        const int clientRemote = testAcceptConnection(serverSocketFD);
-        close(clientRemote);
-        const int clientRemoteRetry = testAcceptConnection(serverSocketFD);
-        unixStream::recvString(clientRemoteRetry).c_str();
-        unixStream::sendMsg(clientRemoteRetry, "ok payload");
-        close(clientRemoteRetry);
-    });
+    std::thread t(
+        [&]()
+        {
+            const int clientRemote = testAcceptConnection(serverSocketFD);
+            close(clientRemote);
+            const int clientRemoteRetry = testAcceptConnection(serverSocketFD);
+            unixStream::recvString(clientRemoteRetry).c_str();
+            unixStream::sendMsg(clientRemoteRetry, "ok payload");
+            close(clientRemoteRetry);
+        });
 
     // Disable logs for this test
     const auto logLevel = fmtlog::getLogLevel();
@@ -434,17 +447,19 @@ TEST(wdb_tryQueryAndParseResult, SendQueryIrrecoverable)
 {
 
     // Create server
-    const int serverSocketFD = testBindUnixSocket(TEST_SOCKET_PATH);
+    const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    auto wdb = WazuhDB(TEST_SOCKET_PATH);
+    auto wdb = WazuhDB(TEST_STREAM_SOCK_PATH);
 
-    std::thread t([&]() {
-        const int clientRemote = testAcceptConnection(serverSocketFD);
-        close(serverSocketFD);
-        unlink(TEST_SOCKET_PATH.data());
-        close(clientRemote);
-    });
+    std::thread t(
+        [&]()
+        {
+            const int clientRemote = testAcceptConnection(serverSocketFD);
+            close(serverSocketFD);
+            unlink(TEST_STREAM_SOCK_PATH.data());
+            close(clientRemote);
+        });
 
     // Disable logs for this test
     const auto logLevel = fmtlog::getLogLevel();
