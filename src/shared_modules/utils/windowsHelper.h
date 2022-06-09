@@ -175,7 +175,6 @@ namespace Utils
         return ret;
     }
 
-
     /* Reference: https://www.dmtf.org/sites/default/files/standards/documents/DSP0134_2.6.0.pdf */
     static std::string getSerialNumberFromSmbios(const BYTE* rawData, const DWORD rawDataSize)
     {
@@ -246,9 +245,8 @@ namespace Utils
         return serialNumber;
     }
 
-    static std::string buildTimestamp(const unsigned long long time)
+    static std::string buildTimestamp(const ULONGLONG time)
     {
-
         // Format of value is 18-digit LDAP/FILETIME timestamps.
         // 18-digit LDAP/FILETIME timestamps -> Epoch/Unix time
         // (value/10000000ULL) - 11644473600ULL
