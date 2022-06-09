@@ -137,4 +137,5 @@ def rbac_db_factory_reset():
         pass
 
     check_database_integrity()
+    revoke_tokens()
     return {'reset': True}
