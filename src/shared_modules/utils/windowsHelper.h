@@ -142,7 +142,7 @@ namespace Utils
         return ret;
     }
 
-    static std::string buildTimestamp(const unsigned long long time)
+    static std::string buildTimestamp(const ULONGLONG time)
     {
 
         // Format of value is 18-digit LDAP/FILETIME timestamps.
