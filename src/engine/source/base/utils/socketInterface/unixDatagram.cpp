@@ -12,8 +12,8 @@
 namespace base::utils::socketInterface::unixDatagram
 {
 
-int socketConnect(std::string_view path) {
-
+int socketConnect(std::string_view path)
+{
     if (path.empty())
     {
         throw std::runtime_error("socketConnect: path is empty");
@@ -82,7 +82,8 @@ int socketConnect(std::string_view path) {
     return socketFD;
 }
 
-CommRetval sendMsg(const int sock, const std::string& msg) {
+CommRetval sendMsg(const int sock, const std::string& msg)
+{
 
     auto result {CommRetval::SOCKET_ERROR};
     auto payloadSize {msg.size()};
@@ -104,7 +105,7 @@ CommRetval sendMsg(const int sock, const std::string& msg) {
     {
         // Send the message
         const auto sent {send(sock, msg.data(), payloadSize, MSG_NOSIGNAL)};
-        if (sent < 0)
+        if (0 > sent)
         {
             result = CommRetval::SOCKET_ERROR;
         }
@@ -120,4 +121,5 @@ CommRetval sendMsg(const int sock, const std::string& msg) {
 
     return result;
 }
-}
+
+} // namespace base::utils::socketInterface::unixDatagram
