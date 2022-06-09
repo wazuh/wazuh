@@ -466,11 +466,11 @@ base::Lifter opBuilderHelperStringConcat(const base::DocumentValue& def,
     std::string failureTrace = fmt::format("{} s_concat Failure", doc.str());
 
     // Return Lifter
-    return [=, tr = std::move(tr)](base::Observable o)
+    return [=, parametersArr = std::move(parametersArr), tr = std::move(tr)](base::Observable o)
     {
         // Append rxcpp operation
         return o.map(
-            [=, tr = std::move(tr)](base::Event e)
+            [=, parametersArr = std::move(parametersArr), tr = std::move(tr)](base::Event e)
             {
                 std::string result {};
 
@@ -479,12 +479,12 @@ base::Lifter opBuilderHelperStringConcat(const base::DocumentValue& def,
                     if (parameter.at(0) == REFERENCE_ANCHOR)
                     {
                         auto param = json::formatJsonPath(parameter.substr(1));
-                        if (e->getEvent()->exists(param))
+                        try
                         {
                             auto value = &e->getEvent()->get(param);
                             if (value && value->IsString())
                             {
-                                result += value->GetString();
+                                result.append(value->GetString());
                             }
                             else
                             {
@@ -492,7 +492,7 @@ base::Lifter opBuilderHelperStringConcat(const base::DocumentValue& def,
                                 return e;
                             }
                         }
-                        else
+                        catch (std::exception& ex)
                         {
                             tr(failureTrace);
                             return e;
@@ -500,17 +500,23 @@ base::Lifter opBuilderHelperStringConcat(const base::DocumentValue& def,
                     }
                     else
                     {
-                        result += parameter;
+                        result.append(parameter);
                     }
                 }
 
-                tr(successTrace);
-
-                e->getEvent()->set(
-                    field,
-                    rapidjson::Value(result.c_str(), e->getEvent()->m_doc.GetAllocator())
-                        .Move());
-                return e;
+                try
+                {
+                    tr(successTrace);
+                    e->getEvent()->set(
+                        field,
+                        rapidjson::Value(result.c_str(), e->getEvent()->m_doc.GetAllocator())
+                            .Move());
+                    return e;
+                }
+                catch(std::exception& ex)
+                {
+                    return e;
+                }
             });
     };
 }

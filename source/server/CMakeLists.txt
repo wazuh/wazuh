@@ -31,7 +31,7 @@ CPMAddPackage(
 ####################################################################################################
 # Sources - Includes
 ####################################################################################################
-target_sources(main PRIVATE
+add_library(server STATIC
     ${ENGINE_SERVER_SOURCE_DIR}/engineServer.cpp
     ${ENGINE_SERVER_SOURCE_DIR}/protocolHandler.cpp
     ${ENGINE_SERVER_SOURCE_DIR}/endpoints/baseEndpoint.cpp
@@ -40,12 +40,15 @@ target_sources(main PRIVATE
     ${ENGINE_SERVER_SOURCE_DIR}/endpoints/datagramSocketEndpoint.cpp
 )
 
-target_include_directories(main PUBLIC
+#TODO do this better
+target_link_libraries(server base uv_a)
+
+target_include_directories(server PUBLIC
+    ${CameronQueue_SOURCE_DIR}
     ${ENGINE_SERVER_SOURCE_DIR}
+    ${ENGINE_SOURCE_DIR}/json
     ${uvw_SOURCE_DIR}/src/
     ${uvw_SOURCE_DIR}/src/uvw/
     ${RxCpp_SOURCE_DIR}/Rx/v2/src
+    ${ENGINE_SERVER_SOURCE_DIR}/base
 )
-
-#TODO do this better
-target_link_libraries(main uv_a)
