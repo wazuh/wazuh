@@ -22,9 +22,9 @@ static FakeTrFn tr = [](std::string msg) {
 
 class opBuilderHelperStringConcat : public testing::Test {
  protected:
+
   // Per-test-suite set-up.
   // Called before the first test in this test suite.
-  // Can be omitted if not needed.
   static void SetUpTestSuite() {
 
     Registry::registerBuilder("check", bld::stageBuilderCheck);
@@ -38,19 +38,10 @@ class opBuilderHelperStringConcat : public testing::Test {
 
   // Per-test-suite tear-down.
   // Called after the last test in this test suite.
-  // Can be omitted if not needed.
   static void TearDownTestSuite() {
       return;
   }
 
-  // You can define per-test set-up logic as usual.
-  //void SetUp() override { ... }
-
-  // You can define per-test tear-down logic as usual.
-  //void TearDown() override { ... }
-
-  // Some expensive resource shared by all tests.
-  //static T* shared_resource_;
 };
 
 
@@ -619,4 +610,105 @@ TEST_F(opBuilderHelperStringConcat, ComplexUsage)
     ASSERT_EQ(expected.size(), eventsCount);
     ASSERT_STREQ(expected[0]->getEvent()->get("/FieldB").GetString(), "ABCDEF");
     ASSERT_STREQ(expected[1]->getEvent()->get("/FieldX").GetString(), "12ABC");
+}
+
+TEST_F(opBuilderHelperStringConcat, ReferenceFieldWithForbiddenName)
+{
+    Document doc {R"({
+        "normalize":
+        [
+            {
+                "map":
+                {
+                    "anotherField~": "+s_concat/$fieldToTranf/$anotherField"
+                }
+            }
+        ]
+    })"};
+
+    Observable input = observable<>::create<Event>(
+        [=](auto s)
+        {
+            s.on_next(createSharedEvent(R"(
+                {"anotherField": ""}
+            )"));
+            s.on_completed();
+        });
+
+    Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
+    Observable output = lift(input);
+    vector<Event> expected;
+    output.subscribe([&](Event e) { expected.push_back(e); });
+    ASSERT_EQ(expected.size(), 1);
+    ASSERT_THROW(expected[0]->getEvent()->get("/anotherField~"), std::invalid_argument);
+    ASSERT_STREQ(expected[0]->getEvent()->get("/anotherField").GetString(), "");
+}
+
+TEST_F(opBuilderHelperStringConcat, BothReferenceFieldsWithForbiddenName)
+{
+    Document doc {R"({
+        "normalize":
+        [
+            {
+                "map":
+                {
+                    "anotherField": "+s_concat/$field~/ALGO"
+                }
+            }
+        ]
+    })"};
+
+    Observable input = observable<>::create<Event>(
+        [=](auto s)
+        {
+            s.on_next(createSharedEvent(R"(
+                {"field": "OOO"}
+            )"));
+            s.on_completed();
+        });
+
+    Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
+    Observable output = lift(input);
+    vector<Event> expected;
+    output.subscribe([&](Event e) { expected.push_back(e); });
+    ASSERT_EQ(expected.size(), 1);
+    ASSERT_THROW(expected[0]->getEvent()->get("/anotherField"), std::invalid_argument);
+}
+
+TEST_F(opBuilderHelperStringConcat, AssignmentOnNestedField)
+{
+    Document doc {R"({
+        "normalize":
+        [
+            {
+                "map":
+                {
+                    "parent.fieldToTranf": "+s_concat/$parent.fieldToTranf/$anotherField"
+                }
+            }
+        ]
+    })"};
+
+    Observable input = observable<>::create<Event>(
+        [=](auto s)
+        {
+            s.on_next(createSharedEvent(R"(
+                {
+                    "anotherField": "OneThing",
+                    "parent" :
+                    {
+                        "fieldToTranf": "Something"
+                    }
+                }
+            )"));
+            s.on_completed();
+        });
+
+    Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
+    Observable output = lift(input);
+    vector<Event> expected;
+    output.subscribe([&](Event e) { expected.push_back(e); });
+    ASSERT_EQ(expected.size(), 1);
+    ASSERT_STREQ(expected[0]->getEvent()->get("/parent/fieldToTranf").GetString(),
+                 "SomethingOneThing");
 }
