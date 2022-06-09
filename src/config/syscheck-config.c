@@ -114,7 +114,7 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
 #endif
     syscheck->prefilter_cmd                   = NULL;
     syscheck->sync_interval                   = 300;
-    syscheck->min_sync_interval               = 10;
+    syscheck->min_sync_interval               = 60;
     syscheck->sync_max_eps                    = 10;
     syscheck->max_eps                         = 100;
     syscheck->max_files_per_second            = 0;
