@@ -98,6 +98,9 @@ async def print_health(config, more, filter_node):
         return total_seconds
 
     lc = local_client.LocalClient()
+    if filter_node is None:
+        filter_node = await control.get_nodes(lc, filter_node=filter_node)
+        filter_node = [node['name'] for node in filter_node['items']]
     result = await control.get_health(lc, filter_node=filter_node)
     msg2 = ""
 
