@@ -609,6 +609,7 @@
             <ComponentRef Id="REMOVE_OLD_POLICIES" />
             <ComponentRef Id="SCA_WIN_AUDIT.YML" />
             <ComponentRef Id="SCA_WIN10" />
+            <ComponentRef Id="SCA_WIN11" />
             <ComponentRef Id="SCA_WIN2012R2" />
             <ComponentRef Id="SCA_WIN2016" />
             <ComponentRef Id="SCA_WIN2019" />
