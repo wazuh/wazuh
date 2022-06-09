@@ -98,6 +98,10 @@
 #define VU_DISCARD_DU         "(5489): '%s' vulnerability information discarded for agent '%.3d' ('KB%s'): Dynamic Updates (DU) are only available when upgrading to new Windows 10 versions."
 #define VU_REMOVED_VULN       "(5490): The vulnerability '%s' affecting '%s' was solved"
 #define VU_AG_BASELINE_SCAN   "(5491): A baseline scan will be run on agent '%.3d'"
+#define VU_INS_DEPS           "(5492): Inserting '%s' vulnerabilities dependencies."
+#define VU_DEP_FLAG           "(5493): Dependency '%s' is installed on agent '%.3d': Version (%s) '%s' '%s'"
+#define VU_DEP_PRESCAN_START  "(5494): Starting SUSE dependency analysis for agent '%.3d'"
+#define VU_DEP_PRESCAN_FINISH "(5495): Finished SUSE dependency analysis for agent '%.3d'"
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."
