@@ -57,7 +57,6 @@ int socketConnect(std::string_view path)
         throw std::runtime_error("socketConnect: path is empty");
     }
 
-
     /* Config the socket address */
     struct sockaddr_un sAddr
     {
@@ -214,4 +213,4 @@ std::string recvString(const int sock)
     return std::string(byteMsg.data());
 }
 
-} // namespace socketinterface
+} // namespace base::utils::socketInterface::unixStream

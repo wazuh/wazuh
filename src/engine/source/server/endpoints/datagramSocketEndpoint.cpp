@@ -41,25 +41,26 @@ namespace engineserver::endpoints
  * socket
  * @return (int) Returns either the file descriptor value or -1
  */
-static inline int OS_BindUnixDomain(const char *path)
+static inline int bindUnixDgramSocket(const char* path)
 {
     struct sockaddr_un n_us;
     int socketFd = 0;
 
-    /* TODO: Check the unlink's parameter before unlinking it (to be sure that
-     * it is a socket and not a regular file) */
+    /* TODO: Check the unlink's parameter before unlinking it (to be sure that it is a
+     * socket and not a regular file) */
     unlink(path);
 
     memset(&n_us, 0, sizeof(n_us));
     n_us.sun_family = AF_UNIX;
     strncpy(n_us.sun_path, path, sizeof(n_us.sun_path) - 1);
 
-    if ((socketFd = socket(PF_UNIX, SOCK_DGRAM, 0)) < 0)
+    socketFd = socket(PF_UNIX, SOCK_DGRAM, 0);
+    if (0 > socketFd)
     {
         return -1;
     }
 
-    if (bind(socketFd, (struct sockaddr *)&n_us, SUN_LEN(&n_us)) < 0)
+    if (bind(socketFd, (struct sockaddr*)&n_us, SUN_LEN(&n_us)) < 0)
     {
         close(socketFd);
         return -1;
@@ -76,8 +77,7 @@ static inline int OS_BindUnixDomain(const char *path)
     socklen_t optlen = sizeof(len);
 
     /* Get current maximum size */
-    if (getsockopt(socketFd, SOL_SOCKET, SO_RCVBUF, (void *)&len, &optlen) ==
-        -1)
+    if (getsockopt(socketFd, SOL_SOCKET, SO_RCVBUF, (void*)&len, &optlen) == -1)
     {
         len = 0;
     }
@@ -86,9 +86,7 @@ static inline int OS_BindUnixDomain(const char *path)
     if (len < MAX_MSG_SIZE)
     {
         len = MAX_MSG_SIZE;
-        if (setsockopt(
-                socketFd, SOL_SOCKET, SO_RCVBUF, (const void *)&len, optlen) <
-            0)
+        if (setsockopt(socketFd, SOL_SOCKET, SO_RCVBUF, (const void*)&len, optlen) < 0)
         {
             close(socketFd);
             return -1;
@@ -98,16 +96,15 @@ static inline int OS_BindUnixDomain(const char *path)
     // Set close-on-exec
     if (fcntl(socketFd, F_SETFD, FD_CLOEXEC) == -1)
     {
-        WAZUH_LOG_ERROR("Cannot set close-on-exec flag to socket: {} ({})",
-                        strerror(errno),
-                        errno);
+        WAZUH_LOG_ERROR(
+            "Cannot set close-on-exec flag to socket: {} ({})", strerror(errno), errno);
     }
 
     return (socketFd);
 }
 
-DatagramSocketEndpoint::DatagramSocketEndpoint(const std::string &path,
-                                               ServerOutput &eventBuffer)
+DatagramSocketEndpoint::DatagramSocketEndpoint(const std::string& path,
+                                               ServerOutput& eventBuffer)
     : BaseEndpoint {path, eventBuffer}
     , m_loop {Loop::getDefault()}
     , m_handle {m_loop->resource<DatagramSocketHandle>()}
@@ -115,26 +112,24 @@ DatagramSocketEndpoint::DatagramSocketEndpoint(const std::string &path,
     auto protocolHandler = std::make_shared<ProtocolHandler>();
 
     m_handle->on<ErrorEvent>(
-        [this](const ErrorEvent &event,
-               DatagramSocketHandle &datagramSocketHandle)
+        [this](const ErrorEvent& event, DatagramSocketHandle& datagramSocketHandle)
         {
-            WAZUH_LOG_ERROR(
-                "Datagram Socket ErrorEvent: endpoint[{}] error: code=[{}]; "
-                "name=[{}]; message=[{}]",
-                m_path,
-                event.code(),
-                event.name(),
-                event.what());
+            WAZUH_LOG_ERROR("Datagram Socket ErrorEvent: endpoint[{}] error: code=[{}]; "
+                            "name=[{}]; message=[{}]",
+                            m_path,
+                            event.code(),
+                            event.name(),
+                            event.what());
         });
 
     m_handle->on<DatagramSocketEvent>(
-        [this, protocolHandler](const DatagramSocketEvent &event,
-                                DatagramSocketHandle &handle)
+        [this, protocolHandler](const DatagramSocketEvent& event,
+                                DatagramSocketHandle& handle)
         {
             auto client = handle.loop().resource<DatagramSocketHandle>();
 
             client->on<ErrorEvent>(
-                [this](const ErrorEvent &event, DatagramSocketHandle &client)
+                [this](const ErrorEvent& event, DatagramSocketHandle& client)
                 {
                     WAZUH_LOG_ERROR("Datagram Socket ErrorEvent: endpoint[{}] "
                                     "error: code=[{}]; "
@@ -145,8 +140,7 @@ DatagramSocketEndpoint::DatagramSocketEndpoint(const std::string &path,
                                     event.what());
                 });
 
-            const auto result =
-                protocolHandler->process(event.data.get(), event.length);
+            const auto result = protocolHandler->process(event.data.get(), event.length);
 
             if (result)
             {
@@ -163,7 +157,7 @@ DatagramSocketEndpoint::DatagramSocketEndpoint(const std::string &path,
             }
         });
 
-    m_socketFd = OS_BindUnixDomain(m_path.c_str());
+    m_socketFd = bindUnixDgramSocket(m_path.c_str());
 
     if (m_socketFd <= 0)
     {
@@ -184,19 +178,17 @@ void DatagramSocketEndpoint::run(void)
     }
     else
     {
-        WAZUH_LOG_ERROR(
-            "Datagram Socket ({}) file descriptor is invalid: FD={}.",
-            m_path,
-            m_socketFd);
+        WAZUH_LOG_ERROR("Datagram Socket ({}) file descriptor is invalid: FD={}.",
+                        m_path,
+                        m_socketFd);
     }
 }
 
 void DatagramSocketEndpoint::close(void)
 {
     m_loop->stop(); /// Stops the loop
-    m_loop->walk(
-        [](uvw::BaseHandle &handle)
-        { handle.close(); }); /// Triggers every handle's close callback
+    m_loop->walk([](uvw::BaseHandle& handle)
+                 { handle.close(); }); /// Triggers every handle's close callback
     m_loop->run(); /// Runs the loop again, so every handle is able to receive
                    /// its close callback
     m_loop->clear();
