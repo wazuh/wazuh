@@ -4,7 +4,8 @@
 #include <map>
 #include <string>
 
-namespace base::utils::socketInterface {
+namespace base::utils::socketInterface
+{
 
 // Return codes
 enum class CommRetval
@@ -23,8 +24,6 @@ const std::map<CommRetval, const std::string> CommRetval2Str = {
     {CommRetval::SOCKET_ERROR, "SOCKET_ERROR"},
     {CommRetval::SUCCESS, "SUCCESS"}};
 
-
-}
-
+} // namespace base::utils::socketInterface
 
 #endif
