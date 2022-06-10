@@ -64,9 +64,7 @@ async def reset_rbac_database():
           else '\tSuccessfully reset RBAC database')
 
 
-if __name__ == "__main__":
-    signal(SIGINT, signal_handler)
-
+def get_script_arguments():
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("--change-password", action='store_true', dest='change_password',
                             help="Change the password for each default user. Empty values will leave the password "
@@ -74,19 +72,30 @@ if __name__ == "__main__":
     arg_parser.add_argument("--factory-reset", action='store_true', dest='factory_reset',
                             help="Restart the RBAC database to its default state. This will completely wipe your custom"
                                  " RBAC information.")
-    args = arg_parser.parse_args()
 
     if not len(sys.argv) > 1:
         arg_parser.print_help()
         sys.exit(0)
 
+    return arg_parser.parse_args()
+
+
+async def main():
+    signal(SIGINT, signal_handler)
+
+    if args.change_password:
+        await restore_default_passwords()
+        sys.exit(0)
+    elif args.factory_reset:
+        await reset_rbac_database()
+        sys.exit(0)
+
+
+if __name__ == "__main__":
+    args = get_script_arguments()
+
     try:
-        if args.change_password:
-            asyncio.run(restore_default_passwords())
-            sys.exit(0)
-        elif args.factory_reset:
-            asyncio.run(reset_rbac_database())
-            sys.exit(0)
+        asyncio.run(main())
     except WazuhError as e:
         print(f"Error {e.code}: {e.message}")
     except Exception as e:

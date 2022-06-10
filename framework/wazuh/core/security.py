@@ -133,7 +133,7 @@ def rbac_db_factory_reset():
     """Reset the RBAC database to default values."""
     try:
         os.remove(DB_FILE)
-    except IOError:
+    except FileNotFoundError:
         pass
 
     check_database_integrity()
