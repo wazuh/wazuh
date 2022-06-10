@@ -17,122 +17,85 @@
 #include "encodingWindowsHelper.h"
 #include "fimDBSpecializationWindows.hpp"
 
-
-constexpr auto FIM_FILE_SYNC_CONFIG_STATEMENT
+static auto fileSyncConfig
 {
-    R"(
-    {
-        "decoder_type":"JSON_RANGE",
-        "table":"file_entry",
-        "component":"fim_file",
-        "index":"path",
-        "checksum_field":"checksum",
-        "last_event":"last_event",
-        "no_data_query_json": {
-                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
-                "column_list":["*"],
-                "distinct_opt":false,
-                "order_by_opt":""
-        },
-        "count_range_query_json": {
-                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
-                "count_field_name":"count",
-                "column_list":["count(*) AS count "],
-                "distinct_opt":false,
-                "order_by_opt":""
-        },
-        "row_data_query_json": {
-                "row_filter":"WHERE path ='?'",
-                "column_list":["*"],
-                "distinct_opt":false,
-                "order_by_opt":""
-        },
-        "range_checksum_query_json": {
-                "row_filter":"WHERE path BETWEEN '?' and '?' ORDER BY path",
-                "column_list":["*"],
-                "distinct_opt":false,
-                "order_by_opt":""
-        }
-    }
-    )"
+    RegisterConfiguration::builder().decoderType("JSON_RANGE")
+    .table("file_entry")
+    .component("fim_file")
+    .index("path")
+    .checksumField("checksum")
+    .lastEvent("last_event")
+    .noData(QueryParameter::builder().rowFilter("WHERE path BETWEEN '?' and '?' ORDER BY path")
+            .columnList({"*"})
+            .distinctOpt(false)
+            .orderByOpt(""))
+    .countRange(QueryParameter::builder().rowFilter("WHERE path BETWEEN '?' and '?' ORDER BY path")
+            .countFieldName("count")
+            .columnList({"count(*) AS count"})
+            .distinctOpt(false)
+            .orderByOpt(""))
+    .rowData(QueryParameter::builder().rowFilter("WHERE path = '?'")
+            .columnList({"*"})
+            .distinctOpt(false)
+            .orderByOpt(""))
+    .rangeChecksum(QueryParameter::builder().rowFilter("WHERE path BETWEEN '?' and '?' ORDER BY path")
+            .columnList({"*"})
+            .distinctOpt(false)
+            .orderByOpt(""))
 };
 
-constexpr auto FIM_REGISTRY_SYNC_CONFIG_STATEMENT
+static auto registryKeySyncConfig
 {
-    R"(
-    {
-        "decoder_type":"JSON_RANGE",
-        "table":"registry_key",
-        "component":"fim_registry_key",
-        "index":"hash_full_path",
-        "last_event":"last_event",
-        "checksum_field":"checksum",
-        "no_data_query_json": {
-                "row_filter":"WHERE hash_full_path BETWEEN '?' and '?' ORDER BY hash_full_path",
-                "column_list":["*"],
-                "distinct_opt":false,
-                "order_by_opt":""
-        },
-        "count_range_query_json": {
-                "row_filter":"WHERE hash_full_path BETWEEN '?' and '?' ORDER BY hash_full_path",
-                "count_field_name":"count",
-                "column_list":["count(*) AS count "],
-                "distinct_opt":false,
-                "order_by_opt":""
-        },
-        "row_data_query_json": {
-                "row_filter":"WHERE hash_full_path ='?'",
-                "column_list":["*"],
-                "distinct_opt":false,
-                "order_by_opt":""
-        },
-        "range_checksum_query_json": {
-                "row_filter":"WHERE hash_full_path BETWEEN '?' and '?' ORDER BY hash_full_path",
-                "column_list":["*"],
-                "distinct_opt":false,
-                "order_by_opt":""
-        }
-    }
-    )"
+    RegisterConfiguration::builder().decoderType("JSON_RANGE")
+    .table("registry_key")
+    .component("fim_registry_key")
+    .index("hash_full_path")
+    .checksumField("checksum")
+    .lastEvent("last_event")
+    .noData(QueryParameter::builder().rowFilter("WHERE hash_full_path BETWEEN '?' and '?' ORDER BY hash_full_path")
+            .columnList({"*"})
+            .distinctOpt(false)
+            .orderByOpt(""))
+    .countRange(QueryParameter::builder().rowFilter("WHERE hash_full_path BETWEEN '?' and '?' ORDER BY hash_full_path")
+            .countFieldName("count")
+            .columnList({"count(*) AS count"})
+            .distinctOpt(false)
+            .orderByOpt(""))
+    .rowData(QueryParameter::builder().rowFilter("WHERE hash_full_path = '?'")
+            .columnList({"*"})
+            .distinctOpt(false)
+            .orderByOpt(""))
+    .rangeChecksum(QueryParameter::builder().rowFilter("WHERE hash_full_path BETWEEN '?' and '?' ORDER BY hash_full_path")
+            .columnList({"*"})
+            .distinctOpt(false)
+            .orderByOpt(""))
 };
 
-constexpr auto FIM_VALUE_SYNC_CONFIG_STATEMENT
+static auto registryValueSyncConfig
 {
-    R"(
-    {
-        "decoder_type":"JSON_RANGE",
-        "table":"registry_data",
-        "component":"fim_registry_value",
-        "index":"hash_full_path",
-        "last_event":"last_event",
-        "checksum_field":"checksum",
-        "no_data_query_json": {
-                "row_filter":"WHERE hash_full_path BETWEEN '?' and '?' ORDER BY hash_full_path",
-                "column_list":["*"],
-                "distinct_opt":false,
-                "order_by_opt":""
-        },
-        "count_range_query_json": {
-                "row_filter":"WHERE hash_full_path BETWEEN '?' and '?' ORDER BY hash_full_path",
-                "count_field_name":"count",
-                "column_list":["count(*) AS count "],
-                "distinct_opt":false,
-                "order_by_opt":""
-        },
-        "row_data_query_json": {
-                "row_filter":"WHERE hash_full_path ='?'",
-                "column_list":["*"],
-                "distinct_opt":false,
-                "order_by_opt":""
-        },
-        "range_checksum_query_json": {
-                "row_filter":"WHERE hash_full_path BETWEEN '?' and '?' ORDER BY hash_full_path",
-                "column_list":["*"],
-                "distinct_opt":false,
-                "order_by_opt":""
-        }
-    }
-    )"
+    RegisterConfiguration::builder().decoderType("JSON_RANGE")
+    .table("registry_data")
+    .component("fim_registry_value")
+    .index("hash_full_path")
+    .checksumField("checksum")
+    .lastEvent("last_event")
+    .noData(QueryParameter::builder().rowFilter("WHERE hash_full_path BETWEEN '?' and '?' ORDER BY hash_full_path")
+            .columnList({"*"})
+            .distinctOpt(false)
+            .orderByOpt(""))
+    .countRange(QueryParameter::builder().rowFilter("WHERE hash_full_path BETWEEN '?' and '?' ORDER BY hash_full_path")
+            .countFieldName("count")
+            .columnList({"count(*) AS count"})
+            .distinctOpt(false)
+            .orderByOpt(""))
+    .rowData(QueryParameter::builder().rowFilter("WHERE hash_full_path = '?'")
+            .columnList({"*"})
+            .distinctOpt(false)
+            .orderByOpt(""))
+    .rangeChecksum(QueryParameter::builder().rowFilter("WHERE hash_full_path BETWEEN '?' and '?' ORDER BY hash_full_path")
+            .columnList({"*"})
+            .distinctOpt(false)
+            .orderByOpt(""))
 };
 
 /* Statement related to files items. Defines everything necessary to perform the synchronization loop */
@@ -265,6 +228,7 @@ class FIMDBCreator final
         static void registerRsync(__attribute__((unused)) std::shared_ptr<RemoteSync> RSyncHandler,
                                   __attribute__((unused)) const RSYNC_HANDLE& handle,
                                   __attribute__((unused)) std::function<void(const std::string&)> syncFileMessageFunction,
+                                  __attribute__((unused)) const uint32_t syncMinInterval,
                                   __attribute__((unused)) std::function<void(const std::string&)> syncRegistryMessageFunction,
                                   __attribute__((unused)) const bool syncRegistryEnabled)
         {
@@ -320,24 +284,28 @@ class FIMDBCreator<OSType::WINDOWS> final
         static void registerRsync(std::shared_ptr<RemoteSync> RSyncHandler,
                                   const RSYNC_HANDLE& handle,
                                   std::function<void(const std::string&)> syncFileMessageFunction,
-                                  __attribute__((unused)) std::function<void(const std::string&)> syncRegistryMessageFunction,
+                                  const uint32_t syncMinInterval,
+                                  std::function<void(const std::string&)> syncRegistryMessageFunction,
                                   const bool syncRegistryEnabled)
         {
+            fileSyncConfig.minimalSyncIntervalTime(syncMinInterval);
             RSyncHandler->registerSyncID(FIM_COMPONENT_FILE,
                                         handle,
-                                        nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT),
+                                        fileSyncConfig.config(),
                                         syncFileMessageFunction);
 
             if (syncRegistryEnabled)
             {
-
+                registryKeySyncConfig.minimalSyncIntervalTime(syncMinInterval);
                 RSyncHandler->registerSyncID(FIM_COMPONENT_REGISTRY_KEY,
                                             handle,
-                                            nlohmann::json::parse(FIM_REGISTRY_SYNC_CONFIG_STATEMENT),
+                                            registryKeySyncConfig.config(),
                                             syncRegistryMessageFunction);
+
+                registryValueSyncConfig.minimalSyncIntervalTime(syncMinInterval);
                 RSyncHandler->registerSyncID(FIM_COMPONENT_REGISTRY_VALUE,
                                             handle,
-                                            nlohmann::json::parse(FIM_VALUE_SYNC_CONFIG_STATEMENT),
+                                            registryValueSyncConfig.config(),
                                             syncRegistryMessageFunction);
             }
 
@@ -389,12 +357,14 @@ class FIMDBCreator<OSType::OTHERS> final
         static void registerRsync(std::shared_ptr<RemoteSync> RSyncHandler,
                                   const RSYNC_HANDLE& handle,
                                   std::function<void(const std::string&)> syncFileMessageFunction,
+                                  const uint32_t syncMinInterval,
                                   __attribute__((unused)) std::function<void(const std::string&)> syncRegistryMessageFunction,
                                   __attribute__((unused)) const bool syncRegistryEnabled)
         {
+            fileSyncConfig.minimalSyncIntervalTime(syncMinInterval);
             RSyncHandler->registerSyncID(FIM_COMPONENT_FILE,
                                         handle,
-                                        nlohmann::json::parse(FIM_FILE_SYNC_CONFIG_STATEMENT),
+                                        fileSyncConfig.config(),
                                         syncFileMessageFunction);
         }
 

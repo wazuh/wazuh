@@ -51,6 +51,7 @@ static int setup_syscheck_config(void **state) {
 
     syscheck_conf->database_store            = FIM_DB_DISK;
     syscheck_conf->sync_interval             = 300;
+    syscheck_conf->min_sync_interval         = 60;
     syscheck_conf->db_entry_file_limit       = 100000;
 #ifdef WIN32
     syscheck_conf->db_entry_registry_limit   = 100000;
@@ -102,12 +103,14 @@ void test_fim_initialize(void **state)
     expect_wrapper_fim_db_init(syscheck_conf->database_store,
                                syscheck_conf->sync_interval,
                                syscheck_conf->db_entry_file_limit,
+                               syscheck_conf->min_sync_interval,
                                syscheck_conf->db_entry_registry_limit,
                                1);
 #else
     expect_wrapper_fim_db_init(syscheck_conf->database_store,
                                syscheck_conf->sync_interval,
                                syscheck_conf->db_entry_file_limit,
+                               syscheck_conf->min_sync_interval,
                                0,
                                0);
 #endif
@@ -194,7 +197,7 @@ void test_Start_win32_Syscheck_corrupted_config_file(void **state) {
 
     will_return(__wrap_rootcheck_init, 1);
 
-    expect_wrapper_fim_db_init(0, 300, 100000, 100000, 1);
+    expect_wrapper_fim_db_init(0, 300, 100000, 60, 100000, 1);
     expect_function_call(__wrap_os_wait);
     expect_function_call(__wrap_start_daemon);
     assert_int_equal(Start_win32_Syscheck(), 0);
@@ -220,7 +223,7 @@ void test_Start_win32_Syscheck_syscheck_disabled_1(void **state) {
 
     will_return(__wrap_rootcheck_init, 0);
 
-    expect_wrapper_fim_db_init(0, 300, 100000, 100000, 1);
+    expect_wrapper_fim_db_init(0, 300, 100000, 60, 100000, 1);
     expect_string(__wrap__minfo, formatted_msg, FIM_FILE_SIZE_LIMIT_DISABLED);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_DISK_QUOTA_LIMIT_DISABLED);
@@ -250,7 +253,7 @@ void test_Start_win32_Syscheck_syscheck_disabled_2(void **state) {
 
     will_return(__wrap_rootcheck_init, 0);
 
-    expect_wrapper_fim_db_init(0, 300, 100000, 100000, 1);
+    expect_wrapper_fim_db_init(0, 300, 100000, 60, 100000, 1);
     expect_string(__wrap__minfo, formatted_msg, FIM_FILE_SIZE_LIMIT_DISABLED);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_DISK_QUOTA_LIMIT_DISABLED);
@@ -320,7 +323,7 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg, "(6004): No diff for file: 'Diff'");
 
-    expect_wrapper_fim_db_init(0, 300, 100000, 100000, 1);
+    expect_wrapper_fim_db_init(0, 300, 100000, 60, 100000, 1);
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
     expect_string(__wrap__minfo, formatted_msg, info_msg);
 
@@ -368,7 +371,7 @@ void test_Start_win32_Syscheck_whodata_active(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg, "(6003): Monitoring path: 'c:\\dir1', with options 'whodata'.");
 
-    expect_wrapper_fim_db_init(0, 300, 100000, 100000, 1);
+    expect_wrapper_fim_db_init(0, 300, 100000, 60, 100000, 1);
     expect_string(__wrap__minfo, formatted_msg, FIM_FILE_SIZE_LIMIT_DISABLED);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_DISK_QUOTA_LIMIT_DISABLED);

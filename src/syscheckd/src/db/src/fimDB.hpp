@@ -121,7 +121,9 @@ class FIMDB
          * @param dbsyncHandler Pointer to a dbsync handler.
          * @param rsyncHandler Pointer to a rsync handler.
          * @param fileLimit Maximun number of file entries in database.
+         * @param minSyncIntervalTime Minimum interval for synchronization process.
          * @param registryLimit Maximun number of registry values entries in database (only for Windows).
+         * @param syncRegistryEnabled Flag to specify if the synchronization for registries is enabled (only for Windows).
          */
         void init(unsigned int syncInterval,
                   std::function<void(const std::string&)> callbackSyncFileWrapper,
@@ -130,6 +132,7 @@ class FIMDB
                   std::shared_ptr<DBSync> dbsyncHandler,
                   std::shared_ptr<RemoteSync> rsyncHandler,
                   int fileLimit,
+                  const uint32_t minSyncIntervalTime,
                   int registryLimit = 0,
                   bool syncRegistryEnabled = true);
 
@@ -255,6 +258,7 @@ class FIMDB
         std::thread                                                             m_integrityThread;
         std::shared_timed_mutex                                                 m_handlersMutex;
         bool                                                                    m_syncRegistryEnabled;
+        uint32_t                                                                m_minSyncIntervalTime;
 
         /**
         * @brief Function that executes the synchronization of the databases with the manager

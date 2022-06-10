@@ -114,6 +114,7 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
 #endif
     syscheck->prefilter_cmd                   = NULL;
     syscheck->sync_interval                   = 300;
+    syscheck->min_sync_interval               = 60;
     syscheck->sync_max_eps                    = 10;
     syscheck->max_eps                         = 100;
     syscheck->max_files_per_second            = 0;
@@ -1177,6 +1178,7 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
     const char *xml_sync_queue_size = "queue_size";
     const char *xml_max_eps = "max_eps";
     const char *xml_registry_enabled = "registry_enabled";
+    const char *xml_min_sync_interval = "min_interval";
 
     for (int i = 0; node[i]; i++) {
         if (strcmp(node[i]->element, xml_enabled) == 0) {
@@ -1220,9 +1222,21 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
                 syscheck->enable_registry_synchronization = r;
             }
 #endif
+        } else if (strcmp(node[i]->element, xml_min_sync_interval) == 0) {
+            uint32_t interval = strtoul(node[i]->content, NULL, 10);
+
+            if (errno == ERANGE) {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            } else {
+                syscheck->min_sync_interval = interval;
+            }
         } else {
             mwarn(XML_INVELEM, node[i]->element);
         }
+    }
+
+    if (syscheck->min_sync_interval >= syscheck->sync_interval) {
+        mwarn("Sync min_interval value higher than interval. Some synchronization turns can be skipped.");
     }
 }
 

@@ -37,6 +37,8 @@ const auto insertRegistryValueStatement = R"({
     }
 )"_json;
 
+const auto minSyncInterval { 10 };
+
 void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data)
 {
     fim_txn_context_s *event_data = (fim_txn_context_s *) user_data;
@@ -219,7 +221,8 @@ TEST(DBTest, TestInvalidFimLimit)
                     mockSyncMessage,
                     mockLoggingFunction,
                     -1,
-                    100000,
+                    minSyncInterval,
+                    -1,
                     true)
     };
     ASSERT_EQ(result, FIMDB_ERR);
@@ -240,6 +243,7 @@ TEST(DBTest, TestValidFimLimit)
                     mockSyncMessage,
                     mockLoggingFunction,
                     100,
+                    minSyncInterval,
                     100000,
                     true)
     };

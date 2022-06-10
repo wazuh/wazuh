@@ -34,6 +34,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         crypto
         ws2_32
         crypt32
+        rsync
+        dbsync
         -static-libgcc -static-libstdc++
     )
 else()
@@ -51,6 +53,8 @@ else()
         cjson
         crypto
         ssl
+        rsync
+        dbsync
         dl
     )
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
