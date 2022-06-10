@@ -201,9 +201,9 @@ namespace Utils
                 return ret;
             }
 
-            bool keyModificationDate(std::string& time) const
+            std::string keyModificationDate() const
             {
-                auto ret {false};
+                std::string ret { };
                 FILETIME lastModificationTime { };
                 auto result
                 {
@@ -212,14 +212,13 @@ namespace Utils
 
                 if (ERROR_SUCCESS == result)
                 {
-                    ULARGE_INTEGER fileTime {};
+                    ULARGE_INTEGER time { };
 
-                    fileTime.LowPart = lastModificationTime.dwLowDateTime;
-                    fileTime.HighPart = lastModificationTime.dwHighDateTime;
+                    time.LowPart = lastModificationTime.dwLowDateTime;
+                    time.HighPart = lastModificationTime.dwHighDateTime;
 
                     // Use structure values to build 18-digit LDAP/FILETIME number
-                    time = Utils::buildTimestamp(fileTime.QuadPart);
-                    ret = true;
+                    ret = Utils::buildTimestamp(time.QuadPart);
                 }
 
                 return ret;
