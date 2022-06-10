@@ -8,7 +8,6 @@ from unittest.mock import patch
 import pytest
 
 from wazuh.tests.test_security import db_setup  # noqa
-from wazuh.rbac.orm import DB_FILE
 
 
 @patch('yaml.safe_load')
