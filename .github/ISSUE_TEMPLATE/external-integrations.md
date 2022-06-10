@@ -1,6 +1,6 @@
 ---
-name: External integrations issue. 
-about: Report a bug or make a feature request.
+name: External integrations issue 
+about: Report a bug or make a feature request for the AWS, Azure, GCloud or docker-listener external integrations.
 title: ''
 labels: 'external_integrations'
 assignees: ''
@@ -46,6 +46,6 @@ In case of a bug report:
 - [ ] Test in a manager.
 - [ ] Test in an agent.
 - [ ] Unit tests without failures. Updated if there are any relevant changes.
-- [ ] API integration tests without failures. Updated if there are any relevant changes.
+- [ ] Integration tests without failures. Updated if there are any relevant changes.
 - [ ] Update the documentation if necessary.
 - [ ] Add entry to the changelog if necessary.
