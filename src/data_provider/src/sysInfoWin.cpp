@@ -349,7 +349,7 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, std::f
                 }
                 else
                 {
-                    packageReg.keyModificationDate(install_time);
+                    install_time = packageReg.keyModificationDate();
                 }
 
                 if (packageReg.string("InstallLocation", value))
