@@ -28,6 +28,7 @@
 
 const std::string MAC_APPS_PATH{"/Applications"};
 const std::string MAC_UTILITIES_PATH{"/Applications/Utilities"};
+constexpr auto MAC_ROSETTA_DEFAULT_ARCH {"arm64"};
 
 using ProcessTaskInfo = struct proc_taskallinfo;
 
@@ -237,6 +238,37 @@ nlohmann::json SysInfo::getProcessesInfo() const
     return jsProcessesList;
 }
 
+static bool isRunningOnRosetta()
+{
+    bool retVal {false};
+    int isTranslated{0};
+    size_t len{sizeof(isTranslated)};
+    const auto ret{sysctlbyname("sysctl.proc_translated", &isTranslated, &len, NULL, 0)};
+
+    if (ret)
+    {
+        if (errno == ENOENT)
+        {
+            retVal = false;
+        }
+        else
+        {
+            throw std::system_error
+            {
+                ret,
+                std::system_category(),
+                "Error reading rosetta status."
+            };
+        }
+    }
+    else
+    {
+        retVal = 1 == isTranslated;
+    }
+
+    return retVal;
+}
+
 nlohmann::json SysInfo::getOsInfo() const
 {
     nlohmann::json ret;
@@ -252,6 +284,11 @@ nlohmann::json SysInfo::getOsInfo() const
         ret["version"] = uts.version;
         ret["architecture"] = uts.machine;
         ret["release"] = uts.release;
+    }
+
+    if (isRunningOnRosetta())
+    {
+        ret["architecture"] = MAC_ROSETTA_DEFAULT_ARCH;
     }
 
     return ret;
