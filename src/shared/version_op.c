@@ -374,6 +374,8 @@ const char *OSX_ReleaseName(int version) {
     /* 18 */ "Mojave",
     /* 19 */ "Catalina",
     /* 20 */ "Big Sur",
+    /* 21 */ "Monterey",
+    /* 22 */ "Ventura",
     };
 
     version -= 10;
