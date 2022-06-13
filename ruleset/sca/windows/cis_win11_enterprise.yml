@@ -90,8 +90,8 @@ checks:
 
   - id: 26005
     title: "Ensure 'Relax minimum password length limits' is set to 'Enabled'"
-    description: "This policy setting determines whether the minimum password length setting can beincreased beyond the legacy limit of 14 characters. For more information please see thefollowing Microsoft Security Blog."
-    rationale: "This setting will enable the enforcement of longer and generally stronger passwords orpassphrases where MFA is not in use."
+    description: "This policy setting determines whether the minimum password length setting can be increased beyond the legacy limit of 14 characters. For more information please see thefollowing Microsoft Security Blog."
+    rationale: "This setting will enable the enforcement of longer and generally stronger passwords or passphrases where MFA is not in use."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled:Computer Configuration/Policies/Windows Settings/Security Settings/AccountPolicies/Password Policy/Relax minimum password length limits"
     compliance:
       - cis: ["1.1.6"]
@@ -4828,3 +4828,157 @@ checks:
     condition: all
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet -> SpynetReporting'
+
+  - id: 26305
+    title: "Ensure 'Configure Attack Surface Reduction rules' is set to 'Enabled'"
+    description: "This policy setting controls the state for the Attack Surface Reduction (ASR) rules."
+    rationale: "Attack surface reduction helps prevent actions and apps that are typically used by exploitseeking malware to infect machines."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender Antivirus\\Windows Defender Exploit Guard\\Attack Surface Reduction\\Configure Attack Surface Reduction rules"
+    compliance:
+      - cis: ["18.9.47.5.1.1"]
+      - cis_csc: ["8.4"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+      - tsc: ["CC5.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR -> ExploitGuard_ASR_Rules -> 1'
+
+  - id: 26305
+    title: "Ensure 'Configure Attack Surface Reduction rules: Set the state for each ASR rule' is 'configured'"
+    description: "This policy setting sets the Attack Surface Reduction rules. The recommended state for this setting is: 26190899-1602-49e8-8b27-eb1d0a1ce869 - 1 (Block Office communication application from creating child processes) 3b576869-a4ec-4529-8536-b80a7769e899 - 1 (Block Office applications from creating executable content) 5beb7efe-fd9a-4556-801d-275e5ffc04cc - 1 (Block execution of potentially obfuscated scripts) 75668c1f-73b5-4cf0-bb93-3ecf5cb7cc84 - 1 (Block Office applications from injecting code into other processes) 7674ba52-37eb-4a4f-a9a1-f0f9a1619a2c - 1 (Block Adobe Reader from creating child processes) 92e97fa1-2edf-4476-bdd6-9dd0b4dddc7b - 1 (Block Win32 API calls from Office macro) 9e6c4e1f-7d60-472f-ba1a-a39ef669e4b2 - 1 (Block credential stealing from the Windows local security authority subsystem (lsass.exe)) b2b3f03d-6a65-4f7b-a9c7-1c7ef74a9ba4 - 1 (Block untrusted and unsigned processes that run from USB) be9ba2d9-53ea-4cdc-84e5-9b1eeee46550 - 1 (Block executable content from email client and webmail) d3e037e1-3eb8-44c8-a917-57927947596d - 1 (Block JavaScript or VBScript from launching downloaded executable content) d4f940ab-401b-4efc-aadc-ad5f3c50688a - 1 (Block Office applications from creating child processes)"
+    rationale: "Attack surface reduction helps prevent actions and apps that are typically used by exploitseeking malware to infect machines."
+    remediation: "To establish the recommended configuration via GP, set the following UI path so that 26190899-1602-49e8-8b27-eb1d0a1ce869, 3b576869-a4ec-4529-8536-b80a7769e899, 5beb7efe-fd9a-4556-801d-275e5ffc04cc, 75668c1f-73b5-4cf0-bb93-3ecf5cb7cc84, 7674ba52-37eb-4a4f-a9a1-f0f9a1619a2c, 92e97fa1-2edf-4476-bdd6-9dd0b4dddc7b, 9e6c4e1f-7d60-472f-ba1a-a39ef669e4b2, b2b3f03d-6a65-4f7b-a9c7-1c7ef74a9ba4, be9ba2d9-53ea-4cdc-84e5-9b1eeee46550, d3e037e1-3eb8-44c8-a917-57927947596d and d4f940ab-401b-4efc-aadc-ad5f3c50688a are each set to a value of 1: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender Antivirus\\Windows Defender Exploit Guard\\Attack Surface Reduction\\Configure Attack Surface Reduction rules: Set the state for each ASR rule."
+    compliance:
+      - cis: ["18.9.47.5.1.2"]
+      - cis_csc: ["8.4"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+      - tsc: ["CC5.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> BE9BA2D9-53EA-4CDC-84E5-9B1EEEE46550 -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> D4F940AB-401B-4EFC-AADC-AD5F3C50688A -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 3B576869-A4EC-4529-8536-B80A7769E899 -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 75668C1F-73B5-4CF0-BB93-3ECF5CB7CC84 -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> D3E037E1-3EB8-44C8-A917-57927947596D -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 5BEB7EFE-FD9A-4556-801D-275E5FFC04CC -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 92E97FA1-2EDF-4476-BDD6-9DD0B4DDDC7B -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 26190899-1602-49E8-8B27-eB1D0A1CE869 -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 7674BA52-37EB-4A4F-A9A1-F0F9A1619A2C -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 9E6C4E1F-7D60-472F-bA1A-A39EF669E4B2 -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> B2B3F03D-6A65-4F7B-A9C7-1C7EF74A9BA4 -> 1'
+
+  - id: 26306
+    title: "Ensure 'Prevent users and apps from accessing dangerous websites' is set to 'Enabled: Block'"
+    description: "This policy setting controls Windows Defender Exploit Guard network protection."
+    rationale: "This setting can help prevent employees from using any application to access dangerous domains that may host phishing scams, exploit-hosting sites, and other malicious content on the Internet."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Block: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender Antivirus\\Windows Defender Exploit Guard\\Network Protection\\Prevent users and apps from accessing dangerous websites"
+    compliance:
+      - cis: ["18.9.47.5.3.1"]
+      - cis_csc: ["7"]
+      - pci_dss: ["2.2.3"]
+      - nist_800_53: ["CM.1"]
+      - gpg_13: ["4.3"]
+      - gdpr_IV: ["35.7.d"]
+      - hipaa: ["164.312.b"]
+      - tsc: ["CC5.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\Network Protection -> EnableNetworkProtection -> 1'
+
+  - id: 26307
+    title: "Ensure 'Enable file hash computation feature' is set to'Enabled' "
+    description: "This setting determines whether hash values are computed for files scanned by Microsoft Defender. The recommended state for this setting is: Enabled. "
+    rationale: "When running an antivirus solution such as Microsoft Defender Antivirus, it is important to ensure that it is configured to monitor for suspicious and known malicious activity. File hashes are a reliable way of detecting changes to files, and can speed up the scan process by skipping files that have not changed since they were last scanned and determined to be safe. A changed file hash can also be cause for additional scrutiny. "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\Policies\Administrative Templates\Windows Components\Microsoft Defender Antivirus\MpEngine\Enable file hash computation feature Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 10 Release 1709 Administrative Templates (or newer). "
+    compliance:
+      - cis: ["18.9.47.6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\MpEngine-> EnableFileHashComputation -> 1'
+
+
+  - id: 26308
+    title: "Ensure 'Scan all downloaded files and attachments' is set to'Enabled' "
+    description: "This policy setting configures scanning for all downloaded files and attachments. The recommended state for this setting is: Enabled. "
+    rationale: "When running an antivirus solution such as Microsoft Defender Antivirus, it is important to ensure that it is configured to heuristically monitor in real-time for suspicious and known malicious activity. "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\Policies\Administrative Templates\Windows Components\Microsoft Defender Antivirus\Real-Time Protection\Scan all downloaded files and attachments Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer). "
+    compliance:
+      - cis: ["18.9.47.9.1"]
+      - cis_csc: ["8.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\Real-TimeProtection-> DisableIOAVProtection -> 0'
+
+  - id: 26309
+    title: "Ensure 'Turn off real-time protection' is set to 'Disabled'"
+    description: "This policy setting configures real-time protection prompts for known malware detection. Microsoft Defender Antivirus alerts you when malware or potentially unwanted software attempts to install itself or to run on your computer. The recommended state for this setting is: Disabled. "
+    rationale: "When running an antivirus solution such as Microsoft Defender Antivirus, it is important to ensure that it is configured to heuristically monitor in real-time for suspicious and known malicious activity. "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\Policies\Administrative Templates\Windows Components\Microsoft Defender Antivirus\Real-Time Protection\Turn off realtime protection Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer).   "
+    compliance:
+      - cis: ["18.9.47.9.2"]
+      - cis_csc: ["8.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\Real-TimeProtection-> DisableRealtimeMonitoring -> 0'
+
+  - id: 26310
+    title: "Ensure 'Turn on behavior monitoring' is set to 'Enabled'"
+    description: "This policy setting allows you to configure behavior monitoring for Microsoft Defender Antivirus. The recommended state for this setting is: Enabled. "
+    rationale: "When running an antivirus solution such as Microsoft Defender Antivirus, it is important to ensure that it is configured to heuristically monitor in real-time for suspicious and known malicious activity. "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\Policies\Administrative Templates\Windows Components\Microsoft Defender Antivirus\Real-Time Protection\Turn on behavior monitoring Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer).   "
+    compliance:
+      - cis: ["18.9.47.9.3"]
+      - cis_csc: ["10.7","8.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\Real-TimeProtection-> DisableBehaviorMonitoring -> 0'
+
+  - id: 26311
+    title: "Ensure 'Turn on script scanning' is set to 'Enabled'"
+    description: "This policy setting allows script scanning to be turned on/off. Script scanning intercepts scripts then scans them before they are executed on the system. The recommended state for this setting is: Enabled. "
+    rationale: "When running an antivirus solution such as Microsoft Defender Antivirus, it is important to ensure that it is configured to heuristically monitor in real-time for suspicious and known malicious activity. "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\Policies\Administrative Templates\Windows Components\Microsoft Defender Antivirus\Real-Time Protection\Turn on script scanning Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer).   "
+    compliance:
+      - cis: ["18.9.47.9.4"]
+      - cis_csc: ["9.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\Real-TimeProtection-> DisableScriptScanning -> 0'
+
+  - id: 26312
+    title: "Ensure 'Configure Watson events' is set to 'Disabled'"
+    description: "This policy setting allows you to configure whether or not Watson events are sent. The recommended state for this setting is: Disabled."
+    rationale: "Watson events are the reports that get sent to Microsoft when a program or service crashes or fails, including the possibility of automatic submission. Preventing this information from being sent can help reduce privacy concerns."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender Antivirus\\Reporting\\Configure Watson events. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.9.47.11.11"]
+      - cis_csc: ["13"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-33880-6'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Reporting -> DisableGenericRePorts -> 1'
+
+  - id: 26313
+    title: "Ensure 'Scan removable drives' is set to 'Enabled'"
+    description: "This policy setting allows you to manage whether or not to scan for malicious software and unwanted software in the contents of removable drives, such as USB flash drives, when running a full scan."
+    rationale: "It is important to ensure that any present removable drives are always included in any type of scan, as removable drives are more likely to contain malicious software brought in to the enterprise managed environment from an external, unmanaged computer."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender Antivirus\\Scan\\Scan removable drives"
+    compliance:
+      - cis: ["18.9.77.10.1"]
+      - cis_csc: ["13"]
+      - pci_dss: ["2.2.3"]
+      - nist_800_53: ["CM.1"]
+      - gpg_13: ["4.3"]
+      - gdpr_IV: ["35.7.d"]
+      - hipaa: ["164.312.b"]
+      - tsc: ["CC5.2"]
+    references:
+      - 'CCE-33888-9'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Scan -> DisableRemovableDriveScanning -> 0'
