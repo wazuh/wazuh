@@ -334,7 +334,8 @@ def test_DistributedAPI_local_request(mock_local_request):
                 assert e.dapi_errors == dapi.get_error_info(e)
 
             # Test the logger `error` method was called for both distribute_function calls
-            logger_error_mock.assert_has_calls([call(f"{cluster_exc.message}"), call(f"{cluster_exc.message}")])
+            logger_error_mock.assert_has_calls([call(f"{cluster_exc.message}", exc_info=False),
+                                                call(f"{cluster_exc.message}", exc_info=False)])
 
 
 @patch("asyncio.get_running_loop")
