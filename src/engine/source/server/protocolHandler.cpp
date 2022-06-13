@@ -29,6 +29,7 @@ enum IPVersion
     IPV6
 };
 
+constexpr int LOCATION_OFFSET = 2; // Given the "q:" prefix.
 constexpr char FIRST_FULL_LOCATION_CHAR {'['};
 
 bool ProtocolHandler::hasHeader()
@@ -40,7 +41,7 @@ bool ProtocolHandler::hasHeader()
         // TODO: make this safe
         memcpy(&m_pending, m_buff.data(), sizeof(int));
         // TODO: Max message size config option
-        if (m_pending > 1 << 20)
+        if ((1 << 20) < m_pending)
         {
             throw std::runtime_error("Invalid message. The size is probably wrong.");
         }
@@ -59,28 +60,8 @@ base::Event ProtocolHandler::parse(const string& event)
     doc->m_doc.SetObject();
     rapidjson::Document::AllocatorType& allocator = doc->getAllocator();
 
-    const auto firstColonIdx = event.find(":");
-    if (1 != firstColonIdx)
-    {
-        throw std::runtime_error("Invalid event format. A colon should be right after "
-                                 "the first character. Received Event: \""
-                                 + event + "\"");
-    }
-
-    try
-    {
-        const int queue {event[0]};
-        rapidjson::Value queueValue {queue};
-        doc->set("/original/queue", queueValue);
-    }
-    // std::out_of_range and std::invalid_argument
-    catch (...)
-    {
-        std::throw_with_nested(std::invalid_argument("Error parsing queue id."));
-    }
-
     /**
-     * There are two possible formats for the event:
+     * There are two possible formats of events:
      *
      * 1st:
      *  <Queue_ID>:[<Agent_ID>] (<Agent_Name>) <Registered_IP>-><Route>:<Log>
@@ -88,29 +69,55 @@ base::Event ProtocolHandler::parse(const string& event)
      * 2nd:
      *  <Queue_ID>:<Syslog_Client_IP>:<Log>
      *
-     * 2nd Format may be an IPv6 address, which contains ":", so special care has to be
+     *
+     * Notes:
+     *
+     *  - `Queue_ID` is always 1 byte long.
+     *
+     *  - `Syslog_Client_IP` and `Registered_IP` and can be either IPv4 or IPv6.
+     *
+     *  - 2nd Format may be an IPv6 address, which contains ":", so special care has to be
      * taken with this particular case.
      */
-    const bool isFullLocation = (FIRST_FULL_LOCATION_CHAR == event[firstColonIdx + 1]);
 
-    const auto secondColonIdx = event.find(":", firstColonIdx + 1);
+    if (':' != event[1])
+    {
+        throw std::runtime_error("Invalid event format. A colon should be right after "
+                                 "the first character. Received Event: \""
+                                 + event + "\"");
+    }
+
+    if (event.length() <= 4)
+    {
+        throw std::runtime_error(
+            "Invalid event format. Event is too short. Received Event: \"" + event
+            + "\"");
+    }
+
+    const int queue {event[0]};
+    rapidjson::Value queueValue {queue};
+    doc->set("/original/queue", queueValue);
+
+    const bool isFullLocation = (FIRST_FULL_LOCATION_CHAR == event[2]);
+
+    const auto secondColonIdx = event.find(":", 2);
 
     // Case: <Queue_ID>:[<Agent_ID>] (<Agent_Name>) <Registered_IP>-><Route>:<Log>
     //                  \                                                  /
     //                   \------------------- LOCATION -------------------/
     if (isFullLocation)
     {
-        int startIdx = firstColonIdx;
-        int endIdx = firstColonIdx + 1;
+        int startIdx = LOCATION_OFFSET;
+        int endIdx = LOCATION_OFFSET;
         try
         {
             // Agent_ID index is between '[' and ']'
-            startIdx += 1; // As the format goes like: ...:[<Agent_ID>....
+            // As the format goes like: ...:[<Agent_ID>....
             endIdx = event.find("]", startIdx);
             uint32_t valueSize = (endIdx - startIdx) - 1;
             const auto agentId = event.substr(startIdx + 1, valueSize).c_str();
             rapidjson::Value agentIdValue {agentId, valueSize, allocator};
-            doc->set("/agent/id", agentIdValue);
+            doc->set(EVENT_AGENT_ID, agentIdValue);
 
             // Agent_Name is between '(' and ')'
             startIdx = endIdx + 2; // As the format goes like: ...] (<Agent_Name>...
@@ -118,7 +125,7 @@ base::Event ProtocolHandler::parse(const string& event)
             valueSize = (endIdx - startIdx) - 1;
             const auto agentName = event.substr(startIdx + 1, valueSize).c_str();
             rapidjson::Value agentNameValue {agentName, valueSize, allocator};
-            doc->set("/agent/name", agentNameValue);
+            doc->set(EVENT_AGENT_NAME, agentNameValue);
 
             // Registered_IP is between ' ' (a space) and "->" (an arrow)
             startIdx = endIdx + 1; // As the format goes like: ...) <Registered_IP>...
@@ -127,12 +134,13 @@ base::Event ProtocolHandler::parse(const string& event)
             const auto registeredIP = event.substr(startIdx + 1, valueSize);
             rapidjson::Value registeredIPValue {
                 registeredIP.c_str(), valueSize, allocator};
-            doc->set("/agent/registeredIP", registeredIPValue);
+            doc->set(EVENT_REGISTERED_IP, registeredIPValue);
 
             // Route is between "->" (an arrow) and ':'
             startIdx = endIdx + 1; // As the format goes like: ...-><Route>...
             if (registeredIP.find(':') != std::string::npos)
             {
+                // IPv6 case
                 endIdx = event.find(":", endIdx + 2);
             }
             else
@@ -142,11 +150,14 @@ base::Event ProtocolHandler::parse(const string& event)
             valueSize = (endIdx - startIdx) - 1;
             const auto Route = event.substr(startIdx + 1, valueSize).c_str();
             rapidjson::Value RouteValue {Route, valueSize, allocator};
-            doc->set("/original/route", RouteValue);
+            doc->set(EVENT_ROUTE, RouteValue);
         }
-        catch (std::out_of_range& e)
+        catch (std::runtime_error& e)
         {
-            std::throw_with_nested(("Error parsing location using token sep :" + event));
+            const string msg = "An error occurred while parsing the location field of "
+                               "the event. Event received: \""
+                               + event + "\".";
+            std::throw_with_nested(msg);
         }
 
         msgStartIndex = endIdx + 1;
@@ -154,59 +165,64 @@ base::Event ProtocolHandler::parse(const string& event)
     // Case: <Queue_ID>:<Syslog_Client_IP>:<Log>
     else
     {
-        // It is assumed that the ip is an IPV6 unless a "." is found between the colons
-        auto ipVersion = IPVersion::IPV6;
-        for (int i = firstColonIdx + 1; secondColonIdx > i; i++)
-        {
-            if (event[i] == '.')
-            {
-                ipVersion = IPVersion::IPV4;
-                break;
-            }
-        }
+        // It is assumed that, if the ip is an IPv6, it is an EXTENDED IPv6. So, in the
+        // sixth position of the event there should be a colon (':'), as the event should
+        // have the following format: "q:XXXX:YYYY:ZZZZ:...".
+        //                               |   |
+        //                            idx=2 idx=6
+        const auto ipVersion = (':' == event[6]) ? IPVersion::IPV6 : IPVersion::IPV4;
 
         if (IPVersion::IPV6 == ipVersion)
         {
-            int endIdx = firstColonIdx + 1;
-            for (int colonCount = 0; 8 > colonCount; endIdx++)
+            // As using extended IPv6, the actual log should start at the 42th position.
+            // IPv6 Event:
+            // q:SSSS:TTTT:UUUU:VVVV:WWWW:XXXX:YYYY:ZZZZ:log...
+            //   |                                      |
+            // idx=2                                 idx=41
+            constexpr int LAST_COLON_INDEX = 41;
+
+            if (event.length() < LAST_COLON_INDEX)
             {
-                if (':' == event[endIdx])
-                {
-                    colonCount++;
-                }
-            }
-            --endIdx;
-            try
-            {
-                const auto locationLength = (endIdx - firstColonIdx) - 1;
-                const string ipv6 = event.substr(firstColonIdx + 1, locationLength);
-                rapidjson::Value ipValue {
-                    ipv6.c_str(), (uint32_t)ipv6.length(), allocator};
-                doc->set("/original/route", ipValue);
-            }
-            catch (std::out_of_range& e)
-            {
-                std::throw_with_nested(
-                    ("Error parsing location using token sep :" + event));
+                throw std::runtime_error(
+                    "Invalid event format. Event is too short. Received Event: \"" + event
+                    + "\"");
             }
 
-            msgStartIndex = endIdx + 1;
+            try
+            {
+                const auto locationLength = LAST_COLON_INDEX - LOCATION_OFFSET;
+                const string ipv6 = event.substr(LOCATION_OFFSET, locationLength);
+                rapidjson::Value ipValue {
+                    ipv6.c_str(), (uint32_t)ipv6.length(), allocator};
+                doc->set(EVENT_ROUTE, ipValue);
+            }
+            catch (std::runtime_error& e)
+            {
+                const string msg = "An error occurred while parsing the location field "
+                                   "of the event. Event received: \""
+                                   + event + "\".";
+                std::throw_with_nested(msg);
+            }
+
+            msgStartIndex = LAST_COLON_INDEX + 1;
         }
         // IPVersion::IPV4
         else
         {
             try
             {
-                const auto locationLength = secondColonIdx - firstColonIdx - 1;
-                const string ipv4 = event.substr(firstColonIdx + 1, locationLength);
+                const auto locationLength = secondColonIdx - LOCATION_OFFSET;
+                const string ipv4 = event.substr(LOCATION_OFFSET, locationLength);
                 rapidjson::Value ipValue {
                     ipv4.c_str(), (uint32_t)ipv4.length(), allocator};
-                doc->set("/original/route", ipValue);
+                doc->set(EVENT_ROUTE, ipValue);
             }
-            catch (std::out_of_range& e)
+            catch (std::runtime_error& e)
             {
-                std::throw_with_nested(
-                    ("Error parsing location using token sep :" + event));
+                const string msg = "An error occurred while parsing the location field "
+                                   "of the event. Event received: \""
+                                   + event + "\".";
+                std::throw_with_nested(msg);
             }
 
             msgStartIndex = secondColonIdx + 1;
@@ -218,11 +234,14 @@ base::Event ProtocolHandler::parse(const string& event)
         const string message = event.substr(msgStartIndex, string::npos);
         rapidjson::Value msg {
             message.c_str(), (rapidjson::SizeType)message.length(), allocator};
-        doc->set("/original/message", msg);
+        doc->set(EVENT_LOG, msg);
     }
-    catch (std::out_of_range& e)
+    catch (std::runtime_error& e)
     {
-        std::throw_with_nested(("Error parsing location using token sep :" + event));
+        const string msg = "An error occurred while parsing the location field of the "
+                           "event. Event received: \""
+                           + event + "\".";
+        std::throw_with_nested(msg);
     }
 
     // TODO Create event here
@@ -234,7 +253,7 @@ std::optional<vector<string>> ProtocolHandler::process(const char* data,
 {
     vector<string> events;
 
-    for (size_t i = 0; i < length; i++)
+    for (size_t i = 0; length > i; i++)
     {
         switch (m_stage)
         {
@@ -259,7 +278,7 @@ std::optional<vector<string>> ProtocolHandler::process(const char* data,
             case 1:
                 m_buff.push_back(data[i]);
                 m_pending--;
-                if (m_pending == 0)
+                if (0 == m_pending)
                 {
                     try
                     {
