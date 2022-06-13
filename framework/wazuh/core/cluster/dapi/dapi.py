@@ -299,6 +299,16 @@ class DistributedAPI:
 
             self.debug_log(f"Time calculating request result: {time.time() - before:.3f}s")
             return data
+        except exception.WazuhInternalError as e:
+            e.dapi_errors = self.get_error_info(e)
+            # Avoid exception info if it is an asyncio timeout error, JSONDecodeError, /proc availability error or
+            # WazuhClusterError
+            self.logger.error(f"{e.message}",
+                              exc_info=e.code not in {3021, 3036, 1913} and not isinstance(e,
+                                                                                           exception.WazuhClusterError))
+            if self.debug:
+                raise
+            return json.dumps(e, cls=c_common.WazuhJSONEncoder)
         except exception.WazuhClusterError as e:
             e.dapi_errors = self.get_error_info(e)
             self.logger.error(f"{e.message}")
@@ -307,13 +317,6 @@ class DistributedAPI:
             return json.dumps(e, cls=c_common.WazuhJSONEncoder)
         except (exception.WazuhError, exception.WazuhResourceNotFound) as e:
             e.dapi_errors = self.get_error_info(e)
-            if self.debug:
-                raise
-            return json.dumps(e, cls=c_common.WazuhJSONEncoder)
-        except exception.WazuhInternalError as e:
-            e.dapi_errors = self.get_error_info(e)
-            # Avoid exception info if it is an asyncio timeout error, JSONDecodeError or /proc availability error
-            self.logger.error(f"{e.message}", exc_info=e.code not in {3021, 3036, 1913})
             if self.debug:
                 raise
             return json.dumps(e, cls=c_common.WazuhJSONEncoder)
