@@ -180,20 +180,14 @@ class DistributedAPI:
                 raise
             self.logger.error(f"{e.message}")
             return e
-        except exception.WazuhClusterError as e:
-            e.dapi_errors = self.get_error_info(e)
-            if self.debug:
-                raise
-            self.logger.error(f"{e.message}")
-            return e
-        except exception.WazuhError as e:
-            e.dapi_errors = self.get_error_info(e)
-            return e
         except exception.WazuhInternalError as e:
             e.dapi_errors = self.get_error_info(e)
             if self.debug:
                 raise
-            self.logger.error(f"{e.message}", exc_info=True)
+            self.logger.error(f"{e.message}", exc_info=not isinstance(e, exception.WazuhClusterError))
+            return e
+        except exception.WazuhError as e:
+            e.dapi_errors = self.get_error_info(e)
             return e
         except Exception as e:
             if self.debug:
@@ -389,8 +383,8 @@ class DistributedAPI:
         result = {node: {'error': error_message}
                   }
 
-        # Give log path only in case of WazuhInternalError or WazuhClusterError
-        if isinstance(e, (exception.WazuhInternalError, exception.WazuhClusterError)):
+        # Give log path only in case of WazuhInternalError
+        if isinstance(e, exception.WazuhInternalError):
             log_filename = None
             for h in self.logger.handlers or self.logger.parent.handlers:
                 if hasattr(h, 'baseFilename'):

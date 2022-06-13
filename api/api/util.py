@@ -258,7 +258,7 @@ def _create_problem(exc: Exception, code=None):
                                     'dapi_errors': exc.dapi_errors if exc.dapi_errors != {} else None
                                     })
 
-    if isinstance(exc, (exception.WazuhInternalError, exception.WazuhClusterError)):
+    if isinstance(exc, exception.WazuhInternalError):
         raise ProblemException(status=500 if not code else code,
                                type=exc.type, title=exc.title, detail=exc.message, ext=ext)
     elif isinstance(exc, exception.WazuhPermissionError):
