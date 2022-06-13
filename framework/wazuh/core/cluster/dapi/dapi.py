@@ -309,12 +309,6 @@ class DistributedAPI:
             if self.debug:
                 raise
             return json.dumps(e, cls=c_common.WazuhJSONEncoder)
-        except exception.WazuhClusterError as e:
-            e.dapi_errors = self.get_error_info(e)
-            self.logger.error(f"{e.message}")
-            if self.debug:
-                raise
-            return json.dumps(e, cls=c_common.WazuhJSONEncoder)
         except (exception.WazuhError, exception.WazuhResourceNotFound) as e:
             e.dapi_errors = self.get_error_info(e)
             if self.debug:
