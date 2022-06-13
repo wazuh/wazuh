@@ -5,115 +5,123 @@
 
 using namespace engineserver;
 
+using std::string;
+
+constexpr char TEST_QUEUE_ID {0x01};
+constexpr char TEST_AGENT_ID[] {"404"};
+constexpr char TEST_AGENT_NAME[] {"testAgentName"};
+constexpr char TEST_AGENT_REGISTEREDIP_TXT[] {"testTxtIP"};
+constexpr char TEST_ORIGINAL_ROUTE[] {"/test/Route"};
+constexpr char TEST_IPV4[] {"1.205.0.44"};
+constexpr char TEST_EXTENDED_IPV6[] {"ABCD:EFG0:1234:5678:0009:00AB:00C6:0D7B"};
+constexpr char TEST_ORIGINAL_LOG[] {"Testing -> log : containing ([)] symbols."};
+
 TEST(protocolHandler, FormI)
 {
-    std::string event {"1:[678] (SomeAgentName) some_i_pi->/some/Route:Some testing -> "
-                       "random : log containing ([)] symbols."};
+    const string event {string {} + TEST_QUEUE_ID + ":[" + TEST_AGENT_ID + "] ("
+                        + TEST_AGENT_NAME + ") " + TEST_AGENT_REGISTEREDIP_TXT + "->"
+                        + TEST_ORIGINAL_ROUTE + ":" + TEST_ORIGINAL_LOG};
     auto e = ProtocolHandler::parse(event);
 
-    auto value = &e->getEvent()->get("/original/queue");
-    ASSERT_EQ(value->GetInt(), '1');
+    auto value = &e->getEvent()->get(EVENT_QUEUE_ID);
+    ASSERT_EQ(value->GetInt(), TEST_QUEUE_ID);
 
-    value = &e->getEvent()->get("/agent/id");
-    ASSERT_STREQ(value->GetString(), "678");
+    value = &e->getEvent()->get(EVENT_AGENT_ID);
+    ASSERT_STREQ(value->GetString(), TEST_AGENT_ID);
 
-    value = &e->getEvent()->get("/agent/name");
-    ASSERT_STREQ(value->GetString(), "SomeAgentName");
+    value = &e->getEvent()->get(EVENT_AGENT_NAME);
+    ASSERT_STREQ(value->GetString(), TEST_AGENT_NAME);
 
-    value = &e->getEvent()->get("/agent/registeredIP");
-    ASSERT_STREQ(value->GetString(), "some_i_pi");
+    value = &e->getEvent()->get(EVENT_REGISTERED_IP);
+    ASSERT_STREQ(value->GetString(), TEST_AGENT_REGISTEREDIP_TXT);
 
-    value = &e->getEvent()->get("/original/route");
-    ASSERT_STREQ(value->GetString(), "/some/Route");
+    value = &e->getEvent()->get(EVENT_ROUTE);
+    ASSERT_STREQ(value->GetString(), TEST_ORIGINAL_ROUTE);
 
-    value = &e->getEvent()->get("/original/message");
-    ASSERT_STREQ(value->GetString(),
-                 "Some testing -> random : log containing ([)] symbols.");
+    value = &e->getEvent()->get(EVENT_LOG);
+    ASSERT_STREQ(value->GetString(), TEST_ORIGINAL_LOG);
 }
 
 TEST(protocolHandler, FormII)
 {
-    std::string event {"a:[678] (SomeAgentName) 1.55.200.0->/some/Route:Some testing -> "
-                       "random : log containing ([)] symbols."};
+    const string event {string {} + TEST_QUEUE_ID + ":[" + TEST_AGENT_ID + "] ("
+                        + TEST_AGENT_NAME + ") " + TEST_IPV4 + "->" + TEST_ORIGINAL_ROUTE
+                        + ":" + TEST_ORIGINAL_LOG};
     auto e = ProtocolHandler::parse(event);
 
-    auto value = &e->getEvent()->get("/original/queue");
-    ASSERT_EQ(value->GetInt(), 'a');
+    auto value = &e->getEvent()->get(EVENT_QUEUE_ID);
+    ASSERT_EQ(value->GetInt(), TEST_QUEUE_ID);
 
-    value = &e->getEvent()->get("/agent/id");
-    ASSERT_STREQ(value->GetString(), "678");
+    value = &e->getEvent()->get(EVENT_AGENT_ID);
+    ASSERT_STREQ(value->GetString(), TEST_AGENT_ID);
 
-    value = &e->getEvent()->get("/agent/name");
-    ASSERT_STREQ(value->GetString(), "SomeAgentName");
+    value = &e->getEvent()->get(EVENT_AGENT_NAME);
+    ASSERT_STREQ(value->GetString(), TEST_AGENT_NAME);
 
-    value = &e->getEvent()->get("/agent/registeredIP");
-    ASSERT_STREQ(value->GetString(), "1.55.200.0");
+    value = &e->getEvent()->get(EVENT_REGISTERED_IP);
+    ASSERT_STREQ(value->GetString(), TEST_IPV4);
 
-    value = &e->getEvent()->get("/original/route");
-    ASSERT_STREQ(value->GetString(), "/some/Route");
+    value = &e->getEvent()->get(EVENT_ROUTE);
+    ASSERT_STREQ(value->GetString(), TEST_ORIGINAL_ROUTE);
 
-    value = &e->getEvent()->get("/original/message");
-    ASSERT_STREQ(value->GetString(),
-                 "Some testing -> random : log containing ([)] symbols.");
+    value = &e->getEvent()->get(EVENT_LOG);
+    ASSERT_STREQ(value->GetString(), TEST_ORIGINAL_LOG);
 }
 
 TEST(protocolHandler, FormIII)
 {
-    std::string event {"a:[678] (SomeAgentName) "
-                       "ABCD:EFG0:1234:5678:0009:00AB:00C6:0D7B->/some/Route:Some "
-                       "testing -> random : log containing ([)] symbols."};
+    const string event {string {} + TEST_QUEUE_ID + ":[" + TEST_AGENT_ID + "] ("
+                        + TEST_AGENT_NAME + ") " + TEST_EXTENDED_IPV6 + "->"
+                        + TEST_ORIGINAL_ROUTE + ":" + TEST_ORIGINAL_LOG};
     auto e = ProtocolHandler::parse(event);
 
-    auto value = &e->getEvent()->get("/original/queue");
-    ASSERT_EQ(value->GetInt(), 'a');
+    auto value = &e->getEvent()->get(EVENT_QUEUE_ID);
+    ASSERT_EQ(value->GetInt(), TEST_QUEUE_ID);
 
-    value = &e->getEvent()->get("/agent/id");
-    ASSERT_STREQ(value->GetString(), "678");
+    value = &e->getEvent()->get(EVENT_AGENT_ID);
+    ASSERT_STREQ(value->GetString(), TEST_AGENT_ID);
 
-    value = &e->getEvent()->get("/agent/name");
-    ASSERT_STREQ(value->GetString(), "SomeAgentName");
+    value = &e->getEvent()->get(EVENT_AGENT_NAME);
+    ASSERT_STREQ(value->GetString(), TEST_AGENT_NAME);
 
-    value = &e->getEvent()->get("/agent/registeredIP");
-    ASSERT_STREQ(value->GetString(), "ABCD:EFG0:1234:5678:0009:00AB:00C6:0D7B");
+    value = &e->getEvent()->get(EVENT_REGISTERED_IP);
+    ASSERT_STREQ(value->GetString(), TEST_EXTENDED_IPV6);
 
-    value = &e->getEvent()->get("/original/route");
-    ASSERT_STREQ(value->GetString(), "/some/Route");
+    value = &e->getEvent()->get(EVENT_ROUTE);
+    ASSERT_STREQ(value->GetString(), TEST_ORIGINAL_ROUTE);
 
-    value = &e->getEvent()->get("/original/message");
-    ASSERT_STREQ(value->GetString(),
-                 "Some testing -> random : log containing ([)] symbols.");
+    value = &e->getEvent()->get(EVENT_LOG);
+    ASSERT_STREQ(value->GetString(), TEST_ORIGINAL_LOG);
 }
 
 TEST(protocolHandler, FormIV)
 {
-    std::string event {
-        "a:1.255.0.44:Some testing -> random : log containing ([)] symbols."};
+    const string event {string {} + TEST_QUEUE_ID + ":" + TEST_IPV4 + ":"
+                        + TEST_ORIGINAL_LOG};
     auto e = ProtocolHandler::parse(event);
 
-    auto value = &e->getEvent()->get("/original/queue");
-    ASSERT_EQ(value->GetInt(), 'a');
+    auto value = &e->getEvent()->get(EVENT_QUEUE_ID);
+    ASSERT_EQ(value->GetInt(), TEST_QUEUE_ID);
 
-    value = &e->getEvent()->get("/original/route");
-    ASSERT_STREQ(value->GetString(), "1.255.0.44");
+    value = &e->getEvent()->get(EVENT_ROUTE);
+    ASSERT_STREQ(value->GetString(), TEST_IPV4);
 
-    value = &e->getEvent()->get("/original/message");
-    ASSERT_STREQ(value->GetString(),
-                 "Some testing -> random : log containing ([)] symbols.");
+    value = &e->getEvent()->get(EVENT_LOG);
+    ASSERT_STREQ(value->GetString(), TEST_ORIGINAL_LOG);
 }
 
 TEST(protocolHandler, FormV)
 {
-    std::string event {"a:ABCD:EFG0:1234:5678:0009:00AB:00C6:0D7B:Some testing -> random "
-                       ": log containing ([)] symbols."};
+    const string event {string {} + TEST_QUEUE_ID + ":" + TEST_EXTENDED_IPV6 + ":"
+                        + TEST_ORIGINAL_LOG};
     auto e = ProtocolHandler::parse(event);
 
-    auto value = &e->getEvent()->get("/original/queue");
-    ASSERT_EQ(value->GetInt(), 'a');
+    auto value = &e->getEvent()->get(EVENT_QUEUE_ID);
+    ASSERT_EQ(value->GetInt(), TEST_QUEUE_ID);
 
-    value = &e->getEvent()->get("/original/route");
-    ASSERT_STREQ(value->GetString(), "ABCD:EFG0:1234:5678:0009:00AB:00C6:0D7B");
+    value = &e->getEvent()->get(EVENT_ROUTE);
+    ASSERT_STREQ(value->GetString(), TEST_EXTENDED_IPV6);
 
-    value = &e->getEvent()->get("/original/message");
-    ASSERT_STREQ(value->GetString(),
-                 "Some testing -> random : log containing ([)] symbols.");
+    value = &e->getEvent()->get(EVENT_LOG);
+    ASSERT_STREQ(value->GetString(), TEST_ORIGINAL_LOG);
 }

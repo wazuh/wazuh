@@ -17,6 +17,13 @@
 namespace engineserver
 {
 
+constexpr char EVENT_AGENT_ID[] {"/agent/id"};
+constexpr char EVENT_AGENT_NAME[] {"/agent/name"};
+constexpr char EVENT_LOG[] {"/original/message"};
+constexpr char EVENT_QUEUE_ID[] {"/original/queue"};
+constexpr char EVENT_REGISTERED_IP[] {"/agent/registeredIP"};
+constexpr char EVENT_ROUTE[] {"/original/route"};
+
 /**
  * @brief A handler which knows how to parse messages from the network
  * data chunks and send them to a subscriber.
@@ -44,7 +51,7 @@ public:
      *
      * @return json::Document
      */
-    static base::Event parse(const std::string &event);
+    static base::Event parse(const std::string& event);
 
     /**
      * @brief process the chunk of data and send messages to dst when. Return
@@ -57,7 +64,7 @@ public:
      * @return true and vector of strings if no errors
      * @return false if errors in processing
      */
-    std::optional<std::vector<std::string>> process(const char *data,
+    std::optional<std::vector<std::string>> process(const char* data,
                                                     const size_t length);
 };
 
