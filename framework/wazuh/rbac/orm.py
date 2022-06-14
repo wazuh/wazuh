@@ -26,7 +26,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from api.configuration import security_conf
 from api.constants import SECURITY_PATH
-from wazuh.core.common import wazuh_uid, wazuh_gid
+from wazuh.core.common import wazuh_uid, wazuh_gid, DEFAULT_RBAC_RESOURCES
 from wazuh.core.utils import get_utc_now, safe_move
 from wazuh.rbac.utils import clear_cache
 
@@ -2554,10 +2554,8 @@ class DatabaseManager:
         database : str
             Name of the stored database.
         """
-        default_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'default')
-
         # Create default users if they don't exist yet
-        with open(os.path.join(default_path, "users.yaml"), 'r') as stream:
+        with open(os.path.join(DEFAULT_RBAC_RESOURCES, "users.yaml"), 'r') as stream:
             default_users = yaml.safe_load(stream)
 
             with AuthenticationManager(self.sessions[database]) as auth:
@@ -2567,14 +2565,14 @@ class DatabaseManager:
                                      allow_run_as=payload['allow_run_as'])
 
         # Create default roles if they don't exist yet
-        with open(os.path.join(default_path, "roles.yaml"), 'r') as stream:
+        with open(os.path.join(DEFAULT_RBAC_RESOURCES, "roles.yaml"), 'r') as stream:
             default_roles = yaml.safe_load(stream)
 
             with RolesManager(self.sessions[database]) as rm:
                 for d_role_name, payload in default_roles[next(iter(default_roles))].items():
                     rm.add_role(name=d_role_name, check_default=False)
 
-        with open(os.path.join(default_path, 'rules.yaml'), 'r') as stream:
+        with open(os.path.join(DEFAULT_RBAC_RESOURCES, 'rules.yaml'), 'r') as stream:
             default_rules = yaml.safe_load(stream)
 
             with RulesManager(self.sessions[database]) as rum:
@@ -2582,7 +2580,7 @@ class DatabaseManager:
                     rum.add_rule(name=d_rule_name, rule=payload['rule'], check_default=False)
 
         # Create default policies if they don't exist yet
-        with open(os.path.join(default_path, "policies.yaml"), 'r') as stream:
+        with open(os.path.join(DEFAULT_RBAC_RESOURCES, "policies.yaml"), 'r') as stream:
             default_policies = yaml.safe_load(stream)
 
             with PoliciesManager(self.sessions[database]) as pm:
@@ -2592,7 +2590,7 @@ class DatabaseManager:
                         pm.add_policy(name=policy_name, policy=policy, check_default=False)
 
         # Create the relationships
-        with open(os.path.join(default_path, "relationships.yaml"), 'r') as stream:
+        with open(os.path.join(DEFAULT_RBAC_RESOURCES, "relationships.yaml"), 'r') as stream:
             default_relationships = yaml.safe_load(stream)
 
             # User-Roles relationships
