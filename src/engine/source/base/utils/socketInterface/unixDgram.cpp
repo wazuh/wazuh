@@ -6,24 +6,24 @@
 
 namespace base::utils::socketInterface
 {
-sndRetval unixDgram::sendMsg(const std::string& msg)
+SendRetval unixDgram::sendMsg(const std::string& msg)
 {
-    auto result {sndRetval::SOCKET_ERROR};
+    auto result {SendRetval::SOCKET_ERROR};
     auto payloadSize {msg.size()};
 
     // Validate
     if (!this->isConnected())
     {
-        this->sConnect();
+        this->socketConnect();
     }
 
     if (0 >= payloadSize)
     {
-        result = sndRetval::SIZE_ZERO;
+        result = SendRetval::SIZE_ZERO;
     }
     else if (this->getMaxMsgSize() < payloadSize)
     {
-        result = sndRetval::SIZE_TOO_LONG;
+        result = SendRetval::SIZE_TOO_LONG;
     }
     else
     {
@@ -31,7 +31,7 @@ sndRetval unixDgram::sendMsg(const std::string& msg)
         const auto sent {send(this->getFD(), msg.data(), payloadSize, MSG_NOSIGNAL)};
         if (sent == payloadSize)
         {
-            result = sndRetval::SUCCESS;
+            result = SendRetval::SUCCESS;
         }
     }
 

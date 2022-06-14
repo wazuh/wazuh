@@ -59,7 +59,7 @@ public:
      *
      * @throw std::runtime_error if cannot connect to the wdb socket
      */
-    void connect() { m_socket.sConnect(); };
+    void connect() { m_socket.socketConnect(); };
 
     /**
      * @brief perform a query to the wdb socket
