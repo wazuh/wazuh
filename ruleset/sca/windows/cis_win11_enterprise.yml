@@ -5358,3 +5358,633 @@ checks:
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowCortana -> 0'
+
+  - id: 26338
+    title: "Ensure 'Allow Cortana above lock screen' is set to 'Disabled'"
+    description: "This policy setting determines whether or not the user can interact with Cortana using speech while the system is locked."
+    rationale: "Access to any computer resource should not be allowed when the device is locked."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Search\\Allow Cortana above lock screen"
+    compliance:
+      - cis: ["18.9.67.4"]
+      - cis_csc: ["16.5"]
+      - pci_dss: ["2.2.3"]
+      - nist_800_53: ["CM.1"]
+      - gpg_13: ["4.3"]
+      - gdpr_IV: ["35.7.d"]
+      - hipaa: ["164.312.b"]
+      - tsc: ["CC5.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowCortanaAboveLock -> 0'
+
+  - id: 26339
+    title: "Ensure 'Allow indexing of encrypted files' is set to 'Disabled'"
+    description: "This policy setting controls whether encrypted items are allowed to be indexed. When this setting is changed, the index is rebuilt completely. Full volume encryption (such as BitLocker Drive Encryption or a non-Microsoft solution) must be used for the location of the index to maintain security for encrypted files."
+    rationale: "Indexing and allowing users to search encrypted files could potentially reveal confidential data stored within the encrypted files."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Search\\Allow indexing of encrypted files"
+    compliance:
+      - cis: ["18.9.67.5"]
+      - cis_csc: ["13.1"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-35314-4'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowIndexingEncryptedStoresOrItems -> 0'
+
+  - id: 26340
+    title: "Ensure 'Allow search and Cortana to use location' is set to 'Disabled'"
+    description: "This policy setting specifies whether search and Cortana can provide location aware search and Cortana results."
+    rationale: "In an enterprise managed environment, allowing Cortana and Search to have access to location data is unnecessary. Organizations likely do not want this information shared out"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Search\\Allow search and Cortana to use location"
+    compliance:
+      - cis: ["18.9.67.6"]
+      - cis_csc: ["9.1", "9.2"]
+      - pci_dss: ["2.2.3"]
+      - nist_800_53: ["CM.1"]
+      - gpg_13: ["4.3"]
+      - gdpr_IV: ["35.7.d"]
+      - hipaa: ["164.312.b"]
+      - tsc: ["CC5.2"]
+    references:
+      - 'CCE-41372-4'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowSearchToUseLocation -> 0'
+
+  - id: 26341
+    title: "Ensure 'Turn off KMS Client Online AVS Validation' is set to 'Enabled'"
+    description: "The Key Management Service (KMS) is a Microsoft license activation method that entails setting up a local server to store the software licenses. The KMS server itself needs to connect to Microsoft to activate the KMS service, but subsequent on-network clients can activate Microsoft Windows OS and/or their Microsoft Office via the KMS server instead of connecting directly to Microsoft. This policy setting lets you opt-out of sending KMS client activation data to Microsoft automatically. The recommended state for this setting is: Enabled."
+    rationale: "Even though the KMS licensing method does not require KMS clients to connect to Microsoft, they still send KMS client activation state data to Microsoft automatically. Preventing this information from being sent can help reduce privacy concerns in high security environments."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Software Protection Platform\\Turn off KMS Client Online AVS Validation. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template AVSValidationGP.admx/adml that is included with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.9.72.1"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform -> NoGenTicket -> 1'
+
+  - id: 26342
+    title: "Ensure 'Disable all apps from Microsoft Store' is set to'Disabled' "
+    description: "This setting configures the launch of all apps from the Microsoft Store that came preinstalled or were downloaded. The recommended state for this setting is: Disabled. Note: This policy setting only applies to Windows 10 Enterprise and Windows 10 Education editions. Note #2: The name of this setting and the Enabled/Disabled values are incorrectly worded – logically, the title implies that configuring it to Enabled will disable all apps from the Microsoft Store, and configuring it to Disabled will enable all apps from the Microsoft Store. The opposite is true (and is consistent with the GPME help text). This is a logical wording mistake by Microsoft in the Administrative Template. "
+    rationale: "The Store service is a retail outlet built into Windows, primarily for consumer use. In an enterprise managed environment the IT department should be managing the installation of all applications to reduce the risk of the installation of vulnerable software.   "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\Policies\Administrative Templates\Windows Components\Store\Disable all apps from Microsoft Store Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsStore.admx/adml that is included with the Microsoft Windows 10 Release 1511 Administrative Templates (or newer). Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Disable all apps from Windows Store, but it was renamed starting with the Windows 10 Release 1803 Administrative Templates. "
+    compliance:
+      - cis: ["18.9.75.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore -> DisableStoreApps -> 1'
+
+  - id: 26343
+    title: "Ensure 'Only display the private store within the MicrosoftStore' is set to 'Enabled' "
+    description: "This policy setting denies access to the retail catalog in the Microsoft Store, but displays the private store. The recommended state for this setting is: Enabled. "
+    rationale: "Allowing the private store will allow an organization to control the apps that users have access to add to a system. This will help ensure that unapproved malicious apps are not running on a system. "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\Policies\Administrative Templates\Windows Components\Store\Only display the private store within the Microsoft Store Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsStore.admx/adml that is included with the Microsoft Windows 10 Release 1607 Administrative Templates (or newer). Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Only display the private store within the Windows Store app, but it was renamed starting with the Windows 10 Release 1803 Administrative Templates. "
+    compliance:
+      - cis: ["18.9.75.2"]
+      - cis_csc: ["9.2","2.5"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore -> RequirePrivateStoreOnly -> 1'
+
+  - id: 26344
+    title: "Ensure 'Turn off Automatic Download and Install of updates' is set to 'Disabled'"
+    description: "This setting enables or disables the automatic download and installation of Windows Store app updates."
+    rationale: "Keeping your system properly patched can help protect against 0 day vulnerabilities."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Store\\Turn off Automatic Download and Install of updates"
+    compliance:
+      - cis: ["18.9.75.3"]
+      - cis_csc: ["3.1", "3.4", "3.5", "4.5", "5.1"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1","CC6.7","CC7.2"]
+    references:
+      - 'CCE-35807-7'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore -> AutoDownload -> 4'
+
+  - id: 26345
+    title: "Ensure 'Turn off the offer to update to the latest version of Windows' is set to 'Enabled'"
+    description: "Enables or disables the Windows Store offer to update to the latest version of Windows."
+    rationale: "Unplanned OS upgrades can lead to more preventable support calls. The IT department should be managing and approving all upgrades and updates."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Store\\Turn off the offer to update to the latest version of Windows"
+    compliance:
+      - cis: ["18.9.75.4"]
+      - cis_csc: ["3.1", "3.4", "3.5", "4.5", "5.1"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1","CC6.7","CC7.2"]
+    references:
+      - 'CCE-35809-3'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore -> DisableOSUpgrade -> 1'
+
+  - id: 26346
+    title: "Ensure 'Turn off the Store application' is set to 'Enabled'"
+    description: "This setting denies or allows access to the Store application. The recommended state for this setting is: Enabled. Note: Per Microsoft TechNet and MSKB 3135657, this policy setting does not apply to any Windows 10 editions other than Enterprise and Education."
+    rationale: "Only applications approved by an IT department should be installed. Allowing users to install 3rd party applications can lead to missed patches and potential zero day vulnerabilities."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Store\\Turn off the Store application. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WinStoreUI.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates, or by the Group Policy template WindowsStore.admx/adml that is included with the Microsoft Windows 10 Release 1511 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.9.75.5"]
+      - cis_csc: ["2"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - https://docs.microsoft.com/en-us/windows/client-management/group-policies-for-enterprise-and-education-editions
+      - https://support.microsoft.com/en-us/help/3135657/can-t-disable-windows-store-in-windows-10-pro-through-group-policy
+      - 'CCE-35811-9'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore -> RemoveWindowsStore -> 1'
+
+  - id: 26347
+    title: "Ensure 'Allow widgets' is set to 'Disabled' "
+    description: "This policy setting specifies whether the widgets feature is allowed on the device. The widgets feature provides information such as, weather, news, sports, stocks, traffic, and entertainment (not an inclusive list). The recommended state for this setting is: Disabled. "
+    rationale: "Due to privacy concerns, apps and features such as widgets on the Windows taskbar should be treated as a possible security risk due to the potential of data being sent back to 3rd parties, such as Microsoft. "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\Policies\Administrative Templates\Windows Components\Widgets\Allow Widgets Note: This Group Policy path may not exist by default. It is provided by the Group Policy template NewsAndInterests.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer). "
+    compliance:
+      - cis: ["18.9.81.1"]
+      - cis_csc: ["9.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Dsh -> AllowNewsAndInterests -> 0'
+
+  - id: 26348
+    title: "Ensure 'Configure Windows Defender SmartScreen' is set to 'Enabled: Warn and prevent bypass'"
+    description: "This policy setting allows you to manage the behavior of Windows SmartScreen. Windows SmartScreen helps keep PCs safer by warning users before running unrecognized programs downloaded from the Internet. Some information is sent to Microsoft about files and programs run on PCs with this feature enabled."
+    rationale: "Windows SmartScreen helps keep PCs safer by warning users before running unrecognized programs downloaded from the Internet. However, due to the fact that some information is sent to Microsoft about files and programs run on PCs some organizations may prefer to disable it."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Warn and prevent bypass: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender SmartScreen\\Explorer\\Configure Windows Defender SmartScreen"
+    compliance:
+      - cis: ["18.9.85.1.1"]
+      - cis_csc: ["2"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+      - tsc: ["CC5.2"]
+    references:
+      - 'CCE-34026-5'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> EnableSmartScreen -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> ShellSmartScreenLevel -> Block'
+
+  - id: 26349
+    title: "Ensure 'Configure Windows Defender SmartScreen' is set to 'Enabled'"
+    description: "This setting lets you decide whether to turn on SmartScreen Filter. SmartScreen Filter provides warning messages to help protect your employees from potential phishing scams and malicious software."
+    rationale: "SmartScreen serves an important purpose as it helps to warn users of possible malicious sites and files. Allowing users to turn off this setting can make the browser become more vulnerable to compromise."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender SmartScreen\\Microsoft Edge\\Configure Windows Defender SmartScreen"
+    compliance:
+      - cis: ["18.9.85.2.1"]
+      - cis_csc: ["2"]
+      - pci_dss: ["2.2.3"]
+      - nist_800_53: ["CM.1"]
+      - gpg_13: ["4.3"]
+      - gdpr_IV: ["35.7.d"]
+      - hipaa: ["164.312.b"]
+      - tsc: ["CC5.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\PhishingFilter -> EnabledV9 -> 1'
+
+  - id: 26350
+    title: "Ensure 'Prevent bypassing Windows Defender SmartScreen prompts for files' is set to 'Enabled'"
+    description: "This setting lets you decide whether employees can override the SmartScreen Filter warnings about downloading unverified files."
+    rationale: "SmartScreen will warn an employee if a file is potentially malicious. Enabling this setting prevents these warnings from being bypassed."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: In the Windows 10 Release 1703 Administrative Templates the setting was in the following location: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender SmartScreen\\Microsoft Edge\\Prevent bypassing Windows Defender SmartScreen prompts for files In the Windows 10 Release 1709 Administrative Templates the setting was removed from the new location above and left in the old location: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Edge\\Prevent bypassing Windows Defender SmartScreen prompts for files"
+    compliance:
+      - cis: ["18.9.85.2.2"]
+      - cis_csc: ["7"]
+      - pci_dss: ["2.2.3"]
+      - nist_800_53: ["CM.1"]
+      - gpg_13: ["4.3"]
+      - gdpr_IV: ["35.7.d"]
+      - hipaa: ["164.312.b"]
+      - tsc: ["CC5.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\PhishingFilter -> PreventOverrideAppRepUnknown -> 1'
+
+  - id: 26351
+    title: "Ensure 'Enables or disables Windows Game Recording and Broadcasting' is set to 'Disabled'"
+    description: "This setting enables or disables the Windows Game Recording and Broadcasting features."
+    rationale: "If this setting is allowed users could record and broadcast session info to external sites which is a privacy concern."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Game Recording and Broadcasting\\Enables or disables Windows Game Recording and Broadcasting"
+    compliance:
+      - cis: ["18.9.82.1"]
+      - cis_csc: ["13"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\GameDVR -> AllowGameDVR -> 0'
+
+  - id: 26352
+    title: "Ensure 'Allow suggested apps in Windows Ink Workspace' is set to 'Disabled'"
+    description: "This policy setting determines whether suggested apps in Windows Ink Workspace are allowed. The recommended state for this setting is: Disabled."
+    rationale: "This Microsoft feature is designed to collect data and suggest apps based on that data collected. Disabling this setting will help ensure your data is not shared with any third party."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Ink Workspace\\Allow suggested apps in Windows Ink Workspace. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsInkWorkspace.admx/adml that is included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.9.89.1"]
+      - cis_csc: ["13"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace -> AllowSuggestedAppsInWindowsInkWorkspace -> 0'
+
+  - id: 26353
+    title: "Ensure 'Allow Windows Ink Workspace' is set to 'Enabled: On, but disallow access above lock' OR 'Disabled' but not 'Enabled: On'"
+    description: "This policy setting determines whether Windows Ink items are allowed above the lock screen."
+    rationale: "Allowing any apps to be accessed while system is locked is not recommended. If this feature is permitted, it should only be accessible once a user authenticates with the proper credentials."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: On, but disallow access above lock OR Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Ink Workspace\\Allow Windows Ink Workspace"
+    compliance:
+      - cis: ["18.9.89.2"]
+      - cis_csc: ["16.5"]
+      - pci_dss: ["8.6"]
+      - tsc: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsInkWorkspace -> AllowWindowsInkWorkspace -> r:^0$|^1$'
+
+  - id: 26354
+    title: "Ensure 'Allow user control over installs' is set to 'Disabled'"
+    description: "This setting controls whether users are permitted to change installation options that typically are available only to system administrators. The security features of Windows Installer normally prevent users from changing installation options that are typically reserved for system administrators, such as specifying the directory to which files are installed. If Windows Installer detects that an installation package has permitted the user to change a protected option, it stops the installation and displays a message. These security features operate only when the installation program is running in a privileged security context in which it has access to directories denied to the user."
+    rationale: "In an enterprise managed environment, only IT staff with administrative rights should be installing or changing software on a system. Allowing users the ability to have any control over installs can risk unapproved software from being installed or removed from a system, which could cause the system to become vulnerable to compromise."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Installer\\Allow user control over installs"
+    compliance:
+      - cis: ["18.9.90.1"]
+      - cis_csc: ["5.1"]
+      - pci_dss: ["7.1"]
+      - tsc: ["CC6.4"]
+    references:
+      - 'CCE-35431-6'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> EnableUserControl -> 0'
+
+  - id: 26354
+    title: "Ensure 'Always install with elevated privileges' is set to 'Disabled'"
+    description: "This setting controls whether or not Windows Installer should use system permissions when it installs any program on the system. Note: This setting appears both in the Computer Configuration and User Configuration folders. To make this setting effective, you must enable the setting in both folders. Caution: If enabled, skilled users can take advantage of the permissions this setting grants to change their privileges and gain permanent access to restricted files and folders. Note that the User Configuration version of this setting is not guaranteed to be secure."
+    rationale: "Users with limited privileges can exploit this feature by creating a Windows Installer installation package that creates a new local account that belongs to the local built-in Administrators group, adds their current account to the local built-in Administrators group, installs malicious software, or performs other unauthorized activities."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Installer\\Always install with elevated privileges"
+    compliance:
+      - cis: ["18.9.90.2"]
+      - cis_csc: ["5.1"]
+      - pci_dss: ["7.1"]
+      - tsc: ["CC6.4"]
+    references:
+      - 'CCE-35400-1'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> AlwaysInstallElevated -> 0'
+
+
+  - id: 26355
+    title: "Ensure 'Prevent Internet Explorer security prompt for Windows Installer scripts' is set to 'Disabled'"
+    description: "This policy setting controls whether Web-based programs are allowed to install software on the computer without notifying the user. The recommended state for this setting is: Disabled."
+    rationale: "Suppressing the system warning can pose a security risk and increase the attack surface on the system."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Installer\\Prevent Internet Explorer security prompt for Windows Installer scripts. Note: This Group Policy path is provided by the Group Policy template MSI.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Disable IE security prompt for Windows Installer scripts, but it was renamed starting with the Windows 8.0 & Server 2012 (non-R2) Administrative Templates."
+    compliance:
+      - cis: ["18.9.90.3"]
+      - cis_csc: ["7"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-35086-8'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> SafeForScripting -> 0'
+
+
+  - id: 26356
+    title: "Ensure 'Sign-in and lock last interactive user automatically after a restart' is set to 'Disabled'"
+    description: "This policy setting controls whether a device will automatically sign-in the last interactive user after Windows Update restarts the system."
+    rationale: "Disabling this feature will prevent the caching of user's credentials and unauthorized use of the device, and also ensure the user is aware of the restart."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Logon Options\\Sign-in last interactive user automatically after a system-initiated restart"
+    compliance:
+      - cis: ["18.9.91.1"]
+      - cis_csc: ["16.5"]
+      - pci_dss: ["8.6"]
+      - tsc: ["CC6.1"]
+    references:
+      - 'CCE-33891-3'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> DisableAutomaticRestartSignOn -> 1'
+
+  - id: 26357
+    title: "Ensure 'Turn on PowerShell Script Block Logging' is set to 'Disabled'"
+    description: "This policy setting enables logging of all PowerShell script input to the Microsoft-WindowsPowerShell/Operational event log."
+    rationale: "There are potential risks of capturing passwords in the PowerShell logs. This setting should only be needed for debugging purposes, and not in normal operation, it is important to ensure this is set to Disabled."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows PowerShell\\Turn on PowerShell Script Block Logging"
+    compliance:
+      - cis: ["18.9.100.1"]
+      - cis_csc: ["16.4"]
+      - pci_dss: ["12.3.8"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging -> EnableScriptBlockLogging -> 0'
+
+  - id: 26358
+    title: "Ensure 'Turn on PowerShell Transcription' is set to 'Disabled'"
+    description: "This Policy setting lets you capture the input and output of Windows PowerShell commands into text-based transcripts."
+    rationale: "If this setting is enabled there is a risk that passwords could get stored in plain text in the PowerShell_transcript output file."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows PowerShell\\Turn on PowerShell Transcription"
+    compliance:
+      - cis: ["18.9.100.2"]
+      - cis_csc: ["16.4"]
+      - pci_dss: ["12.3.8"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\Transcription -> EnableTranscripting -> 0'
+
+  - id: 26359
+    title: "Ensure 'Allow Basic authentication' is set to 'Disabled'"
+    description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) client uses Basic authentication."
+    rationale: "Basic authentication is less robust than other authentication methods available in WinRM because credentials including passwords are transmitted in plain text. An attacker who is able to capture packets on the network where WinRM is running may be able to determine the credentials used for accessing remote hosts via WinRM."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Remote Management (WinRM)\\WinRM Client\\Allow Basic authentication"
+    compliance:
+      - cis: ["18.9.102.1.1"]
+      - cis_csc: ["16.13", "16.5"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1","CC6.7","CC7.2"]
+    references:
+      - 'CCE-35258-3'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowBasic -> 0'
+
+  - id: 26360
+    title: "Ensure 'Allow unencrypted traffic' is set to 'Disabled'"
+    description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) client sends and receives unencrypted messages over the network."
+    rationale: "Encrypting WinRM network traffic reduces the risk of an attacker viewing or modifying WinRM messages as they transit the network."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Remote Management (WinRM)\\WinRM Client\\Allow unencrypted traffic"
+    compliance:
+      - cis: ["18.9.102.1.2"]
+      - cis_csc: ["16.5", "16.13"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1","CC6.7","CC7.2"]
+    references:
+      - 'CCE-34458-0'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowUnencryptedTraffic -> 0'
+
+  - id: 26361
+    title: "Ensure 'Disallow Digest authentication' is set to 'Enabled'"
+    description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) client will not use Digest authentication."
+    rationale: "Digest authentication is less robust than other authentication methods available in WinRM, an attacker who is able to capture packets on the network where WinRM is running may be able to determine the credentials used for accessing remote hosts via WinRM."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Remote Management (WinRM)\\WinRM Client\\Disallow Digest authentication"
+    compliance:
+      - cis: ["18.9.102.1.3"]
+      - cis_csc: ["16.5", "16.13"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1","CC6.7","CC7.2"]
+    references:
+      - 'CCE-34778-1'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowDigest -> 0'
+
+  - id: 26362
+    title: "Ensure 'Allow Basic authentication' is set to 'Disabled'"
+    description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) service accepts Basic authentication from a remote client."
+    rationale: "Basic authentication is less robust than other authentication methods available in WinRM because credentials including passwords are transmitted in plain text. An attacker who is able to capture packets on the network where WinRM is running may be able to determine the credentials used for accessing remote hosts via WinRM."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Remote Management (WinRM)\\WinRM Service\\Allow Basic authentication"
+    compliance:
+      - cis: ["18.9.102.2.1"]
+      - cis_csc: ["16.5", "16.13"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1","CC6.7","CC7.2"]
+    references:
+      - 'CCE-34779-9'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowBasic -> 0'
+
+  - id: 26363
+    title: "Ensure 'Allow remote server management through WinRM' is set to 'Disabled'"
+    description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) service automatically listens on the network for requests on the HTTP transport over the default HTTP port. The recommended state for this setting is: Disabled."
+    rationale: "Any feature is a potential avenue of attack, those that enable inbound network connections are particularly risky. Only enable the use of the Windows Remote Management (WinRM) service on trusted networks and when feasible employ additional controls such as IPsec."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Administrative Templates\\Windows Components\\Windows Remote Management (WinRM)\\WinRM Service\\Allow remote server management through WinRM. Note: This Group Policy path is provided by the Group Policy template WindowsRemoteManagement.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Allow automatic configuration of listeners, but it was renamed starting with the Windows 8.0 & Server 2012 (non-R2) Administrative Templates."
+    compliance:
+      - cis: ["18.9.102.2.2"]
+      - cis_csc: ["3.4", "4.5"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1","CC6.7","CC7.2"]
+    references:
+      - 'CCE-33146-2'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowAutoConfig -> 0'
+
+
+  - id: 26364
+    title: "Ensure 'Allow unencrypted traffic' is set to 'Disabled'"
+    description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) service automatically listens on the network for requests on the HTTP transport over the default HTTP port."
+    rationale: "Any feature is a potential avenue of attack, those that enable inbound network connections are particularly risky. Only enable the use of the Windows Remote Management (WinRM) service on trusted networks and when feasible employ additional controls such as IPsec."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Administrative Templates\\Windows Components\\Windows Remote Management (WinRM)\\WinRM Service\\Allow unencrypted traffic"
+    compliance:
+      - cis: ["18.9.102.2.3"]
+      - cis_csc: ["3.4"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1","CC6.7","CC7.2"]
+    references:
+      - 'CCE-35054-6'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowUnencryptedTraffic -> 0'
+
+  - id: 26365
+    title: "Ensure 'Disallow WinRM from storing RunAs credentials' is set to 'Enabled'"
+    description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) service sends and receives unencrypted messages over the network."
+    rationale: "Encrypting WinRM network traffic reduces the risk of an attacker viewing or modifying WinRM messages as they transit the network."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Remote Management (WinRM)\\WinRM Service\\Disallow WinRM from storing RunAs credentials"
+    compliance:
+      - cis: ["18.9.102.2.4"]
+      - cis_csc: ["16.5", "16.13"]
+      - pci_dss: ["12.3.8"]
+    references:
+      - 'CCE-35416-7'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> DisableRunAs -> 1'
+
+  - id: 26366
+    title: "Ensure 'Allow Remote Shell Access' is set to 'Disabled'"
+    description: "This policy setting allows you to manage configuration of remote access to all supported shells to execute scripts and commands. The recommended state for this setting is: Disabled. Note: The GPME help text for this setting is incorrectly worded, implying that configuring it to Enabled will reject new Remote Shell connections, and setting it to Disabled will allow Remote Shell connections. The opposite is true (and is consistent with the title of the setting). This is a wording mistake by Microsoft in the Administrative Template."
+    rationale: "Any feature is a potential avenue of attack, those that enable inbound network connections are particularly risky. Only enable the use of the Windows Remote Shell on trusted networks and when feasible employ additional controls such as IPsec."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Administrative Templates\\Windows Components\\Windows Remote Shell\\Allow Remote Shell Access. Note: This Group Policy path is provided by the Group Policy template WindowsRemoteShell.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
+    compliance:
+      - cis: ["18.9.103.1"]
+      - cis_csc: ["3.4", "4.5"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1","CC6.7","CC7.2"]
+    references:
+      - 'CCE-33740-2'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service\WinRS -> AllowRemoteShellAccess -> 0'
+
+  - id: 26367
+    title: "Ensure 'Allow clipboard sharing with Windows Sandbox' is set to 'Disabled'"
+    description: "This policy setting enables or disables clipboard sharing with the Windows sandbox. The recommended state for this setting is: Disabled. Note: The Windows Sandbox feature was first introduced in Windows 10 R1903, and allows a temporary "clean install" virtual instance of Windows to be run inside the host, for the ostensible purpose of testing applications without making changes to the host. "
+    rationale: "Disabling copy and paste decreases the attack surface exposed by the Windows Sandbox and possible exposure of untrusted applications to the internal network. "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\Policies\Administrative Templates\Windows Components\Windows Sandbox\Allow clipboard sharing with Windows Sandbox Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsSandbox.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer). "
+    compliance:
+      - cis: ["18.9.104.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Sandbox -> AllowClipboardRedirection -> 0'
+
+  - id: 26368
+    title: "Ensure 'Allow networking in Windows Sandbox' is set to'Disabled'"
+    description: "This policy setting enables or disables networking in the Windows Sandbox. Networking is achieved by creating a virtual switch on the host, and connecting the Windows Sandbox to it via a virtual Network Interface Card (NIC). The recommended state for this setting is: Disabled. Note: The Windows Sandbox feature was first introduced in Windows 10 R1903, and allows a temporary "clean install" virtual instance of Windows to be run inside the host, for the ostensible purpose of testing applications without making changes to the host. "
+    rationale: "Disabling network access decreases the attack surface exposed by the Windows Sandbox and exposure of untrusted applications to the internal network. Note: Per Microsoft, enabling networking in the Windows Sandbox can expose untrusted applications to the internal network. "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\Policies\Administrative Templates\Windows Components\Windows Sandbox\Allow networking in Windows Sandbox Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsSandbox.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer). "
+    compliance:
+      - cis: ["18.9.104.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Sandbox -> AllowNetworking -> 0'
+
+  - id: 26369
+    title: "Ensure 'Prevent users from modifying settings' is set to 'Enabled'"
+    description: "This policy setting prevent users from making changes to the Exploit protection settings area in the Windows Defender Security Center."
+    rationale: "Only authorized IT staff should be able to make changes to the exploit protection settings in order to ensure the organizations specific configuration is not modified."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender Security Center\\App and browser protection\\Prevent users from modifying settings"
+    compliance:
+      - cis: ["18.9.105.2.1"]
+      - cis_csc: ["8.4"]
+      - pci_dss: ["7.1"]
+      - tsc: ["CC6.4"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\App and Browser protection -> DisallowExploitProtectionOverride -> 1'
+
+  - id: 26370
+    title: "Ensure 'No auto-restart with logged on users for scheduled automatic updates installations' is set to 'Disabled'"
+    description: "This policy setting specifies that Automatic Updates will wait for computers to be restarted by the users who are logged on to them to complete a scheduled installation."
+    rationale: "Some security updates require that the computer be restarted to complete an installation. If the computer cannot restart automatically, then the most recent update will not completely install and no new updates will download to the computer until it is restarted. Without the auto-restart functionality, users who are not security-conscious may choose to indefinitely delay the restart, therefore keeping the computer in a less secure state."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\No auto-restart with logged on users for scheduled automatic updates installations"
+    compliance:
+      - cis: ["18.9.108.1.1"]
+      - cis_csc: ["3.4", "3.5", "4.5"]
+      - pci_dss: ["6.2"]
+      - nist_800_53: ["SI.2","SA.11","SI.4"]
+      - gpg_13: ["4.3"]
+      - gdpr_IV: ["35.7.d"]
+      - hipaa: ["164.312.b"]
+      - tsc: ["A1.2","CC6.8"]
+    references:
+      - 'CCE-33813-7'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> NoAutoRebootWithLoggedOnUsers -> 0'
+
+  - id: 26371
+    title: "Ensure 'Configure Automatic Updates' is set to 'Enabled'"
+    description: "This policy setting specifies whether computers in your environment will receive security updates from Windows Update or WSUS. If you configure this policy setting to Enabled, the operating system will recognize when a network connection is available and then use the network connection to search Windows Update or your designated intranet site for updates that apply to them. After you configure this policy setting to Enabled, select one of the following three options in the Configure Automatic Updates Properties dialog box to specify how the service will work:  2 - Notify for download and auto install (Notify before downloading any updates)  3 - Auto download and notify for install (Download the updates automatically and notify when they are ready to be installed.) (Default setting)  4 - Auto download and schedule the install (Automatically download updates and install them on the schedule specified below.))  5 - Allow local admin to choose setting (Leave decision on above choices up to the local Administrators (Not Recommended)) The recommended state for this setting is: Enabled. Note: The sub-setting "Configure automatic updating:" has 4 possible values – all of them are valid depending on specific organizational needs, however if feasible we suggest using a value of 4 - Auto download and schedule the install. This suggestion is not a scored requirement. Note #2: Organizations that utilize a 3rd-party solution for patching may choose to exempt themselves from this recommendation, and instead configure it to Disabled so that the native Windows Update mechanism does not interfere with the 3rd-party patching process.   "
+    rationale: "Although each version of Windows is thoroughly tested before release, it is possible that problems will be discovered after the products are shipped. The Configure Automatic Updates setting can help you ensure that the computers in your environment will always have the most recent critical operating system updates and service packs installed. "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\Policies\Administrative Templates\Windows Components\Windows Update\Manage end user experience\Configure Automatic Updates Note: This Group Policy path is provided by the Group Policy template WindowsUpdate.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. "
+    compliance:
+      - cis: ["18.9.108.2.1"]
+      - cis_csc: ["7.3","3.4"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> NoAutoUpdate -> 0'
+
+  - id: 26372
+    title: "Ensure 'Configure Automatic Updates: Scheduled install day' is set to '0 - Every day' "
+    description: "This policy setting specifies when computers in your environment will receive security updates from Windows Update or WSUS. The recommended state for this setting is: 0 - Every day. Note: This setting is only applicable if 4 - Auto download and schedule the install is selected in the recommendation 'Configure Automatic Updates'. It will have no impact if any other option is selected. "
+    rationale: "Although each version of Windows is thoroughly tested before release, it is possible that problems will be discovered after the products are shipped. The Configure Automatic Updates setting can help you ensure that the computers in your environment will always have the most recent critical operating system updates and service packs installed. "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to 0 - Every day: Computer Configuration\Policies\Administrative Templates\Windows Components\Windows Update\Manage end user experience\Configure Automatic Updates: Scheduled install day Note: This Group Policy path is provided by the Group Policy template WindowsUpdate.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. "
+    compliance:
+      - cis: ["18.9.108.2.2"]
+      - cis_csc: ["9.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> ScheduledInstallDay -> 0'
+
+  - id: 26373
+    title: "Ensure 'Remove access to Pause updates feature' is set to'Enabled' "
+    description: "This policy removes access to Pause updates feature. The recommended state for this setting is: Enabled. "
+    rationale: "In order to ensure security and system updates are applied, system administrators should control when updates are applied to systems. "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\Policies\Administrative Templates\Windows Components\Windows Update\Manage end user experience\Remove access to “Pause updates” feature Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsUpdate.admx/adml that is included with the Microsoft Windows 10 Release 1809 & Server 2019 Administrative Templates (or newer).   "
+    compliance:
+      - cis: ["18.9.108.2.3"]
+      - cis_csc: ["9.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> SetDisablePauseUXAccess -> 1'
+
+  - id: 26374
+    title: "Ensure 'Manage preview builds' is set to 'Disabled'"
+    description: "This policy setting manage which updates that are receive prior to the update being released."
+    rationale: "It can be risky for experimental features to be allowed in an enterprise managed environment because this can introduce bugs and security holes into systems, making it easier for an attacker to gain access. It is generally preferred to only use production-ready builds."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Disable preview builds: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\Windows Update for Business\\Manage preview builds"
+    compliance:
+      - cis: ["18.9.108.4.1"]
+      - cis_csc: ["3"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1","CC6.7","CC7.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> ManagePreviewBuildsPolicyValue -> 0'
+
+  - id: 26375
+    title: "Ensure 'Select when Preview Builds and Feature Updates are received' is set to 'Enabled: Semi-Annual Channel, 180 or more days'"
+    description: "This policy setting determines the level of Preview Build or Feature Updates to receive, and when. The Windows readiness level for each new Windows 10 Feature Update is classified in one of 5 categories, depending on your organizations level of comfort with receiving them: - Preview Build - Fast: Devices set to this level will be the first to receive new builds of Windows with features not yet available to the general public. Select Fast to participate in identifying and reporting issues to Microsoft, and provide suggestions on new functionality. - Preview Build - Slow: Devices set to this level receive new builds of Windows before they are available to the general public, but at a slower cadence than those set to Fast, and with changes and fixes identified in earlier builds. - Release Preview: Receive builds of Windows just before Microsoft releases them to the general public. - Semi-Annual Channel (Targeted): Receive feature updates when they are released to the general public. - Semi-Annual Channel: Feature updates will arrive when they are declared SemiAnnual Channel. This usually occurs about 4 months after Semi-Annual Channel (Targeted), indicating that Microsoft, Independent Software Vendors (ISVs), partners and customer believe that the release is ready for broad deployment."
+    rationale: "Forcing new features without prior testing in your environment could cause software incompatibilities as well as introducing new bugs into the operating system. In an enterprise managed environment, it is generally preferred to delay Feature Updates until thorough testing and a deployment plan is in place. This recommendation delays the automatic installation of new features as long as possible."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Semi-Annual Channel, 180 or more days: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\Windows Update for Business\\Select when Preview Builds and Feature Updates are received"
+    compliance:
+      - cis: ["18.9.108.4.2"]
+      - cis_csc: ["3"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1","CC6.7","CC7.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> DeferFeatureUpdates -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> DeferFeatureUpdatesPeriodInDays -> n:^(\d+) compare >= 180'
+
+  - id: 26376
+    title: "Ensure 'Select when Quality Updates are received' is set to 'Enabled: 0 days'"
+    description: "This settings controls when Quality Updates are received."
+    rationale: "Quality Updates can contain important bug fixes and/or security patches, and should be installed as soon as possible."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled:0 days: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\Windows Update for Business\\Select when Quality Updates are received"
+    compliance:
+      - cis: ["18.9.108.4.3"]
+      - cis_csc: ["3.4", "3.5", "4.5"]
+      - pci_dss: ["6.2"]
+      - nist_800_53: ["SI.2","SA.11","SI.4"]
+      - gpg_13: ["4.3"]
+      - gdpr_IV: ["35.7.d"]
+      - hipaa: ["164.312.b"]
+      - tsc: ["A1.2","CC6.8"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> DeferQualityUpdates -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> DeferQualityUpdatesPeriodInDays -> 0'
