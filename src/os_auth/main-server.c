@@ -108,7 +108,7 @@ char *__generatetmppass()
     os_md5 md3;
     os_md5 md4;
     char *fstring = NULL;
-    char str1[STR_SIZE +1];
+    char *str1 = NULL;
 
     rand1 = os_random();
     rand2 = os_random();
@@ -119,11 +119,41 @@ char *__generatetmppass()
     OS_MD5_Str(rand3, -1, md3);
     OS_MD5_Str(rand4, -1, md4);
 
-    os_snprintf(str1, STR_SIZE, "%d%d%s%d%s%s",(int)time(0), rand1, getuname(), rand2, md3, md4);
-    OS_MD5_Str(str1, -1, md1);
-    fstring = strdup(md1);
+    const int requested_size = snprintf(str1,
+                                        0,
+                                        "%d%d%s%d%s%s",
+                                        (int)time(0),
+                                        rand1,
+                                        getuname(),
+                                        rand2,
+                                        md3,
+                                        md4);
+
+    if (requested_size > 0) {
+        os_calloc(requested_size + 1, sizeof(char), str1);
+        const int requested_size_assignation = snprintf(str1,
+                                                        requested_size + 1,
+                                                        "%d%d%s%d%s%s",
+                                                        (int)time(0),
+                                                        rand1,
+                                                        getuname(),
+                                                        rand2,
+                                                        md3,
+                                                        md4);
+
+        if (requested_size_assignation > 0 && requested_size_assignation == requested_size) {
+            OS_MD5_Str(str1, -1, md1);
+            fstring = strdup(md1);
+        } else {
+            merror("Error generating random string for auth password.");
+        }
+    } else {
+        merror("Error requesting size of random string for auth password.");
+    }
+
     free(rand3);
     free(rand4);
+    os_free(str1);
     return(fstring);
 }
 
@@ -467,7 +497,11 @@ int main(int argc, char **argv)
             } else {
                 /* Getting temporary pass. */
                 authpass = __generatetmppass();
-                minfo("Accepting connections on port %hu. Random password chosen for agent authentication: %s", config.port, authpass);
+                if (authpass) {
+                    minfo("Accepting connections on port %hu. Random password chosen for agent authentication: %s", config.port, authpass);
+                } else {
+                    minfo("Accepting connections on port %hu. No password generated.", config.port);
+                }
             }
         } else {
             minfo("Accepting connections on port %hu. No password required.", config.port);
