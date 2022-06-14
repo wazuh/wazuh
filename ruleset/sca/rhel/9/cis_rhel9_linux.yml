@@ -131,7 +131,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - "c:findmnt --kernel /tmp -> r:,nodev,"
+      - "c:findmnt --kernel /tmp -> r:nodev"
 
   # 1.1.2.3 Ensure noexec option set on /tmp partition (Automated)
   - id: 28005
@@ -147,7 +147,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - "c:findmnt --kernel /tmp -> r:,noexec,"
+      - "c:findmnt --kernel /tmp -> r:noexec"
 
   # 1.1.2.4 Ensure nosuid option set on /tmp partition (Automated)
   - id: 28006
@@ -163,7 +163,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - "c:findmnt --kernel /tmp -> r:,nosuid,"
+      - "c:findmnt --kernel /tmp -> r:nosuid"
 
   ###############################################
   # 1.1.3 Configure /var
@@ -201,7 +201,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - "c:findmnt --kernel /var -> r:,nodev,"
+      - "c:findmnt --kernel /var -> r:nodev"
 
   # 1.1.3.3 Ensure noexec option set on /var partition (Automated)
   - id: 28009
@@ -217,7 +217,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - "c:findmnt --kernel /var -> r:,noexec,"
+      - "c:findmnt --kernel /var -> r:noexec"
 
   # 1.1.3.4 Ensure nosuid option set on /var partition (Automated)
   - id: 28010
@@ -233,7 +233,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - "c:findmnt --kernel /var -> r:,nosuid,"
+      - "c:findmnt --kernel /var -> r:nosuid"
 
   ###############################################
   # 1.1.4 Configure /var/tmp
@@ -272,7 +272,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - "c:findmnt --kernel /var/tmp -> r:,noexec,"
+      - "c:findmnt --kernel /var/tmp -> r:noexec"
 
   # 1.1.4.3 Ensure nosuid option set on /var/tmp partition (Automated)
   - id: 28013
@@ -288,7 +288,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - "c:findmnt --kernel /var/tmp -> r:,nosuid,"
+      - "c:findmnt --kernel /var/tmp -> r:nosuid"
 
   # 1.1.4.4 Ensure nodev option set on /var/tmp partition (Automated)
   - id: 28014
@@ -304,7 +304,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - "c:findmnt --kernel /var/tmp -> r:,nodev,"
+      - "c:findmnt --kernel /var/tmp -> r:nodev"
 
   ###############################################
   # 1.1.5 Configure /var/log
@@ -327,6 +327,128 @@ checks:
     condition: all
     rules:
       - 'c:findmnt --kernel /var/log -> r:^/var/log\s'
+
+  # 1.1.5.2 Ensure nodev option set on /var/log partition (Automated)
+  - id: 28016
+    title: "Ensure nodev option set on /var/log partition"
+    description: "The nodev mount option specifies that the filesystem cannot contain special devices."
+    rationale: "Since the /var/log filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /var/log."
+    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var/log partition. Example: Run the following command to remount /var/log with the configured options: # mount -o remount /var/log."
+    compliance:
+      - cis: ["1.1.5.2"]
+      - cis_csc: ["5.1"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+      - tsc: ["CC5.2"]
+    condition: all
+    rules:
+      - "c:findmnt --kernel /var/log -> r:nodev"
+
+  # 1.1.5.3 Ensure noexec option set on /var/log partition (Automated)
+  - id: 28017
+    title: "Ensure noexec option set on /var/log partition."
+    description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
+    rationale: "Since the /var/log filesystem is only intended for log files, set this option to ensure that users cannot run executable binaries from /var/log."
+    remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /var/log partition. Example: Run the following command to remount /var/log with the configured options: # mount -o remount /var/log"
+    compliance:
+      - cis: ["1.1.5.3"]
+      - cis_csc: ["5.1"]
+      - cis_csc: ["2"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+      - tsc: ["CC5.2"]
+    condition: all
+    rules:
+      - "c:findmnt --kernel /var/log -> r:noexec"
+
+  # 1.1.5.4 Ensure nosuid option set on /var/log partition (Automated)
+  - id: 28018
+    title: "Ensure nosuid option set on /var/log partition."
+    description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
+    rationale: "Since the /var/log filesystem is only intended for log files, set this option to ensure that users cannot create setuid files in /var/log."
+    remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var/log partition. Example: Run the following command to remount /var/log with the configured options: # mount -o remount /var/log"
+    compliance:
+      - cis: ["1.1.5.4"]
+      - cis_csc: ["5.1"]
+      - cis_csc: ["2"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+      - tsc: ["CC5.2"]
+    condition: all
+    rules:
+      - "c:findmnt --kernel /var/log -> r:nosuid"
+
+  ###############################################
+  # 1.1.6 Configure /var/log/audit
+  ###############################################
+
+  # 1.1.6.1 Ensure separate partition exists for /var/log/audit (Automated)
+  - id: 28019
+    title: "Ensure separate partition exists for /var/log/audit."
+    description: "The auditing daemon, auditd, stores log data in the /var/log/audit directory."
+    rationale: "The reasoning for mounting /var/log/audit on a separate partition is as follow. Protection from resource exhaustion The default installation only creates a single / partition. Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion. It will essentially have the whole disk available to fill up and impact the system as a whole. In addition, other operations on the system could fill up the disk unrelated to /var and cause unintended behavior across the system as the disk is full. See man auditd.conf for details. Fine grained control over the mount Configuring /var as its own file system allows an administrator to set additional mount options such as noexec/nosuid/nodev. These options limit an attacker’s ability to create exploits on the system. Other options allow for specific behavior. See man mount for exact details regarding filesystem-independent and filesystem-specific options. Protection from exploitation An example of exploiting /var may be an attacker establishing a hard-link to a system setuid program and wait for it to be updated. Once the program was updated, the hard- link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
+    remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log/audit. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
+    compliance:
+      - cis: ["1.1.6.1"]
+      - cis_csc: ["6.4"]
+      - pci_dss: ["2.2.4", "10.7"]
+      - nist_800_53: ["CM.1"]
+      - tsc: ["CC5.2"]
+    references:
+      - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
+    condition: all
+    rules:
+      - 'c:findmnt --kernel /var/log/audit -> r:^/var/log/audit\s'
+
+  # 1.1.6.2 Ensure noexec option set on /var/log/audit partition (Automated)
+  - id: 28020
+    title: "Ensure noexec option set on /var/log/audit partition"
+    description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
+    rationale: "Since the /var/log/audit filesystem is only intended for audit logs, set this option to ensure that users cannot run executable binaries from /var/log/audit."
+    remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /var partition. Example: Run the following command to remount /var/log/audit with the configured options: # mount -o remount /var/log/audit"
+    compliance:
+      - cis: ["1.1.6.2"]
+      - cis_csc: ["5.1"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+      - tsc: ["CC5.2"]
+    condition: all
+    rules:
+      - "c:findmnt --kernel /var/log/audit -> r:noexec"
+
+  # 1.1.6.3 Ensure nodev option set on /var/log/audit partition (Automated)
+  - id: 28021
+    title: "Ensure nodev option set on /var/log/audit partition."
+    description: "The nodev mount option specifies that the filesystem cannot contain special devices."
+    rationale: "Since the /var/log/audit filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /var/log/audit."
+    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var/log/audit partition. Example: Run the following command to remount /var/log/audit with the configured options: # mount -o remount /var/log/audit"
+    compliance:
+      - cis: ["1.1.6.3"]
+      - cis_csc: ["5.1"]
+      - cis_csc: ["2"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+      - tsc: ["CC5.2"]
+    condition: all
+    rules:
+      - "c:findmnt --kernel /var/log/audit -> r:nodev"
+
+  # 1.1.6.4 Ensure nosuid option set on /var/log/audit partition (Automated)
+  - id: 28022
+    title: "Ensure nosuid option set on /var/log/audit partition."
+    description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
+    rationale: "Since the /var/log/audit filesystem is only intended for variable files such as logs, set this option to ensure that users cannot create setuid files in /var/log/audit."
+    remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var/log/audit partition. Example: Run the following command to remount /var/log/audit with the configured options: # mount -o remount /var/log/audit"
+    compliance:
+      - cis: ["1.1.6.4"]
+      - cis_csc: ["5.1"]
+      - cis_csc: ["2"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+      - tsc: ["CC5.2"]
+    condition: all
+    rules:
+      - "c:findmnt --kernel /var/log/audit -> r:nosuid"
 
   # ghost line.
   #############################################
