@@ -97,6 +97,7 @@ checks:
       - cis: ["1.1.6"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SAM'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SAM -> RelaxMinimumPasswordLengthLimits -> 1'
 
   - id: 26006
@@ -163,6 +164,7 @@ checks:
       - 'CCE-36147-7'
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> NoConnectedUser -> 3'
 
   - id: 26011
@@ -250,6 +252,7 @@ checks:
       - 'CCE-35907-5'
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> CrashOnAuditFail -> 0'
 
   - id: 26017
@@ -266,6 +269,7 @@ checks:
       - 'CCE-37701-0'
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon'
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> AllocateDASD -> 0'
 
   - id: 26018
@@ -396,6 +400,7 @@ checks:
       - cis_csc: ["16.2","5.1"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> DisableCAD -> 0'
 
   - id: 26026
@@ -416,6 +421,7 @@ checks:
       - 'CCE-36056-0'
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> DontDisplayLastUserName -> 1'
 
   - id: 26027
@@ -428,6 +434,7 @@ checks:
       - cis_csc: ["16"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
       - 'not r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> MaxDevicePasswordFailedAttempts -> 0'
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> MaxDevicePasswordFailedAttempts -> n:^(\d+) compare <=30'
 
@@ -445,6 +452,7 @@ checks:
       - 'CCE-38235-8'
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
       - 'not r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> 0'
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> n:^(\d+) compare <= 900'
 
@@ -656,6 +664,7 @@ checks:
       - 'CCE-35299-7'
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters -> SMBServerNameHardeningLevel -> n:^(\d+) compare >= 1'
 
   - id: 26042
@@ -810,6 +819,7 @@ checks:
       - tsc: ["CC6.4"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> restrictremotesam -> r:O:BAG:BAD:\(A;;RC;;;BA\)'
 
   - id: 26052
@@ -826,6 +836,7 @@ checks:
       - 'CCE-34651-0'
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionShares -> \S+'
 
   - id: 26053
@@ -861,6 +872,7 @@ checks:
       - 'CCE-38341-4'
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> UseMachineId -> 1'
 
   # 2.3.11.2 Ensure 'Network security: Allow LocalSystem NULL session fallback' is set to 'Disabled'
@@ -899,6 +911,7 @@ checks:
       - 'CCE-38047-7'
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\pku2u'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\pku2u -> AllowOnlineID -> 0'
 
   # 2.3.11.4 Ensure 'Network Security: Configure encryption types allowed for Kerberos' is set to 'RC4_HMAC_MD5, AES128_HMAC_SHA1, AES256_HMAC_SHA1, Future encryption types'
@@ -971,6 +984,7 @@ checks:
       - 'CCE-36173-3'
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> LmCompatibilityLevel -> 5'
 
   # 2.3.11.8 Ensure 'Network security: LDAP client signing requirements' is set to 'Negotiate signing' or higher
@@ -1041,6 +1055,7 @@ checks:
       - cis_csc: ["16"]
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Cryptography'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Cryptography -> ForceKeyProtection -> n:(\d+) compare >= 0'
 
   # 2.3.15.1 Ensure 'System objects: Require case insensitivity for non-Windows subsystems' is set to 'Enabled'
@@ -1092,6 +1107,7 @@ checks:
       - 'CCE-36494-3'
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> FilterAdministratorToken -> 1'
 
   - id: 26068
@@ -1108,6 +1124,7 @@ checks:
       - 'CCE-37029-6'
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> ConsentPromptBehaviorAdmin -> r:^2$'
 
   - id: 26069
@@ -1124,6 +1141,7 @@ checks:
       - 'CCE-36864-7'
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> ConsentPromptBehaviorUser -> 0'
 
   - id: 26070
@@ -1263,8 +1281,9 @@ checks:
     compliance:
       - cis: ["5.6"]
       - cis_csc: ["9.2"]
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\IISADMIN'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\IISADMIN -> Start -> 4'
 
   - id: 26080
@@ -1275,8 +1294,9 @@ checks:
     compliance:
       - cis: ["5.7"]
       - cis_csc: ["9.2"]
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\irmon'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\irmon -> Start -> 4'
 
   - id: 26081
@@ -1311,8 +1331,9 @@ checks:
     compliance:
       - cis: ["5.10"]
       - cis_csc: ["9.2"]
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LxssManager'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LxssManager -> Start -> 4'
 
   - id: 26084
@@ -1323,8 +1344,9 @@ checks:
     compliance:
       - cis: ["5.11"]
       - cis_csc: ["9.2"]
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\FTPSVC'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\FTPSVC -> Start -> 4'
 
   - id: 26085
@@ -1347,8 +1369,9 @@ checks:
     compliance:
       - cis: ["5.13"]
       - cis_csc: ["9.2"]
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\sshd'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\sshd -> Start -> 4'
 
 
@@ -1528,8 +1551,9 @@ checks:
     compliance:
       - cis: ["5.28"]
       - cis_csc: ["9.2"]
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\simptcp'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\simptcp -> Start -> 4'
 
   - id: 26102
@@ -1540,8 +1564,9 @@ checks:
     compliance:
       - cis: ["5.29"]
       - cis_csc: ["9.2"]
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SNMP'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SNMP -> Start -> 4'
 
   - id: 26103
@@ -1552,8 +1577,9 @@ checks:
     compliance:
       - cis: ["5.30"]
       - cis_csc: ["9.2"]
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\sacsvr'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\sacsvr -> Start -> 4'
 
   - id: 26104
@@ -1581,15 +1607,16 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\upnphost -> Start -> 4'
 
   - id: 26106
-    title: "Ensure 'Web Management Service (WMSvc)' is set to 'Disabled' or 'NotInstalled' "
+    title: "Ensure 'Web Management Service (WMSvc)' is set to 'Disabled' or 'Not Installed' "
     description: "The Web Management Service enables remote and delegated management capabilities for  administrators to manage for the Web server, sites and applications present on the  machine. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but is installed  by enabling an optional Windows feature (Internet Information Services - Web Management  Tools - IIS Management Service). "
     rationale: "Remote web administration of IIS on a workstation is an increased security risk, as the  attack surface of that workstation is then greatly increased. If proper security mitigations  are not followed, the chance of successful attack increases significantly. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Web Management Service"
     compliance:
       - cis: ["5.33"]
       - cis_csc: ["9.2"]
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WMSvc'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WMSvc -> Start -> 4'
 
   - id: 26107
@@ -1624,8 +1651,9 @@ checks:
     compliance:
       - cis: ["5.36"]
       - cis_csc: ["9.2"]
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WMPNetworkSvc'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WMPNetworkSvc -> Start -> 4'
 
   - id: 26110
@@ -1684,8 +1712,9 @@ checks:
     compliance:
       - cis: ["5.41"]
       - cis_csc: ["9.2"]
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\W3SVC'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\W3SVC -> Start -> 4'
 
   - id: 26115
@@ -4895,7 +4924,7 @@ checks:
       - cis: ["18.9.47.6.1"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\MpEngine-> EnableFileHashComputation -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\MpEngine -> EnableFileHashComputation -> 1'
 
 
   - id: 26323
@@ -4908,7 +4937,7 @@ checks:
       - cis_csc: ["8.1"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\Real-TimeProtection-> DisableIOAVProtection -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\Real-TimeProtection -> DisableIOAVProtection -> 0'
 
   - id: 26324
     title: "Ensure 'Turn off real-time protection' is set to 'Disabled'"
@@ -4920,7 +4949,7 @@ checks:
       - cis_csc: ["8.1"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\Real-TimeProtection-> DisableRealtimeMonitoring -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\Real-TimeProtection -> DisableRealtimeMonitoring -> 0'
 
   - id: 26325
     title: "Ensure 'Turn on behavior monitoring' is set to 'Enabled'"
@@ -4932,7 +4961,7 @@ checks:
       - cis_csc: ["10.7","8.1"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\Real-TimeProtection-> DisableBehaviorMonitoring -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\Real-TimeProtection -> DisableBehaviorMonitoring -> 0'
 
   - id: 26326
     title: "Ensure 'Turn on script scanning' is set to 'Enabled'"
@@ -4944,7 +4973,7 @@ checks:
       - cis_csc: ["9.2"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\Real-TimeProtection-> DisableScriptScanning -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\Real-TimeProtection -> DisableScriptScanning -> 0'
 
   - id: 26327
     title: "Ensure 'Configure Watson events' is set to 'Disabled'"
