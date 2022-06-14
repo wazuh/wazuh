@@ -791,7 +791,7 @@ void test_read_default_configuration(void **state) {
     wm_github *module_data = (wm_github*)test->module->data;
     assert_int_equal(module_data->enabled, 1);
     assert_int_equal(module_data->interval, 60);
-    assert_int_equal(module_data->time_delay, 1);
+    assert_int_equal(module_data->time_delay, 30);
     assert_int_equal(module_data->only_future_events, 1);
     assert_string_equal(module_data->auth->org_name, "Wazuh");
     assert_string_equal(module_data->auth->api_token, "Wazuh_token");
