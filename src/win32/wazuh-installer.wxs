@@ -376,7 +376,7 @@
                             </Component>
                             <Component Id="SCA_WIN11" DiskId="1" Guid="A6B0FCA6-522F-4129-95B7-0FF9EB2EA908">
                                 <File Id="SCA_WIN11" Name="cis_win11_enterprise.yml" Source="..\..\ruleset\sca\windows\cis_win11_enterprise.yml" />
-                                <Condition>BUILDVERSION &gt; 21999</Condition>
+                                <Condition>MAJORVERSION = "#10" AND BUILDVERSION &gt; 21999 AND MsiNTProductType = 1</Condition>
                             </Component>
                             <Component Id="SCA_WIN2012R2" DiskId="1" Guid="6C7B21C9-2B01-4A6B-BAC5-782382D10FBB">
                                 <File Id="SCA_WIN2012R2" Name="cis_win2012r2.yml" Source="..\..\ruleset\sca\windows\cis_win2012r2.yml" />
