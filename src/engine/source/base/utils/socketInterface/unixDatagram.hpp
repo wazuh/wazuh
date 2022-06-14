@@ -18,7 +18,6 @@ constexpr auto MSG_MAX_SIZE {65536}; ///< Maximum message size (2^16)
  */
 int socketConnect(std::string_view path);
 
-
 /**
  * @brief Send a message to a stream socket, full message (MSG_WAITALL)
  *
@@ -35,5 +34,5 @@ int socketConnect(std::string_view path);
  */
 CommRetval sendMsg(const int sock, const std::string& msg);
 
-}
+} // namespace base::utils::socketInterface::unixDatagram
 #endif

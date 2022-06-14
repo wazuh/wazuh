@@ -9,7 +9,8 @@
 namespace wazuhdb
 {
 
-namespace SI = base::utils::socketInterface;
+using base::utils::socketInterface::RecoverableError;
+using base::utils::socketInterface::SendRetval;
 
 std::string WazuhDB::query(const std::string& query)
 {
@@ -28,12 +29,12 @@ std::string WazuhDB::query(const std::string& query)
 
     // Send the query (connect if not connected) ), throw runtime_error if cannot send
     const auto sendStatus = m_socket.sendMsg(query);
-    if (SI::sndRetval::SUCCESS == sendStatus)
+    if (SendRetval::SUCCESS == sendStatus)
     {
         // Receive the result, throw runtime_error if cannot receive
         result = m_socket.recvString();
     }
-    else if (SI::sndRetval::SOCKET_ERROR == sendStatus)
+    else if (SendRetval::SOCKET_ERROR == sendStatus)
     {
         const auto msgError = fmt::format ("wdb: sendMsg failed: {} ({})",
                                              strerror(errno), errno);
@@ -107,13 +108,13 @@ std::string WazuhDB::tryQuery(const std::string& query,
             result = this->query(query);
             break;
         }
-        catch (const SI::RecoverableError& e)
+        catch (const RecoverableError& e)
         {
             WAZUH_LOG_DEBUG("wdb: Query failed (attempt {}): {}", i, e.what());
             disconnectError = e.what();
             try
             {
-                this->m_socket.sConnect();
+                this->m_socket.socketConnect();
             }
             catch (const std::runtime_error& e)
             {

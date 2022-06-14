@@ -77,13 +77,13 @@ TEST(unixStreamSocket, SendLongMessageError)
     ASSERT_GT(acceptSocketFD, 0);
 
     // Connect client (This is not necessary)
-    clientSocket.sConnect();
+    clientSocket.socketConnect();
 
     // Force error
-    ASSERT_EQ(clientSocket.sendMsg(msg.data()), sndRetval::SIZE_TOO_LONG);
+    ASSERT_EQ(clientSocket.sendMsg(msg.data()), SendRetval::SIZE_TOO_LONG);
 
     close(acceptSocketFD);
-    clientSocket.sDisconnect();
+    clientSocket.socketDisconnect();
 
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
