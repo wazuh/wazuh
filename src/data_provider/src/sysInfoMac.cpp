@@ -240,22 +240,28 @@ nlohmann::json SysInfo::getProcessesInfo() const
 
 static bool isRunningOnRosetta()
 {
-    bool retVal {false};
-    int isTranslated{0};
-    size_t len{sizeof(isTranslated)};
-    const auto ret{sysctlbyname("sysctl.proc_translated", &isTranslated, &len, NULL, 0)};
 
-    if (ret)
+    /* Rosetta is a translation process that allows users to run
+     *  apps that contain x86_64 instructions on Apple silicon.
+     * The sysctl.proc_translated indicates if current process is being translated
+     *   from x86_64 to arm64 (1) or not (0).
+     * If sysctl.proc_translated flag cannot be found, the current process is
+     *  nativally running on x86_64.
+     * Ref: https://developer.apple.com/documentation/apple-silicon/about-the-rosetta-translation-environment
+    */
+    constexpr auto PROCESS_TRANSLATED {1};
+    auto retVal {false};
+    auto isTranslated{0};
+    auto len{sizeof(isTranslated)};
+    const auto result{sysctlbyname("sysctl.proc_translated", &isTranslated, &len, NULL, 0)};
+
+    if (result)
     {
-        if (errno == ENOENT)
-        {
-            retVal = false;
-        }
-        else
+        if (errno != ENOENT)
         {
             throw std::system_error
             {
-                ret,
+                result,
                 std::system_category(),
                 "Error reading rosetta status."
             };
@@ -263,7 +269,7 @@ static bool isRunningOnRosetta()
     }
     else
     {
-        retVal = 1 == isTranslated;
+        retVal = PROCESS_TRANSLATED == isTranslated;
     }
 
     return retVal;
