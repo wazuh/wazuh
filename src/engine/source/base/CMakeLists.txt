@@ -73,6 +73,8 @@ add_library(base STATIC
     utils/socketInterface/unixInterface.hpp
     utils/socketInterface/unixSecureStream.hpp
     utils/socketInterface/unixSecureStream.cpp
+    utils/socketInterface/unixDgram.cpp
+    utils/socketInterface/unixDgram.hpp
     utils/socketInterface/unixStream.cpp
     utils/socketInterface/unixStream.hpp
     utils/socketInterface/unixDatagram.cpp
