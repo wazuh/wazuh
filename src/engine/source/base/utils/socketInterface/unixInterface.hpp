@@ -11,20 +11,19 @@
 namespace base::utils::socketInterface
 {
 
+/**
+ * @brief Specifies the protocol used by the socket.
+ */
 enum class Protocol
 {
     STREAM,
     DATAGRAM,
 };
 
-/*
- enum class type {
-     client,
-     server,
- };
-*/
-
-enum class sndRetval
+/**
+ * @brief Send operation result codes.
+ */
+enum class SendRetval
 {
     SUCCESS,
     SIZE_ZERO,
@@ -32,6 +31,12 @@ enum class sndRetval
     SOCKET_ERROR,
 };
 
+/**
+ * @brief Exeption thrown when the socket is not connected but a reconnection is possible.
+ *
+ * E.g: The socket is closed remotely, the socket is full, broken pipe, connection reset,
+ * etc.
+ */
 class RecoverableError : public std::runtime_error
 {
 public:
@@ -41,17 +46,23 @@ public:
     }
 };
 
+/**
+ * @brief Base class to interface with both, stream and datagram, UNIX sockets.
+ *
+ * @note This class needs to be inherited by a class that implements the actual socket
+ * interface.
+ */
 class unixInterface
 {
 
 private:
-    int m_sock {-1};    ///< Socket file descriptor
-    std::string m_path; ///< Path to the socket
-    Protocol m_proto;   ///< Protocol type
-    int m_maxMsgSize;   ///< Maximum message size
+    int m_sock {-1};     ///< Socket file descriptor.
+    std::string m_path;  ///< Path to the socket.
+    Protocol m_protocol; ///< Protocol type.
+    int m_maxMsgSize;    ///< Maximum message size.
 
     /**
-     * @brief Set the Socket Size option
+     * @brief Set the Socket Size option.
      *
      * Set the SO_RCVBUF and SO_SNDBUF socket options.
      * @return false on success.
@@ -61,20 +72,20 @@ private:
 
 protected:
     /**
-     * @brief Get the Socket file descriptor
+     * @brief Get the Socket file descriptor.
      *
-     * @return socket file descriptor
+     * @return socket file descriptor.
      */
     const auto getFD() const noexcept { return m_sock; }
 
     /**
-     * @brief Construct a new unix Interface
+     * @brief Construct a new UNIX Interface.
      *
-     * @param path path to the socket
-     * @param proto protocol type
-     * @param maxMsgSize maximum message size
+     * @param path path to the socket.
+     * @param protocol protocol type.
+     * @param maxMsgSize maximum message size.
      */
-    unixInterface(std::string_view path, const Protocol proto, const int maxMsgSize);
+    unixInterface(std::string_view path, const Protocol protocol, const int maxMsgSize);
     virtual ~unixInterface();
 
 public:
@@ -85,7 +96,7 @@ public:
     unixInterface& operator=(const unixInterface&) = delete;
     unixInterface(unixInterface&& moved)
         : m_path(std::move(moved.m_path))
-        , m_proto(moved.m_proto)
+        , m_protocol(moved.m_protocol)
         , m_maxMsgSize(moved.m_maxMsgSize)
     {
         this->m_sock = std::exchange(moved.m_sock, -1);
@@ -95,7 +106,7 @@ public:
         if (this != &moved)
         {
             this->m_path = std::move(moved.m_path);
-            this->m_proto = moved.m_proto;
+            this->m_protocol = moved.m_protocol;
             this->m_maxMsgSize = moved.m_maxMsgSize;
             this->m_sock = std::exchange(moved.m_sock, -1);
         }
@@ -103,51 +114,43 @@ public:
     };
 
     /**
-     * @brief Get the Maximum message size
+     * @brief Get the Maximum message size.
      *
-     * @return maximum message size
+     * @return maximum message size.
      */
     const auto getMaxMsgSize() const noexcept { return m_maxMsgSize; }
 
     /**
-     * @brief Get the Path to the socket
+     * @brief Get the Path to the socket.
      *
-     * @return path to the socket
+     * @return path to the socket.
      */
     const auto& getPath() const noexcept { return m_path; }
 
     /**
-     * @brief Connect to the socket, reconnect if already connected
+     * @brief Connect to the socket, reconnect if already connected.
      *
-     * @throws std::runtime_error if the connection fails
+     * @throws std::runtime_error if the connection fails.
      */
-    void sConnect();
+    void socketConnect();
 
     /**
-     * @brief Disconnect from the socket, if connected
+     * @brief Disconnect from the socket, if connected.
      */
-    void sDisconnect();
+    void socketDisconnect();
 
     /**
-     * @brief Check if the socket is connected
+     * @brief Check if the socket is connected.
      *
-     * @return true if the socket is connected, false otherwise
+     * @return true if the socket is connected, false otherwise.
      */
     bool isConnected() const noexcept;
 
     /*
-     * The following methods should be implemented in the derived classes
+     * The following methods should be implemented in the derived classes.
      */
-
-    /**
-     * @brief Send a message to the socket. Connect if not connected.
-     *
-     * @param msg message to send.
-     * @throw std::runtime_error if the connection fails
-     */
-    virtual sndRetval sendMsg(const std::string& msg) = 0;
+    virtual SendRetval sendMsg(const std::string& msg) = 0;
     virtual std::vector<char> recvMsg() = 0;
-    // virtual std::string recvString() = 0;
 };
 
 } // namespace base::utils::socketInterface

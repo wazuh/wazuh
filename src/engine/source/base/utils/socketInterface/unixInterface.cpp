@@ -47,10 +47,10 @@ bool unixInterface::setSocketSize() const noexcept
 
 // Protect
 unixInterface::unixInterface(std::string_view path,
-                             const Protocol proto,
+                             const Protocol protocol,
                              const int maxMsgSize)
     : m_path(path)
-    , m_proto(proto)
+    , m_protocol(protocol)
     , m_maxMsgSize(maxMsgSize)
 {
     if (m_path.empty())
@@ -61,10 +61,10 @@ unixInterface::unixInterface(std::string_view path,
 // Public
 unixInterface::~unixInterface()
 {
-    sDisconnect();
+    socketDisconnect();
 }
 
-void unixInterface::sDisconnect()
+void unixInterface::socketDisconnect()
 {
     if (0 < m_sock)
     {
@@ -79,7 +79,7 @@ bool unixInterface::isConnected() const noexcept
     return (0 < m_sock);
 }
 
-void unixInterface::sConnect()
+void unixInterface::socketConnect()
 {
     /* Check reconexion */
     if (0 < m_sock)
@@ -99,7 +99,7 @@ void unixInterface::sConnect()
     strncpy(sAddr.sun_path, m_path.data(), sizeof(sAddr.sun_path) - 1);
 
     /* Create the socket */
-    const auto socketType = (m_proto == Protocol::STREAM) ? SOCK_STREAM : SOCK_DGRAM;
+    const auto socketType = (m_protocol == Protocol::STREAM) ? SOCK_STREAM : SOCK_DGRAM;
     m_sock = socket(PF_UNIX, socketType, 0);
     if (0 > m_sock)
     {
