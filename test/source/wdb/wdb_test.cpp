@@ -91,17 +91,19 @@ TEST(wdb_query, EmptyString)
 TEST(wdb_query, TooLongString)
 {
 
-    char msg[unixStream::MSG_MAX_SIZE + 2] {};
-
-    memset(msg, 'x', unixStream::MSG_MAX_SIZE + 1);
-
     auto wdb = WazuhDB();
+
+    std::vector<char> msg = {};
+    msg.resize(wdb.getQueryMaxSize() + 2);
+    std::fill(msg.begin(), msg.end() - 1, 'x');
+    msg.back() = '\0';
+
 
     // Disable warning logs for this test
     const auto logLevel = fmtlog::getLogLevel();
     fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Error));
 
-    ASSERT_STREQ(wdb.query(msg).c_str(), "");
+    ASSERT_STREQ(wdb.query(msg.data()).c_str(), "");
 
     fmtlog::setLogLevel(fmtlog::LogLevel(logLevel)); // Restore log level
 }
@@ -118,10 +120,10 @@ TEST(wdb_query, ConnectAndQuery)
     const int clientRemote = testAcceptConnection(serverSocketFD);
     ASSERT_GT(clientRemote, 0);
 
-    unixStream::sendMsg(clientRemote, TEST_RESPONSE);
+    base::utils::socketInterface::unixStream::sendMsg(clientRemote, TEST_RESPONSE);
 
     ASSERT_STREQ(wdb.query(TEST_MESSAGE).c_str(), TEST_RESPONSE);
-    ASSERT_STREQ(unixStream::recvString(clientRemote).c_str(), TEST_MESSAGE);
+    ASSERT_STREQ(base::utils::socketInterface::unixStream::recvString(clientRemote).c_str(), TEST_MESSAGE);
 
     close(clientRemote);
     close(serverSocketFD);
@@ -139,8 +141,8 @@ TEST(wdb_query, SendQueryWithoutConnect)
         [&]()
         {
             const int clientRemote = testAcceptConnection(serverSocketFD);
-            unixStream::recvString(clientRemote).c_str();
-            unixStream::sendMsg(clientRemote, TEST_RESPONSE);
+            base::utils::socketInterface::unixStream::recvString(clientRemote).c_str();
+            base::utils::socketInterface::unixStream::sendMsg(clientRemote, TEST_RESPONSE);
             close(clientRemote);
         });
 
@@ -165,7 +167,7 @@ TEST(wdb_query, SendQueryConexionClosed)
             close(clientRemote);
         });
 
-    ASSERT_THROW(wdb.query(TEST_MESSAGE), unixStream::RecoverableError);
+    ASSERT_THROW(wdb.query(TEST_MESSAGE), base::utils::socketInterface::RecoverableError);
     t.join();
 
     close(serverSocketFD);
@@ -185,8 +187,8 @@ TEST(wdb_tryQuery, SendQueryOK_firstAttemp)
         [&]()
         {
             const int clientRemote = testAcceptConnection(serverSocketFD);
-            unixStream::recvString(clientRemote).c_str();
-            unixStream::sendMsg(clientRemote, TEST_RESPONSE);
+            base::utils::socketInterface::unixStream::recvString(clientRemote).c_str();
+            base::utils::socketInterface::unixStream::sendMsg(clientRemote, TEST_RESPONSE);
             close(clientRemote);
         });
 
@@ -210,8 +212,8 @@ TEST(wdb_tryQuery, SendQueryOK_retry)
             const int clientRemote = testAcceptConnection(serverSocketFD);
             close(clientRemote);
             const int clientRemoteRetry = testAcceptConnection(serverSocketFD);
-            unixStream::recvString(clientRemoteRetry).c_str();
-            unixStream::sendMsg(clientRemoteRetry, TEST_RESPONSE);
+            base::utils::socketInterface::unixStream::recvString(clientRemoteRetry).c_str();
+            base::utils::socketInterface::unixStream::sendMsg(clientRemoteRetry, TEST_RESPONSE);
             close(clientRemoteRetry);
         });
 
@@ -396,8 +398,8 @@ TEST(wdb_tryQueryAndParseResult, SendQueryOK_firstAttemp_wopayload)
         [&]()
         {
             const int clientRemote = testAcceptConnection(serverSocketFD);
-            unixStream::recvString(clientRemote).c_str();
-            unixStream::sendMsg(clientRemote, "ok");
+            base::utils::socketInterface::unixStream::recvString(clientRemote).c_str();
+            base::utils::socketInterface::unixStream::sendMsg(clientRemote, "ok");
             close(clientRemote);
         });
 
@@ -424,8 +426,8 @@ TEST(wdb_tryQueryAndParseResult, SendQueryOK_retry_wpayload)
             const int clientRemote = testAcceptConnection(serverSocketFD);
             close(clientRemote);
             const int clientRemoteRetry = testAcceptConnection(serverSocketFD);
-            unixStream::recvString(clientRemoteRetry).c_str();
-            unixStream::sendMsg(clientRemoteRetry, "ok payload");
+            base::utils::socketInterface::unixStream::recvString(clientRemoteRetry).c_str();
+            base::utils::socketInterface::unixStream::sendMsg(clientRemoteRetry, "ok payload");
             close(clientRemoteRetry);
         });
 
