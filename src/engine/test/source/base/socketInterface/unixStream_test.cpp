@@ -7,16 +7,19 @@
 #include <gtest/gtest.h>
 
 #include <utils/socketInterface/unixStream.hpp>
+#include <utils/socketInterface/unixSecureStream.hpp>
 
 #include "testAuxiliar/socketAuxiliarFunctions.hpp"
 
 using namespace base::utils::socketInterface;
 
+// TODO move interface test to a separate file
 TEST(unixStreamSocket, ConnectError)
 {
     ASSERT_THROW(unixStream::socketConnect(TEST_STREAM_SOCK_PATH), std::runtime_error);
 }
 
+// TODO move interface tests to a separate file
 TEST(unixStreamSocket, Connect)
 {
     // Create server
@@ -33,6 +36,9 @@ TEST(unixStreamSocket, Connect)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
+// TODO Add test move semantics
+// TODO check reconnection
+// TODO CHeck disconnection
 TEST(unixStreamSocket, SendMessageError)
 {
     // Create server
@@ -54,24 +60,30 @@ TEST(unixStreamSocket, SendMessageError)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
+// TODO RENAME AND RE CHECK ALL TEST
+// TODO ADD DESCRIPTION - ESCENARIO to CHECK
 TEST(unixStreamSocket, SendLongMessageError)
 {
-    char msg[unixStream::MSG_MAX_SIZE + 2] = {};
-    memset(msg, 'x', unixStream::MSG_MAX_SIZE + 1);
+    unixSecureStream clientSocket(TEST_STREAM_SOCK_PATH);
+
+    std::vector<char> msg = {};
+    msg.resize(clientSocket.getMaxMsgSize() + 2);
+    std::fill(msg.begin(), msg.end() - 1, 'x');
+    msg.back() = '\0';
+
 
     // Create server
     const int acceptSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(acceptSocketFD, 0);
 
-    // Connect client
-    const int clientSocketFD = unixStream::socketConnect(TEST_STREAM_SOCK_PATH);
-    ASSERT_GT(clientSocketFD, 0);
+    // Connect client (This is not necessary)
+    clientSocket.sConnect();
 
     // Force error
-    ASSERT_EQ(unixStream::sendMsg(clientSocketFD, msg), CommRetval::SIZE_TOO_LONG);
+    ASSERT_EQ(clientSocket.sendMsg(msg.data()), sndRetval::SIZE_TOO_LONG);
 
     close(acceptSocketFD);
-    close(clientSocketFD);
+    clientSocket.sDisconnect();
 
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
