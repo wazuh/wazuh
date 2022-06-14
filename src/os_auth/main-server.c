@@ -109,6 +109,7 @@ char *__generatetmppass()
     os_md5 md4;
     char *fstring = NULL;
     char *str1 = NULL;
+    int time_value = (int)time(NULL);
 
     rand1 = os_random();
     rand2 = os_random();
@@ -119,10 +120,10 @@ char *__generatetmppass()
     OS_MD5_Str(rand3, -1, md3);
     OS_MD5_Str(rand4, -1, md4);
 
-    const int requested_size = snprintf(str1,
+    const int requested_size = snprintf(NULL,
                                         0,
                                         "%d%d%s%d%s%s",
-                                        (int)time(0),
+                                        time_value,
                                         rand1,
                                         getuname(),
                                         rand2,
@@ -134,7 +135,7 @@ char *__generatetmppass()
         const int requested_size_assignation = snprintf(str1,
                                                         requested_size + 1,
                                                         "%d%d%s%d%s%s",
-                                                        (int)time(0),
+                                                        time_value,
                                                         rand1,
                                                         getuname(),
                                                         rand2,
