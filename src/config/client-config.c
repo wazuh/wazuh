@@ -27,7 +27,6 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
 
     /* XML definitions */
     const char *xml_client_server = "server";
-    const char *xml_local_ip = "local_ip";
     const char *xml_ar_disabled = "disable-active-response";
     const char *xml_notify_time = "notify_time";
     const char *xml_max_time_reconnect_try = "time-reconnect";
@@ -55,17 +54,6 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
         } else if (!node[i]->content) {
             merror(XML_VALUENULL, node[i]->element);
             return (OS_INVALID);
-        }
-        /* Get local IP */
-        else if (strcmp(node[i]->element, xml_local_ip) == 0) {
-            os_strdup(node[i]->content, logr->lip);
-            if (OS_IsValidIP(logr->lip, NULL) != 1) {
-                merror(INVALID_IP, logr->lip);
-                return (OS_INVALID);
-            } else if (strchr(logr->lip, ':') != NULL) {
-                os_realloc(logr->lip, IPSIZE + 1, logr->lip);
-                OS_ExpandIPv6(logr->lip, IPSIZE);
-            }
         }
         /* Get server IP */
         else if (strcmp(node[i]->element, xml_client_ip) == 0) {
@@ -563,7 +551,6 @@ void Free_Client(agent * config){
             free(config->server);
         }
 
-        free(config->lip);
         free(config->profile);
         labels_free(config->labels);
     }
