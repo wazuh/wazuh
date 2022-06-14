@@ -1,11 +1,10 @@
 #ifndef _SOCKETINTERFACE_UNIX_H
 #define _SOCKETINTERFACE_UNIX_H
 
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
-#include <stdexcept>
-
 
 #include <unistd.h>
 
@@ -42,7 +41,6 @@ public:
     }
 };
 
-
 class unixInterface
 {
 
@@ -62,7 +60,6 @@ private:
     bool setSocketSize() const noexcept;
 
 protected:
-
     /**
      * @brief Get the Socket file descriptor
      *
@@ -112,7 +109,6 @@ public:
      */
     const auto getMaxMsgSize() const noexcept { return m_maxMsgSize; }
 
-
     /**
      * @brief Get the Path to the socket
      *
@@ -151,8 +147,7 @@ public:
      */
     virtual sndRetval sendMsg(const std::string& msg) = 0;
     virtual std::vector<char> recvMsg() = 0;
-    //virtual std::string recvString() = 0;
-
+    // virtual std::string recvString() = 0;
 };
 
 } // namespace base::utils::socketInterface
