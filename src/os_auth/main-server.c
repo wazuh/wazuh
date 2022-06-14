@@ -145,11 +145,7 @@ char *__generatetmppass()
         if (requested_size_assignation > 0 && requested_size_assignation == requested_size) {
             OS_MD5_Str(str1, -1, md1);
             fstring = strdup(md1);
-        } else {
-            merror("Error generating random string for auth password.");
         }
-    } else {
-        merror("Error requesting size of random string for auth password.");
     }
 
     free(rand3);
@@ -497,11 +493,10 @@ int main(int argc, char **argv)
                 minfo("Accepting connections on port %hu. Using password specified on file: %s", config.port, AUTHD_PASS);
             } else {
                 /* Getting temporary pass. */
-                authpass = __generatetmppass();
-                if (authpass) {
+                if (authpass = __generatetmppass(), authpass) {
                     minfo("Accepting connections on port %hu. Random password chosen for agent authentication: %s", config.port, authpass);
                 } else {
-                    minfo("Accepting connections on port %hu. No password generated.", config.port);
+                    merror_exit("Unable to generate random password. Exiting.");
                 }
             }
         } else {
