@@ -9,40 +9,7 @@
 namespace wazuhdb
 {
 
-namespace socketCommin = base::utils::socketInterface;
-namespace unixStreamSocket = base::utils::socketInterface::unixStream;
-
-WazuhDB::~WazuhDB()
-{
-    if (0 < this->m_fd)
-    {
-        WAZUH_LOG_DEBUG("Closing the wdb conexion...");
-        close(this->m_fd);
-    }
-};
-
-void WazuhDB::connect()
-{
-    if (std::filesystem::exists(m_path) == false)
-    {
-        const std::string msg {"The wdb socket does not exist:" + m_path.string()};
-        throw std::runtime_error(msg);
-    }
-    else if (std::filesystem::is_socket(m_path) == false)
-    {
-        const std::string msg {"The wdb socket path is not a socket:" + m_path.string()};
-        throw std::runtime_error(msg);
-    }
-
-    if (SOCKET_NOT_CONNECTED != this->m_fd)
-    {
-        WAZUH_LOG_INFO("Reconnecting to wdb socket.");
-        close(this->m_fd);
-        this->m_fd = SOCKET_NOT_CONNECTED;
-    }
-
-    this->m_fd = unixStreamSocket::socketConnect(m_path.c_str());
-};
+namespace SI = base::utils::socketInterface;
 
 std::string WazuhDB::query(const std::string& query)
 {
@@ -53,41 +20,31 @@ std::string WazuhDB::query(const std::string& query)
         WAZUH_LOG_WARN("wdb: The query to send is empty.");
         return {};
     }
-    else if (query.length() > unixStreamSocket::MSG_MAX_SIZE)
+    else if (query.length() > m_socket.getMaxMsgSize())
     {
         WAZUH_LOG_WARN("wdb: The query to send is too long: {}.", query.c_str());
         return {};
     }
 
-    // Check the connection
-    if (SOCKET_NOT_CONNECTED == this->m_fd)
-    {
-        WAZUH_LOG_DEBUG("Not connected to the wdb socket.. connecting");
-        // runtime_error if cannot connect
-        this->connect();
-    }
-
-    // Send the query, throw runtime_error if cannot send
-    const auto sendStatus = unixStreamSocket::sendMsg(this->m_fd, query);
-
-    if (socketCommin::CommRetval::SUCCESS == sendStatus)
+    // Send the query (connect if not connected) ), throw runtime_error if cannot send
+    const auto sendStatus = m_socket.sendMsg(query);
+    if (SI::sndRetval::SUCCESS == sendStatus)
     {
         // Receive the result, throw runtime_error if cannot receive
-        result = unixStreamSocket::recvString(this->m_fd);
+        result = m_socket.recvString();
     }
-    else if (socketCommin::CommRetval::SOCKET_ERROR == sendStatus)
+    else if (SI::sndRetval::SOCKET_ERROR == sendStatus)
     {
-        const auto msgError = std::string {"wdb: sendMsg failed: "} + std::strerror(errno)
-                              + " (" + std::to_string(errno) + ")";
+        const auto msgError = fmt::format ("wdb: sendMsg failed: {} ({})",
+                                             strerror(errno), errno);
         throw std::runtime_error(msgError);
     }
     else
     {
-        // INVALID_SOCKET, SIZE_ZERO, SIZE_TOO_LONG never reach here
+        // SIZE_ZERO, SIZE_TOO_LONG never reach here
         const auto logicErrorStr =
             "wdb: sendMsg reached a condition that should never happen: ";
-        throw std::logic_error(logicErrorStr
-                               + socketCommin::CommRetval2Str.at(sendStatus));
+        throw std::logic_error(logicErrorStr);
     }
 
     return result;
@@ -150,13 +107,13 @@ std::string WazuhDB::tryQuery(const std::string& query,
             result = this->query(query);
             break;
         }
-        catch (const unixStreamSocket::RecoverableError& e)
+        catch (const SI::RecoverableError& e)
         {
             WAZUH_LOG_DEBUG("wdb: Query failed (attempt {}): {}", i, e.what());
             disconnectError = e.what();
             try
             {
-                this->connect();
+                this->m_socket.sConnect();
             }
             catch (const std::runtime_error& e)
             {

@@ -3,9 +3,10 @@
 #define _WDB_H
 
 #include <filesystem>
-
 #include <map>
 #include <string>
+
+#include <utils/socketInterface/unixSecureStream.hpp>
 
 namespace wazuhdb
 {
@@ -40,8 +41,7 @@ class WazuhDB final
 {
 private:
     // State and configuration
-    const std::filesystem::path m_path; ///< WDB socket path
-    int m_fd {SOCKET_NOT_CONNECTED};    ///< File descriptor to the wdb socket
+    base::utils::socketInterface::unixSecureStream m_socket; ///< Socket to the wdb
 
 public:
     /** @brief Create a WazuhDB object from a path
@@ -49,19 +49,17 @@ public:
      * @param path Path to the wdb socket
      */
     WazuhDB(std::string_view strPath = WDB_PATH)
-        : m_path(strPath) {};
-
-    // TODO: Create move copy and assign operators
+        : m_socket(strPath) {};
 
     /** @brief Destructor */
-    ~WazuhDB();
+    ~WazuhDB() = default;
 
     /**
      * @brief Connect to the wdb socket
      *
      * @throw std::runtime_error if cannot connect to the wdb socket
      */
-    void connect();
+    void connect() { m_socket.sConnect(); };
 
     /**
      * @brief perform a query to the wdb socket
@@ -121,6 +119,8 @@ public:
     std::tuple<QueryResultCodes, std::optional<std::string>>
     tryQueryAndParseResult(const std::string& query,
                            const unsigned int attempts = 2) noexcept;
+
+    auto getQueryMaxSize() const noexcept { return this->m_socket.getMaxMsgSize(); };
 };
 } // namespace wazuhdb
 #endif
