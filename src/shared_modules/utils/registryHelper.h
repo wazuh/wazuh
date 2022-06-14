@@ -203,7 +203,7 @@ namespace Utils
 
             std::string keyModificationDate() const
             {
-                std::string ret { };
+                std::string ret;
                 FILETIME lastModificationTime { };
                 auto result
                 {
