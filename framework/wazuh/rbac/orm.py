@@ -20,7 +20,7 @@ from sqlalchemy import desc
 from sqlalchemy.dialects.sqlite import TEXT
 from sqlalchemy.exc import IntegrityError, InvalidRequestError, OperationalError
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship, backref
+from sqlalchemy.orm import backref, Session, sessionmaker, relationship
 from sqlalchemy.orm.exc import UnmappedInstanceError
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -331,13 +331,13 @@ class User(_Base):
         return {'id': self.id, 'username': self.username,
                 'roles': self._get_roles_id(), 'allow_run_as': self.allow_run_as}
 
-    def to_dict(self, session: sessionmaker = None) -> dict:
+    def to_dict(self, session: Session = None) -> dict:
         """Return the information of the user and its roles.
         TODO DUDA, porque URM????? TENEMOS GET_ROLES_ID, que se diferencia este del anterior?????
 
         Parameters
         ----------
-        session : sessionmaker
+        session : Session
             SQL Alchemy ORM session.
 
         Returns
@@ -410,12 +410,12 @@ class Roles(_Base):
         """
         return list(self.policies)
 
-    def to_dict(self, session: sessionmaker = None) -> dict:
+    def to_dict(self, session: Session = None) -> dict:
         """Return the information of the role and its users, policies and rules.
 
         Parameters
         ----------
-        session : sessionmaker
+        session : Session
             SQL Alchemy ORM session.
 
         Returns
@@ -543,12 +543,12 @@ class Policies(_Base):
         """
         return {'id': self.id, 'name': self.name, 'policy': json.loads(self.policy)}
 
-    def to_dict(self, session: sessionmaker = None) -> dict:
+    def to_dict(self, session: Session = None) -> dict:
         """Return the information of the policy and the roles containing it.
 
         Parameters
         ----------
-        session : sessionmaker
+        session : Session
             SQL Alchemy ORM session.
 
         Returns
@@ -567,12 +567,12 @@ class TokenManager:
     This class provides all the methods needed for the administration of the TokenBlacklist classes.
     """
 
-    def __init__(self, session: sessionmaker = None):
+    def __init__(self, session: Session = None):
         """Class constructor.
 
         Parameters
         ----------
-        session : sessionmaker
+        session : Session
             SQL Alchemy ORM session.
         """
         self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{DB_FILE}", echo=False))()
@@ -789,12 +789,12 @@ class AuthenticationManager:
     This class provides all the methods needed for the administration of the User objects.
     """
 
-    def __init__(self, session: sessionmaker = None):
+    def __init__(self, session: Session = None):
         """Class constructor.
 
         Parameters
         ----------
-        session : sessionmaker
+        session : Session
             SQL Alchemy ORM session.
         """
         self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{DB_FILE}", echo=False))()
@@ -1042,12 +1042,12 @@ class RolesManager:
     This class provides all the methods needed for the administration of the Roles objects.
     """
 
-    def __init__(self, session: sessionmaker = None):
+    def __init__(self, session: Session = None):
         """Class constructor.
 
         Parameters
         ----------
-        session : sessionmaker
+        session : Session
             SQL Alchemy ORM session.
         """
         self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{DB_FILE}", echo=False))()
@@ -1256,12 +1256,12 @@ class RulesManager:
     This class provides all the methods needed for the administration of the Rules objects.
     """
 
-    def __init__(self, session: sessionmaker = None):
+    def __init__(self, session: Session = None):
         """Class constructor.
 
         Parameters
         ----------
-        session : sessionmaker
+        session : Session
             SQL Alchemy ORM session.
         """
         self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{DB_FILE}", echo=False))()
@@ -1486,12 +1486,12 @@ class PoliciesManager:
     ACTION_REGEX = r'^[a-zA-Z_\-]+:[a-zA-Z_\-]+$'
     RESOURCE_REGEX = r'^[a-zA-Z_\-*]+:[\w_\-*]+:[\w_\-\/.*]+$'
 
-    def __init__(self, session: sessionmaker = None):
+    def __init__(self, session: Session = None):
         """Class constructor.
 
         Parameters
         ----------
-        session : sessionmaker
+        session : Session
             SQL Alchemy ORM session.
         """
         self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{DB_FILE}", echo=False))()
@@ -1750,12 +1750,12 @@ class UserRolesManager:
     This class provides all the methods needed for the administration of the UserRoles objects.
     """
 
-    def __init__(self, session: sessionmaker = None):
+    def __init__(self, session: Session = None):
         """Class constructor.
 
         Parameters
         ----------
-        session : sessionmaker
+        session : Session
             SQL Alchemy ORM session.
         """
         self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{DB_FILE}", echo=False))()
@@ -2806,7 +2806,7 @@ class DatabaseManager:
                                               rule_id=rum.get_rule_by_name(d_rule_name)['id'], force_admin=True)
 
     @staticmethod
-    def get_table(session: sessionmaker, table: callable):
+    def get_table(session: Session, table: callable):
         """Return the proper `Table` object depending on the database version.
 
         Parameters
