@@ -1,4 +1,4 @@
-#include "unixDgram.hpp"
+#include "unixDatagram.hpp"
 
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -6,7 +6,7 @@
 
 namespace base::utils::socketInterface
 {
-SendRetval unixDgram::sendMsg(const std::string& msg)
+SendRetval unixDatagram::sendMsg(const std::string& msg)
 {
     auto result {SendRetval::SOCKET_ERROR};
     auto payloadSize {msg.size()};
