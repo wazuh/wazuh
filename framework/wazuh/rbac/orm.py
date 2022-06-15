@@ -561,11 +561,10 @@ class Policies(_Base):
                     'roles': [role.id for role in rpm.get_all_roles_from_policy(policy_id=self.id)]}
 
 
-class TokenManager:
-    """
-    Manager of the TokenBlacklist classes.
-    This class provides all the methods needed for the administration of the TokenBlacklist classes.
-    """
+# Table Managers
+
+class RBACManager:
+    """Generic class used to manage the information from each table."""
 
     def __init__(self, session: Session = None):
         """Class constructor.
@@ -582,6 +581,12 @@ class TokenManager:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.session.close()
+
+
+class TokenManager(RBACManager):
+    """Manager of the TokenBlacklist class.
+    This class provides all the methods needed for the administration of the TokenBlacklist objects.
+    """
 
     def is_token_valid(self, token_nbf_time: int, user_id: int = None, role_id: int = None,
                        run_as: bool = False) -> bool:
@@ -783,27 +788,10 @@ class TokenManager:
             return False
 
 
-class AuthenticationManager:
-    """
-    Manager of the User class.
+class AuthenticationManager(RBACManager):
+    """Manager of the User class.
     This class provides all the methods needed for the administration of the User objects.
     """
-
-    def __init__(self, session: Session = None):
-        """Class constructor.
-
-        Parameters
-        ----------
-        session : Session
-            SQL Alchemy ORM session.
-        """
-        self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{DB_FILE}", echo=False))()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.session.close()
 
     def edit_run_as(self, user_id: int, allow_run_as: bool) -> Union[bool, int]:
         """Change the specified user's allow_run_as flag.
@@ -1036,27 +1024,10 @@ class AuthenticationManager:
         return user_ids
 
 
-class RolesManager:
-    """
-    Manager of the Roles class.
+class RolesManager(RBACManager):
+    """Manager of the Roles class.
     This class provides all the methods needed for the administration of the Roles objects.
     """
-
-    def __init__(self, session: Session = None):
-        """Class constructor.
-
-        Parameters
-        ----------
-        session : Session
-            SQL Alchemy ORM session.
-        """
-        self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{DB_FILE}", echo=False))()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.session.close()
 
     def get_role(self, name: str) -> Union[dict, int]:
         """Get the information about a role given its name.
@@ -1250,27 +1221,10 @@ class RolesManager:
             return SecurityError.ALREADY_EXIST
 
 
-class RulesManager:
-    """
-    Manager of the Rules class.
+class RulesManager(RBACManager):
+    """Manager of the Rules class.
     This class provides all the methods needed for the administration of the Rules objects.
     """
-
-    def __init__(self, session: Session = None):
-        """Class constructor.
-
-        Parameters
-        ----------
-        session : Session
-            SQL Alchemy ORM session.
-        """
-        self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{DB_FILE}", echo=False))()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.session.close()
 
     def get_rule(self, rule_id: int) -> Union[dict, int]:
         """Get the information about a rule given its ID.
@@ -1477,30 +1431,13 @@ class RulesManager:
             return SecurityError.ALREADY_EXIST
 
 
-class PoliciesManager:
-    """
-    Manager of the Policies class.
+class PoliciesManager(RBACManager):
+    """Manager of the Policies class.
     This class provides all the methods needed for the administration of the Policies objects.
     """
 
     ACTION_REGEX = r'^[a-zA-Z_\-]+:[a-zA-Z_\-]+$'
     RESOURCE_REGEX = r'^[a-zA-Z_\-*]+:[\w_\-*]+:[\w_\-\/.*]+$'
-
-    def __init__(self, session: Session = None):
-        """Class constructor.
-
-        Parameters
-        ----------
-        session : Session
-            SQL Alchemy ORM session.
-        """
-        self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{DB_FILE}", echo=False))()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.session.close()
 
     def get_policy(self, name: str) -> Union[dict, int]:
         """Get the information about a policy given its name.
@@ -1744,27 +1681,10 @@ class PoliciesManager:
             return SecurityError.ALREADY_EXIST
 
 
-class UserRolesManager:
-    """
-    Manager of the UserRoles class.
+class UserRolesManager(RBACManager):
+    """Manager of the UserRoles class.
     This class provides all the methods needed for the administration of the UserRoles objects.
     """
-
-    def __init__(self, session: Session = None):
-        """Class constructor.
-
-        Parameters
-        ----------
-        session : Session
-            SQL Alchemy ORM session.
-        """
-        self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{DB_FILE}", echo=False))()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.session.close()
 
     def add_role_to_user(self, user_id: int, role_id: int, position: int = None, created_at: datetime = None,
                          force_admin: bool = False, atomic: bool = True) -> Union[bool, int]:
@@ -2089,20 +2009,10 @@ class UserRolesManager:
         return False
 
 
-class RolesPoliciesManager:
+class RolesPoliciesManager(RBACManager):
+    """Manager of the RolesPolicies class.
+    This class provides all the methods needed for the administration of the RolesPolicies objects.
     """
-    This class is the manager of the relationship between the roles and the policies, this class provided
-    all the methods needed for the roles-policies administration.
-    """
-
-    def __init__(self, session=None):
-        self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{DB_FILE}", echo=False))()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.session.close()
 
     def add_policy_to_role(self, role_id: int, policy_id: int, position: int = None, created_at: datetime = None,
                            force_admin: bool = False, atomic: bool = True) -> Union[bool, int]:
@@ -2426,20 +2336,10 @@ class RolesPoliciesManager:
         return False
 
 
-class RolesRulesManager:
+class RolesRulesManager(RBACManager):
+    """Manager of the RolesRules class.
+    This class provides all the methods needed for the administration of the RolesRules objects.
     """
-    This class is the manager of the relationships between the roles and the rules. This class provides
-    all the methods needed for the roles-rules administration.
-    """
-
-    def __init__(self, session=None):
-        self.session = session or sessionmaker(bind=create_engine(f"sqlite:///{DB_FILE}", echo=False))()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.session.close()
 
     def add_rule_to_role(self, rule_id: int, role_id: int, created_at: datetime = None, atomic: bool = True,
                          force_admin: bool = False) -> Union[bool, int]:
