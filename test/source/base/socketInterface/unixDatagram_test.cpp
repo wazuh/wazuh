@@ -1,12 +1,8 @@
-#include <iostream>
-
 #include <gtest/gtest.h>
-
-// #include <utils/socketInterface/unixDatagram.hpp>
+#include <iostream>
+#include <sys/un.h>
 
 #include "testAuxiliar/socketAuxiliarFunctions.hpp"
-
-// using namespace base::utils::socketInterface;
 
 TEST(unixDatagramSocket, ConnectErrorWrongPath)
 {
@@ -34,10 +30,8 @@ TEST(unixDatagramSocket, Connect)
 
 TEST(unixDatagramSocket, SendInvalidSocketError)
 {
-    ASSERT_EQ(testSendMsg(0, TEST_SEND_MESSAGE.data()),
-              CommRetval::INVALID_SOCKET);
-    ASSERT_EQ(testSendMsg(-5, TEST_SEND_MESSAGE.data()),
-              CommRetval::INVALID_SOCKET);
+    ASSERT_EQ(testSendMsg(0, TEST_SEND_MESSAGE.data()), CommRetval::INVALID_SOCKET);
+    ASSERT_EQ(testSendMsg(-5, TEST_SEND_MESSAGE.data()), CommRetval::INVALID_SOCKET);
 }
 
 TEST(unixDatagramSocket, SendWrongSocketFDError)
