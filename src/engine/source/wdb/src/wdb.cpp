@@ -4,7 +4,6 @@
 #include <unistd.h>
 
 #include <logging/logging.hpp>
-#include <utils/socketInterface/unixStream.hpp>
 
 namespace wazuhdb
 {
