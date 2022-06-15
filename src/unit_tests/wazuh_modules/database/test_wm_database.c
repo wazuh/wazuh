@@ -23,6 +23,7 @@
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_db/wdb_global_helpers_wrappers.h"
+#include "../../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 #include "../../wrappers/libc/stdio_wrappers.h"
 #include "../../wrappers/libc/string_wrappers.h"
 #include "../../wrappers/posix/dirent_wrappers.h"
@@ -33,14 +34,12 @@
 extern int test_mode;
 extern int is_worker;
 
-int setup_wmdb(void **state)
-{
+int setup_wmdb(void **state) {
     test_mode = 1;
     return OS_SUCCESS;
 }
 
-int teardown_wmdb(void **state)
-{
+int teardown_wmdb(void **state) {
     test_mode = 0;
     return OS_SUCCESS;
 }
@@ -54,8 +53,7 @@ int teardown_wmdb(void **state)
  * @param ngroups The number of group names to be included in the CSV string
  * @return char* The groups CSV string.
  */
-char *generate_groups_csv_string(unsigned int ngroups)
-{
+char *generate_groups_csv_string(unsigned int ngroups) {
     char *groups = NULL;
     os_calloc(OS_BUFFER_SIZE, sizeof(char), groups);
 
@@ -71,8 +69,7 @@ char *generate_groups_csv_string(unsigned int ngroups)
 
 /* Tests wm_sync_group_file */
 
-void test_wm_sync_group_file_error_agent_id(void **state)
-{
+void test_wm_sync_group_file_error_agent_id(void **state) {
     int ret = OS_INVALID;
     const char *group_file = "invalid_name";
     const char *group_file_path = "invalid_path";
@@ -86,8 +83,7 @@ void test_wm_sync_group_file_error_agent_id(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wm_sync_group_file_error_opening_file(void **state)
-{
+void test_wm_sync_group_file_error_opening_file(void **state) {
     int ret = OS_INVALID;
     const char *group_file = "001";
     const char *group_file_path = "invalid_path";
@@ -104,8 +100,7 @@ void test_wm_sync_group_file_error_opening_file(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wm_sync_group_file_success_empty_file(void **state)
-{
+void test_wm_sync_group_file_success_empty_file(void **state) {
     int ret = OS_INVALID;
     const char *group_file = "001";
     const char *group_file_path = GROUPS_DIR "/001";
@@ -130,8 +125,7 @@ void test_wm_sync_group_file_success_empty_file(void **state)
     assert_int_equal(ret, OS_SUCCESS);
 }
 
-void test_wm_sync_group_file_success_more_than_max_groups(void **state)
-{
+void test_wm_sync_group_file_success_more_than_max_groups(void **state) {
     int ret = OS_INVALID;
     const char *group_file = "001";
     const char *group_file_path = GROUPS_DIR "/001";
@@ -164,8 +158,7 @@ void test_wm_sync_group_file_success_more_than_max_groups(void **state)
     os_free(groups_in_file);
 }
 
-void test_wm_sync_group_file_success_max_groups(void **state)
-{
+void test_wm_sync_group_file_success_max_groups(void **state) {
     int ret = OS_INVALID;
     const char *group_file = "001";
     const char *group_file_path = GROUPS_DIR "/001";
@@ -200,8 +193,7 @@ void test_wm_sync_group_file_success_max_groups(void **state)
 
 /* Tests wm_sync_legacy_groups_files */
 
-void test_wm_sync_legacy_groups_files_error_opening_groups_dir(void **state)
-{
+void test_wm_sync_legacy_groups_files_error_opening_groups_dir(void **state) {
     // Error opening groups directory
     will_return(__wrap_opendir, NULL);
     will_return(__wrap_strerror, "ERROR");
@@ -211,8 +203,7 @@ void test_wm_sync_legacy_groups_files_error_opening_groups_dir(void **state)
     wm_sync_legacy_groups_files();
 }
 
-void test_wm_sync_legacy_groups_files_success_files_worker_error_dir(void **state)
-{
+void test_wm_sync_legacy_groups_files_success_files_worker_error_dir(void **state) {
     DIR *dir = (DIR *)1;
     struct dirent *dir_ent = NULL;
     os_calloc(1, sizeof(struct dirent), dir_ent);
@@ -244,8 +235,7 @@ void test_wm_sync_legacy_groups_files_success_files_worker_error_dir(void **stat
     os_free(dir_ent);
 }
 
-void test_wm_sync_legacy_groups_files_success_files_success_dir(void **state)
-{
+void test_wm_sync_legacy_groups_files_success_files_success_dir(void **state) {
     DIR *dir = (DIR *)1;
     struct dirent *dir_ent = NULL;
     os_calloc(1, sizeof(struct dirent), dir_ent);
@@ -300,8 +290,7 @@ void test_wm_sync_legacy_groups_files_success_files_success_dir(void **state)
     os_free(dir_ent);
 }
 
-void test_wm_sync_legacy_groups_files_error_files(void **state)
-{
+void test_wm_sync_legacy_groups_files_error_files(void **state) {
     DIR *dir = (DIR *)1;
     struct dirent *dir_ent = NULL;
     os_calloc(1, sizeof(struct dirent), dir_ent);
@@ -333,6 +322,77 @@ void test_wm_sync_legacy_groups_files_error_files(void **state)
     os_free(dir_ent);
 }
 
+// sync_agents_artifacts_with_wdb
+void test_sync_agents_artifacts_with_wdb_opendir_error(void **state) {
+    keystore *keys = NULL;
+    os_calloc(1, sizeof(keystore), keys);
+
+    will_return(__wrap_opendir, NULL);
+    will_return(__wrap_strerror, "ERROR");
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:database");
+    expect_string(__wrap__mterror, formatted_msg, "Couldn't open directory 'var/db/agents': ERROR.");
+
+    sync_agents_artifacts_with_wdb(keys);
+
+    os_free(keys);
+}
+
+void test_sync_agents_artifacts_with_wdb_empty_agent_name(void **state) {
+    struct dirent *dir_ent = NULL;
+    keystore *keys = NULL;
+    os_calloc(1, sizeof(struct dirent), dir_ent);
+    os_calloc(1, sizeof(keystore), keys);
+    strcpy(dir_ent->d_name, "001-centos.db");
+
+    will_return(__wrap_opendir, (DIR *)1);
+    will_return(__wrap_readdir, dir_ent);
+
+    char *agent_name;
+    os_strdup("", agent_name);
+    expect_value(__wrap_wdb_get_agent_name, id, 1);
+    will_return(__wrap_wdb_get_agent_name, agent_name);
+
+    // wm_clean_agent_artifacts
+    char *wdb_response = "{\"agents\":{\"001\":\"ok\"}}";
+
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, "wazuhdb remove 1");
+    expect_any(__wrap_wdbc_query_ex, len);
+    will_return(__wrap_wdbc_query_ex, wdb_response);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    will_return(__wrap_readdir, NULL);
+
+    sync_agents_artifacts_with_wdb(keys);
+
+    os_free(dir_ent);
+    os_free(keys);
+}
+
+void test_sync_agents_artifacts_with_wdb_agent_exists_in_db(void **state) {
+    struct dirent *dir_ent = NULL;
+    keystore *keys = NULL;
+    os_calloc(1, sizeof(struct dirent), dir_ent);
+    os_calloc(1, sizeof(keystore), keys);
+    strcpy(dir_ent->d_name, "001-centos.db");
+
+    will_return(__wrap_opendir, (DIR *)1);
+    will_return(__wrap_readdir, dir_ent);
+
+    char *agent_name;
+    os_strdup("centos", agent_name);
+    expect_value(__wrap_wdb_get_agent_name, id, 1);
+    will_return(__wrap_wdb_get_agent_name, agent_name);
+
+    will_return(__wrap_readdir, NULL);
+
+    sync_agents_artifacts_with_wdb(keys);
+
+    os_free(dir_ent);
+    os_free(keys);
+}
+
+
 int main()
 {
     const struct CMUnitTest tests[] = {
@@ -347,6 +407,10 @@ int main()
         cmocka_unit_test_setup_teardown(test_wm_sync_legacy_groups_files_success_files_worker_error_dir, setup_wmdb, teardown_wmdb),
         cmocka_unit_test_setup_teardown(test_wm_sync_legacy_groups_files_success_files_success_dir, setup_wmdb, teardown_wmdb),
         cmocka_unit_test_setup_teardown(test_wm_sync_legacy_groups_files_error_files, setup_wmdb, teardown_wmdb),
+        // sync_agents_artifacts_with_wdb
+        cmocka_unit_test_setup_teardown(test_sync_agents_artifacts_with_wdb_opendir_error, setup_wmdb, teardown_wmdb),
+        cmocka_unit_test_setup_teardown(test_sync_agents_artifacts_with_wdb_empty_agent_name, setup_wmdb, teardown_wmdb),
+        cmocka_unit_test_setup_teardown(test_sync_agents_artifacts_with_wdb_agent_exists_in_db, setup_wmdb, teardown_wmdb),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
