@@ -37,6 +37,66 @@ static void w_get_initial_queues_size();
 
 static void w_inc_received_agent_events(int agent_id);
 
+static void w_inc_syscheck_agent_decoded_events(int agent_id);
+
+static void w_inc_syscollector_agent_decoded_events(int agent_id);
+
+static void w_inc_rootcheck_agent_decoded_events(int agent_id);
+
+static void w_inc_sca_agent_decoded_events(int agent_id);
+
+static void w_inc_hostinfo_agent_decoded_events(int agent_id);
+
+static void w_inc_winevt_agent_decoded_events(int agent_id);
+
+static void w_inc_dbsync_agent_decoded_events(int agent_id);
+
+static void w_inc_upgrade_agent_decoded_events(int agent_id);
+
+static void w_inc_events_agent_decoded(int agent_id);
+
+static void w_inc_syscheck_agent_dropped_events(int agent_id);
+
+static void w_inc_syscollector_agent_dropped_events(int agent_id);
+
+static void w_inc_rootcheck_agent_dropped_events(int agent_id);
+
+static void w_inc_sca_agent_dropped_events(int agent_id);
+
+static void w_inc_hostinfo_agent_dropped_events(int agent_id);
+
+static void w_inc_winevt_agent_dropped_events(int agent_id);
+
+static void w_inc_dbsync_agent_dropped_events(int agent_id);
+
+static void w_inc_upgrade_agent_dropped_events(int agent_id);
+
+static void w_inc_events_agent_dropped(int agent_id);
+
+static void w_inc_syscheck_agent_unknown_events(int agent_id);
+
+static void w_inc_syscollector_agent_unknown_events(int agent_id);
+
+static void w_inc_rootcheck_agent_unknown_events(int agent_id);
+
+static void w_inc_sca_agent_unknown_events(int agent_id);
+
+static void w_inc_hostinfo_agent_unknown_events(int agent_id);
+
+static void w_inc_winevt_agent_unknown_events(int agent_id);
+
+static void w_inc_dbsync_agent_unknown_events(int agent_id);
+
+static void w_inc_upgrade_agent_unknown_events(int agent_id);
+
+static void w_inc_events_agent_unknown(int agent_id);
+
+static void w_inc_processed_agent_events(int agent_id);
+
+static void w_inc_alerts_agent_written(int agent_id);
+
+static void w_inc_archives_agent_written(int agent_id);
+
 static w_linked_queue_node_t *linked_queue_search_agent(int agent_id);
 
 static w_linked_queue_node_t * get_node(int agent_id);
@@ -334,6 +394,223 @@ static void w_inc_received_agent_events(int agent_id) {
     w_mutex_unlock(&remoted_agent_state_queue->mutex);
 }
 
+static void w_inc_syscheck_agent_decoded_events(int agent_id) {
+    w_mutex_lock(&remoted_agent_state_queue->mutex);
+    w_linked_queue_node_t *agent_node = get_node(agent_id);
+    ((remoted_agent_state_t *) agent_node->data)->events_received_breakdown.events_decoded_breakdown.syscheck++;
+    w_mutex_unlock(&remoted_agent_state_queue->mutex);
+}
+
+static void w_inc_syscollector_agent_decoded_events(int agent_id) {
+    w_mutex_lock(&remoted_agent_state_queue->mutex);
+    w_linked_queue_node_t *agent_node = get_node(agent_id);
+    ((remoted_agent_state_t *) agent_node->data)->events_received_breakdown.events_decoded_breakdown.syscollector++;
+    w_mutex_unlock(&remoted_agent_state_queue->mutex);
+}
+
+static void w_inc_rootcheck_agent_decoded_events(int agent_id) {
+    w_mutex_lock(&remoted_agent_state_queue->mutex);
+    w_linked_queue_node_t *agent_node = get_node(agent_id);
+    ((remoted_agent_state_t *) agent_node->data)->events_received_breakdown.events_decoded_breakdown.rootcheck++;
+    w_mutex_unlock(&remoted_agent_state_queue->mutex);
+}
+
+static void w_inc_sca_agent_decoded_events(int agent_id) {
+    w_mutex_lock(&remoted_agent_state_queue->mutex);
+    w_linked_queue_node_t *agent_node = get_node(agent_id);
+    ((remoted_agent_state_t *) agent_node->data)->events_received_breakdown.events_decoded_breakdown.sca++;
+    w_mutex_unlock(&remoted_agent_state_queue->mutex);
+}
+
+static void w_inc_hostinfo_agent_decoded_events(int agent_id) {
+    w_mutex_lock(&remoted_agent_state_queue->mutex);
+    w_linked_queue_node_t *agent_node = get_node(agent_id);
+    ((remoted_agent_state_t *) agent_node->data)->events_received_breakdown.events_decoded_breakdown.hostinfo++;
+    w_mutex_unlock(&remoted_agent_state_queue->mutex);
+}
+
+static void w_inc_winevt_agent_decoded_events(int agent_id) {
+    w_mutex_lock(&remoted_agent_state_queue->mutex);
+    w_linked_queue_node_t *agent_node = get_node(agent_id);
+    ((remoted_agent_state_t *) agent_node->data)->events_received_breakdown.events_decoded_breakdown.winevt++;
+    w_mutex_unlock(&remoted_agent_state_queue->mutex);
+}
+
+static void w_inc_dbsync_agent_decoded_events(int agent_id) {
+    w_mutex_lock(&remoted_agent_state_queue->mutex);
+    w_linked_queue_node_t *agent_node = get_node(agent_id);
+    ((remoted_agent_state_t *) agent_node->data)->events_received_breakdown.events_decoded_breakdown.dbsync++;
+    w_mutex_unlock(&remoted_agent_state_queue->mutex);
+}
+
+static void w_inc_upgrade_agent_decoded_events(int agent_id) {
+    w_mutex_lock(&remoted_agent_state_queue->mutex);
+    w_linked_queue_node_t *agent_node = get_node(agent_id);
+    ((remoted_agent_state_t *) agent_node->data)->events_received_breakdown.events_decoded_breakdown.upgrade++;
+    w_mutex_unlock(&remoted_agent_state_queue->mutex);
+}
+
+static void w_inc_events_agent_decoded(int agent_id) {
+    w_mutex_lock(&remoted_agent_state_queue->mutex);
+    w_linked_queue_node_t *agent_node = get_node(agent_id);
+    ((remoted_agent_state_t *) agent_node->data)->events_received_breakdown.events_decoded_breakdown.events++;
+    w_mutex_unlock(&remoted_agent_state_queue->mutex);
+}
+
+static void w_inc_syscheck_agent_dropped_events(int agent_id) {
+    w_mutex_lock(&remoted_agent_state_queue->mutex);
+    w_linked_queue_node_t *agent_node = get_node(agent_id);
+    ((remoted_agent_state_t *) agent_node->data)->events_received_breakdown.events_dropped_breakdown.syscheck++;
+    w_mutex_unlock(&remoted_agent_state_queue->mutex);
+}
+
+static void w_inc_syscollector_agent_dropped_events(int agent_id) {
+    w_mutex_lock(&remoted_agent_state_queue->mutex);
+    w_linked_queue_node_t *agent_node = get_node(agent_id);
+    ((remoted_agent_state_t *) agent_node->data)->events_received_breakdown.events_dropped_breakdown.syscollector++;
+    w_mutex_unlock(&remoted_agent_state_queue->mutex);
+}
+
+static void w_inc_rootcheck_agent_dropped_events(int agent_id) {
+    w_mutex_lock(&remoted_agent_state_queue->mutex);
+    w_linked_queue_node_t *agent_node = get_node(agent_id);
+    ((remoted_agent_state_t *) agent_node->data)->events_received_breakdown.events_dropped_breakdown.rootcheck++;
+    w_mutex_unlock(&remoted_agent_state_queue->mutex);
+}
+
+static void w_inc_sca_agent_dropped_events(int agent_id) {
+    w_mutex_lock(&remoted_agent_state_queue->mutex);
+    w_linked_queue_node_t *agent_node = get_node(agent_id);
+    ((remoted_agent_state_t *) agent_node->data)->events_received_breakdown.events_dropped_breakdown.sca++;
+    w_mutex_unlock(&remoted_agent_state_queue->mutex);
+}
+
+static void w_inc_hostinfo_agent_dropped_events(int agent_id) {
+    w_mutex_lock(&remoted_agent_state_queue->mutex);
+    w_linked_queue_node_t *agent_node = get_node(agent_id);
+    ((remoted_agent_state_t *) agent_node->data)->events_received_breakdown.events_dropped_breakdown.hostinfo++;
+    w_mutex_unlock(&remoted_agent_state_queue->mutex);
+}
+
+static void w_inc_winevt_agent_dropped_events(int agent_id) {
+    w_mutex_lock(&remoted_agent_state_queue->mutex);
+    w_linked_queue_node_t *agent_node = get_node(agent_id);
+    ((remoted_agent_state_t *) agent_node->data)->events_received_breakdown.events_dropped_breakdown.winevt++;
+    w_mutex_unlock(&remoted_agent_state_queue->mutex);
+}
+
+static void w_inc_dbsync_agent_dropped_events(int agent_id) {
+    w_mutex_lock(&remoted_agent_state_queue->mutex);
+    w_linked_queue_node_t *agent_node = get_node(agent_id);
+    ((remoted_agent_state_t *) agent_node->data)->events_received_breakdown.events_dropped_breakdown.dbsync++;
+    w_mutex_unlock(&remoted_agent_state_queue->mutex);
+}
+
+static void w_inc_upgrade_agent_dropped_events(int agent_id) {
+    w_mutex_lock(&remoted_agent_state_queue->mutex);
+    w_linked_queue_node_t *agent_node = get_node(agent_id);
+    ((remoted_agent_state_t *) agent_node->data)->events_received_breakdown.events_dropped_breakdown.upgrade++;
+    w_mutex_unlock(&remoted_agent_state_queue->mutex);
+}
+
+static void w_inc_events_agent_dropped(int agent_id) {
+    w_mutex_lock(&remoted_agent_state_queue->mutex);
+    w_linked_queue_node_t *agent_node = get_node(agent_id);
+    ((remoted_agent_state_t *) agent_node->data)->events_received_breakdown.events_dropped_breakdown.events++;
+    w_mutex_unlock(&remoted_agent_state_queue->mutex);
+}
+
+static void w_inc_syscheck_agent_unknown_events(int agent_id) {
+    w_mutex_lock(&remoted_agent_state_queue->mutex);
+    w_linked_queue_node_t *agent_node = get_node(agent_id);
+    ((remoted_agent_state_t *) agent_node->data)->events_received_breakdown.events_unknown_breakdown.syscheck++;
+    w_mutex_unlock(&remoted_agent_state_queue->mutex);
+}
+
+static void w_inc_syscollector_agent_unknown_events(int agent_id) {
+    w_mutex_lock(&remoted_agent_state_queue->mutex);
+    w_linked_queue_node_t *agent_node = get_node(agent_id);
+    ((remoted_agent_state_t *) agent_node->data)->events_received_breakdown.events_unknown_breakdown.syscollector++;
+    w_mutex_unlock(&remoted_agent_state_queue->mutex);
+}
+
+static void w_inc_rootcheck_agent_unknown_events(int agent_id) {
+    w_mutex_lock(&remoted_agent_state_queue->mutex);
+    w_linked_queue_node_t *agent_node = get_node(agent_id);
+    ((remoted_agent_state_t *) agent_node->data)->events_received_breakdown.events_unknown_breakdown.rootcheck++;
+    w_mutex_unlock(&remoted_agent_state_queue->mutex);
+}
+
+static void w_inc_sca_agent_unknown_events(int agent_id) {
+    w_mutex_lock(&remoted_agent_state_queue->mutex);
+    w_linked_queue_node_t *agent_node = get_node(agent_id);
+    ((remoted_agent_state_t *) agent_node->data)->events_received_breakdown.events_unknown_breakdown.sca++;
+    w_mutex_unlock(&remoted_agent_state_queue->mutex);
+}
+
+static void w_inc_hostinfo_agent_unknown_events(int agent_id) {
+    w_mutex_lock(&remoted_agent_state_queue->mutex);
+    w_linked_queue_node_t *agent_node = get_node(agent_id);
+    ((remoted_agent_state_t *) agent_node->data)->events_received_breakdown.events_unknown_breakdown.hostinfo++;
+    w_mutex_unlock(&remoted_agent_state_queue->mutex);
+}
+
+static void w_inc_winevt_agent_unknown_events(int agent_id) {
+    w_mutex_lock(&remoted_agent_state_queue->mutex);
+    w_linked_queue_node_t *agent_node = get_node(agent_id);
+    ((remoted_agent_state_t *) agent_node->data)->events_received_breakdown.events_unknown_breakdown.winevt++;
+    w_mutex_unlock(&remoted_agent_state_queue->mutex);
+}
+
+static void w_inc_dbsync_agent_unknown_events(int agent_id) {
+    w_mutex_lock(&remoted_agent_state_queue->mutex);
+    w_linked_queue_node_t *agent_node = get_node(agent_id);
+    ((remoted_agent_state_t *) agent_node->data)->events_received_breakdown.events_unknown_breakdown.dbsync++;
+    w_mutex_unlock(&remoted_agent_state_queue->mutex);
+}
+
+static void w_inc_upgrade_agent_unknown_events(int agent_id) {
+    w_mutex_lock(&remoted_agent_state_queue->mutex);
+    w_linked_queue_node_t *agent_node = get_node(agent_id);
+    ((remoted_agent_state_t *) agent_node->data)->events_received_breakdown.events_unknown_breakdown.upgrade++;
+    w_mutex_unlock(&remoted_agent_state_queue->mutex);
+}
+
+static void w_inc_events_agent_unknown(int agent_id) {
+    w_mutex_lock(&remoted_agent_state_queue->mutex);
+    w_linked_queue_node_t *agent_node = get_node(agent_id);
+    ((remoted_agent_state_t *) agent_node->data)->events_received_breakdown.events_unknown_breakdown.events++;
+    w_mutex_unlock(&remoted_agent_state_queue->mutex);
+}
+
+static void w_inc_processed_agent_events(int agent_id) {
+    w_mutex_lock(&remoted_agent_state_queue->mutex);
+    w_linked_queue_node_t *agent_node = get_node(agent_id);
+    ((remoted_agent_state_t *) agent_node->data)->events_processed++;
+    w_mutex_unlock(&remoted_agent_state_queue->mutex);
+}
+
+static void w_inc_alerts_agent_written(int agent_id) {
+    w_mutex_lock(&remoted_agent_state_queue->mutex);
+    w_linked_queue_node_t *agent_node = get_node(agent_id);
+    ((remoted_agent_state_t *) agent_node->data)->alerts_written++;
+    w_mutex_unlock(&remoted_agent_state_queue->mutex);
+}
+
+static void w_inc_archives_agent_written(int agent_id) {
+    w_mutex_lock(&remoted_agent_state_queue->mutex);
+    w_linked_queue_node_t *agent_node = get_node(agent_id);
+    ((remoted_agent_state_t *) agent_node->data)->archives_written++;
+    w_mutex_unlock(&remoted_agent_state_queue->mutex);
+}
+
+static void w_inc_firewall_agent_written(int agent_id) {
+    w_mutex_lock(&remoted_agent_state_queue->mutex);
+    w_linked_queue_node_t *agent_node = get_node(agent_id);
+    ((remoted_agent_state_t *) agent_node->data)->firewall_written++;
+    w_mutex_unlock(&remoted_agent_state_queue->mutex);
+}
+
 static w_linked_queue_node_t *linked_queue_search_agent(int agent_id) {
     w_linked_queue_node_t *node;
     node = remoted_agent_state_queue->first;
@@ -380,190 +657,314 @@ void w_inc_received_events(int agent_id) {
     }
 }
 
-void w_inc_syscheck_decoded_events() {
+void w_inc_syscheck_decoded_events(int agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_received_breakdown.events_decoded_breakdown.syscheck++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id > 0){
+        w_inc_syscheck_agent_decoded_events(agent_id);
+    }
 }
 
-void w_inc_syscollector_decoded_events() {
+void w_inc_syscollector_decoded_events(int agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_received_breakdown.events_decoded_breakdown.syscollector++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id > 0){
+        w_inc_syscollector_agent_decoded_events(agent_id);
+    }
 }
 
-void w_inc_rootcheck_decoded_events() {
+void w_inc_rootcheck_decoded_events(int agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_received_breakdown.events_decoded_breakdown.rootcheck++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id > 0){
+        w_inc_rootcheck_agent_decoded_events(agent_id);
+    }
 }
 
-void w_inc_sca_decoded_events() {
+void w_inc_sca_decoded_events(int agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_received_breakdown.events_decoded_breakdown.sca++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id > 0){
+        w_inc_sca_agent_decoded_events(agent_id);
+    }
 }
 
-void w_inc_hostinfo_decoded_events() {
+void w_inc_hostinfo_decoded_events(int agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_received_breakdown.events_decoded_breakdown.hostinfo++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id > 0){
+        w_inc_hostinfo_agent_decoded_events(agent_id);
+    }
 }
 
-void w_inc_winevt_decoded_events() {
+void w_inc_winevt_decoded_events(int agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_received_breakdown.events_decoded_breakdown.winevt++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id > 0){
+        w_inc_winevt_agent_decoded_events(agent_id);
+    }
 }
 
-void w_inc_dbsync_decoded_events() {
+void w_inc_dbsync_decoded_events(int agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_received_breakdown.events_decoded_breakdown.dbsync++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id > 0){
+        w_inc_dbsync_agent_decoded_events(agent_id);
+    }
 }
 
-void w_inc_upgrade_decoded_events() {
+void w_inc_upgrade_decoded_events(int agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_received_breakdown.events_decoded_breakdown.upgrade++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id > 0){
+        w_inc_upgrade_agent_decoded_events(agent_id);
+    }
 }
 
-void w_inc_events_decoded() {
+void w_inc_events_decoded(int agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_received_breakdown.events_decoded_breakdown.events++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id > 0){
+        w_inc_events_agent_decoded(agent_id);
+    }
 }
 
-void w_inc_syscheck_dropped_events() {
+void w_inc_syscheck_dropped_events(int agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_received_breakdown.events_dropped_breakdown.syscheck++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id > 0){
+        w_inc_syscheck_agent_dropped_events(agent_id);
+    }
 }
 
-void w_inc_syscollector_dropped_events() {
+void w_inc_syscollector_dropped_events(int agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_received_breakdown.events_dropped_breakdown.syscollector++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id > 0){
+        w_inc_syscollector_agent_dropped_events(agent_id);
+    }
 }
 
-void w_inc_rootcheck_dropped_events() {
+void w_inc_rootcheck_dropped_events(int agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_received_breakdown.events_dropped_breakdown.rootcheck++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id > 0){
+        w_inc_rootcheck_agent_dropped_events(agent_id);
+    }
 }
 
-void w_inc_sca_dropped_events() {
+void w_inc_sca_dropped_events(int agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_received_breakdown.events_dropped_breakdown.sca++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id > 0){
+        w_inc_sca_agent_dropped_events(agent_id);
+    }
 }
 
-void w_inc_hostinfo_dropped_events() {
+void w_inc_hostinfo_dropped_events(int agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_received_breakdown.events_dropped_breakdown.hostinfo++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id > 0){
+        w_inc_hostinfo_agent_dropped_events(agent_id);
+    }
 }
 
-void w_inc_winevt_dropped_events() {
+void w_inc_winevt_dropped_events(int agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_received_breakdown.events_dropped_breakdown.winevt++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id > 0){
+        w_inc_winevt_agent_dropped_events(agent_id);
+    }
 }
 
-void w_inc_dbsync_dropped_events() {
+void w_inc_dbsync_dropped_events(int agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_received_breakdown.events_dropped_breakdown.dbsync++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id > 0){
+        w_inc_dbsync_agent_dropped_events(agent_id);
+    }
 }
 
-void w_inc_upgrade_dropped_events() {
+void w_inc_upgrade_dropped_events(int agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_received_breakdown.events_dropped_breakdown.upgrade++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id > 0){
+        w_inc_upgrade_agent_dropped_events(agent_id);
+    }
 }
 
-void w_inc_events_dropped() {
+void w_inc_events_dropped(int agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_received_breakdown.events_dropped_breakdown.events++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id > 0){
+        w_inc_events_agent_dropped(agent_id);
+    }
 }
 
-void w_inc_syscheck_unknown_events() {
+void w_inc_syscheck_unknown_events(int agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_received_breakdown.events_unknown_breakdown.syscheck++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id > 0){
+        w_inc_syscheck_agent_unknown_events(agent_id);
+    }
 }
 
-void w_inc_syscollector_unknown_events() {
+void w_inc_syscollector_unknown_events(int agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_received_breakdown.events_unknown_breakdown.syscollector++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id > 0){
+        w_inc_syscollector_agent_unknown_events(agent_id);
+    }
 }
 
-void w_inc_rootcheck_unknown_events() {
+void w_inc_rootcheck_unknown_events(int agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_received_breakdown.events_unknown_breakdown.rootcheck++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id > 0){
+        w_inc_rootcheck_agent_unknown_events(agent_id);
+    }
 }
 
-void w_inc_sca_unknown_events() {
+void w_inc_sca_unknown_events(int agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_received_breakdown.events_unknown_breakdown.sca++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id > 0){
+        w_inc_sca_agent_unknown_events(agent_id);
+    }
 }
 
-void w_inc_hostinfo_unknown_events() {
+void w_inc_hostinfo_unknown_events(int agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_received_breakdown.events_unknown_breakdown.hostinfo++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id > 0){
+        w_inc_hostinfo_agent_unknown_events(agent_id);
+    }
 }
 
-void w_inc_winevt_unknown_events() {
+void w_inc_winevt_unknown_events(int agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_received_breakdown.events_unknown_breakdown.winevt++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id > 0){
+        w_inc_winevt_agent_unknown_events(agent_id);
+    }
 }
 
-void w_inc_dbsync_unknown_events() {
+void w_inc_dbsync_unknown_events(int agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_received_breakdown.events_unknown_breakdown.dbsync++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id > 0){
+        w_inc_dbsync_agent_unknown_events(agent_id);
+    }
 }
 
-void w_inc_upgrade_unknown_events() {
+void w_inc_upgrade_unknown_events(int agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_received_breakdown.events_unknown_breakdown.upgrade++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id > 0){
+        w_inc_upgrade_agent_unknown_events(agent_id);
+    }
 }
 
-void w_inc_events_unknown() {
+void w_inc_events_unknown(int agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_received_breakdown.events_unknown_breakdown.events++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id > 0){
+        w_inc_events_agent_unknown(agent_id);
+    }
 }
 
-void w_inc_processed_events() {
+void w_inc_processed_events(int agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_processed++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id > 0){
+        w_inc_processed_agent_events(agent_id);
+    }
 }
 
-void w_inc_alerts_written() {
+void w_inc_alerts_written(int agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.alerts_written++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id > 0){
+        w_inc_alerts_agent_written(agent_id);
+    }
 }
 
-void w_inc_archives_written() {
+void w_inc_archives_written(int agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.archives_written++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id > 0){
+        w_inc_archives_agent_written(agent_id);
+    }
 }
 
-void w_inc_firewall_written() {
+void w_inc_firewall_written(int agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.firewall_written++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id > 0){
+        w_inc_firewall_agent_written(agent_id);
+    }
 }
 
 void w_inc_fts_written() {

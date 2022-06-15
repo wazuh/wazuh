@@ -143,92 +143,92 @@ void w_inc_received_events(int agent_id);
 /**
  * @brief Increment syscheck decoded events counter
  */
-void w_inc_syscheck_decoded_events();
+void w_inc_syscheck_decoded_events(int agent_id);
 
 /**
  * @brief Increment syscollector decoded events counter
  */
-void w_inc_syscollector_decoded_events();
+void w_inc_syscollector_decoded_events(int agent_id);
 
 /**
  * @brief Increment rootcheck decoded events counter
  */
-void w_inc_rootcheck_decoded_events();
+void w_inc_rootcheck_decoded_events(int agent_id);
 
 /**
  * @brief Increment sca decoded events counter
  */
-void w_inc_sca_decoded_events();
+void w_inc_sca_decoded_events(int agent_id);
 
 /**
  * @brief Increment hostinfo decoded events counter
  */
-void w_inc_hostinfo_decoded_events();
+void w_inc_hostinfo_decoded_events(int agent_id);
 
 /**
  * @brief Increment winevt decoded events counter
  */
-void w_inc_winevt_decoded_events();
+void w_inc_winevt_decoded_events(int agent_id);
 
 /**
  * @brief Increment dbsync decoded events counter
  */
-void w_inc_dbsync_decoded_events();
+void w_inc_dbsync_decoded_events(int agent_id);
 
 /**
  * @brief Increment upgrade decoded events counter
  */
-void w_inc_upgrade_decoded_events();
+void w_inc_upgrade_decoded_events(int agent_id);
 
 /**
  * @brief Increment other decoded events counter
  */
-void w_inc_events_decoded();
+void w_inc_events_decoded(int agent_id);
 
 /**
  * @brief Increment syscheck dropped events counter
  */
-void w_inc_syscheck_dropped_events();
+void w_inc_syscheck_dropped_events(int agent_id);
 
 /**
  * @brief Increment syscollector dropped events counter
  */
-void w_inc_syscollector_dropped_events();
+void w_inc_syscollector_dropped_events(int agent_id);
 
 /**
  * @brief Increment rootcheck dropped events counter
  */
-void w_inc_rootcheck_dropped_events();
+void w_inc_rootcheck_dropped_events(int agent_id);
 
 /**
  * @brief Increment sca dropped events counter
  */
-void w_inc_sca_dropped_events();
+void w_inc_sca_dropped_events(int agent_id);
 
 /**
  * @brief Increment hostinfo dropped events counter
  */
-void w_inc_hostinfo_dropped_events();
+void w_inc_hostinfo_dropped_events(int agent_id);
 
 /**
  * @brief Increment winevt dropped events counter
  */
-void w_inc_winevt_dropped_events();
+void w_inc_winevt_dropped_events(int agent_id);
 
 /**
  * @brief Increment dbsync dropped events counter
  */
-void w_inc_dbsync_dropped_events();
+void w_inc_dbsync_dropped_events(int agent_id);
 
 /**
  * @brief Increment upgrade dropped events counter
  */
-void w_inc_upgrade_dropped_events();
+void w_inc_upgrade_dropped_events(int agent_id);
 
 /**
  * @brief Increment other dropped events counter
  */
-void w_inc_events_dropped();
+void w_inc_events_dropped(int agent_id);
 
 /**
  * @brief Increment syscheck unknown events counter
@@ -278,22 +278,22 @@ void w_inc_events_unknown();
 /**
  * @brief Increment processed events counter
  */
-void w_inc_processed_events();
+void w_inc_processed_events(int agent_id);
 
 /**
  * @brief Increment alerts written counter
  */
-void w_inc_alerts_written();
+void w_inc_alerts_written(int agent_id);
 
 /**
  * @brief Increment archives written counter
  */
-void w_inc_archives_written();
+void w_inc_archives_written(int agent_id);
 
 /**
  * @brief Increment firewall written counter
  */
-void w_inc_firewall_written();
+void w_inc_firewall_written(int agent_id);
 
 /**
  * @brief Increment fts written counter
