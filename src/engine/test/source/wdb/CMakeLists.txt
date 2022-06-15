@@ -1,4 +1,5 @@
 add_executable(wdb_test
+    ${TEST_SOURCE_DIR}/base/socketInterface/testAuxiliar/socketAuxiliarFunctions.cpp
     wdb_test.cpp
 )
 
