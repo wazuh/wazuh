@@ -333,7 +333,7 @@ class User(_Base):
 
     def to_dict(self, session: Session = None) -> dict:
         """Return the information of the user and its roles.
-        TODO DUDA, porque URM????? TENEMOS GET_ROLES_ID, que se diferencia este del anterior?????
+        TODO why urm?
 
         Parameters
         ----------
@@ -1522,40 +1522,34 @@ class PoliciesManager(RBACManager):
                 return SecurityError.ALREADY_EXIST
             if policy is None or len(policy) != 3:
                 return SecurityError.INVALID
-            # To add a policy it must have the keys actions, resources, effect
-            if 'actions' in policy and 'resources' in policy:
-                if 'effect' in policy:
-                    # The keys actions and resources must be lists and the key effect must be str
-                    if isinstance(policy['actions'], list) and isinstance(policy['resources'], list) \
-                            and isinstance(policy['effect'], str):
-                        for action in policy['actions']:
-                            if not re.match(self.ACTION_REGEX, action):
-                                return SecurityError.INVALID
-                        for resource in policy['resources']:
-                            if not all(re.match(self.RESOURCE_REGEX, res) for res in resource.split('&')):
-                                return SecurityError.INVALID
-
-                        try:
-                            if not check_default:
-                                policies = sorted([p.id for p in self.get_policies()]) or [0]
-                                policy_id = policy_id or max(filter(lambda x: not (x > CLOUD_RESERVED_RANGE),
-                                                                    policies)) + 1
-
-                            elif check_default and \
-                                    self.session.query(Policies).order_by(desc(Policies.id)
-                                                                          ).limit(1).scalar().id < MAX_ID_RESERVED:
-                                policy_id = MAX_ID_RESERVED + 1
-
-                        except (TypeError, AttributeError):
-                            pass
-                        self.session.add(Policies(name=name, policy=json.dumps(policy), policy_id=policy_id,
-                                                  created_at=created_at))
-                        self.session.commit()
-                        return True
-                    else:
+            # To add a policy, its body must have the `actions`, `resources`, and `effect` keys;
+            # and the values must be instances of `list`, `list` and `str`
+            if all({isinstance(policy.get('actions'), list), isinstance(policy.get('resources'), list),
+                    isinstance(policy.get('effect'), str)}):
+                for action in policy['actions']:
+                    if not re.match(self.ACTION_REGEX, action):
                         return SecurityError.INVALID
-                else:
-                    return SecurityError.INVALID
+                for resource in policy['resources']:
+                    if not all(re.match(self.RESOURCE_REGEX, res) for res in resource.split('&')):
+                        return SecurityError.INVALID
+
+                try:
+                    if not check_default:
+                        policies = sorted([p.id for p in self.get_policies()]) or [0]
+                        policy_id = policy_id or max(filter(lambda x: not (x > CLOUD_RESERVED_RANGE),
+                                                            policies)) + 1
+
+                    elif check_default and \
+                            self.session.query(Policies).order_by(desc(Policies.id)
+                                                                  ).limit(1).scalar().id < MAX_ID_RESERVED:
+                        policy_id = MAX_ID_RESERVED + 1
+
+                except (TypeError, AttributeError):
+                    pass
+                self.session.add(Policies(name=name, policy=json.dumps(policy), policy_id=policy_id,
+                                          created_at=created_at))
+                self.session.commit()
+                return True
             else:
                 return SecurityError.INVALID
         except IntegrityError:
@@ -2040,9 +2034,20 @@ class RolesPoliciesManager(RBACManager):
             True if the policy was added successfully or a SecurityError code if the operation failed.
         """
 
-        def check_max_level(role_id_level):
-            """TODO"""
-            return max([r.level for r in self.session.query(RolesPolicies).filter_by(role_id=role_id_level).all()])
+        def check_max_level(role_id_filter: int) -> int:
+            """Get the highest level from the relationships between a specified role and all its policies.
+
+            Parameters
+            ----------
+            role_id_filter : int
+                ID of the role to filter by.
+
+            Returns
+            -------
+            int
+                Highest level of the role relationships with its policies.
+            """
+            return max([r.level for r in self.session.query(RolesPolicies).filter_by(role_id=role_id_filter).all()])
 
         try:
             # Create a role-policy relationship if both exist
@@ -2196,8 +2201,20 @@ class RolesPoliciesManager(RBACManager):
             self.session.rollback()
             return False
 
-    def exist_policy_role(self, policy_id: int, role_id: int):
-        """TODO, clone
+    def exist_policy_role(self, policy_id: int, role_id: int) -> Union[bool, int]:
+        """Check if a relationship between a role and a policy exits.
+
+        Parameters
+        ----------
+        role_id : int
+            ID of the role.
+        policy_id : int
+            ID of the policy.
+
+        Returns
+        -------
+        Union[bool, int]
+            True if the relationship exists, False if the relationship does not exist, or a SecurityError code.
         """
         return self.exist_role_policy(role_id, policy_id)
 
@@ -2253,8 +2270,23 @@ class RolesPoliciesManager(RBACManager):
             self.session.rollback()
             return SecurityError.INVALID
 
-    def remove_role_in_policy(self, role_id: int, policy_id: int, atomic: bool = True):
-        """TODO clone
+    def remove_role_in_policy(self, role_id: int, policy_id: int, atomic: bool = True) -> Union[bool, int]:
+        """Remove a relationship between a specific role and a specific policy if both exist.
+
+        Parameters
+        ----------
+        role_id : int
+            ID of the role.
+        policy_id : int
+            ID of the policy.
+        atomic : bool
+            Flag used to indicate the atomicity of the operation. If this function is called within a loop or a function
+            composed of several operations, atomicity cannot be guaranteed unless this flag is set to True.
+
+        Returns
+        -------
+        Union[bool, int]
+            True if the relationship was removed successfully or a SecurityError code otherwise.
         """
         return self.remove_policy_in_role(role_id=role_id, policy_id=policy_id, atomic=atomic)
 
@@ -2502,8 +2534,23 @@ class RolesRulesManager(RBACManager):
             self.session.rollback()
             return SecurityError.INVALID
 
-    def remove_role_in_rule(self, rule_id: int, role_id: int, atomic: bool = True):
-        """TODO, clone
+    def remove_role_in_rule(self, rule_id: int, role_id: int, atomic: bool = True) -> Union[bool, int]:
+        """Remove a relationship between a specified rule and a specified role if both exist.
+
+        Parameters
+        ----------
+        rule_id : int
+            ID of the rule.
+        role_id : int
+            ID of the role.
+        atomic : bool
+            Flag used to indicate the atomicity of the operation. If this function is called within a loop or a function
+            composed of several operations, atomicity cannot be guaranteed unless this flag is set to True.
+
+        Returns
+        -------
+        Union[bool, int]
+            True if the relationship was removed successfully or a SecurityError code if the operation failed.
         """
         return self.remove_rule_in_role(rule_id=rule_id, role_id=role_id, atomic=atomic)
 
@@ -2581,9 +2628,10 @@ class RolesRulesManager(RBACManager):
 
 
 class DatabaseManager:
-    """TODO docstring"""
+    """Class used to manage the RBAC databases."""
 
     def __init__(self):
+        """Class constructor"""
         self.engines = {}
         self.sessions = {}
 
