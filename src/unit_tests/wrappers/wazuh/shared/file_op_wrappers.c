@@ -204,3 +204,11 @@ int __wrap_w_fseek(FILE *x, int64_t pos, __attribute__((unused)) int mode) {
     check_expected(pos);
     return mock_type(int);
 }
+
+char *__wrap_GetRandomNoise() {
+    return mock_ptr_type(char*);
+}
+
+const char *__wrap_getuname() {
+    return mock_ptr_type(char*);
+}

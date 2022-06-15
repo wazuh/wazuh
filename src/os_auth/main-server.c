@@ -97,63 +97,6 @@ static void help_authd(char * home_path)
     exit(1);
 }
 
-/* Generates a random and temporary shared pass to be used by the agents. */
-char *__generatetmppass()
-{
-    int rand1;
-    int rand2;
-    char *rand3;
-    char *rand4;
-    os_md5 md1;
-    os_md5 md3;
-    os_md5 md4;
-    char *fstring = NULL;
-    char *str1 = NULL;
-    int time_value = (int)time(NULL);
-
-    rand1 = os_random();
-    rand2 = os_random();
-
-    rand3 = GetRandomNoise();
-    rand4 = GetRandomNoise();
-
-    OS_MD5_Str(rand3, -1, md3);
-    OS_MD5_Str(rand4, -1, md4);
-
-    const int requested_size = snprintf(NULL,
-                                        0,
-                                        "%d%d%s%d%s%s",
-                                        time_value,
-                                        rand1,
-                                        getuname(),
-                                        rand2,
-                                        md3,
-                                        md4);
-
-    if (requested_size > 0) {
-        os_calloc(requested_size + 1, sizeof(char), str1);
-        const int requested_size_assignation = snprintf(str1,
-                                                        requested_size + 1,
-                                                        "%d%d%s%d%s%s",
-                                                        time_value,
-                                                        rand1,
-                                                        getuname(),
-                                                        rand2,
-                                                        md3,
-                                                        md4);
-
-        if (requested_size_assignation > 0 && requested_size_assignation == requested_size) {
-            OS_MD5_Str(str1, -1, md1);
-            fstring = strdup(md1);
-        }
-    }
-
-    free(rand3);
-    free(rand4);
-    os_free(str1);
-    return(fstring);
-}
-
 /* Function to use with SSL on non blocking socket,
  * to know if SSL operation failed for good
  */
@@ -493,7 +436,7 @@ int main(int argc, char **argv)
                 minfo("Accepting connections on port %hu. Using password specified on file: %s", config.port, AUTHD_PASS);
             } else {
                 /* Getting temporary pass. */
-                if (authpass = __generatetmppass(), authpass) {
+                if (authpass = w_generate_random_pass(), authpass) {
                     minfo("Accepting connections on port %hu. Random password chosen for agent authentication: %s", config.port, authpass);
                 } else {
                     merror_exit("Unable to generate random password. Exiting.");
