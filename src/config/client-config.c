@@ -27,6 +27,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
 
     /* XML definitions */
     const char *xml_client_server = "server";
+    const char *xml_local_ip = "local_ip";
     const char *xml_ar_disabled = "disable-active-response";
     const char *xml_notify_time = "notify_time";
     const char *xml_max_time_reconnect_try = "time-reconnect";
@@ -54,6 +55,10 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
         } else if (!node[i]->content) {
             merror(XML_VALUENULL, node[i]->element);
             return (OS_INVALID);
+        }
+        /* Get local IP */
+        else if (strcmp(node[i]->element, xml_local_ip) == 0) {
+            mwarn("The <%s> tag is useless.", xml_local_ip);
         }
         /* Get server IP */
         else if (strcmp(node[i]->element, xml_client_ip) == 0) {
