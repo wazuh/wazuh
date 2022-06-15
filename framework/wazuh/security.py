@@ -15,8 +15,8 @@ from wazuh.core.security import invalid_users_tokens, invalid_roles_tokens, inva
 from wazuh.core.utils import process_array
 from wazuh.rbac.decorators import expose_resources
 from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager, RolesPoliciesManager, \
-    UserRolesManager, RolesRulesManager, RulesManager, max_id_reserved
-from wazuh.rbac.orm import SecurityError, max_id_reserved
+    UserRolesManager, RolesRulesManager, RulesManager, MAX_ID_RESERVED
+from wazuh.rbac.orm import SecurityError, MAX_ID_RESERVED
 
 # Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character:
 _user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$')
@@ -212,11 +212,11 @@ def update_user(user_id: str = None, password: str = None, current_user: str = N
         elif not _user_password.match(password):
             raise WazuhError(5007)
 
-        if int(user_id[0]) <= max_id_reserved and current_user is not None:
+        if int(user_id[0]) <= MAX_ID_RESERVED and current_user is not None:
             with AuthenticationManager() as auth_manager:
                 current_user_id = auth_manager.get_user(current_user)['id']
 
-            if current_user_id > max_id_reserved:
+            if current_user_id > MAX_ID_RESERVED:
                 raise WazuhError(5011)
 
     result = AffectedItemsWazuhResult(all_msg='User was successfully updated',
@@ -254,7 +254,7 @@ def remove_users(user_ids):
         for user_id in user_ids:
             user_id = int(user_id)
             current_user = auth.get_user(common.current_user.get())
-            if not isinstance(current_user, bool) and user_id == int(current_user['id']) and user_id > max_id_reserved:
+            if not isinstance(current_user, bool) and user_id == int(current_user['id']) and user_id > MAX_ID_RESERVED:
                 result.add_failed_item(id_=user_id, error=WazuhError(5008))
                 continue
             user = auth.get_user_id(user_id)
