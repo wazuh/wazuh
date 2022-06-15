@@ -1,5 +1,5 @@
-#ifndef _SOCKETINTERFACE_UNIX_DGRAM_H
-#define _SOCKETINTERFACE_UNIX_DGRAM_H
+#ifndef _SOCKETINTERFACE_UNIX_DATAGRAM_H
+#define _SOCKETINTERFACE_UNIX_DATAGRAM_H
 
 #include "unixInterface.hpp"
 
@@ -9,7 +9,7 @@ namespace base::utils::socketInterface
 /**
  * @brief This class implements an interface to a UNIX datagram socket.
  */
-class unixDgram : public unixInterface
+class unixDatagram : public unixInterface
 {
 
 public:
@@ -21,10 +21,10 @@ public:
      * @param maxMsgSize Maximum message size (default=2^16)
      * @throw std::invalid_argument if the path is empty
      */
-    unixDgram(std::string_view path, const int maxMsgSize = 65536)
+    unixDatagram(std::string_view path, const int maxMsgSize = 65536)
         : unixInterface(path, Protocol::DATAGRAM, maxMsgSize) {};
 
-    ~unixDgram() = default; // Close de socket in the base class
+    ~unixDatagram() = default; // Close de socket in the base class
 
     /**
      * @brief Send a message to the socket. Open the socket if it is not already open.
