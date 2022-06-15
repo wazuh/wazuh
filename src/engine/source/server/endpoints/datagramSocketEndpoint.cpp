@@ -41,7 +41,7 @@ namespace engineserver::endpoints
  * socket
  * @return (int) Returns either the file descriptor value or -1
  */
-static inline int bindUnixDgramSocket(const char* path)
+static inline int bindUnixDatagramSocket(const char* path)
 {
     struct sockaddr_un n_us;
     int socketFd = 0;
@@ -157,7 +157,7 @@ DatagramSocketEndpoint::DatagramSocketEndpoint(const std::string& path,
             }
         });
 
-    m_socketFd = bindUnixDgramSocket(m_path.c_str());
+    m_socketFd = bindUnixDatagramSocket(m_path.c_str());
 
     if (m_socketFd <= 0)
     {
