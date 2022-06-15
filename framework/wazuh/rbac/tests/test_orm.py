@@ -62,10 +62,6 @@ def test_database_init(db_setup):
         assert rm.get_role('wazuh') != db_setup.SecurityError.ROLE_NOT_EXIST
 
 
-def test_json_validator(db_setup):
-    assert not db_setup.json_validator('Not a dictionary')
-
-
 def test_add_token(db_setup):
     """Check token rule is added to database"""
     with db_setup.TokenManager() as tm:
@@ -279,7 +275,7 @@ def test_delete_rules(db_setup):
 
         for rule in rum.get_rules():
             # Admin rules
-            if rule.id < db_setup.max_id_reserved:
+            if rule.id < db_setup.MAX_ID_RESERVED:
                 assert rum.delete_rule(rule.id) == db_setup.SecurityError.ADMIN_RESOURCES
             # Other rules
             else:
@@ -291,7 +287,7 @@ def test_delete_all_security_rules(db_setup):
     with db_setup.RulesManager() as rum:
         assert rum.delete_all_rules()
         # Only admin rules are left
-        assert all(rule.id < db_setup.max_id_reserved for rule in rum.get_rules())
+        assert all(rule.id < db_setup.MAX_ID_RESERVED for rule in rum.get_rules())
         rum.add_rule(name='toDelete', rule={'Unittest': 'Rule'})
         rum.add_rule(name='toDelete1', rule={'Unittest1': 'Rule'})
         len_rules = len(rum.get_rules())
@@ -944,14 +940,14 @@ def test_databasemanager_insert_default_resources(fresh_in_memory_db):
     default_users = _get_default_resources("users")
     with fresh_in_memory_db.AuthenticationManager(fresh_in_memory_db.db_manager.sessions[in_memory_db_path]) as auth:
         users = auth.get_users()
-        assert len([user for user in users if user['user_id'] < fresh_in_memory_db.max_id_reserved]) \
+        assert len([user for user in users if user['user_id'] < fresh_in_memory_db.MAX_ID_RESERVED]) \
                == len(default_users[next(iter(default_users))])
 
     # Check default roles
     default_roles = _get_default_resources("roles")
     with fresh_in_memory_db.RolesManager(fresh_in_memory_db.db_manager.sessions[in_memory_db_path]) as rm:
         roles = rm.get_roles()
-        assert len([role for role in roles if role.id < fresh_in_memory_db.max_id_reserved]) \
+        assert len([role for role in roles if role.id < fresh_in_memory_db.MAX_ID_RESERVED]) \
                == len(default_roles[next(iter(default_roles))])
 
     # Check default policies
@@ -960,14 +956,14 @@ def test_databasemanager_insert_default_resources(fresh_in_memory_db):
 
     with fresh_in_memory_db.PoliciesManager(fresh_in_memory_db.db_manager.sessions[in_memory_db_path]) as pm:
         policies = pm.get_policies()
-        assert len([policy for policy in policies if policy.id < fresh_in_memory_db.max_id_reserved])\
+        assert len([policy for policy in policies if policy.id < fresh_in_memory_db.MAX_ID_RESERVED])\
                == len(default_policies)
 
     # Check default rules
     default_rules = _get_default_resources("rules")
     with fresh_in_memory_db.RulesManager(fresh_in_memory_db.db_manager.sessions[in_memory_db_path]) as rum:
         rules = rum.get_rules()
-        assert len([rule for rule in rules if rule.id < fresh_in_memory_db.max_id_reserved]) \
+        assert len([rule for rule in rules if rule.id < fresh_in_memory_db.MAX_ID_RESERVED]) \
                == len(default_rules[next(iter(default_rules))])
 
 
@@ -1030,10 +1026,10 @@ def test_check_database_integrity(chmod_mock, chown_mock, remove_mock, safe_move
                     call.create_database(fresh_in_memory_db.DB_FILE_TMP),
                     call.insert_default_resources(fresh_in_memory_db.DB_FILE_TMP),
                     call.migrate_data(source=fresh_in_memory_db.DB_FILE, target=fresh_in_memory_db.DB_FILE_TMP,
-                                      from_id=fresh_in_memory_db.cloud_reserved_range,
-                                      to_id=fresh_in_memory_db.max_id_reserved),
+                                      from_id=fresh_in_memory_db.CLOUD_RESERVED_RANGE,
+                                      to_id=fresh_in_memory_db.MAX_ID_RESERVED),
                     call.migrate_data(source=fresh_in_memory_db.DB_FILE, target=fresh_in_memory_db.DB_FILE_TMP,
-                                      from_id=fresh_in_memory_db.max_id_reserved + 1),
+                                      from_id=fresh_in_memory_db.MAX_ID_RESERVED + 1),
                     call.set_database_version(fresh_in_memory_db.DB_FILE_TMP, fresh_in_memory_db.CURRENT_ORM_VERSION),
                     call.close_sessions()
                 ], any_order=True)
