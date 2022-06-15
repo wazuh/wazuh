@@ -276,7 +276,7 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                 headers[1] = NULL;
 
                 while (!scan_finished) {
-                    response = wurl_http_request(WURL_GET_METHOD, headers, url, NULL, github_config->curl_max_size);
+                    response = wurl_http_request(WURL_GET_METHOD, headers, url, NULL, github_config->curl_max_size, WM_GITHUB_DEFAULT_CURL_REQUEST_TIMEOUT);
 
                     if (response) {
                         if (response->max_size_reached) {

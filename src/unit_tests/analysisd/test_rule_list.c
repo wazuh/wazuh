@@ -27,7 +27,40 @@ int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, OSList* log_msg);
 
 /* setup/teardown */
 
+static int setup_AR(void **state) {
+    active_response *ar_info;
+    os_calloc(1, sizeof(active_response), ar_info);
 
+    os_strdup("test_ar_name", ar_info->name);
+    os_strdup("test_ar_command", ar_info->command);
+    os_strdup("test_ar_agent_id", ar_info->agent_id);
+    os_strdup("test_ar_rules_id", ar_info->rules_id);
+    os_strdup("test_ar_rules_group", ar_info->rules_group);
+    os_calloc(1, sizeof(ar_command), ar_info->ar_cmd);
+    os_strdup("test_ar_command_name", ar_info->ar_cmd->name);
+    os_strdup("test_ar_command_executable", ar_info->ar_cmd->executable);
+    os_strdup("test_ar_command_extra_args", ar_info->ar_cmd->extra_args);
+
+    *state = ar_info;
+    return OS_SUCCESS;
+}
+
+static int teardown_AR(void **state) {
+    active_response *ar_info = *state;
+
+    os_free(ar_info->name);
+    os_free(ar_info->command);
+    os_free(ar_info->agent_id);
+    os_free(ar_info->rules_id);
+    os_free(ar_info->rules_group);
+    os_free(ar_info->ar_cmd->name);
+    os_free(ar_info->ar_cmd->executable);
+    os_free(ar_info->ar_cmd->extra_args);
+    os_free(ar_info->ar_cmd);
+    os_free(ar_info);
+
+    return OS_SUCCESS;
+}
 
 /* wraps */
 
@@ -170,16 +203,7 @@ void test_os_remove_ruleinfo_OK(void **state)
     os_calloc(1, sizeof(RuleInfoDetail), ruleinfo->info_details);
 
     os_calloc(2, sizeof(active_response*), ruleinfo->ar);
-    os_calloc(1, sizeof(active_response), ruleinfo->ar[0]);
-    os_strdup("test_ar_name", ruleinfo->ar[0]->name);
-    os_strdup("test_ar_command", ruleinfo->ar[0]->command);
-    os_strdup("test_ar_agent_id", ruleinfo->ar[0]->agent_id);
-    os_strdup("test_ar_rules_id", ruleinfo->ar[0]->rules_id);
-    os_strdup("testtest_ar_rules_group", ruleinfo->ar[0]->rules_group);
-    os_calloc(1, sizeof(ar_command), ruleinfo->ar[0]->ar_cmd);
-    os_strdup("test_ar_command_name", ruleinfo->ar[0]->ar_cmd->name);
-    os_strdup("test_ar_command_executable", ruleinfo->ar[0]->ar_cmd->executable);
-    os_strdup("test_ar_command_extra_args", ruleinfo->ar[0]->ar_cmd->extra_args);
+    ruleinfo->ar[0] = *state;
     os_calloc(1, sizeof(ListRule), ruleinfo->lists);
 
     os_calloc(2, sizeof(char*), ruleinfo->same_fields);
@@ -239,16 +263,7 @@ void test_os_remove_rules_list_OK(void **state)
     os_calloc(1, sizeof(RuleInfoDetail), node->ruleinfo->info_details);
 
     os_calloc(2, sizeof(active_response*), node->ruleinfo->ar);
-    os_calloc(1, sizeof(active_response), node->ruleinfo->ar[0]);
-    os_strdup("test_ar_name", node->ruleinfo->ar[0]->name);
-    os_strdup("test_ar_command", node->ruleinfo->ar[0]->command);
-    os_strdup("test_ar_agent_id", node->ruleinfo->ar[0]->agent_id);
-    os_strdup("test_ar_rules_id", node->ruleinfo->ar[0]->rules_id);
-    os_strdup("testtest_ar_rules_group", node->ruleinfo->ar[0]->rules_group);
-    os_calloc(1, sizeof(ar_command), node->ruleinfo->ar[0]->ar_cmd);
-    os_strdup("test_ar_command_name", node->ruleinfo->ar[0]->ar_cmd->name);
-    os_strdup("test_ar_command_executable", node->ruleinfo->ar[0]->ar_cmd->executable);
-    os_strdup("test_ar_command_extra_args", node->ruleinfo->ar[0]->ar_cmd->extra_args);
+    node->ruleinfo->ar[0] = *state;
     os_calloc(1, sizeof(ListRule), node->ruleinfo->lists);
 
     os_calloc(2, sizeof(char*), node->ruleinfo->same_fields);
@@ -296,9 +311,9 @@ int main(void)
         cmocka_unit_test(test_os_remove_rulenode_child),
         // Tests os_remove_ruleinfo
         cmocka_unit_test(test_os_remove_ruleinfo_NULL),
-        cmocka_unit_test(test_os_remove_ruleinfo_OK),
+        cmocka_unit_test_setup_teardown(test_os_remove_ruleinfo_OK, setup_AR, teardown_AR),
         // Tests os_remove_rules_list
-        cmocka_unit_test(test_os_remove_rules_list_OK)
+        cmocka_unit_test_setup_teardown(test_os_remove_rules_list_OK, setup_AR, teardown_AR)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
