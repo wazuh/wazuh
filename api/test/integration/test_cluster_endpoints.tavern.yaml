@@ -1556,6 +1556,22 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
+  - name: Read logs with filters -> tag=wazuh-unknown-daemon {node_id}
+    request:
+      verify: False
+      <<: *get_cluster_logs
+      params:
+        tag: wazuh-unknown-daemon
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+
   - name: Read logs with filters -> level=info, limit=1 {node_id}
     request:
       verify: False

@@ -2450,42 +2450,8 @@ components:
             - warning
         tag:
           type: string
+          format: alphanumeric
           description: "Wazuh component that logged the event"
-          enum:
-            - agent_control
-            - wazuh-agentlessd
-            - wazuh-analysisd
-            - wazuh-authd
-            - wazuh-csyslogd
-            - wazuh-dbd
-            - wazuh-execd
-            - wazuh-integratord
-            - wazuh-maild
-            - wazuh-monitord
-            - wazuh-logcollector
-            - wazuh-remoted
-            - wazuh-reportd
-            - wazuh-rootcheck
-            - wazuh-syscheckd
-            - sca
-            - verify-agent-conf
-            - wazuh-db
-            - wazuh-modulesd
-            - wazuh-modulesd:agent-key-polling
-            - wazuh-modulesd:aws-s3
-            - wazuh-modulesd:azure-logs
-            - wazuh-modulesd:agent-upgrade
-            - wazuh-modulesd:task-manager
-            - wazuh-modulesd:ciscat
-            - wazuh-modulesd:control
-            - wazuh-modulesd:command
-            - wazuh-modulesd:database
-            - wazuh-modulesd:docker-listener
-            - wazuh-modulesd:download
-            - wazuh-modulesd:oscap
-            - wazuh-modulesd:osquery
-            - wazuh-modulesd:syscollector
-            - wazuh-modulesd:vulnerability-detector
         timestamp:
           type: string
           format: date-time
@@ -4710,37 +4676,7 @@ components:
       description: "Wazuh component that logged the event"
       schema:
         type: string
-        enum:
-        - wazuh-agentlessd
-        - wazuh-analysisd
-        - wazuh-authd
-        - wazuh-csyslogd
-        - wazuh-dbd
-        - wazuh-execd
-        - wazuh-integratord
-        - wazuh-maild
-        - wazuh-monitord
-        - wazuh-logcollector
-        - wazuh-remoted
-        - wazuh-reportd
-        - wazuh-rootcheck
-        - wazuh-syscheckd
-        - sca
-        - wazuh-db
-        - wazuh-modulesd
-        - wazuh-modulesd:agent-key-polling
-        - wazuh-modulesd:aws-s3
-        - wazuh-modulesd:azure-logs
-        - wazuh-modulesd:ciscat
-        - wazuh-modulesd:control
-        - wazuh-modulesd:command
-        - wazuh-modulesd:database
-        - wazuh-modulesd:docker-listener
-        - wazuh-modulesd:download
-        - wazuh-modulesd:oscap
-        - wazuh-modulesd:osquery
-        - wazuh-modulesd:syscollector
-        - wazuh-modulesd:vulnerability-detector
+        format: alphanumeric
     log_level:
       in: query
       name: level
