@@ -14,6 +14,8 @@
 
 #include <stdint.h>
 
+w_linked_queue_t *remoted_agent_state_queue;
+
 /* Status structures */
 
 typedef struct _queue_status_t {
@@ -103,6 +105,17 @@ typedef struct _analysisd_state_t {
     events_recv_t events_received_breakdown;
 } analysisd_state_t;
 
+typedef struct _remoted_agent_state_t {
+    int id;
+    uint64_t events_received;
+    uint64_t events_processed;
+    uint64_t alerts_written;
+    uint64_t archives_written;
+    uint32_t firewall_written;
+    events_recv_t events_received_breakdown;
+} remoted_agent_state_t;
+
+
 
 /* Status functions */
 
@@ -125,7 +138,7 @@ void w_add_recv(unsigned long bytes);
 /**
  * @brief Increment received events counter
  */
-void w_inc_received_events();
+void w_inc_received_events(int agent_id);
 
 /**
  * @brief Increment syscheck decoded events counter

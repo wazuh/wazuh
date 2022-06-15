@@ -35,6 +35,12 @@ static void w_get_queues_size();
  */
 static void w_get_initial_queues_size();
 
+static void w_inc_received_agent_events(int agent_id);
+
+static w_linked_queue_node_t *linked_queue_search_agent(int agent_id);
+
+static w_linked_queue_node_t * get_node(int agent_id);
+
 
 void * w_analysisd_state_main() {
     interval = getDefine_Int("analysisd", "state_interval", 0, 86400);
@@ -49,6 +55,8 @@ void * w_analysisd_state_main() {
     w_mutex_lock(&queue_mutex);
     w_get_initial_queues_size();
     w_mutex_unlock(&queue_mutex);
+
+    remoted_agent_state_queue = linked_queue_init(); // cuando hay q hacer el linked_queue_free -> borra todos los nodos???
 
     while (1) {
         w_analysisd_write_state();
@@ -319,16 +327,57 @@ void w_get_initial_queues_size() {
     queue_status.stats_queue_size = writer_queue_log_statistical->size;
 }
 
+static void w_inc_received_agent_events(int agent_id) {
+    w_mutex_lock(&remoted_agent_state_queue->mutex);
+    w_linked_queue_node_t *agent_node = get_node(agent_id);
+    ((remoted_agent_state_t *) agent_node->data)->events_received++;
+    w_mutex_unlock(&remoted_agent_state_queue->mutex);
+}
+
+static w_linked_queue_node_t *linked_queue_search_agent(int agent_id) {
+    w_linked_queue_node_t *node;
+    node = remoted_agent_state_queue->first;
+
+    if (node == NULL) {
+        return NULL;
+    }
+
+    do {
+        if (agent_id == ((remoted_agent_state_t *) node->data)->id) {
+            return node;
+        }
+    } while(node = node->next, node);
+
+    return NULL;
+}
+
+static w_linked_queue_node_t * get_node(int agent_id){
+    w_linked_queue_node_t *agent_node = linked_queue_search_agent(agent_id);
+
+    if (agent_node == NULL){
+        remoted_agent_state_t *agent_state;
+        agent_state = malloc(sizeof(remoted_agent_state_t));
+        *agent_state = (remoted_agent_state_t) {0};
+        agent_state->id = agent_id;
+        agent_node = linked_queue_push(remoted_agent_state_queue, agent_state);
+    }
+    return agent_node;
+}
+
 void w_add_recv(unsigned long bytes) {
     w_mutex_lock(&state_mutex);
     analysisd_state.received_bytes += bytes;
     w_mutex_unlock(&state_mutex);
 }
 
-void w_inc_received_events() {
+void w_inc_received_events(int agent_id) {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_received++;
     w_mutex_unlock(&state_mutex);
+
+    if (agent_id > 0){
+        w_inc_received_agent_events(agent_id);
+    }
 }
 
 void w_inc_syscheck_decoded_events() {

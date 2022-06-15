@@ -240,6 +240,8 @@ static const char *(month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
 /* CPU Info*/
 static int cpu_cores;
 
+static int parse_agent_id(char *msg);
+
 /* Print help statement */
 __attribute__((noreturn))
 static void help_analysisd(char * home_path)
@@ -1050,6 +1052,28 @@ void OS_ReadMSG_analysisd(int m_queue)
     }
 }
 
+static int parse_agent_id(char *msg) {
+    char *agent_parsed = NULL;
+    char *cpy_msg;
+    int agent_id = -1;
+
+    os_strdup(msg, cpy_msg);
+    cpy_msg += 2;
+    if (cpy_msg[0] == '[') {
+        agent_parsed = cpy_msg + 1;
+        cpy_msg = strchr(agent_parsed, ']');
+
+        if (!cpy_msg) {
+            agent_parsed = NULL;
+        }
+
+        *cpy_msg = '\0';
+        os_strdup(agent_parsed, agent_parsed);
+        agent_id = atoi(agent_parsed);
+    }
+    return agent_id;
+}
+
 /*  Update each rule and print it to the logs */
 static void LoopRule(RuleNode *curr_node, FILE *flog)
 {
@@ -1161,7 +1185,7 @@ void * ad_input_main(void * args) {
             }
 
             w_add_recv((unsigned long) recv);
-            w_inc_received_events();
+            w_inc_received_events(parse_agent_id(msg));
 
             if (msg[0] == SYSCHECK_MQ) {
 
