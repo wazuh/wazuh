@@ -7,6 +7,13 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
+
+class Arguments:
+    def __init__(self, reset_force=False, func=None):
+        self.reset_force = reset_force
+        self.func = func
+
+
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
@@ -41,7 +48,7 @@ async def test_restore_default_passwords(forward_mock, safe_load_mock, print_moc
     """
     security, _, _ = db_setup
     with patch("getpass.getpass", return_value=user_input):
-        await rbac_control.restore_default_passwords()
+        await rbac_control.restore_default_passwords(Arguments())
         if user_input != "":
             forward_mock.assert_called_with(security.update_user, f_kwargs={'user_id': '1', 'password': user_input},
                                             request_type="local_master")
@@ -60,7 +67,7 @@ async def test_restore_default_passwords_exceptions(safe_load_mock, getpass_mock
     """Check the `restore_default_passwords` function behaviour when receiving exceptions."""
     exception_message = "Random exception message"
     with patch("scripts.rbac_control.cluster_utils.forward_function", return_value=Exception(exception_message)):
-        await rbac_control.restore_default_passwords()
+        await rbac_control.restore_default_passwords(Arguments())
 
         assert "testing_user" in print_mock.call_args[0][0]
         assert exception_message in print_mock.call_args[0][0]
@@ -81,12 +88,12 @@ async def test_reset_rbac_database(forward_mock, print_mock, user_input, db_setu
     _, _, core_security = db_setup
     with patch("builtins.input", return_value=user_input):
         if user_input == "RESET":
-            await rbac_control.reset_rbac_database()
+            await rbac_control.reset_rbac_database(Arguments())
             forward_mock.assert_called_with(core_security.rbac_db_factory_reset, request_type="local_master")
             assert "Successfully reset RBAC database" in print_mock.call_args[0][0]
         else:
             with pytest.raises(SystemExit):
-                await rbac_control.reset_rbac_database()
+                await rbac_control.reset_rbac_database(Arguments())
                 forward_mock.assert_not_called()
                 assert "RBAC database reset aborted." in print_mock.call_args[0][0]
 
@@ -98,7 +105,7 @@ async def test_reset_rbac_database_exceptions(input_mock, print_mock):
     """Check the `restore_default_passwords` function behaviour when receiving exceptions."""
     exception_message = "Random exception message"
     with patch("scripts.rbac_control.cluster_utils.forward_function", return_value=Exception(exception_message)):
-        await rbac_control.reset_rbac_database()
+        await rbac_control.reset_rbac_database(Arguments())
         assert "RBAC database reset failed" in print_mock.call_args[0][0]
         assert exception_message in print_mock.call_args[0][0]
 
@@ -124,26 +131,16 @@ def test_get_script_arguments(exit_mock):
 @patch("scripts.rbac_control.reset_rbac_database")
 async def test_main(reset_mock, restore_mock, exit_mock):
     """Test all the possible options for the `main` function depending on user input."""
-    class Arguments:
-        def __init__(self, change_password=None, factory_reset=None):
-            self.change_password = change_password
-            self.factory_reset = factory_reset
-
-    rbac_control.args = Arguments()
-
-    # No arguments
-    await rbac_control.main()
-
-    # --change-password
-    rbac_control.args = Arguments(change_password=True)
+    # change-password
+    rbac_control.args = Arguments(func=rbac_control.restore_default_passwords)
     await rbac_control.main()
     restore_mock.assert_called_once()
     restore_mock.reset_mock()
     reset_mock.assert_not_called()
     exit_mock.assert_called_with(0)
 
-    # --factory-reset
-    rbac_control.args = Arguments(factory_reset=True)
+    # factory-reset
+    rbac_control.args = Arguments(func=rbac_control.reset_rbac_database)
     await rbac_control.main()
     reset_mock.assert_called_once()
     reset_mock.reset_mock()

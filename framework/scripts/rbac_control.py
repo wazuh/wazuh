@@ -22,7 +22,7 @@ def signal_handler(n_signal, frame):
     sys.exit(1)
 
 
-async def restore_default_passwords():
+async def restore_default_passwords(script_args):
     """Try to update all RBAC default users passwords with console prompt."""
     import yaml
     from getpass import getpass
@@ -49,29 +49,36 @@ async def restore_default_passwords():
         print(f"\t{user}: {status}")
 
 
-async def reset_rbac_database():
+async def reset_rbac_database(script_args):
     """Attempt to fully wipe the RBAC database to restore factory values. Input confirmation is required."""
-    if input('This action will completely wipe your RBAC configuration and restart it to default values. Type '
-             'RESET to proceed: ') != 'RESET':
-        print('RBAC database reset aborted.')
+    if not script_args.reset_force and input("This action will completely wipe your RBAC configuration and restart it "
+                                             "to default values. Type RESET to proceed: ") != "RESET":
+        print("\tRBAC database reset aborted.")
         sys.exit(0)
 
     from wazuh.core.security import rbac_db_factory_reset
 
     response = await cluster_utils.forward_function(rbac_db_factory_reset, request_type="local_master")
 
-    print(f'RBAC database reset failed | {str(response)}' if isinstance(response, Exception)
-          else '\tSuccessfully reset RBAC database')
+    print(f"\tRBAC database reset failed | {str(response)}" if isinstance(response, Exception)
+          else "\tSuccessfully reset RBAC database")
 
 
 def get_script_arguments():
-    arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument("--change-password", action='store_true', dest='change_password',
-                            help="Change the password for each default user. Empty values will leave the password "
-                                 "unchanged.")
-    arg_parser.add_argument("--factory-reset", action='store_true', dest='factory_reset',
-                            help="Restart the RBAC database to its default state. This will completely wipe your custom"
-                                 " RBAC information.")
+    arg_parser = argparse.ArgumentParser(description="Wazuh RBAC tool: manage resources from the Wazuh RBAC database")
+    arg_parser._positionals.title = "Arguments"
+    arg_subparsers = arg_parser.add_subparsers()
+
+    change_password_parser = arg_subparsers.add_parser("change-password",
+                                                       help="Change the password for each default user. Empty values "
+                                                            "will leave the password unchanged.")
+    change_password_parser.set_defaults(func=restore_default_passwords)
+    reset_parser = arg_subparsers.add_parser("factory-reset",
+                                             help="Reset the RBAC database to its default state. This will completely"
+                                                  " wipe your custom RBAC information.")
+    reset_parser.add_argument("-f", "--force", action="store_true", dest="reset_force", default=False,
+                              help="Do not ask for confirmation for the RBAC database factory reset.")
+    reset_parser.set_defaults(func=reset_rbac_database)
 
     if not len(sys.argv) > 1:
         arg_parser.print_help()
@@ -83,12 +90,8 @@ def get_script_arguments():
 async def main():
     signal(SIGINT, signal_handler)
 
-    if args.change_password:
-        await restore_default_passwords()
-        sys.exit(0)
-    elif args.factory_reset:
-        await reset_rbac_database()
-        sys.exit(0)
+    await args.func(args)
+    sys.exit(0)
 
 
 if __name__ == "__main__":
