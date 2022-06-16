@@ -70,6 +70,14 @@ static void registerBuilders()
     Registry::registerBuilder(builders::opBuilderHelperRegexExtract, "helper.r_ext");
     Registry::registerBuilder(builders::opBuilderHelperAppendString, "helper.s_append");
 
+    // DB sync
+    Registry::registerBuilder("helper.wdb_query", builders::opBuilderWdbSyncQuery);
+    Registry::registerBuilder("helper.wdb_update", builders::opBuilderWdbSyncUpdate);
+    // Combinators
+    Registry::registerBuilder("combinator.chain", builders::combinatorBuilderChain);
+    Registry::registerBuilder("combinator.broadcast",
+                              builders::combinatorBuilderBroadcast);
+
 }
 } // namespace builder::internals
 
