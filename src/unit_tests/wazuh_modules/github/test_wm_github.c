@@ -641,17 +641,8 @@ void test_github_execute_scan_status_code_200_null(void **state) {
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mterror, formatted_msg, "Couldn't save running state.");
 
-    will_return(__wrap_isDebug, 1);
-
-#ifndef WIN32
-    will_return(__wrap_gmtime_r, 1);
-#endif
-
-    will_return(__wrap_strftime,"2021-05-07T12:24:56Z");
-    will_return(__wrap_strftime, 20);
-
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2021-05-07T12:24:56Z', waiting '10' seconds to run next scan");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2021-05-07 12:34:56', waiting '10' seconds to run next scan");
 
     wm_github_execute_scan(data->github_config, initial_scan);
 }
@@ -716,7 +707,8 @@ void test_github_execute_scan_max_size_reached(void **state) {
     expect_any(__wrap_wm_state_io, size);
     will_return(__wrap_wm_state_io, 1);
 
-    will_return(__wrap_isDebug, 0);
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2021-05-07 12:34:56', waiting '10' seconds to run next scan");
 
     wm_github_execute_scan(data->github_config, initial_scan);
 
