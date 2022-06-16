@@ -31,13 +31,17 @@ add_library(builders OBJECT
   builders/opBuilderHelperFilter.cpp
   builders/opBuilderHelperMap.cpp
   builders/baseHelper.cpp
+  builders/opBuilderWdbSync.cpp
+  builders/opBuilderARWrite.cpp
   definitions.cpp
   asset.cpp
   environment.cpp
   registry.cpp
 )
+
 target_include_directories(builders
   PRIVATE
+  ${ENGINE_SOURCE_DIR}/wdb/src
 
   # TODO fix this?
   ${ENGINE_SOURCE_DIR}/builder/builders
@@ -49,4 +53,4 @@ target_include_directories(builders
 )
 
 # TODO do this better. Also, who 'owns' the rxcpp dep
-target_link_libraries(builders base hlp kvdb re2 logicExpression)
+target_link_libraries(builders base hlp kvdb re2 logicExpression server wdb)

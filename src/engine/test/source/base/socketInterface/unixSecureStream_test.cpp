@@ -13,13 +13,13 @@
 using namespace base::utils::socketInterface;
 
 // TODO move interface test to a separate file
-TEST(unixStreamSocket, ConnectError)
+TEST(unixSecureStreamSocket, ConnectError)
 {
     ASSERT_THROW(testSocketConnect(TEST_STREAM_SOCK_PATH, SOCK_STREAM), std::runtime_error);
 }
 
 // TODO move interface tests to a separate file
-TEST(unixStreamSocket, Connect)
+TEST(unixSecureStreamSocket, Connect)
 {
     // Create server
     const int acceptSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
@@ -38,7 +38,7 @@ TEST(unixStreamSocket, Connect)
 // TODO Add test move semantics
 // TODO check reconnection
 // TODO CHeck disconnection
-TEST(unixStreamSocket, SendMessageError)
+TEST(unixSecureStreamSocket, SendMessageError)
 {
     // Create server
     const int acceptSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
@@ -61,7 +61,7 @@ TEST(unixStreamSocket, SendMessageError)
 
 // TODO RENAME AND RE CHECK ALL TEST
 // TODO ADD DESCRIPTION - ESCENARIO to CHECK
-TEST(unixStreamSocket, SendLongMessageError)
+TEST(unixSecureStreamSocket, SendLongMessageError)
 {
     unixSecureStream clientSocket(TEST_STREAM_SOCK_PATH);
 
@@ -86,7 +86,7 @@ TEST(unixStreamSocket, SendLongMessageError)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(unixStreamSocket, SendEmptyMessageError)
+TEST(unixSecureStreamSocket, SendEmptyMessageError)
 {
     // Create server
     const int acceptSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
@@ -105,18 +105,18 @@ TEST(unixStreamSocket, SendEmptyMessageError)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(unixStreamSocket, SendInvalidSocketError)
+TEST(unixSecureStreamSocket, SendInvalidSocketError)
 {
     ASSERT_EQ(testSendMsg(0, TEST_SEND_MESSAGE.data()), CommRetval::INVALID_SOCKET);
     ASSERT_EQ(testSendMsg(-5, TEST_SEND_MESSAGE.data()), CommRetval::INVALID_SOCKET);
 }
 
-TEST(unixStreamSocket, SendWrongSocketFDError)
+TEST(unixSecureStreamSocket, SendWrongSocketFDError)
 {
     ASSERT_EQ(testSendMsg(999, TEST_SEND_MESSAGE.data()), CommRetval::COMMUNICATION_ERROR);
 }
 
-TEST(unixStreamSocket, SendMessage)
+TEST(unixSecureStreamSocket, SendMessage)
 {
     // Create server
     const int acceptSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
@@ -134,7 +134,7 @@ TEST(unixStreamSocket, SendMessage)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(unixStreamSocket, RecvMessage)
+TEST(unixSecureStreamSocket, RecvMessage)
 {
 
     // Create server
@@ -162,7 +162,7 @@ TEST(unixStreamSocket, RecvMessage)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(unixStreamSocket, SendRecvMessage)
+TEST(unixSecureStreamSocket, SendRecvMessage)
 {
     char msg[MAX_BUFFER_SIZE] = {};
 
@@ -195,7 +195,7 @@ TEST(unixStreamSocket, SendRecvMessage)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(unixStreamSocket, SendRecvLongestMessage)
+TEST(unixSecureStreamSocket, SendRecvLongestMessage)
 {
     char msg[MSG_MAX_SIZE + 1] = {};
     memset(msg, 'x', MSG_MAX_SIZE);
@@ -224,7 +224,7 @@ TEST(unixStreamSocket, SendRecvLongestMessage)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(unixStreamSocket, RemoteCloseBeforeSend)
+TEST(unixSecureStreamSocket, RemoteCloseBeforeSend)
 {
 
     // Create server
@@ -253,7 +253,7 @@ TEST(unixStreamSocket, RemoteCloseBeforeSend)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(unixStreamSocket, RemoteCloseBeforeRcv)
+TEST(unixSecureStreamSocket, RemoteCloseBeforeRcv)
 {
 
     // Create server
@@ -287,7 +287,7 @@ TEST(unixStreamSocket, RemoteCloseBeforeRcv)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(unixStreamSocket, LocalSendremoteCloseBeforeRcv)
+TEST(unixSecureStreamSocket, LocalSendremoteCloseBeforeRcv)
 {
 
     // Create server
