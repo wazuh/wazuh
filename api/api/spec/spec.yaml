@@ -40,8 +40,8 @@ info:
 
     <SecurityDefinitions />
 
-  version: '4.3.4'
-  x-revision: '40316'
+  version: '4.3.5'
+  x-revision: '40317'
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
@@ -10930,7 +10930,7 @@ paths:
               example:
                 data:
                   affected_items:
-                    - mitre_version: '4.3.4'
+                    - mitre_version: '4.3.5'
                       deprecated: 0
                       description: |-
                         [APT38](https://attack.mitre.org/groups/G0082) is a financially-motivated threat group that is backed by the North Korean regime. The group mainly targets banks and financial institutions and has targeted more than 16 organizations in at least 13 countries since at least 2014.(Citation: FireEye APT38 Oct 2018)
@@ -11192,7 +11192,7 @@ paths:
               example:
                 data:
                   affected_items:
-                    - mitre_version: '4.3.4'
+                    - mitre_version: '4.3.5'
                       deprecated: 0
                       description: "[HDoor](https://attack.mitre.org/software/S0061) is malware that
                         has been customized and used by the [Naikon](https://attack.mitre.org/groups/G0019)
@@ -11347,7 +11347,7 @@ paths:
               example:
                 data:
                   affected_items:
-                    - mitre_version: '4.3.4'
+                    - mitre_version: '4.3.5'
                       network_requirements: 0
                       remote_support: 0
                       mitre_detection: |-
