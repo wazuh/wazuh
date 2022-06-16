@@ -399,13 +399,11 @@ void test_github_execute_scan(void **state) {
     will_return(__wrap_gmtime_r, 1);
 #endif
 
-    will_return(__wrap_strftime,"2021-05-07T11:24:56");
-    will_return(__wrap_strftime, 20);
     will_return(__wrap_strftime,"2021-05-07T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to 2021-05-07T12:24:56Z, waiting to run first scan at 2021-05-07T11:24:56");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2021-05-07T12:24:56Z', waiting '10' seconds to run first scan");
 
     expect_string(__wrap_wm_state_io, tag, "github-test_org-git");
     expect_value(__wrap_wm_state_io, op, WM_IO_READ);
@@ -425,13 +423,11 @@ void test_github_execute_scan(void **state) {
     will_return(__wrap_gmtime_r, 1);
 #endif
 
-    will_return(__wrap_strftime,"2021-05-07T11:24:56");
-    will_return(__wrap_strftime, 20);
-    will_return(__wrap_strftime,"2021-05-07T12:24:56Z");
+    will_return(__wrap_strftime,"2021-05-07T11:24:56Z");
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to 2021-05-07T12:24:56Z, waiting to run first scan at 2021-05-07T11:24:56");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2021-05-07T11:24:56Z', waiting '10' seconds to run first scan");
 
     expect_string(__wrap_wm_state_io, tag, "github-test_org-web");
     expect_value(__wrap_wm_state_io, op, WM_IO_READ);
@@ -651,13 +647,11 @@ void test_github_execute_scan_status_code_200_null(void **state) {
     will_return(__wrap_gmtime_r, 1);
 #endif
 
-    will_return(__wrap_strftime,"2021-05-07T11:24:56");
-    will_return(__wrap_strftime, 20);
     will_return(__wrap_strftime,"2021-05-07T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to 2021-05-07T12:24:56Z, waiting to run next scan at 2021-05-07T11:24:56");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2021-05-07T12:24:56Z', waiting '10' seconds to run next scan");
 
     wm_github_execute_scan(data->github_config, initial_scan);
 }
