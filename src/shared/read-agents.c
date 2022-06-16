@@ -596,6 +596,10 @@ void delete_sqlite(const char *id, const char *name)
 /* Delete diff folders */
 void delete_diff(const char *name)
 {
+    if (!name || *name == '\0') {
+        return;
+    }
+
     char tmp_folder[513];
     tmp_folder[512] = '\0';
     snprintf(tmp_folder, 512, "%s/%s",
