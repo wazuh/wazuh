@@ -253,7 +253,7 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
 
                     if (wm_state_io(org_state_name, WM_IO_WRITE, &org_state_struc, sizeof(org_state_struc)) < 0) {
                         mterror(WM_GITHUB_LOGTAG, "Couldn't save running state.");
-                    } else if (isDebug() > 0) {
+                    } else if (isDebug()) {
                         memset(next_scan_time_str, '\0', 80);
                         next_scan_time = time(0) + github_config->interval;
                         localtime_r(&next_scan_time, &tm_next_scan);
@@ -365,7 +365,7 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                 } else {
                     org_state_struc.last_log_time = new_scan_time;
 
-                    if (isDebug() > 0) {
+                    if (isDebug()) {
                         memset(next_scan_time_str, '\0', 80);
                         next_scan_time = time(0) + github_config->interval;
                         localtime_r(&next_scan_time, &tm_next_scan);
