@@ -386,6 +386,10 @@
                                 <File Id="SCA_WIN2019" Name="cis_win2019.yml" Source="..\..\ruleset\sca\windows\cis_win2019.yml" />
                                 <Condition>BUILDVERSION = "17763" AND MsiNTProductType &gt; 1</Condition>
                             </Component>
+                            <Component Id="SCA_WIN2022" DiskId="1" Guid="217F0183-FB18-4FBF-BF98-0FCE7B59C707">
+                                <File Id="SCA_WIN2022" Name="cis_win2022.yml" Source="..\..\ruleset\sca\windows\cis_win2022.yml" />
+                                <Condition>BUILDVERSION &gt; 20000 AND MsiNTProductType &gt; 1</Condition>
+                            </Component>
                         </Directory>
                     </Directory>
                     <Directory Id="TMP" Name="tmp" />
@@ -604,6 +608,7 @@
             <ComponentRef Id="SCA_WIN2012R2" />
             <ComponentRef Id="SCA_WIN2016" />
             <ComponentRef Id="SCA_WIN2019" />
+            <ComponentRef Id="SCA_WIN2022" />
             <ComponentRef Id="CMP_BOOKMARKS" />
             <ComponentRef Id="CMP_LOGS" />
             <ComponentRef Id="CMP_WODLES" />
