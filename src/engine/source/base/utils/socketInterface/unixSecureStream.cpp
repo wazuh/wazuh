@@ -98,7 +98,7 @@ std::vector<char> unixSecureStream::recvMsg()
         {
             // Remote disconect recoverable case
             socketDisconnect();
-            throw RecoverableError("recvMsg: socket disconnected"); // errno is not set
+            throw RecoverableError("recvMsg: socket disconnected."); // errno is not set
         }
     };
 
@@ -109,7 +109,7 @@ std::vector<char> unixSecureStream::recvMsg()
     if (getMaxMsgSize() < msgSize)
     {
         socketDisconnect();
-        std::runtime_error("recvMsg: message size too long");
+        std::runtime_error("recvMsg: message size too long.");
     }
 
     std::vector<char> recvMsg;
