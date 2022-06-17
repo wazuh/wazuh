@@ -148,14 +148,11 @@ class UserRoles(_Base):
 # Blacklists
 
 class RunAsTokenBlacklist(_Base):
-    """TODO
-    Class that represents the table containing the tokens given through the run_as login endpoint that are considered
-    invalid.
+    """Class that represents the table containing the tokens given through the run_as login endpoint that are considered
+    invalid. An invalid token is an expired or revoked token.
     The information stored is:
-        nbf_invalid_until: The tokens that has an nbf prior to this timestamp will be invalidated
-        is_valid_until: Deadline for the rule's validity. To ensure that we can delete this rule,
-        the deadline will be the time of token creation plus the time of token validity.
-        This way, when we delete this rule, we ensure the invalid tokens have already expired.
+        nbf_invalid_until: Time of the issue that caused the tokens to be invalidated
+        is_valid_until: Token's expiration date
     """
     __tablename__ = "runas_token_blacklist"
 
@@ -179,16 +176,12 @@ class RunAsTokenBlacklist(_Base):
 
 
 class UsersTokenBlacklist(_Base):
-    """TODO
-    Class that represents the table containing the users with an invalid token and its given through the run_as login endpoint that are considered
-    invalid.
-    This table contains the users with an invalid token and for how long
+    """Class that represents the table containing the tokens given through the login endpoint that are considered
+    invalid. An invalid token is an expired or revoked token.
     The information stored is:
-        user_id: Affected user id
-        nbf_invalid_until: The tokens that has an nbf prior to this timestamp will be invalidated
-        is_valid_until: Deadline for the rule's validity. To ensure that we can delete this rule,
-        the deadline will be the time of token creation plus the time of token validity.
-        This way, when we delete this rule, we ensure the invalid tokens have already expired.
+        user_id: ID of the user affected by the token
+        nbf_invalid_until: Time of the issue that caused the tokens to be invalidated
+        is_valid_until: Token's expiration date
     """
     __tablename__ = "users_token_blacklist"
 
@@ -214,14 +207,12 @@ class UsersTokenBlacklist(_Base):
 
 
 class RolesTokenBlacklist(_Base):
-    """TODO
-    This table contains the roles with an invalid token and for how long
+    """Class that represents the table containing the roles with an invalid token.
+    An invalid token is an expired or revoked token.
     The information stored is:
-        role_id: Affected role id
-        nbf_invalid_until: The tokens that have an nbf prior to this timestamp will be invalidated
-        is_valid_until: Deadline for the rule's validity. To ensure that we can delete this rule,
-        the deadline will be the time of token creation plus the time of token validity.
-        This way, when we delete this rule, we ensure the invalid tokens have already expired.
+        role_id: ID of the role affected by the token
+        nbf_invalid_until: Time of the issue that caused the tokens to be invalidated
+        is_valid_until: Token's expiration date
     """
     __tablename__ = "roles_token_blacklist"
 
@@ -333,7 +324,6 @@ class User(_Base):
 
     def to_dict(self, session: Session = None) -> dict:
         """Return the information of the user and its roles.
-        TODO why urm?
 
         Parameters
         ----------
