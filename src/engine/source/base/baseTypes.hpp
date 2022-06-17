@@ -1,18 +1,12 @@
 #ifndef _H_BASE_TYPES
 #define _H_BASE_TYPES
 
-#include "eventHandler.hpp"
-
-#include <rxcpp/rx.hpp>
-
+#include "base/result.hpp"
 
 namespace base
 {
-    using Event = std::shared_ptr<EventHandler>;
-    using Document = json::Document;
-    using DocumentValue = json::Value;
-    using Observable = rxcpp::observable<Event>;
-    using Lifter = std::function<Observable(Observable)>;
-}
+using Event = std::shared_ptr<json::Json>;
+using EngineOp = std::function<result::Result<Event>(Event)>;
+} // namespace base
 
 #endif //_H_BASE_TYPES
