@@ -19,3 +19,9 @@ add_executable(ipUtils_test
 
 target_link_libraries(ipUtils_test gtest_main base)
 gtest_discover_tests(ipUtils_test)
+
+add_executable(result_test
+  result_test.cpp
+)
+target_link_libraries(result_test gtest_main base)
+gtest_discover_tests(result_test)

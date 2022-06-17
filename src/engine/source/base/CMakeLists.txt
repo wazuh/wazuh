@@ -75,7 +75,7 @@ add_library(base STATIC
     utils/ipUtils.hpp
     utils/stringUtils.cpp
     utils/stringUtils.hpp
-    eventHandler.hpp
+    base/result.hpp
     baseTypes.hpp
     )
 
