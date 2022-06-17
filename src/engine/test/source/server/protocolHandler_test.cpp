@@ -16,6 +16,18 @@ constexpr char TEST_IPV4[] {"1.205.0.44"};
 constexpr char TEST_EXTENDED_IPV6[] {"ABCD:EFG0:1234:5678:0009:00AB:00C6:0D7B"};
 constexpr char TEST_ORIGINAL_LOG[] {"Testing -> log : containing ([)] symbols."};
 
+TEST(protocolHandler, InvalidEventFormat)
+{
+    const string event {"Invalid event format string"};
+    ASSERT_THROW(ProtocolHandler::parse(event), std::runtime_error);
+}
+
+TEST(protocolHandler, InvalidShortEvent)
+{
+    const string event {"x::"};
+    ASSERT_THROW(ProtocolHandler::parse(event), std::runtime_error);
+}
+
 TEST(protocolHandler, FormI)
 {
     const string event {string {} + TEST_QUEUE_ID + ":[" + TEST_AGENT_ID + "] ("
