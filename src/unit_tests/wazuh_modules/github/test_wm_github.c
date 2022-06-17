@@ -29,7 +29,6 @@
 #include "../../wrappers/wazuh/wazuh_modules/wmodules_wrappers.h"
 #include "../../wrappers/wazuh/shared/url_wrappers.h"
 #include "../../wrappers/libc/time_wrappers.h"
-#include "../../wrappers/libc/time_wrappers.h"
 
 unsigned int __wrap_sleep(unsigned int __seconds) {
     check_expected(__seconds);
