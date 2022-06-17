@@ -939,7 +939,7 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Upgrade an agent to the latest version (task created but agent cannot be upgraded because the WPK does not exist)
+  - name: Create task to upgrade an agent to the latest version (agent will be upgraded if the corresponding WPK exists)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
@@ -947,13 +947,13 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: '006'
+        agents_list: '005'
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - agent: '006'
+            - agent: '005'
               task_id: !anyint
           total_affected_items: 1
           total_failed_items: 0
@@ -1201,7 +1201,7 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Customly upgrade agent 005 using default installer
+  - name: Try to customly upgrade an agent using default installer (WPK does not exist)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
@@ -1209,21 +1209,21 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: '005'
+        agents_list: '008'
         file_path: "{custom_wpk_path:s}"
     response:
       status_code: 200
       json:
         data:
           affected_items:
-            - agent: '005'
+            - agent: '008'
               task_id: !anyint
           total_affected_items: 1
           total_failed_items: 0
           failed_items: [ ]
         message: !anystr
 
-  - name: Customly upgrade agent 008 selecting installer
+  - name: Try to customly upgrade an agent selecting installer (WPK does not exist)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"

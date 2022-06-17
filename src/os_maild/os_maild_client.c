@@ -752,11 +752,11 @@ void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int cou
             body_size -= log_size;
         }
 
-        free(key);
+        os_free(key);
     }
     else if ((item->type & 0xFF) == cJSON_Array){
 
-        cJSON *json_array;
+        cJSON *json_item;
         int i = 0;
         log_size = strlen(item->string) + strlen(tab) + strlen(delimitator);
 
@@ -768,17 +768,17 @@ void PrintTable(cJSON *item, char *printed, size_t body_size, char *tab, int cou
             body_size -= log_size;
         }
 
-        while(json_array = cJSON_GetArrayItem(item, i), json_array){
-            key = cJSON_PrintUnformatted(json_array);
+        while(json_item = cJSON_GetArrayItem(item, i), json_item){
+            key = cJSON_PrintUnformatted(json_item);
             log_size = strlen(key) + strlen(space);
 
             if(body_size > log_size){
-                strncat(printed, json_array->valuestring, body_size);
+                strncat(printed, key, body_size);
                 strncat(printed, space, strlen(space));
                 body_size -= log_size;
             }
 
-            free(key);
+            os_free(key);
             i++;
         }
 

@@ -125,9 +125,9 @@ def remove_group(group_id, quiet=False):
         if data['total_affected_items'] == 0:
             print(list(data['failed_items'].keys())[0])
         else:
-            affected_agents = data['dikt']['affected_agents']
+            affected_agents = next(iter(data['affected_items'][0].values()))
             msg = f'Group {group_id} removed.'
-            if not affected_agents:
+            if len(affected_agents) == 0:
                 msg += "\nNo affected agents."
             else:
                 msg += "\nAffected agents: {0}.".format(', '.join(affected_agents))
