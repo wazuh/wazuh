@@ -1,5 +1,4 @@
 
-#include <fcntl.h>
 #include <iostream>
 #include <unistd.h>
 
@@ -11,215 +10,330 @@
 
 using namespace base::utils::socketInterface;
 
-// TODO move interface test to a separate file
-TEST(unixSecureStreamSocket, ConnectError)
+TEST(unixSecureStreamSocket, build)
 {
-    ASSERT_THROW(testSocketConnect(TEST_STREAM_SOCK_PATH, SOCK_STREAM),
-                 std::runtime_error);
+    ASSERT_NO_THROW(unixSecureStream uStream());
+    ASSERT_NO_THROW(unixSecureStream uStream(TEST_STREAM_SOCK_PATH));
+    ASSERT_NO_THROW(unixSecureStream uStream("qwertyuiop"));
 }
 
-// TODO move interface tests to a separate file
+TEST(unixSecureStreamSocket, SetMaxMsgSizeError)
+{
+    ASSERT_THROW({ unixSecureStream uStream(TEST_STREAM_SOCK_PATH, 0); },
+                 std::invalid_argument);
+
+    ASSERT_THROW({ unixSecureStream uStream(TEST_STREAM_SOCK_PATH, {}); },
+                 std::invalid_argument);
+}
+
+TEST(unixSecureStreamSocket, GetMaxMsgSize)
+{
+    {
+        unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
+        ASSERT_EQ(uStream.getMaxMsgSize(), STREAM_MAX_MSG_SIZE);
+    }
+
+    {
+        int setSize {99};
+        unixSecureStream uStream(TEST_STREAM_SOCK_PATH, setSize);
+        ASSERT_EQ(uStream.getMaxMsgSize(), setSize);
+    }
+
+    {
+        unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
+        ASSERT_EQ(uStream.getMaxMsgSize(), STREAM_MAX_MSG_SIZE);
+    }
+
+    {
+        int setSize {STREAM_MAX_MSG_SIZE + 1};
+        unixSecureStream uStream(TEST_STREAM_SOCK_PATH, setSize);
+        ASSERT_EQ(uStream.getMaxMsgSize(), setSize);
+    }
+}
+
+TEST(unixSecureStreamSocket, GetPath)
+{
+    unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
+    ASSERT_NO_THROW(ASSERT_EQ(uStream.getPath(), TEST_STREAM_SOCK_PATH););
+}
+
+TEST(unixSecureStreamSocket, ConnectErrorInvalidPath)
+{
+    {
+        unixSecureStream uStream("/invalid/path");
+        ASSERT_THROW(uStream.socketConnect(), std::runtime_error);
+    }
+    {
+        unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
+        ASSERT_THROW(uStream.socketConnect(), std::runtime_error);
+    }
+}
+
 TEST(unixSecureStreamSocket, Connect)
 {
-    // Create server
-    const int acceptSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(acceptSocketFD, 0);
+    unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
 
-    // Connect client
-    const int clientSocketFD = testSocketConnect(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(clientSocketFD, 0);
+    auto serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
 
-    close(acceptSocketFD);
-    close(clientSocketFD);
+    ASSERT_NO_THROW(uStream.socketConnect());
+
+    close(serverSocketFD);
 
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-// TODO Add test move semantics
-// TODO check reconnection
-// TODO CHeck disconnection
-TEST(unixSecureStreamSocket, SendMessageError)
+TEST(unixSecureStreamSocket, ConnectTwice)
 {
-    // Create server
-    const int acceptSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(acceptSocketFD, 0);
+    unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
 
-    // Connect client
-    const int clientSocketFD = testSocketConnect(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(clientSocketFD, 0);
+    auto serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
 
-    // Force error
-    close(clientSocketFD);
+    ASSERT_NO_THROW(uStream.socketConnect());
+    ASSERT_NO_THROW(uStream.socketConnect());
 
-    ASSERT_EQ(testSendMsg(clientSocketFD, TEST_SEND_MESSAGE.data()),
-              CommRetval::COMMUNICATION_ERROR);
-
-    close(acceptSocketFD);
+    close(serverSocketFD);
 
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-// TODO RENAME AND RE CHECK ALL TEST
-// TODO ADD DESCRIPTION - ESCENARIO to CHECK
-TEST(unixSecureStreamSocket, SendLongMessageError)
+TEST(unixSecureStreamSocket, Disconnect)
 {
-    unixSecureStream clientSocket(TEST_STREAM_SOCK_PATH);
+    unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
+    ASSERT_NO_THROW(uStream.socketDisconnect());
+}
 
+TEST(unixSecureStreamSocket, ConnectAndDisconnect)
+{
+    unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
+
+    auto serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    ASSERT_NO_THROW(uStream.socketConnect());
+    ASSERT_NO_THROW(uStream.socketDisconnect());
+
+    close(serverSocketFD);
+
+    unlink(TEST_STREAM_SOCK_PATH.data());
+}
+
+TEST(unixSecureStreamSocket, ConnectDisconnectConnect)
+{
+    unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
+
+    auto serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    ASSERT_NO_THROW(uStream.socketConnect());
+    ASSERT_NO_THROW(uStream.socketDisconnect());
+    ASSERT_NO_THROW(uStream.socketConnect());
+
+    close(serverSocketFD);
+
+    unlink(TEST_STREAM_SOCK_PATH.data());
+}
+
+TEST(unixSecureStreamSocket, isConnectedFalse)
+{
+    unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
+
+    ASSERT_FALSE(uStream.isConnected());
+
+    auto serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    ASSERT_NO_THROW(uStream.socketConnect());
+    ASSERT_NO_THROW(uStream.socketDisconnect());
+
+    ASSERT_FALSE(uStream.isConnected());
+
+    close(serverSocketFD);
+
+    unlink(TEST_STREAM_SOCK_PATH.data());
+}
+
+TEST(unixSecureStreamSocket, isConnectedTrue)
+{
+    unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
+
+    auto serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    ASSERT_NO_THROW(uStream.socketConnect());
+
+    ASSERT_TRUE(uStream.isConnected());
+
+    ASSERT_NO_THROW(uStream.socketDisconnect());
+    ASSERT_NO_THROW(uStream.socketConnect());
+
+    ASSERT_TRUE(uStream.isConnected());
+
+    unlink(TEST_STREAM_SOCK_PATH.data());
+}
+
+TEST(unixSecureStreamSocket, ErrorSendMessageNoSocket)
+{
+    unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
+    ASSERT_THROW(uStream.sendMsg(TEST_SEND_MESSAGE.data());, std::runtime_error);
+}
+
+TEST(unixSecureStreamSocket, ErrorSendEmptyMessage)
+{
+    const char msg[] = "";
+
+    unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
+
+    auto serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    ASSERT_NO_THROW(ASSERT_EQ(uStream.sendMsg(msg), SendRetval::SIZE_ZERO));
+
+    close(serverSocketFD);
+
+    unlink(TEST_STREAM_SOCK_PATH.data());
+}
+
+TEST(unixSecureStreamSocket, ErrorSendLongMessage)
+{
     std::vector<char> msg = {};
-    msg.resize(clientSocket.getMaxMsgSize() + 2);
+    msg.resize(STREAM_MAX_MSG_SIZE + 2);
     std::fill(msg.begin(), msg.end() - 1, 'x');
     msg.back() = '\0';
 
-    // Create server
-    const int acceptSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(acceptSocketFD, 0);
+    unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
 
-    // Connect client (This is not necessary)
-    clientSocket.socketConnect();
+    auto serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(serverSocketFD, 0);
 
-    // Force error
-    ASSERT_EQ(clientSocket.sendMsg(msg.data()), SendRetval::SIZE_TOO_LONG);
+    ASSERT_NO_THROW(ASSERT_EQ(uStream.sendMsg(msg.data()), SendRetval::SIZE_TOO_LONG));
 
-    close(acceptSocketFD);
-    clientSocket.socketDisconnect();
+    close(serverSocketFD);
 
     unlink(TEST_STREAM_SOCK_PATH.data());
-}
-
-TEST(unixSecureStreamSocket, SendEmptyMessageError)
-{
-    // Create server
-    const int acceptSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(acceptSocketFD, 0);
-
-    // Connect client
-    const int clientSocketFD = testSocketConnect(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(clientSocketFD, 0);
-
-    char msg[2] = {};
-    ASSERT_EQ(testSendMsg(clientSocketFD, msg), CommRetval::SIZE_ZERO);
-
-    close(acceptSocketFD);
-    close(clientSocketFD);
-
-    unlink(TEST_STREAM_SOCK_PATH.data());
-}
-
-TEST(unixSecureStreamSocket, SendInvalidSocketError)
-{
-    ASSERT_EQ(testSendMsg(0, TEST_SEND_MESSAGE.data()), CommRetval::INVALID_SOCKET);
-    ASSERT_EQ(testSendMsg(-5, TEST_SEND_MESSAGE.data()), CommRetval::INVALID_SOCKET);
-}
-
-TEST(unixSecureStreamSocket, SendWrongSocketFDError)
-{
-    ASSERT_EQ(testSendMsg(999, TEST_SEND_MESSAGE.data()),
-              CommRetval::COMMUNICATION_ERROR);
 }
 
 TEST(unixSecureStreamSocket, SendMessage)
 {
-    // Create server
-    const int acceptSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(acceptSocketFD, 0);
+    unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
 
-    // Connect client
-    const int clientSocketFD = testSocketConnect(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(clientSocketFD, 0);
+    auto acceptSocketFd = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(acceptSocketFd, 0);
 
-    ASSERT_EQ(testSendMsg(clientSocketFD, TEST_SEND_MESSAGE.data()), CommRetval::SUCCESS);
+    ASSERT_NO_THROW(uStream.socketConnect());
 
-    close(acceptSocketFD);
-    close(clientSocketFD);
-
-    unlink(TEST_STREAM_SOCK_PATH.data());
-}
-
-TEST(unixSecureStreamSocket, RecvMessage)
-{
-
-    // Create server
-    const int acceptSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(acceptSocketFD, 0);
-
-    // Connect client
-    const int clientSocketFD = testSocketConnect(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(clientSocketFD, 0);
-
-    const int serverSocketFD = testAcceptConnection(acceptSocketFD);
+    auto serverSocketFD = testAcceptConnection(acceptSocketFd);
     ASSERT_GT(serverSocketFD, 0);
 
-    const int msgLen = TEST_SEND_MESSAGE.length();
-    ASSERT_EQ(testSendMsg(serverSocketFD, TEST_SEND_MESSAGE.data()), CommRetval::SUCCESS);
+    ASSERT_NO_THROW(uStream.sendMsg(TEST_SEND_MESSAGE.data()));
+    ASSERT_NO_THROW(
+        ASSERT_EQ(testRecvString(serverSocketFD, SOCK_STREAM), TEST_SEND_MESSAGE));
 
-    auto payload = testRecvString(clientSocketFD, SOCK_STREAM);
-    const char* msg = static_cast<const char*>(payload.data());
-    ASSERT_STREQ(msg, TEST_SEND_MESSAGE.data());
-
-    close(acceptSocketFD);
-    close(serverSocketFD);
-    close(clientSocketFD);
-
-    unlink(TEST_STREAM_SOCK_PATH.data());
-}
-
-TEST(unixSecureStreamSocket, SendRecvMessage)
-{
-    char msg[MAX_BUFFER_SIZE] = {};
-
-    // Create server
-    const int acceptSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(acceptSocketFD, 0);
-
-    // Connect client
-    const int clientSocketFD = testSocketConnect(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(clientSocketFD, 0);
-
-    const int serverSocketFD = testAcceptConnection(acceptSocketFD);
-    ASSERT_GT(serverSocketFD, 0);
-
-    const int msgLen = TEST_SEND_MESSAGE.length();
-    ASSERT_EQ(testSendMsg(clientSocketFD, TEST_SEND_MESSAGE.data()), CommRetval::SUCCESS);
-
-    auto payload = testRecvString(serverSocketFD, SOCK_STREAM);
-    ASSERT_STREQ(payload.c_str(), TEST_SEND_MESSAGE.data());
-
-    ASSERT_EQ(testSendMsg(serverSocketFD, TEST_SEND_MESSAGE.data()), CommRetval::SUCCESS);
-
-    payload = testRecvString(clientSocketFD, SOCK_STREAM);
-    ASSERT_STREQ(payload.c_str(), TEST_SEND_MESSAGE.data());
-
-    close(acceptSocketFD);
-    close(clientSocketFD);
+    close(acceptSocketFd);
     close(serverSocketFD);
 
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(unixSecureStreamSocket, SendRecvLongestMessage)
+TEST(unixSecureStreamSocket, SendMessageDisconnected)
 {
-    char msg[MSG_MAX_SIZE + 1] = {};
-    memset(msg, 'x', MSG_MAX_SIZE);
+    unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
+
+    auto acceptSocketFd = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(acceptSocketFd, 0);
+
+    ASSERT_NO_THROW(uStream.sendMsg(TEST_SEND_MESSAGE.data()));
+
+    auto serverSocketFD = testAcceptConnection(acceptSocketFd);
+    ASSERT_GT(serverSocketFD, 0);
+
+    ASSERT_NO_THROW(
+        ASSERT_EQ(testRecvString(serverSocketFD, SOCK_STREAM), TEST_SEND_MESSAGE));
+
+    close(acceptSocketFd);
+    close(serverSocketFD);
+
+    unlink(TEST_STREAM_SOCK_PATH.data());
+}
+
+TEST(unixSecureStreamSocket, ReceiveMessage)
+{
+    unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
+
+    auto acceptSocketFd = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(acceptSocketFd, 0);
+
+    ASSERT_NO_THROW(uStream.socketConnect());
+
+    auto serverSocketFD = testAcceptConnection(acceptSocketFd);
+    ASSERT_GT(serverSocketFD, 0);
+
+    auto commRetval = testSendMsg(serverSocketFD, TEST_SEND_MESSAGE.data());
+    ASSERT_EQ(commRetval, CommRetval::SUCCESS);
+
+    auto receivedMessage = uStream.recvMsg();
+    ASSERT_STREQ(receivedMessage.data(), TEST_SEND_MESSAGE.data());
+
+    close(acceptSocketFd);
+    close(serverSocketFD);
+
+    unlink(TEST_STREAM_SOCK_PATH.data());
+}
+
+TEST(unixSecureStreamSocket, SendAndReceiveMessage)
+{
+    unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
+
+    auto acceptSocketFd = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(acceptSocketFd, 0);
+
+    ASSERT_NO_THROW(uStream.socketConnect());
+
+    auto serverSocketFD = testAcceptConnection(acceptSocketFd);
+    ASSERT_GT(serverSocketFD, 0);
+
+    uStream.sendMsg(TEST_SEND_MESSAGE.data());
+
+    auto serverRcvMsg = testRecvString(serverSocketFD, SOCK_STREAM);
+    ASSERT_STREQ(serverRcvMsg.data(), TEST_SEND_MESSAGE.data());
+
+    auto commRetval = testSendMsg(serverSocketFD, TEST_SEND_MESSAGE.data());
+    ASSERT_EQ(commRetval, CommRetval::SUCCESS);
+
+    auto clientRcvMsg = uStream.recvMsg();
+    ASSERT_STREQ(clientRcvMsg.data(), TEST_SEND_MESSAGE.data());
+
+    close(acceptSocketFd);
+    close(serverSocketFD);
+
+    unlink(TEST_STREAM_SOCK_PATH.data());
+}
+
+TEST(unixSecureStreamSocket, SendLongestMessage)
+{
+    unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
+
+    char msg[uStream.getMaxMsgSize()] = {};
+    memset(msg, 'x', uStream.getMaxMsgSize());
 
     // Create server
     const int acceptSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(acceptSocketFD, 0);
 
     // Connect client
-    const int clientSocketFD = testSocketConnect(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(clientSocketFD, 0);
+    ASSERT_NO_THROW(uStream.socketConnect());
 
     const int serverSocketFD = testAcceptConnection(acceptSocketFD);
     ASSERT_GT(serverSocketFD, 0);
 
-    ASSERT_EQ(testSendMsg(clientSocketFD, msg), CommRetval::SUCCESS);
+    ASSERT_EQ(uStream.sendMsg(msg), SendRetval::SUCCESS);
 
     auto payload = testRecvString(serverSocketFD, SOCK_STREAM);
+    ASSERT_EQ(strlen(payload.c_str()), uStream.getMaxMsgSize());
     ASSERT_STREQ(payload.c_str(), msg);
-    ASSERT_EQ(strlen(payload.c_str()), MSG_MAX_SIZE);
 
     close(acceptSocketFD);
-    close(clientSocketFD);
     close(serverSocketFD);
 
     unlink(TEST_STREAM_SOCK_PATH.data());
@@ -227,14 +341,14 @@ TEST(unixSecureStreamSocket, SendRecvLongestMessage)
 
 TEST(unixSecureStreamSocket, RemoteCloseBeforeSend)
 {
+    unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
 
     // Create server
     const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     // Connect client
-    const int clientLocal = testSocketConnect(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(clientLocal, 0);
+    ASSERT_NO_THROW(uStream.socketConnect());
 
     // Accept connection
     const int clientRemote = testAcceptConnection(serverSocketFD);
@@ -243,27 +357,26 @@ TEST(unixSecureStreamSocket, RemoteCloseBeforeSend)
     // close remote before send
     close(clientRemote);
 
-    ASSERT_THROW(testSendMsg(clientLocal, TEST_SEND_MESSAGE.data()), std::runtime_error);
+    ASSERT_THROW(uStream.sendMsg(TEST_SEND_MESSAGE.data()), std::runtime_error);
 
     // Broken pipe
     ASSERT_EQ(errno, EPIPE);
 
     close(serverSocketFD);
-    close(clientLocal);
 
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
 TEST(unixSecureStreamSocket, RemoteCloseBeforeRcv)
 {
+    unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
 
     // Create server
     const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     // Connect client
-    const int clientLocal = testSocketConnect(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(clientLocal, 0);
+    ASSERT_NO_THROW(uStream.socketConnect());
 
     // Accept connection
     const int clientRemote = testAcceptConnection(serverSocketFD);
@@ -274,45 +387,41 @@ TEST(unixSecureStreamSocket, RemoteCloseBeforeRcv)
 
     // gracefully closed
     ASSERT_THROW(
-        try {
-            testRecvString(clientLocal, SOCK_STREAM);
-        } catch (const std::runtime_error& e) {
+        try { uStream.recvMsg(); } catch (const std::runtime_error& e) {
             ASSERT_STREQ(e.what(), "recvMsg: socket disconnected.");
             throw;
         },
         std::runtime_error);
 
     close(serverSocketFD);
-    close(clientLocal);
 
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
 TEST(unixSecureStreamSocket, LocalSendremoteCloseBeforeRcv)
 {
+    unixSecureStream uStream(TEST_STREAM_SOCK_PATH);
 
     // Create server
     const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
     // Connect client
-    const int clientLocal = testSocketConnect(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(clientLocal, 0);
+    ASSERT_NO_THROW(uStream.socketConnect());
 
     // Accept connection
     const int clientRemote = testAcceptConnection(serverSocketFD);
     ASSERT_GT(clientRemote, 0);
 
     // Send to remote
-    ASSERT_EQ(testSendMsg(clientLocal, TEST_SEND_MESSAGE.data()), CommRetval::SUCCESS);
+    ASSERT_EQ(uStream.sendMsg(TEST_SEND_MESSAGE.data()), SendRetval::SUCCESS);
     // Remote dont read and close the socket
     close(clientRemote);
 
-    ASSERT_THROW(testRecvString(clientLocal, SOCK_STREAM), std::runtime_error);
+    ASSERT_THROW(uStream.recvMsg(), std::runtime_error);
     ASSERT_EQ(errno, ECONNRESET);
 
     close(serverSocketFD);
-    close(clientLocal);
 
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
