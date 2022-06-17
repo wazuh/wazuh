@@ -48,14 +48,18 @@ bool unixInterface::setSocketSize() const noexcept
 // Protect
 unixInterface::unixInterface(std::string_view path,
                              const Protocol protocol,
-                             const int maxMsgSize)
+                             const uint32_t maxMsgSize)
     : m_path(path)
     , m_protocol(protocol)
     , m_maxMsgSize(maxMsgSize)
 {
     if (m_path.empty())
     {
-        throw std::invalid_argument("unixInterface: path is empty");
+        throw std::invalid_argument("unixInterface: path is empty.");
+    }
+    if (0 == m_maxMsgSize)
+    {
+        throw std::invalid_argument("maxMsgSize: cannot be set to zero.");
     }
 }
 // Public
