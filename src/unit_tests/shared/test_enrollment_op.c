@@ -26,7 +26,7 @@
 extern int w_enrollment_concat_src_ip(char *buff, const char* sender_ip, const int use_src_ip);
 extern void w_enrollment_concat_group(char *buff, const char* centralized_group);
 extern void w_enrollment_concat_key(char *buff, keyentry* key_entry);
-extern void w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_cert, const char *hostname);
+extern int w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_cert, const char *hostname);
 extern int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_address);
 extern int w_enrollment_send_message(w_enrollment_ctx *cfg);
 extern int w_enrollment_store_key_entry(const char* keys);
@@ -415,7 +415,8 @@ void test_w_enrollment_verify_ca_certificate_null_connection(void **state) {
 void test_w_enrollment_verify_ca_certificate_no_certificate(void **state) {
     SSL *ssl = *state;
     expect_string(__wrap__mdebug1, formatted_msg, "Registering agent to unverified manager");
-    w_enrollment_verify_ca_certificate(ssl, NULL, "hostname");
+    int retval = w_enrollment_verify_ca_certificate(ssl, NULL, "hostname");
+    assert_int_equal(retval, 0);
 }
 
 void test_verificy_ca_certificate_invalid_certificate(void **state) {
@@ -427,7 +428,8 @@ void test_verificy_ca_certificate_invalid_certificate(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg, "Verifying manager's certificate");
     expect_string(__wrap__merror, formatted_msg, "Unable to verify server certificate");
-    w_enrollment_verify_ca_certificate(ssl, "BAD_CERTIFICATE", "hostname");
+    int retval = w_enrollment_verify_ca_certificate(ssl, "BAD_CERTIFICATE", "hostname");
+    assert_int_equal(retval, 1);
 }
 
 void test_verificy_ca_certificate_valid_certificate(void **state) {
@@ -439,7 +441,9 @@ void test_verificy_ca_certificate_valid_certificate(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg, "Verifying manager's certificate");
     expect_string(__wrap__minfo, formatted_msg, "Manager has been verified successfully");
-    w_enrollment_verify_ca_certificate(ssl, "GOOD_CERTIFICATE", "hostname");
+    int retval = w_enrollment_verify_ca_certificate(ssl, "GOOD_CERTIFICATE", "hostname");
+    assert_int_equal(retval, 0);
+
 }
 
 /**********************************************/
