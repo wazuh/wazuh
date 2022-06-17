@@ -1,16 +1,53 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v4.3.3]
+## [v4.3.4]
 
 ### Manager
 
 #### Changed
 
 - Integratord now tries to read alerts indefinitely, instead of performing 3 attempts. ([#13437](https://github.com/wazuh/wazuh/pull/13437))
+- Adds a timeout for remote queries made by the Office 365, GitHub, and Agent Update modules. ([#13626](https://github.com/wazuh/wazuh/pull/13626))
+
+#### Fixed
+
+- Fixed bug in `agent_groups` CLI when removing agent groups. ([#13621](https://github.com/wazuh/wazuh/pull/13621))
+- Fixed linux compilation errors with GCC 12. ([#13459](https://github.com/wazuh/wazuh/pull/13459))
+- Fixed a crash in wazuh-analysisd when overwriting a rule with a configured active response. ([#13604](https://github.com/wazuh/wazuh/pull/13604))
+- Fixed a crash in wazuh-db when it cannot open a database file. ([#13666](https://github.com/wazuh/wazuh/pull/13666))
+- Fixed the vulnerability feed parsing mechanism, now truncates excessively long values (This problem was detected during Ubuntu Bionic feed update). ([#13566](https://github.com/wazuh/wazuh/pull/13566))
+- Fixed a crash in wazuh-maild when parsing an alert with no full log and containing arrays of non-strings. [#13679](https://github.com/wazuh/wazuh/pull/13679))
+
+### RESTful API
+
+#### Fixed
+
+- Updated default timeouts for `GET /mitre/software` and `GET /mitre/techniques` to avoid timing out in slow environments. ([#13550](https://github.com/wazuh/wazuh/pull/13550))
+
+### Ruleset
+
+#### Fixed
+
+- Fixed the prematch criteria of `sshd-disconnect` decoder. ([#13560](https://github.com/wazuh/wazuh/pull/13560))
 
 
-## [v4.3.2]
+## [v4.3.3] - 2022-05-31
+
+### Manager
+
+#### Fixed
+
+- Avoid creating duplicated client tags during deployment. ([#13651](https://github.com/wazuh/wazuh/pull/13651))
+
+### Agent
+
+#### Fixed
+
+- Prevented Agentd from resetting its configuration on client block re-definition. ([#13642](https://github.com/wazuh/wazuh/pull/13642))
+
+
+## [v4.3.2] - 2022-05-30
 
 ### Manager
 
@@ -427,7 +464,7 @@ All notable changes to this project will be documented in this file.
 - Fixed an installation error due to missing command `hostname` on OpenSUSE Tumbleweed. ([#11455](https://github.com/wazuh/wazuh/pull/11455))
 
 
-## [v4.2.7]
+## [v4.2.7] - 2022-05-30
 
 ### Manager
 

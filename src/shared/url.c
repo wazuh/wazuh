@@ -315,7 +315,7 @@ int wurl_check_connection() {
     }
 }
 
-char * wurl_http_get(const char * url, size_t max_size) {
+char * wurl_http_get(const char * url, size_t max_size, const long timeout) {
     CURL *curl;
     CURLcode res;
     curl = curl_easy_init();
@@ -344,6 +344,10 @@ char * wurl_http_get(const char * url, size_t max_size) {
 
         res += curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
         res += curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
+
+        if (timeout) {
+            res += curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);
+        }
 
         if (res != 0) {
             mdebug1("Parameter setup error at CURL");
@@ -422,7 +426,7 @@ int wurl_request_uncompress_bz2_gz(const char * url, const char * dest, const ch
 }
 #endif
 
-curl_response* wurl_http_request(char *method, char **headers, const char* url, const char *payload, size_t max_size) {
+curl_response* wurl_http_request(char *method, char **headers, const char* url, const char *payload, size_t max_size, const long timeout) {
     curl_response *response;
     struct curl_slist* headers_list = NULL;
     struct curl_slist* headers_tmp = NULL;
@@ -497,6 +501,10 @@ curl_response* wurl_http_request(char *method, char **headers, const char* url, 
 
     if (payload) {
         res += curl_easy_setopt(curl, CURLOPT_POSTFIELDS, (void *)payload);
+    }
+
+    if (timeout) {
+        res += curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);
     }
 
     if (res != CURLE_OK) {
