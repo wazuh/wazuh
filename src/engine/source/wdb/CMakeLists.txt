@@ -6,7 +6,6 @@ set(ENGINE_WDB_INCLUDE_DIR ${ENGINE_SOURCE_DIR}/wdb/include)
 ####################################################################################################
 add_library(wdb STATIC
     ${ENGINE_WDB_SOURCE_DIR}/wdb.cpp
-    ${ENGINE_WDB_SOURCE_DIR}/dbsync.cpp
 )
 
 
