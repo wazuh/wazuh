@@ -6,8 +6,12 @@
 namespace base::utils::socketInterface
 {
 
+constexpr int DATAGRAM_MAX_MSG_SIZE {65536};
+
 /**
  * @brief This class implements an interface to a UNIX datagram socket.
+ *
+ * @note This Unix datagram socket implementation is not able to receive messages.
  */
 class unixDatagram : public unixInterface
 {
@@ -21,7 +25,7 @@ public:
      * @param maxMsgSize Maximum message size (default=2^16)
      * @throw std::invalid_argument if the path is empty
      */
-    unixDatagram(std::string_view path, const int maxMsgSize = 65536)
+    unixDatagram(std::string_view path, const uint32_t maxMsgSize = DATAGRAM_MAX_MSG_SIZE)
         : unixInterface(path, Protocol::DATAGRAM, maxMsgSize) {};
 
     ~unixDatagram() = default; // Close de socket in the base class
@@ -41,6 +45,8 @@ public:
      *
      */
     SendRetval sendMsg(const std::string& msg) override;
+
+    std::vector<char> recvMsg(void) override;
 };
 } // namespace base::utils::socketInterface
 

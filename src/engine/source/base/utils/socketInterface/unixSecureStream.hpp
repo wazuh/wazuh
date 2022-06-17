@@ -20,6 +20,8 @@ namespace base::utils::socketInterface
     See: https://documentation.wazuh.com/current/development/message-format.html
 */
 
+constexpr int STREAM_MAX_MSG_SIZE {65536};
+
 /**
  * @brief This class implements an interface to a UNIX stream socket.
  * The messages are handled by following the Wazuh TCP protocol.
@@ -52,7 +54,7 @@ public:
      *
      * @throw std::invalid_argument if the path is empty.
      */
-    unixSecureStream(std::string_view path, const int maxMsgSize = 65536)
+    unixSecureStream(std::string_view path, const int maxMsgSize = STREAM_MAX_MSG_SIZE)
         : unixInterface(path, Protocol::STREAM, maxMsgSize) {};
 
     unixSecureStream(unixSecureStream&& moveOrigin)

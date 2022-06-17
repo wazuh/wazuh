@@ -31,7 +31,6 @@ ssize_t unixSecureStream::recvWaitAll(void* buf, size_t size) const noexcept
 
 SendRetval unixSecureStream::sendMsg(const std::string& msg)
 {
-
     auto result {SendRetval::SOCKET_ERROR};
     auto payloadSize {static_cast<uint32_t>(msg.size())};
     const auto HEADER_SIZE {sizeof(uint32_t)};
@@ -82,7 +81,8 @@ SendRetval unixSecureStream::sendMsg(const std::string& msg)
 std::vector<char> unixSecureStream::recvMsg()
 {
     // Check recive msg
-    const auto checkRcv = [this](const ssize_t rcvBytes) {
+    const auto checkRcv = [this](const ssize_t rcvBytes)
+    {
         if (0 > rcvBytes)
         {
             const auto msg = fmt::format("recvMsg: {} ({})", strerror(errno), errno);

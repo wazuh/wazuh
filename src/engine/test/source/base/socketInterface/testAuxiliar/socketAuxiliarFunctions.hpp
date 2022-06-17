@@ -103,18 +103,19 @@ testSendMsg(const int socketFD, const std::string& msg, const bool doSendLength 
  * @warning This function blocks until the message is received or the socket is
  * disconnected.
  */
-std::vector<char> testRecvMsg(const int socketFD);
+std::vector<char> testRecvMsg(const int socketFD, const int sockType);
 
 /**
  * @brief Receive a string from a socket, after parsing the Wazuh protocol.
  *
  * @param socketFD socket file descriptor.
+ *
  * @return std::string message on success.
  *
  * @throw std::runtime_error on error.
  *
  * @warning This function blocks until the message is received or the socket is closed.
  */
-std::string testRecvString(const int socketFD);
+std::string testRecvString(const int socketFD, const int sockType);
 
 #endif //_SOCKET_AUXILIAR_FUNCTIONS_H
