@@ -577,12 +577,16 @@ async def test_master_handler_execute_ko(uuid4_mock):
             await master_handler.execute(command=b'random', data=b"client request", wait_for_complete=True)
 
 
+@patch("wazuh.core.cluster.master.AsyncWazuhDBConnection")
+@patch("wazuh.core.cluster.common.SyncWazuhdb", return_value="SyncWazuhdbMock")
+@patch("wazuh.core.cluster.common.SyncFiles", return_value="SyncFilesMock")
 @patch("os.path.exists", return_value=False)
 @patch("os.path.join", return_value="/some/path")
 @patch("wazuh.core.cluster.master.utils.mkdir_with_mode")
 @patch("wazuh.core.cluster.master.metadata.__version__", "version")
 @patch("wazuh.core.cluster.server.AbstractServerHandler.hello", return_value=(b"ok", "payload"))
-def test_master_handler_hello_ok(super_hello_mock, mkdir_with_mode_mock, join_mock, path_exists_mock):
+def test_master_handler_hello_ok(super_hello_mock, mkdir_with_mode_mock, join_mock, path_exists_mock, sync_files_mock,
+                                 sync_db_mock, mock_db_conn):
     """Check if the 'hello' command received from worker is being correctly processed."""
 
     master_handler = get_master_handler()
@@ -602,6 +606,10 @@ def test_master_handler_hello_ok(super_hello_mock, mkdir_with_mode_mock, join_mo
     mkdir_with_mode_mock.assert_called_once_with("/some/path")
     join_mock.assert_called_once_with(common.WAZUH_PATH, "queue", "cluster", None)
     path_exists_mock.assert_called_once_with("/some/path")
+    sync_files_mock.assert_called_once_with(cmd=b"syn_m_c", logger=ANY, manager=ANY)
+    sync_db_mock.assert_called_once_with(manager=ANY, logger=ANY, cmd=b"syn_g_m_w", data_retriever=ANY,
+                                         set_data_command="global set-agent-groups",
+                                         set_payload={"mode": "override", "sync_status": "synced"})
 
     assert "Integrity check" in master_handler.task_loggers
     assert "Integrity sync" in master_handler.task_loggers
@@ -614,6 +622,8 @@ def test_master_handler_hello_ok(super_hello_mock, mkdir_with_mode_mock, join_mo
     assert master_handler.version == "version"
     assert master_handler.cluster_name == "cluster_name"
     assert master_handler.node_type == "node_type"
+    assert master_handler.integrity == "SyncFilesMock"
+    assert master_handler.agent_groups == "SyncWazuhdbMock"
 
 
 @patch("wazuh.core.cluster.master.metadata.__version__", "random")
@@ -936,72 +946,22 @@ async def test_manager_handler_send_agent_groups_information(AsyncWazuhDBConnect
             """Auxiliary method."""
             self._info.append(data)
 
-        def debug(self, data):
-            """Auxiliary method."""
-            self._debug.append(data)
-
-        def debug2(self, data):
-            """Auxiliary method."""
-            self._debug2.append(data)
-
         def error(self, data, exc_info=False):
             """Auxiliary method."""
             self._error.append(data)
-            raise Exception('Stop while True')
-
-    class AsyncWazuhDBConnectionMock:
-        """Auxiliary class."""
-
-        def __init__(self):
-            self.chunks = []
-            self.raw = []
-            self.closed = False
-
-        async def run_wdb_command(self, command):
-            return command
-
-        async def send(self, data, raw):
-            """Auxiliary method."""
-            self.chunks.append(data)
-            self.raw.append(raw)
-
-        def close(self):
-            """Auxiliary method."""
-            self.closed = True
-
-    class SyncWazuhdbMock:
-        """Auxiliary class."""
-
-        def __init__(self, manager, logger, cmd, data_retriever, set_data_command, set_payload):
-            self.counter = 0
-
-        async def sync(self, start_time, chunks):
-            """Auxiliary method."""
-            if self.counter > 0:
-                raise Exception('Stop while True')
-            self.counter += 1
-
-            assert chunks == 'testing'
-
-            return start_time, chunks
-
-    def get_agent_groups_info(self, name):
-        return 'testing'
 
     master_handler = get_master_handler()
-    master_handler.name = 'worker_test'
-    master_handler.server.agent_groups_control = 'testing'
+    master_handler.name = "worker_test"
     master_handler.task_loggers["Agent-groups send"] = LoggerMock()
-    master_handler.server.get_agent_groups_info = get_agent_groups_info.__get__(master_handler.server)
-    AsyncWazuhDBConnection_mock.return_value = AsyncWazuhDBConnectionMock()
+    master_handler.agent_groups = MagicMock()
 
-    with patch('wazuh.core.cluster.master.c_common.SyncWazuhdb', SyncWazuhdbMock):
-        with pytest.raises(Exception, match='Stop while True'):
-            await master_handler.send_agent_groups_information()
+    await master_handler.send_agent_groups_information("test_info")
+    master_handler.agent_groups.sync.assert_called_once_with(
+        start_time=master_handler.send_agent_groups_status["date_start"], chunks="test_info")
 
-    assert master_handler.task_loggers["Agent-groups send"]._info == ['Starting.', 'Starting.']
-    assert master_handler.task_loggers["Agent-groups send"]._error == [f'Error sending agent-groups information to '
-                                                                       f'{master_handler.name}: Stop while True']
+    assert master_handler.task_loggers["Agent-groups send"]._info == ['Starting.']
+    assert master_handler.task_loggers["Agent-groups send"]._error == [
+        "Error sending agent-groups information to worker_test: object MagicMock can't be used in 'await' expression"]
 
 
 @pytest.mark.asyncio
@@ -1524,27 +1484,11 @@ def test_master_to_dict(get_running_loop_mock):
                  'version': "1.0.0", 'ip': master_class.configuration['nodes'][0]}}
 
 
-def test_get_agent_groups_info():
-    """Check that the function get_agent_groups_info returns the agent-groups
-    information as many times as clients connected to the master node.
-
-    Once the information is sent to all clients,
-    this function deletes the agent-groups information so that it can be retrieved again.
-    """
-    master_class = get_master()
-    master_class.clients = {'worker1': 'worker', 'worker2': 'worker'}
-    master_class.agent_groups_control_workers = {'worker1'}
-    master_class.agent_groups_control = {'testing': 'agent_groups_control'}
-
-    assert master_class.get_agent_groups_info('worker2') == {'testing': 'agent_groups_control'}
-    assert master_class.get_agent_groups_info('worker2') == dict()
-    assert master_class.agent_groups_control_workers == {'worker1', 'worker2'}
-
-
 @pytest.mark.asyncio
 @freeze_time("2022-01-01")
+@patch('wazuh.core.cluster.master.perf_counter', return_value=0)
 @patch('asyncio.sleep')
-async def test_agent_groups_update(sleep_mock):
+async def test_agent_groups_update(sleep_mock, perf_counter_mock):
     """Check that agent-groups information is periodically retrieved from the database."""
 
     class LoggerMock:
@@ -1599,12 +1543,10 @@ async def test_agent_groups_update(sleep_mock):
             with patch('wazuh.core.cluster.master.c_common.SyncWazuhdb', SyncWazuhdbMock):
                 with pytest.raises(Exception, match='Stop while true'):
                     master_class.clients = {'worker1': 'worker1'}
-                    master_class.agent_groups_control_workers = {'worker1'}
                     await master_class.agent_groups_update()
                 assert "Starting." in logger_mock._info
                 assert "Finished in 0.000s." in logger_mock._info
-                assert "Error getting agent-groups from WDB: Stop while true" in logger_mock._error
-                assert master_class.agent_groups_control_workers == set()
+                assert "Error getting agent-groups from WDB: Testing" in logger_mock._error
                 setup_task_logger_mock.assert_called_once_with('Local agent-groups')
 
                 with pytest.raises(Exception, match='Stop while true'):
