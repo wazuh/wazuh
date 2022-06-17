@@ -9,6 +9,10 @@
 
 #include <logging/logging.hpp>
 
+#include <utils/socketInterface/unixDatagram.hpp>
+
+using base::utils::socketInterface::DATAGRAM_MAX_MSG_SIZE;
+
 int testBindUnixSocket(std::string_view path, const int socketType)
 {
     /* Remove the socket's path if it already exists */
@@ -136,7 +140,7 @@ int testSocketConnect(std::string_view path, const int socketType)
     return socketFD;
 }
 
-ssize_t testRecvWaitAll(int socketFD, void* buf, size_t size) noexcept
+ssize_t testRecvWaitAll(const int socketFD, void* buf, const size_t size) noexcept
 {
     ssize_t offset {}; // offset in the buffer
     ssize_t recvb {};  // Recived bytes
@@ -207,7 +211,7 @@ CommRetval testSendMsg(const int socketFD, const std::string& msg, const bool do
     return result;
 }
 
-std::vector<char> testRecvMsg(const int socketFD)
+inline std::vector<char> testStreamRcvMsg(const int socketFD)
 {
     // Check recive msg
     const auto checkRcv = [](const ssize_t rcvBytes)
@@ -243,8 +247,39 @@ std::vector<char> testRecvMsg(const int socketFD)
     return recvMsg;
 }
 
-std::string testRecvString(const int socketFD)
+inline std::vector<char> testDatagramRcvMsg(const int socketFD)
 {
-    auto byteMsg {testRecvMsg(socketFD)};
+    std::vector<char> recvMsg;
+    recvMsg.resize(DATAGRAM_MAX_MSG_SIZE);
+    socklen_t len {};
+    struct sockaddr_un peer_sock;
+    memset(&peer_sock, 0, sizeof(peer_sock));
+
+    recvfrom(socketFD,
+             &(recvMsg[0]),
+             DATAGRAM_MAX_MSG_SIZE,
+             0,
+             (struct sockaddr*)&peer_sock,
+             &len);
+
+    return recvMsg;
+}
+
+std::vector<char> testRecvMsg(const int socketFD, const int socketType)
+{
+    std::vector<char> recvMsg;
+    switch (socketType)
+    {
+        case SOCK_STREAM: recvMsg = testStreamRcvMsg(socketFD); break;
+        case SOCK_DGRAM: recvMsg = testDatagramRcvMsg(socketFD); break;
+        default: break;
+    }
+
+    return recvMsg;
+}
+
+std::string testRecvString(const int socketFD, const int socketType)
+{
+    auto byteMsg {testRecvMsg(socketFD, socketType)};
     return std::string(byteMsg.data());
 }
