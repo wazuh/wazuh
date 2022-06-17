@@ -30,6 +30,7 @@ enum IPVersion
 };
 
 constexpr int LOCATION_OFFSET = 2; // Given the "q:" prefix.
+constexpr int MINIMUM_EVENT_ALLOWED_LENGTH = 4;
 constexpr char FIRST_FULL_LOCATION_CHAR {'['};
 
 bool ProtocolHandler::hasHeader()
@@ -80,18 +81,18 @@ base::Event ProtocolHandler::parse(const string& event)
      * taken with this particular case.
      */
 
+    if (event.length() <= MINIMUM_EVENT_ALLOWED_LENGTH)
+    {
+        throw std::runtime_error(
+            "Invalid event format. Event is too short. Received Event: \"" + event
+            + "\"");
+    }
+
     if (':' != event[1])
     {
         throw std::runtime_error("Invalid event format. A colon should be right after "
                                  "the first character. Received Event: \""
                                  + event + "\"");
-    }
-
-    if (event.length() <= 4)
-    {
-        throw std::runtime_error(
-            "Invalid event format. Event is too short. Received Event: \"" + event
-            + "\"");
     }
 
     const int queue {event[0]};
