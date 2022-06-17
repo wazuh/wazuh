@@ -40,8 +40,8 @@ info:
 
     <SecurityDefinitions />
 
-  version: '4.3.2'
-  x-revision: '40312'
+  version: '4.3.5'
+  x-revision: '40317'
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
@@ -2450,42 +2450,8 @@ components:
             - warning
         tag:
           type: string
+          format: alphanumeric
           description: "Wazuh component that logged the event"
-          enum:
-            - agent_control
-            - wazuh-agentlessd
-            - wazuh-analysisd
-            - wazuh-authd
-            - wazuh-csyslogd
-            - wazuh-dbd
-            - wazuh-execd
-            - wazuh-integratord
-            - wazuh-maild
-            - wazuh-monitord
-            - wazuh-logcollector
-            - wazuh-remoted
-            - wazuh-reportd
-            - wazuh-rootcheck
-            - wazuh-syscheckd
-            - sca
-            - verify-agent-conf
-            - wazuh-db
-            - wazuh-modulesd
-            - wazuh-modulesd:agent-key-polling
-            - wazuh-modulesd:aws-s3
-            - wazuh-modulesd:azure-logs
-            - wazuh-modulesd:agent-upgrade
-            - wazuh-modulesd:task-manager
-            - wazuh-modulesd:ciscat
-            - wazuh-modulesd:control
-            - wazuh-modulesd:command
-            - wazuh-modulesd:database
-            - wazuh-modulesd:docker-listener
-            - wazuh-modulesd:download
-            - wazuh-modulesd:oscap
-            - wazuh-modulesd:osquery
-            - wazuh-modulesd:syscollector
-            - wazuh-modulesd:vulnerability-detector
         timestamp:
           type: string
           format: date-time
@@ -4710,37 +4676,7 @@ components:
       description: "Wazuh component that logged the event"
       schema:
         type: string
-        enum:
-        - wazuh-agentlessd
-        - wazuh-analysisd
-        - wazuh-authd
-        - wazuh-csyslogd
-        - wazuh-dbd
-        - wazuh-execd
-        - wazuh-integratord
-        - wazuh-maild
-        - wazuh-monitord
-        - wazuh-logcollector
-        - wazuh-remoted
-        - wazuh-reportd
-        - wazuh-rootcheck
-        - wazuh-syscheckd
-        - sca
-        - wazuh-db
-        - wazuh-modulesd
-        - wazuh-modulesd:agent-key-polling
-        - wazuh-modulesd:aws-s3
-        - wazuh-modulesd:azure-logs
-        - wazuh-modulesd:ciscat
-        - wazuh-modulesd:control
-        - wazuh-modulesd:command
-        - wazuh-modulesd:database
-        - wazuh-modulesd:docker-listener
-        - wazuh-modulesd:download
-        - wazuh-modulesd:oscap
-        - wazuh-modulesd:osquery
-        - wazuh-modulesd:syscollector
-        - wazuh-modulesd:vulnerability-detector
+        format: alphanumeric
     log_level:
       in: query
       name: level
@@ -10994,7 +10930,7 @@ paths:
               example:
                 data:
                   affected_items:
-                    - mitre_version: '4.3.2'
+                    - mitre_version: '4.3.5'
                       deprecated: 0
                       description: |-
                         [APT38](https://attack.mitre.org/groups/G0082) is a financially-motivated threat group that is backed by the North Korean regime. The group mainly targets banks and financial institutions and has targeted more than 16 organizations in at least 13 countries since at least 2014.(Citation: FireEye APT38 Oct 2018)
@@ -11256,7 +11192,7 @@ paths:
               example:
                 data:
                   affected_items:
-                    - mitre_version: '4.3.2'
+                    - mitre_version: '4.3.5'
                       deprecated: 0
                       description: "[HDoor](https://attack.mitre.org/software/S0061) is malware that
                         has been customized and used by the [Naikon](https://attack.mitre.org/groups/G0019)
@@ -11411,7 +11347,7 @@ paths:
               example:
                 data:
                   affected_items:
-                    - mitre_version: '4.3.2'
+                    - mitre_version: '4.3.5'
                       network_requirements: 0
                       remote_support: 0
                       mitre_detection: |-
