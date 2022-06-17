@@ -104,7 +104,7 @@ class RolesPolicies(_Base):
         id: ID of the relationship
         role_id: ID of the role
         policy_id: ID of the policy
-        level: Priority in case of multiple policies (a higher level means more priority)
+        level: Priority in case of multiple policies (a lower level means more priority)
         created_at: Date of the relationship creation
     """
     __tablename__ = "roles_policies"
@@ -128,7 +128,7 @@ class UserRoles(_Base):
         id: ID of the relationship
         user_id: ID of the user
         role_id: ID of the role
-        level: Priority in case of multiple roles (a higher level means more priority)
+        level: Priority in case of multiple roles (a lower level means more priority)
         created_at: Date of the relationship creation
     """
     __tablename__ = "user_roles"
