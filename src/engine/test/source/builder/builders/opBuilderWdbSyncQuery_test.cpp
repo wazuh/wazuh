@@ -294,7 +294,7 @@ TEST_F(opBuilderWdbSyncQuery, completeFunctioningWithoutDBConnection)
         [&]()
         {
             const int clientRemote = testAcceptConnection(serverSocketFD);
-            testRecvString(clientRemote);
+            testRecvString(clientRemote, SOCK_STREAM);
             testSendMsg(clientRemote, "NotOk");
             close(clientRemote);
         });
@@ -351,7 +351,7 @@ TEST_F(opBuilderWdbSyncQuery, completeFunctioningWithtDB)
         [&]()
         {
             const int clientRemote = testAcceptConnection(serverSocketFD);
-            testRecvString(clientRemote);
+            testRecvString(clientRemote, SOCK_STREAM);
             testSendMsg(clientRemote, "ok payload");
             close(clientRemote);
         });
@@ -408,7 +408,7 @@ TEST_F(opBuilderWdbSyncQuery, QueryResultCodeNotOkWithPayload)
         [&]()
         {
             const int clientRemote = testAcceptConnection(serverSocketFD);
-            testRecvString(clientRemote);
+            testRecvString(clientRemote, SOCK_STREAM);
             testSendMsg(clientRemote, "anythingElse WithPayload ");
             close(clientRemote);
         });
@@ -465,7 +465,7 @@ TEST_F(opBuilderWdbSyncQuery, QueryResultCodeOkPayloadEmpty)
         [&]()
         {
             const int clientRemote = testAcceptConnection(serverSocketFD);
-            testRecvString(clientRemote);
+            testRecvString(clientRemote, SOCK_STREAM);
             testSendMsg(clientRemote, "ok ");
             close(clientRemote);
         });

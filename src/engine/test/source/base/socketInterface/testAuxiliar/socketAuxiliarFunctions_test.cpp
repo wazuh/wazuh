@@ -1,25 +1,49 @@
 
 #include <fcntl.h>
 #include <iostream>
+#include <sys/un.h>
 #include <unistd.h>
 
 #include <gtest/gtest.h>
 
-#include <utils/socketInterface/unixSecureStream.hpp>
+#include "socketAuxiliarFunctions.hpp"
 
-#include "testAuxiliar/socketAuxiliarFunctions.hpp"
+// Note: server DGRAM sockets are only able to receive and clients are only able to send.
 
-using namespace base::utils::socketInterface;
-
-// TODO move interface test to a separate file
-TEST(unixSecureStreamSocket, ConnectError)
+TEST(socketAuxiliarFunctions, StreamConnectError)
 {
     ASSERT_THROW(testSocketConnect(TEST_STREAM_SOCK_PATH, SOCK_STREAM),
                  std::runtime_error);
 }
 
-// TODO move interface tests to a separate file
-TEST(unixSecureStreamSocket, Connect)
+TEST(socketAuxiliarFunctions, DatagramConnectError)
+{
+    ASSERT_THROW(testSocketConnect(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM), std::runtime_error);
+}
+
+TEST(socketAuxiliarFunctions, StreamBind)
+{
+    // Create server
+    const int acceptSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(acceptSocketFD, 0);
+
+    close(acceptSocketFD);
+
+    unlink(TEST_STREAM_SOCK_PATH.data());
+}
+
+TEST(socketAuxiliarFunctions, DatagramBind)
+{
+    // Create server
+    const int socketFD = testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM);
+    ASSERT_GT(socketFD, 0);
+
+    close(socketFD);
+
+    unlink(TEST_DGRAM_SOCK_PATH.data());
+}
+
+TEST(socketAuxiliarFunctions, StreamConnect)
 {
     // Create server
     const int acceptSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
@@ -35,10 +59,23 @@ TEST(unixSecureStreamSocket, Connect)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-// TODO Add test move semantics
-// TODO check reconnection
-// TODO CHeck disconnection
-TEST(unixSecureStreamSocket, SendMessageError)
+TEST(socketAuxiliarFunctions, DatagramConnect)
+{
+    // Create server
+    const int serverSocketFD = testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    // Connect client
+    const int clientSocketFD = testSocketConnect(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM);
+    ASSERT_GT(clientSocketFD, 0);
+
+    close(serverSocketFD);
+    close(clientSocketFD);
+
+    unlink(TEST_DGRAM_SOCK_PATH.data());
+}
+
+TEST(socketAuxiliarFunctions, StreamSendMessageError)
 {
     // Create server
     const int acceptSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
@@ -59,34 +96,28 @@ TEST(unixSecureStreamSocket, SendMessageError)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-// TODO RENAME AND RE CHECK ALL TEST
-// TODO ADD DESCRIPTION - ESCENARIO to CHECK
-TEST(unixSecureStreamSocket, SendLongMessageError)
+TEST(socketAuxiliarFunctions, DatagramSendMessageError)
 {
-    unixSecureStream clientSocket(TEST_STREAM_SOCK_PATH);
-
-    std::vector<char> msg = {};
-    msg.resize(clientSocket.getMaxMsgSize() + 2);
-    std::fill(msg.begin(), msg.end() - 1, 'x');
-    msg.back() = '\0';
-
     // Create server
-    const int acceptSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
-    ASSERT_GT(acceptSocketFD, 0);
+    const int serverSocketFD = testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM);
+    ASSERT_GT(serverSocketFD, 0);
 
-    // Connect client (This is not necessary)
-    clientSocket.socketConnect();
+    // Connect client
+    const int clientSocketFD = testSocketConnect(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM);
+    ASSERT_GT(clientSocketFD, 0);
 
     // Force error
-    ASSERT_EQ(clientSocket.sendMsg(msg.data()), SendRetval::SIZE_TOO_LONG);
+    close(clientSocketFD);
 
-    close(acceptSocketFD);
-    clientSocket.socketDisconnect();
+    ASSERT_EQ(testSendMsg(clientSocketFD, TEST_SEND_MESSAGE.data(), false),
+              CommRetval::COMMUNICATION_ERROR);
 
-    unlink(TEST_STREAM_SOCK_PATH.data());
+    close(serverSocketFD);
+
+    unlink(TEST_DGRAM_SOCK_PATH.data());
 }
 
-TEST(unixSecureStreamSocket, SendEmptyMessageError)
+TEST(socketAuxiliarFunctions, StreamSendLongMessageError)
 {
     // Create server
     const int acceptSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
@@ -96,7 +127,54 @@ TEST(unixSecureStreamSocket, SendEmptyMessageError)
     const int clientSocketFD = testSocketConnect(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(clientSocketFD, 0);
 
-    char msg[2] = {};
+    std::vector<char> msg = {};
+    msg.resize(MSG_MAX_SIZE + 2);
+    std::fill(msg.begin(), msg.end() - 1, 'x');
+    msg.back() = '\0';
+
+    ASSERT_EQ(testSendMsg(clientSocketFD, msg.data()), CommRetval::SIZE_TOO_LONG);
+
+    close(acceptSocketFD);
+    close(clientSocketFD);
+
+    unlink(TEST_STREAM_SOCK_PATH.data());
+}
+
+TEST(socketAuxiliarFunctions, DatagramSendLongMessageError)
+{
+    // Create server
+    const int serverSocketFD = testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    // Connect client
+    const int clientSocketFD = testSocketConnect(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM);
+    ASSERT_GT(clientSocketFD, 0);
+
+    std::vector<char> msg = {};
+    msg.resize(MSG_MAX_SIZE + 2);
+    std::fill(msg.begin(), msg.end() - 1, 'x');
+    msg.back() = '\0';
+
+    ASSERT_EQ(testSendMsg(clientSocketFD, msg.data(), false), CommRetval::SIZE_TOO_LONG);
+
+    close(serverSocketFD);
+    close(clientSocketFD);
+
+    unlink(TEST_DGRAM_SOCK_PATH.data());
+}
+
+TEST(socketAuxiliarFunctions, StreamSendEmptyMessageError)
+{
+    // Create server
+    const int acceptSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(acceptSocketFD, 0);
+
+    // Connect client
+    const int clientSocketFD = testSocketConnect(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
+    ASSERT_GT(clientSocketFD, 0);
+
+    char msg[] = "";
+
     ASSERT_EQ(testSendMsg(clientSocketFD, msg), CommRetval::SIZE_ZERO);
 
     close(acceptSocketFD);
@@ -105,19 +183,39 @@ TEST(unixSecureStreamSocket, SendEmptyMessageError)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(unixSecureStreamSocket, SendInvalidSocketError)
+TEST(socketAuxiliarFunctions, DatagramSendEmptyMessageError)
+{
+    // Create server
+    const int serverSocketFD = testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    // Connect client
+    const int clientSocketFD = testSocketConnect(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM);
+    ASSERT_GT(clientSocketFD, 0);
+
+    char msg[] = "";
+
+    ASSERT_EQ(testSendMsg(clientSocketFD, msg, false), CommRetval::SIZE_ZERO);
+
+    close(serverSocketFD);
+    close(clientSocketFD);
+
+    unlink(TEST_DGRAM_SOCK_PATH.data());
+}
+
+TEST(socketAuxiliarFunctions, SendInvalidSocketError)
 {
     ASSERT_EQ(testSendMsg(0, TEST_SEND_MESSAGE.data()), CommRetval::INVALID_SOCKET);
     ASSERT_EQ(testSendMsg(-5, TEST_SEND_MESSAGE.data()), CommRetval::INVALID_SOCKET);
 }
 
-TEST(unixSecureStreamSocket, SendWrongSocketFDError)
+TEST(socketAuxiliarFunctions, SendWrongSocketFDError)
 {
     ASSERT_EQ(testSendMsg(999, TEST_SEND_MESSAGE.data()),
               CommRetval::COMMUNICATION_ERROR);
 }
 
-TEST(unixSecureStreamSocket, SendMessage)
+TEST(socketAuxiliarFunctions, StreamSendMessage)
 {
     // Create server
     const int acceptSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
@@ -135,7 +233,26 @@ TEST(unixSecureStreamSocket, SendMessage)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(unixSecureStreamSocket, RecvMessage)
+TEST(socketAuxiliarFunctions, DatagramSendMessage)
+{
+    // Create server
+    const int serverSocketFD = testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    // Connect client
+    const int clientSocketFD = testSocketConnect(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM);
+    ASSERT_GT(clientSocketFD, 0);
+
+    ASSERT_EQ(testSendMsg(clientSocketFD, TEST_SEND_MESSAGE.data(), false),
+              CommRetval::SUCCESS);
+
+    close(serverSocketFD);
+    close(clientSocketFD);
+
+    unlink(TEST_DGRAM_SOCK_PATH.data());
+}
+
+TEST(socketAuxiliarFunctions, StreamRecvMessage)
 {
 
     // Create server
@@ -153,8 +270,7 @@ TEST(unixSecureStreamSocket, RecvMessage)
     ASSERT_EQ(testSendMsg(serverSocketFD, TEST_SEND_MESSAGE.data()), CommRetval::SUCCESS);
 
     auto payload = testRecvString(clientSocketFD, SOCK_STREAM);
-    const char* msg = static_cast<const char*>(payload.data());
-    ASSERT_STREQ(msg, TEST_SEND_MESSAGE.data());
+    ASSERT_STREQ(payload.data(), TEST_SEND_MESSAGE.data());
 
     close(acceptSocketFD);
     close(serverSocketFD);
@@ -163,7 +279,31 @@ TEST(unixSecureStreamSocket, RecvMessage)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(unixSecureStreamSocket, SendRecvMessage)
+TEST(socketAuxiliarFunctions, DatagramRecvMessage)
+{
+
+    // Create server
+    const int serverSocketFD = testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    // Connect client
+    const int clientSocketFD = testSocketConnect(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM);
+    ASSERT_GT(clientSocketFD, 0);
+
+    ASSERT_EQ(testSendMsg(clientSocketFD, TEST_SEND_MESSAGE.data(), false),
+              CommRetval::SUCCESS);
+
+    // Set-up sockaddr structure
+    auto payload = testRecvString(serverSocketFD, SOCK_DGRAM);
+    ASSERT_STREQ(payload.data(), TEST_SEND_MESSAGE.data());
+
+    close(serverSocketFD);
+    close(clientSocketFD);
+
+    unlink(TEST_DGRAM_SOCK_PATH.data());
+}
+
+TEST(socketAuxiliarFunctions, StreamSendRecvMessage)
 {
     char msg[MAX_BUFFER_SIZE] = {};
 
@@ -178,7 +318,6 @@ TEST(unixSecureStreamSocket, SendRecvMessage)
     const int serverSocketFD = testAcceptConnection(acceptSocketFD);
     ASSERT_GT(serverSocketFD, 0);
 
-    const int msgLen = TEST_SEND_MESSAGE.length();
     ASSERT_EQ(testSendMsg(clientSocketFD, TEST_SEND_MESSAGE.data()), CommRetval::SUCCESS);
 
     auto payload = testRecvString(serverSocketFD, SOCK_STREAM);
@@ -196,7 +335,7 @@ TEST(unixSecureStreamSocket, SendRecvMessage)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(unixSecureStreamSocket, SendRecvLongestMessage)
+TEST(socketAuxiliarFunctions, StreamSendRecvLongestMessage)
 {
     char msg[MSG_MAX_SIZE + 1] = {};
     memset(msg, 'x', MSG_MAX_SIZE);
@@ -225,7 +364,32 @@ TEST(unixSecureStreamSocket, SendRecvLongestMessage)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(unixSecureStreamSocket, RemoteCloseBeforeSend)
+TEST(socketAuxiliarFunctions, DatagramSendRecvLongestMessage)
+{
+    char msg[MSG_MAX_SIZE + 1] = {};
+    memset(msg, 'x', MSG_MAX_SIZE);
+
+    // Create server
+    const int serverSocketFD = testBindUnixSocket(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    // Connect client
+    const int clientSocketFD = testSocketConnect(TEST_DGRAM_SOCK_PATH, SOCK_DGRAM);
+    ASSERT_GT(clientSocketFD, 0);
+
+    ASSERT_EQ(testSendMsg(clientSocketFD, msg, false), CommRetval::SUCCESS);
+
+    auto payload = testRecvString(serverSocketFD, SOCK_DGRAM);
+    ASSERT_STREQ(payload.c_str(), msg);
+    ASSERT_EQ(strlen(payload.c_str()), MSG_MAX_SIZE);
+
+    close(serverSocketFD);
+    close(clientSocketFD);
+
+    unlink(TEST_DGRAM_SOCK_PATH.data());
+}
+
+TEST(socketAuxiliarFunctions, StreamRemoteCloseBeforeSend)
 {
 
     // Create server
@@ -254,7 +418,7 @@ TEST(unixSecureStreamSocket, RemoteCloseBeforeSend)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(unixSecureStreamSocket, RemoteCloseBeforeRcv)
+TEST(socketAuxiliarFunctions, StreamRemoteCloseBeforeRcv)
 {
 
     // Create server
@@ -288,7 +452,7 @@ TEST(unixSecureStreamSocket, RemoteCloseBeforeRcv)
     unlink(TEST_STREAM_SOCK_PATH.data());
 }
 
-TEST(unixSecureStreamSocket, LocalSendremoteCloseBeforeRcv)
+TEST(socketAuxiliarFunctions, StreamLocalSendremoteCloseBeforeRcv)
 {
 
     // Create server

@@ -97,7 +97,6 @@ TEST(wdb_query, TooLongString)
     std::fill(msg.begin(), msg.end() - 1, 'x');
     msg.back() = '\0';
 
-
     // Disable warning logs for this test
     const auto logLevel = fmtlog::getLogLevel();
     fmtlog::setLogLevel(fmtlog::LogLevel(logging::LogLevel::Error));
@@ -122,7 +121,7 @@ TEST(wdb_query, ConnectAndQuery)
     testSendMsg(clientRemote, TEST_RESPONSE);
 
     ASSERT_STREQ(wdb.query(TEST_MESSAGE).c_str(), TEST_RESPONSE);
-    ASSERT_STREQ(testRecvString(clientRemote).c_str(), TEST_MESSAGE);
+    ASSERT_STREQ(testRecvString(clientRemote, SOCK_STREAM).c_str(), TEST_MESSAGE);
 
     close(clientRemote);
     close(serverSocketFD);
@@ -140,7 +139,7 @@ TEST(wdb_query, SendQueryWithoutConnect)
         [&]()
         {
             const int clientRemote = testAcceptConnection(serverSocketFD);
-            testRecvString(clientRemote).c_str();
+            testRecvString(clientRemote, SOCK_STREAM).c_str();
             testSendMsg(clientRemote, TEST_RESPONSE);
             close(clientRemote);
         });
@@ -186,7 +185,7 @@ TEST(wdb_tryQuery, SendQueryOK_firstAttemp)
         [&]()
         {
             const int clientRemote = testAcceptConnection(serverSocketFD);
-            testRecvString(clientRemote).c_str();
+            testRecvString(clientRemote, SOCK_STREAM).c_str();
             testSendMsg(clientRemote, TEST_RESPONSE);
             close(clientRemote);
         });
@@ -211,7 +210,7 @@ TEST(wdb_tryQuery, SendQueryOK_retry)
             const int clientRemote = testAcceptConnection(serverSocketFD);
             close(clientRemote);
             const int clientRemoteRetry = testAcceptConnection(serverSocketFD);
-            testRecvString(clientRemoteRetry).c_str();
+            testRecvString(clientRemoteRetry, SOCK_STREAM).c_str();
             testSendMsg(clientRemoteRetry, TEST_RESPONSE);
             close(clientRemoteRetry);
         });
@@ -397,7 +396,7 @@ TEST(wdb_tryQueryAndParseResult, SendQueryOK_firstAttemp_wopayload)
         [&]()
         {
             const int clientRemote = testAcceptConnection(serverSocketFD);
-            testRecvString(clientRemote).c_str();
+            testRecvString(clientRemote, SOCK_STREAM).c_str();
             testSendMsg(clientRemote, "ok");
             close(clientRemote);
         });
@@ -425,7 +424,7 @@ TEST(wdb_tryQueryAndParseResult, SendQueryOK_retry_wpayload)
             const int clientRemote = testAcceptConnection(serverSocketFD);
             close(clientRemote);
             const int clientRemoteRetry = testAcceptConnection(serverSocketFD);
-            testRecvString(clientRemoteRetry).c_str();
+            testRecvString(clientRemoteRetry, SOCK_STREAM).c_str();
             testSendMsg(clientRemoteRetry, "ok payload");
             close(clientRemoteRetry);
         });

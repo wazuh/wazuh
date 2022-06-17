@@ -56,10 +56,10 @@ class unixInterface
 {
 
 private:
-    int m_sock {-1};     ///< Socket file descriptor.
-    std::string m_path;  ///< Path to the socket.
-    Protocol m_protocol; ///< Protocol type.
-    int m_maxMsgSize;    ///< Maximum message size.
+    int m_sock {-1};       ///< Socket file descriptor.
+    std::string m_path;    ///< Path to the socket.
+    Protocol m_protocol;   ///< Protocol type.
+    uint32_t m_maxMsgSize; ///< Maximum message size.
 
     /**
      * @brief Set the Socket Size option.
@@ -85,7 +85,9 @@ protected:
      * @param protocol protocol type.
      * @param maxMsgSize maximum message size.
      */
-    unixInterface(std::string_view path, const Protocol protocol, const int maxMsgSize);
+    unixInterface(std::string_view path,
+                  const Protocol protocol,
+                  const uint32_t maxMsgSize);
     virtual ~unixInterface();
 
 public:
@@ -101,6 +103,7 @@ public:
     {
         this->m_sock = std::exchange(moved.m_sock, -1);
     };
+
     unixInterface& operator=(unixInterface&& moved)
     {
         if (this != &moved)
