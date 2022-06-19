@@ -5,9 +5,9 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
-####################################################################################################
+# ###################################################################################################
 # Settings
-####################################################################################################
+# ###################################################################################################
 
 set(BUILDER_TEST_SOURCE_DIR ${TEST_SOURCE_DIR}/builder)
 set(BUILDER_ENGINE_SOURCE_DIR ${ENGINE_SOURCE_DIR}/builder)
@@ -15,9 +15,9 @@ set(BUILDER_ENGINE_SOURCE_DIR ${ENGINE_SOURCE_DIR}/builder)
 set(BUILDER_BUILDERS_TEST_SOURCE_DIR ${BUILDER_TEST_SOURCE_DIR}/builders)
 set(BUILDER_BUILDERS_ENGINE_SOURCE_DIR ${BUILDER_ENGINE_SOURCE_DIR}/builders)
 
-####################################################################################################
+# ###################################################################################################
 # Headers -- Libraries
-####################################################################################################
+# ###################################################################################################
 include_directories(
   ${ENGINE_SOURCE_DIR}
   ${BUILDER_ENGINE_SOURCE_DIR}
@@ -29,28 +29,34 @@ include_directories(
   ${RxCpp_SOURCE_DIR}/Rx/v2/src
 )
 
-#TODO do this better
-link_libraries(gtest engine_test_main hlp kvdb builders logicExpression)
+# TODO do this better
+# link_libraries(gtest engine_test_main hlp kvdb builders logicExpression)
 
-####################################################################################################
+# ###################################################################################################
 # Builder targets
-####################################################################################################
-# Builder test
-add_executable(builderTest
-  ${BUILDER_TEST_SOURCE_DIR}/builder_test.cpp
+# ###################################################################################################
+# Expression test
+add_executable(expression_test
+  ${BUILDER_TEST_SOURCE_DIR}/expression_test.cpp
 )
-gtest_discover_tests(builderTest)
+target_link_libraries(expression_test
+  gtest_main base
+)
+gtest_discover_tests(expression_test)
 
 # Registry test
-add_executable(registryTest
-    ${BUILDER_TEST_SOURCE_DIR}/registry_test.cpp
-    )
-gtest_discover_tests(registryTest)
+add_executable(registry_test
+  ${BUILDER_TEST_SOURCE_DIR}/registry_test.cpp
+)
+target_link_libraries(registry_test
+  gtest_main base
+)
+gtest_discover_tests(registry_test)
 
 # Register test
 add_executable(registerTest
   ${BUILDER_TEST_SOURCE_DIR}/register_test.cpp
-  )
+)
 gtest_discover_tests(registerTest)
 
 add_executable(opBuilderTest
@@ -165,9 +171,3 @@ add_executable(definitions_test
   ${BUILDER_TEST_SOURCE_DIR}/definitions_test.cpp
 )
 gtest_discover_tests(definitions_test)
-
-
-add_executable(expression_test
-  ${BUILDER_TEST_SOURCE_DIR}/expression_test.cpp
-)
-gtest_discover_tests(expression_test)
