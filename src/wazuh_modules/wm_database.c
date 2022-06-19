@@ -484,10 +484,8 @@ void wm_clean_agent_artifacts(int agent_id, const char* agent_name) {
     int result = OS_INVALID;
 
     // Removing legacy database
-    if (*agent_name != '\0') {
-        if (result = wdb_remove_agent_db(agent_id, agent_name), result) {
-            mtdebug1(WM_DATABASE_LOGTAG, "Could not remove the legacy DB of the agent %d.", agent_id);
-        }
+    if (result = wdb_remove_agent_db(agent_id, agent_name), result) {
+        mtdebug1(WM_DATABASE_LOGTAG, "Could not remove the legacy DB of the agent %d.", agent_id);
     }
 
     // Removing wazuh-db database
@@ -498,9 +496,7 @@ void wm_clean_agent_artifacts(int agent_id, const char* agent_name) {
         mtdebug1(WM_DATABASE_LOGTAG, "Could not remove the wazuh-db DB of the agent %d.", agent_id);
     }
 
-    if (*agent_name != '\0') {
-        delete_diff(agent_name);
-    }
+    delete_diff(agent_name);
 }
 
 // Clean dangling database files

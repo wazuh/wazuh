@@ -352,8 +352,14 @@ void test_sync_agents_artifacts_with_wdb_empty_agent_name(void **state) {
     expect_value(__wrap_wdb_get_agent_name, id, 1);
     will_return(__wrap_wdb_get_agent_name, agent_name);
 
+    will_return(__wrap_readdir, NULL);
+
     // wm_clean_agent_artifacts
     char *wdb_response = "{\"agents\":{\"001\":\"ok\"}}";
+
+    expect_value(__wrap_wdb_remove_agent_db, id, 1);
+    expect_string(__wrap_wdb_remove_agent_db, name, "centos");
+    will_return(__wrap_wdb_remove_agent_db, OS_SUCCESS);
 
     expect_value(__wrap_wdbc_query_ex, *sock, -1);
     expect_string(__wrap_wdbc_query_ex, query, "wazuhdb remove 1");
@@ -361,7 +367,11 @@ void test_sync_agents_artifacts_with_wdb_empty_agent_name(void **state) {
     will_return(__wrap_wdbc_query_ex, wdb_response);
     will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
 
-    will_return(__wrap_readdir, NULL);
+    char path[OS_MAXSTR] = {0};
+    snprintf(path, OS_MAXSTR, "%s/centos", DIFF_DIR);
+
+    expect_string(__wrap_rmdir_ex, name, path);
+    will_return(__wrap_rmdir_ex, OS_SUCCESS);
 
     sync_agents_artifacts_with_wdb(keys);
 
