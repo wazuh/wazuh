@@ -1428,6 +1428,11 @@ class PoliciesManager(RBACManager):
 
     ACTION_REGEX = r'^[a-zA-Z_\-]+:[a-zA-Z_\-]+$'
     RESOURCE_REGEX = r'^[a-zA-Z_\-*]+:[\w_\-*]+:[\w_\-\/.*]+$'
+    POLICY_ATTRIBUTES = {
+        'actions': list,
+        'resources': list,
+        'effect': str
+    }
 
     def get_policy(self, name: str) -> Union[dict, int]:
         """Get the information about a policy given its name.
@@ -1514,8 +1519,8 @@ class PoliciesManager(RBACManager):
                 return SecurityError.INVALID
             # To add a policy, its body must have the `actions`, `resources`, and `effect` keys;
             # and the values must be instances of `list`, `list` and `str`
-            if all({isinstance(policy.get('actions'), list), isinstance(policy.get('resources'), list),
-                    isinstance(policy.get('effect'), str)}):
+            if all([isinstance(policy.get(attribute), attr_type) for attribute, attr_type in
+                    self.POLICY_ATTRIBUTES.items()]):
                 for action in policy['actions']:
                     if not re.match(self.ACTION_REGEX, action):
                         return SecurityError.INVALID
