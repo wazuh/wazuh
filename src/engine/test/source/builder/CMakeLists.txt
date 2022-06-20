@@ -104,7 +104,7 @@ add_executable(registerTest
 )
 gtest_discover_tests(registerTest)
 
-add_executable(opBuilderHelperCheckTest
+add_executable(opBuilderHelperCheck_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntEqual_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntNotEqual_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntGreaterThanEqual_test.cpp
@@ -123,7 +123,10 @@ add_executable(opBuilderHelperCheckTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperRegexNotMatch_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIPCIDRCheck_test.cpp
 )
-gtest_discover_tests(opBuilderHelperCheckTest)
+target_link_libraries(opBuilderHelperCheck_test
+  gtest_main base
+)
+gtest_discover_tests(opBuilderHelperCheck_test)
 
 add_executable(opBuilderHelperMapTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntCalc_test.cpp
