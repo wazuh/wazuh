@@ -1,28 +1,14 @@
-/* Copyright (C) 2015-2022, Wazuh Inc.
- * All rights reserved.
- *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
- */
-
 #ifndef _STAGE_BUILDER_CHECK_H
 #define _STAGE_BUILDER_CHECK_H
 
-#include "builderTypes.hpp"
+#include <any>
+
+#include "builder/expression.hpp"
 
 namespace builder::internals::builders
 {
 
-/**
- * @brief Builds stage check
- *
- * @param def
- * @return base::Lifter
- */
-base::Lifter stageBuilderCheck(const base::DocumentValue &def,
-                                types::TracerFn tr);
+Expression stageCheckBuilder(std::any definition);
 
 } // namespace builder::internals::builders
 
