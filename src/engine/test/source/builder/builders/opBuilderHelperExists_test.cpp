@@ -12,44 +12,35 @@
 
 #include <baseTypes.hpp>
 
-#include "testUtils.hpp"
 #include "opBuilderHelperFilter.hpp"
-#include "testUtils.hpp"
 
 using namespace base;
 namespace bld = builder::internals::builders;
 
-using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg) {
-};
-
 
 TEST(opBuilderHelperExists, Builds)
 {
-    Document doc {R"({
-        "check":
+    json::Json doc {R"(
             {"field": "+exists"}
-    })"};
+    )"};
 
-    ASSERT_NO_THROW(bld::opBuilderHelperExists(doc.get("/check"), tr));
+    ASSERT_NO_THROW(bld::opBuilderHelperExists(doc));
 }
 
 TEST(opBuilderHelperExists, Builds_error_bad_parameter)
 {
-    Document doc {R"({
-        "check":
+    json::Json doc {R"(
             {"field_test": "+exists/test"}
-    })"};
+    )"};
 
-    ASSERT_THROW(bld::opBuilderHelperIntEqual(doc.get("/check"), tr), std::invalid_argument);
+    ASSERT_THROW(bld::opBuilderHelperExists(doc), std::invalid_argument);
 }
 
 TEST(opBuilderHelperExists, Exec_exists_ok)
 {
-    Document doc {R"({
-        "check":
+    json::Json doc {R"(
             {"field2check": "+exists"}
-    })"};
+    )"};
 
     Observable input = observable<>::create<Event>(
         [=](auto s)
@@ -92,7 +83,7 @@ TEST(opBuilderHelperExists, Exec_exists_ok)
 
 TEST(opBuilderHelperExists, Exec_multilevel_ok)
 {
-    Document doc {R"({
+    json::Json doc {R"({
         "check":
             {"parentObjt_1.field2check": "+exits"}
     })"};
