@@ -1,52 +1,27 @@
 #include <gtest/gtest.h>
 
-#include "register.hpp"
-#include "registry.hpp"
+#include "builder/register.hpp"
+#include "builder/registry.hpp"
 
 using namespace builder::internals;
 
-TEST(Register, AllBuildersRegistered)
+class RegisterTest : public ::testing::Test
+{
+protected:
+    void TearDown() override
+    {
+        Registry::clear();
+    }
+};
+
+TEST(RegisterTest, AllBuildersRegistered)
 {
     ASSERT_NO_THROW(registerBuilders());
 
     // Check all builders have been registered
-    ASSERT_NO_THROW(Registry::getBuilder("condition"));
-    ASSERT_NO_THROW(Registry::getBuilder("middle.helper.exists"));
-    ASSERT_NO_THROW(Registry::getBuilder("middle.helper.not_exists"));
-    ASSERT_NO_THROW(Registry::getBuilder("middle.helper.s_le"));
-    ASSERT_NO_THROW(Registry::getBuilder("middle.helper.s_lt"));
-    ASSERT_NO_THROW(Registry::getBuilder("middle.helper.s_ge"));
-    ASSERT_NO_THROW(Registry::getBuilder("middle.helper.s_gt"));
-    ASSERT_NO_THROW(Registry::getBuilder("middle.helper.s_eq"));
-    ASSERT_NO_THROW(Registry::getBuilder("middle.helper.s_ne"));
-    ASSERT_NO_THROW(Registry::getBuilder("helper.s_up"));
-    ASSERT_NO_THROW(Registry::getBuilder("helper.s_lo"));
-    ASSERT_NO_THROW(Registry::getBuilder("helper.s_trim"));
-    ASSERT_NO_THROW(Registry::getBuilder("middle.helper.i_le"));
-    ASSERT_NO_THROW(Registry::getBuilder("middle.helper.i_lt"));
-    ASSERT_NO_THROW(Registry::getBuilder("middle.helper.i_ge"));
-    ASSERT_NO_THROW(Registry::getBuilder("middle.helper.i_gt"));
-    ASSERT_NO_THROW(Registry::getBuilder("middle.helper.i_eq"));
-    ASSERT_NO_THROW(Registry::getBuilder("middle.helper.i_ne"));
-    ASSERT_NO_THROW(Registry::getBuilder("helper.i_calc"));
-    ASSERT_NO_THROW(Registry::getBuilder("middle.helper.r_match"));
-    ASSERT_NO_THROW(Registry::getBuilder("middle.helper.r_not_match"));
-    ASSERT_NO_THROW(Registry::getBuilder("middle.helper.r_ext"));
-    ASSERT_NO_THROW(Registry::getBuilder("middle.helper.ip_cidr"));
-    ASSERT_NO_THROW(Registry::getBuilder("helper.kvdb_extract"));
-    ASSERT_NO_THROW(Registry::getBuilder("helper.kvdb_match"));
-    ASSERT_NO_THROW(Registry::getBuilder("helper.kvdb_notmatch"));
-    ASSERT_NO_THROW(Registry::getBuilder("map"));
-    ASSERT_NO_THROW(Registry::getBuilder("map.value"));
-    ASSERT_NO_THROW(Registry::getBuilder("map.reference"));
-    ASSERT_NO_THROW(Registry::getBuilder("check"));
-    ASSERT_NO_THROW(Registry::getBuilder("normalize"));
-    ASSERT_NO_THROW(Registry::getBuilder("outputs"));
-    ASSERT_NO_THROW(Registry::getBuilder("combinator.chain"));
-    ASSERT_NO_THROW(Registry::getBuilder("combinator.broadcast"));
-    ASSERT_NO_THROW(Registry::getBuilder("file"));
-    ASSERT_NO_THROW(Registry::getBuilder("decoder"));
-    ASSERT_NO_THROW(Registry::getBuilder("rule"));
-    ASSERT_NO_THROW(Registry::getBuilder("output"));
-    ASSERT_NO_THROW(Registry::getBuilder("filter"));
+    ASSERT_NO_THROW(Registry::getBuilder("operation.map"));
+    ASSERT_NO_THROW(Registry::getBuilder("operation.condition"));
+    ASSERT_NO_THROW(Registry::getBuilder("stage.check"));
+    ASSERT_NO_THROW(Registry::getBuilder("stage.map"));
+    ASSERT_NO_THROW(Registry::getBuilder("stage.normalize"));
 }
