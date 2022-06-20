@@ -1,122 +1,99 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
- * All rights reserved.
- *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
- */
-
-#include "testUtils.hpp"
 #include <gtest/gtest.h>
 
-#include "combinatorBuilderChain.hpp"
-#include "opBuilderCondition.hpp"
-#include "opBuilderHelperFilter.hpp"
-#include "stageBuilderCheck.hpp"
+#include "baseTypes.hpp"
+#include "builder/builders/operationBuilder.hpp"
+#include "builder/builders/stageBuilderCheck.hpp"
+#include "builder/registry.hpp"
+#include "json.hpp"
 
+using namespace builder::internals;
+using namespace builder::internals::builders;
+using namespace json;
 using namespace base;
-namespace bld = builder::internals::builders;
 
-using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg) {
+#define GTEST_COUT std::cout << "[          ] [ INFO ] "
+
+class StageBuilderCheckTest : public ::testing::Test
+{
+protected:
+    void SetUp() override
+    {
+        Registry::registerBuilder(operationConditionBuilder, "operation.condition");
+    }
+    void TearDown() override
+    {
+        Registry::clear();
+    }
 };
 
-TEST(StageBuilderCheck, BuildsAllNonRegistered)
+TEST_F(StageBuilderCheckTest, Builds)
 {
-    Document doc {R"({
-        "check": [
-            {"field1": "value"},
-            {"field2": 2},
-            {"field3": "$field1"},
-            {"field4": true},
-            {"field5": "+exists"},
-            {"field5": "+not_exists"}
-        ]
-    })"};
+    auto checkJson = Json {R"([
+        {"string": "value"},
+        {"int": 1},
+        {"double": 1.0},
+        {"boolT": true},
+        {"boolF": false},
+        {"null": null},
+        {"array": [1, 2, 3]},
+        {"object": {"a": 1, "b": 2}}
+])"};
 
-    ASSERT_THROW(builders::stageBuilderCheck(doc.get("/check"), tr),
-                 std::_Nested_exception<std::runtime_error>);
+    ASSERT_NO_THROW(stageCheckBuilder(checkJson));
 }
 
-TEST(StageBuilderCheck, Builds)
+TEST_F(StageBuilderCheckTest, UnexpectedDefinition)
 {
-    BuilderVariant c = bld::opBuilderCondition;
-    Registry::registerBuilder("condition", c);
-    c = bld::opBuilderHelperExists;
-    Registry::registerBuilder("middle.helper.exists", c);
-    c = bld::opBuilderHelperNotExists;
-    Registry::registerBuilder("middle.helper.not_exists", c);
-    c = bld::middleBuilderCondition;
-    Registry::registerBuilder("middle.condition", c);
-    c = bld::combinatorBuilderChain;
-    Registry::registerBuilder("combinator.chain", c);
+    auto checkJson = Json {R"({})"};
 
-    Document doc {R"({
-        "check": [
-            {"field1": "value"},
-            {"field2": 2},
-            {"field3": "$field1"},
-            {"field4": true},
-            {"field5": "+exists"},
-            {"field5": "+not_exists"}
-        ]
-    })"};
-
-    ASSERT_NO_THROW(builders::stageBuilderCheck(doc.get("/check"), tr));
+    ASSERT_THROW(stageCheckBuilder(checkJson), std::runtime_error);
 }
 
-TEST(StageBuilderCheck, BuildsOperates)
+TEST_F(StageBuilderCheckTest, ArrayWrongSizeItem)
 {
-    Document doc {R"({
-        "check": [
-            {"field1": "value"},
-            {"field2": 2},
-            {"field3": "$field1"},
-            {"field4": true},
-            {"field5": "+exists"},
-            {"field6": "+not_exists"}
-        ]
-    })"};
+    auto checkJson = Json {R"([
+        {"string": "value"},
+        {"int": 1},
+        {"double": 1.0,
+        "boolT": true},
+        {"boolT": true},
+        {"boolF": false},
+        {"null": null},
+        {"array": [1, 2, 3]},
+        {"object": {"a": 1, "b": 2}}
+])"};
 
-    auto check = builders::stageBuilderCheck(doc.get("/check"), tr);
+    ASSERT_THROW(stageCheckBuilder(checkJson), std::runtime_error);
+}
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"({
-                "field1": "value",
-                "field2": 2,
-                "field3": "value",
-                "field4": true,
-                "field5": "+exists"
-            })"));
-            s.on_next(createSharedEvent(R"(
-                {"field":"values"}
-            )"));
-            s.on_next(createSharedEvent(R"({
-                "field1": "value",
-                "field2": 2,
-                "field3": "value",
-                "field4": true,
-                "field5": "+exists",
-                "field6": "+exists"
-            })"));
-            s.on_next(createSharedEvent(R"(
-                {"otherfield":1}
-            )"));
-            s.on_completed();
-        });
+TEST_F(StageBuilderCheckTest, ArrayWrongTypeItem)
+{
+    auto checkJson = Json {R"([
+        ["string", "value"]
+])"};
 
-    Observable output = check(input);
+    ASSERT_THROW(stageCheckBuilder(checkJson), std::runtime_error);
+}
 
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 1);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/field1").GetString(), "value");
-    ASSERT_EQ(expected[0]->getEvent()->get("/field2").GetInt(), 2);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/field3").GetString(), "value");
-    ASSERT_TRUE(expected[0]->getEvent()->get("/field4").GetBool());
-    ASSERT_NO_THROW(expected[0]->getEvent()->get("/field5"));
-    ASSERT_FALSE(expected[0]->getEvent()->exists("/field6"));
+TEST_F(StageBuilderCheckTest, BuildsCorrectExpression)
+{
+    auto checkJson = Json {R"([
+        {"string": "value"},
+        {"int": 1},
+        {"double": 1.0},
+        {"boolT": true},
+        {"boolF": false},
+        {"null": null},
+        {"array": [1, 2, 3]},
+        {"object": {"a": 1, "b": 2}}
+])"};
+
+    auto expression = stageCheckBuilder(checkJson);
+
+    ASSERT_TRUE(expression->isOperation());
+    ASSERT_TRUE(expression->isAnd());
+    for (auto term : expression->getPtr<And>()->getOperands())
+    {
+        ASSERT_TRUE(term->isTerm());
+    }
 }

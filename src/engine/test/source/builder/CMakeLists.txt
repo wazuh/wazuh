@@ -63,12 +63,46 @@ target_link_libraries(operationBuilder_test
 )
 gtest_discover_tests(operationBuilder_test)
 
+# Stage Check Builder test
+add_executable(stageBuilderCheck_test
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/stageBuilderCheck_test.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderCheck.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/operationBuilder.cpp
+)
+target_link_libraries(stageBuilderCheck_test
+  gtest_main base
+)
+gtest_discover_tests(stageBuilderCheck_test)
+
+# Stage Map Builder test
+add_executable(stageBuilderMap_test
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/stageBuilderMap_test.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderMap.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/operationBuilder.cpp
+)
+target_link_libraries(stageBuilderMap_test
+  gtest_main base
+)
+gtest_discover_tests(stageBuilderMap_test)
+
+# Stage Normalize Builder test
+add_executable(stageBuilderNormalize_test
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/stageBuilderNormalize_test.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderNormalize.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderCheck.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderMap.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/operationBuilder.cpp
+)
+target_link_libraries(stageBuilderNormalize_test
+  gtest_main base
+)
+gtest_discover_tests(stageBuilderNormalize_test)
+
 # Register test
 add_executable(registerTest
   ${BUILDER_TEST_SOURCE_DIR}/register_test.cpp
 )
 gtest_discover_tests(registerTest)
-
 
 add_executable(opBuilderHelperCheckTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntEqual_test.cpp
@@ -99,16 +133,6 @@ add_executable(opBuilderHelperMapTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperRegexExtract_test.cpp
 )
 gtest_discover_tests(opBuilderHelperMapTest)
-
-add_executable(stageBuilderCheckTest
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/stageBuilderCheck_test.cpp
-)
-gtest_discover_tests(stageBuilderCheckTest)
-
-add_executable(stageBuilderNormalizeTest
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/stageBuilderNormalize_test.cpp
-)
-gtest_discover_tests(stageBuilderNormalizeTest)
 
 add_executable(stageBuilderOutputsTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/stageBuilderOutputs_test.cpp
