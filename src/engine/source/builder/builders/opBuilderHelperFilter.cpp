@@ -76,79 +76,66 @@ namespace builder::internals::builders
 {
 
 // <field>: exists
-std::function<bool(base::Event)>
-opBuilderHelperExists(const base::DocumentValue& def, types::TracerFn tr)
+Expression opBuilderHelperExists(std::any definition)
 {
-    // Get Field path to check
-    std::string field {
-        json::formatJsonPath(def.MemberBegin()->name.GetString())};
+    // Get Field path and arguments of the helper function
+    const auto helperTuple =
+        std::any_cast<std::tuple<std::string, std::vector<std::string>>>(
+            definition);
 
-    // Check parameters
-    std::vector<std::string> parameters {
-        utils::string::split(def.MemberBegin()->value.GetString(), '/')};
-    if (parameters.size() != 1)
-    {
-        throw std::runtime_error("Invalid number of parameters");
-    }
+    auto field = std::get<0>(helperTuple);
+
+    const auto name = fmt::format("{}: +exists", field);
 
     // Tracing
-    std::string successTrace = fmt::format("{{{}: +exists}} Condition Success",
-                                           def.MemberBegin()->name.GetString());
-    std::string failureTrace = fmt::format("{{{}: +exists}} Condition Failure",
-                                           def.MemberBegin()->name.GetString());
+    const auto successTrace = fmt::format("{{}} Condition Success", name);
+    const auto failureTrace = fmt::format("{{}} Condition Failure", name);
 
-    // Return Function
-    return [=](base::Event e)
-    {
-        if (e->getEvent()->exists(field))
-        {
-            tr(successTrace);
-            return true;
-        }
-        else
-        {
-            tr(failureTrace);
-            return false;
-        }
+    // Return result
+    return builder::internals::Term<base::EngineOp>::create(name,
+            [=](base::Event e)->base::result::Result<base::Event>
+            {
+                if (e->exists(field))
+                {
+                    return base::result::makeSuccess(e, successTrace);
+                }
+                else
+                {
+                    return  base::result::makeFailure(e, failureTrace);
+                }
+            });
     };
 }
 
 // <field>: not_exists
-std::function<bool(base::Event)>
-opBuilderHelperNotExists(const base::DocumentValue& def, types::TracerFn tr)
+Expression opBuilderHelperNotExists(std::any definition)
 {
-    // Get Field path to check
-    std::string field {
-        json::formatJsonPath(def.MemberBegin()->name.GetString())};
+    // Get Field path and arguments of the helper function
+    const auto helperTuple =
+        std::any_cast<std::tuple<std::string, std::vector<std::string>>>(
+            definition);
 
-    std::vector<std::string> parameters =
-        utils::string::split(def.MemberBegin()->value.GetString(), '/');
-    if (parameters.size() != 1)
-    {
-        throw std::runtime_error("Invalid number of parameters");
-    }
+    auto field = std::get<0>(helperTuple);
+
+    const auto name = fmt::format("{}: +exists", field);
 
     // Tracing
-    std::string successTrace =
-        fmt::format("{{{}: +not_exists}} Condition Success",
-                    def.MemberBegin()->name.GetString());
-    std::string failureTrace =
-        fmt::format("{{{}: +not_exists}} Condition Failure",
-                    def.MemberBegin()->name.GetString());
+    const auto successTrace = fmt::format("{{}} Condition Success", name);
+    const auto failureTrace = fmt::format("{{}} Condition Failure", name);
 
-    // Return Function
-    return [=](base::Event e)
-    {
-        if (!e->getEvent()->exists(field))
-        {
-            tr(successTrace);
-            return true;
-        }
-        else
-        {
-            tr(failureTrace);
-            return false;
-        }
+    // Return result
+    return builder::internals::Term<base::EngineOp>::create(name,
+            [=](base::Event e)->base::result::Result<base::Event>
+            {
+                if (!e->exists(field))
+                {
+                    return base::result::makeSuccess(e, successTrace);
+                }
+                else
+                {
+                    return  base::result::makeFailure(e, failureTrace);
+                }
+            });
     };
 }
 
@@ -240,8 +227,7 @@ bool opBuilderHelperStringComparison(const std::string key,
 }
 
 // <field>: s_eq/<value>
-std::function<bool(base::Event)>
-opBuilderHelperStringEQ(const base::DocumentValue& def, types::TracerFn tr)
+Expression opBuilderHelperStringEQ(std::any definition)
 {
     auto [key, refValue, value] {getCompOpParameter(def)};
 
@@ -270,8 +256,7 @@ opBuilderHelperStringEQ(const base::DocumentValue& def, types::TracerFn tr)
 }
 
 // <field>: s_ne/<value>
-std::function<bool(base::Event)>
-opBuilderHelperStringNE(const base::DocumentValue& def, types::TracerFn tr)
+Expression opBuilderHelperStringNE(std::any definition)
 {
     auto [key, refValue, value] {getCompOpParameter(def)};
 
@@ -299,8 +284,7 @@ opBuilderHelperStringNE(const base::DocumentValue& def, types::TracerFn tr)
 }
 
 // <field>: s_gt/<value>|$<ref>
-std::function<bool(base::Event)>
-opBuilderHelperStringGT(const base::DocumentValue& def, types::TracerFn tr)
+Expression opBuilderHelperStringGT(std::any definition)
 {
     auto [key, refValue, value] {getCompOpParameter(def)};
 
@@ -328,8 +312,7 @@ opBuilderHelperStringGT(const base::DocumentValue& def, types::TracerFn tr)
 }
 
 // <field>: s_ge/<value>|$<ref>
-std::function<bool(base::Event)>
-opBuilderHelperStringGE(const base::DocumentValue& def, types::TracerFn tr)
+Expression opBuilderHelperStringGE(std::any definition)
 {
     auto [key, refValue, value] {getCompOpParameter(def)};
 
@@ -357,8 +340,7 @@ opBuilderHelperStringGE(const base::DocumentValue& def, types::TracerFn tr)
 }
 
 // <field>: s_lt/<value>|$<ref>
-std::function<bool(base::Event)>
-opBuilderHelperStringLT(const base::DocumentValue& def, types::TracerFn tr)
+Expression opBuilderHelperStringLT(std::any definition)
 {
     auto [key, refValue, value] {getCompOpParameter(def)};
 
@@ -386,8 +368,7 @@ opBuilderHelperStringLT(const base::DocumentValue& def, types::TracerFn tr)
 }
 
 // <field>: s_le/<value>|$<ref>
-std::function<bool(base::Event)>
-opBuilderHelperStringLE(const base::DocumentValue& def, types::TracerFn tr)
+Expression opBuilderHelperStringLE(std::any definition)
 {
     auto [key, refValue, value] {getCompOpParameter(def)};
 
@@ -495,8 +476,7 @@ bool opBuilderHelperIntComparison(const std::string field,
 }
 
 // field: +i_eq/int|$ref/
-std::function<bool(base::Event)>
-opBuilderHelperIntEqual(const base::DocumentValue& def, types::TracerFn tr)
+Expression opBuilderHelperIntEqual(std::any definition)
 {
 
     auto [field, refValue, valuestr] {getCompOpParameter(def)};
@@ -529,8 +509,7 @@ opBuilderHelperIntEqual(const base::DocumentValue& def, types::TracerFn tr)
 }
 
 // field: +i_ne/int|$ref/
-std::function<bool(base::Event)>
-opBuilderHelperIntNotEqual(const base::DocumentValue& def, types::TracerFn tr)
+Expression opBuilderHelperIntNotEqual(std::any definition)
 {
 
     auto [field, refValue, valuestr] {getCompOpParameter(def)};
@@ -564,8 +543,7 @@ opBuilderHelperIntNotEqual(const base::DocumentValue& def, types::TracerFn tr)
 }
 
 // field: +i_lt/int|$ref/
-std::function<bool(base::Event)>
-opBuilderHelperIntLessThan(const base::DocumentValue& def, types::TracerFn tr)
+Expression opBuilderHelperIntLessThan(std::any definition)
 {
 
     auto [field, refValue, valuestr] {getCompOpParameter(def)};
@@ -599,9 +577,7 @@ opBuilderHelperIntLessThan(const base::DocumentValue& def, types::TracerFn tr)
 }
 
 // field: +i_le/int|$ref/
-std::function<bool(base::Event)>
-opBuilderHelperIntLessThanEqual(const base::DocumentValue& def,
-                                types::TracerFn tr)
+Expression opBuilderHelperIntLessThanEqual(std::any definition)
 {
 
     auto [field, refValue, valuestr] {getCompOpParameter(def)};
@@ -635,9 +611,7 @@ opBuilderHelperIntLessThanEqual(const base::DocumentValue& def,
 }
 
 // field: +i_gt/int|$ref/
-std::function<bool(base::Event)>
-opBuilderHelperIntGreaterThan(const base::DocumentValue& def,
-                              types::TracerFn tr)
+Expression opBuilderHelperIntGreaterThan(std::any definition)
 {
 
     auto [field, refValue, valuestr] {getCompOpParameter(def)};
@@ -671,9 +645,7 @@ opBuilderHelperIntGreaterThan(const base::DocumentValue& def,
 }
 
 // field: +i_ge/int|$ref/
-std::function<bool(base::Event)>
-opBuilderHelperIntGreaterThanEqual(const base::DocumentValue& def,
-                                   types::TracerFn tr)
+Expression opBuilderHelperIntGreaterThanEqual(std::any definition)
 {
 
     auto [field, refValue, valuestr] {getCompOpParameter(def)};
@@ -711,8 +683,7 @@ opBuilderHelperIntGreaterThanEqual(const base::DocumentValue& def,
 //*************************************************
 
 // field: +r_match/regexp
-std::function<bool(base::Event)>
-opBuilderHelperRegexMatch(const base::DocumentValue& def, types::TracerFn tr)
+Expression opBuilderHelperRegexMatch(std::any definition)
 {
     // Get field
     std::string field {
@@ -757,9 +728,7 @@ opBuilderHelperRegexMatch(const base::DocumentValue& def, types::TracerFn tr)
 }
 
 // field: +r_not_match/regexp
-std::function<bool(base::Event)>
-opBuilderHelperRegexNotMatch(const base::DocumentValue& def,
-                             types::TracerFn tr)
+Expression opBuilderHelperRegexNotMatch(std::any definition)
 {
     // Get field
     std::string field {
@@ -827,8 +796,7 @@ opBuilderHelperRegexNotMatch(const base::DocumentValue& def,
 
 // path_to_ip: +ip_cidr/192.168.0.0/16
 // path_to_ip: +ip_cidr/192.168.0.0/255.255.0.0
-std::function<bool(base::Event)>
-opBuilderHelperIPCIDR(const base::DocumentValue& def, types::TracerFn tr)
+Expression opBuilderHelperIPCIDR(std::any definition)
 {
     // Get Field path to check
     std::string field {
