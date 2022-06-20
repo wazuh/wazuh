@@ -12,7 +12,7 @@
 #define INFO_MESSAGES_H
 
 /* Vulnerability-Detector info messages*/
-#define VU_NO_OSINFO_AG       "(5700): Unable to get the OS information for agent '%.3d'. It may not have the OS inventory enabled."
+#define VU_NO_OSINFO_AG       "(5700): Unable to get the OS information for agent '%.3d'. Inventory data may not yet be synchronized."
 
 /* File integrity monitoring info messages*/
 #define FIM_DAEMON_STARTED                  "(6000): Starting daemon..."
