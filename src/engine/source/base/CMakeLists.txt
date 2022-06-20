@@ -75,7 +75,7 @@ add_library(base STATIC
     utils/ipUtils.hpp
     utils/stringUtils.cpp
     utils/stringUtils.hpp
-    base/result.hpp
+    result.hpp
     baseTypes.hpp
     )
 

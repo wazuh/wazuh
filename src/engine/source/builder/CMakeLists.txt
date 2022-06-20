@@ -25,19 +25,14 @@ add_library(builders OBJECT
     builders/assetBuilderRule.cpp
     builders/combinatorBuilderBroadcast.cpp
     builders/combinatorBuilderChain.cpp
-    builders/opBuilderCondition.cpp
     builders/opBuilderFileOutput.cpp
     builders/opBuilderHelperFilter.cpp
     builders/opBuilderHelperMap.cpp
-    builders/opBuilderMap.cpp
-    builders/opBuilderMapReference.cpp
-    builders/opBuilderMapValue.cpp
     builders/opBuilderKVDB.cpp
     builders/stageBuilderCheck.cpp
     builders/stageBuilderNormalize.cpp
     builders/stageBuilderOutputs.cpp
     builders/stageParse.cpp
-    registry.cpp
     definitions.cpp
 )
 
