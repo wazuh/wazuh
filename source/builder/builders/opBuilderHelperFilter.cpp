@@ -40,15 +40,27 @@ std::tuple<std::string, opString, opString>
 getCompOpParameter(std::any definition)
 {
     // Get Field path and arguments of the helper function
-    const auto helperTuple =
+
+    try
+    {
+        const auto helperTuple =
         std::any_cast<std::tuple<std::string, std::vector<std::string>>>(
             definition);
 
-    // Get field path
-    auto field = std::get<0>(helperTuple);
+        // Get field path
+        auto field = std::get<0>(helperTuple);
+
+        // Get parameters of the helper function
+        auto parameters = std::get<1>(helperTuple);
+    }
+    catch (std::exception& e)
+    {
+        std::throw_with_nested(
+            std::runtime_error("[builders::helperFilterBuilder(definition)] "
+                               "Received unexpected arguments."));
+    }
 
     // Parse parameters
-    auto parameters = std::get<1>(helperTuple);
     if (parameters.size() != 2)
     {
         throw std::runtime_error("Invalid number of parameters");
@@ -76,12 +88,23 @@ namespace builder::internals::builders
 // <field>: exists
 Expression opBuilderHelperExists(std::any definition)
 {
-    // Get Field path and arguments of the helper function
-    const auto helperTuple =
+
+    try
+    {
+        // Get Field path and arguments of the helper function
+        const auto helperTuple =
         std::any_cast<std::tuple<std::string, std::vector<std::string>>>(
             definition);
 
-    auto field = std::get<0>(helperTuple);
+        // Get Field path
+        auto field = std::get<0>(helperTuple);
+    }
+    catch (std::exception& e)
+    {
+        std::throw_with_nested(
+            std::runtime_error("[builders::helperFilterBuilder(definition)] "
+                               "Received unexpected arguments."));
+    }
 
     const auto helperName = fmt::format("{}: +exists", field);
 
@@ -107,12 +130,22 @@ Expression opBuilderHelperExists(std::any definition)
 // <field>: not_exists
 Expression opBuilderHelperNotExists(std::any definition)
 {
-    // Get Field path and arguments of the helper function
-    const auto helperTuple =
+    try
+    {
+        // Get Field path and arguments of the helper function
+        const auto helperTuple =
         std::any_cast<std::tuple<std::string, std::vector<std::string>>>(
             definition);
 
-    auto field = std::get<0>(helperTuple);
+        // Get Field path
+        auto field = std::get<0>(helperTuple);
+    }
+    catch (std::exception& e)
+    {
+        std::throw_with_nested(
+            std::runtime_error("[builders::helperFilterBuilder(definition)] "
+                               "Received unexpected arguments."));
+    }
 
     const auto helperName = fmt::format("{}: +exists", field);
 
@@ -158,7 +191,7 @@ bool opBuilderHelperStringComparison(const std::string key,
     const rapidjson::Value* fieldToCompare {};
     try
     {
-        fieldToCompare = &e->getEvent()->get(key);
+        fieldToCompare = &e->get(key);
     }
     catch (std::exception& ex)
     {
@@ -181,7 +214,7 @@ bool opBuilderHelperStringComparison(const std::string key,
         const rapidjson::Value* refValueToCheck {};
         try
         {
-            refValueToCheck = &e->getEvent()->get(refValue.value());
+            refValueToCheck = &e->get(refValue.value());
         }
         catch (std::exception& ex)
         {
@@ -398,7 +431,7 @@ bool opBuilderHelperIntComparison(const std::string field,
     const rapidjson::Value* fieldValue {};
     try
     {
-        fieldValue = &e->getEvent()->get(field);
+        fieldValue = &e->get(field);
     }
     catch (std::exception& ex)
     {
@@ -421,7 +454,7 @@ bool opBuilderHelperIntComparison(const std::string field,
         const rapidjson::Value* refValueToCheck {};
         try
         {
-            refValueToCheck = &e->getEvent()->get(refValue.value());
+            refValueToCheck = &e->get(refValue.value());
         }
         catch (std::exception& ex)
         {
@@ -651,109 +684,106 @@ Expression opBuilderHelperIntGreaterThanEqual(std::any definition)
 // field: +r_match/regexp
 Expression opBuilderHelperRegexMatch(std::any definition)
 {
-    // Get field
-    std::string field {
-        json::formatJsonPath(def.MemberBegin()->name.GetString())};
-    std::string value {def.MemberBegin()->value.GetString()};
 
-    std::vector<std::string> parameters {utils::string::split(value, '/')};
-    if (parameters.size() != 2)
-    {
-        throw std::invalid_argument("Wrong number of arguments passed");
-    }
+    auto [field, refValue, value] {getCompOpParameter(def)};
 
-    auto regex_ptr = std::make_shared<RE2>(parameters[1], RE2::Quiet);
+    const auto helperName = fmt::format("{}: +r_match", field);
+
+    // Tracing
+    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
+    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+
+    auto regex_ptr = std::make_shared<RE2>(value, RE2::Quiet);
     if (!regex_ptr->ok())
     {
-        const std::string err = "Error compiling regex '" + parameters[1] +
+        const std::string err = "Error compiling regex '" + value +
                                 "'. " + regex_ptr->error();
         throw std::runtime_error(err);
     }
 
-    // Return Lifter
-    return [=](base::Event e)
-    {
-        // TODO Remove try catch
-        // TODO Update to use proper reference
-        const rapidjson::Value* field_str {};
-        try
-        {
-            field_str = &e->getEvent()->get(field);
-        }
-        catch (std::exception& ex)
-        {
-            // TODO Check exception type
-            return false;
-        }
-        if (field_str != nullptr && field_str->IsString())
-        {
-            return (RE2::PartialMatch(field_str->GetString(), *regex_ptr));
-        }
-        return false;
-    };
+    // Return result
+    return builder::internals::Term<base::EngineOp>::create(helperName,
+            [=](base::Event e)->base::result::Result<base::Event>
+            {
+                // TODO Remove try catch
+                // TODO Update to use proper reference
+                const rapidjson::Value* field_str {};
+                try
+                {
+                    field_str = &e->get(field);
+                }
+                catch (std::exception& ex)
+                {
+                    // TODO Check exception type
+                    return false;
+                }
+
+                if (field_str != nullptr && field_str->IsString())
+                {
+                    if (RE2::PartialMatch(field_str->GetString(), *regex_ptr))
+                    {
+                        return base::result::makeSuccess(e, successTrace);
+                    }
+                    else
+                    {
+                        return  base::result::makeFailure(e, failureTrace);
+                    }
+                }
+                return false;
+            });
+
 }
 
 // field: +r_not_match/regexp
 Expression opBuilderHelperRegexNotMatch(std::any definition)
 {
-    // Get field
-    std::string field {
-        json::formatJsonPath(def.MemberBegin()->name.GetString())};
-    std::string value = def.MemberBegin()->value.GetString();
 
-    std::vector<std::string> parameters = utils::string::split(value, '/');
-    if (parameters.size() != 2)
-    {
-        throw std::runtime_error("Invalid number of parameters");
-    }
+    auto [field, refValue, value] {getCompOpParameter(def)};
 
-    auto regex_ptr = std::make_shared<RE2>(parameters[1], RE2::Quiet);
+    const auto helperName = fmt::format("{}: +r_not_match", field);
+
+    // Tracing
+    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
+    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+
+    auto regex_ptr = std::make_shared<RE2>(value, RE2::Quiet);
     if (!regex_ptr->ok())
     {
-        const std::string err = "Error compiling regex '" + parameters[1] +
+        const std::string err = "Error compiling regex '" + value +
                                 "'. " + regex_ptr->error();
         throw std::runtime_error(err);
     }
 
-    // Tracing
-    base::Document defTmp {def};
-    std::string successTrace =
-        fmt::format("{} Condition Success", defTmp.str());
-    std::string failureTrace =
-        fmt::format("{} Condition Failure", defTmp.str());
+    // Return result
+    return builder::internals::Term<base::EngineOp>::create(helperName,
+            [=](base::Event e)->base::result::Result<base::Event>
+            {
+                // TODO Remove try catch
+                // TODO Update to use proper reference
+                const rapidjson::Value* field_str {};
+                try
+                {
+                    field_str = &e->get(field);
+                }
+                catch (std::exception& ex)
+                {
+                    // TODO Check exception type
+                    return false;
+                }
 
-    // Return Lifter
-    return [=](base::Event e)
-    {
-        // TODO Remove try catch
-        // TODO Update to use proper reference
-        const rapidjson::Value* field_str {};
-        try
-        {
-            field_str = &e->getEvent()->get(field);
-        }
-        catch (std::exception& ex)
-        {
-            // TODO Check exception type
-            tr(failureTrace);
-            return false;
-        }
-        if (field_str != nullptr && field_str->IsString())
-        {
-            if (!RE2::PartialMatch(field_str->GetString(), *regex_ptr))
-            {
-                tr(successTrace);
-                return true;
-            }
-            else
-            {
-                tr(failureTrace);
+                if (field_str != nullptr && field_str->IsString())
+                {
+                    if (!RE2::PartialMatch(field_str->GetString(), *regex_ptr))
+                    {
+                        return base::result::makeSuccess(e, successTrace);
+                    }
+                    else
+                    {
+                        return  base::result::makeFailure(e, failureTrace);
+                    }
+                }
                 return false;
-            }
-        }
-        tr(failureTrace);
-        return false;
-    };
+            });
 }
 
 //*************************************************
@@ -822,7 +852,7 @@ Expression opBuilderHelperIPCIDR(std::any definition)
         const rapidjson::Value* field_str {};
         try
         {
-            field_str = &e->getEvent()->get(field);
+            field_str = &e->get(field);
         }
         catch (std::exception& ex)
         {
