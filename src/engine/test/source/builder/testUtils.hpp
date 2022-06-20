@@ -15,7 +15,6 @@
 
 #include <baseTypes.hpp>
 
-#include "builderTypes.hpp"
 #include "registry.hpp"
 
 #define GTEST_COUT std::cout << std::boolalpha << "[          ] [ INFO ] "

@@ -12,9 +12,7 @@
 
 #include <baseTypes.hpp>
 
-#include "testUtils.hpp"
 #include "opBuilderHelperFilter.hpp"
-#include "testUtils.hpp"
 
 
 using namespace base;
