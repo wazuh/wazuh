@@ -259,7 +259,7 @@ bool opBuilderHelperStringComparison(const std::string key,
 s_eq/valor o $referencia
 Expression opBuilderHelperStringEQ(std::any definition)
 {
-    auto [field, refValue, value] {getCompOpParameter(def)};
+    auto [field, refValue, value] {getCompOpParameter(definition)};
 
     const auto helperName = fmt::format("{}: +s_eq", field);
 
@@ -285,7 +285,7 @@ Expression opBuilderHelperStringEQ(std::any definition)
 // <field>: +s_ne/<value>
 Expression opBuilderHelperStringNE(std::any definition)
 {
-    auto [field, refValue, value] {getCompOpParameter(def)};
+    auto [field, refValue, value] {getCompOpParameter(definition)};
 
     const auto helperName = fmt::format("{}: +s_ne", field);
 
@@ -311,7 +311,7 @@ Expression opBuilderHelperStringNE(std::any definition)
 // <field>: +s_gt/<value>|$<ref>
 Expression opBuilderHelperStringGT(std::any definition)
 {
-    auto [field, refValue, value] {getCompOpParameter(def)};
+    auto [field, refValue, value] {getCompOpParameter(definition)};
 
     const auto helperName = fmt::format("{}: +s_gt", field);
 
@@ -337,7 +337,7 @@ Expression opBuilderHelperStringGT(std::any definition)
 // <field>: +s_ge/<value>|$<ref>
 Expression opBuilderHelperStringGE(std::any definition)
 {
-    auto [field, refValue, value] {getCompOpParameter(def)};
+    auto [field, refValue, value] {getCompOpParameter(definition)};
 
     const auto helperName = fmt::format("{}: +s_ge", field);
 
@@ -363,7 +363,7 @@ Expression opBuilderHelperStringGE(std::any definition)
 // <field>: +s_lt/<value>|$<ref>
 Expression opBuilderHelperStringLT(std::any definition)
 {
-    auto [field, refValue, value] {getCompOpParameter(def)};
+    auto [field, refValue, value] {getCompOpParameter(definition)};
 
     const auto helperName = fmt::format("{}: +s_lt", field);
 
@@ -389,7 +389,7 @@ Expression opBuilderHelperStringLT(std::any definition)
 // <field>: +s_le/<value>|$<ref>
 Expression opBuilderHelperStringLE(std::any definition)
 {
-    auto [field, refValue, value] {getCompOpParameter(def)};
+    auto [field, refValue, value] {getCompOpParameter(definition)};
 
     const auto helperName = fmt::format("{}: +s_le", field);
 
@@ -495,7 +495,7 @@ bool opBuilderHelperIntComparison(const std::string field,
 // field: +i_eq/int|$ref/
 Expression opBuilderHelperIntEqual(std::any definition)
 {
-    auto [field, refValue, valuestr] {getCompOpParameter(def)};
+    auto [field, refValue, valuestr] {getCompOpParameter(definition)};
 
     std::optional<int> value =
         valuestr.has_value() ? std::optional<int> {std::stoi(valuestr.value())}
@@ -526,7 +526,7 @@ Expression opBuilderHelperIntEqual(std::any definition)
 Expression opBuilderHelperIntNotEqual(std::any definition)
 {
 
-    auto [field, refValue, valuestr] {getCompOpParameter(def)};
+    auto [field, refValue, valuestr] {getCompOpParameter(definition)};
 
     std::optional<int> value =
         valuestr.has_value() ? std::optional<int> {std::stoi(valuestr.value())}
@@ -557,7 +557,7 @@ Expression opBuilderHelperIntNotEqual(std::any definition)
 Expression opBuilderHelperIntLessThan(std::any definition)
 {
 
-    auto [field, refValue, valuestr] {getCompOpParameter(def)};
+    auto [field, refValue, valuestr] {getCompOpParameter(definition)};
 
     std::optional<int> value =
         valuestr.has_value() ? std::optional<int> {std::stoi(valuestr.value())}
@@ -588,7 +588,7 @@ Expression opBuilderHelperIntLessThan(std::any definition)
 Expression opBuilderHelperIntLessThanEqual(std::any definition)
 {
 
-    auto [field, refValue, valuestr] {getCompOpParameter(def)};
+    auto [field, refValue, valuestr] {getCompOpParameter(definition)};
 
     std::optional<int> value =
         valuestr.has_value() ? std::optional<int> {std::stoi(valuestr.value())}
@@ -619,7 +619,7 @@ Expression opBuilderHelperIntLessThanEqual(std::any definition)
 Expression opBuilderHelperIntGreaterThan(std::any definition)
 {
 
-    auto [field, refValue, valuestr] {getCompOpParameter(def)};
+    auto [field, refValue, valuestr] {getCompOpParameter(definition)};
 
     std::optional<int> value =
         valuestr.has_value() ? std::optional<int> {std::stoi(valuestr.value())}
@@ -650,7 +650,7 @@ Expression opBuilderHelperIntGreaterThan(std::any definition)
 Expression opBuilderHelperIntGreaterThanEqual(std::any definition)
 {
 
-    auto [field, refValue, valuestr] {getCompOpParameter(def)};
+    auto [field, refValue, valuestr] {getCompOpParameter(definition)};
 
     std::optional<int> value =
         valuestr.has_value() ? std::optional<int> {std::stoi(valuestr.value())}
@@ -685,7 +685,7 @@ Expression opBuilderHelperIntGreaterThanEqual(std::any definition)
 Expression opBuilderHelperRegexMatch(std::any definition)
 {
 
-    auto [field, refValue, value] {getCompOpParameter(def)};
+    auto [field, refValue, value] {getCompOpParameter(definition)};
 
     const auto helperName = fmt::format("{}: +r_match", field);
 
@@ -715,7 +715,7 @@ Expression opBuilderHelperRegexMatch(std::any definition)
                 catch (std::exception& ex)
                 {
                     // TODO Check exception type
-                    return false;
+                    return  base::result::makeFailure(e, failureTrace);
                 }
 
                 if (field_str != nullptr && field_str->IsString())
@@ -729,7 +729,7 @@ Expression opBuilderHelperRegexMatch(std::any definition)
                         return  base::result::makeFailure(e, failureTrace);
                     }
                 }
-                return false;
+                return  base::result::makeFailure(e, failureTrace);
             });
 
 }
@@ -738,7 +738,7 @@ Expression opBuilderHelperRegexMatch(std::any definition)
 Expression opBuilderHelperRegexNotMatch(std::any definition)
 {
 
-    auto [field, refValue, value] {getCompOpParameter(def)};
+    auto [field, refValue, value] {getCompOpParameter(definition)};
 
     const auto helperName = fmt::format("{}: +r_not_match", field);
 
@@ -768,7 +768,7 @@ Expression opBuilderHelperRegexNotMatch(std::any definition)
                 catch (std::exception& ex)
                 {
                     // TODO Check exception type
-                    return false;
+                    return  base::result::makeFailure(e, failureTrace);
                 }
 
                 if (field_str != nullptr && field_str->IsString())
@@ -782,7 +782,7 @@ Expression opBuilderHelperRegexNotMatch(std::any definition)
                         return  base::result::makeFailure(e, failureTrace);
                     }
                 }
-                return false;
+                return  base::result::makeFailure(e, failureTrace);
             });
 }
 
@@ -794,13 +794,28 @@ Expression opBuilderHelperRegexNotMatch(std::any definition)
 // path_to_ip: +ip_cidr/192.168.0.0/255.255.0.0
 Expression opBuilderHelperIPCIDR(std::any definition)
 {
-    // Get Field path to check
-    std::string field {
-        json::formatJsonPath(def.MemberBegin()->name.GetString())};
-    // Get function helper
-    std::string rawValue = def.MemberBegin()->value.GetString();
+    // Get Field path and arguments of the helper function
 
-    std::vector<std::string> parameters = utils::string::split(rawValue, '/');
+    try
+    {
+        const auto helperTuple =
+        std::any_cast<std::tuple<std::string, std::vector<std::string>>>(
+            definition);
+
+        // Get field path
+        auto field = std::get<0>(helperTuple);
+
+        // Get parameters of the helper function
+        auto parameters = std::get<1>(helperTuple);
+    }
+    catch (std::exception& e)
+    {
+        std::throw_with_nested(
+            std::runtime_error("[builders::helperFilterBuilder(definition)] "
+                               "Received unexpected arguments."));
+    }
+
+    //Checks number of parameters
     if (parameters.size() != 3)
     {
         throw std::runtime_error("Invalid number of parameters");
@@ -837,54 +852,49 @@ Expression opBuilderHelperIPCIDR(std::any definition)
     uint32_t net_lower {network & mask};
     uint32_t net_upper {net_lower | (~mask)};
 
-    // Tracing
-    base::Document defTmp {def};
-    std::string successTrace =
-        fmt::format("{} Condition Success", defTmp.str());
-    std::string failureTrace =
-        fmt::format("{} Condition Failure", defTmp.str());
+    const auto helperName = fmt::format("{}: +ip_cidr", field);
 
-    // Return Lifter
-    return [=](base::Event e)
-    {
-        // TODO Remove try catch
-        // TODO Update to use proper reference
-        const rapidjson::Value* field_str {};
-        try
-        {
-            field_str = &e->get(field);
-        }
-        catch (std::exception& ex)
-        {
-            tr(failureTrace);
-            return false;
-        }
-        if (field_str != nullptr && field_str->IsString())
-        {
-            uint32_t ip {};
+    // Tracing
+    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
+    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+
+    // Return result
+    return builder::internals::Term<base::EngineOp>::create(helperName,
+            [=](base::Event e)->base::result::Result<base::Event>
+            {
+            // TODO Remove try catch
+            // TODO Update to use proper reference
+            const rapidjson::Value* field_str {};
             try
             {
-                ip = utils::ip::IPv4ToUInt(field_str->GetString());
+                field_str = &e->get(field);
             }
             catch (std::exception& ex)
             {
-                tr(failureTrace);
-                return false;
+                return  base::result::makeFailure(e, failureTrace);
             }
-            if (ip >= net_lower && ip <= net_upper)
+            if (field_str != nullptr && field_str->IsString())
             {
-                tr(successTrace);
-                return true;
+                uint32_t ip {};
+                try
+                {
+                    ip = utils::ip::IPv4ToUInt(field_str->GetString());
+                }
+                catch (std::exception& ex)
+                {
+                    return  base::result::makeFailure(e, failureTrace);
+                }
+                if (ip >= net_lower && ip <= net_upper)
+                {
+                    return base::result::makeSuccess(e, successTrace);
+                }
+                else
+                {
+                    return  base::result::makeFailure(e, failureTrace);
+                }
             }
-            else
-            {
-                tr(failureTrace);
-                return false;
-            }
-        }
-        tr(failureTrace);
-        return false;
-    };
+            return  base::result::makeFailure(e, failureTrace);
+        };
 }
 
 } // namespace builder::internals::builders
