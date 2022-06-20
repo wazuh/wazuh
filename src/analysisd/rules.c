@@ -1131,7 +1131,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                         }
 
-                    } else if (strcmp(rule_tmp_params.rule_arr_opt[k]->element, 
+                    } else if (strcmp(rule_tmp_params.rule_arr_opt[k]->element,
                                     xml_different_srcip) == 0 ||
                                strcmp(rule_tmp_params.rule_arr_opt[k]->element,
                                     xml_notsame_source_ip) == 0) {
@@ -2580,7 +2580,7 @@ RuleInfo * OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
     if (!rule) {
         merror("Inconsistent state. currently rule NULL");
         return (NULL);
-    }
+    } rule->fields = NULL;
 
 #ifdef TESTRULE
     if (full_output && !alert_only) {
