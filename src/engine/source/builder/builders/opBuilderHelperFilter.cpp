@@ -222,13 +222,13 @@ bool opBuilderHelperStringComparison(const std::string key,
     return false;
 }
 
-// <field>: s_eq/<value>
+// <field>: +s_eq/<value>
 s_eq/valor o $referencia
 Expression opBuilderHelperStringEQ(std::any definition)
 {
-    auto [key, refValue, value] {getCompOpParameter(def)};
+    auto [field, refValue, value] {getCompOpParameter(def)};
 
-    const auto helperName = fmt::format("{}: +s_eq", key);
+    const auto helperName = fmt::format("{}: +s_eq", field);
 
     // Tracing
     const auto successTrace = fmt::format("{{}} Condition Success", helperName);
@@ -238,7 +238,7 @@ Expression opBuilderHelperStringEQ(std::any definition)
     return builder::internals::Term<base::EngineOp>::create(helperName,
             [=](base::Event e)->base::result::Result<base::Event>
             {
-                if (opBuilderHelperStringComparison(key, '=', e, refValue, value))
+                if (opBuilderHelperStringComparison(field, '=', e, refValue, value))
                 {
                     return base::result::makeSuccess(e, successTrace);
                 }
@@ -249,12 +249,12 @@ Expression opBuilderHelperStringEQ(std::any definition)
             });
 }
 
-// <field>: s_ne/<value>
+// <field>: +s_ne/<value>
 Expression opBuilderHelperStringNE(std::any definition)
 {
-    auto [key, refValue, value] {getCompOpParameter(def)};
+    auto [field, refValue, value] {getCompOpParameter(def)};
 
-    const auto helperName = fmt::format("{}: +s_eq", key);
+    const auto helperName = fmt::format("{}: +s_ne", field);
 
     // Tracing
     const auto successTrace = fmt::format("{{}} Condition Success", helperName);
@@ -264,7 +264,7 @@ Expression opBuilderHelperStringNE(std::any definition)
     return builder::internals::Term<base::EngineOp>::create(helperName,
             [=](base::Event e)->base::result::Result<base::Event>
             {
-                if (opBuilderHelperStringComparison(key, '!', e, refValue, value))
+                if (opBuilderHelperStringComparison(field, '!', e, refValue, value))
                 {
                     return base::result::makeSuccess(e, successTrace);
                 }
@@ -275,12 +275,12 @@ Expression opBuilderHelperStringNE(std::any definition)
             });
 }
 
-// <field>: s_gt/<value>|$<ref>
+// <field>: +s_gt/<value>|$<ref>
 Expression opBuilderHelperStringGT(std::any definition)
 {
-    auto [key, refValue, value] {getCompOpParameter(def)};
+    auto [field, refValue, value] {getCompOpParameter(def)};
 
-    const auto helperName = fmt::format("{}: +s_eq", key);
+    const auto helperName = fmt::format("{}: +s_gt", field);
 
     // Tracing
     const auto successTrace = fmt::format("{{}} Condition Success", helperName);
@@ -290,7 +290,7 @@ Expression opBuilderHelperStringGT(std::any definition)
     return builder::internals::Term<base::EngineOp>::create(helperName,
             [=](base::Event e)->base::result::Result<base::Event>
             {
-                if (opBuilderHelperStringComparison(key, '>', e, refValue, value))
+                if (opBuilderHelperStringComparison(field, '>', e, refValue, value))
                 {
                     return base::result::makeSuccess(e, successTrace);
                 }
@@ -301,12 +301,12 @@ Expression opBuilderHelperStringGT(std::any definition)
             });
 }
 
-// <field>: s_ge/<value>|$<ref>
+// <field>: +s_ge/<value>|$<ref>
 Expression opBuilderHelperStringGE(std::any definition)
 {
-    auto [key, refValue, value] {getCompOpParameter(def)};
+    auto [field, refValue, value] {getCompOpParameter(def)};
 
-    const auto helperName = fmt::format("{}: +s_eq", key);
+    const auto helperName = fmt::format("{}: +s_ge", field);
 
     // Tracing
     const auto successTrace = fmt::format("{{}} Condition Success", helperName);
@@ -316,7 +316,7 @@ Expression opBuilderHelperStringGE(std::any definition)
     return builder::internals::Term<base::EngineOp>::create(helperName,
             [=](base::Event e)->base::result::Result<base::Event>
             {
-                if (opBuilderHelperStringComparison(key, 'g', e, refValue, value))
+                if (opBuilderHelperStringComparison(field, 'g', e, refValue, value))
                 {
                     return base::result::makeSuccess(e, successTrace);
                 }
@@ -327,12 +327,12 @@ Expression opBuilderHelperStringGE(std::any definition)
             });
 }
 
-// <field>: s_lt/<value>|$<ref>
+// <field>: +s_lt/<value>|$<ref>
 Expression opBuilderHelperStringLT(std::any definition)
 {
-    auto [key, refValue, value] {getCompOpParameter(def)};
+    auto [field, refValue, value] {getCompOpParameter(def)};
 
-    const auto helperName = fmt::format("{}: +s_eq", key);
+    const auto helperName = fmt::format("{}: +s_lt", field);
 
     // Tracing
     const auto successTrace = fmt::format("{{}} Condition Success", helperName);
@@ -342,7 +342,7 @@ Expression opBuilderHelperStringLT(std::any definition)
     return builder::internals::Term<base::EngineOp>::create(helperName,
             [=](base::Event e)->base::result::Result<base::Event>
             {
-                if (opBuilderHelperStringComparison(key, '<', e, refValue, value))
+                if (opBuilderHelperStringComparison(field, '<', e, refValue, value))
                 {
                     return base::result::makeSuccess(e, successTrace);
                 }
@@ -353,12 +353,12 @@ Expression opBuilderHelperStringLT(std::any definition)
             });
 }
 
-// <field>: s_le/<value>|$<ref>
+// <field>: +s_le/<value>|$<ref>
 Expression opBuilderHelperStringLE(std::any definition)
 {
-    auto [key, refValue, value] {getCompOpParameter(def)};
+    auto [field, refValue, value] {getCompOpParameter(def)};
 
-    const auto helperName = fmt::format("{}: +s_eq", key);
+    const auto helperName = fmt::format("{}: +s_le", field);
 
     // Tracing
     const auto successTrace = fmt::format("{{}} Condition Success", helperName);
@@ -368,7 +368,7 @@ Expression opBuilderHelperStringLE(std::any definition)
     return builder::internals::Term<base::EngineOp>::create(helperName,
             [=](base::Event e)->base::result::Result<base::Event>
             {
-                if (opBuilderHelperStringComparison(key, 'l', e, refValue, value))
+                if (opBuilderHelperStringComparison(field, 'l', e, refValue, value))
                 {
                     return base::result::makeSuccess(e, successTrace);
                 }
@@ -462,34 +462,31 @@ bool opBuilderHelperIntComparison(const std::string field,
 // field: +i_eq/int|$ref/
 Expression opBuilderHelperIntEqual(std::any definition)
 {
-
     auto [field, refValue, valuestr] {getCompOpParameter(def)};
 
     std::optional<int> value =
         valuestr.has_value() ? std::optional<int> {std::stoi(valuestr.value())}
                              : std::nullopt;
 
-    // Tracing
-    base::Document defTmp {def};
-    std::string successTrace =
-        fmt::format("{} Condition Success", defTmp.str());
-    std::string failureTrace =
-        fmt::format("{} Condition Failure", defTmp.str());
+    const auto helperName = fmt::format("{}: +i_eq", field);
 
-    // Return Function
-    return [=](base::Event e)
-    {
-        if (opBuilderHelperIntComparison(field, '=', e, refValue, value))
-        {
-            tr(successTrace);
-            return true;
-        }
-        else
-        {
-            tr(failureTrace);
-            return false;
-        }
-    };
+    // Tracing
+    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
+    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+
+    // Return result
+    return builder::internals::Term<base::EngineOp>::create(helperName,
+            [=](base::Event e)->base::result::Result<base::Event>
+            {
+                if (opBuilderHelperIntComparison(field, '=', e, refValue, value))
+                {
+                    return base::result::makeSuccess(e, successTrace);
+                }
+                else
+                {
+                    return  base::result::makeFailure(e, failureTrace);
+                }
+            });
 }
 
 // field: +i_ne/int|$ref/
@@ -502,28 +499,25 @@ Expression opBuilderHelperIntNotEqual(std::any definition)
         valuestr.has_value() ? std::optional<int> {std::stoi(valuestr.value())}
                              : std::nullopt;
 
-    // Tracing
-    base::Document defTmp {def};
-    std::string successTrace =
-        fmt::format("{} Condition Success", defTmp.str());
-    std::string failureTrace =
-        fmt::format("{} Condition Failure", defTmp.str());
+    const auto helperName = fmt::format("{}: +i_ne", field);
 
-    // Return Function
-    return [=](base::Event e)
-    {
-        // try and catche, return false
-        if (opBuilderHelperIntComparison(field, '!', e, refValue, value))
-        {
-            tr(successTrace);
-            return true;
-        }
-        else
-        {
-            tr(failureTrace);
-            return false;
-        }
-    };
+    // Tracing
+    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
+    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+
+    // Return result
+    return builder::internals::Term<base::EngineOp>::create(helperName,
+            [=](base::Event e)->base::result::Result<base::Event>
+            {
+                if (opBuilderHelperIntComparison(field, '!', e, refValue, value))
+                {
+                    return base::result::makeSuccess(e, successTrace);
+                }
+                else
+                {
+                    return  base::result::makeFailure(e, failureTrace);
+                }
+            });
 }
 
 // field: +i_lt/int|$ref/
@@ -536,28 +530,25 @@ Expression opBuilderHelperIntLessThan(std::any definition)
         valuestr.has_value() ? std::optional<int> {std::stoi(valuestr.value())}
                              : std::nullopt;
 
-    // Tracing
-    base::Document defTmp {def};
-    std::string successTrace =
-        fmt::format("{} Condition Success", defTmp.str());
-    std::string failureTrace =
-        fmt::format("{} Condition Failure", defTmp.str());
+    const auto helperName = fmt::format("{}: +i_lt", field);
 
-    // Return Function
-    return [=](base::Event e)
-    {
-        // try and catche, return false
-        if (opBuilderHelperIntComparison(field, '<', e, refValue, value))
-        {
-            tr(successTrace);
-            return true;
-        }
-        else
-        {
-            tr(failureTrace);
-            return false;
-        }
-    };
+    // Tracing
+    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
+    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+
+    // Return result
+    return builder::internals::Term<base::EngineOp>::create(helperName,
+            [=](base::Event e)->base::result::Result<base::Event>
+            {
+                if (opBuilderHelperIntComparison(field, '<', e, refValue, value))
+                {
+                    return base::result::makeSuccess(e, successTrace);
+                }
+                else
+                {
+                    return  base::result::makeFailure(e, failureTrace);
+                }
+            });
 }
 
 // field: +i_le/int|$ref/
@@ -570,28 +561,25 @@ Expression opBuilderHelperIntLessThanEqual(std::any definition)
         valuestr.has_value() ? std::optional<int> {std::stoi(valuestr.value())}
                              : std::nullopt;
 
-    // Tracing
-    base::Document defTmp {def};
-    std::string successTrace =
-        fmt::format("{} Condition Success", defTmp.str());
-    std::string failureTrace =
-        fmt::format("{} Condition Failure", defTmp.str());
+    const auto helperName = fmt::format("{}: +i_le", field);
 
-    // Return Function
-    return [=](base::Event e)
-    {
-        // try and catche, return false
-        if (opBuilderHelperIntComparison(field, 'l', e, refValue, value))
-        {
-            tr(successTrace);
-            return true;
-        }
-        else
-        {
-            tr(failureTrace);
-            return false;
-        }
-    };
+    // Tracing
+    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
+    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+
+    // Return result
+    return builder::internals::Term<base::EngineOp>::create(helperName,
+            [=](base::Event e)->base::result::Result<base::Event>
+            {
+                if (opBuilderHelperIntComparison(field, 'l', e, refValue, value))
+                {
+                    return base::result::makeSuccess(e, successTrace);
+                }
+                else
+                {
+                    return  base::result::makeFailure(e, failureTrace);
+                }
+            });
 }
 
 // field: +i_gt/int|$ref/
@@ -604,28 +592,25 @@ Expression opBuilderHelperIntGreaterThan(std::any definition)
         valuestr.has_value() ? std::optional<int> {std::stoi(valuestr.value())}
                              : std::nullopt;
 
-    // Tracing
-    base::Document defTmp {def};
-    std::string successTrace =
-        fmt::format("{} Condition Success", defTmp.str());
-    std::string failureTrace =
-        fmt::format("{} Condition Failure", defTmp.str());
+    const auto helperName = fmt::format("{}: +i_gt", field);
 
-    // Return Function
-    return [=](base::Event e)
-    {
-        // try and catche, return false
-        if (opBuilderHelperIntComparison(field, '>', e, refValue, value))
-        {
-            tr(successTrace);
-            return true;
-        }
-        else
-        {
-            tr(failureTrace);
-            return false;
-        }
-    };
+    // Tracing
+    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
+    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+
+    // Return result
+    return builder::internals::Term<base::EngineOp>::create(helperName,
+            [=](base::Event e)->base::result::Result<base::Event>
+            {
+                if (opBuilderHelperIntComparison(field, '>', e, refValue, value))
+                {
+                    return base::result::makeSuccess(e, successTrace);
+                }
+                else
+                {
+                    return  base::result::makeFailure(e, failureTrace);
+                }
+            });
 }
 
 // field: +i_ge/int|$ref/
@@ -638,28 +623,25 @@ Expression opBuilderHelperIntGreaterThanEqual(std::any definition)
         valuestr.has_value() ? std::optional<int> {std::stoi(valuestr.value())}
                              : std::nullopt;
 
-    // Tracing
-    base::Document defTmp {def};
-    std::string successTrace =
-        fmt::format("{} Condition Success", defTmp.str());
-    std::string failureTrace =
-        fmt::format("{} Condition Failure", defTmp.str());
+    const auto helperName = fmt::format("{}: +i_ge", field);
 
-    // Return Function
-    return [=](base::Event e)
-    {
-        // try and catche, return false
-        if (opBuilderHelperIntComparison(field, 'g', e, refValue, value))
-        {
-            tr(successTrace);
-            return true;
-        }
-        else
-        {
-            tr(failureTrace);
-            return false;
-        }
-    };
+    // Tracing
+    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
+    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+
+    // Return result
+    return builder::internals::Term<base::EngineOp>::create(helperName,
+            [=](base::Event e)->base::result::Result<base::Event>
+            {
+                if (opBuilderHelperIntComparison(field, 'g', e, refValue, value))
+                {
+                    return base::result::makeSuccess(e, successTrace);
+                }
+                else
+                {
+                    return  base::result::makeFailure(e, failureTrace);
+                }
+            });
 }
 
 //*************************************************
