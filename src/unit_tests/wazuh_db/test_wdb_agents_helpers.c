@@ -49,9 +49,6 @@ void test_wdb_get_sys_osinfo_error_sql_execution(void ** state)
     will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, NULL);
 
-    // Handling result
-    expect_string(__wrap__minfo, formatted_msg, "Agents DB (1): No OS information available.");
-
     //Cleaning  memory
     expect_function_call(__wrap_cJSON_Delete);
 
