@@ -29,7 +29,7 @@ using builder::internals::syntax::REFERENCE_ANCHOR;
  * @brief Get the Comparator operator, and the value to compare
  * or the reference to value to compare
  *
- * @param def The JSON definition of the operator
+ * @param definition The JSON definition of the operator
  * @return std::tuple<std::string, opString, opString> the operator,
  * the value to compare and the reference to value to compare (if exists)
  * @throw std::runtime_error if the number of parameters is not valid
@@ -37,20 +37,18 @@ using builder::internals::syntax::REFERENCE_ANCHOR;
  * helper function
  */
 std::tuple<std::string, opString, opString>
-getCompOpParameter(const base::DocumentValue& def)
+getCompOpParameter(std::any definition)
 {
-    // Get destination path
-    std::string field {
-        json::formatJsonPath(def.MemberBegin()->name.GetString())};
-    // Get function helper
-    if (!def.MemberBegin()->value.IsString())
-    {
-        throw std::logic_error("Invalid operator definition");
-    }
-    std::string rawValue {def.MemberBegin()->value.GetString()};
+    // Get Field path and arguments of the helper function
+    const auto helperTuple =
+        std::any_cast<std::tuple<std::string, std::vector<std::string>>>(
+            definition);
+
+    // Get field path
+    auto field = std::get<0>(helperTuple);
 
     // Parse parameters
-    std::vector<std::string> parameters {utils::string::split(rawValue, '/')};
+    auto parameters = std::get<1>(helperTuple);
     if (parameters.size() != 2)
     {
         throw std::runtime_error("Invalid number of parameters");
@@ -85,14 +83,14 @@ Expression opBuilderHelperExists(std::any definition)
 
     auto field = std::get<0>(helperTuple);
 
-    const auto name = fmt::format("{}: +exists", field);
+    const auto helperName = fmt::format("{}: +exists", field);
 
     // Tracing
-    const auto successTrace = fmt::format("{{}} Condition Success", name);
-    const auto failureTrace = fmt::format("{{}} Condition Failure", name);
+    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
+    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
 
     // Return result
-    return builder::internals::Term<base::EngineOp>::create(name,
+    return builder::internals::Term<base::EngineOp>::create(helperName,
             [=](base::Event e)->base::result::Result<base::Event>
             {
                 if (e->exists(field))
@@ -104,7 +102,6 @@ Expression opBuilderHelperExists(std::any definition)
                     return  base::result::makeFailure(e, failureTrace);
                 }
             });
-    };
 }
 
 // <field>: not_exists
@@ -117,14 +114,14 @@ Expression opBuilderHelperNotExists(std::any definition)
 
     auto field = std::get<0>(helperTuple);
 
-    const auto name = fmt::format("{}: +exists", field);
+    const auto helperName = fmt::format("{}: +exists", field);
 
     // Tracing
-    const auto successTrace = fmt::format("{{}} Condition Success", name);
-    const auto failureTrace = fmt::format("{{}} Condition Failure", name);
+    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
+    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
 
     // Return result
-    return builder::internals::Term<base::EngineOp>::create(name,
+    return builder::internals::Term<base::EngineOp>::create(helperName,
             [=](base::Event e)->base::result::Result<base::Event>
             {
                 if (!e->exists(field))
@@ -136,7 +133,6 @@ Expression opBuilderHelperNotExists(std::any definition)
                     return  base::result::makeFailure(e, failureTrace);
                 }
             });
-    };
 }
 
 //*************************************************
@@ -227,32 +223,30 @@ bool opBuilderHelperStringComparison(const std::string key,
 }
 
 // <field>: s_eq/<value>
+s_eq/valor o $referencia
 Expression opBuilderHelperStringEQ(std::any definition)
 {
     auto [key, refValue, value] {getCompOpParameter(def)};
 
-    // Tracing
-    base::Document defTmp {def};
-    std::string successTrace =
-        fmt::format("{} Condition Success", defTmp.str());
-    std::string failureTrace =
-        fmt::format("{} Condition Failure", defTmp.str());
+    const auto helperName = fmt::format("{}: +s_eq", key);
 
-    // Return Function
-    return [=](base::Event e)
-    {
-        // try and catch, return false
-        if (opBuilderHelperStringComparison(key, '=', e, refValue, value))
-        {
-            tr(successTrace);
-            return true;
-        }
-        else
-        {
-            tr(failureTrace);
-            return false;
-        }
-    };
+    // Tracing
+    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
+    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+
+    // Return result
+    return builder::internals::Term<base::EngineOp>::create(helperName,
+            [=](base::Event e)->base::result::Result<base::Event>
+            {
+                if (opBuilderHelperStringComparison(key, '=', e, refValue, value))
+                {
+                    return base::result::makeSuccess(e, successTrace);
+                }
+                else
+                {
+                    return  base::result::makeFailure(e, failureTrace);
+                }
+            });
 }
 
 // <field>: s_ne/<value>
@@ -260,27 +254,25 @@ Expression opBuilderHelperStringNE(std::any definition)
 {
     auto [key, refValue, value] {getCompOpParameter(def)};
 
-    // Tracing
-    base::Document defTmp {def};
-    std::string successTrace =
-        fmt::format("{} Condition Success", defTmp.str());
-    std::string failureTrace =
-        fmt::format("{} Condition Failure", defTmp.str());
+    const auto helperName = fmt::format("{}: +s_eq", key);
 
-    // Return Function
-    return [=](base::Event e)
-    {
-        if (opBuilderHelperStringComparison(key, '!', e, refValue, value))
-        {
-            tr(successTrace);
-            return true;
-        }
-        else
-        {
-            tr(failureTrace);
-            return false;
-        }
-    };
+    // Tracing
+    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
+    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+
+    // Return result
+    return builder::internals::Term<base::EngineOp>::create(helperName,
+            [=](base::Event e)->base::result::Result<base::Event>
+            {
+                if (opBuilderHelperStringComparison(key, '!', e, refValue, value))
+                {
+                    return base::result::makeSuccess(e, successTrace);
+                }
+                else
+                {
+                    return  base::result::makeFailure(e, failureTrace);
+                }
+            });
 }
 
 // <field>: s_gt/<value>|$<ref>
@@ -288,27 +280,25 @@ Expression opBuilderHelperStringGT(std::any definition)
 {
     auto [key, refValue, value] {getCompOpParameter(def)};
 
-    // Tracing
-    base::Document defTmp {def};
-    std::string successTrace =
-        fmt::format("{} Condition Success", defTmp.str());
-    std::string failureTrace =
-        fmt::format("{} Condition Failure", defTmp.str());
+    const auto helperName = fmt::format("{}: +s_eq", key);
 
-    // Return Function
-    return [=](base::Event e)
-    {
-        if (opBuilderHelperStringComparison(key, '>', e, refValue, value))
-        {
-            tr(successTrace);
-            return true;
-        }
-        else
-        {
-            tr(failureTrace);
-            return false;
-        }
-    };
+    // Tracing
+    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
+    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+
+    // Return result
+    return builder::internals::Term<base::EngineOp>::create(helperName,
+            [=](base::Event e)->base::result::Result<base::Event>
+            {
+                if (opBuilderHelperStringComparison(key, '>', e, refValue, value))
+                {
+                    return base::result::makeSuccess(e, successTrace);
+                }
+                else
+                {
+                    return  base::result::makeFailure(e, failureTrace);
+                }
+            });
 }
 
 // <field>: s_ge/<value>|$<ref>
@@ -316,27 +306,25 @@ Expression opBuilderHelperStringGE(std::any definition)
 {
     auto [key, refValue, value] {getCompOpParameter(def)};
 
-    // Tracing
-    base::Document defTmp {def};
-    std::string successTrace =
-        fmt::format("{} Condition Success", defTmp.str());
-    std::string failureTrace =
-        fmt::format("{} Condition Failure", defTmp.str());
+    const auto helperName = fmt::format("{}: +s_eq", key);
 
-    // Return Function
-    return [=](base::Event e)
-    {
-        if (opBuilderHelperStringComparison(key, 'g', e, refValue, value))
-        {
-            tr(successTrace);
-            return true;
-        }
-        else
-        {
-            tr(failureTrace);
-            return false;
-        }
-    };
+    // Tracing
+    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
+    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+
+    // Return result
+    return builder::internals::Term<base::EngineOp>::create(helperName,
+            [=](base::Event e)->base::result::Result<base::Event>
+            {
+                if (opBuilderHelperStringComparison(key, 'g', e, refValue, value))
+                {
+                    return base::result::makeSuccess(e, successTrace);
+                }
+                else
+                {
+                    return  base::result::makeFailure(e, failureTrace);
+                }
+            });
 }
 
 // <field>: s_lt/<value>|$<ref>
@@ -344,27 +332,25 @@ Expression opBuilderHelperStringLT(std::any definition)
 {
     auto [key, refValue, value] {getCompOpParameter(def)};
 
-    // Tracing
-    base::Document defTmp {def};
-    std::string successTrace =
-        fmt::format("{} Condition Success", defTmp.str());
-    std::string failureTrace =
-        fmt::format("{} Condition Failure", defTmp.str());
+    const auto helperName = fmt::format("{}: +s_eq", key);
 
-    // Return Function
-    return [=](base::Event e)
-    {
-        if (opBuilderHelperStringComparison(key, '<', e, refValue, value))
-        {
-            tr(successTrace);
-            return true;
-        }
-        else
-        {
-            tr(failureTrace);
-            return false;
-        }
-    };
+    // Tracing
+    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
+    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+
+    // Return result
+    return builder::internals::Term<base::EngineOp>::create(helperName,
+            [=](base::Event e)->base::result::Result<base::Event>
+            {
+                if (opBuilderHelperStringComparison(key, '<', e, refValue, value))
+                {
+                    return base::result::makeSuccess(e, successTrace);
+                }
+                else
+                {
+                    return  base::result::makeFailure(e, failureTrace);
+                }
+            });
 }
 
 // <field>: s_le/<value>|$<ref>
@@ -372,27 +358,25 @@ Expression opBuilderHelperStringLE(std::any definition)
 {
     auto [key, refValue, value] {getCompOpParameter(def)};
 
-    // Tracing
-    base::Document defTmp {def};
-    std::string successTrace =
-        fmt::format("{} Condition Success", defTmp.str());
-    std::string failureTrace =
-        fmt::format("{} Condition Failure", defTmp.str());
+    const auto helperName = fmt::format("{}: +s_eq", key);
 
-    // Return Function
-    return [=](base::Event e)
-    {
-        if (opBuilderHelperStringComparison(key, 'l', e, refValue, value))
-        {
-            tr(successTrace);
-            return true;
-        }
-        else
-        {
-            tr(failureTrace);
-            return false;
-        }
-    };
+    // Tracing
+    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
+    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+
+    // Return result
+    return builder::internals::Term<base::EngineOp>::create(helperName,
+            [=](base::Event e)->base::result::Result<base::Event>
+            {
+                if (opBuilderHelperStringComparison(key, 'l', e, refValue, value))
+                {
+                    return base::result::makeSuccess(e, successTrace);
+                }
+                else
+                {
+                    return  base::result::makeFailure(e, failureTrace);
+                }
+            });
 }
 
 //*************************************************
