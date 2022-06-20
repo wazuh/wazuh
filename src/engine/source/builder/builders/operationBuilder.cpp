@@ -3,12 +3,12 @@
 #include <any>
 
 #include "baseTypes.hpp"
-#include "expression.hpp"
+#include "builder/expression.hpp"
+#include "builder/syntax.hpp"
 #include "json.hpp"
 #include "registry.hpp"
 #include "result.hpp"
 #include "utils/stringUtils.hpp"
-#include "syntax.hpp"
 
 namespace
 {
@@ -117,8 +117,9 @@ Expression operationBuilder(const std::any& definition, OperationType type)
     }
     catch (std::exception& e)
     {
-        std::throw_with_nested(std::runtime_error(
-            "[builders::operationBuilder(<definition, type>)] Received unexpected arguments."));
+        std::throw_with_nested(
+            std::runtime_error("[builders::operationBuilder(<definition, type>)] "
+                               "Received unexpected arguments."));
     }
     field = Json::formatJsonPath(field);
 
@@ -138,7 +139,8 @@ Expression operationBuilder(const std::any& definition, OperationType type)
                                 static_cast<int>(type)));
         }
     }
-    else if (value.isString() && value.getString().front() == syntax::FUNCTION_HELPER_ANCHOR)
+    else if (value.isString()
+             && value.getString().front() == syntax::FUNCTION_HELPER_ANCHOR)
     {
         auto helperName = value.getString().substr(1, value.getString().find('/'));
         auto helperArgsString = value.getString().substr(value.getString().find('/'));

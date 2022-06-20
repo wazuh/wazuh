@@ -1,80 +1,66 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
- * All rights reserved.
- *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
- */
+#include "stageBuilder.hpp"
 
-#include "stageBuilderCheck.hpp"
+#include <algorithm>
+#include <any>
 
-#include <stdexcept>
-#include <string>
-#include <vector>
-
-#include "registry.hpp"
-
-#include <fmt/format.h>
-#include <logging/logging.hpp>
+#include "baseTypes.hpp"
+#include "builder/expression.hpp"
+#include "builder/registry.hpp"
+#include "json.hpp"
 
 namespace builder::internals::builders
 {
-
-base::Lifter stageBuilderCheck(const base::DocumentValue& def,
-                               types::TracerFn tr)
+Expression stageCheckBuilder(std::any definition)
 {
-    // Assert value is as expected
-    if (!def.IsArray())
-    {
-        std::string msg = fmt::format(
-            "Stage check builder, expected array but got [{}]", def.GetType());
-        WAZUH_LOG_ERROR("{}", msg);
-        throw std::invalid_argument(std::move(msg));
-    }
+    // TODO: add check conditional expression case
 
-    // Build all conditions
-    std::vector<base::Lifter> conditions;
-
-    for (auto it = def.Begin(); it != def.End(); ++it)
-    {
-        try
-        {
-            conditions.push_back(std::get<types::OpBuilder>(
-                Registry::getBuilder("condition"))(*it, tr));
-        }
-        catch (std::exception& e)
-        {
-            WAZUH_LOG_ERROR(
-                "Stage check builder encountered exception on building: [{}]",
-                e.what());
-
-            std::string msg =
-                "Stage check builder encountered exception on building.";
-            std::throw_with_nested(std::runtime_error(std::move(msg)));
-        }
-    }
-
-    // Chain all operations
-    base::Lifter check;
+    json::Json jsonDefinition;
     try
     {
-        check = std::get<types::CombinatorBuilder>(
-            Registry::getBuilder("combinator.chain"))(conditions);
+        jsonDefinition = std::any_cast<json::Json>(definition);
     }
     catch (std::exception& e)
     {
-        WAZUH_LOG_ERROR("Stage check builder encountered exception chaining "
-                        "all conditions: [{}]",
-                        e.what());
-
-        std::string msg = "Stage check builder encountered exception chaining "
-                          "all conditions.";
-        std::throw_with_nested(std::runtime_error(std::move(msg)));
+        throw std::runtime_error(
+            "[builders::stageCheckBuilder(json)] Received unexpected argument type");
     }
 
-    // Finally return Lifter
-    return check;
+    if (!jsonDefinition.isArray())
+    {
+        throw std::runtime_error(
+            fmt::format("[builders::stageCheckBuilder(json)] Invalid json definition "
+                        "type: expected [array] but got [{}]",
+                        jsonDefinition.typeName()));
+    }
+
+    auto conditions = jsonDefinition.getArray();
+    std::vector<Expression> conditionExpressions;
+    std::transform(
+        conditions.begin(),
+        conditions.end(),
+        std::back_inserter(conditionExpressions),
+        [](auto condition)
+        {
+            if (!condition.isObject())
+            {
+                throw std::runtime_error(
+                    fmt::format("[builders::stageCheckBuilder(json)] "
+                                "Invalid array item type: expected [object] but got [{}]",
+                                condition.typeName()));
+            }
+            if (condition.size() != 1)
+            {
+                throw std::runtime_error(fmt::format(
+                    "[builders::stageCheckBuilder(json)] "
+                    "Invalid array item object size: expected [1] but got [{}]",
+                    condition.size()));
+            }
+            return Registry::getBuilder("operation.condition")(condition.getObject()[0]);
+        });
+
+    auto expression = And::create("stage.check", conditionExpressions);
+
+    return expression;
 }
 
 } // namespace builder::internals::builders
