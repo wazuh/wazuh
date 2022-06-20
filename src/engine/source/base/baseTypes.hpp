@@ -2,6 +2,7 @@
 #define _H_BASE_TYPES
 
 #include "base/result.hpp"
+#include "json.hpp"
 
 namespace base
 {

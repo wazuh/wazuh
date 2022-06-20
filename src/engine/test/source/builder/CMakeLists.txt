@@ -53,17 +53,22 @@ target_link_libraries(registry_test
 )
 gtest_discover_tests(registry_test)
 
+# Operation Builder test
+add_executable(operationBuilder_test
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/operationBuilder_test.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/operationBuilder.cpp
+)
+target_link_libraries(operationBuilder_test
+  gtest_main base
+)
+gtest_discover_tests(operationBuilder_test)
+
 # Register test
 add_executable(registerTest
   ${BUILDER_TEST_SOURCE_DIR}/register_test.cpp
 )
 gtest_discover_tests(registerTest)
 
-add_executable(opBuilderTest
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderConditionReference_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderConditionValue_test.cpp
-)
-gtest_discover_tests(opBuilderTest)
 
 add_executable(opBuilderHelperCheckTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntEqual_test.cpp
@@ -94,13 +99,6 @@ add_executable(opBuilderHelperMapTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperRegexExtract_test.cpp
 )
 gtest_discover_tests(opBuilderHelperMapTest)
-
-add_executable(opBuilderMapTest
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderMapValue_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderMapReference_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderMap_test.cpp
-)
-gtest_discover_tests(opBuilderMapTest)
 
 add_executable(stageBuilderCheckTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/stageBuilderCheck_test.cpp
@@ -138,11 +136,6 @@ add_executable(assetBuilderRuleTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/assetBuilderRule_test.cpp
 )
 gtest_discover_tests(assetBuilderRuleTest)
-
-add_executable(opBuilderConditionTest
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderCondition_test.cpp
-)
-gtest_discover_tests(opBuilderConditionTest)
 
 add_executable(outputTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderFileOutput_test.cpp
