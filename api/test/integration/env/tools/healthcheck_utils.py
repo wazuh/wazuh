@@ -96,20 +96,13 @@ def check(result):
         return 1
 
 
-def get_master_health(env_mode):
+def get_master_health():
     os.system("/var/ossec/bin/agent_control -ls > /tmp_volume/output.txt")
     os.system("/var/ossec/bin/wazuh-control status > /tmp_volume/daemons.txt")
 
     check0 = check(os.system("diff -q /tmp_volume/output.txt /tmp_volume/healthcheck/agent_control_check.txt"))
 
-    if env_mode == "standalone":
-        # If the environment is in standalone mode, the only difference is in the clusterd daemon
-        check1 = check(not
-                       (subprocess.run(['diff', '/tmp_volume/daemons.txt', '/tmp_volume/healthcheck/daemons_check.txt'],
-                                       stdout=subprocess.PIPE).stdout.decode('utf-8')
-                        == CHECK_CLUSTERD_DAEMON))
-    else:
-        check1 = check(os.system("diff -q /tmp_volume/daemons.txt /tmp_volume/healthcheck/daemons_check.txt"))
+    check1 = check(os.system("diff -q /tmp_volume/daemons.txt /tmp_volume/healthcheck/daemons_check.txt"))
 
     check2 = get_api_health()
 
@@ -121,9 +114,8 @@ def get_worker_health():
     return check(os.system("diff -q /tmp_volume/daemons.txt /tmp_volume/healthcheck/daemons_check.txt"))
 
 
-def get_manager_health_base(env_mode):
-    return get_master_health(
-        env_mode=env_mode) if socket.gethostname() == 'wazuh-master' else get_worker_health()
+def get_manager_health_base():
+    return get_master_health() if socket.gethostname() == 'wazuh-master' else get_worker_health()
 
 
 def get_api_health():

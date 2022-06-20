@@ -29,27 +29,9 @@ environment_status = None
 env_cluster_nodes = ['master', 'worker1', 'worker2']
 agent_names = ['agent1', 'agent2', 'agent3', 'agent4', 'agent5', 'agent6', 'agent7', 'agent8']
 
-standalone_env_mode = 'standalone'
-cluster_env_mode = 'cluster'
-
 
 def pytest_addoption(parser):
     parser.addoption('--nobuild', action='store_false', help='Do not run docker-compose build.')
-
-
-def pytest_collection_modifyitems(items: list):
-    """Pytest hook used to add standalone and cluster marks to tests having none of them.
-
-    Parameters
-    ----------
-    items : list[pytest.Item]
-        List of pytest items collected in the pytest session.
-    """
-    for item in items:
-        test_name = item.nodeid.split('::')[0]
-        if 'rbac' not in test_name and not {standalone_env_mode, cluster_env_mode} & {m.name for m in item.own_markers}:
-            item.add_marker(standalone_env_mode)
-            item.add_marker(cluster_env_mode)
 
 
 def get_token_login_api():
@@ -73,14 +55,11 @@ def pytest_tavern_beta_before_every_test_run(test_dict, variables):
     variables["test_login_token"] = get_token_login_api()
 
 
-def build_and_up(env_mode: str, interval: int = 10, interval_build_env: int = 10,
-                 build: bool = True) -> dict:
+def build_and_up(interval: int = 10, interval_build_env: int = 10, build: bool = True) -> dict:
     """Build all Docker environments needed for the current test.
 
     Parameters
     ----------
-    env_mode : str
-        Indicates the environment to be used in the process.
     interval : int
         Time interval between every healthcheck.
     interval_build_env : int
@@ -111,13 +90,11 @@ def build_and_up(env_mode: str, interval: int = 10, interval_build_env: int = 10
         while values_build_env['retries'] < values_build_env['max_retries']:
             if build:
                 current_process = subprocess.Popen(
-                    ["docker-compose", "--profile", env_mode,
-                     "build", "--build-arg", f"WAZUH_BRANCH={current_branch}", "--build-arg", f"ENV_MODE={env_mode}"],
+                    ["docker-compose", "build", "--build-arg", f"WAZUH_BRANCH={current_branch}"],
                     stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
                 current_process.wait()
             current_process = subprocess.Popen(
-                ["docker-compose", "--profile", env_mode, "up", "-d"], env=dict(os.environ, ENV_MODE=env_mode),
-                stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
+                ["docker-compose", "up", "-d"], stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
             current_process.wait()
 
             if current_process.returncode == 0:
@@ -141,8 +118,7 @@ def down_env():
     os.chdir(current_path)
 
 
-def check_health(interval: int = 10, node_type: str = 'manager', agents: list = None,
-                 only_check_master_health: bool = False):
+def check_health(interval: int = 10, node_type: str = 'manager', agents: list = None):
     """Check the Wazuh nodes health.
 
     Parameters
@@ -154,18 +130,15 @@ def check_health(interval: int = 10, node_type: str = 'manager', agents: list = 
     agents : list
         List of active agents for the current test
         (only needed if the agents need a custom healthcheck).
-    only_check_master_health : bool
-        Indicates whether the only node which health needs to be checked is master or not.
 
     Returns
     -------
     bool
-        True if all healthchecks passed, False otherwise.
+        True if all health checks passed, False otherwise.
     """
     time.sleep(interval)
     if node_type == 'manager':
-        nodes_to_check = ['master'] if only_check_master_health else env_cluster_nodes
-        for node in nodes_to_check:
+        for node in env_cluster_nodes:
             health = subprocess.check_output(
                 f"docker inspect env_wazuh-{node}_1 -f '{{{{json .State.Health.Status}}}}'", shell=True)
             if not health.startswith(b'"healthy"'):
@@ -349,7 +322,6 @@ def api_test(request: _pytest.fixtures.SubRequest):
 
     # Get the value of the mark indicating the test mode. This value will vary between 'cluster' or 'standalone'
     mode = request.node.config.getoption("-m")
-    env_mode = standalone_env_mode if mode == 'standalone' else cluster_env_mode
 
     # Add clean_up_env as fixture finalizer
     request.addfinalizer(clean_up_env)
@@ -371,11 +343,10 @@ def api_test(request: _pytest.fixtures.SubRequest):
         enable_white_mode()
 
     general_procedure(module)
-    values = build_and_up(interval=10, build=request.config.getoption('--nobuild'), env_mode=env_mode)
+    values = build_and_up(interval=10, build=request.config.getoption('--nobuild'))
 
     while values['retries'] < values['max_retries']:
-        managers_health = check_health(interval=values['interval'],
-                                       only_check_master_health=env_mode == standalone_env_mode)
+        managers_health = check_health(interval=values['interval'])
         agents_health = check_health(interval=values['interval'], node_type='agent', agents=list(range(1, 9)))
         # Check if entrypoint was successful
         try:
