@@ -246,15 +246,13 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
 
                 if (initial_scan && (!org_state_struc.last_log_time || github_config->only_future_events)) {
                     org_state_struc.last_log_time = new_scan_time;
-
                     if (wm_state_io(org_state_name, WM_IO_WRITE, &org_state_struc, sizeof(org_state_struc)) < 0) {
                         mterror(WM_GITHUB_LOGTAG, "Couldn't save running state.");
                     } else if (isDebug()) {
                         memset(new_scan_time_str, '\0', 80);
                         gmtime_r(&new_scan_time, &tm_scan);
                         strftime(new_scan_time_str, sizeof(new_scan_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_scan);
-
-                        mtdebug1(WM_GITHUB_LOGTAG, "Bookmark updated to '%s', waiting '%ld' seconds to run first scan", new_scan_time_str, github_config->interval);
+                        mtdebug1(WM_GITHUB_LOGTAG, "Bookmark updated to '%s', waiting '%ld' seconds to run first scan.", new_scan_time_str, github_config->interval);
                     }
                     continue;
                 }
@@ -358,8 +356,7 @@ STATIC void wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                     if (wm_state_io(org_state_name, WM_IO_WRITE, &org_state_struc, sizeof(org_state_struc)) < 0) {
                         mterror(WM_GITHUB_LOGTAG, "Couldn't save running state.");
                     } else {
-                        mtdebug1(WM_GITHUB_LOGTAG, "Bookmark updated to '%s', waiting '%ld' seconds to run next scan", new_scan_time_str, github_config->interval);
-
+                        mtdebug1(WM_GITHUB_LOGTAG, "Bookmark updated to '%s', waiting '%ld' seconds to run next scan.", new_scan_time_str, github_config->interval);
                     }
 
                     org_fail = wm_github_get_fail_by_org_and_type(github_config->fails, current->org_name, event_types[event_types_it]);
