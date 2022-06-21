@@ -1,0 +1,218 @@
+/* Copyright (C) 2015-2022, Wazuh Inc.
+ * All rights reserved.
+ *
+ */
+
+#include <thread>
+#include <vector>
+
+#include <gtest/gtest.h>
+#include <utils/socketInterface/unixDatagram.hpp>
+
+#include "combinatorBuilderBroadcast.hpp"
+#include "combinatorBuilderChain.hpp"
+#include "opBuilderARWrite.hpp"
+#include "opBuilderCondition.hpp"
+#include "opBuilderHelperFilter.hpp"
+#include "opBuilderHelperMap.hpp"
+#include "opBuilderMapValue.hpp"
+#include "opBuilderWdbSync.hpp"
+#include "stageBuilderCheck.hpp"
+#include "stageBuilderNormalize.hpp"
+
+#include "socketAuxiliarFunctions.hpp"
+#include "testUtils.hpp"
+
+using namespace base;
+using namespace builder::internals::builders;
+
+using FakeTrFn = std::function<void(std::string)>;
+static FakeTrFn tr = [](std::string msg) {
+};
+
+TEST(opBuilderARWrite, Builder)
+{
+    Document doc {R"({
+        "normalize":
+        [
+            {
+                "map":
+                {
+                    "ar_write.result": "+ar_write/test"
+                }
+            }
+        ]
+    })"};
+
+    ASSERT_NO_THROW(opBuilderARWrite(doc.get("/normalize/0/map"), tr));
+}
+
+TEST(opBuilderARWrite, NormalizeBuilder)
+{
+
+    Registry::registerBuilder("helper.ar_write", opBuilderARWrite);
+    // "map" operation
+    Registry::registerBuilder("map.value", opBuilderMapValue);
+    // "check" operations
+    Registry::registerBuilder("check", stageBuilderCheck);
+    Registry::registerBuilder("condition", opBuilderCondition);
+    Registry::registerBuilder("middle.condition", middleBuilderCondition);
+    Registry::registerBuilder("middle.helper.exists", opBuilderHelperExists);
+    // combinators
+    Registry::registerBuilder("combinator.chain", combinatorBuilderChain);
+    Registry::registerBuilder("combinator.broadcast", combinatorBuilderBroadcast);
+
+    Document doc {R"({
+        "normalize":
+        [
+            {
+                "map":
+                {
+                    "ar_write.result": "+ar_write/test"
+                }
+            }
+        ]
+    })"};
+
+    ASSERT_NO_THROW(stageBuilderNormalize(doc.get("/normalize"), tr));
+}
+
+TEST(opBuilderARWrite, Send)
+{
+    Document doc {R"({
+        "normalize":
+        [
+            {
+                "map":
+                {
+                    "ar_write.result": "+ar_write/test\n"
+                }
+            }
+        ]
+    })"};
+
+    auto serverSocketFD = testBindUnixSocket(AR_QUEUE_PATH, SOCK_DGRAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    auto normalize = stageBuilderNormalize(doc.get("/normalize"), tr);
+
+    rxcpp::subjects::subject<Event> inputSubject;
+    inputSubject.get_observable().subscribe([](Event e) {});
+    auto inputObservable = inputSubject.get_observable();
+    auto output = normalize(inputObservable);
+
+    std::vector<Event> expected;
+    output.subscribe([&expected](Event e) { expected.push_back(e); });
+
+    auto eventsCount = 1;
+    auto inputObjectOne = createSharedEvent(R"({"DummyField": "DummyValue"})");
+
+    inputSubject.get_subscriber().on_next(inputObjectOne);
+
+    ASSERT_EQ(expected.size(), eventsCount);
+
+    // Check received command on the AR's queue
+    ASSERT_STREQ(testRecvString(serverSocketFD, SOCK_DGRAM).c_str(), "test\n");
+
+    // Check send command to the AR's queue result
+    ASSERT_NO_THROW(
+        ASSERT_STREQ(expected[0]->getEventValue("/ar_write/result").GetString(), "ok"));
+
+    close(serverSocketFD);
+    unlink(AR_QUEUE_PATH);
+}
+
+TEST(opBuilderARWrite, SendFromReference)
+{
+    Document doc {R"({
+        "normalize":
+        [
+            {
+                "map":
+                {
+                    "variable": "test\n",
+                    "ar_write.result": "+ar_write/$variable"
+                }
+            }
+        ]
+    })"};
+
+    auto serverSocketFD = testBindUnixSocket(AR_QUEUE_PATH, SOCK_DGRAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    auto normalize = stageBuilderNormalize(doc.get("/normalize"), tr);
+
+    rxcpp::subjects::subject<Event> inputSubject;
+    inputSubject.get_observable().subscribe([](Event e) {});
+    auto inputObservable = inputSubject.get_observable();
+    auto output = normalize(inputObservable);
+
+    std::vector<Event> expected;
+    output.subscribe([&expected](Event e) { expected.push_back(e); });
+
+    auto eventsCount = 1;
+    auto inputObjectOne = createSharedEvent(R"({"DummyField": "DummyValue"})");
+
+    inputSubject.get_subscriber().on_next(inputObjectOne);
+
+    ASSERT_EQ(expected.size(), eventsCount);
+
+    // Check received command on the AR's queue
+    ASSERT_STREQ(testRecvString(serverSocketFD, SOCK_DGRAM).c_str(), "test\n");
+
+    // Check send command to the AR's queue result
+    ASSERT_NO_THROW(
+        ASSERT_STREQ(expected[0]->getEventValue("/ar_write/result").GetString(), "ok"));
+
+    close(serverSocketFD);
+    unlink(AR_QUEUE_PATH);
+}
+
+TEST(opBuilderARWrite, SendFromReferenceWithConditionalMapping)
+{
+    Document doc {R"({
+        "normalize":
+        [
+            {
+                "check":
+                [
+                    {"query_result": "+exists"}
+                ],
+                "map":
+                {
+                    "ar_write.result": "+ar_write/$query_result"
+                }
+            }
+        ]
+    })"};
+
+    auto serverSocketFD = testBindUnixSocket(AR_QUEUE_PATH, SOCK_DGRAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    auto normalize = stageBuilderNormalize(doc.get("/normalize"), tr);
+
+    rxcpp::subjects::subject<Event> inputSubject;
+    inputSubject.get_observable().subscribe([](Event e) {});
+    auto inputObservable = inputSubject.get_observable();
+    auto output = normalize(inputObservable);
+
+    std::vector<Event> expected;
+    output.subscribe([&expected](Event e) { expected.push_back(e); });
+
+    auto eventsCount = 1;
+    auto inputObjectOne = createSharedEvent(R"({"query_result": "test\n"})");
+
+    inputSubject.get_subscriber().on_next(inputObjectOne);
+
+    ASSERT_EQ(expected.size(), eventsCount);
+
+    // Check received command on the AR's queue
+    ASSERT_STREQ(testRecvString(serverSocketFD, SOCK_DGRAM).c_str(), "test\n");
+
+    // Check send command to the AR's queue result
+    ASSERT_NO_THROW(
+        ASSERT_STREQ(expected[0]->getEventValue("/ar_write/result").GetString(), "ok"));
+
+    close(serverSocketFD);
+    unlink(AR_QUEUE_PATH);
+}
