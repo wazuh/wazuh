@@ -1510,6 +1510,9 @@ cJSON *win_perm_to_json(char *perms) {
         if (perms_it) {
             *(perms_it++) = '\0';
         }
+        else {
+            continue;
+        }
 
         while (*perm_node == ' ') perm_node++;
 
@@ -1517,7 +1520,7 @@ cJSON *win_perm_to_json(char *perms) {
         char *username = perm_node;
         perm_node = strchr(perm_node, '(');
         if (!perm_node) {
-            goto error;
+            continue;
         }
         *(perm_node++) = '\0';
         {
@@ -1531,7 +1534,7 @@ cJSON *win_perm_to_json(char *perms) {
         char *perm_type = perm_node;
         perm_node = strchr(perm_node, ')');
         if (!perm_node) {
-            goto error;
+            continue;
         }
         *(perm_node++) = '\0';
 
