@@ -93,6 +93,11 @@ static void help_authd(char * home_path)
     print_out("    -k <path>   Full path to server key. Default: %s.", KEYFILE);
     print_out("    -a          Auto select SSL/TLS method. Default: TLS v1.2 only.");
     print_out("    -L          Force insertion though agent limit reached.");
+    print_out("    -C          Specify the certificate validity in days.");
+    print_out("    -B          Specify the certificate key size in bits.");
+    print_out("    -K          Specify the path to store the certificate key.");
+    print_out("    -X          Specify the path to store the certificate.");
+    print_out("    -S          Specify the certificate subject.");
     print_out(" ");
     os_free(home_path);
     exit(1);
@@ -162,10 +167,12 @@ int main(int argc, char **argv)
         const char *cert_key_path = NULL;
         const char *cert_path = NULL;
         const char *cert_subj = NULL;
-        bool generate_certifacate = true;
+        bool generate_certifacate = false;
         unsigned short port = 0;
+        unsigned long days_val = 0;
+        unsigned long key_bits = 0;
 
-        while (c = getopt(argc, argv, "Vdhtfigwj:D:p:c:v:sx:k:PF:ar:L:y:u:o:j:m:"), c != -1) {
+        while (c = getopt(argc, argv, "Vdhtfigj:D:p:c:v:sx:k:PF:ar:L:C:B:K:X:S:"), c != -1) {
             switch (c) {
                 case 'V':
                     print_version();
@@ -268,24 +275,17 @@ int main(int argc, char **argv)
                     mwarn("This option no longer applies. The agent limit has been removed.");
                     break;
 
-                case 'w':
+                case 'C':
                     generate_certifacate = true;
-                    break;
 
-                case 'y':
-                    if (generate_certifacate == false) {
-                        merror_exit("-%c needs -w parameter", c);
-                    }
                     if (!optarg) {
                         merror_exit("-%c needs an argument", c);
                     }
                     os_strdup(optarg, cert_val);
                     break;
 
-                case 'u':
-                    if (generate_certifacate == false) {
-                        merror_exit("-%c needs -w parameter",c );
-                    }
+                case 'B':
+                    generate_certifacate = true;
 
                     if (!optarg) {
                         merror_exit("-%c needs an argument", c);
@@ -293,10 +293,8 @@ int main(int argc, char **argv)
                     os_strdup(optarg, cert_key_bits);
                     break;
 
-                case 'o':
-                    if (generate_certifacate == false) {
-                        merror_exit("-%c needs -w parameter", c);
-                    }
+                case 'K':
+                    generate_certifacate = true;
 
                     if (!optarg) {
                         merror_exit("-%c needs an argument", c);
@@ -304,10 +302,8 @@ int main(int argc, char **argv)
                     os_strdup(optarg, cert_key_path);
                     break;
 
-                case 'j':
-                    if (generate_certifacate == false) {
-                        merror_exit("-%c needs -w parameter", c);
-                    }
+                case 'X':
+                    generate_certifacate = true;
 
                     if (!optarg) {
                         merror_exit("-%c needs an argument", c);
@@ -315,10 +311,8 @@ int main(int argc, char **argv)
                     os_strdup(optarg, cert_path);
                     break;
 
-                case 'm':
-                    if (generate_certifacate == false) {
-                        merror_exit("-%c needs -w parameter", c);
-                    }
+                case 'S':
+                    generate_certifacate = true;
 
                     if (!optarg) {
                         merror_exit("-%c needs an argument", c);
@@ -332,15 +326,14 @@ int main(int argc, char **argv)
         }
 
         if (generate_certifacate) {
-            unsigned long days_val = strtol(cert_val, NULL, 10);
-            unsigned long key_bits = strtol(cert_key_bits, NULL, 10);
 
-            if (days_val == 0) {
-                merror_exit("Canot set certificate validity to 0 days");
+            // Sanitize parameters
+            if (cert_val == NULL) {
+                merror_exit("Certificate validity not specified");
             }
 
-            if (cert_key_bits == 0) {
-                merror_exit("Canot set certificate private key to 0 bits");
+            if (cert_key_bits == NULL) {
+                merror_exit("Certificate key size not specified");
             }
 
             if (cert_key_path == NULL) {
@@ -353,6 +346,14 @@ int main(int argc, char **argv)
 
             if (cert_subj == NULL) {
                 merror_exit("Certificate subject not specified.");
+            }
+
+            if (days_val = strtol(cert_val, NULL, 10), days_val == 0) {
+                merror_exit("Canot set certificate validity to 0 days");
+            }
+
+            if (key_bits = strtol(cert_key_bits, NULL, 10), key_bits == 0) {
+                merror_exit("Canot set certificate private key to 0 bits");
             }
 
             if (generate_cert(days_val, key_bits, cert_key_path, cert_path, cert_subj) == 0) {

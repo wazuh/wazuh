@@ -18,26 +18,26 @@ EVP_PKEY* generate_key(int bits) {
     RSA* rsa = RSA_new(); // This structure is free'd after EVP_PKEY_assign_RSA.
 
     if(key == NULL) {
-        merror("Cannot create EVP_PKEY structure.\n"); //LCOV_EXCL_LINE
-        goto error; //LCOV_EXCL_LINE
+        merror("Cannot create EVP_PKEY structure.\n"); // LCOV_EXCL_LINE
+        goto error; // LCOV_EXCL_LINE
     }
 
     if (bn == NULL) {
-        merror("Cannot create BN structure.\n"); //LCOV_EXCL_LINE
-        goto error; //LCOV_EXCL_LINE
+        merror("Cannot create BN structure.\n"); // LCOV_EXCL_LINE
+        goto error; // LCOV_EXCL_LINE
     }
 
     if (rsa == NULL) {
-        merror("Cannot create RSA structure.\n"); //LCOV_EXCL_LINE
-        goto error; //LCOV_EXCL_LINE
+        merror("Cannot create RSA structure.\n"); // LCOV_EXCL_LINE
+        goto error; // LCOV_EXCL_LINE
     }
 
     BN_set_word(bn, RSA_F4);
     RSA_generate_key_ex(rsa, bits, bn, NULL);
 
     if(!EVP_PKEY_assign_RSA(key, rsa)) {
-        merror("Cannot generate RSA key.\n"); //LCOV_EXCL_LINE
-        goto error; //LCOV_EXCL_LINE
+        merror("Cannot generate RSA key.\n"); // LCOV_EXCL_LINE
+        goto error; // LCOV_EXCL_LINE
     }
 
     BN_free(bn);
@@ -64,29 +64,33 @@ int generate_cert(unsigned long days,
                   const char *cert_path,
                   const char* subj) {
     X509* cert = X509_new();
-    EVP_PKEY* key = NULL;
-    ASN1_INTEGER* serial_number = ASN1_INTEGER_new();
     X509_NAME* name = NULL;
     X509V3_CTX ctx;
+    EVP_PKEY* key = generate_key(bits);
+    ASN1_INTEGER* serial_number = ASN1_INTEGER_new();
     char **split_subj = NULL;
 
+    if (key == NULL) {
+        merror("Cannot generate key to sign the certificate.");
+        goto error;
+    }
+
     if(cert == NULL) {
-        merror("Cannot generate certificate."); //LCOV_EXCL_LINE
-        goto error; //LCOV_EXCL_LINE
+        merror("Cannot generate certificate."); // LCOV_EXCL_LINE
+        goto error; // LCOV_EXCL_LINE
     }
 
     if (serial_number == NULL) {
-        merror("Cannot allocate serial number."); //LCOV_EXCL_LINE
-        goto error; //LCOV_EXCL_LINE
+        merror("Cannot allocate serial number."); // LCOV_EXCL_LINE
+        goto error; // LCOV_EXCL_LINE
     }
 
     // Assign a random serial number to the certificate
     if (rand_serial(serial_number) == 1) {
-        merror("Cannot generate serial number."); //LCOV_EXCL_LINE
-        goto error; //LCOV_EXCL_LINE
+        merror("Cannot generate serial number."); // LCOV_EXCL_LINE
+        goto error; // LCOV_EXCL_LINE
     }
 
-    key = generate_key(bits);
     X509_set_version(cert, 2);
     X509_set_serialNumber(cert, serial_number);
     X509_gmtime_adj(X509_get_notBefore(cert), 0);
@@ -117,14 +121,15 @@ int generate_cert(unsigned long days,
     add_x509_ext(cert, &ctx, NID_basic_constraints, "critical,CA:TRUE");
 
     if(!X509_sign(cert, key, EVP_sha256())) {
-        merror("Error signing certificate."); //LCOV_EXCL_LINE
-        goto error; //LCOV_EXCL_LINE
+        merror("Error signing certificate."); // LCOV_EXCL_LINE
+        goto error; // LCOV_EXCL_LINE
     }
 
     if (dump_key_cert(key, cert, key_path, cert_path)) {
         goto error;
     }
 
+    X509_free(cert);
     EVP_PKEY_free(key);
     ASN1_INTEGER_free(serial_number);
     free_strarray(split_subj);
@@ -161,9 +166,10 @@ int dump_key_cert(EVP_PKEY* key, X509* x509, const char* key_name, const char* c
     {
         merror("Cannot dump private key.");
         fclose(key_file);
-
         return 1;
     }
+
+    fclose(key_file);
 
     FILE* x509_file = fopen(cert_name, "wb");
     if(!x509_file)
@@ -176,11 +182,9 @@ int dump_key_cert(EVP_PKEY* key, X509* x509, const char* key_name, const char* c
     {
         merror("Cannot dump certificate.");
         fclose(x509_file);
-
         return 1;
     }
 
-    fclose(key_file);
     fclose(x509_file);
 
     return 0;
@@ -191,11 +195,11 @@ int rand_serial(ASN1_INTEGER *sn) {
     BIGNUM* bn = BN_new();
 
     if (sn == NULL) {
-        return 1; //LCOV_EXCL_LINE
+        return 1; // LCOV_EXCL_LINE
     }
 
     if (bn == NULL) {
-        return 1; //LCOV_EXCL_LINE
+        return 1; // LCOV_EXCL_LINE
     }
 
     /*
@@ -205,12 +209,12 @@ int rand_serial(ASN1_INTEGER *sn) {
     * rules won't force a leading octet.
     */
     if (!BN_rand(bn, 159, BN_RAND_TOP_ANY, BN_RAND_BOTTOM_ANY)) {
-        return 1; //LCOV_EXCL_LINE
+        return 1; // LCOV_EXCL_LINE
     }
 
     if (!BN_to_ASN1_INTEGER(bn, sn)) {
-        BN_free(bn); //LCOV_EXCL_LINE
-        return 1; //LCOV_EXCL_LINE
+        BN_free(bn); // LCOV_EXCL_LINE
+        return 1; // LCOV_EXCL_LINE
     }
 
     BN_free(bn);

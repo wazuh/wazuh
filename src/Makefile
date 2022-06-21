@@ -2452,7 +2452,6 @@ clean-internals: clean-unit-tests
 	rm -rf $(SYSINFO)build
 	rm -rf libwazuhext
 	rm -f libgcc_s.so.1
-	rm -rf $(CERT_CREATOR_DIR)build
 
 clean-unit-tests:
 	rm -f ${wrappers_syscheck_o}
