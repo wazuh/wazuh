@@ -175,6 +175,19 @@ async def print_health(config, more, filter_node):
                     f"{node_info['status']['last_sync_agentgroups']['n_synced_chunks']}.\n"
             msg2 += f"                Permission to synchronize agent-groups: " \
                     f"{node_info['status']['sync_agent_groups_free']}.\n"
+        else:
+            if node_info['status']:
+                msg2 += "        Status:\n"
+                msg2 += "            Agents reconnect:\n"
+                msg2 += f"                Current phase: {node_info['status']['agents_reconnect']['current_phase']}.\n"
+                msg2 += f"                Last stability check: " \
+                        f"{node_info['status']['agents_reconnect']['workers_stability']['last_workers_stability_check']}.\n"
+                msg2 += f"                Last connected workers: " \
+                        f"{node_info['status']['agents_reconnect']['workers_stability']['last_register_workers']}.\n"
+                msg2 += f"                Worker stability counter: " \
+                        f"{node_info['status']['agents_reconnect']['workers_stability']['workers_stability_counter']}.\n"
+                msg2 += f"                Worker stability threshold: " \
+                        f"{node_info['status']['agents_reconnect']['workers_stability']['workers_stability_threshold']}.\n"
 
     print(msg1)
     more and print(msg2)
