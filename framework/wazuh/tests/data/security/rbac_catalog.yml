@@ -417,8 +417,6 @@ get_rbac_actions:
           - GET /manager/stats
           - GET /manager/stats/hourly
           - GET /manager/stats/weekly
-          - GET /manager/stats/analysisd
-          - GET /manager/stats/remoted
           - GET /manager/logs
           - GET /manager/logs/summary
           - PUT /manager/restart

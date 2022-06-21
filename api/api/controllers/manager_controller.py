@@ -185,48 +185,6 @@ async def get_stats_weekly(request, pretty=False, wait_for_complete=False):
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_stats_analysisd(request, pretty=False, wait_for_complete=False):
-    """Get manager's or local_node's analysisd stats.
-
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    """
-    f_kwargs = {'filename': common.ANALYSISD_STATS}
-
-    dapi = DistributedAPI(f=stats.get_daemons_stats,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
-
-
-async def get_stats_remoted(request, pretty=False, wait_for_complete=False):
-    """Get manager's or local_node's remoted stats.
-
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    """
-    f_kwargs = {'filename': common.REMOTED_STATS}
-
-    dapi = DistributedAPI(f=stats.get_daemons_stats,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
-
-
 async def get_log(request, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
                   search=None, tag=None, level=None, q=None):
     """Get manager's or local_node's last 2000 wazuh log entries.
