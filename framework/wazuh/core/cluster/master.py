@@ -18,7 +18,7 @@ from uuid import uuid4
 import wazuh.core.cluster.cluster
 from wazuh.core import cluster as metadata, common, exception, utils
 from wazuh.core.agent import Agent
-from wazuh.core.cluster import server, cluster, common as c_common
+from wazuh.core.cluster import agents_reconnect, server, cluster, common as c_common
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag
 from wazuh.core.common import DECIMALS_DATE_FORMAT
@@ -245,7 +245,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.current_zip_limit = self.cluster_items['intervals']['communication']['max_zip_size']
 
     def to_dict(self):
-        """Get worker healthcheck information.
+        """Get master healthcheck information.
 
         Returns
         -------
@@ -1128,9 +1128,14 @@ class Master(server.AbstractServer):
         self.integrity_already_executed = []
         self.dapi = dapi.APIRequestQueue(server=self)
         self.sendsync = dapi.SendSyncRequestQueue(server=self)
-        self.tasks.extend([self.dapi.run, self.sendsync.run, self.file_status_update, self.agent_groups_update])
+        self.tasks.extend([self.dapi.run, self.sendsync.run, self.file_status_update, self.agent_groups_update,
+                           self.cluster_agents_reconnect_controller])
         # pending API requests waiting for a response
         self.pending_api_requests = {}
+
+        # Agents reconnect
+        self.agents_reconnect_enabled = True  # Provisional
+        self.agents_reconnect = None
 
     def to_dict(self) -> Dict:
         """Get master's healthcheck information.
@@ -1142,6 +1147,54 @@ class Master(server.AbstractServer):
         """
         return {'info': {'name': self.configuration['node_name'], 'type': self.configuration['node_type'],
                          'version': metadata.__version__, 'ip': self.configuration['nodes'][0]}}
+
+    def get_health_agents_reconnect(self) -> Dict:
+        """Get agents reconnect information.
+
+        Returns
+        -------
+        dict
+            Agents reconnect information.
+        """
+        master_status_info = None
+        if self.agents_reconnect:
+            master_status_info = {
+                "agents_reconnect": {
+                    "current_phase": self.agents_reconnect.get_current_phase(),
+                    "workers_stability": self.agents_reconnect.get_workers_stability_info()
+                }
+            }
+
+        return master_status_info
+
+    async def cluster_agents_reconnect_controller(self):
+        """Controller task in charge of maintaining agents balance in the cluster."""
+        if not self.agents_reconnect_enabled:
+            return
+
+        logger = self.setup_task_logger("Agents reconnect")
+        logger.info("Cluster agents reconnection started.")
+
+        self.agents_reconnect = agents_reconnect.AgentsReconnect(
+            logger=logger, blacklisted_nodes={"master"}, nodes=self.clients,
+            workers_stability_threshold=self.cluster_items["intervals"]["master"]["areconn_workers_stability_threshold"]
+        )
+
+        logger.info(
+            f"Sleeping {self.cluster_items['intervals']['master']['areconn_workers_stability_delay']}s "
+            f"before starting the agent-groups task, waiting for the workers connection.")
+        await asyncio.sleep(self.cluster_items['intervals']['master']['areconn_workers_stability_delay'])
+
+        while True:
+            # Check workers stability
+            while not await self.agents_reconnect.check_workers_stability():
+                await asyncio.sleep(self.cluster_items["intervals"]["master"]["areconn_workers_stability_time"])
+
+            # Iteration complete. Sleeping phase
+            self.agents_reconnect.current_phase = agents_reconnect.AgentsReconnectionPhases.BALANCE_SLEEPING
+            logger.info(f"Iteration complete. Sleep during "
+                        f"{self.cluster_items['intervals']['master']['areconn_posbalance_time']} seconds.")
+            await asyncio.sleep(self.cluster_items["intervals"]["master"]["areconn_posbalance_time"])
 
     def get_agent_groups_info(self, client):
         """Check whether the updated group information is sent only once per worker.
@@ -1246,28 +1299,32 @@ class Master(server.AbstractServer):
         dict
             Dict object containing nodes information.
         """
-        workers_info = {key: val.to_dict() for key, val in self.clients.items()
-                        if filter_node is None or filter_node == {} or key in filter_node}
-        n_connected_nodes = len(workers_info)
+        nodes_info = {key: val.to_dict() for key, val in self.clients.items()
+                      if filter_node is None or filter_node == {} or key in filter_node}
+        n_connected_nodes = len(nodes_info)
         if filter_node is None or self.configuration['node_name'] in filter_node:
-            workers_info.update({self.configuration['node_name']: self.to_dict()})
+            nodes_info[self.configuration['node_name']] = self.to_dict()
 
         # Get active agents by node and format last keep alive date format
         active_agents = Agent.get_agents_overview(filters={'status': 'active', 'node_name': filter_node},
                                                   q="id!=000")['items']
         for agent in active_agents:
-            if (agent_node := agent["node_name"]) in workers_info.keys():
-                workers_info[agent_node]["info"]["n_active_agents"] = \
-                    workers_info[agent_node]["info"].get("n_active_agents", 0) + 1
-        for node_name in workers_info.keys():
-            if workers_info[node_name]["info"].get("n_active_agents") is None:
-                workers_info[node_name]["info"]["n_active_agents"] = 0
-            if workers_info[node_name]['info']['type'] != 'master':
-                workers_info[node_name]['status']['last_keep_alive'] = str(
-                    utils.get_date_from_timestamp(workers_info[node_name]['status']['last_keep_alive']
+            if (agent_node := agent["node_name"]) in nodes_info:
+                nodes_info[agent_node]["info"]["n_active_agents"] = \
+                    nodes_info[agent_node]["info"].get("n_active_agents", 0) + 1
+        for node_name in nodes_info:
+            if nodes_info[node_name]["info"].get("n_active_agents") is None:
+                nodes_info[node_name]["info"]["n_active_agents"] = 0
+            if nodes_info[node_name]['info']['type'] != 'master':
+                nodes_info[node_name]['status']['last_keep_alive'] = str(
+                    utils.get_date_from_timestamp(nodes_info[node_name]['status']['last_keep_alive']
                                                   ).strftime(DECIMALS_DATE_FORMAT))
 
-        return {"n_connected_nodes": n_connected_nodes, "nodes": workers_info}
+        # Get master agents reconnect process information
+        if self.agents_reconnect_enabled:
+            nodes_info["master-node"]["status"] = self.get_health_agents_reconnect()
+
+        return {"n_connected_nodes": n_connected_nodes, "nodes": nodes_info}
 
     def get_node(self) -> Dict:
         """Get basic information about the node.

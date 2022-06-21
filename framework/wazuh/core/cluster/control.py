@@ -100,10 +100,7 @@ async def get_node(lc: local_client.LocalClient, filter_node=None, select=None):
     if isinstance(node_info_array, Exception):
         raise node_info_array
 
-    if len(node_info_array['items']) > 0:
-        return node_info_array['items'][0]
-    else:
-        return {}
+    return node_info_array['items'][0] if len(node_info_array['items']) > 0 else {}
 
 
 async def get_health(lc: local_client.LocalClient, filter_node=None):
@@ -112,7 +109,7 @@ async def get_health(lc: local_client.LocalClient, filter_node=None):
     Parameters
     ----------
     lc : LocalClient object
-        LocalClient with which to send the 'get_nodes' request.
+        LocalClient with which to send the 'get_health' request.
     filter_node : str, list
         Node to return.
 
