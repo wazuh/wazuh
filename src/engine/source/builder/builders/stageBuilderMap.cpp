@@ -4,14 +4,14 @@
 #include <any>
 
 #include "baseTypes.hpp"
-#include "builder/expression.hpp"
+#include "expression.hpp"
 #include "json.hpp"
-#include "builder/registry.hpp"
+#include "registry.hpp"
 
 namespace builder::internals::builders
 {
 
-Expression stageMapBuilder(std::any definition)
+base::Expression stageMapBuilder(std::any definition)
 {
     json::Json jsonDefinition;
 
@@ -34,14 +34,14 @@ Expression stageMapBuilder(std::any definition)
     }
 
     auto mappings = jsonDefinition.getObject();
-    std::vector<Expression> mappingExpressions;
+    std::vector<base::Expression> mappingExpressions;
     std::transform(mappings.begin(),
                    mappings.end(),
                    std::back_inserter(mappingExpressions),
                    [](auto tuple)
                    { return Registry::getBuilder("operation.map")(tuple); });
 
-    auto expression = Chain::create("stage.map", mappingExpressions);
+    auto expression = base::Chain::create("stage.map", mappingExpressions);
     return expression;
 }
 

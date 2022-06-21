@@ -9,7 +9,7 @@
 
 #include <fmt/format.h>
 
-namespace builder::internals
+namespace base
 {
 
 // The Formula hierarchy is a description of the graph expression to be built,
@@ -439,6 +439,6 @@ color="#57abff";
     return ss.str();
 }
 
-} // namespace builder::internals
+} // namespace base
 
 #endif // _EXPRESSION_H
