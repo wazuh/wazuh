@@ -19,27 +19,25 @@ CPMAddPackage(
 # Sources - Includes
 ####################################################################################################
 add_library(builders OBJECT
-    builders/assetBuilderDecoder.cpp
-    builders/assetBuilderFilter.cpp
-    builders/assetBuilderOutput.cpp
-    builders/assetBuilderRule.cpp
-    builders/combinatorBuilderBroadcast.cpp
-    builders/combinatorBuilderChain.cpp
-    builders/opBuilderFileOutput.cpp
-    builders/opBuilderHelperFilter.cpp
-    builders/opBuilderHelperMap.cpp
-    builders/opBuilderKVDB.cpp
+
+    # builders/opBuilderFileOutput.cpp
+    # builders/opBuilderHelperFilter.cpp
+    # builders/opBuilderHelperMap.cpp
+    # builders/opBuilderKVDB.cpp
     builders/stageBuilderCheck.cpp
     builders/stageBuilderNormalize.cpp
-    builders/stageBuilderOutputs.cpp
-    builders/stageParse.cpp
-    definitions.cpp
+    builders/stageBuilderMap.cpp
+    builders/operationBuilder.cpp
+    # builders/stageBuilderOutputs.cpp
+    # builders/stageParse.cpp
+    # definitions.cpp
 )
 
 target_include_directories(builders
     PRIVATE
     #TODO fix this?
     ${ENGINE_SOURCE_DIR}/json
+    ${ENGINE_SOURCE_DIR}
     PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}
     ${RxCpp_SOURCE_DIR}/Rx/v2/src

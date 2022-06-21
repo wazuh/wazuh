@@ -59,6 +59,17 @@ public:
     Json() = default;
 
     /**
+     * @brief Construct a new Json object from a rapidjason Document.
+     * Moves the document.
+     *
+     * @param document The rapidjson::Document to move.
+     */
+    explicit Json(rapidjson::Document&& document)
+        : m_document(std::move(document))
+    {
+    }
+
+    /**
      * @brief Construct a new Json object from a json string
      *
      * @param json The json string to parse.
@@ -98,8 +109,6 @@ public:
         m_document.CopyFrom(other.m_document, m_document.GetAllocator());
         return *this;
     }
-
-
 
     /************************************************************************************/
     // Static Helpers
