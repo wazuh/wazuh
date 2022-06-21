@@ -14,7 +14,7 @@ from wazuh.core.cluster.dapi.dapi import DistributedAPI
 logger = logging.getLogger('wazuh-api')
 
 MITRE_TECHNIQUES_TIMEOUT = 30
-MITRE_SOFTWARE_TIMEOUT = 15
+MITRE_SOFTWARE_TIMEOUT = 20
 
 
 async def get_metadata(request, pretty=False, wait_for_complete=False):
