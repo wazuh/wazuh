@@ -3,12 +3,12 @@
 
 #include <any>
 
-#include "builder/expression.hpp"
+#include "expression.hpp"
 
 namespace builder::internals::builders
 {
 
-Expression stageCheckBuilder(std::any definition);
+base::Expression stageCheckBuilder(std::any definition);
 
 } // namespace builder::internals::builders
 

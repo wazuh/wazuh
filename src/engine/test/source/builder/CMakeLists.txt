@@ -99,10 +99,44 @@ target_link_libraries(stageBuilderNormalize_test
 gtest_discover_tests(stageBuilderNormalize_test)
 
 # Register test
-add_executable(registerTest
+add_executable(register_test
   ${BUILDER_TEST_SOURCE_DIR}/register_test.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderNormalize.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderCheck.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderMap.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/operationBuilder.cpp
 )
-gtest_discover_tests(registerTest)
+target_link_libraries(register_test
+  gtest_main base
+)
+gtest_discover_tests(register_test)
+
+# Asset test
+add_executable(asset_test
+  ${BUILDER_TEST_SOURCE_DIR}/asset_test.cpp
+)
+target_link_libraries(asset_test
+  gtest_main base
+)
+gtest_discover_tests(asset_test)
+
+# Environment test
+add_executable(environment_test
+  ${BUILDER_TEST_SOURCE_DIR}/environment_test.cpp
+)
+target_link_libraries(environment_test
+  gtest_main base
+)
+gtest_discover_tests(environment_test)
+
+# Rxcpp backend test
+add_executable(rxcppBackend_test
+  ${BUILDER_TEST_SOURCE_DIR}/rxcppBackend/rxcppBackend_test.cpp
+)
+target_link_libraries(rxcppBackend_test
+  gtest_main base
+)
+gtest_discover_tests(rxcppBackend_test)
 
 add_executable(opBuilderHelperCheck_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntEqual_test.cpp

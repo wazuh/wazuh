@@ -9,12 +9,12 @@
 
 #include <fmt/format.h>
 
-#include "builder/expression.hpp"
+#include "expression.hpp"
 
 namespace builder::internals
 {
 
-using Builder = std::function<Expression(std::any)>;
+using Builder = std::function<base::Expression(std::any)>;
 
 /**
  * @brief Registry of builders.

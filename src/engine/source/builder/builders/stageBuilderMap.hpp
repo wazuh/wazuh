@@ -4,12 +4,12 @@
 
 #include <any>
 
-#include "builder/expression.hpp"
+#include "expression.hpp"
 
 namespace builder::internals::builders
 {
 
-Expression stageMapBuilder(std::any definition);
+base::Expression stageMapBuilder(std::any definition);
 
 } // namespace builder::internals::builders
 

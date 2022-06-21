@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
-#include "builder/expression.hpp"
+#include "base/expression.hpp"
 
-using namespace builder::internals;
+using namespace base;
 
 TEST(Expression, Formula)
 {

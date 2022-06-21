@@ -93,6 +93,7 @@ target_include_directories(main
     PRIVATE
     ${ENGINE_SOURCE_DIR}/router
     ${ENGINE_SOURCE_DIR}/json
+    ${ENGINE_SOURCE_DIR}/rxcppBackend
     ${CameronQueue_SOURCE_DIR}
     ${argparse_SOURCE_DIR}/include
 )
