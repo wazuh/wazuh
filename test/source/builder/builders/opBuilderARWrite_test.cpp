@@ -30,6 +30,23 @@ using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg) {
 };
 
+TEST(opBuilderARWrite, BuilderNoParameterError)
+{
+    Document doc {R"({
+        "normalize":
+        [
+            {
+                "map":
+                {
+                    "ar_write.result": "+ar_write/"
+                }
+            }
+        ]
+    })"};
+
+    ASSERT_THROW(opBuilderARWrite(doc.get("/normalize/0/map"), tr), std::runtime_error);
+}
+
 TEST(opBuilderARWrite, Builder)
 {
     Document doc {R"({
@@ -163,6 +180,98 @@ TEST(opBuilderARWrite, SendFromReference)
     // Check send command to the AR's queue result
     ASSERT_NO_THROW(
         ASSERT_STREQ(expected[0]->getEventValue("/ar_write/result").GetString(), "ok"));
+
+    close(serverSocketFD);
+    unlink(AR_QUEUE_PATH);
+}
+
+TEST(opBuilderARWrite, SendEmptyReferenceError)
+{
+    Document doc {R"({
+        "normalize":
+        [
+            {
+                "map":
+                {
+                    "ar_write.result": "+ar_write/$"
+                }
+            }
+        ]
+    })"};
+
+    auto serverSocketFD = testBindUnixSocket(AR_QUEUE_PATH, SOCK_DGRAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    auto normalize = stageBuilderNormalize(doc.get("/normalize"), tr);
+
+    rxcpp::subjects::subject<Event> inputSubject;
+    inputSubject.get_observable().subscribe([](Event e) {});
+    auto inputObservable = inputSubject.get_observable();
+    auto output = normalize(inputObservable);
+
+    std::vector<Event> expected;
+    output.subscribe([&expected](Event e) { expected.push_back(e); });
+
+    auto eventsCount = 1;
+    auto inputObjectOne = createSharedEvent(R"({"DummyField": "DummyValue"})");
+
+    inputSubject.get_subscriber().on_next(inputObjectOne);
+
+    ASSERT_EQ(expected.size(), eventsCount);
+
+    // Check send command to the AR's queue result
+
+    string arWriteResult;
+    ASSERT_NO_THROW(arWriteResult =
+                        expected[0]->getEventValue("/ar_write/result").GetString());
+
+    ASSERT_STREQ(arWriteResult.data(), AR_INVALID_REFERENCE_MSG);
+
+    close(serverSocketFD);
+    unlink(AR_QUEUE_PATH);
+}
+
+TEST(opBuilderARWrite, SendWrongReferenceError)
+{
+    Document doc {R"({
+        "normalize":
+        [
+            {
+                "map":
+                {
+                    "ar_write.result": "+ar_write/$dummy"
+                }
+            }
+        ]
+    })"};
+
+    auto serverSocketFD = testBindUnixSocket(AR_QUEUE_PATH, SOCK_DGRAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    auto normalize = stageBuilderNormalize(doc.get("/normalize"), tr);
+
+    rxcpp::subjects::subject<Event> inputSubject;
+    inputSubject.get_observable().subscribe([](Event e) {});
+    auto inputObservable = inputSubject.get_observable();
+    auto output = normalize(inputObservable);
+
+    std::vector<Event> expected;
+    output.subscribe([&expected](Event e) { expected.push_back(e); });
+
+    auto eventsCount = 1;
+    auto inputObjectOne = createSharedEvent(R"({"DummyField": "DummyValue"})");
+
+    inputSubject.get_subscriber().on_next(inputObjectOne);
+
+    ASSERT_EQ(expected.size(), eventsCount);
+
+    // Check send command to the AR's queue result
+
+    string arWriteResult;
+    ASSERT_NO_THROW(arWriteResult =
+                        expected[0]->getEventValue("/ar_write/result").GetString());
+
+    ASSERT_STREQ(arWriteResult.data(), "Write AR operator exception: Error, field not found: /dummy");
 
     close(serverSocketFD);
     unlink(AR_QUEUE_PATH);

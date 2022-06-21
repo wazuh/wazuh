@@ -12,6 +12,7 @@
 
 #include "syntax.hpp"
 
+using base::utils::socketInterface::SendRetval;
 using base::utils::socketInterface::unixDatagram;
 using builder::internals::syntax::REFERENCE_ANCHOR;
 using rapidjson::Value;
@@ -75,7 +76,8 @@ base::Lifter opBuilderARWrite(const base::DocumentValue& def, types::TracerFn tr
                     try
                     {
                         // Gets the value referenced by the key
-                        auto value = &e->getEventValue(key);
+                        auto value =
+                            (opParameter.length() > 1) ? &e->getEventValue(key) : nullptr;
 
                         if (value && value->IsString())
                         {
@@ -83,25 +85,22 @@ base::Lifter opBuilderARWrite(const base::DocumentValue& def, types::TracerFn tr
 
                             if (query.empty())
                             {
-                                const string msg =
-                                    string {"Write AR operator: Invalid referenced "
-                                            "value (string expected). Document: "}
-                                    + doc.str();
+                                const string msg = string {AR_INVALID_REFERENCE_MSG};
                                 tr(msg);
+
+                                e->setEventValue(
+                                    resultOperatorKey,
+                                    Value(msg.data(), e->getEventDocAllocator()).Move());
                             }
                         }
                         else
                         {
-                            const string msg =
-                                string {"Write AR operator: Invalid referenced "
-                                        "value (string expected). Document: "}
-                                + doc.str();
+                            const string msg = string {AR_INVALID_REFERENCE_MSG};
                             tr(msg);
 
                             e->setEventValue(
                                 resultOperatorKey,
-                                Value("AR write exception", e->getEventDocAllocator())
-                                    .Move());
+                                Value(msg.data(), e->getEventDocAllocator()).Move());
                         }
                     }
                     catch (std::exception& exception)
@@ -112,8 +111,7 @@ base::Lifter opBuilderARWrite(const base::DocumentValue& def, types::TracerFn tr
 
                         e->setEventValue(
                             resultOperatorKey,
-                            Value("AR write exception", e->getEventDocAllocator())
-                                .Move());
+                            Value(msg.data(), e->getEventDocAllocator()).Move());
                     }
                 }
                 else // It is a direct value
@@ -127,8 +125,7 @@ base::Lifter opBuilderARWrite(const base::DocumentValue& def, types::TracerFn tr
                     {
                         unixDatagram socketAR(AR_QUEUE_PATH);
 
-                        if (socketAR.sendMsg(query)
-                            == base::utils::socketInterface::SendRetval::SUCCESS)
+                        if (socketAR.sendMsg(query) == SendRetval::SUCCESS)
                         {
                             const string msg =
                                 string {"Write AR operator: AR query sent. Query: "}
@@ -149,7 +146,7 @@ base::Lifter opBuilderARWrite(const base::DocumentValue& def, types::TracerFn tr
 
                             e->setEventValue(
                                 resultOperatorKey,
-                                Value("sendMsg error", e->getEventDocAllocator()).Move());
+                                Value(msg.data(), e->getEventDocAllocator()).Move());
                         }
                     }
                     catch (const std::exception& exception)
@@ -161,7 +158,7 @@ base::Lifter opBuilderARWrite(const base::DocumentValue& def, types::TracerFn tr
 
                         e->setEventValue(
                             resultOperatorKey,
-                            Value("sendMsg exception", e->getEventDocAllocator()).Move());
+                            Value(msg.data(), e->getEventDocAllocator()).Move());
                     }
                 }
 
