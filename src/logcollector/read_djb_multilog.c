@@ -181,7 +181,7 @@ void *read_djbmultilog(logreader *lf, int *rc, int drop_it) {
 
         /* Send message to queue */
         if (drop_it == 0) {
-            w_msg_hash_queues_push(buffer, lf->file, strlen(buffer) + 1, lf->log_target, MYSQL_MQ);
+            w_msg_hash_queues_push(buffer, lf->file, strlen(buffer) + 1, lf->log_target, LOCALFILE_MQ);
         }
     }
 

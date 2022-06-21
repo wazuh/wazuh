@@ -22,16 +22,11 @@
 #define DBSYNC_MQ       '5'
 #define SYSCHECK_MQ     '8'
 #define ROOTCHECK_MQ    '9'
+#define SYSCOLLECTOR_MQ 'd'
+#define CISCAT_MQ       'e'
+#define WIN_EVT_MQ      'f'
 #define SCA_MQ          'p'
 #define UPGRADE_MQ      'u'
-
-/* Queues for additional log types */
-#define MYSQL_MQ         'a'
-#define POSTGRESQL_MQ    'b'
-#define AUTH_MQ          'c'
-#define SYSCOLLECTOR_MQ  'd'
-#define CISCAT_MQ        'e'
-#define WIN_EVT_MQ       'f'
 
 #define INFINITE_OPENQ_ATTEMPTS 0
 
