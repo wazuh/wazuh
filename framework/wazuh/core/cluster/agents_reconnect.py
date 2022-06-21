@@ -3,7 +3,6 @@ from enum import Enum
 from xmlrpc.client import Boolean
 
 from wazuh.core import utils
-from wazuh.core.cluster.utils import setup_dynamic_logger
 from wazuh.core.common import DECIMALS_DATE_FORMAT
 
 
@@ -21,6 +20,19 @@ class AgentsReconnect:
     """Class that encapsulates everything related to the agent reconnection algorithm."""
 
     def __init__(self, logger, nodes, blacklisted_nodes, workers_stability_threshold) -> None:
+        """Class constructor.
+
+        Parameters
+        ----------
+        logger : Logger object
+            Logger to use.
+        nodes : list
+            List of nodes in the environment.
+        blacklisted_nodes : set
+            Set of nodes that are not taken into account for the agents reconnection.
+        workers_stability_threshold : int
+            Number of consecutive checks that must be successful to consider the environment stable.
+        """
         # Logger
         self.logger = logger
 
@@ -59,15 +71,13 @@ class AgentsReconnect:
         -------
         stability : bool
         """
-        logger = setup_dynamic_logger(
-            self.logger, AgentsReconnectionPhases.CHECK_WORKERS_STABILITY.value)
         self.current_phase = AgentsReconnectionPhases.CHECK_WORKERS_STABILITY
         if len(self.nodes) == 0:
-            logger.info("No nodes to check. Skipping...")
+            self.logger.info("No nodes to check. Skipping...")
             return False
 
         current_worker_list = set(self.nodes) - self.blacklisted_nodes
-        logger.debug(f"Current detected workers: {current_worker_list}.")
+        self.logger.debug(f"Current detected workers: {current_worker_list}.")
 
         if self.previous_workers == current_worker_list or len(self.previous_workers) == 0:
             if self.workers_stability_counter < self.workers_stability_threshold:
@@ -75,19 +85,19 @@ class AgentsReconnect:
             if self.previous_workers == set():
                 self.previous_workers = current_worker_list
         else:
-            logger.info("Workers changed, restarting workers stability phase.")
+            self.logger.info("Workers changed, restarting workers stability phase.")
             self.previous_workers = current_worker_list
             await self.reset_counter()
 
         self.last_workers_stability_check = utils.get_utc_now()
         if self.workers_stability_counter >= self.workers_stability_threshold:
-            logger.info(f"Cluster is ready {self.workers_stability_counter}/{self.workers_stability_threshold}. "
-                        f"Workers stability phase finished at "
-                        f"{self.last_workers_stability_check.strftime(DECIMALS_DATE_FORMAT)}.")
+            self.logger.info(f"Cluster is ready {self.workers_stability_counter}/{self.workers_stability_threshold}. "
+                             f"Workers stability phase finished at "
+                             f"{self.last_workers_stability_check.strftime(DECIMALS_DATE_FORMAT)}.")
             return True
 
-        logger.info(f"Workers are not stable at this moment. "
-                    f"Counter: {self.workers_stability_counter}/{self.workers_stability_threshold}.")
+        self.logger.info(f"Workers are not stable at this moment. "
+                         f"Counter: {self.workers_stability_counter}/{self.workers_stability_threshold}.")
         return False
 
     def get_current_phase(self) -> AgentsReconnectionPhases:

@@ -349,12 +349,3 @@ async def forward_function(func: callable, f_kwargs: dict = None, request_type: 
                           is_async=False, wait_for_complete=True, logger=logger)
     pool = concurrent.futures.ThreadPoolExecutor()
     return pool.submit(run, dapi.distribute_function()).result()
-
-
-def setup_dynamic_logger(logger, subtag: str) -> logging.Logger:
-    """Generate a new logger child by concatenating the tag of the parent and the child into the name."""
-    tag = logger.name.split('.')[-1]
-    logger = logger.getChild(subtag)
-    logger.addFilter(ClusterFilter(tag=tag, subtag=f"{tag} - {subtag}"))
-
-    return logger
