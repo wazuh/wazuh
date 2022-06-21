@@ -100,7 +100,11 @@
             "agent_group_start_delay": 30,
             "check_worker_lastkeepalive": 60,
             "max_allowed_time_without_keepalive": 120,
-            "max_locked_integrity_time": 1000
+            "max_locked_integrity_time": 1000,
+            "areconn_workers_stability_delay": 30,
+            "areconn_workers_stability_time": 300,
+            "areconn_workers_stability_threshold": 3,
+            "areconn_posbalance_time": 600
         },
 
         "communication":{
