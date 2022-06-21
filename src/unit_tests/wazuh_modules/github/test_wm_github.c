@@ -640,9 +640,6 @@ void test_github_execute_scan_status_code_200_null(void **state) {
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mterror, formatted_msg, "Couldn't save running state.");
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2021-05-07 12:34:56', waiting '10' seconds to run next scan");
-
     wm_github_execute_scan(data->github_config, initial_scan);
 }
 
