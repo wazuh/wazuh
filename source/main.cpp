@@ -25,8 +25,10 @@
 #include <profile/profile.hpp>
 #include <protocolHandler.hpp>
 #include <register.hpp>
-#include <router.hpp>
+// #include <router.hpp>
 #include <hlp/hlp.hpp>
+
+#include "rxcppBackend/rxcppFactory.hpp"
 
 #define WAIT_DEQUEUE_TIMEOUT_USEC (1 * 1000000)
 
@@ -93,6 +95,16 @@ static auto configureCliArgs()
     return argParser;
 }
 
+static void print_exception(const std::exception& e, int level =  0)
+{
+    std::cerr << std::string(level, ' ') << "exception: " << e.what() << '\n';
+    try {
+        std::rethrow_if_nested(e);
+    } catch(const std::exception& nestedException) {
+        print_exception(nestedException, level+1);
+    } catch(...) {}
+}
+
 int main(int argc, char* argv[])
 {
     sigset_t sig_empty_mask;
@@ -144,8 +156,8 @@ int main(int argc, char* argv[])
 
     catalog::Catalog _catalog(catalog::StorageType::Local, storagePath);
 
-    auto hlpParsers = _catalog.getFileContents(catalog::AssetType::Schema,
-                                               "wazuh-logql-types");
+    auto hlpParsers =
+        _catalog.getFileContents(catalog::AssetType::Schema, "wazuh-logql-types");
     // TODO because builders don't have access to the catalog we are configuring
     // the parser mappings on start up for now
     hlp::configureParserMappings(hlpParsers);
@@ -161,6 +173,20 @@ int main(int argc, char* argv[])
     }
     // TODO: Handle errors on construction
     builder::Builder<catalog::Catalog> _builder(_catalog);
+    decltype(_builder.buildEnvironment("test_environment")) env;
+    try{
+        env = _builder.buildEnvironment("dummy_environment");
+    }
+    catch (const std::exception& e)
+    {
+        // LOG nested exception
+        print_exception(e);
+        WAZUH_LOG_ERROR("Exception while building environment: [{}]", e.what());
+        return 1;
+    }
+    std::cout << env.getGraphivzStr() << std::endl << std::endl;
+    std::cout << base::toGraphvizStr(env.getExpression()) << std::endl;
+
 
     // Processing Workers (Router), Router is replicated in each thread
     // TODO: handle hot modification of routes
@@ -169,62 +195,48 @@ int main(int argc, char* argv[])
         std::thread t {
             [=, &eventBuffer = server.output()]()
             {
-                WAZUH_PROFILE_THREAD_NAME(
-                    fmt::format("[worker:{}]", i).c_str());
-                router::Router<builder::Builder<catalog::Catalog>> router {
-                    _builder};
-
-                try
-                {
-                    // Default route
-                    router.add("test_route", "test_environment");
-                }
-                catch (const std::exception& e)
-                {
-                    WAZUH_LOG_ERROR(
-                        "Exception while building default route: [{}]",
-                        e.what());
-                    return 1;
-                }
-
+                auto controller = rxcppBackend::buildRxcppPipeline(env);
                 // Trace cerr logger
                 // TODO: this will need to be handled by the api and on the
                 // reworked router
-                auto cerrLogger = [name = "test_environment"](auto msg)
+                auto cerrLogger = [name = "dummy_environment"](auto msg)
                 {
                     std::stringstream ssTid;
                     ssTid << std::this_thread::get_id();
-                    std::cerr
-                        << fmt::format("{}: [{}]{}\n", ssTid.str(), name, msg);
+                    std::cerr << fmt::format("{}: [{}]{}\n", ssTid.str(), name, msg);
                 };
                 if (traceAll)
                 {
-                    router.subscribeAllTraceSinks("test_environment",
-                                                  cerrLogger);
+                    auto subscriber = rxcpp::make_subscriber<std::string>(
+                        cerrLogger, [](auto) {}, []() {});
+                    controller.listenOnAllTrace(subscriber);
                 }
-                else if (trace)
-                {
-                    for (auto assetName : traceNames)
-                    {
-                        router.subscribeTraceSink(
-                            "test_environment", assetName, cerrLogger);
-                    }
-                }
+                // else if (trace)
+                // {
+                //     for (auto assetName : traceNames)
+                //     {
+                //         router.subscribeTraceSink(
+                //             "test_environment", assetName, cerrLogger);
+                //     }
+                // }
 
                 // Thread loop
                 while (gs_doRun)
                 {
                     std::string event;
 
-                    if (eventBuffer.wait_dequeue_timed(
-                            event, WAIT_DEQUEUE_TIMEOUT_USEC))
+                    if (eventBuffer.wait_dequeue_timed(event, WAIT_DEQUEUE_TIMEOUT_USEC))
                     {
                         WAZUH_TRACE_SCOPE("Router on-next");
-                        router.input().on_next(ProtocolHandler::parse(event));
+                        auto result =
+                            base::result::makeSuccess(ProtocolHandler::parse(event));
+                        controller.ingestEvent(
+                            std::make_shared<base::result::Result<base::Event>>(
+                                std::move(result)));
                     }
                 }
 
-                router.input().on_completed();
+                controller.m_envInput.on_completed();
                 return 0;
             }};
 

@@ -4,13 +4,13 @@
 #include <any>
 
 #include "baseTypes.hpp"
-#include "builder/expression.hpp"
-#include "builder/registry.hpp"
+#include "expression.hpp"
+#include "registry.hpp"
 #include "json.hpp"
 
 namespace builder::internals::builders
 {
-Expression stageCheckBuilder(std::any definition)
+base::Expression stageCheckBuilder(std::any definition)
 {
     // TODO: add check conditional expression case
 
@@ -34,7 +34,7 @@ Expression stageCheckBuilder(std::any definition)
     }
 
     auto conditions = jsonDefinition.getArray();
-    std::vector<Expression> conditionExpressions;
+    std::vector<base::Expression> conditionExpressions;
     std::transform(
         conditions.begin(),
         conditions.end(),
@@ -58,7 +58,7 @@ Expression stageCheckBuilder(std::any definition)
             return Registry::getBuilder("operation.condition")(condition.getObject()[0]);
         });
 
-    auto expression = And::create("stage.check", conditionExpressions);
+    auto expression = base::And::create("stage.check", conditionExpressions);
 
     return expression;
 }
