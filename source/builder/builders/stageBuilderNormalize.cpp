@@ -12,7 +12,7 @@
 namespace builder::internals::builders
 {
 
-base::Expression stageNormalizeBuilder(std::any definition)
+base::Expression stageNormalizeBuilder(const std::any& definition)
 {
     json::Json jsonDefinition;
 
