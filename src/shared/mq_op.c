@@ -213,7 +213,7 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, __attribute
 
                         if (OS_SendUnix(target->log_socket->socket, tmpstr, strlen(tmpstr)), __mq_rcode < 0) {
                             merror("Cannot send message to socket '%s'. (Retry)", target->log_socket->name);
-                            SendMSG(queue, "Cannot send message to socket.", "logcollector", LOCALFILE_MQ);
+                            SendMSG(queue, "Cannot send message to socket.", "wazuh-logcollector", LOCALFILE_MQ);
                             target->log_socket->last_attempt = mtime;
                         }
                     }
@@ -222,7 +222,7 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, __attribute
                 }
             } else {
                 merror("Cannot send message to socket '%s'. (Retry)", target->log_socket->name);
-                SendMSG(queue, "Cannot send message to socket.", "logcollector", LOCALFILE_MQ);
+                SendMSG(queue, "Cannot send message to socket.", "wazuh-logcollector", LOCALFILE_MQ);
             }
             retval = 1;
         }

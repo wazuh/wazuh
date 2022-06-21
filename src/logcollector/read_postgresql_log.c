@@ -19,7 +19,7 @@
 static void __send_pgsql_msg(logreader *lf, int drop_it, char *buffer) {
     mdebug2("Reading PostgreSQL message: '%s'", buffer);
     if (drop_it == 0) {
-        w_msg_hash_queues_push(buffer, lf->file, strlen(buffer) + 1, lf->log_target, POSTGRESQL_MQ);
+        w_msg_hash_queues_push(buffer, lf->file, strlen(buffer) + 1, lf->log_target, LOCALFILE_MQ);
     }
 }
 
