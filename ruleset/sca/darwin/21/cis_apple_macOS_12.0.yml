@@ -868,7 +868,8 @@ checks:
       - "c:defaults read /Library/Preferences/com.apple.loginwindow autoLoginUser -> r:^$"
 
   # 5.8 Ensure a Password is Required to Wake the Computer From Sleep or Screen Saver Is Enabled (Automated) - Not implemented
-  # 5.9 Ensure system is set to hibernate (Automated)
+  # 5.9 Ensure system is set to hibernate (Automated) - Not implemented
+
   # 5.10 Require an administrator password to access system-wide preferences (Automated)
   - id: 29053
     title: "Require an administrator password to access system-wide preferences."
@@ -876,14 +877,14 @@ checks:
     rationale: "By requiring a password to unlock system-wide System Preferences the risk is mitigated of a user changing configurations that affect the entire system and requires an admin user to re-authenticate to make changes."
     remediation: "Perform the following to verify that an administrator password is required to access system-wide preferences: 1.  Open System Preferences 2.  Select Security & Privacy 3.  Select General 4.  Select Advanced... 5.  Set Require an administrator password to access system-wide preferences"
     compliance:
-      - cis: ["5.11"]
+      - cis: ["5.10"]
       - cis_level: ["1"]
     condition: all
     rules:
       - 'c:sh -c "security authorizationdb read system.preferences 2> /dev/null | grep -A1 shared | grep false" -> r:^<false/>'
 
-  # 5.12 Disable ability to login to another user's active and locked session (Automated)
-  - id: 29050
+  # 5.11 Ensure an administrator account cannot login to another user's active and locked session (Automated)
+  - id: 29054
     title: "Ensure an administrator account cannot login to another user's active and locked session."
     description: "macOS has a privilege that can be granted to any user that will allow that user to unlock active user's sessions."
     rationale: "Disabling the admins and/or user's ability to log into another user's active and locked session prevents unauthorized persons from viewing potentially sensitive and/or personal information."
@@ -891,105 +892,63 @@ checks:
     compliance:
       - cis: ["5.12"]
       - cis_level: ["1"]
+    references:
+      - "https://derflounder.wordpress.com/2014/02/16/managing-the-authorization- database-in-os-x-mavericks/"
+      - "https://www.jamf.com/jamf-nation/discussions/18195/system-login-screensaver"
     condition: all
     rules:
       - 'c:sh -c "security authorizationdb read system.login.screensaver 2>&1 | grep -c ''use-login-window-ui''" -> 1'
 
-  # 5.13 Create a custom message for the Login Screen (Automated)
-  - id: 29051
-    title: "Create a custom message for the Login Screen."
+  # 5.12 Ensure a Custom Message for the Login Screen Is Enabled (Automated)
+  - id: 29055
+    title: "Ensure a Custom Message for the Login Screen Is Enabled."
     description: "An access warning informs the user that the system is reserved for authorized use only, and that the use of the system may be monitored."
     rationale: "An access warning may reduce a casual attacker's tendency to target the system. Access warnings may also aid in the prosecution of an attacker by evincing the attacker's knowledge of the system's private status, acceptable use policy, and authorization requirements."
     remediation: 'Run the following command to enable a custom login screen message: sudo defaults write /Library/Preferences/com.apple.loginwindow LoginwindowText "<custom.message>"'
     compliance:
-      - cis: ["5.13"]
+      - cis: ["5.12"]
       - cis_level: ["1"]
     condition: all
     rules:
       - "c:defaults read /Library/Preferences/com.apple.loginwindow.plist LoginwindowText -> !r:does not exist"
 
-  # 5.14 Create a Login window banner (Automated)
-  - id: 29052
-    title: "Create a Login window banner."
+  # 5.13 Ensure a Login Window Banner Exists (Automated)
+  - id: 29056
+    title: "Ensure a Login Window Banner Exists."
     description: "A Login window banner warning informs the user that the system is reserved for authorized use only. It enforces an acknowledgment by the user that they have been informed of the use policy in the banner if required. The system recognizes either the .txt and the .rtf formats."
     rationale: "An access warning may reduce a casual attacker's tendency to target the system. Access warnings may also aid in the prosecution of an attacker by evincing the attacker's knowledge of the system's private status, acceptable use policy, and authorization requirements."
     remediation: "Edit (or create) a PolicyBanner.txt or PolicyBanner.rtf file, in the /Library/Security/ folder, to include the required login window banner text."
     compliance:
-      - cis: ["5.14"]
+      - cis: ["5.13"]
       - cis_level: ["1"]
     condition: all
     rules:
       - "d:/Library/Security -> r:^PolicyBanner"
 
-  # not implemented - SCA Limit -> 5.15 Do not enter a password-related hint (Automated)
+  # 5.14 Ensure Users' Accounts Do Not Have a Password Hint (Automated) - Not implemented
 
-  # 5.16 Disable Fast User Switching (Manual)
-  - id: 29053
+  # 5.15 Ensure Fast User Switching Is Disabled (Manual)
+  - id: 29057
     title: "Disable Fast User Switching."
     description: "Fast user switching allows a person to quickly log in to the computer with a different account. While only a minimal security risk, when a second user is logged in, that user might be able to see what processes the first user is using, or possibly gain other information about the first user. In a large directory environment where it is difficult to limit login access many valid users can login to other user's assigned computers."
     rationale: "Fast user switching allows multiple users to run applications simultaneously at console. There can be information disclosed about processes running under a different user. Without a specific configuration to save data and log out users can have unsaved data running in a background session that is not obvious."
     remediation: "Run the following command to turn fast user switching off:  sudo defaults write /Library/Preferences/.GlobalPreferences MultipleSessionEnabled -bool false"
     compliance:
-      - cis: ["5.16"]
+      - cis: ["5.15"]
       - cis_level: ["2"]
     condition: any
     rules:
       - "c:defaults read /Library/Preferences/.GlobalPreferences.plist MultipleSessionEnabled -> r:does not exist"
       - "c:defaults read /Library/Preferences/.GlobalPreferences.plist MultipleSessionEnabled -> 0"
 
-  # not implemented - process - 5.17 Secure individual keychains and items (Manual)
-
-  # 5.18 System Integrity Protection status (Automated)
-  - id: 29054
-    title: "System Integrity Protection status."
-    description: "System Integrity Protection is a security feature introduced in OS X 10.11 El Capitan. System Integrity Protection restricts access to System domain locations and restricts runtime attachment to system processes. Any attempt to attempt to inspect or attach to a system process will fail. Kernel Extensions are now restricted to /Library/Extensions and are required to be signed with a Developer ID."
-    rationale: "Running without System Integrity Protection on a production system runs the risk of the modification of system binaries or code injection of system processes that would otherwise be protected by SIP."
-    remediation: "Perform the following while booted in macOS Recovery Partition.  1. Select Terminal from the Utilities menu    2. Run the following command in Terminal: /usr/bin/csrutil enable   3. The output should be: Successfully enabled System Integrity Protection. Please restart the machine for the changes to take effect.    4. Reboot."
-    compliance:
-      - cis: ["5.18"]
-      - cis_level: ["1"]
-    condition: all
-    rules:
-      - "c:/usr/bin/csrutil status -> r:^System Integrity Protection status: enabled"
-
-  # 5.19 Enable Sealed System Volume (SSV) (Automated)
-  - id: 29055
-    title: "Enable Sealed System Volume (SSV)."
-    description: "SThe seal is verified by the boot loader at startup. macOS will not boot if system files have been tampered with. If validation fails, the user will be instructed to reinstall the operating system. During read operations for files located in the Sealed System Volume, a hash is calculated and compared to the value stored in the Merkle tree."
-    rationale: "Running without Sealed System Volume on a production system could run the risk of Apple software, that integrates directly with macOS, being modified. "
-    remediation: "Perform the following while booted in macOS Recovery Partition.  1. Select Terminal from the Utilities menu    2. Run the following command in Terminal: /usr/bin/csrutil enable authenticated-root 3. The output should be: Successfully enabled System authenticated root. Please restart the machine for the changes to take effect.    4. Reboot."
-    compliance:
-      - cis: ["5.19"]
-      - cis_level: ["1"]
-    condition: all
-    rules:
-      - "c:/usr/bin/csrutil authenticated-root status  -> r:^SAuthenticated Root status: enabled"
-
-  # 5.20 Enable Library Validation (Automated)
-  - id: 29056
-    title: "Enable Library Validation."
-    description: "Library Validation is a security feature introduced in macOS 10.10 Yosemite. Library Validation protects processes from loading arbitrary libraries. This stops root from loading arbitrary libraries into any process (depending on SIP status),and keeps root from becoming more powerful. Security is strengthened, because some user processes can no longer be fooled to run additional code without root's explicit request, which may grant access to daemons that depend on LibraryValidation for secure validation of code identity."
-    rationale: "Running without Library Validation on a production system runs the risk of the modification of system binaries or code injection of system processes that would otherwise be protected by Library Validation."
-    remediation: "Run the following command to set Library Validation: sudo defaults write /Library/Preferences/com.apple.security.libraryvalidation.plist DisableLibraryValidation DisableLibraryValidation -bool false"
-    references:
-      - https://github.com/Automattic/wp-desktop/issues/790
-      - https://www.naut.ca/blog/2020/11/13/forbidden-commands-to-liberate-macos/
-      - http://www.newosxbook.com/articles/CodeSigning.pdf
-    compliance:
-      - cis: ["5.20"]
-      - cis_level: ["1"]
-    condition: all
-    rules:
-      - "c:defaults read /Library/Preferences/com.apple.security.libraryvalidation.plist DisableLibraryValidation  -> 0"
-
   ############################################################
   # 6 User Accounts and Environment
   ############################################################
   # 6.1 Accounts Preferences Action Items
   ############################################################
-  # 6.1.1 Display login window as name and password (Automated)
-  - id: 29057
-    title: "Display login window as name and password."
+  # 6.1.1 Ensure Login Window Displays as Name and Password Is Enabled (Automated)
+  - id: 29058
+    title: "Ensure Login Window Displays as Name and Password Is Enabled."
     description: "The login window prompts a user for his/her credentials, verifies their authorization level and then allows or denies the user access to the system."
     rationale: "Prompting the user to enter both their username and password makes it twice as hard for unauthorized users to gain access to the system since they must discover two attributes."
     remediation: "Run the following command to enable the login window to display name and password: sudo defaults write /Library/Preferences/com.apple.loginwindow SHOWFULLNAME -bool true"
@@ -1000,9 +959,9 @@ checks:
     rules:
       - "c:defaults read /Library/Preferences/com.apple.loginwindow SHOWFULLNAME -> 1"
 
-  # 6.1.2 Disable "Show password hints" (Automated)
-  - id: 29058
-    title: "Disable Show password hints."
+  # 6.1.2 Ensure Show Password Hints Is Disabled (Automated)
+  - id: 29059
+    title: "Ensure Show Password Hints Is Disabled."
     description: "Password hints are user created text displayed when an incorrect password is used for an account."
     rationale: "Password hints make it easier for unauthorized persons to gain access to systems by providing information to anyone that the user provided to assist remembering the password. This info could include the password itself or other information that might be readily discerned with basic knowledge of the end user."
     remediation: "Run the following command to disable password hints: sudo defaults write /Library/Preferences/com.apple.loginwindow RetriesUntilHint -int 0"
@@ -1014,9 +973,9 @@ checks:
       - "c:defaults read /Library/Preferences/com.apple.loginwindow RetriesUntilHint -> 0"
       - "c:defaults read /Library/Preferences/com.apple.loginwindow RetriesUntilHint -> r:does not exist"
 
-  # 6.1.3 Disable guest account login (Automated)
-  - id: 29059
-    title: "Disable guest account login."
+  # 6.1.3 Ensure Guest Account Is Disabled (Automated)
+  - id: 29060
+    title: "Ensure Guest Account Is Disabled."
     description: "The guest account allows users access to the system without having to create an account or password. Guest users are unable to make setting changes, cannot remotely login to the system and all created files, caches, and passwords are deleted upon logging out."
     rationale: "Disabling the guest account mitigates the risk of an untrusted user doing basic reconnaissance and possibly using privilege escalation attacks to take control of the system."
     remediation: "Run the following command in Terminal: sudo defaults write /Library/Preferences/com.apple.loginwindow GuestEnabled - bool false"
@@ -1027,9 +986,9 @@ checks:
     rules:
       - "c:defaults read /Library/Preferences/com.apple.loginwindow.plist GuestEnabled -> 0"
 
-  # 6.1.4 Disable "Allow guests to connect to shared folders" (Automated)
-  - id: 29060
-    title: "Disable Allow guests to connect to shared folders"
+  # 6.1.4 Ensure Guest Access to Shared Folders Is Disabled (Automated)
+  - id: 29061
+    title: "Ensure Guest Access to Shared Folders Is Disabled"
     description: "Allowing guests to connect to shared folders enables users to access selected shared folders and their contents from different computers on a network."
     rationale: "Not allowing guests to connect to shared folders mitigates the risk of an untrusted user doing basic reconnaissance and possibly use privilege escalation attacks to take control of the system."
     remediation: "Run the following command in Terminal: sudo defaults write /Library/Preferences/com.apple.loginwindow GuestEnabled - bool false"
@@ -1043,9 +1002,9 @@ checks:
       - "c:defaults read /Library/Preferences/com.apple.AppleFileServer guestAccess -> r:does not exist"
       - "c:defaults read /Library/Preferences/SystemConfiguration/com.apple.smb.server AllowGuestAccess -> r:does not exist"
 
-  # 6.1.5 Remove Guest home folder (Automated)
-  - id: 29061
-    title: "Remove Guest home folder."
+  # 6.1.5 Ensure the Guest Home Folder Does Not Exist (Automated)
+  - id: 29062
+    title: "Ensure the Guest Home Folder Does Not Exist."
     description: "In the previous two controls the guest account login has been disabled and sharing to guests has been disabled as well. There is no need for the legacy Guest home folder to remain in the file system. When normal user accounts are removed you have the option to archive it, leave it in place or delete. In the case of the guest folder the folder remains in place without a GUI option to remove it. If at some point in the future a Guest account is needed it will be re-created. The presence of the Guest home folder can cause automated audits to fail when looking for compliant settings within all User folders as well. Rather than ignoring the folders continued existence it is best removed."
     rationale: "The Guest home folders are unneeded after the Guest account is disabled and could be used inappropriately."
     remediation: "1. Run the following command in Terminal: sudo rm -R /Users/Guest  2. Make sure there is no output"
@@ -1056,9 +1015,9 @@ checks:
     rules:
       - "d:/Users/Guest"
 
-  # 6.2 Turn on filename extensions (Automated)
-  - id: 29062
-    title: "Turn on filename extensions."
+  # 6.2 Ensure Show All Filename Extensions Setting is Enabled (Automated)
+  - id: 29063
+    title: "Ensure Show All Filename Extensions Setting is Enabled."
     description: "A filename extension is a suffix added to a base filename that indicates the base filename's file format."
     rationale: "Visible filename extensions allows the user to identify the file type and the application it is associated with which leads to quick identification of misrepresented malicious files."
     remediation: "Perform the following to implement the prescribed state: 1. Select Finder 2. Select Preferences 3. Check Show all filename extensions    Alternatively, use the following command: defaults write NSGlobalDomain AppleShowAllExtensions -bool true"
@@ -1069,9 +1028,9 @@ checks:
     rules:
       - "c:defaults read NSGlobalDomain AppleShowAllExtensions -> 1"
 
-  # 6.3 Disable the automatic run of safe files in Safari (Automated)
-  - id: 29063
-    title: "Disable the automatic run of safe files in Safari."
+  # 6.3 Ensure Automatic Opening of Safe Files in Safari Is Disabled (Automated)
+  - id: 29064
+    title: "Ensure Automatic Opening of Safe Files in Safari Is Disabled."
     description: "Safari will automatically run or execute what it considers safe files. This can include installers and other files that execute on the operating system. Safari bases file safety by using a list of filetypes maintained by Apple. The list of files include text, image, video and archive formats that would be run in the context of the OS rather than the browser."
     rationale: "Hackers have taken advantage of this setting via drive-by attacks. These attacks occur when a user visits a legitimate website that has been corrupted. The user unknowingly downloads a malicious file either by closing an infected pop-up or hovering over a malicious banner. An attacker can create a malicious file that will fall within Safari's safe file list that will download and execute without user input."
     remediation: 'Perform the following to implement the prescribed state: 1. Open Safari 2. Select Safari from the menu bar 3. Select Preferences 4. Select General 5. Uncheck Open "safe" files after downloading    Alternatively run the following command in Terminal: defaults write com.apple.Safari AutoOpenSafeDownloads -boolean no       Terminal Method: Run the following command to disable safe files from not opening in Safari: sudo -u <username> defaults write /Users/<username>/LibraryContainers/com.apple.Safari/Data/Library/Preferences/com.apple.Safari AutoOpenSafeDownloads -bool false'
