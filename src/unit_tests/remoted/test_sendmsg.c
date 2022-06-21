@@ -46,7 +46,7 @@ static int test_setup_keys(void ** state) {
     os_calloc(1, sizeof(keyentry), node_key);
     node_key->rcvd = 10;
     node_key->sock = 15;
-    node_key->id = strdup("001");
+    os_strdup("001",node_key->id);
 
     os_calloc(2, sizeof(keyentry*), keys.keyentries);
     keys.keyentries[0] = node_key;
