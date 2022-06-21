@@ -13,6 +13,9 @@ namespace builder::internals::builders
 
 constexpr const char* AR_QUEUE_PATH {"/tmp/ar.sock"};
 
+constexpr const char* AR_INVALID_REFERENCE_MSG =
+    "Write AR operator: Invalid referenced value.";
+
 /**
  * @brief Helper Function that allows to send a message through the AR queue
  */
