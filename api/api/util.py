@@ -10,9 +10,7 @@ from functools import wraps
 import six
 from connexion import ProblemException
 
-from wazuh.core.common import WAZUH_PATH
-from wazuh.core.exception import WazuhException, WazuhInternalError, WazuhError, WazuhPermissionError, \
-    WazuhResourceNotFound, WazuhTooManyRequests, WazuhNotAcceptable
+from wazuh.core import common, exception
 
 
 def serialize(item):
@@ -234,7 +232,7 @@ def to_relative_path(full_path):
     :return: Relative path
     :rtype: str
     """
-    return os.path.relpath(full_path, WAZUH_PATH)
+    return os.path.relpath(full_path, common.WAZUH_PATH)
 
 
 def _create_problem(exc: Exception, code=None):
@@ -254,26 +252,26 @@ def _create_problem(exc: Exception, code=None):
         ProblemException or `exc` exception type
     """
     ext = None
-    if isinstance(exc, WazuhException):
+    if isinstance(exc, exception.WazuhException):
         ext = remove_nones_to_dict({'remediation': exc.remediation,
                                     'code': exc.code,
                                     'dapi_errors': exc.dapi_errors if exc.dapi_errors != {} else None
                                     })
 
-    if isinstance(exc, WazuhInternalError):
-        raise ProblemException(status=500 if not code else code, type=exc.type, title=exc.title, detail=exc.message,
-                               ext=ext)
-    elif isinstance(exc, WazuhPermissionError):
+    if isinstance(exc, exception.WazuhInternalError):
+        raise ProblemException(status=500 if not code else code,
+                               type=exc.type, title=exc.title, detail=exc.message, ext=ext)
+    elif isinstance(exc, exception.WazuhPermissionError):
         raise ProblemException(status=403, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
-    elif isinstance(exc, WazuhResourceNotFound):
+    elif isinstance(exc, exception.WazuhResourceNotFound):
         raise ProblemException(status=404, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
-    elif isinstance(exc, WazuhTooManyRequests):
+    elif isinstance(exc, exception.WazuhTooManyRequests):
         raise ProblemException(status=429, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
-    elif isinstance(exc, WazuhNotAcceptable):
+    elif isinstance(exc, exception.WazuhNotAcceptable):
         raise ProblemException(status=406, type=exc.type, title=exc.title, detail=exc.message, ext=ext)
-    elif isinstance(exc, WazuhError):
-        raise ProblemException(status=400 if not code else code, type=exc.type, title=exc.title, detail=exc.message,
-                               ext=ext)
+    elif isinstance(exc, exception.WazuhError):
+        raise ProblemException(status=400 if not code else code,
+                               type=exc.type, title=exc.title, detail=exc.message, ext=ext)
 
     raise exc
 
@@ -334,6 +332,7 @@ def deprecate_endpoint(link: str = ''):
     link : str
         Documentation related with this deprecation.
     """
+
     def add_deprecation_headers(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):

@@ -699,6 +699,14 @@ class WazuhInternalError(WazuhException):
         self._ids = set() if ids is None else set(ids)
 
 
+class WazuhClusterError(WazuhInternalError):
+    """
+    This type of exception is raised inside the cluster.
+    """
+    _default_type = "about:blank"
+    _default_title = "Wazuh Cluster Error"
+
+
 class WazuhError(WazuhException):
     """
     This type of exception is raised as a controlled response to a bad request from user
@@ -755,14 +763,6 @@ class WazuhPermissionError(WazuhError):
     """
     _default_type = "about:blank"
     _default_title = "Permission Denied"
-
-
-class WazuhClusterError(WazuhError):
-    """
-    This type of exception is raised inside the cluster.
-    """
-    _default_type = "about:blank"
-    _default_title = "Wazuh Cluster Error"
 
 
 class WazuhResourceNotFound(WazuhError):

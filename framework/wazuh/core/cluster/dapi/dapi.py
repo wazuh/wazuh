@@ -180,14 +180,14 @@ class DistributedAPI:
                 raise
             self.logger.error(f"{e.message}")
             return e
-        except exception.WazuhError as e:
-            e.dapi_errors = self.get_error_info(e)
-            return e
         except exception.WazuhInternalError as e:
             e.dapi_errors = self.get_error_info(e)
             if self.debug:
                 raise
-            self.logger.error(f"{e.message}", exc_info=True)
+            self.logger.error(f"{e.message}", exc_info=not isinstance(e, exception.WazuhClusterError))
+            return e
+        except exception.WazuhError as e:
+            e.dapi_errors = self.get_error_info(e)
             return e
         except Exception as e:
             if self.debug:
@@ -299,15 +299,18 @@ class DistributedAPI:
 
             self.debug_log(f"Time calculating request result: {time.time() - before:.3f}s")
             return data
-        except (exception.WazuhError, exception.WazuhResourceNotFound) as e:
+        except exception.WazuhInternalError as e:
             e.dapi_errors = self.get_error_info(e)
+            # Avoid exception info if it is an asyncio timeout error, JSONDecodeError, /proc availability error or
+            # WazuhClusterError
+            self.logger.error(f"{e.message}",
+                              exc_info=e.code not in {3021, 3036, 1913} and not isinstance(e,
+                                                                                           exception.WazuhClusterError))
             if self.debug:
                 raise
             return json.dumps(e, cls=c_common.WazuhJSONEncoder)
-        except exception.WazuhInternalError as e:
+        except (exception.WazuhError, exception.WazuhResourceNotFound) as e:
             e.dapi_errors = self.get_error_info(e)
-            # Avoid exception info if it is an asyncio timeout error, JSONDecodeError or /proc availability error
-            self.logger.error(f"{e.message}", exc_info=e.code not in {3021, 3036, 1913})
             if self.debug:
                 raise
             return json.dumps(e, cls=c_common.WazuhJSONEncoder)
@@ -378,7 +381,7 @@ class DistributedAPI:
                   }
 
         # Give log path only in case of WazuhInternalError
-        if not isinstance(e, exception.WazuhError):
+        if isinstance(e, exception.WazuhInternalError):
             log_filename = None
             for h in self.logger.handlers or self.logger.parent.handlers:
                 if hasattr(h, 'baseFilename'):
