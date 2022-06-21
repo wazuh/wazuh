@@ -1,12 +1,3 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
- * All rights reserved.
- *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
- */
-
 #ifndef _FILE_OUTPUT_H
 #define _FILE_OUTPUT_H
 
@@ -15,10 +6,7 @@
 #include <iostream>
 #include <string>
 
-#include <rxcpp/rx.hpp>
-
 #include "json.hpp"
-#include "builderTypes.hpp"
 
 namespace builder::internals::outputs
 {
@@ -40,7 +28,8 @@ public:
      *
      * @param path file to store the events received
      */
-    explicit FileOutput(const std::string & path) : m_os{path, std::ios::out | std::ios::app | std::ios::binary}
+    explicit FileOutput(const std::string& path)
+        : m_os {path, std::ios::out | std::ios::app | std::ios::binary}
     {
         if (!this->m_os)
         {
@@ -65,9 +54,9 @@ public:
      *
      * @param e
      */
-    void write(const base::Event & e)
+    void write(base::Event e)
     {
-        this->m_os << e->getEvent()->str() << std::endl;
+        this->m_os << e->str() << std::endl;
     }
 };
 

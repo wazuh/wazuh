@@ -1,68 +1,95 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
- * All rights reserved.
- *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
- */
-
 #include "stageBuilderOutputs.hpp"
 
+#include <algorithm>
+#include <any>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
-#include "registry.hpp"
-
 #include <logging/logging.hpp>
+
+#include "expression.hpp"
+#include "json.hpp"
+#include "registry.hpp"
 
 namespace builder::internals::builders
 {
 
-base::Lifter stageBuilderOutputs(const base::DocumentValue & def, types::TracerFn tr)
+base::Expression stageBuilderOutputs(const std::any& definition)
 {
-    // Assert value is as expected
-    if (!def.IsArray())
-    {
-        auto msg =
-            fmt::format("Stage outputs builder, expected array but got [{}]",
-                        def.GetType());
-        WAZUH_LOG_ERROR("{}", msg);
-        throw std::invalid_argument(msg);
-    }
+    json::Json jsonDefinition;
 
-    // Build all outputs
-    std::vector<base::Lifter> outputs;
-    for (auto it = def.Begin(); it != def.End(); ++it)
-    {
-        try
-        {
-            outputs.push_back(std::get<types::OpBuilder>(Registry::getBuilder(it->MemberBegin()->name.GetString()))(it->MemberBegin()->value, tr));
-        }
-        catch (std::exception & e)
-        {
-            const char* msg = "Stage outputs builder encountered exception on building.";
-            WAZUH_LOG_ERROR("{} From exception: [{}]", msg, e.what());
-            std::throw_with_nested(std::runtime_error(msg));
-        }
-    }
-
-    // Broadcast to all operations
-    base::Lifter output;
+    // Get json and check is as expected
     try
     {
-        output = std::get<types::CombinatorBuilder>(Registry::getBuilder("combinator.broadcast"))(outputs);
+        jsonDefinition = std::any_cast<json::Json>(definition);
     }
-    catch (std::exception & e)
+    catch (const std::exception& e)
     {
-        const char* msg = "Stage outputs builder encountered exception broadcasting all outputs.";
-        WAZUH_LOG_ERROR("{} From exception: [{}]", msg, e.what());
-        std::throw_with_nested(std::runtime_error(msg));
+        throw std::runtime_error(
+            "[builders::stageBuilderOutputs(json)] Received unexpected argument type");
     }
 
-    // Finally return Lifter
-    return output;
+    if (!jsonDefinition.isArray())
+    {
+        throw std::runtime_error(
+            fmt::format("[builders::stageBuilderOutputs(json)] Invalid json definition "
+                        "type: expected [array] but got [{}]",
+                        jsonDefinition.typeName()));
+    }
+
+    // All output expressions
+    std::vector<base::Expression> outputExpressions;
+
+    // Obtain array and call appropriate builder for each item, adding the expression to
+    // the outputExpressions vector
+    auto outputObjects = jsonDefinition.getArray();
+    std::transform(outputObjects.begin(),
+                   outputObjects.end(),
+                   std::back_inserter(outputExpressions),
+                   [](auto outputDefinition)
+                   {
+                       if (!outputDefinition.isObject())
+                       {
+                           throw std::runtime_error(fmt::format(
+                               "[builders::stageBuilderOutputs(json)] "
+                               "Invalid array item type: expected [object] but "
+                               "got [{}]",
+                               outputDefinition.typeName()));
+                       }
+
+                       if (outputDefinition.size() != 1)
+                       {
+                           throw std::runtime_error(
+                               fmt::format("[builders::stageBuilderOutputs(json)] "
+                                           "Invalid object item syze: expected "
+                                           "exactly one key/value pair, but got [{}]",
+                                           outputDefinition.size()));
+                       }
+
+                       auto outputObject = outputDefinition.getObject();
+                       auto outputName = std::get<0>(outputObject.front());
+                       auto outputValue = std::get<1>(outputObject.front());
+
+                       base::Expression outputExpression;
+                       try
+                       {
+                           outputExpression =
+                               Registry::getBuilder("output." + outputName)(outputValue);
+                       }
+                       catch (const std::exception& e)
+                       {
+                           std::throw_with_nested(std::runtime_error(
+                               fmt::format("[builders::stageBuilderOutputs(json)] "
+                                           "Exception building output [{}]",
+                                           outputName)));
+                       }
+
+                       return outputExpression;
+                   });
+
+    // Create stage expression and return
+    return base::Chain::create("outputs", outputExpressions);
 }
 
 } // namespace builder::internals::builders

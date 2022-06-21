@@ -1,69 +1,89 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
- * All rights reserved.
- *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
- */
-
 #include "opBuilderFileOutput.hpp"
 
+#include <any>
 #include <memory>
 #include <stdexcept>
 #include <string>
 
-#include "outputs/file.hpp"
+#include <fmt/format.h>
 #include <logging/logging.hpp>
 
-#include <fmt/format.h>
+#include "baseTypes.hpp"
+#include "expression.hpp"
+#include "json.hpp"
+#include "outputs/file.hpp"
 
 namespace builder::internals::builders
 {
 
-base::Lifter opBuilderFileOutput(const base::DocumentValue &def, types::TracerFn tr)
+base::Expression opBuilderFileOutput(const std::any& definition)
 {
-    // Check that input is as expected and throw exception otherwise
-    if (!def.IsObject())
-    {
-        auto msg = fmt::format(
-            "File output builder expects value to be an object, but got [{}]",
-            def.GetType());
-        WAZUH_LOG_ERROR("{}", msg);
-        throw std::invalid_argument(msg);
-    }
-    if (def.GetObject().MemberCount() != 1)
-    {
-        auto msg = fmt::format("File output builder expects value to have only "
-                               "one key, but got [{}]",
-                               def.GetObject().MemberCount());
-        WAZUH_LOG_ERROR("{}", msg);
-        throw std::invalid_argument(msg);
-    }
+    json::Json jsonDefinition;
 
-    std::string path;
+    // Get json and check is as expected
     try
     {
-        path = def.MemberBegin()->value.GetString();
+        jsonDefinition = std::any_cast<json::Json>(definition);
     }
-    catch (std::exception &e)
+    catch (const std::exception& e)
     {
-        const char *msg =
-            "File output builder encountered exception on building path.";
-        WAZUH_LOG_ERROR("{} From exception: [{}]", msg, e.what());
-        std::throw_with_nested(std::runtime_error(msg));
+        throw std::runtime_error(
+            "[builders::opBuilderFileOutput(json)] Received unexpected argument type");
+    }
+    if (!jsonDefinition.isObject())
+    {
+        throw std::runtime_error(
+            fmt::format("[builders::opBuilderFileOutput(json)] Invalid json definition "
+                        "type: expected [object] but got [{}]",
+                        jsonDefinition.typeName()));
+    }
+    if (jsonDefinition.size() != 1)
+    {
+        throw std::runtime_error(
+            fmt::format("[builders::opBuilderFileOutput(json)] Invalid json definition "
+                        "size: expected [1] but got [{}]",
+                        jsonDefinition.size()));
     }
 
-    return [=](const base::Observable &input) -> base::Observable
+    auto outputObj = jsonDefinition.getObject();
+
+    auto pathPos = std::find_if(outputObj.begin(),
+                                outputObj.end(),
+                                [](auto& tuple) { return std::get<0>(tuple) == "path"; });
+    if (pathPos == outputObj.end())
     {
-        auto filePtr = std::make_shared<outputs::FileOutput>(path);
-        input.subscribe([=](auto v) { filePtr->write(v); },
-                        [](std::exception_ptr e) {
-                            WAZUH_LOG_ERROR("{}", rxcpp::util::what(e).c_str());
-                        },
-                        [=]() { /* filePtr->close(); */ });
-        return input;
-    };
+        throw std::runtime_error(
+            "[builders::opBuilderFileOutput(json)] Missing attribute path");
+    }
+    if (!std::get<1>(*pathPos).isString())
+    {
+        throw std::runtime_error(
+            fmt::format("[builders::opBuilderFileOutput(json)] Invalid attribute path "
+                        "type: expected [string] but got [{}]",
+                        std::get<1>(*pathPos).typeName()));
+    }
+
+    auto path = std::get<1>(*pathPos).getString();
+
+    auto filePtr = std::make_shared<outputs::FileOutput>(path);
+    auto name = fmt::format("{{fileOutput({})}}", path);
+    auto successTrace = fmt::format("{} -> Event write", name);
+    auto failureTrace = fmt::format("{} -> Failure, exception: ", name);
+
+    return base::Term<base::EngineOp>::create(
+        name,
+        [filePtr, successTrace, failureTrace](base::Event event) -> base::result::Result<base::Event>
+        {
+            try
+            {
+                filePtr->write(event);
+                return base::result::makeSuccess(std::move(event), successTrace);
+            }
+            catch (const std::exception& e)
+            {
+                return base::result::makeFailure(std::move(event), failureTrace + e.what());
+            }
+        });
 }
 
 } // namespace builder::internals::builders
