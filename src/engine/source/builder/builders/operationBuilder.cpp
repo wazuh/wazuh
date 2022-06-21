@@ -28,12 +28,10 @@ Expression conditionValueBuilder(std::string&& field, Json&& value)
         {
             if (event->equals(field, value))
             {
-
                 return result::makeSuccess(std::move(event), successTrace);
             }
             else
             {
-
                 return result::makeFailure(std::move(event), failureTrace);
             }
         });
