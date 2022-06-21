@@ -7,7 +7,7 @@ from wazuh.core.agent import Agent, get_agents_info
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.stats import get_daemons_stats_, hourly_, totals_, weekly_
+from wazuh.core.stats import hourly_, totals_, weekly_
 from wazuh.core.exception import WazuhException, WazuhResourceNotFound
 from wazuh.rbac.decorators import expose_resources
 
@@ -76,32 +76,6 @@ def weekly():
                                       none_msg='Could not read statistical information per week for any node'
                                       )
     result.affected_items = weekly_()
-    result.total_affected_items = len(result.affected_items)
-
-    return result
-
-
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-def get_daemons_stats(filename):
-    """Get daemons stats from an input file.
-
-    Parameters
-    ----------
-    filename: str
-        Full path of the file to get information.
-
-    Returns
-    -------
-    AffectedItemsWazuhResult
-        Dictionary with the stats of the input file.
-    """
-    result = AffectedItemsWazuhResult(
-        all_msg='Statistical information for each node was successfully read',
-        some_msg='Could not read statistical information for some nodes',
-        none_msg='Could not read statistical information for any node'
-        )
-    result.affected_items = get_daemons_stats_(filename)
     result.total_affected_items = len(result.affected_items)
 
     return result

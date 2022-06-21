@@ -3,7 +3,6 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import json
 import os
-import re
 
 from wazuh.core import common, utils
 from wazuh.core.exception import WazuhError, WazuhInternalError
@@ -115,40 +114,6 @@ def totals_(date=utils.get_utc_now()):
             alerts = []
 
     return affected
-
-
-def get_daemons_stats_(filename):
-    """Get daemons stats from an input file.
-
-    Parameters
-    ----------
-    filename: str
-        Full path of the file to get information.
-
-    Returns
-    -------
-    array
-        Stats of the input file.
-
-    Raises
-    ------
-    WazuhError
-        Raised if file does not exist.
-    """
-    try:
-        items = {}
-        with open(filename, mode='r') as f:
-            daemons_data = f.read()
-        try:
-            kv_regex = re.compile(r'(^\w*)=(.*)', re.MULTILINE)
-            for key, value in kv_regex.findall(daemons_data):
-                items[key] = float(value[1:-1])
-        except Exception as e:
-            raise WazuhInternalError(1104, extra_message=str(e))
-    except IOError:
-        raise WazuhError(1308, extra_message=filename)
-
-    return [items]
 
 
 def get_daemons_stats_from_socket(agent_id, daemon):

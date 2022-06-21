@@ -9,7 +9,6 @@ from aiohttp import web
 from connexion.lifecycle import ConnexionResponse
 
 import wazuh.cluster as cluster
-import wazuh.core.common as common
 import wazuh.manager as manager
 import wazuh.stats as stats
 from api.encoder import dumps, prettify
@@ -334,56 +333,6 @@ async def get_stats_weekly_node(request, node_id, pretty=False, wait_for_complet
 
     nodes = raise_if_exc(await get_system_nodes())
     dapi = DistributedAPI(f=stats.weekly,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
-
-
-async def get_stats_analysisd_node(request, node_id, pretty=False, wait_for_complete=False):
-    """Get a specified node's analysisd stats.
-
-    :param node_id: Cluster node name.
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    """
-    f_kwargs = {'node_id': node_id,
-                'filename': common.ANALYSISD_STATS}
-
-    nodes = raise_if_exc(await get_system_nodes())
-    dapi = DistributedAPI(f=stats.get_daemons_stats,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
-
-
-async def get_stats_remoted_node(request, node_id, pretty=False, wait_for_complete=False):
-    """Get a specified node's remoted stats.
-
-    :param node_id: Cluster node name.
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    """
-    f_kwargs = {'node_id': node_id,
-                'filename': common.REMOTED_STATS}
-
-    nodes = raise_if_exc(await get_system_nodes())
-    dapi = DistributedAPI(f=stats.get_daemons_stats,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,

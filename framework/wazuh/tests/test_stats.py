@@ -42,14 +42,6 @@ def test_weekly():
     assert response.total_affected_items == len(response.affected_items)
 
 
-@patch('wazuh.stats.get_daemons_stats_', return_value=[{"events_decoded": 1.0}])
-def test_get_daemons_stats(mock_daemons_stats_):
-    """Makes sure get_daemons_stats() fit with the expected."""
-    response = stats.get_daemons_stats('filename')
-    assert isinstance(response, AffectedItemsWazuhResult), 'The result is not WazuhResult type'
-    assert response.total_affected_items == len(response.affected_items)
-
-
 @pytest.mark.parametrize('component', [
     'logcollector', 'test'
 ])
