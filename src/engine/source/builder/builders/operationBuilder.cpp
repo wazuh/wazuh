@@ -3,11 +3,11 @@
 #include <any>
 
 #include "baseTypes.hpp"
-#include "builder/expression.hpp"
-#include "builder/syntax.hpp"
+#include "expression.hpp"
 #include "json.hpp"
 #include "registry.hpp"
 #include "result.hpp"
+#include "syntax.hpp"
 #include "utils/stringUtils.hpp"
 
 namespace
@@ -142,9 +142,22 @@ Expression operationBuilder(const std::any& definition, OperationType type)
     else if (value.isString()
              && value.getString().front() == syntax::FUNCTION_HELPER_ANCHOR)
     {
-        auto helperName = value.getString().substr(1, value.getString().find('/'));
-        auto helperArgsString = value.getString().substr(value.getString().find('/'));
-        auto helperArgs = utils::string::split(helperArgsString, '/');
+        std::string helperName;
+        std::vector<std::string> helperArgs;
+        auto helperString = value.getString().substr(1);
+        auto argAnchorPos = value.getString().find(syntax::FUNCTION_HELPER_ARG_ANCHOR);
+        // Find if has arguments
+        if (argAnchorPos != std::string::npos)
+        {
+            helperName = helperString.substr(0, argAnchorPos);
+            auto helperArgsString = helperString.substr(argAnchorPos);
+            helperArgs = utils::string::split(helperArgsString,
+                                              syntax::FUNCTION_HELPER_ARG_ANCHOR);
+        }
+        else
+        {
+            helperName = helperString;
+        }
         return Registry::getBuilder(helperName)(
             std::make_tuple(std::move(field), std::move(helperArgs)));
     }
@@ -169,12 +182,12 @@ Expression operationBuilder(const std::any& definition, OperationType type)
 namespace builder::internals::builders
 {
 
-Expression operationConditionBuilder(std::any definition)
+base::Expression operationConditionBuilder(std::any definition)
 {
     return operationBuilder(definition, OperationType::FILTER);
 }
 
-Expression operationMapBuilder(std::any definition)
+base::Expression operationMapBuilder(std::any definition)
 {
     return operationBuilder(definition, OperationType::MAP);
 }

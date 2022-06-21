@@ -4,15 +4,15 @@
 #include <any>
 
 #include "baseTypes.hpp"
-#include "builder/expression.hpp"
-#include "builder/registry.hpp"
-#include "builder/syntax.hpp"
+#include "expression.hpp"
+#include "registry.hpp"
+#include "syntax.hpp"
 #include "json.hpp"
 
 namespace builder::internals::builders
 {
 
-Expression stageNormalizeBuilder(std::any definition)
+base::Expression stageNormalizeBuilder(std::any definition)
 {
     json::Json jsonDefinition;
 
@@ -35,7 +35,7 @@ Expression stageNormalizeBuilder(std::any definition)
     }
 
     auto blocks = jsonDefinition.getArray();
-    std::vector<Expression> blockExpressions;
+    std::vector<base::Expression> blockExpressions;
     std::transform(
         blocks.begin(),
         blocks.end(),
@@ -51,7 +51,7 @@ Expression stageNormalizeBuilder(std::any definition)
                                 block.typeName()));
             }
             auto blockObj = block.getObject();
-            std::vector<Expression> subBlocksExpressions;
+            std::vector<base::Expression> subBlocksExpressions;
 
             std::transform(blockObj.begin(),
                            blockObj.end(),
@@ -71,10 +71,10 @@ Expression stageNormalizeBuilder(std::any definition)
                                        key)));
                                }
                            });
-            auto expression = And::create("subblock", subBlocksExpressions);
+            auto expression = base::And::create("subblock", subBlocksExpressions);
             return expression;
         });
-    auto expression = Chain::create("stage.normalize", blockExpressions);
+    auto expression = base::Chain::create("stage.normalize", blockExpressions);
     return expression;
 }
 

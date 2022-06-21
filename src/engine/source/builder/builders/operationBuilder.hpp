@@ -3,14 +3,14 @@
 
 #include <any>
 
-#include "builder/expression.hpp"
+#include "expression.hpp"
 
 namespace builder::internals::builders
 {
 
-Expression operationConditionBuilder(std::any definition);
+base::Expression operationConditionBuilder(std::any definition);
 
-Expression operationMapBuilder(std::any definition);
+base::Expression operationMapBuilder(std::any definition);
 
 } // namespace builder::internals::builders
 
