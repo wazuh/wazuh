@@ -171,6 +171,14 @@ w_err_t w_auth_add_agent(char *response,
                          char **id,
                          char **key);
 
+/**
+ * @brief Returns a MD5 hash of some random data collected from different sources.
+ *        The result must be freed by the caller.
+ *
+ * @return const char* The resulting hash or NULL on error.
+ */
+char *w_generate_random_pass();
+
 extern char shost[512];
 extern keystore keys;
 extern volatile int write_pending;
@@ -178,5 +186,7 @@ extern volatile int running;
 extern pthread_mutex_t mutex_keys;
 extern pthread_cond_t cond_pending;
 extern authd_config_t config;
+
+
 
 #endif /* AUTHD_H */
