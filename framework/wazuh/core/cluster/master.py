@@ -1169,15 +1169,14 @@ class Master(server.AbstractServer):
         return master_status_info
 
     async def cluster_agents_reconnect_controller(self):
-        """Controller task in charge of maintaining agents balance in the cluster.
-        """
+        """Controller task in charge of maintaining agents balance in the cluster."""
         if not self.agents_reconnect_enabled:
             return
 
         logger = self.setup_task_logger("Agents reconnect")
         logger.info("Cluster agents reconnection started.")
 
-        self.agents_reconnect = agents_reconnect.Agents_reconnect(
+        self.agents_reconnect = agents_reconnect.AgentsReconnect(
             logger=logger, blacklisted_nodes={"master"}, nodes=self.clients,
             workers_stability_threshold=self.cluster_items["intervals"]["master"]["areconn_workers_stability_threshold"]
         )
@@ -1193,7 +1192,7 @@ class Master(server.AbstractServer):
                 await asyncio.sleep(self.cluster_items["intervals"]["master"]["areconn_workers_stability_time"])
 
             # Iteration complete. Sleeping phase
-            self.agents_reconnect.current_phase = agents_reconnect.Agents_Reconnection_Phases.balance_sleeping
+            self.agents_reconnect.current_phase = agents_reconnect.AgentsReconnectionPhases.BALANCE_SLEEPING
             logger.info(f"Iteration complete. Sleep during "
                         f"{self.cluster_items['intervals']['master']['areconn_posbalance_time']} seconds.")
             await asyncio.sleep(self.cluster_items["intervals"]["master"]["areconn_posbalance_time"])

@@ -180,9 +180,9 @@ async def print_health(config, more, filter_node):
                 msg2 += "        Status:\n"
                 msg2 += "            Agents reconnect:\n"
                 msg2 += f"                Current phase: {node_info['status']['agents_reconnect']['current_phase']}.\n"
-                msg2 += f"                Last workers stability check: " \
+                msg2 += f"                Last stability check: " \
                         f"{node_info['status']['agents_reconnect']['workers_stability']['last_workers_stability_check']}.\n"
-                msg2 += f"                Last register workers: " \
+                msg2 += f"                Last connected workers: " \
                         f"{node_info['status']['agents_reconnect']['workers_stability']['last_register_workers']}.\n"
                 msg2 += f"                Worker stability counter: " \
                         f"{node_info['status']['agents_reconnect']['workers_stability']['workers_stability_counter']}.\n"

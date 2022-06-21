@@ -352,8 +352,7 @@ async def forward_function(func: callable, f_kwargs: dict = None, request_type: 
 
 
 def setup_dynamic_logger(logger, subtag: str) -> logging.Logger:
-    """Generates a new logger child by concatenating the tag of the parent and the child into the name.
-    """
+    """Generate a new logger child by concatenating the tag of the parent and the child into the name."""
     tag = logger.name.split('.')[-1]
     logger = logger.getChild(subtag)
     logger.addFilter(ClusterFilter(tag=tag, subtag=f"{tag} - {subtag}"))

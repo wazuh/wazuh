@@ -7,17 +7,17 @@ from wazuh.core.cluster.utils import setup_dynamic_logger
 from wazuh.core.common import DECIMALS_DATE_FORMAT
 
 
-class Agents_Reconnection_Phases(str, Enum):
-    no_started = "No started"
-    check_workers_stability = "Check workers stability"
-    check_previous_reconnections = "Check previous reconnections"
-    check_agents_balance = "Check agents balance"
-    reconnect_agents = "Reconnect agents"
-    balance_sleeping = "Sleeping"
-    halt = "Halt"
+class AgentsReconnectionPhases(str, Enum):
+    NOT_STARTED = "Not started"
+    CHECK_WORKERS_STABILITY = "Check workers stability"
+    CHECK_PREVIOUS_RECONNECTIONS = "Check previous reconnections"
+    CHECK_AGENTS_BALANCE = "Check agents balance"
+    RECONNECT_AGENTS = "Reconnect agents"
+    BALANCE_SLEEPING = "Sleeping"
+    HALT = "Halt"
 
 
-class Agents_reconnect:
+class AgentsReconnect:
     """Class that encapsulates everything related to the agent reconnection algorithm."""
 
     def __init__(self, logger, nodes, blacklisted_nodes, workers_stability_threshold) -> None:
@@ -39,14 +39,13 @@ class Agents_reconnect:
         self.balance_threshold = 3
 
         # General
-        self.current_phase = Agents_Reconnection_Phases.no_started
+        self.current_phase = AgentsReconnectionPhases.NOT_STARTED
 
         # Provisional
         self.posbalance_sleep = 60
 
     async def reset_counter(self) -> None:
-        """Resets all counters of the reconnection procedure.
-        """
+        """Reset all counters of the reconnection procedure."""
         self.balance_counter = 0
         self.workers_stability_counter = 0
 
@@ -61,8 +60,8 @@ class Agents_reconnect:
         stability : bool
         """
         logger = setup_dynamic_logger(
-            self.logger, Agents_Reconnection_Phases.check_workers_stability.value)
-        self.current_phase = Agents_Reconnection_Phases.check_workers_stability
+            self.logger, AgentsReconnectionPhases.CHECK_WORKERS_STABILITY.value)
+        self.current_phase = AgentsReconnectionPhases.CHECK_WORKERS_STABILITY
         if len(self.nodes) == 0:
             logger.info("No nodes to check. Skipping...")
             return False
@@ -91,7 +90,7 @@ class Agents_reconnect:
                     f"Counter: {self.workers_stability_counter}/{self.workers_stability_threshold}.")
         return False
 
-    def get_current_phase(self) -> Agents_Reconnection_Phases:
+    def get_current_phase(self) -> AgentsReconnectionPhases:
         """Return the current phase of the algorithm.
 
         Returns
@@ -101,7 +100,7 @@ class Agents_reconnect:
         return self.current_phase
 
     def get_workers_stability_info(self) -> dict:
-        """Returns the information related to the phase 'Workers stability'.
+        """Return the information related to the phase 'Workers stability'.
 
         Returns
         -------
