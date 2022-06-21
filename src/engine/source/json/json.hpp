@@ -308,6 +308,43 @@ public:
     }
 
     /**
+     * @brief get the value of the field.
+     * Overwrites previous value. If reference field is not found, sets base field to
+     * null.
+     *
+     * @param basePointerPath The base pointer path to set.
+     *
+     * @return T The value of the field.
+     *
+     * @throws std::runtime_error If any pointer path is invalid.
+     */
+    template<class T>
+    std::optional<T> get(std::string_view basePointerPath)
+    {
+        auto fieldPtr = rapidjson::Pointer(basePointerPath.data());
+
+        if (fieldPtr.IsValid())
+        {
+            const auto* value = fieldPtr.Get(m_document);
+            if(value)
+            {
+                return value->Get<T>();
+            }
+            else
+            {
+                return std::nullopt;
+            }
+        }
+        else
+        {
+            throw std::runtime_error(
+                fmt::format("[Json::get(basePointerPath)] "
+                            "Invalid json path: [{}]",
+                            basePointerPath));
+        }
+    }
+
+    /**
      * @brief Get Json prettyfied string.
      *
      * @return std::string The Json prettyfied string.
