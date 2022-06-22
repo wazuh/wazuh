@@ -1291,3 +1291,752 @@ checks:
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> EnableVirtualization -> 1'
+
+  - id: 26091
+    title: " Ensure 'Print Spooler (Spooler)' is set to 'Disabled' (DC only)"
+    description: "This service spools print jobs and handles interaction with printers"
+    rationale: "Disabling the Print Spooler (Spooler) service mitigates the PrintNightmare vulnerability  (CVE-2021-34527) and other attacks against the service."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Print Spooler"
+    compliance:
+      - cis: ["5.1"]
+      - cis_csc: ["9.2","4.8"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Spooler -> Start -> 4'
+
+  - id: 26091
+    title: "Ensure 'Print Spooler (Spooler)' is set to 'Disabled' (MS only)"
+    description: "This service spools print jobs and handles interaction with printers"
+    rationale: "Disabling the Print Spooler (Spooler) service mitigates the PrintNightmare vulnerability  (CVE-2021-34527) and other attacks against the service."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Print Spooler"
+    compliance:
+      - cis: ["5.2"]
+      - cis_csc: ["9.2","4.8"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Spooler -> Start -> 4'
+
+  - id: 26127
+    title: "Ensure 'Windows Firewall: Private: Firewall state' is set to 'On (recommended)'"
+    description: "Select On (recommended) to have Windows Firewall with Advanced Security use the settings for this profile to filter network traffic. If you select Off, Windows Firewall with Advanced Security will not use any of the firewall rules or connection security rules for this profile. The recommended state for this setting is: On (recommended)."
+    rationale: "If the firewall is turned off all traffic will be able to access the system and an attacker may be more easily able to remotely exploit a weakness in a network service."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to On (recommended): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Firewall with Advanced Security\\Windows Firewall with Advanced Security\\Windows Firewall Properties\\Private Profile\\Firewall state"
+    compliance:
+      - cis: ["9.2.1"]
+      - cis_csc: ["9.2", "9.4"]
+      - pci_dss: ["1.2.3"]
+      - tsc: ["CC6.1"]
+    references:
+      - 'CCE-33066-2'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile -> EnableFirewall -> 1'
+
+  - id: 26128
+    title: "Ensure 'Windows Firewall: Private: Inbound connections' is set to 'Block (default)'"
+    description: "This setting determines the behavior for inbound connections that do not match an inbound firewall rule. The recommended state for this setting is: Block (default)."
+    rationale: "If the firewall allows all traffic to access the system then an attacker may be more easily able to remotely exploit a weakness in a network service."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Block (default): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Firewall with Advanced Security\\Windows Firewall with Advanced Security\\Windows Firewall Properties\\Private Profile\\Inbound connections"
+    compliance:
+      - cis: ["9.2.2"]
+      - cis_csc: ["9.2", "9.4"]
+      - pci_dss: ["1.2.3"]
+      - tsc: ["CC6.1"]
+    references:
+      - 'CCE-33161-1'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile -> DefaultInboundAction -> 1'
+
+  - id: 26129
+    title: "Ensure 'Windows Firewall: Private: Outbound connections' is set to 'Allow (default)'"
+    description: "This setting determines the behavior for outbound connections that do not match an outbound firewall rule. The recommended state for this setting is: Allow (default). Note: If you set Outbound connections to Block and then deploy the firewall policy by using a GPO, computers that receive the GPO settings cannot receive subsequent Group Policy updates unless you create and deploy an outbound rule that enables Group Policy to work. Predefined rules for Core Networking include outbound rules that enable Group Policy to work. Ensure that these outbound rules are active, and thoroughly test firewall profiles before deploying."
+    rationale: "Some people believe that it is prudent to block all outbound connections except those specifically approved by the user or administrator. Microsoft disagrees with this opinion, blocking outbound connections by default will force users to deal with a large number of dialog boxes prompting them to authorize or block applications such as their web browser or instant messaging software. Additionally, blocking outbound traffic has little value because if an attacker has compromised the system they can reconfigure the firewall anyway."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Allow (default): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Firewall with Advanced Security\\Windows Firewall with Advanced Security\\Windows Firewall Properties\\Private Profile\\Outbound connections"
+    compliance:
+      - cis: ["9.2.3"]
+      - cis_csc: ["9.2", "9.4"]
+      - pci_dss: ["1.2.3"]
+      - tsc: ["CC6.1"]
+    references:
+      - 'CCE-33162-9'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile -> DefaultOutboundAction -> 0'
+
+  - id: 26130
+    title: "Ensure 'Windows Firewall: Private: Settings: Display a notification' is set to 'No'"
+    description: "Select this option to have Windows Firewall with Advanced Security display notifications to the user when a program is blocked from receiving inbound connections. The recommended state for this setting is: No. Note: When the Apply local firewall rules setting is configured to No, it's recommended to also configure the Display a notification setting to No. Otherwise, users will continue to receive messages that ask if they want to unblock a restricted inbound connection, but the user's response will be ignored."
+    rationale: "Firewall notifications can be complex and may confuse the end users, who would not be able to address the alert."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to No: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Firewall with Advanced Security\\Windows Firewall with Advanced Security\\Windows Firewall Properties\\Private Profile\\Settings Customize\\Display a notification"
+    compliance:
+      - cis: ["9.2.4"]
+      - pci_dss: ["7.2"]
+      - tsc: ["CC6.4"]
+    references:
+      - 'CCE-33065-4'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile -> DisableNotifications -> 1'
+
+  - id: 26131
+    title: "Ensure 'Windows Firewall: Private: Logging: Name' is set to '%SYSTEMROOT%\\System32\\logfiles\\firewall\\privatefw.log'"
+    description: "Use this option to specify the path and name of the file in which Windows Firewall will write its log information. The recommended state for this setting is: %SYSTEMROOT%\\System32\\logfiles\\firewall\\privatefw.log."
+    rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to %SYSTEMROOT%\\System32\\logfiles\\firewall\\privatefw.log: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Firewall with Advanced Security\\Windows Firewall with Advanced Security\\Windows Firewall Properties\\Private Profile\\Logging Customize\\Name"
+    compliance:
+      - cis: ["9.2.5"]
+      - cis_csc: ["6.2", "6.3"]
+      - pci_dss: ["10.6.1"]
+      - nist_800_53: ["AU.6"]
+      - gpg13: ["4.12"]
+      - gdpr_IV: [35.7.d]
+      - hipaa: ["164.312.b"]
+      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3"]
+    references:
+      - 'CCE-33437-5'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogFilePath -> r:System32\\logfiles\\firewall\\privatefw.log'
+
+  - id: 26132
+    title: "Ensure 'Windows Firewall: Private: Logging: Size limit (KB)' is set to '16,384 KB or greater'"
+    description: "Use this option to specify the size limit of the file in which Windows Firewall will write its log information. The recommended state for this setting is: 16,384 KB or greater."
+    rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to 16,384 KB or greater: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Firewall with Advanced Security\\Windows Firewall with Advanced Security\\Windows Firewall Properties\\Private Profile\\Logging Customize\\Size limit (KB)"
+    compliance:
+      - cis: ["9.2.6"]
+      - cis_csc: ["6.3", "6.4"]
+      - pci_dss: ["10.6.1"]
+      - nist_800_53: ["AU.6"]
+      - gpg13: ["4.12"]
+      - gdpr_IV: [35.7.d]
+      - hipaa: ["164.312.b"]
+      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3"]
+    references:
+      - 'CCE-34356-6'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogFileSize -> n:^(\d+) compare >= 16384'
+
+  - id: 26133
+    title: "Ensure 'Windows Firewall: Private: Logging: Log dropped packets' is set to 'Yes'"
+    description: "Use this option to log when Windows Firewall with Advanced Security discards an inbound packet for any reason. The log records why and when the packet was dropped. Look for entries with the word DROP in the action column of the log. The recommended state for this setting is: Yes."
+    rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Yes: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Firewall with Advanced Security\\Windows Firewall with Advanced Security\\Windows Firewall Properties\\Private Profile\\Logging Customize\\Log dropped packets"
+    compliance:
+      - cis: ["9.2.7"]
+      - cis_csc: ["6.2", "6.3"]
+      - pci_dss: ["10.6.1"]
+      - nist_800_53: ["AU.6"]
+      - gpg13: ["4.12"]
+      - gdpr_IV: [35.7.d]
+      - hipaa: ["164.312.b"]
+      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3"]
+    references:
+      - 'CCE-33436-7'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogDroppedPackets -> 1'
+
+  - id: 26134
+    title: "Ensure 'Windows Firewall: Private: Logging: Log successful connections' is set to 'Yes'"
+    description: "Use this option to log when Windows Firewall with Advanced Security allows an inbound connection. The log records why and when the connection was formed. Look for entries with the word ALLOW in the action column of the log. The recommended state for this setting is: Yes."
+    rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Yes: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Firewall with Advanced Security\\Windows Firewall with Advanced Security\\Windows Firewall Properties\\Private Profile\\Logging Customize\\Log successful connections"
+    compliance:
+      - cis: ["9.2.8"]
+      - cis_csc: ["6.2", "6.3"]
+      - pci_dss: ["10.6.1"]
+      - nist_800_53: ["AU.6"]
+      - gpg13: ["4.12"]
+      - gdpr_IV: [35.7.d]
+      - hipaa: ["164.312.b"]
+      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3"]
+    references:
+      - 'CCE-34177-6'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogSuccessfulConnections -> 1'
+
+  - id: 26135
+    title: "Ensure 'Windows Firewall: Public: Firewall state' is set to 'On (recommended)'"
+    description: "Select On (recommended) to have Windows Firewall with Advanced Security use the settings for this profile to filter network traffic. If you select Off, Windows Firewall with Advanced Security will not use any of the firewall rules or connection security rules for this profile. The recommended state for this setting is: On (recommended)."
+    rationale: "If the firewall is turned off all traffic will be able to access the system and an attacker may be more easily able to remotely exploit a weakness in a network service"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to On (recommended): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Firewall with Advanced Security\\Windows Firewall with Advanced Security\\Windows Firewall Properties\\Public Profile\\Firewall state"
+    compliance:
+      - cis: ["9.3.1"]
+      - cis_csc: ["9.2", "9.4"]
+      - pci_dss: ["1.2.3"]
+      - tsc: ["CC6.1"]
+    references:
+      - 'CCE-35703-8'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile -> EnableFirewall -> 1'
+
+  - id: 26136
+    title: "Ensure 'Windows Firewall: Public: Inbound connections' is set to 'Block (default)'"
+    description: "This setting determines the behavior for inbound connections that do not match an inbound firewall rule. The recommended state for this setting is: Block (default)."
+    rationale: "If the firewall allows all traffic to access the system then an attacker may be more easily able to remotely exploit a weakness in a network service."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Block (default): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Firewall with Advanced Security\\Windows Firewall with Advanced Security\\Windows Firewall Properties\\Public Profile\\Inbound connections"
+    compliance:
+      - cis: ["9.3.2"]
+      - cis_csc: ["9.2", "9.4"]
+      - pci_dss: ["1.2.3"]
+      - tsc: ["CC6.1"]
+    references:
+      - 'CCE-33069-6'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile -> DefaultInboundAction -> 1'
+
+  - id: 26137
+    title: "Ensure 'Windows Firewall: Public: Outbound connections' is set to 'Allow (default)'"
+    description: "This setting determines the behavior for outbound connections that do not match an outbound firewall rule. The recommended state for this setting is: Allow (default). Note: If you set Outbound connections to Block and then deploy the firewall policy by using a GPO, computers that receive the GPO settings cannot receive subsequent Group Policy updates unless you create and deploy an outbound rule that enables Group Policy to work. Predefined rules for Core Networking include outbound rules that enable Group Policy to work. Ensure that these outbound rules are active, and thoroughly test firewall profiles before deploying."
+    rationale: "Some people believe that it is prudent to block all outbound connections except those specifically approved by the user or administrator. Microsoft disagrees with this opinion, blocking outbound connections by default will force users to deal with a large number of dialog boxes prompting them to authorize or block applications such as their web browser or instant messaging software. Additionally, blocking outbound traffic has little value because if an attacker has compromised the system they can reconfigure the firewall anyway."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Allow (default): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Firewall with Advanced Security\\Windows Firewall with Advanced Security\\Windows Firewall Properties\\Public Profile\\Outbound connections"
+    compliance:
+      - cis: ["9.3.3"]
+      - cis_csc: ["9.2", "9.4"]
+      - pci_dss: ["1.2.3"]
+      - tsc: ["CC6.1"]
+    references:
+      - 'CCE-33070-4'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile -> DefaultOutboundAction -> 0'
+
+  - id: 26138
+    title: "Ensure 'Windows Firewall: Public: Settings: Display a notification' is set to 'No'"
+    description: "Select this option to have Windows Firewall with Advanced Security display notifications to the user when a program is blocked from receiving inbound connections. The recommended state for this setting is: No"
+    rationale: "Some organizations may prefer to avoid alarming users when firewall rules block certain types of network activity. However, notifications can be helpful when troubleshooting network issues involving the firewall."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to 'No': Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Firewall with Advanced Security\\Windows Firewall with Advanced Security\\Windows Firewall Properties\\Public Profile\\Settings Customize\\Display a notification"
+    compliance:
+      - cis: ["9.3.4"]
+      - pci_dss: ["7.2"]
+      - tsc: ["CC6.4"]
+    references:
+      - 'CCE-33068-8'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile -> DisableNotifications -> 1'
+
+  - id: 26139
+    title: "Ensure 'Windows Firewall: Public: Settings: Apply local firewall rules' is set to 'No'"
+    description: "This setting controls whether local administrators are allowed to create local firewall rules that apply together with firewall rules configured by Group Policy. The recommended state for this setting is: No. Note: When the Apply local firewall rules setting is configured to No, it's recommended to also configure the Display a notification setting to No. Otherwise, users will continue to receive messages that ask if they want to unblock a restricted inbound connection, but the user's response will be ignored."
+    rationale: "When in the Public profile, there should be no special local firewall exceptions per computer. These settings should be managed by a centralized policy."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to No: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Firewall with Advanced Security\\Windows Firewall with Advanced Security\\Windows Firewall Properties\\Public Profile\\Settings Customize\\Apply local firewall rules"
+    compliance:
+      - cis: ["9.3.5"]
+      - cis_csc: ["5.1"]
+      - pci_dss: ["7.2"]
+      - tsc: ["CC6.4"]
+    references:
+      - 'CCE-35537-0'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile -> AllowLocalPolicyMerge -> 0'
+
+  - id: 26140
+    title: "Ensure 'Windows Firewall: Public: Settings: Apply local connection security rules' is set to 'No'"
+    description: "This setting controls whether local administrators are allowed to create connection security rules that apply together with connection security rules configured by Group Policy. The recommended state for this setting is: No."
+    rationale: "Users with administrative privileges might create firewall rules that expose the system to remote attack."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to No: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Firewall with Advanced Security\\Windows Firewall with Advanced Security\\Windows Firewall Properties\\Public Profile\\Settings Customize\\Apply local connection security rules"
+    compliance:
+      - cis: ["9.3.6"]
+      - cis_csc: ["5.1"]
+      - pci_dss: ["7.2"]
+      - tsc: ["CC6.4"]
+    references:
+      - 'CCE-33099-3'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile -> AllowLocalIPsecPolicyMerge -> 0'
+
+  - id: 26141
+    title: "Ensure 'Windows Firewall: Public: Logging: Name' is set to '%SYSTEMROOT%\\System32\\logfiles\\firewall\\publicfw.log'"
+    description: "Use this option to specify the path and name of the file in which Windows Firewall will write its log information. The recommended state for this setting is: %SYSTEMROOT%\\System32\\logfiles\\firewall\\publicfw.log."
+    rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to %SYSTEMROOT%\\System32\\logfiles\\firewall\\publicfw.log: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Firewall with Advanced Security\\Windows Firewall with Advanced Security\\Windows Firewall Properties\\Public Profile\\Logging Customize\\Name"
+    compliance:
+      - cis: ["9.3.7"]
+      - cis_csc: ["6.2", "6.3"]
+      - pci_dss: ["10.6.1"]
+      - nist_800_53: ["AU.6"]
+      - gpg13: ["4.12"]
+      - gdpr_IV: [35.7.d]
+      - hipaa: ["164.312.b"]
+      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3"]
+    references:
+      - 'CCE-35117-1'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogFilePath -> r:System32\\logfiles\\firewall\\publicfw.log'
+
+  - id: 26142
+    title: "Ensure 'Windows Firewall: Public: Logging: Size limit (KB)' is set to '16,384 KB or greater'"
+    description: "Use this option to specify the size limit of the file in which Windows Firewall will write its log information. The recommended state for this setting is: 16,384 KB or greater."
+    rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to 16,384 KB or greater: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Firewall with Advanced Security\\Windows Firewall with Advanced Security\\Windows Firewall Properties\\Public Profile\\Logging Customize\\Size limit (KB)"
+    compliance:
+      - cis: ["9.3.8"]
+      - cis_csc: ["6.3", "6.4"]
+      - pci_dss: ["10.6.1"]
+      - nist_800_53: ["AU.6"]
+      - gpg13: ["4.12"]
+      - gdpr_IV: [35.7.d]
+      - hipaa: ["164.312.b"]
+      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3"]
+    references:
+      - 'CCE-35421-7'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogFileSize -> n:^(\d+) compare >= 16384'
+
+  - id: 26143
+    title: "Ensure 'Windows Firewall: Public: Logging: Log dropped packets' is set to 'Yes'"
+    description: "Use this option to log when Windows Firewall with Advanced Security discards an inbound packet for any reason. The log records why and when the packet was dropped. Look for entries with the word DROP in the action column of the log. The recommended state for this setting is: Yes."
+    rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Yes: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Firewall with Advanced Security\\Windows Firewall with Advanced Security\\Windows Firewall Properties\\Public Profile\\Logging Customize\\Log dropped packets"
+    compliance:
+      - cis: ["9.3.9"]
+      - cis_csc: ["6.2", "6.3"]
+      - pci_dss: ["10.6.1"]
+      - nist_800_53: ["AU.6"]
+      - gpg13: ["4.12"]
+      - gdpr_IV: [35.7.d]
+      - hipaa: ["164.312.b"]
+      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3"]
+    references:
+      - 'CCE-35116-3'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogDroppedPackets -> 1'
+
+  - id: 26144
+    title: "Ensure 'Windows Firewall: Public: Logging: Log successful connections' is set to 'Yes'"
+    description: "Use this option to log when Windows Firewall with Advanced Security allows an inbound connection. The log records why and when the connection was formed. Look for entries with the word ALLOW in the action column of the log. The recommended state for this setting is: Yes."
+    rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Yes. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Firewall with Advanced Security\\Windows Firewall with Advanced Security\\Windows Firewall Properties\\Public Profile\\Logging Customize\\Log successful connections"
+    compliance:
+      - cis: ["9.3.10"]
+      - cis_csc: ["6.2", "6.3"]
+      - pci_dss: ["10.6.1"]
+      - nist_800_53: ["AU.6"]
+      - gpg13: ["4.12"]
+      - gdpr_IV: [35.7.d]
+      - hipaa: ["164.312.b"]
+      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3"]
+    references:
+      - 'CCE-33734-5'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogSuccessfulConnections -> 1'
+      -
+  - id: 26145
+    title: "Ensure 'Audit Credential Validation' is set to 'Success and Failure'"
+    description: "This subcategory reports the results of validation tests on credentials submitted for a user  account logon request. These events occur on the computer that is authoritative for the  credentials. For domain accounts, the Domain Controller is authoritative, whereas for local  accounts, the local computer is authoritative. In domain environments, most of the Account  Logon events occur in the Security log of the Domain Controllers that are authoritative for  the domain accounts. However, these events can occur on other computers in the  organization when local accounts are used to log on."
+    rationale: "Auditing these events may be useful when investigating a security incident"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Account Logon\\Audit Credential  Validation"
+    compliance:
+      - cis: ["17.1.1"]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"Credential Validation" -> r:Success and Failure'
+
+  - id: 26145
+    title: "Ensure 'Audit Kerberos Authentication Service' is set to 'Success and Failure' (DC Only)"
+    description: "This subcategory reports the results of events generated after a Kerberos authentication  TGT request. Kerberos is a distributed authentication service that allows a client running  on behalf of a user to prove its identity to a server without sending data across the  network. This helps mitigate an attacker or server from impersonating a user."
+    rationale: "Auditing these events may be useful when investigating a security incident."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Account Logon\\Audit Kerberos  Authentication Service"
+    compliance:
+      - cis: ["17.1.2"]
+      - cis_csc: ["8.5","6.3"]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"Kerberos Authentication Service" -> r:Success and Failure'
+
+  - id: 26145
+    title: "Ensure 'Audit Kerberos Service Ticket Operations' is set to 'Success and Failure' (DC Only)"
+    description: "This subcategory reports the results of events generated by Kerberos authentication ticket-granting ticket (TGT) requests. Kerberos Service Ticket requests (TGS requests) occur as  part of service use and access requests by specific accounts. Auditing these events will  record the IP address from which the account requested TGS, when TGS was requested,  and which encryption type was used."
+    rationale: "Auditing these events may be useful when investigating a security incident."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Account Logon\\Audit Kerberos  Service Ticket Operations"
+    compliance:
+      - cis: ["17.1.3"]
+      - cis_csc: ["8.5","6.3"]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"Kerberos Authentication Service" -> r:Success and Failure'
+
+  - id: 26146
+    title: "Ensure 'Audit Application Group Management' is set to 'Success and Failure'"
+    description: "This policy setting allows you to audit events generated by changes to application groups  such as the following: -Application group is created, changed, or deleted. -Member is added or removed from an application group. Application groups are utilized by Windows Authorization Manager, which is a flexible  framework created by Microsoft for integrating role-based access control (RBAC) into  applications. More information on Windows Authorization Manager is available at MSDN - Windows Authorization Manager."
+    rationale: "Auditing events in this category may be useful when investigating an incident."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Account Management\\Audit  Application Group Management"
+    compliance:
+      - cis: ["17.2.1"]
+      - cis_csc: ["6.3","16.12","16.9"]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"Application Group Management" -> r:Success and Failure'
+
+  - id: 26146
+    title: "Ensure 'Audit Computer Account Management' is set to include 'Success' (DC only)"
+    description: "This subcategory reports each event of computer account management, such as when a  computer account is created, changed, deleted, renamed, disabled, or enabled."
+    rationale: "Auditing events in this category may be useful when investigating an incident."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Account Management\\Audit Computer  Account Management"
+    compliance:
+      - cis: ["17.2.2"]
+      - cis_csc: ["8.5","6.3"]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"Computer Account Management" -> r:Success'
+
+  - id: 26146
+    title: "Ensure 'Audit Distribution Group Management' is set to include 'Success' (DC only)"
+    description: "This subcategory reports each event of distribution group management, such as when a  distribution group is created, changed, or deleted or when a member is added to or  removed from a distribution group. If you enable this Audit policy setting, administrators  can track events to detect malicious, accidental, and authorized creation of group accounts. "
+    rationale: "Auditing these events may provide an organization with insight when investigating an  incident. For example, when a given unauthorized user was added to a sensitive  distribution group."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Account Management\\Audit  Distribution Group Management"
+    compliance:
+      - cis: ["17.2.3"]
+      - cis_csc: ["8.5","6.3"]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"Distribution Group Management" -> r:Success'
+
+  - id: 26146
+    title: "Ensure 'Audit Other Account Management Events' is set to include 'Success' (DC only)"
+    description: "This subcategory reports other account management events."
+    rationale: "Auditing these events may be useful when investigating a security incident."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Account Management\\Audit Other  Account Management Events"
+    compliance:
+      - cis: ["17.2.4"]
+      - cis_csc: [""]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"Other Account Management Events" -> r:Success'
+
+  - id: 26147
+    title: "Ensure 'Audit Security Group Management' is set to include 'Success'"
+    description: "This subcategory reports each event of security group management, such as when a  security group is created, changed, or deleted or when a member is added to or removed  from a security group. If you enable this Audit policy setting, administrators can track  events to detect malicious, accidental, and authorized creation of security group accounts."
+    rationale: "Auditing events in this category may be useful when investigating an incident."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Account Management\\Audit Security  Group Management"
+    compliance:
+      - cis: ["17.2.5"]
+      - cis_csc: ["6.3","16.6"]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"Security Group Management" -> r:Success'
+
+  - id: 26148
+    title: "Ensure 'Audit User Account Management' is set to 'Success and Failure' "
+    description: "This subcategory reports each event of user account management, such as when a user  account is created, changed, or deleted; a user account is renamed, disabled, or enabled; or  a password is set or changed. If you enable this Audit policy setting, administrators can  track events to detect malicious, accidental, and authorized creation of user accounts."
+    rationale: "Auditing these events may be useful when investigating a security incident."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Account Management\\Audit User  Account Management"
+    compliance:
+      - cis: ["17.2.6"]
+      - cis_csc: ["6.3","16.6"]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"User Account Management" -> r:Success and Failure'
+
+  - id: 26149
+    title: "Ensure 'Audit PNP Activity' is set to include 'Success'"
+    description: "This policy setting allows you to audit when plug and play detects an external device."
+    rationale: "Enabling this setting will allow a user to audit events when a device is plugged into a system. This can help alert IT staff if unapproved devices are plugged in."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Detailed Tracking\\Audit PNP  Activity"
+    compliance:
+      - cis: ["17.3.1"]
+      - cis_csc: ["8.4","8.5","13.7"]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"Plug and Play Events" -> r:Success'
+
+  - id: 26150
+    title: "Ensure 'Audit Process Creation' is set to include 'Success'"
+    description: "This subcategory reports the creation of a process and the name of the program or user that created it."
+    rationale: "Auditing these events may be useful when investigating a security incident."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Detailed Tracking\\Audit Process  Creation"
+    compliance:
+      - cis: ["17.3.2"]
+      - cis_csc: ["6.3"]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"Process Creation" -> r:Success'
+
+  - id: 26150
+    title: "Ensure 'Audit Directory Service Access' is set to include 'Failure'"
+    description: "This subcategory reports when an AD DS object is accessed. Only objects with SACLs cause  audit events to be generated, and only when they are accessed in a manner that matches  their SACL. These events are similar to the directory service access events in previous  versions of Windows Server. This subcategory applies only to Domain Controllers."
+    rationale: "Auditing these events may be useful when investigating a security incident."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\DS Access\\Audit Directory Service  Access"
+    compliance:
+      - cis: ["17.4.1"]
+      - cis_csc: ["8.5","6.3"]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"Directory Service Access" -> r:Failure'
+
+  - id: 26150
+    title: "Ensure 'Audit Directory Service Changes' is set to include 'Success'"
+    description: "This subcategory reports changes to objects in Active Directory Domain Services (AD DS).  The types of changes that are reported are create, modify, move, and undelete operations  that are performed on an object. DS Change auditing, where appropriate, indicates the old  and new values of the changed properties of the objects that were changed. Only objects  with SACLs cause audit events to be generated, and only when they are accessed in a manner that matches their SACL. Some objects and properties do not cause audit events to  be generated due to settings on the object class in the schema. This subcategory applies  only to Domain Controllers."
+    rationale: "Auditing these events may be useful when investigating a security incident."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\DS Access\\Audit Directory Service  Changes"
+    compliance:
+      - cis: ["17.4.2"]
+      - cis_csc: ["8.5","6.3"]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"Directory Service Changes" -> r:Success'
+
+  - id: 26151
+    title: "Ensure 'Audit Account Lockout' is set to include 'Failure'"
+    description: "This subcategory reports when a user's account is locked out as a result of too many failed logon attempts."
+    rationale: "Auditing these events may be useful when investigating a security incident."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Logon/Logoff\\Audit Account Lockout"
+    compliance:
+      - cis: ["17.5.1"]
+      - cis_csc: ["6.3","16.6"]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"Process Creation" -> r:Failure'
+
+  - id: 26152
+    title: "Ensure 'Audit Group Membership' is set to include 'Success'"
+    description: "This policy allows you to audit the group membership information in the user’s logon  token. Events in this subcategory are generated on the computer on which a logon session  is created. For an interactive logon, the security audit event is generated on the computer  that the user logged on to. For a network logon, such as accessing a shared folder on the  network, the security audit event is generated on the computer hosting the resource."
+    rationale: "Auditing these events may be useful when investigating a security incident."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Logon/Logoff\\Audit Group Membership"
+    compliance:
+      - cis: ["17.5.2"]
+      - cis_csc: ["4.8","6.3","16.6"]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"Group Membership" -> r:Success'
+
+  - id: 26153
+    title: "Ensure 'Audit Logoff' is set to include 'Success'"
+    description: "This subcategory reports when a user logs off from the system. These events occur on the  accessed computer. For interactive logons, the generation of these events occurs on the  computer that is logged on to. If a network logon takes place to access a share, these events  generate on the computer that hosts the accessed resource. If you configure this setting to  No auditing, it is difficult or impossible to determine which user has accessed or attempted  to access organization computers."
+    rationale: "Auditing these events may be useful when investigating a security incident."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Logon/Logoff\\Audit Logoff"
+    compliance:
+      - cis: ["17.5.3"]
+      - cis_csc: ["6.3","16.13","16.6"]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"Logoff" -> r:Success'
+
+  - id: 26154
+    title: "Ensure 'Audit Logon' is set to 'Success and Failure'"
+    description: "This subcategory reports when a user attempts to log on to the system. These events occur  on the accessed computer. For interactive logons, the generation of these events occurs on  the computer that is logged on to. If a network logon takes place to access a share, these  events generate on the computer that hosts the accessed resource. If you configure this  setting to No auditing, it is difficult or impossible to determine which user has accessed or  attempted to access organization computers."
+    rationale: "Auditing these events may be useful when investigating a security incident."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Logon/Logoff\\Audit Logon"
+    compliance:
+      - cis: ["17.5.4"]
+      - cis_csc: ["6.3","16.6","16.13"]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"Logon" -> r:Success and Failure'
+
+  - id: 26155
+    title: "Ensure 'Audit Other Logon/Logoff Events' is set to 'Success and Failure'"
+    description: "This subcategory reports other logon/logoff-related events, such as Remote Desktop  Services session disconnects and reconnects, using RunAs to run processes under a  different account, and locking and unlocking a workstation."
+    rationale: "Auditing these events may be useful when investigating a security incident."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Logon/Logoff\\Audit Other  Logon/Logoff Events "
+    compliance:
+      - cis: ["17.5.5"]
+      - cis_csc: ["6.3","16.6","16.13"]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"Other Logon/Logoff Events" -> r:Success and Failure'
+
+  - id: 26156
+    title: "Ensure 'Audit Special Logon' is set to include 'Success'"
+    description: "This subcategory reports when a special logon is used. A special logon is a logon that has  administrator-equivalent privileges and can be used to elevate a process to a higher level."
+    rationale: "Auditing these events may be useful when investigating a security incident."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Logon/Logoff\\Audit Special Logon"
+    compliance:
+      - cis: ["17.5.6"]
+      - cis_csc: ["6.3","16.6"]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"Special Logon" -> r:Success'
+
+  - id: 26157
+    title: "Ensure 'Audit Detailed File Share' is set to include 'Failure'"
+    description: "This subcategory allows you to audit attempts to access files and folders on a shared folder."
+    rationale: "Auditing these events may be useful when investigating a security incident."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Object Access\\Audit Detailed File  Share"
+    compliance:
+      - cis: ["17.6.1"]
+      - cis_csc: ["6.3","14.6"]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"Detailed File Share" -> r:Failure'
+
+  - id: 26158
+    title: "Ensure 'Audit File Share' is set to 'Success and Failure'"
+    description: "This policy setting allows you to audit attempts to access a shared folder."
+    rationale: "In an enterprise managed environment, workstations should have limited file sharing  activity, as file servers would normally handle the overall burden of file sharing activities.  Any unusual file sharing activity on workstations may therefore be useful in an  investigation of potentially malicious activity."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Object Access\\Audit File Share"
+    compliance:
+      - cis: ["17.6.2"]
+      - cis_csc: ["6.3","14.6"]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"File Share" -> r:Success and Failure'
+
+  - id: 26159
+    title: "Ensure 'Audit Other Object Access Events' is set to 'Success and Failure' "
+    description: "This policy setting allows you to audit events generated by the management of task scheduler jobs or COM+ objects."
+    rationale: "The unexpected creation of scheduled tasks and COM+ objects could potentially be an  indication of malicious activity. Since these types of actions are generally low volume, it  may be useful to capture them in the audit logs for use during an investigation."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Object Access\\Audit Other Object  Access Events"
+    compliance:
+      - cis: ["17.6.3"]
+      - cis_csc: ["6.2","6.3"]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"Other Object Access Events" -> r:Success and Failure'
+
+  - id: 26160
+    title: "Ensure 'Audit Removable Storage' is set to 'Success and Failure'"
+    description: "This policy setting allows you to audit user attempts to access file system objects on a  removable storage device. A security audit event is generated only for all objects for all  types of access requested. If you configure this policy setting, an audit event is generated  each time an account accesses a file system object on a removable storage. Success audits  record successful attempts and Failure audits record unsuccessful attempts. If you do not  configure this policy setting, no audit event is generated when an account accesses a file  system object on a removable storage"
+    rationale: "Auditing removable storage may be useful when investigating an incident. For example, if  an individual is suspected of copying sensitive information onto a USB drive."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Object Access\\Audit Removable  Storage"
+    compliance:
+      - cis: ["17.6.4"]
+      - cis_csc: ["6.3","8.4","8.5","13.8"]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"Removable Storage" -> r:Success and Failure'
+
+  - id: 26161
+    title: "Ensure 'Audit Audit Policy Change' is set to include 'Success'"
+    description: "This subcategory reports changes in audit policy including SACL changes"
+    rationale: "Auditing these events may be useful when investigating a security incident."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Policy Change\\Audit Audit Policy  Change "
+    compliance:
+      - cis: ["17.7.1"]
+      - cis_csc: ["5.5","6.3"]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"Audit Policy Change" -> r:Success'
+
+  - id: 26162
+    title: "Ensure 'Audit Authentication Policy Change' is set to include 'Success'"
+    description: "This subcategory reports changes in authentication policy."
+    rationale: "Auditing these events may be useful when investigating a security incident."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Policy Change\\Audit Authentication  Policy Change"
+    compliance:
+      - cis: ["17.7.2"]
+      - cis_csc: ["5.5","6.3"]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"Authentication Policy Change" -> r:Success'
+
+  - id: 26163
+    title: "Ensure 'Audit Authorization Policy Change' is set to include 'Success'"
+    description: "This subcategory reports changes in authorization policy."
+    rationale: "Auditing these events may be useful when investigating a security incident."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Policy Change\\Audit Authorization  Policy Change"
+    compliance:
+      - cis: ["17.7.3"]
+      - cis_csc: ["5.5","6.3","14.9"]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"Authorization Policy Change" -> r:Success'
+
+  - id: 26164
+    title: "Ensure 'Audit MPSSVC Rule-Level Policy Change' is set to 'Success and Failure'"
+    description: "This subcategory determines whether the operating system generates audit events when  changes are made to policy rules for the Microsoft Protection Service (MPSSVC.exe)."
+    rationale: "Changes to firewall rules are important for understanding the security state of the  computer and how well it is protected against network attacks."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Policy Change\\Audit MPSSVC Rule-Level Policy Change"
+    compliance:
+      - cis: ["17.7.4"]
+      - cis_csc: ["5.5","6.3"]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"MPSSVC Rule-Level Policy Change" -> r:Success and Failure'
+
+  - id: 26165
+    title: "Ensure 'Audit Other Policy Change Events' is set to include 'Failure'"
+    description: "This subcategory contains events about EFS Data Recovery Agent policy changes, changes  in Windows Filtering Platform filter, status on Security policy settings updates for local  Group Policy settings, Central Access Policy changes, and detailed troubleshooting events  for Cryptographic Next Generation (CNG) operations."
+    rationale: "This setting can help detect errors in applied Security settings which came from Group Policy, and failure events related to Cryptographic Next Generation (CNG) functions."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Policy Change\\Audit Other Policy  Change Events"
+    compliance:
+      - cis: ["17.7.5"]
+      - cis_csc: ["5.5","6.3","14.9"]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"Other Policy Change Events" -> r:Failure'
+
+  - id: 26166
+    title: "Ensure 'Audit Sensitive Privilege Use' is set to 'Success and Failure'"
+    description: "This subcategory reports when a user account or service uses a sensitive privilege."
+    rationale: "Auditing these events may be useful when investigating a security incident."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Success and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Privilege Use\\Audit Sensitive Privilege Use"
+    compliance:
+      - cis: ["17.8.1"]
+      - cis_csc: ["4.3","6.3"]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"Sensitive Privilege Use" -> r:Success and Failure'
+
+  - id: 26167
+    title: "Ensure 'Audit IPsec Driver' is set to 'Success and Failure' "
+    description: "This subcategory reports on the activities of the Internet Protocol security (IPsec) driver.  Events for this subcategory include: - 4960: IPsec dropped an inbound packet that failed an integrity check. If this  problem persists, it could indicate a network issue or that packets are being  modified in transit to this computer. Verify that the packets sent from the remote  computer are the same as those received by this computer. This error might also  indicate interoperability problems with other IPsec implementations. - 4961: IPsec dropped an inbound packet that failed a replay check. If this problem  persists, it could indicate a replay attack against this computer. - 4962: IPsec dropped an inbound packet that failed a replay check. The inbound  packet had too low a sequence number to ensure it was not a replay. - 4963: IPsec dropped an inbound clear text packet that should have been secured.  This is usually due to the remote computer changing its IPsec policy without  informing this computer. This could also be a spoofing attack attempt. - 4965: IPsec received a packet from a remote computer with an incorrect Security  Parameter Index (SPI). This is usually caused by malfunctioning hardware that is  corrupting packets. If these errors persist, verify that the packets sent from the  remote computer are the same as those received by this computer. This error may  also indicate interoperability problems with other IPsec implementations. In that  case, if connectivity is not impeded, then these events can be ignored. - 5478: IPsec Services has started successfully. - 5479: IPsec Services has been shut down successfully. The shutdown of IPsec  Services can put the computer at greater risk of network attack or expose the  computer to potential security risks. - 5480: IPsec Services failed to get the complete list of network interfaces on the  computer. This poses a potential security risk because some of the network interfaces may not get the protection provided by the applied IPsec filters. Use the  IP Security Monitor snap-in to diagnose the problem. - 5483: IPsec Services failed to initialize RPC server. IPsec Services could not be  started.- 5484: IPsec Services has experienced a critical failure and has been shut down. The  shutdown of IPsec Services can put the computer at greater risk of network attack  or expose the computer to potential security risks. - 5485: IPsec Services failed to process some IPsec filters on a plug-and-play event for  network interfaces. This poses a potential security risk because some of the network  interfaces may not get the protection provided by the applied IPsec filters. Use the  IP Security Monitor snap-in to diagnose the problem. The recommended state for this setting is: Success and Failure. "
+    rationale: "Auditing these events may be useful when investigating a security incident. "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\System\\Audit IPsec Driver "
+    compliance:
+      - cis: ["17.9.1"]
+      - cis_csc: ["6.3","6.4","6.5"]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"IPsec Driver" -> r:Success and Failure'
+
+  - id: 26168
+    title: "Ensure 'Audit Other System Events' is set to 'Success and Failure'"
+    description: "This subcategory reports on other system events. Events for this subcategory include: - 5024 : The Windows Firewall Service has started successfully. - 5025 : The Windows Firewall Service has been stopped. - 5027 : The Windows Firewall Service was unable to retrieve the security policy  from the local storage. The service will continue enforcing the current policy. - 5028 : The Windows Firewall Service was unable to parse the new security policy.  The service will continue with currently enforced policy. - 5029: The Windows Firewall Service failed to initialize the driver. The service will  continue to enforce the current policy. - 5030: The Windows Firewall Service failed to start. - 5032: Windows Firewall was unable to notify the user that it blocked an application  from accepting incoming connections on the network. - 5033 : The Windows Firewall Driver has started successfully. - 5034 : The Windows Firewall Driver has been stopped. - 5035 : The Windows Firewall Driver failed to start. - 5037 : The Windows Firewall Driver detected critical runtime error. Terminating. - 5058: Key file operation. - 5059: Key migration operation. The recommended state for this setting is: Success and Failure. "
+    rationale: "Capturing these audit events may be useful for identifying when the Windows Firewall is  not performing as expected."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\System\\Audit Other System Events "
+    compliance:
+      - cis: ["17.9.2"]
+      - cis_csc: ["6.3","6.4","6.5","9.4"]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"Other System Events" -> r:Success and Failure'
+
+  - id: 26169
+    title: "Ensure 'Audit Security State Change' is set to include 'Success'"
+    description: "This subcategory reports changes in security state of the system, such as when the security  subsystem starts and stops. Events for this subcategory include: - 4608: Windows is starting up. - 4609: Windows is shutting down. - 4616: The system time was changed. - 4621: Administrator recovered system from CrashOnAuditFail. Users who are not  administrators will now be allowed to log on. Some audit-able activity might not  have been recorded. The recommended state for this setting is to include: Success. "
+    rationale: "Auditing these events may be useful when investigating a security incident. "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\System\\Audit Security State Change "
+    compliance:
+      - cis: ["17.9.3"]
+      - cis_csc: ["6.3","6.4","6.5"]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"Security State Change" -> r:Success'
+
+  - id: 26170
+    title: "Ensure 'Audit Security System Extension' is set to include 'Success'"
+    description: "This subcategory reports the loading of extension code such as authentication packages by  the security subsystem. Events for this subcategory include: - 4610: An authentication package has been loaded by the Local Security Authority. - 4611: A trusted logon process has been registered with the Local Security Authority. - 4614: A notification package has been loaded by the Security Account Manager. - 4622: A security package has been loaded by the Local Security Authority. - 4697: A service was installed in the system. The recommended state for this setting is to include: Success. "
+    rationale: "Auditing these events may be useful when investigating a security incident. "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\System\\Audit Security System  Extension "
+    compliance:
+      - cis: ["17.9.4"]
+      - cis_csc: ["6.3","6.4","6.5"]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"Security System Extension" -> r:Success'
+
+  - id: 26171
+    title: "Ensure 'Audit System Integrity' is set to 'Success and Failure'"
+    description: "This subcategory reports on violations of integrity of the security subsystem. Events for  this subcategory include: - 4612 : Internal resources allocated for the queuing of audit messages have been  exhausted, leading to the loss of some audits. - 4615 : Invalid use of LPC port. - 4618 : A monitored security event pattern has occurred. - 4816 : RPC detected an integrity violation while decrypting an incoming message. - 5038 : Code integrity determined that the image hash of a file is not valid. The file  could be corrupt due to unauthorized modification or the invalid hash could indicate  a potential disk device error. - 5056: A cryptographic self test was performed. - 5057: A cryptographic primitive operation failed. - 5060: Verification operation failed. - 5061: Cryptographic operation. - 5062: A kernel-mode cryptographic self test was performed. The recommended state for this setting is: Success and Failure. "
+    rationale: "Auditing these events may be useful when investigating a security incident. "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\System\\Audit System Integrity "
+    compliance:
+      - cis: ["17.9.5"]
+      - cis_csc: ["6.3","6.4","6.5"]
+    condition: all
+    rules:
+      - 'c:auditpol.exe /get /subcategory:"System Integrity" -> r:Success and Failure'
