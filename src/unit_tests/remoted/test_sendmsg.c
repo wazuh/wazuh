@@ -303,7 +303,7 @@ void test_send_msg_tcp_err_closed_socket(void ** state) {
 
     char *agent_id = "001";
     char *msg = "abcdefghijk";
-    ssize_t msg_length = 11;
+    ssize_t msg_length = strlen(msg);
     int key = 0;
 
     char *crypto_msg = "!@#123abc";
