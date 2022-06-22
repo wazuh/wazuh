@@ -16,31 +16,18 @@
 #include <utils/stringUtils.hpp>
 #include <wdb/wdb.hpp>
 
+using builder::internals::syntax::REFERENCE_ANCHOR;
+using std::string;
+
 namespace builder::internals::builders
 {
 
-using builder::internals::syntax::REFERENCE_ANCHOR;
-
-// <wdb_result>: +wdb_update/<quey>|$<quey>
-base::Lifter opBuilderWdbSyncUpdate(const base::DocumentValue& def,
-                                   types::TracerFn tr)
-{
-    return opBuilderWdbSyncGenericQuery(def, tr, false);
-}
-
-// <wdb_result>: +wdb_query/<quey>|$<quey>
-base::Lifter opBuilderWdbSyncQuery(const base::DocumentValue& def,
-                                   types::TracerFn tr)
-{
-    return opBuilderWdbSyncGenericQuery(def, tr, true);
-}
-
-base::Lifter opBuilderWdbSyncGenericQuery(const base::DocumentValue& def,
-                                   types::TracerFn tr, bool returnPayload)
+static inline base::Lifter opBuilderWdbSyncGenericQuery(const base::DocumentValue& def,
+                                                        types::TracerFn tr,
+                                                        bool doReturnPayload)
 {
     // Get wdb_result of the extraction
-    std::string wdb_result {
-        json::formatJsonPath(def.MemberBegin()->name.GetString())};
+    string wdb_result {json::formatJsonPath(def.MemberBegin()->name.GetString())};
 
     // Get the raw value of parameter
     if (!def.MemberBegin()->value.IsString())
@@ -50,8 +37,7 @@ base::Lifter opBuilderWdbSyncGenericQuery(const base::DocumentValue& def,
     }
 
     // Parse parameters
-    std::string parameter {def.MemberBegin()->value.GetString()};
-    auto parametersArr {utils::string::split(parameter, '/')};
+    auto parametersArr {utils::string::split(def.MemberBegin()->value.GetString(), '/')};
     if (parametersArr.size() != 2)
     {
         throw std::runtime_error(
@@ -59,125 +45,119 @@ base::Lifter opBuilderWdbSyncGenericQuery(const base::DocumentValue& def,
     }
 
     // Check for empty parameter
-    if(parametersArr.at(1).empty())
+    if (parametersArr.at(1).empty())
     {
         throw std::runtime_error("parameter can't be an empty string");
     }
 
     // Assigned to parameter in order to avoid handling array with 1 value
-    parameter = parametersArr.at(1);
+    const string parameter = parametersArr.at(1);
 
     // instantiate wDB
-    constexpr std::string_view TEST_STREAM_SOCK_PATH = "/tmp/testStream.socket";
     // TODO: delete sock_path! is there a way or a cons of using sharedptr
-    auto wdb = std::make_shared<wazuhdb::WazuhDB>(TEST_STREAM_SOCK_PATH);
+    auto wdb = std::make_shared<wazuhdb::WazuhDB>(STREAM_SOCK_PATH);
 
     base::Document doc {def};
-    std::string successTrace = fmt::format("{} wdb_update Success", doc.str());
-    std::string failureTrace = fmt::format("{} wdb_update Failure", doc.str());
+    string successTrace = fmt::format("{} wdb_update Success", doc.str());
+    string failureTrace = fmt::format("{} wdb_update Failure", doc.str());
 
-    //Return Lifter
-    return [=, parameter = std::move(parameter), tr = std::move(tr)](base::Observable o) mutable
-    {
+    // Return Lifter
+    return [=, tr = std::move(tr)](base::Observable o) mutable {
         // Append rxcpp operation
-        return o.map(
-            [=, parameter = std::move(parameter), tr = std::move(tr)](base::Event e) mutable
-            {
-                std::string completeQuery {};
+        return o.map([=, tr = std::move(tr)](base::Event e) mutable {
+            string completeQuery {};
 
-                // Get reference key value
-                if (parameter[0] == REFERENCE_ANCHOR)
+            // Get reference key value
+            if (parameter[0] == REFERENCE_ANCHOR)
+            {
+                auto key = json::formatJsonPath(parameter.substr(1));
+                try
                 {
-                    auto key = json::formatJsonPath(parameter.substr(1));
-                    try
+                    auto value = &e->getEventValue(key);
+                    if (value && value->IsString())
                     {
-                        auto value = &e->getEvent()->get(key);
-                        if (value && value->IsString())
-                        {
-                            std::string auxVal{value->GetString()};
-                            if(auxVal.empty())
-                            {
-                                tr(failureTrace);
-                                return e;
-                            }
-                            completeQuery = auxVal;
-                        }
-                        else
+                        string auxVal {value->GetString()};
+                        if (auxVal.empty())
                         {
                             tr(failureTrace);
                             return e;
                         }
-                    }
-                    catch (std::exception& ex)
-                    {
-                        tr(failureTrace);
-                        return e;
-                    }
-                }
-                else
-                {
-                    completeQuery = parameter;
-                }
-
-                // Connect to wDB
-                try
-                {
-                    wdb->connect();
-                }
-                catch(const std::runtime_error& err)
-                {
-                    tr(failureTrace);
-                    return e;
-                }
-
-                // Execute complete query in DB
-                auto returnTuple = wdb->tryQueryAndParseResult(completeQuery);
-
-                // Handle response
-                std::string queryResponse;
-                auto resultCode = std::get<0>(returnTuple);
-                if(returnPayload)
-                {
-                    if(resultCode == wazuhdb::QueryResultCodes::OK)
-                    {
-                        queryResponse = std::get<1>(returnTuple).value();
+                        completeQuery = auxVal;
                     }
                     else
                     {
                         tr(failureTrace);
                         return e;
                     }
-                }
-
-                // Store value on json
-                try
-                {
-                    if(returnPayload)
-                    {
-                        //TODO: should I treat different empty result?
-                        e->getEvent()->set(wdb_result,
-                        rapidjson::Value(queryResponse.c_str(),
-                                        e->getEvent()->m_doc.GetAllocator())
-                            .Move());
-                    }
-                    else
-                    {
-                        e->getEvent()->set(wdb_result,
-                        rapidjson::Value().SetBool(resultCode == wazuhdb::QueryResultCodes::OK)
-                            .Move());
-                    }
-
-                    tr(successTrace);
                 }
                 catch (std::exception& ex)
                 {
                     tr(failureTrace);
                     return e;
                 }
+            }
+            else
+            {
+                completeQuery = parameter;
+            }
 
-                return e;
-            });
+            // Execute complete query in DB
+            auto returnTuple = wdb->tryQueryAndParseResult(completeQuery);
+
+            // Handle response
+            string queryResponse;
+            auto resultCode = std::get<0>(returnTuple);
+
+            // Store value on json
+            try
+            {
+                if (doReturnPayload)
+                {
+                    queryResponse = std::get<1>(returnTuple).value();
+                    if (resultCode == wazuhdb::QueryResultCodes::OK
+                        && !queryResponse.empty())
+                    {
+                        e->setEventValue(wdb_result,
+                                         rapidjson::Value(queryResponse.c_str(),
+                                                          e->getEventDocAllocator())
+                                             .Move());
+                        tr(successTrace);
+                    }
+                    else
+                    {
+                        tr(failureTrace);
+                    }
+                }
+                else
+                {
+                    e->setEventValue(
+                        wdb_result,
+                        rapidjson::Value()
+                            .SetBool(resultCode == wazuhdb::QueryResultCodes::OK)
+                            .Move());
+                    tr(successTrace);
+                }
+            }
+            catch (std::exception& ex)
+            {
+                tr(failureTrace);
+            }
+
+            return e;
+        });
     };
+}
+
+// <wdb_result>: +wdb_update/<quey>|$<quey>
+base::Lifter opBuilderWdbSyncUpdate(const base::DocumentValue& def, types::TracerFn tr)
+{
+    return opBuilderWdbSyncGenericQuery(def, tr, false);
+}
+
+// <wdb_result>: +wdb_query/<quey>|$<quey>
+base::Lifter opBuilderWdbSyncQuery(const base::DocumentValue& def, types::TracerFn tr)
+{
+    return opBuilderWdbSyncGenericQuery(def, tr, true);
 }
 
 } // namespace builder::internals::builders
