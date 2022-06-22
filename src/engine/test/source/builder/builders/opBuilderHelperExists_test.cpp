@@ -9,6 +9,7 @@
 
 #include <gtest/gtest.h>
 #include <vector>
+#include <any>
 
 #include <baseTypes.hpp>
 
@@ -20,79 +21,64 @@ namespace bld = builder::internals::builders;
 
 TEST(opBuilderHelperExists, Builds)
 {
-    json::Json doc {R"(
-            {"field": "+exists"}
-    )"};
+    auto tuple = std::make_tuple(std::string {"/field"}, std::vector<std::string> {});
 
-    ASSERT_NO_THROW(bld::opBuilderHelperExists(doc));
+    ASSERT_NO_THROW(bld::opBuilderHelperExists(tuple));
 }
 
-TEST(opBuilderHelperExists, Builds_error_bad_parameter)
+TEST(opBuilderHelperExists, Exec_exists_false)
 {
-    json::Json doc {R"(
-            {"field_test": "+exists/test"}
-    )"};
+    auto tuple = std::make_tuple(std::string {"/field2check"}, std::vector<std::string> {});
 
-    ASSERT_THROW(bld::opBuilderHelperExists(doc), std::invalid_argument);
+    auto event1 = std::make_shared<json::Json>(R"({"fieldcheck": "valid"})");
+
+    auto op = bld::opBuilderHelperExists(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result.success());
 }
 
-TEST(opBuilderHelperExists, Exec_exists_ok)
+TEST(opBuilderHelperExists, Exec_exists_true)
 {
-    json::Json doc {R"(
-            {"field2check": "+exists"}
-    )"};
+    auto tuple = std::make_tuple(std::string {"/field2check"}, std::vector<std::string> {});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {
-                    "field2check":11,
-                    "ref_key":10
-                }
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {
-                    "field2check":10,
-                    "ref_key":10
-                }
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {
-                    "field2check":10,
-                    "ref_key":11
-                }
-            )"));
-            s.on_completed();
-        });
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": "valid"})");
 
-    Lifter lift = [=](Observable input)
-    {
-        return input.filter(bld::opBuilderHelperExists(doc.get("/check"), tr));
-    };
-    Observable output = lift(input);
-    vector<Event> expected;
+    auto op = bld::opBuilderHelperExists(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-    output.subscribe([&](Event e) { expected.push_back(e); });
+    result::Result<Event> result = op(event1);
 
-    ASSERT_EQ(expected.size(), 3);
-    ASSERT_TRUE(expected[0]->getEvent()->exists("/field2check"));
-    ASSERT_TRUE(expected[1]->getEvent()->exists("/field2check"));
-    ASSERT_TRUE(expected[2]->getEvent()->exists("/field2check"));
+    ASSERT_TRUE(result.success());
 }
 
-TEST(opBuilderHelperExists, Exec_multilevel_ok)
+TEST(opBuilderHelperExists, Exec_multilevel_false)
 {
-    json::Json doc {R"({
-        "check":
-            {"parentObjt_1.field2check": "+exits"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"}, std::vector<std::string> {});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": 10,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "fieldcheck": 11,
+                        "ref_key": 11
+                    }
+                    })");
+
+    auto op = bld::opBuilderHelperExists(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result.success());
+}
+
+TEST(opBuilderHelperExists, Exec_multilevel_true)
+{
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"}, std::vector<std::string> {});
+
+    auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
                         "field2check": 10,
                         "ref_key": 10
@@ -101,62 +87,11 @@ TEST(opBuilderHelperExists, Exec_multilevel_ok)
                         "field2check": 11,
                         "ref_key": 11
                     }
-                }
-            )"));
+                    })");
 
-            s.on_next(createSharedEvent(R"(
-                {
-                    "parentObjt_2": {
-                        "field2check": 11,
-                        "ref_key": 10
-                    },
-                    "parentObjt_1": {
-                        "field2check": 10,
-                        "ref_key": 11
-                    }
-                }
-            )"));
+    auto op = bld::opBuilderHelperExists(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-            // false
-            s.on_next(createSharedEvent(R"(
-                {
-                    "parentObjt_2": {
-                        "field2check":10,
-                        "ref_key":10
-                    },
-                    "parentObjt_1": {
-                        "otherfield":12,
-                        "ref_key":11
-                    }
-                }
-            )"));
+    result::Result<Event> result = op(event1);
 
-            s.on_next(createSharedEvent(R"(
-                {
-                    "parentObjt_2": {
-                        "field2check":10,
-                        "otherfield":10
-                    },
-                    "parentObjt_1": {
-                        "field2check":12,
-                        "ref_key":11
-                    }
-                }
-            )"));
-            s.on_completed();
-        });
-
-    Lifter lift = [=](Observable input)
-    {
-        return input.filter(bld::opBuilderHelperExists(doc.get("/check"), tr));
-    };
-    Observable output = lift(input);
-    vector<Event> expected;
-
-    output.subscribe([&](Event e) { expected.push_back(e); });
-
-    ASSERT_EQ(expected.size(), 3);
-    ASSERT_TRUE(expected[0]->getEvent()->exists("/parentObjt_1/field2check"));
-    ASSERT_TRUE(expected[1]->getEvent()->exists("/parentObjt_1/field2check"));
-    ASSERT_TRUE(expected[2]->getEvent()->exists("/parentObjt_1/field2check"));
+    ASSERT_TRUE(result.success());
 }
