@@ -30,7 +30,28 @@ using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg) {
 };
 
-TEST(opBuilderARWrite, BuilderNoParameterError)
+class opBuilderARWriteTestSuite : public ::testing::Test
+{
+protected:
+    static void SetUpTestSuite()
+    {
+        Registry::registerBuilder("helper.ar_write", opBuilderARWrite);
+        // "map" operation
+        Registry::registerBuilder("map.value", opBuilderMapValue);
+        // "check" operations
+        Registry::registerBuilder("check", stageBuilderCheck);
+        Registry::registerBuilder("condition", opBuilderCondition);
+        Registry::registerBuilder("middle.condition", middleBuilderCondition);
+        Registry::registerBuilder("middle.helper.exists", opBuilderHelperExists);
+        // combinators
+        Registry::registerBuilder("combinator.chain", combinatorBuilderChain);
+        Registry::registerBuilder("combinator.broadcast", combinatorBuilderBroadcast);
+    }
+
+    static void TearDownTestSuite() { return; }
+};
+
+TEST_F(opBuilderARWriteTestSuite, BuilderNoParameterError)
 {
     Document doc {R"({
         "normalize":
@@ -47,7 +68,7 @@ TEST(opBuilderARWrite, BuilderNoParameterError)
     ASSERT_THROW(opBuilderARWrite(doc.get("/normalize/0/map"), tr), std::runtime_error);
 }
 
-TEST(opBuilderARWrite, Builder)
+TEST_F(opBuilderARWriteTestSuite, Builder)
 {
     Document doc {R"({
         "normalize":
@@ -64,21 +85,8 @@ TEST(opBuilderARWrite, Builder)
     ASSERT_NO_THROW(opBuilderARWrite(doc.get("/normalize/0/map"), tr));
 }
 
-TEST(opBuilderARWrite, NormalizeBuilder)
+TEST_F(opBuilderARWriteTestSuite, NormalizeBuilder)
 {
-
-    Registry::registerBuilder("helper.ar_write", opBuilderARWrite);
-    // "map" operation
-    Registry::registerBuilder("map.value", opBuilderMapValue);
-    // "check" operations
-    Registry::registerBuilder("check", stageBuilderCheck);
-    Registry::registerBuilder("condition", opBuilderCondition);
-    Registry::registerBuilder("middle.condition", middleBuilderCondition);
-    Registry::registerBuilder("middle.helper.exists", opBuilderHelperExists);
-    // combinators
-    Registry::registerBuilder("combinator.chain", combinatorBuilderChain);
-    Registry::registerBuilder("combinator.broadcast", combinatorBuilderBroadcast);
-
     Document doc {R"({
         "normalize":
         [
@@ -94,7 +102,7 @@ TEST(opBuilderARWrite, NormalizeBuilder)
     ASSERT_NO_THROW(stageBuilderNormalize(doc.get("/normalize"), tr));
 }
 
-TEST(opBuilderARWrite, Send)
+TEST_F(opBuilderARWriteTestSuite, Send)
 {
     Document doc {R"({
         "normalize":
@@ -139,7 +147,7 @@ TEST(opBuilderARWrite, Send)
     unlink(AR_QUEUE_PATH);
 }
 
-TEST(opBuilderARWrite, SendFromReference)
+TEST_F(opBuilderARWriteTestSuite, SendFromReference)
 {
     Document doc {R"({
         "normalize":
@@ -185,7 +193,7 @@ TEST(opBuilderARWrite, SendFromReference)
     unlink(AR_QUEUE_PATH);
 }
 
-TEST(opBuilderARWrite, SendEmptyReferenceError)
+TEST_F(opBuilderARWriteTestSuite, SendEmptyReferenceError)
 {
     Document doc {R"({
         "normalize":
@@ -231,7 +239,7 @@ TEST(opBuilderARWrite, SendEmptyReferenceError)
     unlink(AR_QUEUE_PATH);
 }
 
-TEST(opBuilderARWrite, SendWrongReferenceError)
+TEST_F(opBuilderARWriteTestSuite, SendWrongReferenceError)
 {
     Document doc {R"({
         "normalize":
@@ -278,7 +286,7 @@ TEST(opBuilderARWrite, SendWrongReferenceError)
     unlink(AR_QUEUE_PATH);
 }
 
-TEST(opBuilderARWrite, SendFromReferenceWithConditionalMapping)
+TEST_F(opBuilderARWriteTestSuite, SendFromReferenceWithConditionalMapping)
 {
     Document doc {R"({
         "normalize":

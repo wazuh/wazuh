@@ -265,11 +265,11 @@ add_executable(opBuilderWdbSyncQueryTest
 )
 gtest_discover_tests(opBuilderWdbSyncQueryTest)
 
-add_executable(opBuilderARWriteTest
+add_executable(opBuilderARWriteTestSuite
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderARWrite_test.cpp
   ${TEST_SOURCE_DIR}/base/socketInterface/testAuxiliar/socketAuxiliarFunctions.cpp
 )
-gtest_discover_tests(opBuilderARWriteTest)
+gtest_discover_tests(opBuilderARWriteTestSuite)
 
 add_executable(combinatorBuilderBroadcastTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/combinatorBuilderBroadcast_test.cpp
