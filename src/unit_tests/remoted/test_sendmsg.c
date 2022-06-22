@@ -96,7 +96,7 @@ void test_send_msg_invalid_agent(void ** state) {
 
     char *agent_id = "555";
     char *msg = "abcdefghijk";
-    ssize_t msg_length = 11;
+    ssize_t msg_length = strlen(msg);
 
     remoted_state.queued_msgs = 0;
 
