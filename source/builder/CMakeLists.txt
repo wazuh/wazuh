@@ -27,11 +27,12 @@ add_library(builders OBJECT
   builders/stageBuilderOutputs.cpp
   builders/stageBuilderParse.cpp
   builders/opBuilderLogqlParser.cpp
+  builders/opBuilderKVDB.cpp
 )
 
 # builders/opBuilderHelperFilter.cpp
 # builders/opBuilderHelperMap.cpp
-# builders/opBuilderKVDB.cpp
+
 # definitions.cpp
 target_include_directories(builders
   PRIVATE
