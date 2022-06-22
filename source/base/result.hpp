@@ -15,8 +15,8 @@ private:
     bool m_success;
 
 public:
-    Result(Event&& payload, std::string_view trace, bool success)
-        : m_payload {std::move(payload)}
+    Result(Event payload, std::string_view trace, bool success)
+        : m_payload {payload}
         , m_trace {trace}
         , m_success {success}
     {
@@ -43,7 +43,7 @@ public:
         m_success = other.m_success;
         return *this;
     }
-
+/*
     Result& operator=(Result&& other)
     {
         m_payload = std::move(other.m_payload);
@@ -51,7 +51,7 @@ public:
         m_success = other.m_success;
         return *this;
     }
-
+*/
     operator bool() const
     {
         return m_success;
@@ -99,15 +99,15 @@ public:
 };
 
 template<typename Event>
-Result<Event> makeSuccess(Event&& payload, std::string_view trace = "")
+Result<Event> makeSuccess(Event payload, std::string_view trace = "")
 {
-    return Result<Event> {std::move(payload), trace, true};
+    return Result<Event> {payload, trace, true};
 }
 
 template<typename Event>
-Result<Event> makeFailure(Event&& payload, std::string_view trace = "")
+Result<Event> makeFailure(Event payload, std::string_view trace = "")
 {
-    return Result<Event> {std::move(payload), trace, false};
+    return Result<Event> {payload, trace, false};
 }
 
 } // namespace base::result
