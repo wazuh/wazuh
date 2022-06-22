@@ -5,9 +5,9 @@
 #include <baseTypes.hpp>
 
 #include "combinatorBuilderChain.hpp"
-#include "opBuilderHelperMap.hpp"
 #include "opBuilderCondition.hpp"
 #include "opBuilderHelperFilter.hpp"
+#include "opBuilderHelperMap.hpp"
 #include "stageBuilderCheck.hpp"
 #include "stageBuilderNormalize.hpp"
 #include "testUtils.hpp"
@@ -19,31 +19,26 @@ using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg) {
 };
 
+class opBuilderHelperStringConcat : public testing::Test
+{
+protected:
+    // Per-test-suite set-up.
+    // Called before the first test in this test suite.
+    static void SetUpTestSuite()
+    {
 
-class opBuilderHelperStringConcat : public testing::Test {
- protected:
+        Registry::registerBuilder("check", bld::stageBuilderCheck);
+        Registry::registerBuilder("condition", bld::opBuilderCondition);
+        Registry::registerBuilder("middle.condition", bld::middleBuilderCondition);
+        Registry::registerBuilder("middle.helper.exists", bld::opBuilderHelperExists);
+        Registry::registerBuilder("combinator.chain", bld::combinatorBuilderChain);
+        Registry::registerBuilder("helper.s_concat", bld::opBuilderHelperStringConcat);
+    }
 
-  // Per-test-suite set-up.
-  // Called before the first test in this test suite.
-  static void SetUpTestSuite() {
-
-    Registry::registerBuilder("check", bld::stageBuilderCheck);
-    Registry::registerBuilder("condition", bld::opBuilderCondition);
-    Registry::registerBuilder("middle.condition", bld::middleBuilderCondition);
-    Registry::registerBuilder("middle.helper.exists", bld::opBuilderHelperExists);
-    Registry::registerBuilder("combinator.chain", bld::combinatorBuilderChain);
-    Registry::registerBuilder("helper.s_concat", bld::opBuilderHelperStringConcat);
-
-  }
-
-  // Per-test-suite tear-down.
-  // Called after the last test in this test suite.
-  static void TearDownTestSuite() {
-      return;
-  }
-
+    // Per-test-suite tear-down.
+    // Called after the last test in this test suite.
+    static void TearDownTestSuite() { return; }
 };
-
 
 TEST_F(opBuilderHelperStringConcat, Builds)
 {
@@ -112,14 +107,12 @@ TEST_F(opBuilderHelperStringConcat, BasicUsage)
         ]
     })"};
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
+    Observable input = observable<>::create<Event>([=](auto s) {
+        s.on_next(createSharedEvent(R"(
                 {"fieldToTranf": "something"}
             )"));
-            s.on_completed();
-        });
+        s.on_completed();
+    });
 
     Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
     Observable output = lift(input);
@@ -144,14 +137,12 @@ TEST_F(opBuilderHelperStringConcat, SimpleWithOneReference)
         ]
     })"};
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
+    Observable input = observable<>::create<Event>([=](auto s) {
+        s.on_next(createSharedEvent(R"(
                 {"fieldToTranf": "Something"}
             )"));
-            s.on_completed();
-        });
+        s.on_completed();
+    });
 
     Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
     Observable output = lift(input);
@@ -176,14 +167,12 @@ TEST_F(opBuilderHelperStringConcat, SimpleWithOneSelfReference)
         ]
     })"};
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
+    Observable input = observable<>::create<Event>([=](auto s) {
+        s.on_next(createSharedEvent(R"(
                 {"fieldToTranf": "Something"}
             )"));
-            s.on_completed();
-        });
+        s.on_completed();
+    });
 
     Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
     Observable output = lift(input);
@@ -208,15 +197,13 @@ TEST_F(opBuilderHelperStringConcat, DoubleWithReferences)
         ]
     })"};
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
+    Observable input = observable<>::create<Event>([=](auto s) {
+        s.on_next(createSharedEvent(R"(
                 {"anotherField": "OneThing",
                 "fieldToTranf": "Something"}
             )"));
-            s.on_completed();
-        });
+        s.on_completed();
+    });
 
     Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
     Observable output = lift(input);
@@ -241,15 +228,13 @@ TEST_F(opBuilderHelperStringConcat, DoubleWithOneSelfReferences)
         ]
     })"};
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
+    Observable input = observable<>::create<Event>([=](auto s) {
+        s.on_next(createSharedEvent(R"(
                 {"anotherField": "OneThing",
                 "fieldToTranf": "Something"}
             )"));
-            s.on_completed();
-        });
+        s.on_completed();
+    });
 
     Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
     Observable output = lift(input);
@@ -274,15 +259,13 @@ TEST_F(opBuilderHelperStringConcat, DoubleWithOneSelfReferencesSecondaryAssignme
         ]
     })"};
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
+    Observable input = observable<>::create<Event>([=](auto s) {
+        s.on_next(createSharedEvent(R"(
                 {"anotherField": "OneThing",
                 "fieldToTranf": "Something"}
             )"));
-            s.on_completed();
-        });
+        s.on_completed();
+    });
 
     Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
     Observable output = lift(input);
@@ -307,15 +290,13 @@ TEST_F(opBuilderHelperStringConcat, OneReferencesNotString)
         ]
     })"};
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
+    Observable input = observable<>::create<Event>([=](auto s) {
+        s.on_next(createSharedEvent(R"(
                 {"anotherField": "OneThing",
                 "fieldToTranf": 1}
             )"));
-            s.on_completed();
-        });
+        s.on_completed();
+    });
 
     Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
     Observable output = lift(input);
@@ -339,15 +320,13 @@ TEST_F(opBuilderHelperStringConcat, OneEmptyReferenceWithPresentField)
         ]
     })"};
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
+    Observable input = observable<>::create<Event>([=](auto s) {
+        s.on_next(createSharedEvent(R"(
                 {"anotherField": "OneThing",
                 "fieldToTranf": 1}
             )"));
-            s.on_completed();
-        });
+        s.on_completed();
+    });
 
     Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
     Observable output = lift(input);
@@ -371,15 +350,13 @@ TEST_F(opBuilderHelperStringConcat, OneEmptyReference)
         ]
     })"};
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
+    Observable input = observable<>::create<Event>([=](auto s) {
+        s.on_next(createSharedEvent(R"(
                 {"anotherField": "OneThing",
                 "fieldToTranf": 1}
             )"));
-            s.on_completed();
-        });
+        s.on_completed();
+    });
 
     Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
     Observable output = lift(input);
@@ -403,14 +380,12 @@ TEST_F(opBuilderHelperStringConcat, ReferenceDoesntExist)
         ]
     })"};
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
+    Observable input = observable<>::create<Event>([=](auto s) {
+        s.on_next(createSharedEvent(R"(
                 {"fieldToTranf": "something"}
             )"));
-            s.on_completed();
-        });
+        s.on_completed();
+    });
 
     Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
     Observable output = lift(input);
@@ -434,14 +409,12 @@ TEST_F(opBuilderHelperStringConcat, BasicUsageThreeArguments)
         ]
     })"};
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
+    Observable input = observable<>::create<Event>([=](auto s) {
+        s.on_next(createSharedEvent(R"(
                 {"fieldToTranf": "something"}
             )"));
-            s.on_completed();
-        });
+        s.on_completed();
+    });
 
     Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
     Observable output = lift(input);
@@ -483,14 +456,12 @@ TEST_F(opBuilderHelperStringConcat, BasicUsageLotOfArguments)
         ]
     })"};
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
+    Observable input = observable<>::create<Event>([=](auto s) {
+        s.on_next(createSharedEvent(R"(
                 {"fieldToTranf": "something"}
             )"));
-            s.on_completed();
-        });
+        s.on_completed();
+    });
 
     Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
     Observable output = lift(input);
@@ -515,14 +486,12 @@ TEST_F(opBuilderHelperStringConcat, EmptyReference)
         ]
     })"};
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
+    Observable input = observable<>::create<Event>([=](auto s) {
+        s.on_next(createSharedEvent(R"(
                 {"anotherField": ""}
             )"));
-            s.on_completed();
-        });
+        s.on_completed();
+    });
 
     Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
     Observable output = lift(input);
@@ -535,7 +504,7 @@ TEST_F(opBuilderHelperStringConcat, EmptyReference)
 TEST_F(opBuilderHelperStringConcat, DoubleUsage)
 {
 
-    Document doc{R"({
+    Document doc {R"({
         "normalize":
         [
             {
@@ -548,14 +517,12 @@ TEST_F(opBuilderHelperStringConcat, DoubleUsage)
         ]
     })"};
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
+    Observable input = observable<>::create<Event>([=](auto s) {
+        s.on_next(createSharedEvent(R"(
                 {"FieldB": "something"}
             )"));
-            s.on_completed();
-        });
+        s.on_completed();
+    });
 
     Lifter lift = bld::stageBuilderNormalize(doc.get("/normalize"), tr);
     Observable output = lift(input);
@@ -626,14 +593,12 @@ TEST_F(opBuilderHelperStringConcat, ReferenceFieldWithForbiddenName)
         ]
     })"};
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
+    Observable input = observable<>::create<Event>([=](auto s) {
+        s.on_next(createSharedEvent(R"(
                 {"anotherField": ""}
             )"));
-            s.on_completed();
-        });
+        s.on_completed();
+    });
 
     Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
     Observable output = lift(input);
@@ -658,14 +623,12 @@ TEST_F(opBuilderHelperStringConcat, BothReferenceFieldsWithForbiddenName)
         ]
     })"};
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
+    Observable input = observable<>::create<Event>([=](auto s) {
+        s.on_next(createSharedEvent(R"(
                 {"field": "OOO"}
             )"));
-            s.on_completed();
-        });
+        s.on_completed();
+    });
 
     Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
     Observable output = lift(input);
@@ -689,10 +652,8 @@ TEST_F(opBuilderHelperStringConcat, AssignmentOnNestedField)
         ]
     })"};
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
+    Observable input = observable<>::create<Event>([=](auto s) {
+        s.on_next(createSharedEvent(R"(
                 {
                     "anotherField": "OneThing",
                     "parent" :
@@ -701,8 +662,8 @@ TEST_F(opBuilderHelperStringConcat, AssignmentOnNestedField)
                     }
                 }
             )"));
-            s.on_completed();
-        });
+        s.on_completed();
+    });
 
     Lifter lift = bld::opBuilderHelperStringConcat(doc.get("/normalize/0/map"), tr);
     Observable output = lift(input);
