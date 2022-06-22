@@ -1223,12 +1223,12 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
             }
 #endif
         } else if (strcmp(node[i]->element, xml_min_sync_interval) == 0) {
-            uint32_t interval = strtoul(node[i]->content, NULL, 10);
+            long interval = w_parse_time(node[i]->content);
 
-            if (errno == ERANGE) {
+            if (interval < 0) {
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             } else {
-                syscheck->min_sync_interval = interval;
+                syscheck->min_sync_interval = (uint32_t) interval;
             }
         } else {
             mwarn(XML_INVELEM, node[i]->element);
