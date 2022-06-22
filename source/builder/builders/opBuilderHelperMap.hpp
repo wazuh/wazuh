@@ -10,8 +10,12 @@
 #ifndef _OP_BUILDER_HELPER_MAP_H
 #define _OP_BUILDER_HELPER_MAP_H
 
-#include "builderTypes.hpp"
+#include <any>
 
+#include <baseTypes.hpp>
+
+#include "expression.hpp"
+#include <utils/stringUtils.hpp>
 /*
  * The helper Map (Transformation), builds a lifter that will chain rxcpp map operation
  * Rxcpp transform expects a function that returns event.
@@ -27,30 +31,30 @@ namespace builder::internals::builders
 /**
  * @brief Transforms a string to uppercase and append or remplace it in the event `e`
  *
- * @param def The transformation definition. i.e : `<field>: +s_up/<str>|$<ref>`
- * @return base::Lifter The lifter with the `uppercase` transformation.
+ * @param definition The transformation definition. i.e : `<field>: +s_up/<str>|$<ref>`
+ * @return base::Expression The lifter with the `uppercase` transformation.
  * @throw std::runtime_error if the parameter is not a string.
  */
-base::Lifter opBuilderHelperStringUP(const base::DocumentValue & def, types::TracerFn tr);
+base::Expression opBuilderHelperStringUP(std::any definition);
 
 /**
  * @brief Transforms a string to lowercase and append or remplace it in the event `e`
  *
- * @param def The transformation definition. i.e : `<field>: +s_lo/<str>|$<ref>`
- * @return base::Lifter The lifter with the `lowercase` transformation.
+ * @param definition The transformation definition. i.e : `<field>: +s_lo/<str>|$<ref>`
+ * @return base::Expression The lifter with the `lowercase` transformation.
  * @throw std::runtime_error if the parameter is not a string.
  */
-base::Lifter opBuilderHelperStringLO(const base::DocumentValue & def, types::TracerFn tr);
+base::Expression opBuilderHelperStringLO(std::any definition);
 
 /**
  * @brief Transforms a string, trim it and append or remplace it in the event `e`
  *
- * @param def The transformation definition.
+ * @param definition The transformation definition.
  * i.e : `<field>: +s_trim/[begin | end | both]/char`
- * @return base::Lifter The lifter with the `trim` transformation.
+ * @return base::Expression The lifter with the `trim` transformation.
  * @throw std::runtime_error if the parameter is not a string.
  */
-base::Lifter opBuilderHelperStringTrim(const base::DocumentValue & def, types::TracerFn tr);
+base::Expression opBuilderHelperStringTrim(std::any definition);
 
 //*************************************************
 //*           Int tranform                        *
@@ -59,12 +63,12 @@ base::Lifter opBuilderHelperStringTrim(const base::DocumentValue & def, types::T
 /**
  * @brief Transforms an integer. Performs a mathematical operation on an event field.
  *
- * @param def The transformation definition.
+ * @param definition The transformation definition.
  * i.e : `<field>: +icalcm/[sum|sub|mul|div]/[value|$<ref>]`
- * @return base::Lifter The lifter with the `mathematical operation` transformation.
+ * @return base::Expression The lifter with the `mathematical operation` transformation.
  * @throw std::runtime_error if the parameter is not a integer.
  */
-base::Lifter opBuilderHelperIntCalc(const base::DocumentValue & def, types::TracerFn tr);
+base::Expression opBuilderHelperIntCalc(std::any definition);
 
 //*************************************************
 //*           Regex tranform                      *
@@ -74,11 +78,11 @@ base::Lifter opBuilderHelperIntCalc(const base::DocumentValue & def, types::Trac
  * @brief Builds regex extract operation.
  * Maps into an auxiliary field the part of the field value that matches a regexp
  *
- * @param def Definition of the operation to be built
- * @return base::Lifter The lifter with the `regex extract` transformation.
+ * @param definition Definition of the operation to be built
+ * @return base::Expression The lifter with the `regex extract` transformation.
  * @throw std::runtime_error if the parameter is the regex is invalid.
  */
-base::Lifter opBuilderHelperRegexExtract(const base::DocumentValue & def, types::TracerFn tr);
+base::Expression opBuilderHelperRegexExtract(std::any definition);
 
 } // namespace builder::internals::builders
 

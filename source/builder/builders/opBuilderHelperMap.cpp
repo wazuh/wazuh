@@ -37,7 +37,7 @@ namespace
  */
 base::Event opBuilderHelperStringTransformation(const std::string field,
                                           char op,
-                                          base::Event& e,
+                                          base::Event e,
                                           std::optional<std::string> refValue,
                                           std::optional<std::string> value)
 {
@@ -49,10 +49,10 @@ base::Event opBuilderHelperStringTransformation(const std::string field,
         // TODO Remove try catch or if nullptr after fix get method of document
         // class
         // TODO Update to use proper reference
-        const rapidjson::Value* refValueToCheck {};
+        std::optional<std::string> refValueToCheck {};
         try
         {
-            refValueToCheck = &e->getEvent()->get(refValue.value());
+            refValueToCheck = e->getValueString(refValue.value());
         }
         catch (std::exception& ex)
         {
@@ -60,12 +60,12 @@ base::Event opBuilderHelperStringTransformation(const std::string field,
             return e;
         }
 
-        if (refValueToCheck == nullptr || !refValueToCheck->IsString())
+        if (!refValueToCheck.has_value())
         {
             return e;
         }
         // If reache here, the refValueToCheck is a string
-        value = std::string {refValueToCheck->GetString()};
+        value = std::optional<std::string> {refValueToCheck};
     }
 
     // Operation
@@ -91,12 +91,13 @@ base::Event opBuilderHelperStringTransformation(const std::string field,
             break;
     }
 
+    json::Json jsonValue;
+    jsonValue.setString(value.value());
+
     // Create and add string to base::Event
     try
     {
-        e->getEvent()->set(field,
-               rapidjson::Value(value.value().c_str(), e->getEvent()->m_doc.GetAllocator())
-                   .Move());
+        e->set(field, jsonValue);
     }
     catch (std::exception& ex)
     {
@@ -126,16 +127,16 @@ base::Event opBuilderHelperStringTransformation(const std::string field,
  */
 base::Event opBuilderHelperIntTransformation(const std::string field,
                                        std::string op,
-                                       base::Event& e,
+                                       base::Event e,
                                        std::optional<std::string> refValue,
                                        std::optional<int> value)
 {
     // TODO Remove try catch or if nullptr after fix get method of document
     // class Get value to compare
-    const rapidjson::Value* fieldValue {};
+    std::optional<int> fieldValue {};
     try
     {
-        fieldValue = &e->getEvent()->get(field);
+        fieldValue = e->getValueInt(field);
     }
     catch (std::exception& ex)
     {
@@ -143,7 +144,7 @@ base::Event opBuilderHelperIntTransformation(const std::string field,
         return e;
     }
 
-    if (fieldValue == nullptr || !fieldValue->IsInt())
+    if (!fieldValue.has_value())
     {
         return e;
     }
@@ -153,10 +154,10 @@ base::Event opBuilderHelperIntTransformation(const std::string field,
         // Get reference to json base::Event
         // TODO Remove try catch or if nullptr after fix get method of document
         // class
-        const rapidjson::Value* refValueToCheck {};
+        std::optional<int> refValueToCheck {};
         try
         {
-            refValueToCheck = &e->getEvent()->get(refValue.value());
+            refValueToCheck = e->getValueInt(refValue.value());
         }
         catch (std::exception& ex)
         {
@@ -164,26 +165,26 @@ base::Event opBuilderHelperIntTransformation(const std::string field,
             return e;
         }
 
-        if (refValueToCheck == nullptr || !refValueToCheck->IsInt())
+        if (!refValueToCheck.has_value())
         {
             return e;
         }
-        value = refValueToCheck->GetInt();
+        value = std::optional<int> {refValueToCheck};
     }
 
     // Operation
     // TODO: change to switch for performance
     if (op == "sum")
     {
-        value = fieldValue->GetInt() + value.value();
+        value = fieldValue.value() + value.value();
     }
     else if (op == "sub")
     {
-        value = fieldValue->GetInt() - value.value();
+        value = fieldValue.value() - value.value();
     }
     else if (op == "mul")
     {
-        value = fieldValue->GetInt() * value.value();
+        value = fieldValue.value() * value.value();
     }
     else if (op == "div")
     {
@@ -191,17 +192,20 @@ base::Event opBuilderHelperIntTransformation(const std::string field,
         {
             return e;
         }
-        value = fieldValue->GetInt() / value.value();
+        value = fieldValue.value() / value.value();
     }
     else
     {
         return e;
     }
 
+    json::Json jsonValue;
+    jsonValue.setString(value.value());
+
     // Create and add string to base::Event
     try
     {
-        e->getEvent()->set(field, rapidjson::Value(value.value()));
+        e->set(field, jsonValue);
     }
     catch (std::exception& ex)
     {
@@ -268,12 +272,11 @@ base::Lifter opBuilderHelperStringUP(const base::DocumentValue& def,
                 return opBuilderHelperStringTransformation(
                     key, 'u', e, refExpStr, expectedStr);
             });
-    };
+
 }
 
 // <field>: +s_lo/<str>|$<ref>
-base::Lifter opBuilderHelperStringLO(const base::DocumentValue& def,
-                                      types::TracerFn tr)
+base::Expression opBuilderHelperStringLO(std::any definition)
 {
 
     // Get field key to check
@@ -322,8 +325,7 @@ base::Lifter opBuilderHelperStringLO(const base::DocumentValue& def,
 }
 
 // <field>: +s_trim/[begin | end | both]/char
-base::Lifter opBuilderHelperStringTrim(const base::DocumentValue& def,
-                                        types::TracerFn tr)
+base::Expression opBuilderHelperStringTrim(std::any definition)
 {
 
     // Get field path to trim
@@ -376,7 +378,7 @@ base::Lifter opBuilderHelperStringTrim(const base::DocumentValue& def,
                 const rapidjson::Value* fieldValue;
                 try
                 {
-                    fieldValue = &e->getEvent()->get(field);
+                    fieldValue = e->get(field);
                 }
                 catch (std::exception& ex)
                 {
@@ -423,9 +425,9 @@ base::Lifter opBuilderHelperStringTrim(const base::DocumentValue& def,
                 // Update base::Event
                 try
                 {
-                    e->getEvent()->set(field,
+                    e->set(field,
                            rapidjson::Value(strToTrim.c_str(),
-                                            e->getEvent()->m_doc.GetAllocator())
+                                            e->m_doc.GetAllocator())
                                .Move());
                 }
                 catch (std::exception& ex)
@@ -444,8 +446,7 @@ base::Lifter opBuilderHelperStringTrim(const base::DocumentValue& def,
 //*************************************************
 
 // field: +i_calc/[+|-|*|/]/val|$ref/
-base::Lifter opBuilderHelperIntCalc(const base::DocumentValue& def,
-                                     types::TracerFn tr)
+base::Expression opBuilderHelperIntCalc(std::any definition)
 {
     // Get field
     std::string field {
@@ -505,8 +506,7 @@ base::Lifter opBuilderHelperIntCalc(const base::DocumentValue& def,
 //*************************************************
 
 // field: +r_ext/_field/regexp/
-base::Lifter opBuilderHelperRegexExtract(const base::DocumentValue& def,
-                                          types::TracerFn tr)
+base::Expression opBuilderHelperRegexExtract(std::any definition)
 {
     // Get fields
     std::string field {
@@ -540,7 +540,7 @@ base::Lifter opBuilderHelperRegexExtract(const base::DocumentValue& def,
                 const rapidjson::Value* field_str {};
                 try
                 {
-                    field_str = &e->getEvent()->get(field);
+                    field_str = e->get(field);
                 }
                 catch (std::exception& ex)
                 {
@@ -556,9 +556,9 @@ base::Lifter opBuilderHelperRegexExtract(const base::DocumentValue& def,
                         // Create and add string to base::Event
                         try
                         {
-                            e->getEvent()->set(map_field,
+                            e->set(map_field,
                                    rapidjson::Value(match.c_str(),
-                                                    e->getEvent()->m_doc.GetAllocator())
+                                                    e->m_doc.GetAllocator())
                                        .Move());
                         }
                         catch (std::exception& ex)
