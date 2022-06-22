@@ -271,7 +271,8 @@ TEST(opBuilderARWrite, SendWrongReferenceError)
     ASSERT_NO_THROW(arWriteResult =
                         expected[0]->getEventValue("/ar_write/result").GetString());
 
-    ASSERT_STREQ(arWriteResult.data(), "Write AR operator exception: Error, field not found: /dummy");
+    ASSERT_STREQ(arWriteResult.data(),
+                 "Write AR operator exception: Error, field not found: /dummy");
 
     close(serverSocketFD);
     unlink(AR_QUEUE_PATH);

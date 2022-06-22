@@ -214,8 +214,7 @@ CommRetval testSendMsg(const int socketFD, const std::string& msg, const bool do
 inline std::vector<char> testStreamRcvMsg(const int socketFD)
 {
     // Check recive msg
-    const auto checkRcv = [](const ssize_t rcvBytes)
-    {
+    const auto checkRcv = [](const ssize_t rcvBytes) {
         if (0 > rcvBytes)
         {
             const auto msg = std::string {"recvMsg: recv error : "} + strerror(errno)

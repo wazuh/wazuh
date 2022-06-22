@@ -60,40 +60,28 @@ base::Lifter opBuilderARWrite(const base::DocumentValue& def, types::TracerFn tr
 
     // Return Lifter
     return [&, resultOperatorKey, opParameter, tr = std::move(tr)](
-               base::Observable o) mutable
-    {
-        return o.map(
-            [&, resultOperatorKey, opParameter, tr = std::move(tr)](base::Event e) mutable
+               base::Observable o) mutable {
+        return o.map([&, resultOperatorKey, opParameter, tr = std::move(tr)](
+                         base::Event e) mutable {
+            string query {};
+
+            // Check if the value comes from a reference
+            if (opParameter[0] == REFERENCE_ANCHOR)
             {
-                string query {};
+                // Gets the referenced key (without the reference anchor)
+                auto key = json::formatJsonPath(opParameter.substr(1));
 
-                // Check if the value comes from a reference
-                if (opParameter[0] == REFERENCE_ANCHOR)
+                try
                 {
-                    // Gets the referenced key (without the reference anchor)
-                    auto key = json::formatJsonPath(opParameter.substr(1));
+                    // Gets the value referenced by the key
+                    auto value =
+                        (opParameter.length() > 1) ? &e->getEventValue(key) : nullptr;
 
-                    try
+                    if (value && value->IsString())
                     {
-                        // Gets the value referenced by the key
-                        auto value =
-                            (opParameter.length() > 1) ? &e->getEventValue(key) : nullptr;
+                        query = value->GetString();
 
-                        if (value && value->IsString())
-                        {
-                            query = value->GetString();
-
-                            if (query.empty())
-                            {
-                                const string msg = string {AR_INVALID_REFERENCE_MSG};
-                                tr(msg);
-
-                                e->setEventValue(
-                                    resultOperatorKey,
-                                    Value(msg.data(), e->getEventDocAllocator()).Move());
-                            }
-                        }
-                        else
+                        if (query.empty())
                         {
                             const string msg = string {AR_INVALID_REFERENCE_MSG};
                             tr(msg);
@@ -103,10 +91,9 @@ base::Lifter opBuilderARWrite(const base::DocumentValue& def, types::TracerFn tr
                                 Value(msg.data(), e->getEventDocAllocator()).Move());
                         }
                     }
-                    catch (std::exception& exception)
+                    else
                     {
-                        const string msg =
-                            string {"Write AR operator exception: "} + exception.what();
+                        const string msg = string {AR_INVALID_REFERENCE_MSG};
                         tr(msg);
 
                         e->setEventValue(
@@ -114,46 +101,41 @@ base::Lifter opBuilderARWrite(const base::DocumentValue& def, types::TracerFn tr
                             Value(msg.data(), e->getEventDocAllocator()).Move());
                     }
                 }
-                else // It is a direct value
+                catch (std::exception& exception)
                 {
-                    query = opParameter;
+                    const string msg =
+                        string {"Write AR operator exception: "} + exception.what();
+                    tr(msg);
+
+                    e->setEventValue(resultOperatorKey,
+                                     Value(msg.data(), e->getEventDocAllocator()).Move());
                 }
+            }
+            else // It is a direct value
+            {
+                query = opParameter;
+            }
 
-                if (!query.empty())
+            if (!query.empty())
+            {
+                try
                 {
-                    try
-                    {
-                        unixDatagram socketAR(AR_QUEUE_PATH);
+                    unixDatagram socketAR(AR_QUEUE_PATH);
 
-                        if (socketAR.sendMsg(query) == SendRetval::SUCCESS)
-                        {
-                            const string msg =
-                                string {"Write AR operator: AR query sent. Query: "}
-                                + query;
-                            tr(msg);
-
-                            e->setEventValue(
-                                resultOperatorKey,
-                                Value("ok", e->getEventDocAllocator()).Move());
-                        }
-                        else
-                        {
-                            const string msg =
-                                string {
-                                    "Write AR operator: AR query not sent. Document: "}
-                                + doc.str();
-                            tr(msg);
-
-                            e->setEventValue(
-                                resultOperatorKey,
-                                Value(msg.data(), e->getEventDocAllocator()).Move());
-                        }
-                    }
-                    catch (const std::exception& exception)
+                    if (socketAR.sendMsg(query) == SendRetval::SUCCESS)
                     {
                         const string msg =
-                            string {"Write AR operator sendMsg() exception: "}
-                            + exception.what();
+                            string {"Write AR operator: AR query sent. Query: "} + query;
+                        tr(msg);
+
+                        e->setEventValue(resultOperatorKey,
+                                         Value("ok", e->getEventDocAllocator()).Move());
+                    }
+                    else
+                    {
+                        const string msg =
+                            string {"Write AR operator: AR query not sent. Document: "}
+                            + doc.str();
                         tr(msg);
 
                         e->setEventValue(
@@ -161,9 +143,19 @@ base::Lifter opBuilderARWrite(const base::DocumentValue& def, types::TracerFn tr
                             Value(msg.data(), e->getEventDocAllocator()).Move());
                     }
                 }
+                catch (const std::exception& exception)
+                {
+                    const string msg = string {"Write AR operator sendMsg() exception: "}
+                                       + exception.what();
+                    tr(msg);
 
-                return e;
-            });
+                    e->setEventValue(resultOperatorKey,
+                                     Value(msg.data(), e->getEventDocAllocator()).Move());
+                }
+            }
+
+            return e;
+        });
     };
 }
 
