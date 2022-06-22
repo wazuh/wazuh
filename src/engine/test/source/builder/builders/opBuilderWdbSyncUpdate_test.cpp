@@ -7,14 +7,13 @@
  * Foundation.
  */
 
-#include <vector>
 #include <thread>
+#include <vector>
 
 #include <gtest/gtest.h>
-#include <utils/socketInterface/unixSecureStream.hpp>
 #include <utils/socketInterface/unixDatagram.hpp>
+#include <utils/socketInterface/unixSecureStream.hpp>
 
-#include "testUtils.hpp"
 #include "combinatorBuilderChain.hpp"
 #include "opBuilderCondition.hpp"
 #include "opBuilderHelperFilter.hpp"
@@ -24,8 +23,8 @@
 #include "socketAuxiliarFunctions.hpp"
 #include "stageBuilderCheck.hpp"
 #include "stageBuilderNormalize.hpp"
+#include "testUtils.hpp"
 #include "wdb/wdb.hpp"
-
 
 namespace
 {
@@ -36,35 +35,42 @@ namespace bld = builder::internals::builders;
 namespace unixStream = base::utils::socketInterface;
 
 using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg){};
+static FakeTrFn tr = [](std::string msg) {
+};
 
-class opBuilderWdbSyncUpdate : public ::testing::Test  //delete
+class opBuilderWdbSyncUpdate : public ::testing::Test
 {
 
 protected:
-  // Per-test-suite set-up.
-  // Called before the first test in this test suite.
-  static void SetUpTestSuite() {
+    // Per-test-suite set-up.
+    // Called before the first test in this test suite.
+    static void SetUpTestSuite()
+    {
 
-    Registry::registerBuilder("helper.s_concat", builder::internals::builders::opBuilderHelperStringConcat);
-    Registry::registerBuilder("check", builder::internals::builders::stageBuilderCheck);
-    Registry::registerBuilder("condition", builder::internals::builders::opBuilderCondition);
-    Registry::registerBuilder("middle.condition", builder::internals::builders::middleBuilderCondition);
-    Registry::registerBuilder("middle.helper.exists", builder::internals::builders::opBuilderHelperExists);
-    Registry::registerBuilder("combinator.chain", builder::internals::builders::combinatorBuilderChain);
-    Registry::registerBuilder("map.value", builder::internals::builders::opBuilderMapValue);
-    Registry::registerBuilder("helper.wdb_update", builders::opBuilderWdbSyncUpdate);
-  }
+        Registry::registerBuilder(
+            "helper.s_concat", builder::internals::builders::opBuilderHelperStringConcat);
+        Registry::registerBuilder("check",
+                                  builder::internals::builders::stageBuilderCheck);
+        Registry::registerBuilder("condition",
+                                  builder::internals::builders::opBuilderCondition);
+        Registry::registerBuilder("middle.condition",
+                                  builder::internals::builders::middleBuilderCondition);
+        Registry::registerBuilder("middle.helper.exists",
+                                  builder::internals::builders::opBuilderHelperExists);
+        Registry::registerBuilder("combinator.chain",
+                                  builder::internals::builders::combinatorBuilderChain);
+        Registry::registerBuilder("map.value",
+                                  builder::internals::builders::opBuilderMapValue);
+        Registry::registerBuilder("helper.wdb_update", builders::opBuilderWdbSyncUpdate);
+    }
 
-  // Per-test-suite tear-down.
-  // Called after the last test in this test suite.
-  static void TearDownTestSuite() {
-      return;
-  }
+    // Per-test-suite tear-down.
+    // Called after the last test in this test suite.
+    static void TearDownTestSuite() { return; }
 };
 
 // Build ok
-TEST_F(opBuilderWdbSyncUpdate, BuildSimplest)
+TEST_F(opBuilderWdbSyncUpdate, Build)
 {
     Document doc {R"({
         "normalize":
@@ -81,7 +87,7 @@ TEST_F(opBuilderWdbSyncUpdate, BuildSimplest)
     ASSERT_NO_THROW(bld::opBuilderWdbSyncUpdate(doc.get("/normalize/0/map"), tr));
 }
 
-// TODO: the / of the path inside the json should be escaped!
+// TODO: the "/" of the path inside the json should be escaped.
 TEST_F(opBuilderWdbSyncUpdate, BuildsWithJson)
 {
     GTEST_SKIP();
@@ -154,7 +160,7 @@ TEST_F(opBuilderWdbSyncUpdate, BuildsWithQueryRefByConcat)
 
 TEST_F(opBuilderWdbSyncUpdate, checkWrongQttyParams)
 {
-     Document doc {R"({
+    Document doc {R"({
         "normalize": [
             {
                 "map":
@@ -175,12 +181,13 @@ TEST_F(opBuilderWdbSyncUpdate, checkWrongQttyParams)
         ]
     })"};
 
-    ASSERT_THROW(bld::stageBuilderNormalize(doc.get("/normalize"), tr),std::runtime_error);
+    ASSERT_THROW(bld::stageBuilderNormalize(doc.get("/normalize"), tr),
+                 std::runtime_error);
 }
 
 TEST_F(opBuilderWdbSyncUpdate, gettingEmptyReference)
 {
-     Document doc {R"({
+    Document doc {R"({
         "normalize": [
             {
                 "map":
@@ -290,14 +297,12 @@ TEST_F(opBuilderWdbSyncUpdate, completeFunctioningWithBadResponse)
     const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t(
-        [&]()
-        {
-            const int clientRemote = testAcceptConnection(serverSocketFD);
-            testRecvString(clientRemote, SOCK_STREAM);
-            testSendMsg(clientRemote, "NotOk");
-            close(clientRemote);
-        });
+    std::thread t([&]() {
+        const int clientRemote = testAcceptConnection(serverSocketFD);
+        testRecvString(clientRemote, SOCK_STREAM);
+        testSendMsg(clientRemote, "NotOk");
+        close(clientRemote);
+    });
 
     rxcpp::subjects::subject<Event> inputSubject;
     inputSubject.get_observable().subscribe([](Event e) {});
@@ -347,14 +352,12 @@ TEST_F(opBuilderWdbSyncUpdate, completeFunctioningWithtDB)
     const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t(
-        [&]()
-        {
-            const int clientRemote = testAcceptConnection(serverSocketFD);
-            testRecvString(clientRemote, SOCK_STREAM);
-            testSendMsg(clientRemote, "ok payload");
-            close(clientRemote);
-        });
+    std::thread t([&]() {
+        const int clientRemote = testAcceptConnection(serverSocketFD);
+        testRecvString(clientRemote, SOCK_STREAM);
+        testSendMsg(clientRemote, "ok payload");
+        close(clientRemote);
+    });
 
     rxcpp::subjects::subject<Event> inputSubject;
     inputSubject.get_observable().subscribe([](Event e) {});
@@ -404,14 +407,12 @@ TEST_F(opBuilderWdbSyncUpdate, QueryResultCodeNotOkWithPayload)
     const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t(
-        [&]()
-        {
-            const int clientRemote = testAcceptConnection(serverSocketFD);
-            testRecvString(clientRemote, SOCK_STREAM);
-            testSendMsg(clientRemote, "anythingElse WithPayload ");
-            close(clientRemote);
-        });
+    std::thread t([&]() {
+        const int clientRemote = testAcceptConnection(serverSocketFD);
+        testRecvString(clientRemote, SOCK_STREAM);
+        testSendMsg(clientRemote, "anythingElse WithPayload ");
+        close(clientRemote);
+    });
 
     rxcpp::subjects::subject<Event> inputSubject;
     inputSubject.get_observable().subscribe([](Event e) {});
@@ -461,14 +462,12 @@ TEST_F(opBuilderWdbSyncUpdate, QueryResultCodeOkPayloadEmpty)
     const int serverSocketFD = testBindUnixSocket(TEST_STREAM_SOCK_PATH, SOCK_STREAM);
     ASSERT_GT(serverSocketFD, 0);
 
-    std::thread t(
-        [&]()
-        {
-            const int clientRemote = testAcceptConnection(serverSocketFD);
-            testRecvString(clientRemote, SOCK_STREAM);
-            testSendMsg(clientRemote, "ok ");
-            close(clientRemote);
-        });
+    std::thread t([&]() {
+        const int clientRemote = testAcceptConnection(serverSocketFD);
+        testRecvString(clientRemote, SOCK_STREAM);
+        testSendMsg(clientRemote, "ok ");
+        close(clientRemote);
+    });
 
     rxcpp::subjects::subject<Event> inputSubject;
     inputSubject.get_observable().subscribe([](Event e) {});
