@@ -546,7 +546,7 @@ void test_send_msg_udp_error_generic(void ** state) {
     int key = 0;
 
     char *crypto_msg = "!@#123abc";
-    ssize_t crypto_size = 9;
+    ssize_t crypto_size = strlen(msg);
 
     logr.global.agents_disconnection_time = 0;
     remoted_state.queued_msgs = 0;
