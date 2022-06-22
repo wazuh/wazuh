@@ -215,7 +215,7 @@ std::vector<Parser> getParserList(ExpressionList const &expressions)
     return parsers;
 }
 
-static bool executeParserList(std::string_view const &event,
+static ExecuteResult executeParserList(std::string_view const &event,
                               ParserList const &parsers,
                               ParseResult &result)
 {
@@ -226,6 +226,7 @@ static bool executeParserList(std::string_view const &event,
     // but we will want to re-do it or revise it to implement
     // better parser combinations
     bool isOk = true;
+    std::string trace;
     for (auto const &parser : parsers)
     {
         WAZUH_TRACE_SCOPE("parserLoop");
@@ -238,7 +239,7 @@ static bool executeParserList(std::string_view const &event,
         else
         {
             // ASSERT here we are missing an implementation
-            return false;
+            return ExecuteResult{false, trace + fmt::format("Parser[\"{}\"] failure: Missing implementation for parser [{}]", parser.name, parser.name)};
         }
 
         if (!isOk)
@@ -252,13 +253,16 @@ static bool executeParserList(std::string_view const &event,
             }
             else
             {
-                // TODO report error
-                return false;
+                // TODO report error <field>?<other>
+                return ExecuteResult{false, trace + fmt::format("Parser[\"{}\"] failure", parser.name)};
             }
+        }else
+        {
+            trace += fmt::format("Parser[\"{}\"] success\n", parser.name);
         }
     }
 
-    return true;
+    return ExecuteResult{isOk, trace};
 }
 
 ParserFn getParserOp(std::string_view const &logQl)
