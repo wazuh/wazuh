@@ -308,7 +308,7 @@ public:
     }
 
     /**
-     * @brief get the value of the field.
+     * @brief get the value of the string field.
      * Overwrites previous value. If reference field is not found, sets base field to
      * null.
      *
@@ -318,17 +318,124 @@ public:
      *
      * @throws std::runtime_error If any pointer path is invalid.
      */
-    template<class T>
-    std::optional<T> get(std::string_view basePointerPath)
+    std::optional<std::string> getValueString(std::string_view basePointerPath)
     {
         auto fieldPtr = rapidjson::Pointer(basePointerPath.data());
 
         if (fieldPtr.IsValid())
         {
             const auto* value = fieldPtr.Get(m_document);
-            if(value)
+            if(value && value->IsString())
             {
-                return value->Get<T>();
+                return value->GetString();
+            }
+            else
+            {
+                return std::nullopt;
+            }
+        }
+        else
+        {
+            throw std::runtime_error(
+                fmt::format("[Json::get(basePointerPath)] "
+                            "Invalid json path: [{}]",
+                            basePointerPath));
+        }
+    }
+
+    /**
+     * @brief get the value of the int field.
+     * Overwrites previous value. If reference field is not found, sets base field to
+     * null.
+     *
+     * @param basePointerPath The base pointer path to set.
+     *
+     * @return T The value of the field.
+     *
+     * @throws std::runtime_error If any pointer path is invalid.
+     */
+    std::optional<int> getValueInt(std::string_view basePointerPath)
+    {
+        auto fieldPtr = rapidjson::Pointer(basePointerPath.data());
+
+        if (fieldPtr.IsValid())
+        {
+            const auto* value = fieldPtr.Get(m_document);
+            if(value && value->IsInt())
+            {
+                return value->GetInt();
+            }
+            else
+            {
+                return std::nullopt;
+            }
+        }
+        else
+        {
+            throw std::runtime_error(
+                fmt::format("[Json::get(basePointerPath)] "
+                            "Invalid json path: [{}]",
+                            basePointerPath));
+        }
+    }
+
+    /**
+     * @brief get the value of the double field.
+     * Overwrites previous value. If reference field is not found, sets base field to
+     * null.
+     *
+     * @param basePointerPath The base pointer path to set.
+     *
+     * @return T The value of the field.
+     *
+     * @throws std::runtime_error If any pointer path is invalid.
+     */
+    std::optional<double> getValueDouble(std::string_view basePointerPath)
+    {
+        auto fieldPtr = rapidjson::Pointer(basePointerPath.data());
+
+        if (fieldPtr.IsValid())
+        {
+            const auto* value = fieldPtr.Get(m_document);
+            if(value && value->IsDouble())
+            {
+                return value->GetDouble();
+            }
+            else
+            {
+                return std::nullopt;
+            }
+        }
+        else
+        {
+            throw std::runtime_error(
+                fmt::format("[Json::get(basePointerPath)] "
+                            "Invalid json path: [{}]",
+                            basePointerPath));
+        }
+    }
+
+    /**
+     * @brief get the value of the bool field.
+     * Overwrites previous value. If reference field is not found, sets base field to
+     * null.
+     *
+     * @param basePointerPath The base pointer path to set.
+     *
+     * @return T The value of the field.
+     *
+     * @throws std::runtime_error If any pointer path is invalid.
+     */
+    std::optional<bool> getValueBool(std::string_view basePointerPath)
+    {
+        auto fieldPtr = rapidjson::Pointer(basePointerPath.data());
+
+        if (fieldPtr.IsValid())
+        {
+            const auto* value = fieldPtr.Get(m_document);
+            if(value && value->IsBool())
+            {
+                return value->GetBool();
             }
             else
             {
@@ -368,7 +475,6 @@ public:
                             basePointerPath));
         }
     }
-
 
     /**
      * @brief Get Json prettyfied string.
