@@ -73,7 +73,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
     int key_id;
     ssize_t msg_size;
     char crypt_msg[OS_MAXSTR + 1] = {0};
-    int retval = 0;
+    int retval = -1;
     int error = 0;
 
     key_lock_read();
@@ -110,11 +110,13 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
 
     crypt_msg[msg_size] = '\0';
 
+    ssize_t bytes_sent = 0;
     /* Send initial message */
     if (keys.keyentries[key_id]->net_protocol == REMOTED_NET_PROTOCOL_UDP) {
         /* UDP mode, send the message */
-        retval = sendto(logr.udp_sock, crypt_msg, msg_size, 0, (struct sockaddr *)&keys.keyentries[key_id]->peer_info, logr.peer_size) == msg_size ? 0 : -1;
+        bytes_sent = sendto(logr.udp_sock, crypt_msg, msg_size, 0, (struct sockaddr *)&keys.keyentries[key_id]->peer_info, logr.peer_size);
         error = errno;
+        retval = (bytes_sent == msg_size ? 0 : -1);
     } else if (keys.keyentries[key_id]->sock >= 0) {
         /* TCP mode, enqueue the message in the send buffer */
         if (retval = nb_queue(&netbuffer_send, keys.keyentries[key_id]->sock, crypt_msg, msg_size), !retval) {
@@ -151,7 +153,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
             merror(SEND_ERROR " [%d]", agent_id, strerror(error), keys.keyentries[key_id]->sock);
         }
     } else {
-        rem_add_send(retval);
+        rem_add_send(bytes_sent);
     }
 
     w_mutex_unlock(&keys.keyentries[key_id]->mutex);
