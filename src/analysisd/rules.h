@@ -221,8 +221,8 @@ typedef struct _RuleInfo {
 
     bool internal_saving;      ///< Used to free RuleInfo structure in wazuh-logtest
 
-    /* Pointer to the rule which overwrites this one if it exists */
-    struct _RuleInfo *rule_overwrite;
+    /* Pointers to the rules which this one overwrites if it exists */
+    OSList * rule_overwrite;
 } RuleInfo;
 
 typedef struct _rules_tmp_params_t {
@@ -395,7 +395,7 @@ void Rules_OP_CreateRules(void);
  * @param log_msg List to save log messages.
  * @return 0 on success, otherwise -1
  */
-int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_node, 
+int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_node,
                        EventList **last_event_list, OSStore **decoder_list, OSList* log_msg);
 
 int AddHash_Rule(RuleNode *node);
