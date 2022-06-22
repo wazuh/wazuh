@@ -40,6 +40,8 @@ std::tuple<std::string, opString, opString>
 getCompOpParameter(std::any definition)
 {
     // Get Field path and arguments of the helper function
+    std::string field;
+    std::vector<std::string> parameters;
 
     try
     {
@@ -48,10 +50,10 @@ getCompOpParameter(std::any definition)
             definition);
 
         // Get field path
-        auto field = std::get<0>(helperTuple);
+        field = std::get<0>(helperTuple);
 
         // Get parameters of the helper function
-        auto parameters = std::get<1>(helperTuple);
+        parameters = std::get<1>(helperTuple);
     }
     catch (std::exception& e)
     {
@@ -71,7 +73,7 @@ getCompOpParameter(std::any definition)
 
     if (parameters[1][0] == REFERENCE_ANCHOR)
     {
-        refValue = json::formatJsonPath(parameters[1].substr(1));
+        refValue = json::Json::formatJsonPath(parameters[1].substr(1));
     }
     else
     {
@@ -86,9 +88,10 @@ namespace builder::internals::builders
 {
 
 // <field>: exists
-Expression opBuilderHelperExists(std::any definition)
+base::Expression opBuilderHelperExists(std::any definition)
 {
 
+    std::string field;
     try
     {
         // Get Field path and arguments of the helper function
@@ -97,7 +100,7 @@ Expression opBuilderHelperExists(std::any definition)
             definition);
 
         // Get Field path
-        auto field = std::get<0>(helperTuple);
+        field = std::get<0>(helperTuple);
     }
     catch (std::exception& e)
     {
@@ -113,7 +116,7 @@ Expression opBuilderHelperExists(std::any definition)
     const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
 
     // Return result
-    return builder::internals::Term<base::EngineOp>::create(helperName,
+    return base::Term<base::EngineOp>::create(helperName,
             [=](base::Event e)->base::result::Result<base::Event>
             {
                 if (e->exists(field))
@@ -128,8 +131,9 @@ Expression opBuilderHelperExists(std::any definition)
 }
 
 // <field>: not_exists
-Expression opBuilderHelperNotExists(std::any definition)
+base::Expression opBuilderHelperNotExists(std::any definition)
 {
+    std::string field;
     try
     {
         // Get Field path and arguments of the helper function
@@ -138,7 +142,7 @@ Expression opBuilderHelperNotExists(std::any definition)
             definition);
 
         // Get Field path
-        auto field = std::get<0>(helperTuple);
+        field = std::get<0>(helperTuple);
     }
     catch (std::exception& e)
     {
@@ -154,7 +158,7 @@ Expression opBuilderHelperNotExists(std::any definition)
     const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
 
     // Return result
-    return builder::internals::Term<base::EngineOp>::create(helperName,
+    return base::Term<base::EngineOp>::create(helperName,
             [=](base::Event e)->base::result::Result<base::Event>
             {
                 if (!e->exists(field))
@@ -172,9 +176,9 @@ Expression opBuilderHelperNotExists(std::any definition)
 //*           String filters                      *
 //*************************************************
 
-bool opBuilderHelperStringComparison(const std::string key,
+bool opBuilderHelperStringComparison(const std::string & key,
                                      char op,
-                                     base::Event& e,
+                                     base::Event e,
                                      std::optional<std::string> refValue,
                                      std::optional<std::string> value)
 {
@@ -188,10 +192,10 @@ bool opBuilderHelperStringComparison(const std::string key,
     //      operator on runtime
     // TODO string and int could be merged if they used the same comparators
     // Get value to compare
-    const rapidjson::Value* fieldToCompare {};
+    std::optional<std::string> fieldToCompare {};
     try
     {
-        fieldToCompare = &e->get(key);
+        fieldToCompare = e->getValueString(key);
     }
     catch (std::exception& ex)
     {
@@ -199,7 +203,7 @@ bool opBuilderHelperStringComparison(const std::string key,
         return false;
     }
 
-    if (fieldToCompare == nullptr || !fieldToCompare->IsString())
+    if (!fieldToCompare.has_value())
     {
         return false;
     }
@@ -211,10 +215,10 @@ bool opBuilderHelperStringComparison(const std::string key,
         // TODO Remove try catch or if nullptr after fix get method of document
         // class
         // TODO Update to use proper references
-        const rapidjson::Value* refValueToCheck {};
+        std::optional<std::string> refValueToCheck {};
         try
         {
-            refValueToCheck = &e->get(refValue.value());
+            refValueToCheck = e->getValueString(refValue.value());
         }
         catch (std::exception& ex)
         {
@@ -222,30 +226,30 @@ bool opBuilderHelperStringComparison(const std::string key,
             return false;
         }
 
-        if (refValueToCheck == nullptr || !refValueToCheck->IsString())
+        if (!refValueToCheck.has_value())
         {
             return false;
         }
-        value = std::string {refValueToCheck->GetString()};
+        value = std::optional<std::string> {refValueToCheck};
     }
 
     // String operation
     switch (op)
     {
         case '=':
-            return std::string {fieldToCompare->GetString()} == value.value();
+            return fieldToCompare.value() == value.value();
         case '!':
-            return std::string {fieldToCompare->GetString()} != value.value();
+            return fieldToCompare.value() != value.value();
         case '>':
-            return std::string {fieldToCompare->GetString()} > value.value();
+            return fieldToCompare.value() > value.value();
         // case '>=':
         case 'g':
-            return std::string {fieldToCompare->GetString()} >= value.value();
+            return fieldToCompare.value() >= value.value();
         case '<':
-            return std::string {fieldToCompare->GetString()} < value.value();
+            return fieldToCompare.value() < value.value();
         // case '<=':
         case 'l':
-            return std::string {fieldToCompare->GetString()} <= value.value();
+            return fieldToCompare.value() <= value.value();
         default:
             // if raise here, then the logic is wrong
             throw std::invalid_argument("Invalid operator: '" +
@@ -256,8 +260,7 @@ bool opBuilderHelperStringComparison(const std::string key,
 }
 
 // <field>: +s_eq/<value>
-s_eq/valor o $referencia
-Expression opBuilderHelperStringEQ(std::any definition)
+base::Expression opBuilderHelperStringEQ(std::any definition)
 {
     auto [field, refValue, value] {getCompOpParameter(definition)};
 
@@ -268,7 +271,7 @@ Expression opBuilderHelperStringEQ(std::any definition)
     const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
 
     // Return result
-    return builder::internals::Term<base::EngineOp>::create(helperName,
+    return base::Term<base::EngineOp>::create(helperName,
             [=](base::Event e)->base::result::Result<base::Event>
             {
                 if (opBuilderHelperStringComparison(field, '=', e, refValue, value))
@@ -283,7 +286,7 @@ Expression opBuilderHelperStringEQ(std::any definition)
 }
 
 // <field>: +s_ne/<value>
-Expression opBuilderHelperStringNE(std::any definition)
+base::Expression opBuilderHelperStringNE(std::any definition)
 {
     auto [field, refValue, value] {getCompOpParameter(definition)};
 
@@ -294,7 +297,7 @@ Expression opBuilderHelperStringNE(std::any definition)
     const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
 
     // Return result
-    return builder::internals::Term<base::EngineOp>::create(helperName,
+    return base::Term<base::EngineOp>::create(helperName,
             [=](base::Event e)->base::result::Result<base::Event>
             {
                 if (opBuilderHelperStringComparison(field, '!', e, refValue, value))
@@ -309,7 +312,7 @@ Expression opBuilderHelperStringNE(std::any definition)
 }
 
 // <field>: +s_gt/<value>|$<ref>
-Expression opBuilderHelperStringGT(std::any definition)
+base::Expression opBuilderHelperStringGT(std::any definition)
 {
     auto [field, refValue, value] {getCompOpParameter(definition)};
 
@@ -320,7 +323,7 @@ Expression opBuilderHelperStringGT(std::any definition)
     const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
 
     // Return result
-    return builder::internals::Term<base::EngineOp>::create(helperName,
+    return base::Term<base::EngineOp>::create(helperName,
             [=](base::Event e)->base::result::Result<base::Event>
             {
                 if (opBuilderHelperStringComparison(field, '>', e, refValue, value))
@@ -335,7 +338,7 @@ Expression opBuilderHelperStringGT(std::any definition)
 }
 
 // <field>: +s_ge/<value>|$<ref>
-Expression opBuilderHelperStringGE(std::any definition)
+base::Expression opBuilderHelperStringGE(std::any definition)
 {
     auto [field, refValue, value] {getCompOpParameter(definition)};
 
@@ -346,7 +349,7 @@ Expression opBuilderHelperStringGE(std::any definition)
     const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
 
     // Return result
-    return builder::internals::Term<base::EngineOp>::create(helperName,
+    return base::Term<base::EngineOp>::create(helperName,
             [=](base::Event e)->base::result::Result<base::Event>
             {
                 if (opBuilderHelperStringComparison(field, 'g', e, refValue, value))
@@ -361,7 +364,7 @@ Expression opBuilderHelperStringGE(std::any definition)
 }
 
 // <field>: +s_lt/<value>|$<ref>
-Expression opBuilderHelperStringLT(std::any definition)
+base::Expression opBuilderHelperStringLT(std::any definition)
 {
     auto [field, refValue, value] {getCompOpParameter(definition)};
 
@@ -372,7 +375,7 @@ Expression opBuilderHelperStringLT(std::any definition)
     const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
 
     // Return result
-    return builder::internals::Term<base::EngineOp>::create(helperName,
+    return base::Term<base::EngineOp>::create(helperName,
             [=](base::Event e)->base::result::Result<base::Event>
             {
                 if (opBuilderHelperStringComparison(field, '<', e, refValue, value))
@@ -387,7 +390,7 @@ Expression opBuilderHelperStringLT(std::any definition)
 }
 
 // <field>: +s_le/<value>|$<ref>
-Expression opBuilderHelperStringLE(std::any definition)
+base::Expression opBuilderHelperStringLE(std::any definition)
 {
     auto [field, refValue, value] {getCompOpParameter(definition)};
 
@@ -398,7 +401,7 @@ Expression opBuilderHelperStringLE(std::any definition)
     const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
 
     // Return result
-    return builder::internals::Term<base::EngineOp>::create(helperName,
+    return base::Term<base::EngineOp>::create(helperName,
             [=](base::Event e)->base::result::Result<base::Event>
             {
                 if (opBuilderHelperStringComparison(field, 'l', e, refValue, value))
@@ -416,9 +419,9 @@ Expression opBuilderHelperStringLE(std::any definition)
 //*               Int filters                     *
 //*************************************************
 
-bool opBuilderHelperIntComparison(const std::string field,
+bool opBuilderHelperIntComparison(const std::string & field,
                                   char op,
-                                  base::Event& e,
+                                  base::Event e,
                                   std::optional<std::string> refValue,
                                   std::optional<int> value)
 {
@@ -428,10 +431,10 @@ bool opBuilderHelperIntComparison(const std::string field,
     // TODO Update to use proper references
     // TODO Same as opBuilderHelperStringComparison
     // Get value to compare
-    const rapidjson::Value* fieldValue {};
+    std::optional<int> fieldValue {};
     try
     {
-        fieldValue = &e->get(field);
+        fieldValue = e->getValueInt(field);
     }
     catch (std::exception& ex)
     {
@@ -439,7 +442,7 @@ bool opBuilderHelperIntComparison(const std::string field,
         return false;
     }
 
-    if (fieldValue == nullptr || !fieldValue->IsInt())
+    if (!fieldValue.has_value())
     {
         return false;
     }
@@ -451,10 +454,10 @@ bool opBuilderHelperIntComparison(const std::string field,
         // TODO Remove try catch or if nullptr after fix get method of document
         // class
         // TODO update to use proper references
-        const rapidjson::Value* refValueToCheck {};
+        std::optional<int>  refValueToCheck {};
         try
         {
-            refValueToCheck = &e->get(refValue.value());
+            refValueToCheck = e->getValueInt(refValue.value());
         }
         catch (std::exception& ex)
         {
@@ -462,26 +465,26 @@ bool opBuilderHelperIntComparison(const std::string field,
             return false;
         }
 
-        if (refValueToCheck == nullptr || !refValueToCheck->IsInt())
+        if (!refValueToCheck.has_value())
         {
             return false;
         }
-        value = refValueToCheck->GetInt();
+        value = std::optional<int> {refValueToCheck};
     }
 
     // Int operation
     switch (op)
     {
         // case '==':
-        case '=': return fieldValue->GetInt() == value.value();
+        case '=': return fieldValue.value() == value.value();
         // case '!=':
-        case '!': return fieldValue->GetInt() != value.value();
-        case '>': return fieldValue->GetInt() > value.value();
+        case '!': return fieldValue.value() != value.value();
+        case '>': return fieldValue.value() > value.value();
         // case '>=':
-        case 'g': return fieldValue->GetInt() >= value.value();
-        case '<': return fieldValue->GetInt() < value.value();
+        case 'g': return fieldValue.value() >= value.value();
+        case '<': return fieldValue.value() < value.value();
         // case '<=':
-        case 'l': return fieldValue->GetInt() <= value.value();
+        case 'l': return fieldValue.value() <= value.value();
 
         default:
             // if raise here, then the source code is wrong
@@ -493,7 +496,7 @@ bool opBuilderHelperIntComparison(const std::string field,
 }
 
 // field: +i_eq/int|$ref/
-Expression opBuilderHelperIntEqual(std::any definition)
+base::Expression opBuilderHelperIntEqual(std::any definition)
 {
     auto [field, refValue, valuestr] {getCompOpParameter(definition)};
 
@@ -508,7 +511,7 @@ Expression opBuilderHelperIntEqual(std::any definition)
     const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
 
     // Return result
-    return builder::internals::Term<base::EngineOp>::create(helperName,
+    return base::Term<base::EngineOp>::create(helperName,
             [=](base::Event e)->base::result::Result<base::Event>
             {
                 if (opBuilderHelperIntComparison(field, '=', e, refValue, value))
@@ -523,7 +526,7 @@ Expression opBuilderHelperIntEqual(std::any definition)
 }
 
 // field: +i_ne/int|$ref/
-Expression opBuilderHelperIntNotEqual(std::any definition)
+base::Expression opBuilderHelperIntNotEqual(std::any definition)
 {
 
     auto [field, refValue, valuestr] {getCompOpParameter(definition)};
@@ -539,7 +542,7 @@ Expression opBuilderHelperIntNotEqual(std::any definition)
     const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
 
     // Return result
-    return builder::internals::Term<base::EngineOp>::create(helperName,
+    return base::Term<base::EngineOp>::create(helperName,
             [=](base::Event e)->base::result::Result<base::Event>
             {
                 if (opBuilderHelperIntComparison(field, '!', e, refValue, value))
@@ -554,7 +557,7 @@ Expression opBuilderHelperIntNotEqual(std::any definition)
 }
 
 // field: +i_lt/int|$ref/
-Expression opBuilderHelperIntLessThan(std::any definition)
+base::Expression opBuilderHelperIntLessThan(std::any definition)
 {
 
     auto [field, refValue, valuestr] {getCompOpParameter(definition)};
@@ -570,7 +573,7 @@ Expression opBuilderHelperIntLessThan(std::any definition)
     const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
 
     // Return result
-    return builder::internals::Term<base::EngineOp>::create(helperName,
+    return base::Term<base::EngineOp>::create(helperName,
             [=](base::Event e)->base::result::Result<base::Event>
             {
                 if (opBuilderHelperIntComparison(field, '<', e, refValue, value))
@@ -585,7 +588,7 @@ Expression opBuilderHelperIntLessThan(std::any definition)
 }
 
 // field: +i_le/int|$ref/
-Expression opBuilderHelperIntLessThanEqual(std::any definition)
+base::Expression opBuilderHelperIntLessThanEqual(std::any definition)
 {
 
     auto [field, refValue, valuestr] {getCompOpParameter(definition)};
@@ -601,7 +604,7 @@ Expression opBuilderHelperIntLessThanEqual(std::any definition)
     const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
 
     // Return result
-    return builder::internals::Term<base::EngineOp>::create(helperName,
+    return base::Term<base::EngineOp>::create(helperName,
             [=](base::Event e)->base::result::Result<base::Event>
             {
                 if (opBuilderHelperIntComparison(field, 'l', e, refValue, value))
@@ -616,7 +619,7 @@ Expression opBuilderHelperIntLessThanEqual(std::any definition)
 }
 
 // field: +i_gt/int|$ref/
-Expression opBuilderHelperIntGreaterThan(std::any definition)
+base::Expression opBuilderHelperIntGreaterThan(std::any definition)
 {
 
     auto [field, refValue, valuestr] {getCompOpParameter(definition)};
@@ -632,7 +635,7 @@ Expression opBuilderHelperIntGreaterThan(std::any definition)
     const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
 
     // Return result
-    return builder::internals::Term<base::EngineOp>::create(helperName,
+    return base::Term<base::EngineOp>::create(helperName,
             [=](base::Event e)->base::result::Result<base::Event>
             {
                 if (opBuilderHelperIntComparison(field, '>', e, refValue, value))
@@ -647,7 +650,7 @@ Expression opBuilderHelperIntGreaterThan(std::any definition)
 }
 
 // field: +i_ge/int|$ref/
-Expression opBuilderHelperIntGreaterThanEqual(std::any definition)
+base::Expression opBuilderHelperIntGreaterThanEqual(std::any definition)
 {
 
     auto [field, refValue, valuestr] {getCompOpParameter(definition)};
@@ -663,7 +666,7 @@ Expression opBuilderHelperIntGreaterThanEqual(std::any definition)
     const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
 
     // Return result
-    return builder::internals::Term<base::EngineOp>::create(helperName,
+    return base::Term<base::EngineOp>::create(helperName,
             [=](base::Event e)->base::result::Result<base::Event>
             {
                 if (opBuilderHelperIntComparison(field, 'g', e, refValue, value))
@@ -682,7 +685,7 @@ Expression opBuilderHelperIntGreaterThanEqual(std::any definition)
 //*************************************************
 
 // field: +r_match/regexp
-Expression opBuilderHelperRegexMatch(std::any definition)
+base::Expression opBuilderHelperRegexMatch(std::any definition)
 {
 
     auto [field, refValue, value] {getCompOpParameter(definition)};
@@ -693,24 +696,24 @@ Expression opBuilderHelperRegexMatch(std::any definition)
     const auto successTrace = fmt::format("{{}} Condition Success", helperName);
     const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
 
-    auto regex_ptr = std::make_shared<RE2>(value, RE2::Quiet);
+    auto regex_ptr = std::make_shared<RE2>(value.value(), RE2::Quiet);
     if (!regex_ptr->ok())
     {
-        const std::string err = "Error compiling regex '" + value +
+        const std::string err = "Error compiling regex '" + value.value() +
                                 "'. " + regex_ptr->error();
         throw std::runtime_error(err);
     }
 
     // Return result
-    return builder::internals::Term<base::EngineOp>::create(helperName,
+    return base::Term<base::EngineOp>::create(helperName,
             [=](base::Event e)->base::result::Result<base::Event>
             {
                 // TODO Remove try catch
                 // TODO Update to use proper reference
-                const rapidjson::Value* field_str {};
+                std::optional<std::string> field_str {};
                 try
                 {
-                    field_str = &e->get(field);
+                    field_str = e->getValueString(field);
                 }
                 catch (std::exception& ex)
                 {
@@ -718,9 +721,9 @@ Expression opBuilderHelperRegexMatch(std::any definition)
                     return  base::result::makeFailure(e, failureTrace);
                 }
 
-                if (field_str != nullptr && field_str->IsString())
+                if (field_str.has_value())
                 {
-                    if (RE2::PartialMatch(field_str->GetString(), *regex_ptr))
+                    if (RE2::PartialMatch(field_str.value(), *regex_ptr))
                     {
                         return base::result::makeSuccess(e, successTrace);
                     }
@@ -735,7 +738,7 @@ Expression opBuilderHelperRegexMatch(std::any definition)
 }
 
 // field: +r_not_match/regexp
-Expression opBuilderHelperRegexNotMatch(std::any definition)
+base::Expression opBuilderHelperRegexNotMatch(std::any definition)
 {
 
     auto [field, refValue, value] {getCompOpParameter(definition)};
@@ -746,24 +749,24 @@ Expression opBuilderHelperRegexNotMatch(std::any definition)
     const auto successTrace = fmt::format("{{}} Condition Success", helperName);
     const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
 
-    auto regex_ptr = std::make_shared<RE2>(value, RE2::Quiet);
+    auto regex_ptr = std::make_shared<RE2>(value.value(), RE2::Quiet);
     if (!regex_ptr->ok())
     {
-        const std::string err = "Error compiling regex '" + value +
+        const std::string err = "Error compiling regex '" + value.value() +
                                 "'. " + regex_ptr->error();
         throw std::runtime_error(err);
     }
 
     // Return result
-    return builder::internals::Term<base::EngineOp>::create(helperName,
+    return base::Term<base::EngineOp>::create(helperName,
             [=](base::Event e)->base::result::Result<base::Event>
             {
                 // TODO Remove try catch
                 // TODO Update to use proper reference
-                const rapidjson::Value* field_str {};
+                std::optional<std::string> field_str {};
                 try
                 {
-                    field_str = &e->get(field);
+                    field_str = e->getValueString(field);
                 }
                 catch (std::exception& ex)
                 {
@@ -771,9 +774,9 @@ Expression opBuilderHelperRegexNotMatch(std::any definition)
                     return  base::result::makeFailure(e, failureTrace);
                 }
 
-                if (field_str != nullptr && field_str->IsString())
+                if (field_str.has_value())
                 {
-                    if (!RE2::PartialMatch(field_str->GetString(), *regex_ptr))
+                    if (!RE2::PartialMatch(field_str.value(), *regex_ptr))
                     {
                         return base::result::makeSuccess(e, successTrace);
                     }
@@ -792,9 +795,11 @@ Expression opBuilderHelperRegexNotMatch(std::any definition)
 
 // path_to_ip: +ip_cidr/192.168.0.0/16
 // path_to_ip: +ip_cidr/192.168.0.0/255.255.0.0
-Expression opBuilderHelperIPCIDR(std::any definition)
+base::Expression opBuilderHelperIPCIDR(std::any definition)
 {
     // Get Field path and arguments of the helper function
+    std::string field;
+    std::vector<std::string> parameters;
 
     try
     {
@@ -803,10 +808,10 @@ Expression opBuilderHelperIPCIDR(std::any definition)
             definition);
 
         // Get field path
-        auto field = std::get<0>(helperTuple);
+        field = std::get<0>(helperTuple);
 
         // Get parameters of the helper function
-        auto parameters = std::get<1>(helperTuple);
+        parameters = std::get<1>(helperTuple);
     }
     catch (std::exception& e)
     {
@@ -859,26 +864,26 @@ Expression opBuilderHelperIPCIDR(std::any definition)
     const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
 
     // Return result
-    return builder::internals::Term<base::EngineOp>::create(helperName,
+    return base::Term<base::EngineOp>::create(helperName,
             [=](base::Event e)->base::result::Result<base::Event>
             {
             // TODO Remove try catch
             // TODO Update to use proper reference
-            const rapidjson::Value* field_str {};
+            std::optional<std::string> field_str {};
             try
             {
-                field_str = &e->get(field);
+                field_str = e->getValueString(field);
             }
             catch (std::exception& ex)
             {
                 return  base::result::makeFailure(e, failureTrace);
             }
-            if (field_str != nullptr && field_str->IsString())
+            if (field_str.has_value())
             {
                 uint32_t ip {};
                 try
                 {
-                    ip = utils::ip::IPv4ToUInt(field_str->GetString());
+                    ip = utils::ip::IPv4ToUInt(field_str.value());
                 }
                 catch (std::exception& ex)
                 {
@@ -894,7 +899,7 @@ Expression opBuilderHelperIPCIDR(std::any definition)
                 }
             }
             return  base::result::makeFailure(e, failureTrace);
-        };
+        });
 }
 
 } // namespace builder::internals::builders
