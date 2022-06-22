@@ -291,7 +291,7 @@ base::Expression opBuilderHelperStringUP(std::any definition)
     return base::Term<base::EngineOp>::create(helperName,
             [=](base::Event e)->base::result::Result<base::Event>
             {
-                opBuilderHelperStringTransformation(field, 'u', e, refExpStr, expectedStr);
+                return opBuilderHelperStringTransformation(field, 'u', e, refExpStr, expectedStr);
             });
 
 }
@@ -347,7 +347,7 @@ base::Expression opBuilderHelperStringLO(std::any definition)
     return base::Term<base::EngineOp>::create(helperName,
             [=](base::Event e)->base::result::Result<base::Event>
             {
-                opBuilderHelperStringTransformation(field, 'l', e, refExpStr, expectedStr);
+                return opBuilderHelperStringTransformation(field, 'l', e, refExpStr, expectedStr);
             });
 
 }
@@ -401,7 +401,7 @@ base::Expression opBuilderHelperStringTrim(std::any definition)
         throw std::runtime_error("Invalid trim char for s_trim operator");
     }
 
-    const auto helperName = fmt::format("{}: +s_lo", field);
+    const auto helperName = fmt::format("{}: +s_trim", field);
 
     // Tracing
     const auto successTrace = fmt::format("{{}} Condition Success", helperName);
@@ -486,12 +486,28 @@ base::Expression opBuilderHelperStringTrim(std::any definition)
 // field: +i_calc/[+|-|*|/]/val|$ref/
 base::Expression opBuilderHelperIntCalc(std::any definition)
 {
-    // Get field
-    std::string field {
-        json::formatJsonPath(def.MemberBegin()->name.GetString())};
-    std::string rawValue {def.MemberBegin()->value.GetString()};
+    // Get Field path and arguments of the helper function
+    std::string field;
+    std::vector<std::string> parameters;
 
-    std::vector<std::string> parameters {utils::string::split(rawValue, '/')};
+    try
+    {
+        const auto helperTuple =
+        std::any_cast<std::tuple<std::string, std::vector<std::string>>>(
+            definition);
+
+        // Get field path
+        field = std::get<0>(helperTuple);
+
+        // Get parameters of the helper function
+        parameters = std::get<1>(helperTuple);
+    }
+    catch (std::exception& e)
+    {
+        std::throw_with_nested(
+            std::runtime_error("[builders::helperFilterBuilder(definition)] "
+                               "Received unexpected arguments."));
+    }
 
     if (parameters.size() != 3)
     {
@@ -520,23 +536,22 @@ base::Expression opBuilderHelperIntCalc(std::any definition)
     {
         // Check case `+i_calc/op/$`
         refValue =
-            json::formatJsonPath(parameters[2].substr(1, std::string::npos));
+            json::Json::formatJsonPath(parameters[2].substr(1, std::string::npos));
     }
     else
     {
         value = std::stoi(parameters[2]);
     }
 
-    // Return Lifter
-    return [field, op, refValue, value](base::Observable o)
-    {
-        // Append rxcpp operation
-        return o.map(
-            [=](base::Event e) {
-                return opBuilderHelperIntTransformation(
-                    field, op, e, refValue, value);
+    const auto helperName = fmt::format("{}: +i_calc", field);
+
+    // Return Term
+    return base::Term<base::EngineOp>::create(helperName,
+            [=](base::Event e)->base::result::Result<base::Event>
+            {
+                return opBuilderHelperIntTransformation(field, op, e, refValue, value);
             });
-    };
+
 }
 
 //*************************************************
