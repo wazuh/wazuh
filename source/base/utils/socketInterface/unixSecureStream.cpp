@@ -81,8 +81,7 @@ SendRetval unixSecureStream::sendMsg(const std::string& msg)
 std::vector<char> unixSecureStream::recvMsg()
 {
     // Check recive msg
-    const auto checkRcv = [this](const ssize_t rcvBytes)
-    {
+    const auto checkRcv = [this](const ssize_t rcvBytes) {
         if (0 > rcvBytes)
         {
             const auto msg = fmt::format("recvMsg: {} ({})", strerror(errno), errno);
