@@ -173,7 +173,7 @@ checks:
     rationale: "The default Guest account allows unauthenticated network users to log on as Guest with no password. These unauthorized users could access any resources that are accessible to the Guest account over the network. This capability means that any network shares with permissions that allow access to the Guest account, the Guests group, or the Everyone group will be accessible over the network, which could lead to the exposure or corruption of data."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration/Policies/Windows Settings/Security Settings/Local Policies/Security Options/Accounts: Guest account status"
     compliance:
-      - cis: ["1.1.5"]
+      - cis: ["2.3.1.3"]
       - cis_csc: ["16"]
     condition: all
     rules:
