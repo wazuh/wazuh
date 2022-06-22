@@ -549,3 +549,18 @@ TEST(JsonRuntime, Str)
 
     ASSERT_EQ(expected, doc.str());
 }
+
+TEST(JsonSets, setObject)
+{
+    Json doc {R"({
+        "one": 1,
+        "two": 2,
+        "three": 3
+    })"};
+
+    Json obj;
+
+    auto docObj = doc.getObject();
+    ASSERT_NO_THROW(obj.setObject(docObj));
+    ASSERT_EQ(doc.str(), obj.str());
+}

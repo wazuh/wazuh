@@ -22,7 +22,7 @@ static void registerBuilders()
     Registry::registerBuilder(builders::operationConditionBuilder, "operation.condition");
 
     // Stages
-    Registry::registerBuilder(builders::stageCheckBuilder, "stage.check", "stage.allow");
+    Registry::registerBuilder(builders::stageBuilderCheck, "stage.check", "stage.allow");
     Registry::registerBuilder(builders::stageMapBuilder, "stage.map");
     Registry::registerBuilder(builders::stageNormalizeBuilder, "stage.normalize");
 

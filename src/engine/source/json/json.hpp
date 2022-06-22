@@ -325,7 +325,7 @@ public:
         if (fieldPtr.IsValid())
         {
             const auto* value = fieldPtr.Get(m_document);
-            if(value && value->IsString())
+            if (value && value->IsString())
             {
                 return value->GetString();
             }
@@ -336,10 +336,9 @@ public:
         }
         else
         {
-            throw std::runtime_error(
-                fmt::format("[Json::get(basePointerPath)] "
-                            "Invalid json path: [{}]",
-                            basePointerPath));
+            throw std::runtime_error(fmt::format("[Json::get(basePointerPath)] "
+                                                 "Invalid json path: [{}]",
+                                                 basePointerPath));
         }
     }
 
@@ -361,7 +360,7 @@ public:
         if (fieldPtr.IsValid())
         {
             const auto* value = fieldPtr.Get(m_document);
-            if(value && value->IsInt())
+            if (value && value->IsInt())
             {
                 return value->GetInt();
             }
@@ -372,10 +371,9 @@ public:
         }
         else
         {
-            throw std::runtime_error(
-                fmt::format("[Json::get(basePointerPath)] "
-                            "Invalid json path: [{}]",
-                            basePointerPath));
+            throw std::runtime_error(fmt::format("[Json::get(basePointerPath)] "
+                                                 "Invalid json path: [{}]",
+                                                 basePointerPath));
         }
     }
 
@@ -397,7 +395,7 @@ public:
         if (fieldPtr.IsValid())
         {
             const auto* value = fieldPtr.Get(m_document);
-            if(value && value->IsDouble())
+            if (value && value->IsDouble())
             {
                 return value->GetDouble();
             }
@@ -408,10 +406,9 @@ public:
         }
         else
         {
-            throw std::runtime_error(
-                fmt::format("[Json::get(basePointerPath)] "
-                            "Invalid json path: [{}]",
-                            basePointerPath));
+            throw std::runtime_error(fmt::format("[Json::get(basePointerPath)] "
+                                                 "Invalid json path: [{}]",
+                                                 basePointerPath));
         }
     }
 
@@ -433,7 +430,7 @@ public:
         if (fieldPtr.IsValid())
         {
             const auto* value = fieldPtr.Get(m_document);
-            if(value && value->IsBool())
+            if (value && value->IsBool())
             {
                 return value->GetBool();
             }
@@ -444,10 +441,9 @@ public:
         }
         else
         {
-            throw std::runtime_error(
-                fmt::format("[Json::get(basePointerPath)] "
-                            "Invalid json path: [{}]",
-                            basePointerPath));
+            throw std::runtime_error(fmt::format("[Json::get(basePointerPath)] "
+                                                 "Invalid json path: [{}]",
+                                                 basePointerPath));
         }
     }
 
@@ -458,7 +454,7 @@ public:
         if (fieldPtr.IsValid())
         {
             const auto* value = fieldPtr.Get(m_document);
-            if(value)
+            if (value)
             {
                 return value->GetString();
             }
@@ -469,10 +465,9 @@ public:
         }
         else
         {
-            throw std::runtime_error(
-                fmt::format("[Json::get(basePointerPath)] "
-                            "Invalid json path: [{}]",
-                            basePointerPath));
+            throw std::runtime_error(fmt::format("[Json::get(basePointerPath)] "
+                                                 "Invalid json path: [{}]",
+                                                 basePointerPath));
         }
     }
 
@@ -720,7 +715,7 @@ public:
         return object;
     }
 
-    // Required by parser and kvdb
+    // Required by parser, kvdb and ConditionExpression
     void setNull()
     {
         m_document.SetNull();
@@ -744,6 +739,17 @@ public:
     void setString(const std::string& value)
     {
         m_document.SetString(value.c_str(), m_document.GetAllocator());
+    }
+
+    void setObject(const std::vector<std::tuple<std::string, Json>>& value)
+    {
+        m_document.SetObject();
+        for (auto& [key, value] : value)
+        {
+            m_document.AddMember({key.c_str(), m_document.GetAllocator()},
+                                 {value.m_document, m_document.GetAllocator()},
+                                 m_document.GetAllocator());
+        }
     }
 };
 
