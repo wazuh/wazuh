@@ -32,15 +32,22 @@ namespace
  * @param refValue The reference to the value user as source of the
  * transformation
  * @param value The value to use as source of the transformation
- * @return base::Event The base::Event with the field transformed
+ * @return base::result::Result<base::Event> The base::result::Result<base::Event>
+ * with the field transformed
  * @throw std::logic_error if the `op` is not valid
  */
-base::Event opBuilderHelperStringTransformation(const std::string field,
+base::result::Result<base::Event> opBuilderHelperStringTransformation(const std::string field,
                                           char op,
                                           base::Event e,
                                           std::optional<std::string> refValue,
                                           std::optional<std::string> value)
 {
+
+    const auto helperName = fmt::format("{}: +s_up", field);
+
+    // Tracing
+    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
+    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
 
     // Get src field
     if (refValue.has_value())
@@ -57,12 +64,12 @@ base::Event opBuilderHelperStringTransformation(const std::string field,
         catch (std::exception& ex)
         {
             // TODO Check exception type
-            return e;
+            return base::result::makeFailure(e, failureTrace);
         }
 
         if (!refValueToCheck.has_value())
         {
-            return e;
+            return base::result::makeFailure(e, failureTrace);
         }
         // If reache here, the refValueToCheck is a string
         value = std::optional<std::string> {refValueToCheck};
@@ -102,10 +109,10 @@ base::Event opBuilderHelperStringTransformation(const std::string field,
     catch (std::exception& ex)
     {
         // TODO Check exception type
-        return e;
+        return base::result::makeFailure(e, failureTrace);
     }
 
-    return e;
+    return base::result::makeSuccess(e, successTrace);
 }
 
 /**
@@ -122,15 +129,23 @@ base::Event opBuilderHelperStringTransformation(const std::string field,
  * @param refValue The reference to the value user as source of the
  * transformation
  * @param value The value to use as source of the transformation
- * @return base::Event The base::Event with the field transformed
+ * @return base::result::Result<base::Event> The base::result::Result<base::Event>
+ * with the field transformed
  * @throw std::logic_error if the `op` is not valid
  */
-base::Event opBuilderHelperIntTransformation(const std::string field,
+base::result::Result<base::Event> opBuilderHelperIntTransformation(const std::string field,
                                        std::string op,
                                        base::Event e,
                                        std::optional<std::string> refValue,
                                        std::optional<int> value)
 {
+
+    const auto helperName = fmt::format("{}: +s_up", field);
+
+    // Tracing
+    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
+    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+
     // TODO Remove try catch or if nullptr after fix get method of document
     // class Get value to compare
     std::optional<int> fieldValue {};
@@ -141,12 +156,12 @@ base::Event opBuilderHelperIntTransformation(const std::string field,
     catch (std::exception& ex)
     {
         // TODO Check exception type
-        return e;
+        return base::result::makeFailure(e, failureTrace);
     }
 
     if (!fieldValue.has_value())
     {
-        return e;
+        return base::result::makeFailure(e, failureTrace);
     }
 
     if (refValue.has_value())
@@ -162,12 +177,12 @@ base::Event opBuilderHelperIntTransformation(const std::string field,
         catch (std::exception& ex)
         {
             // TODO Check exception type
-            return e;
+            return base::result::makeFailure(e, failureTrace);
         }
 
         if (!refValueToCheck.has_value())
         {
-            return e;
+            return base::result::makeFailure(e, failureTrace);
         }
         value = std::optional<int> {refValueToCheck};
     }
@@ -190,17 +205,17 @@ base::Event opBuilderHelperIntTransformation(const std::string field,
     {
         if (value.value() == 0)
         {
-            return e;
+            return base::result::makeFailure(e, failureTrace);
         }
         value = fieldValue.value() / value.value();
     }
     else
     {
-        return e;
+        return base::result::makeFailure(e, failureTrace);
     }
 
     json::Json jsonValue;
-    jsonValue.setString(value.value());
+    jsonValue.setInt(value.value());
 
     // Create and add string to base::Event
     try
@@ -210,9 +225,9 @@ base::Event opBuilderHelperIntTransformation(const std::string field,
     catch (std::exception& ex)
     {
         // TODO Check exception type
-        return e;
+        return base::result::makeFailure(e, failureTrace);
     }
-    return e;
+    return base::result::makeSuccess(e, successTrace);
 }
 
 } // namespace
@@ -226,24 +241,32 @@ using builder::internals::syntax::REFERENCE_ANCHOR;
 //*************************************************
 
 // <field>: +s_up/<str>|$<ref>
-base::Lifter opBuilderHelperStringUP(const base::DocumentValue& def,
-                                      types::TracerFn tr)
+base::Expression opBuilderHelperStringUP(std::any definition)
 {
-    // Get field key to check
+    // Get Field path and arguments of the helper function
+    std::string field;
+    std::vector<std::string> parameters;
 
-    std::string key {json::formatJsonPath(def.MemberBegin()->name.GetString())};
-
-    // Get the raw value of parameter
-    if (!def.MemberBegin()->value.IsString())
+    try
     {
-        throw std::runtime_error(
-            "Invalid parameter type for s_up operator (str expected)");
+        const auto helperTuple =
+        std::any_cast<std::tuple<std::string, std::vector<std::string>>>(
+            definition);
+
+        // Get field path
+        field = std::get<0>(helperTuple);
+
+        // Get parameters of the helper function
+        parameters = std::get<1>(helperTuple);
+    }
+    catch (std::exception& e)
+    {
+        std::throw_with_nested(
+            std::runtime_error("[builders::helperFilterBuilder(definition)] "
+                               "Received unexpected arguments."));
     }
 
-    // Parse parameters
-    std::string parm {def.MemberBegin()->value.GetString()};
-    auto parametersArr {utils::string::split(parm, '/')};
-    if (parametersArr.size() != 2)
+    if (parameters.size() != 2)
     {
         throw std::runtime_error(
             "Invalid number of parameters for s_up operator");
@@ -253,24 +276,22 @@ base::Lifter opBuilderHelperStringUP(const base::DocumentValue& def,
     std::optional<std::string> expectedStr {};
 
     // Check if is a reference to json base::Event
-    if (parametersArr[1][0] == REFERENCE_ANCHOR)
+    if (parameters[1][0] == REFERENCE_ANCHOR)
     {
-        refExpStr = json::formatJsonPath(parametersArr[1].substr(1));
+        refExpStr = json::Json::formatJsonPath(parameters[1].substr(1));
     }
     else
     {
-        expectedStr = parametersArr[1];
+        expectedStr = parameters[1];
     }
 
-    // Return Lifter
-    return [=](base::Observable o)
-    {
-        // Append rxcpp operation
-        return o.map(
-            [key, expectedStr, refExpStr](base::Event e)
+    const auto helperName = fmt::format("{}: +s_up", field);
+
+    // Return Term
+    return base::Term<base::EngineOp>::create(helperName,
+            [=](base::Event e)->base::result::Result<base::Event>
             {
-                return opBuilderHelperStringTransformation(
-                    key, 'u', e, refExpStr, expectedStr);
+                opBuilderHelperStringTransformation(field, 'u', e, refExpStr, expectedStr);
             });
 
 }
@@ -278,21 +299,30 @@ base::Lifter opBuilderHelperStringUP(const base::DocumentValue& def,
 // <field>: +s_lo/<str>|$<ref>
 base::Expression opBuilderHelperStringLO(std::any definition)
 {
+    // Get Field path and arguments of the helper function
+    std::string field;
+    std::vector<std::string> parameters;
 
-    // Get field key to check
-    std::string key {json::formatJsonPath(def.MemberBegin()->name.GetString())};
-
-    // Get the raw value of parameter
-    if (!def.MemberBegin()->value.IsString())
+    try
     {
-        throw std::runtime_error(
-            "Invalid parameter type for s_lo operator (str expected)");
+        const auto helperTuple =
+        std::any_cast<std::tuple<std::string, std::vector<std::string>>>(
+            definition);
+
+        // Get field path
+        field = std::get<0>(helperTuple);
+
+        // Get parameters of the helper function
+        parameters = std::get<1>(helperTuple);
+    }
+    catch (std::exception& e)
+    {
+        std::throw_with_nested(
+            std::runtime_error("[builders::helperFilterBuilder(definition)] "
+                               "Received unexpected arguments."));
     }
 
-    // Parse parameters
-    std::string parm {def.MemberBegin()->value.GetString()};
-    auto parametersArr {utils::string::split(parm, '/')};
-    if (parametersArr.size() != 2)
+    if (parameters.size() != 2)
     {
         throw std::runtime_error(
             "Invalid number of parameters for s_lo operator");
@@ -302,57 +332,62 @@ base::Expression opBuilderHelperStringLO(std::any definition)
     std::optional<std::string> expectedStr {};
 
     // Check if is a reference to json base::Event
-    if (parametersArr[1][0] == REFERENCE_ANCHOR)
+    if (parameters[1][0] == REFERENCE_ANCHOR)
     {
-        refExpStr = json::formatJsonPath(parametersArr[1].substr(1));
+        refExpStr = json::Json::formatJsonPath(parameters[1].substr(1));
     }
     else
     {
-        expectedStr = parametersArr[1];
+        expectedStr = parameters[1];
     }
 
-    // Return Lifter
-    return [=](base::Observable o)
-    {
-        // Append rxcpp operation
-        return o.map(
-            [key, expectedStr, refExpStr](base::Event e)
+    const auto helperName = fmt::format("{}: +s_lo", field);
+
+    // Return Term
+    return base::Term<base::EngineOp>::create(helperName,
+            [=](base::Event e)->base::result::Result<base::Event>
             {
-                return opBuilderHelperStringTransformation(
-                    key, 'l', e, refExpStr, expectedStr);
+                opBuilderHelperStringTransformation(field, 'l', e, refExpStr, expectedStr);
             });
-    };
+
 }
 
 // <field>: +s_trim/[begin | end | both]/char
 base::Expression opBuilderHelperStringTrim(std::any definition)
 {
+    // Get Field path and arguments of the helper function
+    std::string field;
+    std::vector<std::string> parameters;
 
-    // Get field path to trim
-    std::string field {
-        json::formatJsonPath(def.MemberBegin()->name.GetString())};
-
-    // Get the raw value of parameter
-    if (!def.MemberBegin()->value.IsString())
+    try
     {
-        // Logical error
-        throw std::runtime_error(
-            "Invalid parameter type for s_trim operator (str expected)");
+        const auto helperTuple =
+        std::any_cast<std::tuple<std::string, std::vector<std::string>>>(
+            definition);
+
+        // Get field path
+        field = std::get<0>(helperTuple);
+
+        // Get parameters of the helper function
+        parameters = std::get<1>(helperTuple);
+    }
+    catch (std::exception& e)
+    {
+        std::throw_with_nested(
+            std::runtime_error("[builders::helperFilterBuilder(definition)] "
+                               "Received unexpected arguments."));
     }
 
-    // Parse parameters
-    std::string parm {def.MemberBegin()->value.GetString()};
-    auto parametersArr {utils::string::split(parm, '/')};
-    if (parametersArr.size() != 3)
+    if (parameters.size() != 3)
     {
         throw std::runtime_error(
             "Invalid number of parameters for s_trim operator");
     }
 
     // Get trim type
-    char trimType = parametersArr[1] == "begin"  ? 's'
-                    : parametersArr[1] == "end"  ? 'e'
-                    : parametersArr[1] == "both" ? 'b'
+    char trimType = parameters[1] == "begin"  ? 's'
+                    : parameters[1] == "end"  ? 'e'
+                    : parameters[1] == "both" ? 'b'
                                                  : '\0';
     if (trimType == '\0')
     {
@@ -360,40 +395,43 @@ base::Expression opBuilderHelperStringTrim(std::any definition)
     }
 
     // get trim char
-    std::string trimChar {parametersArr[2]};
+    std::string trimChar {parameters[2]};
     if (trimChar.size() != 1)
     {
         throw std::runtime_error("Invalid trim char for s_trim operator");
     }
 
-    // Return Lifter
-    return [=](base::Observable o)
-    {
-        // Append rxcpp operation
-        return o.map(
-            [field, trimType, trimChar](base::Event e)
+    const auto helperName = fmt::format("{}: +s_lo", field);
+
+    // Tracing
+    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
+    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+
+    // Return Term
+    return base::Term<base::EngineOp>::create(helperName,
+            [=](base::Event e)->base::result::Result<base::Event>
             {
                 // Shoulbe short after refact, witout try catch
                 // Get field value
-                const rapidjson::Value* fieldValue;
+                std::optional<std::string> fieldValue {};
                 try
                 {
-                    fieldValue = e->get(field);
+                    fieldValue = e->getValueString(field);
                 }
                 catch (std::exception& ex)
                 {
                     // TODO Check exception type
-                    return e;
+                    return  base::result::makeFailure(e, failureTrace);
                 }
 
                 // Check if field is a string
-                if (fieldValue == nullptr || !fieldValue->IsString())
+                if (!fieldValue.has_value())
                 {
-                    return e;
+                    return  base::result::makeFailure(e, failureTrace);
                 }
 
                 // Get string
-                std::string strToTrim {fieldValue->GetString()};
+                std::string strToTrim {fieldValue.value()};
 
                 // Trim
                 switch (trimType)
@@ -422,23 +460,23 @@ base::Expression opBuilderHelperStringTrim(std::any definition)
                         break;
                 }
 
+                json::Json jsonValue;
+                jsonValue.setString(strToTrim);
+
                 // Update base::Event
                 try
                 {
-                    e->set(field,
-                           rapidjson::Value(strToTrim.c_str(),
-                                            e->m_doc.GetAllocator())
-                               .Move());
+                    e->set(field, jsonValue);
                 }
                 catch (std::exception& ex)
                 {
                     // TODO Check exception type
-                    return e;
+                    return  base::result::makeFailure(e, failureTrace);
                 }
 
-                return e;
+                return base::result::makeSuccess(e, successTrace);
             });
-    };
+
 }
 
 //*************************************************
