@@ -6,11 +6,21 @@
 #include <string>
 #include <unordered_map>
 
+struct ExecuteResult
+{
+    bool success;
+    std::string trace;
+    operator bool() const { return success; }
+};
+
 using ParseResult = std::unordered_map<std::string, std::any>;
-using ParserFn = std::function<bool(std::string_view const &, ParseResult &)>;
+using ParserFn = std::function<ExecuteResult(std::string_view const &, ParseResult &)>;
+
 
 namespace hlp
 {
+
+
 struct JsonString
 {
     // TODO

@@ -91,7 +91,7 @@ public:
         auto metadataPos =
             std::find_if(objectDefinition.begin(),
                          objectDefinition.end(),
-                         [](auto tuple) { return std::get<0>(tuple) == "metaData"; });
+                         [](auto tuple) { return std::get<0>(tuple) == "metadata"; });
         if (metadataPos != objectDefinition.end())
         {
             m_metadata = std::get<1>(*metadataPos);

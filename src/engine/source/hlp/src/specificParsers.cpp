@@ -1,19 +1,20 @@
 #include <climits>
+#include <iostream>
 #include <memory>
 #include <sstream>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 
+#include "date/date.h"
+#include "hlpDetails.hpp"
+#include "specificParsers.hpp"
+#include "tld.hpp"
 #include <arpa/inet.h>
 #include <curl/curl.h>
 #include <fmt/format.h>
 #include <rapidjson/document.h>
 #include <rapidjson/error/en.h>
-#include "date/date.h"
-#include "hlpDetails.hpp"
-#include "specificParsers.hpp"
-#include "tld.hpp"
 
 #include <profile/profile.hpp>
 #include <rapidjson/stringbuffer.h>
@@ -21,37 +22,36 @@
 
 // TODO For all the rfc timestamps there are variations that we don't parse
 // still, this will need a rework on how this list work
-static const std::unordered_map<std::string_view, const char *>
+static const std::unordered_map<std::string_view, std::tuple<const char*, const char*>>
     kTimeStampFormatMapper = {
-        {"ANSIC", "%a %b %d %T %Y"},
-        {"APACHE", "%a %b %d %T %Y"}, // need to find the apache ts format
-        {"Kitchen", "%I:%M%p"},       // Not Working
-        {"RFC1123", "%a, %d %b %Y %T %Z"},
-        {"RFC1123Z", "%a, %d %b %Y %T %z"},
-        {"RFC3339", "%FT%TZ%Ez"},
-        {"RFC822", "%d %b %y %R %Z"},
-        {"RFC822Z", "%d %b %y %R %z"},
-        {"RFC850", "%A, %d-%b-%y %T %Z"},
-        {"RubyDate", "%a %b %d %H:%M:%S %z %Y"},
-        {"Stamp", "%b %d %T"},
-        {"UnixDate", "%a %b %d %T %Z %Y"},
+        // {"ANSIC", "%a %b %d %T %Y"},
+        // {"APACHE", "%a %b %d %T %Y"}, // need to find the apache ts format
+        // {"Kitchen", "%I:%M%p"},       // Not Working
+        // {"RFC1123", "%a, %d %b %Y %T %Z"},
+        // {"RFC1123Z", "%a, %d %b %Y %T %z"},
+        // {"RFC3339", "%FT%TZ%Ez"},
+        // {"RFC822", "%d %b %y %R %Z"},
+        // {"RFC822Z", "%d %b %y %R %z"},
+        // {"RFC850", "%A, %d-%b-%y %T %Z"},
+        // {"RubyDate", "%a %b %d %H:%M:%S %z %Y"},
+        // {"Stamp", "%b %d %T"},
+        // {"UnixDate", "%a %b %d %T %Z %Y"},
+        {"SYSLOG", {"%b %d %T", "Jun 14 15:16:01"}},
 };
 
-bool configureTsParser(Parser &parser,
-                       std::vector<std::string_view> const &args)
+bool configureTsParser(Parser& parser, std::vector<std::string_view> const& args)
 {
     auto it = kTimeStampFormatMapper.find(args[0]);
     if (it != kTimeStampFormatMapper.end())
     {
-        parser.options.push_back(it->second);
+        parser.options.push_back(it->first.data());
         return true;
     }
 
     return false;
 }
 
-bool configureMapParser(Parser &parser,
-                        std::vector<std::string_view> const &args)
+bool configureMapParser(Parser& parser, std::vector<std::string_view> const& args)
 {
     size_t argsSize = args.size();
     if (argsSize < 2 || argsSize > 3)
@@ -71,8 +71,7 @@ bool configureMapParser(Parser &parser,
     return true;
 }
 
-bool configureFilepathParser(Parser &parser,
-                             std::vector<std::string_view> const &args)
+bool configureFilepathParser(Parser& parser, std::vector<std::string_view> const& args)
 {
     std::string folderSeparator = "/\\";
     bool hasDriveLetter = true;
@@ -92,8 +91,7 @@ bool configureFilepathParser(Parser &parser,
     return true;
 }
 
-bool configureDomainParser(Parser &parser,
-                           std::vector<std::string_view> const &args)
+bool configureDomainParser(Parser& parser, std::vector<std::string_view> const& args)
 {
     if (!args.empty() && args[0] == "FQDN")
     {
@@ -104,15 +102,13 @@ bool configureDomainParser(Parser &parser,
     return true;
 }
 
-bool configureAnyParser(Parser &parser,
-                           std::vector<std::string_view> const &args)
+bool configureAnyParser(Parser& parser, std::vector<std::string_view> const& args)
 {
     parser.endToken = '\0';
     return true;
 }
 
-bool configureQuotedString(Parser &parser,
-                           std::vector<std::string_view> const &args)
+bool configureQuotedString(Parser& parser, std::vector<std::string_view> const& args)
 {
     if (!args.empty() && args[0] == "SIMPLE")
     {
@@ -122,10 +118,9 @@ bool configureQuotedString(Parser &parser,
     return true;
 }
 
-bool configureBooleanParser(Parser &parser,
-        std::vector<std::string_view> const& args)
+bool configureBooleanParser(Parser& parser, std::vector<std::string_view> const& args)
 {
-    if(!args.empty())
+    if (!args.empty())
     {
         parser.options.emplace_back(args[0]);
     }
@@ -137,9 +132,9 @@ bool configureBooleanParser(Parser &parser,
     return true;
 }
 
-bool parseAny(const char **it, Parser const &parser, ParseResult &result)
+bool parseAny(const char** it, Parser const& parser, ParseResult& result)
 {
-    const char *start = *it;
+    const char* start = *it;
     while (**it != '\0' && **it != parser.endToken)
     {
         (*it)++;
@@ -149,7 +144,7 @@ bool parseAny(const char **it, Parser const &parser, ParseResult &result)
     return true;
 }
 
-bool matchLiteral(const char **it, Parser const &parser, ParseResult &)
+bool matchLiteral(const char** it, Parser const& parser, ParseResult&)
 {
     size_t i = 0;
     for (; (**it) && (i < parser.name.size());)
@@ -172,37 +167,34 @@ bool matchLiteral(const char **it, Parser const &parser, ParseResult &)
     return parser.name[i] == '\0';
 }
 
-bool parseFilePath(const char **it, Parser const &parser, ParseResult &result)
+bool parseFilePath(const char** it, Parser const& parser, ParseResult& result)
 {
-    const char *start = *it;
+    const char* start = *it;
     while (**it != parser.endToken && **it != '\0')
     {
         (*it)++;
     }
 
-    std::string_view filePath {start, (size_t)((*it) - start)};
-    auto &folderSeparator = parser.options[0];
+    std::string_view filePath {start, (size_t) ((*it) - start)};
+    auto& folderSeparator = parser.options[0];
     // TODO hack
     bool hasDriveLetter = (parser.options.size() == 2);
 
     auto path = filePath;
     auto folderEnd = filePath.find_last_of(folderSeparator);
 
-    auto folder =
-        (folderEnd == std::string::npos) ? "" : filePath.substr(0, folderEnd);
+    auto folder = (folderEnd == std::string::npos) ? "" : filePath.substr(0, folderEnd);
 
-    auto name = (folderEnd == std::string::npos)
-                    ? filePath
-                    : filePath.substr(folderEnd + 1);
+    auto name =
+        (folderEnd == std::string::npos) ? filePath : filePath.substr(folderEnd + 1);
 
     auto extensionStart = name.find_last_of('.');
-    auto extension = (extensionStart == std::string::npos)
-                         ? ""
-                         : name.substr(extensionStart + 1);
+    auto extension =
+        (extensionStart == std::string::npos) ? "" : name.substr(extensionStart + 1);
 
     std::string driveLetter;
-    if (hasDriveLetter && filePath[1] == ':' &&
-        (filePath[2] == '\\' || filePath[2] == '/'))
+    if (hasDriveLetter && filePath[1] == ':'
+        && (filePath[2] == '\\' || filePath[2] == '/'))
     {
         driveLetter = std::toupper(filePath[0]);
     }
@@ -216,7 +208,7 @@ bool parseFilePath(const char **it, Parser const &parser, ParseResult &result)
     return true;
 }
 
-bool parseJson(const char **it, Parser const &parser, ParseResult &result)
+bool parseJson(const char** it, Parser const& parser, ParseResult& result)
 {
     rapidjson::Reader reader;
     rapidjson::StringStream ss {*it};
@@ -234,28 +226,27 @@ bool parseJson(const char **it, Parser const &parser, ParseResult &result)
     return true;
 }
 
-bool parseMap(const char **it, Parser const &parser, ParseResult &result)
+bool parseMap(const char** it, Parser const& parser, ParseResult& result)
 {
     WAZUH_TRACE_FUNCTION;
     char pairSeparator = parser.options[0][0];
     char kvSeparator = parser.options[0][1];
     char endMapToken = parser.options[0][2];
 
-    const char *start = *it;
+    const char* start = *it;
     while (**it != '\0' && **it != endMapToken)
     {
         (*it)++;
     }
 
     std::string_view map_str {start, static_cast<size_t>((*it) - start)};
-    *it +=
-        (endMapToken !=
-         parser.endToken); // Theres probably the special case where they where
-                           // the same but the endMapToken was specified
+    *it += (endMapToken
+            != parser.endToken); // Theres probably the special case where they where
+                                 // the same but the endMapToken was specified
 
     rapidjson::Document output_doc;
     output_doc.SetObject();
-    auto &allocator = output_doc.GetAllocator();
+    auto& allocator = output_doc.GetAllocator();
 
     size_t tuple_start_pos = 0;
     bool done = false;
@@ -270,8 +261,8 @@ bool parseMap(const char **it, Parser const &parser, ParseResult &result)
         size_t tuple_end_pos = map_str.find(pairSeparator, separator_pos);
         std::string key_str(
             map_str.substr(tuple_start_pos, separator_pos - tuple_start_pos));
-        std::string value_str(map_str.substr(
-            separator_pos + 1, tuple_end_pos - (separator_pos + 1)));
+        std::string value_str(
+            map_str.substr(separator_pos + 1, tuple_end_pos - (separator_pos + 1)));
 
         if (key_str.empty() || value_str.empty())
         {
@@ -305,17 +296,17 @@ bool parseMap(const char **it, Parser const &parser, ParseResult &result)
     return true;
 }
 
-bool parseIPaddress(const char **it, Parser const &parser, ParseResult &result)
+bool parseIPaddress(const char** it, Parser const& parser, ParseResult& result)
 {
     struct in_addr ip;
     struct in6_addr ipv6;
-    const char *start = *it;
+    const char* start = *it;
     while (**it != 0 && **it != parser.endToken)
     {
         (*it)++;
     }
 
-    std::string srcip {start, (size_t)((*it) - start)};
+    std::string srcip {start, (size_t) ((*it) - start)};
     if (inet_pton(AF_INET, srcip.c_str(), &ip))
     {
         // TODO check if we can get away with a string_view
@@ -333,10 +324,10 @@ bool parseIPaddress(const char **it, Parser const &parser, ParseResult &result)
     return false;
 }
 
-static bool parseFormattedTime(std::string const &fmt,
-                               std::string const &time,
-                               ParseResult &result,
-                               std::string const &name)
+static bool parseFormattedTime(std::string const& fmt,
+                               std::string const& time,
+                               ParseResult& result,
+                               std::string const& name)
 {
     std::stringstream ss {time};
     // check in which cases this could be necessary
@@ -347,95 +338,114 @@ static bool parseFormattedTime(std::string const &fmt,
     date::from_stream(ss, fmt.c_str(), fds, &abbrev, &offset);
     if (!ss.fail())
     {
-        if (fds.ymd.year().ok())
-        {
-            result[name + ".year"] = static_cast<int>(fds.ymd.year());
-        }
+        result[name] = ss.str();
+        // std::cout << "FormattedTime string: " << ss.str() << std::endl;
+        // std::cout << "FormattedTime offset: " << offset.count() << std::endl;
+        // std::cout << "FormattedTime abbrev: " << abbrev << std::endl;
 
-        if (fds.ymd.month().ok())
-        {
-            result[name + ".month"] = static_cast<unsigned>(fds.ymd.month());
-        }
+        // if (fds.ymd.year().ok())
+        // {
+        //     result[name + ".year"] = static_cast<int>(fds.ymd.year());
+        // }
 
-        if (fds.ymd.day().ok())
-        {
-            result[name + ".day"] = static_cast<unsigned>(fds.ymd.day());
-        }
+        // if (fds.ymd.month().ok())
+        // {
+        //     result[name + ".month"] = static_cast<unsigned>(fds.ymd.month());
+        // }
 
-        if (fds.has_tod && fds.tod.in_conventional_range())
-        {
-            result[name + ".hour"] = fds.tod.hours().count();
-            result[name + ".minutes"] = fds.tod.minutes().count();
+        // if (fds.ymd.day().ok())
+        // {
+        //     result[name + ".day"] = static_cast<unsigned>(fds.ymd.day());
+        // }
 
-            // result[name + ".seconds"] =
-            // std::to_string(fds.tod.seconds().count());
-            auto secs = fds.tod.seconds() + fds.tod.subseconds();
+        // if (fds.has_tod && fds.tod.in_conventional_range())
+        // {
+        //     result[name + ".hour"] = fds.tod.hours().count();
+        //     result[name + ".minutes"] = fds.tod.minutes().count();
 
-            result[name + ".seconds"] = static_cast<double>(secs.count() / 1e9);
+        //     // result[name + ".seconds"] =
+        //     // std::to_string(fds.tod.seconds().count());
+        //     auto secs = fds.tod.seconds() + fds.tod.subseconds();
 
-            if (offset.count() != 0)
-            {
-                date::hh_mm_ss<std::chrono::minutes> t {offset};
-                char str[6] = {0};
-                snprintf(str,
-                         6,
-                         t.is_negative() ? "-%02lu%02lu" : "%02lu%02lu",
-                         t.hours().count(),
-                         t.minutes().count());
-                result[name + ".timezone"] = std::string {str};
-            }
-            else if (!abbrev.empty())
-            {
-                result[name + ".timezone"] = abbrev;
-            }
-        }
+        //     result[name + ".seconds"] = static_cast<double>(secs.count() / 1e9);
+
+        //     if (offset.count() != 0)
+        //     {
+        //         date::hh_mm_ss<std::chrono::minutes> t {offset};
+        //         char str[6] = {0};
+        //         snprintf(str,
+        //                  6,
+        //                  t.is_negative() ? "-%02lu%02lu" : "%02lu%02lu",
+        //                  t.hours().count(),
+        //                  t.minutes().count());
+        //         result[name + ".timezone"] = std::string {str};
+        //     }
+        //     else if (!abbrev.empty())
+        //     {
+        //         result[name + ".timezone"] = abbrev;
+        //     }
+        // }
         return true;
     }
+
     return false;
 }
 
-bool parseTimeStamp(const char **it, Parser const &parser, ParseResult &result)
+bool parseTimeStamp(const char** it, Parser const& parser, ParseResult& result)
 {
-    const char *start = *it;
-    while (**it != parser.endToken && **it != '\0')
-    {
-        (*it)++;
-    }
-
-    std::string tsStr {start, (size_t)((*it) - start)};
     if (!parser.options.empty())
     {
+        // TODO: move to configureTsParser
+        auto tsName = parser.options[0];
+
+        std::string tsExample = std::get<1>(kTimeStampFormatMapper.at(tsName));
+        auto tsSize = tsExample.size();
+
+        auto tsFormat = std::get<0>(kTimeStampFormatMapper.at(tsName));
+
+        const char* start = *it;
+        for (auto i = 0; i < tsSize; i++, (*it)++)
+        {
+            if (**it == '\0')
+            {
+                return false;
+            }
+        }
+
+        std::string tsStr {start, tsSize};
+
+
         // TODO assert options?
-        return parseFormattedTime(
-            parser.options[0], tsStr, result, parser.name);
+        return parseFormattedTime(tsFormat, tsStr, result, parser.name);
     }
     else
     {
-        for (auto const &fmt : kTimeStampFormatMapper)
-        {
-            if (parseFormattedTime(fmt.second, tsStr, result, parser.name))
-            {
-                return true;
-            }
-        }
+        // for (auto const &fmt : kTimeStampFormatMapper)
+        // {
+        //     if (parseFormattedTime(fmt.second, tsStr, result, parser.name))
+        //     {
+        //         return true;
+        //     }
+        // }
+        return false;
     }
 
     // TODO report error
     return false;
 }
 
-bool parseURL(const char **it, Parser const &parser, ParseResult &result)
+bool parseURL(const char** it, Parser const& parser, ParseResult& result)
 {
     // TODO should we fill partial results?
 
-    const char *start = *it;
+    const char* start = *it;
     // TODO Check how to handle if the URL contains the endToken
     while (**it != parser.endToken && **it != '\0')
     {
         (*it)++;
     }
 
-    auto urlCleanup = [](auto *url)
+    auto urlCleanup = [](auto* url)
     {
         curl_url_cleanup(url);
     };
@@ -459,7 +469,7 @@ bool parseURL(const char **it, Parser const &parser, ParseResult &result)
     // TODO curl will parse and copy the URL into an allocated
     // char ptr and we will copy it again into the string for the result
     // Check if there's a way to avoid all the copying here
-    char *str;
+    char* str;
     uc = curl_url_get(url.get(), CURLUPART_URL, &str, 0);
     if (uc)
     {
@@ -558,11 +568,11 @@ static bool isAsciiLow(char c)
 }
 static bool isDomainValidChar(char c)
 {
-    return (isAsciiNum(c) || isAsciiUpp(c) || isAsciiLow(c) || c == '-' ||
-            c == '_' || c == '.');
+    return (isAsciiNum(c) || isAsciiUpp(c) || isAsciiLow(c) || c == '-' || c == '_'
+            || c == '.');
 }
 
-bool parseDomain(const char **it, Parser const &parser, ParseResult &result)
+bool parseDomain(const char** it, Parser const& parser, ParseResult& result)
 {
 
     constexpr int kDomainMaxSize = 253;
@@ -571,12 +581,12 @@ bool parseDomain(const char **it, Parser const &parser, ParseResult &result)
     // TODO hack
     const bool validateFQDN = !parser.options.empty();
 
-    const char *start = *it;
+    const char* start = *it;
     while (**it != parser.endToken && **it != '\0')
     {
         (*it)++;
     }
-    std::string_view str {start, (size_t)((*it) - start)};
+    std::string_view str {start, (size_t) ((*it) - start)};
 
     size_t protocolEnd = str.find("://");
     size_t domainStart = 0;
@@ -597,7 +607,7 @@ bool parseDomain(const char **it, Parser const &parser, ParseResult &result)
         return false;
     }
     // Domain valid characters check
-    for (char const &c : domain)
+    for (char const& c : domain)
     {
         if (!isDomainValidChar(c))
         {
@@ -715,10 +725,10 @@ enum class UAState
     Comment,
 };
 
-bool parseUserAgent(const char **it, Parser const &parser, ParseResult &result)
+bool parseUserAgent(const char** it, Parser const& parser, ParseResult& result)
 {
-    const char *start = *it;
-    const char *ev = *it;
+    const char* start = *it;
+    const char* ev = *it;
 
     // NOTE: This will try to validate 'some' part of the user-agent standard as
     // is defined in https://datatracker.ietf.org/doc/html/rfc7231#section-5.5.3
@@ -734,7 +744,7 @@ bool parseUserAgent(const char **it, Parser const &parser, ParseResult &result)
 
     bool done = false;
     UAState state = UAState::Product;
-    const char *lastValid = ev;
+    const char* lastValid = ev;
     while (!done)
     {
         switch (state)
@@ -805,9 +815,7 @@ bool parseUserAgent(const char **it, Parser const &parser, ParseResult &result)
     return true;
 }
 
-bool parseNumber(const char **it,
-              Parser const &parser,
-              ParseResult &result)
+bool parseNumber(const char** it, Parser const& parser, ParseResult& result)
 {
     const char* start = *it;
     char* ptrEnd;
@@ -815,7 +823,7 @@ bool parseNumber(const char **it,
     float fnum;
     long int val;
 
-    if(**it == '+' || **it == '-')
+    if (**it == '+' || **it == '-')
     {
         (*it)++;
     }
@@ -836,8 +844,8 @@ bool parseNumber(const char **it,
     if (!hasDecimalSeparator)
     {
         val = std::strtol(start, &ptrEnd, 10);
-        //TODO: if the number is exactly any of the limits it will fail
-        if(start == ptrEnd || val == LLONG_MAX || val == LLONG_MIN)
+        // TODO: if the number is exactly any of the limits it will fail
+        if (start == ptrEnd || val == LLONG_MAX || val == LLONG_MIN)
         {
             return false;
         }
@@ -845,9 +853,9 @@ bool parseNumber(const char **it,
     }
     else
     {
-        //TODO: if the number surpass limits won't fail
+        // TODO: if the number surpass limits won't fail
         fnum = std::strtof(start, &ptrEnd);
-        if(start == ptrEnd)
+        if (start == ptrEnd)
         {
             return false;
         }
@@ -857,46 +865,42 @@ bool parseNumber(const char **it,
     return true;
 }
 
-bool parseQuotedString(const char **it,
-              Parser const &parser,
-              ParseResult &result)
+bool parseQuotedString(const char** it, Parser const& parser, ParseResult& result)
 {
-    const char *start = *it;
+    const char* start = *it;
     bool escaped = false;
 
     char quotedChar = !parser.options.empty() ? '\'' : '"';
 
-    if(**it != quotedChar)
+    if (**it != quotedChar)
     {
         return false;
     }
     (*it)++;
 
-    while (**it != '\0' && ( escaped || **it != quotedChar))
+    while (**it != '\0' && (escaped || **it != quotedChar))
     {
         (*it)++;
         escaped = **it == '\\';
     }
 
-    if( **it != quotedChar)
+    if (**it != quotedChar)
     {
         return false;
     }
 
-    result[parser.name] = std::string{++start, *it};
+    result[parser.name] = std::string {++start, *it};
     return true;
 }
 
-bool parseBoolean(const char **it,
-        Parser const& parser,
-        ParseResult &result)
+bool parseBoolean(const char** it, Parser const& parser, ParseResult& result)
 {
-    const char *start = *it;
+    const char* start = *it;
     while (**it != parser.endToken && **it != '\0')
     {
         (*it)++;
     }
-    std::string_view str {start, (size_t)((*it) - start)};
+    std::string_view str {start, (size_t) ((*it) - start)};
 
     auto& trueVal = parser.options[0];
     result[parser.name] = bool {str == trueVal};
