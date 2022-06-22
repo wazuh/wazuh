@@ -122,7 +122,7 @@ void test_send_msg_disconnected_agent(void ** state) {
 
     char *agent_id = "001";
     char *msg = "abcdefghijk";
-    ssize_t msg_length = 11;
+    ssize_t msg_length = strlen(msg);
 
     int key = 0;
 
