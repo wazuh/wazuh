@@ -466,58 +466,56 @@ base::Lifter opBuilderHelperStringConcat(const base::DocumentValue& def,
     std::string failureTrace = fmt::format("{} s_concat Failure", doc.str());
 
     // Return Lifter
-    return [=, parametersArr = std::move(parametersArr), tr = std::move(tr)](base::Observable o)
-    {
+    return [=, parametersArr = std::move(parametersArr), tr = std::move(tr)](
+               base::Observable o) {
         // Append rxcpp operation
-        return o.map(
-            [=, parametersArr = std::move(parametersArr), tr = std::move(tr)](base::Event e)
-            {
-                std::string result {};
+        return o.map([=, parametersArr = std::move(parametersArr), tr = std::move(tr)](
+                         base::Event e) {
+            std::string result {};
 
-                for (auto parameter : parametersArr)
+            for (auto parameter : parametersArr)
+            {
+                if (parameter.at(0) == REFERENCE_ANCHOR)
                 {
-                    if (parameter.at(0) == REFERENCE_ANCHOR)
+                    auto param = json::formatJsonPath(parameter.substr(1));
+                    try
                     {
-                        auto param = json::formatJsonPath(parameter.substr(1));
-                        try
+                        auto value = &e->getEventValue(param);
+                        if (value && value->IsString())
                         {
-                            auto value = &e->getEvent()->get(param);
-                            if (value && value->IsString())
-                            {
-                                result.append(value->GetString());
-                            }
-                            else
-                            {
-                                tr(failureTrace);
-                                return e;
-                            }
+                            result.append(value->GetString());
                         }
-                        catch (std::exception& ex)
+                        else
                         {
                             tr(failureTrace);
                             return e;
                         }
                     }
-                    else
+                    catch (std::exception& ex)
                     {
-                        result.append(parameter);
+                        tr(failureTrace);
+                        return e;
                     }
                 }
+                else
+                {
+                    result.append(parameter);
+                }
+            }
 
-                try
-                {
-                    tr(successTrace);
-                    e->getEvent()->set(
-                        field,
-                        rapidjson::Value(result.c_str(), e->getEvent()->m_doc.GetAllocator())
-                            .Move());
-                    return e;
-                }
-                catch(std::exception& ex)
-                {
-                    return e;
-                }
-            });
+            try
+            {
+                tr(successTrace);
+                e->getEvent()->set(
+                    field,
+                    rapidjson::Value(result.c_str(), e->getEventDocAllocator()).Move());
+                return e;
+            }
+            catch (std::exception& ex)
+            {
+                return e;
+            }
+        });
     };
 }
 
