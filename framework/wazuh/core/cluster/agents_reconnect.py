@@ -1,10 +1,14 @@
 import contextlib
+import copy
 from datetime import timedelta
 from enum import Enum
 from math import ceil
 
+from api.util import raise_if_exc
+from wazuh import agent
 from wazuh.core import utils
 from wazuh.core.agent import WazuhDBQueryAgents
+from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import DECIMALS_DATE_FORMAT
 from wazuh.core.exception import WazuhError
 
@@ -337,3 +341,59 @@ class AgentsReconnect:
         dict
         """
         NotImplementedError("Not implemented yet")
+
+    async def reconnect_agents(self, agents: dict, max_assignments_per_node: int = 50):
+        """Redistribute agents in cluster.
+
+        Calculate which nodes have more agents than the average and which have fewer.
+        Then, send reconnect requests to agents in the bigger nodes so they are redistributed.
+        Redistribution only works if agents are connected through a load balancer configured as least_conn.
+
+        Parameters
+        ----------
+        agents : dict
+            Dict with workers names and list of agents connected to each one. I.e: {'worker1': ['001', '002']}
+        max_assignments_per_node : int
+            Number of agents that can reconnect to the same cluster node.
+
+        Returns
+        -------
+        agents_to_reconnect : list
+            Agents to whom a reconnection request will be sent (expected agents).
+        result : list
+            Agents to whom a reconnection request was successfully sent.
+        disconnected_agents : list
+            Agents that were offline when a reconnect request was sent to them.
+        """
+        agents_to_reconnect = []
+        disconnected_agents = []
+        result = {}
+        agents_nodes_cpy = copy.deepcopy(agents)
+
+        # Calculate which agents should reconnect and how the new distribution would look like.
+        while True:
+            biggest_node = max(agents_nodes_cpy, key=lambda x: len((agents_nodes_cpy[x])))
+            smallest_node = min(agents_nodes_cpy, key=lambda x: len((agents_nodes_cpy[x])))
+
+            if len(agents_nodes_cpy[biggest_node]) - len(agents_nodes_cpy[smallest_node]) <= 1 or \
+                    len(agents_nodes_cpy[smallest_node]) >= len(agents[smallest_node]) + max_assignments_per_node:
+                break
+
+            agents_to_reconnect.append(agents_nodes_cpy[biggest_node].pop())
+            agents_nodes_cpy[smallest_node].append(agents_to_reconnect[-1])
+
+        # Request agents to reconnect.
+        if agents_to_reconnect:
+            dapi = DistributedAPI(f=agent.reconnect_agents, f_kwargs={'agent_list': agents_to_reconnect},
+                                  request_type='distributed_master', logger=self.logger)
+            data = raise_if_exc(await dapi.distribute_function()).render()
+
+            if data.get("data", {}).get("failed_items", []):
+                self.logger.debug("Not all expected agents received a reconnection request. Error codes: " +
+                                  ", ".join(code['error'] for code in result.get("data", {}).get("failed_items", [])))
+                for item in data["data"]["failed_items"]:
+                    if item["error"]["code"] == 1707:
+                        disconnected_agents = item["id"]
+                        break
+
+        return agents_to_reconnect, result.get("data", {}).get("affected_items", []), disconnected_agents
