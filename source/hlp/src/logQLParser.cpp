@@ -174,6 +174,7 @@ static bool parseCapture(Tokenizer &tk, ExpressionList &expresions)
 
 ExpressionList parseLogQlExpr(const char *expr)
 {
+    // <source.ip>
     WAZUH_TRACE_FUNCTION;
     ExpressionList expresions;
     Tokenizer tokenizer {expr};
