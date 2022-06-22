@@ -158,7 +158,7 @@ void test_send_msg_encryption_error(void ** state) {
 
     char *agent_id = "001";
     char *msg = "abcdefghijk";
-    ssize_t msg_length = 11;
+    ssize_t msg_length = strlen(msg);
     int key = 0;
 
     logr.global.agents_disconnection_time = 0;
@@ -204,11 +204,11 @@ void test_send_msg_tcp_ok(void ** state) {
 
     char *agent_id = "001";
     char *msg = "abcdefghijk";
-    ssize_t msg_length = 11;
+    ssize_t msg_length = strlen(msg);
     int key = 0;
 
     char *crypto_msg = "!@#123abc";
-    ssize_t crypto_size = 9;
+    ssize_t crypto_size = strlen(crypto_msg);
 
     logr.global.agents_disconnection_time = 0;
     remoted_state.queued_msgs = 0;
@@ -255,11 +255,11 @@ void test_send_msg_tcp_err(void ** state) {
 
     char *agent_id = "001";
     char *msg = "abcdefghijk";
-    ssize_t msg_length = 11;
+    ssize_t msg_length = strlen(msg);
     int key = 0;
 
     char *crypto_msg = "!@#123abc";
-    ssize_t crypto_size = 9;
+    ssize_t crypto_size = strlen(crypto_msg);
 
     logr.global.agents_disconnection_time = 0;
     remoted_state.queued_msgs = 0;
@@ -307,7 +307,7 @@ void test_send_msg_tcp_err_closed_socket(void ** state) {
     int key = 0;
 
     char *crypto_msg = "!@#123abc";
-    ssize_t crypto_size = 9;
+    ssize_t crypto_size = strlen(crypto_msg);
 
     logr.global.agents_disconnection_time = 0;
     remoted_state.queued_msgs = 0;
@@ -345,64 +345,16 @@ void test_send_msg_tcp_err_closed_socket(void ** state) {
     assert_int_equal(remoted_state.queued_msgs, 0);
 }
 
-void test_send_msg_udp_ok(void ** state) {
-    (void) state;
-
-    char *agent_id = "001";
-    char *msg = "abcdefghijk";
-    ssize_t msg_length = 11;
-    int key = 0;
-
-    char *crypto_msg = "!@#123abc";
-    ssize_t crypto_size = 9;
-    
-    logr.global.agents_disconnection_time = 0;
-    remoted_state.queued_msgs = 0;
-
-    expect_function_call(__wrap_pthread_rwlock_rdlock);
-
-    expect_string(__wrap_OS_IsAllowedID, id, agent_id);
-    will_return(__wrap_OS_IsAllowedID, key);
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-
-    will_return(__wrap_time, (time_t)0);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    expect_string(__wrap_CreateSecMSG, msg, msg);
-    expect_value(__wrap_CreateSecMSG, msg_length, msg_length);
-    expect_value(__wrap_CreateSecMSG, id, key);
-    will_return(__wrap_CreateSecMSG, crypto_size);
-    will_return(__wrap_CreateSecMSG, crypto_msg);
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-
-    will_return(__wrap_sendto, crypto_size);
-
-    //Shouldn't rem_add_send expect crypto_size instead of 0?
-    expect_value(__wrap_rem_add_send, bytes, 0);
-    expect_function_call(__wrap_rem_add_send);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap_pthread_rwlock_unlock);
-
-    int ret = send_msg(agent_id, msg, msg_length);
-
-    assert_int_equal(ret, 0);
-    assert_int_equal(remoted_state.queued_msgs, 0);
-}
-
 void test_send_msg_udp_error(void ** state) {
     (void) state;
 
     char *agent_id = "001";
     char *msg = "abcdefghijk";
-    ssize_t msg_length = 11;
+    ssize_t msg_length = strlen(msg);
     int key = 0;
 
     char *crypto_msg = "!@#123abc";
-    ssize_t crypto_size = 9;
+    ssize_t crypto_size = strlen(crypto_msg);
 
     logr.global.agents_disconnection_time = 0;
     remoted_state.queued_msgs = 0;
@@ -446,11 +398,11 @@ void test_send_msg_udp_error_connection_reset(void ** state) {
 
     char *agent_id = "001";
     char *msg = "abcdefghijk";
-    ssize_t msg_length = 11;
+    ssize_t msg_length = strlen(msg);
     int key = 0;
 
     char *crypto_msg = "!@#123abc";
-    ssize_t crypto_size = strlen(msg);
+    ssize_t crypto_size = strlen(crypto_msg);
 
     logr.global.agents_disconnection_time = 0;
     remoted_state.queued_msgs = 0;
@@ -498,7 +450,7 @@ void test_send_msg_udp_error_agent_not_responding(void ** state) {
     int key = 0;
 
     char *crypto_msg = "!@#123abc";
-    ssize_t crypto_size = strlen(msg);
+    ssize_t crypto_size = strlen(crypto_msg);
 
     logr.global.agents_disconnection_time = 0;
     remoted_state.queued_msgs = 0;
@@ -546,7 +498,7 @@ void test_send_msg_udp_error_generic(void ** state) {
     int key = 0;
 
     char *crypto_msg = "!@#123abc";
-    ssize_t crypto_size = strlen(msg);
+    ssize_t crypto_size = strlen(crypto_msg);
 
     logr.global.agents_disconnection_time = 0;
     remoted_state.queued_msgs = 0;
@@ -598,7 +550,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_send_msg_tcp_err_closed_socket, test_setup_tcp, test_teardown_tcp),
         
         // UDP tests
-        cmocka_unit_test_setup_teardown(test_send_msg_udp_ok, test_setup_udp, test_teardown_udp),
         cmocka_unit_test_setup_teardown(test_send_msg_udp_error, test_setup_udp, test_teardown_udp),
         cmocka_unit_test_setup_teardown(test_send_msg_udp_error_connection_reset, test_setup_udp, test_teardown_udp),
         cmocka_unit_test_setup_teardown(test_send_msg_udp_error_agent_not_responding, test_setup_udp, test_teardown_udp),
