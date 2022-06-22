@@ -38,8 +38,6 @@ func sendLogSock(conn net.Conn, header bool, message string, queue int, location
 func main() {
 
 	/*   Arguments	*/
-	// Path to the output file
-	var watchedFile string
 	// Path/Adress to the sockets
 	var sockPath string
 	// Path/Adress to the sockets
@@ -50,7 +48,6 @@ func main() {
 	var location string
 
 	// Parser arguments
-	flag.StringVar(&watchedFile, "o", "/var/ossec/logs/alerts/alerts.json", "Watched file. The Output file")
 	flag.StringVar(&sockPath, "s", "/var/ossec/queue/sockets/queue", "Path/Adress to the sockets")
 	flag.StringVar(&sockProto, "p", "unixgram", `Known networks are "tcp", "tcp4" (IPv4-only), `+
 		`"tcp6" (IPv6-only), "udp", "udp4" (IPv4-only), `+
