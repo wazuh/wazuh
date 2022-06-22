@@ -58,8 +58,7 @@ public:
         : unixInterface(path, Protocol::STREAM, maxMsgSize) {};
 
     unixSecureStream(unixSecureStream&& moveOrigin)
-        : unixInterface(std::move(moveOrigin))
-        {};
+        : unixInterface(std::move(moveOrigin)) {};
 
     ~unixSecureStream() = default; // Close de socket in the base class.
 
