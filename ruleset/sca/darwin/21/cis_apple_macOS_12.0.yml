@@ -605,8 +605,8 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:grep -i ttl /etc/asl/com.apple.install -> n:ttl\w+(\d+) compare > 365'
-      - "c:grep -i all_max= /etc/asl/com.apple.install -> r:^$"
+      - 'c:grep -i ttl /etc/asl/com.apple.install -> n:ttl\w+(\d+) compare > 364'
+      - "not c:grep -i all_max= /etc/asl/com.apple.install -> r:all_max="
 
   # 3.4 Ensure Security Auditing Retention Is Enabled (Automated) - Not implemented
 
@@ -772,7 +772,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:find /Applications -iname "*.app" -type d -perm -2 -ls -> r:^$'
+      - 'not c:find /Applications -iname "*.app" -type d -perm -2 -ls -> r:/Applications/'
 
   # 5.1.7 Ensure No World Writable Files Exist in the System Folder (Automated)
   - id: 29047
@@ -785,7 +785,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - "c:find /System -type d -perm -2 -ls -> r:^$"
+      - 'not c:find /System/Volumes/Data/System -type d -perm -2 -ls -> r:\d+\s+/System/Volumes/Data/System'
 
   # 5.1.8 Ensure No World Writable Files Exist in the Library Folder (Automated)
   - id: 29048
@@ -798,7 +798,7 @@ checks:
       - cis_level: ["2"]
     condition: all
     rules:
-      - 'c:sh -c "find /System/Volumes/Data/Library -type d -perm -2 -ls | grep -v Caches | grep -v Audio" -> r:^$'
+      - 'not c:sh -c "find /System/Volumes/Data/Library -type d -perm -2 -ls | grep -v ''Caches|Audio''" -> r:\d+\s+/System/Volumes/Data/Library'
 
   ############################################################
   # 5.2 Password Management
@@ -823,7 +823,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:grep -e "timestamp" /etc/sudoers -> r:Defaults timestamp_timeout=0'
+      - "f:/etc/sudoers -> r:Defaults timestamp_timeout=0"
 
   # 5.4 Ensure a Separate Timestamp Is Enabled for Each User/tty Combo (Automated)
   - id: 29050
@@ -836,8 +836,12 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - "c:grep -E -s '!tty_tickets' /etc/sudoers /etc/sudoers.d/* -> r:^$"
-      - 'c:grep -E -s "timestamp_type" /etc/sudoers /etc/sudoers.d/* -> r:^$|!timestamp_type=ppid|!timestamp_type=global'
+      - "not f:/etc/sudoers -> r:!tty_tickets"
+      - 'not d:/etc/sudoers.d/ -> r:\.* -> r:!tty_tickets'
+      - "not f:/etc/sudoers -> r:timestamp_type=ppid"
+      - 'not d:/etc/sudoers.d/ -> r:\.* -> r:timestamp_type=ppid'
+      - "not f:/etc/sudoers -> r:timestamp_type=global"
+      - 'not d:/etc/sudoers.d/ -> r:\.* -> r:timestamp_type=global'
 
   # 5.5 Ensure login keychain is locked when the computer sleeps (Manual) - Not implemented
 
@@ -865,7 +869,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - "c:defaults read /Library/Preferences/com.apple.loginwindow autoLoginUser -> r:^$"
+      - "c:defaults read /Library/Preferences/com.apple.loginwindow autoLoginUser -> r:^[^\\w]"
 
   # 5.8 Ensure a Password is Required to Wake the Computer From Sleep or Screen Saver Is Enabled (Automated) - Not implemented
   # 5.9 Ensure system is set to hibernate (Automated) - Not implemented
@@ -881,7 +885,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:sh -c "security authorizationdb read system.preferences 2> /dev/null | grep -A1 shared | grep false" -> r:^<false/>'
+      - 'c:sh -c "security authorizationdb read system.preferences | grep -A1 shared | grep false" -> r:<false/>'
 
   # 5.11 Ensure an administrator account cannot login to another user's active and locked session (Automated)
   - id: 29054
