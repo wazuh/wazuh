@@ -8,7 +8,7 @@
 namespace builder::internals::builders
 {
 
-base::Expression stageCheckBuilder(std::any definition);
+base::Expression stageBuilderCheck(std::any definition);
 
 } // namespace builder::internals::builders
 
