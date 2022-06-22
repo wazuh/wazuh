@@ -837,11 +837,11 @@ checks:
     condition: all
     rules:
       - "not f:/etc/sudoers -> r:!tty_tickets"
-      - 'not d:/etc/sudoers.d/ -> r:\.* -> r:!tty_tickets'
+      - 'not d:/etc/sudoers.d -> r:\.* -> r:!tty_tickets'
       - "not f:/etc/sudoers -> r:timestamp_type=ppid"
-      - 'not d:/etc/sudoers.d/ -> r:\.* -> r:timestamp_type=ppid'
+      - 'not d:/etc/sudoers.d -> r:\.* -> r:timestamp_type=ppid'
       - "not f:/etc/sudoers -> r:timestamp_type=global"
-      - 'not d:/etc/sudoers.d/ -> r:\.* -> r:timestamp_type=global'
+      - 'not d:/etc/sudoers.d -> r:\.* -> r:timestamp_type=global'
 
   # 5.5 Ensure login keychain is locked when the computer sleeps (Manual) - Not implemented
 
