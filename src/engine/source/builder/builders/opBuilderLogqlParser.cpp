@@ -143,7 +143,7 @@ base::Expression opBuilderLogqlParser(const std::any& definition)
                     {
                         return base::result::makeFailure(std::move(event), errorTrace1);
                     }
-                    auto ev = event->getAsString(field);
+                    auto ev = event->getValueString(field);
                     ParseResult result;
                     auto ok = parserOp(ev.value(), result);
                     if (!ok)

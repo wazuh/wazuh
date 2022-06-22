@@ -720,7 +720,7 @@ public:
         return object;
     }
 
-    // Required by parser
+    // Required by parser and kvdb
     void setNull()
     {
         m_document.SetNull();

@@ -1,5 +1,5 @@
 name: default_router_filter
-after:
+parents:
   - rule_test
 allow:
   # - queue: +exists
