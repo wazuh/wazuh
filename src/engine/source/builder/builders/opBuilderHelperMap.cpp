@@ -561,18 +561,35 @@ base::Expression opBuilderHelperIntCalc(std::any definition)
 // field: +r_ext/_field/regexp/
 base::Expression opBuilderHelperRegexExtract(std::any definition)
 {
-    // Get fields
-    std::string field {
-        json::formatJsonPath(def.MemberBegin()->name.GetString())};
-    std::string value {def.MemberBegin()->value.GetString()};
+    // Get Field path and arguments of the helper function
+    std::string field;
+    std::vector<std::string> parameters;
 
-    std::vector<std::string> parameters {utils::string::split(value, '/')};
+    try
+    {
+        const auto helperTuple =
+        std::any_cast<std::tuple<std::string, std::vector<std::string>>>(
+            definition);
+
+        // Get field path
+        field = std::get<0>(helperTuple);
+
+        // Get parameters of the helper function
+        parameters = std::get<1>(helperTuple);
+    }
+    catch (std::exception& e)
+    {
+        std::throw_with_nested(
+            std::runtime_error("[builders::helperFilterBuilder(definition)] "
+                               "Received unexpected arguments."));
+    }
+
     if (parameters.size() != 3)
     {
         throw std::runtime_error("Invalid number of parameters");
     }
 
-    std::string map_field {json::formatJsonPath(parameters[1])};
+    std::string map_field {json::Json::formatJsonPath(parameters[1])};
 
     auto regex_ptr {std::make_shared<RE2>(parameters[2])};
     if (!regex_ptr->ok())
@@ -582,50 +599,53 @@ base::Expression opBuilderHelperRegexExtract(std::any definition)
         throw std::runtime_error(err);
     }
 
-    // Return Lifter
-    return [field, regex_ptr, map_field](base::Observable o)
-    {
-        // Append rxcpp operation
-        return o.map(
-            [=](base::Event e)
+    const auto helperName = fmt::format("{}: +r_ext", field);
+
+    // Tracing
+    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
+    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+
+    // Return Term
+    return base::Term<base::EngineOp>::create(helperName,
+            [=](base::Event e)->base::result::Result<base::Event>
             {
                 // TODO Remove try catch
-                const rapidjson::Value* field_str {};
-                try
-                {
-                    field_str = e->get(field);
-                }
-                catch (std::exception& ex)
-                {
-                    // TODO Check exception type
-                    return e;
-                }
-                if (field_str != nullptr && field_str->IsString())
-                {
-                    std::string match;
-                    if (RE2::PartialMatch(
-                            field_str->GetString(), *regex_ptr, &match))
+                    std::optional<std::string> field_str {};
+                    try
                     {
-                        // Create and add string to base::Event
-                        try
-                        {
-                            e->set(map_field,
-                                   rapidjson::Value(match.c_str(),
-                                                    e->m_doc.GetAllocator())
-                                       .Move());
-                        }
-                        catch (std::exception& ex)
-                        {
-                            // TODO Check exception type
-                            return e;
-                        }
-
-                        return e;
+                        field_str = e->getValueString(field);
                     }
-                }
-                return e;
+                    catch (std::exception& ex)
+                    {
+                        // TODO Check exception type
+                        return base::result::makeFailure(e, failureTrace);
+                    }
+                    if (field_str.has_value())
+                    {
+                        std::string match;
+                        if (RE2::PartialMatch(
+                                field_str.value(), *regex_ptr, &match))
+                        {
+                            json::Json jsonValue;
+                            jsonValue.setString(match);
+
+                            // Create and add string to base::Event
+                            try
+                            {
+                                e->set(map_field, jsonValue);
+                            }
+                            catch (std::exception& ex)
+                            {
+                                // TODO Check exception type
+                                return base::result::makeFailure(e, failureTrace);
+                            }
+
+                            return base::result::makeSuccess(e, successTrace);
+                        }
+                    }
+                    return base::result::makeFailure(e, failureTrace);
             });
-    };
+
 }
 
 } // namespace builder::internals::builders
