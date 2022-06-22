@@ -344,6 +344,32 @@ public:
         }
     }
 
+    std::optional<std::string> getAsString(std::string_view basePointerPath)
+    {
+        auto fieldPtr = rapidjson::Pointer(basePointerPath.data());
+
+        if (fieldPtr.IsValid())
+        {
+            const auto* value = fieldPtr.Get(m_document);
+            if(value)
+            {
+                return value->GetString();
+            }
+            else
+            {
+                return std::nullopt;
+            }
+        }
+        else
+        {
+            throw std::runtime_error(
+                fmt::format("[Json::get(basePointerPath)] "
+                            "Invalid json path: [{}]",
+                            basePointerPath));
+        }
+    }
+
+
     /**
      * @brief Get Json prettyfied string.
      *
@@ -586,6 +612,32 @@ public:
         }
 
         return object;
+    }
+
+    // Required by parser
+    void setNull()
+    {
+        m_document.SetNull();
+    }
+
+    void setBool(bool value)
+    {
+        m_document.SetBool(value);
+    }
+
+    void setInt(int value)
+    {
+        m_document.SetInt(value);
+    }
+
+    void setDouble(double value)
+    {
+        m_document.SetDouble(value);
+    }
+
+    void setString(const std::string& value)
+    {
+        m_document.SetString(value.c_str(), m_document.GetAllocator());
     }
 };
 

@@ -66,7 +66,7 @@ base::Expression opBuilderFileOutput(const std::any& definition)
     auto path = std::get<1>(*pathPos).getString();
 
     auto filePtr = std::make_shared<outputs::FileOutput>(path);
-    auto name = fmt::format("{{fileOutput({})}}", path);
+    auto name = fmt::format("output.file[{}]", path);
     auto successTrace = fmt::format("{} -> Event write", name);
     auto failureTrace = fmt::format("{} -> Failure, exception: ", name);
 

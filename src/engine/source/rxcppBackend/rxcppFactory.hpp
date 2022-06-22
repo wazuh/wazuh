@@ -66,7 +66,6 @@ private:
 
     rxcpp::subjects::subject<RxcppEvent> m_envSubject;
 
-
     std::unordered_map<std::string, Tracer> m_tracers;
 
 public:
@@ -129,14 +128,16 @@ Observable rxcppFactory(const Observable& input,
 
         if (expression->isAnd())
         {
-            Observable step = input;
+            Observable step1 = input.publish().ref_count();
+            auto step2 = step1;
             auto op = expression->getPtr<base::And>();
             for (auto& operand : op->getOperands())
             {
-                step = rxcppFactory(step, environment, operand, controller, tracerFn)
-                           .filter([](RxcppEvent result) { return result->success(); });
+                step2 = rxcppFactory(step2, environment, operand, controller, tracerFn)
+                            .filter([](RxcppEvent result) { return result->success(); });
             }
-            return step;
+            step2.subscribe();
+            return step1;
         }
         else if (expression->isChain() || expression->isBroadcast())
         {
@@ -149,9 +150,9 @@ Observable rxcppFactory(const Observable& input,
             auto step2 = step1;
             for (auto& operand : op->getOperands())
             {
-                rxcppFactory(step2, environment, operand, controller, tracerFn)
-                    .subscribe();
+                step2 = rxcppFactory(step2, environment, operand, controller, tracerFn);
             }
+            step2.subscribe();
             return step1.map(
                 [](RxcppEvent result)
                 {
@@ -166,11 +167,10 @@ Observable rxcppFactory(const Observable& input,
             auto step2 = step1;
             for (auto& operand : op->getOperands())
             {
-                rxcppFactory(step2, environment, operand, controller, tracerFn)
-                    .subscribe();
-                step2 =
-                    step1.filter([=](RxcppEvent result) { return result->failure(); });
+                step2 = rxcppFactory(step2, environment, operand, controller, tracerFn)
+                            .filter([=](RxcppEvent result) { return result->failure(); });
             }
+            step2.subscribe();
             return step1.filter([=](RxcppEvent result) { return result->success(); });
         }
         else if (expression->isImplication())
@@ -189,7 +189,12 @@ Observable rxcppFactory(const Observable& input,
                             });
             rxcppFactory(step1, environment, op->getOperands()[1], controller, tracerFn)
                 .subscribe();
-            return step.filter([condition](RxcppEvent result) { return *condition; });
+            return step.map(
+                [condition](RxcppEvent result)
+                {
+                    result->setStatus(*condition);
+                    return result;
+                });
         }
         else
         {
