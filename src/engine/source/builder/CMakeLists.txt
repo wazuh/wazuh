@@ -47,4 +47,4 @@ target_include_directories(builders
 )
 
 # TODO do this better. Also, who 'owns' the rxcpp dep
-target_link_libraries(builders base hlp kvdb re2)
+target_link_libraries(builders base hlp kvdb re2 logicExpression)
