@@ -13,7 +13,7 @@ namespace builder::internals::builders
  * @param definition
  * @return base::Expression
  */
-base::Expression opBuilderKVDBExtract(const std::any definition);
+base::Expression opBuilderKVDBExtract(const std::any& definition);
 
 /**
  * @brief Builds KVDB match function helper
@@ -21,7 +21,7 @@ base::Expression opBuilderKVDBExtract(const std::any definition);
  * @param definition
  * @return base::Expression
  */
-base::Expression opBuilderKVDBMatch(const std::any definition);
+base::Expression opBuilderKVDBMatch(const std::any& definition);
 
 /**
  * @brief Builds KVDB not-match function helper
@@ -29,7 +29,7 @@ base::Expression opBuilderKVDBMatch(const std::any definition);
  * @param definition
  * @return base::Expression
  */
-base::Expression opBuilderKVDBNotMatch(const std::any definition);
+base::Expression opBuilderKVDBNotMatch(const std::any& definition);
 } // namespace builder::internals::builders
 
 // namespace builder::internals::builders

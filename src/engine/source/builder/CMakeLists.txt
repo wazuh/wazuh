@@ -28,6 +28,7 @@ add_library(builders OBJECT
   builders/stageBuilderParse.cpp
   builders/opBuilderLogqlParser.cpp
   builders/opBuilderKVDB.cpp
+  builders/opBuilderHelperFilter.cpp
 )
 
 # builders/opBuilderHelperFilter.cpp
