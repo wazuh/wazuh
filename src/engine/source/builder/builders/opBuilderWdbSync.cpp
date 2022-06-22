@@ -53,18 +53,14 @@ static inline base::Lifter opBuilderWdbSyncGenericQuery(const base::DocumentValu
     // Assigned to parameter in order to avoid handling array with 1 value
     const string parameter = parametersArr.at(1);
 
-    // instantiate wDB
-    // TODO: delete sock_path! is there a way or a cons of using sharedptr
-    auto wdb = std::make_shared<wazuhdb::WazuhDB>(STREAM_SOCK_PATH);
-
     base::Document doc {def};
     string successTrace = fmt::format("{} wdb_update Success", doc.str());
     string failureTrace = fmt::format("{} wdb_update Failure", doc.str());
 
     // Return Lifter
-    return [=, tr = std::move(tr)](base::Observable o) mutable {
+    return [=, tr = std::move(tr)](base::Observable o) {
         // Append rxcpp operation
-        return o.map([=, tr = std::move(tr)](base::Event e) mutable {
+        return o.map([=, tr = std::move(tr)](base::Event e) {
             string completeQuery {};
 
             // Get reference key value
@@ -100,6 +96,10 @@ static inline base::Lifter opBuilderWdbSyncGenericQuery(const base::DocumentValu
             {
                 completeQuery = parameter;
             }
+
+            // instantiate wDB
+            // TODO: delete sock_path! is there a way or a cons of using sharedptr
+            auto wdb = std::make_shared<wazuhdb::WazuhDB>(STREAM_SOCK_PATH);
 
             // Execute complete query in DB
             auto returnTuple = wdb->tryQueryAndParseResult(completeQuery);
