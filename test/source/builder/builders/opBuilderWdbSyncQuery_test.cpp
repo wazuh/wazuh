@@ -38,7 +38,7 @@ namespace unixStream = base::utils::socketInterface;
 using FakeTrFn = std::function<void(std::string)>;
 static FakeTrFn tr = [](std::string msg){};
 
-class opBuilderWdbSyncQuery : public ::testing::Test  //delete
+class opBuilderWdbSyncQuery : public ::testing::Test
 {
 
 protected:
@@ -487,7 +487,7 @@ TEST_F(opBuilderWdbSyncQuery, QueryResultCodeOkPayloadEmpty)
     close(serverSocketFD);
 
     ASSERT_EQ(expected.size(), eventsCount);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/wdbresult").GetString(), "");
+    ASSERT_THROW(expected[0]->getEvent()->get("/wdbresult"), std::invalid_argument);
 }
 
 } // namespace
