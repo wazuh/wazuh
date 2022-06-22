@@ -251,14 +251,18 @@ static void dbsync_attributes_json(const cJSON *dbsync_event, const directory_t 
     }
 
     if (aux = cJSON_GetObjectItem(dbsync_event, "user_name"), aux != NULL) {
-        cJSON_AddStringToObject(attributes, "user_name", cJSON_GetStringValue(aux));
+        char *user_name = cJSON_GetStringValue(aux);
+        if (user_name != NULL && *user_name != '\0') {
+            cJSON_AddStringToObject(attributes, "user_name", cJSON_GetStringValue(aux));
+        }
     }
-
 
     if (aux = cJSON_GetObjectItem(dbsync_event, "group_name"), aux != NULL) {
-        cJSON_AddStringToObject(attributes, "group_name", cJSON_GetStringValue(aux));
+        char *group_name = cJSON_GetStringValue(aux);
+        if (group_name != NULL && *group_name != '\0') {
+            cJSON_AddStringToObject(attributes, "group_name", cJSON_GetStringValue(aux));
+        }
     }
-
 
     if (configuration->options & CHECK_INODE) {
         if (aux = cJSON_GetObjectItem(dbsync_event, "inode"), aux != NULL) {
@@ -1453,11 +1457,11 @@ cJSON * fim_attributes_json(const fim_file_data * data) {
         cJSON_AddStringToObject(attributes, "gid", data->gid);
     }
 
-    if (data->user_name) {
+    if (data->user_name && *data->user_name != '\0' ) {
         cJSON_AddStringToObject(attributes, "user_name", data->user_name);
     }
 
-    if (data->group_name) {
+    if (data->group_name && *data->group_name != '\0') {
         cJSON_AddStringToObject(attributes, "group_name", data->group_name);
     }
 
