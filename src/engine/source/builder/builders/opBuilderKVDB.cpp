@@ -1,18 +1,11 @@
-/* Copyright (C) 2015-2022, Wazuh Inc.
- * All rights reserved.
- *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
- */
-
 #include "opBuilderKVDB.hpp"
 
 #include <string>
 
 #include <fmt/format.h>
 
+#include "baseTypes.hpp"
+#include "json.hpp"
 #include "syntax.hpp"
 #include <kvdb/kvdbManager.hpp>
 #include <utils/stringUtils.hpp>
@@ -23,35 +16,37 @@ namespace builder::internals::builders
 using builder::internals::syntax::REFERENCE_ANCHOR;
 
 // <field>: +kvdb_extract/<DB>/<ref_key>
-base::Lifter opBuilderKVDBExtract(const base::DocumentValue& def,
-                                   types::TracerFn tr)
+base::Expression opBuilderKVDBExtract(const std::any& definition)
 {
-    // Get target of the extraction
-    std::string target {
-        json::formatJsonPath(def.MemberBegin()->name.GetString())};
+    std::string target;
+    std::vector<std::string> parametersArr;
 
-    // Get the raw value of parameter
-    if (!def.MemberBegin()->value.IsString())
+    try
     {
-        throw std::runtime_error("Invalid parameter type for kvdb extracting "
-                                 "operator (str expected)");
+        auto tuple =
+            std::any_cast<std::tuple<std::string, std::vector<std::string>>>(definition);
+        target = json::Json::formatJsonPath(std::get<0>(tuple));
+        parametersArr = std::get<1>(tuple);
     }
-
-    // Parse parameters
-    std::string params {def.MemberBegin()->value.GetString()};
-    auto parametersArr {utils::string::split(params, '/')};
+    catch (std::exception& e)
+    {
+        std::throw_with_nested(std::runtime_error(
+            fmt::format("[builder::opBuilderKVDBExtract(<field, parameters>)] Received "
+                        "unexpected argument type")));
+    }
     if (parametersArr.size() != 3) // TODO: We are using default column only now
     {
         throw std::runtime_error(
-            "Invalid number of parameters for kvdb extracting operator");
+            fmt::format("[builder::opBuilderKVDBExtract(<field, parameters>)] "
+                        "Expected 3 arguments, but got [{}]",
+                        parametersArr.size()));
     }
 
     // Get DB
     auto kvdb = KVDBManager::get().getDB(parametersArr[1]);
     if (!kvdb)
     {
-        auto msg =
-            fmt::format("[{}] DB isn't available for usage", parametersArr[1]);
+        auto msg = fmt::format("[{}] DB isn't available for usage", parametersArr[1]);
         throw std::runtime_error(std::move(msg));
     }
 
@@ -60,162 +55,143 @@ base::Lifter opBuilderKVDBExtract(const base::DocumentValue& def,
     bool isReference = false;
     if (key[0] == REFERENCE_ANCHOR)
     {
-        key = json::formatJsonPath(key.substr(1));
+        key = json::Json::formatJsonPath(key.substr(1));
         isReference = true;
     }
 
-    // TODO this is not great
-    // Make deep copy of value
-    base::Document doc {def};
-    std::string successTrace = fmt::format("{} KVDBExtract Success", doc.str());
-    std::string failureTrace = fmt::format("{} KVDBExtract Failure", doc.str());
+    // Trace messages
+    auto name = fmt::format("{}: kvdb", target);
+    std::string successTrace = fmt::format("[{}] -> Success", name);
+    std::string failureTrace = fmt::format("[{}] -> Failure", name);
 
-    // Return Lifter
-    return [=, kvdb = std::move(kvdb), tr = std::move(tr)](base::Observable o)
-    {
-        // Append rxcpp operation
-        return o.map(
-            [=, kvdb = std::move(kvdb), tr = std::move(tr)](base::Event e)
+    // Return Expression
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=, kvdb = std::move(kvdb)](base::Event event)
+        {
+            // Get DB key
+            std::string dbKey;
+            if (isReference)
             {
-                // Get DB key
-                std::string dbKey;
-                if (isReference)
-                {
-                    try
-                    {
-                        auto value = &e->getEvent()->get(key);
-                        if (value && value->IsString())
-                        {
-                            dbKey = value->GetString();
-                        }
-                        else
-                        {
-                            tr(failureTrace);
-                            return e;
-                        }
-                    }
-                    catch (std::exception& ex)
-                    {
-                        // TODO Check exception type
-                        tr(failureTrace);
-                        return e;
-                    }
-                }
-                else
-                {
-                    dbKey = std::move(key);
-                }
-
-                // Get value from the DB
-                std::string dbValue = kvdb->read(dbKey);
-                if (dbValue.empty())
-                {
-                    tr(failureTrace);
-                    return e;
-                }
-
-                // Create and add string to event
                 try
                 {
-                    e->getEvent()->set(target,
-                           rapidjson::Value(dbValue.c_str(),
-                                            e->getEvent()->m_doc.GetAllocator())
-                               .Move());
-                    tr(successTrace);
+                    auto value = event->getAsString(key);
+                    dbKey = value.value();
                 }
                 catch (std::exception& ex)
                 {
-                    // TODO Check exception type
-                    tr(failureTrace);
-                    return e;
+                    return base::result::makeFailure(std::move(event), failureTrace);
                 }
+            }
+            else
+            {
+                dbKey = key;
+            }
 
-                return e;
-            });
-    };
+            // Get value from the DB
+            std::string dbValue = kvdb->read(dbKey);
+            if (dbValue.empty())
+            {
+                return base::result::makeFailure(std::move(event), failureTrace);
+            }
+
+            // Create and add string to event
+            try
+            {
+                json::Json val;
+                val.setString(dbValue.c_str());
+                // TODO: add proper set once json supports
+                event->set(target, val);
+            }
+            catch (std::exception& ex)
+            {
+                return base::result::makeFailure(event, failureTrace);
+            }
+
+            return base::result::makeSuccess(event, successTrace);
+        });
 }
 
-base::Lifter opBuilderKVDBExistanceCheck(const base::DocumentValue& def,
-                                          bool checkExist,
-                                          types::TracerFn tr)
+base::Expression opBuilderKVDBExistanceCheck(const std::any& definition, bool checkExist)
 {
-    // Get key of the match
-    std::string key {json::formatJsonPath(def.MemberBegin()->name.GetString())};
-
-    // Get the raw value of parameter
-    if (!def.MemberBegin()->value.IsString())
+    std::string target;
+    std::vector<std::string> parametersArr;
+    try
     {
-        throw std::runtime_error(
-            "Invalid parameter type for kvdb matching operator (str expected)");
+        auto tuple =
+            std::any_cast<std::tuple<std::string, std::vector<std::string>>>(definition);
+        target = json::Json::formatJsonPath(std::get<0>(tuple));
+        parametersArr = std::get<1>(tuple);
     }
-
-    // Parse parameters
-    std::string params {def.MemberBegin()->value.GetString()};
-    auto parametersArr {utils::string::split(params, '/')};
+    catch (const std::exception& e)
+    {
+        std::throw_with_nested(std::runtime_error(
+            fmt::format("[builder::opBuilderKVDBExistanceCheck(<field, parameters>)] "
+                        "Received unexpected argument type")));
+    }
     if (parametersArr.size() != 2)
     {
         throw std::runtime_error(
-            "Invalid number of parameters for kvdb matching operator");
+            fmt::format("[builder::opBuilderKVDBExistanceCheck(<field, parameters>)] "
+                        "Expected 2 arguments, but got [{}]",
+                        parametersArr.size()));
     }
 
     auto kvdb = KVDBManager::get().getDB(parametersArr[1]);
     if (!kvdb)
     {
-        auto msg =
-            fmt::format("[{}] DB isn't available for usage", parametersArr[1]);
+        auto msg = fmt::format("[{}] DB isn't available for usage", parametersArr[1]);
         throw std::runtime_error(std::move(msg));
     }
 
-    // TODO this is not great
-    // Make deep copy of value
-    base::Document doc {def};
-    std::string successTrace =
-        fmt::format("{} KVDBExistanceCheck Found", doc.str());
-    std::string failureTrace =
-        fmt::format("{} KVDBExistanceCheck NotFound", doc.str());
+    auto name = fmt::format(
+        "{}: kvdb", target);
+    std::string successTrace = fmt::format("[{}] -> Success", name);
+    std::string failureTrace = fmt::format("[{}] -> Failure", name);
 
-    // Return Lifter
-    return [=, kvdb = std::move(kvdb), tr = std::move(tr)](base::Observable o)
-    {
-        // Append rxcpp operations
-        return o.filter(
-            [=, kvdb = std::move(kvdb), tr = std::move(tr)](base::Event e)
+    return base::Term<base::EngineOp>::create(
+        name,
+        [=, kvdb = std::move(kvdb)](base::Event event)
+        {
+            bool found = false;
+            try // TODO We are only using try for JSON::get. Is correct to
+                // wrap everything?
             {
-                bool found = false;
-                try // TODO We are only using try for JSON::get. Is correct to
-                    // wrap everything?
+                auto value = event->getValueString(target);
+                if (value.has_value())
                 {
-                    auto value = &e->getEvent()->get(key);
-                    if (value && value->IsString())
+                    if (kvdb->hasKey(value.value()))
                     {
-                        if (kvdb->hasKey(value->GetString()))
-                        {
-                            found = true;
-                        }
+                        found = true;
                     }
                 }
-                catch (std::exception& ex)
-                {
-                    // TODO Check exception type
-                }
+            }
+            catch (std::exception& ex)
+            {
+                return base::result::makeFailure(event, failureTrace);
+            }
 
-                tr(found ? successTrace : failureTrace);
-                return checkExist ? found : !found;
-            });
-    };
+            bool truth = checkExist ? found : !found;
+            if (truth)
+            {
+                return base::result::makeSuccess(event, successTrace);
+            }
+            else
+            {
+                return base::result::makeFailure(event, failureTrace);
+            }
+        });
 }
 
 // <field>: +kvdb_match/<DB>
-base::Lifter opBuilderKVDBMatch(const base::DocumentValue& def,
-                                 types::TracerFn tr)
+base::Expression opBuilderKVDBMatch(const std::any& definition)
 {
-    return opBuilderKVDBExistanceCheck(def, true, tr);
+    return opBuilderKVDBExistanceCheck(definition, true);
 }
 
 // <field>: +kvdb_not_match/<DB>
-base::Lifter opBuilderKVDBNotMatch(const base::DocumentValue& def,
-                                    types::TracerFn tr)
+base::Expression opBuilderKVDBNotMatch(const std::any& definition)
 {
-    return opBuilderKVDBExistanceCheck(def, false, tr);
+    return opBuilderKVDBExistanceCheck(definition, false);
 }
 } // namespace builder::internals::builders

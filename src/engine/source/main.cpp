@@ -72,6 +72,9 @@ static auto configureCliArgs()
         .help("Number of events that can be queued for processing")
         .scan<'i', int>()
         .default_value(1000000);
+    argParser.add_argument("--environment")
+        .help("Environment to be loaded")
+        .required();
 
     // TODO this is just to give the posibility to avoid a 'protected' folder
     // on the developement cycle of the engine. This would come from a config
@@ -135,6 +138,7 @@ int main(int argc, char* argv[])
     auto kvdbPath = argParser.get("--kvdbPath");
     auto traceAll = argParser.get<bool>("--trace_all");
     auto trace = argParser.get<bool>("--trace");
+    auto environment = argParser.get<std::string>("--environment");
     std::vector<std::string> traceNames;
     if (trace)
     {
@@ -173,9 +177,9 @@ int main(int argc, char* argv[])
     }
     // TODO: Handle errors on construction
     builder::Builder<catalog::Catalog> _builder(_catalog);
-    decltype(_builder.buildEnvironment("test_environment")) env;
+    decltype(_builder.buildEnvironment(environment)) env;
     try{
-        env = _builder.buildEnvironment("dummy_environment");
+        env = _builder.buildEnvironment(environment);
     }
     catch (const std::exception& e)
     {
@@ -199,7 +203,7 @@ int main(int argc, char* argv[])
                 // Trace cerr logger
                 // TODO: this will need to be handled by the api and on the
                 // reworked router
-                auto cerrLogger = [name = "dummy_environment"](auto msg)
+                auto cerrLogger = [name = environment](auto msg)
                 {
                     std::stringstream ssTid;
                     ssTid << std::this_thread::get_id();
