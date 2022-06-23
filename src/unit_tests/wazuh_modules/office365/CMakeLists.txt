@@ -13,7 +13,7 @@ list(APPEND tests_names "test_wm_office365")
 list(APPEND tests_flags "-Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,_mtinfo -Wl,--wrap,_mterror\
                         -Wl,--wrap,_mtwarn -Wl,--wrap,_mtdebug1 -Wl,--wrap,_mtdebug2 -Wl,--wrap,access -Wl,--wrap,wurl_http_request \
                         -Wl,--wrap,wurl_free_response -Wl,--wrap,wm_sendmsg -Wl,--wrap,strftime -Wl,--wrap,gmtime_r \
-                        -Wl,--wrap,wm_state_io -Wl,--wrap,time -Wl,--wrap,StartMQ ${DEBUG_OP_WRAPPERS}")
+                        -Wl,--wrap,wm_state_io -Wl,--wrap,time -Wl,--wrap,StartMQ ${DEBUG_OP_WRAPPERS} -Wl,--wrap,isDebug")
 
 list(APPEND use_shared_libs 1)
 
