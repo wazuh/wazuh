@@ -34,7 +34,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to 24 or more password(s):Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Password Policy\\Enforce password history"
     compliance:
       - cis: ["1.1.1"]
-      - cis_csc: ["16"]
+      - cis_csc: ["5.2"]
     condition: all
     rules:
       - 'c:net.exe accounts -> n:Length of password history maintained:\s+(\d+) compare >= 24'
@@ -45,8 +45,8 @@ checks:
     rationale: "The longer a password exists the higher the likelihood that it will be compromised by a brute force attack, by an attacker gaining general knowledge about the user, or by the user sharing the password. Configuring the Maximum password age setting to 0 so that users are never required to change their passwords is a major security risk because that allows a compromised password to be used by the malicious user for as long as the valid user has authorized access."
     remediation: "To establish the recommended configuration via GP, set the following UI path to 60 or fewer days, but not 0: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Password Policy\\Maximum password age"
     compliance:
-      - cis: [ "1.1.2" ]
-      - cis_csc: [ "16.1.0" ]
+      - cis: ["1.1.2"]
+      - cis_csc: ["5.2"]
     condition: all
     rules:
       - 'c:net.exe accounts -> n:Maximum password age \(days\):\s+(\d+) compare <= 365'
@@ -59,7 +59,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to 1 or more day(s):Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Password Policy\\Minimum password age"
     compliance:
       - cis: ["1.1.3"]
-      - cis_csc: ["16.1.0"]
+      - cis_csc: ["5.2"]
     condition: all
     rules:
       - 'c:net.exe accounts -> n:Minimum password age \(days\):\s+(\d+) compare >= 1'
@@ -71,7 +71,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to 14 or 'more character(s):'Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account 'Policies\\Password Policy\\Minimum password length'"
     compliance:
       - cis: ["1.1.4"]
-      - cis_csc: ["16.1.0"]
+      - cis_csc: ["5.2"]
     condition: all
     rules:
       - 'c:net.exe accounts -> n:Minimum password length:\s+(\d+) compare >= 14'
@@ -83,7 +83,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled:Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Password Policy\\Password must meet complexity requirements"
     compliance:
       - cis: ["1.1.5"]
-      - cis_csc: ["16.2","4.4"]
+      - cis_csc: ["5.2"]
     condition: all
     rules:
       - 'c:powershell Get-ADDefaultDomainPasswordPolicy -Current LoggedOnUser -> r:ComplexityEnabled\s+: True'
@@ -95,6 +95,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled:Computer Configuration\\Policies\\Windows Settings\\Security Settings\\AccountPolicies\\Password Policy\\Relax minimum password length limits"
     compliance:
       - cis: ["1.1.6"]
+      - cis_csc: ["5.2"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SAM'
