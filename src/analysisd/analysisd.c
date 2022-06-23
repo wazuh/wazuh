@@ -240,7 +240,6 @@ static const char *(month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
 /* CPU Info*/
 static int cpu_cores;
 
-
 /* Print help statement */
 __attribute__((noreturn))
 static void help_analysisd(char * home_path)
@@ -1167,7 +1166,7 @@ void * ad_input_main(void * args) {
             }
 
             w_add_recv((unsigned long) recv);
-            w_inc_received_events();  //sacar q quede como antes igual q dropped y unknown
+            w_inc_received_events();
 
             if (msg[0] == SYSCHECK_MQ) {
 
