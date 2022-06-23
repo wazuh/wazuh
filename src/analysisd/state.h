@@ -14,7 +14,7 @@
 
 #include <stdint.h>
 
-w_linked_queue_t *remoted_agent_state_queue;
+OSHash *analysisd_agents_state;
 
 /* Status structures */
 
@@ -105,15 +105,14 @@ typedef struct _analysisd_state_t {
     events_recv_t events_received_breakdown;
 } analysisd_state_t;
 
-typedef struct _remoted_agent_state_t {
+typedef struct _analysisd_agent_state_t {
     int id;
-    uint64_t events_received;
     uint64_t events_processed;
     uint64_t alerts_written;
     uint64_t archives_written;
     uint32_t firewall_written;
-    events_recv_t events_received_breakdown;
-} remoted_agent_state_t;
+    events_decoded_t events_decoded_breakdown;
+} analysisd_agent_state_t;
 
 
 
@@ -138,97 +137,97 @@ void w_add_recv(unsigned long bytes);
 /**
  * @brief Increment received events counter
  */
-void w_inc_received_events(int agent_id);
+void w_inc_received_events();
 
 /**
  * @brief Increment syscheck decoded events counter
  */
-void w_inc_syscheck_decoded_events(int agent_id);
+void w_inc_syscheck_decoded_events(char * agent_id);
 
 /**
  * @brief Increment syscollector decoded events counter
  */
-void w_inc_syscollector_decoded_events(int agent_id);
+void w_inc_syscollector_decoded_events(char * agent_id);
 
 /**
  * @brief Increment rootcheck decoded events counter
  */
-void w_inc_rootcheck_decoded_events(int agent_id);
+void w_inc_rootcheck_decoded_events(char * agent_id);
 
 /**
  * @brief Increment sca decoded events counter
  */
-void w_inc_sca_decoded_events(int agent_id);
+void w_inc_sca_decoded_events(char * agent_id);
 
 /**
  * @brief Increment hostinfo decoded events counter
  */
-void w_inc_hostinfo_decoded_events(int agent_id);
+void w_inc_hostinfo_decoded_events(char * agent_id);
 
 /**
  * @brief Increment winevt decoded events counter
  */
-void w_inc_winevt_decoded_events(int agent_id);
+void w_inc_winevt_decoded_events(char * agent_id);
 
 /**
  * @brief Increment dbsync decoded events counter
  */
-void w_inc_dbsync_decoded_events(int agent_id);
+void w_inc_dbsync_decoded_events(char * agent_id);
 
 /**
  * @brief Increment upgrade decoded events counter
  */
-void w_inc_upgrade_decoded_events(int agent_id);
+void w_inc_upgrade_decoded_events(char * agent_id);
 
 /**
  * @brief Increment other decoded events counter
  */
-void w_inc_events_decoded(int agent_id);
+void w_inc_events_decoded(char * agent_id);
 
 /**
  * @brief Increment syscheck dropped events counter
  */
-void w_inc_syscheck_dropped_events(int agent_id);
+void w_inc_syscheck_dropped_events();
 
 /**
  * @brief Increment syscollector dropped events counter
  */
-void w_inc_syscollector_dropped_events(int agent_id);
+void w_inc_syscollector_dropped_events();
 
 /**
  * @brief Increment rootcheck dropped events counter
  */
-void w_inc_rootcheck_dropped_events(int agent_id);
+void w_inc_rootcheck_dropped_events();
 
 /**
  * @brief Increment sca dropped events counter
  */
-void w_inc_sca_dropped_events(int agent_id);
+void w_inc_sca_dropped_events();
 
 /**
  * @brief Increment hostinfo dropped events counter
  */
-void w_inc_hostinfo_dropped_events(int agent_id);
+void w_inc_hostinfo_dropped_events();
 
 /**
  * @brief Increment winevt dropped events counter
  */
-void w_inc_winevt_dropped_events(int agent_id);
+void w_inc_winevt_dropped_events();
 
 /**
  * @brief Increment dbsync dropped events counter
  */
-void w_inc_dbsync_dropped_events(int agent_id);
+void w_inc_dbsync_dropped_events();
 
 /**
  * @brief Increment upgrade dropped events counter
  */
-void w_inc_upgrade_dropped_events(int agent_id);
+void w_inc_upgrade_dropped_events();
 
 /**
  * @brief Increment other dropped events counter
  */
-void w_inc_events_dropped(int agent_id);
+void w_inc_events_dropped();
 
 /**
  * @brief Increment syscheck unknown events counter
@@ -278,22 +277,22 @@ void w_inc_events_unknown();
 /**
  * @brief Increment processed events counter
  */
-void w_inc_processed_events(int agent_id);
+void w_inc_processed_events(char * agent_id);
 
 /**
  * @brief Increment alerts written counter
  */
-void w_inc_alerts_written(int agent_id);
+void w_inc_alerts_written(char * agent_id);
 
 /**
  * @brief Increment archives written counter
  */
-void w_inc_archives_written(int agent_id);
+void w_inc_archives_written(char * agent_id);
 
 /**
  * @brief Increment firewall written counter
  */
-void w_inc_firewall_written(int agent_id);
+void w_inc_firewall_written(char * agent_id);
 
 /**
  * @brief Increment fts written counter
