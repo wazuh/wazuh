@@ -48,10 +48,10 @@ checks:
     title: "Ensure mounting of cramfs filesystems is disabled."
     description: "The cramfs filesystem type is a compressed read-only Linux filesystem embedded in small footprint systems. A cramfs image can be used without having to first decompress the image."
     rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the server. If this filesystem type is not needed, disable it."
-    remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf .Example: vim /etc/modprobe.d/cramfs.conf:  and add the following line: install cramfs /bin/true. Run the following command to unload the cramfs module: # rmmod cramfs"
+    remediation: 'Edit or create a file in the /etc/modprobe.d/ directory ending in .conf with a line that reads install cramfs /bin/false and a line the reads blacklist cramfs. Example: # printf "install cramfs /bin/false blacklist cramfs " >> /etc/modprobe.d/cramfs.conf Run the following command to unload the cramfs module: # modprobe -r cramfs '
     compliance:
       - cis: ["1.1.1.1"]
-      - cis_csc: ["5.1"]
+      - cis_csc: ["4.8", "9.2"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
@@ -62,12 +62,12 @@ checks:
   # 1.1.1.2 Ensure mounting of squashfs filesystems is disabled (Automated)
   - id: 28001
     title: "Ensure mounting of squashfs filesystems is disabled."
-    description: "The squashfs filesystem type is a compressed read-only Linux filesystem embedded in small footprint systems (similar to cramfs ). A squashfs image can be used without having to first decompress the image."
+    description: "The squashfs filesystem type is a compressed read-only Linux filesystem embedded in small footprint systems. A squashfs image can be used without having to first decompress the image."
     rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
-    remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf . Example: vim /etc/modprobe.d/squashfs.conf and add the following line: install squashfs /bin/true. Run the following command to unload the squashfs module: rmmod squashfs"
+    remediation: 'Edit or create a file in the /etc/modprobe.d/ directory ending in .conf with the lines that reads install squashfs /bin/false and blacklist squashfs. Example:  # printf "install squashfs /bin/false blacklist squashfs " >> /etc/modprobe.d/squashfs.conf Run the following command to unload the squashfs module: # modprobe -r squashfs'
     compliance:
       - cis: ["1.1.1.2"]
-      - cis_csc: ["5.1"]
+      - cis_csc: ["4.8", "9.2"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     condition: all
@@ -80,10 +80,10 @@ checks:
     title: "Ensure mounting of udf filesystems is disabled."
     description: "The udf filesystem type is the universal disk format used to implement ISO/IEC 13346 and ECMA-167 specifications. This is an open vendor filesystem type for data storage on a broad range of media. This filesystem type is necessary to support writing DVDs and newer optical disc formats."
     rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
-    remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf. Example: vim /etc/modprobe.d/udf.conf and add the following line: install udf /bin/true. Run the following command to unload the udf module: # rmmod udf"
+    remediation: 'Edit or create a file in the /etc/modprobe.d/ directory ending in .conf with a line that reads install udf /bin/false. Example: # printf "install udf /bin/false blacklist udf " >> /etc/modprobe.d/udf.conf Run the following command to unload the udf module: # modprobe -r udf'
     compliance:
       - cis: ["1.1.1.4"]
-      - cis_csc: ["5.1"]
+      - cis_csc: ["4.8", "9.2"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
     references:
@@ -102,7 +102,7 @@ checks:
     title: "Ensure /tmp is a separate partition."
     description: "The /tmp directory is a world-writable directory used for temporary storage by all users and some applications."
     rationale: "Making /tmp its own file system allows an administrator to set the noexec option on the mount, making /tmp useless for an attacker to install executable code. It would also prevent an attacker from establishing a hardlink to a system setuid program and wait for it to be updated. Once the program was updated, the hardlink would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw. This can be accomplished by either mounting tmpfs to /tmp, or creating a separate partition for /tmp."
-    remediation: 'Configure /etc/fstab as appropriate. example: "tmpfs  /tmp  tmpfs defaults,rw,nosuid,nodev,noexec,relatime  0 0"  OR  Run the following commands to enable systemd /tmp mounting: # systemctl unmask tmp.mount # systemctl enable tmp.mount    Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to configure the /tmp mount:   [Mount] What=tmpfs Where=/tmp Type=tmpfs Options=mode=1777,strictatime,noexec,nodev,nosuid'
+    remediation: "First ensure that systemd is correctly configured to ensure that /tmp will be mounted at boot time. # systemctl unmask tmp.mount For specific configuration requirements of the /tmp mount for your environment, modify /etc/fstab. Example of using tmpfs with specific mount options:  tmpfs /tmp tmpfs defaults,rw,nosuid,nodev,noexec,relatime,size=2G 0 0 Example of using a volume or disk with specific mount options. The source location of the volume or disk will vary depending on your environment. <device> /tmp <fstype> defaults,nodev,nosuid,noexec 0 0"
     compliance:
       - cis: ["1.1.2.1"]
       - cis_csc: ["9.1"]
@@ -122,10 +122,10 @@ checks:
     title: "Ensure nodev option set on /tmp partition."
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the /tmp filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices in /tmp."
-    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /tmp : # mount -o remount,nodev /tmp  OR Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add nodev to the /tmp mount options: [Mount]  Options=mode=1777,strictatime,noexec,nodev,nosuid       Run the following command to remount /tmp : # mount -o remount,nodev /tmp"
+    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /tmp partition. Example: <device> /tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /tmp with the configured options: # mount -o remount /tmp"
     compliance:
       - cis: ["1.1.2.2"]
-      - cis_csc: ["5.1"]
+      - cis_csc: ["4.8", "9.2"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -138,10 +138,10 @@ checks:
     title: "Ensure noexec option set on /tmp partition."
     description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
     rationale: "Since the /tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot run executable binaries from /tmp."
-    remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /tmp : # mount -o remount,noexec /tmp       OR      Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add noexec to the /tmp mount options: [Mount]        Options=mode=1777,strictatime,noexec,nodev,nosuid         Run the following command to remount /tmp : # mount -o remount,noexec /tmp"
+    remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /tmp partition. Example: <device> /tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /tmp with the configured options: # mount -o remount /tmp"
     compliance:
       - cis: ["1.1.2.3"]
-      - cis_csc: ["2.6"]
+      - cis_csc: ["3.3", "14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -154,10 +154,10 @@ checks:
     title: "Ensure nosuid option set on /tmp partition."
     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
     rationale: "Since the /tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot create setuid files in /tmp."
-    remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /tmp : # mount -o remount,nosuid /tmp       OR Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add nosuid to the /tmp mount options:    [Mount]    Options=mode=1777,strictatime,noexec,nodev,nosuid     Run the following command to remount /tmp : # mount -o remount,nosuid /tmp"
+    remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /tmp partition. Example: <device> /tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /tmp with the configured options: # mount -o remount /tmp "
     compliance:
       - cis: ["1.1.2.4"]
-      - cis_csc: ["5.1"]
+      - cis_csc: ["3.3", "14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -177,7 +177,7 @@ checks:
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.3.1"]
-      - cis_csc: ["9.1"]
+      - cis_csc: ["3.3", "14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -192,10 +192,10 @@ checks:
     title: "Ensure nodev option set on /var partition."
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the /var filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /var."
-    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var partition. See the fstab(5) manual page for more information. Run the following command to remount /var : # mount -o remount /var."
+    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var partition. Example: <device> /var <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var with the configured options: # mount -o remount /var"
     compliance:
       - cis: ["1.1.2.2"]
-      - cis_csc: ["5.1"]
+      - cis_csc: ["3.3", "14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -208,10 +208,10 @@ checks:
     title: "Ensure noexec option set on /var partition."
     description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
     rationale: "Since the /var filesystem is only intended for variable files such as logs, set this option to ensure that users cannot run executable binaries from /var."
-    remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /var partition. See the fstab(5) manual page for more information. Run the following command to remount /tmp : # mount -o remount /var "
+    remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /var partition. Example: <device> /var <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var with the configured options: # mount -o remount /var "
     compliance:
       - cis: ["1.1.3.3"]
-      - cis_csc: ["2.6"]
+      - cis_csc: ["3.3", "14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -227,7 +227,7 @@ checks:
     remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var partition. Example: <device> /var <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var with the configured options: # mount -o remount /var."
     compliance:
       - cis: ["1.1.2.4"]
-      - cis_csc: ["5.1"]
+      - cis_csc: ["3.3", "14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -247,7 +247,7 @@ checks:
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/tmp. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.4.1"]
-      - cis_csc: ["5.1"]
+      - cis_csc: ["3.3", "14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -262,11 +262,10 @@ checks:
     title: "Ensure noexec option set on /var/tmp partition."
     description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
     rationale: "Since the /var/tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot run executable binaries from /var/tmp."
-    remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /var/tmp partition. See the fstab(5) manual page for more information."
+    remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /var/tmp partition."
     compliance:
       - cis: ["1.1.4.2"]
-      - cis_csc: ["5.1"]
-      - cis_csc: ["2"]
+      - cis_csc: ["3.3", "14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -279,10 +278,10 @@ checks:
     title: "Ensure nosuid option set on /var/tmp partition."
     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
     rationale: "Since the /var/tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot create setuid files in /var/tmp."
-    remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var/tmp partition. See the fstab(5) manual page for more information."
+    remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var/tmp partition. Example:  <device> /var/tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0  Run the following command to remount /var/tmp with the configured options: # mount -o remount /var/tmp "
     compliance:
-      - cis: ["1.1.9"]
-      - cis_csc: ["5.1"]
+      - cis: ["1.1.4.3"]
+      - cis_csc: ["3.3", "14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -295,10 +294,10 @@ checks:
     title: "Ensure nodev option set on /var/tmp partition."
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the /var/tmp filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices in /var/tmp ."
-    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var/tmp partition. See the fstab(5) manual page for more information."
+    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var/tmp partition. Example:  <device> /var/tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0  Run the following command to remount /var/tmp with the configured options: # mount -o remount /var/tmp"
     compliance:
-      - cis: ["1.1.8"]
-      - cis_csc: ["5.1"]
+      - cis: ["1.1.4.4"]
+      - cis_csc: ["3.3", "14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -318,7 +317,7 @@ checks:
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.5.1"]
-      - cis_csc: ["6.4"]
+      - cis_csc: ["6.4", "8.3"]
       - pci_dss: ["2.2.4", "10.7"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -333,10 +332,10 @@ checks:
     title: "Ensure nodev option set on /var/log partition."
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the /var/log filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /var/log."
-    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var/log partition. Example: Run the following command to remount /var/log with the configured options: # mount -o remount /var/log."
+    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var/log partition. Example: <device> /var/log <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var/log with the configured options: # mount -o remount /var/log "
     compliance:
       - cis: ["1.1.5.2"]
-      - cis_csc: ["5.1"]
+      - cis_csc: ["3.3", "14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -349,11 +348,10 @@ checks:
     title: "Ensure noexec option set on /var/log partition."
     description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
     rationale: "Since the /var/log filesystem is only intended for log files, set this option to ensure that users cannot run executable binaries from /var/log."
-    remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /var/log partition. Example: Run the following command to remount /var/log with the configured options: # mount -o remount /var/log"
+    remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /var/log partition. Example:  <device> /var/log <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var/log with the configured options: # mount -o remount /var/log"
     compliance:
       - cis: ["1.1.5.3"]
-      - cis_csc: ["5.1"]
-      - cis_csc: ["2"]
+      - cis_csc: ["3.3", "14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -366,11 +364,10 @@ checks:
     title: "Ensure nosuid option set on /var/log partition."
     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
     rationale: "Since the /var/log filesystem is only intended for log files, set this option to ensure that users cannot create setuid files in /var/log."
-    remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var/log partition. Example: Run the following command to remount /var/log with the configured options: # mount -o remount /var/log"
+    remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var/log partition. Example:  <device> /var/log <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var/log with the configured options: # mount -o remount /var/log"
     compliance:
       - cis: ["1.1.5.4"]
-      - cis_csc: ["5.1"]
-      - cis_csc: ["2"]
+      - cis_csc: ["3.3", "14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -390,7 +387,7 @@ checks:
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log/audit. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.6.1"]
-      - cis_csc: ["6.4"]
+      - cis_csc: ["6.4", "8.3"]
       - pci_dss: ["2.2.4", "10.7"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -405,10 +402,10 @@ checks:
     title: "Ensure noexec option set on /var/log/audit partition."
     description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
     rationale: "Since the /var/log/audit filesystem is only intended for audit logs, set this option to ensure that users cannot run executable binaries from /var/log/audit."
-    remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /var partition. Example: Run the following command to remount /var/log/audit with the configured options: # mount -o remount /var/log/audit"
+    remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /var partition. Example: <device> /var/log/audit <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0  Run the following command to remount /var/log/audit with the configured options: # mount -o remount /var/log/audit"
     compliance:
       - cis: ["1.1.6.2"]
-      - cis_csc: ["5.1"]
+      - cis_csc: ["3.3", "14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -421,11 +418,10 @@ checks:
     title: "Ensure nodev option set on /var/log/audit partition."
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the /var/log/audit filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /var/log/audit."
-    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var/log/audit partition. Example: Run the following command to remount /var/log/audit with the configured options: # mount -o remount /var/log/audit"
+    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var/log/audit partition. Example:  <device> /var/log/audit <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var/log/audit with the configured options: # mount -o remount /var/log/audit"
     compliance:
       - cis: ["1.1.6.3"]
-      - cis_csc: ["5.1"]
-      - cis_csc: ["2"]
+      - cis_csc: ["3.3", "14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -438,11 +434,10 @@ checks:
     title: "Ensure nosuid option set on /var/log/audit partition."
     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
     rationale: "Since the /var/log/audit filesystem is only intended for variable files such as logs, set this option to ensure that users cannot create setuid files in /var/log/audit."
-    remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var/log/audit partition. Example: Run the following command to remount /var/log/audit with the configured options: # mount -o remount /var/log/audit"
+    remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var/log/audit partition. Example: <device> /var/log/audit <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var/log/audit with the configured options: # mount -o remount /var/log/audit"
     compliance:
       - cis: ["1.1.6.4"]
-      - cis_csc: ["5.1"]
-      - cis_csc: ["2"]
+      - cis_csc: ["3.3", "14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -462,7 +457,7 @@ checks:
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /home. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     compliance:
       - cis: ["1.1.7.1"]
-      - cis_csc: ["6.4"]
+      - cis_csc: ["3.3", "14.6"]
       - pci_dss: ["2.2.4", "10.7"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -480,7 +475,7 @@ checks:
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /home partition. Example: <device> /home <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /home with the configured options: # mount -o remount /home."
     compliance:
       - cis: ["1.1.7.2"]
-      - cis_csc: ["5.1"]
+      - cis_csc: ["3.3", "14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -496,8 +491,7 @@ checks:
     remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /home partition. Example: <device> /home <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /home with the configured options: # mount -o remount /home."
     compliance:
       - cis: ["1.1.7.3"]
-      - cis_csc: ["5.1"]
-      - cis_csc: ["2"]
+      - cis_csc: ["3.3", "14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -510,11 +504,10 @@ checks:
     title: "Ensure usrquota option set on /home partition."
     description: "The usrquota mount option allows for the filesystem to have disk quotas configured."
     rationale: "To ensure the availability of disk space on /home, it is important to limit the impact a single user or group can cause for other users (or the wider system) by accidentally filling up the partition. Quotas can also be applied to inodes for filesystems where inode exhaustion is a concern."
-    remediation: "Edit the /etc/fstab file and add usrquota to the fourth field (mounting options) for the /home partition. Example: Run the following command to remount /home with the configured options: # mount -o remount /home Create the quota database. This example will ignore any existing quota files. <device> /home <fstype> defaults,rw,usrquota,grpquota,nodev,relatime 00 # quotacheck -cugv /home Restore SELinux context on the quota database files. Order of operations is important as quotaon will set the immutable attribute on the files and thus restorecon will fail. # restorecon /home/aquota.user Enable quotas on the partition: # quotaon -vug /home "
+    remediation: "Edit the /etc/fstab file and add usrquota to the fourth field (mounting options) for the /home partition. Example: <device> /home <fstype> defaults,rw,usrquota,grpquota,nodev,relatime 00 Run the following command to remount /home with the configured options: # mount -o remount /home Create the quota database. This example will ignore any existing quota files. # quotacheck -cugv /home quotacheck: Your kernel probably supports journaled quota but you are not using it. Consider switching to journaled quota to avoid running quotacheck after an unclean shutdown. quotacheck: Scanning /dev/sdb [/home] done quotacheck: Cannot stat old user quota file /home/aquota.user: No such file or directory. Usage will not be subtracted. quotacheck: Cannot stat old group quota file /home/aquota.group: No such file or directory. Usage will not be subtracted. quotacheck: Cannot stat old user quota file /home/aquota.user: No such file or directory. Usage will not be subtracted. quotacheck: Cannot stat old group quota file /home/aquota.group: No such file or directory. Usage will not be subtracted. quotacheck: Checked 8 directories and 0 files quotacheck: Old file not found. quotacheck: Old file not found. Restore SELinux context on the quota database files. Order of operations is important as quotaon will set the immutable attribute on the files and thus restorecon will fail. # restorecon /home/aquota.user Enable quotas on the partition: # quotaon -vug /home /dev/sdb [/home]: group quotas turned on /dev/sdb [/home]: user quotas turned on "
     compliance:
       - cis: ["1.1.7.4"]
-      - cis_csc: ["5.1"]
-      - cis_csc: ["2"]
+      - cis_csc: ["3.3", "14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -527,11 +520,10 @@ checks:
     title: "Ensure grpquota option set on /home partition."
     description: "The grpquota mount option allows for the filesystem to have disk quotas configured."
     rationale: "To ensure the availability of disk space on /home, it is important to limit the impact a single user or group can cause for other users (or the wider system) by accidentally filling up the partition. Quotas can also be applied to inodes for filesystems where inode exhaustion is a concern."
-    remediation: "EEdit the /etc/fstab file and add grpquota to the fourth field (mounting options) for the /home partition. Example: Run the following command to remount /home with the configured options: # mount -o remount /home Create the quota database. This example will ignore any existing quota files. <device> /home <fstype> defaults,rw,usrquota,grpquota,nodev,relatime 00 # quotacheck -cugv /home Restore SELinux context on the quota database files. Order of operations is important as quotaon will set the immutable attribute on the files and thus restorecon will fail. # restorecon /home/aquota.group Enable quotas on the partition: # quotaon -vug /home"
+    remediation: "Edit the /etc/fstab file and add grpquota to the fourth field (mounting options) for the /home partition. Example:  <device> /home <fstype> defaults,rw,usrquota,grpquota,nodev,relatime 00 Run the following command to remount /home with the configured options: # mount -o remount /home Create the quota database. This example will ignore any existing quota files. # quotacheck -cugv /home quotacheck: Your kernel probably supports journaled quota but you are not using it. Consider switching to journaled quota to avoid running quotacheck after an unclean shutdown. quotacheck: Scanning /dev/sdb [/home] done quotacheck: Cannot stat old user quota file /home/aquota.user: No such file or directory. Usage will not be subtracted. quotacheck: Cannot stat old group quota file /home/aquota.group: No such file or directory. Usage will not be subtracted. quotacheck: Cannot stat old user quota file /home/aquota.user: No such file or directory. Usage will not be subtracted. quotacheck: Cannot stat old group quota file /home/aquota.group: No such file or directory. Usage will not be subtracted. quotacheck: Checked 8 directories and 0 files quotacheck: Old file not found. quotacheck: Old file not found. Restore SELinux context on the quota database files. Order of operations is important as quotaon will set the immutable attribute on the files and thus restorecon will fail. # restorecon /home/aquota.group Enable quotas on the partition: # quotaon -vug /home /dev/sdb [/home]: group quotas turned on /dev/sdb [/home]: user quotas turned on "
     compliance:
       - cis: ["1.1.7.5"]
-      - cis_csc: ["5.1"]
-      - cis_csc: ["2"]
+      - cis_csc: ["3.3", "14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -551,7 +543,7 @@ checks:
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information. Run the following command to remount /dev/shm using the updated options from /etc/fstab: # mount -o remount /dev/shm."
     compliance:
       - cis: ["1.1.8.1"]
-      - cis_csc: ["6.4"]
+      - cis_csc: ["3.3", "14.6"]
       - pci_dss: ["2.2.4", "10.7"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -564,10 +556,10 @@ checks:
     title: "Ensure noexec option set on /dev/shm partition."
     description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
     rationale: "Setting this option on a file system prevents users from executing programs from shared memory. This deters users from introducing potentially malicious software on the system."
-    remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /dev/shm partition. Example: Run the following command to remount /dev/shm with the configured options: # mount -o remount /dev/shm. NOTE It is recommended to use tmpfs as the device/filesystem type as /dev/shm is used as shared memory space by applications."
+    remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /dev/shm partition. Example: <device> /dev/shm <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /dev/shm with the configured options: # mount -o remount /dev/shm. NOTE It is recommended to use tmpfs as the device/filesystem type as /dev/shm is used as shared memory space by applications."
     compliance:
       - cis: ["1.1.8.2"]
-      - cis_csc: ["6.4"]
+      - cis_csc: ["3.3", "14.6"]
       - pci_dss: ["2.2.4", "10.7"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -583,7 +575,7 @@ checks:
     remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information. Run the following command to remount /dev/shm using the updated options from /etc/fstab: # mount -o remount /dev/shm. "
     compliance:
       - cis: ["1.1.8.3"]
-      - cis_csc: ["6.4"]
+      - cis_csc: ["3.3", "14.6"]
       - pci_dss: ["2.2.4", "10.7"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -599,7 +591,7 @@ checks:
     remediation: "If there are no other packages that depends on autofs, remove the package with: # dnf remove autofs Run the following command to disable autofs if it is required: # systemctl --now disable autofs"
     compliance:
       - cis: ["1.1.9"]
-      - cis_csc: ["8.4", "8.5"]
+      - cis_csc: ["10.3", "8.5"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -615,7 +607,7 @@ checks:
     remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf  Example: vim /etc/modprobe.d/usb-storage.conf   and add the following line: install usb-storage /bin/true     Run the following command to unload the usb-storage module:  # rmmod usb-storage"
     compliance:
       - cis: ["1.1.10"]
-      - cis_csc: ["8.4", "8.5"]
+      - cis_csc: ["10.3", "13.7"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -636,10 +628,10 @@ checks:
     title: "Ensure gpgcheck is globally activated"
     description: "The gpgcheck option, found in the main section of the /etc/yum.conf and individual /etc/yum/repos.d/* files determines if an RPM package's signature is checked prior to its installation."
     rationale: "It is important to ensure that an RPM's package signature is always checked prior to installation to ensure that the software is obtained from a trusted source."
-    remediation: "Edit /etc/yum.conf and set ' gpgcheck=1 ' in the [main] section. Edit any failing files in /etc/yum.repos.d/* and set all instances of gpgcheck to ' 1 '."
+    remediation: "Edit /etc/yum.conf and set ' gpgcheck=1 ' in the [main] section. Example: # sed -i 's/^gpgcheck\\s*=\\s*.*/gpgcheck=1/' /etc/dnf/dnf.conf Edit any failing files in /etc/yum.repos.d/* and set all instances of gpgcheck to ' 1 ' Example: # find /etc/yum.repos.d/ -name \"*.repo\" -exec echo \"Checking:\" {} \\; -exec sed -i 's/^gpgcheck\\s*=\\s*.*/gpgcheck=1/' {} \\;."
     compliance:
       - cis: ["1.2.3"]
-      - cis_csc: ["3.4"]
+      - cis_csc: ["3.4", "7.3"]
       - pci_dss: ["6.2"]
       - nist_800_53: ["SI.2", "SA.11", "SI.4"]
       - gpg_13: ["4.3"]
@@ -665,7 +657,7 @@ checks:
     remediation: "Run the following command to install AIDE: # dnf install aide Configure AIDE as appropriate for your environment. Consult the AIDE documentation for options. Initialize AIDE: Run the following commands  # aide --init # mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz"
     compliance:
       - cis: ["1.3.1"]
-      - cis_csc: ["4.3"]
+      - cis_csc: ["3.14", "14.9"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -679,15 +671,17 @@ checks:
     title: "Ensure filesystem integrity is regularly checked (A)"
     description: "Periodic checking of the filesystem integrity is needed to detect changes to the filesystem."
     rationale: "Periodic file checking allows the system administrator to determine on a regular basis if critical files have been changed in an unauthorized fashion. "
-    remediation: "If cron will be used to schedule and run aide check Run the following command: # crontab -u root -e Add the following line to the crontab: 0 5 * * * /usr/sbin/aide --check OR if aidecheck.service and aidecheck.timer will be used to schedule and run aide check: Create or edit the file /etc/systemd/system/aidecheck.service, Create or edit the file /etc/systemd/system/aidecheck.timer Run the following commands: # chown root:root /etc/systemd/system/aidecheck.* # chmod 0644 /etc/systemd/system/aidecheck.* # systemctl daemon-reload # systemctl enable aidecheck.service # systemctl --now enable aidecheck.timer"
+    remediation: "If cron will be used to schedule and run aide check. Run the following command: # crontab -u root -e Add the following line to the crontab: 0 5 * * * /usr/sbin/aide --check OR if aidecheck.service and aidecheck.timer will be used to schedule and run aide check: Create or edit the file /etc/systemd/system/aidecheck.service:[Unit] Description=Aide Check [Service] Type=simple ExecStart=/usr/sbin/aide --check [Install] WantedBy=multi-user.target.  Create or edit the file /etc/systemd/system/aidecheck.timer: [Unit] Description=Aide check every day at 5AM [Timer] OnCalendar=*-*-* 05:00:00 Unit=aidecheck.service [Install] WantedBy=multi-user.target. Run the following commands: # chown root:root /etc/systemd/system/aidecheck.* # chmod 0644 /etc/systemd/system/aidecheck.* # systemctl daemon-reload # systemctl enable aidecheck.service # systemctl --now enable aidecheck.timer"
     compliance:
       - cis: ["1.3.2"]
-      - cis_csc: ["4.3"]
+      - cis_csc: ["3.14", "14.9"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
     condition: all
-    references: "AIDE stable manual: http://aide.sourceforge.net/stable/manual.html"
+    references:
+      - "https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.service"
+      - "https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.timer"
     rules:
       - "c:systemctl is-enabled aidecheck.service -> r:enable"
       - "c:systemctl is-enabled aidecheck.timer -> r:enable"
@@ -725,7 +719,7 @@ checks:
     remediation: "The systemd drop-in files must be created if it is necessary to change the default settings: Create the file /etc/systemd/system/rescue.service.d/00-require-auth.conf which contains only the configuration to be overridden:[Service] ExecStart=-/usr/lib/systemd/systemd-sulogin-shell rescue"
     compliance:
       - cis: ["1.4.3"]
-      - cis_csc: ["4.3"]
+      - cis_csc: ["4.4", "5.2"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -745,7 +739,6 @@ checks:
     remediation: "Edit /etc/systemd/coredump.conf and edit or add the following line: Storage=none "
     compliance:
       - cis: ["1.5.1"]
-      - cis_csc: ["4.3"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -763,7 +756,6 @@ checks:
     remediation: "Edit or add the following line in /etc/systemd/coredump.conf: ProcessSizeMax=0 "
     compliance:
       - cis: ["1.5.2"]
-      - cis_csc: ["4.3"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -781,15 +773,15 @@ checks:
     remediation: 'Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example: # printf " kernel.randomize_va_space = 2 " >> /etc/sysctl.d/60-kernel_sysctl.conf Run the following command to set the active kernel parameter:# sysctl -w kernel.randomize_va_space=2 '
     compliance:
       - cis: ["1.5.3"]
-      - cis_csc: ["4.3"]
+      - cis_csc: ["8.3", "10.5"]
       - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
+      - nist_800_53: ["CM-6 b", "CM-6.1 (iv)", "CM-6 b"]
       - tsc: ["CC5.2"]
     references:
-      - "1. CCI-000366: The organization implements the security configuration settings"
-      - "2. NIST SP 800-53 :: CM-6 b"
-      - "3. NIST SP 800-53A :: CM-6.1 (iv)"
-      - "4. NIST SP 800-53 Revision 4 :: CM-6 b"
+      - "CCI-000366: The organization implements the security configuration settings"
+      - "NIST SP 800-53 :: CM-6 b"
+      - "NIST SP 800-53A :: CM-6.1 (iv)"
+      - "NIST SP 800-53 Revision 4 :: CM-6 b"
     condition: all
     rules:
       - 'c:grep -Rh ^kernel\.randomize_va_space /etc/sysctl.conf /etc/sysctl.d -> r:^\s*kernel.randomize_va_space\s*=\s*2$'
@@ -810,7 +802,7 @@ checks:
     remediation: "Run the following command to install SELinux : # dnf install libselinux"
     compliance:
       - cis: ["1.6.1.1"]
-      - cis_csc: ["14.6"]
+      - cis_csc: ["3.3", "14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -823,10 +815,10 @@ checks:
     title: "Ensure SELinux is not disabled in bootloader configuration"
     description: "Configure SELINUX to be enabled at boot time and verify that it has not been overwritten by the grub boot parameters."
     rationale: "SELinux must be enabled at boot time in your grub configuration to ensure that the controls it provides are not overridden."
-    remediation: 'Edit /etc/default/grub and remove all instances of selinux=0 and enforcing=0 from all CMDLINE_LINUX parameters: GRUB_CMDLINE_LINUX_DEFAULT="quiet" GRUB_CMDLINE_LINUX=""  || Run the following command to update the grub2 configuration: grub2-mkconfig -o /boot/grub2/grub.cfg'
+    remediation: "Run the following command to remove all instances of selinux=0 and enforcing=0 from all CMDLINE_LINUX parameters: grubby --update-kernel ALL --remove-args 'selinux=0 enforcing=0'"
     compliance:
       - cis: ["1.6.1.2"]
-      - cis_csc: ["14.6"]
+      - cis_csc: ["3.3", "14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -842,7 +834,7 @@ checks:
     remediation: "Edit the /etc/selinux/config file to set the SELINUXTYPE parameter: SELINUXTYPE=targeted"
     compliance:
       - cis: ["1.6.1.3"]
-      - cis_csc: ["14.6"]
+      - cis_csc: ["3.3", "14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -854,12 +846,12 @@ checks:
   # 1.6.1.4 Ensure the SELinux mode is not disabled (Automated)
   - id: 28044
     title: "Ensure the SELinux mode is not disabled"
-    description: " SELinux can run in one of three modes: disabled, permissive, or enforcing: • Enforcing - Is the default, and recommended, mode of operation; in enforcing mode SELinux operates normally, enforcing the loaded security policy on the entire system. • Permissive - The system acts as if SELinux is enforcing the loaded security policy, including labeling objects and emitting access denial entries in the logs, but it does not actually deny any operations. While not recommended for production systems, permissive mode can be helpful for SELinux policy development. • Disabled - Is strongly discouraged; not only does the system avoid enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future."
+    description: " SELinux can run in one of three modes: disabled, permissive, or enforcing: • Enforcing - Is the default, and recommended, mode of operation; in enforcing mode SELinux operates normally, enforcing the loaded security policy on the entire system. • Permissive - The system acts as if SELinux is enforcing the loaded security policy, including labeling objects and emitting access denial entries in the logs, but it does not actually deny any operations. While not recommended for production systems, permissive mode can be helpful for SELinux policy development. • Disabled - Is strongly discouraged; not only does the system avoid enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future. Note: you can set individual domains to permissive mode while the system runs in enforcing mode. For example, to make the httpd_t domain permissive: # semanage permissive -a httpd_t"
     rationale: "Running SELinux in disabled mode is strongly discouraged; not only does the system avoid enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future."
     remediation: "Run one of the following commands to set SELinux's running mode: To set SELinux mode to Enforcing: # setenforce 1 OR To set SELinux mode to Permissive: # setenforce 0 Edit the /etc/selinux/config file to set the SELINUX parameter: For Enforcing mode: SELINUX=enforcing OR For Permissive mode: SELINUX=permissive "
     compliance:
       - cis: ["1.6.1.4"]
-      - cis_csc: ["14.6"]
+      - cis_csc: ["3.3", "14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -873,20 +865,21 @@ checks:
   # 1.6.1.5 Ensure the SELinux mode is enforcing (Automated)
   - id: 28045
     title: "Ensure the SELinux state is enforcing"
-    description: " SELinux can run in one of three modes: disabled, permissive, or enforcing: • Enforcing - Is the default, and recommended, mode of operation; in enforcing mode SELinux operates normally, enforcing the loaded security policy on the entire system. • Permissive - The system acts as if SELinux is enforcing the loaded security policy, including labeling objects and emitting access denial entries in the logs, but it does not actually deny any operations. While not recommended for production systems, permissive mode can be helpful for SELinux policy development. • Disabled - Is strongly discouraged; not only does the system avoid enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future."
+    description: " SELinux can run in one of three modes: disabled, permissive, or enforcing: • Enforcing - Is the default, and recommended, mode of operation; in enforcing mode SELinux operates normally, enforcing the loaded security policy on the entire system. • Permissive - The system acts as if SELinux is enforcing the loaded security policy, including labeling objects and emitting access denial entries in the logs, but it does not actually deny any operations. While not recommended for production systems, permissive mode can be helpful for SELinux policy development. • Disabled - Is strongly discouraged; not only does the system avoid enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future. Note: you can set individual domains to permissive mode while the system runs in enforcing mode. For example, to make the httpd_t domain permissive: # semanage permissive -a httpd_t "
     rationale: "Running SELinux in disabled mode is strongly discouraged; not only does the system avoid enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future. Running SELinux in Permissive mode, though helpful for developing SELinux policy, only logs access denial entries, but does not deny any operations."
-    remediation: "Run one of the following commands to set SELinux's running mode: To set SELinux mode to Enforcing: # setenforce 1 OR To set SELinux mode to Permissive: # setenforce 0 Edit the /etc/selinux/config file to set the SELINUX parameter: For Enforcing mode: SELINUX=enforcing OR For Permissive mode: SELINUX=permissive "
+    remediation: "Run the following command to set SELinux's running mode: # setenforce 1 Edit the /etc/selinux/config file to set the SELINUX parameter: For Enforcing mode: SELINUX=enforcing. "
     compliance:
       - cis: ["1.6.1.5"]
-      - cis_csc: ["14.6"]
+      - cis_csc: ["3.3", "14.6"]
       - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
+      - nist_800_53: ["AC.3", "SI.6 a"]
       - tsc: ["CC5.2"]
     references:
       - "https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/selinux_users_and_administrators_guide/sect-security-enhanced_linux-introduction-selinux_modes"
       - "CCI-002165: The information system enforces organization-defined discretionary access control policies over defined subjects and objects."
       - "NIST SP 800-53 Revision 4 :: AC-3 (4)"
       - "CCI-002696: The information system verifies correct operation of organization-defined security functions."
+      - "NIST SP 800-53 Revision 4 :: SI-6 a"
     condition: all
     rules:
       - "c:getenforce -> r:^Enforcing$"
@@ -897,10 +890,10 @@ checks:
     title: "Ensure no unconfined services exist"
     description: "Unconfined processes run in unconfined domains"
     rationale: "For unconfined processes, SELinux policy rules are applied, but policy rules exist that allow processes running in unconfined domains almost all access. Processes running in unconfined domains fall back to using DAC rules exclusively. If an unconfined process is compromised, SELinux does not prevent an attacker from gaining access to system resources and data, but of course, DAC rules are still used. SELinux is a security enhancement on top of DAC rules – it does not replace them"
-    remediation: "Investigate any unconfined processes found during the audit action. They may need to have an existing security context assigned to them or a policy built for them. Notes: Occasionally certain daemons such as backup or centralized management software may require running unconfined. Any such software should be carefully analyzed and documented before such an exception is made."
+    remediation: "Investigate any unconfined processes found during the audit action. They may need to have an existing security context assigned to them or a policy built for them."
     compliance:
       - cis: ["1.6.1.6"]
-      - cis_csc: ["9.2"]
+      - cis_csc: ["3.3", "9.2"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -916,7 +909,7 @@ checks:
     remediation: "Run the following command to uninstall setroubleshoot: # dnf remove setroubleshoot"
     compliance:
       - cis: ["1.6.1.7"]
-      - cis_csc: ["14.6"]
+      - cis_csc: ["4.8", "14.6"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -932,7 +925,7 @@ checks:
     remediation: "Run the following command to uninstall mcstrans: # dnf remove mcstrans"
     compliance:
       - cis: ["1.6.1.8"]
-      - cis_csc: ["9.2"]
+      - cis_csc: ["4.8", "9.2"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
@@ -943,7 +936,7 @@ checks:
   ###############################################
   # 1.7 Command Line Warning Banners
   ###############################################
-  # TODO-REVIEW COMMANDS
+
   # 1.7.1 Ensure message of the day is configured properly (Automated)
   - id: 28049
     title: "Ensure message of the day is configured properly"
@@ -952,7 +945,7 @@ checks:
     remediation: "Edit the /etc/motd file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform    OR    If the motd is not used, this file can be removed. Run the following command to remove the motd file: # rm /etc/motd"
     compliance:
       - cis: ["1.7.1"]
-      - cis_csc: ["5.1"]
+      - cis_csc: ["4.1", "5.1"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
     condition: none
@@ -967,7 +960,7 @@ checks:
     remediation: "Edit the /etc/issue file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform: # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue"
     compliance:
       - cis: ["1.7.2"]
-      - cis_csc: ["5.1"]
+      - cis_csc: ["4.1", "5.1"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
     condition: none
@@ -982,7 +975,7 @@ checks:
     remediation: "Edit the /etc/issue.net file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform: # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue.net"
     compliance:
       - cis: ["1.7.3"]
-      - cis_csc: ["5.1"]
+      - cis_csc: ["4.1", "5.1"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
     condition: none
@@ -997,7 +990,7 @@ checks:
     remediation: "Run the following commands to set permissions on /etc/motd: # chown root:root /etc/motd # chmod 644 /etc/motd"
     compliance:
       - cis: ["1.7.4"]
-      - cis_csc: ["5.1"]
+      - cis_csc: ["3.3", "14.6"]
       - pci_dss: ["10.2.5"]
       - hipaa: ["164.312.b"]
       - nist_800_53: ["AU.14", "AC.7"]
@@ -1016,7 +1009,7 @@ checks:
     remediation: "Run the following commands to set permissions on /etc/issue: # chown root:root /etc/issue # chmod 644 /etc/issue"
     compliance:
       - cis: ["1.7.5"]
-      - cis_csc: ["5.1"]
+      - cis_csc: ["3.3", "14.6"]
       - pci_dss: ["10.2.5"]
       - hipaa: ["164.312.b"]
       - nist_800_53: ["AU.14", "AC.7"]
@@ -1035,7 +1028,7 @@ checks:
     remediation: "Run the following commands to set permissions on /etc/issue.net: # chown root:root /etc/issue.net # chmod 644 /etc/issue.net"
     compliance:
       - cis: ["1.7.6"]
-      - cis_csc: ["5.1"]
+      - cis_csc: ["3.3", "14.6"]
       - pci_dss: ["10.2.5"]
       - hipaa: ["164.312.b"]
       - nist_800_53: ["AU.14", "AC.7"]
@@ -1058,7 +1051,7 @@ checks:
     remediation: "Run the following command to remove the gdm package # dnf remove gdm.'"
     compliance:
       - cis: ["1.8.1"]
-      - cis_csc: ["5.1"]
+      - cis_csc: ["2.6", "4.8"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
     references:
@@ -1072,10 +1065,10 @@ checks:
     title: "Ensure GDM login banner is configured"
     description: "GDM is the GNOME Display Manager which handles graphical login for GNOME based systems."
     rationale: "Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place."
-    remediation: "Edit or create the file /etc/gdm3/greeter.dconf-defaults and add the following in 3 lines: (1) [org/gnome/login-screen]    (2) banner-message-enable=true   (3) banner-message-text='Authorized uses only. All activity may be monitored and reported.'"
+    remediation: "Edit or create the file /etc/dconf/profile/gdm and add the following:  user-db:user system-db:gdm file-db:/usr/share/gdm/greeter-dconf-defaults. Edit or create the file /etc/dconf/db/gdm.d/ and add the following: (This is typically /etc/dconf/db/gdm.d/01-banner-message)  [org/gnome/login-screen] banner-message-enable=true banner-message-text='<banner message>' Example Banner Text: 'Authorized users only. All activity may be monitored and reported.' Run the following command to update the system databases: # dconf update."
     compliance:
       - cis: ["1.8.2"]
-      - cis_csc: ["5.1"]
+      - cis_csc: ["4.1", "5.1"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
     condition: all
@@ -1088,11 +1081,11 @@ checks:
   - id: 28057
     title: "Ensure GDM login banner is configured"
     description: "GDM is the GNOME Display Manager which handles graphical login for GNOME based systems."
-    rationale: "Displaying the last logged in user eliminates half of the Userid/Password equation that an unauthorized person would need to log on. Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place."
-    remediation: "Edit or create the file /etc/dconf/profile/gdm and add the following: user-db:user system-db:gdm file-db:/usr/share/gdm/greeter-dconf-defaults. Edit or create the file /etc/dconf/db/gdm.d/ and add the following: (This is typically /etc/dconf/db/gdm.d/00-login-screen)  [org/gnome/login-screen] # Do not show the user list disable-user-list=true. Run the following command to update the system databases: # dconf update"
+    rationale: "Displaying the last logged in user eliminates half of the Userid/Password equation that an unauthorized person would need to log on. Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Notes: • If a graphical login is not required, it should be removed to reduce the attack surface of the system. • If a different GUI login service is in use and required on the system, consult your documentation to disable displaying the last logged on user. "
+    remediation: "Edit or create the file /etc/dconf/profile/gdm and add the following: user-db:user system-db:gdm file-db:/usr/share/gdm/greeter-dconf-defaults. Edit or create the file /etc/dconf/db/gdm.d/ and add the following: (This is typically /etc/dconf/db/gdm.d/00-login-screen)  [org/gnome/login-screen] # Do not show the user list disable-user-list=true Run the following command to update the system databases: # dconf update "
     compliance:
       - cis: ["1.8.3"]
-      - cis_csc: ["5.1"]
+      - cis_csc: ["4.1", "5.1"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
     condition: all
@@ -1112,9 +1105,11 @@ checks:
     remediation: "Edit the file /etc/gdm/custom.conf and remove the line Enable=true. "
     compliance:
       - cis: ["1.8.4"]
-      - cis_csc: ["5.1"]
+      - cis_csc: ["4.8", "9.2"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
+    references:
+      - "https://help.gnome.org/admin/gdm/2.32/configuration.html.en"
     condition: all
     rules:
       - "f:/etc/gdm/custom.conf"
@@ -1125,10 +1120,10 @@ checks:
     title: "Ensure automatic mounting of removable media is disabled."
     description: "By default GNOME automatically mounts removable media when inserted as a convenience to the user."
     rationale: "With automounting enabled anyone with physical access could attach a USB drive or disc and have its contents available in system even if they lacked permissions to mount it themselves. "
-    remediation: "Ensure that automatic mounting of media is disabled for all GNOME users:# cat << EOF >> /etc/dconf/db/local.d/00-media-automount [org/gnome/desktop/media-handling] automount=false automount-open=false EOF. Apply the changes with: # dconf update."
+    remediation: "Ensure that automatic mounting of media is disabled for all GNOME users: # cat << EOF >> /etc/dconf/db/local.d/00-media-automount [org/gnome/desktop/media-handling] automount=false automount-open=false EOF. Apply the changes with: # dconf update."
     compliance:
       - cis: ["1.8.5"]
-      - cis_csc: ["5.1"]
+      - cis_csc: ["8.5", "10.3"]
       - pci_dss: ["7.1"]
       - tsc: ["CC6.4"]
     references:
@@ -1142,10 +1137,10 @@ checks:
     title: "Ensure updates, patches, and additional security software are installed"
     description: "Periodically patches are released for included software either due to security flaws or to include additional functionality."
     rationale: "Newer patches may contain security enhancements that would not be available through the latest full update. As a result, it is recommended that the latest software patches be used to take advantage of the latest functionality. As with any software installation, organizations need to determine if a given update meets their requirements and verify the compatibility and supportability of any additional software against the update revision that is selected."
-    remediation: "Use your package manager to update all packages on the system according to site policy. The following command will install all available security updates: # dnf update --security . Site policy may mandate a testing period before install onto production systems for available updates. The audit and remediation here only cover security updates. Non-security updates can be audited with and comparing against site policy: # dnf check-update"
+    remediation: "Use your package manager to update all packages on the system according to site policy. The following command will install all available security updates: # dnf update."
     compliance:
       - cis: ["1.9"]
-      - cis_csc: ["3.4"]
+      - cis_csc: ["3.4", "7.3", "7.4"]
       - pci_dss: ["5.2"]
       - nist_800_53: ["AU.6", "SI.4"]
       - gpg_13: ["4.2"]
@@ -1164,11 +1159,12 @@ checks:
     remediation: "Run the following command to change the system-wide crypto policy # update-crypto-policies --set <CRYPTO POLICY>         Example:     # update-crypto-policies --set DEFAULT              Run the following to make the updated system-wide crypto policy active           # update-crypto-policies"
     compliance:
       - cis: ["1.10"]
-      - cis_csc: ["14.4"]
+      - cis_csc: ["3.10", "14.4"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
     references:
+      - "CRYPTO-POLICIES(7)"
       - "https://access.redhat.com/articles/3642912#what-polices-are-provided-1"
     condition: none
     rules:
