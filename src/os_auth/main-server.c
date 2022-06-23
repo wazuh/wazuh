@@ -97,36 +97,6 @@ static void help_authd(char * home_path)
     exit(1);
 }
 
-/* Generates a random and temporary shared pass to be used by the agents. */
-char *__generatetmppass()
-{
-    int rand1;
-    int rand2;
-    char *rand3;
-    char *rand4;
-    os_md5 md1;
-    os_md5 md3;
-    os_md5 md4;
-    char *fstring = NULL;
-    char str1[STR_SIZE +1];
-
-    rand1 = os_random();
-    rand2 = os_random();
-
-    rand3 = GetRandomNoise();
-    rand4 = GetRandomNoise();
-
-    OS_MD5_Str(rand3, -1, md3);
-    OS_MD5_Str(rand4, -1, md4);
-
-    os_snprintf(str1, STR_SIZE, "%d%d%s%d%s%s",(int)time(0), rand1, getuname(), rand2, md3, md4);
-    OS_MD5_Str(str1, -1, md1);
-    fstring = strdup(md1);
-    free(rand3);
-    free(rand4);
-    return(fstring);
-}
-
 /* Function to use with SSL on non blocking socket,
  * to know if SSL operation failed for good
  */
@@ -466,8 +436,11 @@ int main(int argc, char **argv)
                 minfo("Accepting connections on port %hu. Using password specified on file: %s", config.port, AUTHD_PASS);
             } else {
                 /* Getting temporary pass. */
-                authpass = __generatetmppass();
-                minfo("Accepting connections on port %hu. Random password chosen for agent authentication: %s", config.port, authpass);
+                if (authpass = w_generate_random_pass(), authpass) {
+                    minfo("Accepting connections on port %hu. Random password chosen for agent authentication: %s", config.port, authpass);
+                } else {
+                    merror_exit("Unable to generate random password. Exiting.");
+                }
             }
         } else {
             minfo("Accepting connections on port %hu. No password required.", config.port);
