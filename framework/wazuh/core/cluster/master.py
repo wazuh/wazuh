@@ -1176,20 +1176,28 @@ class Master(server.AbstractServer):
         logger = self.setup_task_logger("Agents reconnect")
         logger.info("Cluster agents reconnection started.")
 
-        self.agents_reconnect = agents_reconnect.AgentsReconnect(
-            logger=logger, blacklisted_nodes={"master"}, nodes=self.clients,
-            workers_stability_threshold=self.cluster_items["intervals"]["master"]["areconn_workers_stability_threshold"]
-        )
-
         logger.info(
             f"Sleeping {self.cluster_items['intervals']['master']['areconn_workers_stability_delay']}s "
             f"before starting the agent-groups task, waiting for the workers connection.")
         await asyncio.sleep(self.cluster_items['intervals']['master']['areconn_workers_stability_delay'])
 
+        # self.agents_reconnect = agents_reconnect.AgentsReconnect(
+        #     logger=logger, blacklisted_nodes={"master"}, nodes=set(self.clients.keys()).union({"master"}),
+        #     workers_stability_threshold=self.cluster_items["intervals"]["master"]["areconn_workers_stability_threshold"]
+        # )
+
+        self.agents_reconnect = agents_reconnect.AgentsReconnect(
+            logger=logger, blacklisted_nodes={"master"}, nodes=self.clients,
+            nodes_stability_threshold=self.cluster_items["intervals"]["master"]["areconn_workers_stability_threshold"]
+        )
+
         while True:
-            # Check workers stability
-            while not await self.agents_reconnect.check_workers_stability():
+            # Check workers stability. TODO: One node, there is no sleep
+            while not await self.agents_reconnect.check_nodes_stability():
                 await asyncio.sleep(self.cluster_items["intervals"]["master"]["areconn_workers_stability_time"])
+
+            # Check agents balance
+            await self.agents_reconnect.balance_previous_conditions()
 
             # Iteration complete. Sleeping phase
             self.agents_reconnect.current_phase = agents_reconnect.AgentsReconnectionPhases.BALANCE_SLEEPING

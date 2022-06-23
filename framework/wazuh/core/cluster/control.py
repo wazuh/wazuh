@@ -152,7 +152,7 @@ async def get_agents(lc: local_client.LocalClient, filter_node=None, filter_stat
     """
     filter_status = ["all"] if not filter_status else filter_status
     filter_node = ["all"] if not filter_node else filter_node
-    select_fields = {'id', 'ip', 'name', 'status', 'node_name', 'version'}
+    select_fields = {'id', 'ip', 'name', 'status', 'node_name', 'version', 'lastKeepAlive'}
 
     input_json = {'f': Agent.get_agents_overview,
                   'f_kwargs': {
