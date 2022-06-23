@@ -1,7 +1,61 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v4.3.4]
+## [v4.3.5]
+
+### Manager
+
+#### Changed
+
+- Improved the Vulnerability Detector's log when the agent's OS data is unavailable. ([#13915](https://github.com/wazuh/wazuh/pull/13915))
+
+#### Fixed
+
+- The upgrade module's response message has been fixed not to include null values. ([#13662](https://github.com/wazuh/wazuh/pull/13662))
+- Fixed a string truncation warning log in wazuh-authd when enabling password authentication. ([#13863](https://github.com/wazuh/wazuh/pull/13863))
+- Fixed a memory leak in wazuh-analysisd when overwriting a rule multiple times. ([#13587](https://github.com/wazuh/wazuh/pull/13587))
+- Prevented wazuh-agentd and client-auth from performing enrollment if the agent fails to validate the manager's certificate. ([#13907](https://github.com/wazuh/wazuh/pull/13907))
+- Fixed manager's compilation when enabling GeoIP support. ([#13694](https://github.com/wazuh/wazuh/pull/13694))
+- Fixed a crash in wazuh-modulesd when getting stopped while downloading a Vulnerability Detector feed. ([#13883](https://github.com/wazuh/wazuh/pull/13883))
+
+### Agent
+
+#### Changed
+
+- Extended package data support in Syscollector for modern RPM agents. ([#13749](https://github.com/wazuh/wazuh/pull/13749))
+- Improved verbosity of the GitHub module logs. ([#13898](https://github.com/wazuh/wazuh/pull/13898))
+
+#### Fixed
+
+- Fixed agent auto-restart on shared configuration changes when running on containerized environments. ([#13606](https://github.com/wazuh/wazuh/pull/13606))
+- Fixed an issue when attempting to run the DockerListener integration using Python 3.6 and having the Docker service stopped. ([#13880](https://github.com/wazuh/wazuh/pull/13880))
+
+### RESTful API
+
+#### Fixed
+- Updated `tag` parameter of `GET /manager/logs` and `GET /cluster/{node_id}/logs` endpoints to accept any string. ([#13867](https://github.com/wazuh/wazuh/pull/13867))
+
+### Ruleset
+
+#### Fixed
+
+- Solved Eventchannel testing and improved reporting capabilities of the runtest tool. ([#13597](https://github.com/wazuh/wazuh/pull/13597))
+- Modified Amazon Linux 2 SCA policy to resolve a typo on control 1.1.22 and `EMPTY_LINE` conditions. ([#13781](https://github.com/wazuh/wazuh/pull/13781))
+- Modified Amazon Linux 2 SCA policy to resolve the rule and condition on control 1.5.2. ([#13950](https://github.com/wazuh/wazuh/pull/13950))
+
+#### Removed
+
+- Removed deprecated MITRE tags in rules. ([#13567](https://github.com/wazuh/wazuh/pull/13567))
+
+### Other
+
+#### Changed
+
+- Fixed `test_agent_PUT_endpoints.tavern.yaml` API integration test failure in numbered branches. ([#13811](https://github.com/wazuh/wazuh/pull/13811))
+- Upgraded external click and clickclick python dependencies to 8.1.3 and 20.10.2 respectively. ([13790]([https://github.com/wazuh/wazuh/pull/13790))
+
+
+## [v4.3.4] - 2022-06-09
 
 ### Manager
 
