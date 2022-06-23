@@ -846,7 +846,7 @@ checks:
   # 1.6.1.4 Ensure the SELinux mode is not disabled (Automated)
   - id: 28044
     title: "Ensure the SELinux mode is not disabled"
-    description: " SELinux can run in one of three modes: disabled, permissive, or enforcing: • Enforcing - Is the default, and recommended, mode of operation; in enforcing mode SELinux operates normally, enforcing the loaded security policy on the entire system. • Permissive - The system acts as if SELinux is enforcing the loaded security policy, including labeling objects and emitting access denial entries in the logs, but it does not actually deny any operations. While not recommended for production systems, permissive mode can be helpful for SELinux policy development. • Disabled - Is strongly discouraged; not only does the system avoid enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future. Note: you can set individual domains to permissive mode while the system runs in enforcing mode. For example, to make the httpd_t domain permissive: # semanage permissive -a httpd_t"
+    description: " SELinux can run in one of three modes: disabled, permissive, or enforcing: - Enforcing - Is the default, and recommended, mode of operation; in enforcing mode SELinux operates normally, enforcing the loaded security policy on the entire system. - Permissive - The system acts as if SELinux is enforcing the loaded security policy, including labeling objects and emitting access denial entries in the logs, but it does not actually deny any operations. While not recommended for production systems, permissive mode can be helpful for SELinux policy development. - Disabled - Is strongly discouraged; not only does the system avoid enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future. Note: you can set individual domains to permissive mode while the system runs in enforcing mode. For example, to make the httpd_t domain permissive: # semanage permissive -a httpd_t"
     rationale: "Running SELinux in disabled mode is strongly discouraged; not only does the system avoid enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future."
     remediation: "Run one of the following commands to set SELinux's running mode: To set SELinux mode to Enforcing: # setenforce 1 OR To set SELinux mode to Permissive: # setenforce 0 Edit the /etc/selinux/config file to set the SELINUX parameter: For Enforcing mode: SELINUX=enforcing OR For Permissive mode: SELINUX=permissive "
     compliance:
@@ -865,7 +865,7 @@ checks:
   # 1.6.1.5 Ensure the SELinux mode is enforcing (Automated)
   - id: 28045
     title: "Ensure the SELinux state is enforcing"
-    description: " SELinux can run in one of three modes: disabled, permissive, or enforcing: • Enforcing - Is the default, and recommended, mode of operation; in enforcing mode SELinux operates normally, enforcing the loaded security policy on the entire system. • Permissive - The system acts as if SELinux is enforcing the loaded security policy, including labeling objects and emitting access denial entries in the logs, but it does not actually deny any operations. While not recommended for production systems, permissive mode can be helpful for SELinux policy development. • Disabled - Is strongly discouraged; not only does the system avoid enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future. Note: you can set individual domains to permissive mode while the system runs in enforcing mode. For example, to make the httpd_t domain permissive: # semanage permissive -a httpd_t "
+    description: " SELinux can run in one of three modes: disabled, permissive, or enforcing: - Enforcing - Is the default, and recommended, mode of operation; in enforcing mode SELinux operates normally, enforcing the loaded security policy on the entire system. - Permissive - The system acts as if SELinux is enforcing the loaded security policy, including labeling objects and emitting access denial entries in the logs, but it does not actually deny any operations. While not recommended for production systems, permissive mode can be helpful for SELinux policy development. - Disabled - Is strongly discouraged; not only does the system avoid enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future. Note: you can set individual domains to permissive mode while the system runs in enforcing mode. For example, to make the httpd_t domain permissive: # semanage permissive -a httpd_t "
     rationale: "Running SELinux in disabled mode is strongly discouraged; not only does the system avoid enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future. Running SELinux in Permissive mode, though helpful for developing SELinux policy, only logs access denial entries, but does not deny any operations."
     remediation: "Run the following command to set SELinux's running mode: # setenforce 1 Edit the /etc/selinux/config file to set the SELINUX parameter: For Enforcing mode: SELINUX=enforcing. "
     compliance:
@@ -1081,7 +1081,7 @@ checks:
   - id: 28057
     title: "Ensure GDM login banner is configured"
     description: "GDM is the GNOME Display Manager which handles graphical login for GNOME based systems."
-    rationale: "Displaying the last logged in user eliminates half of the Userid/Password equation that an unauthorized person would need to log on. Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Notes: • If a graphical login is not required, it should be removed to reduce the attack surface of the system. • If a different GUI login service is in use and required on the system, consult your documentation to disable displaying the last logged on user. "
+    rationale: "Displaying the last logged in user eliminates half of the Userid/Password equation that an unauthorized person would need to log on. Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Notes: - If a graphical login is not required, it should be removed to reduce the attack surface of the system. - If a different GUI login service is in use and required on the system, consult your documentation to disable displaying the last logged on user. "
     remediation: "Edit or create the file /etc/dconf/profile/gdm and add the following: user-db:user system-db:gdm file-db:/usr/share/gdm/greeter-dconf-defaults. Edit or create the file /etc/dconf/db/gdm.d/ and add the following: (This is typically /etc/dconf/db/gdm.d/00-login-screen)  [org/gnome/login-screen] # Do not show the user list disable-user-list=true Run the following command to update the system databases: # dconf update "
     compliance:
       - cis: ["1.8.3"]
@@ -1101,7 +1101,7 @@ checks:
   - id: 28058
     title: "Ensure XDMCP is not enabled"
     description: "X Display Manager Control Protocol (XDMCP) is designed to provide authenticated access to display management services for remote displays."
-    rationale: "XDMCP is inherently insecure. • XDMCP is not a ciphered protocol. This may allow an attacker to capture keystrokes entered by a user • XDMCP is vulnerable to man-in-the-middle attacks. This may allow an attacker to steal the credentials of legitimate users by impersonating the XDMCP server."
+    rationale: "XDMCP is inherently insecure. - XDMCP is not a ciphered protocol. This may allow an attacker to capture keystrokes entered by a user - XDMCP is vulnerable to man-in-the-middle attacks. This may allow an attacker to steal the credentials of legitimate users by impersonating the XDMCP server."
     remediation: "Edit the file /etc/gdm/custom.conf and remove the line Enable=true. "
     compliance:
       - cis: ["1.8.4"]
@@ -1180,7 +1180,7 @@ checks:
   # 2.1.1 Ensure time synchronization is in use (Automated)
   - id: 28062
     title: "Ensure time synchronization is in use"
-    description: "System time should be synchronized between all systems in an environment. This is typically done by establishing an authoritative time server or set of servers and having all systems synchronize their clocks to them."
+    description: "System time should be synchronized between all systems in an environment. This is typically done by establishing an authoritative time server or set of servers and having all systems synchronize their clocks to them. Note: If another method for time synchronization is being used, this section may be skipped. "
     rationale: "Time synchronization is important to support time sensitive security mechanisms like Kerberos and also ensures log files have consistent time records across the enterprise, which aids in forensic investigations."
     remediation: "On physical systems or virtual systems where host based time synchronization is not available install chrony: # dnf install chrony  On virtual systems where host based time synchronization is available consult your virtualization software documentation and verify that host based synchronization is in use."
     compliance:
@@ -1198,10 +1198,10 @@ checks:
     title: "Ensure chrony is configured"
     description: "chrony is a daemon which implements the Network Time Protocol (NTP) and is designed to synchronize system clocks across a variety of systems and use a source that is highly accurate. More information on chrony can be found at http://chrony.tuxfamily.org/. chrony can be configured to be a client and/or a server."
     rationale: "If chrony is in use on the system proper configuration is vital to ensuring time synchronization is working properly."
-    remediation: "On physical systems or virtual systems where host based time synchronization is not available install chrony: # dnf install chrony  On virtual systems where host based time synchronization is available consult your virtualization software documentation and verify that host based synchronization is in use."
+    remediation: 'Add or edit server or pool lines to /etc/chrony.conf as appropriate: server <remote-server> Add or edit the OPTIONS in /etc/sysconfig/chronyd to include ''-u chrony'': OPTIONS="-u chrony"'
     compliance:
-      - cis: ["2.2.2.1"]
-      - cis_csc: ["6.1"]
+      - cis: ["2.1.2"]
+      - cis_csc: ["6.1", "8.4"]
       - pci_dss: ["10.4"]
       - nist_800_53: ["AU.8"]
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
@@ -1210,14 +1210,14 @@ checks:
       - "c:rpm -q chrony -> r:^chrony-"
 
   ###############################################
-  # 2.2 Remove Legacy Services
+  # 2.2 Special Purpose Services
   ###############################################
 
   # 2.2.1 Ensure xinetd is not installed (Automated)
   - id: 28064
     title: "Ensure xinetd is not installed"
     description: "The eXtended InterNET Daemon ( xinetd ) is an open source super daemon that replaced the original inetd daemon. The xinetd daemon listens for well known services and dispatches the appropriate daemon to properly respond to service requests."
-    rationale: "If there are no xinetd services required, it is recommended that the daemon be disabled."
+    rationale: "If there are no xinetd services required, it is recommended that the daemon be disabled. Note: If an xinetd service or services are required, ensure that any xinetd service not required is stopped and disabled. "
     remediation: "Run the following command to remove xinetd: # dnf remove xinetd"
     compliance:
       - cis: ["2.2.1"]
@@ -1272,7 +1272,7 @@ checks:
   - id: 28067
     title: "Ensure CUPS is not isntalled."
     description: "The Common Unix Print System (CUPS) provides the ability to print to both local and network printers. A system running CUPS can also accept print jobs from remote systems and print them to local printers. It also provides a web based remote administration capability."
-    rationale: "If the system does not need to print jobs or accept print jobs from other systems, it is recommended that CUPS be disabled to reduce the potential attack surface."
+    rationale: "If the system does not need to print jobs or accept print jobs from other systems, it is recommended that CUPS be disabled to reduce the potential attack surface. Note: Removing CUPS will prevent printing from the system."
     remediation: "Run the following command to remove cups: # dnf remove cups"
     compliance:
       - cis: ["2.2.4"]
@@ -1323,7 +1323,7 @@ checks:
   # 2.2.7 Ensure FTP Server is not installed (Automated)
   - id: 28070
     title: "Ensure FTP Server is not installed."
-    description: "The File Transfer Protocol (FTP) provides networked computers with the ability to transfer files."
+    description: "FTP (File Transfer Protocol) is a traditional and widely used standard tool for transferring files between a server and clients over a network, especially where no authentication is necessary (permits anonymous users to connect to a server)."
     rationale: "FTP does not protect the confidentiality of data or authentication credentials. It is recommended sftp be used if file transfer is required. Unless there is a need to run the system as a FTP server (for example, to allow anonymous downloads), it is recommended that the service be disabled to reduce the potential attack surface."
     remediation: "Run the following command to remove ftp: # dnf remove ftp"
     compliance:
@@ -1389,7 +1389,7 @@ checks:
   - id: 28074
     title: "Ensure IMAP and POP3 server is not installed."
     description: "dovecot is an open source IMAP and POP3 server for Linux based systems."
-    rationale: "Unless POP3 and/or IMAP servers are to be provided by this system, it is recommended that the service be disabled to reduce the potential attack surface."
+    rationale: "Unless POP3 and/or IMAP servers are to be provided by this system, it is recommended that the service be disabled to reduce the potential attack surface. Note: Several IMAP/POP3 servers exist and can use other service names. These should also be audited and the packages removed if not required."
     remediation: "Run the following command to remove dovecot and cyrus-imapd: # dnf remove dovecot cyrus-imapd"
     compliance:
       - cis: ["2.2.11"]
@@ -1422,7 +1422,7 @@ checks:
   - id: 28076
     title: "Ensure HTTP Proxy Server is not installed."
     description: "Squid is a standard proxy server used in many distributions and environments."
-    rationale: "Unless a system is specifically set up to act as a proxy server, it is recommended that the squid package be removed to reduce the potential attack surface. Note: Several HTTP proxy servers exist. These should be checked and removed unless required.."
+    rationale: "Unless a system is specifically set up to act as a proxy server, it is recommended that the squid package be removed to reduce the potential attack surface. Note: Several HTTP proxy servers exist. These should be checked and removed unless required. Note: Several HTTP proxy servers exist. These should be checked and removed unless required."
     remediation: "Run the following command to remove the squid package: # dnf remove squid"
     compliance:
       - cis: ["2.2.13"]
@@ -1438,7 +1438,7 @@ checks:
   - id: 28077
     title: "Ensure net-snmp is not installed."
     description: 'Simple Network Management Protocol (SNMP) is a widely used protocol for monitoring the health and welfare of network equipment, computer equipment and devices like UPSs. Net-SNMP is a suite of applications used to implement SNMPv1 (RFC 1157), SNMPv2 (RFCs 1901-1908), and SNMPv3 (RFCs 3411-3418) using both IPv4 and IPv6. Support for SNMPv2 classic (a.k.a. "SNMPv2 historic" - RFCs 1441-1452) was dropped with the 4.0 release of the UCD-snmp package. The Simple Network Management Protocol (SNMP) server is used to listen for SNMP commands from an SNMP management system, execute the commands or collect the information and then send results back to the requesting system.'
-    rationale: "The SNMP server can communicate using SNMPv1, which transmits data in the clear and does not require authentication to execute commands. SNMPv3 replaces the simple/clear text password sharing used in SNMPv2 with more securely encoded parameters. If the the SNMP service is not required, the net-snmp package should be removed to reduce the attack surface of the system."
+    rationale: "The SNMP server can communicate using SNMPv1, which transmits data in the clear and does not require authentication to execute commands. SNMPv3 replaces the simple/clear text password sharing used in SNMPv2 with more securely encoded parameters. If the the SNMP service is not required, the net-snmp package should be removed to reduce the attack surface of the system. Note: If SNMP is required: - The server should be configured for SNMP v3 only. User Authentication and Message Encryption should be configured. - If SNMP v2 is absolutely necessary, modify the community strings' values."
     remediation: "Run the following command to disable snmpd: # systemctl --now disable snmpd"
     compliance:
       - cis: ["2.2.14"]
@@ -1454,7 +1454,7 @@ checks:
   - id: 28078
     title: "Ensure NIS server is not installed"
     description: "The ypserv package provides the Network Information Service (NIS). This service, formally known as Yellow Pages, is a client-server directory service protocol for distributing system configuration files. The NIS server is a collection of programs that allow for the distribution of configuration files."
-    rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be disabled and other, more secure services be used"
+    rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be disabled and other, more secure services be used."
     remediation: "Run the following command to remove ypserv: # dnf remove ypserv"
     compliance:
       - cis: ["2.2.15"]
@@ -1489,7 +1489,7 @@ checks:
   - id: 28080
     title: "Ensure mail transfer agent is configured for local-only mode"
     description: "Mail Transfer Agents (MTA), such as sendmail and Postfix, are used to listen for incoming mail and transfer the messages to the appropriate user or mail server. If the system is not intended to be a mail server, it is recommended that the MTA be configured to only process local mail."
-    rationale: "Mail Transfer Agents (MTA), such as sendmail and Postfix, are used to listen for incoming mail and transfer the messages to the appropriate user or mail server. If the system is not intended to be a mail server, it is recommended that the MTA be configured to only process local mail."
+    rationale: "The software for all Mail Transfer Agents is complex and most have a long history of security issues. While it is important to ensure that the system can process local mail messages, it is not necessary to have the MTA's daemon listening on a port unless the server is intended to be a mail server that receives and processes mail from other systems. Notes: - This recommendation is designed around the postfix mail server. - Depending on your environment you may have an alternative MTA installed such as sendmail. If this is the case consult the documentation for your installed MTA to configure the recommended state."
     remediation: "Edit /etc/postfix/main.cf and add the following line to the RECEIVING MAIL section. If the line already exists, change it to look like the line below: inet_interfaces = loopback-only . Restart postfix: # systemctl restart postfix"
     compliance:
       - cis: ["2.2.17"]
@@ -1540,7 +1540,7 @@ checks:
   - id: 28083
     title: "Ensure rsync is not installed or the rsyncd service is masked"
     description: "The rsyncd service can be used to synchronize files between systems over network links."
-    rationale: "Unless required, the rsync package should be removed to reduce the attack surface area of the system. The rsyncd service presents a security risk as it uses unencrypted protocols for communication. Note: If a required dependency exists for the rsync package, but the rsyncd service is not required, the service should be masked."
+    rationale: "Unless required, the rsync package should be removed to reduce the attack surface area of the system. The rsyncd service presents a security risk as it uses unencrypted protocols for communication. Note: If a required dependency exists for the rsync package, but the rsyncd service is not required, the service should be masked. Note: If a required dependency exists for the rsync package, but the rsyncd service is not required, the service should be masked."
     remediation: "Run the following command to remove the rsync package: # dnf remove rsync OR Run the following command to mask the rsyncd service: # systemctl --now mask rsyncd"
     compliance:
       - cis: ["2.2.20"]
@@ -1565,7 +1565,7 @@ checks:
     title: "Ensure NIS Client is not installed"
     description: "The Network Information Service (NIS), formerly known as Yellow Pages, is a client-server directory service protocol used to distribute system configuration files. The NIS client ( ypbind ) was used to bind a machine to an NIS server and receive the distributed configuration files."
     rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally has been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be removed."
-    remediation: "Run the following command to uninstall ypbind: # dnf remove ypbind"
+    remediation: "Run the following command to uninstall ypbind: # dnf remove ypbind "
     compliance:
       - cis: ["2.3.1"]
       - cis_csc: ["2.6", "4.8"]
@@ -1690,7 +1690,7 @@ checks:
     title: "Ensure SCTP is disabled"
     description: "The Stream Control Transmission Protocol (SCTP) is a transport layer protocol used to support message oriented communication, with several streams of messages in one connection. It serves a similar function as TCP and UDP, incorporating features of both. It is message-oriented like UDP, and ensures reliable in-sequence transport of messages with congestion control like TCP."
     rationale: "If the protocol is not being used, it is recommended that kernel module not be loaded, disabling the service to reduce the potential attack surface."
-    remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf .Example: vim /etc/modprobe.d/sctp.conf and add the following line: install sctp /bin/true"
+    remediation: 'Edit or create a file in the /etc/modprobe.d/ directory ending in .conf Example: printf " install sctp /bin/true " >> /etc/modprobe.d/sctp.conf'
     compliance:
       - cis: ["3.1.2"]
       - cis_csc: ["4.8", "9.2"]
@@ -1710,7 +1710,7 @@ checks:
     title: "Ensure DCCP is disabled"
     description: "The Datagram Congestion Control Protocol (DCCP) is a transport layer protocol that supports streaming media and telephony. DCCP provides a way to gain access to congestion control, without having to do it at the application layer, but does not provide in-sequence delivery"
     rationale: "If the protocol is not required, it is recommended that the drivers not be installed to reduce the potential attack surface."
-    remediation: "Edit or create a file in the /etc/modprobe.d/ directory ending in .conf. Example: vim /etc/modprobe.d/dccp.conf and add the following line: install dccp /bin/true"
+    remediation: 'Edit or create a file in the /etc/modprobe.d/ directory ending in .conf. Example:printf " install dccp /bin/true " >> /etc/modprobe.d/dccp.conf'
     compliance:
       - cis: ["3.1.3"]
       - cis_csc: ["4.8", "9.2"]
@@ -1728,9 +1728,9 @@ checks:
   # 3.1.4 Ensure wireless interfaces are disabled (Automated)
   - id: 28092
     title: "Ensure wireless interfaces are disabled"
-    description: "Wireless networking is used when wired networks are unavailable. Red Hat Enterprise Linux contains a wireless tool kit to allow system administrators to configure and use wireless networks."
+    description: "Wireless networking is used when wired networks are unavailable."
     rationale: "If wireless is not to be used, wireless devices can be disabled to reduce the potential attack surface."
-    remediation: "Run the following command to disable any wireless interfaces: # nmcli radio all off . Disable any wireless interfaces in your network configuration."
+    remediation: 'Run the following script to disable any wireless interfaces: #!/usr/bin/env bash { if command -v nmcli >/dev/null 2>&1 ; then nmcli radio all off else if [ -n "$(find /sys/class/net/*/ -type d -name wireless)" ]; then mname=$(for driverdir in $(find /sys/class/net/*/ -type d -name wireless | xargs -0 dirname); do basename "$(readlink -f "$driverdir"/device/driver/module)";done | sort -u) for dm in $mname; do echo "install $dm /bin/true" >> /etc/modprobe.d/disable_wireless.conf done fi fi }'
     compliance:
       - cis: ["3.1.4"]
       - cis_csc: ["4.8", "15.4", "15.5"]
@@ -1752,7 +1752,7 @@ checks:
     title: "Ensure IP forwarding is disabled"
     description: "The net.ipv4.ip_forward and net.ipv6.conf.all.forwarding flags are used to tell the system whether it can forward packets or not."
     rationale: "Setting the flags to 0 ensures that a system with multiple interfaces (for example, a hard proxy), will never be able to forward packets, and therefore, never serve as a router."
-    remediation: "Run the following commands to restore the default parameters and set the active kernel parameters: # grep -Els \"^\\s*net\\.ipv4\\.ip_forward\\s*=\\s*1\" /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf | while read filename; do sed -ri \"s/^\\s*(net\\.ipv4\\.ip_forward\\s*)(=)(\\s*\\S+\\b).*$/# *REMOVED* \\1/\"  \"s/^\\s*(net\\.ipv4\\.ip_forward\\s*)(=)(\\s*\\S+\\b).*$/# *REMOVED* \\1/\" $filename; done; sysctl -w net.ipv4.ip_forward=0; sysctl -w net.ipv4.route.flush=1    &&   # grep -Els \"^\\s*net\\.ipv6\\.conf\\.all\\.forwarding\\s*=\\s*1\" /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf | while read filename; do sed -ri \"s/^\\s*(net\\.ipv6\\.conf\\.all\\.forwarding\\s*)(=)(\\s*\\S+\\b).*$/# *REMOVED* \\1/\" $filename; done; sysctl -w net.ipv6.conf.all.forwarding=0; sysctl -w net.ipv6.route.flush=1"
+    remediation: 'Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example:  # printf " net.ipv4.ip_forward = 0 " >> /etc/sysctl.d/60-netipv4_sysctl.conf Run the following command to set the active kernel parameters: #{ sysctl -w net.ipv4.ip_forward=0 sysctl -w net.ipv4.route.flush=1 } IF IPv6 is enabled on the system: Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example:  # printf " net.ipv6.conf.all.forwarding = 0 " >> /etc/sysctl.d/60-netipv6_sysctl.conf Run the following command to set the active kernel parameters: #{ sysctl -w net.ipv6.conf.all.forwarding=0 sysctl -w net.ipv6.route.flush=1 }'
     compliance:
       - cis: ["3.2.1"]
       - cis_csc: ["4.1", "5.1"]
@@ -1775,7 +1775,7 @@ checks:
     title: "Ensure packet redirect sending is disabled"
     description: "ICMP Redirects are used to send routing information to other hosts. As a host itself does not act as a router (in a host only configuration), there is no need to send redirects."
     rationale: "An attacker could use a compromised host to send invalid ICMP redirects to other router devices in an attempt to corrupt routing and have users access a system set up by the attacker as opposed to a valid system."
-    remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.send_redirects = 0 net.ipv4.conf.default.send_redirects = 0 .Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.send_redirects=0; # sysctl -w net.ipv4.conf.default.send_redirects=0; # sysctl -w net.ipv4.route.flush=1"
+    remediation: 'Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: Example:# printf " net.ipv4.conf.all.send_redirects = 0 net.ipv4.conf.default.send_redirects = 0 " >> /etc/sysctl.d/60-netipv4_sysctl.conf . Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.send_redirects=0; # sysctl -w net.ipv4.conf.default.send_redirects=0; # sysctl -w net.ipv4.route.flush=1'
     compliance:
       - cis: ["3.2.2"]
       - cis_csc: ["4.1", "5.1"]
@@ -2045,7 +2045,7 @@ checks:
   # 3.4.1.5 Ensure firewalld default zone is set (Automated)
   - id: 28108
     title: "Ensure firewalld service enabled and running."
-    description: "A firewall zone defines the trust level for a connection, interface or source address binding. This is a one to many relation, which means that a connection, interface or source can only be part of one zone, but a zone can be used for many network connections, interfaces and sources. • The default zone is the zone that is used for everything that is not explicitly bound/assigned to another zone. • If no zone assigned to a connection, interface or source, only the default zone is used. • The default zone is not always listed as being used for an interface or source as it will be used for it either way. This depends on the manager of the interfaces. Connections handled by NetworkManager are listed as NetworkManager requests to add the zone binding for the interface used by the connection. Also interfaces under control of the network service are listed also because the service requests it. "
+    description: "A firewall zone defines the trust level for a connection, interface or source address binding. This is a one to many relation, which means that a connection, interface or source can only be part of one zone, but a zone can be used for many network connections, interfaces and sources. - The default zone is the zone that is used for everything that is not explicitly bound/assigned to another zone. - If no zone assigned to a connection, interface or source, only the default zone is used. - The default zone is not always listed as being used for an interface or source as it will be used for it either way. This depends on the manager of the interfaces. Connections handled by NetworkManager are listed as NetworkManager requests to add the zone binding for the interface used by the connection. Also interfaces under control of the network service are listed also because the service requests it. "
     rationale: "Because the default zone is the zone that is used for everything that is not explicitly bound/assigned to another zone, it is important for the default zone to set."
     remediation: "Run the following command to set the default zone: # firewall-cmd --set-default-zone=<NAME_OF_ZONE> Example: # firewall-cmd --set-default-zone=public "
     compliance:
@@ -2070,7 +2070,7 @@ checks:
   # 3.4.2.1 Ensure nftables is installed (Automated)
   - id: 28109
     title: "Ensure nftables is installed"
-    description: "nftables provides a new in-kernel packet classification framework that is based on a network-specific Virtual Machine (VM) and a new nft userspace command line tool. nftables reuses the existing Netfilter subsystems such as the existing hook infrastructure, the connection tracking system, NAT, userspace queuing and logging subsystem. Note: • nftables is available in Linux kernel 3.13 and newer. • Only one firewall utility should be installed and configured."
+    description: "nftables provides a new in-kernel packet classification framework that is based on a network-specific Virtual Machine (VM) and a new nft userspace command line tool. nftables reuses the existing Netfilter subsystems such as the existing hook infrastructure, the connection tracking system, NAT, userspace queuing and logging subsystem. Note: - nftables is available in Linux kernel 3.13 and newer. - Only one firewall utility should be installed and configured."
     rationale: "nftables is a subsystem of the Linux kernel that can protect against threats originating from within a corporate network to include malicious mobile code and poorly configured software on a host."
     remediation: "Run the following command to install nftables # dnf install nftables."
     compliance:
@@ -2819,7 +2819,7 @@ checks:
   # 4.2.2.1.4 Ensure journald is not configured to recieve logs from a remote client (Automated)
   - id: 28148
     title: "Ensure journald is not configured to recieve logs from a remote client."
-    description: "Journald supports the ability to receive messages from remote hosts, thus acting as a log server. Clients should not receive data from other hosts. NOTE: • The same package, systemd-journal-remote, is used for both sending logs to remote hosts and receiving incoming logs. • With regards to receiving logs, there are two services; systemd-journal- remote.socket and systemd-journal-remote.service."
+    description: "Journald supports the ability to receive messages from remote hosts, thus acting as a log server. Clients should not receive data from other hosts. NOTE: - The same package, systemd-journal-remote, is used for both sending logs to remote hosts and receiving incoming logs. - With regards to receiving logs, there are two services; systemd-journal- remote.socket and systemd-journal-remote.service."
     rationale: "If a client is configured to also receive data, thus turning it into a server, the client system is acting outside it's operational boundary."
     remediation: "Run the following command to disable systemd-journal-remote.socket: # systemctl --now mask systemd-journal-remote.socket"
     compliance:
