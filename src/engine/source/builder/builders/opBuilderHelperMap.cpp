@@ -46,8 +46,8 @@ base::result::Result<base::Event> opBuilderHelperStringTransformation(const std:
     const auto helperName = fmt::format("{}: +s_up", field);
 
     // Tracing
-    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
-    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+    const auto successTrace = fmt::format("[{}] -> Success", helperName);
+    const auto failureTrace = fmt::format("[{}] -> Failure", helperName);
 
     // Get src field
     if (refValue.has_value())
@@ -143,8 +143,8 @@ base::result::Result<base::Event> opBuilderHelperIntTransformation(const std::st
     const auto helperName = fmt::format("{}: +s_up", field);
 
     // Tracing
-    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
-    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+    const auto successTrace = fmt::format("[{}] -> Success", helperName);
+    const auto failureTrace = fmt::format("[{}] -> Failure", helperName);
 
     // TODO Remove try catch or if nullptr after fix get method of document
     // class Get value to compare
@@ -404,8 +404,8 @@ base::Expression opBuilderHelperStringTrim(std::any definition)
     const auto helperName = fmt::format("{}: +s_trim", field);
 
     // Tracing
-    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
-    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+    const auto successTrace = fmt::format("[{}] -> Success", helperName);
+    const auto failureTrace = fmt::format("[{}] -> Failure", helperName);
 
     // Return Term
     return base::Term<base::EngineOp>::create(helperName,
@@ -602,8 +602,8 @@ base::Expression opBuilderHelperRegexExtract(std::any definition)
     const auto helperName = fmt::format("{}: +r_ext", field);
 
     // Tracing
-    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
-    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+    const auto successTrace = fmt::format("[{}] -> Success", helperName);
+    const auto failureTrace = fmt::format("[{}] -> Failure", helperName);
 
     // Return Term
     return base::Term<base::EngineOp>::create(helperName,

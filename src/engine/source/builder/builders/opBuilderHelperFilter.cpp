@@ -112,8 +112,8 @@ base::Expression opBuilderHelperExists(std::any definition)
     const auto helperName = fmt::format("{}: +exists", field);
 
     // Tracing
-    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
-    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+    const auto successTrace = fmt::format("[{}] -> Success", helperName);
+    const auto failureTrace = fmt::format("[{}] -> Failure", helperName);
 
     // Return result
     return base::Term<base::EngineOp>::create(helperName,
@@ -154,8 +154,8 @@ base::Expression opBuilderHelperNotExists(std::any definition)
     const auto helperName = fmt::format("{}: +exists", field);
 
     // Tracing
-    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
-    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+    const auto successTrace = fmt::format("[{}] -> Success", helperName);
+    const auto failureTrace = fmt::format("[{}] -> Failure", helperName);
 
     // Return result
     return base::Term<base::EngineOp>::create(helperName,
@@ -267,8 +267,8 @@ base::Expression opBuilderHelperStringEQ(std::any definition)
     const auto helperName = fmt::format("{}: +s_eq", field);
 
     // Tracing
-    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
-    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+    const auto successTrace = fmt::format("[{}] -> Success", helperName);
+    const auto failureTrace = fmt::format("[{}] -> Failure", helperName);
 
     // Return result
     return base::Term<base::EngineOp>::create(helperName,
@@ -293,8 +293,8 @@ base::Expression opBuilderHelperStringNE(std::any definition)
     const auto helperName = fmt::format("{}: +s_ne", field);
 
     // Tracing
-    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
-    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+    const auto successTrace = fmt::format("[{}] -> Success", helperName);
+    const auto failureTrace = fmt::format("[{}] -> Failure", helperName);
 
     // Return result
     return base::Term<base::EngineOp>::create(helperName,
@@ -319,8 +319,8 @@ base::Expression opBuilderHelperStringGT(std::any definition)
     const auto helperName = fmt::format("{}: +s_gt", field);
 
     // Tracing
-    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
-    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+    const auto successTrace = fmt::format("[{}] -> Success", helperName);
+    const auto failureTrace = fmt::format("[{}] -> Failure", helperName);
 
     // Return result
     return base::Term<base::EngineOp>::create(helperName,
@@ -345,8 +345,8 @@ base::Expression opBuilderHelperStringGE(std::any definition)
     const auto helperName = fmt::format("{}: +s_ge", field);
 
     // Tracing
-    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
-    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+    const auto successTrace = fmt::format("[{}] -> Success", helperName);
+    const auto failureTrace = fmt::format("[{}] -> Failure", helperName);
 
     // Return result
     return base::Term<base::EngineOp>::create(helperName,
@@ -371,8 +371,8 @@ base::Expression opBuilderHelperStringLT(std::any definition)
     const auto helperName = fmt::format("{}: +s_lt", field);
 
     // Tracing
-    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
-    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+    const auto successTrace = fmt::format("[{}] -> Success", helperName);
+    const auto failureTrace = fmt::format("[{}] -> Failure", helperName);
 
     // Return result
     return base::Term<base::EngineOp>::create(helperName,
@@ -397,8 +397,8 @@ base::Expression opBuilderHelperStringLE(std::any definition)
     const auto helperName = fmt::format("{}: +s_le", field);
 
     // Tracing
-    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
-    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+    const auto successTrace = fmt::format("[{}] -> Success", helperName);
+    const auto failureTrace = fmt::format("[{}] -> Failure", helperName);
 
     // Return result
     return base::Term<base::EngineOp>::create(helperName,
@@ -507,8 +507,8 @@ base::Expression opBuilderHelperIntEqual(std::any definition)
     const auto helperName = fmt::format("{}: +i_eq", field);
 
     // Tracing
-    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
-    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+    const auto successTrace = fmt::format("[{}] -> Success", helperName);
+    const auto failureTrace = fmt::format("[{}] -> Failure", helperName);
 
     // Return result
     return base::Term<base::EngineOp>::create(helperName,
@@ -538,8 +538,8 @@ base::Expression opBuilderHelperIntNotEqual(std::any definition)
     const auto helperName = fmt::format("{}: +i_ne", field);
 
     // Tracing
-    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
-    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+    const auto successTrace = fmt::format("[{}] -> Success", helperName);
+    const auto failureTrace = fmt::format("[{}] -> Failure", helperName);
 
     // Return result
     return base::Term<base::EngineOp>::create(helperName,
@@ -569,8 +569,8 @@ base::Expression opBuilderHelperIntLessThan(std::any definition)
     const auto helperName = fmt::format("{}: +i_lt", field);
 
     // Tracing
-    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
-    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+    const auto successTrace = fmt::format("[{}] -> Success", helperName);
+    const auto failureTrace = fmt::format("[{}] -> Failure", helperName);
 
     // Return result
     return base::Term<base::EngineOp>::create(helperName,
@@ -600,8 +600,8 @@ base::Expression opBuilderHelperIntLessThanEqual(std::any definition)
     const auto helperName = fmt::format("{}: +i_le", field);
 
     // Tracing
-    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
-    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+    const auto successTrace = fmt::format("[{}] -> Success", helperName);
+    const auto failureTrace = fmt::format("[{}] -> Failure", helperName);
 
     // Return result
     return base::Term<base::EngineOp>::create(helperName,
@@ -631,8 +631,8 @@ base::Expression opBuilderHelperIntGreaterThan(std::any definition)
     const auto helperName = fmt::format("{}: +i_gt", field);
 
     // Tracing
-    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
-    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+    const auto successTrace = fmt::format("[{}] -> Success", helperName);
+    const auto failureTrace = fmt::format("[{}] -> Failure", helperName);
 
     // Return result
     return base::Term<base::EngineOp>::create(helperName,
@@ -662,8 +662,8 @@ base::Expression opBuilderHelperIntGreaterThanEqual(std::any definition)
     const auto helperName = fmt::format("{}: +i_ge", field);
 
     // Tracing
-    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
-    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+    const auto successTrace = fmt::format("[{}] -> Success", helperName);
+    const auto failureTrace = fmt::format("[{}] -> Failure", helperName);
 
     // Return result
     return base::Term<base::EngineOp>::create(helperName,
@@ -693,8 +693,8 @@ base::Expression opBuilderHelperRegexMatch(std::any definition)
     const auto helperName = fmt::format("{}: +r_match", field);
 
     // Tracing
-    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
-    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+    const auto successTrace = fmt::format("[{}] -> Success", helperName);
+    const auto failureTrace = fmt::format("[{}] -> Failure", helperName);
 
     auto regex_ptr = std::make_shared<RE2>(value.value(), RE2::Quiet);
     if (!regex_ptr->ok())
@@ -746,8 +746,8 @@ base::Expression opBuilderHelperRegexNotMatch(std::any definition)
     const auto helperName = fmt::format("{}: +r_not_match", field);
 
     // Tracing
-    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
-    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+    const auto successTrace = fmt::format("[{}] -> Success", helperName);
+    const auto failureTrace = fmt::format("[{}] -> Failure", helperName);
 
     auto regex_ptr = std::make_shared<RE2>(value.value(), RE2::Quiet);
     if (!regex_ptr->ok())
@@ -860,8 +860,8 @@ base::Expression opBuilderHelperIPCIDR(std::any definition)
     const auto helperName = fmt::format("{}: +ip_cidr", field);
 
     // Tracing
-    const auto successTrace = fmt::format("{{}} Condition Success", helperName);
-    const auto failureTrace = fmt::format("{{}} Condition Failure", helperName);
+    const auto successTrace = fmt::format("[{}] -> Success", helperName);
+    const auto failureTrace = fmt::format("[{}] -> Failure", helperName);
 
     // Return result
     return base::Term<base::EngineOp>::create(helperName,
