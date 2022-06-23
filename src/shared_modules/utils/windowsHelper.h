@@ -41,6 +41,39 @@ constexpr auto MAX_ADAPTERS_INFO_TRIES
     3
 };
 
+constexpr int BASEBOARD_INFORMATION_TYPE
+{
+    2
+};
+
+typedef struct RawSMBIOSData
+{
+    BYTE    Used20CallingMethod;
+    BYTE    SMBIOSMajorVersion;
+    BYTE    SMBIOSMinorVersion;
+    BYTE    DmiRevision;
+    DWORD   Length;
+    BYTE    SMBIOSTableData[];
+} RawSMBIOSData, *PRawSMBIOSData;
+
+typedef struct SMBIOSStructureHeader
+{
+    BYTE Type;
+    BYTE FormattedAreaLength;
+    WORD Handle;
+} SMBIOSStructureHeader;
+
+typedef struct SMBIOSBasboardInfoStructure
+{
+    BYTE Type;
+    BYTE FormattedAreaLength;
+    WORD Handle;
+    BYTE Manufacturer;
+    BYTE Product;
+    BYTE Version;
+    BYTE SerialNumber;
+} SMBIOSBasboardInfoStructure;
+
 namespace Utils
 {
     struct IPAddressSmartDeleter
@@ -134,6 +167,54 @@ namespace Utils
             IsWindowsVistaOrGreater()
         };
         return ret;
+    }
+
+
+    /* Reference: https://www.dmtf.org/sites/default/files/standards/documents/DSP0134_2.6.0.pdf */
+    static std::string parseRawSmbios(const BYTE* rawData, const DWORD rawDataSize)
+    {
+        std::string serialNumber;
+        DWORD offset{0};
+
+        while (offset < rawDataSize && serialNumber.empty())
+        {
+            SMBIOSStructureHeader header{};
+            memcpy(&header, rawData + offset, sizeof(SMBIOSStructureHeader));
+
+            if (BASEBOARD_INFORMATION_TYPE == header.Type)
+            {
+                SMBIOSBasboardInfoStructure info{};
+                memcpy(&info, rawData + offset, sizeof(SMBIOSBasboardInfoStructure));
+                offset += info.FormattedAreaLength;
+
+                for (BYTE i = 1; i < info.SerialNumber; ++i)
+                {
+                    const char* tmp{reinterpret_cast<const char*>(rawData + offset)};
+                    const auto len{ strlen(tmp) };
+                    offset += len + sizeof(char);
+                }
+
+                serialNumber = reinterpret_cast<const char*>(rawData + offset);
+            }
+            else
+            {
+                offset += header.FormattedAreaLength;
+
+                // Search for the end of the unformatted structure (\0\0)
+                while (offset < rawDataSize)
+                {
+                    if (!(*(rawData + offset)) && !(*(rawData + offset + 1)))
+                    {
+                        offset += 2;
+                        break;
+                    }
+
+                    offset++;
+                }
+            }
+        }
+
+        return serialNumber;
     }
 
     class NetworkWindowsHelper final
