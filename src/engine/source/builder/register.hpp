@@ -41,6 +41,7 @@ static void registerBuilders()
 
     // Filter Helpers
     Registry::registerBuilder(builders::opBuilderHelperExists, "helper.exists");
+    Registry::registerBuilder(builders::opBuilderHelperNotExists, "helper.not_exists");
 }
 } // namespace builder::internals
 
