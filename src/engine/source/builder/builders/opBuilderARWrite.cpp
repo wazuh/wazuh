@@ -59,10 +59,9 @@ base::Lifter opBuilderARWrite(const base::DocumentValue& def, types::TracerFn tr
     base::Document doc {def};
 
     // Return Lifter
-    return [&, resultOperatorKey, opParameter, tr = std::move(tr)](
-               base::Observable o) mutable {
+    return [&, resultOperatorKey, opParameter, tr = std::move(tr)](base::Observable o) {
         return o.map([&, resultOperatorKey, opParameter, tr = std::move(tr)](
-                         base::Event e) mutable {
+                         base::Event e) {
             string query {};
 
             // Check if the value comes from a reference
