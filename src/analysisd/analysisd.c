@@ -240,7 +240,6 @@ static const char *(month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
 /* CPU Info*/
 static int cpu_cores;
 
-static int parse_agent_id(char *msg);
 
 /* Print help statement */
 __attribute__((noreturn))
@@ -973,6 +972,11 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     mdebug1("FTS_Init completed.");
 
+    analysisd_agents_state = OSHash_Create();
+    if (!analysisd_agents_state) {
+        merror(MEM_ERROR, errno, strerror(errno));
+    }
+
     /* Create message handler thread */
     w_create_thread(ad_input_main, &m_queue);
 
@@ -1050,28 +1054,6 @@ void OS_ReadMSG_analysisd(int m_queue)
     while (1) {
         sleep(1);
     }
-}
-
-static int parse_agent_id(char *msg) {
-    char *agent_parsed = NULL;
-    char *cpy_msg;
-    int agent_id = -1;
-
-    os_strdup(msg, cpy_msg);
-    cpy_msg += 2;
-    if (cpy_msg[0] == '[') {
-        agent_parsed = cpy_msg + 1;
-        cpy_msg = strchr(agent_parsed, ']');
-
-        if (!cpy_msg) {
-            agent_parsed = NULL;
-        }
-
-        *cpy_msg = '\0';
-        os_strdup(agent_parsed, agent_parsed);
-        agent_id = atoi(agent_parsed);
-    }
-    return agent_id;
 }
 
 /*  Update each rule and print it to the logs */
@@ -1167,7 +1149,6 @@ void * ad_input_main(void * args) {
     char *msg;
     int result;
     int recv = 0;
-    int agent_id;
 
     mdebug1("Input message handler thread started.");
 
@@ -1185,10 +1166,8 @@ void * ad_input_main(void * args) {
                 continue;
             }
 
-            agent_id = parse_agent_id(msg);
-
             w_add_recv((unsigned long) recv);
-            w_inc_received_events(agent_id);
+            w_inc_received_events();  //sacar q quede como antes igual q dropped y unknown
 
             if (msg[0] == SYSCHECK_MQ) {
 
@@ -1198,7 +1177,7 @@ void * ad_input_main(void * args) {
                         reported_syscheck = 1;
                         mwarn("Syscheck decoder queue is full.");
                     }
-                    w_inc_syscheck_dropped_events(agent_id);
+                    w_inc_syscheck_dropped_events();
                     free(copy);
                     continue;
                 }
@@ -1210,7 +1189,7 @@ void * ad_input_main(void * args) {
                         reported_syscheck = 1;
                         mwarn("Syscheck decoder queue is full.");
                     }
-                    w_inc_syscheck_dropped_events(agent_id);
+                    w_inc_syscheck_dropped_events();
                     free(copy);
                     continue;
                 }
@@ -1225,7 +1204,7 @@ void * ad_input_main(void * args) {
                         reported_rootcheck = 1;
                         mwarn("Rootcheck decoder queue is full.");
                     }
-                    w_inc_rootcheck_dropped_events(agent_id);
+                    w_inc_rootcheck_dropped_events();
                     free(copy);
                     continue;
                 }
@@ -1237,7 +1216,7 @@ void * ad_input_main(void * args) {
                         reported_rootcheck = 1;
                         mwarn("Rootcheck decoder queue is full.");
                     }
-                    w_inc_rootcheck_dropped_events(agent_id);
+                    w_inc_rootcheck_dropped_events();
                     free(copy);
                     continue;
                 }
@@ -1251,7 +1230,7 @@ void * ad_input_main(void * args) {
                         reported_sca = 1;
                         mwarn("Security Configuration Assessment decoder queue is full.");
                     }
-                    w_inc_sca_dropped_events(agent_id);
+                    w_inc_sca_dropped_events();
                     free(copy);
                     continue;
                 }
@@ -1263,7 +1242,7 @@ void * ad_input_main(void * args) {
                         reported_sca = 1;
                         mwarn("Security Configuration Assessment json decoder queue is full.");
                     }
-                    w_inc_sca_dropped_events(agent_id);
+                    w_inc_sca_dropped_events();
                     free(copy);
                     continue;
                 }
@@ -1278,7 +1257,7 @@ void * ad_input_main(void * args) {
                         reported_syscollector = 1;
                         mwarn("Syscollector decoder queue is full.");
                     }
-                    w_inc_syscollector_dropped_events(agent_id);
+                    w_inc_syscollector_dropped_events();
                     free(copy);
                     continue;
                 }
@@ -1291,7 +1270,7 @@ void * ad_input_main(void * args) {
                         reported_syscollector = 1;
                         mwarn("Syscollector decoder queue is full.");
                     }
-                    w_inc_syscollector_dropped_events(agent_id);
+                    w_inc_syscollector_dropped_events();
                     free(copy);
                     continue;
                 }
@@ -1306,7 +1285,7 @@ void * ad_input_main(void * args) {
                         reported_hostinfo = 1;
                         mwarn("Hostinfo decoder queue is full.");
                     }
-                    w_inc_hostinfo_dropped_events(agent_id);
+                    w_inc_hostinfo_dropped_events();
                     free(copy);
                     continue;
                 }
@@ -1318,7 +1297,7 @@ void * ad_input_main(void * args) {
                         reported_hostinfo = 1;
                         mwarn("Hostinfo decoder queue is full.");
                     }
-                    w_inc_hostinfo_dropped_events(agent_id);
+                    w_inc_hostinfo_dropped_events();
                     free(copy);
                     continue;
                 }
@@ -1333,7 +1312,7 @@ void * ad_input_main(void * args) {
                         reported_winevt = 1;
                         mwarn("Windows eventchannel decoder queue is full.");
                     }
-                    w_inc_winevt_dropped_events(agent_id);
+                    w_inc_winevt_dropped_events();
                     free(copy);
                     continue;
                 }
@@ -1345,7 +1324,7 @@ void * ad_input_main(void * args) {
                         reported_winevt = 1;
                         mwarn("Windows eventchannel decoder queue is full.");
                     }
-                    w_inc_winevt_dropped_events(agent_id);
+                    w_inc_winevt_dropped_events();
                     free(copy);
                     continue;
                 }
@@ -1365,7 +1344,7 @@ void * ad_input_main(void * args) {
                 }
 
                 if (result == -1) {
-                    w_inc_dbsync_dropped_events(agent_id);
+                    w_inc_dbsync_dropped_events();
 
                     if (!reported_dbsync) {
                         mwarn("Database synchronization messge queue is full.");
@@ -1386,7 +1365,7 @@ void * ad_input_main(void * args) {
                 }
 
                 if (result == -1) {
-                    w_inc_upgrade_dropped_events(agent_id);
+                    w_inc_upgrade_dropped_events();
 
                     if (!reported_upgrade_module) {
                         mwarn("Upgrade module messge queue is full.");
@@ -1401,7 +1380,7 @@ void * ad_input_main(void * args) {
                         reported_event = 1;
                         mwarn("Input queue is full.");
                     }
-                    w_inc_events_dropped(agent_id);
+                    w_inc_events_dropped();
                     free(copy);
                     continue;
                 }
@@ -1414,7 +1393,7 @@ void * ad_input_main(void * args) {
                         reported_event = 1;
                         mwarn("Input queue is full.");
                     }
-                    w_inc_events_dropped(agent_id);
+                    w_inc_events_dropped();
                     free(copy);
                     continue;
                 }
@@ -1436,7 +1415,7 @@ void * w_writer_thread(__attribute__((unused)) void * args ){
         if (lf = queue_pop_ex(writer_queue), lf) {
 
             w_mutex_lock(&writer_threads_mutex);
-            w_inc_archives_written(atoi(lf->agent_id));
+            w_inc_archives_written(lf->agent_id);
 
             /* If configured to log all, do it */
             if (Config.logall){
@@ -1460,7 +1439,7 @@ void * w_writer_log_thread(__attribute__((unused)) void * args ){
             if (lf = queue_pop_ex(writer_queue_log), lf) {
 
                 w_mutex_lock(&writer_threads_mutex);
-                w_inc_alerts_written(atoi(lf->agent_id));
+                w_inc_alerts_written(lf->agent_id);
 
                 if (Config.custom_alert_output) {
                     __crt_ftell = ftell(_aflog);
@@ -1535,7 +1514,7 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
-            w_inc_syscheck_decoded_events(atoi(lf->agent_id));
+            w_inc_syscheck_decoded_events(lf->agent_id);
             lf->decoder_info = fim_decoder;
 
             // If the event comes in JSON format agent version is >= 3.11. Therefore we decode, alert and update DB entry.
@@ -1583,6 +1562,8 @@ void * w_decode_syscollector_thread(__attribute__((unused)) void * args){
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
+            w_inc_syscollector_decoded_events(lf->agent_id);
+
             /** Check the date/hour changes **/
 
             if (!DecodeSyscollector(lf,&socket)) {
@@ -1594,8 +1575,6 @@ void * w_decode_syscollector_thread(__attribute__((unused)) void * args){
                     w_free_event_info(lf);
                 }
             }
-
-            w_inc_syscollector_decoded_events(atoi(lf->agent_id));
         }
     }
 }
@@ -1628,6 +1607,8 @@ void * w_decode_rootcheck_thread(__attribute__((unused)) void * args){
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
+            w_inc_rootcheck_decoded_events(lf->agent_id);
+
             if (!DecodeRootcheck(lf)) {
                 /* We don't process rootcheck events further */
                 w_free_event_info(lf);
@@ -1637,8 +1618,6 @@ void * w_decode_rootcheck_thread(__attribute__((unused)) void * args){
                     w_free_event_info(lf);
                 }
             }
-
-            w_inc_rootcheck_decoded_events(atoi(lf->agent_id));
         }
     }
 }
@@ -1672,6 +1651,8 @@ void * w_decode_sca_thread(__attribute__((unused)) void * args){
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
+            w_inc_sca_decoded_events(lf->agent_id);
+
             if (!DecodeSCA(lf,&socket)) {
                 /* We don't process rootcheck events further */
                 w_free_event_info(lf);
@@ -1681,8 +1662,6 @@ void * w_decode_sca_thread(__attribute__((unused)) void * args){
                     w_free_event_info(lf);
                 }
             }
-
-            w_inc_sca_decoded_events(atoi(lf->agent_id));
         }
     }
 }
@@ -1713,6 +1692,8 @@ void * w_decode_hostinfo_thread(__attribute__((unused)) void * args){
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
+            w_inc_hostinfo_decoded_events(lf->agent_id);
+
             if (!DecodeHostinfo(lf)) {
                 /* We don't process syscheck events further */
                 w_free_event_info(lf);
@@ -1722,8 +1703,6 @@ void * w_decode_hostinfo_thread(__attribute__((unused)) void * args){
                     w_free_event_info(lf);
                 }
             }
-
-            w_inc_hostinfo_decoded_events(atoi(lf->agent_id));
         }
     }
 }
@@ -1771,13 +1750,11 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
-
+            w_inc_events_decoded(lf->agent_id);
 
             if (queue_push_ex_block(decode_queue_event_output, lf) < 0) {
                 Free_Eventinfo(lf);
             }
-
-            w_inc_events_decoded(atoi(lf->agent_id));
         }
     }
 }
@@ -1807,6 +1784,9 @@ void * w_decode_winevt_thread(__attribute__((unused)) void * args){
             free(msg);
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
+
+            w_inc_winevt_decoded_events(lf->agent_id);
+
             if (DecodeWinevt(lf)) {
                 /* We don't process windows events further */
                 w_free_event_info(lf);
@@ -1816,8 +1796,6 @@ void * w_decode_winevt_thread(__attribute__((unused)) void * args){
                     w_free_event_info(lf);
                 }
             }
-
-            w_inc_winevt_decoded_events(atoi(lf->agent_id));
         }
     }
 }
@@ -1844,7 +1822,7 @@ void * w_dispatch_dbsync_thread(__attribute__((unused)) void * args) {
         }
 
         DispatchDBSync(&ctx, lf);
-        w_inc_dbsync_decoded_events(atoi(lf->agent_id));
+        w_inc_dbsync_decoded_events(lf->agent_id);
         Free_Eventinfo(lf);
         free(msg);
     }
@@ -1903,7 +1881,7 @@ void * w_dispatch_upgrade_module_thread(__attribute__((unused)) void * args) {
             merror("Could not parse upgrade message: %s", lf->log);
         }
 
-        w_inc_upgrade_decoded_events(atoi(lf->agent_id));
+        w_inc_upgrade_decoded_events(lf->agent_id);
         Free_Eventinfo(lf);
     }
 
@@ -2021,6 +1999,8 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
         /* Check the rules */
         DEBUG_MSG("%s: DEBUG: Checking the rules - %d ",
                     ARGV0, lf->decoder_info->type);
+
+        w_inc_processed_events(lf->agent_id);
 
         /* Loop over all the rules */
         rulenode_pt = OS_GetFirstRule();
@@ -2166,8 +2146,6 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
 
         } while ((rulenode_pt = rulenode_pt->next) != NULL);
 
-        w_inc_processed_events(atoi(lf->agent_id));
-
         if (Config.logall || Config.logall_json){
             if (!lf_logall) {
                 os_calloc(1, sizeof(Eventinfo), lf_logall);
@@ -2284,7 +2262,7 @@ void * w_writer_log_firewall_thread(__attribute__((unused)) void * args ){
         if (lf = queue_pop_ex(writer_queue_log_firewall), lf) {
 
             w_mutex_lock(&writer_threads_mutex);
-            w_inc_firewall_written(atoi(lf->agent_id));
+            w_inc_firewall_written(lf->agent_id);
             FW_Log(lf);
             w_mutex_unlock(&writer_threads_mutex);
 
