@@ -659,4 +659,103 @@ base::Expression opBuilderHelperAppendString(const std::any& definition)
         });
 }
 
+//*************************************************
+//*             JSON tranform                     *
+//*************************************************
+
+// <key>: +json_delete_fields/<string1>|<$reference1>/<string2>|<$reference2>
+base::Lifter opBuilderHelperJsonDeleteFields(const base::DocumentValue& def,
+                                             types::TracerFn tr)
+{
+    // Get field key where to store the quantity of deleted fieldS
+    std::string key {json::formatJsonPath(def.MemberBegin()->name.GetString())};
+
+    // Get the raw value of parameter
+    if (!def.MemberBegin()->value.IsString())
+    {
+        // Logical error
+        throw std::runtime_error(
+            "Invalid parameter type for delete_field operator (str expected)");
+    }
+
+    // Parse parameters
+    std::string parm {def.MemberBegin()->value.GetString()};
+    auto parametersArr {utils::string::split(parm, '/')};
+    if (parametersArr.size() < 2)
+    {
+        throw std::runtime_error(
+            "Invalid number of parameters for delete_field operator");
+    }
+
+    // removing first element (helper function name)
+    parametersArr.erase(parametersArr.begin());
+
+    // check if parameters aren't empty
+    for (auto param : parametersArr)
+    {
+        if (param.empty())
+        {
+            throw std::runtime_error("one parameter is an empty string");
+        }
+    }
+
+    base::Document doc {def};
+    std::string successTrace = fmt::format("{} json_delete_fields Success", doc.str());
+    std::string failureTrace = fmt::format("{} json_delete_fields Failure", doc.str());
+
+    // Return Lifter
+    return [=, parametersArr = std::move(parametersArr), tr = std::move(tr)](
+               base::Observable o) {
+        // Append rxcpp operation
+        return o.map([=, parametersArr = std::move(parametersArr), tr = std::move(tr)](
+                         base::Event e) {
+            int deletedFields = 0;
+            for (auto parameter : parametersArr)
+            {
+                std::string field = "";
+                if (parameter.at(0) == REFERENCE_ANCHOR)
+                {
+                    try
+                    {
+                        auto value = &e->getEventValue(json::formatJsonPath(parameter.substr(1)));
+                        if (value && value->IsString())
+                        {
+                            field = value->GetString();
+                        }
+                        else
+                        {
+                            tr(failureTrace);
+                            continue;
+                        }
+                    }
+                    catch (std::exception& ex)
+                    {
+                        tr(failureTrace + ": " + ex.what());
+                    }
+                }
+                else
+                {
+                    field = json::formatJsonPath(parameter);
+                }
+
+                if (e->getEvent()->m_doc.EraseMember(field.c_str()))
+                    ++deletedFields;
+            }
+
+            // Create and add integer to base::Event
+            try
+            {
+                e->setEventValue(key, rapidjson::Value(deletedFields).Move());
+                tr(successTrace);
+            }
+            catch (std::exception& ex)
+            {
+                tr(failureTrace + ": " + ex.what());
+            }
+
+            return e;
+        });
+    };
+}
+
 } // namespace builder::internals::builders
