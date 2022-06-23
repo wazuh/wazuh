@@ -283,8 +283,7 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
     wm_office365_fail *tenant_fail = NULL;
     char start_time_str[80];
     char end_time_str[80];
-    struct tm tm_start = { .tm_sec = 0 };
-    struct tm tm_end = { .tm_sec = 0 };
+    struct tm tm_aux = { .tm_sec = 0 };
 
     while (current_auth != NULL)
     {
@@ -335,8 +334,8 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
                 }
                 else if (isDebug()) {
                     memset(start_time_str, '\0', 80);
-                    gmtime_r(&now, &tm_start);
-                    strftime(start_time_str, sizeof(start_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_start);
+                    gmtime_r(&now, &tm_aux);
+                    strftime(start_time_str, sizeof(start_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_aux);
                     mtdebug1(WM_OFFICE365_LOGTAG, "Bookmark updated to '%s' for tenant '%s' and subscription '%s', waiting '%ld' seconds to run first scan.",
                         start_time_str, current_auth->tenant_id, current_subscription->subscription_name, office365_config->interval);
                 }
@@ -369,16 +368,16 @@ STATIC void wm_office365_execute_scan(wm_office365* office365_config, int initia
 
             while ((end_time - start_time) > 0) {
                 memset(start_time_str, '\0', 80);
-                gmtime_r(&start_time, &tm_start);
-                strftime(start_time_str, sizeof(start_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_start);
+                gmtime_r(&start_time, &tm_aux);
+                strftime(start_time_str, sizeof(start_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_aux);
 
                 if ((end_time - start_time) > DAY_SEC) {
                     end_time = start_time + DAY_SEC;
                 }
 
                 memset(end_time_str, '\0', 80);
-                gmtime_r(&end_time, &tm_end);
-                strftime(end_time_str, sizeof(end_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_end);
+                gmtime_r(&end_time, &tm_aux);
+                strftime(end_time_str, sizeof(end_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_aux);
 
                 memset(url, '\0', OS_SIZE_8192);
                 snprintf(url, OS_SIZE_8192 -1, WM_OFFICE365_API_CONTENT_BLOB_URL, current_auth->client_id, current_subscription->subscription_name,
