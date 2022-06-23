@@ -82,7 +82,6 @@ void * w_analysisd_state_main() {
     w_get_initial_queues_size();
     w_mutex_unlock(&queue_mutex);
 
-
     while (1) {
         w_analysisd_write_state();
         sleep(interval);
