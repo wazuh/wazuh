@@ -11,6 +11,7 @@
 #include "builders/opBuilderLogqlParser.hpp"
 #include "builders/opBuilderKVDB.hpp"
 #include "builders/opBuilderHelperFilter.hpp"
+#include "builders/opBuilderHelperMap.hpp"
 #include "registry.hpp"
 
 namespace builder::internals
@@ -42,6 +43,29 @@ static void registerBuilders()
     // Filter Helpers
     Registry::registerBuilder(builders::opBuilderHelperExists, "helper.exists");
     Registry::registerBuilder(builders::opBuilderHelperNotExists, "helper.not_exists");
+    Registry::registerBuilder(builders::opBuilderHelperIntEqual, "helper.i_eq");
+    Registry::registerBuilder(builders::opBuilderHelperIntNotEqual, "helper.i_ne");
+    Registry::registerBuilder(builders::opBuilderHelperIntGreaterThan, "helper.i_gt");
+    Registry::registerBuilder(builders::opBuilderHelperIntGreaterThanEqual, "helper.i_ge");
+    Registry::registerBuilder(builders::opBuilderHelperIntLessThan, "helper.i_lt");
+    Registry::registerBuilder(builders::opBuilderHelperIntLessThanEqual, "helper.i_le");
+    Registry::registerBuilder(builders::opBuilderHelperStringEQ, "helper.s_eq");
+    Registry::registerBuilder(builders::opBuilderHelperStringNE, "helper.s_ne");
+    Registry::registerBuilder(builders::opBuilderHelperStringGT, "helper.s_gt");
+    Registry::registerBuilder(builders::opBuilderHelperStringGE, "helper.s_ge");
+    Registry::registerBuilder(builders::opBuilderHelperStringLT, "helper.s_lt");
+    Registry::registerBuilder(builders::opBuilderHelperStringLE, "helper.s_le");
+    Registry::registerBuilder(builders::opBuilderHelperRegexMatch, "helper.r_match");
+    Registry::registerBuilder(builders::opBuilderHelperRegexNotMatch, "helper.r_not_match");
+    Registry::registerBuilder(builders::opBuilderHelperIPCIDR, "helper.ip_cidr");
+
+    // Map Helpers
+    Registry::registerBuilder(builders::opBuilderHelperIntCalc, "helper.i_calc");
+    Registry::registerBuilder(builders::opBuilderHelperStringUP, "helper.s_up");
+    Registry::registerBuilder(builders::opBuilderHelperStringLO, "helper.s_lo");
+    Registry::registerBuilder(builders::opBuilderHelperStringTrim, "helper.s_trim");
+    Registry::registerBuilder(builders::opBuilderHelperRegexExtract, "helper.r_ext");
+
 }
 } // namespace builder::internals
 
