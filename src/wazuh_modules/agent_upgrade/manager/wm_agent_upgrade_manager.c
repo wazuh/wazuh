@@ -146,7 +146,7 @@ STATIC void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_c
             break;
         default:
             /* Correctly received message */
-            mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_INCOMMING_MESSAGE, buffer);
+            mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_INCOMING_MESSAGE, buffer);
 
             void* task = NULL;
             int* agent_ids = NULL;

@@ -19,9 +19,9 @@
 #include "wazuh_modules/wmodules.h"
 #include "wm_task_manager_tasks.h"
 
-wm_task_manager_upgrade* wm_task_manager_init_upgrade_parameters() {
-    wm_task_manager_upgrade *parameters;
-    os_calloc(1, sizeof(wm_task_manager_upgrade), parameters);
+wm_task_manager_generic* wm_task_manager_init_generic_parameters() {
+    wm_task_manager_generic *parameters;
+    os_calloc(1, sizeof(wm_task_manager_generic), parameters);
     return parameters;
 }
 
@@ -37,15 +37,9 @@ wm_task_manager_upgrade_update_status* wm_task_manager_init_upgrade_update_statu
     return parameters;
 }
 
-wm_task_manager_upgrade_result* wm_task_manager_init_upgrade_result_parameters() {
-    wm_task_manager_upgrade_result *parameters;
-    os_calloc(1, sizeof(wm_task_manager_upgrade_result), parameters);
-    return parameters;
-}
-
-wm_task_manager_upgrade_cancel_tasks* wm_task_manager_init_upgrade_cancel_tasks_parameters() {
-    wm_task_manager_upgrade_cancel_tasks *parameters;
-    os_calloc(1, sizeof(wm_task_manager_upgrade_cancel_tasks), parameters);
+wm_task_manager_result* wm_task_manager_init_result_parameters() {
+    wm_task_manager_result *parameters;
+    os_calloc(1, sizeof(wm_task_manager_result), parameters);
     return parameters;
 }
 
@@ -55,11 +49,19 @@ wm_task_manager_task* wm_task_manager_init_task() {
     return task;
 }
 
-void wm_task_manager_free_upgrade_parameters(wm_task_manager_upgrade* parameters) {
+wm_task_manager_status* wm_task_manager_init_status_parameters() {
+    wm_task_manager_status *parameters;
+    os_calloc(1, sizeof(wm_task_manager_status), parameters);
+    return parameters;
+}
+
+void wm_task_manager_free_generic_task_parameters(wm_task_manager_generic *parameters) {
     if (parameters) {
-        os_free(parameters->node);
-        os_free(parameters->module);
         os_free(parameters->agent_ids);
+        os_free(parameters->error_msg);
+        os_free(parameters->module);
+        os_free(parameters->node);
+        os_free(parameters->status);
         os_free(parameters);
     }
 }
@@ -82,16 +84,18 @@ void wm_task_manager_free_upgrade_update_status_parameters(wm_task_manager_upgra
     }
 }
 
-void wm_task_manager_free_upgrade_result_parameters(wm_task_manager_upgrade_result* parameters) {
+void wm_task_manager_free_result_parameters(wm_task_manager_result* parameters) {
     if (parameters) {
         os_free(parameters->agent_ids);
+        os_free(parameters->module);
         os_free(parameters);
     }
 }
 
-void wm_task_manager_free_upgrade_cancel_tasks_parameters(wm_task_manager_upgrade_cancel_tasks* parameters) {
+void wm_task_manager_free_status_tasks_parameters(wm_task_manager_status *parameters) {
     if (parameters) {
-        os_free(parameters->node);
+        os_free(parameters->error_msg);
+        os_free(parameters->status);
         os_free(parameters);
     }
 }
@@ -99,16 +103,35 @@ void wm_task_manager_free_upgrade_cancel_tasks_parameters(wm_task_manager_upgrad
 void wm_task_manager_free_task(wm_task_manager_task* task) {
     if (task) {
         if (task->parameters) {
-            if ((WM_TASK_UPGRADE == task->command) || (WM_TASK_UPGRADE_CUSTOM == task->command)) {
-                wm_task_manager_free_upgrade_parameters((wm_task_manager_upgrade*)task->parameters);
-            } else if (WM_TASK_UPGRADE_GET_STATUS == task->command) {
-                wm_task_manager_free_upgrade_get_status_parameters((wm_task_manager_upgrade_get_status*)task->parameters);
-            } else if (WM_TASK_UPGRADE_UPDATE_STATUS == task->command) {
-                wm_task_manager_free_upgrade_update_status_parameters((wm_task_manager_upgrade_update_status*)task->parameters);
-            } else if (WM_TASK_UPGRADE_RESULT == task->command) {
-                wm_task_manager_free_upgrade_result_parameters((wm_task_manager_upgrade_result*)task->parameters);
-            } else if (WM_TASK_UPGRADE_CANCEL_TASKS == task->command) {
-                wm_task_manager_free_upgrade_cancel_tasks_parameters((wm_task_manager_upgrade_cancel_tasks*)task->parameters);
+            switch (task->command)
+            {
+                case WM_TASK_UPGRADE:
+                case WM_TASK_UPGRADE_CUSTOM:
+                case WM_TASK_SYSCOLLECTOR_SCAN:
+                case WM_TASK_VULN_DET_FEEDS_UPDATE:
+                case WM_TASK_VULN_DET_FEEDS_UPDATE_GET_STATUS:
+                case WM_TASK_VULN_DET_FEEDS_UPDATE_UPDATE_STATUS:
+                case WM_TASK_UPGRADE_GET_STATUS:
+                case WM_TASK_UPGRADE_UPDATE_STATUS:
+                case WM_TASK_SYSCOLLECTOR_GET_STATUS:
+                case WM_TASK_SYSCOLLECTOR_UPDATE_STATUS:
+                case WM_TASK_UPGRADE_CANCEL_TASKS:
+                case WM_TASK_VULN_DET_SCAN_BASELINE:
+                case WM_TASK_VULN_DET_SCAN_PARTIAL:
+                case WM_TASK_VULN_DET_SCAN_FULL:
+                    wm_task_manager_free_generic_task_parameters((wm_task_manager_generic*)task->parameters);
+                    break;
+                case WM_TASK_UPGRADE_RESULT:
+                case WM_TASK_SYSCOLLECTOR_RESULT:
+                case WM_TASK_VULN_DET_SCAN_RESULT:
+                    wm_task_manager_free_result_parameters((wm_task_manager_result*)task->parameters);
+                    break;
+                case WM_TASK_GET_STATUS:
+                case WM_TASK_UPDATE_STATUS:
+                    wm_task_manager_free_status_tasks_parameters((wm_task_manager_status*)task->parameters);
+                    break;
+                default:
+                    break;
             }
         }
         os_free(task);

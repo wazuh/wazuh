@@ -38,15 +38,6 @@ typedef enum _error_code {
 } error_code;
 
 /**
- * Definition of upgrade parameters
- */
-typedef struct _wm_task_manager_upgrade {
-    char *node;
-    char *module;
-    int *agent_ids;
-} wm_task_manager_upgrade;
-
-/**
  * Definition of upgrade get status parameters
  */
 typedef struct _wm_task_manager_upgrade_get_status {
@@ -65,18 +56,12 @@ typedef struct _wm_task_manager_upgrade_update_status {
 } wm_task_manager_upgrade_update_status;
 
 /**
- * Definition of upgrade result parameters
+ * Definition of result parameters
  */
-typedef struct _wm_task_manager_upgrade_result {
+typedef struct _wm_task_manager_result {
+    char *module;
     int *agent_ids;
-} wm_task_manager_upgrade_result;
-
-/**
- * Definition of upgrade cancel tasks parameters
- */
-typedef struct _wm_task_manager_upgrade_cancel_tasks {
-    char *node;
-} wm_task_manager_upgrade_cancel_tasks;
+} wm_task_manager_result;
 
 /**
  * Definition of task structure
@@ -86,6 +71,26 @@ typedef struct _wm_task_manager_task {
     void *parameters;
 } wm_task_manager_task;
 
+/**
+ * Definition of a generic task parameters
+ */
+typedef struct _wm_task_manager_generic {
+    char *node;
+    char *module;
+    int  *agent_ids;
+    char *status;
+    char *error_msg;
+} wm_task_manager_generic;
+
+/**
+ * Definition of get status tasks parameters
+ */
+typedef struct _wm_task_manager_status {
+    int task_id;
+    char *status;
+    char *error_msg;
+} wm_task_manager_status;
+
 extern const wm_context WM_TASK_MANAGER_CONTEXT;   // Context
 
 // Parse XML configuration
@@ -93,7 +98,7 @@ int wm_task_manager_read(const OS_XML *xml, xml_node **nodes, wmodule *module);
 
 /**
  * Do all the analysis of the incomming message and returns a response.
- * @param msg Incomming message from a connection.
+ * @param msg Incoming message from a connection.
  * @param response Response to be sent to the connection.
  * @return Size of the response string.
  * */
