@@ -449,21 +449,15 @@ void sync_agents_artifacts_with_wdb() {
             if (agent_id > 0 && (agent_name = wdb_get_agent_name(agent_id, &wdb_wmdb_sock)) != NULL) {
                 if (*agent_name == '\0') {
                     // Getting name from database file
-                    char* agent_name_from_file = NULL;
-                    char* agent_name_from_file_start = NULL;
-                    os_strdup(end, agent_name_from_file);
-                    agent_name_from_file_start = agent_name_from_file;
+                    char* agent_name_from_file = end + 1;
                     char* substring = strchr(agent_name_from_file, '.');
                     if (substring) {
-                        agent_name_from_file++;
                         *substring = '\0';
                     } else {
-                        os_free(agent_name_from_file_start);
                         agent_name_from_file = NULL;
                     }
                     // Agent not found. Removing agent artifacts
                     wm_clean_agent_artifacts(agent_id, agent_name_from_file);
-                    os_free(agent_name_from_file_start);
                 }
                 os_free(agent_name);
             }

@@ -379,6 +379,61 @@ void test_sync_agents_artifacts_with_wdb_empty_agent_name(void **state) {
     os_free(keys);
 }
 
+void test_sync_agents_artifacts_with_wdb_bad_file_name(void **state) {
+    struct dirent *dir_ent = NULL;
+    keystore *keys = NULL;
+    os_calloc(1, sizeof(struct dirent), dir_ent);
+    os_calloc(1, sizeof(keystore), keys);
+    strcpy(dir_ent->d_name, "001.db");
+
+    will_return(__wrap_opendir, (DIR *)1);
+    will_return(__wrap_readdir, dir_ent);
+
+    will_return(__wrap_readdir, NULL);
+
+    sync_agents_artifacts_with_wdb(keys);
+
+    os_free(dir_ent);
+    os_free(keys);
+}
+
+void test_sync_agents_artifacts_with_wdb_bad_file_name2(void **state) {
+    struct dirent *dir_ent = NULL;
+    keystore *keys = NULL;
+    os_calloc(1, sizeof(struct dirent), dir_ent);
+    os_calloc(1, sizeof(keystore), keys);
+    strcpy(dir_ent->d_name, "001-");
+
+    will_return(__wrap_opendir, (DIR *)1);
+    will_return(__wrap_readdir, dir_ent);
+
+    char *agent_name;
+    os_strdup("", agent_name);
+    expect_value(__wrap_wdb_get_agent_name, id, 1);
+    will_return(__wrap_wdb_get_agent_name, agent_name);
+
+    will_return(__wrap_readdir, NULL);
+
+    // wm_clean_agent_artifacts
+    char *wdb_response = "{\"agents\":{\"001\":\"ok\"}}";
+
+    expect_value(__wrap_wdb_remove_agent_db, id, 1);
+    will_return(__wrap_wdb_remove_agent_db, OS_INVALID);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Could not remove the legacy DB of the agent 1.");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:database");
+
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, "wazuhdb remove 1");
+    expect_any(__wrap_wdbc_query_ex, len);
+    will_return(__wrap_wdbc_query_ex, wdb_response);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    sync_agents_artifacts_with_wdb(keys);
+
+    os_free(dir_ent);
+    os_free(keys);
+}
+
 void test_sync_agents_artifacts_with_wdb_agent_exists_in_db(void **state) {
     struct dirent *dir_ent = NULL;
     keystore *keys = NULL;
@@ -420,6 +475,8 @@ int main()
         // sync_agents_artifacts_with_wdb
         cmocka_unit_test_setup_teardown(test_sync_agents_artifacts_with_wdb_opendir_error, setup_wmdb, teardown_wmdb),
         cmocka_unit_test_setup_teardown(test_sync_agents_artifacts_with_wdb_empty_agent_name, setup_wmdb, teardown_wmdb),
+        cmocka_unit_test_setup_teardown(test_sync_agents_artifacts_with_wdb_bad_file_name, setup_wmdb, teardown_wmdb),
+        cmocka_unit_test_setup_teardown(test_sync_agents_artifacts_with_wdb_bad_file_name2, setup_wmdb, teardown_wmdb),
         cmocka_unit_test_setup_teardown(test_sync_agents_artifacts_with_wdb_agent_exists_in_db, setup_wmdb, teardown_wmdb),
     };
 

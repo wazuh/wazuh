@@ -100,6 +100,8 @@ char* __wrap_wdb_get_agent_name(int id,
 
 int __wrap_wdb_remove_agent_db(int id, const char* name) {
     check_expected(id);
-    check_expected(name);
+    if (name) {
+        check_expected(name);
+    }
     return mock();
 }
