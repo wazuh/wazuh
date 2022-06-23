@@ -80,6 +80,14 @@ base::Lifter opBuilderHelperStringConcat(const base::DocumentValue& def,
 base::Expression opBuilderHelperIntCalc(const std::any& definition);
 
 //*************************************************
+//*             JSON tranform                     *
+//*************************************************
+
+// <key>: +json_delete_fields/<string1>/<string2>
+base::Lifter opBuilderHelperJsonDeleteFields(const base::DocumentValue& def,
+                                             types::TracerFn tr);
+
+//*************************************************
 //*           Regex tranform                      *
 //*************************************************
 
