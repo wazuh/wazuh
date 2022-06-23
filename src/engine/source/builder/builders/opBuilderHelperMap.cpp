@@ -717,7 +717,8 @@ base::Lifter opBuilderHelperJsonDeleteFields(const base::DocumentValue& def,
                 {
                     try
                     {
-                        auto value = &e->getEventValue(json::formatJsonPath(parameter.substr(1)));
+                        auto value =
+                            &e->getEventValue(json::formatJsonPath(parameter.substr(1)));
                         if (value && value->IsString())
                         {
                             field = value->GetString();
@@ -738,8 +739,15 @@ base::Lifter opBuilderHelperJsonDeleteFields(const base::DocumentValue& def,
                     field = json::formatJsonPath(parameter);
                 }
 
-                if (e->getEvent()->m_doc.EraseMember(field.c_str()))
-                    ++deletedFields;
+                try
+                {
+                    if (e->getEvent()->erase(field))
+                        ++deletedFields;
+                }
+                catch (const std::exception& ex)
+                {
+                    tr(failureTrace + ": " + ex.what());
+                }
             }
 
             // Create and add integer to base::Event
