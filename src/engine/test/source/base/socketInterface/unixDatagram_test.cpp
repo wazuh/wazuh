@@ -1,3 +1,8 @@
+/* Copyright (C) 2015-2022, Wazuh Inc.
+ * All rights reserved.
+ *
+ */
+
 #include <iostream>
 #include <sys/un.h>
 

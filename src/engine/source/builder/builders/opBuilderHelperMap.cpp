@@ -675,7 +675,7 @@ base::Lifter opBuilderHelperJsonDeleteFields(const base::DocumentValue& def,
     {
         // Logical error
         throw std::runtime_error(
-            "Invalid parameter type for delete_field operator (str expected)");
+            "Invalid parameter type for json_delete_fields operator (str expected)");
     }
 
     // Parse parameters
@@ -684,7 +684,7 @@ base::Lifter opBuilderHelperJsonDeleteFields(const base::DocumentValue& def,
     if (parametersArr.size() < 2)
     {
         throw std::runtime_error(
-            "Invalid number of parameters for delete_field operator");
+            "Invalid number of parameters for json_delete_fields operator");
     }
 
     // removing first element (helper function name)
