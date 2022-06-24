@@ -62,7 +62,15 @@ private:
         for (auto& [name, json] : assetsDefinitons)
         {
             // Build Asset object and insert
-            auto asset = std::make_shared<Asset>(json, type);
+            std::shared_ptr<Asset> asset;
+            try
+            {
+                asset = std::make_shared<Asset>(json, type);
+            }
+            catch(const std::exception& e)
+            {
+                std::throw_with_nested(std::runtime_error(fmt::format("Failed to build asset: {}", name)));
+            }
             m_assets.insert(std::make_pair(name, asset));
             graph.addNode(name, asset);
             if (asset->m_parents.empty())
@@ -76,6 +84,8 @@ private:
                     graph.addEdge(parent, name);
                 }
             }
+
+            std::cout << "Asset: " << name << std::endl;
         }
     }
 
