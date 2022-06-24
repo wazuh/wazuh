@@ -1,3 +1,7 @@
+/* Copyright (C) 2015-2022, Wazuh Inc.
+ * All rights reserved.
+ *
+ */
 
 #include <fcntl.h>
 #include <iostream>
