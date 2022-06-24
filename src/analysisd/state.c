@@ -37,34 +37,79 @@ static void w_get_queues_size();
  */
 static void w_get_initial_queues_size();
 
+/**
+ * @brief Increment syscheck decoded events counter for agents
+ */
 static void w_inc_syscheck_agent_decoded_events(char * agent_id);
 
+/**
+ * @brief Increment syscollector decoded events counter for agents
+ */
 static void w_inc_syscollector_agent_decoded_events(char * agent_id);
 
+/**
+ * @brief Increment rootcheck decoded events counter for agents
+ */
 static void w_inc_rootcheck_agent_decoded_events(char * agent_id);
 
+/**
+ * @brief Increment sca decoded events counter for agents
+ */
 static void w_inc_sca_agent_decoded_events(char * agent_id);
 
+/**
+ * @brief Increment hostinfo decoded events counter for agents
+ */
 static void w_inc_hostinfo_agent_decoded_events(char * agent_id);
 
+/**
+ * @brief Increment winevt decoded events counter for agents
+ */
 static void w_inc_winevt_agent_decoded_events(char * agent_id);
 
+/**
+ * @brief Increment dbsync decoded events counter for agents
+ */
 static void w_inc_dbsync_agent_decoded_events(char * agent_id);
 
+/**
+ * @brief Increment upgrade decoded events counter for agents
+ */
 static void w_inc_upgrade_agent_decoded_events(char * agent_id);
 
+/**
+ * @brief Increment other decoded events counter for agents
+ */
 static void w_inc_events_agent_decoded(char * agent_id);
 
+/**
+ * @brief Increment processed events counter for agents
+ */
 static void w_inc_processed_agent_events(char * agent_id);
 
+/**
+ * @brief Increment alerts written counter for agents
+ */
 static void w_inc_alerts_agent_written(char * agent_id);
 
+/**
+ * @brief Increment archives written counter for agents
+ */
 static void w_inc_archives_agent_written(char * agent_id);
 
+/**
+ * @brief Increment firewall written counter for agents
+ */
 static void w_inc_firewall_agent_written(char * agent_id);
 
+/**
+ * @brief Search or create and return agent state node
+ */
 static analysisd_agent_state_t * get_node(char *agent_id);
 
+/**
+ * @brief Clean non active agents from agents state.
+ */
 static void w_analysisd_clean_agents_state();
 
 

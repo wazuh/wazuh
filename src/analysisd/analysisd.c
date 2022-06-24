@@ -971,6 +971,7 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     mdebug1("FTS_Init completed.");
 
+    /* Create OSHash for agents statistics */
     analysisd_agents_state = OSHash_Create();
     if (!analysisd_agents_state) {
         merror(MEM_ERROR, errno, strerror(errno));
