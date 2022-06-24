@@ -3213,6 +3213,176 @@ static void test_win_perm_to_json_multiple_accounts(void **state) {
     assert_string_equal(string, "WRITE_ATTRIBUTES");
 }
 
+static void test_win_perm_to_json_malformed_permission_1(void **state) {
+    char *input = "first (allowed): generic_read|generic_write|generic_execute,"
+        " first (denied): generic_all|delete|read_control|write_dac|write_owner,"
+        " second (allowed): synchronize|read_data|write_data,"
+        " third (denied): append_data|read_ea|write_ea|execute|read_attributes|write_attributes,"
+        " fourth ";
+    cJSON *output;
+    cJSON *user, *permissions_array;
+    char *string;
+
+    will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
+    will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
+    will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
+
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+
+    will_return_always(__wrap_wstr_split, 1);  // use real wstr_split
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "Uncontrolled condition when parsing a Windows permission from 'fourth '. Skip permission");
+    output = win_perm_to_json(input);
+
+    *state = output;
+
+    assert_int_equal(cJSON_GetArraySize(output), 3);
+
+    user = cJSON_GetArrayItem(output, 0);
+
+    string = cJSON_GetStringValue(cJSON_GetObjectItem(user, "name"));
+    assert_string_equal(string, "first");
+
+    permissions_array = cJSON_GetObjectItem(user, "allowed");
+    assert_int_equal(cJSON_GetArraySize(permissions_array), 3);
+
+    string = cJSON_GetStringValue(cJSON_GetArrayItem(permissions_array, 0));
+    assert_string_equal(string, "GENERIC_READ");
+    string = cJSON_GetStringValue(cJSON_GetArrayItem(permissions_array, 1));
+    assert_string_equal(string, "GENERIC_WRITE");
+    string = cJSON_GetStringValue(cJSON_GetArrayItem(permissions_array, 2));
+    assert_string_equal(string, "GENERIC_EXECUTE");
+
+    permissions_array = cJSON_GetObjectItem(user, "denied");
+    assert_int_equal(cJSON_GetArraySize(permissions_array), 5);
+
+    string = cJSON_GetStringValue(cJSON_GetArrayItem(permissions_array, 0));
+    assert_string_equal(string, "GENERIC_ALL");
+    string = cJSON_GetStringValue(cJSON_GetArrayItem(permissions_array, 1));
+    assert_string_equal(string, "DELETE");
+    string = cJSON_GetStringValue(cJSON_GetArrayItem(permissions_array, 2));
+    assert_string_equal(string, "READ_CONTROL");
+    string = cJSON_GetStringValue(cJSON_GetArrayItem(permissions_array, 3));
+    assert_string_equal(string, "WRITE_DAC");
+    string = cJSON_GetStringValue(cJSON_GetArrayItem(permissions_array, 4));
+    assert_string_equal(string, "WRITE_OWNER");
+
+    user = cJSON_GetArrayItem(output, 1);
+
+    string = cJSON_GetStringValue(cJSON_GetObjectItem(user, "name"));
+    assert_string_equal(string, "second");
+
+    permissions_array = cJSON_GetObjectItem(user, "allowed");
+    assert_int_equal(cJSON_GetArraySize(permissions_array), 3);
+
+    string = cJSON_GetStringValue(cJSON_GetArrayItem(permissions_array, 0));
+    assert_string_equal(string, "SYNCHRONIZE");
+    string = cJSON_GetStringValue(cJSON_GetArrayItem(permissions_array, 1));
+    assert_string_equal(string, "READ_DATA");
+    string = cJSON_GetStringValue(cJSON_GetArrayItem(permissions_array, 2));
+    assert_string_equal(string, "WRITE_DATA");
+
+    user = cJSON_GetArrayItem(output, 2);
+
+    string = cJSON_GetStringValue(cJSON_GetObjectItem(user, "name"));
+    assert_string_equal(string, "third");
+
+    permissions_array = cJSON_GetObjectItem(user, "denied");
+    assert_int_equal(cJSON_GetArraySize(permissions_array), 6);
+
+    string = cJSON_GetStringValue(cJSON_GetArrayItem(permissions_array, 0));
+    assert_string_equal(string, "APPEND_DATA");
+    string = cJSON_GetStringValue(cJSON_GetArrayItem(permissions_array, 1));
+    assert_string_equal(string, "READ_EA");
+    string = cJSON_GetStringValue(cJSON_GetArrayItem(permissions_array, 2));
+    assert_string_equal(string, "WRITE_EA");
+    string = cJSON_GetStringValue(cJSON_GetArrayItem(permissions_array, 3));
+    assert_string_equal(string, "EXECUTE");
+    string = cJSON_GetStringValue(cJSON_GetArrayItem(permissions_array, 4));
+    assert_string_equal(string, "READ_ATTRIBUTES");
+    string = cJSON_GetStringValue(cJSON_GetArrayItem(permissions_array, 5));
+    assert_string_equal(string, "WRITE_ATTRIBUTES");
+
+}
+
+static void test_win_perm_to_json_malformed_permission_2(void **state) {
+    char *input = "first (allowed): generic_read|generic_write|generic_execute,"
+        " first (denied): generic_all|delete|read_control|write_dac|write_owner,"
+        " second (allowed): synchronize|read_data|write_data,"
+        " third (error,"
+        " fourth (denied): append_data|read_ea|write_ea|execute|read_attributes|write_attributes";
+    cJSON *output;
+    cJSON *user, *permissions_array;
+    char *string;
+
+    will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
+    will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
+    will_return(__wrap_cJSON_CreateObject, __real_cJSON_CreateObject());
+
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+    will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
+
+    will_return_always(__wrap_wstr_split, 1);  // use real wstr_split
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "Uncontrolled condition when parsing a Windows permission from 'error'. Skip permission");
+    output = win_perm_to_json(input);
+
+    *state = output;
+
+    assert_int_equal(cJSON_GetArraySize(output), 3);
+
+    user = cJSON_GetArrayItem(output, 0);
+
+    string = cJSON_GetStringValue(cJSON_GetObjectItem(user, "name"));
+    assert_string_equal(string, "first");
+
+    permissions_array = cJSON_GetObjectItem(user, "allowed");
+    assert_int_equal(cJSON_GetArraySize(permissions_array), 3);
+
+    string = cJSON_GetStringValue(cJSON_GetArrayItem(permissions_array, 0));
+    assert_string_equal(string, "GENERIC_READ");
+    string = cJSON_GetStringValue(cJSON_GetArrayItem(permissions_array, 1));
+    assert_string_equal(string, "GENERIC_WRITE");
+    string = cJSON_GetStringValue(cJSON_GetArrayItem(permissions_array, 2));
+    assert_string_equal(string, "GENERIC_EXECUTE");
+
+    permissions_array = cJSON_GetObjectItem(user, "denied");
+    assert_int_equal(cJSON_GetArraySize(permissions_array), 5);
+
+    string = cJSON_GetStringValue(cJSON_GetArrayItem(permissions_array, 0));
+    assert_string_equal(string, "GENERIC_ALL");
+    string = cJSON_GetStringValue(cJSON_GetArrayItem(permissions_array, 1));
+    assert_string_equal(string, "DELETE");
+    string = cJSON_GetStringValue(cJSON_GetArrayItem(permissions_array, 2));
+    assert_string_equal(string, "READ_CONTROL");
+    string = cJSON_GetStringValue(cJSON_GetArrayItem(permissions_array, 3));
+    assert_string_equal(string, "WRITE_DAC");
+    string = cJSON_GetStringValue(cJSON_GetArrayItem(permissions_array, 4));
+    assert_string_equal(string, "WRITE_OWNER");
+
+    user = cJSON_GetArrayItem(output, 1);
+
+    string = cJSON_GetStringValue(cJSON_GetObjectItem(user, "name"));
+    assert_string_equal(string, "second");
+
+    permissions_array = cJSON_GetObjectItem(user, "allowed");
+    assert_int_equal(cJSON_GetArraySize(permissions_array), 3);
+
+    string = cJSON_GetStringValue(cJSON_GetArrayItem(permissions_array, 0));
+    assert_string_equal(string, "SYNCHRONIZE");
+    string = cJSON_GetStringValue(cJSON_GetArrayItem(permissions_array, 1));
+    assert_string_equal(string, "READ_DATA");
+    string = cJSON_GetStringValue(cJSON_GetArrayItem(permissions_array, 2));
+    assert_string_equal(string, "WRITE_DATA");
+}
+
 static void test_win_perm_to_json_fragmented_acl(void **state) {
     char *input = "first (allowed): generic_read|generic_write|generic_execute,"
         " first (allowed): generic_all|delete|read_control|write_dac|write_owner,";
@@ -3308,8 +3478,8 @@ static void test_win_perm_to_json_incorrect_permission_format(void **state) {
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
 
-    expect_string(__wrap__mdebug1, formatted_msg,
-        "Uncontrolled condition when parsing a Windows permission from 'This format is incorrect'.");
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "Uncontrolled condition when parsing a Windows permission from 'This format is incorrect'. Skip permission");
 
     output = win_perm_to_json(input);
 
@@ -3321,8 +3491,8 @@ static void test_win_perm_to_json_incorrect_permission_format_2(void **state) {
 
     will_return(__wrap_cJSON_CreateArray, __real_cJSON_CreateArray());
 
-    expect_string(__wrap__mdebug1, formatted_msg,
-        "Uncontrolled condition when parsing a Windows permission from 'This format is incorrect (too'.");
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "Uncontrolled condition when parsing a Windows permission from 'too'. Skip permission");
 
     output = win_perm_to_json(input);
 
@@ -4416,6 +4586,8 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test_teardown(test_win_perm_to_json_empty_permissions, teardown_cjson),
         cmocka_unit_test_teardown(test_win_perm_to_json_allowed_denied_permissions, teardown_cjson),
         cmocka_unit_test_teardown(test_win_perm_to_json_multiple_accounts, teardown_cjson),
+        cmocka_unit_test_teardown(test_win_perm_to_json_malformed_permission_1, teardown_cjson),
+        cmocka_unit_test_teardown(test_win_perm_to_json_malformed_permission_2, teardown_cjson),
         cmocka_unit_test_teardown(test_win_perm_to_json_fragmented_acl, teardown_cjson),
         cmocka_unit_test_teardown(test_win_perm_to_json_null_input, teardown_cjson),
         cmocka_unit_test_teardown(test_win_perm_to_json_unable_to_create_main_array, teardown_cjson),
