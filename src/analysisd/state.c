@@ -481,24 +481,21 @@ static void w_analysisd_clean_agents_state() {
         while (hash_node) {
             agent_id = hash_node->key;
             agent_state = hash_node->data;
-            mwarn("------ACTUAL: '%d'", agent_state->id);
 
             int exist = 0;
             for (size_t i = 0; active_agents[i] != -1; i++) {
-                mwarn("------EN DB: '%d'", active_agents[i]);
-
                 if (agent_state->id == active_agents[i] ) {
                     exist = 1;
                     break;
                 }
             }
-            mwarn("------ELEMENTS: '%d'", analysisd_agents_state->elements);
+
             if (exist == 0){
-                mwarn("------ELIMINAR: '%d'", agent_state->id);
                 agent_state = (analysisd_agent_state_t *)OSHash_Delete_ex(analysisd_agents_state, agent_id);
                 if (agent_state) {
                     os_free(agent_state);
                 }
+                hash_node = OSHash_Begin(analysisd_agents_state, &inode_it);
             }
 
             hash_node = OSHash_Next(analysisd_agents_state, &inode_it, hash_node);
@@ -780,6 +777,7 @@ cJSON* asys_create_state_json() {
     cJSON *_dropped = NULL;
     cJSON *_unknown = NULL;
     cJSON *_queue = NULL;
+    cJSON *_agents_connected = NULL;
 
     w_mutex_lock(&queue_mutex);
     w_get_queues_size();
@@ -914,6 +912,78 @@ cJSON* asys_create_state_json() {
     cJSON_AddNumberToObject(_queue, "stats_queue_size", queue_cpy.stats_queue_size);
     cJSON_AddNumberToObject(_queue, "archives_queue_usage", queue_cpy.archives_queue_usage);
     cJSON_AddNumberToObject(_queue, "archives_queue_size", queue_cpy.archives_queue_size);
+
+    OSHashNode *hash_node;
+    unsigned int index = 0;
+
+    w_mutex_lock(&agents_state_mutex);
+
+    if (hash_node = OSHash_Begin(analysisd_agents_state, &index), hash_node != NULL) {
+        analysisd_agent_state_t * data = NULL;
+        cJSON * _array = NULL;
+        cJSON * _item = NULL;
+        cJSON * _statistics = NULL;
+        cJSON * _events_decoded_breakdown = NULL;
+
+        _agents_connected = cJSON_CreateObject();
+        _array = cJSON_AddArrayToObject(_agents_connected, "agents_connected");
+
+        while (hash_node != NULL) {
+            data = hash_node->data;
+
+            _item = cJSON_CreateObject();
+            _statistics = cJSON_CreateObject();
+            _events_decoded_breakdown = cJSON_CreateObject();
+
+            cJSON_AddNumberToObject(_item, "agent_id", data->id);
+            cJSON_AddItemToObject(_item, "statistics", _statistics);
+            cJSON_AddNumberToObject(_statistics, "events_received", data->events_decoded_breakdown.syscheck +
+                                                                    data->events_decoded_breakdown.syscollector +
+                                                                    data->events_decoded_breakdown.rootcheck +
+                                                                    data->events_decoded_breakdown.sca +
+                                                                    data->events_decoded_breakdown.hostinfo +
+                                                                    data->events_decoded_breakdown.winevt +
+                                                                    data->events_decoded_breakdown.dbsync +
+                                                                    data->events_decoded_breakdown.upgrade +
+                                                                    data->events_decoded_breakdown.events +
+                                                                    data->events_processed +
+                                                                    data->alerts_written +
+                                                                    data->firewall_written +
+                                                                    data->archives_written);
+
+            cJSON_AddNumberToObject(_statistics, "events_decoded", data->events_decoded_breakdown.syscheck +
+                                                                    data->events_decoded_breakdown.syscollector +
+                                                                    data->events_decoded_breakdown.rootcheck +
+                                                                    data->events_decoded_breakdown.sca +
+                                                                    data->events_decoded_breakdown.hostinfo +
+                                                                    data->events_decoded_breakdown.winevt +
+                                                                    data->events_decoded_breakdown.dbsync +
+                                                                    data->events_decoded_breakdown.upgrade +
+                                                                    data->events_decoded_breakdown.events);
+            cJSON_AddItemToObject(_statistics, "events_received_breakdown", _events_decoded_breakdown);
+            cJSON_AddNumberToObject(_events_decoded_breakdown, "syscheck_decoded", data->events_decoded_breakdown.syscheck);
+            cJSON_AddNumberToObject(_events_decoded_breakdown, "syscollector_decoded", data->events_decoded_breakdown.syscollector);
+            cJSON_AddNumberToObject(_events_decoded_breakdown, "rootcheck_decoded", data->events_decoded_breakdown.rootcheck);
+            cJSON_AddNumberToObject(_events_decoded_breakdown, "sca_decoded", data->events_decoded_breakdown.sca);
+            cJSON_AddNumberToObject(_events_decoded_breakdown, "hostinfo_decoded", data->events_decoded_breakdown.hostinfo);
+            cJSON_AddNumberToObject(_events_decoded_breakdown, "winevt_decoded", data->events_decoded_breakdown.winevt);
+            cJSON_AddNumberToObject(_events_decoded_breakdown, "dbsync_decoded", data->events_decoded_breakdown.dbsync);
+            cJSON_AddNumberToObject(_events_decoded_breakdown, "upgrade_decoded", data->events_decoded_breakdown.upgrade);
+            cJSON_AddNumberToObject(_events_decoded_breakdown, "events_decoded", data->events_decoded_breakdown.events);
+
+            cJSON_AddNumberToObject(_statistics, "events_processed", data->events_processed);
+            cJSON_AddNumberToObject(_statistics, "alerts_written", data->alerts_written);
+            cJSON_AddNumberToObject(_statistics, "firewall_written", data->firewall_written);
+            cJSON_AddNumberToObject(_statistics, "archives_written", data->archives_written);
+
+            cJSON_AddItemToArray(_array, _item);
+
+            hash_node = OSHash_Next(analysisd_agents_state, &index, hash_node);
+        }
+
+        cJSON_AddItemToObject(asys_state_json, "agents_conected", _array);
+    }
+    w_mutex_unlock(&agents_state_mutex);
 
     return asys_state_json;
 }
