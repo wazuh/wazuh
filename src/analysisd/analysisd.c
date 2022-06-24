@@ -975,6 +975,9 @@ void OS_ReadMSG_analysisd(int m_queue)
     if (!analysisd_agents_state) {
         merror(MEM_ERROR, errno, strerror(errno));
     }
+    if (!OSHash_setSize(analysisd_agents_state, 2048)) {
+        merror(LIST_ERROR);
+    }
 
     /* Create message handler thread */
     w_create_thread(ad_input_main, &m_queue);
