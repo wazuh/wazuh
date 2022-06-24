@@ -116,7 +116,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
         /* UDP mode, send the message */
         bytes_sent = sendto(logr.udp_sock, crypt_msg, msg_size, 0, (struct sockaddr *)&keys.keyentries[key_id]->peer_info, logr.peer_size);
         error = errno;
-        retval = (bytes_sent == msg_size ? 0 : -1);
+        retval = bytes_sent == msg_size ? 0 : -1;
     } else if (keys.keyentries[key_id]->sock >= 0) {
         /* TCP mode, enqueue the message in the send buffer */
         if (retval = nb_queue(&netbuffer_send, keys.keyentries[key_id]->sock, crypt_msg, msg_size), !retval) {
