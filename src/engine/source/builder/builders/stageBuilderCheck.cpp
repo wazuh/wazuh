@@ -103,17 +103,10 @@ base::Expression stageBuilderCheckExpression(const std::any& definition)
             value = term.substr(0, pos1) + term.substr(pos2, term.size());
         }
 
-        // Transform KstringPair to object, because that is what expects the builder
-        // Todo: this is a hack, we should use a proper builder
-        std::vector<std::tuple<std::string, json::Json>> conditionObj;
-        json::Json conditionJson;
         json::Json valueJson;
         valueJson.setString(value);
-        conditionObj.push_back(std::make_tuple(field, valueJson));
-        conditionJson.setObject(conditionObj);
-
-        // TODO: we need to rethink how and why we are using the registry
-        auto opFn = Registry::getBuilder("operation.condition")(conditionJson)
+        auto conditionDef = std::make_tuple(field, valueJson);
+        auto opFn = Registry::getBuilder("operation.condition")(conditionDef)
                         ->getPtr<base::Term<base::EngineOp>>()
                         ->getFn();
         return opFn;

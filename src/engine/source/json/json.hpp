@@ -447,16 +447,25 @@ public:
         }
     }
 
-    std::optional<std::string> getAsString(std::string_view basePointerPath)
+    std::optional<std::vector<std::string>>
+    getValueArrayString(std::string_view basePointerPath)
     {
         auto fieldPtr = rapidjson::Pointer(basePointerPath.data());
 
         if (fieldPtr.IsValid())
         {
             const auto* value = fieldPtr.Get(m_document);
-            if (value)
+            if (value && value->IsArray())
             {
-                return value->GetString();
+                std::vector<std::string> result;
+                for (rapidjson::SizeType i = 0; i < value->Size(); i++)
+                {
+                    if (value->GetArray()[i].IsString())
+                    {
+                        result.push_back(value->GetArray()[i].GetString());
+                    }
+                }
+                return result;
             }
             else
             {
