@@ -49,46 +49,52 @@ typedef struct _queue_status_t {
     size_t stats_queue_size;
 } queue_status_t;
 
-typedef struct _events_decoded_t {
-    uint64_t syscheck;
-    uint64_t syscollector;
-    uint64_t rootcheck;
-    uint64_t sca;
-    uint64_t hostinfo;
-    uint64_t winevt;
-    uint64_t dbsync;
-    uint64_t upgrade;
-    uint64_t events;
-} events_decoded_t;
+typedef struct _integrations_t {
+    uint64_t virustotal;
+} integrations_t;
 
-typedef struct _events_dropped_t {
-    uint64_t syscheck;
-    uint64_t syscollector;
-    uint64_t rootcheck;
-    uint64_t sca;
-    uint64_t hostinfo;
-    uint64_t winevt;
-    uint64_t dbsync;
-    uint64_t upgrade;
-    uint64_t events;
-} events_dropped_t;
+typedef struct _logcollector_t {
+    uint64_t eventchannel;
+    uint64_t eventlog;
+    uint64_t macos;
+    uint64_t others;
+} logcollector_t;
 
-typedef struct _events_unknown_t {
-    uint64_t syscheck;
-    uint64_t syscollector;
+typedef struct _modules_t {
+    uint64_t aws;
+    uint64_t azure;
+    uint64_t ciscat;
+    uint64_t command;
+    uint64_t docker;
+    uint64_t gcp;
+    uint64_t github;
+    uint64_t office365;
+    uint64_t oscap;
+    uint64_t osquery;
     uint64_t rootcheck;
     uint64_t sca;
-    uint64_t hostinfo;
-    uint64_t winevt;
-    uint64_t dbsync;
+    uint64_t syscheck;
+    uint64_t syscollector;
     uint64_t upgrade;
-    uint64_t events;
-} events_unknown_t;
+    uint64_t vulnerability;
+    logcollector_t logcollector;
+} modules_t;
+
+typedef struct _events_t {
+    uint64_t agent;
+    uint64_t agentless;
+    uint64_t dbsync;
+    uint64_t monitor;
+    uint64_t remote;
+    uint64_t syslog;
+    integrations_t integrations;
+    modules_t modules;
+} events_t;
 
 typedef struct _events_recv_t {
-    events_decoded_t events_decoded_breakdown;
-    events_dropped_t events_dropped_breakdown;
-    events_unknown_t events_unknown_breakdown;
+    events_t events_decoded_breakdown;
+    events_t events_dropped_breakdown;
+    events_t events_unknown_breakdown;
 } events_recv_t;
 
 typedef struct _analysisd_state_t {
@@ -128,34 +134,14 @@ void w_add_recv(unsigned long bytes);
 void w_inc_received_events();
 
 /**
- * @brief Increment syscheck decoded events counter
+ * @brief Increment agent decoded events counter
  */
-void w_inc_syscheck_decoded_events();
+void w_inc_agent_decoded_events();
 
 /**
- * @brief Increment syscollector decoded events counter
+ * @brief Increment agentless decoded events counter
  */
-void w_inc_syscollector_decoded_events();
-
-/**
- * @brief Increment rootcheck decoded events counter
- */
-void w_inc_rootcheck_decoded_events();
-
-/**
- * @brief Increment sca decoded events counter
- */
-void w_inc_sca_decoded_events();
-
-/**
- * @brief Increment hostinfo decoded events counter
- */
-void w_inc_hostinfo_decoded_events();
-
-/**
- * @brief Increment winevt decoded events counter
- */
-void w_inc_winevt_decoded_events();
+void w_inc_agentless_decoded_events();
 
 /**
  * @brief Increment dbsync decoded events counter
@@ -163,44 +149,134 @@ void w_inc_winevt_decoded_events();
 void w_inc_dbsync_decoded_events();
 
 /**
- * @brief Increment upgrade decoded events counter
+ * @brief Increment monitor decoded events counter
  */
-void w_inc_upgrade_decoded_events();
+void w_inc_monitor_decoded_events();
 
 /**
- * @brief Increment other decoded events counter
+ * @brief Increment remote decoded events counter
  */
-void w_inc_events_decoded();
+void w_inc_remote_decoded_events();
 
 /**
- * @brief Increment syscheck dropped events counter
+ * @brief Increment syslog decoded events counter
  */
-void w_inc_syscheck_dropped_events();
+void w_inc_syslog_decoded_events();
 
 /**
- * @brief Increment syscollector dropped events counter
+ * @brief Increment integrations virustotal decoded events counter
  */
-void w_inc_syscollector_dropped_events();
+void w_inc_integrations_virustotal_decoded_events();
 
 /**
- * @brief Increment rootcheck dropped events counter
+ * @brief Increment modules aws decoded events counter
  */
-void w_inc_rootcheck_dropped_events();
+void w_inc_modules_aws_decoded_events();
 
 /**
- * @brief Increment sca dropped events counter
+ * @brief Increment modules azure decoded events counter
  */
-void w_inc_sca_dropped_events();
+void w_inc_modules_azure_decoded_events();
 
 /**
- * @brief Increment hostinfo dropped events counter
+ * @brief Increment modules ciscat decoded events counter
  */
-void w_inc_hostinfo_dropped_events();
+void w_inc_modules_ciscat_decoded_events();
 
 /**
- * @brief Increment winevt dropped events counter
+ * @brief Increment modules command decoded events counter
  */
-void w_inc_winevt_dropped_events();
+void w_inc_modules_command_decoded_events();
+
+/**
+ * @brief Increment modules docker decoded events counter
+ */
+void w_inc_modules_docker_decoded_events();
+
+/**
+ * @brief Increment modules gcp decoded events counter
+ */
+void w_inc_modules_gcp_decoded_events();
+
+/**
+ * @brief Increment modules github decoded events counter
+ */
+void w_inc_modules_github_decoded_events();
+
+/**
+ * @brief Increment modules office365 decoded events counter
+ */
+void w_inc_modules_office365_decoded_events();
+
+/**
+ * @brief Increment modules oscap decoded events counter
+ */
+void w_inc_modules_oscap_decoded_events();
+
+/**
+ * @brief Increment modules osquery decoded events counter
+ */
+void w_inc_modules_osquery_decoded_events();
+
+/**
+ * @brief Increment modules rootcheck decoded events counter
+ */
+void w_inc_modules_rootcheck_decoded_events();
+
+/**
+ * @brief Increment modules sca decoded events counter
+ */
+void w_inc_modules_sca_decoded_events();
+
+/**
+ * @brief Increment modules syscheck decoded events counter
+ */
+void w_inc_modules_syscheck_decoded_events();
+
+/**
+ * @brief Increment modules syscollector decoded events counter
+ */
+void w_inc_modules_syscollector_decoded_events();
+
+/**
+ * @brief Increment modules upgrade decoded events counter
+ */
+void w_inc_modules_upgrade_decoded_events();
+
+/**
+ * @brief Increment modules vulnerability decoded events counter
+ */
+void w_inc_modules_vulnerability_decoded_events();
+
+/**
+ * @brief Increment modules logcollector eventchannel decoded events counter
+ */
+void w_inc_modules_logcollector_eventchannel_decoded_events();
+
+/**
+ * @brief Increment modules logcollector eventlog decoded events counter
+ */
+void w_inc_modules_logcollector_eventlog_decoded_events();
+
+/**
+ * @brief Increment modules logcollector macos decoded events counter
+ */
+void w_inc_modules_logcollector_macos_decoded_events();
+
+/**
+ * @brief Increment modules logcollector others decoded events counter
+ */
+void w_inc_modules_logcollector_others_decoded_events();
+
+/**
+ * @brief Increment agent dropped events counter
+ */
+void w_inc_agent_dropped_events();
+
+/**
+ * @brief Increment agentless dropped events counter
+ */
+void w_inc_agentless_dropped_events();
 
 /**
  * @brief Increment dbsync dropped events counter
@@ -208,44 +284,134 @@ void w_inc_winevt_dropped_events();
 void w_inc_dbsync_dropped_events();
 
 /**
- * @brief Increment upgrade dropped events counter
+ * @brief Increment monitor dropped events counter
  */
-void w_inc_upgrade_dropped_events();
+void w_inc_monitor_dropped_events();
 
 /**
- * @brief Increment other dropped events counter
+ * @brief Increment remote dropped events counter
  */
-void w_inc_events_dropped();
+void w_inc_remote_dropped_events();
 
 /**
- * @brief Increment syscheck unknown events counter
+ * @brief Increment syslog dropped events counter
  */
-void w_inc_syscheck_unknown_events();
+void w_inc_syslog_dropped_events();
 
 /**
- * @brief Increment syscollector unknown events counter
+ * @brief Increment integrations virustotal dropped events counter
  */
-void w_inc_syscollector_unknown_events();
+void w_inc_integrations_virustotal_dropped_events();
 
 /**
- * @brief Increment rootcheck unknown events counter
+ * @brief Increment modules aws dropped events counter
  */
-void w_inc_rootcheck_unknown_events();
+void w_inc_modules_aws_dropped_events();
 
 /**
- * @brief Increment sca unknown events counter
+ * @brief Increment modules azure dropped events counter
  */
-void w_inc_sca_unknown_events();
+void w_inc_modules_azure_dropped_events();
 
 /**
- * @brief Increment hostinfo unknown events counter
+ * @brief Increment modules ciscat dropped events counter
  */
-void w_inc_hostinfo_unknown_events();
+void w_inc_modules_ciscat_dropped_events();
 
 /**
- * @brief Increment winevt unknown events counter
+ * @brief Increment modules command dropped events counter
  */
-void w_inc_winevt_unknown_events();
+void w_inc_modules_command_dropped_events();
+
+/**
+ * @brief Increment modules docker dropped events counter
+ */
+void w_inc_modules_docker_dropped_events();
+
+/**
+ * @brief Increment modules gcp dropped events counter
+ */
+void w_inc_modules_gcp_dropped_events();
+
+/**
+ * @brief Increment modules github dropped events counter
+ */
+void w_inc_modules_github_dropped_events();
+
+/**
+ * @brief Increment modules office365 dropped events counter
+ */
+void w_inc_modules_office365_dropped_events();
+
+/**
+ * @brief Increment modules oscap dropped events counter
+ */
+void w_inc_modules_oscap_dropped_events();
+
+/**
+ * @brief Increment modules osquery dropped events counter
+ */
+void w_inc_modules_osquery_dropped_events();
+
+/**
+ * @brief Increment modules rootcheck dropped events counter
+ */
+void w_inc_modules_rootcheck_dropped_events();
+
+/**
+ * @brief Increment modules sca dropped events counter
+ */
+void w_inc_modules_sca_dropped_events();
+
+/**
+ * @brief Increment modules syscheck dropped events counter
+ */
+void w_inc_modules_syscheck_dropped_events();
+
+/**
+ * @brief Increment modules syscollector dropped events counter
+ */
+void w_inc_modules_syscollector_dropped_events();
+
+/**
+ * @brief Increment modules upgrade dropped events counter
+ */
+void w_inc_modules_upgrade_dropped_events();
+
+/**
+ * @brief Increment modules vulnerability dropped events counter
+ */
+void w_inc_modules_vulnerability_dropped_events();
+
+/**
+ * @brief Increment modules logcollector eventchannel dropped events counter
+ */
+void w_inc_modules_logcollector_eventchannel_dropped_events();
+
+/**
+ * @brief Increment modules logcollector eventlog dropped events counter
+ */
+void w_inc_modules_logcollector_eventlog_dropped_events();
+
+/**
+ * @brief Increment modules logcollector macos dropped events counter
+ */
+void w_inc_modules_logcollector_macos_dropped_events();
+
+/**
+ * @brief Increment modules logcollector others dropped events counter
+ */
+void w_inc_modules_logcollector_others_dropped_events();
+
+/**
+ * @brief Increment agent unknown events counter
+ */
+void w_inc_agent_unknown_events();
+
+/**
+ * @brief Increment agentless unknown events counter
+ */
+void w_inc_agentless_unknown_events();
 
 /**
  * @brief Increment dbsync unknown events counter
@@ -253,14 +419,124 @@ void w_inc_winevt_unknown_events();
 void w_inc_dbsync_unknown_events();
 
 /**
- * @brief Increment upgrade unknown events counter
+ * @brief Increment monitor unknown events counter
  */
-void w_inc_upgrade_unknown_events();
+void w_inc_monitor_unknown_events();
 
 /**
- * @brief Increment other unknown events counter
+ * @brief Increment remote unknown events counter
  */
-void w_inc_events_unknown();
+void w_inc_remote_unknown_events();
+
+/**
+ * @brief Increment syslog unknown events counter
+ */
+void w_inc_syslog_unknown_events();
+
+/**
+ * @brief Increment integrations virustotal unknown events counter
+ */
+void w_inc_integrations_virustotal_unknown_events();
+
+/**
+ * @brief Increment modules aws unknown events counter
+ */
+void w_inc_modules_aws_unknown_events();
+
+/**
+ * @brief Increment modules azure unknown events counter
+ */
+void w_inc_modules_azure_unknown_events();
+
+/**
+ * @brief Increment modules ciscat unknown events counter
+ */
+void w_inc_modules_ciscat_unknown_events();
+
+/**
+ * @brief Increment modules command unknown events counter
+ */
+void w_inc_modules_command_unknown_events();
+
+/**
+ * @brief Increment modules docker unknown events counter
+ */
+void w_inc_modules_docker_unknown_events();
+
+/**
+ * @brief Increment modules gcp unknown events counter
+ */
+void w_inc_modules_gcp_unknown_events();
+
+/**
+ * @brief Increment modules github unknown events counter
+ */
+void w_inc_modules_github_unknown_events();
+
+/**
+ * @brief Increment modules office365 unknown events counter
+ */
+void w_inc_modules_office365_unknown_events();
+
+/**
+ * @brief Increment modules oscap unknown events counter
+ */
+void w_inc_modules_oscap_unknown_events();
+
+/**
+ * @brief Increment modules osquery unknown events counter
+ */
+void w_inc_modules_osquery_unknown_events();
+
+/**
+ * @brief Increment modules rootcheck unknown events counter
+ */
+void w_inc_modules_rootcheck_unknown_events();
+
+/**
+ * @brief Increment modules sca unknown events counter
+ */
+void w_inc_modules_sca_unknown_events();
+
+/**
+ * @brief Increment modules syscheck unknown events counter
+ */
+void w_inc_modules_syscheck_unknown_events();
+
+/**
+ * @brief Increment modules syscollector unknown events counter
+ */
+void w_inc_modules_syscollector_unknown_events();
+
+/**
+ * @brief Increment modules upgrade unknown events counter
+ */
+void w_inc_modules_upgrade_unknown_events();
+
+/**
+ * @brief Increment modules vulnerability unknown events counter
+ */
+void w_inc_modules_vulnerability_unknown_events();
+
+/**
+ * @brief Increment modules logcollector eventchannel unknown events counter
+ */
+void w_inc_modules_logcollector_eventchannel_unknown_events();
+
+/**
+ * @brief Increment modules logcollector eventlog unknown events counter
+ */
+void w_inc_modules_logcollector_eventlog_unknown_events();
+
+/**
+ * @brief Increment modules logcollector macos unknown events counter
+ */
+void w_inc_modules_logcollector_macos_unknown_events();
+
+/**
+ * @brief Increment modules logcollector others unknown events counter
+ */
+void w_inc_modules_logcollector_others_unknown_events();
 
 /**
  * @brief Increment processed events counter

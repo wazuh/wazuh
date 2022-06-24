@@ -614,6 +614,6 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         print_out("       log: '%s'", lf->log);
     }
 #endif
-    
+
     return (0);
 }

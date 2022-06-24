@@ -297,7 +297,6 @@ int main_analysisd(int argc, char **argv)
     geoipdb = NULL;
 #endif
 
-
     while ((c = getopt(argc, argv, "Vtdhfu:g:D:c:")) != -1) {
         switch (c) {
             case 'V':
@@ -1164,7 +1163,7 @@ void * ad_input_main(void * args) {
                         reported_syscheck = 1;
                         mwarn("Syscheck decoder queue is full.");
                     }
-                    w_inc_syscheck_dropped_events();
+                    w_inc_modules_syscheck_dropped_events();
                     free(copy);
                     continue;
                 }
@@ -1176,7 +1175,7 @@ void * ad_input_main(void * args) {
                         reported_syscheck = 1;
                         mwarn("Syscheck decoder queue is full.");
                     }
-                    w_inc_syscheck_dropped_events();
+                    w_inc_modules_syscheck_dropped_events();
                     free(copy);
                     continue;
                 }
@@ -1191,7 +1190,7 @@ void * ad_input_main(void * args) {
                         reported_rootcheck = 1;
                         mwarn("Rootcheck decoder queue is full.");
                     }
-                    w_inc_rootcheck_dropped_events();
+                    w_inc_modules_rootcheck_dropped_events();
                     free(copy);
                     continue;
                 }
@@ -1203,7 +1202,7 @@ void * ad_input_main(void * args) {
                         reported_rootcheck = 1;
                         mwarn("Rootcheck decoder queue is full.");
                     }
-                    w_inc_rootcheck_dropped_events();
+                    w_inc_modules_rootcheck_dropped_events();
                     free(copy);
                     continue;
                 }
@@ -1217,7 +1216,7 @@ void * ad_input_main(void * args) {
                         reported_sca = 1;
                         mwarn("Security Configuration Assessment decoder queue is full.");
                     }
-                    w_inc_sca_dropped_events();
+                    w_inc_modules_sca_dropped_events();
                     free(copy);
                     continue;
                 }
@@ -1229,7 +1228,7 @@ void * ad_input_main(void * args) {
                         reported_sca = 1;
                         mwarn("Security Configuration Assessment json decoder queue is full.");
                     }
-                    w_inc_sca_dropped_events();
+                    w_inc_modules_sca_dropped_events();
                     free(copy);
                     continue;
                 }
@@ -1243,7 +1242,7 @@ void * ad_input_main(void * args) {
                         reported_syscollector = 1;
                         mwarn("Syscollector decoder queue is full.");
                     }
-                    w_inc_syscollector_dropped_events();
+                    w_inc_modules_syscollector_dropped_events();
                     free(copy);
                     continue;
                 }
@@ -1255,7 +1254,7 @@ void * ad_input_main(void * args) {
                         reported_syscollector = 1;
                         mwarn("Syscollector decoder queue is full.");
                     }
-                    w_inc_syscollector_dropped_events();
+                    w_inc_modules_syscollector_dropped_events();
                     free(copy);
                     continue;
                 }
@@ -1269,7 +1268,7 @@ void * ad_input_main(void * args) {
                         reported_hostinfo = 1;
                         mwarn("Hostinfo decoder queue is full.");
                     }
-                    w_inc_hostinfo_dropped_events();
+                    w_inc_modules_logcollector_others_dropped_events();
                     free(copy);
                     continue;
                 }
@@ -1281,7 +1280,7 @@ void * ad_input_main(void * args) {
                         reported_hostinfo = 1;
                         mwarn("Hostinfo decoder queue is full.");
                     }
-                    w_inc_hostinfo_dropped_events();
+                    w_inc_modules_logcollector_others_dropped_events();
                     free(copy);
                     continue;
                 }
@@ -1295,7 +1294,7 @@ void * ad_input_main(void * args) {
                         reported_winevt = 1;
                         mwarn("Windows eventchannel decoder queue is full.");
                     }
-                    w_inc_winevt_dropped_events();
+                    w_inc_modules_logcollector_eventchannel_dropped_events();
                     free(copy);
                     continue;
                 }
@@ -1307,7 +1306,7 @@ void * ad_input_main(void * args) {
                         reported_winevt = 1;
                         mwarn("Windows eventchannel decoder queue is full.");
                     }
-                    w_inc_winevt_dropped_events();
+                    w_inc_modules_logcollector_eventchannel_dropped_events();
                     free(copy);
                     continue;
                 }
@@ -1348,7 +1347,7 @@ void * ad_input_main(void * args) {
                 }
 
                 if (result == -1) {
-                    w_inc_upgrade_dropped_events();
+                    w_inc_modules_upgrade_dropped_events();
 
                     if (!reported_upgrade_module) {
                         mwarn("Upgrade module messge queue is full.");
@@ -1363,7 +1362,7 @@ void * ad_input_main(void * args) {
                         reported_event = 1;
                         mwarn("Input queue is full.");
                     }
-                    w_inc_events_dropped();
+                    //w_inc_events_dropped();
                     free(copy);
                     continue;
                 }
@@ -1375,7 +1374,7 @@ void * ad_input_main(void * args) {
                         reported_event = 1;
                         mwarn("Input queue is full.");
                     }
-                    w_inc_events_dropped();
+                    //w_inc_events_dropped();
                     free(copy);
                     continue;
                 }
@@ -1388,7 +1387,6 @@ void * ad_input_main(void * args) {
     return NULL;
 }
 
-
 void * w_writer_thread(__attribute__((unused)) void * args ){
     Eventinfo *lf = NULL;
 
@@ -1400,10 +1398,10 @@ void * w_writer_thread(__attribute__((unused)) void * args ){
             w_inc_archives_written();
 
             /* If configured to log all, do it */
-            if (Config.logall){
+            if (Config.logall) {
                 OS_Store(lf);
             }
-            if (Config.logall_json){
+            if (Config.logall_json) {
                 jsonout_output_archive(lf);
             }
 
@@ -1429,7 +1427,7 @@ void * w_writer_log_thread(__attribute__((unused)) void * args ){
             } else if (Config.alerts_log) {
                 __crt_ftell = ftell(_aflog);
                 OS_Log(lf, _aflog);
-            } else if(Config.jsonout_output){
+            } else if(Config.jsonout_output) {
                 __crt_ftell = ftell(_jflog);
             }
             /* Log to json file */
@@ -1460,7 +1458,6 @@ void * w_writer_log_thread(__attribute__((unused)) void * args ){
     }
 }
 
-
 void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
     Eventinfo *lf = NULL;
     char *msg = NULL;
@@ -1484,7 +1481,7 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
 
             if (OS_CleanMSG(msg, lf) < 0) {
                 merror(IMSG_ERROR, msg);
-                w_inc_syscheck_unknown_events();
+                w_inc_modules_syscheck_unknown_events();
                 Free_Eventinfo(lf);
                 free(msg);
                 continue;
@@ -1495,7 +1492,7 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
-            w_inc_syscheck_decoded_events();
+            w_inc_modules_syscheck_decoded_events();
             lf->decoder_info = fim_decoder;
 
             // If the event comes in JSON format agent version is >= 3.11. Therefore we decode, alert and update DB entry.
@@ -1531,7 +1528,7 @@ void * w_decode_syscollector_thread(__attribute__((unused)) void * args){
 
             if (OS_CleanMSG(msg, lf) < 0) {
                 merror(IMSG_ERROR, msg);
-                w_inc_syscollector_unknown_events();
+                w_inc_modules_syscollector_unknown_events();
                 Free_Eventinfo(lf);
                 free(msg);
                 continue;
@@ -1546,13 +1543,13 @@ void * w_decode_syscollector_thread(__attribute__((unused)) void * args){
                 /* We don't process syscollector events further */
                 w_free_event_info(lf);
             }
-            else{
+            else {
                 if (queue_push_ex_block(decode_queue_event_output, lf) < 0) {
                     w_free_event_info(lf);
                 }
             }
 
-            w_inc_syscollector_decoded_events();
+            w_inc_modules_syscollector_decoded_events();
         }
     }
 }
@@ -1572,7 +1569,7 @@ void * w_decode_rootcheck_thread(__attribute__((unused)) void * args){
 
             if (OS_CleanMSG(msg, lf) < 0) {
                 merror(IMSG_ERROR, msg);
-                w_inc_rootcheck_unknown_events();
+                w_inc_modules_rootcheck_unknown_events();
                 Free_Eventinfo(lf);
                 free(msg);
                 continue;
@@ -1587,13 +1584,13 @@ void * w_decode_rootcheck_thread(__attribute__((unused)) void * args){
                 /* We don't process rootcheck events further */
                 w_free_event_info(lf);
             }
-            else{
+            else {
                 if (queue_push_ex_block(decode_queue_event_output, lf) < 0) {
                     w_free_event_info(lf);
                 }
             }
 
-            w_inc_rootcheck_decoded_events();
+            w_inc_modules_rootcheck_decoded_events();
         }
     }
 }
@@ -1614,7 +1611,7 @@ void * w_decode_sca_thread(__attribute__((unused)) void * args){
 
             if (OS_CleanMSG(msg, lf) < 0) {
                 merror(IMSG_ERROR, msg);
-                w_inc_sca_unknown_events();
+                w_inc_modules_sca_unknown_events();
                 Free_Eventinfo(lf);
                 free(msg);
                 continue;
@@ -1629,13 +1626,13 @@ void * w_decode_sca_thread(__attribute__((unused)) void * args){
                 /* We don't process rootcheck events further */
                 w_free_event_info(lf);
             }
-            else{
+            else {
                 if (queue_push_ex_block(decode_queue_event_output, lf) < 0) {
                     w_free_event_info(lf);
                 }
             }
 
-            w_inc_sca_decoded_events();
+            w_inc_modules_sca_decoded_events();
         }
     }
 }
@@ -1655,7 +1652,7 @@ void * w_decode_hostinfo_thread(__attribute__((unused)) void * args){
 
             if (OS_CleanMSG(msg, lf) < 0) {
                 merror(IMSG_ERROR, msg);
-                w_inc_hostinfo_unknown_events();
+                w_inc_modules_logcollector_others_unknown_events();
                 Free_Eventinfo(lf);
                 free(msg);
                 continue;
@@ -1670,17 +1667,16 @@ void * w_decode_hostinfo_thread(__attribute__((unused)) void * args){
                 /* We don't process syscheck events further */
                 w_free_event_info(lf);
             }
-            else{
+            else {
                 if (queue_push_ex_block(decode_queue_event_output, lf) < 0) {
                     w_free_event_info(lf);
                 }
             }
 
-            w_inc_hostinfo_decoded_events();
+            w_inc_modules_logcollector_others_decoded_events();
         }
     }
 }
-
 
 void * w_decode_event_thread(__attribute__((unused)) void * args){
     Eventinfo *lf = NULL;
@@ -1701,7 +1697,7 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
 
             if (OS_CleanMSG(msg, lf) < 0) {
                 merror(IMSG_ERROR, msg);
-                w_inc_events_unknown();
+                //w_inc_events_unknown();
                 Free_Eventinfo(lf);
                 free(msg);
                 continue;
@@ -1727,7 +1723,7 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
                 Free_Eventinfo(lf);
             }
 
-            w_inc_events_decoded();
+            //w_inc_events_decoded();
         }
     }
 }
@@ -1747,7 +1743,7 @@ void * w_decode_winevt_thread(__attribute__((unused)) void * args){
 
             if (OS_CleanMSG(msg, lf) < 0) {
                 merror(IMSG_ERROR, msg);
-                w_inc_winevt_unknown_events();
+                w_inc_modules_logcollector_eventchannel_unknown_events();
                 Free_Eventinfo(lf);
                 free(msg);
                 continue;
@@ -1762,13 +1758,13 @@ void * w_decode_winevt_thread(__attribute__((unused)) void * args){
                 /* We don't process windows events further */
                 w_free_event_info(lf);
             }
-            else{
+            else {
                 if (queue_push_ex_block(decode_queue_event_output, lf) < 0) {
                     w_free_event_info(lf);
                 }
             }
 
-            w_inc_winevt_decoded_events();
+            w_inc_modules_logcollector_eventchannel_decoded_events();
         }
     }
 }
@@ -1817,7 +1813,7 @@ void * w_dispatch_upgrade_module_thread(__attribute__((unused)) void * args) {
 
         if (OS_CleanMSG(msg, lf) < 0) {
             merror(IMSG_ERROR, msg);
-            w_inc_upgrade_unknown_events();
+            w_inc_modules_upgrade_unknown_events();
             Free_Eventinfo(lf);
             free(msg);
             continue;
@@ -1855,7 +1851,7 @@ void * w_dispatch_upgrade_module_thread(__attribute__((unused)) void * args) {
             merror("Could not parse upgrade message: %s", lf->log);
         }
 
-        w_inc_upgrade_decoded_events();
+        w_inc_modules_upgrade_decoded_events();
         Free_Eventinfo(lf);
     }
 
@@ -2243,11 +2239,11 @@ void * w_writer_log_firewall_thread(__attribute__((unused)) void * args ){
 void w_log_flush(){
 
     /* Flush archives.log and archives.json */
-    if (Config.logall){
+    if (Config.logall) {
         OS_Store_Flush();
     }
 
-    if (Config.logall_json){
+    if (Config.logall_json) {
         jsonout_output_archive_flush();
     }
 
@@ -2256,7 +2252,7 @@ void w_log_flush(){
         jsonout_output_event_flush();
     }
 
-    if (Config.custom_alert_output){
+    if (Config.custom_alert_output) {
         OS_CustomLog_Flush();
     }
 
