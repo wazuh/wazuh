@@ -1362,7 +1362,13 @@ void * ad_input_main(void * args) {
                         reported_event = 1;
                         mwarn("Input queue is full.");
                     }
-                    //w_inc_events_dropped();
+                    if (msg[0] == CISCAT_MQ) {
+                        w_inc_modules_ciscat_dropped_events();
+                    } else if (msg[0] == SYSLOG_MQ) {
+                        w_inc_syslog_dropped_events();
+                    } else if (msg[0] == LOCALFILE_MQ) {
+                        //w_inc_events_dropped();
+                    }
                     free(copy);
                     continue;
                 }
@@ -1374,7 +1380,13 @@ void * ad_input_main(void * args) {
                         reported_event = 1;
                         mwarn("Input queue is full.");
                     }
-                    //w_inc_events_dropped();
+                    if (msg[0] == CISCAT_MQ) {
+                        w_inc_modules_ciscat_dropped_events();
+                    } else if (msg[0] == SYSLOG_MQ) {
+                        w_inc_syslog_dropped_events();
+                    } else if (msg[0] == LOCALFILE_MQ) {
+                        //w_inc_events_dropped();
+                    }
                     free(copy);
                     continue;
                 }
@@ -1493,6 +1505,7 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
             w_inc_modules_syscheck_decoded_events();
+
             lf->decoder_info = fim_decoder;
 
             // If the event comes in JSON format agent version is >= 3.11. Therefore we decode, alert and update DB entry.
@@ -1539,6 +1552,8 @@ void * w_decode_syscollector_thread(__attribute__((unused)) void * args){
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
+            w_inc_modules_syscollector_decoded_events();
+
             if (!DecodeSyscollector(lf, &socket)) {
                 /* We don't process syscollector events further */
                 w_free_event_info(lf);
@@ -1548,8 +1563,6 @@ void * w_decode_syscollector_thread(__attribute__((unused)) void * args){
                     w_free_event_info(lf);
                 }
             }
-
-            w_inc_modules_syscollector_decoded_events();
         }
     }
 }
@@ -1580,6 +1593,8 @@ void * w_decode_rootcheck_thread(__attribute__((unused)) void * args){
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
+            w_inc_modules_rootcheck_decoded_events();
+
             if (!DecodeRootcheck(lf)) {
                 /* We don't process rootcheck events further */
                 w_free_event_info(lf);
@@ -1589,8 +1604,6 @@ void * w_decode_rootcheck_thread(__attribute__((unused)) void * args){
                     w_free_event_info(lf);
                 }
             }
-
-            w_inc_modules_rootcheck_decoded_events();
         }
     }
 }
@@ -1622,6 +1635,8 @@ void * w_decode_sca_thread(__attribute__((unused)) void * args){
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
+            w_inc_modules_sca_decoded_events();
+
             if (!DecodeSCA(lf, &socket)) {
                 /* We don't process rootcheck events further */
                 w_free_event_info(lf);
@@ -1631,8 +1646,6 @@ void * w_decode_sca_thread(__attribute__((unused)) void * args){
                     w_free_event_info(lf);
                 }
             }
-
-            w_inc_modules_sca_decoded_events();
         }
     }
 }
@@ -1663,6 +1676,8 @@ void * w_decode_hostinfo_thread(__attribute__((unused)) void * args){
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
+            w_inc_modules_logcollector_others_decoded_events();
+
             if (!DecodeHostinfo(lf)) {
                 /* We don't process syscheck events further */
                 w_free_event_info(lf);
@@ -1672,8 +1687,6 @@ void * w_decode_hostinfo_thread(__attribute__((unused)) void * args){
                     w_free_event_info(lf);
                 }
             }
-
-            w_inc_modules_logcollector_others_decoded_events();
         }
     }
 }
@@ -1697,19 +1710,31 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
 
             if (OS_CleanMSG(msg, lf) < 0) {
                 merror(IMSG_ERROR, msg);
-                //w_inc_events_unknown();
+                if (msg[0] == CISCAT_MQ) {
+                    w_inc_modules_ciscat_unknown_events();
+                } else if (msg[0] == SYSLOG_MQ) {
+                    w_inc_syslog_unknown_events();
+                } else if (msg[0] == LOCALFILE_MQ) {
+                    //w_inc_events_unknown();
+                }
                 Free_Eventinfo(lf);
                 free(msg);
                 continue;
             }
 
             if (msg[0] == CISCAT_MQ) {
+                w_inc_modules_ciscat_decoded_events();
                 if (!DecodeCiscat(lf, &sock)) {
                     w_free_event_info(lf);
                     free(msg);
                     continue;
                 }
             } else {
+                if (msg[0] == SYSLOG_MQ) {
+                    w_inc_syslog_decoded_events();
+                } else if (msg[0] == LOCALFILE_MQ) {
+                    w_inc_decoded_by_component_events(extract_module_from_location(lf->location));
+                }
                 node = OS_GetFirstOSDecoder(lf->program_name);
                 DecodeEvent(lf, Config.g_rules_hash, &decoder_match, node);
             }
@@ -1722,8 +1747,6 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
             if (queue_push_ex_block(decode_queue_event_output, lf) < 0) {
                 Free_Eventinfo(lf);
             }
-
-            //w_inc_events_decoded();
         }
     }
 }
@@ -1754,6 +1777,8 @@ void * w_decode_winevt_thread(__attribute__((unused)) void * args){
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
+            w_inc_modules_logcollector_eventchannel_decoded_events();
+
             if (DecodeWinevt(lf)) {
                 /* We don't process windows events further */
                 w_free_event_info(lf);
@@ -1763,8 +1788,6 @@ void * w_decode_winevt_thread(__attribute__((unused)) void * args){
                     w_free_event_info(lf);
                 }
             }
-
-            w_inc_modules_logcollector_eventchannel_decoded_events();
         }
     }
 }
@@ -1790,10 +1813,12 @@ void * w_dispatch_dbsync_thread(__attribute__((unused)) void * args) {
             continue;
         }
 
-        DispatchDBSync(&ctx, lf);
-        w_inc_dbsync_decoded_events();
-        Free_Eventinfo(lf);
         free(msg);
+
+        w_inc_dbsync_decoded_events();
+
+        DispatchDBSync(&ctx, lf);
+        Free_Eventinfo(lf);
     }
 
     return NULL;
@@ -1820,6 +1845,8 @@ void * w_dispatch_upgrade_module_thread(__attribute__((unused)) void * args) {
         }
 
         free(msg);
+
+        w_inc_modules_upgrade_decoded_events();
 
         // Inserts agent id into incomming message and sends it to upgrade module
         cJSON *message_obj = cJSON_Parse(lf->log);
@@ -1851,7 +1878,6 @@ void * w_dispatch_upgrade_module_thread(__attribute__((unused)) void * args) {
             merror("Could not parse upgrade message: %s", lf->log);
         }
 
-        w_inc_modules_upgrade_decoded_events();
         Free_Eventinfo(lf);
     }
 

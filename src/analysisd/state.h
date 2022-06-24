@@ -134,6 +134,11 @@ void w_add_recv(unsigned long bytes);
 void w_inc_received_events();
 
 /**
+ * @brief Increment decoded by component events related counter
+ */
+void w_inc_decoded_by_component_events(const char *component);
+
+/**
  * @brief Increment agent decoded events counter
  */
 void w_inc_agent_decoded_events();
@@ -269,6 +274,11 @@ void w_inc_modules_logcollector_macos_decoded_events();
 void w_inc_modules_logcollector_others_decoded_events();
 
 /**
+ * @brief Increment dropped by component events related counter
+ */
+void w_inc_dropped_by_component_events(const char *component);
+
+/**
  * @brief Increment agent dropped events counter
  */
 void w_inc_agent_dropped_events();
@@ -402,6 +412,11 @@ void w_inc_modules_logcollector_macos_dropped_events();
  * @brief Increment modules logcollector others dropped events counter
  */
 void w_inc_modules_logcollector_others_dropped_events();
+
+/**
+ * @brief Increment unknown by component events related counter
+ */
+void w_inc_unknown_by_component_events(const char *component);
 
 /**
  * @brief Increment agent unknown events counter
