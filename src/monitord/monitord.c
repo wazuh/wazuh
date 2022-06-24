@@ -202,7 +202,7 @@ int MonitordConfig(const char *cfg, monitor_config *mond, int no_agents, short d
 void monitor_queue_connect() {
     if ((mond.a_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) > 0) {
         /* Send startup message */
-        if (SendMSG(mond.a_queue, OS_AD_STARTED, ARGV0, LOCALFILE_MQ) < 0) {
+        if (SendMSG(mond.a_queue, OS_MG_STARTED, ARGV0, LOCALFILE_MQ) < 0) {
             mond.a_queue = -1;  // We keep trying to reconnect next time.
             merror(QUEUE_SEND);
         }
