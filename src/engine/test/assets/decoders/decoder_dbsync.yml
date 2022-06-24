@@ -4,5 +4,29 @@ check:
   - queue: +i_eq/35
 
 normalize:
-  - result_dbsync: +dbsync
-  - clean: +cleanEvent/result_dbsync
+  - check:
+      - type: +s_eq_n/16/integrity_check_
+    map:
+      data_plain: +json_unformat/$data
+      query: +s_concat/agent /$agent.id/ /$component/ /$type/ /$data_plain
+      query_response: +wdb_query/$query
+  - check:
+      - query_response: +exists
+    map:
+      deleted_fields: +json_delete_field/query_response.data.tail/query_response.data.checksum
+      ar_query: +s_concat/$component/ /dbsync /$query_response/ /$data_plain
+      ar_result: +ar_write/$ar_query
+
+  - check:
+      - type: +s_eq/state
+    map:
+      data_plain: +json_unformat/$data
+      query: +s_concat/agent /$agent.id/ /$component/ save2 /$data_plain
+      query_status: +wdb_update/$query
+
+  - check:
+      - type: +s_eq/integrity_clear
+    map:
+      data_plain: +json_unformat/$data
+      query: +s_concat/agent /$agent.id/ /$component/ integrity_clear /$data_plain
+      query_status: +wdb_update/$query
