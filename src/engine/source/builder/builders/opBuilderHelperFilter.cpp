@@ -2,188 +2,17 @@
 
 #include <algorithm>
 #include <optional>
-#include <string>
-#include <tuple>
 #include <variant>
 
-#include <fmt/format.h>
 #include <re2/re2.h>
 
 #include "baseTypes.hpp"
 #include "syntax.hpp"
 #include <utils/ipUtils.hpp>
+#include <baseHelper.hpp>
 
 namespace builder::internals::builders
 {
-
-/**
- * @brief Struct to handle that parameters may be a value or a reference.
- *
- */
-struct Parameter
-{
-    enum class Type
-    {
-        REFERENCE,
-        VALUE
-    };
-
-    Type m_type;
-    std::string m_value;
-
-    friend std::ostream& operator<<(std::ostream& os, const Parameter& parameter)
-    {
-        os << parameter.m_value;
-        return os;
-    }
-};
-
-/**
- * @brief Extract expected parameters from std::any.
- *  <string helperName> <string targetField> <array of string parameters>
- * targetField must be a valid JSON pointer path.
- * References inside parameters must be preceded by ANCHOR_REFERENCE.
- * /envent/original: name ["param1", ... ]
- *
- * @param definition
- * @return std::tuple<std::string, std::string, std::vector<std::string>>
- *
- * @throws std::runtime_error if definition is not a tuple with the expected structure.
- */
-std::tuple<std::string, std::string, std::vector<std::string>>
-extractDefinition(const std::any& definition)
-{
-    std::tuple<std::string, std::string, std::vector<std::string>> extracted;
-    try
-    {
-        extracted =
-            std::any_cast<std::tuple<std::string, std::string, std::vector<std::string>>>(
-                definition);
-    }
-    catch (const std::bad_any_cast& e)
-    {
-        std::throw_with_nested(std::runtime_error(
-            "[builders::processDefinition(definition)] "
-            "Can not process definition, expected tuple with name and parameters"));
-    }
-
-    return extracted;
-}
-
-/**
- * @brief Transforms a vector of strings into a vector of Parameters.
- * If the string is a reference, it will be transformed into a Parameter with
- * Type::REFERENCE and the reference will be transformed into a JSON pointer path.
- *
- * If the string is a value, it will be transformed into a Parameter with Type::VALUE.
- *
- * @param parameters vector of strings
- * @return std::vector<Parameter>
- *
- * @throws std::runtime_error if a reference parameter can not be transformed into a JSON
- * pointer path.
- */
-std::vector<Parameter> processParameters(const std::vector<std::string>& parameters)
-{
-    std::vector<Parameter> newParameters;
-    std::transform(parameters.begin(),
-                   parameters.end(),
-                   std::back_inserter(newParameters),
-                   [](const std::string& parameter) -> Parameter
-                   {
-                       if (parameter[0] == syntax::REFERENCE_ANCHOR)
-                       {
-                           std::string pointerPath;
-                           try
-                           {
-                               pointerPath =
-                                   json::Json::formatJsonPath(parameter.substr(1));
-                           }
-                           catch (const std::exception& e)
-                           {
-                               std::throw_with_nested(std::runtime_error(fmt::format(
-                                   "[builders::processParameters(parameters)] "
-                                   "Can not format to Json pointer path parameter: {}",
-                                   parameter)));
-                           }
-                           return {Parameter::Type::REFERENCE, pointerPath};
-                       }
-                       else
-                       {
-                           return {Parameter::Type::VALUE, parameter};
-                       }
-                   });
-
-    return newParameters;
-}
-
-/**
- * @brief Check that the number of parameters is correct and throw otherwise.
- *
- * @param parameters
- * @param size
- *
- * @throws std::runtime_error if the number of parameters is not correct.
- */
-void assertParametersSize(const std::vector<Parameter>& parameters, size_t size)
-{
-    if (parameters.size() != size)
-    {
-        throw std::runtime_error(fmt::format("[builders::assertParametersSize] "
-                                             "Expected [{}] parameters, got [{}]",
-                                             size,
-                                             parameters.size()));
-    }
-}
-
-/**
- * @brief Check that the paremeter is of Parameter::Type and throw otherwise.
- *
- * @param parameter
- * @param type
- *
- * @throws std::runtime_error if the parameter is not of the expected type.
- */
-void assertParameterType(const Parameter& parameter, Parameter::Type type)
-{
-    if (parameter.m_type != type)
-    {
-        throw std::runtime_error(fmt::format(
-            "[builders::assertParameterType] "
-            "Expected parameter of type [{}], got parameter [{}] with type [{}]",
-            static_cast<int>(type),
-            parameter.m_value,
-            static_cast<int>(parameter.m_type)));
-    }
-}
-
-/**
- * @brief Format the name to be used in Tracers.
- * Format: "helper.<name>[<targetField>/<parameters>]"
- *
- * @param name
- * @param targetField
- * @param parameters
- * @return std::string
- */
-std::string formatHelperFilterName(const std::string& name,
-                                   const std::string& targetField,
-                                   const std::vector<Parameter>& parameters)
-{
-    std::stringstream formattedName;
-    formattedName << fmt::format("helper.{}[{}", name, targetField);
-    if (parameters.size() > 0)
-    {
-        formattedName << fmt::format(", {}", parameters.begin()->m_value);
-        for (auto it = parameters.begin() + 1; it != parameters.end(); ++it)
-        {
-            formattedName << fmt::format(", {}", it->m_value);
-        }
-    }
-    formattedName << "]";
-
-    return formattedName.str();
-}
 
 //*************************************************
 //*           Comparison filters                  *
@@ -224,12 +53,12 @@ enum class Type
  *
  * @throws std::runtime_error
  *   - if the right parameter is a value and not a valid integer
- *   - if Parameter::Type is not supported
+ *   - if helper::base::Parameter::Type is not supported
  */
 std::function<base::result::Result<base::Event>(base::Event)>
 getIntCmpFunction(const std::string& targetField,
                   Operator op,
-                  const Parameter& rightParameter,
+                  const helper::base::Parameter& rightParameter,
                   const std::string& name)
 {
     // Depending on rValue type we store the reference or the integer value
@@ -237,7 +66,7 @@ getIntCmpFunction(const std::string& targetField,
     auto rValueType = rightParameter.m_type;
     switch (rightParameter.m_type)
     {
-        case Parameter::Type::VALUE:
+        case helper::base::Parameter::Type::VALUE:
             try
             {
                 rValue = std::stoi(rightParameter.m_value);
@@ -251,7 +80,7 @@ getIntCmpFunction(const std::string& targetField,
 
             break;
 
-        case Parameter::Type::REFERENCE: rValue = rightParameter.m_value; break;
+        case helper::base::Parameter::Type::REFERENCE: rValue = rightParameter.m_value; break;
 
         default:
             throw std::runtime_error(fmt::format(
@@ -324,7 +153,7 @@ getIntCmpFunction(const std::string& targetField,
             return base::result::makeFailure(event, failureTrace1);
         }
 
-        if (rValueType == Parameter::Type::REFERENCE)
+        if (rValueType == helper::base::Parameter::Type::REFERENCE)
         {
             auto resolvedRValue = event->getValueInt(std::get<std::string>(rValue));
             if (!resolvedRValue.has_value())
@@ -364,12 +193,12 @@ getIntCmpFunction(const std::string& targetField,
  * @param name Formatted name of the helper
  * @return std::function<base::result::Result<base::Event>(base::Event)>
  *
- * @throws std::runtime_error if Parameter::Type is not supported
+ * @throws std::runtime_error if helper::base::Parameter::Type is not supported
  */
 std::function<base::result::Result<base::Event>(base::Event)>
 getStringCmpFunction(const std::string& targetField,
                      Operator op,
-                     const Parameter& rightParameter,
+                     const helper::base::Parameter& rightParameter,
                      const std::string& name)
 {
     // Depending on rValue type we store the reference or the string value, string in both
@@ -378,8 +207,8 @@ getStringCmpFunction(const std::string& targetField,
     auto rValueType = rightParameter.m_type;
     switch (rightParameter.m_type)
     {
-        case Parameter::Type::VALUE: rValue = rightParameter.m_value; break;
-        case Parameter::Type::REFERENCE: rValue = rightParameter.m_value; break;
+        case helper::base::Parameter::Type::VALUE: rValue = rightParameter.m_value; break;
+        case helper::base::Parameter::Type::REFERENCE: rValue = rightParameter.m_value; break;
         default:
             throw std::runtime_error(fmt::format(
                 "[builders::getIntCmpFunction()] invalid parameter type [{}] for [{}]",
@@ -452,7 +281,7 @@ getStringCmpFunction(const std::string& targetField,
             return base::result::makeFailure(event, failureTrace1);
         }
 
-        if (rValueType == Parameter::Type::REFERENCE)
+        if (rValueType == helper::base::Parameter::Type::REFERENCE)
         {
             auto resolvedRValue = event->getValueString(rValue);
             if (!resolvedRValue.has_value())
@@ -494,13 +323,13 @@ getStringCmpFunction(const std::string& targetField,
 base::Expression opBuilderComparison(const std::any& definition, Operator op, Type t)
 {
     // Extract parameters from any
-    auto [name, targetField, raw_parameters] = extractDefinition(definition);
+    auto [targetField, name, raw_parameters] = helper::base::extractDefinition(definition);
     // Identify references and build JSON pointer paths
-    auto parameters = processParameters(raw_parameters);
+    auto parameters = helper::base::processParameters(raw_parameters);
     // Assert expected number of parameters
-    assertParametersSize(parameters, 1);
+    helper::base::checkParametersSize(parameters, 1);
     // Format name for the tracer
-    name = formatHelperFilterName(name, targetField, parameters);
+    name = helper::base::formatHelperFilterName(name, targetField, parameters);
     // Get the expression depending on the type
     switch (t)
     {
@@ -620,11 +449,11 @@ base::Expression opBuilderHelperStringLessThanEqual(const std::any& definition)
 // field: +r_match/regexp
 base::Expression opBuilderHelperRegexMatch(const std::any& definition)
 {
-    auto [name, targetField, raw_parameters] = extractDefinition(definition);
-    auto parameters = processParameters(raw_parameters);
-    assertParametersSize(parameters, 1);
-    assertParameterType(parameters[0], Parameter::Type::VALUE);
-    name = formatHelperFilterName(name, targetField, parameters);
+    auto [targetField, name, raw_parameters] = helper::base::extractDefinition(definition);
+    auto parameters = helper::base::processParameters(raw_parameters);
+    helper::base::checkParametersSize(parameters, 1);
+    helper::base::checkParameterType(parameters[0], helper::base::Parameter::Type::VALUE);
+    name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
     auto regex_ptr = std::make_shared<RE2>(parameters[0].m_value, RE2::Quiet);
     if (!regex_ptr->ok())
@@ -668,11 +497,11 @@ base::Expression opBuilderHelperRegexMatch(const std::any& definition)
 base::Expression opBuilderHelperRegexNotMatch(const std::any& definition)
 {
     // TODO: Regex parameter fails at operationBuilderSplit
-    auto [name, targetField, raw_parameters] = extractDefinition(definition);
-    auto parameters = processParameters(raw_parameters);
-    assertParametersSize(parameters, 1);
-    assertParameterType(parameters[0], Parameter::Type::VALUE);
-    name = formatHelperFilterName(name, targetField, parameters);
+    auto [targetField, name, raw_parameters] = helper::base::extractDefinition(definition);
+    auto parameters = helper::base::processParameters(raw_parameters);
+    helper::base::checkParametersSize(parameters, 1);
+    helper::base::checkParameterType(parameters[0], helper::base::Parameter::Type::VALUE);
+    name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
     auto regex_ptr = std::make_shared<RE2>(parameters[0].m_value, RE2::Quiet);
     if (!regex_ptr->ok())
@@ -720,15 +549,15 @@ base::Expression opBuilderHelperRegexNotMatch(const std::any& definition)
 // path_to_ip: +ip_cidr/192.168.0.0/255.255.0.0
 base::Expression opBuilderHelperIPCIDR(const std::any& definition)
 {
-    auto [name, targetField, raw_parameters] = extractDefinition(definition);
-    auto parameters = processParameters(raw_parameters);
-    assertParametersSize(parameters, 2);
+    auto [targetField, name, raw_parameters] = helper::base::extractDefinition(definition);
+    auto parameters = helper::base::processParameters(raw_parameters);
+    helper::base::checkParametersSize(parameters, 2);
     for (const auto& parameter : parameters)
     {
-        assertParameterType(parameter, Parameter::Type::VALUE);
+        helper::base::checkParameterType(parameter, helper::base::Parameter::Type::VALUE);
     }
 
-    name = formatHelperFilterName(name, targetField, parameters);
+    name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
     uint32_t network {};
     try
@@ -799,10 +628,10 @@ base::Expression opBuilderHelperIPCIDR(const std::any& definition)
 // <field>: exists
 base::Expression opBuilderHelperExists(const std::any& definition)
 {
-    auto [name, targetField, rawParameters] = extractDefinition(definition);
-    auto parameters = processParameters(rawParameters);
-    assertParametersSize(parameters, 0);
-    name = formatHelperFilterName(name, targetField, parameters);
+    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
+    auto parameters = helper::base::processParameters(rawParameters);
+    helper::base::checkParametersSize(parameters, 0);
+    name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
     // Tracing
     const auto successTrace = fmt::format("[{}] -> Success", name);
@@ -828,10 +657,10 @@ base::Expression opBuilderHelperExists(const std::any& definition)
 // <field>: not_exists
 base::Expression opBuilderHelperNotExists(const std::any& definition)
 {
-    auto [name, targetField, rawParameters] = extractDefinition(definition);
-    auto parameters = processParameters(rawParameters);
-    assertParametersSize(parameters, 0);
-    name = formatHelperFilterName(name, targetField, parameters);
+    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
+    auto parameters = helper::base::processParameters(rawParameters);
+    helper::base::checkParametersSize(parameters, 0);
+    name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
     // Tracing
     const auto successTrace = fmt::format("[{}] -> Success", name);
@@ -861,14 +690,14 @@ base::Expression opBuilderHelperNotExists(const std::any& definition)
 //<field>: s_contains/value1/value2/...valueN
 base::Expression opBuilderHelperContainsString(const std::any& definition)
 {
-    auto [name, targetField, rawParameters] = extractDefinition(definition);
-    auto parameters = processParameters(rawParameters);
+    auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
+    auto parameters = helper::base::processParameters(rawParameters);
     if (parameters.empty())
     {
         throw std::runtime_error(
             fmt::format("[opBuilderHelperContains] parameters can not be empty"));
     }
-    name = formatHelperFilterName(name, targetField, parameters);
+    name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
     // Tracing
     const auto successTrace = fmt::format("[{}] -> Success", name);
@@ -900,7 +729,7 @@ base::Expression opBuilderHelperContainsString(const std::any& definition)
             {
                 switch (parameter.m_type)
                 {
-                    case Parameter::Type::REFERENCE:
+                    case helper::base::Parameter::Type::REFERENCE:
                     {
                         auto resolvedParameter = event->getValueString(parameter.m_value);
                         if (!resolvedParameter.has_value())
@@ -915,7 +744,7 @@ base::Expression opBuilderHelperContainsString(const std::any& definition)
                             return base::result::makeFailure(event, failureTrace3);
                         }
                     }
-                    case Parameter::Type::VALUE:
+                    case helper::base::Parameter::Type::VALUE:
                         if (std::find(resolvedArray.value().begin(),
                                       resolvedArray.value().end(),
                                       parameter.m_value)
