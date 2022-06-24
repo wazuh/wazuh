@@ -29,6 +29,7 @@ add_library(builders OBJECT
   builders/opBuilderLogqlParser.cpp
   builders/opBuilderKVDB.cpp
   builders/opBuilderHelperFilter.cpp
+  builders/opBuilderHelperMap.cpp
 )
 
 # builders/opBuilderHelperFilter.cpp

@@ -75,7 +75,7 @@ base::Expression opBuilderKVDBExtract(const std::any& definition)
             {
                 try
                 {
-                    auto value = event->getAsString(key);
+                    auto value = event->getValueString(key);
                     dbKey = value.value();
                 }
                 catch (std::exception& ex)

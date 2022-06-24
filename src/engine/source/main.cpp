@@ -12,6 +12,7 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <sstream>
 
 #include <argparse/argparse.hpp>
 
@@ -98,14 +99,17 @@ static auto configureCliArgs()
     return argParser;
 }
 
-static void print_exception(const std::exception& e, int level =  0)
+static std::string print_exception(const std::exception& e, int level =  0)
 {
-    std::cerr << std::string(level, ' ') << "exception: " << e.what() << '\n';
+    std::stringstream ss;
+    ss << std::string(level, ' ') << "exception: " << e.what() << '\n';
     try {
         std::rethrow_if_nested(e);
     } catch(const std::exception& nestedException) {
-        print_exception(nestedException, level+1);
+        ss << print_exception(nestedException, level+1);
     } catch(...) {}
+
+    return ss.str();
 }
 
 int main(int argc, char* argv[])
@@ -183,9 +187,7 @@ int main(int argc, char* argv[])
     }
     catch (const std::exception& e)
     {
-        // LOG nested exception
-        print_exception(e);
-        WAZUH_LOG_ERROR("Exception while building environment: [{}]", e.what());
+        WAZUH_LOG_ERROR("Exception while building environment: [{}]", print_exception(e));
         return 1;
     }
     std::cout << env.getGraphivzStr() << std::endl << std::endl;
