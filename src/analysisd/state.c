@@ -331,6 +331,60 @@ void w_inc_received_events() {
     w_mutex_unlock(&state_mutex);
 }
 
+void w_inc_decoded_by_component_events(const char *component) {
+    if (component != NULL) {
+        if (!strcmp(component, "wazuh-agent")) {
+            w_inc_agent_decoded_events();
+        } else if (!strcmp(component, "wazuh-agentlessd")) {
+            w_inc_agentless_decoded_events();
+        } else if (!strcmp(component, "wazuh-monitord")) {
+            w_inc_monitor_decoded_events();
+        } else if (!strcmp(component, "wazuh-remoted")) {
+            w_inc_remote_decoded_events();
+        } else if (!strcmp(component, "virustotal")) {
+            w_inc_integrations_virustotal_decoded_events();
+        } else if (!strcmp(component, "aws-s3") || !strcmp(component, "Wazuh-AWS")) {
+            w_inc_modules_aws_decoded_events();
+        } else if (!strcmp(component, "azure-logs") || !strcmp(component, "Azure")) {
+            w_inc_modules_azure_decoded_events();
+        } else if (!strcmp(component, "cis-cat") || !strcmp(component, "wodle_cis-cat")) {
+            w_inc_modules_ciscat_decoded_events();
+        } else if (!strcmp(component, "command") || !strncmp(component, "command_", 8)) {
+            w_inc_modules_command_decoded_events();
+        } else if (!strcmp(component, "docker-listener") || !strcmp(component, "Wazuh-Docker")) {
+            w_inc_modules_docker_decoded_events();
+        } else if (!strcmp(component, "gcp-pubsub") || !strcmp(component, "gcp-bucket") || !strcmp(component, "Wazuh-GCloud")) {
+            w_inc_modules_gcp_decoded_events();
+        } else if (!strcmp(component, "github")) {
+            w_inc_modules_github_decoded_events();
+        } else if (!strcmp(component, "office365")) {
+            w_inc_modules_office365_decoded_events();
+        } else if (!strcmp(component, "open-scap") || !strcmp(component, "wodle_open-scap")) {
+            w_inc_modules_oscap_decoded_events();
+        } else if (!strcmp(component, "osquery")) {
+            w_inc_modules_osquery_decoded_events();
+        } else if (!strcmp(component, "rootcheck")) {
+            w_inc_modules_rootcheck_decoded_events();
+        } else if (!strcmp(component, "sca")) {
+            w_inc_modules_sca_decoded_events();
+        } else if (!strcmp(component, "syscheck")) {
+            w_inc_modules_syscheck_decoded_events();
+        } else if (!strcmp(component, "syscollector")) {
+            w_inc_modules_syscollector_decoded_events();
+        } else if (!strcmp(component, "agent-upgrade")) {
+            w_inc_modules_upgrade_decoded_events();
+        } else if (!strcmp(component, "vulnerability-detector")) {
+            w_inc_modules_vulnerability_decoded_events();
+        } else if (!strcmp(component, "macos")) {
+            w_inc_modules_logcollector_macos_decoded_events();
+        } else if (!strcmp(component, "WinEvtLog")) {
+            w_inc_modules_logcollector_eventlog_decoded_events();
+        } else {
+            w_inc_modules_logcollector_others_decoded_events();
+        }
+    }
+}
+
 void w_inc_agent_decoded_events() {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_received_breakdown.events_decoded_breakdown.agent++;
@@ -493,6 +547,60 @@ void w_inc_modules_logcollector_others_decoded_events() {
     w_mutex_unlock(&state_mutex);
 }
 
+void w_inc_dropped_by_component_events(const char *component) {
+    if (component != NULL) {
+        if (!strcmp(component, "wazuh-agent")) {
+            w_inc_agent_dropped_events();
+        } else if (!strcmp(component, "wazuh-agentlessd")) {
+            w_inc_agentless_dropped_events();
+        } else if (!strcmp(component, "wazuh-monitord")) {
+            w_inc_monitor_dropped_events();
+        } else if (!strcmp(component, "wazuh-remoted")) {
+            w_inc_remote_dropped_events();
+        } else if (!strcmp(component, "virustotal")) {
+            w_inc_integrations_virustotal_dropped_events();
+        } else if (!strcmp(component, "aws-s3") || !strcmp(component, "Wazuh-AWS")) {
+            w_inc_modules_aws_dropped_events();
+        } else if (!strcmp(component, "azure-logs") || !strcmp(component, "Azure")) {
+            w_inc_modules_azure_dropped_events();
+        } else if (!strcmp(component, "cis-cat") || !strcmp(component, "wodle_cis-cat")) {
+            w_inc_modules_ciscat_dropped_events();
+        } else if (!strcmp(component, "command") || !strncmp(component, "command_", 8)) {
+            w_inc_modules_command_dropped_events();
+        } else if (!strcmp(component, "docker-listener") || !strcmp(component, "Wazuh-Docker")) {
+            w_inc_modules_docker_dropped_events();
+        } else if (!strcmp(component, "gcp-pubsub") || !strcmp(component, "gcp-bucket") || !strcmp(component, "Wazuh-GCloud")) {
+            w_inc_modules_gcp_dropped_events();
+        } else if (!strcmp(component, "github")) {
+            w_inc_modules_github_dropped_events();
+        } else if (!strcmp(component, "office365")) {
+            w_inc_modules_office365_dropped_events();
+        } else if (!strcmp(component, "open-scap") || !strcmp(component, "wodle_open-scap")) {
+            w_inc_modules_oscap_dropped_events();
+        } else if (!strcmp(component, "osquery")) {
+            w_inc_modules_osquery_dropped_events();
+        } else if (!strcmp(component, "rootcheck")) {
+            w_inc_modules_rootcheck_dropped_events();
+        } else if (!strcmp(component, "sca")) {
+            w_inc_modules_sca_dropped_events();
+        } else if (!strcmp(component, "syscheck")) {
+            w_inc_modules_syscheck_dropped_events();
+        } else if (!strcmp(component, "syscollector")) {
+            w_inc_modules_syscollector_dropped_events();
+        } else if (!strcmp(component, "agent-upgrade")) {
+            w_inc_modules_upgrade_dropped_events();
+        } else if (!strcmp(component, "vulnerability-detector")) {
+            w_inc_modules_vulnerability_dropped_events();
+        } else if (!strcmp(component, "macos")) {
+            w_inc_modules_logcollector_macos_dropped_events();
+        } else if (!strcmp(component, "WinEvtLog")) {
+            w_inc_modules_logcollector_eventlog_dropped_events();
+        } else {
+            w_inc_modules_logcollector_others_dropped_events();
+        }
+    }
+}
+
 void w_inc_agent_dropped_events() {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_received_breakdown.events_dropped_breakdown.agent++;
@@ -653,6 +761,60 @@ void w_inc_modules_logcollector_others_dropped_events() {
     w_mutex_lock(&state_mutex);
     analysisd_state.events_received_breakdown.events_dropped_breakdown.modules.logcollector.others++;
     w_mutex_unlock(&state_mutex);
+}
+
+void w_inc_unknown_by_component_events(const char *component) {
+    if (component != NULL) {
+        if (!strcmp(component, "wazuh-agent")) {
+            w_inc_agent_unknown_events();
+        } else if (!strcmp(component, "wazuh-agentlessd")) {
+            w_inc_agentless_unknown_events();
+        } else if (!strcmp(component, "wazuh-monitord")) {
+            w_inc_monitor_unknown_events();
+        } else if (!strcmp(component, "wazuh-remoted")) {
+            w_inc_remote_unknown_events();
+        } else if (!strcmp(component, "virustotal")) {
+            w_inc_integrations_virustotal_unknown_events();
+        } else if (!strcmp(component, "aws-s3") || !strcmp(component, "Wazuh-AWS")) {
+            w_inc_modules_aws_unknown_events();
+        } else if (!strcmp(component, "azure-logs") || !strcmp(component, "Azure")) {
+            w_inc_modules_azure_unknown_events();
+        } else if (!strcmp(component, "cis-cat") || !strcmp(component, "wodle_cis-cat")) {
+            w_inc_modules_ciscat_unknown_events();
+        } else if (!strcmp(component, "command") || !strncmp(component, "command_", 8)) {
+            w_inc_modules_command_unknown_events();
+        } else if (!strcmp(component, "docker-listener") || !strcmp(component, "Wazuh-Docker")) {
+            w_inc_modules_docker_unknown_events();
+        } else if (!strcmp(component, "gcp-pubsub") || !strcmp(component, "gcp-bucket") || !strcmp(component, "Wazuh-GCloud")) {
+            w_inc_modules_gcp_unknown_events();
+        } else if (!strcmp(component, "github")) {
+            w_inc_modules_github_unknown_events();
+        } else if (!strcmp(component, "office365")) {
+            w_inc_modules_office365_unknown_events();
+        } else if (!strcmp(component, "open-scap") || !strcmp(component, "wodle_open-scap")) {
+            w_inc_modules_oscap_unknown_events();
+        } else if (!strcmp(component, "osquery")) {
+            w_inc_modules_osquery_unknown_events();
+        } else if (!strcmp(component, "rootcheck")) {
+            w_inc_modules_rootcheck_unknown_events();
+        } else if (!strcmp(component, "sca")) {
+            w_inc_modules_sca_unknown_events();
+        } else if (!strcmp(component, "syscheck")) {
+            w_inc_modules_syscheck_unknown_events();
+        } else if (!strcmp(component, "syscollector")) {
+            w_inc_modules_syscollector_unknown_events();
+        } else if (!strcmp(component, "agent-upgrade")) {
+            w_inc_modules_upgrade_unknown_events();
+        } else if (!strcmp(component, "vulnerability-detector")) {
+            w_inc_modules_vulnerability_unknown_events();
+        } else if (!strcmp(component, "macos")) {
+            w_inc_modules_logcollector_macos_unknown_events();
+        } else if (!strcmp(component, "WinEvtLog")) {
+            w_inc_modules_logcollector_eventlog_unknown_events();
+        } else {
+            w_inc_modules_logcollector_others_unknown_events();
+        }
+    }
 }
 
 void w_inc_agent_unknown_events() {
