@@ -115,7 +115,6 @@ typedef struct _analysisd_agent_state_t {
 } analysisd_agent_state_t;
 
 
-
 /* Status functions */
 
 /**
