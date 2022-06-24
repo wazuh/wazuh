@@ -577,7 +577,7 @@ base::Expression opBuilderHelperIPCIDR(const std::any& definition)
     }
     catch (std::exception& e)
     {
-        throw std::runtime_error("Invalid IPv4 address: " + network);
+        throw runtime_error("Invalid IPv4 address: " + network);
     }
 
     uint32_t mask {};
@@ -587,7 +587,7 @@ base::Expression opBuilderHelperIPCIDR(const std::any& definition)
     }
     catch (std::exception& e)
     {
-        throw std::runtime_error("Invalid IPv4 mask: " + mask);
+        throw runtime_error("Invalid IPv4 mask: " + mask);
     }
 
     uint32_t net_lower {network & mask};
