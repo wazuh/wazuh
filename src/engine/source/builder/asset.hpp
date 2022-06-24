@@ -55,6 +55,12 @@ public:
     Asset(const json::Json& jsonDefinition, Type type)
         : m_type {type}
     {
+        if (!jsonDefinition.isObject())
+        {
+            throw std::runtime_error(fmt::format("[Asset::Asset(jsonDefinition, type)] "
+                                                 "Asset expects a JSON object, got: [{}]",
+                                                 jsonDefinition.typeName()));
+        }
         auto objectDefinition = jsonDefinition.getObject();
 
         // Get name
@@ -69,7 +75,8 @@ public:
         }
         else
         {
-            throw std::runtime_error("Asset definition must have a name");
+            throw std::runtime_error("[Asset::Asset(jsonDefinition, type)] "
+                                     "Asset definition missing name");
         }
 
         // Get parents
@@ -79,6 +86,13 @@ public:
                          [](auto tuple) { return std::get<0>(tuple) == "parents"; });
         if (parentsPos != objectDefinition.end())
         {
+            if (!std::get<1>(*parentsPos).isArray())
+            {
+                throw std::runtime_error(
+                    fmt::format("[Asset::Asset(jsonDefinition, type)] "
+                                "Asset definition [parents] expects an array, got: [{}]",
+                                std::get<1>(*parentsPos).typeName()));
+            }
             auto parents = std::get<1>(*parentsPos).getArray();
             for (auto& parent : parents)
             {
@@ -105,9 +119,18 @@ public:
                          [](auto tuple) { return std::get<0>(tuple) == "check"; });
         if (checkPos != objectDefinition.end())
         {
-            m_check =
-                internals::Registry::getBuilder("stage.check")({std::get<1>(*checkPos)});
-            objectDefinition.erase(checkPos);
+            try
+            {
+                m_check = internals::Registry::getBuilder("stage.check")(
+                    {std::get<1>(*checkPos)});
+                objectDefinition.erase(checkPos);
+            }
+            catch (const std::exception& e)
+            {
+                std::throw_with_nested(
+                    std::runtime_error("[Asset::Asset(jsonDefinition, type)] failed to "
+                                       "build stage check"));
+            }
         }
 
         // Get stages

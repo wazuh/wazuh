@@ -133,7 +133,8 @@ Expression operationBuilder(const std::any& definition, OperationType type)
                 return mapReferenceBuilder(std::move(field), std::move(reference));
             default:
                 throw std::runtime_error(
-                    fmt::format("Unknown operation type [{}] in operationBuilder",
+                    fmt::format("[builders::operationBuilder(<definition, type>)] "
+                                "Unsupported operation type: {}",
                                 static_cast<int>(type)));
         }
     }
@@ -143,21 +144,24 @@ Expression operationBuilder(const std::any& definition, OperationType type)
         std::string helperName;
         std::vector<std::string> helperArgs;
         auto helperString = value.getString().substr(1);
-        auto argAnchorPos = value.getString().find(syntax::FUNCTION_HELPER_ARG_ANCHOR);
-        // Find if has arguments
-        if (argAnchorPos != std::string::npos)
+
+        helperArgs =
+            utils::string::split(helperString, syntax::FUNCTION_HELPER_ARG_ANCHOR);
+        helperName = helperArgs[0];
+        helperArgs.erase(helperArgs.begin());
+
+        try
         {
-            helperName = helperString.substr(0, argAnchorPos);
-            auto helperArgsString = helperString.substr(argAnchorPos);
-            helperArgs = utils::string::split(helperArgsString,
-                                              syntax::FUNCTION_HELPER_ARG_ANCHOR);
+            return Registry::getBuilder("helper." + helperName)(
+                std::make_tuple(helperName, std::move(field), std::move(helperArgs)));
         }
-        else
+        catch (const std::exception& e)
         {
-            helperName = helperString;
+            std::throw_with_nested(std::runtime_error(
+                fmt::format("[builders::operationBuilder(<definition, type>)] "
+                            "Exception building helper [{}]",
+                            helperName)));
         }
-        return Registry::getBuilder(helperName)(
-            std::make_tuple(std::move(field), std::move(helperArgs)));
     }
     else
     {
@@ -169,7 +173,8 @@ Expression operationBuilder(const std::any& definition, OperationType type)
                 return mapValueBuilder(std::move(field), std::move(value));
             default:
                 throw std::runtime_error(
-                    fmt::format("Unknown operation type [{}] in operationBuilder",
+                    fmt::format("[builders::operationBuilder(<definition, type>)] "
+                                "Unsupported operation type: {}",
                                 static_cast<int>(type)));
         }
     }
