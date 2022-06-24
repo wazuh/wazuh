@@ -139,6 +139,7 @@ target_link_libraries(rxcppBackend_test
 gtest_discover_tests(rxcppBackend_test)
 
 add_executable(opBuilderHelperCheck_test
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/baseHelper.cpp
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderHelperFilter.cpp
   #${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntEqual_test.cpp
   #${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIntNotEqual_test.cpp

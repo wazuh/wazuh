@@ -153,7 +153,7 @@ Expression operationBuilder(const std::any& definition, OperationType type)
         try
         {
             return Registry::getBuilder("helper." + helperName)(
-                std::make_tuple(helperName, std::move(field), std::move(helperArgs)));
+                std::make_tuple(std::move(field), helperName, std::move(helperArgs)));
         }
         catch (const std::exception& e)
         {

@@ -30,6 +30,7 @@ add_library(builders OBJECT
   builders/opBuilderKVDB.cpp
   builders/opBuilderHelperFilter.cpp
   builders/opBuilderHelperMap.cpp
+  builders/baseHelper.cpp
 )
 
 # builders/opBuilderHelperFilter.cpp
@@ -40,6 +41,7 @@ target_include_directories(builders
   PRIVATE
 
   # TODO fix this?
+  ${ENGINE_SOURCE_DIR}/builder/builders
   ${ENGINE_SOURCE_DIR}/json
   ${ENGINE_SOURCE_DIR}
   PUBLIC
