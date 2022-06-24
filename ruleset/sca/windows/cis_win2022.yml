@@ -2610,3 +2610,1120 @@ checks:
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Peernet -> Disabled -> 1'
+
+  - id: 26209
+    title: "Ensure 'Prohibit installation and configuration of Network Bridge on your DNS domain network' is set to 'Enabled'"
+    description: "You can use this procedure to controls user's ability to install and configure a Network Bridge. The recommended state for this setting is: Enabled."
+    rationale: "The Network Bridge setting, if enabled, allows users to create a Layer 2 Media Access Control (MAC) bridge, enabling them to connect two or more physical network segments together. A Network Bridge thus allows a computer that has connections to two different networks to share data between those networks. In an enterprise managed environment, where there is a need to control network traffic to only authorized paths, allowing users to create a Network Bridge increases the risk and attack surface from the bridged network."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Network Connections\\Prohibit installation and configuration of Network Bridge on your DNS domain network"
+    compliance:
+      - cis: ["18.5.11.2"]
+      - cis_csc: ["5.1"]
+      - pci_dss: ["1.3.5"]
+    references:
+      - 'CCE-33107-4'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections -> NC_AllowNetBridge_NLA -> 0'
+
+  - id: 26210
+    title: "Ensure 'Prohibit use of Internet Connection Sharing on your DNS domain network' is set to 'Enabled'"
+    description: "Although this legacy setting traditionally applied to the use of Internet Connection Sharing (ICS) in Windows 2000, Windows XP & Server 2003, this setting now freshly applies to the Mobile Hotspot feature in Windows 10 & Server 2016. The recommended state for this setting is: Enabled."
+    rationale: "Non-administrators should not be able to turn on the Mobile Hotspot feature and open their Internet connectivity up to nearby mobile devices."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Network Connections\\Prohibit use of Internet Connection Sharing on your DNS domain network"
+    compliance:
+      - cis: ["18.5.11.3"]
+      - cis_csc: ["9.1", "9.2"]
+      - pci_dss: ["1.3.5"]
+      - tsc: ["CC6.6"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections -> NC_ShowSharedAccessUI -> 0'
+
+  - id: 26211
+    title: "Ensure 'Require domain users to elevate when setting a network's location' is set to 'Enabled'"
+    description: "This policy setting determines whether to require domain users to elevate when setting a network's location. The recommended state for this setting is: Enabled."
+    rationale: "Allowing regular users to set a network location increases the risk and attack surface."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Network Connections\\Require domain users to elevate when setting a network's location"
+    compliance:
+      - cis: ["18.5.11.4"]
+      - cis_csc: ["5.1"]
+      - pci_dss: ["1.3.5"]
+      - tsc: ["CC6.6"]
+    references:
+      - 'CCE-35554-5'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections -> NC_StdDomainUserSetLocation -> 1'
+
+  - id: 26212
+    title: "Ensure 'Hardened UNC Paths' is set to 'Enabled, with \"Require Mutual Authentication\" and \"Require Integrity\" set for all NETLOGON and SYSVOL shares'"
+    description: "This policy setting configures secure access to UNC paths. The recommended state for this setting is: Enabled, with Require Mutual Authentication and Require Integrity set for all NETLOGON and SYSVOL shares. Note: If the environment exclusively contains Windows 8.0 / Server 2012 (non-R2) or newer systems, then the \"Privacy\" setting may (optionally) also be set to enable SMB encryption. However, using SMB encryption will render the targeted share paths completely inaccessible by older OSes, so only use this additional option with caution and thorough testing."
+    rationale: "In February 2015, Microsoft released a new control mechanism to mitigate a security risk in Group Policy as part of the MS15-011 / MSKB 3000483 security update. This mechanism requires both the installation of the new security update and also the deployment of specific group policy settings to all computers on the domain from Windows Vista / Server 2008 (non-R2) or newer (the associated security patch to enable this feature was not released for Server 2003). A new group policy template (NetworkProvider.admx/adml) was also provided with the security update. Once the new GPO template is in place, the following are the minimum requirements to remediate the Group Policy security risk: \\*\\NETLOGON RequireMutualAuthentication=1, RequireIntegrity=1 \\*\\SYSVOL RequireMutualAuthentication=1, RequireIntegrity=1 Note: A reboot may be required after the setting is applied to a client machine to access the above paths."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled with the following paths configured, at a minimum: \\*\\NETLOGON RequireMutualAuthentication=1, RequireIntegrity=1 \\*\\SYSVOL RequireMutualAuthentication=1, RequireIntegrity=1 Computer Configuration\\Policies\\Administrative Templates\\Network\\Network Provider\\Hardened UNC Paths"
+    compliance:
+      - cis: ["18.5.14.1"]
+      - cis_csc: ["3"]
+      - pci_dss: ["8.1"]
+      - tsc: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\NetworkProvider\HardenedPaths -> \\*\NETLOGON -> r:RequireMutualAuthentication=1, RequireIntegrity=1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\NetworkProvider\HardenedPaths -> \\*\SYSVOL -> r:RequireMutualAuthentication=1, RequireIntegrity=1'
+
+  - id: 26213
+    title: "Disable IPv6 (Ensure TCPIP6 Parameter 'DisabledComponents' is set to '0xff (255)')"
+    description: "Internet Protocol version 6 (IPv6) is a set of protocols that computers use to exchange information over the Internet and over home and business networks. IPv6 allows for many more IP addresses to be assigned than IPv4 did. Older networking, hosts and operating systems may not support IPv6 natively. The recommended state for this setting is: DisabledComponents - 0xff (255)"
+    rationale: "Since the vast majority of private enterprise managed networks have no need to utilize IPv6 (because they have access to private IPv4 addressing), disabling IPv6 components reduces a possible attack surface that is also harder to monitor the traffic on. As a result, we recommend configuring IPv6 to a Disabled state when it is not needed."
+    remediation: "To establish the recommended configuration, set the following Registry value to 0xff (255) (DWORD): HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\TCPIP6\\Parameters:DisabledComponents Note: This change does not take effect until the computer has been restarted. Note #2: Although Microsoft does not provide an ADMX template to configure this registry value, a custom .ADM template (Disable-IPv6-Components-KB929852.adm) is provided in the CIS Benchmark Remediation Kit to facilitate its configuration. Be aware though that simply turning off the group policy setting in the .ADM template will not \"undo\" the change once applied. Instead, the opposite setting must be applied to change the registry value to the opposite state."
+    compliance:
+      - cis: ["18.5.19.2.1"]
+      - cis_csc: ["9"]
+      - pci_dss: ["2.2.2"]
+      - nist_800_53: ["CM.1"]
+      - tsc: ["CC5.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TCPIP6\Parameters -> DisabledComponents -> 255'
+
+  - id: 26214
+    title: "Ensure 'Configuration of wireless settings using Windows Connect Now' is set to 'Disabled'"
+    description: "This policy setting allows the configuration of wireless settings using Windows Connect Now (WCN). The WCN Registrar enables the discovery and configuration of devices over Ethernet (UPnP) over in-band 802.11 Wi-Fi through the Windows Portable Device API (WPD) and via USB Flash drives. Additional options are available to allow discovery and configuration over a specific medium. The recommended state for this setting is: Disabled."
+    rationale: "This setting enhances the security of the environment and reduces the overall risk exposure related to user configuration of wireless settings."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Windows Connect Now\\Configuration of wireless settings using Windows Connect Now Note: This Group Policy path is provided by the Group Policy template WindowsConnectNow.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
+    compliance:
+      - cis: ["18.5.20.1"]
+      - cis_csc: ["15.4", "15.5"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-34326-9'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> EnableRegistrars -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> DisableUPnPRegistrar -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> DisableInBand802DOT11Registrar -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> DisableFlashConfigRegistrar -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> DisableWPDRegistrar -> 0'
+
+  - id: 26215
+    title: "Ensure 'Prohibit access of the Windows Connect Now wizards' is set to 'Enabled'"
+    description: "This policy setting prohibits access to Windows Connect Now (WCN) wizards. The recommended state for this setting is: Enabled."
+    rationale: "Allowing standard users to access the Windows Connect Now wizard increases the risk and attack surface."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Network\\Windows Connect Now\\Prohibit access of the Windows Connect Now wizards Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsConnectNow.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.5.20.2"]
+      - cis_csc: ["15.4", "15.5"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-35606-3'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\UI -> DisableWcnUi -> 1'
+
+  - id: 26216
+    title: "Ensure 'Minimize the number of simultaneous connections to the Internet or a Windows Domain' is set to 'Enabled: 3 = Prevent Wi-Fi when on Ethernet'"
+    description: "This policy setting prevents computers from establishing multiple simultaneous connections to either the Internet or to a Windows domain. The recommended state for this setting is: Enabled: 3 = Prevent Wi-Fi when on Ethernet ."
+    rationale: "Preventing bridged network connections can help prevent a user unknowingly allowing traffic to route between internal and external networks, which risks exposure to sensitive internal data."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 3 = Prevent Wi-Fi when on Ethernet: Computer Configuration\\Policies\\Administrative Templates\\Network\\Windows Connection Manager\\Minimize the number of simultaneous connections to the Internet or a Windows Domain"
+    compliance:
+      - cis: ["18.5.21.1"]
+      - cis_csc: ["12"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1","CC6.7","CC7.2"]
+    references:
+      - 'CCE-35242-7'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy -> fMinimizeConnections -> 3'
+
+  - id: 26217
+    title: "Ensure 'Prohibit connection to non-domain networks when connected to domain authenticated network' is set to 'Enabled'"
+    description: "This policy setting prevents computers from connecting to both a domain based network and a non-domain based network at the same time. The recommended state for this setting is: Enabled."
+    rationale: "The potential concern is that a user would unknowingly allow network traffic to flow between the insecure public network and the enterprise managed network."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Windows Connection Manager\\Prohibit connection to non-domain networks when connected to domain authenticated network"
+    compliance:
+      - cis: ["18.5.21.2"]
+      - cis_csc: ["12"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1","CC6.7","CC7.2"]
+    references:
+      - 'CCE-35375-5'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy -> fBlockNonDomain -> 1'
+
+  - id: 26219
+    title: "Ensure 'Allow Print Spooler to accept client connections' is set to 'Disabled'"
+    description: "This policy setting controls whether the Print Spooler service will accept client connections"
+    rationale: "Disabling the ability for the Print Spooler service to accept client connections mitigates remote attacks against the PrintNightmare vulnerability (CVE-2021-34527) and other remote Print Spooler attacks. However, this recommendation does not mitigate against local attacks on the Print Spooler service."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Printers\\Allow Print Spooler to accept client connections"
+    compliance:
+      - cis: ["18.6.1"]
+      - cis_csc: ["9.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\WindowsNT\Printers -> RegisterSpoolerRemoteRpcEndPoint -> 2'
+
+  - id: 26220
+    title: "Ensure 'Point and Print Restrictions: When installing drivers for a new connection' is set to 'Enabled: Show warning and elevation prompt'"
+    description: "This policy setting controls whether computers will show a warning and a security elevation prompt when users create a new printer connection using Point and Print."
+    rationale: "Enabling Windows User Account Control (UAC) for the installation of new print drivers can help mitigate the PrintNightmare vulnerability (CVE-2021-34527) and other Print Spooler attacks."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Show warning and elevation prompt: Computer Configuration\\Policies\\Administrative Templates\\Printers\\Point and Print Restrictions: When installing drivers for a new connection"
+    compliance:
+      - cis: ["18.6.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\WindowsNT\Printers\PointAndPrint -> NoWarningNoElevationOnInstall -> 0'
+
+  - id: 26221
+    title: "Ensure 'Point and Print Restrictions: When updating drivers for an existing connection' is set to 'Enabled: Show warning and elevation prompt'"
+    description: "This policy setting controls whether computers will show a warning and a security elevation prompt when users are updating drivers for an existing connection using Point and Print."
+    rationale: "Enabling Windows User Account Control (UAC) for updating existing print drivers can help mitigate the PrintNightmare vulnerability (CVE-2021-34527) and other Print Spooler attacks."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Show warning and elevation prompt: Computer Configuration\\Policies\\Administrative Templates\\Printers\\Point and Print Restrictions: When updating drivers for an existing connection"
+    compliance:
+      - cis: ["18.6.3"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\WindowsNT\Printers\PointAndPrint -> UpdatePromptSettings -> 0'
+
+  - id: 26222
+    title: "Ensure 'Turn off notifications network usage' is set to 'Enabled'"
+    description: "This policy setting blocks applications from using the network to send notifications to update tiles, tile badges, toast, or raw notifications. This policy setting turns off the connection between Windows and the Windows Push Notification Service (WNS). This policy setting also stops applications from being able to poll application services to update tiles. The recommended state for this setting is: Enabled."
+    rationale: "Windows Push Notification Services (WNS) is a mechanism to receive 3rd-party notifications and updates from the cloud/Internet. In a high security environment, external systems, especially those hosted outside the organization, should be prevented from having an impact on the secure workstations."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Start Menu and Taskbar\\Turn off notifications network usage"
+    compliance:
+      - cis: ["18.7.1.1"]
+      - cis_csc: ["15.4","15.5"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\PushNotifications -> NoCloudApplicationNotification -> 1'
+
+  - id: 26223
+    title: "Ensure 'Include command line in process creation events' is set to 'Disabled'"
+    description: "This policy setting determines what information is logged in security audit events when a new process has been created. The recommended state for this setting is: Disabled."
+    rationale: "When this policy setting is enabled, any user who has read access to the security events can read the command-line arguments for any successfully created process. Command-line arguments may contain sensitive or private information such as passwords or user data."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Audit Process Creation\\Include command line in process creation events"
+    compliance:
+      - cis: ["18.8.3.1"]
+      - cis_csc: ["16.14"]
+      - pci_dss: ["8.2.1"]
+      - tsc: ["CC6.1"]
+    references:
+      - 'CCE-35802-8'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\Audit -> ProcessCreationIncludeCmdLine_Enabled -> 0'
+
+  - id: 26224
+    title: "Ensure 'Encryption Oracle Remediation' is set to 'Enabled: Force Updated Clients'"
+    description: "Some versions of the CredSSP protocol that is used by some applications (such as Remote Desktop Connection) are vulnerable to an encryption oracle attack against the client. This policy controls compatibility with vulnerable clients and servers and allows you to set the level of protection desired for the encryption oracle vulnerability."
+    rationale: "This setting is important to mitigate the CredSSP encryption oracle vulnerability, for which information was published by Microsoft on 03/13/2018 in CVE-2018-0886 | CredSSP Remote Code Execution Vulnerability. All versions of Windows from Windows Vista onwards are affected by this vulnerability, and will be compatible with this recommendation provided that they have been patched at least through May 2018 (or later)."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Force Updated Clients: Computer Configuration\\Policies\\Administrative Templates\\System\\Credentials Delegation\\Encryption Oracle Remediation"
+    compliance:
+      - cis: ["18.8.4.1"]
+      - cis_csc: ["16.4"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\CredSSP\Parameters -> AllowEncryptionOracle -> 1'
+
+  - id: 26225
+    title: "Ensure 'Remote host allows delegation of non-exportable credentials' is set to 'Enabled'"
+    description: "Remote host allows delegation of non-exportable credentials. When using credential delegation, devices provide an exportable version of credentials to the remote host. This exposes users to the risk of credential theft from attackers on the remote host. The Restricted Admin Mode and Windows Defender Remote Credential Guard features are two options to help protect against this risk. The recommended state for this setting is: Enabled."
+    rationale: "Restricted Admin Mode was designed to help protect administrator accounts by ensuring that reusable credentials are not stored in memory on remote devices that could potentially be compromised. Windows Defender Remote Credential Guard helps you protect your credentials over a Remote Desktop connection by redirecting Kerberos requests back to the device that is requesting the connection. Both features should be enabled and supported, as they reduce the chance of credential theft."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Credentials Delegation\\Remote host allows delegation of non-exportable credentials"
+    compliance:
+      - cis: ["18.8.4.2"]
+      - cis_csc: ["16"]
+      - pci_dss: ["8.2.1"]
+      - tsc: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CredentialsDelegation -> AllowProtectedCreds -> 1'
+
+  - id: 26226
+    title: "Ensure 'Turn On Virtualization Based Security' is set to 'Enabled'"
+    description: "This policy setting specifies whether Virtualization Based Security is enabled. Virtualization  Based Security uses the Windows Hypervisor to provide support for security services. The recommended state for this setting is: Enabled. Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot  enabled, which in turn requires that Windows was installed with a UEFI BIOS  configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual  machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be  exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows  Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using  Azure IaaS VMs."
+    rationale: "Kerberos, NTLM, and Credential manager isolate secrets by using virtualization-based  security. Previous versions of Windows stored secrets in the Local Security Authority  (LSA). Prior to Windows 10, the LSA stored secrets used by the operating system in its  process memory. With Windows Defender Credential Guard enabled, the LSA process in  the operating system talks to a new component called the isolated LSA process that stores  and protects those secrets. Data stored by the isolated LSA process is protected using  virtualization-based security and is not accessible to the rest of the operating system."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Device  Guard\\Turn On Virtualization Based Security Note: This Group Policy path may not exist by default. It is provided by the Group Policy  template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 RTM  (Release 1507) Administrative Templates (or newer). "
+    compliance:
+      - cis: ["18.8.5.1"]
+      - cis_csc: ["16.4"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> EnableVirtualizationBasedSecurity -> 1'
+
+  - id: 26227
+    title: "Ensure 'Turn On Virtualization Based Security: Select PlatformSecurity Level' is set to 'Secure Boot and DMA Protection'"
+    description: "This policy setting specifies whether Virtualization Based Security is enabled. Virtualization  Based Security uses the Windows Hypervisor to provide support for security services. The recommended state for this setting is: Secure Boot and DMA Protection. Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot  enabled, which in turn requires that Windows was installed with a UEFI BIOS  configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual  machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be  exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows  Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using  Azure IaaS VMs."
+    rationale: "Secure Boot can help reduce the risk of bootloader attacks and in conjunction with DMA  protections to help protect data from being scraped from memory."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Secure  Boot and DMA Protection: Computer Configuration\\Policies\\Administrative Templates\\System\\Device  Guard\\Turn On Virtualization Based Security: Select Platform Security Level Note: This Group Policy path may not exist by default. It is provided by the Group Policy  template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 RTM  (Release 1507) Administrative Templates (or newer). "
+    compliance:
+      - cis: ["18.8.5.2"]
+      - cis_csc: ["16.4"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> RequirePlatformSecurityFeatures -> 1'
+
+  - id: 26228
+    title: "Ensure 'Turn On Virtualization Based Security: Virtualization BasedProtection of Code Integrity' is set to 'Enabled with UEFI lock'"
+    description: "This setting enables virtualization based protection of Kernel Mode Code Integrity. When  this is enabled, kernel mode memory protections are enforced and the Code Integrity  validation path is protected by the Virtualization Based Security feature. The recommended state for this setting is: Enabled with UEFI lock. Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot  enabled, which in turn requires that Windows was installed with a UEFI BIOS  configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual  machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be  exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows  Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using  Azure IaaS VMs. "
+    rationale: "The Enabled with UEFI lock option ensures that Virtualization Based Protection of Code  Integrity cannot be disabled remotely.  "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled  with UEFI lock: Computer Configuration\\Policies\\Administrative Templates\\System\\Device  Guard\\Turn On Virtualization Based Security: Virtualization Based Protection  of Code Integrity Note: This Group Policy path may not exist by default. It is provided by the Group Policy  template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 RTM  (Release 1507) Administrative Templates (or newer). "
+    compliance:
+      - cis: ["18.8.5.3"]
+      - cis_csc: ["5.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> HypervisorEnforcedCodeIntegrity -> 1'
+
+  - id: 26229
+    title: "Ensure 'Turn On Virtualization Based Security: Require UEFIMemory Attributes Table' is set to 'True (checked)'"
+    description: "This option will only enable Virtualization Based Protection of Code Integrity on devices  with UEFI firmware support for the Memory Attributes Table. Devices without the UEFI  Memory Attributes Table may have firmware that is incompatible with Virtualization  Based Protection of Code Integrity which in some cases can lead to crashes or data loss or  incompatibility with certain plug-in cards. If not setting this option the targeted devices  should be tested to ensure compatibility. The recommended state for this setting is: True (checked). Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot  enabled, which in turn requires that Windows was installed with a UEFI BIOS  configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual  machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be  exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows  Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using  Azure IaaS VMs. "
+    rationale: "This setting will help protect this control from being enabled on a system that is not  compatible which could lead to a crash or data loss.  "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to TRUE: Computer Configuration\\Policies\\Administrative Templates\\System\\Device  Guard\\Turn On Virtualization Based Security: Require UEFI Memory Attributes  Table Note: This Group Policy path may not exist by default. It is provided by the Group Policy  template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 Release  1703 Administrative Templates (or newer). "
+    compliance:
+      - cis: ["18.8.5.4"]
+      - cis_csc: ["5.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> HVCIMATRequired -> 1'
+
+  - id: 26230
+    title: "Ensure 'Turn On Virtualization Based Security: Credential GuardConfiguration' is set to 'Enabled with UEFI lock'"
+    description: "This setting lets users turn on Credential Guard with virtualization-based security to help  protect credentials. The Enabled with UEFI lock option ensures that Credential Guard  cannot be disabled remotely. In order to disable the feature, you must set the Group Policy  to Disabled as well as remove the security functionality from each computer, with a  physically present user, in order to clear configuration persisted in UEFI. The recommended state for this setting is: Enabled with UEFI lock. Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot  enabled, which in turn requires that Windows was installed with a UEFI BIOS  configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual  machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be  exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows  Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using  Azure IaaS VMs."
+    rationale: "The Enabled with UEFI lock option ensures that Credential Guard cannot be disabled  remotely.  "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled  with UEFI lock: Computer Configuration\\Policies\\Administrative Templates\\System\\Device  Guard\\Turn On Virtualization Based Security: Credential Guard Configuration Note: This Group Policy path may not exist by default. It is provided by the Group Policy  template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 Release  1511 Administrative Templates (or newer). "
+    compliance:
+      - cis: ["18.8.5.5"]
+      - cis_csc: ["9.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> LsaCfgFlags -> 1'
+
+  - id: 26230
+    title: "Ensure 'Turn On Virtualization Based Security: Credential Guard Configuration' is set to 'Disabled' (DC Only)"
+    description: "This setting lets users turn on Credential Guard with virtualization-based security to help  protect credentials. The recommended state for this setting is: Disabled on Domain Controllers."
+    rationale: "Credential Guard is not useful on Domain Controllers and can cause crashes on them."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Device  Guard\\Turn On Virtualization Based Security: Credential Guard Configuration"
+    compliance:
+      - cis: ["18.8.5.6"]
+      - cis_csc: ["10.5"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard: -> LsaCfgFlags -> 0'
+
+  - id: 26231
+    title: "Ensure 'Turn On Virtualization Based Security: Secure Launch Configuration' is set to 'Enabled'"
+    description: "Secure Launch protects the Virtualization Based Security environment from exploited vulnerabilities in device firmware. The recommended state for this setting is: Enabled ."
+    rationale: "Restricted Admin Mode was designed to help protect administrator accounts by ensuring that reusable credentials are not stored in memory on remote devices that could potentially be compromised. Windows Defender Remote Credential Guard helps you protect your credentials over a Remote Desktop connection by redirecting Kerberos requests back to the device that is requesting the connection. Both features should be enabled and supported, as they reduce the chance of credential theft."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Device Guard\\Turn On Virtualization Based Security: Secure Launch Configuration"
+    compliance:
+      - cis: ["18.8.5.7"]
+      - cis_csc: ["16.14"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1","CC6.7","CC7.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> ConfigureSystemGuardLaunch -> 1'
+
+  - id: 26232
+    title: "Ensure 'Prevent device metadata retrieval from the Internet' is set to 'Enabled'"
+    description: "This policy setting allows you to prevent Windows from retrieving device metadata from the Internet."
+    rationale: "Installation of software should be conducted by an authorized system administrator and not a standard user. Allowing automatic 3rd-party software installations under the context of the SYSTEM account has potential for allowing unauthorized access via backdoors or installation software bugs."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Device Installation\\Prevent device metadata retrieval from the Internet"
+    compliance:
+      - cis: ["18.8.7.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceMetadata -> PreventDeviceMetadataFromNetwork -> 1'
+
+  - id: 26233
+    title: "Ensure 'Boot-Start Driver Initialization Policy' is set to 'Enabled: Good, unknown and bad but critical'"
+    description: "This policy setting allows you to specify which boot-start drivers are initialized based on a classification determined by an Early Launch Antimalware boot-start driver. The Early Launch Antimalware boot-start driver can return the following classifications for each boot-start driver: - Good: The driver has been signed and has not been tampered with. - Bad: The driver has been identified as malware. It is recommended that you do not allow known bad drivers to be initialized. - Bad, but required for boot: The driver has been identified as malware, but the computer cannot successfully boot without loading this driver. - Unknown: This driver has not been attested to by your malware detection application and has not been classified by the Early Launch Antimalware boot-start driver. If you enable this policy setting you will be able to choose which boot-start drivers to initialize the next time the computer is started. If your malware detection application does not include an Early Launch Antimalware bootstart driver or if your Early Launch Antimalware boot-start driver has been disabled, this setting has no effect and all boot-start drivers are initialized. The recommended state for this setting is: Enabled: Good, unknown and bad but critical."
+    rationale: "This policy setting helps reduce the impact of malware that has already infected your system."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Good, unknown and bad but critical: Computer Configuration\\Policies\\Administrative Templates\\System\\Early Launch Antimalware\\Boot-Start Driver Initialization Policy"
+    compliance:
+      - cis: ["18.8.14.1"]
+      - cis_csc: ["8"]
+      - pci_dss: ["5.1.1"]
+      - nist_800_53: ["SI.3"]
+      - tsc: ["CC6.8"]
+    references:
+      - 'CCE-33231-2'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Policies\EarlyLaunch -> DriverLoadPolicy -> 3'
+
+  - id: 26234
+    title: "Ensure 'Configure registry policy processing: Do not apply during periodic background processing' is set to 'Enabled: FALSE'"
+    description: "The \"Do not apply during periodic background processing\" option prevents the system from updating affected policies in the background while the computer is in use. When background updates are disabled, policy changes will not take effect until the next user logon or system restart."
+    rationale: "Setting this option to false (unchecked) will ensure that domain policy changes take effect more quickly, as compared to waiting until the next user logon or system restart."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled, then set the Do not apply during periodic background processing option to FALSE (unchecked): Computer Configuration\\Policies\\Administrative Templates\\System\\Group Policy\\Configure registry policy processing"
+    compliance:
+      - cis: ["18.8.21.2"]
+      - cis_csc: ["3.7", "5.4", "5.5"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+      - tsc: ["CC5.2"]
+    references:
+      - 'CCE-35384-7'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Group Policy\{35378EAC-683F-11D2-A89A-00C04FBBCFA2} -> NoBackgroundPolicy -> 0'
+
+  - id: 26235
+    title: "Ensure 'Configure registry policy processing: Process even if the Group Policy objects have not changed' is set to 'Enabled: TRUE'"
+    description: "The \"Process even if the Group Policy objects have not changed\" option updates and reapplies policies even if the policies have not changed."
+    rationale: "Setting this option to true (checked) will ensure unauthorized changes that might have been configured locally are forced to match the domain-based Group Policy settings again."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled, then set the Process even if the Group Policy objects have not changed option to TRUE (checked): Computer Configuration\\Policies\\Administrative Templates\\System\\Group Policy\\Configure registry policy processing"
+    compliance:
+      - cis: ["18.8.21.3"]
+      - cis_csc: ["3.7", "5.4", "5.5"]
+      - pci_dss: ["11.5.1"]
+      - tsc: ["PI1.4","PI1.5","CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
+    references:
+      - 'CCE-35384-7'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Group Policy\{35378EAC-683F-11D2-A89A-00C04FBBCFA2} -> NoGPOListChanges -> 0'
+
+  - id: 26236
+    title: "Ensure 'Continue experiences on this device' is set to 'Disabled'"
+    description: "This policy setting determines whether the Windows device is allowed to participate in cross-device experiences (continue experiences)."
+    rationale: "A cross-device experience is when a system can access app and send messages to other devices. In an enterprise managed environment only trusted systems should be communicating within the network. Access to any other system should be prohibited."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Group Policy\\Continue experiences on this device"
+    compliance:
+      - cis: ["18.8.21.4"]
+      - cis_csc: ["9.1", "9.2"]
+      - pci_dss: ["7.1"]
+      - tsc: ["CC6.4"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> EnableCdp -> 0'
+
+  - id: 26237
+    title: "Ensure 'Turn off background refresh of Group Policy' is set to 'Disabled'"
+    description: "This policy setting prevents Group Policy from being updated while the computer is in use. This policy setting applies to Group Policy for computers, users and Domain Controllers."
+    rationale: "This setting ensures that group policy changes take effect more quickly, as compared to waiting until the next user logon or system restart."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Group Policy\\Turn off background refresh of Group Policy"
+    compliance:
+      - cis: ["18.8.21.5"]
+      - cis_csc: ["3.7", "5.4", "5.5"]
+    references:
+      - 'CCE-35776-4'
+    condition: all
+    rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> DisableBkGndGroupPolicy'
+
+
+  - id: 26239
+    title: "Ensure 'Turn off downloading of print drivers over HTTP' is set to 'Enabled'"
+    description: "This policy setting specifies whether to use the Store service for finding an application to open a file with an unhandled file type or protocol association. When a user opens a file type or protocol that is not associated with any applications on the computer, the user is given the choice to select a local application or use the Store service to find an application."
+    rationale: "The Store service is a retail outlet built into Windows, primarily for consumer use. In an enterprise managed environment the IT department should be managing the installation of all applications to reduce the risk of the installation of vulnerable software."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off access to the Store"
+    compliance:
+      - cis: ["18.8.22.1.1"]
+      - cis_csc: ["2"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+      - tsc: ["CC5.2"]
+    references:
+      - 'CCE-35781-4'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Printers -> DisableWebPnPDownload -> 1'
+
+  - id: 26240
+    title: "Ensure 'Turn off handwriting personalization data sharing' is set to 'Enabled'"
+    description: "This setting turns off data sharing from the handwriting recognition personalization tool. The handwriting recognition personalization tool enables Tablet PC users to adapt handwriting recognition to their own writing style by providing writing samples. The tool can optionally share user writing samples with Microsoft to improve handwriting recognition in future versions of Windows. The tool generates reports and transmits them to Microsoft over a secure connection. The recommended state for this setting is: Enabled."
+    rationale: "A person's handwriting is Personally Identifiable Information (PII), especially when it comes to your signature. As such, it is unacceptable in many environments to automatically upload PII to a website without explicit approval by the user."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off handwriting personalization data sharing Note: This Group Policy path may not exist by default. It is provided by the Group Policy template ShapeCollector.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.8.22.1.2"]
+      - cis_csc: ["13"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-32945-8'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\TabletPC -> PreventHandwritingDataSharing -> 1'
+
+  - id: 26241
+    title: "Ensure 'Turn off handwriting recognition error reporting' is set to 'Enabled'"
+    description: "Turns off the handwriting recognition error reporting tool. The handwriting recognition error reporting tool enables users to report errors encountered in Tablet PC Input Panel. The tool generates error reports and transmits them to Microsoft over a secure connection. Microsoft uses these error reports to improve handwriting recognition in future versions of Windows. The recommended state for this setting is: Enabled."
+    rationale: "A person's handwriting is Personally Identifiable Information (PII), especially when it comes to your signature. As such, it is unacceptable in many environments to automatically upload PII to a website without explicit approval by the user."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off handwriting recognition error reporting. Note: This Group Policy path is provided by the Group Policy template InkWatson.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
+    compliance:
+      - cis: ["18.8.22.1.3"]
+      - cis_csc: ["13"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-35784-8'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\HandwritingErrorReports -> PreventHandwritingErrorReports -> 1'
+
+  - id: 26242
+    title: "Ensure 'Turn off Internet Connection Wizard if URL connection is referring to Microsoft.com' is set to 'Enabled'"
+    description: "This policy setting specifies whether the Internet Connection Wizard can connect to Microsoft to download a list of Internet Service Providers (ISPs). The recommended state for this setting is: Enabled."
+    rationale: "In an enterprise managed environment we want to lower the risk of a user unknowingly exposing sensitive data."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off Internet Connection Wizard if URL connection is referring to Microsoft.com. Note: This Group Policy path is provided by the Group Policy template ICM.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
+    compliance:
+      - cis: ["18.8.22.1.4"]
+      - cis_csc: ["13"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-33153-8'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Internet Connection Wizard -> ExitOnMSICW -> 1'
+
+  - id: 26243
+    title: "Ensure 'Turn off Internet download for Web publishing and online ordering wizards' is set to 'Enabled' "
+    description: "This policy setting controls whether Windows will download a list of providers for the Web publishing and online ordering wizards."
+    rationale: "Although the risk is minimal, enabling this setting will reduce the possibility of a user unknowingly downloading malicious content through this feature."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off Internet download for Web publishing and online ordering wizards"
+    compliance:
+      - cis: ["18.8.22.1.5"]
+      - cis_csc: ["7.4"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoWebServices -> 1'
+
+  - id: 26244
+    title: "Ensure 'Turn off printing over HTTP' is set to 'Enabled'"
+    description: "This policy setting allows you to disable the client computer's ability to print over HTTP, which allows the computer to print to printers on the intranet as well as the Internet."
+    rationale: "Information that is transmitted over HTTP through this capability is not protected and can be intercepted by malicious users. For this reason, it is not often used in enterprise managed environments."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off printing over HTTP"
+    compliance:
+      - cis: ["18.8.22.1.6"]
+      - cis_csc: ["13.1"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-33783-2'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Printers -> DisableHTTPPrinting -> 1'
+
+  - id: 26245
+    title: "Ensure 'Turn off Registration if URL connection is referring to Microsoft.com' is set to 'Enabled'"
+    description: "This policy setting specifies whether the Windows Registration Wizard connects to Microsoft.com for online registration. The recommended state for this setting is: Enabled."
+    rationale: "Users in an enterprise managed environment should not be registering their own copies of Windows, providing their own PII in the process."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off Registration if URL connection is referring to Microsoft.com. Note: This Group Policy path is provided by the Group Policy template ICM.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
+    compliance:
+      - cis: ["18.8.22.1.7"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-33216-3'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Registration Wizard Control -> NoRegistration -> 1'
+
+  - id: 26246
+    title: "Ensure 'Turn off Search Companion content file updates' is set to 'Enabled'"
+    description: "This policy setting specifies whether Search Companion should automatically download content updates during local and Internet searches. The recommended state for this setting is: Enabled."
+    rationale: "There is a small risk that users will unknowingly reveal sensitive information because of the topics they are searching for. This risk is very low because even if this setting is enabled users still must submit search queries to the desired search engine in order to perform searches."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off Search Companion content file updates. Note: This Group Policy path is provided by the Group Policy template ICM.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
+    compliance:
+      - cis: ["18.8.22.1.8"]
+      - cis_csc: ["13"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-33817-8'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\SearchCompanion -> DisableContentFileUpdates -> 1'
+
+  - id: 26247
+    title: "Ensure 'Turn off the \"Order Prints\" picture task' is set to 'Enabled'"
+    description: "This policy setting specifies whether the \"Order Prints Online\" task is available from Picture Tasks in Windows folders. The Order Prints Online Wizard is used to download a list of providers and allow users to order prints online. The recommended state for this setting is: Enabled."
+    rationale: "In an enterprise managed environment we want to lower the risk of a user unknowingly exposing sensitive data."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off the \"Order Prints\" picture task. Note: This Group Policy path is provided by the Group Policy template ICM.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
+    compliance:
+      - cis: ["18.8.22.1.9"]
+      - cis_csc: ["13"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-34061-2'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoOnlinePrintsWizard -> 1'
+
+  - id: 26248
+    title: "Ensure 'Turn off the \"Publish to Web\" task for files and folders' is set to 'Enabled'"
+    description: "This policy setting specifies whether the tasks Publish this file to the Web, Publish this folder to the Web, and Publish the selected items to the Web are available from File and Folder Tasks in Windows folders. The Web Publishing wizard is used to download a list of providers and allow users to publish content to the Web. The recommended state for this setting is: Enabled."
+    rationale: "Users may publish confidential or sensitive information to a public service outside of the control of the organization."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off the \"Publish to Web\" task for files and folders Note: This Group Policy path is provided by the Group Policy template ICM.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
+    compliance:
+      - cis: ["18.8.22.1.10"]
+      - cis_csc: ["13"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-33246-0'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoPublishingWizard -> 1'
+
+  - id: 26249
+    title: "Ensure 'Turn off the Windows Messenger Customer Experience Improvement Program' is set to 'Enabled'"
+    description: "This policy setting specifies whether Windows Messenger can collect anonymous information about how the Windows Messenger software and service is used. Microsoft uses information collected through the Customer Experience Improvement Program to detect software flaws so that they can be corrected more quickly, enabling this setting will reduce the amount of data Microsoft is able to gather for this purpose. The recommended state for this setting is: Enabled."
+    rationale: "Large enterprise managed environments may not want to have information collected by Microsoft from managed client computers."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off the Windows Messenger Customer Experience Improvement Program. Note: This Group Policy path is provided by the Group Policy template ICM.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
+    compliance:
+      - cis: ["18.8.22.1.11"]
+      - cis_csc: ["13"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-33957-2'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Messenger\Client -> CEIP -> 2'
+
+  - id: 26250
+    title: "Ensure 'Turn off Windows Customer Experience Improvement Program' is set to 'Enabled'"
+    description: "This policy setting specifies whether Windows Messenger can collect anonymous information about how the Windows Messenger software and service is used. Microsoft uses information collected through the Windows Customer Experience Improvement Program to detect software flaws so that they can be corrected more quickly, enabling this setting will reduce the amount of data Microsoft is able to gather for this purpose. The recommended state for this setting is: Enabled."
+    rationale: "Large enterprise managed environments may not want to have information collected by Microsoft from managed client computers."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off Windows Customer Experience Improvement Program. Note: This Group Policy path is provided by the Group Policy template ICM.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
+    compliance:
+      - cis: ["18.8.22.1.12"]
+      - cis_csc: ["13"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-33255-1'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\SQMClient\Windows -> CEIPEnable -> 0'
+
+  - id: 26251
+    title: "Ensure 'Turn off Windows Error Reporting' is set to 'Enabled'"
+    description: "This policy setting controls whether or not errors are reported to Microsoft. Error Reporting is used to report information about a system or application that has failed or has stopped responding and is used to improve the quality of the product. The recommended state for this setting is: Enabled."
+    rationale: "If a Windows Error occurs in a secure, enterprise managed environment, the error should be reported directly to IT staff for troubleshooting and remediation. There is no benefit to the corporation to report these errors directly to Microsoft, and there is some risk of unknowingly exposing sensitive data as part of the error."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off Windows Error Reporting. Note: This Group Policy path is provided by the Group Policy template ICM.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
+    compliance:
+      - cis: ["18.8.22.1.13"]
+      - cis_csc: ["13"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-34260-0'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting -> Disabled -> 1'
+
+  - id: 26252
+    title: "Ensure 'Support device authentication using certificate' is set to 'Enabled: Automatic'"
+    description: "This policy setting allows you to set support for Kerberos to attempt authentication using the certificate for the device to the domain. Support for device authentication using certificate will require connectivity to a DC in the device account domain which supports certificate authentication for computer accounts. The recommended state for this setting is: Enabled: Automatic."
+    rationale: "Having stronger device authentication with the use of certificates is strongly encouraged over standard username and password authentication. Having this set to Automatic will allow certificate based authentication to be used whenever possible."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Automatic: Computer Configuration\\Policies\\Administrative Templates\\System\\Kerberos\\Support device authentication using certificate. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Kerberos.admx/adml that is included with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.8.25.1"]
+      - cis_csc: ["1.6", "1.8"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1","CC6.7","CC7.2"]
+    references:
+      - 'CCE-41396-3'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\kerberos\parameters -> DevicePKInitBehavior -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\kerberos\parameters -> DevicePKInitEnabled -> 1'
+
+  - id: 26253
+    title: "Ensure 'Enumeration policy for external devices incompatible with Kernel DMA Protection' is set to 'Enabled: Block All'"
+    description: "This policy is intended to provide additional security against external DMA-capable devices. It allows for more control over the enumeration of external DMA-capable devices that are not compatible with DMA Remapping/device memory isolation and sandboxing. The recommended state for this setting is: Enabled: Block All ."
+    rationale: "Device memory sandboxing allows the OS to leverage the I/O Memory Management Unit (IOMMU) of a device to block unpermitted I/O, or memory access, by the peripheral."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Block All: Computer Configuration\\Policies\\Administrative Templates\\System\\Kernel DMA Protection\\Enumeration policy for external devices incompatible with Kernel DMA Protection"
+    compliance:
+      - cis: ["18.8.26.1"]
+      - cis_csc: ["13.1"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-33783-2'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Kernel DMA Protection -> DeviceEnumerationPolicy -> 0'
+
+  - id: 26254
+    title: "Ensure 'Disallow copying of user input methods to the system account for sign-in' is set to 'Enabled'"
+    description: "This policy prevents automatic copying of user input methods to the system account for use on the sign-in screen. The user is restricted to the set of input methods that are enabled in the system account. The recommended state for this setting is: Enabled."
+    rationale: "This is a way to increase the security of the system account."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Locale Services\\Disallow copying of user input methods to the system account for sign-in Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Globalization.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.8.27.1"]
+      - cis_csc: ["16.5", "16.11"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-35101-5'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Control Panel\International -> BlockUserInputMethodsForSignIn -> 1'
+
+  - id: 26255
+    title: "Ensure 'Block user from showing account details on sign-in' is set to 'Enabled'"
+    description: "This policy prevents the user from showing account details (email address or user name) on the sign-in screen."
+    rationale: "An attacker with access to the console (for example, someone with physical access or someone who is able to connect to the workstation through Remote Desktop Services) could view the name of the last user who logged on to the server. The attacker could then try to guess the password, use a dictionary, or use a brute-force attack to try and log on."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Logon\\Block user from showing account details on sign-in"
+    compliance:
+      - cis: ["18.8.28.1"]
+      - cis_csc: ["16.5"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> BlockUserFromShowingAccountDetailsOnSignin -> 1'
+
+  - id: 26256
+    title: "Ensure 'Do not display network selection UI' is set to 'Enabled'"
+    description: "This policy setting allows you to control whether anyone can interact with available networks UI on the logon screen."
+    rationale: "An unauthorized user could disconnect the PC from the network or can connect the PC to other available networks without signing into Windows."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Logon\\Do not display network selection UI"
+    compliance:
+      - cis: ["18.8.28.2"]
+      - cis_csc: ["5"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-33822-8'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> DontDisplayNetworkSelectionUI -> 1'
+
+  - id: 26257
+    title: "Ensure 'Do not enumerate connected users on domain-joined computers' is set to 'Enabled'"
+    description: "This policy setting prevents connected users from being enumerated on domain-joined computers."
+    rationale: "A malicious user could use this feature to gather account names of other users, that information could then be used in conjunction with other types of attacks such as guessing passwords or social engineering. The value of this countermeasure is small because a user with domain credentials could gather the same account information using other methods."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Logon\\Do not enumerate connected users on domain-joined computers"
+    compliance:
+      - cis: ["18.8.28.3"]
+      - cis_csc: ["16.9"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-35207-0'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> DontEnumerateConnectedUsers -> 1'
+
+  - id: 26258
+    title: "Ensure 'Enumerate local users on domain-joined computers' is set to 'Disabled'"
+    description: "This policy setting allows local users to be enumerated on domain-joined computers."
+    rationale: "A malicious user could use this feature to gather account names of other users, that information could then be used in conjunction with other types of attacks such as guessing passwords or social engineering. The value of this countermeasure is small because a user with domain credentials could gather the same account information using other methods."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Logon\\Enumerate local users on domain-joined computers"
+    compliance:
+      - cis: ["18.8.28.4"]
+      - cis_csc: ["16.9"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-34838-3'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> EnumerateLocalUsers -> 0'
+
+  - id: 26259
+    title: "Ensure 'Turn off app notifications on the lock screen' is set to 'Enabled'"
+    description: "This policy setting allows you to prevent app notifications from appearing on the lock screen."
+    rationale: "App notifications might display sensitive business or personal data."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Logon\\Turn off app notifications on the lock screen"
+    compliance:
+      - cis: ["18.8.28.5"]
+      - cis_csc: ["16.5"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-34837-5'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> DisableLockScreenAppNotifications -> 1'
+
+  - id: 26260
+    title: "Ensure 'Turn off picture password sign-in' is set to 'Enabled'"
+    description: "This policy setting allows you to control whether a domain user can sign in using a picture password. The recommended state for this setting is: Enabled."
+    rationale: "Picture passwords bypass the requirement for a typed complex password. In a shared work environment, a simple shoulder surf where someone observed the on-screen gestures would allow that person to gain access to the system without the need to know the complex password. Vertical monitor screens with an image are much more visible at a distance than horizontal key strokes, increasing the likelihood of a successful observation of the mouse gestures."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Logon\\Turn off picture password sign-in"
+    compliance:
+      - cis: ["18.8.28.6"]
+      - cis_csc: ["16.5"]
+      - pci_dss: ["8.2"]
+      - tsc: ["CC6.1"]
+    references:
+      - 'CCE-35291-4'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> BlockDomainPicturePassword -> 1'
+
+  - id: 26261
+    title: "Ensure 'Turn on convenience PIN sign-in' is set to 'Disabled'"
+    description: "This policy setting allows you to control whether a domain user can sign in using a convenience PIN. In Windows 10, convenience PIN was replaced with Passport, which has stronger security properties. To configure Passport for domain users, use the policies under Computer Configuration\\Administrative Templates\\Windows Components\\Microsoft Passport for Work."
+    rationale: "A PIN is created from a much smaller selection of characters than a password, so in most cases a PIN will be much less robust than a password."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Logon\\Turn on convenience PIN sign-in"
+    compliance:
+      - cis: ["18.8.28.7"]
+      - cis_csc: ["16.5"]
+      - pci_dss: ["8.2"]
+      - tsc: ["CC6.1"]
+    references:
+      - 'CCE-35095-9'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> AllowDomainPINLogon -> 0'
+
+  - id: 26262
+    title: "Ensure 'Allow Clipboard synchronization across devices' is set to 'Disabled'"
+    description: "This policy setting determines whether published User Activities can be uploaded to the cloud. The recommended state for this setting is: Disabled ."
+    rationale: "In high security environments, clipboard data should stay local to the system and not synced across devices, as it may contain very sensitive information that must be contained locally."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\OS Policies\\Allow Clipboard synchronization across devices"
+    compliance:
+      - cis: ["18.8.31.1"]
+      - cis_csc: ["5.1","13.5"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-34972-0'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> AllowCrossDeviceClipboard -> 0'
+
+  - id: 26263
+    title: "Ensure 'Allow upload of User Activities' is set to 'Disabled'"
+    description: "This policy setting determines whether published User Activities can be uploaded to the cloud. The recommended state for this setting is: Disabled ."
+    rationale: "Due to privacy concerns, data should never be sent to any 3rd party since this data could contain sensitive information."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled : Computer Configuration\\Policies\\Administrative Templates\\System\\OS Policies\\Allow upload of User Activities"
+    compliance:
+      - cis: ["18.8.31.2"]
+      - cis_csc: ["5.1","13.5"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> UploadUserActivities -> 0'
+
+  - id: 26264
+    title: "Ensure 'Allow network connectivity during connected-standby (on battery)' is set to 'Disabled'"
+    description: "This policy setting allows you to control the network connectivity state in standby on modern standby-capable systems."
+    rationale: "Disabling this setting ensures that the computer will not be accessible to attackers over a WLAN network while left unattended, on battery and in a sleep state."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Power Management\\Sleep Settings\\Allow network connectivity during connected-standby (on battery)"
+    compliance:
+      - cis: ["18.8.34.6.1"]
+      - cis_csc: ["9"]
+      - pci_dss: ["8.2"]
+      - tsc: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\f15576e8-98b7-4186-b944-eafa664402d9 -> DCSettingIndex -> 0'
+
+  - id: 26265
+    title: "Ensure 'Allow network connectivity during connected-standby (plugged in)' is set to 'Disabled'"
+    description: "This policy setting allows you to control the network connectivity state in standby on modern standby-capable systems."
+    rationale: "Disabling this setting ensures that the computer will not be accessible to attackers over a WLAN network while left unattended, plugged in and in a sleep state."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Power Management\\Sleep Settings\\Allow network connectivity during connected-standby (plugged in)"
+    compliance:
+      - cis: ["18.8.34.6.2"]
+      - cis_csc: ["9"]
+      - pci_dss: ["8.2"]
+      - tsc: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\f15576e8-98b7-4186-b944-eafa664402d9 -> ACSettingIndex -> 0'
+
+  - id: 26266
+    title: "Ensure 'Require a password when a computer wakes (on battery)' is set to 'Enabled'"
+    description: "Dictates whether or not Windows is allowed to use standby states when sleeping the computer."
+    rationale: "System sleep states (S1-S3) keep power to the RAM which may contain secrets, such as the BitLocker volume encryption key. An attacker finding a computer in sleep states (S1-S3) could directly attack the memory of the computer and gain access to the secrets through techniques such as RAM reminisce and direct memory access (DMA)."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Power Management\\Sleep Settings\\Allow standby states (S1-S3) when sleeping (on battery)"
+    compliance:
+      - cis: ["18.8.34.6.3"]
+      - cis_csc: ["13.2", "13.6"]
+      - pci_dss: ["8.2"]
+      - tsc: ["CC6.1"]
+    references:
+      - 'CCE-33782-4'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\0e796bdb-100d-47d6-a2d5-f7d2daa51f51 -> DCSettingIndex -> 1'
+
+  - id: 26267
+    title: "Ensure 'Require a password when a computer wakes (plugged in)' is set to 'Enabled'"
+    description: "Specifies whether or not the user is prompted for a password when the system resumes from sleep."
+    rationale: "Enabling this setting ensures that anyone who wakes an unattended computer from sleep state will have to provide logon credentials before they can access the system."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Power Management\\Sleep Settings\\Require a password when a computer wakes (plugged in)"
+    compliance:
+      - cis: ["18.8.34.6.4"]
+      - cis_csc: ["16.5"]
+      - pci_dss: ["8.2"]
+      - tsc: ["CC6.1"]
+    references:
+      - 'CCE-35462-1'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\0e796bdb-100d-47d6-a2d5-f7d2daa51f51 -> ACSettingIndex -> 1'
+
+  - id: 26268
+    title: "Ensure 'Configure Offer Remote Assistance' is set to 'Disabled'"
+    description: "This policy setting allows you to turn on or turn off Offer (Unsolicited) Remote Assistance on this computer. Help desk and support personnel will not be able to proactively offer assistance, although they can still respond to user assistance requests."
+    rationale: "A user might be tricked and accept an unsolicited Remote Assistance offer from a malicious user."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Remote Assistance\\Configure Offer Remote Assistance"
+    compliance:
+      - cis: ["18.8.36.1"]
+      - cis_csc: ["9.1", "9.2"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-33801-2'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fAllowUnsolicited -> 0'
+
+  - id: 26269
+    title: "Ensure 'Configure Solicited Remote Assistance' is set to 'Disabled'"
+    description: "This policy setting allows you to turn on or turn off Solicited (Ask for) Remote Assistance on this computer."
+    rationale: "There is slight risk that a rogue administrator will gain access to another user's desktop session, however, they cannot connect to a user's computer unannounced or control it without permission from the user. When an expert tries to connect, the user can still choose to deny the connection or give the expert view-only privileges. The user must explicitly click the Yes button to allow the expert to remotely control the workstation."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Remote Assistance\\Configure Solicited Remote Assistance"
+    compliance:
+      - cis: ["18.8.36.2"]
+      - cis_csc: ["5.1"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-35331-8'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fAllowToGetHelp -> 0'
+
+  - id: 26270
+    title: "Ensure 'Enable RPC Endpoint Mapper Client Authentication' is set to 'Enabled'"
+    description: "This policy setting controls whether RPC clients authenticate with the Endpoint Mapper Service when the call they are making contains authentication information. The Endpoint Mapper Service on computers running Windows NT4 (all service packs) cannot process authentication information supplied in this manner. This policy setting can cause a specific issue with 1-way forest trusts if it is applied to the trusting domain DCs (see Microsoft KB3073942), so we do not recommend applying it to Domain Controllers."
+    rationale: "Anonymous access to RPC services could result in accidental disclosure of information to unauthenticated users."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Remote Procedure Call\\Enable RPC Endpoint Mapper Client Authentication"
+    compliance:
+      - cis: ["18.8.37.1"]
+      - cis_csc: ["9.1", "9.2"]
+      - pci_dss: ["2.2.3"]
+      - nist_800_53: ["CM.1"]
+      - gpg_13: ["4.3"]
+      - gdpr_IV: ["35.7.d"]
+      - hipaa: ["164.312.b"]
+      - tsc: ["CC5.2"]
+    references:
+      - 'CCE-35392-0'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Rpc -> EnableAuthEpResolution -> 1'
+
+  - id: 26271
+    title: "Ensure 'Restrict Unauthenticated RPC clients' is set to 'Enabled: Authenticated'"
+    description: "This policy setting controls how the RPC server runtime handles unauthenticated RPC clients connecting to RPC servers. This policy setting impacts all RPC applications. In a domain environment this policy setting should be used with caution as it can impact a wide range of functionality including group policy processing itself. Reverting a change to this policy setting can require manual intervention on each affected machine. This policy setting should never be applied to a Domain Controller. A client will be considered an authenticated client if it uses a named pipe to communicate with the server or if it uses RPC Security. RPC Interfaces that have specifically requested to be accessible by unauthenticated clients may be exempt from this restriction, depending on the selected value for this policy setting. -- None allows all RPC clients to connect to RPC Servers running on the machine on which the policy setting is applied. -- Authenticated allows only authenticated RPC Clients (per the definition above) to connect to RPC Servers running on the machine on which the policy setting is applied. Exemptions are granted to interfaces that have requested them. -- Authenticated without exceptions allows only authenticated RPC Clients (per the definition above) to connect to RPC Servers running on the machine on which the policy setting is applied. No exceptions are allowed. This value has the potential to cause serious problems and is not recommended.'"
+    rationale: "Unauthenticated RPC communication can create a security vulnerability."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Authenticated: Computer Configuration\\Policies\\Administrative Templates\\System\\Remote Procedure Call\\Restrict Unauthenticated RPC clients"
+    compliance:
+      - cis: ["18.8.37.2"]
+      - cis_csc: ["9.1", "9.2"]
+      - pci_dss: ["2.2.3"]
+      - nist_800_53: ["CM.1"]
+      - gpg_13: ["4.3"]
+      - gdpr_IV: ["35.7.d"]
+      - hipaa: ["164.312.b"]
+      - tsc: ["CC5.2"]
+    references:
+      - 'CCE-35391-2'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Rpc -> RestrictRemoteClients -> 1'
+
+  - id: 26271
+    title: "Ensure 'Configure validation of ROCA-vulnerable WHfB keys during authentication' is set to 'Enabled: Audit' or higher (DC only)"
+    description: "This policy setting allows you to configure how Domain Controllers handle Windows Hello  for Business (WHfB) keys that are vulnerable to the 'Return of Coppersmith´s attack'  (ROCA) vulnerability. If this policy setting is enabled the following options are supported: Ignore: during authentication the domain controller will not probe any WHfB keys for the  ROCA vulnerability. Audit: during authentication the domain controller will emit audit events for WHfB keys  that are subject to the ROCA vulnerability (authentications will still succeed). Block: during authentication the domain controller will block the use of WHfB keys that  are subject to the ROCA vulnerability (authentications will fail). The recommended state for this setting is: Enabled: Audit. Configuring this setting to  Enabled: Block: also conforms to the benchmark."
+    rationale: "The 'Return of Coppersmith´s attack' or ROCA vulnerability is a cryptographic weakness in  a widely used cryptographic library. An attacker can reveal secret keys (offline with no  physical access to the affected device) on certified devices using this library."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled:  Audit (configuring to Enabled: Block also conforms to the benchmark): Computer Configuration\\Policies\\Administrative Templates\\System\\Security  Account Manager\\Configure validation of ROCA-vulnerable WHfB keys during  authentication"
+    compliance:
+      - cis: ["18.8.40.1"]
+      - cis_csc: ["10.5"]
+    condition: all
+    rules:
+      - 'HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\SAM -> SamNGCKeyROCAValidation -> n:(\d+) compare >= 1'
+
+  - id: 26272
+    title: "Ensure 'Microsoft Support Diagnostic Tool: Turn on MSDT interactive communication with support provider' is set to 'Disabled'"
+    description: "This policy setting configures Microsoft Support Diagnostic Tool (MSDT) interactive communication with the support provider. MSDT gathers diagnostic data for analysis by support professionals. The recommended state for this setting is: Disabled."
+    rationale: "Due to privacy concerns, data should never be sent to any 3rd party since this data could contain sensitive information."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Troubleshooting and Diagnostics\\Microsoft Support Diagnostic Tool\\Microsoft Support Diagnostic Tool: Turn on MSDT interactive communication with support provider. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template MSDT.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.8.48.5.1"]
+      - cis_csc: ["13"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\ScriptedDiagnosticsProvider\Policy -> DisableQueryRemoteServer -> 0'
+
+  - id: 26273
+    title: "Ensure 'Enable/Disable PerfTrack' is set to 'Disabled'"
+    description: "This policy setting specifies whether to enable or disable tracking of responsiveness events. The recommended state for this setting is: Disabled."
+    rationale: "When enabled the aggregated data of a given event will be transmitted to Microsoft. The option exists to restrict this feature for a specific user, set the consent level, and designate specific programs for which error reports could be sent. However, centrally restricting the ability to execute PerfTrack to limit the potential for unauthorized or undesired usage, data leakage, or unintentional communications is highly recommended."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Troubleshooting and Diagnostics\\Windows Performance PerfTrack\\Enable/Disable PerfTrack. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template PerformancePerftrack.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.8.48.11.1"]
+      - cis_csc: ["13"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-33662-8'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WDI\{9c5a40da-b965-4fc3-8781-88dd50a6299d} -> ScenarioExecutionEnabled -> 0'
+
+  - id: 26274
+    title: "Ensure 'Turn off the advertising ID' is set to 'Enabled'"
+    description: "This policy setting turns off the advertising ID, preventing apps from using the ID for experiences across apps. The recommended state for this setting is: Enabled."
+    rationale: "Tracking user activity for advertising purposes, even anonymously, may be a privacy concern. In an enterprise managed environment, applications should not need or require tracking for targeted advertising."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\User Profiles\\Turn off the advertising ID Note: This Group Policy path may not exist by default. It is provided by the Group Policy template UserProfiles.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.8.50.1"]
+      - cis_csc: ["13"]
+      - pci_dss: ["2.2.5"]
+      - tsc: ["CC6.3"]
+    references:
+      - 'CCE-33823-6'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AdvertisingInfo -> DisabledByGroupPolicy -> 1'
+
+  - id: 26275
+    title: "Ensure 'Enable Windows NTP Client' is set to 'Enabled'"
+    description: "This policy setting specifies whether the Windows NTP Client is enabled. Enabling the Windows NTP Client allows your computer to synchronize its computer clock with other NTP servers. You might want to disable this service if you decide to use a third-party time provider. The recommended state for this setting is: Enabled."
+    rationale: "A reliable and accurate account of time is important for a number of services and security requirements, including but not limited to distributed applications, authentication services, multi-user databases and logging services. The use of an NTP client (with secure operation) establishes functional accuracy and is a focal point when reviewing security relevant events."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Windows Time Service\\Time Providers\\Enable Windows NTP Client. Note: This Group Policy path is provided by the Group Policy template W32Time.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
+    compliance:
+      - cis: ["18.8.53.1.1"]
+      - cis_csc: ["6.1"]
+      - pci_dss: ["10.4"]
+      - nist_800_53: ["AU.8"]
+      - tsc: ["CC7.2"]
+    references:
+      - 'CCE-33661-0'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\W32Time\TimeProviders\NtpClient -> Enabled -> 1'
+
+  - id: 26276
+    title: "Ensure 'Enable Windows NTP Server' is set to 'Disabled'"
+    description: "This policy setting allows you to specify whether the Windows NTP Server is enabled. The recommended state for this setting is: Disabled."
+    rationale: "The configuration of proper time synchronization is critically important in an enterprise managed environment both due to the sensitivity of Kerberos authentication timestamps and also to ensure accurate security logging."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Windows Time Service\\Time Providers\\Enable Windows NTP Server. Note: This Group Policy path is provided by the Group Policy template W32Time.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
+    compliance:
+      - cis: ["18.8.53.1.2"]
+      - cis_csc: ["9.1", "9.2"]
+      - pci_dss: ["10.4"]
+      - nist_800_53: ["AU.8"]
+      - tsc: ["CC7.2"]
+    references:
+      - 'CCE-35135-3'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\W32Time\TimeProviders\NtpServer -> Enabled -> 0'
+
+  - id: 26277
+    title: "Ensure 'Allow a Windows app to share application data between users' is set to 'Disabled'"
+    description: "Manages a Windows app's ability to share data between users who have installed the app. Data is shared through the SharedLocal folder. This folder is available through the Windows.Storage API. The recommended state for this setting is: Disabled."
+    rationale: "Users of a system could accidentally share sensitive data with other users on the same system."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\App Package Deployment\\Allow a Windows app to share application data between users. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template AppxPackageManager.admx/adml that is included with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.9.4.1"]
+      - cis_csc: ["14.4", "14.6"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1","CC6.7","CC7.2"]
+    references:
+      - 'CCE-41397-1'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\AppModel\StateManager -> AllowSharedLocalAppData -> 0'
+
+  - id: 26280
+    title: "Ensure 'Allow Microsoft accounts to be optional' is set to 'Enabled'"
+    description: "This policy setting lets you control whether Microsoft accounts are optional for Windows Store apps that require an account to sign in. This policy only affects Windows Store apps that support it."
+    rationale: "Enabling this setting allows an organization to use their enterprise user accounts instead of using their Microsoft accounts when accessing Windows store apps. This provides the organization with greater control over relevant credentials. Microsoft accounts cannot be centrally managed and as such enterprise credential security policies cannot be applied to them, which could put any information accessed by using Microsoft accounts at risk."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\App runtime\\Allow Microsoft accounts to be optional"
+    compliance:
+      - cis: ["18.9.6.1"]
+      - cis_csc: ["16.9"]
+      - pci_dss: ["8.1"]
+      - tsc: ["CC6.1"]
+    references:
+      - 'CCE-35803-6'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> MSAOptional -> 1'
+
+  - id: 26281
+    title: "Ensure 'Disallow Autoplay for non-volume devices' is set to 'Enabled'"
+    description: "This policy setting disallows AutoPlay for MTP devices like cameras or phones."
+    rationale: "An attacker could use this feature to launch a program to damage a client computer or data on the computer."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\AutoPlay Policies\\Disallow Autoplay for non-volume devices"
+    compliance:
+      - cis: ["18.9.8.1"]
+      - cis_csc: ["8.3", "8.4", "8.5"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+      - tsc: ["CC5.2"]
+    references:
+      - 'CCE-35289-8'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoAutoplayfornonVolume -> 1'
+
+  - id: 26282
+    title: "Ensure 'Set the default behavior for AutoRun' is set to 'Enabled: Do not execute any autorun commands'"
+    description: "This policy setting sets the default behavior for Autorun commands. Autorun commands are generally stored in autorun.inf files. They often launch the installation program or other routines. The recommended state for this setting is: Enabled: Do not execute any autorun commands."
+    rationale: "Prior to Windows Vista, when media containing an autorun command is inserted, the system will automatically execute the program without user intervention. This creates a major security concern as code may be executed without user's knowledge. The default behavior starting with Windows Vista is to prompt the user whether autorun command is to be run. The autorun command is represented as a handler in the Autoplay dialog."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Do not execute any autorun commands: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\AutoPlay Policies\\Set the default behavior for AutoRun"
+    compliance:
+      - cis: ["18.9.8.2"]
+      - cis_csc: ["8.3", "8.4", "8.5"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+      - tsc: ["CC5.2"]
+    references:
+      - 'CCE-34771-6'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoAutorun -> 1'
+
+  - id: 26283
+    title: "Ensure 'Turn off Autoplay' is set to 'Enabled: All drives'"
+    description: "Autoplay starts to read from a drive as soon as you insert media in the drive, which causes the setup file for programs or audio media to start immediately. An attacker could use this feature to launch a program to damage the computer or data on the computer. Autoplay is disabled by default on some removable drive types, such as floppy disk and network drives, but not on CD-ROM drives."
+    rationale: "An attacker could use this feature to launch a program to damage a client computer or data on the computer."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: All drives: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\AutoPlay Policies\\Turn off Autoplay"
+    compliance:
+      - cis: ["18.9.8.3"]
+      - cis_csc: ["8.3", "8.4", "8.5"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+      - tsc: ["CC5.2"]
+    references:
+      - 'CCE-33791-5'
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoDriveTypeAutoRun -> 255'
