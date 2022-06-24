@@ -212,8 +212,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:mount -> r:\s/dev/shm\s'
-      - 'f:/etc/fstab -> r:\s*/dev/shm\s*'
+      - 'c:findmnt -n /dev/shm-> r:^/dev/shm\s'
 
   # 1.1.7  Ensure nodev option set on /dev/shm partition (Automated)
   - id: 28511
