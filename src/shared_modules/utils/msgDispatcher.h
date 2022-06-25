@@ -32,13 +32,14 @@ namespace Utils
         , public RawValueDecoder
     {
         public:
-            MsgDispatcher(const size_t maxQueueSize = 0)
+            MsgDispatcher(const unsigned int threadPoolSize = std::thread::hardware_concurrency(),
+                          const size_t maxQueueSize = 0)
                 : ThreadType
-                {
-                    std::bind(&DispatcherType::dispatch, this, std::placeholders::_1),
-                    std::thread::hardware_concurrency(),
-                    maxQueueSize
-                }
+            {
+                std::bind(&DispatcherType::dispatch, this, std::placeholders::_1),
+                threadPoolSize,
+                maxQueueSize
+            }
             {
             }
             // LCOV_EXCL_START

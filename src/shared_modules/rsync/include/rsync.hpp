@@ -26,6 +26,7 @@
 #endif
 
 #include <functional>
+#include <thread>
 #include "json.hpp"
 #include "commonDefs.h"
 
@@ -44,9 +45,10 @@ public:
     /**
      * @brief Remote sync initializes the instance.
      *
+     * @param threadPoolSize Size of the thread pool.
      * @param maxQueueSize Maximum size of the queue.
      */
-    RemoteSync(const size_t maxQueueSize = 0);
+    RemoteSync(const unsigned int threadPoolSize = std::thread::hardware_concurrency(), const size_t maxQueueSize = 0);
 
     /**
      * @brief RSync Constructor.

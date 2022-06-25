@@ -94,9 +94,9 @@ namespace Utils
                         m_queue.push
                         (
                             [value, this]()
-                            {
-                                this->m_functor(value);
-                            }
+                        {
+                            this->m_functor(value);
+                        }
                         );
                     }
                 }
