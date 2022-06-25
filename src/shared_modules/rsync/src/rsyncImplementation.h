@@ -15,6 +15,7 @@
 #include <memory>
 #include <mutex>
 #include <functional>
+#include <memory>
 #include "commonDefs.h"
 #include "json.hpp"
 #include "registrationController.hpp"
@@ -86,7 +87,7 @@ namespace RSync
 
             void releaseContext(const RSYNC_HANDLE handle);
 
-            RSYNC_HANDLE create();
+            RSYNC_HANDLE create(const size_t maxQueueSize = 0);
 
             void startRSync(const RSYNC_HANDLE handle,
                             const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
@@ -110,8 +111,10 @@ namespace RSync
             class RSyncContext final
             {
                 public:
-                    RSyncContext() = default;
-                    MsgDispatcher m_msgDispatcher;
+                    RSyncContext(const size_t maxQueueSize)
+                        : m_msgDispatcher { std::make_shared<MsgDispatcher>(maxQueueSize) }
+                    { }
+                    std::shared_ptr<MsgDispatcher> m_msgDispatcher;
             };
 
             std::shared_ptr<RSyncContext> remoteSyncContext(const RSYNC_HANDLE handle);

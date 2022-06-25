@@ -31,7 +31,7 @@ namespace Utils
             {}
             ReadNode(Functor functor,
                      const unsigned int numberOfThreads)
-                : DispatcherType{ functor, numberOfThreads }
+                : DispatcherType{ functor, numberOfThreads, 0 }
             {}
             // LCOV_EXCL_START
             ~ReadNode() = default;
@@ -63,7 +63,7 @@ namespace Utils
             {}
             ReadWriteNode(Functor functor,
                           const unsigned int numberOfThreads)
-                : DispatcherType{ std::bind(&RWNodeType::doTheWork, this, std::placeholders::_1), numberOfThreads }
+                : DispatcherType{ std::bind(&RWNodeType::doTheWork, this, std::placeholders::_1), numberOfThreads, 0 }
                 , m_functor{functor}
             {}
             // LCOV_EXCL_START

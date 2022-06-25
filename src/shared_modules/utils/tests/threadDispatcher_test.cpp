@@ -79,3 +79,29 @@ TEST_F(ThreadDispatcherTest, AsyncDispatcherCancel)
     dispatcher.rundown();
     EXPECT_EQ(0ul, dispatcher.size());
 }
+
+TEST_F(ThreadDispatcherTest, AsyncDispatcherQueue)
+{
+    constexpr auto NUMBER_OF_THREADS { 1ul };
+    constexpr auto MAX_QUEUE_SIZE { 5ull };
+    constexpr auto NUMBER_OF_ITEMS { 10 };
+
+    AsyncDispatcher<int, std::function<void(int)>> dispatcher
+    {
+        [](const int value)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(value));
+        }
+        , NUMBER_OF_THREADS
+        , MAX_QUEUE_SIZE
+    };
+
+    for (int i = 0; i < NUMBER_OF_ITEMS; ++i)
+    {
+        dispatcher.push(1000);
+    }
+
+    EXPECT_EQ(MAX_QUEUE_SIZE - NUMBER_OF_THREADS, dispatcher.size() - NUMBER_OF_THREADS);
+    dispatcher.cancel();
+}
+
