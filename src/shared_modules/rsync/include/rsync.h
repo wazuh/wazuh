@@ -46,9 +46,10 @@ EXPORTED void rsync_teardown(void);
 /**
  * @brief Creates a new RSync instance.
  *
+ * @param max_queue_size Size of the message dispatch queue
  * @return Handle instance to be used for synchronization between the manager and the agent.
  */
-EXPORTED RSYNC_HANDLE rsync_create();
+EXPORTED RSYNC_HANDLE rsync_create(const size_t max_queue_size);
 
 /**
  * @brief Initializes the \p handle instance.

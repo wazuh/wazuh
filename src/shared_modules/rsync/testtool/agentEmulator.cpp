@@ -44,9 +44,10 @@ static void callback(const ReturnTypeCallback /*type*/,
 AgentEmulator::AgentEmulator(const std::chrono::milliseconds updatePeriod,
                              const unsigned int maxDbItems,
                              const std::shared_ptr<SyncQueue>& outQueue,
-                             const std::string& dbFolder)
+                             const std::string& dbFolder,
+                             const size_t maxQueueSize)
     : m_agentId{ std::to_string(reinterpret_cast<unsigned long>(this)) }
-    , m_rsyncHandle{ rsync_create() }
+    , m_rsyncHandle{ rsync_create(maxQueueSize) }
     , m_dbSyncHandle{ createDbsyncHandle(dbFolder + m_agentId + ".db") }
     , m_config{ nullptr }//TODO: define config based on dbsync handle create statement
     , m_startConfig{ nullptr }//TODO: define config based on first/last sync information statement
