@@ -31,25 +31,27 @@
 
 using SyncCallbackData = const std::function<void(const std::string&)>;
 
-class EXPORTED RemoteSync 
+class EXPORTED RemoteSync
 {
 public:
     /**
     * @brief Initializes the shared library.
     *
-    * @param logFunction pointer to log function to be used by the rsync.
+    * @param logFunction Pointer to log function to be used by the rsync.
     */
     static void initialize(std::function<void(const std::string&)> logFunction);
 
     /**
-     * @brief Remote sync initializes the instance. 
+     * @brief Remote sync initializes the instance.
+     *
+     * @param maxQueueSize Maximum size of the queue.
      */
-    RemoteSync();
+    RemoteSync(const size_t maxQueueSize = 0);
 
     /**
      * @brief RSync Constructor.
      *
-     * @param handle     handle to point another rsync instance.
+     * @param handle Handle to point another rsync instance.
      *
      */
     RemoteSync(RSYNC_HANDLE handle);
@@ -67,7 +69,7 @@ public:
      * @param dbsyncHandle       DBSync handle to synchronize databases.
      * @param startConfiguration Statement used as a synchronization start.
      * @param callbackData       This callback is used to send sync information.
-     * 
+     *
      */
     virtual void startSync(const DBSYNC_HANDLE   dbsyncHandle,
                            const nlohmann::json& startConfiguration,
@@ -83,12 +85,12 @@ public:
      * @param callbackData       This callback is used to send sync information.
      *
      */
-    virtual void registerSyncID(const std::string&    messageHeaderID, 
+    virtual void registerSyncID(const std::string&    messageHeaderID,
                                 const DBSYNC_HANDLE   dbsyncHandle,
                                 const nlohmann::json& syncConfiguration,
                                 SyncCallbackData      callbackData);
     /**
-     * @brief Pushes the \p payload message within a queue to process it in an async 
+     * @brief Pushes the \p payload message within a queue to process it in an async
      *  dispatch queue.
      *
      * @param payload Message to be queued and processed.
