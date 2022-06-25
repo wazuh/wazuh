@@ -38,11 +38,11 @@ void RSyncImplementation::releaseContext(const RSYNC_HANDLE handle)
     m_remoteSyncContexts.erase(handle);
 }
 
-RSYNC_HANDLE RSyncImplementation::create(const size_t maxQueueSize)
+RSYNC_HANDLE RSyncImplementation::create(const unsigned int threadPoolSize, const size_t maxQueueSize)
 {
     const auto spRSyncContext
     {
-        std::make_shared<RSyncContext>(maxQueueSize)
+        std::make_shared<RSyncContext>(threadPoolSize, maxQueueSize)
     };
     const RSYNC_HANDLE handle{ spRSyncContext.get() };
     std::lock_guard<std::mutex> lock{m_mutex};
