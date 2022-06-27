@@ -100,7 +100,7 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->wdata.fd                        = NULL;
 #endif
 #ifdef WIN32
-    syscheck->registry_limit_enabled          = true
+    syscheck->registry_limit_enabled          = true;
     syscheck->db_entry_registry_limit         = 100000;
     syscheck->realtime_change                 = 0;
     syscheck->registry                        = NULL;
@@ -1578,10 +1578,10 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_database = "database";
     const char *xml_scantime = "scan_time";
     const char *xml_file_limit = "file_limit";
+    const char *xml_registry_limit = "registry_limit";
     const char *xml_enabled = "enabled";
     const char *xml_entries = "entries";
 #ifdef WIN32
-    const char *xml_registry_limit = "registry_limit";
 #endif
     const char *xml_ignore = "ignore";
     const char *xml_registry_ignore = "registry_ignore";

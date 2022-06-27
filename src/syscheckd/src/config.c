@@ -153,7 +153,7 @@ cJSON *getSyscheckConfig(void) {
     cJSON * registry_limit = cJSON_CreateObject();
     cJSON_AddStringToObject(registry_limit, "enabled", syscheck.registry_limit_enabled ? "yes" : "no");
     cJSON_AddNumberToObject(registry_limit, "entries", syscheck.db_entry_registry_limit);
-    cJSON_AddItemToObject(syscfg, "file_limit", registry_limit);
+    cJSON_AddItemToObject(syscfg, "registry_limit", registry_limit);
 #endif
 
     cJSON *diff = cJSON_CreateObject();

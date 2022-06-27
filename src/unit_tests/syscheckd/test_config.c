@@ -144,9 +144,10 @@ void test_Read_Syscheck_Config_success(void **state)
     assert_int_equal(syscheck.file_size_enabled, true);
     assert_int_equal(syscheck.file_size_limit, 50 * 1024);
     assert_int_equal(syscheck.diff_folder_size, 0);
-    assert_int_equal(syscheck.db_entry_limit_enabled, 1);
-    assert_int_equal(syscheck.db_entry_file_limit, 50000);
+    assert_int_equal(syscheck.file_limit_enabled, 1);
+    assert_int_equal(syscheck.file_entry_limit, 50000);
 #ifdef WIN32
+    assert_int_equal(syscheck.registry_limit_enabled, 1);
     assert_int_equal(syscheck.db_entry_registry_limit, 50000);
 #endif
 }
@@ -211,8 +212,8 @@ void test_Read_Syscheck_Config_undefined(void **state)
     assert_int_equal(syscheck.file_size_enabled, true);
     assert_int_equal(syscheck.file_size_limit, 5);
     assert_int_equal(syscheck.diff_folder_size, 0);
-    assert_int_equal(syscheck.db_entry_limit_enabled, 1);
-    assert_int_equal(syscheck.db_entry_file_limit, 50000);
+    assert_int_equal(syscheck.file_limit_enabled, 1);
+    assert_int_equal(syscheck.file_entry_limit, 50000);
 #ifdef WIN32
     assert_int_equal(syscheck.db_entry_registry_limit, 50000);
 #endif
@@ -293,7 +294,7 @@ void test_getSyscheckConfig(void **state)
     #if defined(TEST_SERVER) || defined(TEST_AGENT)
     assert_int_equal(cJSON_GetArraySize(sys_items), 21);
     #elif defined(TEST_WINAGENT)
-    assert_int_equal(cJSON_GetArraySize(sys_items), 28);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 29);
     #endif
 
     cJSON *disabled = cJSON_GetObjectItem(sys_items, "disabled");
@@ -301,10 +302,10 @@ void test_getSyscheckConfig(void **state)
     cJSON *frequency = cJSON_GetObjectItem(sys_items, "frequency");
     assert_int_equal(frequency->valueint, 43200);
 
-    cJSON *db_entry_limit = cJSON_GetObjectItem(sys_items, "db_entry_limit");
-    cJSON *db_entry_limit_enabled = cJSON_GetObjectItem(db_entry_limit, "enabled");
-    assert_string_equal(cJSON_GetStringValue(db_entry_limit_enabled), "yes");
-    cJSON *db_entry_limit_file_limit = cJSON_GetObjectItem(db_entry_limit, "files");
+    cJSON *db_file_entry_limit = cJSON_GetObjectItem(sys_items, "file_limit");
+    cJSON *db_file_entry_limit_enabled = cJSON_GetObjectItem(db_file_entry_limit, "enabled");
+    assert_string_equal(cJSON_GetStringValue(db_file_entry_limit_enabled), "yes");
+    cJSON *db_entry_limit_file_limit = cJSON_GetObjectItem(db_file_entry_limit, "entries");
     assert_int_equal(db_entry_limit_file_limit->valueint, 50000);
 
     cJSON *diff = cJSON_GetObjectItem(sys_items, "diff");
@@ -429,7 +430,7 @@ void test_getSyscheckConfig_no_audit(void **state)
     #ifndef TEST_WINAGENT
     assert_int_equal(cJSON_GetArraySize(sys_items), 17);
     #else
-    assert_int_equal(cJSON_GetArraySize(sys_items), 20);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 21);
     #endif
 
     cJSON *disabled = cJSON_GetObjectItem(sys_items, "disabled");
@@ -437,10 +438,10 @@ void test_getSyscheckConfig_no_audit(void **state)
     cJSON *frequency = cJSON_GetObjectItem(sys_items, "frequency");
     assert_int_equal(frequency->valueint, 43200);
 
-    cJSON *db_entry_limit = cJSON_GetObjectItem(sys_items, "db_entry_limit");
-    cJSON *db_entry_limit_enabled = cJSON_GetObjectItem(db_entry_limit, "enabled");
-    assert_string_equal(cJSON_GetStringValue(db_entry_limit_enabled), "yes");
-    cJSON *db_entry_limit_file_limit = cJSON_GetObjectItem(db_entry_limit, "files");
+    cJSON *db_file_entry_limit = cJSON_GetObjectItem(sys_items, "file_limit");
+    cJSON *db_file_entry_limit_enabled = cJSON_GetObjectItem(db_file_entry_limit, "enabled");
+    assert_string_equal(cJSON_GetStringValue(db_file_entry_limit_enabled), "yes");
+    cJSON *db_entry_limit_file_limit = cJSON_GetObjectItem(db_file_entry_limit, "entries");
     assert_int_equal(db_entry_limit_file_limit->valueint, 50000);
 
     cJSON *diff = cJSON_GetObjectItem(sys_items, "diff");
@@ -554,21 +555,24 @@ void test_getSyscheckConfig_no_directories(void **state)
     assert_int_equal(cJSON_GetArraySize(ret), 1);
 
     cJSON *sys_items = cJSON_GetObjectItem(ret, "syscheck");
-    assert_int_equal(cJSON_GetArraySize(sys_items), 17);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 18);
     cJSON *disabled = cJSON_GetObjectItem(sys_items, "disabled");
     assert_string_equal(cJSON_GetStringValue(disabled), "yes");
     cJSON *frequency = cJSON_GetObjectItem(sys_items, "frequency");
     assert_int_equal(frequency->valueint, 43200);
 
-    cJSON *db_limit = cJSON_GetObjectItem(sys_items, "db_entry_limit");
-    cJSON *db_limit_enabled = cJSON_GetObjectItem(db_limit, "enabled");
-    assert_string_equal(cJSON_GetStringValue(db_limit_enabled), "yes");
-    cJSON *file_limit_entries = cJSON_GetObjectItem(db_limit, "files");
+    cJSON *file_limit = cJSON_GetObjectItem(sys_items, "file_limit");
+    cJSON *file_limit_enabled = cJSON_GetObjectItem(file_limit, "enabled");
+    assert_string_equal(cJSON_GetStringValue(file_limit_enabled), "yes");
+    cJSON *file_limit_entries = cJSON_GetObjectItem(file_limit, "entries");
     assert_int_equal(file_limit_entries->valueint, 100000);
-#ifdef WIN32
-    cJSON *reg_limit_entries = cJSON_GetObjectItem(db_limit, "registries");
-    assert_int_equal(reg_limit_entries->valueint, 100000);
-#endif
+
+    cJSON *registry_limit = cJSON_GetObjectItem(sys_items, "registry_limit");
+    cJSON *registry_limit_enabled = cJSON_GetObjectItem(registry_limit, "enabled");
+    assert_string_equal(cJSON_GetStringValue(registry_limit_enabled), "yes");
+    cJSON *registry_limit_entries = cJSON_GetObjectItem(registry_limit, "entries");
+
+    assert_int_equal(registry_limit_entries->valueint, 100000);
 
     cJSON *diff = cJSON_GetObjectItem(sys_items, "diff");
 

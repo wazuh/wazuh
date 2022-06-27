@@ -462,15 +462,15 @@ static int teardown_struct_dirent(void **state) {
 }
 
 static int setup_file_limit(void **state) {
-    syscheck.db_entry_limit_enabled = false;
-    syscheck.db_entry_file_limit = 0;
+    syscheck.file_limit_enabled = false;
+    syscheck.file_entry_limit = 0;
 
     return 0;
 }
 
 static int teardown_file_limit(void **state) {
-    syscheck.db_entry_limit_enabled = true;
-    syscheck.db_entry_file_limit = 50000;
+    syscheck.file_limit_enabled = true;
+    syscheck.file_entry_limit = 50000;
 
     return 0;
 }
@@ -2744,7 +2744,7 @@ static void test_fim_check_db_state_normal_to_empty(void **state) {
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
 
-    fim_check_db_state(syscheck.db_entry_file_limit, 0, &_files_db_state, FIMDB_FILE_TABLE_NAME);
+    fim_check_db_state(syscheck.file_entry_limit, 0, &_files_db_state, FIMDB_FILE_TABLE_NAME);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_EMPTY);
 }
@@ -2752,7 +2752,7 @@ static void test_fim_check_db_state_normal_to_empty(void **state) {
 static void test_fim_check_db_state_empty_to_empty(void **state) {
     assert_int_equal(_files_db_state, FIM_STATE_DB_EMPTY);
 
-    fim_check_db_state(syscheck.db_entry_file_limit, 0, &_files_db_state, FIMDB_FILE_TABLE_NAME);
+    fim_check_db_state(syscheck.file_entry_limit, 0, &_files_db_state, FIMDB_FILE_TABLE_NAME);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_EMPTY);
 }
@@ -2764,7 +2764,7 @@ static void test_fim_check_db_state_empty_to_full(void **state) {
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_EMPTY);
 
-    fim_check_db_state(syscheck.db_entry_file_limit, 50000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
+    fim_check_db_state(syscheck.file_entry_limit, 50000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_FULL);
 }
@@ -2776,7 +2776,7 @@ static void test_fim_check_db_state_full_to_empty(void **state) {
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_FULL);
 
-    fim_check_db_state(syscheck.db_entry_file_limit, 0, &_files_db_state, FIMDB_FILE_TABLE_NAME);
+    fim_check_db_state(syscheck.file_entry_limit, 0, &_files_db_state, FIMDB_FILE_TABLE_NAME);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_EMPTY);
 }
@@ -2788,7 +2788,7 @@ static void test_fim_check_db_state_empty_to_90_percentage(void **state) {
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_EMPTY);
 
-    fim_check_db_state(syscheck.db_entry_file_limit, 46000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
+    fim_check_db_state(syscheck.file_entry_limit, 46000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_90_PERCENTAGE);
 }
@@ -2800,7 +2800,7 @@ static void test_fim_check_db_state_90_percentage_to_empty(void **state) {
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_90_PERCENTAGE);
 
-    fim_check_db_state(syscheck.db_entry_file_limit, 0, &_files_db_state, FIMDB_FILE_TABLE_NAME);
+    fim_check_db_state(syscheck.file_entry_limit, 0, &_files_db_state, FIMDB_FILE_TABLE_NAME);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_EMPTY);
 }
@@ -2812,7 +2812,7 @@ static void test_fim_check_db_state_empty_to_80_percentage(void **state) {
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_EMPTY);
 
-    fim_check_db_state(syscheck.db_entry_file_limit, 41000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
+    fim_check_db_state(syscheck.file_entry_limit, 41000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_80_PERCENTAGE);
 }
@@ -2824,7 +2824,7 @@ static void test_fim_check_db_state_80_percentage_to_empty(void **state) {
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_80_PERCENTAGE);
 
-    fim_check_db_state(syscheck.db_entry_file_limit, 0, &_files_db_state, FIMDB_FILE_TABLE_NAME);
+    fim_check_db_state(syscheck.file_entry_limit, 0, &_files_db_state, FIMDB_FILE_TABLE_NAME);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_EMPTY);
 }
@@ -2832,7 +2832,7 @@ static void test_fim_check_db_state_80_percentage_to_empty(void **state) {
 static void test_fim_check_db_state_empty_to_normal(void **state) {
     assert_int_equal(_files_db_state, FIM_STATE_DB_EMPTY);
 
-    fim_check_db_state(syscheck.db_entry_file_limit, 10000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
+    fim_check_db_state(syscheck.file_entry_limit, 10000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
 }
@@ -2840,7 +2840,7 @@ static void test_fim_check_db_state_empty_to_normal(void **state) {
 static void test_fim_check_db_state_normal_to_normal(void **state) {
     assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
 
-    fim_check_db_state(syscheck.db_entry_file_limit, 20000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
+    fim_check_db_state(syscheck.file_entry_limit, 20000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
 }
@@ -2852,7 +2852,7 @@ static void test_fim_check_db_state_normal_to_full(void **state) {
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
 
-    fim_check_db_state(syscheck.db_entry_file_limit, 50000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
+    fim_check_db_state(syscheck.file_entry_limit, 50000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_FULL);
 }
@@ -2864,7 +2864,7 @@ static void test_fim_check_db_state_full_to_normal(void **state) {
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_FULL);
 
-    fim_check_db_state(syscheck.db_entry_file_limit, 10000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
+    fim_check_db_state(syscheck.file_entry_limit, 10000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
 }
@@ -2877,7 +2877,7 @@ static void test_fim_check_db_state_normal_to_90_percentage(void **state) {
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
 
-    fim_check_db_state(syscheck.db_entry_file_limit, 46000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
+    fim_check_db_state(syscheck.file_entry_limit, 46000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_90_PERCENTAGE);
 }
@@ -2890,7 +2890,7 @@ static void test_fim_check_db_state_90_percentage_to_normal(void **state) {
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_90_PERCENTAGE);
 
-    fim_check_db_state(syscheck.db_entry_file_limit, 10000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
+    fim_check_db_state(syscheck.file_entry_limit, 10000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
 }
@@ -2902,7 +2902,7 @@ static void test_fim_check_db_state_normal_to_80_percentage(void **state) {
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
 
-    fim_check_db_state(syscheck.db_entry_file_limit, 41000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
+    fim_check_db_state(syscheck.file_entry_limit, 41000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_80_PERCENTAGE);
 }
@@ -2910,7 +2910,7 @@ static void test_fim_check_db_state_normal_to_80_percentage(void **state) {
 static void test_fim_check_db_state_80_percentage_to_80_percentage(void **state) {
     assert_int_equal(_files_db_state, FIM_STATE_DB_80_PERCENTAGE);
 
-    fim_check_db_state(syscheck.db_entry_file_limit, 42000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
+    fim_check_db_state(syscheck.file_entry_limit, 42000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_80_PERCENTAGE);
 }
@@ -2922,7 +2922,7 @@ static void test_fim_check_db_state_80_percentage_to_full(void **state) {
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_80_PERCENTAGE);
 
-    fim_check_db_state(syscheck.db_entry_file_limit, 50000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
+    fim_check_db_state(syscheck.file_entry_limit, 50000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_FULL);
 }
@@ -2935,7 +2935,7 @@ static void test_fim_check_db_state_full_to_80_percentage(void **state) {
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_FULL);
 
-    fim_check_db_state(syscheck.db_entry_file_limit, 41000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
+    fim_check_db_state(syscheck.file_entry_limit, 41000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_80_PERCENTAGE);
 }
@@ -2947,7 +2947,7 @@ static void test_fim_check_db_state_80_percentage_to_90_percentage(void **state)
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_80_PERCENTAGE);
 
-    fim_check_db_state(syscheck.db_entry_file_limit, 46000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
+    fim_check_db_state(syscheck.file_entry_limit, 46000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_90_PERCENTAGE);
 }
@@ -2955,7 +2955,7 @@ static void test_fim_check_db_state_80_percentage_to_90_percentage(void **state)
 static void test_fim_check_db_state_90_percentage_to_90_percentage(void **state) {
     assert_int_equal(_files_db_state, FIM_STATE_DB_90_PERCENTAGE);
 
-    fim_check_db_state(syscheck.db_entry_file_limit, 48000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
+    fim_check_db_state(syscheck.file_entry_limit, 48000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_90_PERCENTAGE);
 }
@@ -2967,7 +2967,7 @@ static void test_fim_check_db_state_90_percentage_to_full(void **state) {
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_90_PERCENTAGE);
 
-    fim_check_db_state(syscheck.db_entry_file_limit, 50000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
+    fim_check_db_state(syscheck.file_entry_limit, 50000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_FULL);
 }
@@ -2975,7 +2975,7 @@ static void test_fim_check_db_state_90_percentage_to_full(void **state) {
 static void test_fim_check_db_state_full_to_full(void **state) {
     assert_int_equal(_files_db_state, FIM_STATE_DB_FULL);
 
-    fim_check_db_state(syscheck.db_entry_file_limit, 60000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
+    fim_check_db_state(syscheck.file_entry_limit, 60000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_FULL);
 }
@@ -2987,7 +2987,7 @@ static void test_fim_check_db_state_full_to_90_percentage(void **state) {
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_FULL);
 
-    fim_check_db_state(syscheck.db_entry_file_limit, 46000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
+    fim_check_db_state(syscheck.file_entry_limit, 46000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_90_PERCENTAGE);
 }
@@ -2999,7 +2999,7 @@ static void test_fim_check_db_state_90_percentage_to_80_percentage(void **state)
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_90_PERCENTAGE);
 
-    fim_check_db_state(syscheck.db_entry_file_limit, 41000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
+    fim_check_db_state(syscheck.file_entry_limit, 41000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_80_PERCENTAGE);
 }
@@ -3011,7 +3011,7 @@ static void test_fim_check_db_state_80_percentage_to_normal(void **state) {
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_80_PERCENTAGE);
 
-    fim_check_db_state(syscheck.db_entry_file_limit, 10000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
+    fim_check_db_state(syscheck.file_entry_limit, 10000, &_files_db_state, FIMDB_FILE_TABLE_NAME);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
 }
@@ -3021,7 +3021,7 @@ static void test_fim_check_db_state_nodes_count_database_error(void **state) {
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
 
-    fim_check_db_state(syscheck.db_entry_file_limit, -1, &_files_db_state, FIMDB_FILE_TABLE_NAME);
+    fim_check_db_state(syscheck.file_entry_limit, -1, &_files_db_state, FIMDB_FILE_TABLE_NAME);
 
     assert_int_equal(_files_db_state, FIM_STATE_DB_NORMAL);
 }
