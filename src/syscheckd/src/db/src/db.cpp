@@ -32,7 +32,8 @@ void DB::init(const int storage,
               std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,
               const int fileLimit,
               const int valueLimit,
-              bool syncRegistryEnabled)
+              bool syncRegistryEnabled,
+              const int syncThreadPool)
 {
     auto path { storage == FIM_DB_MEMORY ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH };
     auto dbsyncHandler
@@ -123,7 +124,8 @@ FIMDBErrorCode fim_db_init(int storage,
                            logging_callback_t log_callback,
                            int file_limit,
                            int value_limit,
-                           bool sync_registry_enabled)
+                           bool sync_registry_enabled,
+                           int sync_thread_pool)
 {
     auto retVal { FIMDBErrorCode::FIMDB_ERR };
 
@@ -228,7 +230,8 @@ FIMDBErrorCode fim_db_init(int storage,
                             callbackLogWrapper,
                             file_limit,
                             value_limit,
-                            sync_registry_enabled);
+                            sync_registry_enabled,
+                            sync_thread_pool);
         retVal = FIMDBErrorCode::FIMDB_OK;
 
     }

@@ -117,6 +117,7 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->sync_interval                   = 300;
     syscheck->sync_response_timeout           = 30;
     syscheck->sync_max_interval               = 3600;
+    syscheck->sync_thread_pool                = 1;
     syscheck->sync_max_eps                    = 10;
     syscheck->max_eps                         = 100;
     syscheck->max_files_per_second            = 0;
@@ -1180,6 +1181,7 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
     const char *xml_sync_queue_size = "queue_size";
     const char *xml_max_eps = "max_eps";
     const char *xml_registry_enabled = "registry_enabled";
+    const char *xml_sync_thread_pool = "thread_pool";
 
     for (int i = 0; node[i]; i++) {
         if (strcmp(node[i]->element, xml_enabled) == 0) {
@@ -1235,6 +1237,19 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
                 syscheck->enable_registry_synchronization = r;
             }
 #endif
+        } else if (strcmp(node[i]->element, xml_sync_thread_pool) == 0) {
+            if (!OS_StrIsNum(node[i]->content)) {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            } else {
+                int value = atoi(node[i]->content);
+
+                if (value < 1) {
+                    mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    syscheck->sync_thread_pool = value;
+                }
+            }
+>>>>>>> Added new setting for fim sync, thread_pool
         } else {
             mwarn(XML_INVELEM, node[i]->element);
         }
@@ -1242,7 +1257,6 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
 
     if (syscheck->sync_max_interval < syscheck->sync_interval) {
         syscheck->sync_max_interval = syscheck->sync_interval;
-
         mwarn("'max_interval' cannot be less than 'interval'. New 'max_interval' value: '%d'", syscheck->sync_interval);
     }
 }

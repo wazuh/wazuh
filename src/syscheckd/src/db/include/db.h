@@ -51,7 +51,8 @@ FIMDBErrorCode fim_db_init(int storage,
                            logging_callback_t log_callback,
                            int file_limit,
                            int value_limit,
-                           bool sync_registry_enabled);
+                           bool sync_registry_enabled,
+                           int sync_thread_pool);
 
 /**
  * @brief Get entry data using path.
