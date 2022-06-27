@@ -1155,166 +1155,136 @@ void * ad_input_main(void * args) {
             w_add_recv((unsigned long) recv);
             w_inc_received_events();
 
+            result = -1;
+
             if (msg[0] == SYSCHECK_MQ) {
-                os_strdup(buffer, copy);
+                if (!queue_full(decode_queue_syscheck_input)) {
+                    os_strdup(buffer, copy);
 
-                if(queue_full(decode_queue_syscheck_input)){
-                    if(!reported_syscheck){
-                        reported_syscheck = 1;
-                        mwarn("Syscheck decoder queue is full.");
+                    result = queue_push_ex(decode_queue_syscheck_input, copy);
+
+                    if (result == -1) {
+                        free(copy);
+                    } else {
+                        hourly_events++;
+                        hourly_syscheck++;
                     }
+                }
+
+                if (result == -1) {
                     w_inc_modules_syscheck_dropped_events();
-                    free(copy);
-                    continue;
-                }
 
-                result = queue_push_ex(decode_queue_syscheck_input, copy);
-
-                if(result < 0){
-                    if(!reported_syscheck){
-                        reported_syscheck = 1;
+                    if (!reported_syscheck) {
                         mwarn("Syscheck decoder queue is full.");
+                        reported_syscheck = 1;
                     }
-                    w_inc_modules_syscheck_dropped_events();
-                    free(copy);
-                    continue;
                 }
-                hourly_syscheck++;
-                /* Increment number of events received */
-                hourly_events++;
-            } else if(msg[0] == ROOTCHECK_MQ) {
-                os_strdup(buffer, copy);
+            } else if (msg[0] == ROOTCHECK_MQ) {
+                if (!queue_full(decode_queue_rootcheck_input)) {
+                    os_strdup(buffer, copy);
 
-                if(queue_full(decode_queue_rootcheck_input)){
-                    if(!reported_rootcheck){
-                        reported_rootcheck = 1;
-                        mwarn("Rootcheck decoder queue is full.");
+                    result = queue_push_ex(decode_queue_rootcheck_input, copy);
+
+                    if (result == -1) {
+                        free(copy);
+                    } else {
+                        hourly_events++;
                     }
+                }
+
+                if (result == -1) {
                     w_inc_modules_rootcheck_dropped_events();
-                    free(copy);
-                    continue;
-                }
 
-                result = queue_push_ex(decode_queue_rootcheck_input, copy);
-
-                if(result < 0){
-                    if(!reported_rootcheck){
-                        reported_rootcheck = 1;
+                    if (!reported_rootcheck) {
                         mwarn("Rootcheck decoder queue is full.");
+                        reported_rootcheck = 1;
                     }
-                    w_inc_modules_rootcheck_dropped_events();
-                    free(copy);
-                    continue;
                 }
-                /* Increment number of events received */
-                hourly_events++;
-            } else if(msg[0] == SCA_MQ) {
-                os_strdup(buffer, copy);
+            } else if (msg[0] == SCA_MQ) {
+                if (!queue_full(decode_queue_sca_input)) {
+                    os_strdup(buffer, copy);
 
-                if(queue_full(decode_queue_sca_input)){
-                    if(!reported_sca){
-                        reported_sca = 1;
+                    result = queue_push_ex(decode_queue_sca_input, copy);
+
+                    if (result == -1) {
+                        free(copy);
+                    } else {
+                        hourly_events++;
+                    }
+                }
+
+                if (result == -1) {
+                    w_inc_modules_sca_dropped_events();
+
+                    if (!reported_sca) {
                         mwarn("Security Configuration Assessment decoder queue is full.");
-                    }
-                    w_inc_modules_sca_dropped_events();
-                    free(copy);
-                    continue;
-                }
-
-                result = queue_push_ex(decode_queue_sca_input, copy);
-
-                if(result < 0){
-                    if(!reported_sca){
                         reported_sca = 1;
-                        mwarn("Security Configuration Assessment json decoder queue is full.");
                     }
-                    w_inc_modules_sca_dropped_events();
-                    free(copy);
-                    continue;
                 }
-                /* Increment number of events received */
-                hourly_events++;
-            } else if(msg[0] == SYSCOLLECTOR_MQ) {
-                os_strdup(buffer, copy);
+            } else if (msg[0] == SYSCOLLECTOR_MQ) {
+                if (!queue_full(decode_queue_syscollector_input)) {
+                    os_strdup(buffer, copy);
 
-                if(queue_full(decode_queue_syscollector_input)){
-                    if(!reported_syscollector){
-                        reported_syscollector = 1;
-                        mwarn("Syscollector decoder queue is full.");
+                    result = queue_push_ex(decode_queue_syscollector_input, copy);
+
+                    if (result == -1) {
+                        free(copy);
+                    } else {
+                        hourly_events++;
                     }
+                }
+
+                if (result == -1) {
                     w_inc_modules_syscollector_dropped_events();
-                    free(copy);
-                    continue;
-                }
 
-                result = queue_push_ex(decode_queue_syscollector_input, copy);
-
-                if(result < 0){
-                    if(!reported_syscollector){
-                        reported_syscollector = 1;
+                    if (!reported_syscollector) {
                         mwarn("Syscollector decoder queue is full.");
+                        reported_syscollector = 1;
                     }
-                    w_inc_modules_syscollector_dropped_events();
-                    free(copy);
-                    continue;
                 }
-                /* Increment number of events received */
-                hourly_events++;
-            } else if(msg[0] == HOSTINFO_MQ) {
-                os_strdup(buffer, copy);
+            } else if (msg[0] == HOSTINFO_MQ) {
+                if (!queue_full(decode_queue_hostinfo_input)) {
+                    os_strdup(buffer, copy);
 
-                if(queue_full(decode_queue_hostinfo_input)){
-                    if(!reported_hostinfo){
-                        reported_hostinfo = 1;
-                        mwarn("Hostinfo decoder queue is full.");
+                    result = queue_push_ex(decode_queue_hostinfo_input, copy);
+
+                    if (result == -1) {
+                        free(copy);
+                    } else {
+                        hourly_events++;
                     }
+                }
+
+                if (result == -1) {
                     w_inc_modules_logcollector_others_dropped_events();
-                    free(copy);
-                    continue;
-                }
 
-                result = queue_push_ex(decode_queue_hostinfo_input, copy);
-
-                if(result < 0){
-                    if(!reported_hostinfo){
-                        reported_hostinfo = 1;
+                    if (!reported_hostinfo) {
                         mwarn("Hostinfo decoder queue is full.");
+                        reported_hostinfo = 1;
                     }
-                    w_inc_modules_logcollector_others_dropped_events();
-                    free(copy);
-                    continue;
                 }
-                /* Increment number of events received */
-                hourly_events++;
-            } else if(msg[0] == WIN_EVT_MQ) {
-                os_strdup(buffer, copy);
+            } else if (msg[0] == WIN_EVT_MQ) {
+                if (!queue_full(decode_queue_winevt_input)) {
+                    os_strdup(buffer, copy);
 
-                if(queue_full(decode_queue_winevt_input)){
-                    if(!reported_winevt){
-                        reported_winevt = 1;
-                        mwarn("Windows eventchannel decoder queue is full.");
+                    result = queue_push_ex(decode_queue_winevt_input, copy);
+
+                    if (result == -1) {
+                        free(copy);
+                    } else {
+                        hourly_events++;
                     }
+                }
+
+                if (result == -1) {
                     w_inc_modules_logcollector_eventchannel_dropped_events();
-                    free(copy);
-                    continue;
-                }
 
-                result = queue_push_ex(decode_queue_winevt_input, copy);
-
-                if(result < 0){
-                    if(!reported_winevt){
-                        reported_winevt = 1;
+                    if (!reported_winevt) {
                         mwarn("Windows eventchannel decoder queue is full.");
+                        reported_winevt = 1;
                     }
-                    w_inc_modules_logcollector_eventchannel_dropped_events();
-                    free(copy);
-                    continue;
                 }
-                /* Increment number of events received */
-                hourly_events++;
             } else if (msg[0] == DBSYNC_MQ) {
-                result = -1;
-
                 if (!queue_full(dispatch_dbsync_input)) {
                     os_strdup(buffer, copy);
 
@@ -1322,6 +1292,8 @@ void * ad_input_main(void * args) {
 
                     if (result == -1) {
                         free(copy);
+                    } else {
+                        hourly_events++;
                     }
                 }
 
@@ -1329,13 +1301,11 @@ void * ad_input_main(void * args) {
                     w_inc_dbsync_dropped_events();
 
                     if (!reported_dbsync) {
-                        mwarn("Database synchronization messge queue is full.");
-                        reported_dbsync = TRUE;
+                        mwarn("Database synchronization decoder queue is full.");
+                        reported_dbsync = 1;
                     }
                 }
             } else if (msg[0] == UPGRADE_MQ) {
-                result = -1;
-
                 if (!queue_full(upgrade_module_input)) {
                     os_strdup(buffer, copy);
 
@@ -1343,6 +1313,8 @@ void * ad_input_main(void * args) {
 
                     if (result == -1) {
                         free(copy);
+                    } else {
+                        hourly_events++;
                     }
                 }
 
@@ -1350,48 +1322,37 @@ void * ad_input_main(void * args) {
                     w_inc_modules_upgrade_dropped_events();
 
                     if (!reported_upgrade_module) {
-                        mwarn("Upgrade module messge queue is full.");
-                        reported_upgrade_module = TRUE;
+                        mwarn("Upgrade module decoder queue is full.");
+                        reported_upgrade_module = 1;
                     }
                 }
             } else {
-                os_strdup(buffer, copy);
+                if (!queue_full(decode_queue_event_input)) {
+                    os_strdup(buffer, copy);
 
-                if(queue_full(decode_queue_event_input)){
-                    if(!reported_event){
-                        reported_event = 1;
-                        mwarn("Input queue is full.");
+                    result = queue_push_ex(decode_queue_event_input, copy);
+
+                    if (result == -1) {
+                        free(copy);
+                    } else {
+                        hourly_events++;
                     }
+                }
+
+                if (result == -1) {
                     if (msg[0] == CISCAT_MQ) {
                         w_inc_modules_ciscat_dropped_events();
                     } else if (msg[0] == SYSLOG_MQ) {
                         w_inc_syslog_dropped_events();
                     } else if (msg[0] == LOCALFILE_MQ) {
-                        //w_inc_events_dropped();
+                        //w_inc_dropped_by_component_events(location);
                     }
-                    free(copy);
-                    continue;
-                }
 
-                result = queue_push_ex(decode_queue_event_input, copy);
-
-                if(result < 0){
-                    if(!reported_event){
-                        reported_event = 1;
+                    if (!reported_event) {
                         mwarn("Input queue is full.");
+                        reported_event = 1;
                     }
-                    if (msg[0] == CISCAT_MQ) {
-                        w_inc_modules_ciscat_dropped_events();
-                    } else if (msg[0] == SYSLOG_MQ) {
-                        w_inc_syslog_dropped_events();
-                    } else if (msg[0] == LOCALFILE_MQ) {
-                        //w_inc_events_dropped();
-                    }
-                    free(copy);
-                    continue;
                 }
-                /* Increment number of events received */
-                hourly_events++;
             }
         }
     }
@@ -1439,7 +1400,7 @@ void * w_writer_log_thread(__attribute__((unused)) void * args ){
             } else if (Config.alerts_log) {
                 __crt_ftell = ftell(_aflog);
                 OS_Log(lf, _aflog);
-            } else if(Config.jsonout_output) {
+            } else if (Config.jsonout_output) {
                 __crt_ftell = ftell(_jflog);
             }
             /* Log to json file */
@@ -1715,7 +1676,7 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
                 } else if (msg[0] == SYSLOG_MQ) {
                     w_inc_syslog_unknown_events();
                 } else if (msg[0] == LOCALFILE_MQ) {
-                    //w_inc_events_unknown();
+                    //w_inc_unknown_by_component_events(location);
                 }
                 Free_Eventinfo(lf);
                 free(msg);
@@ -2147,9 +2108,9 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
             }
             result = queue_push_ex(writer_queue, lf_logall);
             if (result < 0) {
-                if(!reported_writer){
-                    reported_writer = 1;
+                if (!reported_writer){
                     mwarn("Archive writer queue is full. %d", t_id);
+                    reported_writer = 1;
                 }
                 Free_Eventinfo(lf_logall);
             }
