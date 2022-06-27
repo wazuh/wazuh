@@ -24,20 +24,16 @@ static const char *global_db_commands[] = {
     [WDB_UPDATE_AGENT_DATA] = "global update-agent-data %s",
     [WDB_UPDATE_AGENT_KEEPALIVE] = "global update-keepalive %s",
     [WDB_UPDATE_AGENT_CONNECTION_STATUS] = "global update-connection-status %s",
-    [WDB_SET_AGENT_LABELS] = "global set-labels %d %s",
     [WDB_GET_ALL_AGENTS] = "global get-all-agents last_id %d",
     [WDB_FIND_AGENT] = "global find-agent %s",
     [WDB_GET_AGENT_INFO] = "global get-agent-info %d",
     [WDB_GET_AGENT_LABELS] = "global get-labels %d",
     [WDB_SELECT_AGENT_NAME] = "global select-agent-name %d",
     [WDB_SELECT_AGENT_GROUP] = "global select-agent-group %d",
-    [WDB_SELECT_KEEPALIVE] = "global select-keepalive %s %s",
     [WDB_FIND_GROUP] = "global find-group %s",
     [WDB_SELECT_GROUPS] = "global select-groups",
     [WDB_DELETE_AGENT] = "global delete-agent %d",
     [WDB_DELETE_GROUP] = "global delete-group %s",
-    [WDB_SELECT_GROUP_BELONG] = "global select-group-belong %d",
-    [WDB_DELETE_AGENT_BELONG] = "global delete-agent-belong %d",
     [WDB_SET_AGENT_GROUPS] = "global set-agent-groups %s",
     [WDB_RESET_AGENTS_CONNECTION] = "global reset-agents-connection %s",
     [WDB_GET_AGENTS_BY_CONNECTION_STATUS] = "global get-agents-by-connection-status %d %s",
@@ -390,44 +386,6 @@ int wdb_update_agent_connection_status(int id, const char *connection_status, co
     return result;
 }
 
-int wdb_set_agent_labels(int id, const char *labels, int *sock) {
-    int result = 0;
-    // Making use of a big buffer for the query because it
-    // will contain all the keys and values.
-    // The output will be just a JSON OK.
-    char wdbquery[OS_MAXSTR] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
-    char *payload = NULL;
-    int aux_sock = -1;
-
-    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_SET_AGENT_LABELS], id, labels);
-
-    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
-
-    if (!sock) {
-        wdbc_close(&aux_sock);
-    }
-
-    switch (result){
-        case OS_SUCCESS:
-            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
-                mdebug1("Global DB Error reported in the result of the query");
-                result = OS_INVALID;
-            }
-            break;
-        case OS_INVALID:
-            mdebug1("Global DB Error in the response from socket");
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            break;
-        default:
-            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            result = OS_INVALID;
-    }
-
-    return result;
-}
-
 int* wdb_get_all_agents(bool include_manager, int *sock) {
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
@@ -614,38 +572,6 @@ char* wdb_get_agent_group(int id, int *sock) {
     return output;
 }
 
-time_t wdb_get_agent_keepalive(const char *name, const char *ip, int *sock){
-    char wdbquery[WDBQUERY_SIZE] = "";
-    char wdboutput[WDBOUTPUT_SIZE] = "";
-    time_t output = 0;
-    cJSON *root = NULL;
-    cJSON *json_keepalive = NULL;
-    int aux_sock = -1;
-
-    if (!name || !ip) {
-        mdebug1("Empty agent name or ip when trying to get last keepalive.");
-        return OS_INVALID;
-    }
-
-    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_SELECT_KEEPALIVE], name, ip);
-    root = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
-
-    if (!sock) {
-        wdbc_close(&aux_sock);
-    }
-
-    if (!root) {
-        merror("Error querying Wazuh DB to get the last agent keepalive.");
-        return OS_INVALID;
-    }
-
-    json_keepalive = cJSON_GetObjectItem(root->child,"last_keepalive");
-    output = cJSON_IsNumber(json_keepalive) ? json_keepalive->valueint : 0;
-
-    cJSON_Delete(root);
-    return output;
-}
-
 int wdb_find_group(const char *name, int *sock) {
     int output = OS_INVALID;
     char wdbquery[WDBQUERY_SIZE] = "";
@@ -798,61 +724,6 @@ int wdb_remove_group_db(const char *name, int *sock) {
     int aux_sock = -1;
 
     snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_DELETE_GROUP], name);
-    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
-
-    if (!sock) {
-        wdbc_close(&aux_sock);
-    }
-
-    switch (result) {
-        case OS_SUCCESS:
-            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
-                mdebug1("Global DB Error reported in the result of the query");
-                result = OS_INVALID;
-            }
-            break;
-        case OS_INVALID:
-            mdebug1("Global DB Error in the response from socket");
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            return OS_INVALID;
-        default:
-            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            return OS_INVALID;
-    }
-
-    return result;
-}
-
-cJSON* wdb_select_group_belong(int id, int *sock) {
-    cJSON *result = NULL;
-    char wdbquery[WDBQUERY_SIZE] = "";
-    char wdboutput[WDBOUTPUT_SIZE] = "";
-    int aux_sock = -1;
-
-    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_SELECT_GROUP_BELONG], id);
-    result = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
-
-    if (!sock) {
-        wdbc_close(&aux_sock);
-    }
-
-    if (!result) {
-        merror("Error querying Wazuh DB to get groups from agent %d.", id);
-        return NULL;
-    }
-
-    return result;
-}
-
-int wdb_delete_agent_belongs(int id, int *sock) {
-    int result = 0;
-    char wdbquery[WDBQUERY_SIZE] = "";
-    char wdboutput[WDBOUTPUT_SIZE] = "";
-    char *payload = NULL;
-    int aux_sock = -1;
-
-    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_DELETE_AGENT_BELONG], id);
     result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!sock) {

@@ -125,14 +125,6 @@ int wdb_agents_remove_vuln_cves(wdb_t *wdb, const char* cve, const char* referen
 wdbc_result wdb_agents_remove_vuln_cves_by_status(wdb_t *wdb, const char* status, char **output);
 
 /**
- * @brief Function to clear whole data from agent vuln_cves table.
- *
- * @param [in] wdb The 'agents' struct database.
- * @return Returns 0 on success or -1 on error.
- */
-int wdb_agents_clear_vuln_cves(wdb_t *wdb);
-
-/**
  * @brief Function to set all packages from the table as triaged.
  *
  * @param [in] wdb The 'agents' struct database.
