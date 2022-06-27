@@ -301,6 +301,8 @@ getStringCmpFunction(const std::string& targetField,
             {
                 return base::result::makeFailure(event, failureTrace3);
             }
+
+            tr(retVal ? successTrace : failureTrace);
         }
     };
 }

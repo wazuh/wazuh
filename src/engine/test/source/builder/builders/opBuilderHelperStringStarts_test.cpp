@@ -20,31 +20,31 @@ static FakeTrFn tr = [](std::string msg) {
 };
 
 // Build ok
-TEST(opBuilderHelperStringEqN, Build)
+TEST(opBuilderHelperStringStarts, Build)
 {
     Document doc {R"({
         "check":
-            {"sourceField": "+s_eq_n/10/test_value"}
+            {"sourceField": "+s_starts/test_value"}
     })"};
-    ASSERT_NO_THROW(opBuilderHelperStringEqN(doc.get("/check"), tr));
+    ASSERT_NO_THROW(opBuilderHelperStringStarts(doc.get("/check"), tr));
 }
 
 // Build incorrect number of arguments
-TEST(opBuilderHelperStringEqN, BuildManyParametersError)
+TEST(opBuilderHelperStringStarts, BuildManyParametersError)
 {
     Document doc {R"({
         "check":
-            {"sourceField": "+s_eq_n/10/test_value/test_value2"}
+            {"sourceField": "+s_starts/test_value/test_value2"}
     })"};
-    ASSERT_THROW(opBuilderHelperStringEqN(doc.get("/check"), tr), std::runtime_error);
+    ASSERT_THROW(opBuilderHelperStringStarts(doc.get("/check"), tr), std::runtime_error);
 }
 
 // Test ok: static values
-TEST(opBuilderHelperStringEqN, RawString)
+TEST(opBuilderHelperStringStarts, RawString)
 {
     Document doc {R"({
         "check":
-            {"sourceField": "+s_eq_n/10/test_value"}
+            {"sourceField": "+s_starts/test_value"}
     })"};
 
     Observable input = observable<>::create<Event>([=](auto s) {
@@ -67,7 +67,7 @@ TEST(opBuilderHelperStringEqN, RawString)
     });
 
     Lifter lift = [=](Observable input) {
-        return input.filter(opBuilderHelperStringEqN(doc.get("/check"), tr));
+        return input.filter(opBuilderHelperStringStarts(doc.get("/check"), tr));
     };
     Observable output = lift(input);
     vector<Event> expected;
@@ -76,11 +76,11 @@ TEST(opBuilderHelperStringEqN, RawString)
 }
 
 // Test ok: static values
-TEST(opBuilderHelperStringEqN, TruncatedRawString)
+TEST(opBuilderHelperStringStarts, TruncatedRawString)
 {
     Document doc {R"({
         "check":
-            {"sourceField": "+s_eq_n/10/test_value_extended"}
+            {"sourceField": "+s_starts/test_value"}
     })"};
 
     Observable input = observable<>::create<Event>([=](auto s) {
@@ -106,7 +106,7 @@ TEST(opBuilderHelperStringEqN, TruncatedRawString)
     });
 
     Lifter lift = [=](Observable input) {
-        return input.filter(opBuilderHelperStringEqN(doc.get("/check"), tr));
+        return input.filter(opBuilderHelperStringStarts(doc.get("/check"), tr));
     };
     Observable output = lift(input);
     vector<Event> expected;
@@ -115,11 +115,11 @@ TEST(opBuilderHelperStringEqN, TruncatedRawString)
 }
 
 // Test ok: dynamic values (string)
-TEST(opBuilderHelperStringEqN, ReferencedString)
+TEST(opBuilderHelperStringStarts, ReferencedString)
 {
     Document doc {R"({
         "check":
-            {"sourceField": "+s_eq_n/10/$ref_key"}
+            {"sourceField": "+s_starts/$ref_key"}
     })"};
 
     Observable input = observable<>::create<Event>([=](auto s) {
@@ -150,20 +150,20 @@ TEST(opBuilderHelperStringEqN, ReferencedString)
         s.on_next(createSharedEvent(R"(
                 {
                     "sourceField":"test_value_extended",
-                    "ref_key":"test_value_extra_extended"
+                    "ref_key":"test_value"
                 }
             )")); // Shall pass
         s.on_next(createSharedEvent(R"(
                 {
                     "sourceField":"test_value_extra_extended",
-                    "ref_key":"test_value_extended"
+                    "ref_key":"test_value"
                 }
             )")); // Shall pass
         s.on_completed();
     });
 
     Lifter lift = [=](Observable input) {
-        return input.filter(opBuilderHelperStringEqN(doc.get("/check"), tr));
+        return input.filter(opBuilderHelperStringStarts(doc.get("/check"), tr));
     };
     Observable output = lift(input);
     vector<Event> expected;
@@ -172,11 +172,11 @@ TEST(opBuilderHelperStringEqN, ReferencedString)
 }
 
 // Test ok: multilevel referenced values (string)
-TEST(opBuilderHelperStringEqN, NestedReferencedStrings)
+TEST(opBuilderHelperStringStarts, NestedReferencedStrings)
 {
     Document doc {R"({
         "check":
-            {"rootKey1.sourceField": "+s_eq_n/10/$rootKey2.ref_key"}
+            {"rootKey1.sourceField": "+s_starts/$rootKey2.ref_key"}
     })"};
 
     Observable input = observable<>::create<Event>([=](auto s) {
@@ -232,7 +232,7 @@ TEST(opBuilderHelperStringEqN, NestedReferencedStrings)
     });
 
     Lifter lift = [=](Observable input) {
-        return input.filter(opBuilderHelperStringEqN(doc.get("/check"), tr));
+        return input.filter(opBuilderHelperStringStarts(doc.get("/check"), tr));
     };
     Observable output = lift(input);
     vector<Event> expected;
