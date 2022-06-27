@@ -5,11 +5,13 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 cmake_minimum_required(VERSION 3.10)
+include(ProcessorCount)
 
 PROJECT(UnitTests C)
 
 set(CMAKE_C_STANDARD 11)
 get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
+ProcessorCount(N)
 
 message(Source folder: ${SRC_FOLDER})
 include_directories(${SRC_FOLDER}/headers)
@@ -110,7 +112,7 @@ add_custom_target(coverage
     COMMAND ${LCOV_PATH} -q --gcov-tool ${GCOV_PATH} -c -i -d ${SRC_FOLDER} --rc lcov_branch_coverage=1 -o coverage.base
 
     # Run tests
-    COMMAND ctest
+    COMMAND ctest -j${N}
 
     # Capturing lcov counters and generating report
     COMMAND ${LCOV_PATH} -q --gcov-tool ${GCOV_PATH} --directory ${SRC_FOLDER} --capture --rc lcov_branch_coverage=1 --output-file coverage.info
