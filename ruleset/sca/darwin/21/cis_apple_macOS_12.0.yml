@@ -36,7 +36,7 @@ checks:
     title: "Ensure All Apple-provided Software Is Current."
     description: "Software vendors release security patches and software updates for their products when security vulnerabilities are discovered. There is no simple way to complete this action without a network connection to an Apple software repository. Please ensure appropriate access for this control. This check is only for what Apple provides through software update."
     rationale: "It is important that these updates be applied in a timely manner to prevent unauthorized persons from exploiting the identified vulnerabilities."
-    remediation: "1. In Terminal, run the following: softwareupdate -i -a      2. In Terminal, run the following for any packages that show up in step 1: sudo softwareupdate -i packagename"
+    remediation: "1. In Terminal, run the following command to verify what packages need to be installed: sudo softwareupdate -l. 2.1. In Terminal, run the following command to install all the packages that need to be updated: sudo software -i -a -R. 2.2. In Terminal, run the following for any packages that show up in step 1: sudo softwareupdate -i packagename'"
     compliance:
       - cis: ["1.1"]
       - cis_level: ["1"]
@@ -46,7 +46,7 @@ checks:
 
   # 1.2 Ensure Auto Update Is Enabled (Automated)
   - id: 29001
-    title: " Ensure Auto Update Is Enabled."
+    title: "Ensure Auto Update Is Enabled."
     description: 'Auto Update verifies that your system has the newest security patches and software updates. If "Automatically check for updates" is not selected background updates for new malware definition files from Apple for XProtect and Gatekeeper will not occur.'
     rationale: "It is important that a system has the newest updates applied so as to prevent unauthorized persons from exploiting identified vulnerabilities."
     remediation: "Open a terminal session and enter the following command to enable the auto update feature: sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticCheckEnabled -bool true"
@@ -56,22 +56,25 @@ checks:
     references:
       - https://macops.ca/os-x-admins-your-clients-are-not-getting-background-security-updates/
       - https://derflounder.wordpress.com/2014/12/17/forcing-xprotect-blacklist-updates-on-mavericks-and-yosemite/
-    condition: all
+    condition: any
     rules:
       - "c:defaults read /Library/Preferences/com.apple.SoftwareUpdate AutomaticCheckEnabled -> 1"
+      - 'c:sh -c "profiles -P -o stdout | grep AutomaticCheckEnabled" -> r:AutomaticCheckEnabled\s*=\s*1'
 
   # 1.3 Ensure Download New Updates When Available is Enabled (Automated)
   - id: 29002
     title: "Ensure Download New Updates When Available is Enabled."
-    description: 'In the GUI both "Install macOS updates" and "Install app updates from the App Store" are dependent on whether "Download new updates when available" is selected'
+    description: 'In the GUI both "Install macOS updates" and "Install app updates from the App Store" are dependent on whether "Download new updates when available" is selected.'
     rationale: "It is important that a system has the newest updates downloaded so that they can be applied."
     remediation: "Open a terminal session and enter the following command to enable the auto update feature: sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticDownload -bool true"
     compliance:
       - cis: ["1.3"]
       - cis_level: ["1"]
-    condition: all
+    references:
+    condition: any
     rules:
       - "c:defaults read /Library/Preferences/com.apple.SoftwareUpdate AutomaticDownload -> 1"
+      - 'c:sh -c "profiles -P -o stdout | grep AutomaticDownload" -> r:AutomaticDownload\s*=\s*1'
 
   # 1.4 Ensure Installation of App Update Is Enabled (Automated)
   - id: 29003
@@ -82,15 +85,16 @@ checks:
     compliance:
       - cis: ["1.4"]
       - cis_level: ["1"]
-    condition: all
+    condition: any
     rules:
       - "c:defaults read /Library/Preferences/com.apple.commerce AutoUpdate -> 1"
+      - 'c:sh -c "profiles -P -o stdout | grep AutomaticallyInstallAppUpdates" -> r:AutomaticallyInstallAppUpdates\s*=\s*1'
 
   # 1.5 Ensure System Data Files and Security Updates Are Downloaded Automatically Is Enabled (Automated)
   - id: 29004
     title: "Ensure System Data Files and Security Updates Are Downloaded Automatically Is Enabled."
-    description: "Ensure that system and security updates are installed after they are available from Apple.  This setting enables definition updates for XProtect and Gatekeeper, with this setting in place new malware and adware that Apple has added to the list of malware or untrusted software will not execute. These updates do not require reboots or end user admin rights."
-    rationale: "Patches need to be applied in a timely manner to reduce the risk of vulnerabilities being exploited"
+    description: "Ensure that system and security updates are installed after they are available from Apple. This setting enables definition updates for XProtect and Gatekeeper. With this setting in place new malware and adware that Apple has added to the list of malware or untrusted software will not execute. These updates do not require reboots or end user admin rights."
+    rationale: "Patches need to be applied in a timely manner to reduce the risk of vulnerabilities being exploited."
     remediation: "Open a terminal session and enter the following command to enable install system data files and security updates: sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate ConfigDataInstall -bool true && sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate CriticalUpdateInstall -bool true"
     compliance:
       - cis: ["1.5"]
@@ -106,15 +110,16 @@ checks:
   # 1.6 Ensure Install of macOS Updates Is Enabled
   - id: 29005
     title: "Ensure Install of macOS Updates Is Enabled."
-    description: "Ensure that macOS updates are installed after they are available from Apple. This setting enables macOS updates to be automatically installed. Some environments will want to approve and test updates before they are delivered. It is best practice to test first where updates can and have caused disruptions to operations. Automatic updates should be turned off where changes are tightly controlled and there are mature testing and approval processes. Automatic updates should not be turned off so the admin can call the users first to let them know it's ok to install. A dependable repeatable process involving a patch agent or remote management tool should be in place before auto-updates are turned off."
-    rationale: "Patches need to be applied in a timely manner to reduce the risk of vulnerabilities being exploited"
-    remediation: "Open a terminal session and enter the following command to enable install system data files and security updates: sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyInstallMacOSUpdates AutoUpdate - bool TRUE"
+    description: "Ensure that macOS updates are installed after they are available from Apple. This setting enables macOS updates to be automatically installed. Some environments will want to approve and test updates before they are delivered. It is best practice to test first where updates can and have caused disruptions to operations. Automatic updates should be turned off where changes are tightly controlled and there are mature testing and approval processes. Automatic updates should not be turned off so the admin can call the users first to let them know it's ok to install. A dependable, repeatable process involving a patch agent or remote management tool should be in place before auto-updates are turned off."
+    rationale: "Patches need to be applied in a timely manner to reduce the risk of vulnerabilities being exploited."
+    remediation: "Run the following command to to enable automatic checking and installing of macOS updates: sudo /usr/bin/defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyInstallMacOSUpdates -bool TRUE"
     compliance:
       - cis: ["1.6"]
       - cis_level: ["1"]
     condition: all
     rules:
       - "c:defaults read /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyInstallMacOSUpdates -> 1"
+      - 'c:sh -c "profiles -P -o stdout | grep AutomaticallyInstallMacOSUpdates" -> r:AutomaticallyInstallMacOSUpdates\s*=\s*1'
 
   # 1.7 Audit Computer Name (Manual) - Not implemented
 
