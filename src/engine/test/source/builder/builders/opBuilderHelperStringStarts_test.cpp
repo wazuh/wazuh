@@ -52,6 +52,12 @@ TEST(opBuilderHelperStringStarts, RawString)
                 {"sourceField":"sample_value"}
             )")); // Shall not pass
         s.on_next(createSharedEvent(R"(
+                {"sourceField":"sample_value_test_value"}
+            )")); // Shall not pass
+        s.on_next(createSharedEvent(R"(
+                {"sourceField":"test_valu"}
+            )")); // Shall pass
+        s.on_next(createSharedEvent(R"(
                 {"sourceField":"test_value_extended"}
             )")); // Shall pass
         s.on_next(createSharedEvent(R"(
@@ -62,6 +68,42 @@ TEST(opBuilderHelperStringStarts, RawString)
             )")); // Shall not pass
         s.on_next(createSharedEvent(R"(
                 {"sourceField":"test_value_extended"}
+            )")); // Shall pass
+        s.on_completed();
+    });
+
+    Lifter lift = [=](Observable input) {
+        return input.filter(opBuilderHelperStringStarts(doc.get("/check"), tr));
+    };
+    Observable output = lift(input);
+    vector<Event> expected;
+    output.subscribe([&](Event e) { expected.push_back(e); });
+    ASSERT_EQ(expected.size(), 2);
+}
+
+// Test ok: static values
+TEST(opBuilderHelperStringStarts, nonString)
+{
+    Document doc {R"({
+        "check":
+            {"sourceField": "+s_starts/test_value"}
+    })"};
+
+    Observable input = observable<>::create<Event>([=](auto s) {
+        s.on_next(createSharedEvent(R"(
+                {"sourceField": null}
+            )")); // Shall pass
+        s.on_next(createSharedEvent(R"(
+                {"sourceField": true}
+            )")); // Shall pass
+        s.on_next(createSharedEvent(R"(
+                {"sourceField": 10}
+            )")); // Shall pass
+        s.on_next(createSharedEvent(R"(
+                {"sourceField": ["hi", "bye"]}
+            )")); // Shall pass
+        s.on_next(createSharedEvent(R"(
+                {"sourceField": { "a": "b" }}
             )")); // Shall pass
         s.on_completed();
     });
