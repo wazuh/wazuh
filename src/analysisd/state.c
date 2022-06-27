@@ -969,6 +969,7 @@ cJSON* asys_create_state_json() {
         cJSON * _item = NULL;
         cJSON * _statistics = NULL;
         cJSON * _events_decoded_breakdown = NULL;
+        cJSON * _events_received_breakdown = NULL;
 
         _agents_connected = cJSON_CreateObject();
         _array = cJSON_AddArrayToObject(_agents_connected, "agents_connected");
@@ -979,6 +980,7 @@ cJSON* asys_create_state_json() {
             _item = cJSON_CreateObject();
             _statistics = cJSON_CreateObject();
             _events_decoded_breakdown = cJSON_CreateObject();
+            _events_received_breakdown = cJSON_CreateObject();
 
             cJSON_AddNumberToObject(_item, "agent_id", data->id);
             cJSON_AddItemToObject(_item, "statistics", _statistics);
@@ -996,7 +998,9 @@ cJSON* asys_create_state_json() {
                                                                     data->firewall_written +
                                                                     data->archives_written);
 
-            cJSON_AddNumberToObject(_statistics, "events_decoded", data->events_decoded_breakdown.syscheck +
+            cJSON_AddItemToObject(_statistics, "events_received_breakdown", _events_received_breakdown);
+
+            cJSON_AddNumberToObject(_events_received_breakdown, "events_decoded", data->events_decoded_breakdown.syscheck +
                                                                     data->events_decoded_breakdown.syscollector +
                                                                     data->events_decoded_breakdown.rootcheck +
                                                                     data->events_decoded_breakdown.sca +
@@ -1005,7 +1009,7 @@ cJSON* asys_create_state_json() {
                                                                     data->events_decoded_breakdown.dbsync +
                                                                     data->events_decoded_breakdown.upgrade +
                                                                     data->events_decoded_breakdown.events);
-            cJSON_AddItemToObject(_statistics, "events_received_breakdown", _events_decoded_breakdown);
+            cJSON_AddItemToObject(_events_received_breakdown, "events_decoded_breakdown", _events_decoded_breakdown);
             cJSON_AddNumberToObject(_events_decoded_breakdown, "syscheck_decoded", data->events_decoded_breakdown.syscheck);
             cJSON_AddNumberToObject(_events_decoded_breakdown, "syscollector_decoded", data->events_decoded_breakdown.syscollector);
             cJSON_AddNumberToObject(_events_decoded_breakdown, "rootcheck_decoded", data->events_decoded_breakdown.rootcheck);
