@@ -83,8 +83,8 @@ base::Expression opBuilderHelperIntCalc(const std::any& definition);
 //*             JSON tranform                     *
 //*************************************************
 
-// <key>: +json_delete_fields/<string1>/<string2>
-base::Lifter opBuilderHelperJsonDeleteFields(const base::DocumentValue& def,
+// <key>: +delete_field/<string1>/<string2>
+base::Lifter opBuilderHelperDeleteField(const base::DocumentValue& def,
                                              types::TracerFn tr);
 
 //*************************************************
