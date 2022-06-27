@@ -51,6 +51,7 @@ int main(int argc, const char* argv[])
             const auto registryLimit{ jsonConfigFile.at("registry_limit").get<const uint32_t>() };
             const bool syncRegistryEnabled { jsonConfigFile.at("registry_sync") };
             const auto minSyncInterval{ jsonConfigFile.at("min_sync_interval").get<const uint32_t>() };
+            const auto syncThreadPool{ jsonConfigFile.at("thread_pool").get<const uint32_t>() };
 
             std::function<void(const std::string&)> callbackSyncFileWrapper
             {
@@ -86,7 +87,8 @@ int main(int argc, const char* argv[])
                                     fileLimit,
                                     minSyncInterval,
                                     registryLimit,
-                                    syncRegistryEnabled);
+                                    syncRegistryEnabled,
+                                    syncThreadPool);
 
                 std::unique_ptr<TestContext> testContext { std::make_unique<TestContext>()};
                 testContext->outputPath = cmdLineArgs.outputFolder();

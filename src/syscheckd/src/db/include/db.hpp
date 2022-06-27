@@ -82,6 +82,7 @@ class EXPORTED DB final
         * @param minSyncIntervalTime Minimum interval for synchronization process.
         * @param valueLimit Registry value limit.
         * @param syncRegistryEnabled Flag to enable/disable the registry sync mechanism.
+        * @param syncThreadPool Number of threads used by RSync.
         */
         void init(const int storage,
                   const int syncInterval,
@@ -91,7 +92,8 @@ class EXPORTED DB final
                   int fileLimit,
                   const uint32_t minSyncIntervalTime,
                   int valueLimit,
-                  bool syncRegistryEnabled);
+                  bool syncRegistryEnabled,
+                  const int syncThreadPool);
 
         /**
         * @brief runIntegrity Execute the integrity mechanism.

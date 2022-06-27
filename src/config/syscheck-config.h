@@ -405,6 +405,7 @@ typedef struct _config {
 
     long sync_interval;                                /* Synchronization interval (seconds) */
     uint32_t min_sync_interval;                        /* Minimum interval for synchronization process */
+    int sync_thread_pool;                              /* Number of threads used by RSync */
     long sync_max_eps;                                 /* Maximum events per second for synchronization messages. */
     int max_eps;                                       /* Maximum events per second. */
 

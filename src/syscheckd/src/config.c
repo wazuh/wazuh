@@ -483,6 +483,7 @@ cJSON *getSyscheckConfig(void) {
     cJSON_AddNumberToObject(synchronization, "interval", syscheck.sync_interval);
     cJSON_AddNumberToObject(synchronization, "max_eps", syscheck.sync_max_eps);
     cJSON_AddNumberToObject(synchronization, "min_interval", syscheck.min_sync_interval);
+    cJSON_AddNumberToObject(synchronization, "thread_pool", syscheck.sync_thread_pool);
 
     cJSON_AddItemToObject(syscfg, "synchronization", synchronization);
 

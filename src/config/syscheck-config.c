@@ -116,6 +116,7 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->prefilter_cmd                   = NULL;
     syscheck->sync_interval                   = 300;
     syscheck->min_sync_interval               = 60;
+    syscheck->sync_thread_pool                = 1;
     syscheck->sync_max_eps                    = 10;
     syscheck->max_eps                         = 100;
     syscheck->max_files_per_second            = 0;
@@ -1180,6 +1181,7 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
     const char *xml_max_eps = "max_eps";
     const char *xml_registry_enabled = "registry_enabled";
     const char *xml_min_sync_interval = "min_interval";
+    const char *xml_sync_thread_pool = "thread_pool";
 
     for (int i = 0; node[i]; i++) {
         if (strcmp(node[i]->element, xml_enabled) == 0) {
@@ -1230,6 +1232,18 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             } else {
                 syscheck->min_sync_interval = (uint32_t) interval;
+            }
+        } else if (strcmp(node[i]->element, xml_sync_thread_pool) == 0) {
+            if (!OS_StrIsNum(node[i]->content)) {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            } else {
+                int value = atoi(node[i]->content);
+
+                if (value < 1) {
+                    mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+                } else {
+                    syscheck->sync_thread_pool = value;
+                }
             }
         } else {
             mwarn(XML_INVELEM, node[i]->element);
