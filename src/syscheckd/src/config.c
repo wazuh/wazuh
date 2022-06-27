@@ -145,13 +145,16 @@ cJSON *getSyscheckConfig(void) {
     if (syscheck.scan_time) cJSON_AddStringToObject(syscfg,"scan_time",syscheck.scan_time);
     cJSON_AddNumberToObject(syscfg, "max_files_per_second", syscheck.max_files_per_second);
 
-    cJSON * db_entry_limit = cJSON_CreateObject();
-    cJSON_AddStringToObject(db_entry_limit, "enabled", syscheck.db_entry_limit_enabled ? "yes" : "no");
-    cJSON_AddNumberToObject(db_entry_limit, "files", syscheck.db_entry_file_limit);
+    cJSON * file_limit = cJSON_CreateObject();
+    cJSON_AddStringToObject(file_limit, "enabled", syscheck.file_limit_enabled ? "yes" : "no");
+    cJSON_AddNumberToObject(file_limit, "entries", syscheck.file_entry_limit);
+    cJSON_AddItemToObject(syscfg, "file_limit", file_limit);
 #ifdef WIN32
-    cJSON_AddNumberToObject(db_entry_limit, "registries", syscheck.db_entry_registry_limit);
+    cJSON * registry_limit = cJSON_CreateObject();
+    cJSON_AddStringToObject(registry_limit, "enabled", syscheck.registry_limit_enabled ? "yes" : "no");
+    cJSON_AddNumberToObject(registry_limit, "entries", syscheck.db_entry_registry_limit);
+    cJSON_AddItemToObject(syscfg, "file_limit", registry_limit);
 #endif
-    cJSON_AddItemToObject(syscfg, "db_entry_limit", db_entry_limit);
 
     cJSON *diff = cJSON_CreateObject();
 

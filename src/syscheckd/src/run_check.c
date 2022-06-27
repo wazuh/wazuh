@@ -252,14 +252,19 @@ void start_daemon()
 
     minfo(FIM_DAEMON_STARTED);
 
-    if (syscheck.db_entry_limit_enabled) {
-        mdebug2(FIM_FILE_LIMIT_VALUE, syscheck.db_entry_file_limit);
-#ifdef WIN32
-        mdebug2(FIM_REGISTRY_LIMIT_VALUE, syscheck.db_entry_registry_limit);
-#endif
+    if (syscheck.file_limit_enabled) {
+        mdebug2(FIM_FILE_LIMIT_VALUE, syscheck.file_entry_limit);
     } else {
-        mdebug2(FIM_FILE_LIMIT_UNLIMITED);
+        mdebug2(FIM_LIMIT_UNLIMITED, "file");
     }
+
+#ifdef WIN32
+    if (syscheck.registry_limit_enabled) {
+        mdebug2(FIM_REGISTRY_LIMIT_VALUE, syscheck.db_entry_registry_limit);
+    } else {
+        mdebug2(FIM_LIMIT_UNLIMITED, "registry");
+    }
+#endif
 
     // Create File integrity monitoring base-line
     minfo(FIM_FREQUENCY_TIME, syscheck.time);
