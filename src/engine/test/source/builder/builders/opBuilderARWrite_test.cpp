@@ -141,7 +141,7 @@ TEST_F(opBuilderARWriteTestSuite, Send)
 
     // Check send command to the AR's queue result
     ASSERT_NO_THROW(
-        ASSERT_STREQ(expected[0]->getEventValue("/ar_write/result").GetString(), "ok"));
+        ASSERT_EQ(expected[0]->getEventValue("/ar_write/result").GetBool(), true));
 
     close(serverSocketFD);
     unlink(AR_QUEUE_PATH);
@@ -187,7 +187,7 @@ TEST_F(opBuilderARWriteTestSuite, SendFromReference)
 
     // Check send command to the AR's queue result
     ASSERT_NO_THROW(
-        ASSERT_STREQ(expected[0]->getEventValue("/ar_write/result").GetString(), "ok"));
+        ASSERT_EQ(expected[0]->getEventValue("/ar_write/result").GetBool(), true));
 
     close(serverSocketFD);
     unlink(AR_QUEUE_PATH);
@@ -229,11 +229,8 @@ TEST_F(opBuilderARWriteTestSuite, SendEmptyReferenceError)
 
     // Check send command to the AR's queue result
 
-    string arWriteResult;
-    ASSERT_NO_THROW(arWriteResult =
-                        expected[0]->getEventValue("/ar_write/result").GetString());
-
-    ASSERT_STREQ(arWriteResult.data(), AR_INVALID_REFERENCE_MSG);
+    ASSERT_NO_THROW(
+        ASSERT_EQ(expected[0]->getEventValue("/ar_write/result").GetBool(), false));
 
     close(serverSocketFD);
     unlink(AR_QUEUE_PATH);
@@ -273,14 +270,8 @@ TEST_F(opBuilderARWriteTestSuite, SendWrongReferenceError)
 
     ASSERT_EQ(expected.size(), eventsCount);
 
-    // Check send command to the AR's queue result
-
-    string arWriteResult;
-    ASSERT_NO_THROW(arWriteResult =
-                        expected[0]->getEventValue("/ar_write/result").GetString());
-
-    ASSERT_STREQ(arWriteResult.data(),
-                 "Write AR operator exception: Error, field not found: /dummy");
+    ASSERT_NO_THROW(
+        ASSERT_EQ(expected[0]->getEventValue("/ar_write/result").GetBool(), false));
 
     close(serverSocketFD);
     unlink(AR_QUEUE_PATH);
@@ -329,7 +320,7 @@ TEST_F(opBuilderARWriteTestSuite, SendFromReferenceWithConditionalMapping)
 
     // Check send command to the AR's queue result
     ASSERT_NO_THROW(
-        ASSERT_STREQ(expected[0]->getEventValue("/ar_write/result").GetString(), "ok"));
+        ASSERT_EQ(expected[0]->getEventValue("/ar_write/result").GetBool(), true));
 
     close(serverSocketFD);
     unlink(AR_QUEUE_PATH);
