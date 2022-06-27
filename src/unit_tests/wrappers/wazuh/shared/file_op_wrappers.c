@@ -237,3 +237,11 @@ int __wrap_w_copy_file(const char *src, const char *dst, char mode, __attribute_
     check_expected(silent);
     return mock_type(int);
 }
+
+char *__wrap_GetRandomNoise() {
+    return mock_ptr_type(char*);
+}
+
+const char *__wrap_getuname() {
+    return mock_ptr_type(char*);
+}
