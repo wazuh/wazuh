@@ -45,6 +45,9 @@ list(APPEND os_auth_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_minf
                            -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgetpos -Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fseek \
                            -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap=fgetc -Wl,--wrap,getpid \
                            -Wl,--wrap,external_socket_connect ${HASH_OP_WRAPPERS}")
+list(APPEND os_auth_names "test_auth")
+list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} \
+                           -Wl,--wrap,os_random -Wl,--wrap,GetRandomNoise -Wl,--wrap,getuname -Wl,--wrap,time")
 
 list(LENGTH os_auth_names count)
 math(EXPR count "${count} - 1")
