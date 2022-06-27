@@ -5,7 +5,7 @@ check:
 
 normalize:
   - check:
-      - type: +s_eq_n/16/integrity_check_
+      - type: +s_starts/integrity_check_
     map:
       data_plain: +json_unformat/$data
       query: +s_concat/agent /$agent.id/ /$component/ /$type/ /$data_plain
