@@ -141,13 +141,13 @@ checks:
     condition: any
     rules:
       - "c:defaults read /Library/Preferences/com.apple.Bluetooth ControllerPowerState -> 0"
-      - "c:system_profiler SPBluetoothDataType -> r:Connectable: Yes"
+      - "c:system_profiler SPBluetoothDataType -> r:Connected: Yes"
 
   # 2.1.2 Ensure Show Bluetooth Status in Menu Bar Is Enabled (Automated)
   - id: 29007
     title: "Ensure Show Bluetooth Status in Menu Bar Is Enabled."
     description: "By showing the Bluetooth status in the menu bar, a small Bluetooth icon is placed in the menu bar. This icon quickly shows the status of Bluetooth, and can allow the user to quickly turn Bluetooth on or off."
-    rationale: "Enabling Show Bluetooth status in menu bar is a security awareness method that helps understand the current state of Bluetooth, including whether it is enabled, discoverable, what paired devices exist, and what paired devices are currently active. "
+    rationale: 'Enabling "Show Bluetooth status in menu bar" is a security awareness method that helps understand the current state of Bluetooth, including whether it is enabled, discoverable, what paired devices exist, and what paired devices are currently active.'
     remediation: "For each user, run the following command to enable Bluetooth status in the menu bar: sudo -u <username> defaults -currentHost write com.apple.controlcenter.plist Bluetooth -int 18"
     compliance:
       - cis: ["2.1.2"]
@@ -155,6 +155,7 @@ checks:
     condition: any
     rules:
       - "c:defaults -currentHost read com.apple.controlcenter.plist Bluetooth -> 18"
+      - 'c:sh -c "profiles -P -o stdout | grep Bluetooth" -> r:Bluetooth\s*=\s*1'
 
   ############################################################
   # 2.2 Date & Time
@@ -163,19 +164,20 @@ checks:
   - id: 29008
     title: 'Ensure "Set time and date automatically" Is Enabled'
     description: "Correct date and time settings are required for authentication protocols, file creation, modification dates and log entries."
-    rationale: "Kerberos may not operate correctly if the time on the Mac is off by more than 5 minutes.  This in turn can affect Apple's single sign-on feature, Active Directory logons, and other features."
-    remediation: "Run the following commands: sudo systemsetup -setnetworktimeserver <timeserver>    sudo systemsetup -setusingnetworktime on"
+    rationale: "Kerberos may not operate correctly if the time on the Mac is off by more than 5 minutes. This in turn can affect Apple's single sign-on feature, Active Directory logons, and other features."
+    remediation: "Run the following commands: sudo systemsetup -setnetworktimeserver <timeserver>    sudo systemsetup -setusingnetworktime on. Run the following commands if you have not set, or need to set, a new time zone: sudo /usr/sbin/systemsetup -listtimezones sudo /usr/sbin/systemsetup -settimezone <selected time zone>"
     compliance:
       - cis: ["2.2.1"]
       - cis_level: ["1"]
-    condition: all
+    condition: any
     rules:
       - 'c:systemsetup -getusingnetworktime -> r:Network Time:\s*\t*On'
+      - 'c:sh -c "profiles -P -o stdout | grep forceAutomaticDateAndTime" -> r:forceAutomaticDateAndTime\s*=\s*1'
 
   # 2.2.2 Ensure time set is within appropriate limits (Automated)
   - id: 29009
     title: "Ensure time set is within appropriate limits."
-    description: "Correct date and time settings are required for authentication protocols, file creation, modification dates and log entries. Ensure that time on the computer is within acceptable limits. Truly accurate time is measured within milliseconds, for this audit a drift under four and a half minutes passes the control check. Since Kerberos is one of the important features of macOS integration into Directory systems the guidance here is to warn you before there could be an impact to operations. From the perspective of accurate time this check is not strict, it may be too great for your organization, adjust to a smaller offset value as needed. Note: ntpdate has been deprecated with 10.14. sntp replaces that command."
+    description: "Correct date and time settings are required for authentication protocols, file creation, modification dates and log entries. Ensure that time on the computer is within acceptable limits. Truly accurate time is measured within milliseconds. For this audit, a drift under four and a half minutes passes the control check. Since Kerberos is one of the important features of macOS integration into Directory systems the guidance here is to warn you before there could be an impact to operations. From the perspective of accurate time, this check is not strict, so it may be too great for your organization. Your organization can adjust to a smaller offset value as needed. Note: ntpdate has been deprecated with 10.14. sntp replaces that command."
     rationale: "Kerberos may not operate correctly if the time on the Mac is off by more than 5 minutes. This in turn can affect Apple's single sign-on feature, Active Directory logons, and other features. Audit check is for more than 4 minutes and 30 seconds ahead or behind."
     remediation: "Run the following commands to ensure your time is set within an appropriate limit: sudo systemsetup -getnetworktimeserver -> Get the time server name and then run: sudo touch /var/db/ntp-kod && sudo chown root:wheel /var/db/ntp-kod && sudo sntp -sS <YOUR-TIME-SERVER> "
     compliance:
@@ -184,7 +186,8 @@ checks:
     condition: all
     rules:
       - "c:systemsetup -getnetworktimeserver -> r:Network Time Server:"
-      #- Pending check offset is in the 270.x seconds
+      - 'c:sh -c "sntp time.apple.com | grep +/-" -> n:+(\d+)\.\d+\s+/- compare <= 270'
+      - 'c:sh -c "sntp time.apple.com | grep +/-" -> n:+\d+\.\d+\s+/-\s(\d+)\.\d+ compare <= 270'
 
   ############################################################
   # 2.3 Desktop & Screen Saver
@@ -194,13 +197,15 @@ checks:
     title: "Ensure an Inactivity Interval of 20 Minutes Or Less for the Screen Saver Is Enabled."
     description: "A locking screensaver is one of the standard security controls to limit access to a computer and the current user's session when the computer is temporarily unused or unattended. In macOS the screensaver starts after a value selected in a drop down menu, 10 minutes and 20 minutes are both options and either is acceptable. Any value can be selected through the command line or script but a number that is not reflected in the GUI can be problematic. 20 minutes is the default for new accounts."
     rationale: "Setting an inactivity interval for the screensaver prevents unauthorized persons from viewing a system left unattended for an extensive period of time."
-    remediation: "Run the following command to verify that the idle time of the screen saver to 20 minutes or less (≤1200): sudo defaults -currentHost write com.apple.screensaver idleTime -int 600 "
+    remediation: "Run the following command to verify that the idle time of the screen saver to 20 minutes or less (≤1200): sudo defaults -currentHost write com.apple.screensaver idleTime -int 600"
     compliance:
       - cis: ["2.3.1"]
       - cis_level: ["1"]
-    condition: none
+    condition: any
     rules:
       - "c:defaults -currentHost read com.apple.screensaver idleTime -> r:does not exist"
+      - 'c:defaults -currentHost read com.apple.screensaver idleTime -> n:^(\d+)$ compare <= 1200'
+      - 'c:sh -c "profiles -P -o stdout | grep idleTime" -> n:idleTime\s*=\s*(\d+) compare <= 1200'
 
   # 2.3.2 Ensure Screen Saver Corners Are Secure (Automated)
   - id: 29011
@@ -248,12 +253,13 @@ checks:
     condition: none
     rules:
       - 'c:defaults read /Library/Preferences/SystemConfiguration/com.apple.nat -> r:Enabled\s*\t*=\s*\t*1'
+      - 'c:sh -c "profiles -P -o stdout | grep forceInternetSharingOff" -> r:forceInternetSharingOff\s*=\s*1'
 
   # 2.4.3 Ensure Screen Sharing Is Disabled (Automated)
   - id: 29014
     title: "Ensure Screen Sharing Is Disabled."
-    description: "Screen sharing allows a computer to connect to another computer on a network and display the computer's screen. While sharing the computer's screen, the user can control what happens on that computer, such as opening documents or applications, opening, moving, or closing windows, and even shutting down the computer."
-    rationale: "Disabling screen sharing mitigates the risk of remote connections being made without the user of the console knowing that they are sharing the computer."
+    description: "Screen Sharing allows a computer to connect to another computer on a network and display the computer’s screen. While sharing the computer’s screen, the user can control what happens on that computer, such as opening documents or applications, opening, moving, or closing windows, and even shutting down the computer."
+    rationale: "Disabling Screen Sharing mitigates the risk of remote connections being made without the user of the console knowing that they are sharing the computer."
     remediation: "Run the following command to turn off Screen Sharing: sudo launchctl disable system/com.apple.screensharing"
     compliance:
       - cis: ["2.4.3"]
@@ -265,7 +271,7 @@ checks:
   # 2.4.4 Ensure Printer Sharing Is Disabled (Automated)
   - id: 29015
     title: "Ensure Printer Sharing Is Disabled."
-    description: "By enabling Printer sharing the computer is set up as a print server to accept print jobs from other computers. Dedicated print servers or direct IP printing should be used instead."
+    description: "By enabling Printer Sharing the computer is set up as a print server to accept print jobs from other computers. Dedicated print servers or direct IP printing should be used instead."
     rationale: "Disabling Printer Sharing mitigates the risk of attackers attempting to exploit the print server to gain access to the system."
     remediation: "Run the following command in Terminal: sudo cupsctl --no-share-printers"
     compliance:
@@ -294,7 +300,7 @@ checks:
   - id: 29017
     title: "Ensure DVD or CD Sharing Is Disabled."
     description: "DVD or CD Sharing allows users to remotely access the system's optical drive."
-    rationale: "Disabling DVD or CD Sharing minimizes the risk of an attacker using the optical drive as a vector for attack and exposure of sensitive data."
+    rationale: "DVD or CD Sharing allows users to remotely access the system's optical drive. While Apple does not ship Macs with built-in optical drives any longer, external optical drives are still recognized when they are connected. In testing the sharing of an external optical drive persists when a drive is reconnected."
     remediation: "Run the following command to disable DVD or CD sharing: sudo launchctl disable system/com.apple.ODSAgent "
     compliance:
       - cis: ["2.4.6"]
@@ -308,20 +314,21 @@ checks:
     title: "Ensure Bluetooth Sharing Is Disabled."
     description: "Bluetooth Sharing allows files to be exchanged with Bluetooth enabled devices."
     rationale: "Disabling Bluetooth Sharing minimizes the risk of an attacker using Bluetooth to remotely attack the system."
-    remediation: "Perform the following to disable Bluetooth Sharing: Graphical Method: 1. Open System Preferences 2. Select Sharing 3. Uncheck Bluetooth Sharing"
+    remediation: "Run the following command to disable Bluetooth Sharing is disabled: sudo -u <username> /usr/bin/defaults -currentHost write com.apple.Bluetooth PrefKeyServicesEnabled -bool false"
     compliance:
       - cis: ["2.4.7"]
       - cis_level: ["1"]
     condition: all
     rules:
       - "c:defaults -currentHost read com.apple.Bluetooth PrefKeyServicesEnabled -> 0"
+      - 'c:sh -c "profiles -P -o stdout | grep PrefKeyServicesEnabled" -> r:PrefKeyServicesEnabled\s*=\s*0'
 
   # 2.4.8 Ensure File Sharing Is Disabled (Automated)
   - id: 29019
     title: "Ensure File Sharing Is Disabled."
-    description: "Apple's File Sharing uses a combination of SMB (Windows sharing) and AFP (Mac sharing)"
+    description: "Server Message Block (SMB), Common Internet File System (CIFS) When Windows (or possibly Linux) computers need to access file shared on a Mac, SMB/CIFS file sharing is commonly used. Apple warns that SMB sharing stores passwords is a less secure fashion than AFP sharing and anyone with system access can gain access to the password for that account. When sharing with SMB, each user that will access the Mac must have SMB enabled."
     rationale: "By disabling file sharing, the remote attack surface and risk of unauthorized access to files stored on the system is reduced."
-    remediation: "Run the following command in Terminal to turn off AFP and SMB file sharing from the command line: sudo launchctl unload -w /System/Library/LaunchDaemons/com.apple.smbd.plist"
+    remediation: "Run the following command to disable SMB file sharing: $ sudo launchctl disable system/com.apple.smbd "
     compliance:
       - cis: ["2.4.8"]
       - cis_level: ["1"]
@@ -332,28 +339,29 @@ checks:
   # 2.4.9 Ensure Remote Management Is Disabled (Automated)
   - id: 29020
     title: "Ensure Remote Management Is Disabled."
-    description: "Remote Management is the client portion of Apple Remote Desktop (ARD). Remote Management can be used by remote administrators to view the current Screen, install software, report on, and generally manage client Macs. The screen sharing options in Remote Management are identical to those in the Screen Sharing section. In fact, only one of the two can be configured. If Remote Management is used, refer to the Screen Sharing section above on issues regard screen sharing. Remote Management should only be enabled when a Directory is in place to manage the accounts with access. Computers will be available on port 5900 on a macOS System and could accept connections from untrusted hosts depending on the configuration, definitely a concern for mobile systems."
-    rationale: "Remote management should only be enabled on trusted networks with strong user controls present in a Directory system. Mobile devices without strict controls are vulnerable to exploit and monitoring."
-    remediation: "Run the following command to disable remote management: sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources /kickstart -deactivate -stop"
+    description: "Remote Management is the client portion of Apple Remote Desktop (ARD). Remote Management can be used by remote administrators to view the current screen, install software, report on, and generally manage client Macs. The screen sharing options in Remote Management are identical to those in the Screen Sharing section. In fact, only one of the two can be configured. If Remote Management is used, refer to the Screen Sharing section above on issues regard screen sharing. Remote Management should only be enabled when a Directory is in place to manage the accounts with access. Computers will be available on port 5900 on a macOS System and could accept connections from untrusted hosts depending on the configuration, definitely a concern for mobile systems."
+    rationale: "Remote Management should only be enabled on trusted networks with strong user controls present in a Directory system. Mobile devices without strict controls are vulnerable to exploit and monitoring."
+    remediation: "Run the following command to disable Remote Management: sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources /kickstart -deactivate -stop"
     compliance:
       - cis: ["2.4.9"]
       - cis_level: ["1"]
     condition: all
     rules:
-      - "not p:ARDAgent"
+      - "not p:/System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/MacOS/ARDAgent"
 
   # 2.4.10 Ensure Content Caching Is Disabled (Automated)
   - id: 29021
     title: "Ensure Content Caching Is Disabled."
-    description: "Starting with 10.13 (macOS High Sierra) Apple introduced a service to make it easier deploy data from Apple, including software updates, where there are bandwidth constraints to the Internet and fewer constraints and greater bandwidth on the local subnet. This capability can be very valuable for organizations that have throttled and possibly metered Internet connections. In heterogeneous enterprise networks with multiple subnets the effectiveness of this capability would be determined on how many Macs were on each subnet at the time new large updates were made available upstream. This capability requires the use of mac OS clients as P2P nodes for updated Apple content. Unless there is a business requirement to manage operational Internet connectivity bandwidth user endpoints should not store content and act as a cluster to provision data."
+    description: "Starting with 10.13 (macOS High Sierra) Apple introduced a service to make it easier to deploy data from Apple, including software updates, where there are bandwidth constraints to the Internet and fewer constraints and greater bandwidth on the local subnet. This capability can be very valuable for organizations that have throttled and possibly metered Internet connections. In heterogeneous enterprise networks with multiple subnets the effectiveness of this capability would be determined on how many Macs were on each subnet at the time new large updates were made available upstream. This capability requires the use of mac OS clients as P2P nodes for updated Apple content. Unless there is a business requirement to manage operational Internet connectivity bandwidth user endpoints should not store content and act as a cluster to provision data."
     rationale: "The main use case for Mac computers is as mobile user endpoints. P2P sharing services should not be enabled on laptops that are using untrusted networks. Content Caching can allow a computer to be a server for local nodes on an untrusted network. While there are certainly logical controls that could be used to mitigate risk they add to the management complexity, since the value of the service is in specific use cases organizations with the use case described above can accept risk as necessary."
-    remediation: "Run the following command in to disable content caching: sudo AssetCacheManagerUtil deactivate"
+    remediation: "Run the following command in to disable Content Caching: sudo AssetCacheManagerUtil deactivate"
     compliance:
       - cis: ["2.4.10"]
       - cis_level: ["2"]
     condition: all
     rules:
       - "c:defaults read /Library/Preferences/com.apple.AssetCache.plist Activated -> 0"
+      - 'c:sh -c "profiles -P -o stdout | grep allowContentCaching" -> r:allowContentCaching\s*=\s*0'
 
   # 2.4.11 Ensure AirDrop Is Disabled (Automated)
   - id: 29022
