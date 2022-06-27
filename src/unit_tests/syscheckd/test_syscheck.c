@@ -54,6 +54,7 @@ static int setup_syscheck_config(void **state) {
     syscheck_conf->sync_response_timeout     = 30;
     syscheck_conf->sync_max_interval         = 3600;
     syscheck_conf->sync_thread_pool          = 1;
+    syscheck_conf->file_entry_limit          = 100000;
 #ifdef WIN32
     syscheck_conf->db_entry_registry_limit   = 100000;
 #endif
