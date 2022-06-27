@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include <logging/logging.hpp>
 #include <utils/socketInterface/unixDatagram.hpp>
 #include <utils/stringUtils.hpp>
 
@@ -63,12 +64,13 @@ base::Lifter opBuilderARWrite(const base::DocumentValue& def, types::TracerFn tr
         return o.map([&, resultOperatorKey, opParameter, tr = std::move(tr)](
                          base::Event e) {
             string query {};
+            bool messageSent {false};
 
             // Check if the value comes from a reference
-            if (opParameter[0] == REFERENCE_ANCHOR)
+            if (REFERENCE_ANCHOR == opParameter[0])
             {
                 // Gets the referenced key (without the reference anchor)
-                auto key = json::formatJsonPath(opParameter.substr(1));
+                const auto key = json::formatJsonPath(opParameter.substr(1));
 
                 try
                 {
@@ -82,22 +84,16 @@ base::Lifter opBuilderARWrite(const base::DocumentValue& def, types::TracerFn tr
 
                         if (query.empty())
                         {
-                            const string msg = string {AR_INVALID_REFERENCE_MSG};
+                            const string msg {AR_INVALID_REFERENCE_MSG};
                             tr(msg);
-
-                            e->setEventValue(
-                                resultOperatorKey,
-                                Value(msg.data(), e->getEventDocAllocator()).Move());
+                            WAZUH_LOG_ERROR(msg);
                         }
                     }
                     else
                     {
-                        const string msg = string {AR_INVALID_REFERENCE_MSG};
+                        const string msg {AR_INVALID_REFERENCE_MSG};
                         tr(msg);
-
-                        e->setEventValue(
-                            resultOperatorKey,
-                            Value(msg.data(), e->getEventDocAllocator()).Move());
+                        WAZUH_LOG_ERROR(msg);
                     }
                 }
                 catch (std::exception& exception)
@@ -105,9 +101,7 @@ base::Lifter opBuilderARWrite(const base::DocumentValue& def, types::TracerFn tr
                     const string msg =
                         string {"Write AR operator exception: "} + exception.what();
                     tr(msg);
-
-                    e->setEventValue(resultOperatorKey,
-                                     Value(msg.data(), e->getEventDocAllocator()).Move());
+                    WAZUH_LOG_ERROR(msg);
                 }
             }
             else // It is a direct value
@@ -123,23 +117,20 @@ base::Lifter opBuilderARWrite(const base::DocumentValue& def, types::TracerFn tr
 
                     if (socketAR.sendMsg(query) == SendRetval::SUCCESS)
                     {
-                        const string msg =
-                            string {"Write AR operator: AR query sent. Query: "} + query;
-                        tr(msg);
+                        messageSent = true;
 
-                        e->setEventValue(resultOperatorKey,
-                                         Value("ok", e->getEventDocAllocator()).Move());
+                        const string msg {
+                            "Write AR operator info: AR message sent. Query: " + query};
+                        tr(msg);
+                        WAZUH_LOG_DEBUG(msg);
                     }
                     else
                     {
-                        const string msg =
-                            string {"Write AR operator: AR query not sent. Document: "}
-                            + doc.str();
+                        const string msg {
+                            "Write AR operator error: AR message not sent. Document: "
+                            + doc.str()};
                         tr(msg);
-
-                        e->setEventValue(
-                            resultOperatorKey,
-                            Value(msg.data(), e->getEventDocAllocator()).Move());
+                        WAZUH_LOG_ERROR(msg);
                     }
                 }
                 catch (const std::exception& exception)
@@ -147,11 +138,11 @@ base::Lifter opBuilderARWrite(const base::DocumentValue& def, types::TracerFn tr
                     const string msg = string {"Write AR operator sendMsg() exception: "}
                                        + exception.what();
                     tr(msg);
-
-                    e->setEventValue(resultOperatorKey,
-                                     Value(msg.data(), e->getEventDocAllocator()).Move());
+                    WAZUH_LOG_ERROR(msg);
                 }
             }
+
+            e->setEventValue(resultOperatorKey, Value(messageSent).Move());
 
             return e;
         });
