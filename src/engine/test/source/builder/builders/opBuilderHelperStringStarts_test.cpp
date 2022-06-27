@@ -56,78 +56,6 @@ TEST(opBuilderHelperStringStarts, RawString)
             )")); // Shall not pass
         s.on_next(createSharedEvent(R"(
                 {"sourceField":"test_valu"}
-            )")); // Shall pass
-        s.on_next(createSharedEvent(R"(
-                {"sourceField":"test_value_extended"}
-            )")); // Shall pass
-        s.on_next(createSharedEvent(R"(
-                {"otherfield":"value"}
-            )")); // Shall not pass
-        s.on_next(createSharedEvent(R"(
-                {"otherfield":"test_value"}
-            )")); // Shall not pass
-        s.on_next(createSharedEvent(R"(
-                {"sourceField":"test_value_extended"}
-            )")); // Shall pass
-        s.on_completed();
-    });
-
-    Lifter lift = [=](Observable input) {
-        return input.filter(opBuilderHelperStringStarts(doc.get("/check"), tr));
-    };
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 2);
-}
-
-// Test ok: static values
-TEST(opBuilderHelperStringStarts, nonString)
-{
-    Document doc {R"({
-        "check":
-            {"sourceField": "+s_starts/test_value"}
-    })"};
-
-    Observable input = observable<>::create<Event>([=](auto s) {
-        s.on_next(createSharedEvent(R"(
-                {"sourceField": null}
-            )")); // Shall pass
-        s.on_next(createSharedEvent(R"(
-                {"sourceField": true}
-            )")); // Shall pass
-        s.on_next(createSharedEvent(R"(
-                {"sourceField": 10}
-            )")); // Shall pass
-        s.on_next(createSharedEvent(R"(
-                {"sourceField": ["hi", "bye"]}
-            )")); // Shall pass
-        s.on_next(createSharedEvent(R"(
-                {"sourceField": { "a": "b" }}
-            )")); // Shall pass
-        s.on_completed();
-    });
-
-    Lifter lift = [=](Observable input) {
-        return input.filter(opBuilderHelperStringStarts(doc.get("/check"), tr));
-    };
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 2);
-}
-
-// Test ok: static values
-TEST(opBuilderHelperStringStarts, TruncatedRawString)
-{
-    Document doc {R"({
-        "check":
-            {"sourceField": "+s_starts/test_value"}
-    })"};
-
-    Observable input = observable<>::create<Event>([=](auto s) {
-        s.on_next(createSharedEvent(R"(
-                {"sourceField":"sample_value"}
             )")); // Shall not pass
         s.on_next(createSharedEvent(R"(
                 {"sourceField":"test_value_extended"}
@@ -136,11 +64,20 @@ TEST(opBuilderHelperStringStarts, TruncatedRawString)
                 {"otherfield":"value"}
             )")); // Shall not pass
         s.on_next(createSharedEvent(R"(
+                {"otherfield":"test_"}
+            )")); // Shall not pass
+        s.on_next(createSharedEvent(R"(
                 {"otherfield":"test_value"}
             )")); // Shall not pass
         s.on_next(createSharedEvent(R"(
-                {"sourceField":"test_value_extra_extended"}
+                {"sourceField":"test_value_extended"}
             )")); // Shall pass
+        s.on_next(createSharedEvent(R"(
+                {"sourceField":"test_valu"}
+            )")); // Shall not pass
+        s.on_next(createSharedEvent(R"(
+                {"sourceField":""}
+            )")); // Shall not pass
         s.on_next(createSharedEvent(R"(
                 {"sourceField":"test_value"}
             )")); // Shall pass
@@ -154,6 +91,98 @@ TEST(opBuilderHelperStringStarts, TruncatedRawString)
     vector<Event> expected;
     output.subscribe([&](Event e) { expected.push_back(e); });
     ASSERT_EQ(expected.size(), 3);
+}
+
+// Test ok: static values
+TEST(opBuilderHelperStringStarts, NotStrings)
+{
+    Document doc {R"({
+        "check":
+            {"sourceField": "+s_starts/test_value"}
+    })"};
+
+    Observable input = observable<>::create<Event>([=](auto s) {
+        s.on_next(createSharedEvent(R"(
+                {"sourceField": null}
+            )")); // Shall not pass
+        s.on_next(createSharedEvent(R"(
+                {"sourceField": true}
+            )")); // Shall not pass
+        s.on_next(createSharedEvent(R"(
+                {"sourceField": 10}
+            )")); // Shall not pass
+        s.on_next(createSharedEvent(R"(
+                {"sourceField": ["hi", "bye"]}
+            )")); // Shall not pass
+        s.on_next(createSharedEvent(R"(
+                {"sourceField": { "a": "b" }}
+            )")); // Shall not pass
+        s.on_next(createSharedEvent(R"(
+                {"sourceField": "test_value"}
+            )")); // Shall pass
+        s.on_completed();
+    });
+
+    Lifter lift = [=](Observable input) {
+        return input.filter(opBuilderHelperStringStarts(doc.get("/check"), tr));
+    };
+    Observable output = lift(input);
+    vector<Event> expected;
+    output.subscribe([&](Event e) { expected.push_back(e); });
+    ASSERT_EQ(expected.size(), 1);
+}
+
+TEST(opBuilderHelperStringStarts, EmptyString)
+{
+    Document doc {R"({
+        "check":
+            {"sourceField": "+s_starts/test_value"}
+    })"};
+
+    Observable input = observable<>::create<Event>([=](auto s) {
+        s.on_next(createSharedEvent(R"(
+                {"sourceField": ""}
+            )")); // Shall not pass
+        s.on_next(createSharedEvent(R"(
+                {"sourceField": "test_value"}
+            )")); // Shall pass
+        s.on_completed();
+    });
+
+    Lifter lift = [=](Observable input) {
+        return input.filter(opBuilderHelperStringStarts(doc.get("/check"), tr));
+    };
+    Observable output = lift(input);
+    vector<Event> expected;
+    output.subscribe([&](Event e) { expected.push_back(e); });
+    ASSERT_EQ(expected.size(), 1);
+}
+
+// TODO: check if this is the expected result
+TEST(opBuilderHelperStringStarts, EmptyStartString)
+{
+    Document doc {R"({
+        "check":
+            {"sourceField": "+s_starts/$testField"}
+    })"};
+
+    Observable input = observable<>::create<Event>([=](auto s) {
+        s.on_next(createSharedEvent(R"(
+                {"sourceField": "", "testField": ""}
+            )")); // Shall pass
+        s.on_next(createSharedEvent(R"(
+                {"sourceField": "test_value", "testField": ""}
+            )")); // Shall pass
+        s.on_completed();
+    });
+
+    Lifter lift = [=](Observable input) {
+        return input.filter(opBuilderHelperStringStarts(doc.get("/check"), tr));
+    };
+    Observable output = lift(input);
+    vector<Event> expected;
+    output.subscribe([&](Event e) { expected.push_back(e); });
+    ASSERT_EQ(expected.size(), 2);
 }
 
 // Test ok: dynamic values (string)
