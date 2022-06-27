@@ -59,6 +59,8 @@ static void registerBuilders()
     Registry::registerBuilder(builders::opBuilderHelperRegexNotMatch, "helper.r_not_match");
     Registry::registerBuilder(builders::opBuilderHelperIPCIDR, "helper.ip_cidr");
     Registry::registerBuilder(builders::opBuilderHelperContainsString, "helper.s_contains");
+    Registry::registerBuilder("helper.delete_field",
+                              builders::opBuilderHelperDeleteField);
     // Registry::registerBuilder(builders::opBuilderHelperNotNull, "helper.not_null");
 
     // Map Helpers
