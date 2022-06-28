@@ -2601,7 +2601,7 @@ checks:
     title: "Ensure 'Allow users to enable online speech recognition services' is set to 'Disabled'"
     description: "This policy enables the automatic learning component of input personalization that includes speech, inking, and typing. Automatic learning enables the collection of speech and handwriting patterns, typing history, contacts, and recent calendar information. It is required for the use of Cortana. Some of this collected information may be stored on the user's OneDrive, in the case of inking and typing; some of the information will be uploaded to Microsoft to personalize speech. The recommended state for this setting is: Disabled."
     rationale: "If this setting is Enabled sensitive information could be stored in the cloud or sent to Microsoft."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Control Panel\\Allow users to enable online speech recognition services"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Control Panel\\Regional and Language Options\\Allow users to enable online speech recognition services "
     compliance:
       - cis: ["18.1.2.2"]
       - cis_csc: ["13"]
