@@ -220,27 +220,27 @@ int w_analysisd_write_state() {
         "archives_queue_size='%zu'\n"
         "\n",
         __local_name,
-        state_cpy.events_received_breakdown.events_decoded_breakdown.modules.syscheck +
-        state_cpy.events_received_breakdown.events_decoded_breakdown.modules.syscollector +
-        state_cpy.events_received_breakdown.events_decoded_breakdown.modules.rootcheck +
-        state_cpy.events_received_breakdown.events_decoded_breakdown.modules.sca +
-        state_cpy.events_received_breakdown.events_decoded_breakdown.modules.logcollector.eventchannel +
-        state_cpy.events_received_breakdown.events_decoded_breakdown.modules.logcollector.others,
-        state_cpy.events_received_breakdown.events_decoded_breakdown.modules.syscheck,
-        state_cpy.events_received_breakdown.events_decoded_breakdown.modules.syscollector,
-        state_cpy.events_received_breakdown.events_decoded_breakdown.modules.rootcheck,
-        state_cpy.events_received_breakdown.events_decoded_breakdown.modules.sca,
-        state_cpy.events_received_breakdown.events_decoded_breakdown.modules.logcollector.eventchannel,
-        state_cpy.events_received_breakdown.events_decoded_breakdown.dbsync,
-        state_cpy.events_received_breakdown.events_decoded_breakdown.modules.logcollector.others,
+        state_cpy.events_decoded_breakdown.modules.syscheck +
+        state_cpy.events_decoded_breakdown.modules.syscollector +
+        state_cpy.events_decoded_breakdown.modules.rootcheck +
+        state_cpy.events_decoded_breakdown.modules.sca +
+        state_cpy.events_decoded_breakdown.modules.logcollector.eventchannel +
+        state_cpy.events_decoded_breakdown.modules.logcollector.others,
+        state_cpy.events_decoded_breakdown.modules.syscheck,
+        state_cpy.events_decoded_breakdown.modules.syscollector,
+        state_cpy.events_decoded_breakdown.modules.rootcheck,
+        state_cpy.events_decoded_breakdown.modules.sca,
+        state_cpy.events_decoded_breakdown.modules.logcollector.eventchannel,
+        state_cpy.events_decoded_breakdown.dbsync,
+        state_cpy.events_decoded_breakdown.modules.logcollector.others,
         state_cpy.events_processed,
         state_cpy.events_received,
-        state_cpy.events_received_breakdown.events_dropped_breakdown.modules.syscheck +
-        state_cpy.events_received_breakdown.events_dropped_breakdown.modules.syscollector +
-        state_cpy.events_received_breakdown.events_dropped_breakdown.modules.rootcheck +
-        state_cpy.events_received_breakdown.events_dropped_breakdown.modules.sca +
-        state_cpy.events_received_breakdown.events_dropped_breakdown.modules.logcollector.eventchannel +
-        state_cpy.events_received_breakdown.events_dropped_breakdown.modules.logcollector.others,
+        state_cpy.events_dropped_breakdown.modules.syscheck +
+        state_cpy.events_dropped_breakdown.modules.syscollector +
+        state_cpy.events_dropped_breakdown.modules.rootcheck +
+        state_cpy.events_dropped_breakdown.modules.sca +
+        state_cpy.events_dropped_breakdown.modules.logcollector.eventchannel +
+        state_cpy.events_dropped_breakdown.modules.logcollector.others,
         state_cpy.alerts_written,
         state_cpy.firewall_written,
         state_cpy.fts_written,
@@ -387,163 +387,163 @@ void w_inc_decoded_by_component_events(const char *component) {
 
 void w_inc_agent_decoded_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_decoded_breakdown.agent++;
+    analysisd_state.events_decoded_breakdown.agent++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_agentless_decoded_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_decoded_breakdown.agentless++;
+    analysisd_state.events_decoded_breakdown.agentless++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_dbsync_decoded_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_decoded_breakdown.dbsync++;
+    analysisd_state.events_decoded_breakdown.dbsync++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_monitor_decoded_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_decoded_breakdown.monitor++;
+    analysisd_state.events_decoded_breakdown.monitor++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_remote_decoded_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_decoded_breakdown.remote++;
+    analysisd_state.events_decoded_breakdown.remote++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_syslog_decoded_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_decoded_breakdown.syslog++;
+    analysisd_state.events_decoded_breakdown.syslog++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_integrations_virustotal_decoded_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_decoded_breakdown.integrations.virustotal++;
+    analysisd_state.events_decoded_breakdown.integrations.virustotal++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_aws_decoded_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_decoded_breakdown.modules.aws++;
+    analysisd_state.events_decoded_breakdown.modules.aws++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_azure_decoded_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_decoded_breakdown.modules.azure++;
+    analysisd_state.events_decoded_breakdown.modules.azure++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_ciscat_decoded_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_decoded_breakdown.modules.ciscat++;
+    analysisd_state.events_decoded_breakdown.modules.ciscat++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_command_decoded_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_decoded_breakdown.modules.command++;
+    analysisd_state.events_decoded_breakdown.modules.command++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_docker_decoded_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_decoded_breakdown.modules.docker++;
+    analysisd_state.events_decoded_breakdown.modules.docker++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_gcp_decoded_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_decoded_breakdown.modules.gcp++;
+    analysisd_state.events_decoded_breakdown.modules.gcp++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_github_decoded_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_decoded_breakdown.modules.github++;
+    analysisd_state.events_decoded_breakdown.modules.github++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_office365_decoded_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_decoded_breakdown.modules.office365++;
+    analysisd_state.events_decoded_breakdown.modules.office365++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_oscap_decoded_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_decoded_breakdown.modules.oscap++;
+    analysisd_state.events_decoded_breakdown.modules.oscap++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_osquery_decoded_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_decoded_breakdown.modules.osquery++;
+    analysisd_state.events_decoded_breakdown.modules.osquery++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_rootcheck_decoded_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_decoded_breakdown.modules.rootcheck++;
+    analysisd_state.events_decoded_breakdown.modules.rootcheck++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_sca_decoded_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_decoded_breakdown.modules.sca++;
+    analysisd_state.events_decoded_breakdown.modules.sca++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_syscheck_decoded_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_decoded_breakdown.modules.syscheck++;
+    analysisd_state.events_decoded_breakdown.modules.syscheck++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_syscollector_decoded_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_decoded_breakdown.modules.syscollector++;
+    analysisd_state.events_decoded_breakdown.modules.syscollector++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_upgrade_decoded_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_decoded_breakdown.modules.upgrade++;
+    analysisd_state.events_decoded_breakdown.modules.upgrade++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_vulnerability_decoded_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_decoded_breakdown.modules.vulnerability++;
+    analysisd_state.events_decoded_breakdown.modules.vulnerability++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_logcollector_eventchannel_decoded_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_decoded_breakdown.modules.logcollector.eventchannel++;
+    analysisd_state.events_decoded_breakdown.modules.logcollector.eventchannel++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_logcollector_eventlog_decoded_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_decoded_breakdown.modules.logcollector.eventlog++;
+    analysisd_state.events_decoded_breakdown.modules.logcollector.eventlog++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_logcollector_macos_decoded_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_decoded_breakdown.modules.logcollector.macos++;
+    analysisd_state.events_decoded_breakdown.modules.logcollector.macos++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_logcollector_others_decoded_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_decoded_breakdown.modules.logcollector.others++;
+    analysisd_state.events_decoded_breakdown.modules.logcollector.others++;
     w_mutex_unlock(&state_mutex);
 }
 
@@ -603,163 +603,163 @@ void w_inc_dropped_by_component_events(const char *component) {
 
 void w_inc_agent_dropped_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_dropped_breakdown.agent++;
+    analysisd_state.events_dropped_breakdown.agent++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_agentless_dropped_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_dropped_breakdown.agentless++;
+    analysisd_state.events_dropped_breakdown.agentless++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_dbsync_dropped_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_dropped_breakdown.dbsync++;
+    analysisd_state.events_dropped_breakdown.dbsync++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_monitor_dropped_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_dropped_breakdown.monitor++;
+    analysisd_state.events_dropped_breakdown.monitor++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_remote_dropped_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_dropped_breakdown.remote++;
+    analysisd_state.events_dropped_breakdown.remote++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_syslog_dropped_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_dropped_breakdown.syslog++;
+    analysisd_state.events_dropped_breakdown.syslog++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_integrations_virustotal_dropped_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_dropped_breakdown.integrations.virustotal++;
+    analysisd_state.events_dropped_breakdown.integrations.virustotal++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_aws_dropped_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_dropped_breakdown.modules.aws++;
+    analysisd_state.events_dropped_breakdown.modules.aws++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_azure_dropped_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_dropped_breakdown.modules.azure++;
+    analysisd_state.events_dropped_breakdown.modules.azure++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_ciscat_dropped_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_dropped_breakdown.modules.ciscat++;
+    analysisd_state.events_dropped_breakdown.modules.ciscat++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_command_dropped_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_dropped_breakdown.modules.command++;
+    analysisd_state.events_dropped_breakdown.modules.command++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_docker_dropped_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_dropped_breakdown.modules.docker++;
+    analysisd_state.events_dropped_breakdown.modules.docker++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_gcp_dropped_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_dropped_breakdown.modules.gcp++;
+    analysisd_state.events_dropped_breakdown.modules.gcp++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_github_dropped_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_dropped_breakdown.modules.github++;
+    analysisd_state.events_dropped_breakdown.modules.github++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_office365_dropped_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_dropped_breakdown.modules.office365++;
+    analysisd_state.events_dropped_breakdown.modules.office365++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_oscap_dropped_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_dropped_breakdown.modules.oscap++;
+    analysisd_state.events_dropped_breakdown.modules.oscap++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_osquery_dropped_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_dropped_breakdown.modules.osquery++;
+    analysisd_state.events_dropped_breakdown.modules.osquery++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_rootcheck_dropped_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_dropped_breakdown.modules.rootcheck++;
+    analysisd_state.events_dropped_breakdown.modules.rootcheck++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_sca_dropped_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_dropped_breakdown.modules.sca++;
+    analysisd_state.events_dropped_breakdown.modules.sca++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_syscheck_dropped_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_dropped_breakdown.modules.syscheck++;
+    analysisd_state.events_dropped_breakdown.modules.syscheck++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_syscollector_dropped_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_dropped_breakdown.modules.syscollector++;
+    analysisd_state.events_dropped_breakdown.modules.syscollector++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_upgrade_dropped_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_dropped_breakdown.modules.upgrade++;
+    analysisd_state.events_dropped_breakdown.modules.upgrade++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_vulnerability_dropped_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_dropped_breakdown.modules.vulnerability++;
+    analysisd_state.events_dropped_breakdown.modules.vulnerability++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_logcollector_eventchannel_dropped_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_dropped_breakdown.modules.logcollector.eventchannel++;
+    analysisd_state.events_dropped_breakdown.modules.logcollector.eventchannel++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_logcollector_eventlog_dropped_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_dropped_breakdown.modules.logcollector.eventlog++;
+    analysisd_state.events_dropped_breakdown.modules.logcollector.eventlog++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_logcollector_macos_dropped_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_dropped_breakdown.modules.logcollector.macos++;
+    analysisd_state.events_dropped_breakdown.modules.logcollector.macos++;
     w_mutex_unlock(&state_mutex);
 }
 
 void w_inc_modules_logcollector_others_dropped_events() {
     w_mutex_lock(&state_mutex);
-    analysisd_state.events_received_breakdown.events_dropped_breakdown.modules.logcollector.others++;
+    analysisd_state.events_dropped_breakdown.modules.logcollector.others++;
     w_mutex_unlock(&state_mutex);
 }
 
@@ -841,90 +841,90 @@ cJSON* asys_create_state_json() {
     _decoded = cJSON_CreateObject();
     cJSON_AddItemToObject(_received, "events_decoded_breakdown", _decoded);
 
-    cJSON_AddNumberToObject(_decoded, "agent_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.agent);
-    cJSON_AddNumberToObject(_decoded, "agentless_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.agentless);
-    cJSON_AddNumberToObject(_decoded, "dbsync_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.dbsync);
-    cJSON_AddNumberToObject(_decoded, "monitor_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.monitor);
-    cJSON_AddNumberToObject(_decoded, "remote_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.remote);
-    cJSON_AddNumberToObject(_decoded, "syslog_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.syslog);
+    cJSON_AddNumberToObject(_decoded, "agent_decoded", state_cpy.events_decoded_breakdown.agent);
+    cJSON_AddNumberToObject(_decoded, "agentless_decoded", state_cpy.events_decoded_breakdown.agentless);
+    cJSON_AddNumberToObject(_decoded, "dbsync_decoded", state_cpy.events_decoded_breakdown.dbsync);
+    cJSON_AddNumberToObject(_decoded, "monitor_decoded", state_cpy.events_decoded_breakdown.monitor);
+    cJSON_AddNumberToObject(_decoded, "remote_decoded", state_cpy.events_decoded_breakdown.remote);
+    cJSON_AddNumberToObject(_decoded, "syslog_decoded", state_cpy.events_decoded_breakdown.syslog);
 
     _decoded_integrations = cJSON_CreateObject();
     cJSON_AddItemToObject(_decoded, "integrations_decoded", _decoded_integrations);
 
-    cJSON_AddNumberToObject(_decoded_integrations, "virustotal_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.integrations.virustotal);
+    cJSON_AddNumberToObject(_decoded_integrations, "virustotal_decoded", state_cpy.events_decoded_breakdown.integrations.virustotal);
 
     _decoded_modules = cJSON_CreateObject();
     cJSON_AddItemToObject(_decoded, "modules_decoded", _decoded_modules);
 
-    cJSON_AddNumberToObject(_decoded_modules, "aws_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.modules.aws);
-    cJSON_AddNumberToObject(_decoded_modules, "azure_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.modules.azure);
-    cJSON_AddNumberToObject(_decoded_modules, "ciscat_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.modules.ciscat);
-    cJSON_AddNumberToObject(_decoded_modules, "command_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.modules.command);
-    cJSON_AddNumberToObject(_decoded_modules, "docker_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.modules.docker);
-    cJSON_AddNumberToObject(_decoded_modules, "gcp_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.modules.gcp);
-    cJSON_AddNumberToObject(_decoded_modules, "github_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.modules.github);
+    cJSON_AddNumberToObject(_decoded_modules, "aws_decoded", state_cpy.events_decoded_breakdown.modules.aws);
+    cJSON_AddNumberToObject(_decoded_modules, "azure_decoded", state_cpy.events_decoded_breakdown.modules.azure);
+    cJSON_AddNumberToObject(_decoded_modules, "ciscat_decoded", state_cpy.events_decoded_breakdown.modules.ciscat);
+    cJSON_AddNumberToObject(_decoded_modules, "command_decoded", state_cpy.events_decoded_breakdown.modules.command);
+    cJSON_AddNumberToObject(_decoded_modules, "docker_decoded", state_cpy.events_decoded_breakdown.modules.docker);
+    cJSON_AddNumberToObject(_decoded_modules, "gcp_decoded", state_cpy.events_decoded_breakdown.modules.gcp);
+    cJSON_AddNumberToObject(_decoded_modules, "github_decoded", state_cpy.events_decoded_breakdown.modules.github);
 
     _decoded_modules_logcollector = cJSON_CreateObject();
     cJSON_AddItemToObject(_decoded_modules, "logcollector_decoded", _decoded_modules_logcollector);
 
-    cJSON_AddNumberToObject(_decoded_modules_logcollector, "eventchannel_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.modules.logcollector.eventchannel);
-    cJSON_AddNumberToObject(_decoded_modules_logcollector, "eventlog_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.modules.logcollector.eventlog);
-    cJSON_AddNumberToObject(_decoded_modules_logcollector, "macos_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.modules.logcollector.macos);
-    cJSON_AddNumberToObject(_decoded_modules_logcollector, "others_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.modules.logcollector.others);
+    cJSON_AddNumberToObject(_decoded_modules_logcollector, "eventchannel_decoded", state_cpy.events_decoded_breakdown.modules.logcollector.eventchannel);
+    cJSON_AddNumberToObject(_decoded_modules_logcollector, "eventlog_decoded", state_cpy.events_decoded_breakdown.modules.logcollector.eventlog);
+    cJSON_AddNumberToObject(_decoded_modules_logcollector, "macos_decoded", state_cpy.events_decoded_breakdown.modules.logcollector.macos);
+    cJSON_AddNumberToObject(_decoded_modules_logcollector, "others_decoded", state_cpy.events_decoded_breakdown.modules.logcollector.others);
 
-    cJSON_AddNumberToObject(_decoded_modules, "office365_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.modules.office365);
-    cJSON_AddNumberToObject(_decoded_modules, "oscap_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.modules.oscap);
-    cJSON_AddNumberToObject(_decoded_modules, "osquery_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.modules.osquery);
-    cJSON_AddNumberToObject(_decoded_modules, "rootcheck_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.modules.rootcheck);
-    cJSON_AddNumberToObject(_decoded_modules, "sca_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.modules.sca);
-    cJSON_AddNumberToObject(_decoded_modules, "syscheck_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.modules.syscheck);
-    cJSON_AddNumberToObject(_decoded_modules, "syscollector_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.modules.syscollector);
-    cJSON_AddNumberToObject(_decoded_modules, "upgrade_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.modules.upgrade);
-    cJSON_AddNumberToObject(_decoded_modules, "vulnerability_decoded", state_cpy.events_received_breakdown.events_decoded_breakdown.modules.vulnerability);
+    cJSON_AddNumberToObject(_decoded_modules, "office365_decoded", state_cpy.events_decoded_breakdown.modules.office365);
+    cJSON_AddNumberToObject(_decoded_modules, "oscap_decoded", state_cpy.events_decoded_breakdown.modules.oscap);
+    cJSON_AddNumberToObject(_decoded_modules, "osquery_decoded", state_cpy.events_decoded_breakdown.modules.osquery);
+    cJSON_AddNumberToObject(_decoded_modules, "rootcheck_decoded", state_cpy.events_decoded_breakdown.modules.rootcheck);
+    cJSON_AddNumberToObject(_decoded_modules, "sca_decoded", state_cpy.events_decoded_breakdown.modules.sca);
+    cJSON_AddNumberToObject(_decoded_modules, "syscheck_decoded", state_cpy.events_decoded_breakdown.modules.syscheck);
+    cJSON_AddNumberToObject(_decoded_modules, "syscollector_decoded", state_cpy.events_decoded_breakdown.modules.syscollector);
+    cJSON_AddNumberToObject(_decoded_modules, "upgrade_decoded", state_cpy.events_decoded_breakdown.modules.upgrade);
+    cJSON_AddNumberToObject(_decoded_modules, "vulnerability_decoded", state_cpy.events_decoded_breakdown.modules.vulnerability);
 
     _dropped = cJSON_CreateObject();
     cJSON_AddItemToObject(_received, "events_dropped_breakdown", _dropped);
 
-    cJSON_AddNumberToObject(_dropped, "agent_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.agent);
-    cJSON_AddNumberToObject(_dropped, "agentless_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.agentless);
-    cJSON_AddNumberToObject(_dropped, "dbsync_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.dbsync);
-    cJSON_AddNumberToObject(_dropped, "monitor_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.monitor);
-    cJSON_AddNumberToObject(_dropped, "remote_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.remote);
-    cJSON_AddNumberToObject(_dropped, "syslog_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.syslog);
+    cJSON_AddNumberToObject(_dropped, "agent_dropped", state_cpy.events_dropped_breakdown.agent);
+    cJSON_AddNumberToObject(_dropped, "agentless_dropped", state_cpy.events_dropped_breakdown.agentless);
+    cJSON_AddNumberToObject(_dropped, "dbsync_dropped", state_cpy.events_dropped_breakdown.dbsync);
+    cJSON_AddNumberToObject(_dropped, "monitor_dropped", state_cpy.events_dropped_breakdown.monitor);
+    cJSON_AddNumberToObject(_dropped, "remote_dropped", state_cpy.events_dropped_breakdown.remote);
+    cJSON_AddNumberToObject(_dropped, "syslog_dropped", state_cpy.events_dropped_breakdown.syslog);
 
     _dropped_integrations = cJSON_CreateObject();
     cJSON_AddItemToObject(_dropped, "integrations_dropped", _dropped_integrations);
 
-    cJSON_AddNumberToObject(_dropped_integrations, "virustotal_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.integrations.virustotal);
+    cJSON_AddNumberToObject(_dropped_integrations, "virustotal_dropped", state_cpy.events_dropped_breakdown.integrations.virustotal);
 
     _dropped_modules = cJSON_CreateObject();
     cJSON_AddItemToObject(_dropped, "modules_dropped", _dropped_modules);
 
-    cJSON_AddNumberToObject(_dropped_modules, "aws_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.modules.aws);
-    cJSON_AddNumberToObject(_dropped_modules, "azure_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.modules.azure);
-    cJSON_AddNumberToObject(_dropped_modules, "ciscat_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.modules.ciscat);
-    cJSON_AddNumberToObject(_dropped_modules, "command_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.modules.command);
-    cJSON_AddNumberToObject(_dropped_modules, "docker_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.modules.docker);
-    cJSON_AddNumberToObject(_dropped_modules, "gcp_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.modules.gcp);
-    cJSON_AddNumberToObject(_dropped_modules, "github_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.modules.github);
+    cJSON_AddNumberToObject(_dropped_modules, "aws_dropped", state_cpy.events_dropped_breakdown.modules.aws);
+    cJSON_AddNumberToObject(_dropped_modules, "azure_dropped", state_cpy.events_dropped_breakdown.modules.azure);
+    cJSON_AddNumberToObject(_dropped_modules, "ciscat_dropped", state_cpy.events_dropped_breakdown.modules.ciscat);
+    cJSON_AddNumberToObject(_dropped_modules, "command_dropped", state_cpy.events_dropped_breakdown.modules.command);
+    cJSON_AddNumberToObject(_dropped_modules, "docker_dropped", state_cpy.events_dropped_breakdown.modules.docker);
+    cJSON_AddNumberToObject(_dropped_modules, "gcp_dropped", state_cpy.events_dropped_breakdown.modules.gcp);
+    cJSON_AddNumberToObject(_dropped_modules, "github_dropped", state_cpy.events_dropped_breakdown.modules.github);
 
     _dropped_modules_logcollector = cJSON_CreateObject();
     cJSON_AddItemToObject(_dropped_modules, "logcollector_dropped", _dropped_modules_logcollector);
 
-    cJSON_AddNumberToObject(_dropped_modules_logcollector, "eventchannel_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.modules.logcollector.eventchannel);
-    cJSON_AddNumberToObject(_dropped_modules_logcollector, "eventlog_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.modules.logcollector.eventlog);
-    cJSON_AddNumberToObject(_dropped_modules_logcollector, "macos_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.modules.logcollector.macos);
-    cJSON_AddNumberToObject(_dropped_modules_logcollector, "others_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.modules.logcollector.others);
+    cJSON_AddNumberToObject(_dropped_modules_logcollector, "eventchannel_dropped", state_cpy.events_dropped_breakdown.modules.logcollector.eventchannel);
+    cJSON_AddNumberToObject(_dropped_modules_logcollector, "eventlog_dropped", state_cpy.events_dropped_breakdown.modules.logcollector.eventlog);
+    cJSON_AddNumberToObject(_dropped_modules_logcollector, "macos_dropped", state_cpy.events_dropped_breakdown.modules.logcollector.macos);
+    cJSON_AddNumberToObject(_dropped_modules_logcollector, "others_dropped", state_cpy.events_dropped_breakdown.modules.logcollector.others);
 
-    cJSON_AddNumberToObject(_dropped_modules, "office365_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.modules.office365);
-    cJSON_AddNumberToObject(_dropped_modules, "oscap_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.modules.oscap);
-    cJSON_AddNumberToObject(_dropped_modules, "osquery_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.modules.osquery);
-    cJSON_AddNumberToObject(_dropped_modules, "rootcheck_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.modules.rootcheck);
-    cJSON_AddNumberToObject(_dropped_modules, "sca_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.modules.sca);
-    cJSON_AddNumberToObject(_dropped_modules, "syscheck_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.modules.syscheck);
-    cJSON_AddNumberToObject(_dropped_modules, "syscollector_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.modules.syscollector);
-    cJSON_AddNumberToObject(_dropped_modules, "upgrade_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.modules.upgrade);
-    cJSON_AddNumberToObject(_dropped_modules, "vulnerability_dropped", state_cpy.events_received_breakdown.events_dropped_breakdown.modules.vulnerability);
+    cJSON_AddNumberToObject(_dropped_modules, "office365_dropped", state_cpy.events_dropped_breakdown.modules.office365);
+    cJSON_AddNumberToObject(_dropped_modules, "oscap_dropped", state_cpy.events_dropped_breakdown.modules.oscap);
+    cJSON_AddNumberToObject(_dropped_modules, "osquery_dropped", state_cpy.events_dropped_breakdown.modules.osquery);
+    cJSON_AddNumberToObject(_dropped_modules, "rootcheck_dropped", state_cpy.events_dropped_breakdown.modules.rootcheck);
+    cJSON_AddNumberToObject(_dropped_modules, "sca_dropped", state_cpy.events_dropped_breakdown.modules.sca);
+    cJSON_AddNumberToObject(_dropped_modules, "syscheck_dropped", state_cpy.events_dropped_breakdown.modules.syscheck);
+    cJSON_AddNumberToObject(_dropped_modules, "syscollector_dropped", state_cpy.events_dropped_breakdown.modules.syscollector);
+    cJSON_AddNumberToObject(_dropped_modules, "upgrade_dropped", state_cpy.events_dropped_breakdown.modules.upgrade);
+    cJSON_AddNumberToObject(_dropped_modules, "vulnerability_dropped", state_cpy.events_dropped_breakdown.modules.vulnerability);
 
     cJSON_AddNumberToObject(_statistics, "events_processed", state_cpy.events_processed);
     cJSON_AddNumberToObject(_statistics, "alerts_written", state_cpy.alerts_written);
