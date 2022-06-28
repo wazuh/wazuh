@@ -1057,7 +1057,7 @@ checks:
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Cryptography'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Cryptography -> ForceKeyProtection -> n:(\d+) compare >= 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Cryptography -> ForceKeyProtection -> n:(\d+) compare > 0'
 
   # 2.3.15.1 Ensure 'System objects: Require case insensitivity for non-Windows subsystems' is set to 'Enabled'
   - id: 15065
