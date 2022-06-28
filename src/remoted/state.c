@@ -211,7 +211,7 @@ static remoted_agent_state_t * get_node(char *agent_id) {
     if(agent_state != NULL) {
         return agent_state;
     } else {
-        os_calloc(1,sizeof(remoted_agent_state_t),agent_state);
+        os_calloc(1, sizeof(remoted_agent_state_t), agent_state);
         OSHash_Add_ex(remoted_agents_state, agent_id, agent_state);
         return agent_state;
     }
@@ -250,7 +250,7 @@ static void w_remoted_clean_agents_state() {
             }
         }
 
-        if (exist == 0){
+        if (exist == 0) {
             agent_state = (remoted_agent_state_t *)OSHash_Delete_ex(remoted_agents_state, agent_id);
             if (agent_state) {
                 os_free(agent_state);
