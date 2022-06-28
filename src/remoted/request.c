@@ -261,7 +261,7 @@ void * req_dispatch(req_node_t * node) {
                 }
                 goto cleanup;
             } else {
-                rem_inc_send_request();
+                rem_inc_send_request(agentid);
             }
 
             // Wait for ACK or response, only in UDP mode
@@ -321,7 +321,7 @@ void * req_dispatch(req_node_t * node) {
             mdebug2("req_dispatch(): Sending ack (%s).", node->counter);
             snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s ack", node->counter);
             if (send_msg(agentid, response, -1) >= 0) {
-                rem_inc_send_request();
+                rem_inc_send_request(agentid);
             }
         }
 
