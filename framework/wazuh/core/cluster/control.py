@@ -133,7 +133,7 @@ async def get_health(lc: local_client.LocalClient, filter_node=None):
     return result
 
 
-async def get_agents(lc: local_client.LocalClient, filter_node=None, filter_status=None):
+async def get_agents(lc: local_client.LocalClient, filter_node=None, filter_status=None, select_fields=None):
     """Get list of agents and which node they are connected to.
 
     Parameters
@@ -144,15 +144,17 @@ async def get_agents(lc: local_client.LocalClient, filter_node=None, filter_stat
         Node to return.
     filter_status : list
         Agent connection status to filter by.
+    select_fields : set
+        Fields to obtain from the database.
 
     Returns
     -------
     result : dict
         Agent's basic information.
     """
-    filter_status = ["all"] if not filter_status else filter_status
-    filter_node = ["all"] if not filter_node else filter_node
-    select_fields = {'id', 'ip', 'name', 'status', 'node_name', 'version', 'lastKeepAlive'}
+    filter_status = filter_status or ["all"]
+    filter_node = filter_node or ["all"]
+    select_fields = select_fields or {'id', 'ip', 'name', 'status', 'node_name', 'version', 'lastKeepAlive'}
 
     input_json = {'f': Agent.get_agents_overview,
                   'f_kwargs': {
