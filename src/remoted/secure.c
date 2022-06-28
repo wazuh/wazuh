@@ -88,10 +88,10 @@ void HandleSecure()
     /* Create OSHash for agents statistics */
     remoted_agents_state = OSHash_Create();
     if (!remoted_agents_state) {
-        merror(MEM_ERROR, errno, strerror(errno));
+        merror_exit(HASH_ERROR);
     }
     if (!OSHash_setSize(remoted_agents_state, 2048)) {
-        merror(LIST_ERROR);
+        merror_exit(HSETSIZE_ERROR, "remoted_agents_state");
     }
 
     /* Initialize manager */
