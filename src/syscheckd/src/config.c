@@ -480,6 +480,7 @@ cJSON *getSyscheckConfig(void) {
     cJSON_AddStringToObject(synchronization, "registry_enabled",
                             syscheck.enable_registry_synchronization ? "yes" : "no");
 #endif
+    cJSON_AddNumberToObject(synchronization, "queue_size", syscheck.sync_queue_size);
     cJSON_AddNumberToObject(synchronization, "interval", syscheck.sync_interval);
     cJSON_AddNumberToObject(synchronization, "max_eps", syscheck.sync_max_eps);
     cJSON_AddNumberToObject(synchronization, "response_timeout", syscheck.sync_response_timeout);
