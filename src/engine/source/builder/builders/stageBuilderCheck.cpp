@@ -37,7 +37,7 @@ base::Expression stageBuilderCheckList(const std::any& definition)
                         jsonDefinition.typeName()));
     }
 
-    auto conditions = jsonDefinition.getArray();
+    auto conditions = jsonDefinition.getArray().value();
     std::vector<base::Expression> conditionExpressions;
     std::transform(
         conditions.begin(),
@@ -59,7 +59,7 @@ base::Expression stageBuilderCheckList(const std::any& definition)
                     "Invalid array item object size: expected [1] but got [{}]",
                     condition.size()));
             }
-            return Registry::getBuilder("operation.condition")(condition.getObject()[0]);
+            return Registry::getBuilder("operation.condition")(condition.getObject().value()[0]);
         });
 
     auto expression = base::And::create("stage.check", conditionExpressions);
@@ -70,7 +70,7 @@ base::Expression stageBuilderCheckList(const std::any& definition)
 base::Expression stageBuilderCheckExpression(const std::any& definition)
 {
     // Obtain expressionString
-    auto expressionString = std::any_cast<json::Json>(definition).getString();
+    auto expressionString = std::any_cast<json::Json>(definition).getString().value();
 
     // Inject builder
     auto termBuilder = [=](std::string term) -> std::function<bool(base::Event)>

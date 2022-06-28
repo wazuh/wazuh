@@ -61,7 +61,7 @@ public:
                                                  "Asset expects a JSON object, got: [{}]",
                                                  jsonDefinition.typeName()));
         }
-        auto objectDefinition = jsonDefinition.getObject();
+        auto objectDefinition = jsonDefinition.getObject().value();
 
         // Get name
         auto namePos =
@@ -70,7 +70,7 @@ public:
                          [](auto tuple) { return std::get<0>(tuple) == "name"; });
         if (namePos != objectDefinition.end())
         {
-            m_name = std::get<1>(*namePos).getString();
+            m_name = std::get<1>(*namePos).getString().value();
             objectDefinition.erase(namePos);
         }
         else
@@ -80,10 +80,12 @@ public:
         }
 
         // Get parents
-        auto parentsPos =
-            std::find_if(objectDefinition.begin(),
-                         objectDefinition.end(),
-                         [](auto tuple) { return std::get<0>(tuple) == "parents"; });
+        auto parentsPos = std::find_if(objectDefinition.begin(),
+                                       objectDefinition.end(),
+                                       [](auto tuple) {
+                                           return std::get<0>(tuple) == "parents"
+                                                  || std::get<0>(tuple) == "after";
+                                       });
         if (parentsPos != objectDefinition.end())
         {
             if (!std::get<1>(*parentsPos).isArray())
@@ -93,10 +95,10 @@ public:
                                 "Asset definition [parents] expects an array, got: [{}]",
                                 std::get<1>(*parentsPos).typeName()));
             }
-            auto parents = std::get<1>(*parentsPos).getArray();
+            auto parents = std::get<1>(*parentsPos).getArray().value();
             for (auto& parent : parents)
             {
-                m_parents.insert(parent.getString());
+                m_parents.insert(parent.getString().value());
             }
             objectDefinition.erase(parentsPos);
         }
@@ -113,10 +115,12 @@ public:
         }
 
         // Get check
-        auto checkPos =
-            std::find_if(objectDefinition.begin(),
-                         objectDefinition.end(),
-                         [](auto tuple) { return std::get<0>(tuple) == "check"; });
+        auto checkPos = std::find_if(objectDefinition.begin(),
+                                     objectDefinition.end(),
+                                     [](auto tuple) {
+                                         return std::get<0>(tuple) == "check"
+                                                || std::get<0>(tuple) == "allow";
+                                     });
         if (checkPos != objectDefinition.end())
         {
             try

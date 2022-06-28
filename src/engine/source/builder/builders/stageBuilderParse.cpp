@@ -33,7 +33,7 @@ base::Expression stageBuilderParse(const std::any& definition)
     }
 
     std::vector<base::Expression> parserExpressions;
-    auto parseObj = jsonDefinition.getObject();
+    auto parseObj = jsonDefinition.getObject().value();
 
     std::transform(parseObj.begin(),
                    parseObj.end(),

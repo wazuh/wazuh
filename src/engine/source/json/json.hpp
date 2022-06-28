@@ -110,6 +110,11 @@ public:
         return *this;
     }
 
+    bool operator==(const Json& other) const
+    {
+        return m_document == other.m_document;
+    }
+
     /************************************************************************************/
     // Static Helpers
     /************************************************************************************/
@@ -307,6 +312,10 @@ public:
         }
     }
 
+    /************************************************************************************/
+    // Getters
+    /************************************************************************************/
+
     /**
      * @brief get the value of the string field.
      * Overwrites previous value. If reference field is not found, sets base field to
@@ -318,13 +327,13 @@ public:
      *
      * @throws std::runtime_error If any pointer path is invalid.
      */
-    std::optional<std::string> getValueString(std::string_view basePointerPath)
+    std::optional<std::string> getString(std::string_view path = "") const
     {
-        auto fieldPtr = rapidjson::Pointer(basePointerPath.data());
+        auto pp = rapidjson::Pointer(path.data());
 
-        if (fieldPtr.IsValid())
+        if (pp.IsValid())
         {
-            const auto* value = fieldPtr.Get(m_document);
+            const auto* value = pp.Get(m_document);
             if (value && value->IsString())
             {
                 return value->GetString();
@@ -336,9 +345,9 @@ public:
         }
         else
         {
-            throw std::runtime_error(fmt::format("[Json::get(basePointerPath)] "
+            throw std::runtime_error(fmt::format("[Json::get(path)] "
                                                  "Invalid json path: [{}]",
-                                                 basePointerPath));
+                                                 path));
         }
     }
 
@@ -353,13 +362,13 @@ public:
      *
      * @throws std::runtime_error If any pointer path is invalid.
      */
-    std::optional<int> getValueInt(std::string_view basePointerPath)
+    std::optional<int> getInt(std::string_view path = "") const
     {
-        auto fieldPtr = rapidjson::Pointer(basePointerPath.data());
+        auto pp = rapidjson::Pointer(path.data());
 
-        if (fieldPtr.IsValid())
+        if (pp.IsValid())
         {
-            const auto* value = fieldPtr.Get(m_document);
+            const auto* value = pp.Get(m_document);
             if (value && value->IsInt())
             {
                 return value->GetInt();
@@ -373,7 +382,7 @@ public:
         {
             throw std::runtime_error(fmt::format("[Json::get(basePointerPath)] "
                                                  "Invalid json path: [{}]",
-                                                 basePointerPath));
+                                                 path));
         }
     }
 
@@ -388,13 +397,13 @@ public:
      *
      * @throws std::runtime_error If any pointer path is invalid.
      */
-    std::optional<double> getValueDouble(std::string_view basePointerPath)
+    std::optional<double> getDouble(std::string_view path = "") const
     {
-        auto fieldPtr = rapidjson::Pointer(basePointerPath.data());
+        auto pp = rapidjson::Pointer(path.data());
 
-        if (fieldPtr.IsValid())
+        if (pp.IsValid())
         {
-            const auto* value = fieldPtr.Get(m_document);
+            const auto* value = pp.Get(m_document);
             if (value && value->IsDouble())
             {
                 return value->GetDouble();
@@ -408,7 +417,7 @@ public:
         {
             throw std::runtime_error(fmt::format("[Json::get(basePointerPath)] "
                                                  "Invalid json path: [{}]",
-                                                 basePointerPath));
+                                                 path));
         }
     }
 
@@ -423,13 +432,13 @@ public:
      *
      * @throws std::runtime_error If any pointer path is invalid.
      */
-    std::optional<bool> getValueBool(std::string_view basePointerPath)
+    std::optional<bool> getBool(std::string_view path = "") const
     {
-        auto fieldPtr = rapidjson::Pointer(basePointerPath.data());
+        auto pp = rapidjson::Pointer(path.data());
 
-        if (fieldPtr.IsValid())
+        if (pp.IsValid())
         {
-            const auto* value = fieldPtr.Get(m_document);
+            const auto* value = pp.Get(m_document);
             if (value && value->IsBool())
             {
                 return value->GetBool();
@@ -443,27 +452,23 @@ public:
         {
             throw std::runtime_error(fmt::format("[Json::get(basePointerPath)] "
                                                  "Invalid json path: [{}]",
-                                                 basePointerPath));
+                                                 path));
         }
     }
 
-    std::optional<std::vector<std::string>>
-    getValueArrayString(std::string_view basePointerPath)
+    std::optional<std::vector<Json>> getArray(std::string_view path = "") const
     {
-        auto fieldPtr = rapidjson::Pointer(basePointerPath.data());
+        auto pp = rapidjson::Pointer(path.data());
 
-        if (fieldPtr.IsValid())
+        if (pp.IsValid())
         {
-            const auto* value = fieldPtr.Get(m_document);
+            const auto* value = pp.Get(m_document);
             if (value && value->IsArray())
             {
-                std::vector<std::string> result;
-                for (rapidjson::SizeType i = 0; i < value->Size(); i++)
+                std::vector<Json> result;
+                for (const auto& item : value->GetArray())
                 {
-                    if (value->GetArray()[i].IsString())
-                    {
-                        result.push_back(value->GetArray()[i].GetString());
-                    }
+                    result.push_back(Json(item));
                 }
                 return result;
             }
@@ -476,7 +481,37 @@ public:
         {
             throw std::runtime_error(fmt::format("[Json::get(basePointerPath)] "
                                                  "Invalid json path: [{}]",
-                                                 basePointerPath));
+                                                 path));
+        }
+    }
+
+    std::optional<std::vector<std::tuple<std::string, Json>>>
+    getObject(std::string_view path = "") const
+    {
+        auto pp = rapidjson::Pointer(path.data());
+
+        if (pp.IsValid())
+        {
+            const auto* value = pp.Get(m_document);
+            if (value && value->IsObject())
+            {
+                std::vector<std::tuple<std::string, Json>> result;
+                for (auto& [key, value] : value->GetObject())
+                {
+                    result.emplace_back(std::make_tuple(key.GetString(), Json(value)));
+                }
+                return result;
+            }
+            else
+            {
+                return std::nullopt;
+            }
+        }
+        else
+        {
+            throw std::runtime_error(fmt::format("[Json::get(basePointerPath)] "
+                                                 "Invalid json path: [{}]",
+                                                 path));
         }
     }
 
@@ -519,8 +554,7 @@ public:
     }
 
     /************************************************************************************/
-    // Buildtime functionality, used outside operation's runtime.
-    // TODO: Move non-buildtime functionality to a separate class.
+    // Query
     /************************************************************************************/
 
     /**
@@ -531,87 +565,271 @@ public:
      *
      * @throws std::runtime_error If the Json is not an array or object.
      */
-    size_t size() const
+    size_t size(std::string_view path = "") const
     {
-        if (m_document.IsObject())
+        auto pp = rapidjson::Pointer(path.data());
+
+        if (pp.IsValid())
         {
-            return m_document.GetObject().MemberCount();
-        }
-        else if (m_document.IsArray())
-        {
-            return m_document.GetArray().Size();
+            const auto* value = pp.Get(m_document);
+            if (value)
+            {
+                if (value->IsArray())
+                {
+                    return value->Size();
+                }
+                else if (value->IsObject())
+                {
+                    return value->MemberCount();
+                }
+                else
+                {
+                    throw std::runtime_error(fmt::format("[Json::size(basePointerPath)] "
+                                                         "Invalid json path: [{}]",
+                                                         path));
+                }
+            }
+            else
+            {
+                throw std::runtime_error(fmt::format("[Json::size(basePointerPath)] "
+                                                     "Cannot find json path: [{}]",
+                                                     path));
+            }
         }
         else
         {
-            throw std::runtime_error(fmt::format(
-                "[Json::size()] Expected array or object, got: {}", typeName()));
+            throw std::runtime_error(fmt::format("[Json::size(basePointerPath)] "
+                                                 "Invalid json path: [{}]",
+                                                 path));
         }
     }
 
     /**
-     * @brief Check if the Json is null value.
+     * @brief Check if the Json described by the path is Null.
      *
-     * @return true The Json is null value.
-     * @return false The Json is not null value.
+     * Ensure that the path exists before calling this function.
+     *
+     *
+     * @param path The path to the object, default value is root object ("").
+     * @return true if Json is Null.
+     * @return false if Json is not Null.
+     *
+     * @throws std::runtime_error If path is invalid or cannot be found.
      */
-    bool isNull() const
+    bool isNull(std::string_view path = "") const
     {
-        return m_document.IsNull();
+        auto pp = rapidjson::Pointer(path.data());
+
+        if (pp.IsValid())
+        {
+            const auto* value = pp.Get(m_document);
+            if (value)
+            {
+                return value->IsNull();
+            }
+            else
+            {
+                throw std::runtime_error(fmt::format("[Json::isNull(basePointerPath)] "
+                                                     "Cannot find path: [{}]",
+                                                     path));
+            }
+        }
+        else
+        {
+            throw std::runtime_error(fmt::format("[Json::isNull(basePointerPath)] "
+                                                 "Invalid json path: [{}]",
+                                                 path));
+        }
     }
 
     /**
-     * @brief Check if the Json is boolean value.
+     * @brief Check if the Json described by the path is Bool.
      *
-     * @return true The Json is boolean value.
-     * @return false The Json is not boolean value.
+     * Ensure that the path exists before calling this function.
+     *
+     *
+     * @param path The path to the object, default value is root object ("").
+     * @return true if Json is Bool.
+     * @return false if Json is not Bool.
+     *
+     * @throws std::runtime_error If path is invalid or cannot be found.
      */
-    bool isBool() const
+    bool isBool(std::string_view path = "") const
     {
-        return m_document.IsBool();
+        auto pp = rapidjson::Pointer(path.data());
+
+        if (pp.IsValid())
+        {
+            const auto* value = pp.Get(m_document);
+            if (value)
+            {
+                return value->IsBool();
+            }
+            else
+            {
+                throw std::runtime_error(fmt::format("[Json::isBool(basePointerPath)] "
+                                                     "Cannot find path: [{}]",
+                                                     path));
+            }
+        }
+        else
+        {
+            throw std::runtime_error(fmt::format("[Json::isBool(basePointerPath)] "
+                                                 "Invalid json path: [{}]",
+                                                 path));
+        }
     }
 
     /**
-     * @brief Check if the Json is number value.
+     * @brief Check if the Json described by the path is Number.
      *
-     * @return true The Json is number value.
-     * @return false The Json is not number value.
+     * Ensure that the path exists before calling this function.
+     *
+     *
+     * @param path The path to the object, default value is root object ("").
+     * @return true if Json is Number.
+     * @return false if Json is not Number.
+     *
+     * @throws std::runtime_error If path is invalid or cannot be found.
      */
-    bool isNumber() const
+    bool isNumber(std::string_view path = "") const
     {
-        return m_document.IsNumber();
+        auto pp = rapidjson::Pointer(path.data());
+
+        if (pp.IsValid())
+        {
+            const auto* value = pp.Get(m_document);
+            if (value)
+            {
+                return value->IsNumber();
+            }
+            else
+            {
+                throw std::runtime_error(fmt::format("[Json::isNumber(basePointerPath)] "
+                                                     "Cannot find path: [{}]",
+                                                     path));
+            }
+        }
+        else
+        {
+            throw std::runtime_error(fmt::format("[Json::isNumber(basePointerPath)] "
+                                                 "Invalid json path: [{}]",
+                                                 path));
+        }
     }
 
     /**
-     * @brief Check if the Json is string value.
+     * @brief Check if the Json described by the path is String.
      *
-     * @return true The Json is string value.
-     * @return false The Json is not string value.
+     * Ensure that the path exists before calling this function.
+     *
+     *
+     * @param path The path to the object, default value is root object ("").
+     * @return true if Json is String.
+     * @return false if Json is not String.
+     *
+     * @throws std::runtime_error If path is invalid or cannot be found.
      */
-    bool isString() const
+    bool isString(std::string_view path = "") const
     {
-        return m_document.IsString();
+        auto pp = rapidjson::Pointer(path.data());
+
+        if (pp.IsValid())
+        {
+            const auto* value = pp.Get(m_document);
+            if (value)
+            {
+                return value->IsString();
+            }
+            else
+            {
+                throw std::runtime_error(fmt::format("[Json::isString(basePointerPath)] "
+                                                     "Cannot find path: [{}]",
+                                                     path));
+            }
+        }
+        else
+        {
+            throw std::runtime_error(fmt::format("[Json::isString(basePointerPath)] "
+                                                 "Invalid json path: [{}]",
+                                                 path));
+        }
     }
 
     /**
-     * @brief Check if the Json is array value.
+     * @brief Check if the Json described by the path is Array.
      *
-     * @return true The Json is array value.
-     * @return false The Json is not array value.
+     * Ensure that the path exists before calling this function.
+     *
+     *
+     * @param path The path to the object, default value is root object ("").
+     * @return true if Json is Array.
+     * @return false if Json is not Array.
+     *
+     * @throws std::runtime_error If path is invalid or cannot be found.
      */
-    bool isArray() const
+    bool isArray(std::string_view path = "") const
     {
-        return m_document.IsArray();
+        auto pp = rapidjson::Pointer(path.data());
+
+        if (pp.IsValid())
+        {
+            const auto* value = pp.Get(m_document);
+            if (value)
+            {
+                return value->IsArray();
+            }
+            else
+            {
+                throw std::runtime_error(fmt::format("[Json::isArray(basePointerPath)] "
+                                                     "Cannot find path: [{}]",
+                                                     path));
+            }
+        }
+        else
+        {
+            throw std::runtime_error(fmt::format("[Json::isArray(basePointerPath)] "
+                                                 "Invalid json path: [{}]",
+                                                 path));
+        }
     }
 
     /**
-     * @brief Check if the Json is object value.
+     * @brief Check if the Json described by the path is Object.
      *
-     * @return true The Json is object value.
-     * @return false The Json is not object value.
+     * Ensure that the path exists before calling this function.
+     *
+     *
+     * @param path The path to the object, default value is root object ("").
+     * @return true if Json is Object.
+     * @return false if Json is not Object.
+     *
+     * @throws std::runtime_error If path is invalid or cannot be found.
      */
-    bool isObject() const
+    bool isObject(std::string_view path = "") const
     {
-        return m_document.IsObject();
+        auto pp = rapidjson::Pointer(path.data());
+
+        if (pp.IsValid())
+        {
+            const auto* value = pp.Get(m_document);
+            if (value)
+            {
+                return value->IsObject();
+            }
+            else
+            {
+                throw std::runtime_error(fmt::format("[Json::isObject(basePointerPath)] "
+                                                     "Cannot find path: [{}]",
+                                                     path));
+            }
+        }
+        else
+        {
+            throw std::runtime_error(fmt::format("[Json::isObject(basePointerPath)] "
+                                                 "Invalid json path: [{}]",
+                                                 path));
+        }
     }
 
     /**
@@ -634,130 +852,179 @@ public:
         }
     }
 
-    /**
-     * @brief Get the Json value as a boolean.
-     *
-     * @return bool The Json value as a boolean.
-     *
-     * @throws std::runtime_error If the Json is not a boolean.
-     */
-    bool getBool() const
-    {
-        return m_document.GetBool();
-    }
+    /************************************************************************************/
+    // Setters
+    /************************************************************************************/
 
     /**
-     * @brief Get the Json value as an Int number.
+     * @brief Set the Null object at the path.
+     * Parents objects are created if they do not exist.
      *
-     * @return int The Json value as an Int number.
+     * @param path The path to the object, default value is root object ("").
      *
-     * @throws std::runtime_error If the Json is not a number.
+     * @throws std::runtime_error If path is invalid.
      */
-    int getInt() const
+    void setNull(std::string_view path = "")
     {
-        return m_document.GetInt();
-    }
+        auto pp = rapidjson::Pointer(path.data());
 
-    /**
-     * @brief Get the Json value as a Double number.
-     *
-     * @return double The Json value as a Double number.
-     *
-     * @throws std::runtime_error If the Json is not a number.
-     */
-    double getDouble() const
-    {
-        return m_document.GetDouble();
-    }
-
-    /**
-     * @brief Get the Json value as a string.
-     *
-     * @return std::string The Json value as a string.
-     *
-     * @throws std::runtime_error If the Json is not a string.
-     */
-    std::string getString() const
-    {
-        return m_document.GetString();
-    }
-
-    /**
-     * @brief Get the Json value as a vector<Json>.
-     * Copy the Json array to a vector<Json>.
-     *
-     * @return std::vector<Json> The Json value as a vector<Json>.
-     *
-     * @throws std::runtime_error If the Json is not an array.
-     */
-    std::vector<Json> getArray() const
-    {
-        // TODO: Make a non copy version of get array.
-        std::vector<Json> array;
-        std::transform(m_document.GetArray().Begin(),
-                       m_document.GetArray().End(),
-                       std::back_inserter(array),
-                       [](const rapidjson::Value& value) { return Json(value); });
-
-        return array;
-    }
-
-    /**
-     * @brief Get the Json value as an object in the form vector<tuple<std::string,
-     * Json>>. Copy the Json object to a vector<tuple<std::string, Json>>. This
-     * representation is used to preserve the order of the keys.
-     *
-     * @return std::vector<std::tuple<std::string, Json>>
-     *
-     * @throws std::runtime_error If the Json is not an object.
-     */
-    std::vector<std::tuple<std::string, Json>> getObject() const
-    {
-        // TODO: Make a non copy version of get object.
-        std::vector<std::tuple<std::string, Json>> object;
-
-        for (auto& [key, value] : m_document.GetObject())
+        if (pp.IsValid())
         {
-            object.emplace_back(std::make_pair(key.GetString(), Json(value)));
+            pp.Set(m_document, rapidjson::Value().SetNull());
         }
-
-        return object;
-    }
-
-    // Required by parser, kvdb and ConditionExpression
-    void setNull()
-    {
-        m_document.SetNull();
-    }
-
-    void setBool(bool value)
-    {
-        m_document.SetBool(value);
-    }
-
-    void setInt(int value)
-    {
-        m_document.SetInt(value);
-    }
-
-    void setDouble(double value)
-    {
-        m_document.SetDouble(value);
-    }
-
-    void setString(const std::string& value)
-    {
-        m_document.SetString(value.c_str(), m_document.GetAllocator());
-    }
-
-    void setObject(const std::vector<std::tuple<std::string, Json>>& value)
-    {
-        m_document.SetObject();
-        for (auto& [key, value] : value)
+        else
         {
-            m_document.AddMember({key.c_str(), m_document.GetAllocator()},
-                                 {value.m_document, m_document.GetAllocator()},
-                                 m_document.GetAllocator());
+            throw std::runtime_error(fmt::format("[Json::setNull(basePointerPath)] "
+                                                 "Invalid json path: [{}]",
+                                                 path));
+        }
+    }
+
+    /**
+     * @brief Set the Boolean object at the path.
+     * Parents objects are created if they do not exist.
+     *
+     * @param value The value to set.
+     * @param path The path to the object, default value is root object ("").
+     *
+     * @throws std::runtime_error If path is invalid.
+     */
+    void setBool(bool value, std::string_view path = "")
+    {
+        auto pp = rapidjson::Pointer(path.data());
+
+        if (pp.IsValid())
+        {
+            pp.Set(m_document, value);
+        }
+        else
+        {
+            throw std::runtime_error(fmt::format("[Json::setBool(basePointerPath)] "
+                                                 "Invalid json path: [{}]",
+                                                 path));
+        }
+    }
+
+    /**
+     * @brief Set the Integer object at the path.
+     * Parents objects are created if they do not exist.
+     *
+     * @param value The value to set.
+     * @param path The path to the object, default value is root object ("").
+     *
+     * @throws std::runtime_error If path is invalid.
+     */
+    void setInt(int value, std::string_view path = "")
+    {
+        auto pp = rapidjson::Pointer(path.data());
+
+        if (pp.IsValid())
+        {
+            pp.Set(m_document, value);
+        }
+        else
+        {
+            throw std::runtime_error(fmt::format("[Json::setInt(basePointerPath)] "
+                                                 "Invalid json path: [{}]",
+                                                 path));
+        }
+    }
+
+    /**
+     * @brief Set the Double object at the path.
+     * Parents objects are created if they do not exist.
+     *
+     * @param value The value to set.
+     * @param path The path to the object, default value is root object ("").
+     *
+     * @throws std::runtime_error If path is invalid.
+     */
+    void setDouble(double value, std::string_view path = "")
+    {
+        auto pp = rapidjson::Pointer(path.data());
+
+        if (pp.IsValid())
+        {
+            pp.Set(m_document, value);
+        }
+        else
+        {
+            throw std::runtime_error(fmt::format("[Json::setDouble(basePointerPath)] "
+                                                 "Invalid json path: [{}]",
+                                                 path));
+        }
+    }
+
+    /**
+     * @brief Set the String object at the path.
+     * Parents objects are created if they do not exist.
+     *
+     * @param value The value to set.
+     * @param path The path to the object, default value is root object ("").
+     *
+     * @throws std::runtime_error If path is invalid.
+     */
+    void setString(std::string_view value, std::string_view path = "")
+    {
+        auto pp = rapidjson::Pointer(path.data());
+
+        if (pp.IsValid())
+        {
+            pp.Set(m_document, value.data());
+        }
+        else
+        {
+            throw std::runtime_error(fmt::format("[Json::setString(basePointerPath)] "
+                                                 "Invalid json path: [{}]",
+                                                 path));
+        }
+    }
+
+    /**
+     * @brief Set the Array object at the path.
+     * Parents objects are created if they do not exist.
+     *
+     * @param path The path to the object, default value is root object ("").
+     *
+     * @throws std::runtime_error If path is invalid.
+     */
+    void setArray(std::string_view path = "")
+    {
+        auto pp = rapidjson::Pointer(path.data());
+
+        if (pp.IsValid())
+        {
+            pp.Set(m_document, rapidjson::Value().SetArray());
+        }
+        else
+        {
+            throw std::runtime_error(fmt::format("[Json::setArray(basePointerPath)] "
+                                                 "Invalid json path: [{}]",
+                                                 path));
+        }
+    }
+
+    /**
+     * @brief Set the Object object at the path.
+     * Parents objects are created if they do not exist.
+     *
+     * @param path The path to the object, default value is root object ("").
+     *
+     * @throws std::runtime_error If path is invalid.
+     */
+    void setObject(std::string_view path = "")
+    {
+        auto pp = rapidjson::Pointer(path.data());
+
+        if (pp.IsValid())
+        {
+            pp.Set(m_document, rapidjson::Value().SetObject());
+        }
+        else
+        {
+            throw std::runtime_error(fmt::format("[Json::setObject(basePointerPath)] "
+                                                 "Invalid json path: [{}]",
+                                                 path));
         }
     }
 };

@@ -45,7 +45,7 @@ base::Expression opBuilderFileOutput(const std::any& definition)
                         jsonDefinition.size()));
     }
 
-    auto outputObj = jsonDefinition.getObject();
+    auto outputObj = jsonDefinition.getObject().value();
 
     auto pathPos = std::find_if(outputObj.begin(),
                                 outputObj.end(),
@@ -63,7 +63,7 @@ base::Expression opBuilderFileOutput(const std::any& definition)
                         std::get<1>(*pathPos).typeName()));
     }
 
-    auto path = std::get<1>(*pathPos).getString();
+    auto path = std::get<1>(*pathPos).getString().value();
 
     auto filePtr = std::make_shared<outputs::FileOutput>(path);
     auto name = fmt::format("output.file[{}]", path);

@@ -207,11 +207,13 @@ public:
         return true;
     }
 
+    // TODO: check this on rvalue
     const std::vector<std::shared_ptr<Formula>>& getOperands() const
     {
         return m_operands;
     }
 
+    // TODO: check this on rvalue
     std::vector<std::shared_ptr<Formula>>& getOperands()
     {
         return m_operands;

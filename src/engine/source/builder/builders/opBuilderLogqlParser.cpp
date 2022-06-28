@@ -83,10 +83,10 @@ base::Expression opBuilderLogqlParser(const std::any& definition)
             "at least one element");
     }
 
-    auto const& logqlArr = jsonDefinition.getArray();
+    auto logqlArr = jsonDefinition.getArray().value();
 
     std::vector<base::Expression> parsersExpressions;
-    for (json::Json item : logqlArr)
+    for (const json::Json& item : logqlArr)
     {
         if (!item.isObject())
         {
@@ -103,9 +103,9 @@ base::Expression opBuilderLogqlParser(const std::any& definition)
                             item.size()));
         }
 
-        auto itemObj = item.getObject();
+        auto itemObj = item.getObject().value();
         auto field = json::Json::formatJsonPath(std::get<0>(itemObj[0]));
-        auto logql = std::get<1>(itemObj[0]).getString();
+        auto logql = std::get<1>(itemObj[0]).getString().value();
 
         ParserFn parseOp;
         try
@@ -143,7 +143,7 @@ base::Expression opBuilderLogqlParser(const std::any& definition)
                     {
                         return base::result::makeFailure(std::move(event), errorTrace1);
                     }
-                    auto ev = event->getValueString(field);
+                    auto ev = event->getString(field);
                     ParseResult result;
                     auto ok = parserOp(ev.value(), result);
                     if (!ok)
