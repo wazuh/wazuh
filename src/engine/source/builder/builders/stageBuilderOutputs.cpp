@@ -43,7 +43,7 @@ base::Expression stageBuilderOutputs(const std::any& definition)
 
     // Obtain array and call appropriate builder for each item, adding the expression to
     // the outputExpressions vector
-    auto outputObjects = jsonDefinition.getArray();
+    auto outputObjects = jsonDefinition.getArray().value();
     std::transform(outputObjects.begin(),
                    outputObjects.end(),
                    std::back_inserter(outputExpressions),
@@ -67,7 +67,7 @@ base::Expression stageBuilderOutputs(const std::any& definition)
                                            outputDefinition.size()));
                        }
 
-                       auto outputObject = outputDefinition.getObject();
+                       auto outputObject = outputDefinition.getObject().value();
                        auto outputName = std::get<0>(outputObject.front());
                        auto outputValue = std::get<1>(outputObject.front());
 

@@ -122,9 +122,9 @@ Expression operationBuilder(const std::any& definition, OperationType type)
     field = Json::formatJsonPath(field);
 
     // Call apropiate builder based on value
-    if (value.isString() && value.getString().front() == syntax::REFERENCE_ANCHOR)
+    if (value.isString() && value.getString().value().front() == syntax::REFERENCE_ANCHOR)
     {
-        auto reference = Json::formatJsonPath(value.getString().substr(1));
+        auto reference = Json::formatJsonPath(value.getString().value().substr(1));
         switch (type)
         {
             case OperationType::FILTER:
@@ -139,11 +139,11 @@ Expression operationBuilder(const std::any& definition, OperationType type)
         }
     }
     else if (value.isString()
-             && value.getString().front() == syntax::FUNCTION_HELPER_ANCHOR)
+             && value.getString().value().front() == syntax::FUNCTION_HELPER_ANCHOR)
     {
         std::string helperName;
         std::vector<std::string> helperArgs;
-        auto helperString = value.getString().substr(1);
+        auto helperString = value.getString().value().substr(1);
 
         helperArgs =
             utils::string::split(helperString, syntax::FUNCTION_HELPER_ARG_ANCHOR);

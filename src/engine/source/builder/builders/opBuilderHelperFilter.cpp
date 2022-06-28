@@ -8,8 +8,8 @@
 
 #include "baseTypes.hpp"
 #include "syntax.hpp"
-#include <utils/ipUtils.hpp>
 #include <baseHelper.hpp>
+#include <utils/ipUtils.hpp>
 
 namespace builder::internals::builders
 {
@@ -80,7 +80,9 @@ getIntCmpFunction(const std::string& targetField,
 
             break;
 
-        case helper::base::Parameter::Type::REFERENCE: rValue = rightParameter.m_value; break;
+        case helper::base::Parameter::Type::REFERENCE:
+            rValue = rightParameter.m_value;
+            break;
 
         default:
             throw std::runtime_error(fmt::format(
@@ -147,7 +149,7 @@ getIntCmpFunction(const std::string& targetField,
         // empty ot not. Then if is a reference we get the value from the event, otherwise
         // we get the value from the parameter
 
-        auto lValue = event->getValueInt(targetField);
+        auto lValue = event->getInt(targetField);
         if (!lValue.has_value())
         {
             return base::result::makeFailure(event, failureTrace1);
@@ -155,7 +157,7 @@ getIntCmpFunction(const std::string& targetField,
 
         if (rValueType == helper::base::Parameter::Type::REFERENCE)
         {
-            auto resolvedRValue = event->getValueInt(std::get<std::string>(rValue));
+            auto resolvedRValue = event->getInt(std::get<std::string>(rValue));
             if (!resolvedRValue.has_value())
             {
                 return base::result::makeFailure(event, failureTrace2);
@@ -208,7 +210,9 @@ getStringCmpFunction(const std::string& targetField,
     switch (rightParameter.m_type)
     {
         case helper::base::Parameter::Type::VALUE: rValue = rightParameter.m_value; break;
-        case helper::base::Parameter::Type::REFERENCE: rValue = rightParameter.m_value; break;
+        case helper::base::Parameter::Type::REFERENCE:
+            rValue = rightParameter.m_value;
+            break;
         default:
             throw std::runtime_error(fmt::format(
                 "[builders::getIntCmpFunction()] invalid parameter type [{}] for [{}]",
@@ -275,7 +279,7 @@ getStringCmpFunction(const std::string& targetField,
         // empty ot not. Then if is a reference we get the value from the event, otherwise
         // we get the value from the parameter
 
-        auto lValue = event->getValueString(targetField);
+        auto lValue = event->getString(targetField);
         if (!lValue.has_value())
         {
             return base::result::makeFailure(event, failureTrace1);
@@ -283,7 +287,7 @@ getStringCmpFunction(const std::string& targetField,
 
         if (rValueType == helper::base::Parameter::Type::REFERENCE)
         {
-            auto resolvedRValue = event->getValueString(rValue);
+            auto resolvedRValue = event->getString(rValue);
             if (!resolvedRValue.has_value())
             {
                 return base::result::makeFailure(event, failureTrace2);
@@ -476,7 +480,7 @@ base::Expression opBuilderHelperRegexMatch(const std::any& definition)
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event>
         {
-            auto resolvedField = event->getValueString(targetField);
+            auto resolvedField = event->getString(targetField);
             if (!resolvedField.has_value())
             {
                 return base::result::makeFailure(event, failureTrace1);
@@ -524,7 +528,7 @@ base::Expression opBuilderHelperRegexNotMatch(const std::any& definition)
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event>
         {
-            auto resolvedField = event->getValueString(targetField);
+            auto resolvedField = event->getString(targetField);
             if (!resolvedField.has_value())
             {
                 return base::result::makeFailure(event, failureTrace1);
@@ -595,7 +599,7 @@ base::Expression opBuilderHelperIPCIDR(const std::any& definition)
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event>
         {
-            auto resolvedField = event->getValueString(targetField);
+            auto resolvedField = event->getString(targetField);
             if (!resolvedField.has_value())
             {
                 return base::result::makeFailure(event, failureTrace1);
@@ -713,45 +717,51 @@ base::Expression opBuilderHelperContainsString(const std::any& definition)
         [=, targetField = std::move(targetField)](
             base::Event event) -> base::result::Result<base::Event>
         {
-            auto resolvedField = event->getValueString(targetField);
+            auto resolvedField = event->getString(targetField);
             if (!resolvedField.has_value())
             {
                 return base::result::makeFailure(event, failureTrace1);
             }
 
-            auto resolvedArray = event->getValueArrayString(targetField);
+            auto resolvedArray = event->getArray(targetField);
             if (!resolvedArray.has_value())
             {
                 return base::result::makeFailure(event, failureTrace2);
             }
 
+            json::Json cmpValue {};
             for (const auto& parameter : parameters)
             {
                 switch (parameter.m_type)
                 {
                     case helper::base::Parameter::Type::REFERENCE:
                     {
-                        auto resolvedParameter = event->getValueString(parameter.m_value);
+                        auto resolvedParameter = event->getString(parameter.m_value);
                         if (!resolvedParameter.has_value())
                         {
                             return base::result::makeFailure(event, failureTrace3);
                         }
+
+                        cmpValue.setString(resolvedParameter.value());
                         if (std::find(resolvedArray.value().begin(),
                                       resolvedArray.value().end(),
-                                      resolvedParameter.value())
+                                      cmpValue)
                             == resolvedArray.value().end())
                         {
                             return base::result::makeFailure(event, failureTrace3);
                         }
                     }
                     case helper::base::Parameter::Type::VALUE:
+                    {
+                        cmpValue.setString(parameter.m_value);
                         if (std::find(resolvedArray.value().begin(),
                                       resolvedArray.value().end(),
-                                      parameter.m_value)
+                                      cmpValue)
                             == resolvedArray.value().end())
                         {
                             return base::result::makeFailure(event, failureTrace3);
                         }
+                    }
                     default:
                         throw std::runtime_error(fmt::format(
                             "[opBuilderHelperContains] invalid parameter type"));

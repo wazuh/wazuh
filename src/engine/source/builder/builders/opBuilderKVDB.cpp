@@ -75,7 +75,7 @@ base::Expression opBuilderKVDBExtract(const std::any& definition)
             {
                 try
                 {
-                    auto value = event->getValueString(key);
+                    auto value = event->getString(key);
                     dbKey = value.value();
                 }
                 catch (std::exception& ex)
@@ -157,7 +157,7 @@ base::Expression opBuilderKVDBExistanceCheck(const std::any& definition, bool ch
             try // TODO We are only using try for JSON::get. Is correct to
                 // wrap everything?
             {
-                auto value = event->getValueString(target);
+                auto value = event->getString(target);
                 if (value.has_value())
                 {
                     if (kvdb->hasKey(value.value()))
