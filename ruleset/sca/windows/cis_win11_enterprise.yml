@@ -768,9 +768,9 @@ checks:
       To establish the recommended configuration via GP, in the following UI path:
       Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Remotely accessible registry paths."
       Set these values:
-      - System\\CurrentControlSet\\Control\\ProductOptions
-      - System\\CurrentControlSet\\Control\\Server Applications
-      - SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion
+      -"System\\CurrentControlSet\\Control\\ProductOptions"
+      -"System\\CurrentControlSet\\Control\\Server Applications"
+      -"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion"
     compliance:
       - cis: ["2.3.10.7"]
       - cis_csc: ["14", "16"]
@@ -786,7 +786,18 @@ checks:
     title: "Ensure 'Network access: Remotely accessible registry paths and sub-paths'"
     description: "This policy setting determines which registry paths and sub-paths will be accessible over the network, regardless of the users or groups listed in the access control list (ACL) of the winreg registry key. Note: In Windows XP this setting is called Network access: Remotely accessible registry paths, the setting with that same name in Windows Vista, Windows Server 2008 (non-R2), and Windows Server 2003 does not exist in Windows XP. Note #2: When you configure this setting you specify a list of one or more objects. The delimiter used when entering the list is a line feed or carriage return, that is, type the first object on the list, press the Enter button, type the next object, press Enter again, etc. The setting value is stored as a comma-delimited list in group policy security templates. It is also rendered as a comma-delimited list in Group Policy Editor's display pane and the Resultant Set of Policy console. It is recorded in the registry as a line-feed delimited list in a REG_MULTI_SZ value. The recommended state for this setting is: System\\CurrentControlSet\\Control\\Print\\Printers System\\CurrentControlSet\\Services\\Eventlog Software\\Microsoft\\OLAP Server Software\\Microsoft\\Windows NT\\CurrentVersion\\Print Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows System\\CurrentControlSet\\Control\\ContentIndex System\\CurrentControlSet\\Control\\Terminal Server System\\CurrentControlSet\\Control\\Terminal Server\\UserConfig System\\CurrentControlSet\\Control\\Terminal Server\\DefaultUserConfiguration Software\\Microsoft\\Windows NT\\CurrentVersion\\Perflib System\\CurrentControlSet\\Services\\SysmonLog"
     rationale: "The registry contains sensitive computer configuration information that could be used by an attacker to facilitate unauthorized activities. The fact that the default ACLs assigned throughout the registry are fairly restrictive and help to protect the registry from access by unauthorized users reduces the risk of such an attack."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: System\\CurrentControlSet\\Control\\Print\\Printers System\\CurrentControlSet\\Services\\Eventlog SOFTWARE\\Microsoft\\OLAP Server SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Print SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Windows System\\CurrentControlSet\\Control\\ContentIndex System\\CurrentControlSet\\Control\\Terminal Server System\\CurrentControlSet\\Control\\Terminal Server\\UserConfig System\\CurrentControlSet\\Control\\Terminal Server\\DefaultUserConfiguration SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Perflib System\\CurrentControlSet\\Services\\SysmonLog Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Remotely accessible registry paths and sub-paths."
+    remediation: >
+      To establish the recommended configuration via GP, in the following UI path:
+      Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Remotely accessible registry paths and sub-paths
+      Set the following values:
+      -"System\\CurrentControlSet\\Control\\Print\\Printers"
+      -"System\\CurrentControlSet\\Services\\Eventlog"
+      -"SOFTWARE\\Microsoft\\OLAP Server SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Print"
+      -"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Windows System\\CurrentControlSet\\Control\\ContentIndex"
+      -"System\\CurrentControlSet\\Control\\Terminal Server System\\CurrentControlSet\\Control\\Terminal Server\\UserConfig"
+      -"System\\CurrentControlSet\\Control\\Terminal Server\\DefaultUserConfiguration"
+      -"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Perflib System\\CurrentControlSet\\Services\\SysmonLog"
+
     compliance:
       - cis: ["2.3.10.8"]
       - cis_csc: ["14", "16"]
