@@ -1430,13 +1430,13 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\p2pimsvc -> Start -> 4'
 
   - id: 26090
-    title: "(L2) Ensure 'PNRP Machine Name Publication Service (PNRPAutoReg)' is setto 'Disabled'"
+    title: "(L2) Ensure 'PNRP Machine Name Publication Service (PNRPAutoReg)' is set to 'Disabled'"
     description: "This service publishes a machine name using the Peer Name Resolution Protocol.  Configuration is managed via the netsh context ‘p2p pnrp peer’. The recommended state for this setting is: Disabled. "
     rationale: "Peer Name Resolution Protocol is a distributed and (mostly) serverless way to handle  name resolution of clients with each other. In a high security environment, it is more secure  to rely on centralized name resolution methods maintained by authorized staff. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\PNRP Machine Name Publication Service "
     compliance:
       - cis: ["5.17"]
-      - cis_csc: ["9.2"]
+      - cis_csc: ["4.8"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PNRPAutoReg -> Start -> 4'
