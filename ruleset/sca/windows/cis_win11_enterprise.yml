@@ -1064,8 +1064,8 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0 -> NTLMMinServerSec -> 537395200'
 
   - id: 26064
-    title: "Ensure 'System cryptography: Force strong key protection  for user keys stored on the computer' is set to 'User is prompted when  the key is first used' or higher"
-    description: "Ensure 'System cryptography: Force strong key protection  for user keys stored on the computer' is set to 'User is prompted when  the key is first used' or higher"
+    title: "Ensure 'System cryptography: Force strong key protection for user keys stored on the computer' is set to 'User is prompted when the key is first used' or higher"
+    description: "This policy setting determines whether users' private keys (such as their S-MIME keys) require a password to be used. The recommended state for this setting is: User is prompted when the key is first used. Configuring this setting to User must enter a password each time they use a key also conforms to the benchmark."
     rationale: "If a user's account is compromised or their computer is inadvertently left unsecured the malicious user can use the keys stored for the user to access protected resources. You can  configure this policy setting so that users must provide a password that is distinct from  their domain password every time they use a key. This configuration makes it more  difficult for an attacker to access locally stored user keys, even if the attacker takes control  of the user's computer and determines their logon password"
     remediation: "To establish the recommended configuration via GP, set the following UI path to User is  prompted when the key is first used (configuring to User must enter a password  each time they use a key also conforms to the benchmark): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local  Policies\\Security Options\\System cryptography: Force strong key protection  for user keys stored on the computer"
     compliance:
