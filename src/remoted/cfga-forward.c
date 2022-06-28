@@ -51,7 +51,7 @@ void *SCFGA_Forward(__attribute__((unused)) void *arg)
 
                 snprintf(final_msg, OS_SIZE_4096, "%s%s", CONTROL_HEADER, msg_dump);
                 if (send_msg(agent_id, final_msg, -1) >= 0) {
-                    rem_inc_send_cfga();
+                    rem_inc_send_cfga(agent_id);
                 }
             }
         }

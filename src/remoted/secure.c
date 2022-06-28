@@ -85,6 +85,15 @@ void HandleSecure()
     struct sockaddr_storage peer_info;
     memset(&peer_info, 0, sizeof(struct sockaddr_storage));
 
+    /* Create OSHash for agents statistics */
+    remoted_agents_state = OSHash_Create();
+    if (!remoted_agents_state) {
+        merror(MEM_ERROR, errno, strerror(errno));
+    }
+    if (!OSHash_setSize(remoted_agents_state, 2048)) {
+        merror(LIST_ERROR);
+    }
+
     /* Initialize manager */
     manager_init();
 
@@ -632,7 +641,7 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storag
 
         // The critical section for readers closes within this function
         save_controlmsg(key, tmp_msg, msg_length - 3, wdb_sock);
-        rem_inc_recv_ctrl();
+        rem_inc_recv_ctrl(keys.keyentries[agentid]->id);
 
         OS_FreeKey(key);
         return;
@@ -661,10 +670,10 @@ STATIC void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_storag
             // Something went wrong sending a message after an immediate reconnection...
             merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
         } else {
-            rem_inc_recv_evt();
+            rem_inc_recv_evt(keys.keyentries[agentid]->id);
         }
     } else {
-        rem_inc_recv_evt();
+        rem_inc_recv_evt(keys.keyentries[agentid]->id);
     }
 }
 

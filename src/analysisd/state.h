@@ -106,7 +106,6 @@ typedef struct _analysisd_state_t {
 } analysisd_state_t;
 
 typedef struct _analysisd_agent_state_t {
-    int id;
     uint64_t events_processed;
     uint64_t alerts_written;
     uint64_t archives_written;
@@ -140,46 +139,55 @@ void w_inc_received_events();
 
 /**
  * @brief Increment syscheck decoded events counter
+ * @param agent_id Id of the agent that corresponds to the event
  */
 void w_inc_syscheck_decoded_events(char * agent_id);
 
 /**
  * @brief Increment syscollector decoded events counter
+ * @param agent_id Id of the agent that corresponds to the event
  */
 void w_inc_syscollector_decoded_events(char * agent_id);
 
 /**
  * @brief Increment rootcheck decoded events counter
+ * @param agent_id Id of the agent that corresponds to the event
  */
 void w_inc_rootcheck_decoded_events(char * agent_id);
 
 /**
  * @brief Increment sca decoded events counter
+ * @param agent_id Id of the agent that corresponds to the event
  */
 void w_inc_sca_decoded_events(char * agent_id);
 
 /**
  * @brief Increment hostinfo decoded events counter
+ * @param agent_id Id of the agent that corresponds to the event
  */
 void w_inc_hostinfo_decoded_events(char * agent_id);
 
 /**
  * @brief Increment winevt decoded events counter
+ * @param agent_id Id of the agent that corresponds to the event
  */
 void w_inc_winevt_decoded_events(char * agent_id);
 
 /**
  * @brief Increment dbsync decoded events counter
+ * @param agent_id Id of the agent that corresponds to the event
  */
 void w_inc_dbsync_decoded_events(char * agent_id);
 
 /**
  * @brief Increment upgrade decoded events counter
+ * @param agent_id Id of the agent that corresponds to the event
  */
 void w_inc_upgrade_decoded_events(char * agent_id);
 
 /**
  * @brief Increment other decoded events counter
+ * @param agent_id Id of the agent that corresponds to the event
  */
 void w_inc_events_decoded(char * agent_id);
 
@@ -275,21 +283,25 @@ void w_inc_events_unknown();
 
 /**
  * @brief Increment processed events counter
+ * @param agent_id Id of the agent that corresponds to the event
  */
 void w_inc_processed_events(char * agent_id);
 
 /**
  * @brief Increment alerts written counter
+ * @param agent_id Id of the agent that corresponds to the event
  */
 void w_inc_alerts_written(char * agent_id);
 
 /**
  * @brief Increment archives written counter
+ * @param agent_id Id of the agent that corresponds to the event
  */
 void w_inc_archives_written(char * agent_id);
 
 /**
  * @brief Increment firewall written counter
+ * @param agent_id Id of the agent that corresponds to the event
  */
 void w_inc_firewall_written(char * agent_id);
 

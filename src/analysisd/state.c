@@ -39,71 +39,85 @@ static void w_get_initial_queues_size();
 
 /**
  * @brief Increment syscheck decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
  */
 static void w_inc_syscheck_agent_decoded_events(char * agent_id);
 
 /**
  * @brief Increment syscollector decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
  */
 static void w_inc_syscollector_agent_decoded_events(char * agent_id);
 
 /**
  * @brief Increment rootcheck decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
  */
 static void w_inc_rootcheck_agent_decoded_events(char * agent_id);
 
 /**
  * @brief Increment sca decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
  */
 static void w_inc_sca_agent_decoded_events(char * agent_id);
 
 /**
  * @brief Increment hostinfo decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
  */
 static void w_inc_hostinfo_agent_decoded_events(char * agent_id);
 
 /**
  * @brief Increment winevt decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
  */
 static void w_inc_winevt_agent_decoded_events(char * agent_id);
 
 /**
  * @brief Increment dbsync decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
  */
 static void w_inc_dbsync_agent_decoded_events(char * agent_id);
 
 /**
  * @brief Increment upgrade decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
  */
 static void w_inc_upgrade_agent_decoded_events(char * agent_id);
 
 /**
  * @brief Increment other decoded events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
  */
 static void w_inc_events_agent_decoded(char * agent_id);
 
 /**
  * @brief Increment processed events counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
  */
 static void w_inc_processed_agent_events(char * agent_id);
 
 /**
  * @brief Increment alerts written counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
  */
 static void w_inc_alerts_agent_written(char * agent_id);
 
 /**
  * @brief Increment archives written counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
  */
 static void w_inc_archives_agent_written(char * agent_id);
 
 /**
  * @brief Increment firewall written counter for agents
+ * @param agent_id Id of the agent that corresponds to the event
  */
 static void w_inc_firewall_agent_written(char * agent_id);
 
 /**
  * @brief Search or create and return agent state node
+ * @param agent_id Id of the agent that corresponds to the node
  */
 static analysisd_agent_state_t * get_node(char *agent_id);
 
@@ -488,14 +502,13 @@ static void w_inc_firewall_agent_written(char * agent_id) {
     w_mutex_unlock(&agents_state_mutex);
 }
 
-static analysisd_agent_state_t * get_node(char *agent_id){
+static analysisd_agent_state_t * get_node(char *agent_id) {
     analysisd_agent_state_t * agent_state = (analysisd_agent_state_t *) OSHash_Get_ex(analysisd_agents_state, agent_id);
 
     if(agent_state != NULL) {
         return agent_state;
     } else {
         os_calloc(1,sizeof(analysisd_agent_state_t),agent_state);
-        agent_state->id = atoi(agent_id);
         OSHash_Add_ex(analysisd_agents_state, agent_id, agent_state);
         return agent_state;
     }
@@ -507,46 +520,43 @@ static void w_analysisd_clean_agents_state() {
     OSHashNode *hash_node;
     unsigned int inode_it = 0;
 
-    w_mutex_lock(&agents_state_mutex);
-
     hash_node = OSHash_Begin(analysisd_agents_state, &inode_it);
 
     if (hash_node == NULL) {
-        w_mutex_unlock(&agents_state_mutex);
         return;
-    } else {
-        active_agents = wdb_get_agents_by_connection_status(AGENT_CS_ACTIVE, &sock);
-        if(!active_agents) {
-            merror("Unable to get connected agent's.");
-        }
-
-        char *agent_id = NULL;
-        analysisd_agent_state_t * agent_state = NULL;
-
-        while (hash_node) {
-            agent_id = hash_node->key;
-            agent_state = hash_node->data;
-
-            int exist = 0;
-            for (size_t i = 0; active_agents[i] != -1; i++) {
-                if (agent_state->id == active_agents[i] ) {
-                    exist = 1;
-                    break;
-                }
-            }
-
-            if (exist == 0){
-                agent_state = (analysisd_agent_state_t *)OSHash_Delete_ex(analysisd_agents_state, agent_id);
-                if (agent_state) {
-                    os_free(agent_state);
-                }
-                hash_node = OSHash_Begin(analysisd_agents_state, &inode_it);
-            }
-
-            hash_node = OSHash_Next(analysisd_agents_state, &inode_it, hash_node);
-        }
     }
-    w_mutex_unlock(&agents_state_mutex);
+
+    active_agents = wdb_get_agents_by_connection_status(AGENT_CS_ACTIVE, &sock);
+    if(!active_agents) {
+        merror("Unable to get connected agent's.");
+        return;
+    }
+
+    char *agent_id = NULL;
+    analysisd_agent_state_t * agent_state = NULL;
+
+    while (hash_node) {
+        agent_id = hash_node->key;
+        agent_state = hash_node->data;
+
+        int exist = 0;
+        for (size_t i = 0; active_agents[i] != -1; i++) {
+            if (atoi(agent_id) == active_agents[i] ) {
+                exist = 1;
+                break;
+            }
+        }
+
+        if (exist == 0){
+            agent_state = (analysisd_agent_state_t *)OSHash_Delete_ex(analysisd_agents_state, agent_id);
+            if (agent_state) {
+                os_free(agent_state);
+            }
+            hash_node = OSHash_Begin(analysisd_agents_state, &inode_it);
+        }
+
+        hash_node = OSHash_Next(analysisd_agents_state, &inode_it, hash_node);
+    }
 
     return;
 }
@@ -982,7 +992,7 @@ cJSON* asys_create_state_json() {
             _events_decoded_breakdown = cJSON_CreateObject();
             _events_received_breakdown = cJSON_CreateObject();
 
-            cJSON_AddNumberToObject(_item, "agent_id", data->id);
+            cJSON_AddNumberToObject(_item, "agent_id", atoi(hash_node->key));
             cJSON_AddItemToObject(_item, "statistics", _statistics);
             cJSON_AddNumberToObject(_statistics, "events_received", data->events_decoded_breakdown.syscheck +
                                                                     data->events_decoded_breakdown.syscollector +
