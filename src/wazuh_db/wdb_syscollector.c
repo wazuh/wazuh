@@ -52,6 +52,10 @@ int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
 int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets, long tx_bytes, long rx_bytes, long tx_errors, long rx_errors, long tx_dropped, long rx_dropped, const char * checksum, const char * item_id, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
+    if (!name) {
+        wdbi_remove_by_pk(wdb, WDB_SYSCOLLECTOR_NETINFO, item_id);
+    }
+
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_NETINFO_INSERT2 : WDB_STMT_NETINFO_INSERT) < 0) {
         mdebug1("at wdb_netinfo_insert(): cannot cache statement");
         return -1;
@@ -161,8 +165,11 @@ int wdb_netproto_save(wdb_t * wdb, const char * scan_id, const char * iface, int
 
 // Insert IPv4/IPv6 protocol info tuple. Return 0 on success or -1 on error.
 int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface, int type, const char * gateway, const char * dhcp, int metric, const char * checksum, const char * item_id, const bool replace) {
-
     sqlite3_stmt *stmt = NULL;
+
+    if (!iface) {
+        wdbi_remove_by_pk(wdb, WDB_SYSCOLLECTOR_NETPROTO, item_id);
+    }
 
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_PROTO_INSERT2 : WDB_STMT_PROTO_INSERT) < 0) {
         mdebug1("at wdb_netproto_insert(): cannot cache statement");
@@ -234,8 +241,11 @@ int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, const char * iface, int 
 
 // Insert IPv4/IPv6 address info tuple. Return 0 on success or -1 on error.
 int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, const char * iface, int proto, const char * address, const char * netmask, const char * broadcast, const char * checksum, const char * item_id, const bool replace) {
-
     sqlite3_stmt *stmt = NULL;
+
+    if (!iface || !address) {
+        wdbi_remove_by_pk(wdb, WDB_SYSCOLLECTOR_NETADDRESS, item_id);
+    }
 
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_ADDR_INSERT2 : WDB_STMT_ADDR_INSERT) < 0) {
         mdebug1("at wdb_netaddr_insert(): cannot cache statement");
@@ -540,6 +550,10 @@ int wdb_hotfix_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
 int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location, const char triaged, const char * checksum, const char * item_id, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
+    if (!name || !version || !architecture) {
+        wdbi_remove_by_pk(wdb, WDB_SYSCOLLECTOR_PACKAGES, item_id);
+    }
+
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_PROGRAM_INSERT2 : WDB_STMT_PROGRAM_INSERT) < 0) {
         mdebug1("at wdb_package_insert(): cannot cache statement");
         return -1;
@@ -590,6 +604,10 @@ int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
 // Insert hotfix info tuple. Return 0 on success or -1 on error.
 int wdb_hotfix_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char *hotfix, const char* checksum, const bool replace) {
     sqlite3_stmt *stmt = NULL;
+
+    if (!hotfix) {
+        return -1;
+    }
 
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_HOTFIX_INSERT2 : WDB_STMT_HOTFIX_INSERT) < 0) {
         mdebug1("at wdb_hotfix_insert(): cannot cache statement");
@@ -699,7 +717,7 @@ int wdb_package_delete(wdb_t * wdb, const char * scan_id) {
     return 0;
 }
 
-// Function to save OS info into the DB. Return 0 on success or -1 on error.
+// Function to save hardware info into the DB. Return 0 on success or -1 on error.
 int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, double cpu_mhz, uint64_t ram_total, uint64_t ram_free, int ram_usage, const char * checksum, const bool replace) {
 
     sqlite3_stmt *stmt = NULL;
@@ -709,7 +727,7 @@ int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time,
         return -1;
     }
 
-    /* Delete old OS information before insert the new scan */
+    /* Delete old hardware information before insert the new scan */
     if (wdb_stmt_cache(wdb, WDB_STMT_HWINFO_DEL) < 0) {
         mdebug1("at wdb_hardware_save(): cannot cache statement");
         return -1;
@@ -832,6 +850,10 @@ int wdb_port_save(wdb_t * wdb, const char * scan_id, const char * scan_time, con
 // Insert port info tuple. Return 0 on success or -1 on error.
 int wdb_port_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * protocol, const char * local_ip, int local_port, const char * remote_ip, int remote_port, int tx_queue, int rx_queue, long long inode, const char * state, int pid, const char * process, const char * checksum, const char * item_id, const bool replace) {
     sqlite3_stmt *stmt = NULL;
+
+    if (!local_ip) {
+        wdbi_remove_by_pk(wdb, WDB_SYSCOLLECTOR_PORTS, item_id);
+    }
 
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_PORT_INSERT2 : WDB_STMT_PORT_INSERT) < 0) {
         mdebug1("at wdb_port_insert(): cannot cache statement");
