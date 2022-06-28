@@ -81,33 +81,6 @@ static int test_setup(void ** state) {
     analysisd_state.events_received_breakdown.events_dropped_breakdown.modules.logcollector.eventlog = 2;
     analysisd_state.events_received_breakdown.events_dropped_breakdown.modules.logcollector.macos = 1;
     analysisd_state.events_received_breakdown.events_dropped_breakdown.modules.logcollector.others = 36;
-    analysisd_state.events_received_breakdown.events_unknown_breakdown.agent = 2;
-    analysisd_state.events_received_breakdown.events_unknown_breakdown.agentless = 0;
-    analysisd_state.events_received_breakdown.events_unknown_breakdown.dbsync = 0;
-    analysisd_state.events_received_breakdown.events_unknown_breakdown.monitor = 1;
-    analysisd_state.events_received_breakdown.events_unknown_breakdown.remote = 0;
-    analysisd_state.events_received_breakdown.events_unknown_breakdown.syslog = 0;
-    analysisd_state.events_received_breakdown.events_unknown_breakdown.integrations.virustotal = 0;
-    analysisd_state.events_received_breakdown.events_unknown_breakdown.modules.aws = 5;
-    analysisd_state.events_received_breakdown.events_unknown_breakdown.modules.azure = 2;
-    analysisd_state.events_received_breakdown.events_unknown_breakdown.modules.ciscat = 0;
-    analysisd_state.events_received_breakdown.events_unknown_breakdown.modules.command = 0;
-    analysisd_state.events_received_breakdown.events_unknown_breakdown.modules.docker = 3;
-    analysisd_state.events_received_breakdown.events_unknown_breakdown.modules.gcp = 0;
-    analysisd_state.events_received_breakdown.events_unknown_breakdown.modules.github = 0;
-    analysisd_state.events_received_breakdown.events_unknown_breakdown.modules.office365 = 5;
-    analysisd_state.events_received_breakdown.events_unknown_breakdown.modules.oscap = 0;
-    analysisd_state.events_received_breakdown.events_unknown_breakdown.modules.osquery = 1;
-    analysisd_state.events_received_breakdown.events_unknown_breakdown.modules.rootcheck = 0;
-    analysisd_state.events_received_breakdown.events_unknown_breakdown.modules.sca = 14;
-    analysisd_state.events_received_breakdown.events_unknown_breakdown.modules.syscheck = 9;
-    analysisd_state.events_received_breakdown.events_unknown_breakdown.modules.syscollector = 1;
-    analysisd_state.events_received_breakdown.events_unknown_breakdown.modules.upgrade = 3;
-    analysisd_state.events_received_breakdown.events_unknown_breakdown.modules.vulnerability = 0;
-    analysisd_state.events_received_breakdown.events_unknown_breakdown.modules.logcollector.eventchannel = 6;
-    analysisd_state.events_received_breakdown.events_unknown_breakdown.modules.logcollector.eventlog = 0;
-    analysisd_state.events_received_breakdown.events_unknown_breakdown.modules.logcollector.macos = 0;
-    analysisd_state.events_received_breakdown.events_unknown_breakdown.modules.logcollector.others = 4;
     analysisd_state.events_processed = 4256;
     analysisd_state.alerts_written = 2154;
     analysisd_state.firewall_written = 148;
@@ -335,76 +308,6 @@ void test_asys_create_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(dropped_mod_log, "macos_dropped")->valueint, 1);
     assert_non_null(cJSON_GetObjectItem(dropped_mod_log, "others_dropped"));
     assert_int_equal(cJSON_GetObjectItem(dropped_mod_log, "others_dropped")->valueint, 36);
-
-    assert_non_null(cJSON_GetObjectItem(recv, "events_unknown_breakdown"));
-    cJSON* unknown = cJSON_GetObjectItem(recv, "events_unknown_breakdown");
-
-    assert_non_null(cJSON_GetObjectItem(unknown, "agent_unknown"));
-    assert_int_equal(cJSON_GetObjectItem(unknown, "agent_unknown")->valueint, 2);
-    assert_non_null(cJSON_GetObjectItem(unknown, "agentless_unknown"));
-    assert_int_equal(cJSON_GetObjectItem(unknown, "agentless_unknown")->valueint, 0);
-    assert_non_null(cJSON_GetObjectItem(unknown, "dbsync_unknown"));
-    assert_int_equal(cJSON_GetObjectItem(unknown, "dbsync_unknown")->valueint, 0);
-    assert_non_null(cJSON_GetObjectItem(unknown, "monitor_unknown"));
-    assert_int_equal(cJSON_GetObjectItem(unknown, "monitor_unknown")->valueint, 1);
-    assert_non_null(cJSON_GetObjectItem(unknown, "remote_unknown"));
-    assert_int_equal(cJSON_GetObjectItem(unknown, "remote_unknown")->valueint, 0);
-    assert_non_null(cJSON_GetObjectItem(unknown, "syslog_unknown"));
-    assert_int_equal(cJSON_GetObjectItem(unknown, "syslog_unknown")->valueint, 0);
-
-    assert_non_null(cJSON_GetObjectItem(unknown, "integrations_unknown"));
-    cJSON* unknown_int = cJSON_GetObjectItem(unknown, "integrations_unknown");
-
-    assert_non_null(cJSON_GetObjectItem(unknown_int, "virustotal_unknown"));
-    assert_int_equal(cJSON_GetObjectItem(unknown_int, "virustotal_unknown")->valueint, 0);
-
-    assert_non_null(cJSON_GetObjectItem(unknown, "modules_unknown"));
-    cJSON* unknown_mod = cJSON_GetObjectItem(unknown, "modules_unknown");
-
-    assert_non_null(cJSON_GetObjectItem(unknown_mod, "aws_unknown"));
-    assert_int_equal(cJSON_GetObjectItem(unknown_mod, "aws_unknown")->valueint, 5);
-    assert_non_null(cJSON_GetObjectItem(unknown_mod, "azure_unknown"));
-    assert_int_equal(cJSON_GetObjectItem(unknown_mod, "azure_unknown")->valueint, 2);
-    assert_non_null(cJSON_GetObjectItem(unknown_mod, "ciscat_unknown"));
-    assert_int_equal(cJSON_GetObjectItem(unknown_mod, "ciscat_unknown")->valueint, 0);
-    assert_non_null(cJSON_GetObjectItem(unknown_mod, "command_unknown"));
-    assert_int_equal(cJSON_GetObjectItem(unknown_mod, "command_unknown")->valueint, 0);
-    assert_non_null(cJSON_GetObjectItem(unknown_mod, "docker_unknown"));
-    assert_int_equal(cJSON_GetObjectItem(unknown_mod, "docker_unknown")->valueint, 3);
-    assert_non_null(cJSON_GetObjectItem(unknown_mod, "gcp_unknown"));
-    assert_int_equal(cJSON_GetObjectItem(unknown_mod, "gcp_unknown")->valueint, 0);
-    assert_non_null(cJSON_GetObjectItem(unknown_mod, "github_unknown"));
-    assert_int_equal(cJSON_GetObjectItem(unknown_mod, "github_unknown")->valueint, 0);
-    assert_non_null(cJSON_GetObjectItem(unknown_mod, "office365_unknown"));
-    assert_int_equal(cJSON_GetObjectItem(unknown_mod, "office365_unknown")->valueint, 5);
-    assert_non_null(cJSON_GetObjectItem(unknown_mod, "oscap_unknown"));
-    assert_int_equal(cJSON_GetObjectItem(unknown_mod, "oscap_unknown")->valueint, 0);
-    assert_non_null(cJSON_GetObjectItem(unknown_mod, "osquery_unknown"));
-    assert_int_equal(cJSON_GetObjectItem(unknown_mod, "osquery_unknown")->valueint, 1);
-    assert_non_null(cJSON_GetObjectItem(unknown_mod, "rootcheck_unknown"));
-    assert_int_equal(cJSON_GetObjectItem(unknown_mod, "rootcheck_unknown")->valueint, 0);
-    assert_non_null(cJSON_GetObjectItem(unknown_mod, "sca_unknown"));
-    assert_int_equal(cJSON_GetObjectItem(unknown_mod, "sca_unknown")->valueint, 14);
-    assert_non_null(cJSON_GetObjectItem(unknown_mod, "syscheck_unknown"));
-    assert_int_equal(cJSON_GetObjectItem(unknown_mod, "syscheck_unknown")->valueint, 9);
-    assert_non_null(cJSON_GetObjectItem(unknown_mod, "syscollector_unknown"));
-    assert_int_equal(cJSON_GetObjectItem(unknown_mod, "syscollector_unknown")->valueint, 1);
-    assert_non_null(cJSON_GetObjectItem(unknown_mod, "upgrade_unknown"));
-    assert_int_equal(cJSON_GetObjectItem(unknown_mod, "upgrade_unknown")->valueint, 3);
-    assert_non_null(cJSON_GetObjectItem(unknown_mod, "vulnerability_unknown"));
-    assert_int_equal(cJSON_GetObjectItem(unknown_mod, "vulnerability_unknown")->valueint, 0);
-
-    assert_non_null(cJSON_GetObjectItem(unknown_mod, "logcollector_unknown"));
-    cJSON* unknown_mod_log = cJSON_GetObjectItem(unknown_mod, "logcollector_unknown");
-
-    assert_non_null(cJSON_GetObjectItem(unknown_mod_log, "eventchannel_unknown"));
-    assert_int_equal(cJSON_GetObjectItem(unknown_mod_log, "eventchannel_unknown")->valueint, 6);
-    assert_non_null(cJSON_GetObjectItem(unknown_mod_log, "eventlog_unknown"));
-    assert_int_equal(cJSON_GetObjectItem(unknown_mod_log, "eventlog_unknown")->valueint, 0);
-    assert_non_null(cJSON_GetObjectItem(unknown_mod_log, "macos_unknown"));
-    assert_int_equal(cJSON_GetObjectItem(unknown_mod_log, "macos_unknown")->valueint, 0);
-    assert_non_null(cJSON_GetObjectItem(unknown_mod_log, "others_unknown"));
-    assert_int_equal(cJSON_GetObjectItem(unknown_mod_log, "others_unknown")->valueint, 4);
 
     assert_non_null(cJSON_GetObjectItem(statistics, "events_processed"));
     assert_int_equal(cJSON_GetObjectItem(statistics, "events_processed")->valueint, 4256);

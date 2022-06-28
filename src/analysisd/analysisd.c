@@ -1131,7 +1131,7 @@ static void DumpLogstats()
 void * ad_input_main(void * args) {
     int m_queue = *(int *)args;
     char buffer[OS_MAXSTR + 1] = "";
-    char * copy;
+    char *copy;
     char *msg;
     int result;
     int recv = 0;
@@ -1345,7 +1345,7 @@ void * ad_input_main(void * args) {
                     } else if (msg[0] == SYSLOG_MQ) {
                         w_inc_syslog_dropped_events();
                     } else if (msg[0] == LOCALFILE_MQ) {
-                        //w_inc_dropped_by_component_events(location);
+                        w_inc_dropped_by_component_events(extract_module_from_message(msg));
                     }
 
                     if (!reported_event) {
@@ -1454,7 +1454,6 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
 
             if (OS_CleanMSG(msg, lf) < 0) {
                 merror(IMSG_ERROR, msg);
-                w_inc_modules_syscheck_unknown_events();
                 Free_Eventinfo(lf);
                 free(msg);
                 continue;
@@ -1502,7 +1501,6 @@ void * w_decode_syscollector_thread(__attribute__((unused)) void * args){
 
             if (OS_CleanMSG(msg, lf) < 0) {
                 merror(IMSG_ERROR, msg);
-                w_inc_modules_syscollector_unknown_events();
                 Free_Eventinfo(lf);
                 free(msg);
                 continue;
@@ -1543,7 +1541,6 @@ void * w_decode_rootcheck_thread(__attribute__((unused)) void * args){
 
             if (OS_CleanMSG(msg, lf) < 0) {
                 merror(IMSG_ERROR, msg);
-                w_inc_modules_rootcheck_unknown_events();
                 Free_Eventinfo(lf);
                 free(msg);
                 continue;
@@ -1585,7 +1582,6 @@ void * w_decode_sca_thread(__attribute__((unused)) void * args){
 
             if (OS_CleanMSG(msg, lf) < 0) {
                 merror(IMSG_ERROR, msg);
-                w_inc_modules_sca_unknown_events();
                 Free_Eventinfo(lf);
                 free(msg);
                 continue;
@@ -1626,7 +1622,6 @@ void * w_decode_hostinfo_thread(__attribute__((unused)) void * args){
 
             if (OS_CleanMSG(msg, lf) < 0) {
                 merror(IMSG_ERROR, msg);
-                w_inc_modules_logcollector_others_unknown_events();
                 Free_Eventinfo(lf);
                 free(msg);
                 continue;
@@ -1671,13 +1666,6 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
 
             if (OS_CleanMSG(msg, lf) < 0) {
                 merror(IMSG_ERROR, msg);
-                if (msg[0] == CISCAT_MQ) {
-                    w_inc_modules_ciscat_unknown_events();
-                } else if (msg[0] == SYSLOG_MQ) {
-                    w_inc_syslog_unknown_events();
-                } else if (msg[0] == LOCALFILE_MQ) {
-                    //w_inc_unknown_by_component_events(location);
-                }
                 Free_Eventinfo(lf);
                 free(msg);
                 continue;
@@ -1727,7 +1715,6 @@ void * w_decode_winevt_thread(__attribute__((unused)) void * args){
 
             if (OS_CleanMSG(msg, lf) < 0) {
                 merror(IMSG_ERROR, msg);
-                w_inc_modules_logcollector_eventchannel_unknown_events();
                 Free_Eventinfo(lf);
                 free(msg);
                 continue;
@@ -1768,7 +1755,6 @@ void * w_dispatch_dbsync_thread(__attribute__((unused)) void * args) {
 
         if (OS_CleanMSG(msg, lf) < 0) {
             merror(IMSG_ERROR, msg);
-            w_inc_dbsync_unknown_events();
             Free_Eventinfo(lf);
             free(msg);
             continue;
@@ -1799,7 +1785,6 @@ void * w_dispatch_upgrade_module_thread(__attribute__((unused)) void * args) {
 
         if (OS_CleanMSG(msg, lf) < 0) {
             merror(IMSG_ERROR, msg);
-            w_inc_modules_upgrade_unknown_events();
             Free_Eventinfo(lf);
             free(msg);
             continue;
