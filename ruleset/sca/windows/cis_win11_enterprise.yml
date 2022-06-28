@@ -2325,7 +2325,7 @@ checks:
       - cis_csc: ["6.3","16.6"]
     condition: all
     rules:
-      - 'c:auditpol.exe /get /subcategory:"Process Creation" -> r:Failure'
+      - 'c:auditpol.exe /get /subcategory:"Account Lockout" -> r:Failure'
 
   - id: 26152
     title: "Ensure 'Audit Group Membership' is set to include 'Success'"
