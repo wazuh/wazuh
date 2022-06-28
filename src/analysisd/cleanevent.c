@@ -617,3 +617,45 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
 
     return (0);
 }
+
+char *extract_module_from_message(char *msg) {
+    char *module_name = NULL;
+    char *end = NULL;
+
+    msg += 2;
+
+    if (*msg == '[') {
+        if (!(module_name = strstr(msg, "->"))) {
+            merror(FORMAT_ERROR);
+            return NULL;
+        }
+    }
+
+    if (module_name == NULL) {
+        module_name = msg;
+    } else {
+        module_name += 2;
+    }
+
+    end = strchr(module_name, ':');
+    if (!end) {
+        merror(FORMAT_ERROR);
+        return NULL;
+    }
+
+    *end = '\0';
+
+    return module_name;
+}
+
+const char *extract_module_from_location(const char *location) {
+    const char *module_name = strstr(location, "->");
+
+    if (module_name == NULL) {
+        module_name = location;
+    } else {
+        module_name += 2;
+    }
+
+    return module_name;
+}
