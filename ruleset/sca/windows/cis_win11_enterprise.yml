@@ -1687,7 +1687,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\icssvc -> Start -> 4'
 
   - id: 26111
-    title: "Ensure 'Windows Push Notifications System Service (WpnService)' isset to 'Disabled' "
+    title: "Ensure 'Windows Push Notifications System Service (WpnService)' is set to 'Disabled' "
     description: "This service runs in session 0 and hosts the notification platform and connection provider  which handles the connection between the device and WNS server. The recommended state for this setting is: Disabled. Note: In the first two releases of Windows 10 (R1507 & R1511), the display name of this  service was initially named Windows Push Notifications Service - but it was renamed to  Windows Push Notifications System Service starting with Windows 10 R1607. "
     rationale: "Windows Push Notification Services (WNS) is a mechanism to receive 3rd-party  notifications and updates from the cloud/Internet. In a high security environment, external  systems, especially those hosted outside the organization, should be prevented from having  an impact on the secure workstations. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Windows Push Notifications System Service"
