@@ -236,6 +236,90 @@ TEST_F(opBuilderARWriteTestSuite, SendEmptyReferenceError)
     unlink(AR_QUEUE_PATH);
 }
 
+TEST_F(opBuilderARWriteTestSuite, SendEmptyReferencedValueError)
+{
+    Document doc {R"({
+        "normalize":
+        [
+            {
+                "map":
+                {
+                    "ar_write.result": "+ar_write/$query"
+                }
+            }
+        ]
+    })"};
+
+    auto serverSocketFD = testBindUnixSocket(AR_QUEUE_PATH, SOCK_DGRAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    auto normalize = stageBuilderNormalize(doc.get("/normalize"), tr);
+
+    rxcpp::subjects::subject<Event> inputSubject;
+    inputSubject.get_observable().subscribe([](Event e) {});
+    auto inputObservable = inputSubject.get_observable();
+    auto output = normalize(inputObservable);
+
+    std::vector<Event> expected;
+    output.subscribe([&expected](Event e) { expected.push_back(e); });
+
+    auto eventsCount = 1;
+    auto inputObjectOne = createSharedEvent(R"({"query": ""})");
+
+    inputSubject.get_subscriber().on_next(inputObjectOne);
+
+    ASSERT_EQ(expected.size(), eventsCount);
+
+    ASSERT_NO_THROW(
+        ASSERT_EQ(expected[0]->getEventValue("/ar_write/result").GetBool(), false));
+
+    close(serverSocketFD);
+    unlink(AR_QUEUE_PATH);
+}
+
+TEST_F(opBuilderARWriteTestSuite, SendNotStringsError)
+{
+    Document doc {R"({
+        "normalize":
+        [
+            {
+                "map":
+                {
+                    "ar_write.result": "+ar_write/$query"
+                }
+            }
+        ]
+    })"};
+
+    auto serverSocketFD = testBindUnixSocket(AR_QUEUE_PATH, SOCK_DGRAM);
+    ASSERT_GT(serverSocketFD, 0);
+
+    auto normalize = stageBuilderNormalize(doc.get("/normalize"), tr);
+
+    rxcpp::subjects::subject<Event> inputSubject;
+    inputSubject.get_observable().subscribe([](Event e) {});
+    auto inputObservable = inputSubject.get_observable();
+    auto output = normalize(inputObservable);
+
+    std::vector<Event> expected;
+    output.subscribe([&expected](Event e) { expected.push_back(e); });
+
+    inputSubject.get_subscriber().on_next(createSharedEvent(R"({"query": null})"));
+    inputSubject.get_subscriber().on_next(createSharedEvent(R"({"query": 404})"));
+    inputSubject.get_subscriber().on_next(createSharedEvent(R"({"query": [1, "2"]})"));
+    inputSubject.get_subscriber().on_next(
+        createSharedEvent(R"({"query": { "a": "b" }})"));
+    inputSubject.get_subscriber().on_next(createSharedEvent(R"({"query": true})"));
+
+    ASSERT_EQ(expected.size(), 5);
+
+    ASSERT_NO_THROW(
+        ASSERT_EQ(expected[0]->getEventValue("/ar_write/result").GetBool(), false));
+
+    close(serverSocketFD);
+    unlink(AR_QUEUE_PATH);
+}
+
 TEST_F(opBuilderARWriteTestSuite, SendWrongReferenceError)
 {
     Document doc {R"({
