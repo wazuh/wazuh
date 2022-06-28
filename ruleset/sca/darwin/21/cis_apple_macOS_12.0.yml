@@ -366,33 +366,38 @@ checks:
   # 2.4.11 Ensure AirDrop Is Disabled (Automated)
   - id: 29022
     title: "Ensure AirDrop Is Disabled."
-    description: "While there are positives to AirDrop, there are privacy concerns that could expose personal information. For that reason, AirDrop should be disabled, and should only be enabled when needed and disabled afterwards."
+    description: "AirDrop is Apple's built-in on demand ad hoc file exchange system that is compatible with both macOS and iOS. It uses Bluetooth LE for discovery that limits connectivity to Mac or iOS users that are in close proximity. Depending on the setting it allows everyone or only Contacts to share files when they are nearby to each other. In many ways this technology is far superior to the alternatives. The file transfer is done over a TLS encrypted session, does not require any open ports that are required for file sharing, does not leave file copies on email servers or within cloud storage, and allows for the service to be mitigated so that only people already trusted and added to contacts can interact with you. While there are positives to AirDrop, there are privacy concerns that could expose personal information. For that reason, AirDrop should be disabled, and should only be enabled when needed and disabled afterwards."
     rationale: "AirDrop can allow malicious files to be downloaded from unknown sources. Contacts Only limits may expose personal information to devices in the same area."
     remediation: "Run the following commands to disable AirDrop: sudo -u <username> defaults write com.apple.NetworkBrowser DisableAirDrop -bool true"
     references:
-      - https://www.techrepublic.com/article/apple-airdrop-users-reportedly-vulnerable-to-security-flaw/
-      - https://www.imore.com/how-apple-keeps-your-airdrop-files-private-and-secure
+      - "https://www.techrepublic.com/article/apple-airdrop-users-reportedly-vulnerable-to-security-flaw/"
+      - "https://www.imore.com/how-apple-keeps-your-airdrop-files-private-and-secure"
+      - "https://en.wikipedia.org/wiki/AirDrop"
     compliance:
       - cis: ["2.4.11"]
       - cis_level: ["1"]
-    condition: all
+    condition: any
     rules:
       - "c:defaults read com.apple.NetworkBrowser DisableAirDrop -> r:^1$"
+      - 'c:sh -c "profiles -P -o stdout | grep DisableAirDrop" -> r:DisableAirDrop\s*=\s*1'
 
   # 2.4.12 Ensure Media Sharing Is Disabled (Automated)
   - id: 29023
     title: "Disable Media Sharing."
-    description: "Starting with macOS 10.15 Apple has provided a control to allow a user to share Apple downloaded content on all Apple devices that are signed in with the same Apple ID. This allows a user to share downloaded Movies, Music or TV shows with other controlled macOS, iOS and iPadOS devices as well as photos with Apple TVs. With this capability guest users can also use media downloaded on the computer. Best practice is not to use the computer as a server but to utilize Apple's cloud storage to download and use content stored there if content stored with Apple is used on multiple devices."
+    description: "Starting with macOS 10.15 Apple has provided a control to allow a user to share Apple downloaded content on all Apple devices that are signed in with the same Apple ID. This allows a user to share downloaded Movies, Music or TV shows with other controlled macOS, iOS and iPadOS devices as well as photos with Apple TVs. With this capability guest users can also use media downloaded on the computer. The recommended best practice is not to use the computer as a server but to utilize Apple's cloud storage to download and use content stored there if content stored with Apple is used on multiple devices."
     rationale: "Disabling Media Sharing reduces the remote attack surface of the system."
-    remediation: "Run the following command in to disable content caching: sudo AssetCacheManagerUtil deactivate"
+    remediation: "Run the following command to disable Media Sharing: sudo -u <username> defaults write com.apple.amp.mediasharingd home-sharing- enabled -int 0"
     compliance:
       - cis: ["2.4.12"]
       - cis_level: ["2"]
     references:
       - https://support.apple.com/guide/mac-help/set-up-media-sharing-on-mac-mchlp13371337/mac
-    condition: all
+    condition: any
     rules:
-      - "c:defaults read com.apple.amp.mediasharingd home-sharing-enabled -> r:^0$"
+      - "c:defaults read com.apple.amp.mediasharingd home-sharing-enabled -> r:^0$|does not exist"
+      - 'c:sh -c "profiles -P -o stdout | grep homeSharingUIStatus" -> r:homeSharingUIStatus\s*=\s*0'
+      - 'c:sh -c "profiles -P -o stdout | grep legacySharingUIStatus" -> r:legacySharingUIStatus\s*=\s*0'
+      - 'c:sh -c "profiles -P -o stdout | grep mediaSharingUIStatus" -> r:mediaSharingUIStatus\s*=\s*0'
 
   # 2.4.13 Ensure AirPlay Receiver Is Disabled (Automated) - Not implemented
 
@@ -404,9 +409,9 @@ checks:
   # 2.5.1.1 Ensure FileVault Is Enabled (Automated)
   - id: 29024
     title: "Ensure FileVault Is Enabled."
-    description: "FileVault secures a system's data by automatically encrypting its boot volume and requiring a password or recovery key to access it. Filevault may also be enabled using command line using the fdesetup command. To use this functionality, consult the Der Flounder blog for more details: "
+    description: "FileVault secures a system's data by automatically encrypting its boot volume and requiring a password or recovery key to access it. FileVault may also be enabled using command line using the fdesetup command. To use this functionality, consult the Der Flounder blog for more details (see references)"
     rationale: "Encrypting sensitive data minimizes the likelihood of unauthorized users gaining access to it."
-    remediation: "1. Open System Preferences 2. Select Security & Privacy 3. Select FileVault 4. Select Turn on FileVault"
+    remediation: "Perform the following to enable FileVault: 1. Open System Preferences 2. Select Security & Privacy 3. Select FileVault 4. Select Turn on FileVault"
     compliance:
       - cis: ["2.5.1.1"]
       - cis_level: ["1"]
@@ -415,7 +420,7 @@ checks:
       - https://derflounder.wordpress.com/2019/01/15/unlock-or-decrypt-your-filevault-encrypted-boot-drive-from-the-command-line-on-macos-mojave/
     condition: all
     rules:
-      - 'c:fdesetup status -> r:^FileVault\s*\t*is\s*\t*On$'
+      - "c:fdesetup status -> r:^FileVault is On"
 
   # 2.5.1.2 Ensure all user storage APFS volumes are encrypted (Manual) - Not implemented
   # 2.5.1.3 Ensure all user storage CoreStorage volumes are encrypted (Manual) - Not implemented
@@ -426,52 +431,57 @@ checks:
   # 2.5.2.1 Ensure Gatekeeper is Enabled (Automated)
   - id: 29025
     title: "Ensure Gatekeeper is Enabled."
-    description: "Gatekeeper is Apple's application white-listing control that restricts downloaded applications from launching. It functions as a control to limit applications from unverified sources from running without authorization."
+    description: "Gatekeeper is Apple's application allowlisting control that restricts downloaded applications from launching. It functions as a control to limit applications from unverified sources from running without authorization."
     rationale: "Disallowing unsigned software will reduce the risk of unauthorized or malicious applications from running on the system."
-    remediation: "Run the following command in Terminal: sudo spctl --master-enable"
+    remediation: "Run the following command to enable Gatekeeper to allow applications from App Store and identified developers: sudo /usr/sbin/spctl --master-enable"
     compliance:
       - cis: ["2.5.2.1"]
       - cis_level: ["1"]
-    condition: all
+    condition: any
     rules:
-      - 'c:spctl --status -> r:^assessments\s*\t*enabled$'
+      - "c:spctl --status -> r:^assessments enabled"
+      - 'c:sh -c "profiles -P -o stdout | grep AllowIdentifiedDevelopers" -> r:AllowIdentifiedDevelopers\s*=\s*1'
+      - 'c:sh -c "profiles -P -o stdout | grep EnableAssessment" -> r:EnableAssessment\s*=\s*1'
 
   # 2.5.2.2 Ensure Firewall Is Enabled (Automated)
   - id: 29026
     title: "Ensure Firewall Is Enabled."
-    description: "A firewall is a piece of software that blocks unwanted incoming connections to a system.  Apple has posted general documentation about the application firewall."
+    description: "A firewall is a piece of software that blocks unwanted incoming connections to a system. Apple has posted general documentation about the application firewall."
     rationale: "A firewall minimizes the threat of unauthorized users from gaining access to your system while connected to a network or the Internet."
-    remediation: "Run the following command in Terminal: sudo defaults write /Library/Preferences/com.apple.alf globalstate - int <value>. Where <value> is: - 1 = on for specific services - 2 = on for essential services "
+    remediation: "Run the following command to enable the firewall: sudo /usr/bin/defaults write /Library/Preferences/com.apple.alf globalstate -int <value> For the <value>, use either 1, specific services, or 2, essential services only."
     compliance:
       - cis: ["2.5.2.2"]
       - cis_level: ["1"]
     references:
-      - https://support.apple.com/en-us/HT201642
+      - "https://support.apple.com/en-us/HT201642"
+      - "https://support.apple.com/en-ca/guide/security/seca0e83763f/web"
     condition: all
     rules:
       - "c:defaults read /Library/Preferences/com.apple.alf globalstate -> r:^1$|^2$"
+      - 'c:sh -c "profiles -P -o stdout | grep EnableFirewall" -> r:EnableFirewall\s*=\s*1'
 
   # 2.5.2.3 Ensure Firewall Stealth Mode Is Enabled (Automated)
   - id: 29027
     title: "Ensure Firewall Stealth Mode Is Enabled."
     description: "While in Stealth mode the computer will not respond to unsolicited probes, dropping that traffic."
     rationale: "Stealth mode on the firewall minimizes the threat of system discovery tools while connected to a network or the Internet."
-    remediation: "Run the following command in Terminal: sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setstealthmode on"
+    remediation: "Run the following command to enable stealth mode:: sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setstealthmode on"
     compliance:
       - cis: ["2.5.2.3"]
       - cis_level: ["1"]
     references:
       - https://support.apple.com/en-us/HT201642
-    condition: all
+    condition: any
     rules:
-      - "c:/usr/libexec/ApplicationFirewall/socketfilterfw --getstealthmode -> r:^Stealth mode enabled"
+      - "c:/usr/sbin/system_profiler SPFirewallDataType -> r:Stealth Mode: Yes"
+      - 'c:sh -c "profiles -P -o stdout | grep EnableStealthMode" -> r:EnableStealthMode\s*=\s*1'
 
   # 2.5.3 Ensure Location Services Is Enabled (Automated)
   - id: 29028
     title: "Ensure Location Services Is Enabled."
-    description: "macOS uses location information gathered through local Wi-Fi networks to enable applications to supply relevant information to users. Users do not need to change the time or the time zone, the computer will do it for them. They do not need to specify their location for weather or travel times and even get alerts on travel times to meetings and appointment where location information is supplied. For the purpose of asset management and time and log management with mobile computers location services simplify some processes.There are some use cases where it is important that the computer not be able to report it's exact location. While the general use case is to enable Location Services, it should not be allowed if the physical location of the computer and the user should not be public knowledge."
-    rationale: "Location services are helpful in most use cases and can simplify log and time management where computers change time zones."
-    remediation: "Run the following command to enable location services: sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.locationd.plist"
+    description: "macOS uses location information gathered through local Wi-Fi networks to enable applications to supply relevant information to users. With the operating system verifying the location, users do not need to change the time or the time zone. The computer will change them based on the user's location. They do not need to specify their location for weather or travel times and even get alerts on travel times to meetings and appointment where location information is supplied. Location Services simplify some processes, for the purpose of asset management and time and log management, with mobile computers. There are some use cases where it is important that the computer not be able to report its exact location. While the general use case is to enable Location Services, it should not be allowed if the physical location of the computer and the user should not be public knowledge."
+    rationale: "Location Services are helpful in most use cases and can simplify log and time management where computers change time zones."
+    remediation: "Run the following command to enable Location Services: sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.locationd.plist"
     compliance:
       - cis: ["2.5.3"]
       - cis_level: ["2"]
@@ -486,15 +496,16 @@ checks:
   # 2.5.5 Ensure Sending Diagnostic and Usage Data to Apple Is Disabled (Automated)
   - id: 29029
     title: "Ensure Sending Diagnostic and Usage Data to Apple Is Disabled."
-    description: "Apple provides a mechanism to send diagnostic and analytics data back to Apple to help them improve the platform. Information sent to Apple may contain internal organizational information that should be controlled and not available for processing by Apple. Turn off all Analytics and Improvements sharing."
+    description: "Apple provides a mechanism to send diagnostic and analytics data back to Apple to help them improve the platform. Information sent to Apple may contain internal organizational information that should be controlled and not available for processing by Apple. Turn off all Analytics and Improvements sharing. Share Mac Analytics (Share with App Developers dependent on Mac Analytic sharing) - Includes diagnostics, usage and location data. Share iCloud Analytics - Includes iCloud data and usage information."
     rationale: "Organizations should have knowledge of what is shared with the vendor and the setting automatically forwards information to Apple."
-    remediation: "For each needed user, run the following command to enable limited ad tracking: sudo -u <username> defaults -currentHost write /Users/<username>/Library/Preferences/com.apple.Adlib.plist allowApplePersonalizedAdvertising -bool false"
+    remediation: "Perform the following to disable diagnostic data being sent to Apple: sudo /usr/bin/defaults write /Library/Application\ Support/CrashReporter/DiagnosticMessagesHistory.plist AutoSubmit -bool false, sudo /bin/chmod 644 /Library/Application\ Support/CrashReporter/DiagnosticMessagesHistory.plist, sudo /usr/sbin/chgrp admin /Library/Application\ Support/CrashReporter/DiagnosticMessagesHistory.plist"
     compliance:
       - cis: ["2.5.5"]
       - cis_level: ["2"]
-    condition: all
+    condition: any
     rules:
       - 'c:defaults read /Library/Application\ Support/CrashReporter/DiagnosticMessagesHistory.plist AutoSubmit -> r:^0$'
+      - 'c:sh -c "profiles -P -o stdout | grep allowDiagnosticSubmission" -> r:allowDiagnosticSubmission\s*=\s*0'
 
   # 2.5.6 Ensure Limit Ad Tracking Is Enabled (Automated) - Not implemented
   # 2.5.7 Audit Camera Privacy and Confidentiality (Manual) - Not implemented
@@ -517,24 +528,25 @@ checks:
   # 2.7.1 Ensure Backup Up Automatically is Enabled (Automated)
   - id: 29030
     title: "Ensure Backup Up Automatically is Enabled."
-    description: "Backup solutions are only effective if the backups run on a regular basis. The time to check for backups is before the hard drive fails or the computer goes missing. In order to simplify the user experience so that backups are more likely to occur Time Machine should be on and set to Back Up Automatically whenever the target volume is available. Operational staff should ensure that backups complete on a regular basis and the backups are tested to ensure that file restoration from backup is possible when needed. Backup dates are available even when the target volume is not available in the Time Machine plist. When the backup volume is connected to the computer more extensive information is available through tmutil. See man tmutil"
+    description: 'Backup solutions are only effective if the backups run on a regular basis. The time to check for backups is before the hard drive fails or the computer goes missing. In order to simplify the user experience so that backups are more likely to occur Time Machine should be on and set to Back Up Automatically whenever the target volume is available. Operational staff should ensure that backups complete on a regular basis and the backups are tested to ensure that file restoration from backup is possible when needed. Backup dates are available even when the target volume is not available in the Time Machine plist. SnapshotDates = ( "2012-08-20 12:10:22 +0000", "2013-02-03 23:43:22 +0000", "2014-02-19 21:37:21 +0000", "2015-02-22 13:07:25 +0000", "2016-08-20 14:07:14 +0000" When the backup volume is connected to the computer more extensive information is available through tmutil. See man tmutil'
     rationale: "Backups should automatically run whenever the backup drive is available."
-    remediation: "Run the following enable TimeMachine: sudo sudo tmutil setdestination -a /Volumes/<volumename> && sudo tmutil enable"
+    remediation: "Run the following command to enable automatic backups if Time Machine is enabled: sudo /usr/bin/defaults write /Library/Preferences/com.apple.TimeMachine.plist AutoBackup -bool true"
     compliance:
       - cis: ["2.7.1"]
       - cis_level: ["2"]
-    condition: all
+    condition: any
     rules:
       - "c:defaults read /Library/Preferences/com.apple.TimeMachine.plist AutoBackup -> r:^1$"
+      - 'c:sh -c "profiles -P -o stdout | grep AutoBackup" -> r:AutoBackup\s*=\s*1'
 
   # 2.7.2 Ensure Time Machine Volumes Are Encrypted (Automated) - Not implemented
 
   # 2.8 Ensure Wake for Network Access Is Disabled (Automated)
   - id: 29031
     title: "Ensure Wake for Network Access Is Disabled."
-    description: "This feature allows the computer to take action when the user is not present and the computer is in energy saving mode. These tools require FileVault to remain unlocked and fully rejoin known networks. Theie macOS feature is meant to allow the computer to resume activity as needed regardless of physical security controls. This feature allows other users to be able to access your computer's shared resources, such as shared printers or iTunes playlists, even when your computer is in sleep mode. In a closed network when only authorized devices could wake a computer it could be valuable to wake computers in order to do management push activity. Where mobile workstations and agents exist the device will more likely check in to receive updates when already awake. Mobile devices should not be listening for signals on unmanaged network where untrusted devices could send wake signals."
+    description: "This feature allows the computer to take action when the user is not present and the computer is in energy saving mode. These tools require FileVault to remain unlocked and fully rejoin known networks. This macOS feature is meant to allow the computer to resume activity as needed regardless of physical security controls. This feature allows other users to be able to access your computer’s shared resources, such as shared printers or iTunes playlists, even when your computer is in sleep mode. In a closed network when only authorized devices could wake a computer it could be valuable to wake computers in order to do management push activity. Where mobile workstations and agents exist the device will more likely check in to receive updates when already awake. Mobile devices should not be listening for signals on any unmanaged network or where untrusted devices exist that could send wake signals."
     rationale: "Disabling this feature mitigates the risk of an attacker remotely waking the system and gaining access."
-    remediation: "Run the following command to disable Wake for network access: sudo pmset -a womp 0 "
+    remediation: "Perform the following disable Wake for network access or Power Nap: Run the following command to disable Wake for network access: sudo pmset -a womp 0 "
     compliance:
       - cis: ["2.8"]
       - cis_level: ["1"]
@@ -545,42 +557,47 @@ checks:
   # 2.9 Ensure Power Nap Is Disabled (Automated)
   - id: 29032
     title: "Ensure Power Nap Is Disabled."
-    description: "This features allows the computer to take action when the user is not present and the computer is in energy saving mode. These tools require FileVault to remain unlocked and fully rejoin known networks. This macOS features are meant to allow the computer to resume activity as needed regardless of physical security controls. Power Nap allows the system to stay in low power mode, especially while on battery power and periodically connect to previously named networks with stored credentials for user applications to phone home and get updates. This capability requires FileVault to remain unlocked and the use of previously joined networks to be risk accepted based on the SSID without user input."
-    rationale: "Disabling this feature mitigates the risk of an attacker remotely waking the system and gaining access."
-    remediation: "Run the following command to disable Power Nap: sudo pmset -a powernap 0"
+    description: "This feature allows the computer to take action when the user is not present and the computer is in energy saving mode. These tools require FileVault to remain unlocked and fully rejoin known networks. This macOS feature is meant to allow the computer to resume activity as needed regardless of physical security controls. Power Nap allows the system to stay in low power mode, especially while on battery power and periodically connect to previously named networks with stored credentials for user applications to phone home and get updates. This capability requires FileVault to remain unlocked and the use of previously joined networks to be risk accepted based on the SSID without user input. This control has been updated to check the status on both battery and AC Power. The presence of an electrical outlet does not completely correlate with logical and physical security of the device or available networks."
+    rationale: "Disabling this feature mitigates the risk of an attacker remotely waking the system and gaining access. The use of Power Nap adds to the risk of compromised physical and logical security. The user should be able to decrypt FileVault and have the applications download what is required when the computer is actively used. The control to prevent computer sleep has been retired for this version of the Benchmark. Forcing the computer to stay on and use energy in case a management push is needed is contrary to most current management processes. Only keep computers unslept if after hours pushes are required on closed LANs."
+    remediation: "Perform the following disable Wake for network access or Power Nap: sudo pmset -a powernap 0"
     compliance:
       - cis: ["2.9"]
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:sh -c "pmset -g everything | grep -e powernap" -> r:powernap\s+0'
+      - 'c:sh -c "pmset -g everything | grep powernap | grep -c 1" -> r:^0$'
 
   # 2.10 Ensure Secure Keyboard Entry terminal.app is Enabled (Automated)
   - id: 29033
     title: "Ensure Secure Keyboard Entry terminal.app is Enabled."
     description: "Secure Keyboard Entry prevents other applications on the system and/or network from detecting and recording what is typed into Terminal."
     rationale: "Enabling Secure Keyboard Entry minimizes the risk of a key logger from detecting what is entered in Terminal."
-    remediation: "Perform the following to implement the prescribed state: 1. Open Terminal 2. Select Terminal 3. Select Secure Keyboard Entry."
+    remediation: "Perform the following to enable secure keyboard entries in Terminal: sudo -u <username> /usr/bin/defaults write -app Terminal SecureKeyboardEntry -bool true"
     compliance:
       - cis: ["2.10"]
       - cis_level: ["1"]
+    references:
+      - "https://support.apple.com/en-ca/guide/terminal/trml109/2.11"
     condition: all
     rules:
-      - "c:defaults read -app Terminal SecureKeyboardEntry -> r:^1$"
+      - "c:defaults read -app Terminal SecureKeyboardEntry -> r:^1$|does not exist"
+      - 'c:sh -c "profiles -P -o stdout | grep SecureKeyboardEntry" -> r:SecureKeyboardEntry\s*=\s*1'
 
   # 2.11 Ensure EFI Version Is Valid and Checked Regularly (Automated)
   - id: 29034
     title: "Ensure EFI Version Is Valid and Checked Regularly."
-    description: "In order to mitigate firmware attacks Apple has created a automated Firmware check to ensure that the EFI version running is a known good version from Apple. There is also an automated process to check it every seven days."
+    description: "In order to mitigate firmware attacks Apple has created an automated Firmware check to ensure that the EFI version running is a known good version from Apple. There is also an automated process to check it every seven days."
     rationale: "If the Firmware of a computer has been compromised the Operating System that the Firmware loads cannot be trusted either."
     remediation: "If EFI does not pass the integrity check you may send a report to Apple. Backing up files and clean installing a known good Operating System and Firmware is recommended."
     compliance:
       - cis: ["2.11"]
       - cis_level: ["1"]
-    condition: all
+    condition: any
     rules:
+      - "c:/usr/libexec/firmwarecheckers/eficheck/eficheck --integrity-check ->  No changes detected in primary hashes"
+      - 'c:/usr/libexec/firmwarecheckers/eficheck/eficheck --integrity-check ->  MBP133\.'
       - 'c:sh -c "system_profiler SPiBridgeDataType | grep \"T2\"" -> r:Model Name: Apple T2 Security Chip'
-      - 'c:sh -c "launchctl list | grep com.apple.driver.eficheck" -> r:^-\s*\t*0\s*\t*com.apple.driver.eficheck$'
+      - 'c:sh -c "launchctl list | grep com.apple.driver.eficheck" -> r:com.apple.driver.eficheck'
 
   # 2.12 Audit Automatic Actions for Optical Media (Manual) - Not implemented
   # 2.13 Audit Siri Settings (Manual) - Not implemented
