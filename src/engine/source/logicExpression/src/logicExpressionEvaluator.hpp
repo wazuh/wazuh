@@ -81,8 +81,7 @@ public:
      * @param function Function that evaluates the term
      * @return std::shared_ptr<ThisType>
      */
-    [[nodiscard]] static std::shared_ptr<ThisType>
-    create(FunctionType&& function)
+    [[nodiscard]] static std::shared_ptr<ThisType> create(FunctionType&& function)
     {
         return std::shared_ptr<ThisType>(
             new ThisType(std::forward<FunctionType>(function)));
@@ -185,7 +184,19 @@ getDijstraEvaluator(const std::shared_ptr<const Expression<Event>>& expression)
         {
             switch (it->m_type)
             {
-                case TERM: operands.push(it->m_function(event)); break;
+                case TERM:
+                    // Handle only term expression
+                    // TODO: dont allow expressions with one term only, use check list
+                    // instead
+                    if (operators.size() == 1)
+                    {
+                        result = it->m_function(event);
+                    }
+                    else
+                    {
+                        operands.push(it->m_function(event));
+                    }
+                    break;
                 case NOT:
                     result = operands.top();
                     operands.pop();
