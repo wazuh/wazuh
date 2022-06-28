@@ -1711,7 +1711,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PushToInstall -> Start -> 4'
 
   - id: 26113
-    title: "Ensure 'Windows Remote Management (WS-Management) (WinRM)' isset to 'Disabled' "
+    title: "Ensure 'Windows Remote Management (WS-Management) (WinRM)' is set to 'Disabled' "
     description: "Windows Remote Management (WinRM) service implements the WS-Management  protocol for remote management. WS-Management is a standard web services protocol  used for remote software and hardware management. The WinRM service listens on the  network for WS-Management requests and processes them. The recommended state for this setting is: Disabled. "
     rationale: "Features that enable inbound network connections increase the attack surface. In a high  security environment, management of secure workstations should be handled locally. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Windows Remote Management (WS-Management) "
