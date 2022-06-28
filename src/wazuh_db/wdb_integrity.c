@@ -48,18 +48,56 @@ extern void mock_assert(const int result, const char* const expression,
 #endif
 
 /**
+ * @brief Clean the component tables of duplicate entries.
+ *
+ * @param wdb Database node.
+ * @param stmt The SQL statement to be executed.
+ * @param checksum Checksum to be deleted.
+ */
+void wdbi_remove_duplicate_entries(wdb_t *wdb, wdb_component_t component, char * checksum) {
+    const int INDEXES[] = { [WDB_FIM] = WDB_STMT_FIM_DELETE_CHECKSUM,
+                            [WDB_FIM_FILE] = WDB_STMT_FIM_FILE_DELETE_CHECKSUM,
+                            [WDB_FIM_REGISTRY] = WDB_STMT_FIM_REGISTRY_DELETE_CHECKSUM,
+                            [WDB_SYSCOLLECTOR_PROCESSES] = WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_CHECKSUM,
+                            [WDB_SYSCOLLECTOR_PACKAGES] = WDB_STMT_SYSCOLLECTOR_PACKAGES_DELETE_CHECKSUM,
+                            [WDB_SYSCOLLECTOR_HOTFIXES] = WDB_STMT_SYSCOLLECTOR_HOTFIXES_DELETE_CHECKSUM,
+                            [WDB_SYSCOLLECTOR_PORTS] = WDB_STMT_SYSCOLLECTOR_PORTS_DELETE_CHECKSUM,
+                            [WDB_SYSCOLLECTOR_NETPROTO] = WDB_STMT_SYSCOLLECTOR_NETPROTO_DELETE_CHECKSUM,
+                            [WDB_SYSCOLLECTOR_NETADDRESS] = WDB_STMT_SYSCOLLECTOR_NETADDRESS_DELETE_CHECKSUM,
+                            [WDB_SYSCOLLECTOR_NETINFO] = WDB_STMT_SYSCOLLECTOR_NETINFO_DELETE_CHECKSUM,
+                            [WDB_SYSCOLLECTOR_HWINFO] = WDB_STMT_SYSCOLLECTOR_HWINFO_DELETE_CHECKSUM,
+                            [WDB_SYSCOLLECTOR_OSINFO] = WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_CHECKSUM };
+
+    assert(component < sizeof(INDEXES) / sizeof(int));
+
+    if (wdb_stmt_cache(wdb, INDEXES[component]) == -1) {
+        mdebug1("Cannot cache statement");
+        return;
+    }
+
+    sqlite3_stmt *stmt = wdb->stmt[INDEXES[component]];
+
+    sqlite3_bind_text(stmt, 1, checksum, -1, NULL);
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return;
+    }
+}
+
+/**
  * @brief Run checksum of the whole result of an already prepared statement
  *
  * @param[in] wdb Database node.
  * @param[in] stmt Statement to be executed already prepared.
  * @param[in] component Name of the component.
  * @param[out] hexdigest
+ * @param[in] single_element True if one element is expected.
  * @retval 1 On success.
  * @retval 0 If no items were found.
  * @retval -1 On error.
  */
-int wdb_calculate_stmt_checksum(wdb_t * wdb, sqlite3_stmt * stmt, wdb_component_t component, os_sha1 hexdigest) {
-
+int wdb_calculate_stmt_checksum(wdb_t * wdb, sqlite3_stmt * stmt, wdb_component_t component, os_sha1 hexdigest, bool single_element) {
     assert(wdb != NULL);
     assert(stmt != NULL);
     assert(hexdigest != NULL);
@@ -73,8 +111,19 @@ int wdb_calculate_stmt_checksum(wdb_t * wdb, sqlite3_stmt * stmt, wdb_component_
     EVP_MD_CTX * ctx = EVP_MD_CTX_create();
     EVP_DigestInit(ctx, EVP_sha1());
 
+    int it = -1;
     for (; step == SQLITE_ROW; step = sqlite3_step(stmt)) {
-        const unsigned char * checksum = sqlite3_column_text(stmt, 0);
+        if (single_element) {
+            ++it;
+        }
+
+        char * checksum = (char *)sqlite3_column_text(stmt, 0);
+
+        if (it == 1) {
+            wdbi_remove_duplicate_entries(wdb, component, checksum);
+
+            return 0;
+        }
 
         if (checksum == 0) {
             mdebug1("DB(%s) has a NULL %s checksum.", wdb->id, COMPONENT_NAMES[component]);
@@ -132,7 +181,7 @@ int wdbi_checksum(wdb_t * wdb, wdb_component_t component, os_sha1 hexdigest) {
 
     sqlite3_stmt * stmt = wdb->stmt[INDEXES[component]];
 
-    return wdb_calculate_stmt_checksum(wdb, stmt, component, hexdigest);
+    return wdb_calculate_stmt_checksum(wdb, stmt, component, hexdigest, false);
 }
 
 /**
@@ -175,7 +224,9 @@ int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * beg
     sqlite3_bind_text(stmt, 1, begin, -1, NULL);
     sqlite3_bind_text(stmt, 2, end, -1, NULL);
 
-    return wdb_calculate_stmt_checksum(wdb, stmt, component, hexdigest);
+    bool single_element = !strcmp(begin, end) ? true : false;
+
+    return wdb_calculate_stmt_checksum(wdb, stmt, component, hexdigest, single_element);
 }
 
 /**
