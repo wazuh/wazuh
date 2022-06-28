@@ -67,9 +67,10 @@ private:
             {
                 asset = std::make_shared<Asset>(json, type);
             }
-            catch(const std::exception& e)
+            catch (const std::exception& e)
             {
-                std::throw_with_nested(std::runtime_error(fmt::format("Failed to build asset: {}", name)));
+                std::throw_with_nested(
+                    std::runtime_error(fmt::format("Failed to build asset: {}", name)));
             }
             m_assets.insert(std::make_pair(name, asset));
             graph.addNode(name, asset);
@@ -175,6 +176,33 @@ public:
 
             // Add filters
             addFilters(name);
+
+            // Check integrity
+            for (auto& [parent, children] : m_graphs[name].m_edges)
+            {
+                if (!m_graphs[name].hasNode(parent))
+                {
+                    std::string childrenNames;
+                    for (auto& child : children)
+                    {
+                        childrenNames += child + " ";
+                    }
+                    throw std::runtime_error(
+                        fmt::format("Error building [{}] graph: parent [{}] not found, "
+                                    "for children [{}]",
+                                    name,
+                                    parent,
+                                    childrenNames));
+                }
+                for (auto& child : children)
+                {
+                    if (!m_graphs[name].hasNode(child))
+                    {
+                        throw std::runtime_error(
+                            fmt::format("Missing child asset: {}", child));
+                    }
+                }
+            }
         }
     }
 
