@@ -1070,7 +1070,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to User is  prompted when the key is first used (configuring to User must enter a password  each time they use a key also conforms to the benchmark): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local  Policies\\Security Options\\System cryptography: Force strong key protection  for user keys stored on the computer"
     compliance:
       - cis: ["2.3.14.1"]
-      - cis_csc: ["16"]
+      - cis_csc: ["3.11"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Cryptography'
