@@ -91,11 +91,6 @@ typedef struct _events_t {
     modules_t modules;
 } events_t;
 
-typedef struct _events_recv_t {
-    events_t events_decoded_breakdown;
-    events_t events_dropped_breakdown;
-} events_recv_t;
-
 typedef struct _analysisd_state_t {
     uint64_t received_bytes;
     uint64_t events_received;
@@ -105,7 +100,8 @@ typedef struct _analysisd_state_t {
     uint32_t firewall_written;
     uint32_t fts_written;
     uint32_t stats_written;
-    events_recv_t events_received_breakdown;
+    events_t events_decoded_breakdown;
+    events_t events_dropped_breakdown;
 } analysisd_state_t;
 
 
