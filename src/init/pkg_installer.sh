@@ -1,6 +1,8 @@
 #!/bin/bash
 # Copyright (C) 2015, Wazuh Inc.
 
+set -x
+
 SERVICE=wazuh-agent
 OSSEC_INIT_FILE=/etc/ossec-init.conf
 WAZUH_HOME=$(pwd)
