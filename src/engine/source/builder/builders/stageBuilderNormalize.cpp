@@ -34,7 +34,7 @@ base::Expression stageNormalizeBuilder(const std::any& definition)
                         jsonDefinition.typeName()));
     }
 
-    auto blocks = jsonDefinition.getArray();
+    auto blocks = jsonDefinition.getArray().value();
     std::vector<base::Expression> blockExpressions;
     std::transform(
         blocks.begin(),
@@ -50,7 +50,7 @@ base::Expression stageNormalizeBuilder(const std::any& definition)
                                 "[{}]",
                                 block.typeName()));
             }
-            auto blockObj = block.getObject();
+            auto blockObj = block.getObject().value();
             std::vector<base::Expression> subBlocksExpressions;
 
             std::transform(blockObj.begin(),

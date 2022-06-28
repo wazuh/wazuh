@@ -33,7 +33,7 @@ base::Expression stageMapBuilder(std::any definition)
                         jsonDefinition.typeName()));
     }
 
-    auto mappings = jsonDefinition.getObject();
+    auto mappings = jsonDefinition.getObject().value();
     std::vector<base::Expression> mappingExpressions;
     std::transform(mappings.begin(),
                    mappings.end(),

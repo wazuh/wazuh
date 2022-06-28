@@ -59,7 +59,7 @@ base::result::Result<base::Event> opBuilderHelperStringTransformation(const std:
         std::optional<std::string> refValueToCheck {};
         try
         {
-            refValueToCheck = e->getValueString(refValue.value());
+            refValueToCheck = e->getString(refValue.value());
         }
         catch (std::exception& ex)
         {
@@ -151,7 +151,7 @@ base::result::Result<base::Event> opBuilderHelperIntTransformation(const std::st
     std::optional<int> fieldValue {};
     try
     {
-        fieldValue = e->getValueInt(field);
+        fieldValue = e->getInt(field);
     }
     catch (std::exception& ex)
     {
@@ -172,7 +172,7 @@ base::result::Result<base::Event> opBuilderHelperIntTransformation(const std::st
         std::optional<int> refValueToCheck {};
         try
         {
-            refValueToCheck = e->getValueInt(refValue.value());
+            refValueToCheck = e->getInt(refValue.value());
         }
         catch (std::exception& ex)
         {
@@ -416,7 +416,7 @@ base::Expression opBuilderHelperStringTrim(std::any definition)
                 std::optional<std::string> fieldValue {};
                 try
                 {
-                    fieldValue = e->getValueString(field);
+                    fieldValue = e->getString(field);
                 }
                 catch (std::exception& ex)
                 {
@@ -613,7 +613,7 @@ base::Expression opBuilderHelperRegexExtract(std::any definition)
                     std::optional<std::string> field_str {};
                     try
                     {
-                        field_str = e->getValueString(field);
+                        field_str = e->getString(field);
                     }
                     catch (std::exception& ex)
                     {

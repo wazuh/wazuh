@@ -115,7 +115,7 @@ public:
     Environment(std::string name, const json::Json& jsonDefinition, T catalog)
         : m_name {name}
     {
-        auto envObj = jsonDefinition.getObject();
+        auto envObj = jsonDefinition.getObject().value();
 
         // Filters are not graphs, its treated as a special case.
         // We just add them to the asset map and then inject them into each
@@ -126,14 +126,14 @@ public:
                          [](auto& tuple) { return std::get<0>(tuple) == FILTERS; });
         if (filtersPos != envObj.end())
         {
-            auto filtersList = std::get<1>(*filtersPos).getArray();
+            auto filtersList = std::get<1>(*filtersPos).getArray().value();
             std::transform(filtersList.begin(),
                            filtersList.end(),
                            std::inserter(m_assets, m_assets.begin()),
                            [&](auto& json)
                            {
                                auto assetType = Asset::Type::FILTER;
-                               auto assetName = json.getString();
+                               auto assetName = json.getString().value();
                                return std::make_pair(
                                    assetName,
                                    std::make_shared<Asset>(
@@ -147,7 +147,7 @@ public:
         // Build graphs
         for (auto& [name, json] : envObj)
         {
-            auto assetNames = json.getArray();
+            auto assetNames = json.getArray().value();
 
             m_graphs.insert(
                 std::make_pair<std::string, Graph<std::string, std::shared_ptr<Asset>>>(
@@ -163,7 +163,7 @@ public:
                            [&](auto& json)
                            {
                                auto assetType = getAssetType(name);
-                               auto assetName = json.getString();
+                               auto assetName = json.getString().value();
                                return std::make_pair(
                                    assetName,
                                    json::Json(catalog.getAsset(
