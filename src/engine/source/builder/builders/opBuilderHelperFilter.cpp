@@ -207,18 +207,7 @@ getStringCmpFunction(const std::string& targetField,
     // cases
     std::string rValue {};
     auto rValueType = rightParameter.m_type;
-    switch (rightParameter.m_type)
-    {
-        case helper::base::Parameter::Type::VALUE: rValue = rightParameter.m_value; break;
-        case helper::base::Parameter::Type::REFERENCE:
-            rValue = rightParameter.m_value;
-            break;
-        default:
-            throw std::runtime_error(fmt::format(
-                "[builders::getIntCmpFunction()] invalid parameter type [{}] for [{}]",
-                static_cast<int>(rightParameter.m_type),
-                rightParameter.m_value));
-    }
+    rValue = rightParameter.m_value;
 
     // Depending on the operator we return the correct function
     std::function<bool(const std::string& l, const std::string& r)> cmpFunction;
@@ -404,42 +393,42 @@ base::Expression opBuilderHelperIntGreaterThanEqual(const std::any& definition)
 //*           String Cmp filters                  *
 //*************************************************
 
-// <field>: +s_eq/<value>
+// field: +s_eq/value|$ref
 base::Expression opBuilderHelperStringEqual(const std::any& definition)
 {
     auto expression = opBuilderComparison(definition, Operator::EQ, Type::STRING);
     return expression;
 }
 
-// <field>: +s_ne/<value>
+// field: +s_ne/value|$ref
 base::Expression opBuilderHelperStringNotEqual(const std::any& definition)
 {
     auto expression = opBuilderComparison(definition, Operator::NE, Type::STRING);
     return expression;
 }
 
-// <field>: +s_gt/<value>|$<ref>
+// field: +s_gt/value|$ref
 base::Expression opBuilderHelperStringGreaterThan(const std::any& definition)
 {
     auto expression = opBuilderComparison(definition, Operator::GT, Type::STRING);
     return expression;
 }
 
-// <field>: +s_ge/<value>|$<ref>
+// field: +s_ge/value|$ref
 base::Expression opBuilderHelperStringGreaterThanEqual(const std::any& definition)
 {
     auto expression = opBuilderComparison(definition, Operator::GE, Type::STRING);
     return expression;
 }
 
-// <field>: +s_lt/<value>|$<ref>
+// field: +s_lt/value|$ref
 base::Expression opBuilderHelperStringLessThan(const std::any& definition)
 {
     auto expression = opBuilderComparison(definition, Operator::LT, Type::STRING);
     return expression;
 }
 
-// <field>: +s_le/<value>|$<ref>
+// field: +s_le/value|$ref
 base::Expression opBuilderHelperStringLessThanEqual(const std::any& definition)
 {
     auto expression = opBuilderComparison(definition, Operator::LE, Type::STRING);
@@ -453,10 +442,15 @@ base::Expression opBuilderHelperStringLessThanEqual(const std::any& definition)
 // field: +r_match/regexp
 base::Expression opBuilderHelperRegexMatch(const std::any& definition)
 {
+    // Extract parameters from any
     auto [targetField, name, raw_parameters] = helper::base::extractDefinition(definition);
+    // Identify references and build JSON pointer paths
     auto parameters = helper::base::processParameters(raw_parameters);
+    // Assert expected number of parameters
     helper::base::checkParametersSize(parameters, 1);
+    // Parameter type check
     helper::base::checkParameterType(parameters[0], helper::base::Parameter::Type::VALUE);
+    // Format name for the tracer
     name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
     auto regex_ptr = std::make_shared<RE2>(parameters[0].m_value, RE2::Quiet);
@@ -501,10 +495,15 @@ base::Expression opBuilderHelperRegexMatch(const std::any& definition)
 base::Expression opBuilderHelperRegexNotMatch(const std::any& definition)
 {
     // TODO: Regex parameter fails at operationBuilderSplit
+    // Extract parameters from any
     auto [targetField, name, raw_parameters] = helper::base::extractDefinition(definition);
+    // Identify references and build JSON pointer paths
     auto parameters = helper::base::processParameters(raw_parameters);
+    // Assert expected number of parameters
     helper::base::checkParametersSize(parameters, 1);
+    // Parameter type check
     helper::base::checkParameterType(parameters[0], helper::base::Parameter::Type::VALUE);
+    // Format name for the tracer
     name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
     auto regex_ptr = std::make_shared<RE2>(parameters[0].m_value, RE2::Quiet);
@@ -553,14 +552,18 @@ base::Expression opBuilderHelperRegexNotMatch(const std::any& definition)
 // path_to_ip: +ip_cidr/192.168.0.0/255.255.0.0
 base::Expression opBuilderHelperIPCIDR(const std::any& definition)
 {
+    // Extract parameters from any
     auto [targetField, name, raw_parameters] = helper::base::extractDefinition(definition);
+    // Identify references and build JSON pointer paths
     auto parameters = helper::base::processParameters(raw_parameters);
+    // Assert expected number of parameters
     helper::base::checkParametersSize(parameters, 2);
+    // Parameter type check
     for (const auto& parameter : parameters)
     {
         helper::base::checkParameterType(parameter, helper::base::Parameter::Type::VALUE);
     }
-
+    // Format name for the tracer
     name = helper::base::formatHelperFilterName(name, targetField, parameters);
 
     uint32_t network {};
@@ -629,7 +632,7 @@ base::Expression opBuilderHelperIPCIDR(const std::any& definition)
 //*               Existance filters               *
 //*************************************************
 
-// <field>: exists
+// field: +exists
 base::Expression opBuilderHelperExists(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -658,7 +661,7 @@ base::Expression opBuilderHelperExists(const std::any& definition)
         });
 }
 
-// <field>: not_exists
+// field: +not_exists
 base::Expression opBuilderHelperNotExists(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
@@ -691,7 +694,7 @@ base::Expression opBuilderHelperNotExists(const std::any& definition)
 //*               Array filters                   *
 //*************************************************
 
-//<field>: s_contains/value1/value2/...valueN
+// field: s_contains/value1/value2/...valueN
 base::Expression opBuilderHelperContainsString(const std::any& definition)
 {
     auto [targetField, name, rawParameters] = helper::base::extractDefinition(definition);
