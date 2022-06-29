@@ -87,7 +87,11 @@ void fim_initialize() {
                                          syscheck.file_entry_limit,
                                          0,
                                          false,
+<<<<<<< HEAD
                                          syscheck.sync_thread_pool);
+=======
+                                         0);
+>>>>>>> 0dac890a52 (Add changes to support queue_size in FIMDB synchronization in c++ code)
 #else
     FIMDBErrorCode ret_val = fim_db_init(syscheck.database_store,
                                          syscheck.sync_interval,
@@ -98,7 +102,11 @@ void fim_initialize() {
                                          syscheck.file_entry_limit,
                                          syscheck.db_entry_registry_limit,
                                          syscheck.enable_registry_synchronization,
+<<<<<<< HEAD
                                          syscheck.sync_thread_pool);
+=======
+                                         0);
+>>>>>>> 0dac890a52 (Add changes to support queue_size in FIMDB synchronization in c++ code)
 #endif
 
     if (ret_val != FIMDB_OK) {

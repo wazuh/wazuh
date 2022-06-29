@@ -235,7 +235,8 @@ TEST(DBTest, TestInvalidFimLimit)
                     mockLoggingFunction,
                     -1,
                     -1,
-                    true)
+                    true,
+                    0)
     };
     ASSERT_EQ(result, FIMDB_ERR);
 
@@ -258,7 +259,8 @@ TEST(DBTest, TestValidFimLimit)
                     mockLoggingFunction,
                     100,
                     100000,
-                    true)
+                    true,
+                    0)
     };
     ASSERT_EQ(result, FIMDB_OK);
 

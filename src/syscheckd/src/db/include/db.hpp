@@ -83,7 +83,11 @@ class EXPORTED DB final
         * @param fileLimit File limit.
         * @param valueLimit Registry value limit.
         * @param syncRegistryEnabled Flag to enable/disable the registry sync mechanism.
+<<<<<<< HEAD
         * @param syncThreadPool Number of threads used by RSync.
+=======
+        * @param syncQueueSize Number to define the size of the queue to be synchronized.
+>>>>>>> 0dac890a52 (Add changes to support queue_size in FIMDB synchronization in c++ code)
         */
         void init(const int storage,
                   const int syncInterval,
@@ -95,7 +99,11 @@ class EXPORTED DB final
                   int fileLimit,
                   int valueLimit,
                   bool syncRegistryEnabled,
+<<<<<<< HEAD
                   const int syncThreadPool);
+=======
+                  const int syncQueueSize);
+>>>>>>> 0dac890a52 (Add changes to support queue_size in FIMDB synchronization in c++ code)
 
         /**
         * @brief runIntegrity Execute the integrity mechanism.

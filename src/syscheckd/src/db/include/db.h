@@ -40,6 +40,7 @@ extern "C" {
  * @param file_limit Maximum number of files to be monitored.
  * @param value_limit Maximum number of registry values to be monitored.
  * @param sync_registry_enable Flag to enable the registry synchronization.
+ * @param sync_queue_size Number to define the size of the queue to be synchronized.
  *
  * @return FIMDB_OK on success, FIMDB_ERROR on error.
  */
@@ -52,7 +53,11 @@ FIMDBErrorCode fim_db_init(int storage,
                            int file_limit,
                            int value_limit,
                            bool sync_registry_enabled,
+<<<<<<< HEAD
                            int sync_thread_pool);
+=======
+                           int sync_queue_size);
+>>>>>>> 0dac890a52 (Add changes to support queue_size in FIMDB synchronization in c++ code)
 
 /**
  * @brief Get entry data using path.

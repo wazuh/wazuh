@@ -89,7 +89,11 @@ class DBTestFixture : public testing::Test {
                         MAX_FILE_LIMIT,
                         100000,
                         true,
+<<<<<<< HEAD
                         1);
+=======
+                        0);
+>>>>>>> 0dac890a52 (Add changes to support queue_size in FIMDB synchronization in c++ code)
 
             evt_data = {};
             evt_data.report_event = true;
