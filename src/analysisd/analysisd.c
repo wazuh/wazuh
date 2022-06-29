@@ -86,6 +86,7 @@ struct timespec c_timespec;
 char __shost[512];
 OSDecoderInfo *NULL_Decoder;
 int num_rule_matching_threads;
+OSHash *analysisd_agents_state;
 
 /* execd queue */
 static int execdq = 0;

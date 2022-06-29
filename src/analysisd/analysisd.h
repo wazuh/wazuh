@@ -39,8 +39,6 @@ extern int sys_debug_level;
 extern OSDecoderInfo *fim_decoder;
 extern time_t current_time;
 
-OSHash *analysisd_agents_state;
-
 /**
  * @brief Structure to save all CDB lists.
  */
