@@ -43,7 +43,7 @@ checks:
     title: "Ensure 'Maximum password age' is set to '365 or fewer days, but not 0'"
     description: "This policy setting defines how long a user can use their password before it expires.Values for this policy setting range from 0 to 999 days. If you set the value to 0, the password will never expire.Because attackers can crack passwords, the more frequently you change the password the less opportunity an attacker has to use a cracked password. However, the lower this value is set, the higher the potential for an increase in calls to help desk support due to users having to change their password or forgetting which password is current.The recommended state for this setting is 365 or fewer days, but not 0."
     rationale: "The longer a password exists the higher the likelihood that it will be compromised by a brute force attack, by an attacker gaining general knowledge about the user, or by the user sharing the password. Configuring the Maximum password age setting to 0 so that users are never required to change their passwords is a major security risk because that allows a compromised password to be used by the malicious user for as long as the valid user has authorized access."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to 60 or fewer days, but not 0: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Password Policy\\Maximum password age"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to 365 or fewer days, but not 0: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Password Policy\\Maximum password age"
     compliance:
       - cis: ["1.1.2"]
       - cis_csc: ["5.2"]
@@ -154,7 +154,7 @@ checks:
       - 'c:net user administrator -> r:The user name could not be found.'
 
   - id: 15010
-    title: "Ensure 'Accounts: Block Microsoft accounts' is set to 'Users can't add or log on with Microsoft accounts"
+    title: "Ensure 'Accounts: Block Microsoft accounts' is set to 'Users can't add or log on with Microsoft accounts'"
     description: "This policy setting prevents users from adding new Microsoft accounts on this computer. The recommended state for this setting is: Users can't add or log on with Microsoft accounts."
     rationale: "Organizations that want to effectively implement identity management policies and maintain firm control of what accounts are used to log onto their computers will probably want to block Microsoft accounts. Organizations may also need to block Microsoft accounts in order to meet the requirements of compliance standards that apply to their information systems."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Users can't add or log on with Microsoft accounts: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Accounts: Block Microsoft accounts."
@@ -167,6 +167,7 @@ checks:
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> NoConnectedUser'
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> NoConnectedUser -> 3'
 
   - id: 15011
@@ -185,7 +186,7 @@ checks:
     title: "Ensure 'Accounts: Limit local account use of blank passwords to console logon only' is set to 'Enabled'"
     description: "This policy setting determines whether local accounts that are not password protected can be used to log on from locations other than the physical computer console. If you enable this policy setting, local accounts that have blank passwords will not be able to log on to the network from remote client computers. Such accounts will only be able to log on at the keyboard of the computer. The recommended state for this setting is: Enabled."
     rationale: "Blank passwords are a serious threat to computer security and should be forbidden through both organizational policy and suitable technical measures. In fact, the default settings for Active Directory domains require complex passwords of at least seven characters. However, if users with the ability to create new accounts bypass your domainbased password policies, they could create accounts with blank passwords. For example, a user could build a stand-alone computer, create one or more accounts with blank passwords, and then join the computer to the domain. The local accounts with blank passwords would still function. Anyone who knows the name of one of these unprotected accounts could then use it to log on."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Accounts: Limit local account use of blank passwords to console logon only."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Accounts: Limit local account use of blank passwords to console logon only"
     compliance:
       - cis: ["2.3.1.4"]
       - cis_csc: ["5.2"]
@@ -193,8 +194,9 @@ checks:
       - tsc: ["CC6.1"]
     references:
       - "CCE-37615-2"
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> LimitBlankPasswordUse'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> LimitBlankPasswordUse -> 1'
 
   - id: 15013
@@ -237,8 +239,9 @@ checks:
       - tsc: ["CC5.2"]
     references:
       - "CCE-37850-5"
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> SCENoApplyLegacyAuditPolicy'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> SCENoApplyLegacyAuditPolicy -> 1'
 
   - id: 15016
@@ -252,14 +255,15 @@ checks:
       - pci_dss: ["10.7"]
     references:
       - "CCE-35907-5"
-    condition: all
+    condition: any
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> CrashOnAuditFail'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> CrashOnAuditFail -> 0'
 
   - id: 15017
-    title: "Ensure 'Devices: Allowed to format and eject removable media' is set to 'Administrators'"
-    description: "This policy setting determines who is allowed to format and eject removable NTFS media. You can use this policy setting to prevent unauthorized users from removing data on one computer to access it on another computer on which they have local administrator privileges. The recommended state for this setting is: Administrators."
+    title: "Ensure 'Devices: Allowed to format and eject removable media' is set to 'Administrators' and Interactive Users'"
+    description: "This policy setting determines who is allowed to format and eject removable NTFS media. You can use this policy setting to prevent unauthorized users from removing data on one computer to access it on another computer on which they have local administrator privileges. The recommended state for this setting is: Administrators and Interactive Users."
     rationale: "Users may be able to move data on removable disks to a different computer where they have administrative privileges. The user could then take ownership of any file, grant themselves full control, and view or modify any file. The fact that most removable storage devices will eject media by pressing a mechanical button diminishes the advantage of this policy setting."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators and Interactive Users: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Devices: Allowed to format and eject removable media."
     compliance:
@@ -268,15 +272,16 @@ checks:
       - tsc: ["CC6.4"]
     references:
       - "CCE-37701-0"
-    condition: all
+    condition: any
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> AllocateDASD'
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> AllocateDASD -> 0'
 
   - id: 15018
     title: "Ensure 'Devices: Prevent users from installing printer drivers' is set to 'Enabled'"
     description: "For a computer to print to a shared printer, the driver for that shared printer must be installed on the local computer. This security setting determines who is allowed to install a printer driver as part of connecting to a shared printer. The recommended state for this setting is: Enabled. Note: This setting does not affect the ability to add a local printer. This setting does not affect Administrators."
-    rationale: "It may be appropriate in some organizations to allow users to install printer drivers on their own workstations. However, you should allow only Administrators, not users, to do so on servers, because printer driver installation on a server may unintentionally cause the computer to become less stable. A malicious user could install inappropriate printer drivers in a deliberate attempt to damage the computer, or a user might accidentally install malicious software that masquerades as a printer driver. It is feasible for an attacker to disguise a Trojan horse program as a printer driver. The program may appear to users as if they must use it to print, but such a program could unleash malicious code on your computer network."
+    rationale: "It may be appropriate in some organizations to allow users to install printer drivers on their own workstations. However, in a high security environment, you should allow only Administrators, not users, to do this, because printer driver installation may unintentionally cause the computer to become less stable. A malicious user could install inappropriate printer drivers in a deliberate attempt to damage the computer, or a user might accidentally install malicious software that masquerades as a printer driver. It is feasible for an attacker to disguise a Trojan horse program as a printer driver. The program may appear to users as if they must use it to print, but such a program could unleash malicious code on your computer network."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Devices: Prevent users from installing printer drivers."
     compliance:
       - cis: ["2.3.4.2"]
@@ -287,6 +292,7 @@ checks:
       - "CCE-37942-0"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Print\Providers\LanMan Print Services\Servers -> AddPrinterDrivers'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Print\Providers\LanMan Print Services\Servers -> AddPrinterDrivers -> 1'
 
   - id: 15019
@@ -304,8 +310,9 @@ checks:
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     references:
       - "CCE-36142-8"
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> RequireSignOrSeal'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> RequireSignOrSeal -> 1'
 
   - id: 15020
@@ -323,15 +330,16 @@ checks:
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     references:
       - "CCE-37130-2"
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> SealSecureChannel'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> SealSecureChannel -> 1'
 
   - id: 15021
     title: "Ensure 'Domain member: Digitally sign secure channel data (when possible)' is set to 'Enabled'"
     description: "This policy setting determines whether a domain member should attempt to negotiate whether all secure channel traffic that it initiates must be digitally signed. Digital signatures protect the traffic from being modified by anyone who captures the data as it traverses the network. The recommended state for this setting is: Enabled."
     rationale: "When a computer joins a domain, a computer account is created. After it joins the domain, the computer uses the password for that account to create a secure channel with the Domain Controller for its domain every time that it restarts. Requests that are sent on the secure channel are authenticated-and sensitive information such as passwords are encrypted-but the channel is not integrity-checked, and not all information is encrypted. Digital encryption and signing of the secure channel is a good idea where it is supported. The secure channel protects domain credentials as they are sent to the Domain Controller."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain member: Digitally sign secure channel data (when possible)."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain member: Digitally sign secure channel data (when possible)"
     compliance:
       - cis: ["2.3.6.3"]
       - pci_dss: ["4.1"]
@@ -341,8 +349,9 @@ checks:
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     references:
       - "CCE-37222-7"
-    condition: all
+    condition: any
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> SignSecureChannel'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> SignSecureChannel -> 1'
 
   - id: 15022
@@ -356,8 +365,9 @@ checks:
       - tsc: ["CC6.1"]
     references:
       - "CCE-37508-9"
-    condition: all
+    condition: any
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> DisablePasswordChange'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> DisablePasswordChange -> 0'
 
   - id: 15023
@@ -386,13 +396,14 @@ checks:
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     references:
       - "CCE-37614-5"
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> RequireStrongKey -> 1'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> RequireStrongKey -> 1'
 
   - id: 15025
     title: "Ensure 'Interactive logon: Do not require CTRL+ALT+DEL' is set to 'Disabled'"
-    description: "This policy setting determines whether users must press CTRL+ALT+DEL before they log on."
+    description: "This policy setting determines whether users must press CTRL+ALT+DEL before they log on.The recommended state for this setting is: Disabled."
     rationale: "Microsoft developed this feature to make it easier for users with certain types of physical impairments to log on to computers that run Windows. If users are not required to press CTRL+ALT+DEL, they are susceptible to attacks that attempt to intercept their passwords. If CTRL+ALT+DEL is required before logon, user passwords are communicated by means of a trusted path."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Do not require CTRL+ALT+DEL "
     compliance:
@@ -407,7 +418,7 @@ checks:
     title: "Ensure 'Interactive logon: Don't display last signed-in' is set to 'Enabled'"
     description: "This policy setting determines whether the account name of the last user to log on to the client computers in your organization will be displayed in each computer's respective Windows logon screen. Enable this policy setting to prevent intruders from collecting account names visually from the screens of desktop or laptop computers in your organization. The recommended state for this setting is: Enabled."
     rationale: "An attacker with access to the console (for example, someone with physical access or someone who is able to connect to the server through Remote Desktop Services) could view the name of the last user who logged on to the server. The attacker could then try to guess the password, use a dictionary, or use a brute-force attack to try and log on."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Do not display last user name."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Don't display last signed-in."
     compliance:
       - cis: ["2.3.7.2"]
       - pci_dss: ["2.2.3"]
@@ -421,11 +432,12 @@ checks:
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> DontDisplayLastUserName'
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> DontDisplayLastUserName -> 1'
 
   - id: 15027
     title: "Ensure 'Interactive logon: Machine account lockout threshold' is set to '10 or fewer invalid logon attempts, but not 0'"
-    description: "This security setting determines the number of failed logon attempts that causes the machine to be locked out. Failed password attempts against workstations or member servers that have been locked using either CTRL+ALT+DELETE or password protected screen savers counts as failed logon attempts. The machine lockout policy is enforced only on those machines that have BitLocker enabled for protecting OS volumes. Please ensure that appropriate recovery password backup policies are enabled."
+    description: "This security setting determines the number of failed logon attempts that causes the machine to be locked out. Failed password attempts against workstations or member servers that have been locked using either CTRL+ALT+DELETE or password protected screen savers counts as failed logon attempts. The machine lockout policy is enforced only on those machines that have BitLocker enabled for protecting OS volumes. Please ensure that appropriate recovery password backup policies are enabled.The recommended state for this setting is: 10 or fewer invalid logon attempts, but not 0."
     rationale: "If a machine is lost or stolen, or if an insider threat attempts a brute force password attack against the computer, it is important to ensure that BitLocker will lock the computer and therefore prevent a successful attack."
     remediation: "To establish the recommended configuration via GP, set the following UI path to 10 or fewer invalid logon attempts, but not 0: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Machine account lockout threshold"
     compliance:
@@ -434,6 +446,7 @@ checks:
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> MaxDevicePasswordFailedAttempts'
       - 'not r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> MaxDevicePasswordFailedAttempts -> 0'
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> MaxDevicePasswordFailedAttempts -> n:^(\d+) compare <=30'
 
@@ -441,7 +454,7 @@ checks:
     title: "Ensure 'Interactive logon: Machine inactivity limit' is set to '900 or fewer second(s), but not 0'"
     description: "Windows notices inactivity of a logon session, and if the amount of inactive time exceeds the inactivity limit, then the screen saver will run, locking the session. The recommended state for this setting is: 900 or fewer second(s), but not 0. Note: A value of 0 does not conform to the benchmark as it disables the machine inactivity limit."
     rationale: "If a user forgets to lock their computer when they walk away it's possible that a passerby will hijack it."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to 900 or fewer seconds, but not 0: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Machine inactivity limit."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to 900 or fewer seconds, but not 0: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Machine inactivity limit"
     compliance:
       - cis: ["2.3.7.4"]
       - cis_csc: ["4.3"]
@@ -452,13 +465,14 @@ checks:
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs'
       - 'not r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> 0'
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> n:^(\d+) compare <= 900'
 
   - id: 15029
     title: "Configure 'Interactive logon: Message text for users attempting to log on'"
     description: "This policy setting specifies a text message that displays to users when they log on. Set the following group policy to a value that is consistent with the security and operational requirements of your organization."
-    rationale: "Displaying a warning message before logon may help prevent an attack by warning the attacker about the consequences of their misconduct before it happens. It may also help to reinforce corporate policy by notifying employees of the appropriate policy during the logon process. This text is often used for legal reasons—for example, to warn users about the ramifications of misusing company information or to warn them that their actions may be audited"
+    rationale: "Displaying a warning message before logon may help prevent an attack by warning the attacker about the consequences of their misconduct before it happens. It may also help to reinforce corporate policy by notifying employees of the appropriate policy during the logon process. This text is often used for legal reasons—for example, to warn users about the ramifications of misusing company information or to warn them that their actions may be audited."
     remediation: "To establish the recommended configuration via GP, configure the following UI path to a value that is consistent with the security and operational requirements of your organization: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Message text for users attempting to log on"
     compliance:
       - cis: ["2.3.7.5"]
@@ -468,8 +482,8 @@ checks:
 
   - id: 15030
     title: "Configure 'Interactive logon: Message title for users attempting to log on'"
-    description: "This policy setting specifies the text displayed in the title bar of the window that users see  when they log on to the system. Configure this setting in a manner that is consistent with  the security and operational requirements of your organization. "
-    rationale: "Displaying a warning message before logon may help prevent an attack by warning the  attacker about the consequences of their misconduct before it happens. It may also help to reinforce corporate policy by notifying employees of the appropriate policy during the  logon process"
+    description: "This policy setting specifies the text displayed in the title bar of the window that users see  when they log on to the system. Configure this setting in a manner that is consistent with  the security and operational requirements of your organization."
+    rationale: "Displaying a warning message before logon may help prevent an attack by warning the  attacker about the consequences of their misconduct before it happens. It may also help to reinforce corporate policy by notifying employees of the appropriate policy during the  logon process."
     remediation: "To establish the recommended configuration via GP, configure the following UI path to a  value that is consistent with the security and operational requirements of your  organization: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local  Policies\\Security Options\\Interactive logon: Message title for users  attempting to log on"
     compliance:
       - cis: ["2.3.7.6"]
@@ -490,6 +504,8 @@ checks:
       - "CCE-34901-9"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon -> CachedLogonsCount'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon -> CachedLogonsCount -> n:^(\d+) compare <= 4'
 
   - id: 15032
@@ -505,6 +521,8 @@ checks:
       - "CCE-35274-0"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> PasswordExpiryWarning'
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> n:^(\d+) compare => 5 && n:^(\d+) compare <= 14'
 
   - id: 15033
@@ -521,6 +539,8 @@ checks:
       - "CCE-34988-6"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon$'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> ScRemoveOption'
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> ScRemoveOption -> r:^1$|^2$'
 
   - id: 15034
@@ -539,6 +559,8 @@ checks:
       - "CCE-35222-9"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> RequireSecuritySignature'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> RequireSecuritySignature'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> RequireSecuritySignature -> 1'
 
   - id: 15035
@@ -555,8 +577,10 @@ checks:
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     references:
       - "CCE-34908-4"
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> EnableSecuritySignature'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> EnableSecuritySignature -> 1'
 
   - id: 15036
@@ -574,13 +598,15 @@ checks:
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     references:
       - "CCE-33717-0"
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> EnablePlainTextPassword'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> EnablePlainTextPassword -> 0'
 
   - id: 15037
     title: "Ensure 'Microsoft network server: Amount of idle time required before suspending session' is set to '15 or fewer minute(s)'"
-    description: "This policy setting allows you to specify the amount of continuous idle time that must pass in an SMB session before the session is suspended because of inactivity. Administrators can use this policy setting to control when a computer suspends an inactive SMB session. If client activity resumes, the session is automatically reestablished. A value of 0 appears to allow sessions to persist indefinitely. The maximum value is 99999, which is over 69 days; in effect, this value disables the setting. The recommended state for this setting is: 15 or fewer minute(s), but not 0."
+    description: "This policy setting allows you to specify the amount of continuous idle time that must pass in an SMB session before the session is suspended because of inactivity. Administrators can use this policy setting to control when a computer suspends an inactive SMB session. If client activity resumes, the session is automatically reestablished. A value of 0 appears to allow sessions to persist indefinitely. The maximum value is 99999, which is over 69 days; in effect, this value disables the setting. The recommended state for this setting is: 15 or fewer minute(s)."
     rationale: "Each SMB session consumes server resources, and numerous null sessions will slow the server or possibly cause it to fail. An attacker could repeatedly establish SMB sessions until the server's SMB services become slow or unresponsive."
     remediation: "To establish the recommended configuration via GP, set the following UI path to 15 or fewer minute(s), but not 0: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Microsoft network server: Amount of idle time required before suspending session."
     compliance:
@@ -590,8 +616,10 @@ checks:
       - tsc: ["CC6.1"]
     references:
       - "CCE-34909-2"
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> AutoDisconnect'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> AutoDisconnect -> n:^(\d+) compare <= 15'
 
   - id: 15038
@@ -610,6 +638,8 @@ checks:
       - "CCE-35065-2"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> RequireSecuritySignature'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> RequireSecuritySignature -> 1'
 
   - id: 15039
@@ -628,6 +658,8 @@ checks:
       - "CCE-35182-5"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> EnableSecuritySignature'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> EnableSecuritySignature -> 1'
 
   - id: 15040
@@ -642,8 +674,10 @@ checks:
       - tsc: ["CC6.4"]
     references:
       - "CCE-34911-8"
-    condition: all
+    condition: any
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> EnableForcedLogOff'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> EnableForcedLogOff -> 1'
 
   - id: 15041
@@ -660,11 +694,12 @@ checks:
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters -> SMBServerNameHardeningLevel'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters -> SMBServerNameHardeningLevel -> n:^(\d+) compare >= 1'
 
   - id: 15042
     title: "Ensure 'Network access: Allow anonymous SID/Name  translation' is set to 'Disabled'"
-    description: "This policy setting determines whether an anonymous user can request security identifier  (SID) attributes for another user, or use a SID to obtain its corresponding user name"
+    description: "This policy setting determines whether an anonymous user can request security identifier  (SID) attributes for another user, or use a SID to obtain its corresponding user name."
     rationale: "If this policy setting is enabled, a user with local access could use the well-known Administrator's SID to learn the real name of the built-in Administrator account, even if it has been renamed. That person could then use the account name to initiate a password guessing attack."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local  Policies\\Security Options\\Network access: Allow anonymous SID/Name  translation"
     compliance:
@@ -676,7 +711,7 @@ checks:
   - id: 15043
     title: "Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts' is set to 'Enabled'"
     description: "This policy setting controls the ability of anonymous users to enumerate the accounts in the Security Accounts Manager (SAM). If you enable this policy setting, users with anonymous connections will not be able to enumerate domain account user names on the systems in your environment. This policy setting also allows additional restrictions on anonymous connections. The recommended state for this setting is: Enabled. Note: This policy has no effect on Domain Controllers."
-    rationale: "An unauthorized user could anonymously list account names and use the information to attempt to guess passwords or perform social engineering attacks. (Social engineering attacks try to deceive users in some way to obtain passwords or some form of security information)"
+    rationale: "An unauthorized user could anonymously list account names and use the information to attempt to guess passwords or perform social engineering attacks. (Social engineering attacks try to deceive users in some way to obtain passwords or some form of security information.)"
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Do not allow anonymous enumeration of SAM accounts."
     compliance:
       - cis: ["2.3.10.2"]
@@ -684,14 +719,16 @@ checks:
       - tsc: ["CC6.4"]
     references:
       - "CCE-34631-2"
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa'
+      - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> RestrictAnonymousSAM'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> RestrictAnonymousSAM -> 1'
 
   - id: 15044
     title: "Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts and shares' is set to 'Enabled'"
     description: "This policy setting controls the ability of anonymous users to enumerate SAM accounts as well as shares. If you enable this policy setting, anonymous users will not be able to enumerate domain account user names and network share names on the systems in your environment. The recommended state for this setting is: Enabled. Note: This policy has no effect on Domain Controllers."
-    rationale: "An unauthorized user could anonymously list account names and shared resources and use the information to attempt to guess passwords or perform social engineering attacks. (Social engineering attacks try to deceive users in some way to obtain passwords or some form of security information)"
+    rationale: "An unauthorized user could anonymously list account names and shared resources and use the information to attempt to guess passwords or perform social engineering attacks. (Social engineering attacks try to deceive users in some way to obtain passwords or some form of security information.)"
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Do not allow anonymous enumeration of SAM accounts and shares."
     compliance:
       - cis: ["2.3.10.3"]
@@ -701,6 +738,8 @@ checks:
       - "CCE-34723-7"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> RestrictAnonymous'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> RestrictAnonymous -> 1'
 
   - id: 15045
@@ -715,6 +754,8 @@ checks:
       - "CCE-33718-8"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> DisableDomainCreds'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> DisableDomainCreds -> 1'
 
   - id: 15046
@@ -728,8 +769,10 @@ checks:
       - tsc: ["CC6.4"]
     references:
       - "CCE-35367-2"
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> EveryoneIncludesAnonymous'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> EveryoneIncludesAnonymous -> 0'
 
   - id: 15047
@@ -745,12 +788,13 @@ checks:
       - "CCE-34965-4"
     condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionPipes'
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionPipes -> r:\S+'
 
   - id: 15048
-    title: "Ensure 'Network access: Remotely accessible registry paths'"
-    description: "This policy setting determines which registry paths will be accessible over the network, regardless of the users or groups listed in the access control list (ACL) of the winreg registry key. Note: This setting does not exist in Windows XP. There was a setting with that name in Windows XP, but it is called Network access: Remotely accessible registry paths and subpaths in Windows Server 2003, Windows Vista, and Windows Server 2008 (non-R2)."
+    title: "Ensure 'Network access: Remotely accessible registry paths' is configured"
+    description: "This policy setting determines which registry paths will be accessible over the network, regardless of the users or groups listed in the access control list (ACL) of the winreg registry key. Note: This setting does not exist in Windows XP. There was a setting with that name in Windows XP, but it is called 'Network access: Remotely accessible registry paths and subpaths' in Windows Server 2003, Windows Vista, and Windows Server 2008 (non-R2)."
     rationale: "The registry is a database that contains computer configuration information, and much of the information is sensitive. An attacker could use this information to facilitate unauthorized activities. To reduce the risk of such an attack, suitable ACLs are assigned throughout the registry to help protect it from access by unauthorized users."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: System\\CurrentControlSet\\Control\\ProductOptions System\\CurrentControlSet\\Control\\Server Applications SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Remotely accessible registry paths."
     compliance:
@@ -759,13 +803,15 @@ checks:
       - tsc: ["CC6.4"]
     references:
       - "CCE-33976-2"
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedExactPaths'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedExactPaths -> Machine'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedExactPaths -> Machine -> r:System\\CurrentControlSet\\Control\\ProductOptions System\\CurrentControlSet\\Control\\Server Applications Software\\Microsoft\\Windows NT\\CurrentVersion'
 
   - id: 15049
-    title: "Ensure 'Network access: Remotely accessible registry paths and sub-paths'"
-    description: "This policy setting determines which registry paths and sub-paths will be accessible over the network, regardless of the users or groups listed in the access control list (ACL) of the winreg registry key. Note: In Windows XP this setting is called Network access: Remotely accessible registry paths, the setting with that same name in Windows Vista, Windows Server 2008 (non-R2), and Windows Server 2003 does not exist in Windows XP. Note #2: When you configure this setting you specify a list of one or more objects. The delimiter used when entering the list is a line feed or carriage return, that is, type the first object on the list, press the Enter button, type the next object, press Enter again, etc. The setting value is stored as a comma-delimited list in group policy security templates. It is also rendered as a comma-delimited list in Group Policy Editor's display pane and the Resultant Set of Policy console. It is recorded in the registry as a line-feed delimited list in a REG_MULTI_SZ value. The recommended state for this setting is: System\\CurrentControlSet\\Control\\Print\\Printers System\\CurrentControlSet\\Services\\Eventlog Software\\Microsoft\\OLAP Server Software\\Microsoft\\Windows NT\\CurrentVersion\\Print Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows System\\CurrentControlSet\\Control\\ContentIndex System\\CurrentControlSet\\Control\\Terminal Server System\\CurrentControlSet\\Control\\Terminal Server\\UserConfig System\\CurrentControlSet\\Control\\Terminal Server\\DefaultUserConfiguration Software\\Microsoft\\Windows NT\\CurrentVersion\\Perflib System\\CurrentControlSet\\Services\\SysmonLog"
+    title: "Ensure 'Network access: Remotely accessible registry paths and sub-paths' is configured"
+    description: "This policy setting determines which registry paths and sub-paths will be accessible over the network, regardless of the users or groups listed in the access control list (ACL) of the winreg registry key. Note: In Windows XP this setting is called ' Network access: Remotely accessible registry paths' , the setting with that same name in Windows Vista, Windows Server 2008 (non-R2), and Windows Server 2003 does not exist in Windows XP. Note #2: When you configure this setting you specify a list of one or more objects. The delimiter used when entering the list is a line feed or carriage return, that is, type the first object on the list, press the Enter button, type the next object, press Enter again, etc. The setting value is stored as a comma-delimited list in group policy security templates. It is also rendered as a comma-delimited list in Group Policy Editor's display pane and the Resultant Set of Policy console. It is recorded in the registry as a line-feed delimited list in a REG_MULTI_SZ value. The recommended state for this setting is: System\\CurrentControlSet\\Control\\Print\\Printers System\\CurrentControlSet\\Services\\Eventlog Software\\Microsoft\\OLAP Server Software\\Microsoft\\Windows NT\\CurrentVersion\\Print Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows System\\CurrentControlSet\\Control\\ContentIndex System\\CurrentControlSet\\Control\\Terminal Server System\\CurrentControlSet\\Control\\Terminal Server\\UserConfig System\\CurrentControlSet\\Control\\Terminal Server\\DefaultUserConfiguration Software\\Microsoft\\Windows NT\\CurrentVersion\\Perflib System\\CurrentControlSet\\Services\\SysmonLog"
     rationale: "The registry contains sensitive computer configuration information that could be used by an attacker to facilitate unauthorized activities. The fact that the default ACLs assigned throughout the registry are fairly restrictive and help to protect the registry from access by unauthorized users reduces the risk of such an attack."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: System\\CurrentControlSet\\Control\\Print\\Printers System\\CurrentControlSet\\Services\\Eventlog SOFTWARE\\Microsoft\\OLAP Server SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Print SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Windows System\\CurrentControlSet\\Control\\ContentIndex System\\CurrentControlSet\\Control\\Terminal Server System\\CurrentControlSet\\Control\\Terminal Server\\UserConfig System\\CurrentControlSet\\Control\\Terminal Server\\DefaultUserConfiguration SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Perflib System\\CurrentControlSet\\Services\\SysmonLog Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Remotely accessible registry paths and sub-paths."
     compliance:
@@ -774,8 +820,10 @@ checks:
       - tsc: ["CC6.4"]
     references:
       - "CCE-35300-3"
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:System\\CurrentControlSet\\Control\\Print\\Printers System\\CurrentControlSet\\Services\\Eventlog Software\\Microsoft\\OLAP Server|Software\\Microsoft\\Windows NT\\CurrentVersion\\Print Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows System\\CurrentControlSet\\Control\\ContentIndex System\\CurrentControlSet\\Control\\Terminal Server System\\CurrentControlSet\\Control\\Terminal Server\\UserConfig System\\CurrentControlSet\\Control\\Terminal Server\\DefaultUserConfiguration Software\\Microsoft\\Windows NT\\CurrentVersion\\Perflib System\\CurrentControlSet\\Services\\SysmonLog'
 
   - id: 15050
@@ -789,8 +837,10 @@ checks:
       - tsc: ["CC6.4"]
     references:
       - "CCE-33563-8"
-    condition: all
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> RestrictNullSessAccess'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> RestrictNullSessAccess -> 1'
 
   - id: 15051
@@ -805,13 +855,14 @@ checks:
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> restrictremotesam'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> restrictremotesam -> r:O:BAG:BAD:\(A;;RC;;;BA\)'
 
   - id: 15052
     title: "Ensure 'Network access: Shares that can be accessed anonymously' is set to 'None'"
     description: "This policy setting determines which network shares can be accessed by anonymous users. The default configuration for this policy setting has little effect because all users have to be authenticated before they can access shared resources on the server. The recommended state for this setting is: <blank> (i.e. None)."
-    rationale: "It is very dangerous to allow any values in this setting. Any shares that are listed can be accessed by any network user, which could lead to the exposure or corruption of sensitive data"
-    remediation: "To establish the recommended configuration via GP, set the following UI path to <blank> (i.e. None): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Shares that can be accessed anonymously."
+    rationale: "It is very dangerous to allow any values in this setting. Any shares that are listed can be accessed by any network user, which could lead to the exposure or corruption of sensitive data."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to <blank> (i.e. None): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Shares that can be accessed anonymously"
     compliance:
       - cis: ["2.3.10.11"]
       - cis_csc: ["3.3"]
@@ -819,9 +870,10 @@ checks:
       - tsc: ["CC6.4"]
     references:
       - "CCE-34651-0"
-    condition: all
+    condition: any
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionShares'
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionShares -> \S+'
 
   - id: 15053
@@ -835,8 +887,10 @@ checks:
       - tsc: ["CC6.4"]
     references:
       - "CCE-33719-6"
-    condition: all
+    condition: any
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> ForceGuest'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> ForceGuest -> 0'
 
   # 2.3.11.1 Ensure 'Network security: Allow Local System to use computer identity for NTLM' is set to 'Enabled'
@@ -847,7 +901,6 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network security: Allow Local System to use computer identity for NTLM."
     compliance:
       - cis: ["2.3.11.1"]
-      - cis_csc: ["14", "16"]
       - pci_dss: ["4.1"]
       - hipaa:
           ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
@@ -858,6 +911,7 @@ checks:
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> UseMachineId'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> UseMachineId -> 1'
 
   # 2.3.11.2 Ensure 'Network security: Allow LocalSystem NULL session fallback' is set to 'Disabled'
@@ -875,8 +929,10 @@ checks:
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     references:
       - "CCE-37035-3"
-    condition: all
+    condition: any
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0 -> allownullsessionfallback'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0 -> allownullsessionfallback -> 0'
 
   # 2.3.11.3 Ensure 'Network Security: Allow PKU2U authentication requests to this computer to use online identities' is set to 'Disabled'
@@ -897,12 +953,13 @@ checks:
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\pku2u'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\pku2u -> AllowOnlineID'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\pku2u -> AllowOnlineID -> 0'
 
   # 2.3.11.4 Ensure 'Network Security: Configure encryption types allowed for Kerberos' is set to 'RC4_HMAC_MD5, AES128_HMAC_SHA1, AES256_HMAC_SHA1, Future encryption types'
   - id: 15057
-    title: "Ensure 'Network Security: Configure encryption types allowed for Kerberos' is set to 'RC4_HMAC_MD5, AES128_HMAC_SHA1, AES256_HMAC_SHA1, Future encryption types'"
-    description: "This policy setting allows you to set the encryption types that Kerberos is allowed to use. The recommended state for this setting is: AES128_HMAC_SHA1, AES256_HMAC_SHA1, Future encryption types. Note: Some legacy applications and OSes may require RC4_HMAC_MD5 - we recommend you test in your environment and verify whether you can safely remove it. For the purposes of scoring we have allowed the use of RC4_HMAC_MD5 as an optional setting."
+    title: "Ensure 'Network security: Configure encryption types allowed for Kerberos' is set to 'AES128_HMAC_SHA1, AES256_HMAC_SHA1, Future encryption types'"
+    description: "This policy setting allows you to set the encryption types that Kerberos is allowed to use. The recommended state for this setting is: AES128_HMAC_SHA1, AES256_HMAC_SHA1, Future encryption types. Note: Some legacy applications and OSes may still require RC4_HMAC_MD5 - we recommend you test in your environment and verify whether you can safely remove it."
     rationale: "The strength of each encryption algorithm varies from one to the next, choosing stronger algorithms will reduce the risk of compromise however doing so may cause issues when the computer attempts to authenticate with systems that do not support them."
     remediation: "To establish the recommended configuration via GP, set the following UI path to AES128_HMAC_SHA1, AES256_HMAC_SHA1, Future encryption types: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network security: Configure encryption types allowed for Kerberos."
     compliance:
@@ -917,6 +974,8 @@ checks:
       - "CCE-37755-6"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System\Kerberos\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System\Kerberos\Parameters -> SupportedEncryptionTypes'
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System\Kerberos\Parameters -> SupportedEncryptionTypes -> r:2147483644|2147483640'
 
   # 2.3.11.5 Ensure 'Network security: Do not store LAN Manager hash value on next password change' is set to 'Enabled'
@@ -932,14 +991,16 @@ checks:
       - tsc: ["CC6.1"]
     references:
       - "CCE-36326-7"
-    condition: all
+    condition: any
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> NoLMHash'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> NoLMHash -> 1'
 
   # 2.3.11.6 Ensure 'Network security: Force logoff when logon hours expire' is set to 'Enabled'
   - id: 15059
     title: "Ensure 'Network security: Force logoff when logon hours expire' is set to 'Enabled'"
-    description: "This policy setting determines whether to disconnect users who are connected to the local computer outside their user account's valid logon hours. This setting affects the Server Message Block (SMB) component. If you enable this policy setting you should also enable Microsoft network server: Disconnect clients when logon hours expire (Rule 2.3.9.4). The recommended state for this setting is: Enabled. Note: This recommendation is unscored because there is not a documented registry value that corresponds to it. We still strongly encourage that it be configured as Enabled, to ensure that logon hours (when configured) are properly enforced."
+    description: "This policy setting determines whether to disconnect users who are connected to the local computer outside their user account's valid logon hours. This setting affects the Server Message Block (SMB) component. If you enable this policy setting you should also enable Microsoft network server: Disconnect clients when logon hours expire (Rule 2.3.9.4). The recommended state for this setting is: Enabled. Note: This recommendation is unscored because there is not a documented registry value that corresponds to it."
     rationale: "If this setting is disabled, a user could remain connected to the computer outside of their allotted logon hours."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network security: Force logoff when logon hours expire."
     compliance:
@@ -949,8 +1010,10 @@ checks:
       - tsc: ["CC6.4"]
     references:
       - "CCE-36270-7"
-    condition: all
+    condition: any
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters -> EnableForcedLogOff'
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters -> EnableForcedLogOff -> 1'
 
   # 2.3.11.7 Ensure 'Network security: LAN Manager authentication level' is set to 'Send NTLMv2 response only. Refuse LM & NTLM'
@@ -972,6 +1035,7 @@ checks:
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> LmCompatibilityLevel '
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> LmCompatibilityLevel -> 5'
 
   # 2.3.11.8 Ensure 'Network security: LDAP client signing requirements' is set to 'Negotiate signing' or higher
@@ -1012,6 +1076,8 @@ checks:
       - "CCE-37553-5"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0 -> NTLMMinClientSec'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0 -> NTLMMinClientSec -> 537395200'
 
   # 2.3.11.10 Ensure 'Network security: Minimum session security for NTLM SSP based (including secure RPC) servers' is set to 'Require NTLMv2 session security, Require 128-bit encryption'
@@ -1033,6 +1099,8 @@ checks:
       - "CCE-37835-6"
     condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0 -> NTLMMinServerSec'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0 -> NTLMMinServerSec -> 537395200'
 
   - id: 15064
