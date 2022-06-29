@@ -137,7 +137,7 @@ checks:
     condition: all
     rules:
       - 'c:net.exe accounts -> n:Lockout observation window (minutes):\s+(\d+) compare >= 15'
-      -
+
   - id: 27009
     title: "Ensure 'Accounts: Administrator account status' is set to 'Disabled'"
     description: "This policy setting enables or disables the Administrator account during normal operation. When a computer is booted into safe mode, the Administrator account is always enabled, regardless of how this setting is configured. Note that this setting will have no impact when applied to the Domain Controllers organizational unit via group policy because Domain Controllers have no local account database. It can be configured at the domain level via group policy, similar to account lockout and password policy settings."
