@@ -67,6 +67,7 @@ static void registerBuilders()
     // Registry::registerBuilder(builders::opBuilderHelperStringLO, "helper.s_lo");
     // Registry::registerBuilder(builders::opBuilderHelperStringTrim, "helper.s_trim");
     // Registry::registerBuilder(builders::opBuilderHelperRegexExtract, "helper.r_ext");
+    Registry::registerBuilder(builders::opBuilderHelperAppendString, "helper.s_append");
 
 }
 } // namespace builder::internals

@@ -208,6 +208,7 @@ bool parseIgnore(const char** it, Parser const& parser, ParseResult& result)
             {
                 break;
             }
+            ++*it;
         }
     }
 
