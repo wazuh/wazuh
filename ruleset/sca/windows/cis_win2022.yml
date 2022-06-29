@@ -1633,7 +1633,7 @@ checks:
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogSuccessfulConnections -> 1'
-      -
+
   - id: 27101
     title: "Ensure 'Audit Credential Validation' is set to 'Success and Failure'"
     description: "This subcategory reports the results of validation tests on credentials submitted for a user  account logon request. These events occur on the computer that is authoritative for the  credentials. For domain accounts, the Domain Controller is authoritative, whereas for local  accounts, the local computer is authoritative. In domain environments, most of the Account  Logon events occur in the Security log of the Domain Controllers that are authoritative for  the domain accounts. However, these events can occur on other computers in the  organization when local accounts are used to log on."
@@ -3561,7 +3561,7 @@ checks:
       - cis_csc: ["10.5"]
     condition: all
     rules:
-      - 'HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\SAM -> SamNGCKeyROCAValidation -> n:(\d+) compare >= 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\SAM -> SamNGCKeyROCAValidation -> n:(\d+) compare >= 1'
 
   - id: 27234
     title: "Ensure 'Microsoft Support Diagnostic Tool: Turn on MSDT interactive communication with support provider' is set to 'Disabled'"
