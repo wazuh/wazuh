@@ -16,6 +16,8 @@
 #include "fts.h"
 #include "config.h"
 
+#define IPV6_LAST_DIGIT INET6_ADDRSTRLEN - 8
+
 /* To translate between month (int) to month (char) */
 static const char *(month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
@@ -26,27 +28,45 @@ static const char *(month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
 int OS_CleanMSG(char *msg, Eventinfo *lf)
 {
     size_t loglen;
-    char *pieces;
-    char *arrow = NULL;
+    char *pieces = NULL;
+    char *src_msg = NULL;
+    char id = 0;
     struct tm p = { .tm_sec = 0 };
     struct timespec local_c_timespec;
 
-    /* The message is formated in the following way:
-     * id:location:message.
+    /*
+     * The Wazuh messages protocol to be processed by analysisd have two possible formats:
+     *
+     * If the message arrives from an agent:
+     *    ${Q}:[${Agent_ID}] (${Agent_name}) ${Register_IP}->${sub_location}: ${LOG}.
+     *
+     * If the message arrives from a remote device (received by wazuh-remoted):
+     *    2:${Syslog_client_IP}: ${LOG}.
+     *
+     * ${Register_IP} and ${Syslog_client_IP} can be either IPv4 or IPv6.
      */
+
+    id = msg[0];
+
+    minfo("-----> msg '%s'", msg);
 
     /* Ignore the id of the message in here */
     msg += 2;
 
     /* Avoid ipv6 ':', msg that include "[" have an "->" after the ip */
     if (*msg == '[') {
-        if (!(arrow = strstr(msg, "->"))) {
+        if (!(src_msg = strstr(msg, "->"))) {
             merror(FORMAT_ERROR);
             return (-1);
         }
+    } else if (SYSLOG_MQ == id && msg[4] == ':' && strlen(msg) > IPV6_LAST_DIGIT
+              && msg[9] == ':' && msg[14] == ':' && msg[19] == ':' && msg[24] == ':'
+              && msg[29] == ':' && msg[34] == ':') {
+
+        src_msg = msg + IPV6_LAST_DIGIT;
     }
 
-    pieces = strchr(arrow ? arrow : msg, ':');
+    pieces = strchr(src_msg ? src_msg : msg, ':');
     if (!pieces) {
         merror(FORMAT_ERROR);
         return (-1);
@@ -56,6 +76,8 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     pieces++;
 
     os_strdup(msg, lf->location);
+
+    minfo("-----> lf->location '%s'", lf->location);
 
     /* Get the log length */
     loglen = strlen(pieces) + 1;
@@ -614,6 +636,6 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         print_out("       log: '%s'", lf->log);
     }
 #endif
-    
+
     return (0);
 }
