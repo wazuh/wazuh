@@ -31,6 +31,8 @@ wnotify_t * notify = NULL;
 
 size_t global_counter;
 
+OSHash *remoted_agents_state;
+
 STATIC void handle_outgoing_data_to_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_storage * peer_info);
