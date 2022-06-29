@@ -52,11 +52,8 @@ int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
 int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets, long tx_bytes, long rx_bytes, long tx_errors, long rx_errors, long tx_dropped, long rx_dropped, const char * checksum, const char * item_id, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
-    char *temp_cks = NULL;
-    os_strdup(checksum, temp_cks);
     if (!scan_id || !name) {
-        wdbi_remove_duplicate_entries(wdb, WDB_SYSCOLLECTOR_NETINFO, temp_cks);
-        os_free(temp_cks);
+        wdbi_remove_by_pk(wdb, WDB_SYSCOLLECTOR_NETINFO, item_id);
     }
 
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_NETINFO_INSERT2 : WDB_STMT_NETINFO_INSERT) < 0) {
@@ -170,11 +167,8 @@ int wdb_netproto_save(wdb_t * wdb, const char * scan_id, const char * iface, int
 int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface, int type, const char * gateway, const char * dhcp, int metric, const char * checksum, const char * item_id, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
-    char *temp_cks = NULL;
-    os_strdup(checksum, temp_cks);
-    if (!scan_id || !iface) {
-        wdbi_remove_duplicate_entries(wdb, WDB_SYSCOLLECTOR_NETPROTO, temp_cks);
-        os_free(temp_cks);
+    if (!scan_id || !iface || !type) {
+        wdbi_remove_by_pk(wdb, WDB_SYSCOLLECTOR_NETPROTO, item_id);
     }
 
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_PROTO_INSERT2 : WDB_STMT_PROTO_INSERT) < 0) {
@@ -249,11 +243,8 @@ int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, const char * iface, int 
 int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, const char * iface, int proto, const char * address, const char * netmask, const char * broadcast, const char * checksum, const char * item_id, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
-    char *temp_cks = NULL;
-    os_strdup(checksum, temp_cks);
     if (!scan_id || !iface || !proto || !address) {
-        wdbi_remove_duplicate_entries(wdb, WDB_SYSCOLLECTOR_NETADDRESS, temp_cks);
-        os_free(temp_cks);
+        wdbi_remove_by_pk(wdb, WDB_SYSCOLLECTOR_NETADDRESS, item_id);
     }
 
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_ADDR_INSERT2 : WDB_STMT_ADDR_INSERT) < 0) {
@@ -468,11 +459,8 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
 int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * os_display_version, const char * checksum, const bool replace, os_sha1 hexdigest, int triaged) {
     sqlite3_stmt *stmt = NULL;
 
-    char *temp_cks = NULL;
-    os_strdup(checksum, temp_cks);
     if (!scan_id || !os_name) {
-        wdbi_remove_duplicate_entries(wdb, WDB_SYSCOLLECTOR_OSINFO, temp_cks);
-        os_free(temp_cks);
+        wdbi_remove_by_pk(wdb, WDB_SYSCOLLECTOR_OSINFO, os_name);
     }
 
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_OSINFO_INSERT2 : WDB_STMT_OSINFO_INSERT) < 0) {
@@ -566,11 +554,8 @@ int wdb_hotfix_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
 int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location, const char triaged, const char * checksum, const char * item_id, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
-    char *temp_cks = NULL;
-    os_strdup(checksum, temp_cks);
     if (!scan_id || !name || !version || !architecture) {
-        wdbi_remove_duplicate_entries(wdb, WDB_SYSCOLLECTOR_PACKAGES, temp_cks);
-        os_free(temp_cks);
+        wdbi_remove_by_pk(wdb, WDB_SYSCOLLECTOR_PACKAGES, item_id);
     }
 
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_PROGRAM_INSERT2 : WDB_STMT_PROGRAM_INSERT) < 0) {
@@ -624,11 +609,8 @@ int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
 int wdb_hotfix_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char *hotfix, const char* checksum, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
-    char *temp_cks = NULL;
-    os_strdup(checksum, temp_cks);
     if (!scan_id || !hotfix) {
-        wdbi_remove_duplicate_entries(wdb, WDB_SYSCOLLECTOR_HOTFIXES, temp_cks);
-        os_free(temp_cks);
+        wdbi_remove_by_pk(wdb, WDB_SYSCOLLECTOR_HOTFIXES, hotfix);
     }
 
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_HOTFIX_INSERT2 : WDB_STMT_HOTFIX_INSERT) < 0) {
@@ -785,11 +767,8 @@ int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time,
 int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, double cpu_mhz, uint64_t ram_total, uint64_t ram_free, int ram_usage, const char * checksum, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
-    char *temp_cks = NULL;
-    os_strdup(checksum, temp_cks);
     if (!scan_id || !serial) {
-        wdbi_remove_duplicate_entries(wdb, WDB_SYSCOLLECTOR_HWINFO, temp_cks);
-        os_free(temp_cks);
+        wdbi_remove_by_pk(wdb, WDB_SYSCOLLECTOR_HWINFO, serial);
     }
 
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_HWINFO_INSERT2 : WDB_STMT_HWINFO_INSERT) < 0) {
@@ -880,11 +859,8 @@ int wdb_port_save(wdb_t * wdb, const char * scan_id, const char * scan_time, con
 int wdb_port_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * protocol, const char * local_ip, int local_port, const char * remote_ip, int remote_port, int tx_queue, int rx_queue, long long inode, const char * state, int pid, const char * process, const char * checksum, const char * item_id, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
-    char *temp_cks = NULL;
-    os_strdup(checksum, temp_cks);
     if (!scan_id || !local_ip) {
-        wdbi_remove_duplicate_entries(wdb, WDB_SYSCOLLECTOR_PORTS, temp_cks);
-        os_free(temp_cks);
+        wdbi_remove_by_pk(wdb, WDB_SYSCOLLECTOR_PORTS, item_id);
     }
 
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_PORT_INSERT2 : WDB_STMT_PORT_INSERT) < 0) {
