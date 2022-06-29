@@ -1155,7 +1155,7 @@ checks:
   - id: 28565
     title: "Ensure NIS Server is not installed."
     description: "The Network Information Service (NIS) (formally known as Yellow Pages) is a client-server directory service protocol for distributing system configuration files. The NIS server is a collection of programs that allow for the distribution of configuration files."
-    rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be disabled and other, more secure services be used"
+    rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally has been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be removed and other, more secure services be used."
     remediation: "Run the following command to remove nis: # apt purge nis"
     compliance:
       - cis: ["2.1.17"]
@@ -1175,9 +1175,9 @@ checks:
   # 2.2.1  Ensure NIS Client is not installed (Automated)
   - id: 28566
     title: "Ensure NIS Client is not installed."
-    description: "The Network Information Service (NIS), formerly known as Yellow Pages, is a client-server directory service protocol used to distribute system configuration files."
+    description: "The Network Information Service (NIS), formerly known as Yellow Pages, is a client-server directory service protocol used to distribute system configuration files. The NIS client was used to bind a machine to an NIS server and receive the distributed configuration files."
     rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally has been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be removed."
-    remediation: "Uninstall nis : apt purge nis"
+    remediation: "Uninstall nis: apt purge nis"
     compliance:
       - cis: ["2.2.1"]
       - cis_csc: ["2.6"]
@@ -1213,9 +1213,9 @@ checks:
   # 2.2.3  Ensure talk client is not installed (Automated)
   - id: 28568
     title: "Ensure talk client is not installed."
-    description: "The talk software makes it possible for users to send and receive messages across systems through a terminal session. The talkclient, which allows initialization of talk sessions, is installed by default."
+    description: "The talk software makes it possible for users to send and receive messages across systems through a terminal session. The talk client, which allows initialization of talk sessions, is installed by default."
     rationale: "The software presents a security risk as it uses unencrypted protocols for communication."
-    remediation: "Uninstall talk : apt remove talk"
+    remediation: "Uninstall talk: apt remove talk"
     compliance:
       - cis: ["2.2.3"]
       - cis_csc: ["2.6"]
@@ -1313,7 +1313,7 @@ checks:
   # 3.1.2  Ensure wireless interfaces are disabled (Automated)
   - id: 28573
     title: "Ensure wireless interfaces are disabled."
-    description: "Wireless networking is used when wired networks are unavailable. Ubuntu contains a wireless tool kit to allow system administrators to configure and use wireless networks."
+    description: "Wireless networking is used when wired networks are unavailable. Debian contains a wireless tool kit to allow system administrators to configure and use wireless networks."
     rationale: "If wireless is not to be used, wireless devices can be disabled to reduce the potential attack surface."
     remediation: "Run the following command to disable any wireless interfaces: # nmcli radio all off"
     compliance:
@@ -1364,7 +1364,7 @@ checks:
     rules:
       - 'c:sysctl net.ipv4.ip_forward -> r:=\s*\t*0$'
       - 'c:grep -Rh net\.ipv4\.ip_forward /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.ip_forward\s*=\s*0$'
-      - 'not c:sysctl net.ipv6.conf.all.forwarding -> r:=\s*\t*1$'
+      - 'c:sysctl net.ipv6.conf.all.forwarding -> r:=\s*\t*0$'
       - 'c:grep -Rh net\.ipv6\.conf\.all\.forwarding /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.all.forwarding\s*=\s*0$'
 
   # 3.3  Network Parameters (Host and Router)
@@ -1394,9 +1394,9 @@ checks:
   # 3.3.2  Ensure ICMP redirects are not accepted (Automated)
   - id: 28577
     title: "Ensure ICMP redirects are not accepted."
-    description: "ICMP redirect messages are packets that convey routing information and tell your host (acting as a router) to send packets via an alternate path. It is a way of allowing an outside routing device to update your system routing tables. By setting net.ipv4.conf.all.accept_redirects to 0, the system will not accept any ICMP redirect messages, and therefore, won't allow outsiders to update the system's routing tables."
+    description: "ICMP redirect messages are packets that convey routing information and tell your host (acting as a router) to send packets via an alternate path. It is a way of allowing an outside routing device to update your system routing tables. By setting net.ipv4.conf.all.accept_redirects and net.ipv6.conf.all.accept_redirects to 0, the system will not accept any ICMP redirect messages, and therefore, won't allow outsiders to update the system's routing tables."
     rationale: "Attackers could use bogus ICMP redirect messages to maliciously alter the system routing tables and get them to send packets to incorrect networks and allow your system packets to be captured."
-    remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.accept_redirects = 0 net.ipv4.conf.default.accept_redirects = 0 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.accept_redirects=0 # sysctl -w net.ipv4.conf.default.accept_redirects=0 # sysctl -w net.ipv4.route.flush=1  # sysctl -w net.ipv6.conf.all.accept_redirects=0 # sysctl -w net.ipv6.conf.default.accept_redirects=0 # sysctl -w net.ipv6.route.flush=1"
+    remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.accept_redirects = 0 net.ipv4.conf.default.accept_redirects = 0 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.accept_redirects=0 # sysctl -w net.ipv4.conf.default.accept_redirects=0 # sysctl -w net.ipv4.route.flush=1  # sysctl -w net.ipv6.conf.all.accept_redirects=0 # sysctl -w net.ipv6.conf.default.accept_redirects=0 # sysctl -w net.ipv6.route.flush=1 IF IPv6 is enabled: Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file:  net.ipv6.conf.all.accept_redirects = 0 net.ipv6.conf.default.accept_redirects = 0 Run the following commands to set the active kernel parameters:  # sysctl -w net.ipv6.conf.all.accept_redirects=0 # sysctl -w net.ipv6.conf.default.accept_redirects=0 # sysctl -w net.ipv6.route.flush=1"
     compliance:
       - cis: ["3.3.2"]
       - cis_csc: ["5.1"]
@@ -1437,8 +1437,8 @@ checks:
   - id: 28579
     title: "Ensure suspicious packets are logged."
     description: "When enabled, this feature logs packets with un-routable source addresses to the kernel log."
-    rationale: "Enabling this feature and logging these packets allows an administrator to investigate the possibility that an attacker is sending spoofed packets to their server."
-    remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.log_martians = 1 net.ipv4.conf.default.log_martians = 1. Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.log_martians=1 # sysctl -w net.ipv4.conf.default.log_martians=1 # sysctl -w net.ipv4.route.flush=1"
+    rationale: "Enabling this feature and logging these packets allows an administrator to investigate the possibility that an attacker is sending spoofed packets to their system."
+    remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.log_martians = 1 net.ipv4.conf.default.log_martians = 1 Run the following commands to set the active kernel parameters:  # sysctl -w net.ipv4.conf.all.log_martians=1 # sysctl -w net.ipv4.conf.default.log_martians=1 # sysctl -w net.ipv4.route.flush=1"
     compliance:
       - cis: ["3.3.4"]
       - cis_csc: ["6.2", "6.3"]
@@ -1520,14 +1520,14 @@ checks:
     condition: all
     rules:
       - 'c:sysctl net.ipv4.tcp_syncookies -> r:=\s*\t*1$'
-      - 'c:grep -Rh net\.ipv4\.tcp_syncookies /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.tcp_syncookies\s*=\s*1$'
+      - 'c:grep -Rh net\.ipv4\.tcp_syncookies /etc/sysctl.conf /etc/sysctl.d/* -> r:^net.ipv4.tcp_syncookies\s*=\s*1$'
 
   # 3.3.9  Ensure IPv6 router advertisements are not accepted (Automated)
   - id: 28584
     title: "Ensure IPv6 router advertisements are not accepted."
-    description: "This setting disables the systems ability to accept router advertisements"
-    rationale: "It is recommended that systems not accept router advertisements as they could be tricked into routing traffic to compromised machines. Setting hard routes within the system (usually a single default route to a trusted router) protects the system from bad routes."
-    remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv6.conf.all.accept_ra = 0 net.ipv6.conf.default.accept_ra = 0. Run the following commands to set the active kernel parameters: # sysctl -w net.ipv6.conf.all.accept_ra=0 # sysctl -w net.ipv6.conf.default.accept_ra=0 # sysctl -w net.ipv6.route.flush=1"
+    description: "This setting disables the system's ability to accept IPv6 router advertisements."
+    rationale: "It is recommended that systems do not accept router advertisements as they could be tricked into routing traffic to compromised machines. Setting hard routes within the system (usually a single default route to a trusted router) protects the system from bad routes."
+    remediation: "IF IPv6 is enabled: Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file:  net.ipv6.conf.all.accept_ra = 0 net.ipv6.conf.default.accept_ra = 0 Run the following commands to set the active kernel parameters: # sysctl -w net.ipv6.conf.all.accept_ra=0 # sysctl -w net.ipv6.conf.default.accept_ra=0 # sysctl -w net.ipv6.route.flush=1"
     compliance:
       - cis: ["3.3.9"]
       - cis_csc: ["5.1"]
@@ -1633,8 +1633,8 @@ checks:
   # 3.5.3.1.1  Ensure iptables packages are installed (Automated)
   - id: 28589
     title: "Ensure ufw service or nftables or iptables is installed."
-    description: "Uncomplicated Firewall (ufw) is a frontend for iptables. ufw provides a framework for managing netfilter, as well as a command-line and available graphical user interface for manipulating the firewall. Ensure that the ufw service is enabled to protect your system."
-    rationale: "A firewall utility is required to configure the Linux kernel's netfilter framework via the iptables or nftables back-end.The Linux kernel's netfilter framework host-based firewall can protect against threats originating from within a corporate network to include malicious mobile code and poorly configured software on a host."
+    description: "The Uncomplicated Firewall (ufw) is a frontend for iptables and is particularly well-suited for host-based firewalls. ufw provides a framework for managing netfilter, as well as a command-line interface for manipulating the firewall."
+    rationale: "A firewall utility is required to configure the Linux kernel's netfilter framework via the iptables or nftables back-end. The Linux kernel's netfilter framework host-based firewall can protect against threats originating from within a corporate network to include malicious mobile code and poorly configured software on a host. Note: Only one firewall utility should be installed and configured. UFW is dependent on the iptables package."
     remediation: "Run the following command to install Uncomplicated Firewall (UFW): # apt install ufw OR #  apt install nftables OR # apt install iptables"
     compliance:
       - cis: ["3.5.1.1", "3.5.2.1", "3.5.3.1.1"]
@@ -1689,8 +1689,8 @@ checks:
   - id: 28592
     title: "Ensure ufw loopback traffic is configured."
     description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network (127.0.0.0/8 for IPv4 and ::1/128 for IPv6)."
-    rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
-    remediation: "Run the following commands to implement the loopback rules: # ufw allow in on lo  # ufw deny in from 127.0.0.0/8 # ufw deny in from ::1"
+    rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network (127.0.0.0/8 for IPv4 and ::1/128 for IPv6) traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
+    remediation: "Run the following commands to implement the loopback rules: # ufw allow in on lo # ufw allow out on lo # ufw deny in from 127.0.0.0/8 # ufw deny in from ::1"
     compliance:
       - cis: ["3.5.1.4"]
       - cis_csc: ["9.4"]
@@ -1711,9 +1711,9 @@ checks:
   # 3.5.1.7  Ensure ufw default deny firewall policy (Automated)
   - id: 28593
     title: "Ensure default deny firewall policy."
-    description: "A default deny all policy on connections ensures that any unconfigured network usage will be rejected."
+    description: "A default deny policy on connections ensures that any unconfigured network usage will be rejected. Note: Any port or protocol without a explicit allow before the default deny will be blocked."
     rationale: "With a default accept policy the firewall will accept any packet that is not configured to be denied. It is easier to white list acceptable usage than to black list unacceptable usage."
-    remediation: "Run the following commands to implement a default deny policy: # ufw default deny incoming # ufw default deny outgoing # ufw default deny routed"
+    remediation: "Run the following commands to implement a default deny policy: # ufw default deny incoming # ufw default deny outgoing # ufw default deny routed."
     compliance:
       - cis: ["3.5.1.7"]
       - cis_csc: ["9.4"]
@@ -1731,9 +1731,9 @@ checks:
   # 3.5.2.2  Ensure ufw is uninstalled or disabled with nftables (Automated)
   - id: 28594
     title: "Ensure Uncomplicated Firewall is not installed or disabled if nftables is installed."
-    description: "The iptables-persistentis a boot-time loader for netfilter rules, iptables plugin"
-    rationale: "Running both ufwand the services included in theiptables-persistent package may lead to conflict"
-    remediation: "Run the following command to install Uncomplicated Firewall (UFW): # apt install ufw OR #  apt install nftables OR # apt install iptables"
+    description: "Uncomplicated Firewall (UFW) is a program for managing a netfilter firewall designed to be easy to use."
+    rationale: "Running both the nftables service and ufw may lead to conflict and unexpected results."
+    remediation: "Run one of the following commands to either remove ufw or disable ufw Run the following command to remove ufw: # apt purge ufw Run the following command to disable ufw: # ufw disable"
     compliance:
       - cis: ["3.5.2.2"]
       - cis_csc: ["9.4"]
@@ -1819,8 +1819,8 @@ checks:
   # 3.5.2.9  Ensure nftables service is enabled (Automated)
   - id: 28599
     title: "Ensure nftables service is enabled."
-    description: "The nftables service allows for the loading of nftables rulesets during boot, or starting of the nftables service."
-    rationale: "The nftables service restores the nftables rules from the rules files referenced in the /etc/sysconfig/nftables.conf file during boot or the starting of the nftables service."
+    description: "The nftables service allows for the loading of nftables rulesets during boot, or starting on the nftables service."
+    rationale: "The nftables service restores the nftables rules from the rules files referenced in the /etc/nftables.conf file during boot or the starting of the nftables service."
     remediation: "Run the following command to enable the nftables service: # systemctl enable nftables"
     compliance:
       - cis: ["3.5.2.9"]
@@ -1840,8 +1840,8 @@ checks:
   - id: 28600
     title: "Ensure nftables is not installed if iptables is installed."
     description: "nftables is a subsystem of the Linux kernel providing filtering and classification of network packets/datagrams/frames and is the successor to iptables."
-    rationale: "Running both iptablesand nftablesmay lead to conflict"
-    remediation: "RRun the following command to remove nftables:: # apt purge nftables"
+    rationale: "Running both iptables and nftables may lead to conflict."
+    remediation: "Run the following command to remove nftables: # apt purge nftables."
     compliance:
       - cis: ["3.5.3.1.2"]
       - cis_csc: ["9.4"]
@@ -1871,7 +1871,7 @@ checks:
   # 3.5.3.2.1  Ensure iptables loopback traffic is configured (Automated)
   - id: 28602
     title: "Ensure loopback traffic is configured."
-    description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network (127.0.0.0/8)."
+    description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network (127.0.0.0/8). Notes: - Changing firewall settings while connected over network can result in being locked out of the system. - Remediation will only affect the active system firewall, be sure to configure the default policy in your firewall management to apply on boot as well."
     rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network (127.0.0.0/8) traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
     remediation: "Run the following commands to implement the loopback rules: # iptables -A INPUT -i lo -j ACCEPT # iptables -A OUTPUT -o lo -j ACCEPT # iptables -A INPUT -s 127.0.0.0/8 -j DROP"
     compliance:
@@ -2007,9 +2007,9 @@ checks:
   # 4.1.2.1  Ensure audit log storage size is configured (Automated)
   - id: 28609
     title: "Ensure audit log storage size is configured."
-    description: "Configure the maximum size of the audit log file. Once the log reaches the maximum size, it will be rotated and a new log file will be started."
+    description: "Configure the maximum size of the audit log file. Once the log reaches the maximum size, it will be rotated and a new log file will be started. Notes: - The max_log_file parameter is measured in megabytes - Other methods of log rotation may be appropriate based on site policy. One example is time-based rotation strategies which don't have native support in auditd configurations - Manual audit of custom configurations should be evaluated for effectiveness and completeness"
     rationale: "It is important that an appropriate size is determined for log files so that they do not impact the system and audit data is not lost."
-    remediation: "Set the following parameter in /etc/audit/auditd.conf in accordance with site policy: max_log_file = <MB> Notes: The max_log_file parameter is measured in megabytes."
+    remediation: "Set the following parameter in /etc/audit/auditd.conf in accordance with site policy: max_log_file = <MB>"
     compliance:
       - cis: ["4.1.2.1"]
       - cis_csc: ["6.4"]
@@ -2108,9 +2108,9 @@ checks:
   # 4.1.5  Ensure events that modify the system's network environment are collected (Automated)
   - id: 28614
     title: "Ensure events that modify the system's network environment are collected."
-    description: "Record changes to network environment files or system calls. The below parameters monitor the sethostname (set the systems host name) or setdomainname (set the systems domainname) system calls, and write an audit event on system call exit. The other parameters monitor the /etc/issue and /etc/issue.net files (messages displayed pre- login), /etc/hosts (file containing host names and associated IP addresses) and /etc/sysconfig/network (directory containing network interface scripts and configurations) files."
+    description: "Record changes to network environment files or system calls. The below parameters monitor the sethostname (set the systems host name) or setdomainname (set the systems domainname) system calls, and write an audit event on system call exit. The other parameters monitor the /etc/issue and /etc/issue.net files (messages displayed pre- login), /etc/hosts (file containing host names and associated IP addresses) and /etc/network (directory containing network interface scripts and configurations) files. Note: Reloading the auditd config to set active settings requires the auditd service to be restarted, and may require a system reboot."
     rationale: 'Monitoring sethostname and setdomainname will identify potential unauthorized changes to host and domainname of a system. The changing of these names could potentially break security parameters that are set based on those names. The /etc/hosts file is monitored for changes in the file that can indicate an unauthorized intruder is trying to change machine associations with IP addresses and trick users and processes into connecting to unintended machines. Monitoring /etc/issue and /etc/issue.net is important, as intruders could put disinformation into those files and trick users into providing information to the intruder. Monitoring /etc/network is important as it can show if network interfaces or scripts are being modified in a way that can lead to the machine becoming unavailable or compromised. All audit records will be tagged with the identifier "system-locale."'
-    remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/system-locale.rules and add the following lines: -a always,exit -F arch=b32 -S sethostname -S setdomainname -k system-locale      -w /etc/issue -p wa -k system-locale      -w /etc/issue.net -p wa -k system-locale     -w /etc/hosts -p wa -k system-locale-w /etc/network -p wa -k system-locale     For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/system-locale.rules   and add the following lines:  -a always,exit -F arch=b64 -S sethostname -S setdomainname -k system-locale   -a always,exit -F arch=b32 -S sethostname -S setdomainname -k system-locale       -w /etc/issue -p wa -k system-locale          -w /etc/issue.net -p wa -k system-locale           -w /etc/hosts -p wa -k system-locale         -w /etc/network -p wa -k system-locale"
+    remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/50-system-locale.rules Add the following lines: -a always,exit -F arch=b32 -S sethostname -S setdomainname -k system-locale -w /etc/issue -p wa -k system-locale -w /etc/issue.net -p wa -k system-locale -w /etc/hosts -p wa -k system-locale -w /etc/network -p wa -k system-locale For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/50-system-locale.rules Add the following lines: -a always,exit -F arch=b64 -S sethostname -S setdomainname -k system-locale -a always,exit -F arch=b32 -S sethostname -S setdomainname -k system-locale -w /etc/issue -p wa -k system-locale -w /etc/issue.net -p wa -k system-locale -w /etc/hosts -p wa -k system-locale -w /etc/network -p wa -k system-locale."
     compliance:
       - cis: ["4.1.5"]
       - cis_csc: ["5.5"]
@@ -2175,9 +2175,9 @@ checks:
   # 4.1.8  Ensure session initiation information is collected (Automated)
   - id: 28617
     title: "Ensure session initiation information is collected."
-    description: 'Monitor session initiation events. The parameters in this section track changes to the files associated with session events. The file /var/run/utmp file tracks all currently logged in users. All audit records will be tagged with the identifier "session." The /var/log/wtmp file tracks logins, logouts, shutdown, and reboot events. The file /var/log/btmp keeps track of failed login attempts and can be read by entering the command /usr/bin/last -f /var/log/btmp . All audit records will be tagged with the identifier "logins."'
+    description: 'Monitor session initiation events. The parameters in this section track changes to the files associated with session events. The file /var/run/utmp tracks all currently logged in users. All audit records will be tagged with the identifier "session." The /var/log/wtmp file tracks logins, logouts, shutdown, and reboot events. The file /var/log/btmp keeps track of failed login attempts and can be read by entering the command /usr/bin/last -f /var/log/btmp . All audit records will be tagged with the identifier "logins." Note: - The last command can be used to read /var/log/wtmp (last with no parameters) and /var/run/utmp (last -f /var/run/utmp) - Reloading the auditd config to set active settings requires the auditd service to be restarted, and may require a system reboot.'
     rationale: "Monitoring these files for changes could alert a system administrator to logins occurring at unusual hours, which could indicate intruder activity (i.e. a user logging in at a time when they do not normally log in)."
-    remediation: "Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -w /var/run/utmp -p wa -k session | -w /var/log/wtmp -p wa -k logins | -w /var/log/btmp -p wa -k logins. Notes: The last command can be used to read /var/log/wtmp (last with no parameters) and /var/run/utmp (last -f /var/run/utmp). Reloading the auditd config to set active settings may require a system reboot."
+    remediation: "Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules: Example: vi /etc/audit/rules.d/50-session.rules Add the following lines: -w /var/run/utmp -p wa -k session -w /var/log/wtmp -p wa -k logins -w /var/log/btmp -p wa -k logins."
     compliance:
       - cis: ["4.1.8"]
       - cis_csc: ["4.9", "16.11", "16.13"]
@@ -2347,8 +2347,8 @@ checks:
   # 4.2.1.1  Ensure rsyslog is installed (Automated)
   - id: 28625
     title: "Ensure rsyslog is installed."
-    description: "The rsyslog software are recommended replacements to the original syslogd daemon which provide improvements over syslogd , such as connection-oriented (i.e. TCP) transmission of logs, the option to log to database formats, and the encryption of log data en route to a central logging server."
-    rationale: "The security enhancements of rsyslogsuch as connection-oriented (i.e. TCP) transmission of logs, the option to log to database formats, and the encryption of log data en route to a central logging server) justify installing and configuring the package."
+    description: "The rsyslog software is a recommended replacement to the original syslogd daemon which provide improvements over syslogd, such as connection-oriented (i.e. TCP) transmission of logs, the option to log to database formats, and the encryption of log data en route to a central logging server."
+    rationale: "The security enhancements of rsyslog such as connection-oriented (i.e. TCP) transmission of logs, the option to log to database formats, and the encryption of log data en route to a central logging server) justify installing and configuring the package."
     remediation: "Install rsyslog: # apt install rsyslog"
     compliance:
       - cis: ["4.2.1.1"]
@@ -2365,7 +2365,7 @@ checks:
   - id: 28626
     title: "Ensure rsyslog Service is enabled."
     description: "Once the rsyslog package is installed it needs to be activated."
-    rationale: "If the rsyslog service is not activated the system will not have a syslog service running."
+    rationale: "If the rsyslog service is not activated the system may default to the syslogd service or lack logging instead."
     remediation: "Run the following command to enable rsyslog: # systemctl --now enable rsyslog"
     compliance:
       - cis: ["4.2.1.2"]
@@ -2491,9 +2491,9 @@ checks:
   # 4.2.3  Ensure permissions on all logfiles are configured (Automated)
   - id: 28633
     title: "Ensure permissions on all logfiles are configured."
-    description: "Log files stored in /var/log/ contain logged information from many services on the system, or on log hosts others as well."
-    rationale: "It is important to ensure that log files have the correct permissions to ensure that sensitivebdata is archived and protected."
-    remediation: 'Run the following command to set permissions on all existing log files: find /var/log -type f -exec chmod g-wx,o-rwx "{}" + -o -type d -exec chmod g-w,o-rwx "{}" +'
+    description: "Log files stored in /var/log/ contain logged information from many services on the system, or on log hosts others as well. Note: You may also need to change the configuration for your logging software or services for any logs that had incorrect permissions."
+    rationale: "It is important to ensure that log files have the correct permissions to ensure that sensitive data is archived and protected."
+    remediation: 'Run the following command to set permissions on all existing log files: # find /var/log -type f -exec chmod g-wx,o-rwx "{}" + -o -type d -exec chmod g-w,o-rwx "{}" +'
     compliance:
       - cis: ["4.2.3"]
       - cis_csc: ["5.1"]
@@ -2525,7 +2525,7 @@ checks:
     condition: all
     rules:
       - "c:systemctl is-enabled cron -> enabled"
-      - "c:systemctl status cron -> r:Active: active (running)"
+      - 'c:systemctl status cron -> r:Active: active \(running\)'
 
   # 5.1.2  Ensure permissions on /etc/crontab are configured (Automated)
   - id: 28635
@@ -2629,9 +2629,9 @@ checks:
   # 5.1.8  Ensure cron is restricted to authorized users (Automated)
   - id: 28641
     title: "Ensure at/cron is restricted to authorized users."
-    description: "Configure /etc/cron.allow and /etc/at.allow to allow specific users to use these services. If /etc/cron.allow or /etc/at.allow do not exist, then /etc/at.deny and /etc/cron.deny are checked. Any user not specifically defined in those files is allowed to use at and cron. By removing the files, only users in /etc/cron.allow and /etc/at.allow are allowed to use at and cron. Note that even though a given user is not listed in cron.allow, cron jobs can still be run as that user. The cron.allow file only controls administrative access to the crontab command for scheduling and modifying cron jobs."
-    rationale: "On many systems, only the system administrator is authorized to schedule cronjobs. Using the cron.allow file to control who can run cron jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
-    remediation: "Run the following commands to remove /etc/cron.deny and create and set permissions and ownership for /etc/cron.allow: # rm /etc/cron.deny # touch /etc/cron.allow # chmod og-rwx /etc/cron.allow # chown root:root /etc/cron.allow"
+    description: "Configure /etc/cron.allow to allow specific users to use this service. If /etc/cron.allow does not exist, then /etc/cron.deny is checked. Any user not specifically defined in this file is allowed to use cron. By removing the file, only users in /etc/cron.allow are allowed to use cron. Notes: - Other methods, such as systemd timers, exist for scheduling jobs. If another method is used, cron should be removed, and the alternate method should be secured in accordance with local site policy. - Even though a given user is not listed in cron.allow, cron jobs can still be run as that user. - The cron.allow file only controls administrative access to the crontab command for scheduling and modifying cron jobs"
+    rationale: "On many systems, only the system administrator is authorized to schedule cron jobs. Using the cron.allow file to control who can run cron jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
+    remediation: "Run the following commands to remove /etc/cron.deny: # rm /etc/cron.deny Run the following command to create /etc/cron.allow # touch /etc/cron.allow Run the following commands to set permissions and ownership for /etc/cron.allow:  # chmod g-wx,o-rwx /etc/cron.allow # chown root:root /etc/cron.allow"
     compliance:
       - cis: ["5.1.8"]
       - cis_csc: ["14.6"]
@@ -2687,7 +2687,7 @@ checks:
   # 5.2.2  Ensure sudo commands use pty (Automated)
   - id: 28644
     title: "Ensure sudo commands use pty."
-    description: "sudo can be configured to run only froma pseudo-pty"
+    description: "sudo can be configured to run only from a pseudo-pty. Note: visudo edits the sudoers file in a safe fashion, analogous to vipw(8). visudo locks the sudoers file against multiple simultaneous edits, provides basic sanity checks, and checks or parse errors. If the sudoers file is currently being edited you will receive a message to try again later. "
     rationale: "Attackers can run a malicious program using sudo, which would again fork a background process that remains even when the main program has finished executing."
     remediation: "edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo -f and add the following line: Defaults use_pty"
     compliance:
@@ -3178,7 +3178,7 @@ checks:
 
   # 5.5.1.1  Ensure minimum days between password changes is configured (Automated)
   - id: 28672
-    title: "Ensure minimum days between password changes is 7 or more."
+    title: "Ensure minimum days between password changes is configured."
     description: "The PASS_MIN_DAYS parameter in /etc/login.defs allows an administrator to prevent users from changing their password until a minimum number of days have passed since the last time the user changed their password. It is recommended that PASS_MIN_DAYS parameter be set to 7 or more days."
     rationale: "By restricting the frequency of password changes, an administrator can prevent users from repeatedly changing their password in an attempt to circumvent password reuse controls."
     remediation: "Set the PASS_MIN_DAYS parameter to 7 in /etc/login.defs: PASS_MIN_DAYS 7. Modify user parameters for all users with a password set to match: # chage --mindays 7 <user>. Notes: You can also check this setting in /etc/shadow directly. The 4th field should be 7 or more for all users with a password."
@@ -3279,9 +3279,9 @@ checks:
   # 5.5.5  Ensure default user shell timeout is 900 seconds or less (Automated)
   - id: 28678
     title: "Ensure default user shell timeout is 900 seconds or less."
-    description: "The default TMOUT determines the shell timeout for users. The TMOUT value is measured in seconds."
-    rationale: "Having no timeout value associated with a shell could allow an unauthorized user access to another user's shell session (e.g. user walks away from their computer and doesn't lock the screen). Setting a timeout value at least reduces the risk of this happening."
-    remediation: "Edit the /etc/bash.bashrc , /etc/profile and /etc/profile.d/*.sh files (and the appropriate files for any other shell supported on your system) and add or edit any umask parameters as follows: readonly TMOUT=900 ; export TMOUT . Note that setting the value to readonly prevents unwanted modification during runtime."
+    description: "TMOUT is an environmental setting that determines the timeout of a shell in seconds. - TMOUT=n - Sets the shell timeout to n seconds. A setting of TMOUT=0 disables timeout. - readonly TMOUT- Sets the TMOUT environmental variable as readonly, preventing unwanted modification during run-time. - export TMOUT - exports the TMOUT variable System Wide Shell Configuration Files: - /etc/profile - used to set system wide environmental variables on users shells. The variables are sometimes the same ones that are in the .bash_profile, however this file is used to set an initial PATH or PS1 for all shell users of the system. is only executed for interactive login shells, or shells executed with the --login parameter. - /etc/profile.d - /etc/profile will execute the scripts within /etc/profile.d/*.sh. It is recommended to place your configuration in a shell script within /etc/profile.d to set your own system wide environmental variables. - /etc/bash.bashrc - System wide version of bash.bashrc. etc/bash.bashrc also invokes /etc/profile.d/*.sh if non-login shell, but redirects output to /dev/null if non-interactive. Is only executed for interactive shells or if BASH_ENV is set to /etc/bash.bashrc."
+    rationale: "Setting a timeout value reduces the window of opportunity for unauthorized user access to another user's shell session that has been left unattended. It also ends the inactive session and releases the resources associated with that session."
+    remediation: "Review /etc/bash.bashrc, /etc/profile, and all files ending in *.sh in the /etc/profile.d/ directory and remove or edit all TMOUT=_n_ entries to follow local site policy. TMOUT should not exceed 900 or be equal to 0. Configure TMOUT in one of the following files: - A file in the /etc/profile.d/ directory ending in .sh - /etc/profile - /etc/bash.bashrc TMOUT configuration examples: - As multiple lines: TMOUT=900 readonly TMOUT export TMOUT As a single line: readonly TMOUT=900 ; export TMOUT"
     compliance:
       - cis: ["5.5.5"]
       - cis_csc: ["16.11"]
@@ -3300,9 +3300,9 @@ checks:
   # 5.7  Ensure access to the su command is restricted (Automated)
   - id: 28679
     title: "Ensure access to the su command is restricted."
-    description: "The su command allows a user to run a command or shell as another user. The program has been superseded by sudo, which allows for more granular control over privileged access. Normally, the su command can be executed by any user. By uncommenting the pam_wheel.so statement in /etc/pam.d/su, the su command will only allow users in the sudo group to execute su."
+    description: "The su command allows a user to run a command or shell as another user. The program has been superseded by sudo, which allows for more granular control over privileged access. Normally, the su command can be executed by any user. By adding, or uncommenting, the pam_wheel.so statement in /etc/pam.d/su , the su command will only allow users in a specific group to execute su. This group should be empty to reinforce the use of sudo for privileged access."
     rationale: "Restricting the use of su, and using sudo in its place, provides system administrators better control of the escalation of user privileges to execute privileged commands. The sudo utility also provides a better logging and audit mechanism, as it can log each command executed via sudo, whereas su can only record that a user executed the su program."
-    remediation: "Create an empty group that will be specified for use of the su command. The group should be named according to site policy. Example # groupadd sugroup Add the following line to the /etc/pam.d/su file, specifying the empty group: auth required pam_wheel.so use_uid group=sugroup"
+    remediation: "Create an empty group that will be specified for use of the su command. The group should be named according to site policy. Example: # groupadd sugroup Add the following line to the /etc/pam.d/su file, specifying the empty group: Example: auth required pam_wheel.so use_uid group=sugroup"
     compliance:
       - cis: ["5.7"]
       - cis_csc: ["5.1"]
