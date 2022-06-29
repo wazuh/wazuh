@@ -443,20 +443,21 @@ void sync_agents_artifacts_with_wdb() {
 
     while ((dirent = readdir(dir)) != NULL) {
         char *end = NULL;
+        // File name pattern is XXX-agentname.db
         if (end = strchr(dirent->d_name, '-'), end) {
             int agent_id = (int)strtol(dirent->d_name, &end, 10);
             char *agent_name = NULL;
             if (agent_id > 0 && (agent_name = wdb_get_agent_name(agent_id, &wdb_wmdb_sock)) != NULL) {
                 if (*agent_name == '\0') {
-                    // Getting name from database file
+                    // Agent not found. Removing agent artifacts
+                    // Getting agent name from end pointer (-agentname.db)
                     char* agent_name_from_file = end + 1;
                     char* substring = strchr(agent_name_from_file, '.');
-                    if (substring) {
+                    if (NULL != substring) {
                         *substring = '\0';
                     } else {
                         agent_name_from_file = NULL;
                     }
-                    // Agent not found. Removing agent artifacts
                     wm_clean_agent_artifacts(agent_id, agent_name_from_file);
                 }
                 os_free(agent_name);

@@ -596,7 +596,7 @@ void delete_sqlite(const char *id, const char *name)
 /* Delete diff folders */
 void delete_diff(const char *name)
 {
-    if (!name || *name == '\0') {
+    if (NULL == name || *name == '\0') {
         return;
     }
 

@@ -347,7 +347,7 @@ void test_sync_agents_artifacts_with_wdb_empty_agent_name(void **state) {
     will_return(__wrap_opendir, (DIR *)1);
     will_return(__wrap_readdir, dir_ent);
 
-    char *agent_name;
+    char *agent_name = NULL;
     os_strdup("", agent_name);
     expect_value(__wrap_wdb_get_agent_name, id, 1);
     will_return(__wrap_wdb_get_agent_name, agent_name);
@@ -407,7 +407,7 @@ void test_sync_agents_artifacts_with_wdb_bad_file_name2(void **state) {
     will_return(__wrap_opendir, (DIR *)1);
     will_return(__wrap_readdir, dir_ent);
 
-    char *agent_name;
+    char *agent_name = NULL;
     os_strdup("", agent_name);
     expect_value(__wrap_wdb_get_agent_name, id, 1);
     will_return(__wrap_wdb_get_agent_name, agent_name);
@@ -444,7 +444,7 @@ void test_sync_agents_artifacts_with_wdb_agent_exists_in_db(void **state) {
     will_return(__wrap_opendir, (DIR *)1);
     will_return(__wrap_readdir, dir_ent);
 
-    char *agent_name;
+    char *agent_name = NULL;
     os_strdup("centos", agent_name);
     expect_value(__wrap_wdb_get_agent_name, id, 1);
     will_return(__wrap_wdb_get_agent_name, agent_name);
