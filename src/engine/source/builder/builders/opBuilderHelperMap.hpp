@@ -35,7 +35,7 @@ namespace builder::internals::builders
  * @return base::Expression The lifter with the `uppercase` transformation.
  * @throw std::runtime_error if the parameter is not a string.
  */
-base::Expression opBuilderHelperStringUP(std::any definition);
+base::Expression opBuilderHelperStringUP(const std::any& definition);
 
 /**
  * @brief Transforms a string to lowercase and append or remplace it in the event `e`
@@ -44,7 +44,7 @@ base::Expression opBuilderHelperStringUP(std::any definition);
  * @return base::Expression The lifter with the `lowercase` transformation.
  * @throw std::runtime_error if the parameter is not a string.
  */
-base::Expression opBuilderHelperStringLO(std::any definition);
+base::Expression opBuilderHelperStringLO(const std::any& definition);
 
 /**
  * @brief Transforms a string, trim it and append or remplace it in the event `e`
@@ -54,7 +54,7 @@ base::Expression opBuilderHelperStringLO(std::any definition);
  * @return base::Expression The lifter with the `trim` transformation.
  * @throw std::runtime_error if the parameter is not a string.
  */
-base::Expression opBuilderHelperStringTrim(std::any definition);
+base::Expression opBuilderHelperStringTrim(const std::any& definition);
 
 //*************************************************
 //*           Int tranform                        *
@@ -68,7 +68,7 @@ base::Expression opBuilderHelperStringTrim(std::any definition);
  * @return base::Expression The lifter with the `mathematical operation` transformation.
  * @throw std::runtime_error if the parameter is not a integer.
  */
-base::Expression opBuilderHelperIntCalc(std::any definition);
+base::Expression opBuilderHelperIntCalc(const std::any& definition);
 
 //*************************************************
 //*           Regex tranform                      *
@@ -82,7 +82,7 @@ base::Expression opBuilderHelperIntCalc(std::any definition);
  * @return base::Expression The lifter with the `regex extract` transformation.
  * @throw std::runtime_error if the parameter is the regex is invalid.
  */
-base::Expression opBuilderHelperRegexExtract(std::any definition);
+base::Expression opBuilderHelperRegexExtract(const std::any& definition);
 
 base::Expression opBuilderHelperAppendString(const std::any& definition);
 
