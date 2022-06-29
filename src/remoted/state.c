@@ -21,6 +21,8 @@ static pthread_mutex_t agents_state_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int rem_write_state();
 static char *refresh_time;
 
+extern OSHash *remoted_agents_state;
+
 /**
  * @brief Search or create and return agent state node
  * @param agent_id Id of the agent that corresponds to the node
