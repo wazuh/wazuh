@@ -80,10 +80,11 @@ static const std::unordered_map<std::string_view, ParserType> kTempTypeMapper {
     {"filepath", ParserType::FilePath},
     {"useragent", ParserType::UserAgent},
     {"url", ParserType::URL},
-    {"quoted_string", ParserType::QuotedString},
+    {"quoted", ParserType::QuotedString},
     {"ip", ParserType::IP},
     {"number", ParserType::Number},
     {"toend", ParserType::ToEnd},
+    {"ignore", ParserType::Ignore}
     //TODO add missing parsers
 };
 
@@ -161,6 +162,10 @@ Parser createParserFromExpresion(Expression const &exp)
                 // consistent with the non temp case
                 args.erase(args.begin());
             }
+        }
+        else
+        {
+            parser.type = ParserType::Ignore;
         }
     }
     else
