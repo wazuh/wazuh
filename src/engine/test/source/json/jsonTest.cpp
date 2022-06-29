@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <string>
+#include <limits>
 
 #define GTEST_COUT std::cerr << "[          ] [ INFO ] "
 
@@ -1126,4 +1127,41 @@ TEST(JsonSettersTest, SetObject)
 
     // Invalid pointer
     ASSERT_THROW(jObjObject.setObject("object/key"), std::runtime_error);
+}
+
+TEST(JsonSettersTest, AppendString)
+{
+    Json jObjString {R"({
+        "nested": ["value"]
+    })"};
+    Json jObjStringOverwrite {R"({
+        "nested": 1
+    })"};
+    Json jString {"[\"value\"]"};
+    Json jStringOverwrite {"1"};
+    Json jEmpty {};
+    Json jObjEmpty {};
+    ASSERT_NO_THROW(jObjString.appendString("value2", "/nested"));
+    ASSERT_EQ(jObjString.size("/nested"), 2);
+    ASSERT_EQ(jObjString.getString("/nested/0"), "value");
+    ASSERT_EQ(jObjString.getString("/nested/1"), "value2");
+    ASSERT_NO_THROW(jObjStringOverwrite.appendString("value2", "/nested"));
+    ASSERT_EQ(jObjStringOverwrite.size("/nested"), 1);
+    ASSERT_EQ(jObjStringOverwrite.getString("/nested/0"), "value2");
+    ASSERT_NO_THROW(jString.appendString("value2"));
+    ASSERT_EQ(jString.size(), 2);
+    ASSERT_EQ(jString.getString("/0"), "value");
+    ASSERT_EQ(jString.getString("/1"), "value2");
+    ASSERT_NO_THROW(jStringOverwrite.appendString("value2"));
+    ASSERT_EQ(jStringOverwrite.size(), 1);
+    ASSERT_EQ(jStringOverwrite.getString("/0"), "value2");
+    ASSERT_NO_THROW(jEmpty.appendString("value2"));
+    ASSERT_EQ(jEmpty.size(), 1);
+    ASSERT_EQ(jEmpty.getString("/0"), "value2");
+    ASSERT_NO_THROW(jObjEmpty.appendString("value2", "/nested"));
+    ASSERT_EQ(jObjEmpty.size("/nested"), 1);
+    ASSERT_EQ(jObjEmpty.getString("/nested/0"), "value2");
+
+    // Invalid pointer
+    ASSERT_THROW(jObjString.appendString("object/key", "value2"), std::runtime_error);
 }
