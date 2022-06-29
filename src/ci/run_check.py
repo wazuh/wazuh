@@ -304,59 +304,55 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
     """
     utils.printHeader(moduleName=moduleName,
                       headerKey="rtr")
-    try:
-        runCppCheck(moduleName=moduleName)
-        build_tools.makeDeps(targetName=target, srcOnly=False)
-        build_tools.makeTarget(targetName=target, tests=True, debug=True)
-        runTests(moduleName=moduleName)
+    runCppCheck(moduleName=moduleName)
+    build_tools.makeDeps(targetName=target, srcOnly=False)
+    build_tools.makeTarget(targetName=target, tests=True, debug=True)
+    runTests(moduleName=moduleName)
+    build_tools.cleanFolder(moduleName=moduleName,
+                            additionalFolder="build")
+    build_tools.configureCMake(moduleName=moduleName,
+                               debugMode=True,
+                               testMode=(False, True)
+                               [moduleName != "shared_modules/utils"],
+                               withAsan=False)
+    if target != "winagent":
+        build_tools.makeLib(moduleName=moduleName)
+        runValgrind(moduleName=moduleName)
+        runCoverage(moduleName=moduleName)
+    runAStyleCheck(moduleName=moduleName)
+    configPath = os.path.join(utils.currentPath(),
+                              "input/test_tool_config.json")
+    smokeTestConfig = utils.readJSONFile(jsonFilePath=configPath)
+    if target == "winagent":
+        build_tools.cleanAll()
+        build_tools.cleanExternals()
+        build_tools.makeDeps(targetName="agent", srcOnly=False)
+        build_tools.makeTarget(targetName="agent", tests=False, debug=True)
         build_tools.cleanFolder(moduleName=moduleName,
                                 additionalFolder="build")
-        build_tools.configureCMake(moduleName=moduleName,
-                                   debugMode=True,
-                                   testMode=(False, True)
-                                   [moduleName != "shared_modules/utils"],
-                                   withAsan=False)
-        if target != "winagent":
-            build_tools.makeLib(moduleName=moduleName)
-            runValgrind(moduleName=moduleName)
-            runCoverage(moduleName=moduleName)
-        runAStyleCheck(moduleName=moduleName)
-        configPath = os.path.join(utils.currentPath(),
-                                  "input/test_tool_config.json")
-        smokeTestConfig = utils.readJSONFile(jsonFilePath=configPath)
-        if target == "winagent":
-            build_tools.cleanAll()
-            build_tools.cleanExternals()
-            build_tools.makeDeps(targetName="agent", srcOnly=False)
-            build_tools.makeTarget(targetName="agent", tests=False, debug=True)
-            build_tools.cleanFolder(moduleName=moduleName,
-                                    additionalFolder="build")
-        if moduleName != "shared_modules/utils":
-            runASAN(moduleName=moduleName,
-                    testToolConfig=smokeTestConfig)
-        if moduleName == "syscheckd":
-            runTestToolForWindows(moduleName=moduleName,
-                                  testToolConfig=smokeTestConfig)
-            runTestToolCheck(moduleName=moduleName)
-        if moduleName != "syscheckd":
-            build_tools.cleanAll()
-            build_tools.cleanExternals()
-        if target != "winagent":
-            utils.printHeader(moduleName=moduleName,
-                              headerKey="winagentTests")
-            build_tools.makeDeps(targetName="winagent",
-                                 srcOnly=False)
-            build_tools.makeTarget(targetName="winagent",
-                                   tests=True,
-                                   debug=True)
-            runTests(moduleName=moduleName)
-        if clean:
-            utils.deleteLogs(moduleName=moduleName)
-        utils.printGreen(msg="[RTR: PASSED]",
-                         module=moduleName)
-    except Exception as e:
-        utils.printFail(msg="[RTR: FAILED]")
-        print(e)
+    if moduleName != "shared_modules/utils":
+        runASAN(moduleName=moduleName,
+                testToolConfig=smokeTestConfig)
+    if moduleName == "syscheckd":
+        runTestToolForWindows(moduleName=moduleName,
+                              testToolConfig=smokeTestConfig)
+        runTestToolCheck(moduleName=moduleName)
+    if moduleName != "syscheckd":
+        build_tools.cleanAll()
+        build_tools.cleanExternals()
+    if target != "winagent":
+        utils.printHeader(moduleName=moduleName,
+                          headerKey="winagentTests")
+        build_tools.makeDeps(targetName="winagent",
+                             srcOnly=False)
+        build_tools.makeTarget(targetName="winagent",
+                               tests=True,
+                               debug=True)
+        runTests(moduleName=moduleName)
+    if clean:
+        utils.deleteLogs(moduleName=moduleName)
+    utils.printGreen(msg="[RTR: PASSED]",
+                     module=moduleName)
 
 
 def runScanBuild(targetName):
