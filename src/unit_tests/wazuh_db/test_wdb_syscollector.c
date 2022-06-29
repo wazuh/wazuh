@@ -2199,16 +2199,19 @@ void test_wdb_osinfo_insert_cache_fail(void ** state) {
     will_return(__wrap_wdb_stmt_cache, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "at wdb_osinfo_insert(): cannot cache statement");
 
+    os_sha1 digest = "hexdigest";
     output =
         wdb_osinfo_insert(data, "scan_id", "scan_time", "hostname", "architecture", "os_name", "os_version",
                           "os_codename", "os_major", "os_minor", "os_patch", "os_build", "os_platform", "sysname",
-                          "release", "version", "os_release", "os_display_version", "checksum", false, "hexdigest", 1);
+                          "release", "version", "os_release", "os_display_version", "checksum", false, digest, 1);
     assert_int_equal(output, -1);
 }
 
 void test_wdb_osinfo_insert_sql_fail(void ** state) {
     int output = 0;
     wdb_t * data = (wdb_t *) *state;
+    os_sha1 digest = "hexdigest";
+
 
     will_return(__wrap_wdb_stmt_cache, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
@@ -2266,7 +2269,7 @@ void test_wdb_osinfo_insert_sql_fail(void ** state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "checksum");
     will_return(__wrap_sqlite3_bind_text, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 19);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "hexdigest");
+    expect_string(__wrap_sqlite3_bind_text, buffer, digest);
     will_return(__wrap_sqlite3_bind_text, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 20);
     expect_value(__wrap_sqlite3_bind_int, value, 1);
@@ -2279,13 +2282,14 @@ void test_wdb_osinfo_insert_sql_fail(void ** state) {
     output =
         wdb_osinfo_insert(data, "scan_id", "scan_time", "hostname", "architecture", "os_name", "os_version",
                           "os_codename", "os_major", "os_minor", "os_patch", "os_build", "os_platform", "sysname",
-                          "release", "version", "os_release", "os_display_version", "checksum", false, "hexdigest", 1);
+                          "release", "version", "os_release", "os_display_version", "checksum", false, digest, 1);
     assert_int_equal(output, -1);
 }
 
 void test_wdb_osinfo_insert_success(void ** state) {
     int output = 0;
     wdb_t * data = (wdb_t *) *state;
+    os_sha1 digest = "hexdigest";
 
     will_return(__wrap_wdb_stmt_cache, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
@@ -2343,7 +2347,7 @@ void test_wdb_osinfo_insert_success(void ** state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "checksum");
     will_return(__wrap_sqlite3_bind_text, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 19);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "hexdigest");
+    expect_string(__wrap_sqlite3_bind_text, buffer, digest);
     will_return(__wrap_sqlite3_bind_text, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 20);
     expect_value(__wrap_sqlite3_bind_int, value, 1);
@@ -2353,7 +2357,7 @@ void test_wdb_osinfo_insert_success(void ** state) {
     output =
         wdb_osinfo_insert(data, "scan_id", "scan_time", "hostname", "architecture", "os_name", "os_version",
                           "os_codename", "os_major", "os_minor", "os_patch", "os_build", "os_platform", "sysname",
-                          "release", "version", "os_release", "os_display_version", "checksum", false, "hexdigest", 1);
+                          "release", "version", "os_release", "os_display_version", "checksum", false, digest, 1);
     assert_int_equal(output, 0);
 }
 
