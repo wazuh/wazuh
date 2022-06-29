@@ -17,6 +17,7 @@ const parserConfigFuncPtr kParsersConfig[] = {
     configureQuotedString,
     configureBooleanParser,
     nullptr,
+    configureIgnoreParser,
 };
 
 const parserFuncPtr kAvailableParsers[] = {
@@ -35,4 +36,5 @@ const parserFuncPtr kAvailableParsers[] = {
     parseQuotedString,
     parseBoolean,
     nullptr,
+    parseIgnore,
 };

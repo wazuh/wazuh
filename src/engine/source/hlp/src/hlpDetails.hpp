@@ -27,6 +27,7 @@ enum class ParserType
     QuotedString,
     Boolean,
     Invalid,
+    Ignore,
 };
 
 enum class ExpressionType;
