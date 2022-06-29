@@ -13,8 +13,6 @@
 
 #include <stdint.h>
 
-OSHash *remoted_agents_state;
-
 /* Status structures */
 
 typedef struct _ctrl_msgs_t {

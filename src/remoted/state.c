@@ -24,6 +24,7 @@ static char *refresh_time;
 /**
  * @brief Search or create and return agent state node
  * @param agent_id Id of the agent that corresponds to the node
+ * @return remoted_agent_state_t node
  */
 static remoted_agent_state_t * get_node(char *agent_id);
 
@@ -231,7 +232,7 @@ static void w_remoted_clean_agents_state() {
 
     active_agents = wdb_get_agents_by_connection_status(AGENT_CS_ACTIVE, &sock);
     if(!active_agents) {
-        merror("Unable to get connected agent's.");
+        merror("Unable to get connected agents.");
         return;
     }
 
@@ -252,10 +253,9 @@ static void w_remoted_clean_agents_state() {
 
         if (exist == 0) {
             agent_state = (remoted_agent_state_t *)OSHash_Delete_ex(remoted_agents_state, agent_id);
-            if (agent_state) {
-                os_free(agent_state);
-            }
+            os_free(agent_state);
             hash_node = OSHash_Begin(remoted_agents_state, &inode_it);
+            continue;
         }
 
         hash_node = OSHash_Next(remoted_agents_state, &inode_it, hash_node);
@@ -648,7 +648,7 @@ cJSON* rem_create_state_json() {
             hash_node = OSHash_Next(remoted_agents_state, &index, hash_node);
         }
 
-        cJSON_AddItemToObject(rem_state_json, "agents_conected", _array);
+        cJSON_AddItemToObject(rem_state_json, "agents_connected", _array);
     }
     w_mutex_unlock(&agents_state_mutex);
 

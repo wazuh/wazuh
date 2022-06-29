@@ -18,6 +18,7 @@
 #include "wazuh_db/helpers/wdb_global_helpers.h"
 
 analysisd_state_t analysisd_state;
+OSHash *analysisd_agents_state;
 queue_status_t queue_status;
 static pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -118,6 +119,7 @@ static void w_inc_firewall_agent_written(char * agent_id);
 /**
  * @brief Search or create and return agent state node
  * @param agent_id Id of the agent that corresponds to the node
+ * @return analysisd_agent_state_t node
  */
 static analysisd_agent_state_t * get_node(char *agent_id);
 
@@ -528,7 +530,7 @@ static void w_analysisd_clean_agents_state() {
 
     active_agents = wdb_get_agents_by_connection_status(AGENT_CS_ACTIVE, &sock);
     if(!active_agents) {
-        merror("Unable to get connected agent's.");
+        merror("Unable to get connected agents.");
         return;
     }
 
@@ -549,10 +551,9 @@ static void w_analysisd_clean_agents_state() {
 
         if (exist == 0) {
             agent_state = (analysisd_agent_state_t *)OSHash_Delete_ex(analysisd_agents_state, agent_id);
-            if (agent_state) {
-                os_free(agent_state);
-            }
+            os_free(agent_state);
             hash_node = OSHash_Begin(analysisd_agents_state, &inode_it);
+            continue;
         }
 
         hash_node = OSHash_Next(analysisd_agents_state, &inode_it, hash_node);
@@ -1040,7 +1041,7 @@ cJSON* asys_create_state_json() {
             hash_node = OSHash_Next(analysisd_agents_state, &index, hash_node);
         }
 
-        cJSON_AddItemToObject(asys_state_json, "agents_conected", _array);
+        cJSON_AddItemToObject(asys_state_json, "agents_connected", _array);
     }
     w_mutex_unlock(&agents_state_mutex);
 
