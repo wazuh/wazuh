@@ -544,14 +544,15 @@ def runTests(moduleName):
         if entry.is_file() and bool(re.match(reg, entry.name)):
             tests.append(entry.name)
     if len(tests) > 0:
+        os.chdir(currentDir)
         for test in tests:
-            path = os.path.join(currentDir, test)
+            #path = os.path.join(currentDir, test)
             if ".exe" in test:
                 command = f'WINEPATH="/usr/i686-w64-mingw32/lib;\
                             {utils.currentPath()}" \
-                            WINEARCH=win64 /usr/bin/wine {path}'
+                            WINEARCH=win64 /usr/bin/wine ./{test}'
             else:
-                command = path
+                command = "./{}".format(test)
             out = subprocess.run(command,
                                  stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE,
