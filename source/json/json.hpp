@@ -1027,6 +1027,59 @@ public:
                                                  path));
         }
     }
+
+    /**
+     * @brief Append string to the Array object at the path.
+     * Parents objects are created if they do not exist.
+     * If the object is not an Array, it is converted to an Array.
+     *
+     * @param value The string to append.
+     *
+     * @throws std::runtime_error If path is invalid.
+     */
+    void appendString(std::string_view value, std::string_view path = "")
+    {
+        auto pp = rapidjson::Pointer(path.data());
+
+        if (pp.IsValid())
+        {
+            //TODO: not sure if needed, add test
+            const rapidjson::size_t s1 = static_cast<rapidjson::size_t>(value.size());
+            const size_t s2 = static_cast<size_t>(s1);
+            if (s2 != value.size())
+            {
+                throw std::runtime_error(
+                    fmt::format("[Json::appendString(basePointerPath)] "
+                                "String is too long: [{}]",
+                                value));
+            }
+            rapidjson::Value v(value.data(), s2, m_document.GetAllocator());
+
+            auto* val = pp.Get(m_document);
+            if (val)
+            {
+                if (!val->IsArray())
+                {
+                    val->SetArray();
+                }
+
+                val->PushBack(v, m_document.GetAllocator());
+            }
+            else
+            {
+                rapidjson::Value vArray;
+                vArray.SetArray();
+                vArray.PushBack(v, m_document.GetAllocator());
+                pp.Set(m_document, vArray);
+            }
+        }
+        else
+        {
+            throw std::runtime_error(fmt::format("[Json::appendString(basePointerPath)] "
+                                                 "Invalid json path: [{}]",
+                                                 path));
+        }
+    }
 };
 
 } // namespace json

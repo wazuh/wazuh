@@ -84,6 +84,8 @@ base::Expression opBuilderHelperIntCalc(std::any definition);
  */
 base::Expression opBuilderHelperRegexExtract(std::any definition);
 
+base::Expression opBuilderHelperAppendString(const std::any& definition);
+
 } // namespace builder::internals::builders
 
 #endif // _OP_BUILDER_HELPER_MAP_H
