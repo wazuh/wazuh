@@ -14,8 +14,6 @@
 
 #include <stdint.h>
 
-OSHash *analysisd_agents_state;
-
 /* Status structures */
 
 typedef struct _queue_status_t {
