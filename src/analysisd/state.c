@@ -25,6 +25,8 @@ static pthread_mutex_t agents_state_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int w_analysisd_write_state();
 static int interval;
 
+extern OSHash *analysisd_agents_state;
+
 /**
  * @brief Get the number of elements divided by the size of queues
  * Values are save in state's variables
