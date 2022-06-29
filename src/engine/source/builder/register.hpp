@@ -62,11 +62,11 @@ static void registerBuilders()
     // Registry::registerBuilder(builders::opBuilderHelperNotNull, "helper.not_null");
 
     // Map Helpers
-    // Registry::registerBuilder(builders::opBuilderHelperIntCalc, "helper.i_calc");
-    // Registry::registerBuilder(builders::opBuilderHelperStringUP, "helper.s_up");
-    // Registry::registerBuilder(builders::opBuilderHelperStringLO, "helper.s_lo");
-    // Registry::registerBuilder(builders::opBuilderHelperStringTrim, "helper.s_trim");
-    // Registry::registerBuilder(builders::opBuilderHelperRegexExtract, "helper.r_ext");
+    Registry::registerBuilder(builders::opBuilderHelperIntCalc, "helper.i_calc");
+    Registry::registerBuilder(builders::opBuilderHelperStringUP, "helper.s_up");
+    Registry::registerBuilder(builders::opBuilderHelperStringLO, "helper.s_lo");
+    Registry::registerBuilder(builders::opBuilderHelperStringTrim, "helper.s_trim");
+    Registry::registerBuilder(builders::opBuilderHelperRegexExtract, "helper.r_ext");
     Registry::registerBuilder(builders::opBuilderHelperAppendString, "helper.s_append");
 
 }
