@@ -110,9 +110,27 @@ bool configureAnyParser(Parser& parser, std::vector<std::string_view> const& arg
 
 bool configureQuotedString(Parser& parser, std::vector<std::string_view> const& args)
 {
-    if (!args.empty() && args[0] == "SIMPLE")
+    if (args.empty())
     {
-        parser.options.push_back({});
+        parser.options.push_back("\"");
+        parser.options.push_back("\"");
+    }
+    else if (args.size() == 1)
+    {
+        parser.options.push_back(std::string {args[0]});
+        parser.options.push_back(std::string {args[0]});
+    }
+    else if (args.size() == 2)
+    {
+        parser.options.push_back(std::string {args[0]});
+        parser.options.push_back(std::string {args[1]});
+    }
+    else
+    {
+        auto msg = fmt::format("[HLP] Invalid arguments for quoted string Parser. "
+                               "Expected 0, 1 or 2, got [{}]",
+                               args.size());
+        throw std::runtime_error(msg);
     }
 
     return true;
@@ -129,6 +147,71 @@ bool configureBooleanParser(Parser& parser, std::vector<std::string_view> const&
         parser.options.emplace_back("true");
     }
 
+    return true;
+}
+
+bool configureIgnoreParser(Parser& parser, std::vector<std::string_view> const& args)
+{
+    if (!args.empty())
+    {
+        if (args.size() == 1)
+        {
+            parser.options.push_back(std::string {args[0]});
+        }
+        else
+        {
+            auto msg = fmt::format("[HLP] Invalid arguments for ignore Parser. "
+                                   "Expected 0 or 1, got [{}]",
+                                   args.size());
+            throw std::runtime_error(msg);
+        }
+    }
+    return true;
+}
+
+bool parseIgnore(const char** it, Parser const& parser, ParseResult& result)
+{
+    auto start = *it;
+    if (!parser.options.empty())
+    {
+        auto ignoreStr = parser.options[0];
+        size_t ignoreLen = ignoreStr.size();
+        bool ignore = true;
+
+        auto checkIgnore = [&](const char** it)
+        {
+            auto start = **it;
+            for (auto i = 0; **it != '\0' && i < ignoreLen; ++i, ++*it)
+            {
+                if (**it != ignoreStr[i])
+                {
+                    (*it) -= i;
+                    return false;
+                }
+            }
+            return true;
+        };
+
+        while (**it != '\0')
+        {
+            if (!checkIgnore(it))
+            {
+                break;
+            }
+        }
+    }
+    else
+    {
+        while (**it != '\0')
+        {
+            if (**it == parser.endToken)
+            {
+                break;
+            }
+        }
+    }
+
+    result[parser.name] = std::string {start, *it};
     return true;
 }
 
@@ -413,7 +496,6 @@ bool parseTimeStamp(const char** it, Parser const& parser, ParseResult& result)
         }
 
         std::string tsStr {start, tsSize};
-
 
         // TODO assert options?
         return parseFormattedTime(tsFormat, tsStr, result, parser.name);
@@ -867,29 +949,53 @@ bool parseNumber(const char** it, Parser const& parser, ParseResult& result)
 
 bool parseQuotedString(const char** it, Parser const& parser, ParseResult& result)
 {
-    const char* start = *it;
     bool escaped = false;
 
-    char quotedChar = !parser.options.empty() ? '\'' : '"';
+    const auto& startQuote = parser.options[0];
+    const auto& endQuote = parser.options[1];
 
-    if (**it != quotedChar)
+    for (const auto& ch : startQuote)
     {
-        return false;
-    }
-    (*it)++;
-
-    while (**it != '\0' && (escaped || **it != quotedChar))
-    {
+        if (**it != ch)
+        {
+            return false;
+        }
         (*it)++;
-        escaped = **it == '\\';
     }
 
-    if (**it != quotedChar)
+    const char* start = *it;
+
+    auto checkEnd = [&](const char** it)
+    {
+        for (const auto& ch : endQuote)
+        {
+            if (**it != ch)
+            {
+                return false;
+            }
+            (*it)++;
+        }
+        return true;
+    };
+    auto foundEnd = false;
+
+    while (**it != '\0' && (escaped || !foundEnd))
+    {
+        escaped = **it == '\\';
+        foundEnd = checkEnd(it);
+        if (!foundEnd)
+        {
+            (*it)++;
+        }
+    }
+
+    if (!foundEnd)
     {
         return false;
     }
 
-    result[parser.name] = std::string {++start, *it};
+    const char* end = *it - endQuote.size() - 1;
+    result[parser.name] = std::string {start, end};
     return true;
 }
 

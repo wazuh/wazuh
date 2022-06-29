@@ -15,8 +15,7 @@ struct Parser;
  * @param args List with the options for configuring the map parser
  * @return true on success. false on error
  */
-bool configureMapParser(Parser &parser,
-                        std::vector<std::string_view> const &args);
+bool configureMapParser(Parser& parser, std::vector<std::string_view> const& args);
 
 /**
  * @brief Method to pre-configure a TimeStamp parser at build stage to be used
@@ -26,8 +25,7 @@ bool configureMapParser(Parser &parser,
  * @param args List with the options for configuring the TimeStamp parser
  * @return true on success. false on error
  */
-bool configureTsParser(Parser &parser,
-                       std::vector<std::string_view> const &args);
+bool configureTsParser(Parser& parser, std::vector<std::string_view> const& args);
 
 /**
  * @brief Method to pre-configure a Filepath parser at build stage to be used on
@@ -37,8 +35,7 @@ bool configureTsParser(Parser &parser,
  * @param args List with the options for configuring the Filepath parser
  * @return true on success. false on error
  */
-bool configureFilepathParser(Parser &parser,
-                             std::vector<std::string_view> const &args);
+bool configureFilepathParser(Parser& parser, std::vector<std::string_view> const& args);
 
 /**
  * @brief Method to pre-configure a Dpmain parser at build stage to be used on
@@ -48,23 +45,20 @@ bool configureFilepathParser(Parser &parser,
  * @param args List with the options for configuring the Domain parser
  * @return true on success. false on error
  */
-bool configureDomainParser(Parser &parser,
-                           std::vector<std::string_view> const &args);
+bool configureDomainParser(Parser& parser, std::vector<std::string_view> const& args);
 
 /**
  * @brief Method to preconfigure an Any parser, setting endToken to final char.
-* @return always true
+ * @return always true
  */
-bool configureAnyParser(Parser &parser,
-                           std::vector<std::string_view> const &args);
+bool configureAnyParser(Parser& parser, std::vector<std::string_view> const& args);
 
 /**
  * @brief Method for pre-configuration of quoted string parsing
  * @param args if SIMPLE is used as a param it will use ' otherwise ""
-* @return always true
+ * @return always true
  */
-bool configureQuotedString(Parser &parser,
-                           std::vector<std::string_view> const &args);
+bool configureQuotedString(Parser& parser, std::vector<std::string_view> const& args);
 
 /**
  * @brief Method for pre-configuration of boolean parsing
@@ -72,8 +66,7 @@ bool configureQuotedString(Parser &parser,
  * default)
  * @return always true
  */
-bool configureBooleanParser(Parser& parser,
-                            std::vector<std::string_view> const& args);
+bool configureBooleanParser(Parser& parser, std::vector<std::string_view> const& args);
 /**
  * @brief Parse an unspecified element until an endtoken character is found
  *
@@ -82,9 +75,7 @@ bool configureBooleanParser(Parser& parser,
  * @param result map where the parsing result is added
  * @return true on success. false on error
  */
-bool parseAny(const char **it,
-              Parser const &parser,
-              ParseResult &result);
+bool parseAny(const char** it, Parser const& parser, ParseResult& result);
 
 /**
  * @brief Parse a literal character
@@ -94,9 +85,7 @@ bool parseAny(const char **it,
  * @param result map where the parsing result is added
  * @return true on success. false on error
  */
-bool matchLiteral(const char **it,
-                  Parser const &parser,
-                  ParseResult &);
+bool matchLiteral(const char** it, Parser const& parser, ParseResult&);
 
 /**
  * @brief Parse a File path string
@@ -106,9 +95,7 @@ bool matchLiteral(const char **it,
  * @param result map where the parsing result is added
  * @return true on success. false on error
  */
-bool parseFilePath(const char **it,
-                   Parser const &parser,
-                   ParseResult &result);
+bool parseFilePath(const char** it, Parser const& parser, ParseResult& result);
 
 /**
  * @brief Parse a JSON string
@@ -118,9 +105,7 @@ bool parseFilePath(const char **it,
  * @param result map where the parsing result is added
  * @return true on success. false on error
  */
-bool parseJson(const char **it,
-               Parser const &parser,
-               ParseResult &result);
+bool parseJson(const char** it, Parser const& parser, ParseResult& result);
 
 /**
  * @brief Parse a map-like string
@@ -130,9 +115,7 @@ bool parseJson(const char **it,
  * @param result map where the parsing result is added
  * @return true on success. false on error
  */
-bool parseMap(const char **it,
-              Parser const &parser,
-              ParseResult &result);
+bool parseMap(const char** it, Parser const& parser, ParseResult& result);
 
 /**
  * @brief Parse an IP string
@@ -142,9 +125,7 @@ bool parseMap(const char **it,
  * @param result map where the parsing result is added
  * @return true on success. false on error
  */
-bool parseIPaddress(const char **it,
-                    Parser const &parser,
-                    ParseResult &result);
+bool parseIPaddress(const char** it, Parser const& parser, ParseResult& result);
 
 /**
  * @brief Parse a TimeStamp string
@@ -154,9 +135,7 @@ bool parseIPaddress(const char **it,
  * @param result map where the parsing result is added
  * @return true on success. false on error
  */
-bool parseTimeStamp(const char **it,
-                    Parser const &parser,
-                    ParseResult &result);
+bool parseTimeStamp(const char** it, Parser const& parser, ParseResult& result);
 
 /**
  * @brief Parse an url string
@@ -166,9 +145,7 @@ bool parseTimeStamp(const char **it,
  * @param result map where the parsing result is added
  * @return true on success. false on error
  */
-bool parseURL(const char **it,
-              Parser const &parser,
-              ParseResult &result);
+bool parseURL(const char** it, Parser const& parser, ParseResult& result);
 
 /**
  * @brief Parse a domain string
@@ -178,9 +155,7 @@ bool parseURL(const char **it,
  * @param result map where the parsing result is added
  * @return true on success. false on error
  */
-bool parseDomain(const char **it,
-                 Parser const &parser,
-                 ParseResult &result);
+bool parseDomain(const char** it, Parser const& parser, ParseResult& result);
 
 /**
  * @brief Parse a user agent string
@@ -190,9 +165,7 @@ bool parseDomain(const char **it,
  * @param result map where the parsing result is added
  * @return true on success. false on error
  */
-bool parseUserAgent(const char **it,
-                    Parser const &parser,
-                    ParseResult &result);
+bool parseUserAgent(const char** it, Parser const& parser, ParseResult& result);
 
 /**
  * @brief Parse an integer ir floating point number
@@ -201,9 +174,7 @@ bool parseUserAgent(const char **it,
  * @param result the number parsed
  * @return true for success false on error
  */
-bool parseNumber(const char **it,
-              Parser const &parser,
-              ParseResult &result);
+bool parseNumber(const char** it, Parser const& parser, ParseResult& result);
 
 /**
  * @brief parse a quoted string
@@ -211,9 +182,7 @@ bool parseNumber(const char **it,
  * @param result string under quotes
  * @return true for success false on error
  */
-bool parseQuotedString(const char **it,
-              Parser const &parser,
-              ParseResult &result);
+bool parseQuotedString(const char** it, Parser const& parser, ParseResult& result);
 
 /**
  * @brief parse a quoted string
@@ -221,7 +190,8 @@ bool parseQuotedString(const char **it,
  * @param result true if strings compares against configured trueval
  * @return true for success false on error
  */
-bool parseBoolean(const char **it,
-        Parser const& parser,
-        ParseResult &result);
+bool parseBoolean(const char** it, Parser const& parser, ParseResult& result);
+
+bool configureIgnoreParser(Parser& parser, std::vector<std::string_view> const& args);
+bool parseIgnore(const char** it, Parser const& parser, ParseResult& result);
 #endif //_H_SPECIFIC_PARSERS
