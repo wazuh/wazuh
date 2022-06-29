@@ -205,7 +205,7 @@ namespace Utils
             {
                 std::string ret;
                 FILETIME lastModificationTime { };
-                auto result
+                const auto result
                 {
                     RegQueryInfoKey(m_registryKey, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &lastModificationTime)
                 };
