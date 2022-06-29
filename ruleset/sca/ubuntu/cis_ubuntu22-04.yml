@@ -155,7 +155,7 @@ checks:
     title: "Ensure nodev option set on /tmp partition."
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the /tmp filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices in /tmp."
-    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /tmp: # mount -o remount,nodev /tmp     OR      Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add nodev to the /tmp mount options:  [Mount]   Options=mode=1777,strictatime,noexec,nodev,nosuid Run the following command to restart the systemd daemon: #  systemctl daemon-reload
+    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /tmp: # mount -o remount,nodev /tmp     OR      Edit /etc/systemd/system/local-fs.target.wants/tmp.mount to add nodev to the /tmp mount options:  [Mount]   Options=mode=1777,strictatime,noexec,nodev,nosuid Run the following command to restart the systemd daemon: #  systemctl daemon-reload"
     compliance:
       - cis: ["1.1.3"]
       - cis_csc: ["5.1"]
@@ -565,7 +565,7 @@ checks:
   # 1.5.2  Ensure address space layout randomization (ASLR) is enabled (Automated)
   - id: 28531
     title: "Ensure address space layout randomization (ASLR) is enabled."
-    description: "Address space layout randomization (ASLR) is an exploit mitigation technique which randomly arranges the address space of key data areas of a process."
+    description: "Address space layout randomization (ASLR) is an exploit mitigation technique which randomly arranges the address space of key data areas of a process. Note: for audit this check monitorize /etc/sysctl.conf and /etc/sysctl.d/*.conf files. Others like  /usr/lib/sysctl.d/*.conf, /usr/local/lib/sysctl.d/*.conf, and /run/sysctl.d/*.conf may not exists by default cauising the check to fail."
     rationale: "Randomly placing virtual memory regions will make it difficult to write memory page exploits as the memory placement will be consistently shifting."
     remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: kernel.randomize_va_space = 2 Run the following command to set the active kernel parameter: # sysctl -w kernel.randomize_va_space=2"
     compliance:
@@ -576,7 +576,8 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:grep -Rh ^kernel\.randomize_va_space /etc/sysctl.conf /etc/sysctl.d -> r:\s*\t*2$'
+      - "f:/etc/sysctl.conf -> r:^kernel.randomize_va_space = 2$"
+      - 'd:/etc/sysctl.d -> r:\.*\.conf -> r:^kernel.randomize_va_space = 2$'
       - 'c:sysctl kernel.randomize_va_space -> r:^kernel.randomize_va_space\s*\t*=\s*\t*2'
 
   # 1.5.3  Ensure prelink is not installed (Automated)
@@ -634,8 +635,8 @@ checks:
   # 1.6.1.2  Ensure AppArmor is enabled in the bootloader configuration (Automated)
   - id: 28535
     title: "Ensure AppArmor is enabled in the bootloader configuration."
-    description: "Configure AppArmor to be enabled at boot time and verify that it has not been overwrittenby the bootloader boot parameters."
-    rationale: "AppArmor must be enabled at boot time in your grub configuration to ensure that the controls it provides are not overridden."
+    description: "Configure AppArmor to be enabled at boot time and verify that it has not been overwritten by the bootloader boot parameters. Note: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings."
+    rationale: "AppArmor must be enabled at boot time in your bootloader configuration to ensure that the controls it provides are not overridden."
     remediation: 'Edit /etc/default/grub and add the apparmor=1 and security=apparmor parameters to the GRUB_CMDLINE_LINUX= line   GRUB_CMDLINE_LINUX="apparmor=1 security=apparmor"      Run the following command to update the grub2 configuration # update-grub    Notes: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings.'
     compliance:
       - cis: ["1.6.1.2"]
@@ -643,17 +644,17 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: none
+    condition: all
     rules:
-      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && !r:apparmor=1 && !r:/boot/memtest86+.bin'
-      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && !r:security=apparmor && !r:/boot/memtest86+.bin'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && r:apparmor=1'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && r:security=apparmor'
 
   # 1.6.1.3  Ensure all AppArmor Profiles are in enforce or complain mode (Automated)
   - id: 28536
     title: "Ensure all AppArmor Profiles are in enforce or complain mode."
-    description: "AppArmor profiles define what resources applicatons are able to access."
-    rationale: "Security configuration requirements vary from site to site. Some sites may mandate a policy that is stricter than the default policy, which is perfectly acceptable. This item is intended to ensure that any policies that exist on the system are activated.."
-    remediation: "Run the following command to set all profiles to enforce mode: # aa-enforce /etc/apparmor.d/*   OR   Run the following command to set all profiles to complain mode: # aa-complain /etc/apparmor.d/* Any unconfined processes may need to have a profile created or activated for them and then be restarted."
+    description: "AppArmor profiles define what resources applications are able to access."
+    rationale: "Security configuration requirements vary from site to site. Some sites may mandate a policy that is stricter than the default policy, which is perfectly acceptable. This item is intended to ensure that any policies that exist on the system are activated."
+    remediation: "Run the following command to set all profiles to enforce mode: # aa-enforce /etc/apparmor.d/* OR Run the following command to set all profiles to complain mode: # aa-complain /etc/apparmor.d/* Note: Any unconfined processes may need to have a profile created or activated for them and then be restarted"
     compliance:
       - cis: ["1.6.1.3"]
       - cis_csc: ["14.6"]
@@ -667,9 +668,9 @@ checks:
   # 1.6.1.4  Ensure all AppArmor Profiles are enforcing (Automated)
   - id: 28537
     title: "Ensure all AppArmor Profiles are enforcing."
-    description: "AppArmor profiles define what resources applicatons are able to access."
-    rationale: "Security configuration requirements vary from site to site. Some sites may mandate a policy that is stricter than the default policy, which is perfectly acceptable. This item is intended to ensure that any policies that exist on the system are activated.."
-    remediation: "Run the following command to set all profiles to enforce mode: # aa-enforce /etc/apparmor.d/* Any unconfined processes may need to have a profile created or activated for them and then be restarted."
+    description: "AppArmor profiles define what resources applications are able to access."
+    rationale: "Security configuration requirements vary from site to site. Some sites may mandate a policy that is stricter than the default policy, which is perfectly acceptable. This item is intended to ensure that any policies that exist on the system are activated."
+    remediation: "Run the following command to set all profiles to enforce mode: # aa-enforce /etc/apparmor.d/* Note: Any unconfined processes may need to have a profile created or activated for them and then be restarted."
     compliance:
       - cis: ["1.6.1.4"]
       - cis_csc: ["14.6"]
@@ -744,8 +745,9 @@ checks:
       - gpg_13: ["7.8"]
       - gdpr_IV: ["35.7", "32.2"]
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
-    condition: all
+    condition: any
     rules:
+      - "not f:/etc/motd"
       - 'c:stat /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 1.7.5  Ensure permissions on /etc/issue are configured (Automated)
@@ -870,9 +872,9 @@ checks:
   # 2.1.1.3  Ensure chrony is configured (Automated)
   - id: 28548
     title: "Ensure chrony is configured."
-    description: "chrony is a daemon which implements the Network Time Protocol (NTP) is designed to synchronize system clocks across a variety of systems and use a source that is highly accurate. More information on chrony can be found at http://chrony.tuxfamily.org/. chrony can be configured to be a client and/or a server."
-    rationale: "If chrony is in use on the system proper configuration is vital to ensuring time synchronization is working properly. This recommendation only applies if chrony is in use on the system."
-    remediation: "Add or edit server or pool lines to /etc/chrony/chrony.conf as appropriate: server <remote-server> Configure chrony to run as the chrony user by configuring the appropriate startup script for your distribution. Startup scripts are typically stored in /etc/init.d or /etc/systemd ."
+    description: "chrony is a daemon which implements the Network Time Protocol (NTP) and is designed to synchronize system clocks across a variety of systems and use a source that is highly accurate. More information on chrony can be found at: http://chrony.tuxfamily.org/. chrony can be configured to be a client and/or a server. Notes: - If ntp or systemd-timesyncd are used, chrony should be removed and this section skipped - This recommendation only applies if chrony is in use on the system - Only one time synchronization method should be in use on the system"
+    rationale: "If chrony is in use on the system proper configuration is vital to ensuring time synchronization is working properly."
+    remediation: "Run the following command to stop and mask systemd-timesyncd: # systemctl --now mask systemd-timesyncd Configure chrony: Add or edit server or pool lines to /etc/chrony/chrony.conf as appropriate: server <remote-server> Add or edit the user line to /etc/chrony/chrony.conf: user _chrony"
     compliance:
       - cis: ["2.1.1.3"]
       - cis_csc: ["6.1"]
@@ -924,7 +926,7 @@ checks:
   - id: 28551
     title: "Ensure Avahi Server is not installed."
     description: "Avahi is a free zeroconf implementation, including a system for multicast DNS/DNS-SD service discovery. Avahi allows programs to publish and discover services and hosts running on a local network with no specific configuration. For example, a user can plug a computer into a network and Avahi automatically finds printers to print to, files to look at and people to talk to, as well as network services running on the machine."
-    rationale: "Automatic discovery of network services is not normally required for system functionality. It is recommended to disable the service to reduce the potential attach surface."
+    rationale: "Automatic discovery of network services is not normally required for system functionality. It is recommended to remove this package to reduce the potential attack surface."
     remediation: "Run the following command to remove avahi-daemon: # systemctl --now disable avahi-daemon # systemctl stop avahi-daemon.socket  # apt purge avahi-daemon"
     compliance:
       - cis: ["2.1.3"]
@@ -940,7 +942,7 @@ checks:
   - id: 28552
     title: "Ensure CUPS is not installed."
     description: "The Common Unix Print System (CUPS) provides the ability to print to both local and network printers. A system running CUPS can also accept print jobs from remote systems and print them to local printers. It also provides a web based remote administration capability."
-    rationale: "If the system does not need to print jobs or accept print jobs from other systems, it is recommended that CUPS be disabled to reduce the potential attack surface."
+    rationale: "If the system does not need to print jobs or accept print jobs from other systems, it is recommended that CUPS be removed to reduce the potential attack surface."
     remediation: "Run the following command to remove cups: # apt purge cups"
     compliance:
       - cis: ["2.1.4"]
@@ -958,8 +960,8 @@ checks:
   - id: 28553
     title: "Ensure DHCP Server is not installed."
     description: "The Dynamic Host Configuration Protocol (DHCP) is a service that allows machines to be dynamically assigned IP addresses."
-    rationale: "Unless a system is specifically set up to act as a DHCP server, it is recommended that this service be disabled to reduce the potential attack surface."
-    remediation: "Run the following commands to remove dhcpd: # apt purge isc-dhcp-server"
+    rationale: "Unless a system is specifically set up to act as a DHCP server, it is recommended that this package be removed to reduce the potential attack surface."
+    remediation: "Run the following command to remove isc-dhcp-server: # apt purge isc-dhcp-server"
     references:
       - https://www.isc.org/dhcp/
     compliance:
@@ -976,7 +978,7 @@ checks:
   - id: 28554
     title: "Ensure LDAP server is not installed."
     description: "The Lightweight Directory Access Protocol (LDAP) was introduced as a replacement for NIS/YP. It is a service that provides a method for looking up information from a central database."
-    rationale: "If the system will not need to act as an LDAP server, it is recommended that the software be disabled to reduce the potential attack surface."
+    rationale: "If the system will not need to act as an LDAP server, it is recommended that the software be removed to reduce the potential attack surface."
     remediation: "Run the following command to remove slapd: # apt purge slapd"
     compliance:
       - cis: ["2.1.6"]
@@ -994,7 +996,7 @@ checks:
   - id: 28555
     title: "Ensure NFS is not installed."
     description: "The Network File System (NFS) is one of the first and most widely distributed file systems in the UNIX environment. It provides the ability for systems to mount file systems of other servers through the network."
-    rationale: "If the system does not export NFS shares or act as an NFS client, it is recommended that these services be disabled to reduce remote attack surface."
+    rationale: "If the system does not export NFS shares or act as an NFS client, it is recommended that these services be removed to reduce the remote attack surface."
     remediation: "Run the following commands to remove nfs: # apt purge nfs-kernel-server"
     compliance:
       - cis: ["2.1.7"]
@@ -1011,7 +1013,7 @@ checks:
     title: "Ensure DNS Server is not installed."
     description: "The Domain Name System (DNS) is a hierarchical naming system that maps names to IP addresses for computers, services and other resources connected to a network."
     rationale: "Unless a system is specifically designated to act as a DNS server, it is recommended that the package be deleted to reduce the potential attack surface."
-    remediation: "Run the following command to disable dns server: # apt purge bind9"
+    remediation: "Run the following command to disable DNS server: # apt purge bind9"
     compliance:
       - cis: ["2.1.8"]
       - cis_csc: ["9.2"]
@@ -1026,7 +1028,7 @@ checks:
   - id: 28557
     title: "Ensure FTP Server is not installed."
     description: "The File Transfer Protocol (FTP) provides networked computers with the ability to transfer files."
-    rationale: "FTP does not protect the confidentiality of data or authentication credentials. It is recommended sftp be used if file transfer is required. Unless there is a need to run the system as a FTP server (for example, to allow anonymous downloads), it is recommended that the package be deleted to reduce the potential attack surface."
+    rationale: "FTP does not protect the confidentiality of data or authentication credentials. It is recommended SFTP be used if file transfer is required. Unless there is a need to run the system as a FTP server (for example, to allow anonymous downloads), it is recommended that the package be deleted to reduce the potential attack surface."
     remediation: "Run the following command to remove vsftpd: # apt purge vsftpd"
     compliance:
       - cis: ["2.1.9"]
@@ -1043,7 +1045,7 @@ checks:
     title: "Ensure HTTP Server is not installed."
     description: "HTTP or web servers provide the ability to host web site content."
     rationale: "Unless there is a need to run the system as a web server, it is recommended that the package be deleted to reduce the potential attack surface."
-    remediation: "Run the following command to remove apache2: # apt purge apache2"
+    remediation: "Run the following command to remove apache: # apt purge apache2"
     compliance:
       - cis: ["2.1.10"]
       - cis_csc: ["9.2"]
@@ -1105,8 +1107,8 @@ checks:
   # 2.1.14  Ensure SNMP Server is not installed (Automated)
   - id: 28562
     title: "Ensure SNMP Server is not installed."
-    description: "The Simple Network Management Protocol (SNMP) server is used to listen for SNMP commands from an SNMP management system, execute the commands or collect the information and then send results back to the requesting system."
-    rationale: "The SNMP server can communicate using SNMP v1, which transmits data in the clear and does not require authentication to execute commands. Unless absolutely necessary, it is recommended that the SNMP service not be used. If SNMP is required the server should be configured to disallow SNMP v1."
+    description: 'Simple Network Management Protocol (SNMP) is a widely used protocol for monitoring the health and welfare of network equipment, computer equipment and devices like UPSs. Net-SNMP is a suite of applications used to implement SNMPv1 (RFC 1157), SNMPv2 (RFCs 1901-1908), and SNMPv3 (RFCs 3411-3418) using both IPv4 and IPv6. Support for SNMPv2 classic (a.k.a. "SNMPv2 historic" - RFCs 1441-1452) was dropped with the 4.0 release of the UCD-snmp package. The Simple Network Management Protocol (SNMP) server is used to listen for SNMP commands from an SNMP management system, execute the commands or collect the information and then send results back to the requesting system. '
+    rationale: "The SNMP server can communicate using SNMPv1, which transmits data in the clear and does not require authentication to execute commands. SNMPv3 replaces the simple/clear text password sharing used in SNMPv2 with more securely encoded parameters. If the the SNMP service is not required, the net-snmp package should be removed to reduce the attack surface of the system. Note: If SNMP is required: - The server should be configured for SNMP v3 only. User Authentication and Message Encryption should be configured. - If SNMP v2 is absolutely necessary, modify the community strings' values."
     remediation: "Run the following command to remove snmpd: # apt purge snmpd"
     compliance:
       - cis: ["2.1.14"]
@@ -1122,8 +1124,8 @@ checks:
   - id: 28563
     title: "Ensure mail transfer agent is configured for local-only mode."
     description: "Mail Transfer Agents (MTA), such as sendmail and Postfix, are used to listen for incoming mail and transfer the messages to the appropriate user or mail server. If the system is not intended to be a mail server, it is recommended that the MTA be configured to only process local mail."
-    rationale: "The software for all Mail Transfer Agents is complex and most have a long history of security issues. While it is important to ensure that the system can process local mail messages, it is not necessary to have the MTA's daemon listening on a port unless the server is intended to be a mail server that receives and processes mail from other systems."
-    remediation: "Edit /etc/postfix/main.cf and add thefollowing line to the RECEIVING MAIL section. If the line already exists, change it to look like the line below:   inet_interfaces = loopback-only   Restart postfix:    # systemctl restart postfix"
+    rationale: "The software for all Mail Transfer Agents is complex and most have a long history of security issues. While it is important to ensure that the system can process local mail messages, it is not necessary to have the MTA's daemon listening on a port unless the server is intended to be a mail server that receives and processes mail from other systems. Note: This recommendation is designed around the exim4 mail server, depending on your environment you may have an alternative MTA installed such as sendmail. If this is the case consult the documentation for your installed MTA to configure the recommended state."
+    remediation: "Edit /etc/exim4/update-exim4.conf and and or modify following lines to look like the lines below: dc_eximconfig_configtype='local' dc_local_interfaces='127.0.0.1 ; ::1' dc_readhost='' dc_relay_domains='' dc_minimaldns='false' dc_relay_nets='' dc_smarthost='' dc_use_split_config='false' dc_hide_mailname='' dc_mailname_in_oh='true' dc_localdelivery='mail_spool' Restart exim4: # systemctl restart exim4"
     compliance:
       - cis: ["2.1.15"]
       - cis_csc: ["9.2"]
@@ -1132,13 +1134,13 @@ checks:
       - tsc: ["CC5.2", "CC6.4", "CC6.6", "CC6.7"]
     condition: none
     rules:
-      - 'c:ss -lntu -> r:\.*:25\.*LISTEN && !r:127.0.0.1:25\.+LISTEN|::1:25\.*LISTEN'
+      - 'c:ss -lntu -> r:\.*LISTEN\.*:25 && !r:\.+LISTEN\.*127.0.0.1:25|\.*LISTEN\.*\[::1\]:25'
 
   # 2.1.16  Ensure rsync service is not installed (Automated)
   - id: 28564
     title: "Ensure rsync service is not installed."
-    description: "The rsyncd service can be used to synchronize files between systems over network links."
-    rationale: "The rsyncd service presents a security risk as it uses unencrypted protocols for communication."
+    description: "The rsync service can be used to synchronize files between systems over network links."
+    rationale: "The rsync service presents a security risk as it uses unencrypted protocols for communication. The rsync package should be removed to reduce the attack area of the system."
     remediation: "Run the following command to remove rsync: # apt purge rsync"
     compliance:
       - cis: ["2.1.16"]
@@ -3419,8 +3421,8 @@ checks:
   - id: 28686
     title: "Ensure permissions on /etc/gshadow are configured."
     description: "The /etc/gshadow file is used to store the information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
-    rationale: "If attackers can gain read access to the /etc/gshadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/gshadow file (such as group administrators) could also be useful to subvert the group"
-    remediation: "Run the following commands to set permissions on /etc/gshadow : # chown root:shadow /etc/gshadow # chmod o-rwx,g-rw /etc/gshadow"
+    rationale: "If attackers can gain read access to the /etc/gshadow file, they can easily run a password cracking program against the hashed password to break it. Other security information that is stored in the /etc/gshadow file (such as group administrators) could also be useful to subvert the group."
+    remediation: "Run one of the following commands to set ownership of /etc/gshadow to root and group to either root or shadow:  # chown root:root /etc/gshadow # chown root:shadow /etc/gshadow Run the following command to remove excess permissions form /etc/gshadow: # chmod u-x,g-wx,o-rwx /etc/gshadow"
     compliance:
       - cis: ["6.1.8"]
       - cis_csc: ["16.4"]
