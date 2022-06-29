@@ -115,7 +115,7 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
 #endif
     syscheck->prefilter_cmd                   = NULL;
     syscheck->sync_interval                   = 300;
-    syscheck->min_sync_interval               = 60;
+    syscheck->sync_response_timeout           = 30;
     syscheck->sync_max_eps                    = 10;
     syscheck->max_eps                         = 100;
     syscheck->max_files_per_second            = 0;
@@ -1179,7 +1179,6 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
     const char *xml_sync_queue_size = "queue_size";
     const char *xml_max_eps = "max_eps";
     const char *xml_registry_enabled = "registry_enabled";
-    const char *xml_min_sync_interval = "min_interval";
 
     for (int i = 0; node[i]; i++) {
         if (strcmp(node[i]->element, xml_enabled) == 0) {
@@ -1201,7 +1200,13 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
         } else if (strcmp(node[i]->element, xml_max_sync_interval) == 0) {
             mdebug1("'%s' has been deprecated. This setting is skipped.", xml_max_sync_interval);
         } else if (strcmp(node[i]->element, xml_response_timeout) == 0) {
-            mdebug1("'%s' has been deprecated. This setting is skipped.", xml_response_timeout);
+            long interval = w_parse_time(node[i]->content);
+
+            if (interval < 0) {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            } else {
+                syscheck->sync_response_timeout = (uint32_t) interval;
+            }
         } else if (strcmp(node[i]->element, xml_sync_queue_size) == 0) {
             mdebug1("'%s' has been deprecated. This setting is skipped.", xml_sync_queue_size);
         } else if (strcmp(node[i]->element, xml_max_eps) == 0) {
@@ -1223,21 +1228,9 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
                 syscheck->enable_registry_synchronization = r;
             }
 #endif
-        } else if (strcmp(node[i]->element, xml_min_sync_interval) == 0) {
-            long interval = w_parse_time(node[i]->content);
-
-            if (interval < 0) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            } else {
-                syscheck->min_sync_interval = (uint32_t) interval;
-            }
         } else {
             mwarn(XML_INVELEM, node[i]->element);
         }
-    }
-
-    if (syscheck->min_sync_interval >= syscheck->sync_interval) {
-        mwarn("Sync min_interval value higher than interval. Some synchronization turns can be skipped.");
     }
 }
 
