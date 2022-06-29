@@ -452,7 +452,7 @@ void sync_agents_artifacts_with_wdb() {
                     // Agent not found. Removing agent artifacts
                     // Getting agent name from end pointer (-agentname.db)
                     char* agent_name_from_file = end + 1;
-                    char* substring = strchr(agent_name_from_file, '.');
+                    char* substring = strrchr(agent_name_from_file, '.');
                     if (NULL != substring) {
                         *substring = '\0';
                     } else {
