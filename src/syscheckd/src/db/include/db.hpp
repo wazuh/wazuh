@@ -89,7 +89,8 @@ class EXPORTED DB final
                   std::function<void(const std::string&)> callbackSyncRegistryWrapper,
                   std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,
                   int fileLimit,
-                  const uint32_t minSyncIntervalTime,
+                  const uint32_t syncResponseTimeout,
+                  const uint32_t syncMaxInterval,
                   int valueLimit,
                   bool syncRegistryEnabled);
 

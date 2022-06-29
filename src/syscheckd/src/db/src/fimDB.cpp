@@ -24,7 +24,7 @@ void FIMDB::registerRSync()
         FIMDBCreator<OS_TYPE>::registerRsync(m_rsyncHandler,
                                              m_dbsyncHandler->handle(),
                                              m_syncFileMessageFunction,
-                                             m_minSyncIntervalTime,
+                                             m_syncResponseTimeout,
                                              m_syncRegistryMessageFunction,
                                              m_syncRegistryEnabled);
     }
@@ -53,7 +53,8 @@ void FIMDB::init(unsigned int syncInterval,
                  std::shared_ptr<DBSync> dbsyncHandler,
                  std::shared_ptr<RemoteSync> rsyncHandler,
                  const int fileLimit,
-                 const uint32_t minSyncIntervalTime,
+                 const uint32_t syncResponseTimeout,
+                 const uint32_t syncMaxInterval,
                  const int registryLimit,
                  const bool syncRegistryEnabled)
 {
@@ -68,7 +69,8 @@ void FIMDB::init(unsigned int syncInterval,
     std::shared_lock<std::shared_timed_mutex> lock(m_handlersMutex);
     FIMDBCreator<OS_TYPE>::setLimits(m_dbsyncHandler, fileLimit, registryLimit);
     m_syncRegistryEnabled = syncRegistryEnabled;
-    m_minSyncIntervalTime = minSyncIntervalTime;
+    m_syncResponseTimeout = syncResponseTimeout;
+    m_syncMaxInterval = syncMaxInterval;
 }
 
 void FIMDB::removeItem(const nlohmann::json& item)

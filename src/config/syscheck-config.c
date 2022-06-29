@@ -116,6 +116,7 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->prefilter_cmd                   = NULL;
     syscheck->sync_interval                   = 300;
     syscheck->sync_response_timeout           = 30;
+    syscheck->sync_max_interval               = 3600;
     syscheck->sync_max_eps                    = 10;
     syscheck->max_eps                         = 100;
     syscheck->max_files_per_second            = 0;
@@ -1174,7 +1175,7 @@ out_free:
 static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
     const char *xml_enabled = "enabled";
     const char *xml_sync_interval = "interval";
-    const char *xml_max_sync_interval = "max_interval";
+    const char *xml_sync_max_interval = "max_interval";
     const char *xml_response_timeout = "response_timeout";
     const char *xml_sync_queue_size = "queue_size";
     const char *xml_max_eps = "max_eps";
@@ -1197,8 +1198,14 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
             } else {
                 syscheck->sync_interval = t;
             }
-        } else if (strcmp(node[i]->element, xml_max_sync_interval) == 0) {
-            mdebug1("'%s' has been deprecated. This setting is skipped.", xml_max_sync_interval);
+        } else if (strcmp(node[i]->element, xml_sync_max_interval) == 0) {
+            long max_interval = w_parse_time(node[i]->content);
+
+            if (max_interval < 0) {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            } else {
+                syscheck->sync_max_interval = (uint32_t) max_interval;
+            }
         } else if (strcmp(node[i]->element, xml_response_timeout) == 0) {
             long interval = w_parse_time(node[i]->content);
 
@@ -1231,6 +1238,12 @@ static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
         } else {
             mwarn(XML_INVELEM, node[i]->element);
         }
+    }
+
+    if (syscheck->sync_max_interval < syscheck->sync_interval) {
+        syscheck->sync_max_interval = syscheck->sync_interval;
+
+        mwarn("Sync max_interval value cannot be less than interval. Setting max_interval to interval value: %d.", syscheck->sync_interval);
     }
 }
 

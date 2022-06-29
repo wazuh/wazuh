@@ -36,7 +36,8 @@ extern "C" {
  * @param sync_callback Callback to send the synchronization messages.
  * @param log_callback Callback to perform logging operations.
  * @param file_limit Maximum number of files to be monitored.
- * @param min_sync_interval_time Minimum interval for synchronization process.
+ * @param sync_response_timeout Minimum interval for synchronization process.
+ * @param sync_max_interval Maximun interval allowed for synchronization process.
  * @param value_limit Maximum number of registry values to be monitored.
  * @param sync_registry_enable Flag to enable the registry synchronization.
  *
@@ -47,7 +48,8 @@ FIMDBErrorCode fim_db_init(int storage,
                            fim_sync_callback_t sync_callback,
                            logging_callback_t log_callback,
                            int file_limit,
-                           uint32_t min_sync_interval_time,
+                           uint32_t sync_response_timeout,
+                           uint32_t sync_max_interval,
                            int value_limit,
                            bool sync_registry_enabled);
 
