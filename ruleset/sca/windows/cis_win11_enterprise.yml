@@ -5360,7 +5360,7 @@ checks:
     rationale: "Allowing attachments to be downloaded through the RSS feed can introduce files that could have malicious intent."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\RSS Feeds\\Prevent downloading of enclosures"
     compliance:
-      - cis: ["18.9.60.1"]
+      - cis: ["18.9.66.1"]
       - cis_csc: ["7.2"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
