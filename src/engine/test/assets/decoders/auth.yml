@@ -1,0 +1,116 @@
+name: auth
+
+parents:
+  - syslog
+
+check: >-
+    process.name==sshd
+    OR process.name==sudo
+    OR process.name==groupadd
+    OR process.name==groupdel
+    OR process.name==goupmod
+    OR process.name==useradd
+    OR process.name==userdel
+    OR process.name==usermod
+
+parse:
+  logql:
+    # - message: >-
+    #     <system.auth.ssh.event> <system.auth.ssh.method> for (invalid user) <?user.name>
+    #     from <source.ip> port <source.port>
+
+    # Feb 21 21:56:12 localhost sshd[3430]: Invalid user test from 10.0.2.2
+    - message: >-
+        <_system.auth.ssh.event> user <user.name> from <source.ip>
+
+    # Feb 19 15:30:04 slave22 sshd[18406]: Did not receive identification string from 2.125.160.217
+    - message: >-
+        Did not receive identification string from <source.ip>
+
+    # Feb 24 00:13:02 precise32 sudo:      tsg : user NOT in sudoers ; TTY=pts/1 ; PWD=/home/vagrant ; USER=root ; COMMAND=/bin/ls
+    - message: >-
+        <_/ ><user.name> <_system.auth.sudo.error/quoted/: / ;> TTY=<_system.auth.sudo.tty> ; PWD=<system.auth.sudo.pwd> ;
+        USER=<user.effective.name> ; COMMAND=<_system.auth.sudo.command>
+
+    # Feb 24 09:20:10 precise32 sudo:  vagrant : TTY=pts/0 ; PWD=/home/vagrant ; USER=root ; COMMAND=/bin/cat /var/log/auth.log
+    - message: >-
+        <_/ ><user.name> : TTY=<_system.auth.sudo.tty> ; PWD=<_system.auth.sudo.pwd> ;
+        USER=<user.effective.name> ; COMMAND=<_system.auth.sudo.command>
+
+    # Feb 24 09:19:55 precise32 groupadd[7996]: new group: name=mysql, GID=111
+    - message: >-
+        new group: name=<group.name>, GID=<group.id>
+
+    # Feb 24 09:19:55 precise32 useradd[8002]: new user: name=mysql, UID=106, GID=111, home=/nonexistent, shell=/bin/false
+    - message: >-
+        new user: name=<user.name>, UID=<user.id>, GID=<group.id>,
+        home=<_system.auth.useradd.home>, shell=<_system.auth.useradd.shell>
+
+    # Feb 21 21:54:44 localhost sshd[3402]: Accepted publickey for vagrant from 10.0.2.2 port 63673 ssh2: RSA 39:33:99:e9:a0:dc:f2:33:a3:e5:72:3b:7c:3a:56:84
+    - message: >-
+        <_system.auth.ssh.event> <_system.auth.ssh.method> for <user.name> from <source.ip> port
+        <source.port> ssh2: <_system.auth.ssh.signature/any>
+
+    #Feb 22 16:45:20 slave22 sshd[2738]: Failed password for root from 202.196.224.106 port 1786 ssh2
+    - message: >-
+        <_system.auth.ssh.event> <_system.auth.ssh.method> for <user.name> from <source.ip> port
+        <source.port> <_>
+
+    # Feb 24 09:20:10 precise32 sudo: pam_unix(sudo:session): session opened for user root by vagrant(uid=1000)
+    # Feb 24 09:20:10 precise32 sudo: pam_unix(sudo:session): session closed for user root
+    # Feb  9 21:20:03 precise32 sshd[8317]: subsystem request for sftp by user vagrant
+
+normalize:
+#   - check:
+#       - system.auth.message: +exists #AND +not_null/system.auth.message
+#     map:
+#       message: $system.auth.message
+
+  # Feb 21 21:54:44 localhost sshd[3402]: Accepted publickey for vagrant from 10.0.2.2 port 63673 ssh2: RSA 39:33:99:e9:a0:dc:f2:33:a3:e5:72:3b:7c:3a:56:84
+  - check:
+      - _system.auth.ssh.event: Accepted
+    map:
+      event.type: +s_append/authentication_success/info
+      event.category: +s_append/authentication/session
+      event.action: ssh_login
+      event.outcome: success
+
+  - check: _system.auth.ssh.event==Invalid OR _system.auth.ssh.event==Failed
+    map:
+      event.type: +s_append/authentication_failure/info
+      event.category: +s_append/authentication
+      event.action: ssh_login
+      event.outcome: failure
+
+#   - check: >-
+#       +not_null/proccess.name AND (
+#            +contains/groupadd/$process.name
+#         OR +contains/groupdel/$process.name
+#         OR +contains/groupmod/$process.name
+#         OR +contains/useradd/$process.name
+#         OR +contains/userdel/$process.name
+#         OR +contains/usermod/$process.name
+#       )
+#     map:
+#       event.category: iam
+#       event.outcome: success
+
+#   - check: >-
+#       +not_null/proccess.name AND (
+#            +contains/useradd/$process.name
+#         OR +contains/userdel/$process.name
+#         OR +contains/usermod/$process.name
+#       )
+#     map:
+#       event.type: +append/user
+
+#   - check: >-
+#       +not_null/proccess.name AND (
+#            +contains/groupadd/$process.name
+#         OR +contains/groupdel/$process.name
+#         OR +contains/groupmod/$process.name
+#       )
+#     map:
+#       event.type: +append/group
+
+#   - check: >-
