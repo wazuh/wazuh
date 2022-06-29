@@ -152,6 +152,8 @@ FIMDBErrorCode fim_db_init(int storage,
                                                                            .get<int>());
                         json["data"]["attributes"]["uid"] = std::to_string(json.at("data").at("attributes").at("uid")
                                                                            .get<int>());
+
+                        FIMDB::instance().setTimeLastSyncMsg();
                     }
 
                     sync_callback(FIM_COMPONENT_FILE, json.dump().c_str());
@@ -197,6 +199,8 @@ FIMDBErrorCode fim_db_init(int storage,
                         json["data"]["attributes"].erase("last_event");
                         json["data"]["attributes"].erase("scanned");
                         json["data"]["version"] = 3;
+
+                        FIMDB::instance().setTimeLastSyncMsg();
                     }
 
                     sync_callback(component.c_str(), json.dump().c_str());

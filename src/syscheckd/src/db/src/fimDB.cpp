@@ -109,19 +109,50 @@ void FIMDB::runIntegrity()
         auto promise { PromiseFactory<PROMISE_TYPE>::getPromiseObject() };
         m_integrityThread = std::thread([&]()
         {
+            uint32_t currentSyncInterval = m_syncInterval;
+            char debugmsg[1024];
+
             m_loggingFunction(LOG_INFO, "FIM sync module started.");
+            m_syncSuccessful = true;
             sync();
             promise->set_value();
             std::unique_lock<std::mutex> lockCv{m_fimSyncMutex};
 
-            while (!m_cv.wait_for(lockCv, std::chrono::seconds{m_syncInterval}, [&]()
+            while (!m_cv.wait_for(lockCv, std::chrono::seconds{currentSyncInterval}, [&]()
         {
             return m_stopping;
         }))
             {
-                // LCOV_EXCL_START
-                sync();
-                // LCOV_EXCL_STOP
+                if ((std::time(nullptr) - m_timeLastSyncMsg) > m_syncResponseTimeout)
+                {
+                    if (m_syncSuccessful)
+                    {
+                        currentSyncInterval = m_syncInterval;
+
+                        snprintf(debugmsg, 1024, "Interval synchronization has been reset to its original configured value: %d", currentSyncInterval);
+                        m_loggingFunction(LOG_DEBUG_VERBOSE, debugmsg);
+                    }
+                    m_syncSuccessful = true;
+
+                    // LCOV_EXCL_START
+                    sync();
+                    // LCOV_EXCL_STOP
+                }
+                else
+                {
+                    currentSyncInterval *= 2;
+
+                    if (currentSyncInterval > m_syncMaxInterval)
+                    {
+                        currentSyncInterval = m_syncMaxInterval;
+
+                        snprintf(debugmsg, 1024, "Synchronization has failed, sync interval will be doubled. Max interval reached, current interval: %d", currentSyncInterval);
+                        m_loggingFunction(LOG_DEBUG_VERBOSE, debugmsg);
+                    } else {
+                        snprintf(debugmsg, 1024, "Synchronization has failed, sync interval will be doubled, current interval: %d", currentSyncInterval);
+                        m_loggingFunction(LOG_DEBUG_VERBOSE, debugmsg);
+                    }
+                }
             }
         });
         promise->wait();
@@ -142,6 +173,8 @@ void FIMDB::pushMessage(const std::string& data)
         auto rawData{data};
         Utils::replaceFirst(rawData, "dbsync ", "");
         const auto buff{reinterpret_cast<const uint8_t*>(rawData.c_str())};
+        setTimeLastSyncMsg();
+        m_syncSuccessful = false;
 
         try
         {

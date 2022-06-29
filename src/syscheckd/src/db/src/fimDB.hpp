@@ -245,6 +245,14 @@ class FIMDB
         */
         void teardown();
 
+        /**
+        * @brief Set m_timeLastSyncMsg variable to actual timestamp.
+        */
+        void setTimeLastSyncMsg()
+        {
+            m_timeLastSyncMsg = std::time(nullptr);
+        }
+
     private:
 
         unsigned int                                                            m_syncInterval;
@@ -262,6 +270,8 @@ class FIMDB
         bool                                                                    m_syncRegistryEnabled;
         uint32_t                                                                m_syncResponseTimeout;
         uint32_t                                                                m_syncMaxInterval;
+        bool                                                                    m_syncSuccessful;
+        std::time_t                                                             m_timeLastSyncMsg;
 
         /**
         * @brief Function that executes the synchronization of the databases with the manager

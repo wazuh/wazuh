@@ -403,7 +403,7 @@ typedef struct _config {
     char **nodiff;                                     /* list of files/dirs to never output diff */
     OSMatch **nodiff_regex;                            /* regex of files/dirs to never output diff */
 
-    long sync_interval;                                /* Synchronization interval (seconds) */
+    uint32_t sync_interval;                            /* Synchronization interval (seconds) */
     uint32_t sync_response_timeout;                    /* Minimum interval for synchronization process */
     uint32_t sync_max_interval;                        /* Maximun interval allowed for synchronization process */
     long sync_max_eps;                                 /* Maximum events per second for synchronization messages. */
