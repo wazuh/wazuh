@@ -36,6 +36,9 @@ list(APPEND os_auth_names "test_auth_add")
 list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS}")
 list(APPEND os_auth_names "test_ssl")
 list(APPEND os_auth_flags "-Wl,--wrap,SSL_read -Wl,--wrap=SSL_new")
+list(APPEND os_auth_names "test_auth")
+list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} \
+                           -Wl,--wrap,os_random -Wl,--wrap,GetRandomNoise -Wl,--wrap,getuname -Wl,--wrap,time")
 
 list(LENGTH os_auth_names count)
 math(EXPR count "${count} - 1")

@@ -37,7 +37,7 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
 static int w_enrollment_send_message(w_enrollment_ctx *cfg);
 static int w_enrollment_process_response(SSL *ssl);
 /* Auxiliary */
-static void w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_cert, const char *hostname);
+static int w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_cert, const char *hostname);
 static void w_enrollment_concat_group(char *buff, const char* centralized_group);
 static int w_enrollment_concat_src_ip(char *buff, const char* sender_ip, const int use_src_ip);
 static void w_enrollment_concat_key(char *buff, keyentry* key);
@@ -242,7 +242,12 @@ static int w_enrollment_connect(w_enrollment_ctx *cfg, const char * server_addre
 
     mdebug1(AUTH_CONNECTED, ip_address, cfg->target_cfg->port);
 
-    w_enrollment_verify_ca_certificate(cfg->ssl, cfg->cert_cfg->ca_cert, server_address);
+    if (w_enrollment_verify_ca_certificate(cfg->ssl, cfg->cert_cfg->ca_cert, server_address) == 1) {
+        os_free(ip_address);
+        SSL_CTX_free(ctx);
+        OS_CloseSocket(sock);
+        return ENROLLMENT_CONNECTION_FAILURE;
+    }
 
     os_free(ip_address);
     SSL_CTX_free(ctx);
@@ -470,20 +475,22 @@ static int w_enrollment_process_agent_key(char *buffer) {
  * @param ca_cert certificate to verify
  * @param hostname
  * */
-static void w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_cert, const char *hostname) {
+static int w_enrollment_verify_ca_certificate(const SSL *ssl, const char *ca_cert, const char *hostname) {
     assert(ssl != NULL);
-
-    if (ca_cert) {
-        minfo("Verifying manager's certificate");
-        if (check_x509_cert(ssl, hostname) != VERIFY_TRUE) {
-            merror("Unable to verify server certificate");
-        } else {
-            minfo("Manager has been verified successfully");
-        }
-    }
-    else {
+    if (ca_cert == NULL) {
         mdebug1("Registering agent to unverified manager");
+        return 0;
     }
+
+    minfo("Verifying manager's certificate");
+
+    if (check_x509_cert(ssl, hostname) != VERIFY_TRUE) {
+        merror("Unable to verify server certificate");
+        return 1;
+    }
+
+    minfo("Manager has been verified successfully");
+    return 0;
 }
 
 /**
