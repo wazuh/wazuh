@@ -88,7 +88,11 @@ int main(int argc, const char* argv[])
                                     minSyncInterval,
                                     registryLimit,
                                     syncRegistryEnabled,
+<<<<<<< HEAD
                                     syncThreadPool);
+=======
+                                    0);
+>>>>>>> 0dac890a52 (Add changes to support queue_size in FIMDB synchronization in c++ code)
 
                 std::unique_ptr<TestContext> testContext { std::make_unique<TestContext>()};
                 testContext->outputPath = cmdLineArgs.outputFolder();

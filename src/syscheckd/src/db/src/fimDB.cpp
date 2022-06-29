@@ -55,7 +55,8 @@ void FIMDB::init(unsigned int syncInterval,
                  const int fileLimit,
                  const uint32_t minSyncIntervalTime,
                  const int registryLimit,
-                 const bool syncRegistryEnabled)
+                 const bool syncRegistryEnabled,
+                 int syncQueueSize)
 {
     m_syncInterval = syncInterval;
     m_dbsyncHandler = dbsyncHandler;

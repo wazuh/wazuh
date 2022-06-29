@@ -223,7 +223,8 @@ TEST(DBTest, TestInvalidFimLimit)
                     -1,
                     minSyncInterval,
                     -1,
-                    true)
+                    true,
+                    0)
     };
     ASSERT_EQ(result, FIMDB_ERR);
 
@@ -245,7 +246,8 @@ TEST(DBTest, TestValidFimLimit)
                     100,
                     minSyncInterval,
                     100000,
-                    true)
+                    true,
+                    0)
     };
     ASSERT_EQ(result, FIMDB_OK);
 
