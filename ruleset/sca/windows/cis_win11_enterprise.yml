@@ -3366,9 +3366,9 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\PushNotifications -> NoCloudApplicationNotification -> 1'
 
   - id: 26223
-    title: "Ensure 'Include command line in process creation events' is set to 'Disabled'"
-    description: "This policy setting determines what information is logged in security audit events when a new process has been created. The recommended state for this setting is: Disabled."
-    rationale: "When this policy setting is enabled, any user who has read access to the security events can read the command-line arguments for any successfully created process. Command-line arguments may contain sensitive or private information such as passwords or user data."
+    title: "Ensure 'Include command line in process creation events' is set to 'Enabled'"
+    description: "This policy setting determines what information is logged in security audit events when a new process has been created. The recommended state for this setting is: Enabled."
+    rationale: "Capturing process command line information in event logs can be very valuable when performing forensic investigations of attack incidents."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Audit Process Creation\\Include command line in process creation events"
     compliance:
       - cis: ["18.8.3.1"]
@@ -3379,7 +3379,9 @@ checks:
       - 'CCE-35802-8'
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\Audit -> ProcessCreationIncludeCmdLine_Enabled -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\Audit'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\Audit -> ProcessCreationIncludeCmdLine_Enabled'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\Audit -> ProcessCreationIncludeCmdLine_Enabled -> 1'
 
   - id: 26224
     title: "Ensure 'Encryption Oracle Remediation' is set to 'Enabled: Force Updated Clients'"
