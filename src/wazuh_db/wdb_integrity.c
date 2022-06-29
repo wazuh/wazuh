@@ -47,13 +47,6 @@ extern void mock_assert(const int result, const char* const expression,
     mock_assert((int)(expression), #expression, __FILE__, __LINE__);
 #endif
 
-/**
- * @brief Clean the component tables of duplicate entries.
- *
- * @param wdb Database node.
- * @param stmt The SQL statement to be executed.
- * @param checksum Checksum to be deleted.
- */
 void wdbi_remove_duplicate_entries(wdb_t *wdb, wdb_component_t component, char * checksum) {
     const int INDEXES[] = { [WDB_FIM] = WDB_STMT_FIM_DELETE_CHECKSUM,
                             [WDB_FIM_FILE] = WDB_STMT_FIM_FILE_DELETE_CHECKSUM,

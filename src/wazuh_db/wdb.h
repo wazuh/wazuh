@@ -2071,6 +2071,15 @@ int wdb_task_cancel_upgrade_tasks(wdb_t* wdb, const char *node);
  * */
 int wdb_task_get_upgrade_task_by_agent_id(wdb_t* wdb, int agent_id, char **node, char **module, char **command, char **status, char **error, int *create_time, int *last_update_time);
 
+/**
+ * @brief Clean the component tables of duplicate entries.
+ *
+ * @param wdb Database node.
+ * @param stmt The SQL statement to be executed.
+ * @param checksum Checksum to be deleted.
+ */
+void wdbi_remove_duplicate_entries(wdb_t *wdb, wdb_component_t component, char * checksum);
+
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }
 
