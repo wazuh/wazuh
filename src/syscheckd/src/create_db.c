@@ -587,7 +587,10 @@ time_t fim_scan() {
     if (syscheck.file_limit_enabled) {
         int files_count = fim_db_get_count_file_entry();
         fim_check_db_state(syscheck.file_entry_limit, files_count, &_files_db_state, FIMDB_FILE_TABLE_NAME);
+    }
+
 #ifdef WIN32
+    if (syscheck.registry_limit_enabled) {
         fim_check_db_state(syscheck.db_entry_registry_limit,
                            fim_db_get_count_registry_key(),
                            &_registry_key_state,
@@ -596,8 +599,8 @@ time_t fim_scan() {
                            fim_db_get_count_registry_data(),
                            &_registry_value_state,
                            FIMDB_REGISTRY_VALUE_TABLENAME);
-#endif
     }
+#endif
 
     if (_base_line == 0) {
         _base_line = 1;

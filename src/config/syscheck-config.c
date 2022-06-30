@@ -103,6 +103,9 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->registry_limit_enabled          = true;
     syscheck->db_entry_registry_limit         = 100000;
     syscheck->realtime_change                 = 0;
+
+
+
     syscheck->registry                        = NULL;
     syscheck->key_ignore                      = NULL;
     syscheck->key_ignore_regex                = NULL;
@@ -1587,7 +1590,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_registry_ignore = "registry_ignore";
 #ifdef WIN32
     const char *xml_registry_ignore_value = "registry_ignore_value";
-    const char *xml_db_entry_registry_limit = "registries";
 #endif
     const char *xml_auto_ignore = "auto_ignore"; // TODO: Deprecated since 3.11.0
     const char *xml_alert_new_files = "alert_new_files"; // TODO: Deprecated since 3.11.0
