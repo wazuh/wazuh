@@ -1,126 +1,105 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
- * All rights reserved.
- *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
- */
-
 #include <gtest/gtest.h>
-#include "testUtils.hpp"
 
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <vector>
 
-#include "combinatorBuilderBroadcast.hpp"
+#include "baseTypes.hpp"
+#include "builder/registry.hpp"
 #include "opBuilderFileOutput.hpp"
 #include "stageBuilderOutputs.hpp"
 
+using namespace builder::internals;
+using namespace builder::internals::builders;
+using namespace json;
 using namespace base;
-namespace bld = builder::internals::builders;
 
-using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg){};
-
-TEST(StageBuilderOutputs, BuildsAllNonRegistered)
+class StageBuilderOutputsTest : public ::testing::Test
 {
-    Document doc{R"({
-        "outputs": [
+protected:
+    void SetUp() override
+    {
+        Registry::registerBuilder(opBuilderFileOutput, "output.file");
+    }
+    void TearDown() override
+    {
+        Registry::clear();
+    }
+};
+
+TEST_F(StageBuilderOutputsTest, Builds)
+{
+    Json doc {R"([
             {"file":
                 {"path": "/tmp/stageOutputsTest1.txt"}
             },
             {"file":
                 {"path": "/tmp/stageOutputsTest2.txt"}
             }
-        ]
-    })"};
+    ])"};
 
-    ASSERT_THROW(builders::stageBuilderOutputs(doc.get("/outputs"), tr), std::_Nested_exception<std::runtime_error>);
+    ASSERT_NO_THROW(builders::stageBuilderOutputs(doc));
 }
 
-TEST(StageBuilderOutputs, Builds)
+TEST_F(StageBuilderOutputsTest, UnexpectedDefinition)
 {
-    BuilderVariant c = bld::opBuilderFileOutput;
-    Registry::registerBuilder("file", c);
-    c = bld::combinatorBuilderBroadcast;
-    Registry::registerBuilder("combinator.broadcast", c);
-
-    Document doc{R"({
-        "outputs": [
-            {"file":
+    Json doc {R"({
+            "file":
                 {"path": "/tmp/stageOutputsTest1.txt"}
-            },
-            {"file":
-                {"path": "/tmp/stageOutputsTest2.txt"}
-            }
-        ]
     })"};
 
-    ASSERT_NO_THROW(builders::stageBuilderOutputs(doc.get("/outputs"), tr));
+    ASSERT_THROW(builders::stageBuilderOutputs(doc), std::runtime_error);
 }
 
-TEST(StageBuilderOutputs, BuildsOperates)
+TEST_F(StageBuilderOutputsTest, NotFoundOutput)
 {
-    Document doc{R"({
-        "outputs": [
+    Json doc {R"([
+            {"nonExistingOutput":
+                {"path": "/tmp/stageOutputsTest1.txt"}
+            }
+    ])"};
+
+    ASSERT_THROW(builders::stageBuilderOutputs(doc), std::runtime_error);
+}
+
+TEST_F(StageBuilderOutputsTest, EmptyList)
+{
+    Json doc {R"([])"};
+
+    ASSERT_THROW(builders::stageBuilderOutputs(doc), std::runtime_error);
+}
+
+TEST_F(StageBuilderOutputsTest, ArrayWrongSizeItem)
+{
+    Json doc {R"([
+            {"file":
+                {"path": "/tmp/stageOutputsTest1.txt"},
+             "toManyItems": "value"
+            }
+    ])"};
+
+    ASSERT_THROW(builders::stageBuilderOutputs(doc), std::runtime_error);
+}
+
+TEST_F(StageBuilderOutputsTest, BuildsCorrectExpression)
+{
+    Json doc {R"([
             {"file":
                 {"path": "/tmp/stageOutputsTest1.txt"}
             },
             {"file":
                 {"path": "/tmp/stageOutputsTest2.txt"}
             }
-        ]
-    })"};
+    ])"};
 
-    auto input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"field":"value"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field":"value"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field":"value"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field":"value"}
-            )"));
-            s.on_completed();
-        }).publish();
-    Lifter lift = builders::stageBuilderOutputs(doc.get("/outputs"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    input.connect();
-    ASSERT_EQ(expected.size(), 8);
+    auto expression = builders::stageBuilderOutputs(doc);
 
-    const string expectedWrite =
-        R"({"field":"value"}
-{"field":"value"}
-{"field":"value"}
-{"field":"value"}
-)";
-
-    string filepath1{"/tmp/stageOutputsTest1.txt"};
-    string filepath2{"/tmp/stageOutputsTest2.txt"};
-    std::ifstream ifs(filepath1);
-    std::stringstream buffer;
-    buffer << ifs.rdbuf();
-    const string got1 = buffer.str();
-
-    ifs.open(filepath2);
-    buffer << ifs.rdbuf();
-    const string got2 = buffer.str();
-    // cerr << got << std::endl;
-    // cerr << expectedWrite << std::endl;
-    std::filesystem::remove(filepath1);
-    std::filesystem::remove(filepath2);
-
-    ASSERT_EQ(got1, expectedWrite);
-    ASSERT_EQ(got2, expectedWrite);
+    ASSERT_TRUE(expression->isOperation());
+    ASSERT_TRUE(expression->isBroadcast());
+    ASSERT_EQ(expression->getPtr<Broadcast>()->getOperands().size(), 2);
+    for (auto term : expression->getPtr<Broadcast>()->getOperands())
+    {
+        ASSERT_TRUE(term->isTerm());
+    }
 }
