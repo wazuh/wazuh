@@ -7,402 +7,258 @@
  * Foundation.
  */
 
+#include <any>
 #include <gtest/gtest.h>
 #include <vector>
 
 #include <baseTypes.hpp>
 
-#include "testUtils.hpp"
 #include "opBuilderHelperFilter.hpp"
-#include "testUtils.hpp"
 
 using namespace base;
 namespace bld = builder::internals::builders;
 
-using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg) {
-};
-
 TEST(opBuilderHelperIntLessThanEqual, Builds)
 {
-    Document doc {R"({
-        "check":
-            {"field_test": "+i_lt/10"}
-    })"};
+    auto tuple = std::make_tuple(
+        std::string {"/field"}, std::string {"i_le"}, std::vector<std::string> {"10"});
 
-    ASSERT_NO_THROW(bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr));
-}
-
-TEST(opBuilderHelperIntLessThanEqual, Builds_error_bad_parameter)
-{
-    Document doc {R"({
-        "check":
-            {"field_test": "+i_lt/test"}
-    })"};
-
-    ASSERT_THROW(bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr),
-                 std::invalid_argument);
-}
-
-TEST(opBuilderHelperIntLessThanEqual, Builds_error_more_parameters)
-{
-    Document doc {R"({
-        "check":
-            {"field_test": "+i_lt/10/10"}
-    })"};
-
-    ASSERT_THROW(bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr), std::runtime_error);
-}
-
-TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_ok)
-{
-    Document doc {R"({
-        "check":
-            {"field_test": "+i_lt/10"}
-    })"};
-
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"field_test":9}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":11}
-            )"));
-            s.on_completed();
-        });
-    Lifter lift = [=](Observable input)
-    {
-        return input.filter(
-            bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr));
-    };
-    Observable output = lift(input);
-    vector<Event> expected;
-
-    output.subscribe([&](Event e) { expected.push_back(e); });
-
-    ASSERT_EQ(expected.size(), 3);
-    ASSERT_LE(expected[0]->getEvent()->get("/field_test").GetInt(), 10);
-    ASSERT_LE(expected[1]->getEvent()->get("/field_test").GetInt(), 10);
-    ASSERT_LE(expected[2]->getEvent()->get("/field_test").GetInt(), 10);
-}
-
-TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_true)
-{
-    Document doc {R"({
-        "check":
-            {"field_test": "+i_lt/10"}
-    })"};
-
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"field_test":9}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":11}
-            )"));
-            s.on_completed();
-        });
-    Lifter lift = [=](Observable input)
-    {
-        return input.filter(
-            bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr));
-    };
-    Observable output = lift(input);
-    vector<Event> expected;
-
-    output.subscribe([&](Event e) { expected.push_back(e); });
-
-    ASSERT_EQ(expected.size(), 3);
-    ASSERT_LE(expected[0]->getEvent()->get("/field_test").GetInt(), 10);
-    ASSERT_LE(expected[1]->getEvent()->get("/field_test").GetInt(), 10);
-    ASSERT_LE(expected[2]->getEvent()->get("/field_test").GetInt(), 10);
+    ASSERT_NO_THROW(bld::opBuilderHelperIntLessThanEqual(tuple));
 }
 
 TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_false)
 {
-    Document doc {R"({
-        "check":
-            {"field_test": "+i_lt/10"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"i_le"},
+                                 std::vector<std::string> {"8"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"field_test":20}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test2":100}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test3":100}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":11}
-            )"));
-            s.on_completed();
-        });
-    Lifter lift = [=](Observable input)
-    {
-        return input.filter(
-            bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr));
-    };
-    Observable output = lift(input);
-    vector<Event> expected;
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
 
-    output.subscribe([&](Event e) { expected.push_back(e); });
+    auto op = bld::opBuilderHelperIntLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-    ASSERT_EQ(expected.size(), 0);
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result.success());
 }
 
-TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_ref_true)
+TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_true)
 {
-    Document doc {R"({
-        "check":
-            {"field_test": "+i_lt/$field_src"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"i_le"},
+                                 std::vector<std::string> {"12"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"field_test": 10,"field_src": 10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":9,"field_src":10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":9,"field_src":10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":9,"field_src":"10"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":"9","field_src":10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":"9","field_src":"10"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":9,"field_src":"10"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":9,"field_src":"test"}
-            )"));
-            s.on_completed();
-        });
-    Lifter lift = [=](Observable input)
-    {
-        return input.filter(
-            bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr));
-    };
-    Observable output = lift(input);
-    vector<Event> expected;
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
 
-    output.subscribe([&](Event e) { expected.push_back(e); });
+    auto op = bld::opBuilderHelperIntLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-    ASSERT_EQ(expected.size(), 3);
-    ASSERT_LE(expected[0]->getEvent()->get("/field_test").GetInt(),
-              expected[0]->getEvent()->get("/field_src").GetInt());
-    ASSERT_LE(expected[1]->getEvent()->get("/field_test").GetInt(),
-              expected[1]->getEvent()->get("/field_src").GetInt());
-    ASSERT_LE(expected[2]->getEvent()->get("/field_test").GetInt(),
-              expected[2]->getEvent()->get("/field_src").GetInt());
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result.success());
+}
+
+TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_true)
+{
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"i_le"},
+                                 std::vector<std::string> {"10"});
+
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
+
+    auto op = bld::opBuilderHelperIntLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result.success());
 }
 
 TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_ref_false)
 {
-    Document doc {R"({
-        "check":
-            {"field_test": "+i_lt/$field_src"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"i_le"},
+                                 std::vector<std::string> {"$otherfield"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"field_test2":9,"field_src":10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":9,"field_src3":10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":9,"field_src4":10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test5":9,"field_src":"10"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test6":"9","field_src2":10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_":"9","field_src":"10"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":9,"field_src2":"10"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test2":9,"field_src2":"test"}
-            )"));
-            s.on_completed();
-        });
-    Lifter lift = [=](Observable input)
-    {
-        return input.filter(
-            bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr));
-    };
-    Observable output = lift(input);
-    vector<Event> expected;
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 12,
+                                                   "otherfield": 10})");
 
-    output.subscribe([&](Event e) { expected.push_back(e); });
+    auto op = bld::opBuilderHelperIntLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-    ASSERT_EQ(expected.size(), 0);
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result.success());
 }
 
-TEST(opBuilderHelperIntLessThanEqual, Exec_dynamics_int_ok)
+TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_ref_true)
 {
-    Document doc {R"({
-        "check":
-            {"field2check": "+i_eq/$ref_key"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"i_le"},
+                                 std::vector<std::string> {"$otherfield"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            // Greater
-            s.on_next(createSharedEvent(R"(
-                {
-                    "field2check":11,
-                    "ref_key":10
-                }
-            )"));
-            // Equal
-            s.on_next(createSharedEvent(R"(
-                {
-                    "field2check":10,
-                    "ref_key":10
-                }
-            )"));
-            // Less
-            s.on_next(createSharedEvent(R"(
-                {
-                    "field2check":10,
-                    "ref_key":11
-                }
-            )"));
-            s.on_completed();
-        });
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
+                                                   "otherfield": 12})");
 
-    Lifter lift = [=](Observable input)
-    {
-        return input.filter(
-            bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr));
-    };
-    Observable output = lift(input);
-    vector<Event> expected;
+    auto op = bld::opBuilderHelperIntLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-    output.subscribe([&](Event e) { expected.push_back(e); });
+    result::Result<Event> result = op(event1);
 
-    ASSERT_EQ(expected.size(), 2);
-    ASSERT_LE(expected[0]->getEvent()->get("/field2check").GetInt(),
-              expected[0]->getEvent()->get("/ref_key").GetInt());
-    ASSERT_LE(expected[1]->getEvent()->get("/field2check").GetInt(),
-              expected[1]->getEvent()->get("/ref_key").GetInt());
+    ASSERT_TRUE(result.success());
 }
 
-TEST(opBuilderHelperIntLessThanEqual, Exec_multilevel_dynamics_int_ok)
+TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_ref_true)
 {
-    Document doc {R"({
-        "check":
-            {"parentObjt_1.field2check": "+i_eq/$parentObjt_2.ref_key"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"i_le"},
+                                 std::vector<std::string> {"$otherfield"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
+                                                   "otherfield": 10})");
+
+    auto op = bld::opBuilderHelperIntLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result.success());
+}
+
+TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_multilevel_false)
+{
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"i_le"},
+                                 std::vector<std::string> {"8"});
+
+    auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
                         "field2check": 10,
                         "ref_key": 10
                     },
                     "parentObjt_1": {
-                        "field2check": 9,
-                        "ref_key": 9
+                        "field2check": 11,
+                        "ref_key": 11
                     }
-                }
-            )"));
+                    })");
 
-            s.on_next(createSharedEvent(R"(
-                {
+    auto op = bld::opBuilderHelperIntLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result.success());
+}
+
+TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_multilevel_true)
+{
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"i_le"},
+                                 std::vector<std::string> {"12"});
+
+    auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
-                        "field2check": 9,
+                        "field2check": 10,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "field2check": 11,
+                        "ref_key": 11
+                    }
+                    })");
+
+    auto op = bld::opBuilderHelperIntLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result.success());
+}
+
+TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_multilevel_true)
+{
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"i_le"},
+                                 std::vector<std::string> {"11"});
+
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": 10,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "field2check": 11,
+                        "ref_key": 11
+                    }
+                    })");
+
+    auto op = bld::opBuilderHelperIntLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result.success());
+}
+
+TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_multilevel_ref_false)
+{
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"i_le"},
+                                 std::vector<std::string> {"$/parentObjt_2/field2check"});
+
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": 10,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "field2check": 11,
+                        "ref_key": 11
+                    }
+                    })");
+
+    auto op = bld::opBuilderHelperIntLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result.success());
+}
+
+TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_multilevel_ref_true)
+{
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"i_le"},
+                                 std::vector<std::string> {"$/parentObjt_2/field2check"});
+
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": 12,
                         "ref_key": 10
                     },
                     "parentObjt_1": {
                         "field2check": 10,
-                        "ref_key": 9
+                        "ref_key": 10
                     }
-                }
-            )"));
+                    })");
 
-            s.on_next(createSharedEvent(R"(
-                {
+    auto op = bld::opBuilderHelperIntLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result.success());
+}
+
+TEST(opBuilderHelperIntLessThanEqual, Exec_less_than_equal_multilevel_ref_true)
+{
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"i_le"},
+                                 std::vector<std::string> {"$/parentObjt_2/field2check"});
+
+    auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
-                        "field2check":10,
-                        "ref_key":10
+                        "field2check": 10,
+                        "ref_key": 10
                     },
                     "parentObjt_1": {
-                        "otherfield":12,
-                        "ref_key":9
+                        "field2check": 10,
+                        "ref_key": 10
                     }
-                }
-            )"));
+                    })");
 
-            s.on_next(createSharedEvent(R"(
-                {
-                    "parentObjt_2": {
-                        "field2check":10,
-                        "otherfield":10
-                    },
-                    "parentObjt_1": {
-                        "field2check":12,
-                        "ref_key":9
-                    }
-                }
-            )"));
-            s.on_completed();
-        });
+    auto op = bld::opBuilderHelperIntLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-    Lifter lift = [=](Observable input)
-    {
-        return input.filter(
-            bld::opBuilderHelperIntLessThanEqual(doc.get("/check"), tr));
-    };
-    Observable output = lift(input);
-    vector<Event> expected;
+    result::Result<Event> result = op(event1);
 
-    output.subscribe([&](Event e) { expected.push_back(e); });
-
-    ASSERT_EQ(expected.size(), 2);
-    ASSERT_LE(expected[0]->getEvent()->get("/parentObjt_1/field2check").GetInt(),
-              expected[0]->getEvent()->get("/parentObjt_2/ref_key").GetInt());
-    ASSERT_LE(expected[1]->getEvent()->get("/parentObjt_1/field2check").GetInt(),
-              expected[1]->getEvent()->get("/parentObjt_2/ref_key").GetInt());
+    ASSERT_TRUE(result.success());
 }
