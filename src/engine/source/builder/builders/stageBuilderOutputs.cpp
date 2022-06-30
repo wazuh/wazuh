@@ -37,6 +37,12 @@ base::Expression stageBuilderOutputs(const std::any& definition)
                         "type: expected [array] but got [{}]",
                         jsonDefinition.typeName()));
     }
+    if (jsonDefinition.size() == 0)
+    {
+        throw std::runtime_error(
+            "[builders::stageBuilderOutputs(json)] Invalid json definition: expected "
+            "at least one element");
+    }
 
     // All output expressions
     std::vector<base::Expression> outputExpressions;
@@ -89,7 +95,7 @@ base::Expression stageBuilderOutputs(const std::any& definition)
                    });
 
     // Create stage expression and return
-    return base::Chain::create("outputs", outputExpressions);
+    return base::Broadcast::create("outputs", outputExpressions);
 }
 
 } // namespace builder::internals::builders
