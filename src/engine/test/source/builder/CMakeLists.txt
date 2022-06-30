@@ -191,13 +191,6 @@ target_link_libraries(opBuilderHelperMapTest
 )
 gtest_discover_tests(opBuilderHelperMapTest)
 
-add_executable(stageBuilderOutputsTest
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/stageBuilderOutputs_test.cpp
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/stageBuilderExpressionCheck_test.cpp
-  ${ENGINE_SOURCE_DIR}/builder/builders/stageBuilderExpressionCheck.cpp
-)
-gtest_discover_tests(stageBuilderOutputsTest)
-
 add_executable(assetBuilderDecoderTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/assetBuilderDecoder_test.cpp
 )
