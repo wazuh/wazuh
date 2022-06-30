@@ -237,6 +237,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_UPDATE_AGENT_INFO,
     WDB_STMT_GLOBAL_GET_AGENTS,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS,
+    WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE,
     WDB_STMT_GLOBAL_GET_AGENT_INFO,
     WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT,
     WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS,
@@ -2095,7 +2096,7 @@ int wdb_global_reset_agents_connection(wdb_t *wdb, const char *sync_status);
  * @retval JSON with agents IDs on success.
  * @retval NULL on error.
  */
-cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id, const char* connection_status, wdbc_result* status);
+cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id, const char* connection_status, wdbc_result* status, char* node_name);
 
 /**
  * @brief Gets all the agents' IDs (excluding the manager) that satisfy the keepalive condition to be disconnected.

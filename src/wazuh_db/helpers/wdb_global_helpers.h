@@ -34,6 +34,7 @@ typedef enum global_db_access {
     WDB_SET_AGENT_GROUPS,
     WDB_RESET_AGENTS_CONNECTION,
     WDB_GET_AGENTS_BY_CONNECTION_STATUS,
+    WDB_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE,
     WDB_DISCONNECT_AGENTS
 } global_db_access;
 
@@ -253,7 +254,7 @@ int wdb_reset_agents_connection(const char *sync_status, int *sock);
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Pointer to the array, on success. NULL on errors.
  */
-int* wdb_get_agents_by_connection_status(const char* connection_status, int *sock);
+int* wdb_get_agents_by_connection_status(const char* connection_status, int *sock, char* node_name);
 
 /**
  * @brief Set agents as disconnected based on the keepalive and return an array containing
