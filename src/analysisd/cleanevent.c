@@ -16,7 +16,7 @@
 #include "fts.h"
 #include "config.h"
 
-#define IPV6_LAST_DIGIT INET6_ADDRSTRLEN - 8
+#define IPV6_LAST_DIGIT 38
 
 /* To translate between month (int) to month (char) */
 static const char *(month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
