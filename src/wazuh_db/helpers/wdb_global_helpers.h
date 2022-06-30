@@ -252,9 +252,10 @@ int wdb_reset_agents_connection(const char *sync_status, int *sock);
  *
  * @param[in] connection_status The connection status.
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
+ * @param [in] node_name Cluster node name
  * @return Pointer to the array, on success. NULL on errors.
  */
-int* wdb_get_agents_by_connection_status(const char* connection_status, int *sock, char* node_name);
+int* wdb_get_agents_by_connection_status(const char* connection_status, int *sock, const char* node_name);
 
 /**
  * @brief Set agents as disconnected based on the keepalive and return an array containing

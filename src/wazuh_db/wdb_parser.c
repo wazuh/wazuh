@@ -5827,8 +5827,7 @@ int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, ch
     connection_status = next;
 
     /* Get node name */
-    next = strtok_r(NULL, delim, &savedptr);
-    node_name = next;
+    node_name = strtok_r(NULL, delim, &savedptr);
 
     // Execute command
     wdbc_result status = WDBC_UNKNOWN;

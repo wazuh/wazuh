@@ -1782,7 +1782,7 @@ int wdb_global_reset_agents_connection(wdb_t *wdb, const char *sync_status) {
     }
 }
 
-cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id, const char* connection_status, wdbc_result* status, char* node_name) {
+cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id, const char* connection_status, wdbc_result* status, const char* node_name) {
     sqlite3_stmt* stmt;
     //Prepare SQL query
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
@@ -1804,7 +1804,6 @@ cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id
             return NULL;
         }
         stmt = wdb->stmt[WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE];
-        //si cambio el orden de los parametros en la query puedo meter aca el sqlite3_bind_text del node_name
     }
     if (sqlite3_bind_int(stmt, 1, last_agent_id) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));

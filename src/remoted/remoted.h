@@ -164,6 +164,7 @@ int nb_send(netbuffer_t * buffer, int socket);
  * @param socket socket id where send message.
  * @param crypt_msg msg to send.
  * @param msg_size message size.
+ * @param agent_id message agent id.
  *
  * @return -1 on error.
  * @return 0 on success.
