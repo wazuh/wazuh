@@ -79,8 +79,8 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->nodiff_regex                    = NULL;
     syscheck->scan_day                        = NULL;
     syscheck->scan_time                       = NULL;
-    syscheck->db_entry_limit_enabled          = true;
-    syscheck->db_entry_file_limit             = 100000;
+    syscheck->file_limit_enabled              = true;
+    syscheck->file_entry_limit                = 100000;
     syscheck->directories                     = OSList_Create();
 
     if (syscheck->directories == NULL) {
@@ -100,6 +100,7 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->wdata.fd                        = NULL;
 #endif
 #ifdef WIN32
+    syscheck->registry_limit_enabled          = true;
     syscheck->db_entry_registry_limit         = 100000;
     syscheck->realtime_change                 = 0;
     syscheck->registry                        = NULL;
@@ -1576,16 +1577,16 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_scanday = "scan_day";
     const char *xml_database = "database";
     const char *xml_scantime = "scan_time";
-    const char *xml_file_limit = "file_limit"; // Deprecated
-    const char *xml_file_limit_entries = "entries"; // Deprecated
-    const char *xml_db_entry = "db_entry_limit";
-    const char *xml_db_entry_enabled = "enabled";
-    const char *xml_db_entry_file_limit = "files";
+    const char *xml_file_limit = "file_limit";
+    const char *xml_enabled = "enabled";
+    const char *xml_entries = "entries";
+#ifdef WIN32
+    const char *xml_registry_limit = "registry_limit";
+#endif
     const char *xml_ignore = "ignore";
     const char *xml_registry_ignore = "registry_ignore";
 #ifdef WIN32
     const char *xml_registry_ignore_value = "registry_ignore_value";
-    const char *xml_db_entry_registry_limit = "registries";
 #endif
     const char *xml_auto_ignore = "auto_ignore"; // TODO: Deprecated since 3.11.0
     const char *xml_alert_new_files = "alert_new_files"; // TODO: Deprecated since 3.11.0
@@ -1719,14 +1720,13 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             if (!(children = OS_GetElementsbyNode(xml, node[i]))) {
                 continue;
             }
-            mwarn("file_limit block will be deprecated in future versions. Use db_entry_limit instead.");
             for(j = 0; children[j]; j++) {
-                if (strcmp(children[j]->element, xml_db_entry_enabled) == 0) {
+                if (strcmp(children[j]->element, xml_enabled) == 0) {
                     if (strcmp(children[j]->content, "yes") == 0) {
-                        syscheck->db_entry_limit_enabled = true;
+                        syscheck->file_limit_enabled = true;
                     }
                     else if (strcmp(children[j]->content, "no") == 0) {
-                        syscheck->db_entry_limit_enabled = false;
+                        syscheck->file_limit_enabled = false;
                     }
                     else {
                         merror(XML_VALUEERR, children[j]->element, children[j]->content);
@@ -1734,42 +1734,42 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                         return (OS_INVALID);
                     }
                 }
-                else if (strcmp(children[j]->element, xml_file_limit_entries) == 0) {
+                else if (strcmp(children[j]->element, xml_entries) == 0) {
                     if (!OS_StrIsNum(children[j]->content)) {
                         merror(XML_VALUEERR, children[j]->element, children[j]->content);
                         OS_ClearNode(children);
                         return (OS_INVALID);
                     }
 
-                    syscheck->db_entry_file_limit = atoi(children[j]->content);
+                    syscheck->file_entry_limit = atoi(children[j]->content);
 
-                    if (syscheck->db_entry_file_limit < 0) {
+                    if (syscheck->file_entry_limit < 0) {
                         mdebug2("Maximum value allowed for file_limit is '%d'", MAX_FILE_LIMIT);
-                        syscheck->db_entry_file_limit = MAX_FILE_LIMIT;
+                        syscheck->file_entry_limit = MAX_FILE_LIMIT;
                     }
                 }
             }
 
-            if (!syscheck->db_entry_limit_enabled) {
-                syscheck->db_entry_file_limit = 0;
+            if (!syscheck->file_limit_enabled) {
+                syscheck->file_entry_limit = 0;
             }
 
             OS_ClearNode(children);
         }
 
-        /* FIM dbsync entry limits */
-        else if (strcmp(node[i]->element, xml_db_entry) == 0) {
+#ifdef WIN32
+        // Get registry limit
+        else if (strcmp(node[i]->element, xml_registry_limit) == 0) {
             if (!(children = OS_GetElementsbyNode(xml, node[i]))) {
                 continue;
             }
-
             for(j = 0; children[j]; j++) {
-                if (strcmp(children[j]->element, xml_db_entry_enabled) == 0) {
+                if (strcmp(children[j]->element, xml_enabled) == 0) {
                     if (strcmp(children[j]->content, "yes") == 0) {
-                        syscheck->db_entry_limit_enabled = true;
+                        syscheck->registry_limit_enabled = true;
                     }
                     else if (strcmp(children[j]->content, "no") == 0) {
-                        syscheck->db_entry_limit_enabled = false;
+                        syscheck->registry_limit_enabled = false;
                     }
                     else {
                         merror(XML_VALUEERR, children[j]->element, children[j]->content);
@@ -1777,22 +1777,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                         return (OS_INVALID);
                     }
                 }
-                else if (strcmp(children[j]->element, xml_db_entry_file_limit) == 0) {
-                    if (!OS_StrIsNum(children[j]->content)) {
-                        merror(XML_VALUEERR, children[j]->element, children[j]->content);
-                        OS_ClearNode(children);
-                        return (OS_INVALID);
-                    }
-
-                    syscheck->db_entry_file_limit = atoi(children[j]->content);
-
-                    if (syscheck->db_entry_file_limit < 0) {
-                        mdebug2("Maximum value allowed for db_entry_file_limit is '%d'", MAX_FILE_LIMIT);
-                        syscheck->db_entry_file_limit = MAX_FILE_LIMIT;
-                    }
-                }
-#ifdef WIN32
-                else if (strcmp(children[j]->element, xml_db_entry_registry_limit) == 0) {
+                else if (strcmp(children[j]->element, xml_entries) == 0) {
                     if (!OS_StrIsNum(children[j]->content)) {
                         merror(XML_VALUEERR, children[j]->element, children[j]->content);
                         OS_ClearNode(children);
@@ -1802,22 +1787,19 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                     syscheck->db_entry_registry_limit = atoi(children[j]->content);
 
                     if (syscheck->db_entry_registry_limit < 0) {
-                        mdebug2("Maximum value allowed for db_entry_registry_limit is '%d'", MAX_FILE_LIMIT);
+                        mdebug2("Maximum value allowed for registry_limit is '%d'", MAX_FILE_LIMIT);
                         syscheck->db_entry_registry_limit = MAX_FILE_LIMIT;
                     }
                 }
-#endif
             }
 
-            if (!syscheck->db_entry_limit_enabled) {
-                syscheck->db_entry_file_limit = 0;
-#ifdef WIN32
+            if (!syscheck->registry_limit_enabled) {
                 syscheck->db_entry_registry_limit = 0;
-#endif
             }
 
             OS_ClearNode(children);
         }
+#endif
 
         /* Get if xml_scan_on_start */
         else if (strcmp(node[i]->element, xml_scan_on_start) == 0) {

@@ -541,14 +541,14 @@ time_t fim_scan() {
 
     w_mutex_unlock(&syscheck.fim_scan_mutex);
 
-    if (syscheck.db_entry_limit_enabled) {
+    if (syscheck.file_limit_enabled) {
         nodes_count = fim_db_get_count_file_entry();
     }
 
     fim_db_transaction_deleted_rows(db_transaction_handle, transaction_callback, &txn_ctx);
     db_transaction_handle = NULL;
 
-    if (syscheck.db_entry_limit_enabled && (nodes_count >= syscheck.db_entry_file_limit)) {
+    if (syscheck.file_limit_enabled && (nodes_count >= syscheck.file_entry_limit)) {
         w_mutex_lock(&syscheck.fim_scan_mutex);
 
         db_transaction_handle = fim_db_transaction_start(FIMDB_FILE_TXN_TABLE, transaction_callback, &txn_ctx);
@@ -588,10 +588,13 @@ time_t fim_scan() {
     gettime(&end);
     end_of_scan = time(NULL);
 
-    if (syscheck.db_entry_limit_enabled) {
+    if (syscheck.file_limit_enabled) {
         int files_count = fim_db_get_count_file_entry();
-        fim_check_db_state(syscheck.db_entry_file_limit, files_count, &_files_db_state, FIMDB_FILE_TABLE_NAME);
+        fim_check_db_state(syscheck.file_entry_limit, files_count, &_files_db_state, FIMDB_FILE_TABLE_NAME);
+    }
+
 #ifdef WIN32
+    if (syscheck.registry_limit_enabled) {
         fim_check_db_state(syscheck.db_entry_registry_limit,
                            fim_db_get_count_registry_key(),
                            &_registry_key_state,
@@ -600,8 +603,8 @@ time_t fim_scan() {
                            fim_db_get_count_registry_data(),
                            &_registry_value_state,
                            FIMDB_REGISTRY_VALUE_TABLENAME);
-#endif
     }
+#endif
 
     if (_base_line == 0) {
         _base_line = 1;

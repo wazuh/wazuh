@@ -82,7 +82,7 @@ void fim_initialize() {
                                          syscheck.sync_interval,
                                          fim_send_sync_state,
                                          loggingFunction,
-                                         syscheck.db_entry_file_limit,
+                                         syscheck.file_entry_limit,
                                          syscheck.min_sync_interval,
                                          0,
                                          false);
@@ -91,7 +91,7 @@ void fim_initialize() {
                                          syscheck.sync_interval,
                                          fim_send_sync_state,
                                          loggingFunction,
-                                         syscheck.db_entry_file_limit,
+                                         syscheck.file_entry_limit,
                                          syscheck.min_sync_interval,
                                          syscheck.db_entry_registry_limit,
                                          syscheck.enable_registry_synchronization);
