@@ -1175,16 +1175,3 @@ void w_free_event_info(Eventinfo *lf) {
         Free_Eventinfo(lf);
     }
 }
-
-const char *extract_module_from_location(const char *location){
-    assert(location);
-
-    const char *module_name = strstr(location, "->");
-    if (module_name == NULL) {
-        module_name = location;
-    } else {
-        module_name += 2;
-    }
-
-    return module_name;
-}

@@ -12,12 +12,25 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
-#include "queue_wrappers.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <shared.h>
+#include <os_net/os_net.h>
+
+#include "remoted/remoted.h"
 
 size_t __wrap_rem_get_qsize() {
     return mock();
 }
 
 size_t __wrap_rem_get_tsize() {
+    return mock();
+}
+
+int __wrap_rem_msgpush(__attribute__((unused)) const char * buffer, unsigned long size, struct sockaddr_storage * addr, int sock) {
+    check_expected(sock);
+    check_expected_ptr(addr);
+    check_expected(size);
+
     return mock();
 }

@@ -14,6 +14,28 @@
 
 #include <cJSON.h>
 
+void __wrap_rem_add_recv(unsigned long bytes);
+
+void __wrap_rem_inc_tcp();
+
+void __wrap_rem_dec_tcp();
+
+void __wrap_rem_inc_recv_ctrl_request(const char *agent_id);
+
+void __wrap_rem_inc_recv_ctrl_startup(const char *agent_id);
+
+void __wrap_rem_inc_recv_ctrl_shutdown(const char *agent_id);
+
+void __wrap_rem_inc_recv_ctrl_keepalive(const char *agent_id);
+
+void __wrap_rem_inc_recv_unknown();
+
+void __wrap_rem_add_send(unsigned long bytes);
+
+void __wrap_rem_inc_send_ack(const char *agent_id);
+
+void __wrap_rem_inc_send_discarded(const char *agent_id);
+
 cJSON* __wrap_rem_create_state_json();
 
 #endif /* REM_STATE_WRAPPERS_H */
