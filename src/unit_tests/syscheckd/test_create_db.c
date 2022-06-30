@@ -464,14 +464,20 @@ static int teardown_struct_dirent(void **state) {
 static int setup_file_limit(void **state) {
     syscheck.file_limit_enabled = false;
     syscheck.file_entry_limit = 0;
-
+#ifdef TEST_WINAGENT
+    syscheck.registry_limit_enabled = false;
+    syscheck.db_entry_registry_limit = 0;
+#endif
     return 0;
 }
 
 static int teardown_file_limit(void **state) {
     syscheck.file_limit_enabled = true;
     syscheck.file_entry_limit = 50000;
-
+#ifdef TEST_WINAGENT
+    syscheck.registry_limit_enabled = true;
+    syscheck.db_entry_registry_limit = 100000;
+#endif
     return 0;
 }
 

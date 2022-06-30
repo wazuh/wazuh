@@ -103,9 +103,6 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->registry_limit_enabled          = true;
     syscheck->db_entry_registry_limit         = 100000;
     syscheck->realtime_change                 = 0;
-
-
-
     syscheck->registry                        = NULL;
     syscheck->key_ignore                      = NULL;
     syscheck->key_ignore_regex                = NULL;
@@ -1790,7 +1787,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                     syscheck->db_entry_registry_limit = atoi(children[j]->content);
 
                     if (syscheck->db_entry_registry_limit < 0) {
-                        mdebug2("Maximum value allowed for file_limit is '%d'", MAX_FILE_LIMIT);
+                        mdebug2("Maximum value allowed for registry_limit is '%d'", MAX_FILE_LIMIT);
                         syscheck->db_entry_registry_limit = MAX_FILE_LIMIT;
                     }
                 }
