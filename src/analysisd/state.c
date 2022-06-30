@@ -522,6 +522,7 @@ static analysisd_agent_state_t * get_node(const char *agent_id) {
 }
 
 static void w_analysisd_clean_agents_state() {
+    char *node_name = NULL;
     int *active_agents = NULL;
     int sock = -1;
     OSHashNode *hash_node;
@@ -533,7 +534,9 @@ static void w_analysisd_clean_agents_state() {
         return;
     }
 
-    active_agents = wdb_get_agents_by_connection_status(AGENT_CS_ACTIVE, &sock);
+    node_name = get_node_name();
+    active_agents = wdb_get_agents_by_connection_status(AGENT_CS_ACTIVE, &sock, node_name);
+    os_free(node_name);
     if(!active_agents) {
         merror("Unable to get connected agents.");
         return;
@@ -546,6 +549,8 @@ static void w_analysisd_clean_agents_state() {
         agent_id = hash_node->key;
         agent_state = hash_node->data;
 
+        hash_node = OSHash_Next(analysisd_agents_state, &inode_it, hash_node);
+
         int exist = 0;
         for (size_t i = 0; active_agents[i] != -1; i++) {
             if (atoi(agent_id) == active_agents[i] ) {
@@ -557,11 +562,7 @@ static void w_analysisd_clean_agents_state() {
         if (exist == 0) {
             agent_state = (analysisd_agent_state_t *)OSHash_Delete_ex(analysisd_agents_state, agent_id);
             os_free(agent_state);
-            hash_node = OSHash_Begin(analysisd_agents_state, &inode_it);
-            continue;
         }
-
-        hash_node = OSHash_Next(analysisd_agents_state, &inode_it, hash_node);
     }
 
     return;
