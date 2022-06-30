@@ -22,7 +22,7 @@ protected:
     {
         Registry::registerBuilder(operationConditionBuilder, "operation.condition");
         Registry::registerBuilder(operationMapBuilder, "operation.map");
-        Registry::registerBuilder(stageCheckBuilder, "stage.check");
+        Registry::registerBuilder(stageBuilderCheck, "stage.check");
         Registry::registerBuilder(stageMapBuilder, "stage.map");
     }
     void TearDown() override

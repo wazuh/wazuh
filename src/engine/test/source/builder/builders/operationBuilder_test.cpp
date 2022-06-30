@@ -58,13 +58,13 @@ Json operations {R"([
 
 ])"};
 
-auto operationArray {operations.getArray()};
+auto operationArray {operations.getArray().value()};
 
 TEST(OperationConditionBuilderTest, Builds)
 {
     for (auto operationDef : operationArray)
     {
-        auto def = operationDef.getObject()[0];
+        auto def = operationDef.getObject().value()[0];
         ASSERT_NO_THROW(operationConditionBuilder(def));
     }
 }
@@ -181,7 +181,7 @@ TEST(OperationConditionBuilderTest, BuildsOperates)
 
     for (auto operationDef : operationArray)
     {
-        auto def = operationDef.getObject()[0];
+        auto def = operationDef.getObject().value()[0];
         auto op = operationConditionBuilder(def)->getPtr<Term<EngineOp>>()->getFn();
         auto result = op(eventOk);
         if (!result)
@@ -193,7 +193,7 @@ TEST(OperationConditionBuilderTest, BuildsOperates)
 
     for (auto operationDef : operationArray)
     {
-        auto def = operationDef.getObject()[0];
+        auto def = operationDef.getObject().value()[0];
         auto op = operationConditionBuilder(def)->getPtr<Term<EngineOp>>()->getFn();
         auto result = op(eventNotOk);
         if (result)
@@ -205,7 +205,7 @@ TEST(OperationConditionBuilderTest, BuildsOperates)
 
     for (auto operationDef : operationArray)
     {
-        auto def = operationDef.getObject()[0];
+        auto def = operationDef.getObject().value()[0];
         auto op = operationConditionBuilder(def)->getPtr<Term<EngineOp>>()->getFn();
         auto result = op(eventNull);
         if (result)
@@ -220,7 +220,7 @@ TEST(OperationMapBuilderTest, Builds)
 {
     for (auto operationDef : operationArray)
     {
-        auto def = operationDef.getObject()[0];
+        auto def = operationDef.getObject().value()[0];
         ASSERT_NO_THROW(operationMapBuilder(def));
     }
 }
@@ -288,7 +288,7 @@ TEST(OperationMapBuilderTest, BuildsOperates)
 
     for (auto operationDef : operationArray)
     {
-        auto def = operationDef.getObject()[0];
+        auto def = operationDef.getObject().value()[0];
         auto op = operationMapBuilder(def)->getPtr<Term<EngineOp>>()->getFn();
         auto result = op(eventOk);
         if (!result)
