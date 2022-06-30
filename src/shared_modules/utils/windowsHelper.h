@@ -63,7 +63,7 @@ typedef struct SMBIOSStructureHeader
     WORD Handle;
 } SMBIOSStructureHeader;
 
-typedef struct SMBIOSBasboardInfoStructure
+typedef struct SMBIOSBaseboardInfoStructure
 {
     BYTE Type;
     BYTE FormattedAreaLength;
@@ -72,7 +72,7 @@ typedef struct SMBIOSBasboardInfoStructure
     BYTE Product;
     BYTE Version;
     BYTE SerialNumber;
-} SMBIOSBasboardInfoStructure;
+} SMBIOSBaseboardInfoStructure;
 
 namespace Utils
 {
@@ -178,19 +178,24 @@ namespace Utils
 
         while (offset < rawDataSize && serialNumber.empty())
         {
+            if (offset + sizeof(SMBIOSStructureHeader) >= rawDataSize)
+            {
+                break;
+            }
+
             SMBIOSStructureHeader header{};
             memcpy(&header, rawData + offset, sizeof(SMBIOSStructureHeader));
 
             if (BASEBOARD_INFORMATION_TYPE == header.Type)
             {
-                SMBIOSBasboardInfoStructure info{};
-                memcpy(&info, rawData + offset, sizeof(SMBIOSBasboardInfoStructure));
+                SMBIOSBaseboardInfoStructure info{};
+                memcpy(&info, rawData + offset, sizeof(SMBIOSBaseboardInfoStructure));
                 offset += info.FormattedAreaLength;
 
                 for (BYTE i = 1; i < info.SerialNumber; ++i)
                 {
                     const char* tmp{reinterpret_cast<const char*>(rawData + offset)};
-                    const auto len{ strlen(tmp) };
+                    const auto len{ nullptr != tmp ? strlen(tmp) : 0 };
                     offset += len + sizeof(char);
                 }
 
@@ -201,10 +206,10 @@ namespace Utils
                 offset += header.FormattedAreaLength;
 
                 // Search for the end of the unformatted structure (\0\0)
-                while (offset < rawDataSize)
+                while (offset + 1 < rawDataSize)
                 {
                     if (!(*(rawData + offset)) && !(*(rawData + offset + 1)))
-                    {
+                        {
                         offset += 2;
                         break;
                     }
