@@ -1990,9 +1990,6 @@ stages:
 ---
 test_name: GET /agents/{agent_id}/config/{component}/{configuration} (only cluster configuration)
 
-marks:
-  - cluster
-
 stages:
 
 - name: Request-Com-Cluster (Manager)

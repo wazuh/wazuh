@@ -2,7 +2,6 @@ import json
 import os
 import re
 import socket
-import subprocess
 import time
 
 # Configuration
@@ -19,9 +18,6 @@ LOGIN_URL = f"{BASE_URL}/security/user/authenticate"
 
 HEALTHCHECK_TOKEN_FILE = '/tmp_volume/healthcheck/healthcheck.token'
 OSSEC_LOG_PATH = '/var/ossec/logs/ossec.log'
-
-# Variable used to compare default daemons_check.txt with an output with cluster disabled
-CHECK_CLUSTERD_DAEMON = '1c1\n< wazuh-clusterd not running...\n---\n> wazuh-clusterd is running...\n'
 
 
 def get_login_header(user, password):

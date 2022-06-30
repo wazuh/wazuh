@@ -116,34 +116,17 @@ def run_tests(collected_tests: list, n_iterations: int = 1):
         Number of iterations for the API integration tests to be run.
     """
 
-    def run_test(test: str, iteration: int, pytest_mark: str = None):
-        """Run a single API integration test once.
-
-        Parameters
-        ----------
-        test : str
-            API integration test to be run.
-        iteration : int
-            Number indicating the iteration to be run.
-        pytest_mark : str
-            Extra mark used to pass the API integration test in a cluster or standalone environment.
-        """
-        test_name = \
-            f'{test.rsplit(".")[0]}' f'{iteration if iteration != 1 else ""}'
-        html_params = [f"--html={RESULTS_FOLDER}/html_reports/{test_name}.html", '--self-contained-html']
-        with open(os.path.join(RESULTS_FOLDER, test_name), 'w') as f:
-            command = PYTEST_COMMAND.split(' ') + html_params + [test]
-            if pytest_mark:
-                command += pytest_mark.split(' ')
-            subprocess.call(command, stdout=f)
-        get_results(filename=os.path.join(RESULTS_FOLDER, test_name))
-
     os.chdir(TESTS_PATH)
     for test in collected_tests:
         for i in range(1, n_iterations + 1):
             iteration_info = f'[{i}/{n_iterations}]' if n_iterations > 1 else ''
+            test_name = f'{test.rsplit(".")[0]}{i if i != 1 else ""}'
             print(f'{test} {iteration_info}')
-            run_test(test=test, iteration=i)
+            f = open(os.path.join(RESULTS_FOLDER, test_name), 'w')
+            html_params = [f"--html={RESULTS_FOLDER}/html_reports/{test_name}.html", '--self-contained-html']
+            subprocess.call(PYTEST_COMMAND.split(' ') + html_params + [test], stdout=f)
+            f.close()
+            get_results(filename=os.path.join(RESULTS_FOLDER, test_name))
 
 
 def get_results(filename: str = None):
@@ -159,7 +142,7 @@ def get_results(filename: str = None):
     else:
         os.chdir(RESULTS_FOLDER)
         for file in sorted(glob.glob('test_*')):
-            print(f"{file}")
+            print(file)
             calculate_result(file)
 
 
