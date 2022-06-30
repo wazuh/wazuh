@@ -209,7 +209,7 @@ namespace Utils
                 while (offset + 1 < rawDataSize)
                 {
                     if (!(*(rawData + offset)) && !(*(rawData + offset + 1)))
-                        {
+                    {
                         offset += 2;
                         break;
                     }
