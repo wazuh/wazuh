@@ -19,6 +19,7 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     static const char *disabled = "disabled";
     static const char *cluster_name = "name";
     static const char *node_name = "node_name";
+    static const char *agent_reconnection = "agent_reconnection";
     static const char *node_type = "node_type";
     static const char *key = "key";
     static const char *socket_timeout = "socket_timeout";
@@ -94,6 +95,7 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
         } else if (!strcmp(node[i]->element, interval)) {
             mwarn("Detected a deprecated configuration for cluster. Interval option is not longer available.");
         } else if (!strcmp(node[i]->element, nodes)) {
+        } else if (!strcmp(node[i]->element, agent_reconnection)) {
         } else if (!strcmp(node[i]->element, port)) {
         } else if (!strcmp(node[i]->element, bind_addr)) {
         } else {
