@@ -10,6 +10,7 @@
 #include "logtest.h"
 #include "os_xml/os_xml.h"
 
+#define LOGTESTQUEUE SYSLOG_MQ
 
 OSHash *w_logtest_sessions;
 
@@ -262,7 +263,7 @@ int w_logtest_preprocessing_phase(Eventinfo * lf, cJSON * request) {
     int logsize = strlen(location_str) + strlen(event_str) + 4;
 
     os_calloc(logsize, sizeof(char), log);
-    snprintf(log, logsize, "1:%s:%s", location_str, event_str);
+    snprintf(log, logsize, "%c:%s:%s", LOGTESTQUEUE, location_str, event_str);
 
     if (OS_CleanMSG(log, lf) < 0) {
         os_free(log);
