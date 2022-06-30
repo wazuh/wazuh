@@ -124,7 +124,7 @@ void monitor_agents_deletion(){
     cJSON *j_agent_ip = NULL;
     char str_agent_id[12];
 
-    agents_array = wdb_get_agents_by_connection_status("disconnected", &sock);
+    agents_array = wdb_get_agents_by_connection_status("disconnected", &sock, NULL);
     if (agents_array) {
         for (int i = 0; agents_array[i] != -1; i++) {
             j_agent_info = wdb_get_agent_info(agents_array[i], &sock);
