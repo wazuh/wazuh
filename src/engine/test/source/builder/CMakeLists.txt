@@ -70,7 +70,7 @@ add_executable(stageBuilderCheck_test
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/operationBuilder.cpp
 )
 target_link_libraries(stageBuilderCheck_test
-  gtest_main base
+  gtest_main base logicExpression
 )
 gtest_discover_tests(stageBuilderCheck_test)
 
@@ -94,7 +94,7 @@ add_executable(stageBuilderNormalize_test
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/operationBuilder.cpp
 )
 target_link_libraries(stageBuilderNormalize_test
-  gtest_main base
+  gtest_main base logicExpression
 )
 gtest_discover_tests(stageBuilderNormalize_test)
 

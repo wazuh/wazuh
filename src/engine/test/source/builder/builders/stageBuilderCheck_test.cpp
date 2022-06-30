@@ -26,7 +26,7 @@ protected:
     }
 };
 
-TEST_F(StageBuilderCheckTest, Builds)
+TEST_F(StageBuilderCheckTest, ListBuilds)
 {
     auto checkJson = Json {R"([
         {"string": "value"},
@@ -39,17 +39,17 @@ TEST_F(StageBuilderCheckTest, Builds)
         {"object": {"a": 1, "b": 2}}
 ])"};
 
-    ASSERT_NO_THROW(stageCheckBuilder(checkJson));
+    ASSERT_NO_THROW(stageBuilderCheck(checkJson));
 }
 
 TEST_F(StageBuilderCheckTest, UnexpectedDefinition)
 {
     auto checkJson = Json {R"({})"};
 
-    ASSERT_THROW(stageCheckBuilder(checkJson), std::runtime_error);
+    ASSERT_THROW(stageBuilderCheck(checkJson), std::runtime_error);
 }
 
-TEST_F(StageBuilderCheckTest, ArrayWrongSizeItem)
+TEST_F(StageBuilderCheckTest, ListArrayWrongSizeItem)
 {
     auto checkJson = Json {R"([
         {"string": "value"},
@@ -63,19 +63,19 @@ TEST_F(StageBuilderCheckTest, ArrayWrongSizeItem)
         {"object": {"a": 1, "b": 2}}
 ])"};
 
-    ASSERT_THROW(stageCheckBuilder(checkJson), std::runtime_error);
+    ASSERT_THROW(stageBuilderCheck(checkJson), std::runtime_error);
 }
 
-TEST_F(StageBuilderCheckTest, ArrayWrongTypeItem)
+TEST_F(StageBuilderCheckTest, ListArrayWrongTypeItem)
 {
     auto checkJson = Json {R"([
         ["string", "value"]
 ])"};
 
-    ASSERT_THROW(stageCheckBuilder(checkJson), std::runtime_error);
+    ASSERT_THROW(stageBuilderCheck(checkJson), std::runtime_error);
 }
 
-TEST_F(StageBuilderCheckTest, BuildsCorrectExpression)
+TEST_F(StageBuilderCheckTest, ListBuildsCorrectExpression)
 {
     auto checkJson = Json {R"([
         {"string": "value"},
@@ -88,7 +88,7 @@ TEST_F(StageBuilderCheckTest, BuildsCorrectExpression)
         {"object": {"a": 1, "b": 2}}
 ])"};
 
-    auto expression = stageCheckBuilder(checkJson);
+    auto expression = stageBuilderCheck(checkJson);
 
     ASSERT_TRUE(expression->isOperation());
     ASSERT_TRUE(expression->isAnd());
@@ -96,4 +96,20 @@ TEST_F(StageBuilderCheckTest, BuildsCorrectExpression)
     {
         ASSERT_TRUE(term->isTerm());
     }
+}
+
+TEST_F(StageBuilderCheckTest, ExpressionBuilds)
+{
+    auto checkJson = Json {R"("field==value")"};
+
+    ASSERT_NO_THROW(stageBuilderCheck(checkJson));
+}
+
+TEST_F(StageBuilderCheckTest, ExpressionBuildsCorrectExpression)
+{
+    auto checkJson = Json {R"("field==value")"};
+
+    auto expression = stageBuilderCheck(checkJson);
+
+    ASSERT_TRUE(expression->isTerm());
 }
