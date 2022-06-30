@@ -711,14 +711,13 @@ class Agent:
                                     filters=filters) if filters and 'id' in filters else {'filters': filters}
         db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
                                       query=q, **pfilters)
-        data = db_query.run()
 
-        return data
+        return db_query.run()
 
     @staticmethod
     def add_group_to_agent(group_id, agent_id, replace=False, replace_list=None):
         """Add an existing group to an agent.
-        
+
         Parameters
         ----------
         group_id: str
@@ -846,7 +845,7 @@ class Agent:
     @staticmethod
     def unset_single_group_agent(agent_id, group_id, force=False):
         """Unset the agent group. If agent has multigroups, it will preserve all previous groups except the last one.
-        
+
         Parameters
         ----------
         agent_id: str

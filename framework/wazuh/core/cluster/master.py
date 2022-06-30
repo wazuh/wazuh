@@ -1176,24 +1176,24 @@ class Master(server.AbstractServer):
         logger.info("Cluster agents reconnection started.")
 
         logger.info(
-            f"Sleeping {self.cluster_items['intervals']['master']['areconn_nodes_stability_delay']}s "
-            f"before starting the agent-groups task, waiting for the workers connection.")
-        await asyncio.sleep(self.cluster_items['intervals']['master']['areconn_nodes_stability_delay'])
+            f'Sleeping {self.cluster_items["intervals"]["master"]["agent_reconnection"]["nodes_stability_delay"]}s '
+            f'before starting the agent-groups task, waiting for the workers connection.')
+        await asyncio.sleep(self.cluster_items["intervals"]["master"]["agent_reconnection"]["nodes_stability_delay"])
 
         # The master node is provisionally on the blacklisted nodes
         self.agents_reconnect = agents_reconnect.AgentsReconnect(
             logger=logger, blacklisted_nodes={"master-node"}, nodes=self.clients,
-            nodes_stability_threshold=self.cluster_items["intervals"]["master"]["areconn_nodes_stability_threshold"]
+            nodes_stability_threshold=self.cluster_items["intervals"]["master"]["agent_reconnection"]["nodes_stability_threshold"]
         )
 
         while True:
             while not await self.agents_reconnect.check_nodes_stability():
                 if self.agents_reconnect.current_phase == agents_reconnect.AgentsReconnectionPhases.NOT_ENOUGH_NODES:
                     logger.info(
-                        f"Not enough nodes to check. "
-                        f"Sleeping {self.cluster_items['intervals']['master']['areconn_posbalance_time']} seconds.")
-                    await asyncio.sleep(self.cluster_items["intervals"]["master"]["areconn_posbalance_time"])
-                await asyncio.sleep(self.cluster_items["intervals"]["master"]["areconn_nodes_stability_time"])
+                        f'Not enough nodes to check. '
+                        f'Sleeping {self.cluster_items["intervals"]["master"]["agent_reconnection"]["posbalance_time"]} seconds.')
+                    await asyncio.sleep(self.cluster_items["intervals"]["master"]["agent_reconnection"]["posbalance_time"])
+                await asyncio.sleep(self.cluster_items["intervals"]["master"]["agent_reconnection"]["nodes_stability_time"])
 
             # Check agents balance
             await self.agents_reconnect.balance_previous_conditions()
@@ -1204,9 +1204,9 @@ class Master(server.AbstractServer):
 
             # Iteration complete. Sleeping phase
             self.agents_reconnect.current_phase = agents_reconnect.AgentsReconnectionPhases.BALANCE_SLEEPING
-            logger.info(f"Iteration complete. Sleep during "
-                        f"{self.cluster_items['intervals']['master']['areconn_posbalance_time']} seconds.")
-            await asyncio.sleep(self.cluster_items["intervals"]["master"]["areconn_posbalance_time"])
+            logger.info(f'Iteration complete. Sleep during '
+                        f'{self.cluster_items["intervals"]["master"]["agent_reconnection"]["posbalance_time"]} seconds.')
+            await asyncio.sleep(self.cluster_items["intervals"]["master"]["agent_reconnection"]["posbalance_time"])
 
         logger.info("Cluster agents reconnection stopped.")
 
