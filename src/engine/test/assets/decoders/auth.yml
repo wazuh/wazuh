@@ -61,11 +61,6 @@ parse:
     # Feb  9 21:20:03 precise32 sshd[8317]: subsystem request for sftp by user vagrant
 
 normalize:
-#   - check:
-#       - system.auth.message: +exists #AND +not_null/system.auth.message
-#     map:
-#       message: $system.auth.message
-
   # Feb 21 21:54:44 localhost sshd[3402]: Accepted publickey for vagrant from 10.0.2.2 port 63673 ssh2: RSA 39:33:99:e9:a0:dc:f2:33:a3:e5:72:3b:7c:3a:56:84
   - check:
       - _system.auth.ssh.event: Accepted
@@ -75,6 +70,7 @@ normalize:
       event.action: ssh_login
       event.outcome: success
 
+  # Feb 22 16:45:20 slave22 sshd[2738]: Failed password for root from 202.196.224.106 port 1786 ssh2"
   - check: _system.auth.ssh.event==Invalid OR _system.auth.ssh.event==Failed
     map:
       event.type: +s_append/authentication_failure/info
@@ -82,35 +78,35 @@ normalize:
       event.action: ssh_login
       event.outcome: failure
 
-#   - check: >-
-#       +not_null/proccess.name AND (
-#            +contains/groupadd/$process.name
-#         OR +contains/groupdel/$process.name
-#         OR +contains/groupmod/$process.name
-#         OR +contains/useradd/$process.name
-#         OR +contains/userdel/$process.name
-#         OR +contains/usermod/$process.name
-#       )
-#     map:
-#       event.category: iam
-#       event.outcome: success
+  # Feb 24 09:20:10 precise32 sudo:  vagrant : TTY=pts/0 ; PWD=/home/vagrant ; USER=root ; COMMAND=/bin/cat /var/log/auth.log
+  - check: >-
+      +exists/process.name AND (
+      process.name==groupadd
+      OR process.name==groupdel
+      OR process.name==groupmod
+      OR process.name==useradd
+      OR process.name==userdel
+      OR process.name==usermod
+      )
+    map:
+      event.category: +s_append/iam
+      event.outcome: success
 
-#   - check: >-
-#       +not_null/proccess.name AND (
-#            +contains/useradd/$process.name
-#         OR +contains/userdel/$process.name
-#         OR +contains/usermod/$process.name
-#       )
-#     map:
-#       event.type: +append/user
+  - check: >-
+      +exists/process.name AND (
+      process.name==useradd
+      OR process.name==userdel
+      OR process.name==usermod
+      )
+    map:
+      event.type: +s_append/user
 
-#   - check: >-
-#       +not_null/proccess.name AND (
-#            +contains/groupadd/$process.name
-#         OR +contains/groupdel/$process.name
-#         OR +contains/groupmod/$process.name
-#       )
-#     map:
-#       event.type: +append/group
-
-#   - check: >-
+  # Feb 24 09:19:55 precise32 groupadd[7996]: new group: name=mysql, GID=111
+  - check: >-
+      +exists/process.name AND (
+      process.name==groupadd
+      OR process.name==groupdel
+      OR process.name==groupmod
+      )
+    map:
+      event.type: +s_append/group
