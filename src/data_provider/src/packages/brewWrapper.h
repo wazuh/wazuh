@@ -27,6 +27,7 @@ class BrewWrapper final : public IPackageWrapper
             , m_format{"pkg"}
             , m_source{"homebrew"}
             , m_location{ctx.filePath}
+            , m_vendor{UNKNOWN_VALUE}
         {
             const auto rows { Utils::split(Utils::getFileContent(ctx.filePath + "/" + ctx.package + "/" + ctx.version + "/.brew/" + ctx.package + ".rb"), '\n')};
 
@@ -82,6 +83,10 @@ class BrewWrapper final : public IPackageWrapper
         {
             return m_location;
         }
+        std::string vendor() const override
+        {
+            return m_vendor;
+        }
 
     private:
         std::string m_name;
@@ -93,6 +98,7 @@ class BrewWrapper final : public IPackageWrapper
         std::string m_osPatch;
         const std::string m_source;
         const std::string m_location;
+        const std::string m_vendor;
 };
 
 

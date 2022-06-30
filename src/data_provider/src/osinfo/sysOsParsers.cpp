@@ -12,7 +12,6 @@
 #include "osinfo/sysOsParsers.h"
 #include "stringHelper.h"
 #include "sharedDefs.h"
-#include <regex>
 
 static bool parseUnixFile(const std::map<std::string, std::string>& keyMap,
                           const char separator,
@@ -56,29 +55,6 @@ static bool parseUnixFile(const std::map<std::string, std::string>& keyMap,
 }
 
 
-
-static bool findRegexInString(const std::string& in,
-                              std::string& match,
-                              const std::regex& pattern,
-                              const size_t matchIndex = 0,
-                              const std::string& start = "")
-{
-    bool ret{false};
-
-    if (start.empty() || Utils::startsWith(in, start))
-    {
-        std::smatch sm;
-        ret = std::regex_search(in, sm, pattern);
-
-        if (ret && sm.size() >= matchIndex)
-        {
-            match = sm[matchIndex];
-        }
-    }
-
-    return ret;
-}
-
 static bool findCodeNameInString(const std::string& in,
                                  std::string& output)
 {
@@ -106,21 +82,21 @@ static void findMajorMinorVersionInString(const std::string& in,
     std::string version;
     std::regex pattern{MAJOR_VERSION_PATTERN};
 
-    if (findRegexInString(in, version, pattern, 1))
+    if (Utils::findRegexInString(in, version, pattern, 1))
     {
         output["os_major"] = version;
     }
 
     pattern = MINOR_VERSION_PATTERN;
 
-    if (findRegexInString(in, version, pattern, 1))
+    if (Utils::findRegexInString(in, version, pattern, 1))
     {
         output["os_minor"] = version;
     }
 
     pattern = PATCH_VERSION_PATTERN;
 
-    if (findRegexInString(in, version, pattern, 1))
+    if (Utils::findRegexInString(in, version, pattern, 1))
     {
         output["os_patch"] = version;
     }
@@ -141,7 +117,7 @@ static bool findVersionInStream(std::istream& in,
     while (std::getline(in, line))
     {
         line = Utils::trim(line);
-        ret |= findRegexInString(line, data, pattern, matchIndex, start);
+        ret |= Utils::findRegexInString(line, data, pattern, matchIndex, start);
 
         if (ret)
         {
@@ -193,7 +169,7 @@ bool UbuntuOsParser::parseFile(std::istream& in, nlohmann::json& output)
         line = Utils::trim(line);
         std::string match;
 
-        if (findRegexInString(line, match, pattern, 0, DISTRIB_FIELD))
+        if (Utils::findRegexInString(line, match, pattern, 0, DISTRIB_FIELD))
         {
             output["os_version"] = match;
             findMajorMinorVersionInString(match, output);
@@ -224,7 +200,7 @@ bool BSDOsParser::parseUname(const std::string& in, nlohmann::json& output)
     constexpr auto PATTERN_MATCH{R"([0-9].*\.[0-9]*)"};
     std::string match;
     std::regex pattern{PATTERN_MATCH};
-    const auto ret {findRegexInString(in, match, pattern)};
+    const auto ret {Utils::findRegexInString(in, match, pattern)};
 
     if (ret)
     {
@@ -382,7 +358,7 @@ bool HpUxOsParser::parseUname(const std::string& in, nlohmann::json& output)
     constexpr auto PATTERN_MATCH{R"(B\.([0-9].*\.[0-9]*))"};
     std::string match;
     std::regex pattern{PATTERN_MATCH};
-    const auto ret {findRegexInString(in, match, pattern, 1)};
+    const auto ret {Utils::findRegexInString(in, match, pattern, 1)};
 
     if (ret)
     {
@@ -437,7 +413,7 @@ bool MacOsParser::parseUname(const std::string& in, nlohmann::json& output)
     constexpr auto PATTERN_MATCH{"[0-9]+"};
     std::string match;
     std::regex pattern{PATTERN_MATCH};
-    const auto ret {findRegexInString(in, match, pattern, 0)};
+    const auto ret {Utils::findRegexInString(in, match, pattern, 0)};
 
     if (ret)
     {
