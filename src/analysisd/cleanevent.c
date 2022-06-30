@@ -48,8 +48,6 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
 
     id = msg[0];
 
-    minfo("-----> msg '%s'", msg);
-
     /* Ignore the id of the message in here */
     msg += 2;
 
@@ -76,8 +74,6 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     pieces++;
 
     os_strdup(msg, lf->location);
-
-    minfo("-----> lf->location '%s'", lf->location);
 
     /* Get the log length */
     loglen = strlen(pieces) + 1;
