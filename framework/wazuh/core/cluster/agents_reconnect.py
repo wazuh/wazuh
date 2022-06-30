@@ -1,13 +1,12 @@
 import contextlib
 
-from collections import defaultdict
 from datetime import timedelta
 from enum import Enum
 from math import ceil
-from xmlrpc.client import Boolean
 
 from wazuh.core import utils
-from wazuh.core.cluster import control, local_client
+from wazuh.core.agent import Agent
+from wazuh.core.cluster import utils as cluster_utils
 from wazuh.core.common import DECIMALS_DATE_FORMAT
 
 
@@ -76,7 +75,7 @@ class AgentsReconnect:
         self.balance_counter = 0
         self.nodes_stability_counter = 0
 
-    async def check_nodes_stability(self) -> Boolean:
+    async def check_nodes_stability(self) -> bool:
         """Function in charge of determining whether an environment is stable.
 
         To verify the stability, the function uses the consecutive verification
@@ -120,19 +119,21 @@ class AgentsReconnect:
                          f"Counter: {self.nodes_stability_counter}/{self.nodes_stability_threshold}.")
         return False
 
-    async def get_agents(self) -> dict:
-        """Get all agents in the system flagged as active.
+    async def get_agents_in_nodes(self) -> dict:
+        """Get all agents in the system flagged as active and connected to nodes to watch.
 
         Returns
         -------
         dict
             Dictionary with agents information.
         """
-        lc = local_client.LocalClient()
-        return await control.get_agents(lc, filter_status=["active"],
-                                        select_fields={'id', 'node_name', 'lastKeepAlive'})
+        return await cluster_utils.forward_function(
+            func=Agent.get_agents_overview,
+            f_kwargs={"filters": {"status": "active"},
+                      "select": ["id", "node_name", "lastKeepAlive"],
+                      "q": ",".join([f"node_name={node}" for node in self.previous_nodes])})
 
-    async def check_previous_reconnections(self) -> Boolean:
+    async def check_previous_reconnections(self) -> bool:
         """Check the agents status after the previous reconnection.
 
         Returns
@@ -168,7 +169,7 @@ class AgentsReconnect:
         same_agents_node_threshold = sum(
             len(lst) for lst in self.previous_agents_nodes.values()) * self.same_agents_node_percent
 
-        current_agents = await self.get_agents()
+        current_agents = await self.get_agents_in_nodes()
         lost_agents = []
         agents_still_previous_node = []
 
@@ -201,7 +202,7 @@ class AgentsReconnect:
             Dictionary with the agents that are not balanced.
             The keys of the dictionary are the names of the nodes and the values are the agents.
         """
-        def check_lastkeepalive(lastkeepalive) -> Boolean:
+        def check_lastkeepalive(lastkeepalive) -> bool:
             """Check whether an agent is connected or not, by checking the
             last_keepalive of the agent vs. an established threshold.
 
@@ -250,10 +251,10 @@ class AgentsReconnect:
             return agents_nodes_exceeded
 
         self.current_phase = AgentsReconnectionPhases.CHECK_AGENTS_BALANCE
-        current_connected_agents = await self.get_agents()
+        current_connected_agents = await self.get_agents_in_nodes()
 
         nodes_agents_dikt = {}
-        for node in set(self.nodes.keys()).union({"master-node"}) - self.blacklisted_nodes:
+        for node in self.previous_nodes:
             nodes_agents_dikt[node] = []
 
         for agent_registry in filter(lambda aregistry: check_lastkeepalive(aregistry['lastKeepAlive']),
@@ -268,8 +269,6 @@ class AgentsReconnect:
         else:
             self.logger.info('The agents connected to the cluster are not balanced.')
         self.reconnection_timestamp = utils.get_utc_now()
-
-        self.logger.info(f'Agents that need reconnection: {nodes_agents_dikt.values()}.')
 
         return nodes_agents_dikt
 
