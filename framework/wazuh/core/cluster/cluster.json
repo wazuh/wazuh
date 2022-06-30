@@ -101,10 +101,12 @@
             "check_worker_lastkeepalive": 60,
             "max_allowed_time_without_keepalive": 120,
             "max_locked_integrity_time": 1000,
-            "areconn_nodes_stability_delay": 30,
-            "areconn_nodes_stability_time": 300,
-            "areconn_nodes_stability_threshold": 3,
-            "areconn_posbalance_time": 600
+            "agent_reconnection": {
+                "nodes_stability_delay": 30,
+                "nodes_stability_time": 300,
+                "nodes_stability_threshold": 3,
+                "posbalance_time": 600
+            }
         },
 
         "communication":{
