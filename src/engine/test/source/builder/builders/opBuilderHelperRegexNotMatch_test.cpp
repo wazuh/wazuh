@@ -7,277 +7,99 @@
  * Foundation.
  */
 
+#include <any>
 #include <gtest/gtest.h>
 #include <vector>
-
-#include <re2/re2.h>
 
 #include <baseTypes.hpp>
 
 #include "opBuilderHelperFilter.hpp"
-#include "testUtils.hpp"
-
 
 using namespace base;
 namespace bld = builder::internals::builders;
 
-using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg) {
-};
-
 TEST(opBuilderHelperRegexNotMatch, Builds)
 {
-    Document doc {R"({
-        "check":
-            {"field": "+r_not_match/regexp"}
-    })"};
+    auto tuple = std::make_tuple(
+        std::string {"/field"}, std::string {"r_not_match"}, std::vector<std::string> {"regex_test$ 123$"});
 
-    ASSERT_NO_THROW(bld::opBuilderHelperRegexNotMatch(doc.get("/check"), tr));
+    ASSERT_NO_THROW(bld::opBuilderHelperRegexNotMatch(tuple));
 }
 
-TEST(opBuilderHelperRegexNotMatch, NotEnoughArgumentsError)
+TEST(opBuilderHelperRegexNotMatch, Exec_match_false)
 {
-    Document doc {R"({
-        "check":
-            {"field": "+r_not_match/"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"r_not_match"},
+                                 std::vector<std::string> {"^regex_test"});
 
-    ASSERT_THROW(bld::opBuilderHelperRegexNotMatch(doc.get("/check"), tr), std::runtime_error);
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": "regex_test 123"})");
+
+    auto op = bld::opBuilderHelperRegexNotMatch(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result.success());
 }
 
-TEST(opBuilderHelperRegexNotMatch, TooManyArgumentsError)
+TEST(opBuilderHelperRegexNotMatch, Exec_match_true)
 {
-    Document doc {R"({
-        "check":
-            {"field": "+r_not_match/regexp/regexp2"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"r_not_match"},
+                                 std::vector<std::string> {"regex_test$"});
 
-    ASSERT_THROW(bld::opBuilderHelperRegexNotMatch(doc.get("/check"), tr), std::runtime_error);
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": "regex_test 123"})");
+
+    auto op = bld::opBuilderHelperRegexNotMatch(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result.success());
 }
 
-TEST(opBuilderHelperRegexMatch, InvalidRegex)
+TEST(opBuilderHelperRegexNotMatch, Exec_match_multilevel_false)
 {
-    Document doc {R"({
-        "check":
-            {"field": "+r_match/(\\w{"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"r_not_match"},
+                                 std::vector<std::string> {"^regex_test"});
 
-    ASSERT_THROW(bld::opBuilderHelperRegexMatch(doc.get("/check"), tr), std::runtime_error);
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": 10,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "field2check": "regex_test 123",
+                        "ref_key": 11
+                    }
+                    })");
+
+    auto op = bld::opBuilderHelperRegexNotMatch(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result.success());
 }
 
-TEST(opBuilderHelperRegexNotMatch, InvalidSrcType)
+TEST(opBuilderHelperRegexNotMatch, Exec_match_multilevel_true)
 {
-    Document doc {R"({
-        "check":
-            {"fieldSrc": "+r_match/\\d+"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"r_not_match"},
+                                 std::vector<std::string> {"regex_test$"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            // Object
-            s.on_next(createSharedEvent(R"(
-                {"fieldSrc": { "fieldSrc" : "child value"} }
-            )"));
-            // Number
-            s.on_next(createSharedEvent(R"(
-                {"fieldSrc":55}
-            )"));
-            // Array
-            s.on_next(createSharedEvent(R"(
-                {"fieldSrc":[123]}
-            )"));
-            // Not existing field
-            s.on_next(createSharedEvent(R"(
-                {"field":"fieldSrc not exist"}
-            )"));
-            s.on_completed();
-        });
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": 10,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "field2check": "regex_test 123",
+                        "ref_key": 11
+                    }
+                    })");
 
-    Lifter lift = [=](Observable input)
-    {
-        return input.filter(
-            bld::opBuilderHelperRegexNotMatch(doc.get("/check"), tr));
-    };
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
+    auto op = bld::opBuilderHelperRegexNotMatch(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-    ASSERT_EQ(expected.size(), 0);
-}
+    result::Result<Event> result = op(event1);
 
-TEST(opBuilderHelperRegexNotMatch, StringRegexMatch)
-{
-    Document doc {R"({
-        "check":
-            {"field": "+r_not_match/exp"}
-    })"};
-
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"field":"value"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field":"ex-president"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field":"this is a test exp"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field":"exp"}
-            )"));
-            s.on_completed();
-        });
-
-    Lifter lift = [=](Observable input)
-    {
-        return input.filter(
-            bld::opBuilderHelperRegexNotMatch(doc.get("/check"), tr));
-    };
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-
-    ASSERT_EQ(expected.size(), 2);
-    ASSERT_FALSE(RE2::PartialMatch(expected[0]->getEvent()->get("/field").GetString(), "exp"));
-    ASSERT_FALSE(RE2::PartialMatch(expected[1]->getEvent()->get("/field").GetString(), "exp"));
-}
-
-TEST(opBuilderHelperRegexNotMatch, NumericRegexMatch)
-{
-    Document doc {R"({
-        "check":
-            {"field": "+r_not_match/123"}
-    })"};
-
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"field":"1023"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field":"19"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field":"0.123"}
-            )"));
-            s.on_completed();
-        });
-
-    Lifter lift = [=](Observable input)
-    {
-        return input.filter(
-            bld::opBuilderHelperRegexNotMatch(doc.get("/check"), tr));
-    };
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-
-    ASSERT_EQ(expected.size(), 2);
-    ASSERT_FALSE(RE2::PartialMatch(expected[0]->getEvent()->get("/field").GetString(), "123"));
-    ASSERT_FALSE(RE2::PartialMatch(expected[1]->getEvent()->get("/field").GetString(), "123"));
-}
-
-TEST(opBuilderHelperRegexNotMatch, AdvancedRegexMatch)
-{
-    Document doc {R"~~({
-        "check":
-            {"field": "+r_not_match/([^ @]+)@([^ @]+)"}
-    })~~"};
-
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"field":"wazuh.com"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field":"client@wazuh.com"}
-            )"));
-            s.on_completed();
-        });
-
-    Lifter lift = [=](Observable input)
-    {
-        return input.filter(
-            bld::opBuilderHelperRegexNotMatch(doc.get("/check"), tr));
-    };
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-
-    ASSERT_EQ(expected.size(), 1);
-    ASSERT_FALSE(RE2::PartialMatch(expected[0]->getEvent()->get("/field").GetString(),
-                                   "([^ @]+)@([^ @]+)")
-    );
-}
-
-TEST(opBuilderHelperRegexNotMatch, NestedFieldRegexMatch)
-{
-    Document doc {R"~~({
-        "check":
-            {"test/field": "+r_not_match/exp"}
-    })~~"};
-
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"~~({
-            "test":
-                {"field": "value"}
-            })~~"));
-            s.on_next(createSharedEvent(R"~~({
-            "test":
-                {"field": "ex-president"}
-            })~~"));
-            s.on_completed();
-        });
-
-    Lifter lift = [=](Observable input)
-    {
-        return input.filter(
-            bld::opBuilderHelperRegexNotMatch(doc.get("/check"), tr));
-    };
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-
-    ASSERT_EQ(expected.size(), 2);
-    ASSERT_FALSE(RE2::PartialMatch(expected[0]->getEvent()->get("/test/field").GetString(), "exp"));
-    ASSERT_FALSE(RE2::PartialMatch(expected[1]->getEvent()->get("/test/field").GetString(), "exp"));
-}
-
-TEST(opBuilderHelperRegexNotMatch, FieldNotExistsRegexNotMatch)
-{
-    Document doc {R"({
-        "check":
-            {"field2": "+r_not_match/exp"}
-    })"};
-
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"field2":"value"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field":"value"}
-            )"));
-            s.on_completed();
-        });
-
-    Lifter lift = [=](Observable input)
-    {
-        return input.filter(
-            bld::opBuilderHelperRegexNotMatch(doc.get("/check"), tr));
-    };
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-
-    ASSERT_EQ(expected.size(), 1);
-    ASSERT_TRUE(expected[0]->getEvent()->exists("/field2"));
+    ASSERT_TRUE(result.success());
 }
