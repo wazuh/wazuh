@@ -644,7 +644,7 @@ def test_start_storage_ko_credentials(mock_logging):
 def test_get_blobs(mock_send, mock_update, blob_date, min_date, max_date, desired_date, extension, reparse, json_file,
                    inline, send_events):
     """Test get_blobs obtains the blobs from a container and send their content to the socket."""
-    azure.args = MagicMock(blob_extension=extension, json_file=json_file, json_inline=inline, reparse=reparse,
+    azure.args = MagicMock(blobs=extension, json_file=json_file, json_inline=inline, reparse=reparse,
                            storage_tag="tag")
     blob_date_str = parse(blob_date)
     blob_list = [create_mocked_blob(blob_name=f"blob_{i}", last_modified=blob_date_str) for i in range(5)] + [
@@ -717,7 +717,7 @@ def test_get_blobs_list_blobs_ko(mock_logging):
 @patch('azure-logs.update_row_object')
 def test_get_blobs_blob_data_ko(mock_update, mock_logging, exception):
     """Test get_blobs_list_blobs handles exceptions from 'get_blob_to_text'."""
-    azure.args = MagicMock(blob_extension=None, reparse=True)
+    azure.args = MagicMock(blobs=None, reparse=True)
     num_blobs = 5
     blob_list = [create_mocked_blob(blob_name=f"blob_{i}") for i in range(num_blobs)]
     blob_service_iter = MagicMock(next_marker=None)
@@ -739,7 +739,7 @@ def test_get_blobs_blob_data_ko(mock_update, mock_logging, exception):
 @patch('azure-logs.update_row_object')
 def test_get_blobs_json_ko(mock_update, mock_loads, mock_logging, exception):
     """Test get_blobs_list_blobs handles exceptions from 'json.loads'."""
-    azure.args = MagicMock(blob_extension=None, reparse=True, json_file=True)
+    azure.args = MagicMock(blobs=None, reparse=True, json_file=True)
     num_blobs = 5
     blob_list = [create_mocked_blob(blob_name=f"blob_{i}") for i in range(num_blobs)]
     blob_service_iter = MagicMock(next_marker=None)
