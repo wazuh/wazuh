@@ -186,7 +186,7 @@ add_executable(opBuilderHelperCheck_test
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperStringLessThan_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperRegexMatch_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperRegexNotMatch_test.cpp
-  # ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIPCIDRCheck_test.cpp
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderHelperIPCIDRCheck_test.cpp
 )
 target_link_libraries(opBuilderHelperCheck_test
   gtest_main base re2
