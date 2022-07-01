@@ -128,7 +128,6 @@ target_link_libraries(opBuilderFileOutput_test
 )
 gtest_discover_tests(opBuilderFileOutput_test)
 
-
 # Register test
 add_executable(register_test
   ${BUILDER_TEST_SOURCE_DIR}/register_test.cpp
@@ -159,15 +158,6 @@ target_link_libraries(environment_test
   gtest_main base
 )
 gtest_discover_tests(environment_test)
-
-# Rxcpp backend test
-add_executable(rxcppBackend_test
-  ${BUILDER_TEST_SOURCE_DIR}/rxcppBackend/rxcppBackend_test.cpp
-)
-target_link_libraries(rxcppBackend_test
-  gtest_main base
-)
-gtest_discover_tests(rxcppBackend_test)
 
 add_executable(opBuilderHelperCheck_test
   ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/baseHelper.cpp
@@ -210,48 +200,12 @@ target_link_libraries(opBuilderHelperMapTest
 )
 gtest_discover_tests(opBuilderHelperMapTest)
 
-add_executable(assetBuilderDecoderTest
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/assetBuilderDecoder_test.cpp
-)
-gtest_discover_tests(assetBuilderDecoderTest)
-
-add_executable(assetBuilderOutputTest
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/assetBuilderOutput_test.cpp
-)
-gtest_discover_tests(assetBuilderOutputTest)
-
-add_executable(assetBuilderFilterTest
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/assetBuilderFilter_test.cpp
-)
-gtest_discover_tests(assetBuilderFilterTest)
-
-add_executable(assetBuilderRuleTest
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/assetBuilderRule_test.cpp
-)
-gtest_discover_tests(assetBuilderRuleTest)
-
-add_executable(outputTest
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderFileOutput_test.cpp
-  ${TEST_SOURCE_DIR}/builder/outputs/fileOutput_test.cpp
-)
-gtest_discover_tests(outputTest)
-
-add_executable(connectableTest
-  ${BUILDER_TEST_SOURCE_DIR}/connectable_test.cpp
-)
-gtest_discover_tests(connectableTest)
-
 add_executable(opBuilderKVDBTest
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBExtract_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBMatch_test.cpp
   ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderKVDBNotMatch_test.cpp
 )
 gtest_discover_tests(opBuilderKVDBTest)
-
-add_executable(combinatorBuilderBroadcastTest
-  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/combinatorBuilderBroadcast_test.cpp
-)
-gtest_discover_tests(combinatorBuilderBroadcastTest)
 
 add_executable(definitions_test
   ${BUILDER_TEST_SOURCE_DIR}/definitions_test.cpp
