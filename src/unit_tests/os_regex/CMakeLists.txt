@@ -23,6 +23,10 @@ target_link_libraries(OS_REGEX_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 list(APPEND os_regex_names "test_os_regex")
 list(APPEND os_regex_flags " ")
 
+# OS_Regex execute, regex_matching
+list(APPEND os_regex_names "test_os_regex_execute")
+list(APPEND os_regex_flags " ")
+
 # Compiling tests
 list(LENGTH os_regex_names count)
 math(EXPR count "${count} - 1")
