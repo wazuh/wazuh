@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2022, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -6,126 +6,139 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+
+#include <any>
 #include <gtest/gtest.h>
+#include <vector>
 
 #include <baseTypes.hpp>
 
 #include "opBuilderHelperFilter.hpp"
-#include "testUtils.hpp"
-
 
 using namespace base;
 namespace bld = builder::internals::builders;
 
-using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg) {
-};
-
 TEST(opBuilderHelperIPCIDR, Builds)
 {
-    Document doc {R"({
-        "check":
-            {"field2check": "+ip_cidr/192.168.0.0/24"}
-    })"};
-    Document doc2 {R"({
-        "check":
-            {"field2check": "+ip_cidr/192.168.0.0/255.255.0.0"}
-    })"};
+    auto tuple = std::make_tuple(
+        std::string {"/field"}, std::string {"ip_cidr"}, std::vector<std::string> {"192.168.255.255","24"});
 
-    ASSERT_NO_THROW(bld::opBuilderHelperIPCIDR(doc.get("/check"), tr));
-    ASSERT_NO_THROW(bld::opBuilderHelperIPCIDR(doc2.get("/check"), tr));
+    ASSERT_NO_THROW(bld::opBuilderHelperIPCIDR(tuple));
 }
 
-TEST(opBuilderHelperIPCIDR, Builds_incorrect_number_of_arguments)
+TEST(opBuilderHelperIPCIDR, Exec_IPCIDR_false)
 {
-    Document doc {R"({
-        "check":
-            {"field2check": "+ip_cidr/192.168.0.0/255.255.0.0/123"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"ip_cidr"},
+                                 std::vector<std::string> {"192.168.255.255","24"});
 
-    ASSERT_THROW(bld::opBuilderHelperIPCIDR(doc.get("/check"), tr),
-                 std::runtime_error);
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": "192.168.255.255/24"})");
+
+    auto op = bld::opBuilderHelperIPCIDR(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result.success());
 }
 
-TEST(opBuilderHelperIPCIDR, Builds_invalid_arguments)
+TEST(opBuilderHelperIPCIDR, Exec_IPCIDR__CIDR_true)
 {
-    Document doc {R"({
-        "check":
-            {"field2check": "+ip_cidr/192.168.0.0/256.255.0.0"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"ip_cidr"},
+                                 std::vector<std::string> {"192.168.255.255","24"});
 
-    ASSERT_THROW(bld::opBuilderHelperIPCIDR(doc.get("/check"), tr),
-                 std::runtime_error);
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": "192.168.255.255"})");
 
-    Document doc2 {R"({
-        "check":
-            {"field2check": "+ip_cidr/192.168.0.-1/255.255.0.0.1"}
-    })"};
+    auto op = bld::opBuilderHelperIPCIDR(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-    ASSERT_THROW(bld::opBuilderHelperIPCIDR(doc2.get("/check"), tr),
-                 std::runtime_error);
+    result::Result<Event> result = op(event1);
 
-    Document doc3 {R"({
-        "check":
-            {"field2check": "+ip_cidr/192.168.0.1/33"}
-    })"};
-
-    ASSERT_THROW(bld::opBuilderHelperIPCIDR(doc3.get("/check"), tr),
-                 std::runtime_error);
+    ASSERT_TRUE(result.success());
 }
 
-// Test ok
-TEST(opBuilderHelperIPCIDR, chack_ip_range)
+TEST(opBuilderHelperIPCIDR, Exec_IPCIDR_subred_true)
 {
-    Document doc {R"({
-        "check":
-            {"field2check": "+ip_cidr/192.168.0.0/16"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"ip_cidr"},
+                                 std::vector<std::string> {"192.168.255.255","255.255.255.0"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            // Network address
-            s.on_next(createSharedEvent(R"(
-                {"field2check":"192.168.0.0"}
-            )"));
-            // First address
-            s.on_next(createSharedEvent(R"(
-                {"field2check":"192.168.0.1"}
-            )"));
-            // Last address
-            s.on_next(createSharedEvent(R"(
-                {"field2check":"192.168.255.254"}
-            )"));
-            // Broadcast address
-            s.on_next(createSharedEvent(R"(
-                {"field2check":"192.168.255.255"}
-            )"));
-            // Address out of cidr range
-            s.on_next(createSharedEvent(R"(
-                {"field2check":"10.0.0.1"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field2check":"127.0.0.1"}
-            )"));
-            s.on_completed();
-        });
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": "192.168.255.255"})");
 
-    Lifter lift = [=](Observable input)
-    {
-        return input.filter(bld::opBuilderHelperIPCIDR(doc.get("/check"), tr));
-    };
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
+    auto op = bld::opBuilderHelperIPCIDR(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-    ASSERT_EQ(expected.size(), 4);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/field2check").GetString(),
-                 "192.168.0.0");
-    ASSERT_STREQ(expected[1]->getEvent()->get("/field2check").GetString(),
-                 "192.168.0.1");
-    ASSERT_STREQ(expected[2]->getEvent()->get("/field2check").GetString(),
-                 "192.168.255.254");
-    ASSERT_STREQ(expected[3]->getEvent()->get("/field2check").GetString(),
-                 "192.168.255.255");
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result.success());
+}
+
+TEST(opBuilderHelperIPCIDR, Exec_IPCIDR_multilevel_false)
+{
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"ip_cidr"},
+                                 std::vector<std::string> {"192.168.255.255","24"});
+
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": 10,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "field2check": 11,
+                        "ref_key": 11
+                    }
+                    })");
+
+    auto op = bld::opBuilderHelperIPCIDR(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result.success());
+}
+
+TEST(opBuilderHelperIPCIDR, Exec_IPCIDR_CIDR_multilevel_true)
+{
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"ip_cidr"},
+                                 std::vector<std::string> {"192.168.255.255","24"});
+
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": 10,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "field2check": "192.168.255.255",
+                        "ref_key": 11
+                    }
+                    })");
+
+    auto op = bld::opBuilderHelperIPCIDR(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result.success());
+}
+
+TEST(opBuilderHelperIPCIDR, Exec_IPCIDR_subred_multilevel_true)
+{
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"ip_cidr"},
+                                 std::vector<std::string> {"192.168.255.255","255.255.255.0"});
+
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": 10,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "field2check": "192.168.255.255",
+                        "ref_key": 11
+                    }
+                    })");
+
+    auto op = bld::opBuilderHelperIPCIDR(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result.success());
 }
