@@ -4381,13 +4381,12 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent -> DisableWindowsConsumerFeatures -> 1'
 
   - id: 26289
-    title: "Ensure 'Require pin for pairing' is set to 'Enabled'"
+    title: "Ensure 'Require pin for pairing' is set to 'Enabled: First Time' OR 'Enabled: Always' "
     description: "This policy setting controls whether or not a PIN is required for pairing to a wireless display device."
     rationale: "If this setting is not configured or disabled then a PIN would not be required when pairing wireless display devices to the system, increasing the risk of unauthorized use."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Connect\\Require pin for pairing"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled:  First Time OR Enabled: Always: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Connect\\Require pin for pairing"
     compliance:
       - cis: ["18.9.15.1"]
-      - cis_csc: ["15.8", "15.9"]
       - pci_dss: ["4.1"]
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
