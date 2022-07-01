@@ -35,7 +35,11 @@ void exec_test_case(test_case_parameters * test_case, regex_matching * matching_
     match_retval = OSRegex_Execute_ex(test_case->log, regex, matching_result);
 
     // Check results
-    assert_non_null(match_retval); // The regex should match
+    // The regex should match
+    if (match_retval == NULL) {
+        printf("Error: regex '%s' should match '%s'\n", test_case->pattern, test_case->log);
+    }
+    assert_non_null(match_retval);
 
     // If the end_match field is defined on the test, then it needs to be checked.
     // Otherwise, it is because there is a know bug and so it make no sense to check it.
@@ -76,34 +80,62 @@ void exec_test_case(test_case_parameters * test_case, regex_matching * matching_
     free(regex);
 }
 
-// Tests
+/*
+ * Test definitions
+ * Each batch of test, define a group of unit tests. This unit test shared the regex_matching structure.
+ * This structure is used to store the results of the match.
+ * 
+ * All batch test should be register in the test_suite array;
+ */
+
+// Batch 1
+test_case_parameters batchTest_1[] = {
+    // Check X
+    {.pattern = "^(\\d+)-(\\d+)-(\\d+) (\\d+):(\\d+):(\\d\\d)$",
+     .log = "2018-01-01 00:00:00",
+     //.end_match = "0",
+     .end_match = NULL,
+     .captured_groups = (const char *[]){"2018", "01", "01", "00", "00", "00", NULL}},
+    // Check X
+    {.pattern = "^hi (\\w\\w\\w\\w\\w)",
+     .log = "hi wazuh",
+     .end_match = "h",
+     .captured_groups = (const char *[]){"wazuh", NULL}},
+    // Check X
+    {.pattern = "^(\\w+) (\\w+) (\\w+) (\\w+) (\\w+) (\\w+) (\\w+) (\\w+) (\\w+) (\\w+)",
+     .log = "f1 f2 f3 f4 f5 f6 f7 f8 f9 f10",
+     //.end_match = "0",
+     .end_match = NULL,
+     .captured_groups = (const char *[]){"f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10", NULL}},
+    // End of check
+    {0}};
+// Batch 2
+test_case_parameters batchTest_2[] = {
+    // Check X
+    {.pattern = "^hi (\\w+).",
+     .log = "hi wazuh.bye",
+     .end_match = ".bye",
+     .captured_groups = (const char *[]){"wazuh", NULL}},
+    // End of check
+    {0}};
+
+test_case_parameters * test_suite[] = {batchTest_1, batchTest_2, NULL};
 
 void test_regex_execute_regex_matching(void ** state) {
     (void) state;
     unsigned char test = 0;
 
     regex_matching regex_match = {0};
-    memset(&regex_match, 0, sizeof(regex_matching));
 
-    // Create a test case
-    test_case_parameters t1 = {.pattern = "^hi (\\w\\w\\w\\w\\w)",
-                               .log = "hi wazuh",
-                               .end_match = "h",
-                               .captured_groups = (const char *[]){"wazuh", NULL}};
+    for (int batch_id = 0; test_suite[batch_id] != NULL; batch_id++) {
+        memset(&regex_match, 0, sizeof(regex_matching));
+        // Execute a batch of test cases
+        for (int case_id = 0; test_suite[batch_id][case_id].pattern != NULL; case_id++) {
+            exec_test_case(&test_suite[batch_id][case_id], &regex_match);
+        }
+        OSRegex_free_regex_matching(&regex_match);
+    }
 
-    test_case_parameters t2 = {.pattern = "^(\\w+) (\\w+) (\\w+) (\\w+) (\\w+) (\\w+) (\\w+) (\\w+) (\\w+) (\\w+)",
-                               .log = "f1 f2 f3 f4 f5 f6 f7 f8 f9 f10",
-                               //.end_match = "0", 
-                               .end_match = NULL,
-                               .captured_groups =
-                                   (const char *[]){"f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10", NULL}};
-
-    // Exectute a test case (A group of test cases can be shared the same regex_matching)
-    exec_test_case(&t1, &regex_match);
-    exec_test_case(&t2, &regex_match);
-
-
-    OSRegex_free_regex_matching(&regex_match);
 }
 
 int main(void) {
