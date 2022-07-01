@@ -2,80 +2,74 @@
 
 #include <algorithm>
 
+#include "syntax.hpp"
 #include <fmt/format.h>
 
 namespace builder::internals
 {
 
-void substituteDefinitions(base::Document& asset)
+using namespace json;
+
+constexpr auto DEFINITIONS_KEY = "/definitions";
+
+void substituteDefinitions(Json& asset)
 {
-    if (!asset.m_doc.IsObject())
-    {
-        throw std::runtime_error(fmt::format(
-            "Expected [object], got [{}] in substitute definitions function",
-            asset.m_doc.GetType()));
-    }
-
-    auto definitions = asset.m_doc.FindMember("definitions");
-    if (definitions == asset.m_doc.MemberEnd())
-    {
-        return;
-    }
-
-    if (!definitions->value.IsObject())
+    if (!asset.isObject())
     {
         throw std::runtime_error(
-            fmt::format("Expected definitions to be an object, got [{}]",
-                        definitions->value.GetType()));
-    }
-    auto definitionsObject = definitions->value.GetObject();
-    std::unordered_map<std::string, base::Document> definitionsMap;
-    for (auto it = definitionsObject.MemberBegin();
-         it != definitionsObject.MemberEnd();
-         ++it)
-    {
-        definitionsMap["$" + std::string(it->name.GetString())] =
-            base::Document {it->value};
+            fmt::format("[substituteDefinitions(asset)] Expected object, got [{}]",
+                        asset.typeName()));
     }
 
-    asset.m_doc.RemoveMember("definitions");
-
-    std::string jsonString = asset.str();
-    for (auto& pair : definitionsMap)
+    if (asset.exists(DEFINITIONS_KEY))
     {
-        std::string valueStr = [&]() -> std::string
+        if (!asset.isObject(DEFINITIONS_KEY))
         {
-            if (pair.second.m_doc.IsString())
-            {
-                return pair.second.m_doc.GetString();
-            }
-            else if (pair.second.m_doc.IsNumber())
-            {
-                return std::to_string(pair.second.m_doc.GetInt());
-            }
-            else
-            {
-                throw std::runtime_error(
-                    fmt::format("Expected [string] or [number], got [{}] in "
-                                "substitute definitions function",
-                                pair.second.m_doc.GetType()));
-            }
-        }();
+            // TODO: add getTypeName with path to Json
+            throw std::runtime_error(
+                fmt::format("[substituteDefinitions(asset)] Expected object, got [{}]",
+                            "not_implemented"));
+        }
 
-        auto index = 0;
-        while (true)
+        auto definitionsObject = asset.getObject(DEFINITIONS_KEY).value();
+        if (!asset.erase(DEFINITIONS_KEY))
         {
-            index = jsonString.find(pair.first, index);
-            if (index == std::string::npos)
+            throw std::runtime_error(fmt::format(
+                "[substituteDefinitions(asset)] Could not erase [{}]", DEFINITIONS_KEY));
+        }
+
+        auto assetStr = asset.str();
+        for (auto& [key, value] : definitionsObject)
+        {
+            if (value.isNull())
             {
-                break;
+                throw std::runtime_error(fmt::format(
+                    "[substituteDefinitions(asset)] Definition [{}] is null", key));
             }
-            jsonString.replace(index, pair.first.size(), valueStr);
-            index += valueStr.size();
+
+            auto formatKey = syntax::REFERENCE_ANCHOR + key;
+            auto formatValue = value.getString().value();
+
+            size_t pos = 0;
+            while ((pos = assetStr.find(formatKey, pos)) != std::string::npos)
+            {
+                assetStr.replace(pos, formatKey.length(), formatValue);
+                pos += formatValue.length();
+            }
+        }
+
+        try
+        {
+            asset = Json {assetStr.c_str()};
+        }
+        catch (const std::exception& e)
+        {
+            throw std::runtime_error(
+                fmt::format("[substituteDefinitions(asset)] Definition substitution "
+                            "yield to bad json [{}]",
+                            assetStr));
         }
     }
-
-    asset = base::Document {jsonString.c_str()};
 }
 
 } // namespace builder::internals

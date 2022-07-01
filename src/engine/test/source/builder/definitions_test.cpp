@@ -1,11 +1,15 @@
-#include "testUtils.hpp"
 #include <gtest/gtest.h>
 
+#include "baseTypes.hpp"
 #include "definitions.hpp"
+
+using namespace builder::internals;
+using namespace json;
+using namespace base;
 
 TEST(DefinitionsTest, SubstituteDefinitions)
 {
-    base::Document asset {
+    Json asset {
         R"({
             "definitions": {
                 "foo": "bar",
@@ -15,25 +19,46 @@ TEST(DefinitionsTest, SubstituteDefinitions)
         })"};
     auto expected = R"({"check":"bar AND bar2"})";
 
-    ASSERT_NO_THROW(builder::internals::substituteDefinitions(asset));
+    ASSERT_NO_THROW(substituteDefinitions(asset));
     ASSERT_EQ(asset.str(), expected);
 }
 
-TEST(DefinitionsTest, EmptyDefinitionsDoesNothing)
+TEST(DefinitionsTest, EmptyDefinition)
 {
-    base::Document asset {
+    Json asset {
         R"({
             "definitions": {},
             "check": "$foo"
         })"};
 
-    ASSERT_NO_THROW(builder::internals::substituteDefinitions(asset));
+    ASSERT_NO_THROW(substituteDefinitions(asset));
     ASSERT_EQ(asset.str(), R"({"check":"$foo"})");
+}
+
+TEST(DefinitionsTest, NoDefinition)
+{
+    Json asset {
+        R"({
+            "check": "$foo"
+        })"};
+
+    ASSERT_NO_THROW(substituteDefinitions(asset));
+    ASSERT_EQ(asset.str(), R"({"check":"$foo"})");
+}
+
+TEST(DefinitionsTest, NotObject)
+{
+    Json asset {
+        R"({
+            "definitions": "foo"
+        })"};
+
+    ASSERT_THROW(substituteDefinitions(asset), std::runtime_error);
 }
 
 TEST(DefinitionsTest, EmptyDefinitionVariableThrow)
 {
-    base::Document asset {
+    Json asset {
         R"({
             "definitions": {
                 "foo": null
@@ -41,20 +66,7 @@ TEST(DefinitionsTest, EmptyDefinitionVariableThrow)
             "check": "$foo AND $bar"
         })"};
 
-    ASSERT_THROW(builder::internals::substituteDefinitions(asset),
-                 std::runtime_error);
-}
-
-TEST(DefinitionsTest, NoDefinitionsDoesNothing)
-{
-    base::Document asset {
-        R"({
-            "check": "$foo"
-        })"};
-    auto expected = R"({"check":"$foo"})";
-
-    ASSERT_NO_THROW(builder::internals::substituteDefinitions(asset));
-    ASSERT_EQ(asset.str(), expected);
+    ASSERT_THROW(substituteDefinitions(asset), std::runtime_error);
 }
 
 TEST(DefinitionsTest, ScapedReference)

@@ -216,10 +216,15 @@ gtest_discover_tests(opBuilderHelperMapTest)
 # )
 # gtest_discover_tests(opBuilderKVDBTest)
 
-# add_executable(definitions_test
-#   ${BUILDER_TEST_SOURCE_DIR}/definitions_test.cpp
-# )
-# gtest_discover_tests(definitions_test)
+# Definitions test
+add_executable(definitions_test
+  ${BUILDER_TEST_SOURCE_DIR}/definitions_test.cpp
+  ${BUILDER_ENGINE_SOURCE_DIR}/definitions.cpp
+)
+target_link_libraries(definitions_test
+  gtest_main base
+)
+gtest_discover_tests(definitions_test)
 
 # Register test
 add_executable(register_test
