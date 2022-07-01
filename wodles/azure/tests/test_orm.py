@@ -9,17 +9,20 @@
 import hashlib
 import json
 import os
-import pytest
 import sys
+from unittest.mock import patch
 
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy import inspect
 from sqlalchemy.exc import IntegrityError
-from unittest.mock import patch
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))  # noqa: E501
-with patch('sqlalchemy.create_engine', return_value=create_engine("sqlite://")):
-    import orm
+import orm
+
+# Overwrite ORM's engine to avoid creating the local database file during the tests
+orm.engine = create_engine('sqlite:///', echo=False)
+orm.session = orm.sessionmaker(bind=orm.engine)()
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 test_last_dates_path = os.path.join(test_data_path, 'last_date_files')
@@ -78,7 +81,7 @@ def test_add_get_row(create_and_teardown_db):
 
             # Update the row
             new_datetime = "1999-01-01T23:59:59.1234567Z"
-            orm.update_row(table=table, md5=md5, min_date=new_datetime, max_date=new_datetime)
+            orm.update_row(table=table, md5=md5, min_date=new_datetime, max_date=new_datetime, query="query")
             row = orm.get_row(table=table, md5=md5)
             assert row.min_processed_date == new_datetime
             assert row.max_processed_date == new_datetime
