@@ -109,6 +109,17 @@ target_link_libraries(stageBuilderOutputs_test
 )
 gtest_discover_tests(stageBuilderOutputs_test)
 
+# Stage Parse Builder test
+add_executable(stageBuilderParse_test
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/stageBuilderParse_test.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/stageBuilderParse.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderLogqlParser.cpp
+)
+target_link_libraries(stageBuilderParse_test
+  gtest_main base hlp
+)
+gtest_discover_tests(stageBuilderParse_test)
+
 # File Output test
 add_executable(fileOutput_test
   ${BUILDER_TEST_SOURCE_DIR}/outputs/fileOutput_test.cpp
