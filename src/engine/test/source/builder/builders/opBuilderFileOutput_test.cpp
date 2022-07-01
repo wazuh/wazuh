@@ -1,84 +1,96 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
- * All rights reserved.
- *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
- */
-
 #include <gtest/gtest.h>
-#include "testUtils.hpp"
 
-#include <vector>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <vector>
 
-#include "opBuilderFileOutput.hpp"
+#include "baseTypes.hpp"
+#include "builder/builders/opBuilderFileOutput.hpp"
+#include <fmt/format.h>
 
+using namespace builder::internals::builders;
 using namespace base;
-namespace bld = builder::internals::builders;
+using namespace json;
 
-using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg){};
+constexpr auto FILE_PATH = "/tmp/file";
 
-
-TEST(opBuilderFileOutput, Builds)
+class OpBuilderFileOutputTest : public ::testing::Test
 {
-    Document doc{R"({
-        "file":
-            {"path": "value"}
-    })"};
+    void SetUp() override
+    {
+        if (std::filesystem::exists(FILE_PATH))
+        {
+            std::filesystem::remove(FILE_PATH);
+        }
+    }
 
-    ASSERT_NO_THROW(bld::opBuilderFileOutput(doc.get("/file"), tr));
+    void TearDown() override
+    {
+        if (std::filesystem::exists(FILE_PATH))
+        {
+            std::filesystem::remove(FILE_PATH);
+        }
+    }
+};
+
+TEST_F(OpBuilderFileOutputTest, Builds)
+{
+    Json doc {fmt::format("{{\"path\": \"{}\"}}", FILE_PATH).c_str()};
+
+    ASSERT_NO_THROW(opBuilderFileOutput(doc));
 }
 
-TEST(opBuilderFileOutput, BuildsOperates)
+TEST_F(OpBuilderFileOutputTest, NotJson)
 {
-    Document doc{R"({
-        "file":
-            {"path": "/tmp/fileOutputTest.txt"}
-    })"};
+    ASSERT_THROW(opBuilderFileOutput(1), std::runtime_error);
+}
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"field":"value"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field":"value"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field":"value"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field":"value"}
-            )"));
-            s.on_completed();
-        });
-    Lifter lift = bld::opBuilderFileOutput(doc.get("/file"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 4);
+TEST_F(OpBuilderFileOutputTest, NotObject)
+{
+    Json doc {fmt::format("[{{\"path\": \"{}\"}}]", FILE_PATH).c_str()};
 
-    const string expectedWrite =
-R"({"field":"value"}
+    ASSERT_THROW(opBuilderFileOutput(doc), std::runtime_error);
+}
+
+TEST_F(OpBuilderFileOutputTest, WrongObjectSize)
+{
+    Json doc {fmt::format("{{\"path\": \"{}\", \"other\":1}}", FILE_PATH).c_str()};
+
+    ASSERT_THROW(opBuilderFileOutput(doc), std::runtime_error);
+}
+
+TEST_F(OpBuilderFileOutputTest, BuildsCorrectExpression)
+{
+    Json doc {fmt::format("{{\"path\": \"{}\"}}", FILE_PATH).c_str()};
+
+    auto expression = opBuilderFileOutput(doc);
+    ASSERT_TRUE(expression->isTerm());
+}
+
+TEST_F(OpBuilderFileOutputTest, BuildsOperates)
+{
+    Json doc {fmt::format("{{\"path\": \"{}\"}}", FILE_PATH).c_str()};
+
+    auto expression = opBuilderFileOutput(doc)->getPtr<Term<EngineOp>>();
+    auto op = expression->getFn();
+
+    for (auto event : std::vector<Json> {5, Json {R"({"field":"value"})"}})
+    {
+        ASSERT_NO_THROW(op(std::make_shared<Json>(event)));
+    }
+
+    std::string expected = R"({"field":"value"}
+{"field":"value"}
 {"field":"value"}
 {"field":"value"}
 {"field":"value"}
 )";
 
-    string filepath{"/tmp/fileOutputTest.txt"};
-    std::ifstream ifs(filepath);
+    std::string filepath {FILE_PATH};
+    std::ifstream ifs(FILE_PATH);
     std::stringstream buffer;
     buffer << ifs.rdbuf();
-    const string got = buffer.str();
-    // cerr << got << std::endl;
-    // cerr << expectedWrite << std::endl;
-    std::filesystem::remove(filepath);
 
-    ASSERT_EQ(got, expectedWrite);
+    ASSERT_EQ(expected, buffer.str());
 }
