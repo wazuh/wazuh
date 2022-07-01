@@ -30,12 +30,12 @@ checks:
   # 1.1 Password Policy
   - id: 27000
     title: "Ensure 'Enforce password history' is set to '24 or more password(s)'"
-    description: "This policy setting determines the number of renewed, unique passwords that have to be associated with a user account before you can reuse an old password. The value for this policy setting must be between 0 and 24 passwords. The default value for Windows Vista is 0 passwords, but the default setting in a domain is 24 passwords. To maintain the effectiveness of this policy setting, use the Minimum password age setting to prevent users from repeatedly changing their password.The recommended state for this setting is: 24 or more password(s)."
+    description: "This policy setting determines the number of renewed, unique passwords that have to be associated with a user account before you can reuse an old password. The value for this policy setting must be between 0 and 24 passwords. The default value for Windows Vista is 0 passwords, but the default setting in a domain is 24 passwords. To maintain the effectiveness of this policy setting, use the Minimum password age setting to prevent users from repeatedly changing their password. The recommended state for this setting is: 24 or more password(s)."
     rationale: "The longer a user uses the same password, the greater the chance that an attacker can determine the password through brute force attacks. Also, any accounts that may have been compromised will remain exploitable for as long as the password is left unchanged. If password changes are required but password reuse is not prevented, or if users continually reuse a small number of passwords, the effectiveness of a good password policy is greatly reduced.If you specify a low number for this policy setting, users will be able to use the same small number of passwords repeatedly. If you do not also configure the Minimum password age setting, users might repeatedly change their passwords until they can reuse their original password."
     remediation: "To establish the recommended configuration via GP, set the following UI path to 24 or more password(s):Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Password Policy\\Enforce password history"
     compliance:
       - cis: ["1.1.1"]
-      - cis_csc: ["16"]
+      - cis_csc: ["5.2"]
     condition: all
     rules:
       - 'c:net.exe accounts -> n:Length of password history maintained:\s+(\d+) compare >= 24'
@@ -103,7 +103,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SAM -> RelaxMinimumPasswordLengthLimits -> 1'
 
   - id: 27006
-    title: "Ensure 'Account lockout duration' is set to '15 or more minute(s)"
+    title: "Ensure 'Account lockout duration' is set to '15 or more minute(s)'"
     description: "This policy setting determines the length of time that must pass before a locked account is unlocked and a user can try to log on again. The setting does this by specifying the number of minutes a locked out account will remain unavailable. If the value for this policy setting is configured to 0, locked out accounts will remain locked out until an administrator manually unlocks them."
     rationale: "A denial of service (DoS) condition can be created if an attacker abuses the Account lockout threshold and repeatedly attempts to log on with a specific account. Once you configure theAccount lockout threshold setting, the account will be locked out after the specified number of failed attempts. If you configure the Account lockout duration setting to 0, then the account will remain locked out until an administrator unlocks it manually."
     remediation: "To establish the recommended configuration via GP, set the following UI path to 15 or more minute(s): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Account Lockout Policy\\Account lockout duration"
@@ -140,7 +140,7 @@ checks:
       - 'c:net.exe accounts -> n:Lockout observation window (minutes):\s+(\d+) compare >= 15'
 
   - id: 27009
-    title: "Ensure 'Accounts: Administrator account status' is set to 'Disabled'"
+    title: "Ensure 'Accounts: Administrator account status' is set to 'Disabled' (MS only)"
     description: "This policy setting enables or disables the Administrator account during normal operation. When a computer is booted into safe mode, the Administrator account is always enabled, regardless of how this setting is configured. Note that this setting will have no impact when applied to the Domain Controllers organizational unit via group policy because Domain Controllers have no local account database. It can be configured at the domain level via group policy, similar to account lockout and password policy settings."
     rationale: "In some organizations, it can be a daunting management challenge to maintain a regular schedule for periodic password changes for local accounts. Therefore, you may want to disable the built-in Administrator account instead of relying on regular password changes to protect it from attack. Another reason to disable this built-in account is that it cannot be locked out no matter how many failed logons it accrues, which makes it a prime target for brute force attacks that attempt to guess passwords. Also, this account has a well-known security identifier (SID) and there are third-party tools that allow authentication by using the SID rather than the account name. This capability means that even if you rename the Administrator account, an attacker could launch a brute force attack by using the SID to log on."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Accounts: Administrator account status"
@@ -153,7 +153,7 @@ checks:
       - 'c:net user administrator -> r:The user name could not be found.'
 
   - id: 27010
-    title: "Ensure 'Accounts: Block Microsoft accounts' is set to 'Users can't add or log on with Microsoft accounts"
+    title: "Ensure 'Accounts: Block Microsoft accounts' is set to 'Users can't add or log on with Microsoft accounts'"
     description: "This policy setting prevents users from adding new Microsoft accounts on this computer. The recommended state for this setting is: Users can't add or log on with Microsoft accounts."
     rationale: "Organizations that want to effectively implement identity management policies and maintain firm control of what accounts are used to log onto their computers will probably want to block Microsoft accounts. Organizations may also need to block Microsoft accounts in order to meet the requirements of compliance standards that apply to their information systems."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Users can't add or log on with Microsoft accounts: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Accounts: Block Microsoft accounts."
@@ -171,7 +171,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> NoConnectedUser -> 3'
 
   - id: 27011
-    title: "Ensure 'Accounts: Guest account status' is set to 'Disabled'"
+    title: "Ensure 'Accounts: Guest account status' is set to 'Disabled' (MS only)"
     description: "This policy setting determines whether the Guest account is enabled or disabled. The Guest account allows unauthenticated network users to gain access to the system."
     rationale: "The default Guest account allows unauthenticated network users to log on as Guest with no password. These unauthorized users could access any resources that are accessible to the Guest account over the network. This capability means that any network shares with permissions that allow access to the Guest account, the Guests group, or the Everyone group will be accessible over the network, which could lead to the exposure or corruption of data."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Accounts: Guest account status"
@@ -293,7 +293,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Print\Providers\LanMan Print Services\Servers -> AddPrinterDrivers -> 1'
 
   - id: 27019
-    title: "Ensure 'Domain controller: Allow server operators to schedule tasks' is set to 'Disabled'"
+    title: "Ensure 'Domain controller: Allow server operators to schedule tasks' is set to 'Disabled' (DC only)"
     description: "This policy setting determines whether members of the Server Operators group are allowed to submit jobs by means of the AT schedule facility. The impact of this policy setting configuration should be small for most organizations. Users, including those in the Server Operators group, will still be able to create jobs by means of the Task Scheduler Wizard, but those jobs will run in the context of the account with which the user authenticates when they set up the job."
     rationale: "If you enable this policy setting, jobs that are created by server operators by means of the AT service will execute in the context of the account that runs that service. By default, that is the local SYSTEM account. If you enable this policy setting, server operators could perform tasks that SYSTEM is able to do but that they would typically not be able to do, such as add their account to the local Administrators group."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain controller: Allow server operators to schedule tasks"
@@ -304,7 +304,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> SubmitControl -> 0'
 
   - id: 27020
-    title: "Ensure 'Domain controller: Allow vulnerable Netlogon secure channel connections' is set to 'Not Configured'"
+    title: "Ensure 'Domain controller: Allow vulnerable Netlogon secure channel connections' is set to 'Not Configured' (DC only)"
     description: "This security setting determines whether the domain controller bypasses secure RPC for Netlogon secure channel connections for specified machine accounts. When deployed, this policy should be applied to all domain controllers in a forest by enabling the policy on the domain controllers OU."
     rationale: "Enabling this policy will expose your domain-joined devices and can expose your Active Directory forest to security risks. It is highly recommended that this setting not be used (i.e. be left completely unconfigured) so as not to add risk."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Not Configured: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain controller: Allow vulnerable Netlogon secure channel connections"
@@ -315,7 +315,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Netlogon\Parameters -> VulnerableChannelAllowList'
 
   - id: 27021
-    title: "Ensure 'Domain controller: LDAP server channel binding token requirements' is set to 'Always'"
+    title: "Ensure 'Domain controller: LDAP server channel binding token requirements' is set to 'Always' (DC only)"
     description: "This setting determines whether the LDAP server (Domain Controller) enforces validation of Channel Binding Tokens (CBT) received in LDAP bind requests that are sent over SSL/TLS (i.e. LDAPS)."
     rationale: "Requiring Channel Binding Tokens (CBT) can prevent an attacker who is able to capture users' authentication credentials (e.g. OAuth tokens, session identifiers, etc.) from reusing those credentials in another TLS session. This also helps to increase protection against man-in-the-middle attacks using LDAP authentication over SSL/TLS (LDAPS)."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Always: Computer Configuration\\Policies\\Windows Settings\\Local Policies\\Security Options\\Domain controller: LDAP server channel binding token requirements"
@@ -329,7 +329,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters -> LdapEnforceChannelBinding -> 2'
 
   - id: 27022
-    title: "Ensure 'Domain controller: LDAP server signing requirements' is set to 'Require signing'"
+    title: "Ensure 'Domain controller: LDAP server signing requirements' is set to 'Require signing' (DC only)"
     description: "This policy setting determines whether the Lightweight Directory Access Protocol (LDAP) server requires LDAP clients to negotiate data signing."
     rationale: "Unsigned network traffic is susceptible to man-in-the-middle attacks. In such attacks, an intruder captures packets between the server and the client, modifies them, and then forwards them to the client. Where LDAP servers are concerned, an attacker could cause a client to make decisions that are based on false records from the LDAP directory. To lower the risk of such an intrusion in an organization's network, you can implement strong physical security measures to protect the network infrastructure. Also, you could implement Internet Protocol security (IPsec) authentication header mode (AH), which performs mutual authentication and packet integrity for IP traffic to make all types of manin-the-middle attacks extremely difficult."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Require signing: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain controller: LDAP server signing requirements"
@@ -343,7 +343,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters -> LDAPServerIntegrity -> 2'
 
   - id: 27023
-    title: "Ensure 'Domain controller: Refuse machine account password changes' is set to 'Disabled'"
+    title: "Ensure 'Domain controller: Refuse machine account password changes' is set to 'Disabled' (DC only)"
     description: "This security setting determines whether Domain Controllers will refuse requests from member computers to change computer account passwords."
     rationale: "If you enable this policy setting on all Domain Controllers in a domain, domain members will not be able to change their computer account passwords, and those passwords will be more susceptible to attack."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain controller: Refuse machine account password changes"
@@ -534,7 +534,7 @@ checks:
       - 'not c:reg query HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system /v legalnoticecaption -> r:\s+legalnoticecaption\s+REG_SZ\s+$'
 
   - id: 27035
-    title: "Ensure 'Interactive logon: Number of previous logons to cache (in case domain controller is not available)' is set to '4 or fewer logon(s)'"
+    title: "Ensure 'Interactive logon: Number of previous logons to cache (in case domain controller is not available)' is set to '4 or fewer logon(s)' (MS only)"
     description: "This policy setting determines whether a user can log on to a Windows domain using cached account information. Logon information for domain accounts can be cached locally to allow users to log on even if a Domain Controller cannot be contacted. This policy setting determines the number of unique users for whom logon information is cached locally. If this value is set to 0, the logon cache feature is disabled. An attacker who is able to access the file system of the server could locate this cached information and use a brute force attack to determine user passwords. The recommended state for this setting is: 4 or fewer logon(s)."
     rationale: "The number that is assigned to this policy setting indicates the number of users whose logon information the computer will cache locally. If the number is set to 4, then the computer caches logon information for 4 users. When a 5th user logs on to the computer, the server overwrites the oldest cached logon session. Users who access the computer console will have their logon credentials cached on that computer. An attacker who is able to access the file system of the computer could locate this cached information and use a brute force attack to attempt to determine user passwords. To mitigate this type of attack, Windows encrypts the information and obscures its physical location."
     remediation: "To establish the recommended configuration via GP, set the following UI path to 4 or fewer logon(s): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Number of previous logons to cache (in case domain controller is not available)"
@@ -566,7 +566,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> n:^(\d+) compare => 5 && n:^(\d+) compare <= 14'
 
   - id: 27037
-    title: "Ensure 'Interactive logon: Require Domain Controller Authentication to unlock workstation' is set to 'Enabled'"
+    title: "Ensure 'Interactive logon: Require Domain Controller Authentication to unlock workstation' is set to 'Enabled' (MS only)"
     description: "Logon information is required to unlock a locked computer. For domain accounts, this security setting determines whether it is necessary to contact a Domain Controller to unlock a computer."
     rationale: "By default, the computer caches in memory the credentials of any users who are authenticated locally. The computer uses these cached credentials to authenticate anyone who attempts to unlock the console. When cached credentials are used, any changes that have recently been made to the account — such as user rights assignments, account lockout, or the account being disabled — are not considered or applied after the account is authenticated. User privileges are not updated, and (more importantly) disabled accounts are still able to unlock the console of the computer."
     remediation: "To implement the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Require Domain Controller Authentication to unlock workstation"
@@ -716,7 +716,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> EnableForcedLogOff -> 1'
 
   - id: 27046
-    title: "Ensure 'Microsoft network server: Server SPN target name validation level' is set to 'Accept if provided by client' or higher"
+    title: "Ensure 'Microsoft network server: Server SPN target name validation level' is set to 'Accept if provided by client' or higher (MS only)"
     description: "This policy setting controls the level of validation a computer with shared folders or printers (the server) performs on the service principal name (SPN) that is provided by the client computer when it establishes a session using the server message block (SMB) protocol. The server message block (SMB) protocol provides the basis for file and print sharing and other networking operations, such as remote Windows administration. The SMB protocol supports validating the SMB server service principal name (SPN) within the authentication blob provided by a SMB client to prevent a class of attacks against SMB servers referred to as SMB relay attacks. This setting will affect both SMB1 and SMB2. The recommended state for this setting is: Accept if provided by client. Configuring this setting to Required from client also conforms to the benchmark."
     rationale: "The identity of a computer can be spoofed to gain unauthorized access to network resources."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Accept if provided by client (configuring to Required from client also conforms to the benchmark): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Microsoft network server: Server SPN target name validation level."
@@ -734,7 +734,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters -> SMBServerNameHardeningLevel -> n:^(\d+) compare >= 1'
 
   - id: 27047
-    title: "Ensure 'Network access: Allow anonymous SID/Name  translation' is set to 'Disabled'"
+    title: "Ensure 'Network access: Allow anonymous SID/Name translation' is set to 'Disabled'"
     description: "This policy setting determines whether an anonymous user can request security identifier  (SID) attributes for another user, or use a SID to obtain its corresponding user name"
     rationale: "This policy setting determines whether an anonymous user can request security identifier  (SID) attributes for another user, or use a SID to obtain its corresponding user name"
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local  Policies\\Security Options\\Network access: Allow anonymous SID/Name  translation"
@@ -746,7 +746,7 @@ checks:
       - 'c:powershell "$null = secedit /export /cfg $env:temp/secexport.cfg; $(gc $env:temp/secexport.cfg | Select-String \"LSAAnonymousNameLookup\").ToString().Split(\"=\")[1].Trim()" -> r:0'
 
   - id: 27048
-    title: "Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts' is set to 'Enabled'"
+    title: "Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts' is set to 'Enabled' (MS only)"
     description: "This policy setting controls the ability of anonymous users to enumerate the accounts in the Security Accounts Manager (SAM). If you enable this policy setting, users with anonymous connections will not be able to enumerate domain account user names on the systems in your environment. This policy setting also allows additional restrictions on anonymous connections. The recommended state for this setting is: Enabled. Note: This policy has no effect on Domain Controllers."
     rationale: "An unauthorized user could anonymously list account names and use the information to attempt to guess passwords or perform social engineering attacks. (Social engineering attacks try to deceive users in some way to obtain passwords or some form of security information)"
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Do not allow anonymous enumeration of SAM accounts."
@@ -762,7 +762,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> RestrictAnonymousSAM -> 1'
 
   - id: 27049
-    title: "Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts and shares' is set to 'Enabled'"
+    title: "Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts and shares' is set to 'Enabled' (MS only)"
     description: "This policy setting controls the ability of anonymous users to enumerate SAM accounts as well as shares. If you enable this policy setting, anonymous users will not be able to enumerate domain account user names and network share names on the systems in your environment. The recommended state for this setting is: Enabled. Note: This policy has no effect on Domain Controllers."
     rationale: "An unauthorized user could anonymously list account names and shared resources and use the information to attempt to guess passwords or perform social engineering attacks. (Social engineering attacks try to deceive users in some way to obtain passwords or some form of security information)"
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Do not allow anonymous enumeration of SAM accounts and shares."
@@ -809,7 +809,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> EveryoneIncludesAnonymous -> 0'
 
   - id: 27052
-    title: "Configure 'Network access: Named Pipes that can be accessed anonymously' (DC only) "
+    title: "Configure 'Network access: Named Pipes that can be accessed anonymously' (DC only)"
     description: "This policy setting determines which communication sessions, or pipes, will have attributes and permissions that allow anonymous access. The recommended state for this setting is: LSARPC, NETLOGON, SAMR and (when the legacy Computer Browser service is enabled) BROWSER."
     rationale: "Limiting named pipes that can be accessed anonymously will reduce the attack surface of the system."
     remediation: "To establish the recommended configuration via GP, set the following UI path to <blank> (i.e. None): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Named Pipes that can be accessed anonymously."
@@ -847,7 +847,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionPipes -> r:\S+'
 
   - id: 27054
-    title: "Ensure 'Network access: Remotely accessible registry paths'"
+    title: "Configure 'Network access: Remotely accessible registry paths' is configured"
     description: "This policy setting determines which registry paths will be accessible over the network, regardless of the users or groups listed in the access control list (ACL) of the winreg registry key. Note: This setting does not exist in Windows XP. There was a setting with that name in Windows XP, but it is called Network access: Remotely accessible registry paths and subpaths in Windows Server 2003, Windows Vista, and Windows Server 2008 (non-R2)."
     rationale: "The registry is a database that contains computer configuration information, and much of the information is sensitive. An attacker could use this information to facilitate unauthorized activities. To reduce the risk of such an attack, suitable ACLs are assigned throughout the registry to help protect it from access by unauthorized users."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: System\\CurrentControlSet\\Control\\ProductOptions System\\CurrentControlSet\\Control\\Server Applications SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Remotely accessible registry paths."
@@ -863,7 +863,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedExactPaths -> Machine -> r:System\\CurrentControlSet\\Control\\ProductOptions System\\CurrentControlSet\\Control\\Server Applications Software\\Microsoft\\Windows NT\\CurrentVersion'
 
   - id: 27055
-    title: "Ensure 'Network access: Remotely accessible registry paths and sub-paths'"
+    title: "Configure 'Network access: Remotely accessible registry paths and sub-paths' is configured"
     description: "This policy setting determines which registry paths and sub-paths will be accessible over the network, regardless of the users or groups listed in the access control list (ACL) of the winreg registry key. Note: In Windows XP this setting is called Network access: Remotely accessible registry paths, the setting with that same name in Windows Vista, Windows Server 2008 (non-R2), and Windows Server 2003 does not exist in Windows XP. Note #2: When you configure this setting you specify a list of one or more objects. The delimiter used when entering the list is a line feed or carriage return, that is, type the first object on the list, press the Enter button, type the next object, press Enter again, etc. The setting value is stored as a comma-delimited list in group policy security templates. It is also rendered as a comma-delimited list in Group Policy Editor's display pane and the Resultant Set of Policy console. It is recorded in the registry as a line-feed delimited list in a REG_MULTI_SZ value. The recommended state for this setting is: System\\CurrentControlSet\\Control\\Print\\Printers System\\CurrentControlSet\\Services\\Eventlog Software\\Microsoft\\OLAP Server Software\\Microsoft\\Windows NT\\CurrentVersion\\Print Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows System\\CurrentControlSet\\Control\\ContentIndex System\\CurrentControlSet\\Control\\Terminal Server System\\CurrentControlSet\\Control\\Terminal Server\\UserConfig System\\CurrentControlSet\\Control\\Terminal Server\\DefaultUserConfiguration Software\\Microsoft\\Windows NT\\CurrentVersion\\Perflib System\\CurrentControlSet\\Services\\SysmonLog"
     rationale: "The registry contains sensitive computer configuration information that could be used by an attacker to facilitate unauthorized activities. The fact that the default ACLs assigned throughout the registry are fairly restrictive and help to protect the registry from access by unauthorized users reduces the risk of such an attack."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: System\\CurrentControlSet\\Control\\Print\\Printers System\\CurrentControlSet\\Services\\Eventlog SOFTWARE\\Microsoft\\OLAP Server SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Print SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Windows System\\CurrentControlSet\\Control\\ContentIndex System\\CurrentControlSet\\Control\\Terminal Server System\\CurrentControlSet\\Control\\Terminal Server\\UserConfig System\\CurrentControlSet\\Control\\Terminal Server\\DefaultUserConfiguration SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Perflib System\\CurrentControlSet\\Services\\SysmonLog Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Remotely accessible registry paths and sub-paths."
@@ -895,7 +895,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> RestrictNullSessAccess -> 1'
 
   - id: 27057
-    title: "Ensure 'Network access: Restrict clients allowed to make remote calls to SAM' is set to 'Administrators: Remote Access: Allow'"
+    title: "Ensure 'Network access: Restrict clients allowed to make remote calls to SAM' is set to 'Administrators: Remote Access: Allow' (MS only)"
     description: "This policy setting allows you to restrict remote RPC connections to SAM. The recommended state for this setting is: Administrators: Remote Access: Allow. Note: A Windows 10 R1607, Server 2016 or newer OS is required to access and set this value in Group Policy."
     rationale: "To ensure that an unauthorized user cannot anonymously list local account names or groups and use the information to attempt to guess passwords or perform social engineering attacks. (Social engineering attacks try to deceive users in some way to obtain passwords or some form of security information.)"
     remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators: Remote Access: Allow: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Restrict clients allowed to make remote calls to SAM."
@@ -1001,7 +1001,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\pku2u'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\pku2u -> AllowOnlineID -> 0'
 
-  # 2.3.11.4 Ensure 'Network Security: Configure encryption types allowed for Kerberos' is set to 'RC4_HMAC_MD5, AES128_HMAC_SHA1, AES256_HMAC_SHA1, Future encryption types'
+  # 2.3.11.4 Ensure 'Network security: Configure encryption types allowed for Kerberos' is set to 'RC4_HMAC_MD5, AES128_HMAC_SHA1, AES256_HMAC_SHA1, Future encryption types'
   - id: 27063
     title: "Ensure 'Network Security: Configure encryption types allowed for Kerberos' is set to 'RC4_HMAC_MD5, AES128_HMAC_SHA1, AES256_HMAC_SHA1, Future encryption types'"
     description: "This policy setting allows you to set the encryption types that Kerberos is allowed to use. The recommended state for this setting is: AES128_HMAC_SHA1, AES256_HMAC_SHA1, Future encryption types. Note: Some legacy applications and OSes may require RC4_HMAC_MD5 - we recommend you test in your environment and verify whether you can safely remove it. For the purposes of scoring we have allowed the use of RC4_HMAC_MD5 as an optional setting."
@@ -1142,19 +1142,6 @@ checks:
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> ShutdownWithoutLogon -> 0'
-
-  - id: 27071
-    title: "Ensure 'System cryptography: Force strong key protection  for user keys stored on the computer' is set to 'User is prompted when  the key is first used' or higher"
-    description: "Ensure 'System cryptography: Force strong key protection  for user keys stored on the computer' is set to 'User is prompted when  the key is first used' or higher"
-    rationale: "If a user's account is compromised or their computer is inadvertently left unsecured the malicious user can use the keys stored for the user to access protected resources. You can  configure this policy setting so that users must provide a password that is distinct from  their domain password every time they use a key. This configuration makes it more  difficult for an attacker to access locally stored user keys, even if the attacker takes control  of the user's computer and determines their logon password"
-    remediation: "To establish the recommended configuration via GP, set the following UI path to User is  prompted when the key is first used (configuring to User must enter a password  each time they use a key also conforms to the benchmark): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local  Policies\\Security Options\\System cryptography: Force strong key protection  for user keys stored on the computer"
-    compliance:
-      - cis: ["2.3.14.1"]
-      - cis_csc: ["16"]
-    condition: all
-    rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Cryptography'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Cryptography -> ForceKeyProtection -> n:(\d+) compare >= 0'
 
   # 2.3.15.1 Ensure 'System objects: Require case insensitivity for non-Windows subsystems' is set to 'Enabled'
   - id: 27072
@@ -1324,7 +1311,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> EnableVirtualization -> 1'
 
   - id: 27082
-    title: " Ensure 'Print Spooler (Spooler)' is set to 'Disabled' (DC only)"
+    title: "Ensure 'Print Spooler (Spooler)' is set to 'Disabled' (DC only)"
     description: "This service spools print jobs and handles interaction with printers"
     rationale: "Disabling the Print Spooler (Spooler) service mitigates the PrintNightmare vulnerability  (CVE-2021-34527) and other attacks against the service."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Print Spooler"
@@ -1411,7 +1398,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile -> DisableNotifications -> 1'
 
   - id: 27088
-    title: "Ensure 'Windows Firewall: Private: Logging: Name' is set to '%SYSTEMROOT%\\System32\\logfiles\\firewall\\privatefw.log'"
+    title: "Ensure 'Windows Firewall: Private: Logging: Name' is set to '%SystemRoot%\\System32\\logfiles\\firewall\\privatefw.log'"
     description: "Use this option to specify the path and name of the file in which Windows Firewall will write its log information. The recommended state for this setting is: %SYSTEMROOT%\\System32\\logfiles\\firewall\\privatefw.log."
     rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
     remediation: "To establish the recommended configuration via GP, set the following UI path to %SYSTEMROOT%\\System32\\logfiles\\firewall\\privatefw.log: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Firewall with Advanced Security\\Windows Firewall with Advanced Security\\Windows Firewall Properties\\Private Profile\\Logging Customize\\Name"
@@ -1761,7 +1748,7 @@ checks:
       - 'c:auditpol.exe /get /subcategory:"Security Group Management" -> r:Success'
 
   - id: 27110
-    title: "Ensure 'Audit User Account Management' is set to 'Success and Failure' "
+    title: "Ensure 'Audit User Account Management' is set to 'Success and Failure'"
     description: "This subcategory reports each event of user account management, such as when a user  account is created, changed, or deleted; a user account is renamed, disabled, or enabled; or  a password is set or changed. If you enable this Audit policy setting, administrators can  track events to detect malicious, accidental, and authorized creation of user accounts."
     rationale: "Auditing these events may be useful when investigating a security incident."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Account Management\\Audit User  Account Management"
@@ -1797,7 +1784,7 @@ checks:
       - 'c:auditpol.exe /get /subcategory:"Process Creation" -> r:Success'
 
   - id: 27113
-    title: "Ensure 'Audit Directory Service Access' is set to include 'Failure'"
+    title: "Ensure 'Audit Directory Service Access' is set to include 'Failure' (DC only)"
     description: "This subcategory reports when an AD DS object is accessed. Only objects with SACLs cause  audit events to be generated, and only when they are accessed in a manner that matches  their SACL. These events are similar to the directory service access events in previous  versions of Windows Server. This subcategory applies only to Domain Controllers."
     rationale: "Auditing these events may be useful when investigating a security incident."
     remediation: "To establish the recommended configuration via GP, set the following UI path to include  Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\DS Access\\Audit Directory Service  Access"
@@ -1809,7 +1796,7 @@ checks:
       - 'c:auditpol.exe /get /subcategory:"Directory Service Access" -> r:Failure'
 
   - id: 27114
-    title: "Ensure 'Audit Directory Service Changes' is set to include 'Success'"
+    title: "Ensure 'Audit Directory Service Changes' is set to include 'Success' (DC only)"
     description: "This subcategory reports changes to objects in Active Directory Domain Services (AD DS).  The types of changes that are reported are create, modify, move, and undelete operations  that are performed on an object. DS Change auditing, where appropriate, indicates the old  and new values of the changed properties of the objects that were changed. Only objects  with SACLs cause audit events to be generated, and only when they are accessed in a manner that matches their SACL. Some objects and properties do not cause audit events to  be generated due to settings on the object class in the schema. This subcategory applies  only to Domain Controllers."
     rationale: "Auditing these events may be useful when investigating a security incident."
     remediation: "To establish the recommended configuration via GP, set the following UI path to include  Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\DS Access\\Audit Directory Service  Changes"
@@ -1917,7 +1904,7 @@ checks:
       - 'c:auditpol.exe /get /subcategory:"File Share" -> r:Success and Failure'
 
   - id: 27123
-    title: "Ensure 'Audit Other Object Access Events' is set to 'Success and Failure' "
+    title: "Ensure 'Audit Other Object Access Events' is set to 'Success and Failure'"
     description: "This policy setting allows you to audit events generated by the management of task scheduler jobs or COM+ objects."
     rationale: "The unexpected creation of scheduled tasks and COM+ objects could potentially be an  indication of malicious activity. Since these types of actions are generally low volume, it  may be useful to capture them in the audit logs for use during an investigation."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Object Access\\Audit Other Object  Access Events"
@@ -2013,7 +2000,7 @@ checks:
       - 'c:auditpol.exe /get /subcategory:"Sensitive Privilege Use" -> r:Success and Failure'
 
   - id: 27131
-    title: "Ensure 'Audit IPsec Driver' is set to 'Success and Failure' "
+    title: "Ensure 'Audit IPsec Driver' is set to 'Success and Failure'"
     description: "This subcategory reports on the activities of the Internet Protocol security (IPsec) driver.  Events for this subcategory include: - 4960: IPsec dropped an inbound packet that failed an integrity check. If this  problem persists, it could indicate a network issue or that packets are being  modified in transit to this computer. Verify that the packets sent from the remote  computer are the same as those received by this computer. This error might also  indicate interoperability problems with other IPsec implementations. - 4961: IPsec dropped an inbound packet that failed a replay check. If this problem  persists, it could indicate a replay attack against this computer. - 4962: IPsec dropped an inbound packet that failed a replay check. The inbound  packet had too low a sequence number to ensure it was not a replay. - 4963: IPsec dropped an inbound clear text packet that should have been secured.  This is usually due to the remote computer changing its IPsec policy without  informing this computer. This could also be a spoofing attack attempt. - 4965: IPsec received a packet from a remote computer with an incorrect Security  Parameter Index (SPI). This is usually caused by malfunctioning hardware that is  corrupting packets. If these errors persist, verify that the packets sent from the  remote computer are the same as those received by this computer. This error may  also indicate interoperability problems with other IPsec implementations. In that  case, if connectivity is not impeded, then these events can be ignored. - 5478: IPsec Services has started successfully. - 5479: IPsec Services has been shut down successfully. The shutdown of IPsec  Services can put the computer at greater risk of network attack or expose the  computer to potential security risks. - 5480: IPsec Services failed to get the complete list of network interfaces on the  computer. This poses a potential security risk because some of the network interfaces may not get the protection provided by the applied IPsec filters. Use the  IP Security Monitor snap-in to diagnose the problem. - 5483: IPsec Services failed to initialize RPC server. IPsec Services could not be  started.- 5484: IPsec Services has experienced a critical failure and has been shut down. The  shutdown of IPsec Services can put the computer at greater risk of network attack  or expose the computer to potential security risks. - 5485: IPsec Services failed to process some IPsec filters on a plug-and-play event for  network interfaces. This poses a potential security risk because some of the network  interfaces may not get the protection provided by the applied IPsec filters. Use the  IP Security Monitor snap-in to diagnose the problem. The recommended state for this setting is: Success and Failure. "
     rationale: "Auditing these events may be useful when investigating a security incident. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\System\\Audit IPsec Driver "
@@ -2133,7 +2120,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> AllowOnlineTips -> 0'
 
   - id: 27140
-    title: "Ensure LAPS AdmPwd GPO Extension / CSE is installed"
+    title: "Ensure LAPS AdmPwd GPO Extension / CSE is installed (MS only)"
     description: "In May 2015, Microsoft released the Local Administrator Password Solution (LAPS) tool, which is free and supported software that allows an organization to automatically set randomized and unique local Administrator account passwords on domain-attached workstations and Member Servers. The passwords are stored in a confidential attribute of the domain computer account and can be retrieved from Active Directory by approved Sysadmins when needed. The LAPS tool requires a small Active Directory Schema update in order to implement, as well as installation of a Group Policy Client Side Extension (CSE) on targeted computers. Please see the LAPS documentation for details. LAPS supports Windows Vista or newer workstation OSes, and Server 2003 or newer server OSes. LAPS does not support standalone computers - they must be joined to a domain. Note: Organizations that utilize 3rd-party commercial software to manage unique & complex local Administrator passwords on domain members may opt to disregard these LAPS recommendations. Note #2: LAPS is only designed to manage local Administrator passwords, and is therefore not recommended (or supported) for use directly on Domain Controllers, which do not have a traditional local Administrator account. We strongly encourage you to only deploy the LAPS CSE and LAPS GPO settings to member servers and workstations."
     rationale: "Due to the difficulty in managing local Administrator passwords, many organizations choose to use the same password on all workstations and/or Member Servers when deploying them. This creates a serious attack surface security risk because if an attacker manages to compromise one system and learn the password to its local Administrator account, then they can leverage that account to instantly gain access to all other computers that also use that password for their local Administrator account."
     remediation: "In order to utilize LAPS, a minor Active Directory Schema update is required, and a Group Policy Client Side Extension (CSE) must be installed on each managed computer. When LAPS is installed, the file AdmPwd.dll must be present in the following location and registered in Windows (the LAPS AdmPwd GPO Extension / CSE installation does this for you): C:\\Program Files\\LAPS\\CSE\\AdmPwd.dll"
@@ -2148,7 +2135,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\GPExtensions\{D76B9641-3288-4f75-942D-087DE603E3EA} -> DllName'
 
   - id: 27141
-    title: "Ensure 'Do not allow password expiration time longer than required by policy' is set to 'Enabled'"
+    title: "Ensure 'Do not allow password expiration time longer than required by policy' is set to 'Enabled' (MS only)"
     description: "In May 2015, Microsoft released the Local Administrator Password Solution (LAPS) tool, which is free and supported software that allows an organization to automatically set randomized and unique local Administrator account passwords on domain-attached workstations and Member Servers. The passwords are stored in a confidential attribute of the domain computer account and can be retrieved from Active Directory by approved Sysadmins when needed. The LAPS tool requires a small Active Directory Schema update in order to implement, as well as installation of a Group Policy Client Side Extension (CSE) on targeted computers. Please see the LAPS documentation for details. LAPS supports Windows Vista or newer workstation OSes, and Server 2003 or newer server OSes. LAPS does not support standalone computers - they must be joined to a domain. The recommended state for this setting is: Enabled. Note: Organizations that utilize 3rd-party commercial software to manage unique & complex local Administrator passwords on domain members may opt to disregard these LAPS recommendations. Note #2: LAPS is only designed to manage local Administrator passwords, and is therefore not recommended (or supported) for use directly on Domain Controllers, which do not have a traditional local Administrator account. We strongly encourage you to only deploy the LAPS CSE and LAPS GPO settings to member servers and workstations."
     rationale: "Due to the difficulty in managing local Administrator passwords, many organizations choose to use the same password on all workstations and/or Member Servers when deploying them. This creates a serious attack surface security risk because if an attacker manages to compromise one system and learn the password to its local Administrator account, then they can leverage that account to instantly gain access to all other computers that also use that password for their local Administrator account."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\LAPS\\Do not allow password expiration time longer than required by policy."
@@ -2176,7 +2163,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> AdmPwdEnabled -> 1'
 
   - id: 27143
-    title: "Ensure 'Password Settings: Password Complexity' is set to 'Enabled: Large letters + small letters + numbers + special characters'"
+    title: "Ensure 'Password Settings: Password Complexity' is set to 'Enabled: Large letters + small letters + numbers + special characters' (MS only)"
     description: "In May 2015, Microsoft released the Local Administrator Password Solution (LAPS) tool, which is free and supported software that allows an organization to automatically set randomized and unique local Administrator account passwords on domain-attached workstations and Member Servers. The passwords are stored in a confidential attribute of the domain computer account and can be retrieved from Active Directory by approved Sysadmins when needed. The LAPS tool requires a small Active Directory Schema update in order to implement, as well as installation of a Group Policy Client Side Extension (CSE) on targeted computers. Please see the LAPS documentation for details. LAPS supports Windows Vista or newer workstation OSes, and Server 2003 or newer server OSes. LAPS does not support standalone computers - they must be joined to a domain. The recommended state for this setting is: Enabled: Large letters + small letters + numbers + special characters. Note: Organizations that utilize 3rd-party commercial software to manage unique & complex local Administrator passwords on domain members may opt to disregard these LAPS recommendations. Note #2: LAPS is only designed to manage local Administrator passwords, and is therefore not recommended (or supported) for use directly on Domain Controllers, which do not have a traditional local Administrator account. We strongly encourage you to only deploy the LAPS CSE and LAPS GPO settings to member servers and workstations."
     rationale: "Due to the difficulty in managing local Administrator passwords, many organizations choose to use the same password on all workstations and/or Member Servers when deploying them. This creates a serious attack surface security risk because if an attacker manages to compromise one system and learn the password to its local Administrator account, then they can leverage that account to instantly gain access to all other computers that also use that password for their local Administrator account."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled, and configure the Password Complexity option to Large letters + small letters + numbers + special characters: Computer Configuration\\Policies\\Administrative Templates\\LAPS\\Password Settings"
@@ -2190,7 +2177,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordComplexity -> 4'
 
   - id: 27144
-    title: "Ensure 'Password Settings: Password Length' is set to 'Enabled: 15 or more'"
+    title: "Ensure 'Password Settings: Password Length' is set to 'Enabled: 15 or more' (MS only)"
     description: "In May 2015, Microsoft released the Local Administrator Password Solution (LAPS) tool, which is free and supported software that allows an organization to automatically set randomized and unique local Administrator account passwords on domain-attached workstations and Member Servers. The passwords are stored in a confidential attribute of the domain computer account and can be retrieved from Active Directory by approved Sysadmins when needed. The LAPS tool requires a small Active Directory Schema update in order to implement, as well as installation of a Group Policy Client Side Extension (CSE) on targeted computers. Please see the LAPS documentation for details. LAPS supports Windows Vista or newer workstation OSes, and Server 2003 or newer server OSes. LAPS does not support standalone computers - they must be joined to a domain. The recommended state for this setting is: Enabled: 15 or more. Note: Organizations that utilize 3rd-party commercial software to manage unique & complex local Administrator passwords on domain members may opt to disregard these LAPS recommendations. Note #2: LAPS is only designed to manage local Administrator passwords, and is therefore not recommended (or supported) for use directly on Domain Controllers, which do not have a traditional local Administrator account. We strongly encourage you to only deploy the LAPS CSE and LAPS GPO settings to member servers and workstations."
     rationale: "Due to the difficulty in managing local Administrator passwords, many organizations choose to use the same password on all workstations and/or Member Servers when deploying them. This creates a serious attack surface security risk because if an attacker manages to compromise one system and learn the password to its local Administrator account, then they can leverage that account to instantly gain access to all other computers that also use that password for their local Administrator account."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled, and configure the Password Length option to 15 or more: Computer Configuration\\Policies\\Administrative Templates\\LAPS\\Password Settings"
@@ -2204,7 +2191,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft Services\AdmPwd -> PasswordLength -> n:^(\d+) compare >= 15'
 
   - id: 27145
-    title: "Ensure 'Password Settings: Password Age (Days)' is set to 'Enabled: 30 or fewer'"
+    title: "Ensure 'Password Settings: Password Age (Days)' is set to 'Enabled: 30 or fewer' (MS only)"
     description: "In May 2015, Microsoft released the Local Administrator Password Solution (LAPS) tool, which is free and supported software that allows an organization to automatically set randomized and unique local Administrator account passwords on domain-attached workstations and Member Servers. The passwords are stored in a confidential attribute of the domain computer account and can be retrieved from Active Directory by approved Sysadmins when needed. The LAPS tool requires a small Active Directory Schema update in order to implement, as well as installation of a Group Policy Client Side Extension (CSE) on targeted computers. Please see the LAPS documentation for details. LAPS supports Windows Vista or newer workstation OSes, and Server 2003 or newer server OSes. LAPS does not support standalone computers - they must be joined to a domain. The recommended state for this setting is: Enabled: 30 or fewer. Note: Organizations that utilize 3rd-party commercial software to manage unique & complex local Administrator passwords on domain members may opt to disregard these LAPS recommendations. Note #2: LAPS is only designed to manage local Administrator passwords, and is therefore not recommended (or supported) for use directly on Domain Controllers, which do not have a traditional local Administrator account. We strongly encourage you to only deploy the LAPS CSE and LAPS GPO settings to member servers and workstations."
     rationale: "Due to the difficulty in managing local Administrator passwords, many organizations choose to use the same password on all workstations and/or Member Servers when deploying them. This creates a serious attack surface security risk because if an attacker manages to compromise one system and learn the password to its local Administrator account, then they can leverage that account to instantly gain access to all other computers that also use that password for their local Administrator account."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled, and configure the Password Age (Days) option to 30 or fewer: Computer Configuration\\Policies\\Administrative Templates\\LAPS\\Password Settings"
@@ -2234,7 +2221,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> LocalAccountTokenFilterPolicy -> 0'
 
   - id: 27147
-    title: "Ensure 'Configure SMB v1 client driver' is set to 'Enabled: Disable driver'"
+    title: "Ensure 'Configure SMB v1 client driver' is set to 'Enabled: Disable driver (recommended'"
     description: "This setting configures the start type for the Server Message Block version 1 (SMBv1) client driver service (MRxSmb10), which is recommended to be disabled. The recommended state for this setting is: Enabled: Disable driver. Note: Do not, under any circumstances, configure this overall setting as Disabled, as doing so will delete the underlying registry entry altogether, which will cause serious problems."
     rationale: "Since September 2016, Microsoft has strongly encouraged that SMBv1 be disabled and no longer used on modern networks, as it is a 30 year old design that is much more vulnerable to attacks then much newer designs such as SMBv2 and SMBv3."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Disable driver: Computer Configuration\\Policies\\Administrative Templates\\MS Security Guide\\Configure SMB v1 client driver."
@@ -2772,7 +2759,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy -> fMinimizeConnections -> 3'
 
   - id: 27180
-    title: "Ensure 'Prohibit connection to non-domain networks when connected to domain authenticated network' is set to 'Enabled'"
+    title: "Ensure 'Prohibit connection to non-domain networks when connected to domain authenticated network' is set to 'Enabled' (MS only)"
     description: "This policy setting prevents computers from connecting to both a domain based network and a non-domain based network at the same time. The recommended state for this setting is: Enabled."
     rationale: "The potential concern is that a user would unknowingly allow network traffic to flow between the insecure public network and the enterprise managed network."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Windows Connection Manager\\Prohibit connection to non-domain networks when connected to domain authenticated network"
@@ -2836,20 +2823,19 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\PushNotifications -> NoCloudApplicationNotification -> 1'
 
   - id: 27185
-    title: "Ensure 'Include command line in process creation events' is set to 'Disabled'"
-    description: "This policy setting determines what information is logged in security audit events when a new process has been created. The recommended state for this setting is: Disabled."
-    rationale: "When this policy setting is enabled, any user who has read access to the security events can read the command-line arguments for any successfully created process. Command-line arguments may contain sensitive or private information such as passwords or user data."
+    title: "Ensure 'Include command line in process creation events' is set to 'Enabled'"
+    description: "This policy setting determines what information is logged in security audit events when a new process has been created. The recommended state for this setting is: Enabled."
+    rationale: "Capturing process command line information in event logs can be very valuable when performing forensic investigations of attack incidents."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Audit Process Creation\\Include command line in process creation events"
     compliance:
       - cis: ["18.8.3.1"]
-      - cis_csc: ["16.14"]
       - pci_dss: ["8.2.1"]
       - tsc: ["CC6.1"]
     references:
       - 'CCE-35802-8'
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\Audit -> ProcessCreationIncludeCmdLine_Enabled -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\Audit -> ProcessCreationIncludeCmdLine_Enabled -> 1'
 
   - id: 27186
     title: "Ensure 'Encryption Oracle Remediation' is set to 'Enabled: Force Updated Clients'"
@@ -2890,7 +2876,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> EnableVirtualizationBasedSecurity -> 1'
 
   - id: 27189
-    title: "Ensure 'Turn On Virtualization Based Security: Select PlatformSecurity Level' is set to 'Secure Boot and DMA Protection'"
+    title: "Ensure 'Turn On Virtualization Based Security: Select Platform Security Level' is set to 'Secure Boot and DMA Protection'"
     description: "This policy setting specifies whether Virtualization Based Security is enabled. Virtualization  Based Security uses the Windows Hypervisor to provide support for security services. The recommended state for this setting is: Secure Boot and DMA Protection. Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot  enabled, which in turn requires that Windows was installed with a UEFI BIOS  configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual  machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be  exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows  Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using  Azure IaaS VMs."
     rationale: "Secure Boot can help reduce the risk of bootloader attacks and in conjunction with DMA  protections to help protect data from being scraped from memory."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Secure  Boot and DMA Protection: Computer Configuration\\Policies\\Administrative Templates\\System\\Device  Guard\\Turn On Virtualization Based Security: Select Platform Security Level Note: This Group Policy path may not exist by default. It is provided by the Group Policy  template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 RTM  (Release 1507) Administrative Templates (or newer). "
@@ -2902,7 +2888,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> RequirePlatformSecurityFeatures -> 1'
 
   - id: 27190
-    title: "Ensure 'Turn On Virtualization Based Security: Virtualization BasedProtection of Code Integrity' is set to 'Enabled with UEFI lock'"
+    title: "Ensure 'Turn On Virtualization Based Security: Virtualization Based Protection of Code Integrity' is set to 'Enabled with UEFI lock'"
     description: "This setting enables virtualization based protection of Kernel Mode Code Integrity. When  this is enabled, kernel mode memory protections are enforced and the Code Integrity  validation path is protected by the Virtualization Based Security feature. The recommended state for this setting is: Enabled with UEFI lock. Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot  enabled, which in turn requires that Windows was installed with a UEFI BIOS  configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual  machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be  exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows  Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using  Azure IaaS VMs. "
     rationale: "The Enabled with UEFI lock option ensures that Virtualization Based Protection of Code  Integrity cannot be disabled remotely.  "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled  with UEFI lock: Computer Configuration\\Policies\\Administrative Templates\\System\\Device  Guard\\Turn On Virtualization Based Security: Virtualization Based Protection  of Code Integrity Note: This Group Policy path may not exist by default. It is provided by the Group Policy  template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 RTM  (Release 1507) Administrative Templates (or newer). "
@@ -2914,7 +2900,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> HypervisorEnforcedCodeIntegrity -> 1'
 
   - id: 27191
-    title: "Ensure 'Turn On Virtualization Based Security: Require UEFIMemory Attributes Table' is set to 'True (checked)'"
+    title: "Ensure 'Turn On Virtualization Based Security: Require UEFI Memory Attributes Table' is set to 'True (checked)'"
     description: "This option will only enable Virtualization Based Protection of Code Integrity on devices  with UEFI firmware support for the Memory Attributes Table. Devices without the UEFI  Memory Attributes Table may have firmware that is incompatible with Virtualization  Based Protection of Code Integrity which in some cases can lead to crashes or data loss or  incompatibility with certain plug-in cards. If not setting this option the targeted devices  should be tested to ensure compatibility. The recommended state for this setting is: True (checked). Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot  enabled, which in turn requires that Windows was installed with a UEFI BIOS  configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual  machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be  exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows  Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using  Azure IaaS VMs. "
     rationale: "This setting will help protect this control from being enabled on a system that is not  compatible which could lead to a crash or data loss.  "
     remediation: "To establish the recommended configuration via GP, set the following UI path to TRUE: Computer Configuration\\Policies\\Administrative Templates\\System\\Device  Guard\\Turn On Virtualization Based Security: Require UEFI Memory Attributes  Table Note: This Group Policy path may not exist by default. It is provided by the Group Policy  template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 Release  1703 Administrative Templates (or newer). "
@@ -2926,7 +2912,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> HVCIMATRequired -> 1'
 
   - id: 27192
-    title: "Ensure 'Turn On Virtualization Based Security: Credential GuardConfiguration' is set to 'Enabled with UEFI lock'"
+    title: "Ensure 'Turn On Virtualization Based Security: Credential Guard Configuration' is set to 'Enabled with UEFI lock'"
     description: "This setting lets users turn on Credential Guard with virtualization-based security to help  protect credentials. The Enabled with UEFI lock option ensures that Credential Guard  cannot be disabled remotely. In order to disable the feature, you must set the Group Policy  to Disabled as well as remove the security functionality from each computer, with a  physically present user, in order to clear configuration persisted in UEFI. The recommended state for this setting is: Enabled with UEFI lock. Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot  enabled, which in turn requires that Windows was installed with a UEFI BIOS  configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual  machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be  exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows  Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using  Azure IaaS VMs."
     rationale: "The Enabled with UEFI lock option ensures that Credential Guard cannot be disabled  remotely.  "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled  with UEFI lock: Computer Configuration\\Policies\\Administrative Templates\\System\\Device  Guard\\Turn On Virtualization Based Security: Credential Guard Configuration Note: This Group Policy path may not exist by default. It is provided by the Group Policy  template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 Release  1511 Administrative Templates (or newer). "
@@ -3121,7 +3107,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Internet Connection Wizard -> ExitOnMSICW -> 1'
 
   - id: 27205
-    title: "Ensure 'Turn off Internet download for Web publishing and online ordering wizards' is set to 'Enabled' "
+    title: "Ensure 'Turn off Internet download for Web publishing and online ordering wizards' is set to 'Enabled'"
     description: "This policy setting controls whether Windows will download a list of providers for the Web publishing and online ordering wizards."
     rationale: "Although the risk is minimal, enabling this setting will reduce the possibility of a user unknowingly downloading malicious content through this feature."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off Internet download for Web publishing and online ordering wizards"
@@ -3357,7 +3343,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> DontEnumerateConnectedUsers -> 1'
 
   - id: 27220
-    title: "Ensure 'Enumerate local users on domain-joined computers' is set to 'Disabled'"
+    title: "Ensure 'Enumerate local users on domain-joined computers' is set to 'Disabled' (MS only)"
     description: "This policy setting allows local users to be enumerated on domain-joined computers."
     rationale: "A malicious user could use this feature to gather account names of other users, that information could then be used in conjunction with other types of attacks such as guessing passwords or social engineering. The value of this countermeasure is small because a user with domain credentials could gather the same account information using other methods."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Logon\\Enumerate local users on domain-joined computers"
@@ -3543,7 +3529,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fAllowToGetHelp -> 0'
 
   - id: 27232
-    title: "Ensure 'Enable RPC Endpoint Mapper Client Authentication' is set to 'Enabled'"
+    title: "Ensure 'Enable RPC Endpoint Mapper Client Authentication' is set to 'Enabled' (MS only)"
     description: "This policy setting controls whether RPC clients authenticate with the Endpoint Mapper Service when the call they are making contains authentication information. The Endpoint Mapper Service on computers running Windows NT4 (all service packs) cannot process authentication information supplied in this manner. This policy setting can cause a specific issue with 1-way forest trusts if it is applied to the trusting domain DCs (see Microsoft KB3073942), so we do not recommend applying it to Domain Controllers."
     rationale: "Anonymous access to RPC services could result in accidental disclosure of information to unauthenticated users."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Remote Procedure Call\\Enable RPC Endpoint Mapper Client Authentication"
@@ -3563,7 +3549,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Rpc -> EnableAuthEpResolution -> 1'
 
   - id: 27233
-    title: "Ensure 'Restrict Unauthenticated RPC clients' is set to 'Enabled: Authenticated'"
+    title: "Ensure 'Restrict Unauthenticated RPC clients' is set to 'Enabled: Authenticated' (MS only)"
     description: "This policy setting controls how the RPC server runtime handles unauthenticated RPC clients connecting to RPC servers. This policy setting impacts all RPC applications. In a domain environment this policy setting should be used with caution as it can impact a wide range of functionality including group policy processing itself. Reverting a change to this policy setting can require manual intervention on each affected machine. This policy setting should never be applied to a Domain Controller. A client will be considered an authenticated client if it uses a named pipe to communicate with the server or if it uses RPC Security. RPC Interfaces that have specifically requested to be accessible by unauthenticated clients may be exempt from this restriction, depending on the selected value for this policy setting. -- None allows all RPC clients to connect to RPC Servers running on the machine on which the policy setting is applied. -- Authenticated allows only authenticated RPC Clients (per the definition above) to connect to RPC Servers running on the machine on which the policy setting is applied. Exemptions are granted to interfaces that have requested them. -- Authenticated without exceptions allows only authenticated RPC Clients (per the definition above) to connect to RPC Servers running on the machine on which the policy setting is applied. No exceptions are allowed. This value has the potential to cause serious problems and is not recommended.'"
     rationale: "Unauthenticated RPC communication can create a security vulnerability."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Authenticated: Computer Configuration\\Policies\\Administrative Templates\\System\\Remote Procedure Call\\Restrict Unauthenticated RPC clients"
@@ -3658,7 +3644,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\W32Time\TimeProviders\NtpClient -> Enabled -> 1'
 
   - id: 27239
-    title: "Ensure 'Enable Windows NTP Server' is set to 'Disabled'"
+    title: "Ensure 'Enable Windows NTP Server' is set to 'Disabled' (MS only)"
     description: "This policy setting allows you to specify whether the Windows NTP Server is enabled. The recommended state for this setting is: Disabled."
     rationale: "The configuration of proper time synchronization is critically important in an enterprise managed environment both due to the sensitivity of Kerberos authentication timestamps and also to ensure accurate security logging."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Windows Time Service\\Time Providers\\Enable Windows NTP Server. Note: This Group Policy path is provided by the Group Policy template W32Time.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
@@ -3816,7 +3802,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent -> DisableWindowsConsumerFeatures -> 1'
 
   - id: 27249
-    title: "Ensure 'Require pin for pairing' is set to 'Enabled'"
+    title: "Ensure 'Require pin for pairing' is set to 'Enabled: First Time' OR 'Enabled: Always'"
     description: "This policy setting controls whether or not a PIN is required for pairing to a wireless display device."
     rationale: "If this setting is not configured or disabled then a PIN would not be required when pairing wireless display devices to the system, increasing the risk of unauthorized use."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Connect\\Require pin for pairing"
@@ -3949,7 +3935,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> LimitDiagnosticLogCollection -> 1'
 
   - id: 27258
-    title: "Ensure 'Limit Dump Collection' is set to 'Enabled' "
+    title: "Ensure 'Limit Dump Collection' is set to 'Enabled'"
     description: "This policy setting limits the type of dumps that can be collected when more information is needed to troubleshoot a problem. The recommended state for this setting is: Enabled. Note: Dumps are only sent when the device has been configured to send optional diagnostic data. Diagnostic data is limited with recommendation Ensure Allow Diagnostic Data is set to Enabled: Diagnostic data off (not recommended) or Enabled: Send required diagnostic data to send only basic information. "
     rationale: "Sending data to a 3rd party vendor is a security concern and should only be done on an as needed basis. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled. Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Limit Dump Collection Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DataCollection.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer). "
@@ -4281,7 +4267,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR -> ExploitGuard_ASR_Rules -> 1'
 
   - id: 27277
-    title: "Ensure 'Configure Attack Surface Reduction rules: Set the state for each ASR rule' is 'configured'"
+    title: "Ensure 'Configure Attack Surface Reduction rules: Set the state for each ASR rule' is configured"
     description: "This policy setting sets the Attack Surface Reduction rules. The recommended state for this setting is: 26190899-1602-49e8-8b27-eb1d0a1ce869 - 1 (Block Office communication application from creating child processes) 3b576869-a4ec-4529-8536-b80a7769e899 - 1 (Block Office applications from creating executable content) 5beb7efe-fd9a-4556-801d-275e5ffc04cc - 1 (Block execution of potentially obfuscated scripts) 75668c1f-73b5-4cf0-bb93-3ecf5cb7cc84 - 1 (Block Office applications from injecting code into other processes) 7674ba52-37eb-4a4f-a9a1-f0f9a1619a2c - 1 (Block Adobe Reader from creating child processes) 92e97fa1-2edf-4476-bdd6-9dd0b4dddc7b - 1 (Block Win32 API calls from Office macro) 9e6c4e1f-7d60-472f-ba1a-a39ef669e4b2 - 1 (Block credential stealing from the Windows local security authority subsystem (lsass.exe)) b2b3f03d-6a65-4f7b-a9c7-1c7ef74a9ba4 - 1 (Block untrusted and unsigned processes that run from USB) be9ba2d9-53ea-4cdc-84e5-9b1eeee46550 - 1 (Block executable content from email client and webmail) d3e037e1-3eb8-44c8-a917-57927947596d - 1 (Block JavaScript or VBScript from launching downloaded executable content) d4f940ab-401b-4efc-aadc-ad5f3c50688a - 1 (Block Office applications from creating child processes)"
     rationale: "Attack surface reduction helps prevent actions and apps that are typically used by exploitseeking malware to infect machines."
     remediation: "To establish the recommended configuration via GP, set the following UI path so that 26190899-1602-49e8-8b27-eb1d0a1ce869, 3b576869-a4ec-4529-8536-b80a7769e899, 5beb7efe-fd9a-4556-801d-275e5ffc04cc, 75668c1f-73b5-4cf0-bb93-3ecf5cb7cc84, 7674ba52-37eb-4a4f-a9a1-f0f9a1619a2c, 92e97fa1-2edf-4476-bdd6-9dd0b4dddc7b, 9e6c4e1f-7d60-472f-ba1a-a39ef669e4b2, b2b3f03d-6a65-4f7b-a9c7-1c7ef74a9ba4, be9ba2d9-53ea-4cdc-84e5-9b1eeee46550, d3e037e1-3eb8-44c8-a917-57927947596d and d4f940ab-401b-4efc-aadc-ad5f3c50688a are each set to a value of 1: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender Antivirus\\Windows Defender Exploit Guard\\Attack Surface Reduction\\Configure Attack Surface Reduction rules: Set the state for each ASR rule."
@@ -4324,7 +4310,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\Network Protection -> EnableNetworkProtection -> 1'
 
   - id: 27279
-    title: "Ensure 'Enable file hash computation feature' is set to'Enabled' "
+    title: "Ensure 'Enable file hash computation feature' is set to'Enabled'"
     description: "This setting determines whether hash values are computed for files scanned by Microsoft Defender. The recommended state for this setting is: Enabled. "
     rationale: "When running an antivirus solution such as Microsoft Defender Antivirus, it is important to ensure that it is configured to monitor for suspicious and known malicious activity. File hashes are a reliable way of detecting changes to files, and can speed up the scan process by skipping files that have not changed since they were last scanned and determined to be safe. A changed file hash can also be cause for additional scrutiny. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\MpEngine\\Enable file hash computation feature Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 10 Release 1709 Administrative Templates (or newer). "
@@ -4336,7 +4322,7 @@ checks:
 
 
   - id: 27280
-    title: "Ensure 'Scan all downloaded files and attachments' is set to'Enabled' "
+    title: "Ensure 'Scan all downloaded files and attachments' is set to'Enabled'"
     description: "This policy setting configures scanning for all downloaded files and attachments. The recommended state for this setting is: Enabled. "
     rationale: "When running an antivirus solution such as Microsoft Defender Antivirus, it is important to ensure that it is configured to heuristically monitor in real-time for suspicious and known malicious activity. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Real-Time Protection\\Scan all downloaded files and attachments Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer). "
@@ -4389,7 +4375,7 @@ checks:
     rationale: "Watson events are the reports that get sent to Microsoft when a program or service crashes or fails, including the possibility of automatic submission. Preventing this information from being sent can help reduce privacy concerns."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender Antivirus\\Reporting\\Configure Watson events. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
     compliance:
-      - cis: ["18.9.47.11.11"]
+      - cis: ["18.9.47.11.1"]
       - cis_csc: ["13"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
@@ -4441,7 +4427,7 @@ checks:
 
 
   - id: 27287
-    title: "Ensure 'Configure detection for potentially unwantedapplications' is set to 'Enabled: Block' "
+    title: "Ensure 'Configure detection for potentially unwanted applications' is set to 'Enabled: Block' "
     description: "This policy setting controls detection and action for Potentially Unwanted Applications (PUA), which are sneaky unwanted application bundlers or their bundled applications, that can deliver adware or malware. The recommended state for this setting is: Enabled: Block. For more information, see this link: Block potentially unwanted applications with Microsoft Defender Antivirus | Microsoft Docs "
     rationale: "Potentially unwanted applications can increase the risk of your network being infected with malware, cause malware infections to be harder to identify, and can waste IT resources in cleaning up the applications. They should be blocked from installation. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Block: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Configure detection for potentially unwanted applications Note: This Group Policy path is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 10 Release 1809 & Server 2019 Administrative Templates (or newer). "
@@ -4453,7 +4439,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender -> PUAProtection -> 1'
 
   - id: 27288
-    title: "Ensure 'Turn off Microsoft Defender AntiVirus' is set to'Disabled'"
+    title: "Ensure 'Turn off Microsoft Defender AntiVirus' is set to 'Disabled'"
     description: "This policy setting turns off Microsoft Defender Antivirus. If the setting is configured to Disabled, Microsoft Defender Antivirus runs and computers are scanned for malware and other potentially unwanted software. The recommended state for this setting is: Disabled. "
     rationale: "It is important to ensure a current, updated antivirus product is scanning each computer for malicious file activity. Microsoft provides a competent solution out of the box in Microsoft Defender Antivirus. Organizations that choose to purchase a reputable 3rd-party antivirus solution may choose to exempt themselves from this recommendation in lieu of the commercial alternative. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Turn off Microsoft Defender AntiVirus Note: This Group Policy path is provided by the Group Policy template WindowsDefender.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Turn off Windows Defender, but it was renamed to Windows Defender Antivirus starting with the Windows 10 Release 1703 Administrative Templates. It was again renamed to Turn off Microsoft Defender Antivirus starting with the Windows 10 Release 2004 Administrative Templates. "
@@ -4512,7 +4498,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> DisablePasswordSaving -> 1'
 
   - id: 27292
-    title: "(L2) Ensure 'Restrict Remote Desktop Services users to a single Remote Desktop Services session' is set to 'Enabled' "
+    title: "Ensure 'Restrict Remote Desktop Services users to a single Remote Desktop Services session' is set to 'Enabled'"
     description: "This policy setting allows you to restrict users to a single Remote Desktop Services session. The recommended state for this setting is: Enabled. "
     rationale: "This setting ensures that users & administrators who Remote Desktop to a server will continue to use the same session - if they disconnect and reconnect, they will go back to the same session they were using before, preventing the creation of a second simultaneous session. This both prevents unnecessary resource usage by having the server host unnecessary additional sessions (which would put extra load on the server) and also ensures a consistency of experience for the user."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Connections\\Restrict Remote Desktop Services users to a single Remote Desktop Services session Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In older Microsoft Windows Administrative Templates, this setting was named Restrict Terminal Services users to a single remote session, but it was renamed starting with the Windows 7 & Server 2008 R2 Administrative Templates. "
@@ -4524,7 +4510,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fSingleSessionPerUser -> 1'
 
   - id: 27293
-    title: "Ensure 'Allow UI Automation redirection' is set to'Disabled' "
+    title: "Ensure 'Allow UI Automation redirection' is set to 'Disabled' "
     description: "This policy setting determines whether User Interface (UI) Automation client applications running on the local computer can access UI elements on the server. UI Automation gives programs access to most UI elements, which allows use of assistive technology products like Magnifier and Narrator that need to interact with the UI in order to work properly. UI information also allows automated test scripts to interact with the UI. For example, the local computer´s Narrator and Magnifier clients can be used to interact with UI on a web page opened in a remote session. The recommended state for this setting is: Disabled. Note: Remote Desktop sessions don´t currently support UI Automation redirection. "
     rationale: "In a more security-sensitive environment, it is desirable to reduce the possible attack surface. The need for UI Automation redirection within a Remote Desktop session is rare, and not supported at this time, but it makes sense to reduce the number of unexpected avenues for malicious activity to occur. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Device and Resource Redirection\\Allow UI Automation redirection Note: This Group Policy path may not exist by default. It is provided by the Group Policy template TerminalServer.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer). "
@@ -4569,7 +4555,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableCdm -> 1'
 
   - id: 27296
-    title: "Ensure 'Do not allow location redirection' is set to'Enabled' "
+    title: "Ensure 'Do not allow location redirection' is set to'Enabled'"
     description: "This policy setting controls the redirection of location data to the remote computer in a Remote Desktop Services session. The recommended state for this setting is: Enabled. "
     rationale: "In a more security-sensitive environment, it is desirable to reduce the possible attack surface. The need for location data redirection within a Remote Desktop session is rare, so it makes sense to reduce the number of unexpected avenues for malicious activity to occur. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Device and Resource Redirection\\Do not allow location redirection Note: This Group Policy path may not exist by default. It is provided by the Group Policy template TerminalServer.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer).   "
@@ -4633,7 +4619,7 @@ checks:
     rationale: "Allowing unsecure RPC communication can exposes the server to man in the middle attacks and data disclosure attacks."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Security\\Require secure RPC communication"
     compliance:
-      - cis: ["18.9.59.3.9.2"]
+      - cis: ["18.9.65.3.9.2"]
       - cis_csc: ["3.4"]
       - pci_dss: ["8.2.1"]
       - tsc: ["CC6.1"]
@@ -4644,7 +4630,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fEncryptRPCTraffic -> 1'
 
   - id: 27301
-    title: "Ensure 'Require use of specific security layer for remote(RDP) connections' is set to 'Enabled: SSL' "
+    title: "Ensure 'Require use of specific security layer for remote (RDP) connections' is set to 'Enabled: SSL' "
     description: "This policy setting specifies whether to require the use of a specific security layer to secure communications between clients and RD Session Host servers during Remote Desktop Protocol (RDP) connections. The recommended state for this setting is: Enabled: SSL. Note: In spite of this setting being labeled SSL, it is actually enforcing Transport Layer Security (TLS) version 1.0, not the older (and less secure) SSL protocol. "
     rationale: "The native Remote Desktop Protocol (RDP) encryption is now considered a weak protocol, so enforcing the use of stronger Transport Layer Security (TLS) encryption for all RDP communications between clients and RD Session Host servers is preferred.   "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: SSL: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Security\\Require use of specific security layer for remote (RDP) connections Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates.   "
@@ -4656,7 +4642,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> SecurityLayer -> 1'
 
   - id: 27302
-    title: "Ensure 'Require user authentication for remoteconnections by using Network Level Authentication' is set to 'Enabled'"
+    title: "Ensure 'Require user authentication for remote connections by using Network Level Authentication' is set to 'Enabled'"
     description: "This policy setting allows you to specify whether to require user authentication for remote connections to the RD Session Host server by using Network Level Authentication. The recommended state for this setting is: Enabled. "
     rationale: "Requiring that user authentication occur earlier in the remote connection process enhances security. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Security\\Require user authentication for remote connections by using Network Level Authentication Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In the Microsoft Windows Vista Administrative Templates, this setting was initially named Require user authentication using RDP 6.0 for remote connections, but it was renamed starting with the Windows Server 2008 (non-R2) Administrative Templates. "
@@ -4668,7 +4654,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> UserAuthentication -> 1'
 
   - id: 27303
-    title: "Ensure 'Set client connection encryption level' is set to'Enabled: High Level' "
+    title: "Ensure 'Set client connection encryption level' is set to'Enabled: High Level'"
     description: "This policy setting specifies whether to require the use of a specific encryption level to secure communications between client computers and RD Session Host servers during Remote Desktop Protocol (RDP) connections. This policy only applies when you are using native RDP encryption. However, native RDP encryption (as opposed to SSL encryption) is not recommended. This policy does not apply to SSL encryption. The recommended state for this setting is: Enabled: High Level. "
     rationale: "If Remote Desktop client connections that use low level encryption are allowed, it is more likely that an attacker will be able to decrypt any captured Remote Desktop Services network traffic. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: High Level: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Security\\Set client connection encryption level Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. "
@@ -4680,7 +4666,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MinEncryptionLevel -> 2'
 
   - id: 27304
-    title: "Ensure 'Set time limit for active but idle Remote Desktop Services sessions' is set to 'Enabled: 15 minutes or less'"
+    title: "Ensure 'Set time limit for active but idle Remote Desktop Services sessions' is set to 'Enabled: 15 minutes or less, but not Never (0)'"
     description: "This policy setting allows you to specify the maximum amount of time that an active Remote Desktop Services session can be idle (without user input) before it is automatically disconnected. The recommended state for this setting is: Enabled: 15 minutes or less."
     rationale: "This setting helps to prevent active Remote Desktop sessions from tying up the computer for long periods of time while not in use, preventing computing resources from being consumed by large numbers of inactive sessions. In addition, old, forgotten Remote Desktop sessions that are still active can cause password lockouts if the user's password has changed but the old session is still running. For systems that limit the number of connected users (e.g. servers in the default Administrative mode - 2 sessions only), other users' old but still active sessions can prevent another user from connecting, resulting in an effective denial of service."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 15 minutes or less: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Session Time Limits\\Set time limit for active but idle Remote Desktop Services sessions. Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In older Microsoft Windows Administrative Templates, this setting was named Set time limit for active but idle Terminal Services sessions, but it was renamed starting with the Windows 7 & Server 2008 R2 Administrative Templates."
@@ -4914,17 +4900,17 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> DisableAutomaticRestartSignOn -> 1'
 
   - id: 27319
-    title: "Ensure 'Turn on PowerShell Script Block Logging' is set to 'Disabled'"
-    description: "This policy setting enables logging of all PowerShell script input to the Microsoft-WindowsPowerShell/Operational event log."
-    rationale: "There are potential risks of capturing passwords in the PowerShell logs. This setting should only be needed for debugging purposes, and not in normal operation, it is important to ensure this is set to Disabled."
+    title: "Ensure 'Turn on PowerShell Script Block Logging' is set to 'Enabled'"
+    description: "This policy setting enables logging of all PowerShell script input to the Microsoft-WindowsPowerShell/Operational event log. The recommended state for this setting is: Enabled."
+    rationale: "Logs of PowerShell script input can be very valuable when performing forensic investigations of PowerShell attack incidents to determine what occurred."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows PowerShell\\Turn on PowerShell Script Block Logging"
     compliance:
       - cis: ["18.9.100.1"]
-      - cis_csc: ["16.4"]
+      - cis_csc: ["8.8"]
       - pci_dss: ["12.3.8"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging -> EnableScriptBlockLogging -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging -> EnableScriptBlockLogging -> 1'
 
   - id: 27320
     title: "Ensure 'Turn on PowerShell Transcription' is set to 'Disabled'"
@@ -5128,7 +5114,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> NoAutoUpdate -> 0'
 
   - id: 27332
-    title: "Ensure 'Configure Automatic Updates: Scheduled install day' is set to '0 - Every day' "
+    title: "Ensure 'Configure Automatic Updates: Scheduled install day' is set to '0 - Every day'"
     description: "This policy setting specifies when computers in your environment will receive security updates from Windows Update or WSUS. The recommended state for this setting is: 0 - Every day. Note: This setting is only applicable if 4 - Auto download and schedule the install is selected in the recommendation 'Configure Automatic Updates'. It will have no impact if any other option is selected. "
     rationale: "Although each version of Windows is thoroughly tested before release, it is possible that problems will be discovered after the products are shipped. The Configure Automatic Updates setting can help you ensure that the computers in your environment will always have the most recent critical operating system updates and service packs installed. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to 0 - Every day: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\Manage end user experience\\Configure Automatic Updates: Scheduled install day Note: This Group Policy path is provided by the Group Policy template WindowsUpdate.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. "
@@ -5156,7 +5142,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> ManagePreviewBuildsPolicyValue -> 0'
 
   - id: 27334
-    title: "Ensure 'Select when Preview Builds and Feature Updates are received' is set to 'Enabled: Semi-Annual Channel, 180 or more days'"
+    title: "Ensure 'Select when Preview Builds and Feature Updates are received' is set to 'Enabled: 180 or more days'"
     description: "This policy setting determines the level of Preview Build or Feature Updates to receive, and when. The Windows readiness level for each new Windows 10 Feature Update is classified in one of 5 categories, depending on your organizations level of comfort with receiving them: - Preview Build - Fast: Devices set to this level will be the first to receive new builds of Windows with features not yet available to the general public. Select Fast to participate in identifying and reporting issues to Microsoft, and provide suggestions on new functionality. - Preview Build - Slow: Devices set to this level receive new builds of Windows before they are available to the general public, but at a slower cadence than those set to Fast, and with changes and fixes identified in earlier builds. - Release Preview: Receive builds of Windows just before Microsoft releases them to the general public. - Semi-Annual Channel (Targeted): Receive feature updates when they are released to the general public. - Semi-Annual Channel: Feature updates will arrive when they are declared SemiAnnual Channel. This usually occurs about 4 months after Semi-Annual Channel (Targeted), indicating that Microsoft, Independent Software Vendors (ISVs), partners and customer believe that the release is ready for broad deployment."
     rationale: "Forcing new features without prior testing in your environment could cause software incompatibilities as well as introducing new bugs into the operating system. In an enterprise managed environment, it is generally preferred to delay Feature Updates until thorough testing and a deployment plan is in place. This recommendation delays the automatic installation of new features as long as possible."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Semi-Annual Channel, 180 or more days: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\Windows Update for Business\\Select when Preview Builds and Feature Updates are received"
