@@ -56,11 +56,11 @@
 # upload_wazuh_configuration:
 #   remote_commands:
 #     localfile:
-#       allow: yes
+#       allow: no
 #       exceptions: []
 #     wodle_command:
-#       allow: yes
+#       allow: no
 #       exceptions: []
 #   limits:
 #     eps:
-#       allow: yes
+#       allow: no

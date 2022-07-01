@@ -67,17 +67,17 @@ default_api_configuration = {
     "upload_wazuh_configuration": {
         "remote_commands": {
             "localfile": {
-                "allow": True,
+                "allow": False,
                 "exceptions": []
             },
             "wodle_command": {
-                "allow": True,
+                "allow": False,
                 "exceptions": []
             }
         },
         "limits": {
             "eps": {
-                "allow": True
+                "allow": False
             }
         }
     }
