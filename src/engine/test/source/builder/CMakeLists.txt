@@ -120,6 +120,16 @@ target_link_libraries(stageBuilderParse_test
 )
 gtest_discover_tests(stageBuilderParse_test)
 
+# Operation Logql Parser Builder test
+add_executable(opBuilderLogqlParser_test
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderLogqlParser_test.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderLogqlParser.cpp
+)
+target_link_libraries(opBuilderLogqlParser_test
+  gtest_main base hlp
+)
+gtest_discover_tests(opBuilderLogqlParser_test)
+
 # File Output test
 add_executable(fileOutput_test
   ${BUILDER_TEST_SOURCE_DIR}/outputs/fileOutput_test.cpp
