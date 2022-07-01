@@ -272,11 +272,11 @@ checks:
       - tsc: ["CC6.4"]
     references:
       - "CCE-37701-0"
-    condition: any
+    condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon'
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> AllocateDASD'
-      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> AllocateDASD -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> AllocateDASD -> 2'
 
   - id: 15018
     title: "Ensure 'Devices: Prevent users from installing printer drivers' is set to 'Enabled'"
