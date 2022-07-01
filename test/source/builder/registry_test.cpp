@@ -1,8 +1,10 @@
 #include <gtest/gtest.h>
 
 #include "registry.hpp"
+#include "baseTypes.hpp"
 
 using namespace builder::internals;
+using namespace base;
 
 Expression builderDummy(std::any)
 {
