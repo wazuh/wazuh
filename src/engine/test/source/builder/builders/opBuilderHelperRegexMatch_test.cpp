@@ -20,8 +20,9 @@ namespace bld = builder::internals::builders;
 
 TEST(opBuilderHelperRegexMatch, Builds)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"r_match"}, std::vector<std::string> {"^regex_test 123$"});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"r_match"},
+                                 std::vector<std::string> {"^regex_test 123$"});
 
     ASSERT_NO_THROW(bld::opBuilderHelperRegexMatch(tuple));
 }

@@ -28,9 +28,8 @@ TEST(opBuilderHelperNotExists, Builds)
 
 TEST(opBuilderHelperNotExists, Exec_not_exists_false)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"exists"},
-                                 std::vector<std::string> {});
+    auto tuple = std::make_tuple(
+        std::string {"/fieldcheck"}, std::string {"exists"}, std::vector<std::string> {});
 
     auto event1 = std::make_shared<json::Json>(R"({"fieldcheck": "valid"})");
 
@@ -43,9 +42,8 @@ TEST(opBuilderHelperNotExists, Exec_not_exists_false)
 
 TEST(opBuilderHelperNotExists, Exec_not_exists_true)
 {
-    auto tuple = std::make_tuple(std::string {"/fieldcheck"},
-                                 std::string {"exists"},
-                                 std::vector<std::string> {});
+    auto tuple = std::make_tuple(
+        std::string {"/fieldcheck"}, std::string {"exists"}, std::vector<std::string> {});
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "valid"})");
 
