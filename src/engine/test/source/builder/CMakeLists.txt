@@ -109,6 +109,15 @@ target_link_libraries(stageBuilderOutputs_test
 )
 gtest_discover_tests(stageBuilderOutputs_test)
 
+# File Output test
+add_executable(fileOutput_test
+  ${BUILDER_TEST_SOURCE_DIR}/outputs/fileOutput_test.cpp
+)
+target_link_libraries(fileOutput_test
+  gtest_main base
+)
+gtest_discover_tests(fileOutput_test)
+
 # Register test
 add_executable(register_test
   ${BUILDER_TEST_SOURCE_DIR}/register_test.cpp
