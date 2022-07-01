@@ -12,6 +12,10 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <shared.h>
+#include <os_net/os_net.h>
 #include "queue_wrappers.h"
 
 size_t __wrap_rem_get_qsize() {

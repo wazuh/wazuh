@@ -7,6 +7,8 @@
  * Foundation
  */
 
+#ifndef WIN32
+
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
@@ -15,10 +17,7 @@
 #include <stdlib.h>
 #include <shared.h>
 #include <os_net/os_net.h>
-
-#include "remoted/remoted.h"
 #include "netbuffer_wrappers.h"
-
 
 void __wrap_nb_close(__attribute__((unused)) netbuffer_t * buffer, int sock) {
     check_expected(sock);
@@ -48,3 +47,5 @@ int __wrap_nb_send(__attribute__((unused)) netbuffer_t * buffer, int sock) {
 
     return mock();
 }
+
+#endif
