@@ -1,7 +1,7 @@
 #ifndef _RESULT_H
 #define _RESULT_H
 
-#include <string_view>
+#include <string>
 
 namespace base::result
 {
@@ -11,11 +11,11 @@ class Result
 {
 private:
     Event m_payload;
-    std::string_view m_trace;
+    std::string m_trace;
     bool m_success;
 
 public:
-    Result(Event payload, std::string_view trace, bool success)
+    Result(Event payload, std::string trace, bool success)
         : m_payload {payload}
         , m_trace {trace}
         , m_success {success}
@@ -72,7 +72,7 @@ public:
         return m_payload;
     }
 
-    std::string_view trace() const
+    std::string trace() const
     {
         return m_trace;
     }
@@ -87,7 +87,7 @@ public:
         m_success = success;
     }
 
-    void setTrace(std::string_view trace)
+    void setTrace(std::string trace)
     {
         m_trace = trace;
     }
@@ -99,13 +99,13 @@ public:
 };
 
 template<typename Event>
-Result<Event> makeSuccess(Event payload, std::string_view trace = "")
+Result<Event> makeSuccess(Event payload, std::string trace = "")
 {
     return Result<Event> {payload, trace, true};
 }
 
 template<typename Event>
-Result<Event> makeFailure(Event payload, std::string_view trace = "")
+Result<Event> makeFailure(Event payload, std::string trace = "")
 {
     return Result<Event> {payload, trace, false};
 }
