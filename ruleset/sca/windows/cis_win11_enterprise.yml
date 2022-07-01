@@ -3961,7 +3961,7 @@ checks:
 
   - id: 26262
     title: "Ensure 'Allow Clipboard synchronization across devices' is set to 'Disabled'"
-    description: "This policy setting determines whether published User Activities can be uploaded to the cloud. The recommended state for this setting is: Disabled ."
+    description: "This setting determines whether Clipboard contents can be synchronized across devices. The recommended state for this setting is: Disabled."
     rationale: "In high security environments, clipboard data should stay local to the system and not synced across devices, as it may contain very sensitive information that must be contained locally."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\OS Policies\\Allow Clipboard synchronization across devices"
     compliance:
