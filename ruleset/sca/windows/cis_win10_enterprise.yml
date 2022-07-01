@@ -1428,7 +1428,7 @@ checks:
   - id: 15085
     title: "Ensure 'Microsoft iSCSI Initiator Service (MSiSCSI)' is set to  'Disabled'"
     description: "Manages Internet SCSI (iSCSI) sessions from this computer to remote target devices. The recommended state for this setting is: Disabled."
-    rationale: "This service is critically necessary in order to directly attach to an iSCSI device. However,  iSCSI itself uses a very weak authentication protocol (CHAP), which means that the  passwords for iSCSI communication are easily exposed, unless all of the traffic is isolated  and/or encrypted using another technology like IPsec. This service is generally more  appropriate for servers in a controlled environment then on workstations requiring high  security."
+    rationale: "This service is critically necessary in order to directly attach to an iSCSI device. However, iSCSI itself uses a very weak authentication protocol (CHAP), which means that the  passwords for iSCSI communication are easily exposed, unless all of the traffic is isolated  and/or encrypted using another technology like IPsec. This service is generally more  appropriate for servers in a controlled environment then on workstations requiring high security."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Microsoft iSCSI Initiator Service"
     compliance:
       - cis: ["5.12"]
@@ -1481,7 +1481,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\p2psvc -> Start -> 4'
 
   - id: 15089
-    title: "Ensure 'Peer Networking Identity Manager (p2pimsvc)' is set to'Disabled'"
+    title: "Ensure 'Peer Networking Identity Manager (p2pimsvc)' is set to 'Disabled'"
     description: "Provides identity services for the Peer Name Resolution Protocol (PNRP) and Peer-to-Peer  Grouping services. The recommended state for this setting is: Disabled."
     rationale: "Peer Name Resolution Protocol is a distributed and (mostly) serverless way to handle  name resolution of clients with each other. In a high security environment, it is more secure  to rely on centralized name resolution methods maintained by authorized staff."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Peer Networking Identity Manager"
@@ -1495,7 +1495,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\p2pimsvc -> Start -> 4'
 
   - id: 15090
-    title: "Ensure 'PNRP Machine Name Publication Service (PNRPAutoReg)' is setto 'Disabled'"
+    title: "Ensure 'PNRP Machine Name Publication Service (PNRPAutoReg)' is set to 'Disabled'"
     description: "This service publishes a machine name using the Peer Name Resolution Protocol.  Configuration is managed via the netsh context ‘p2p pnrp peer’. The recommended state for this setting is: Disabled."
     rationale: "Peer Name Resolution Protocol is a distributed and (mostly) serverless way to handle  name resolution of clients with each other. In a high security environment, it is more secure  to rely on centralized name resolution methods maintained by authorized staff."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\PNRP Machine Name Publication Service"
@@ -1593,10 +1593,10 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\UmRdpService -> Start -> 4'
 
   - id: 15097
-    title: "Ensure 'Remote Procedure Call (RPC) Locator (RpcLocator)' is set to'Disabled' "
+    title: "Ensure 'Remote Procedure Call (RPC) Locator (RpcLocator)' is set to 'Disabled'"
     description: "In Windows 2003 and older versions of Windows, the Remote Procedure Call (RPC)  Locator service manages the RPC name service database. In Windows Vista and newer  versions of Windows, this service does not provide any functionality and is present for  application compatibility. The recommended state for this setting is: Disabled."
     rationale: "This is a legacy service that has no value or purpose other than application compatibility  for very old software. It should be disabled unless there is a specific old application still in  use on the system that requires it."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Remote Procedure Call (RPC) Locator "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Remote Procedure Call (RPC) Locator"
     compliance:
       - cis: ["5.24"]
       - cis_csc: ["4.8"]
@@ -1610,7 +1610,7 @@ checks:
     title: "Ensure 'Remote Registry (RemoteRegistry)' is set to 'Disabled'"
     description: "Enables remote users to view and modify registry settings on this computer.The recommended state for this setting is: Disabled."
     rationale: "In a high security environment, exposing the registry to remote access is an increased  security risk."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Remote Registry "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Remote Registry"
     compliance:
       - cis: ["5.25"]
       - cis_csc: ["4.8"]
@@ -5018,7 +5018,7 @@ checks:
     rationale: "Watson events are the reports that get sent to Microsoft when a program or service crashes or fails, including the possibility of automatic submission. Preventing this information from being sent can help reduce privacy concerns."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender Antivirus\\Reporting\\Configure Watson events. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
     compliance:
-      - cis: ["18.9.47.11.11"]
+      - cis: ["18.9.47.11.1"]
       - cis_csc: ["13"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
@@ -5269,7 +5269,7 @@ checks:
     rationale: "Allowing unsecure RPC communication can exposes the server to man in the middle attacks and data disclosure attacks."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Security\\Require secure RPC communication"
     compliance:
-      - cis: ["18.9.59.3.9.2"]
+      - cis: ["18.9.65.3.9.2"]
       - cis_csc: ["3.4"]
       - pci_dss: ["8.2.1"]
       - tsc: ["CC6.1"]
@@ -5626,7 +5626,7 @@ checks:
     rationale: "If this setting is allowed users could record and broadcast session info to external sites which is a privacy concern."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Game Recording and Broadcasting\\Enables or disables Windows Game Recording and Broadcasting"
     compliance:
-      - cis: ["18.9.82.1"]
+      - cis: ["18.9.87.1"]
       - cis_csc: ["13"]
       - pci_dss: ["2.2.5"]
       - tsc: ["CC6.3"]
