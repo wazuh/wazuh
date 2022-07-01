@@ -600,8 +600,7 @@ void delete_diff(const char *name)
         return;
     }
 
-    char tmp_folder[513];
-    tmp_folder[512] = '\0';
+    char tmp_folder[513] = {0};
     snprintf(tmp_folder, 512, "%s/%s",
              DIFF_DIR,
              name);
