@@ -1043,7 +1043,7 @@ public:
 
         if (pp.IsValid())
         {
-            //TODO: not sure if needed, add test
+            // TODO: not sure if needed, add test
             const rapidjson::size_t s1 = static_cast<rapidjson::size_t>(value.size());
             const size_t s2 = static_cast<size_t>(s1);
             if (s2 != value.size())
@@ -1078,6 +1078,38 @@ public:
             throw std::runtime_error(fmt::format("[Json::appendString(basePointerPath)] "
                                                  "Invalid json path: [{}]",
                                                  path));
+        }
+    }
+
+    /**
+     * @brief Erase Json object at the path.
+     *
+     * @param path The path to the object, default value is root object ("").
+     * @return true if object was erased, false if object was not found.
+     *
+     * @throws std::runtime_error If path is invalid.
+     */
+    bool erase(std::string_view path = "")
+    {
+        if (path.empty())
+        {
+            m_document.SetNull();
+            return true;
+        }
+        else
+        {
+            auto pp = rapidjson::Pointer(path.data());
+
+            if (pp.IsValid())
+            {
+                return pp.Erase(m_document);
+            }
+            else
+            {
+                throw std::runtime_error(fmt::format("[Json::erase(basePointerPath)] "
+                                                     "Invalid json path: [{}]",
+                                                     path));
+            }
         }
     }
 };

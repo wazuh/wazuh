@@ -31,12 +31,8 @@ add_library(builders OBJECT
   builders/opBuilderHelperFilter.cpp
   builders/opBuilderHelperMap.cpp
   builders/baseHelper.cpp
+  definitions.cpp
 )
-
-# builders/opBuilderHelperFilter.cpp
-# builders/opBuilderHelperMap.cpp
-
-# definitions.cpp
 target_include_directories(builders
   PRIVATE
 
