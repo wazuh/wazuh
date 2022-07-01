@@ -6,6 +6,7 @@
 
 #include <fmt/format.h>
 
+#include "definitions.hpp"
 #include "expression.hpp"
 #include "json.hpp"
 #include "registry.hpp"
@@ -61,7 +62,11 @@ public:
                                                  "Asset expects a JSON object, got: [{}]",
                                                  jsonDefinition.typeName()));
         }
-        auto objectDefinition = jsonDefinition.getObject().value();
+        // Process definitions
+        json::Json tmpJson{jsonDefinition};
+        internals::substituteDefinitions(tmpJson);
+
+        auto objectDefinition = tmpJson.getObject().value();
 
         // Get name
         auto namePos =
