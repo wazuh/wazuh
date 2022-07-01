@@ -104,7 +104,7 @@ checks:
 
 
   - id: 15006
-    title: "Ensure 'Account lockout duration' is set to '15 or more minute(s)"
+    title: "Ensure 'Account lockout duration' is set to '15 or more minute(s)'"
     description: "This policy setting determines the length of time that must pass before a locked account is unlocked and a user can try to log on again. The setting does this by specifying the number of minutes a locked out account will remain unavailable. If the value for this policy setting is configured to 0, locked out accounts will remain locked out until an administrator manually unlocks them."
     rationale: "A denial of service (DoS) condition can be created if an attacker abuses the Account lockout threshold and repeatedly attempts to log on with a specific account. Once you configure the Account lockout threshold setting, the account will be locked out after the specified number of failed attempts. If you configure the Account lockout duration setting to 0, then the account will remain locked out until an administrator unlocks it manually."
     remediation: "To establish the recommended configuration via GP, set the following UI path to 15 or more minute(s): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Account Lockout Policy\\Account lockout duration"
@@ -262,7 +262,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> CrashOnAuditFail -> 0'
 
   - id: 15017
-    title: "Ensure 'Devices: Allowed to format and eject removable media' is set to 'Administrators' and Interactive Users'"
+    title: "Ensure 'Devices: Allowed to format and eject removable media' is set to 'Administrators and Interactive Users'"
     description: "This policy setting determines who is allowed to format and eject removable NTFS media. You can use this policy setting to prevent unauthorized users from removing data on one computer to access it on another computer on which they have local administrator privileges. The recommended state for this setting is: Administrators and Interactive Users."
     rationale: "Users may be able to move data on removable disks to a different computer where they have administrative privileges. The user could then take ownership of any file, grant themselves full control, and view or modify any file. The fact that most removable storage devices will eject media by pressing a mechanical button diminishes the advantage of this policy setting."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators and Interactive Users: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Devices: Allowed to format and eject removable media."
@@ -698,7 +698,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters -> SMBServerNameHardeningLevel -> n:^(\d+) compare >= 1'
 
   - id: 15042
-    title: "Ensure 'Network access: Allow anonymous SID/Name  translation' is set to 'Disabled'"
+    title: "Ensure 'Network access: Allow anonymous SID/Name translation' is set to 'Disabled'"
     description: "This policy setting determines whether an anonymous user can request security identifier  (SID) attributes for another user, or use a SID to obtain its corresponding user name."
     rationale: "If this policy setting is enabled, a user with local access could use the well-known Administrator's SID to learn the real name of the built-in Administrator account, even if it has been renamed. That person could then use the account name to initiate a password guessing attack."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local  Policies\\Security Options\\Network access: Allow anonymous SID/Name  translation"
@@ -1294,7 +1294,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> EnableVirtualization -> 1'
 
   - id: 15075
-    title: "Ensure 'Bluetooth Audio Gateway Service (BTAGService)' is set  to 'Disabled'"
+    title: "Ensure 'Bluetooth Audio Gateway Service (BTAGService)' is set to 'Disabled'"
     description: "Service supporting the audio gateway role of the Bluetooth Handsfree Profile. The recommended state for this setting is: Disabled."
     rationale: "Bluetooth technology has inherent security risks - especially prior to the v2.1 standard. Wireless Bluetooth traffic is not well encrypted (if at all), so in a high-security environment,  it should not be permitted, in spite of the added inconvenience of not being able to use  Bluetooth devices."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Bluetooth Audio Gateway Service"
@@ -1346,7 +1346,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\lfsvc -> Start -> 4'
 
   - id: 15079
-    title: "Ensure 'IIS Admin Service (IISADMIN)' is set to 'Disabled' or 'Not  Installed'"
+    title: "Ensure 'IIS Admin Service (IISADMIN)' is set to 'Disabled' or 'Not Installed'"
     description: "Enables the server to administer the IIS metabase. The IIS metabase stores configuration  for the SMTP and FTP services. The recommended state for this setting is: Disabled or Not Installed.Note: This service is not installed by default. It is supplied with Windows, but is installed by enabling an optional Windows feature (Internet Information Services). Note #2: An organization may choose to selectively grant exceptions to web developers to allow IIS (or another web server) on their workstation, in order for them to locally test & develop web pages. However, the organization should track those machines and ensure the security controls and mitigations are kept up to date, to reduce risk of compromise."
     rationale: "Hosting a website from a workstation is an increased security risk, as the attack surface of that workstation is then greatly increased. If proper security mitigations are not followed, the chance of successful attack increases significantly. Note: This security concern applies to any web server application installed on a workstation, not just IIS."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\IIS Admin Service"
@@ -1372,7 +1372,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\irmon -> Start -> 4'
 
   - id: 15081
-    title: "Ensure 'Internet Connection Sharing (ICS) (SharedAccess)' is set  to 'Disabled'"
+    title: "Ensure 'Internet Connection Sharing (ICS) (SharedAccess)' is set to 'Disabled'"
     description: "Provides network access translation, addressing, name resolution and/or intrusion  prevention services for a home or small office network. The recommended state for this setting is: Disabled."
     rationale: "Internet Connection Sharing (ICS) is a feature that allows someone to share their Internet  connection with other machines on the network - it was designed for home or small office  environments where only one machine has Internet access - it effectively turns that machine into an Internet router. This feature causes the bridging of networks and likely  bypassing other, more secure pathways. It should not be used on any enterprise-managed system."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Internet Connection Sharing (ICS)"
@@ -1400,7 +1400,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\lltdsvc -> Start -> 4'
 
   - id: 15083
-    title: "Ensure 'LxssManager (LxssManager)' is set to 'Disabled' or 'Not  Installed' (Automated)"
+    title: "Ensure 'LxssManager (LxssManager)' is set to 'Disabled' or 'Not Installed'"
     description: "The LXSS Manager service supports running native ELF binaries. The service provides the  infrastructure necessary for ELF binaries to run on Windows. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but is installed by enabling an optional Windows feature (Windows Subsystem for Linux)."
     rationale: "The Linux SubSystem (LXSS) Manager allows full system access to Linux applications on  Windows, including the file system. While this can certainly have some functionality and  performance benefits for running those applications, it also creates new security risks in  the event that a hacker injects malicious code into a Linux application. For best security, it is preferred to run Linux applications on Linux, and Windows applications on Windows."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\LxssManager"
@@ -1413,7 +1413,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LxssManager -> Start -> 4'
 
   - id: 15084
-    title: "Ensure 'Microsoft FTP Service (FTPSVC)' is set to 'Disabled' or  'Not Installed'"
+    title: "Ensure 'Microsoft FTP Service (FTPSVC)' is set to 'Disabled' or 'Not Installed'"
     description: "Enables the server to be a File Transfer Protocol (FTP) server. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but is installed by enabling an optional Windows feature (Internet Information Services - FTP Server)."
     rationale: "Hosting an FTP server (especially a non-secure FTP server) from a workstation is an  increased security risk, as the attack surface of that workstation is then greatly increased."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Microsoft FTP Service"
@@ -1426,7 +1426,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\FTPSVC -> Start -> 4'
 
   - id: 15085
-    title: "Ensure 'Microsoft iSCSI Initiator Service (MSiSCSI)' is set to  'Disabled'"
+    title: "Ensure 'Microsoft iSCSI Initiator Service (MSiSCSI)' is set to 'Disabled'"
     description: "Manages Internet SCSI (iSCSI) sessions from this computer to remote target devices. The recommended state for this setting is: Disabled."
     rationale: "This service is critically necessary in order to directly attach to an iSCSI device. However, iSCSI itself uses a very weak authentication protocol (CHAP), which means that the  passwords for iSCSI communication are easily exposed, unless all of the traffic is isolated  and/or encrypted using another technology like IPsec. This service is generally more  appropriate for servers in a controlled environment then on workstations requiring high security."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Microsoft iSCSI Initiator Service"
@@ -1440,7 +1440,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\MSiSCSI -> Start -> 4'
 
   - id: 15086
-    title: "Ensure 'OpenSSH SSH Server (sshd)' is set to 'Disabled' or 'Not  Installed'"
+    title: "Ensure 'OpenSSH SSH Server (sshd)' is set to 'Disabled' or 'Not Installed'"
     description: "SSH protocol based service to provide secure encrypted communications between two  untrusted hosts over an insecure network. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but it is installed by enabling an optional Windows feature (OpenSSH Server)."
     rationale: "Hosting an SSH server from a workstation is an increased security risk, as the attack  surface of that workstation is then greatly increased"
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\OpenSSH SSH Server"
@@ -1523,7 +1523,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Spooler -> Start -> 4'
 
   - id: 15092
-    title: "Ensure 'Problem Reports and Solutions Control Panel Support(wercplsupport)' is set to 'Disabled'"
+    title: "Ensure 'Problem Reports and Solutions Control Panel Support (wercplsupport)' is set to 'Disabled'"
     description: "This service provides support for viewing, sending and deletion of system-level problem  reports for the Problem Reports and Solutions control panel. The recommended state for this setting is: Disabled."
     rationale: "This service is involved in the process of displaying/reporting issues & solutions to/from  Microsoft. In a high security environment, preventing this information from being sent can  help reduce privacy concerns for sensitive corporate information."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Problem Reports and Solutions Control Panel Support"
@@ -1537,7 +1537,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\wercplsupport -> Start -> 4'
 
   - id: 15093
-    title: "Ensure 'Remote Access Auto Connection Manager (RasAuto)' is set to'Disabled'"
+    title: "Ensure 'Remote Access Auto Connection Manager (RasAuto)' is set to 'Disabled'"
     description: "Creates a connection to a remote network whenever a program references a remote DNS or NetBIOS name or address. The recommended state for this setting is: Disabled."
     rationale: "The function of this service is to provide a demand dial type of functionality. In a high security environment, it is preferred that any remote dial connections (whether they be  legacy dial-in POTS or VPN) are initiated by the user, not automatically by the system."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Remote Access Auto Connection Manager"
@@ -1579,7 +1579,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TermService -> Start -> 4'
 
   - id: 15096
-    title: "Ensure 'Remote Desktop Services UserMode Port Redirector(UmRdpService)' is set to 'Disabled'"
+    title: "Ensure 'Remote Desktop Services UserMode Port Redirector (UmRdpService)' is set to 'Disabled'"
     description: "Allows the redirection of Printers/Drives/Ports for RDP connections. The recommended state for this setting is: Disabled."
     rationale: "In a security-sensitive environment, it is desirable to reduce the possible attack surface - preventing the redirection of COM, LPT and PnP ports will reduce the number of  unexpected avenues for data exfiltration and/or malicious code transfer within an RDP  session."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Remote Desktop Services UserMode Port Redirector"
@@ -1649,7 +1649,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanmanServer -> Start -> 4'
 
   - id: 15101
-    title: "Ensure 'Simple TCP/IP Services (simptcp)' is set to 'Disabled' or 'Not Installed' "
+    title: "Ensure 'Simple TCP/IP Services (simptcp)' is set to 'Disabled' or 'Not Installed'"
     description: "Supports the following TCP/IP services: Character Generator, Daytime, Discard, Echo, and  Quote of the Day. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but is installed  by enabling an optional Windows feature (Simple TCPIP services (i.e. echo, daytime etc))."
     rationale: "The Simple TCP/IP Services have very little purpose in a modern enterprise environment - allowing them might increase exposure and risk for attack."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Simple TCP/IP Services"
@@ -1675,7 +1675,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SNMP -> Start -> 4'
 
   - id: 15103
-    title: "Ensure 'Special Administration Console Helper (sacsvr)' is set to'Disabled' or 'Not Installed' "
+    title: "Ensure 'Special Administration Console Helper (sacsvr)' is set to 'Disabled' or 'Not Installed'"
     description: "This service allows administrators to remotely access a command prompt using Emergency  Management Services. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but it is installed  by enabling an optional Windows capability (Windows Emergency Management Services  and Serial Console). "
     rationale: "Allowing the use of a remotely accessible command prompt that provides the ability to  perform remote management tasks on a computer is a security risk. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Special Administration Console Helper"
@@ -1688,7 +1688,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\sacsvr -> Start -> 4'
 
   - id: 15104
-    title: "Ensure 'SSDP Discovery (SSDPSRV)' is set to 'Disabled' "
+    title: "Ensure 'SSDP Discovery (SSDPSRV)' is set to 'Disabled'"
     description: "Discovers networked devices and services that use the SSDP discovery protocol, such as  UPnP devices. Also announces SSDP devices and services running on the local computer. The recommended state for this setting is: Disabled. "
     rationale: "Universal Plug n Play (UPnP) is a real security risk - it allows automatic discovery and  attachment to network devices. Note that UPnP is different than regular Plug n Play (PnP).  Workstations should not be advertising their services (or automatically discovering and  connecting to networked services) in a security-conscious enterprise managed  environment. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\SSDP Discovery "
@@ -1700,7 +1700,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SSDPSRV -> Start -> 4'
 
   - id: 15105
-    title: "Ensure 'UPnP Device Host (upnphost)' is set to 'Disabled' "
+    title: "Ensure 'UPnP Device Host (upnphost)' is set to 'Disabled'"
     description: "Allows UPnP devices to be hosted on this computer. The recommended state for this setting is: Disabled. "
     rationale: "Universal Plug n Play (UPnP) is a real security risk - it allows automatic discovery and  attachment to network devices. Notes that UPnP is different than regular Plug n Play (PnP).  Workstations should not be advertising their services (or automatically discovering and  connecting to networked services) in a security-conscious enterprise managed  environment. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\UPnP Device Host "
@@ -1712,7 +1712,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\upnphost -> Start -> 4'
 
   - id: 15106
-    title: "Ensure 'Web Management Service (WMSvc)' is set to 'Disabled' or 'Not Installed' "
+    title: "Ensure 'Web Management Service (WMSvc)' is set to 'Disabled' or 'Not Installed'"
     description: "The Web Management Service enables remote and delegated management capabilities for  administrators to manage for the Web server, sites and applications present on the  machine. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but is installed  by enabling an optional Windows feature (Internet Information Services - Web Management  Tools - IIS Management Service). "
     rationale: "Remote web administration of IIS on a workstation is an increased security risk, as the  attack surface of that workstation is then greatly increased. If proper security mitigations  are not followed, the chance of successful attack increases significantly. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Web Management Service"
@@ -1749,7 +1749,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Wecsvc -> Start -> 4'
 
   - id: 15109
-    title: "Ensure 'Windows Media Player Network Sharing Service(WMPNetworkSvc)' is set to 'Disabled' or 'Not Installed' "
+    title: "Ensure 'Windows Media Player Network Sharing Service (WMPNetworkSvc)' is set to 'Disabled' or 'Not Installed'"
     description: "Shares Windows Media Player libraries to other networked players and media devices  using Universal Plug and Play. The recommended state for this setting is: Disabled or Not Installed. "
     rationale: "Network sharing of media from Media Player has no place in an enterprise managed  environment. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Windows Media Player Network Sharing Service "
@@ -1774,7 +1774,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\icssvc -> Start -> 4'
 
   - id: 15111
-    title: "Ensure 'Windows Push Notifications System Service (WpnService)' isset to 'Disabled' "
+    title: "Ensure 'Windows Push Notifications System Service (WpnService)' is set to 'Disabled'"
     description: "This service runs in session 0 and hosts the notification platform and connection provider  which handles the connection between the device and WNS server. The recommended state for this setting is: Disabled. Note: In the first two releases of Windows 10 (R1507 & R1511), the display name of this  service was initially named Windows Push Notifications Service - but it was renamed to  Windows Push Notifications System Service starting with Windows 10 R1607. "
     rationale: "Windows Push Notification Services (WNS) is a mechanism to receive 3rd-party  notifications and updates from the cloud/Internet. In a high security environment, external  systems, especially those hosted outside the organization, should be prevented from having  an impact on the secure workstations. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Windows Push Notifications System Service"
@@ -1786,7 +1786,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WpnService -> Start -> 4'
 
   - id: 15112
-    title: "Ensure 'Windows PushToInstall Service (PushToInstall)' is set to'Disabled' "
+    title: "Ensure 'Windows PushToInstall Service (PushToInstall)' is set to 'Disabled'"
     description: "This service manages Apps that are pushed to the device from the Microsoft Store App  running on other devices or the web. The recommended state for this setting is: Disabled. "
     rationale: "In a high security managed environment, application installations should be managed  centrally by IT staff, not by end users. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Windows PushToInstall Service (PushToInstall) "
@@ -1798,7 +1798,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\PushToInstall -> Start -> 4'
 
   - id: 15113
-    title: "Ensure 'Windows Remote Management (WS-Management) (WinRM)' isset to 'Disabled' "
+    title: "Ensure 'Windows Remote Management (WS-Management) (WinRM)' is set to 'Disabled'"
     description: "Windows Remote Management (WinRM) service implements the WS-Management  protocol for remote management. WS-Management is a standard web services protocol  used for remote software and hardware management. The WinRM service listens on the  network for WS-Management requests and processes them. The recommended state for this setting is: Disabled. "
     rationale: "Features that enable inbound network connections increase the attack surface. In a high  security environment, management of secure workstations should be handled locally. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Windows Remote Management (WS-Management) "
@@ -1810,7 +1810,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\WinRM -> Start -> 4'
 
   - id: 15114
-    title: "Ensure 'World Wide Web Publishing Service (W3SVC)' is set to'Disabled' or 'Not Installed' "
+    title: "Ensure 'World Wide Web Publishing Service (W3SVC)' is set to 'Disabled' or 'Not Installed'"
     description: "Provides Web connectivity and administration through the Internet Information Services  Manager. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but is installed  by enabling an optional Windows feature (Internet Information Services - World Wide Web  Services). Note #2: An organization may choose to selectively grant exceptions to web developers to  allow IIS (or another web server) on their workstation, in order for them to locally test &  develop web pages. However, the organization should track those machines and ensure the  security controls and mitigations are kept up to date, to reduce risk of compromise. "
     rationale: "Hosting a website from a workstation is an increased security risk, as the attack surface of  that workstation is then greatly increased. If proper security mitigations are not followed,  the chance of successful attack increases significantly. Note: This security concern applies to any web server application installed on a  workstation, not just IIS. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\World Wide Web Publishing Service "
@@ -1823,7 +1823,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\W3SVC -> Start -> 4'
 
   - id: 15115
-    title: "Ensure 'Xbox Accessory Management Service (XboxGipSvc)' is set to'Disabled' "
+    title: "Ensure 'Xbox Accessory Management Service (XboxGipSvc)' is set to 'Disabled'"
     description: "This service manages connected Xbox Accessories. The recommended state for this setting is: Disabled. "
     rationale: "Xbox Live is a gaming service and has no place in an enterprise managed environment  (perhaps unless it is a gaming company). "
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Xbox Accessory Management Service "
@@ -1859,7 +1859,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\XblGameSave -> Start -> 4'
 
   - id: 15118
-    title: "Ensure 'Xbox Live Networking Service (XboxNetApiSvc)' is set to'Disabled' "
+    title: "Ensure 'Xbox Live Networking Service (XboxNetApiSvc)' is set to 'Disabled'"
     description: "This service supports the Windows.Networking.XboxLive application programming  interface. The recommended state for this setting is: Disabled. "
     rationale: "Xbox Live is a gaming service and has no place in an enterprise managed environment  (perhaps unless it is a gaming company). "
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Xbox Live Networking Service "
@@ -1934,7 +1934,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile -> DisableNotifications -> 1'
 
   - id: 15123
-    title: "Ensure 'Windows Firewall: Domain: Logging: Name' is set to '%SYSTEMROOT%\\System32\\logfiles\\firewall\\domainfw.log'"
+    title: "Ensure 'Windows Firewall: Domain: Logging: Name' is set to '%SystemRoot%\\System32\\logfiles\\firewall\\domainfw.log'"
     description: "Use this option to specify the path and name of the file in which Windows Firewall will write its log information. The recommended state for this setting is: %SYSTEMROOT%\\System32\\logfiles\\firewall\\domainfw.log"
     rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
     remediation: "To establish the recommended configuration via GP, set the following UI path to %SYSTEMROOT%\\System32\\logfiles\\firewall\\domainfw.log: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Firewall with Advanced Security\\Windows Firewall with Advanced Security\\Windows Firewall Properties\\Domain Profile\\Logging Customize\\Name"
@@ -2077,10 +2077,10 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile -> DisableNotifications -> 1'
 
   - id: 15131
-    title: "Ensure 'Windows Firewall: Private: Logging: Name' is set to '%SYSTEMROOT%\\System32\\logfiles\\firewall\\privatefw.log'"
-    description: "Use this option to specify the path and name of the file in which Windows Firewall will write its log information. The recommended state for this setting is: %SYSTEMROOT%\\System32\\logfiles\\firewall\\privatefw.log."
+    title: "Ensure 'Windows Firewall: Private: Logging: Name' is set to '%SystemRoot%\\System32\\logfiles\\firewall\\privatefw.log'"
+    description: "Use this option to specify the path and name of the file in which Windows Firewall will write its log information. The recommended state for this setting is: %SystemRoot%\\System32\\logfiles\\firewall\\privatefw.log."
     rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to %SYSTEMROOT%\\System32\\logfiles\\firewall\\privatefw.log: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Firewall with Advanced Security\\Windows Firewall with Advanced Security\\Windows Firewall Properties\\Private Profile\\Logging Customize\\Name"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to %SystemRoot%\\System32\\logfiles\\firewall\\privatefw.log: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Firewall with Advanced Security\\Windows Firewall with Advanced Security\\Windows Firewall Properties\\Private Profile\\Logging Customize\\Name"
     compliance:
       - cis: ["9.2.5"]
       - pci_dss: ["10.6.1"]
@@ -2250,10 +2250,10 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile -> AllowLocalIPsecPolicyMerge -> 0'
 
   - id: 15141
-    title: "Ensure 'Windows Firewall: Public: Logging: Name' is set to '%SYSTEMROOT%\\System32\\logfiles\\firewall\\publicfw.log'"
-    description: "Use this option to specify the path and name of the file in which Windows Firewall will write its log information. The recommended state for this setting is: %SYSTEMROOT%\\System32\\logfiles\\firewall\\publicfw.log."
+    title: "Ensure 'Windows Firewall: Public: Logging: Name' is set to '%SystemRoot%\\System32\\logfiles\\firewall\\publicfw.log'"
+    description: "Use this option to specify the path and name of the file in which Windows Firewall will write its log information. The recommended state for this setting is: %SystemRoot%\\System32\\logfiles\\firewall\\publicfw.log."
     rationale: "If events are not recorded it may be difficult or impossible to determine the root cause of system problems or the unauthorized activities of malicious users."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to %SYSTEMROOT%\\System32\\logfiles\\firewall\\publicfw.log: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Firewall with Advanced Security\\Windows Firewall with Advanced Security\\Windows Firewall Properties\\Public Profile\\Logging Customize\\Name"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to %SystemRoot%\\System32\\logfiles\\firewall\\publicfw.log: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Firewall with Advanced Security\\Windows Firewall with Advanced Security\\Windows Firewall Properties\\Public Profile\\Logging Customize\\Name"
     compliance:
       - cis: ["9.3.7"]
       - cis_csc: ["4.5", "8.5"]
@@ -2363,7 +2363,7 @@ checks:
       - 'c:auditpol.exe /get /subcategory:"Security Group Management" -> r:Success'
 
   - id: 15148
-    title: "Ensure 'Audit User Account Management' is set to 'Success and Failure' "
+    title: "Ensure 'Audit User Account Management' is set to 'Success and Failure'"
     description: "This subcategory reports each event of user account management, such as when a user  account is created, changed, or deleted; a user account is renamed, disabled, or enabled; or  a password is set or changed. If you enable this Audit policy setting, administrators can  track events to detect malicious, accidental, and authorized creation of user accounts."
     rationale: "Auditing these events may be useful when investigating a security incident."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Account Management\\Audit User  Account Management"
@@ -2494,7 +2494,7 @@ checks:
       - 'c:auditpol.exe /get /subcategory:"File Share" -> r:Success and Failure'
 
   - id: 15159
-    title: "Ensure 'Audit Other Object Access Events' is set to 'Success and Failure' "
+    title: "Ensure 'Audit Other Object Access Events' is set to 'Success and Failure'"
     description: "This policy setting allows you to audit events generated by the management of task scheduler jobs or COM+ objects."
     rationale: "The unexpected creation of scheduled tasks and COM+ objects could potentially be an  indication of malicious activity. Since these types of actions are generally low volume, it  may be useful to capture them in the audit logs for use during an investigation."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Object Access\\Audit Other Object  Access Events"
@@ -2590,7 +2590,7 @@ checks:
       - 'c:auditpol.exe /get /subcategory:"Sensitive Privilege Use" -> r:Success and Failure'
 
   - id: 15167
-    title: "Ensure 'Audit IPsec Driver' is set to 'Success and Failure' "
+    title: "Ensure 'Audit IPsec Driver' is set to 'Success and Failure'"
     description: "This subcategory reports on the activities of the Internet Protocol security (IPsec) driver.  Events for this subcategory include: - 4960: IPsec dropped an inbound packet that failed an integrity check. If this  problem persists, it could indicate a network issue or that packets are being  modified in transit to this computer. Verify that the packets sent from the remote  computer are the same as those received by this computer. This error might also  indicate interoperability problems with other IPsec implementations. - 4961: IPsec dropped an inbound packet that failed a replay check. If this problem  persists, it could indicate a replay attack against this computer. - 4962: IPsec dropped an inbound packet that failed a replay check. The inbound  packet had too low a sequence number to ensure it was not a replay. - 4963: IPsec dropped an inbound clear text packet that should have been secured.  This is usually due to the remote computer changing its IPsec policy without  informing this computer. This could also be a spoofing attack attempt. - 4965: IPsec received a packet from a remote computer with an incorrect Security  Parameter Index (SPI). This is usually caused by malfunctioning hardware that is  corrupting packets. If these errors persist, verify that the packets sent from the  remote computer are the same as those received by this computer. This error may  also indicate interoperability problems with other IPsec implementations. In that  case, if connectivity is not impeded, then these events can be ignored. - 5478: IPsec Services has started successfully. - 5479: IPsec Services has been shut down successfully. The shutdown of IPsec  Services can put the computer at greater risk of network attack or expose the  computer to potential security risks. - 5480: IPsec Services failed to get the complete list of network interfaces on the  computer. This poses a potential security risk because some of the network interfaces may not get the protection provided by the applied IPsec filters. Use the  IP Security Monitor snap-in to diagnose the problem. - 5483: IPsec Services failed to initialize RPC server. IPsec Services could not be  started.- 5484: IPsec Services has experienced a critical failure and has been shut down. The  shutdown of IPsec Services can put the computer at greater risk of network attack  or expose the computer to potential security risks. - 5485: IPsec Services failed to process some IPsec filters on a plug-and-play event for  network interfaces. This poses a potential security risk because some of the network  interfaces may not get the protection provided by the applied IPsec filters. Use the  IP Security Monitor snap-in to diagnose the problem. The recommended state for this setting is: Success and Failure. "
     rationale: "Auditing these events may be useful when investigating a security incident. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\System\\Audit IPsec Driver "
@@ -2864,7 +2864,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsNT\Printers\PointAndPrint -> RestrictDriverInstallationToAdministrators -> 1'
 
   - id: 15187
-    title: "Ensure 'NetBT NodeType configuration' is set to 'Enabled: P-node (recommended)'"
+    title: "Ensure 'NetBT NodeType configuration' is set to 'Enabled: P-node'"
     description: "This setting determines which method NetBIOS over TCP/IP (NetBT) uses to register and resolve names. The available methods are: The B-node (broadcast) method only uses broadcasts. The P-node (point-to-point) method only uses name queries to a name server (WINS). The M-node (mixed) method broadcasts first, then queries a name server (WINS) if broadcast failed. The H-node (hybrid) method queries a name server (WINS) first, then broadcasts if the query failed. The recommended state for this setting is: Enabled: P-node (recommended) (point-to- point).                 Note: Resolution through LMHOSTS or DNS follows these methods. If the NodeType registry value is present, it overrides any DhcpNodeType registry value. If neither NodeType nor DhcpNodeType is present, the computer uses B-node (broadcast) if there are no WINS servers configured for the network, or H-node (hybrid) if there is at least one WINS server configured."
     rationale: "In order to help mitigate the risk of NetBIOS Name Service (NBT-NS) poisoning attacks, setting the node type to P-node (point-to-point) will prevent the system from sending out NetBIOS broadcasts."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: P-node (recommended) : Computer Configuration\\Policies\\Administrative Templates\\MS Security Guide\\NetBT NodeType configuration"
@@ -3436,7 +3436,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\PushNotifications -> NoCloudApplicationNotification -> 1'
 
   - id: 15223
-    title: "Ensure 'Include command line in process creation events' is set to 'Disabled'"
+    title: "Ensure 'Include command line in process creation events' is set to 'Enabled'"
     description: "This policy setting determines what information is logged in security audit events when a new process has been created. The recommended state for this setting is: Disabled."
     rationale: "When this policy setting is enabled, any user who has read access to the security events can read the command-line arguments for any successfully created process. Command-line arguments may contain sensitive or private information such as passwords or user data."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Audit Process Creation\\Include command line in process creation events"
@@ -3448,7 +3448,7 @@ checks:
       - "CCE-35802-8"
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\Audit -> ProcessCreationIncludeCmdLine_Enabled -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\Audit -> ProcessCreationIncludeCmdLine_Enabled -> 1'
 
   - id: 15224
     title: "Ensure 'Encryption Oracle Remediation' is set to 'Enabled: Force Updated Clients'"
@@ -3489,7 +3489,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> EnableVirtualizationBasedSecurity -> 1'
 
   - id: 15227
-    title: "Ensure 'Turn On Virtualization Based Security: Select PlatformSecurity Level' is set to 'Secure Boot and DMA Protection' "
+    title: "Ensure 'Turn On Virtualization Based Security: Select Platform Security Level' is set to 'Secure Boot and DMA Protection'"
     description: "This policy setting specifies whether Virtualization Based Security is enabled. Virtualization  Based Security uses the Windows Hypervisor to provide support for security services. The recommended state for this setting is: Secure Boot and DMA Protection. Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot  enabled, which in turn requires that Windows was installed with a UEFI BIOS  configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual  machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be  exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows  Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using  Azure IaaS VMs."
     rationale: "Secure Boot can help reduce the risk of bootloader attacks and in conjunction with DMA  protections to help protect data from being scraped from memory."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Secure  Boot and DMA Protection: Computer Configuration\\Policies\\Administrative Templates\\System\\Device  Guard\\Turn On Virtualization Based Security: Select Platform Security Level Note: This Group Policy path may not exist by default. It is provided by the Group Policy  template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 RTM  (Release 1507) Administrative Templates (or newer). "
@@ -3501,7 +3501,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> RequirePlatformSecurityFeatures -> 1'
 
   - id: 15228
-    title: "Ensure 'Turn On Virtualization Based Security: Virtualization BasedProtection of Code Integrity' is set to 'Enabled with UEFI lock' "
+    title: "Ensure 'Turn On Virtualization Based Security: Virtualization Based Protection of Code Integrity' is set to 'Enabled with UEFI lock'"
     description: "This setting enables virtualization based protection of Kernel Mode Code Integrity. When  this is enabled, kernel mode memory protections are enforced and the Code Integrity  validation path is protected by the Virtualization Based Security feature. The recommended state for this setting is: Enabled with UEFI lock. Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot  enabled, which in turn requires that Windows was installed with a UEFI BIOS  configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual  machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be  exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows  Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using  Azure IaaS VMs. "
     rationale: "The Enabled with UEFI lock option ensures that Virtualization Based Protection of Code  Integrity cannot be disabled remotely.  "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled  with UEFI lock: Computer Configuration\\Policies\\Administrative Templates\\System\\Device  Guard\\Turn On Virtualization Based Security: Virtualization Based Protection  of Code Integrity Note: This Group Policy path may not exist by default. It is provided by the Group Policy  template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 RTM  (Release 1507) Administrative Templates (or newer). "
@@ -3513,7 +3513,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> HypervisorEnforcedCodeIntegrity -> 1'
 
   - id: 15229
-    title: "Ensure 'Turn On Virtualization Based Security: Require UEFIMemory Attributes Table' is set to 'True (checked)' "
+    title: "Ensure 'Turn On Virtualization Based Security: Require UEFIMemory Attributes Table' is set to 'True (checked)'"
     description: "This option will only enable Virtualization Based Protection of Code Integrity on devices  with UEFI firmware support for the Memory Attributes Table. Devices without the UEFI  Memory Attributes Table may have firmware that is incompatible with Virtualization  Based Protection of Code Integrity which in some cases can lead to crashes or data loss or  incompatibility with certain plug-in cards. If not setting this option the targeted devices  should be tested to ensure compatibility. The recommended state for this setting is: True (checked). Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot  enabled, which in turn requires that Windows was installed with a UEFI BIOS  configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual  machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be  exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows  Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using  Azure IaaS VMs. "
     rationale: "This setting will help protect this control from being enabled on a system that is not  compatible which could lead to a crash or data loss.  "
     remediation: "To establish the recommended configuration via GP, set the following UI path to TRUE: Computer Configuration\\Policies\\Administrative Templates\\System\\Device  Guard\\Turn On Virtualization Based Security: Require UEFI Memory Attributes  Table Note: This Group Policy path may not exist by default. It is provided by the Group Policy  template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 Release  1703 Administrative Templates (or newer). "
@@ -3525,7 +3525,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> HVCIMATRequired -> 1'
 
   - id: 15230
-    title: "Ensure 'Turn On Virtualization Based Security: Credential GuardConfiguration' is set to 'Enabled with UEFI lock' "
+    title: "Ensure 'Turn On Virtualization Based Security: Credential Guard Configuration' is set to 'Enabled with UEFI lock'"
     description: "This setting lets users turn on Credential Guard with virtualization-based security to help  protect credentials. The Enabled with UEFI lock option ensures that Credential Guard  cannot be disabled remotely. In order to disable the feature, you must set the Group Policy  to Disabled as well as remove the security functionality from each computer, with a  physically present user, in order to clear configuration persisted in UEFI. The recommended state for this setting is: Enabled with UEFI lock. Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot  enabled, which in turn requires that Windows was installed with a UEFI BIOS  configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual  machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be  exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows  Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using  Azure IaaS VMs."
     rationale: "The Enabled with UEFI lock option ensures that Credential Guard cannot be disabled  remotely.  "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled  with UEFI lock: Computer Configuration\\Policies\\Administrative Templates\\System\\Device  Guard\\Turn On Virtualization Based Security: Credential Guard Configuration Note: This Group Policy path may not exist by default. It is provided by the Group Policy  template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 Release  1511 Administrative Templates (or newer). "
@@ -3716,7 +3716,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Internet Connection Wizard -> ExitOnMSICW -> 1'
 
   - id: 15243
-    title: "Ensure 'Turn off Internet download for Web publishing and online ordering wizards' is set to 'Enabled' "
+    title: "Ensure 'Turn off Internet download for Web publishing and online ordering wizards' is set to 'Enabled'"
     description: "This policy setting controls whether Windows will download a list of providers for the Web publishing and online ordering wizards."
     rationale: "Although the risk is minimal, enabling this setting will reduce the possibility of a user unknowingly downloading malicious content through this feature."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Internet Communication Management\\Internet Communication settings\\Turn off Internet download for Web publishing and online ordering wizards"
@@ -4368,9 +4368,9 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Camera -> AllowCamera -> 0'
 
   - id: 15286
-    title: "Ensure 'Turn off cloud consumer account state content' is set to 'Enabled' "
+    title: "Ensure 'Turn off cloud consumer account state content' is set to 'Enabled'"
     description: "This policy setting determines whether cloud consumer account state content is allowed in all Windows experiences. The recommended state for this setting is: Enabled. "
-    rationale: "The use of consumer accounts in an enterprise managed environment is not good security practice as it could lead to possible data leakage. "
+    rationale: "The use of consumer accounts in an enterprise managed environment is not good security practice as it could lead to possible data leakage."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Cloud Content\\Turn off cloud consumer account state content Note: This Group Policy path may not exist by default. It is provided by the Group Policy template CloudContent.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer). "
     compliance:
       - cis: ["18.9.14.1"]
@@ -4406,7 +4406,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CloudContent -> DisableWindowsConsumerFeatures -> 1'
 
   - id: 15289
-    title: "Ensure 'Require pin for pairing' is set to 'Enabled'"
+    title: "Ensure 'Require pin for pairing' is set to 'Enabled: First Time' OR 'Enabled: Always'"
     description: "This policy setting controls whether or not a PIN is required for pairing to a wireless display device."
     rationale: "If this setting is not configured or disabled then a PIN would not be required when pairing wireless display devices to the system, increasing the risk of unauthorized use."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Connect\\Require pin for pairing"
@@ -4550,7 +4550,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DataCollection -> LimitDiagnosticLogCollection -> 1'
 
   - id: 15299
-    title: "Ensure 'Limit Dump Collection' is set to 'Enabled' "
+    title: "Ensure 'Limit Dump Collection' is set to 'Enabled'"
     description: "This policy setting limits the type of dumps that can be collected when more information is needed to troubleshoot a problem. The recommended state for this setting is: Enabled. Note: Dumps are only sent when the device has been configured to send optional diagnostic data. Diagnostic data is limited with recommendation Ensure Allow Diagnostic Data is set to Enabled: Diagnostic data off (not recommended) or Enabled: Send required diagnostic data to send only basic information. "
     rationale: "Sending data to a 3rd party vendor is a security concern and should only be done on an as needed basis. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled. Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Limit Dump Collection Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DataCollection.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer). "
@@ -4913,7 +4913,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR -> ExploitGuard_ASR_Rules -> 1'
 
   - id: 15320
-    title: "Ensure 'Configure Attack Surface Reduction rules: Set the state for each ASR rule' is 'configured'"
+    title: "Ensure 'Configure Attack Surface Reduction rules: Set the state for each ASR rule' is configured"
     description: "This policy setting sets the Attack Surface Reduction rules. The recommended state for this setting is: 26190899-1602-49e8-8b27-eb1d0a1ce869 - 1 (Block Office communication application from creating child processes) 3b576869-a4ec-4529-8536-b80a7769e899 - 1 (Block Office applications from creating executable content) 5beb7efe-fd9a-4556-801d-275e5ffc04cc - 1 (Block execution of potentially obfuscated scripts) 75668c1f-73b5-4cf0-bb93-3ecf5cb7cc84 - 1 (Block Office applications from injecting code into other processes) 7674ba52-37eb-4a4f-a9a1-f0f9a1619a2c - 1 (Block Adobe Reader from creating child processes) 92e97fa1-2edf-4476-bdd6-9dd0b4dddc7b - 1 (Block Win32 API calls from Office macro) 9e6c4e1f-7d60-472f-ba1a-a39ef669e4b2 - 1 (Block credential stealing from the Windows local security authority subsystem (lsass.exe)) b2b3f03d-6a65-4f7b-a9c7-1c7ef74a9ba4 - 1 (Block untrusted and unsigned processes that run from USB) be9ba2d9-53ea-4cdc-84e5-9b1eeee46550 - 1 (Block executable content from email client and webmail) d3e037e1-3eb8-44c8-a917-57927947596d - 1 (Block JavaScript or VBScript from launching downloaded executable content) d4f940ab-401b-4efc-aadc-ad5f3c50688a - 1 (Block Office applications from creating child processes)"
     rationale: "Attack surface reduction helps prevent actions and apps that are typically used by exploitseeking malware to infect machines."
     remediation: "To establish the recommended configuration via GP, set the following UI path so that 26190899-1602-49e8-8b27-eb1d0a1ce869, 3b576869-a4ec-4529-8536-b80a7769e899, 5beb7efe-fd9a-4556-801d-275e5ffc04cc, 75668c1f-73b5-4cf0-bb93-3ecf5cb7cc84, 7674ba52-37eb-4a4f-a9a1-f0f9a1619a2c, 92e97fa1-2edf-4476-bdd6-9dd0b4dddc7b, 9e6c4e1f-7d60-472f-ba1a-a39ef669e4b2, b2b3f03d-6a65-4f7b-a9c7-1c7ef74a9ba4, be9ba2d9-53ea-4cdc-84e5-9b1eeee46550, d3e037e1-3eb8-44c8-a917-57927947596d and d4f940ab-401b-4efc-aadc-ad5f3c50688a are each set to a value of 1: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender Antivirus\\Windows Defender Exploit Guard\\Attack Surface Reduction\\Configure Attack Surface Reduction rules: Set the state for each ASR rule."
@@ -4956,7 +4956,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\Network Protection -> EnableNetworkProtection -> 1'
 
   - id: 15322
-    title: "Ensure 'Enable file hash computation feature' is set to'Enabled' "
+    title: "Ensure 'Enable file hash computation feature' is set to 'Enabled'"
     description: "This setting determines whether hash values are computed for files scanned by Microsoft Defender. The recommended state for this setting is: Enabled. "
     rationale: "When running an antivirus solution such as Microsoft Defender Antivirus, it is important to ensure that it is configured to monitor for suspicious and known malicious activity. File hashes are a reliable way of detecting changes to files, and can speed up the scan process by skipping files that have not changed since they were last scanned and determined to be safe. A changed file hash can also be cause for additional scrutiny. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\MpEngine\\Enable file hash computation feature Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 10 Release 1709 Administrative Templates (or newer). "
@@ -4967,7 +4967,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender\MpEngine -> EnableFileHashComputation -> 1'
 
   - id: 15323
-    title: "Ensure 'Scan all downloaded files and attachments' is set to'Enabled' "
+    title: "Ensure 'Scan all downloaded files and attachments' is set to 'Enabled'"
     description: "This policy setting configures scanning for all downloaded files and attachments. The recommended state for this setting is: Enabled. "
     rationale: "When running an antivirus solution such as Microsoft Defender Antivirus, it is important to ensure that it is configured to heuristically monitor in real-time for suspicious and known malicious activity. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Real-Time Protection\\Scan all downloaded files and attachments Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer). "
@@ -5068,7 +5068,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Scan -> DisableEmailScanning -> 0'
 
   - id: 15330
-    title: "Ensure 'Configure detection for potentially unwantedapplications' is set to 'Enabled: Block' "
+    title: "Ensure 'Configure detection for potentially unwanted applications' is set to 'Enabled: Block'"
     description: "This policy setting controls detection and action for Potentially Unwanted Applications (PUA), which are sneaky unwanted application bundlers or their bundled applications, that can deliver adware or malware. The recommended state for this setting is: Enabled: Block. For more information, see this link: Block potentially unwanted applications with Microsoft Defender Antivirus | Microsoft Docs "
     rationale: "Potentially unwanted applications can increase the risk of your network being infected with malware, cause malware infections to be harder to identify, and can waste IT resources in cleaning up the applications. They should be blocked from installation. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Block: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Configure detection for potentially unwanted applications Note: This Group Policy path is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 10 Release 1809 & Server 2019 Administrative Templates (or newer). "
@@ -5080,7 +5080,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender -> PUAProtection -> 1'
 
   - id: 15331
-    title: "Ensure 'Turn off Microsoft Defender AntiVirus' is set to'Disabled'"
+    title: "Ensure 'Turn off Microsoft Defender AntiVirus' is set to 'Disabled'"
     description: "This policy setting turns off Microsoft Defender Antivirus. If the setting is configured to Disabled, Microsoft Defender Antivirus runs and computers are scanned for malware and other potentially unwanted software. The recommended state for this setting is: Disabled. "
     rationale: "It is important to ensure a current, updated antivirus product is scanning each computer for malicious file activity. Microsoft provides a competent solution out of the box in Microsoft Defender Antivirus. Organizations that choose to purchase a reputable 3rd-party antivirus solution may choose to exempt themselves from this recommendation in lieu of the commercial alternative. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Turn off Microsoft Defender AntiVirus Note: This Group Policy path is provided by the Group Policy template WindowsDefender.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Turn off Windows Defender, but it was renamed to Windows Defender Antivirus starting with the Windows 10 Release 1703 Administrative Templates. It was again renamed to Turn off Microsoft Defender Antivirus starting with the Windows 10 Release 2004 Administrative Templates. "
@@ -5092,7 +5092,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender -> DisableAntiSpyware -> 0'
 
   - id: 15332
-    title: "Ensure 'Enable news and interests on the taskbar' is set to'Disabled' "
+    title: "Ensure 'Enable news and interests on the taskbar' is set to 'Disabled'"
     description: "This policy setting specifies whether the news and interests feature is allowed on the device. The recommended state for this setting is: Disabled. "
     rationale: "Due to privacy concerns, apps and features such as news and interests on the Windows taskbar should be treated as a possible security risk due to the potential of data being sent back to 3rd parties, such as Microsoft. In addition, the app may display inappropriate news and interests within the feed. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\News and interests\\Enable news and interests on the taskbar Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Feeds.admx/adml that is included with the Microsoft Windows 10 Release 21H1 Administrative Templates (or newer). "
@@ -5163,7 +5163,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDenyTSConnections -> 1'
 
   - id: 15337
-    title: "Ensure 'Allow UI Automation redirection' is set to'Disabled' "
+    title: "Ensure 'Allow UI Automation redirection' is set to 'Disabled'"
     description: "This policy setting determines whether User Interface (UI) Automation client applications running on the local computer can access UI elements on the server. UI Automation gives programs access to most UI elements, which allows use of assistive technology products like Magnifier and Narrator that need to interact with the UI in order to work properly. UI information also allows automated test scripts to interact with the UI. For example, the local computer´s Narrator and Magnifier clients can be used to interact with UI on a web page opened in a remote session. The recommended state for this setting is: Disabled. Note: Remote Desktop sessions don´t currently support UI Automation redirection. "
     rationale: "In a more security-sensitive environment, it is desirable to reduce the possible attack surface. The need for UI Automation redirection within a Remote Desktop session is rare, and not supported at this time, but it makes sense to reduce the number of unexpected avenues for malicious activity to occur. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Device and Resource Redirection\\Allow UI Automation redirection Note: This Group Policy path may not exist by default. It is provided by the Group Policy template TerminalServer.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer). "
@@ -5207,7 +5207,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableCdm -> 1'
 
   - id: 15340
-    title: "Ensure 'Do not allow location redirection' is set to'Enabled' "
+    title: "Ensure 'Do not allow location redirection' is set to 'Enabled'"
     description: "This policy setting controls the redirection of location data to the remote computer in a Remote Desktop Services session. The recommended state for this setting is: Enabled. "
     rationale: "In a more security-sensitive environment, it is desirable to reduce the possible attack surface. The need for location data redirection within a Remote Desktop session is rare, so it makes sense to reduce the number of unexpected avenues for malicious activity to occur. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Device and Resource Redirection\\Do not allow location redirection Note: This Group Policy path may not exist by default. It is provided by the Group Policy template TerminalServer.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer).   "
@@ -5280,7 +5280,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fEncryptRPCTraffic -> 1'
 
   - id: 15345
-    title: "Ensure 'Require use of specific security layer for remote(RDP) connections' is set to 'Enabled: SSL' "
+    title: "Ensure 'Require use of specific security layer for remote (RDP) connections' is set to 'Enabled: SSL'"
     description: "This policy setting specifies whether to require the use of a specific security layer to secure communications between clients and RD Session Host servers during Remote Desktop Protocol (RDP) connections. The recommended state for this setting is: Enabled: SSL. Note: In spite of this setting being labeled SSL, it is actually enforcing Transport Layer Security (TLS) version 1.0, not the older (and less secure) SSL protocol. "
     rationale: "The native Remote Desktop Protocol (RDP) encryption is now considered a weak protocol, so enforcing the use of stronger Transport Layer Security (TLS) encryption for all RDP communications between clients and RD Session Host servers is preferred.   "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: SSL: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Security\\Require use of specific security layer for remote (RDP) connections Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates.   "
@@ -5292,7 +5292,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> SecurityLayer -> 1'
 
   - id: 15346
-    title: "Ensure 'Require user authentication for remoteconnections by using Network Level Authentication' is set to 'Enabled'"
+    title: "Ensure 'Require user authentication for remote connections by using Network Level Authentication' is set to 'Enabled'"
     description: "This policy setting allows you to specify whether to require user authentication for remote connections to the RD Session Host server by using Network Level Authentication. The recommended state for this setting is: Enabled. "
     rationale: "Requiring that user authentication occur earlier in the remote connection process enhances security. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Security\\Require user authentication for remote connections by using Network Level Authentication Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In the Microsoft Windows Vista Administrative Templates, this setting was initially named Require user authentication using RDP 6.0 for remote connections, but it was renamed starting with the Windows Server 2008 (non-R2) Administrative Templates. "
@@ -5304,7 +5304,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> UserAuthentication -> 1'
 
   - id: 15347
-    title: "Ensure 'Set client connection encryption level' is set to'Enabled: High Level' "
+    title: "Ensure 'Set client connection encryption level' is set to 'Enabled: High Level'"
     description: "This policy setting specifies whether to require the use of a specific encryption level to secure communications between client computers and RD Session Host servers during Remote Desktop Protocol (RDP) connections. This policy only applies when you are using native RDP encryption. However, native RDP encryption (as opposed to SSL encryption) is not recommended. This policy does not apply to SSL encryption. The recommended state for this setting is: Enabled: High Level. "
     rationale: "If Remote Desktop client connections that use low level encryption are allowed, it is more likely that an attacker will be able to decrypt any captured Remote Desktop Services network traffic. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: High Level: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Security\\Set client connection encryption level Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. "
@@ -5316,7 +5316,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MinEncryptionLevel -> 2'
 
   - id: 15348
-    title: "Ensure 'Set time limit for active but idle Remote Desktop Services sessions' is set to 'Enabled: 15 minutes or less'"
+    title: "Ensure 'Set time limit for active but idle Remote Desktop Services sessions' is set to 'Enabled: 15 minutes or less, but not Never (0)'"
     description: "This policy setting allows you to specify the maximum amount of time that an active Remote Desktop Services session can be idle (without user input) before it is automatically disconnected. The recommended state for this setting is: Enabled: 15 minutes or less."
     rationale: "This setting helps to prevent active Remote Desktop sessions from tying up the computer for long periods of time while not in use, preventing computing resources from being consumed by large numbers of inactive sessions. In addition, old, forgotten Remote Desktop sessions that are still active can cause password lockouts if the user's password has changed but the old session is still running. For systems that limit the number of connected users (e.g. servers in the default Administrative mode - 2 sessions only), other users' old but still active sessions can prevent another user from connecting, resulting in an effective denial of service."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 15 minutes or less: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Session Time Limits\\Set time limit for active but idle Remote Desktop Services sessions. Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In older Microsoft Windows Administrative Templates, this setting was named Set time limit for active but idle Terminal Services sessions, but it was renamed starting with the Windows 7 & Server 2008 R2 Administrative Templates."
@@ -5477,7 +5477,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform -> NoGenTicket -> 1'
 
   - id: 15358
-    title: "Ensure 'Disable all apps from Microsoft Store' is set to'Disabled' "
+    title: "Ensure 'Disable all apps from Microsoft Store' is set to 'Disabled'"
     description: "This setting configures the launch of all apps from the Microsoft Store that came preinstalled or were downloaded. The recommended state for this setting is: Disabled. Note: This policy setting only applies to Windows 10 Enterprise and Windows 10 Education editions. Note #2: The name of this setting and the Enabled/Disabled values are incorrectly worded – logically, the title implies that configuring it to Enabled will disable all apps from the Microsoft Store, and configuring it to Disabled will enable all apps from the Microsoft Store. The opposite is true (and is consistent with the GPME help text). This is a logical wording mistake by Microsoft in the Administrative Template. "
     rationale: "The Store service is a retail outlet built into Windows, primarily for consumer use. In an enterprise managed environment the IT department should be managing the installation of all applications to reduce the risk of the installation of vulnerable software.   "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Store\\Disable all apps from Microsoft Store Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsStore.admx/adml that is included with the Microsoft Windows 10 Release 1511 Administrative Templates (or newer). Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Disable all apps from Windows Store, but it was renamed starting with the Windows 10 Release 1803 Administrative Templates. "
@@ -5488,7 +5488,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore -> DisableStoreApps -> 1'
 
   - id: 15359
-    title: "Ensure 'Only display the private store within the MicrosoftStore' is set to 'Enabled' "
+    title: "Ensure 'Only display the private store within the Microsoft Store' is set to 'Enabled'"
     description: "This policy setting denies access to the retail catalog in the Microsoft Store, but displays the private store. The recommended state for this setting is: Enabled. "
     rationale: "Allowing the private store will allow an organization to control the apps that users have access to add to a system. This will help ensure that unapproved malicious apps are not running on a system. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Store\\Only display the private store within the Microsoft Store Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsStore.admx/adml that is included with the Microsoft Windows 10 Release 1607 Administrative Templates (or newer). Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Only display the private store within the Windows Store app, but it was renamed starting with the Windows 10 Release 1803 Administrative Templates. "
@@ -5556,7 +5556,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore -> RemoveWindowsStore -> 1'
 
   - id: 15363
-    title: "Ensure 'Allow widgets' is set to 'Disabled' "
+    title: "Ensure 'Allow widgets' is set to 'Disabled'"
     description: "This policy setting specifies whether the widgets feature is allowed on the device. The widgets feature provides information such as, weather, news, sports, stocks, traffic, and entertainment (not an inclusive list). The recommended state for this setting is: Disabled. "
     rationale: "Due to privacy concerns, apps and features such as widgets on the Windows taskbar should be treated as a possible security risk due to the potential of data being sent back to 3rd parties, such as Microsoft. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Widgets\\Allow Widgets Note: This Group Policy path may not exist by default. It is provided by the Group Policy template NewsAndInterests.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer). "
@@ -5603,7 +5603,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\PhishingFilter -> EnabledV9 -> 1'
 
   - id: 15366
-    title: "Ensure 'Prevent bypassing Windows Defender SmartScreen prompts for files' is set to 'Enabled'"
+    title: "Ensure 'Prevent bypassing Windows Defender SmartScreen prompts for sites' is set to 'Enabled'"
     description: "This setting lets you decide whether employees can override the SmartScreen Filter warnings about downloading unverified files."
     rationale: "SmartScreen will warn an employee if a file is potentially malicious. Enabling this setting prevents these warnings from being bypassed."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: In the Windows 10 Release 1703 Administrative Templates the setting was in the following location: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender SmartScreen\\Microsoft Edge\\Prevent bypassing Windows Defender SmartScreen prompts for files In the Windows 10 Release 1709 Administrative Templates the setting was removed from the new location above and left in the old location: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Edge\\Prevent bypassing Windows Defender SmartScreen prompts for files"
@@ -5724,7 +5724,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> DisableAutomaticRestartSignOn -> 1'
 
   - id: 15374
-    title: "Ensure 'Turn on PowerShell Script Block Logging' is set to 'Disabled'"
+    title: "Ensure 'Turn on PowerShell Script Block Logging' is set to 'Enabled'"
     description: "This policy setting enables logging of all PowerShell script input to the Microsoft-WindowsPowerShell/Operational event log."
     rationale: "There are potential risks of capturing passwords in the PowerShell logs. This setting should only be needed for debugging purposes, and not in normal operation, it is important to ensure this is set to Disabled."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows PowerShell\\Turn on PowerShell Script Block Logging"
@@ -5734,7 +5734,7 @@ checks:
       - pci_dss: ["12.3.8"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging -> EnableScriptBlockLogging -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging -> EnableScriptBlockLogging -> 1'
 
   - id: 15375
     title: "Ensure 'Turn on PowerShell Transcription' is set to 'Disabled'"
@@ -5904,7 +5904,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Sandbox -> AllowClipboardRedirection -> 0'
 
   - id: 15385
-    title: "Ensure 'Allow networking in Windows Sandbox' is set to'Disabled'"
+    title: "Ensure 'Allow networking in Windows Sandbox' is set to 'Disabled'"
     description: "This policy setting enables or disables networking in the Windows Sandbox. Networking is achieved by creating a virtual switch on the host, and connecting the Windows Sandbox to it via a virtual Network Interface Card (NIC). The recommended state for this setting is: Disabled. Note: The Windows Sandbox feature was first introduced in Windows 10 R1903, and allows a temporary clean install virtual instance of Windows to be run inside the host, for the ostensible purpose of testing applications without making changes to the host. "
     rationale: "Disabling network access decreases the attack surface exposed by the Windows Sandbox and exposure of untrusted applications to the internal network. Note: Per Microsoft, enabling networking in the Windows Sandbox can expose untrusted applications to the internal network. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Sandbox\\Allow networking in Windows Sandbox Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsSandbox.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer). "
@@ -5960,7 +5960,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> NoAutoUpdate -> 0'
 
   - id: 15389
-    title: "Ensure 'Configure Automatic Updates: Scheduled install day' is set to '0 - Every day' "
+    title: "Ensure 'Configure Automatic Updates: Scheduled install day' is set to '0 - Every day'"
     description: "This policy setting specifies when computers in your environment will receive security updates from Windows Update or WSUS. The recommended state for this setting is: 0 - Every day. Note: This setting is only applicable if 4 - Auto download and schedule the install is selected in the recommendation 'Configure Automatic Updates'. It will have no impact if any other option is selected. "
     rationale: "Although each version of Windows is thoroughly tested before release, it is possible that problems will be discovered after the products are shipped. The Configure Automatic Updates setting can help you ensure that the computers in your environment will always have the most recent critical operating system updates and service packs installed. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to 0 - Every day: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\Manage end user experience\\Configure Automatic Updates: Scheduled install day Note: This Group Policy path is provided by the Group Policy template WindowsUpdate.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. "
@@ -5972,7 +5972,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> ScheduledInstallDay -> 0'
 
   - id: 15390
-    title: "Ensure 'Remove access to Pause updates feature' is set to'Enabled' "
+    title: "Ensure 'Remove access to “Pause updates” feature' is set to 'Enabled'"
     description: "This policy removes access to Pause updates feature. The recommended state for this setting is: Enabled. "
     rationale: "In order to ensure security and system updates are applied, system administrators should control when updates are applied to systems. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\Manage end user experience\\Remove access to “Pause updates” feature Note: This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsUpdate.admx/adml that is included with the Microsoft Windows 10 Release 1809 & Server 2019 Administrative Templates (or newer).   "
@@ -6001,7 +6001,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> ManagePreviewBuildsPolicyValue -> 0'
 
   - id: 15392
-    title: "Ensure 'Select when Preview Builds and Feature Updates are received' is set to 'Enabled: Semi-Annual Channel, 180 or more days'"
+    title: "Ensure 'Select when Preview Builds and Feature Updates are received' is set to 'Enabled: 180 or more days'"
     description: "This policy setting determines the level of Preview Build or Feature Updates to receive, and when. The Windows readiness level for each new Windows 10 Feature Update is classified in one of 5 categories, depending on your organizations level of comfort with receiving them: - Preview Build - Fast: Devices set to this level will be the first to receive new builds of Windows with features not yet available to the general public. Select Fast to participate in identifying and reporting issues to Microsoft, and provide suggestions on new functionality. - Preview Build - Slow: Devices set to this level receive new builds of Windows before they are available to the general public, but at a slower cadence than those set to Fast, and with changes and fixes identified in earlier builds. - Release Preview: Receive builds of Windows just before Microsoft releases them to the general public. - Semi-Annual Channel (Targeted): Receive feature updates when they are released to the general public. - Semi-Annual Channel: Feature updates will arrive when they are declared SemiAnnual Channel. This usually occurs about 4 months after Semi-Annual Channel (Targeted), indicating that Microsoft, Independent Software Vendors (ISVs), partners and customer believe that the release is ready for broad deployment."
     rationale: "Forcing new features without prior testing in your environment could cause software incompatibilities as well as introducing new bugs into the operating system. In an enterprise managed environment, it is generally preferred to delay Feature Updates until thorough testing and a deployment plan is in place. This recommendation delays the automatic installation of new features as long as possible."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Semi-Annual Channel, 180 or more days: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\Windows Update for Business\\Select when Preview Builds and Feature Updates are received"
