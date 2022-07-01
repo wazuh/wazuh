@@ -482,9 +482,9 @@ checks:
 
   - id: 15030
     title: "Configure 'Interactive logon: Message title for users attempting to log on'"
-    description: "This policy setting specifies the text displayed in the title bar of the window that users see  when they log on to the system. Configure this setting in a manner that is consistent with  the security and operational requirements of your organization."
-    rationale: "Displaying a warning message before logon may help prevent an attack by warning the  attacker about the consequences of their misconduct before it happens. It may also help to reinforce corporate policy by notifying employees of the appropriate policy during the logon process."
-    remediation: "To establish the recommended configuration via GP, configure the following UI path to a  value that is consistent with the security and operational requirements of your  organization: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local  Policies\\Security Options\\Interactive logon: Message title for users  attempting to log on"
+    description: "This policy setting specifies the text displayed in the title bar of the window that users see when they log on to the system. Configure this setting in a manner that is consistent with the security and operational requirements of your organization."
+    rationale: "Displaying a warning message before logon may help prevent an attack by warning the attacker about the consequences of their misconduct before it happens. It may also help to reinforce corporate policy by notifying employees of the appropriate policy during the logon process."
+    remediation: "To establish the recommended configuration via GP, configure the following UI path to a value that is consistent with the security and operational requirements of your organization: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Message title for users attempting to log on"
     compliance:
       - cis: ["2.3.7.6"]
     condition: all
@@ -701,7 +701,7 @@ checks:
     title: "Ensure 'Network access: Allow anonymous SID/Name translation' is set to 'Disabled'"
     description: "This policy setting determines whether an anonymous user can request security identifier  (SID) attributes for another user, or use a SID to obtain its corresponding user name."
     rationale: "If this policy setting is enabled, a user with local access could use the well-known Administrator's SID to learn the real name of the built-in Administrator account, even if it has been renamed. That person could then use the account name to initiate a password guessing attack."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local  Policies\\Security Options\\Network access: Allow anonymous SID/Name  translation"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Allow anonymous SID/Name translation"
     compliance:
       - cis: ["2.3.10.1"]
     condition: all
@@ -1107,7 +1107,7 @@ checks:
     title: "Ensure 'System cryptography: Force strong key protection for user keys stored on the computer' is set to 'User is prompted when the key is first used' or higher"
     description: "This policy setting determines whether users' private keys (such as their S-MIME keys) require a password to be used. The recommended state for this setting is: User is prompted when the key is first used. Configuring this setting to User must enter a password each time they use a key also conforms to the benchmark."
     rationale: "If a user's account is compromised or their computer is inadvertently left unsecured the malicious user can use the keys stored for the user to access protected resources. You can configure this policy setting so that users must provide a password that is distinct from their domain password every time they use a key. This configuration makes it more difficult for an attacker to access locally stored user keys, even if the attacker takes control of the user's computer and determines their logon password."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to User is  prompted when the key is first used (configuring to User must enter a password each time they use a key also conforms to the benchmark): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local  Policies\\Security Options\\System cryptography: Force strong key protection for user keys stored on the computer"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to User is prompted when the key is first used (configuring to User must enter a password each time they use a key also conforms to the benchmark): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\System cryptography: Force strong key protection for user keys stored on the computer"
     compliance:
       - cis: ["2.3.14.1"]
       - cis_csc: ["3.11"]
@@ -1297,7 +1297,7 @@ checks:
     title: "Ensure 'Bluetooth Audio Gateway Service (BTAGService)' is set to 'Disabled'"
     description: "Service supporting the audio gateway role of the Bluetooth Handsfree Profile. The recommended state for this setting is: Disabled."
     rationale: "Bluetooth technology has inherent security risks - especially prior to the v2.1 standard. Wireless Bluetooth traffic is not well encrypted (if at all), so in a high-security environment, it should not be permitted, in spite of the added inconvenience of not being able to use Bluetooth devices."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Bluetooth Audio Gateway Service"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Bluetooth Audio Gateway Service"
     compliance:
       - cis: ["5.1"]
       - cis_csc: ["4.8"]
@@ -1309,7 +1309,7 @@ checks:
     title: "Ensure 'Bluetooth Support Service (bthserv)' is set to 'Disabled'"
     description: "The Bluetooth service supports discovery and association of remote Bluetooth devices. The recommended state for this setting is: Disabled."
     rationale: "Bluetooth technology has inherent security risks - especially prior to the v2.1 standard. Wireless Bluetooth traffic is not well encrypted (if at all), so in a high-security environment, it should not be permitted, in spite of the added inconvenience of not being able to use Bluetooth devices."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Bluetooth Support Service"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Bluetooth Support Service"
     compliance:
       - cis: ["5.2"]
       - cis_csc: ["4.8"]
@@ -1321,7 +1321,7 @@ checks:
     title: "Ensure 'Downloaded Maps Manager (MapsBroker)' is set to 'Disabled'"
     description: "Windows service for application access to downloaded maps. This service is started on-demand by application accessing downloaded maps."
     rationale: "Mapping technologies can unwillingly reveal your location to attackers and other software that picks up the information. In addition, automatic downloads of data from 3rd-party sources should be minimized when not needed. Therefore this service should not be needed in high security environments."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Downloaded Maps Manager"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Downloaded Maps Manager"
     compliance:
       - cis: ["5.4"]
       - cis_csc: ["4.8"]
@@ -1333,9 +1333,9 @@ checks:
 
   - id: 15078
     title: "Ensure 'Geolocation Service (lfsvc)' is set to 'Disabled'"
-    description: "This service monitors the current location of the system and manages geofences (a  geographical location with associated events). The recommended state for this setting is: Disabled."
+    description: "This service monitors the current location of the system and manages geofences (a geographical location with associated events). The recommended state for this setting is: Disabled."
     rationale: "This setting affects the location feature (e.g. GPS or other location tracking). From a security perspective, it’s not a good idea to reveal your location to software in most cases, but there are legitimate uses, such as mapping software. However, they should not be used in high security environments."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Geolocation Service"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Geolocation Service"
     compliance:
       - cis: ["5.5"]
       - cis_csc: ["4.8"]
@@ -1347,9 +1347,9 @@ checks:
 
   - id: 15079
     title: "Ensure 'IIS Admin Service (IISADMIN)' is set to 'Disabled' or 'Not Installed'"
-    description: "Enables the server to administer the IIS metabase. The IIS metabase stores configuration  for the SMTP and FTP services. The recommended state for this setting is: Disabled or Not Installed.Note: This service is not installed by default. It is supplied with Windows, but is installed by enabling an optional Windows feature (Internet Information Services). Note #2: An organization may choose to selectively grant exceptions to web developers to allow IIS (or another web server) on their workstation, in order for them to locally test & develop web pages. However, the organization should track those machines and ensure the security controls and mitigations are kept up to date, to reduce risk of compromise."
+    description: "Enables the server to administer the IIS metabase. The IIS metabase stores configuration for the SMTP and FTP services. The recommended state for this setting is: Disabled or Not Installed.Note: This service is not installed by default. It is supplied with Windows, but is installed by enabling an optional Windows feature (Internet Information Services). Note #2: An organization may choose to selectively grant exceptions to web developers to allow IIS (or another web server) on their workstation, in order for them to locally test & develop web pages. However, the organization should track those machines and ensure the security controls and mitigations are kept up to date, to reduce risk of compromise."
     rationale: "Hosting a website from a workstation is an increased security risk, as the attack surface of that workstation is then greatly increased. If proper security mitigations are not followed, the chance of successful attack increases significantly. Note: This security concern applies to any web server application installed on a workstation, not just IIS."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\IIS Admin Service"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\IIS Admin Service"
     compliance:
       - cis: ["5.6"]
       - cis_csc: ["4.8"]
@@ -1362,7 +1362,7 @@ checks:
     title: "Ensure 'Infrared monitor service (irmon)' is set to 'Disabled' or 'Not Installed'"
     description: "Detects other Infrared devices that are in range and launches the file transfer application. The recommended state for this setting is: Disabled or Not Installed."
     rationale: "Infrared connections can potentially be a source of data compromise - especially via the automatic 'file transfer application' functionality. Enterprise-managed systems should utilize a more secure method of connection than infrared."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Infrared monitor service"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Infrared monitor service"
     compliance:
       - cis: ["5.7"]
       - cis_csc: ["4.8"]
@@ -1373,9 +1373,9 @@ checks:
 
   - id: 15081
     title: "Ensure 'Internet Connection Sharing (ICS) (SharedAccess)' is set to 'Disabled'"
-    description: "Provides network access translation, addressing, name resolution and/or intrusion  prevention services for a home or small office network. The recommended state for this setting is: Disabled."
+    description: "Provides network access translation, addressing, name resolution and/or intrusion prevention services for a home or small office network. The recommended state for this setting is: Disabled."
     rationale: "Internet Connection Sharing (ICS) is a feature that allows someone to 'share' their Internet connection with other machines on the network - it was designed for home or small office environments where only one machine has Internet access - it effectively turns that machine into an Internet router. This feature causes the bridging of networks and likely bypassing other, more secure pathways. It should not be used on any enterprise-managed system."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Internet Connection Sharing (ICS)"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Internet Connection Sharing (ICS)"
     compliance:
       - cis: ["5.8"]
       - cis_csc: ["4.8"]
@@ -1389,7 +1389,7 @@ checks:
     title: "Ensure 'Link-Layer Topology Discovery Mapper (lltdsvc)' is set to 'Disabled'"
     description: "Creates a Network Map, consisting of PC and device topology (connectivity) information, and metadata describing each PC and device. The recommended state for this setting is: Disabled."
     rationale: "The feature that this service enables could potentially be used for unauthorized discovery and connection to network devices. Disabling the service helps to prevent responses to requests for network topology discovery in high security environments."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Link-Layer Topology Discovery Mapper"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Link-Layer Topology Discovery Mapper"
     compliance:
       - cis: ["5.9"]
       - cis_csc: ["4.8"]
@@ -1401,9 +1401,9 @@ checks:
 
   - id: 15083
     title: "Ensure 'LxssManager (LxssManager)' is set to 'Disabled' or 'Not Installed'"
-    description: "The LXSS Manager service supports running native ELF binaries. The service provides the  infrastructure necessary for ELF binaries to run on Windows. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but is installed by enabling an optional Windows feature (Windows Subsystem for Linux)."
+    description: "The LXSS Manager service supports running native ELF binaries. The service provides the infrastructure necessary for ELF binaries to run on Windows. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but is installed by enabling an optional Windows feature (Windows Subsystem for Linux)."
     rationale: "The Linux Subsystem (LXSS) Manager allows full system access to Linux applications on Windows, including the file system. While this can certainly have some functionality and performance benefits for running those applications, it also creates new security risks in the event that a hacker injects malicious code into a Linux application. For best security, it is preferred to run Linux applications on Linux, and Windows applications on Windows."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\LxssManager"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\LxssManager"
     compliance:
       - cis: ["5.10"]
       - cis_csc: ["4.8"]
@@ -1416,7 +1416,7 @@ checks:
     title: "Ensure 'Microsoft FTP Service (FTPSVC)' is set to 'Disabled' or 'Not Installed'"
     description: "Enables the server to be a File Transfer Protocol (FTP) server. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but is installed by enabling an optional Windows feature (Internet Information Services - FTP Server)."
     rationale: "Hosting an FTP server (especially a non-secure FTP server) from a workstation is an increased security risk, as the attack surface of that workstation is then greatly increased. Note: This security concern applies to any FTP server application installed on a workstation, not just IIS."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Microsoft FTP Service"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Microsoft FTP Service"
     compliance:
       - cis: ["5.11"]
       - cis_csc: ["4.8"]
@@ -1429,7 +1429,7 @@ checks:
     title: "Ensure 'Microsoft iSCSI Initiator Service (MSiSCSI)' is set to 'Disabled'"
     description: "Manages Internet SCSI (iSCSI) sessions from this computer to remote target devices. The recommended state for this setting is: Disabled."
     rationale: "This service is critically necessary in order to directly attach to an iSCSI device. However, iSCSI itself uses a very weak authentication protocol (CHAP), which means that the passwords for iSCSI communication are easily exposed, unless all of the traffic is isolated and/or encrypted using another technology like IPsec. This service is generally more appropriate for servers in a controlled environment then on workstations requiring high security."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Microsoft iSCSI Initiator Service"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Microsoft iSCSI Initiator Service"
     compliance:
       - cis: ["5.12"]
       - cis_csc: ["4.8"]
@@ -1441,9 +1441,9 @@ checks:
 
   - id: 15086
     title: "Ensure 'OpenSSH SSH Server (sshd)' is set to 'Disabled' or 'Not Installed'"
-    description: "SSH protocol based service to provide secure encrypted communications between two  untrusted hosts over an insecure network. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but it is installed by enabling an optional Windows feature (OpenSSH Server)."
+    description: "SSH protocol based service to provide secure encrypted communications between two untrusted hosts over an insecure network. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but it is installed by enabling an optional Windows feature (OpenSSH Server)."
     rationale: "Hosting an SSH server from a workstation is an increased security risk, as the attack surface of that workstation is then greatly increased. Note: This security concern applies to any SSH server application installed on a workstation, not just the one supplied with Windows."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\OpenSSH SSH Server"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\OpenSSH SSH Server"
     compliance:
       - cis: ["5.13"]
       - cis_csc: ["4.8"]
@@ -1454,9 +1454,9 @@ checks:
 
   - id: 15087
     title: "Ensure 'Peer Name Resolution Protocol (PNRPsvc)' is set to 'Disabled'"
-    description: "Enables serverless peer name resolution over the Internet using the Peer Name Resolution  Protocol (PNRP). The recommended state for this setting is: Disabled. "
+    description: "Enables serverless peer name resolution over the Internet using the Peer Name Resolution Protocol (PNRP). The recommended state for this setting is: Disabled. "
     rationale: "Peer Name Resolution Protocol is a distributed and (mostly) serverless way to handle name resolution of clients with each other. In a high security environment, it is more secure to rely on centralized name resolution methods maintained by authorized staff."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Peer Name Resolution Protocol"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Peer Name Resolution Protocol"
     compliance:
       - cis: ["5.14"]
       - cis_csc: ["4.8"]
@@ -1470,7 +1470,7 @@ checks:
     title: "Ensure 'Peer Networking Grouping (p2psvc)' is set to 'Disabled'"
     description: "Enables multi-party communication using Peer-to-Peer Grouping. The recommended state for this setting is: Disabled."
     rationale: "Peer Name Resolution Protocol is a distributed and (mostly) serverless way to handle name resolution of clients with each other. In a high security environment, it is more secure to rely on centralized name resolution methods maintained by authorized staff."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Peer Networking Grouping"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Peer Networking Grouping"
     compliance:
       - cis: ["5.15"]
       - cis_csc: ["4.8"]
@@ -1482,9 +1482,9 @@ checks:
 
   - id: 15089
     title: "Ensure 'Peer Networking Identity Manager (p2pimsvc)' is set to 'Disabled'"
-    description: "Provides identity services for the Peer Name Resolution Protocol (PNRP) and Peer-to-Peer  Grouping services. The recommended state for this setting is: Disabled."
+    description: "Provides identity services for the Peer Name Resolution Protocol (PNRP) and Peer-to-Peer Grouping services. The recommended state for this setting is: Disabled."
     rationale: "Peer Name Resolution Protocol is a distributed and (mostly) serverless way to handle name resolution of clients with each other. In a high security environment, it is more secure to rely on centralized name resolution methods maintained by authorized staff."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Peer Networking Identity Manager"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Peer Networking Identity Manager"
     compliance:
       - cis: ["5.16"]
       - cis_csc: ["4.8"]
@@ -1498,7 +1498,7 @@ checks:
     title: "Ensure 'PNRP Machine Name Publication Service (PNRPAutoReg)' is set to 'Disabled'"
     description: "This service publishes a machine name using the Peer Name Resolution Protocol.  Configuration is managed via the netsh context ‘p2p pnrp peer’. The recommended state for this setting is: Disabled."
     rationale: "Peer Name Resolution Protocol is a distributed and (mostly) serverless way to handle name resolution of clients with each other. In a high security environment, it is more secure to rely on centralized name resolution methods maintained by authorized staff."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\PNRP Machine Name Publication Service"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\PNRP Machine Name Publication Service"
     compliance:
       - cis: ["5.17"]
       - cis_csc: ["4.8"]
@@ -1524,9 +1524,9 @@ checks:
 
   - id: 15092
     title: "Ensure 'Problem Reports and Solutions Control Panel Support (wercplsupport)' is set to 'Disabled'"
-    description: "This service provides support for viewing, sending and deletion of system-level problem  reports for the Problem Reports and Solutions control panel. The recommended state for this setting is: Disabled."
+    description: "This service provides support for viewing, sending and deletion of system-level problem reports for the Problem Reports and Solutions control panel. The recommended state for this setting is: Disabled."
     rationale: "This service is involved in the process of displaying/reporting issues & solutions to/from Microsoft. In a high security environment, preventing this information from being sent can help reduce privacy concerns for sensitive corporate information."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Problem Reports and Solutions Control Panel Support"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Problem Reports and Solutions Control Panel Support"
     compliance:
       - cis: ["5.19"]
       - cis_csc: ["4.8"]
@@ -1540,7 +1540,7 @@ checks:
     title: "Ensure 'Remote Access Auto Connection Manager (RasAuto)' is set to 'Disabled'"
     description: "Creates a connection to a remote network whenever a program references a remote DNS or NetBIOS name or address. The recommended state for this setting is: Disabled."
     rationale: "The function of this service is to provide a 'demand dial' type of functionality. In a high security environment, it is preferred that any remote 'dial' connections (whether they be legacy dial-in POTS or VPN) are initiated by the user, not automatically by the system."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Remote Access Auto Connection Manager"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Remote Access Auto Connection Manager"
     compliance:
       - cis: ["5.20"]
       - cis_csc: ["4.8"]
@@ -1552,9 +1552,9 @@ checks:
 
   - id: 15094
     title: "Ensure 'Remote Desktop Configuration (SessionEnv)' is set to 'Disabled'"
-    description: "Remote Desktop Configuration service (RDCS) is responsible for all Remote Desktop  related configuration and session maintenance activities that require SYSTEM context.  These include per-session temporary folders, RD themes, and RD certificates. The recommended state for this setting is: Disabled."
+    description: "Remote Desktop Configuration service (RDCS) is responsible for all Remote Desktop related configuration and session maintenance activities that require SYSTEM context.  These include per-session temporary folders, RD themes, and RD certificates. The recommended state for this setting is: Disabled."
     rationale: "In a high security environment, Remote Desktop access is an increased security risk. For these environments, only local console access should be permitted."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Remote Desktop Configuration"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Remote Desktop Configuration"
     compliance:
       - cis: ["5.21"]
       - cis_csc: ["4.8"]
@@ -1566,9 +1566,9 @@ checks:
 
   - id: 15095
     title: "Ensure 'Remote Desktop Services (TermService)' is set to 'Disabled'"
-    description: "Allows users to connect interactively to a remote computer. Remote Desktop and Remote  Desktop Session Host Server depend on this service. The recommended state for this setting is: Disabled."
+    description: "Allows users to connect interactively to a remote computer. Remote Desktop and Remote Desktop Session Host Server depend on this service. The recommended state for this setting is: Disabled."
     rationale: "In a high security environment, Remote Desktop access is an increased security risk. For these environments, only local console access should be permitted."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Remote Desktop Services"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Remote Desktop Services"
     compliance:
       - cis: ["5.22"]
       - cis_csc: ["4.8"]
@@ -1582,7 +1582,7 @@ checks:
     title: "Ensure 'Remote Desktop Services UserMode Port Redirector (UmRdpService)' is set to 'Disabled'"
     description: "Allows the redirection of Printers/Drives/Ports for RDP connections. The recommended state for this setting is: Disabled."
     rationale: "In a security-sensitive environment, it is desirable to reduce the possible attack surface - preventing the redirection of COM, LPT and PnP ports will reduce the number of unexpected avenues for data exfiltration and/or malicious code transfer within an RDP session."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Remote Desktop Services UserMode Port Redirector"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Remote Desktop Services UserMode Port Redirector"
     compliance:
       - cis: ["5.23"]
       - cis_csc: ["4.8"]
@@ -1594,9 +1594,9 @@ checks:
 
   - id: 15097
     title: "Ensure 'Remote Procedure Call (RPC) Locator (RpcLocator)' is set to 'Disabled'"
-    description: "In Windows 2003 and older versions of Windows, the Remote Procedure Call (RPC)  Locator service manages the RPC name service database. In Windows Vista and newer  versions of Windows, this service does not provide any functionality and is present for  application compatibility. The recommended state for this setting is: Disabled."
+    description: "In Windows 2003 and older versions of Windows, the Remote Procedure Call (RPC)  Locator service manages the RPC name service database. In Windows Vista and newer versions of Windows, this service does not provide any functionality and is present for application compatibility. The recommended state for this setting is: Disabled."
     rationale: "This is a legacy service that has no value or purpose other than application compatibility for very old software. It should be disabled unless there is a specific old application still in use on the system that requires it."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Remote Procedure Call (RPC) Locator"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Remote Procedure Call (RPC) Locator"
     compliance:
       - cis: ["5.24"]
       - cis_csc: ["4.8"]
@@ -1610,7 +1610,7 @@ checks:
     title: "Ensure 'Remote Registry (RemoteRegistry)' is set to 'Disabled'"
     description: "Enables remote users to view and modify registry settings on this computer.The recommended state for this setting is: Disabled."
     rationale: "In a high security environment, exposing the registry to remote access is an increased security risk."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Remote Registry"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Remote Registry"
     compliance:
       - cis: ["5.25"]
       - cis_csc: ["4.8"]
@@ -1624,7 +1624,7 @@ checks:
     title: "Ensure 'Routing and Remote Access (RemoteAccess)' is set to 'Disabled'"
     description: "Offers routing services to businesses in local area and wide area network environments. The recommended state for this setting is: Disabled."
     rationale: "This service's main purpose is to provide Windows router functionality - this is not an appropriate use of workstations in an enterprise managed environment."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Routing and Remote Access"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Routing and Remote Access"
     compliance:
       - cis: ["5.26"]
       - cis_csc: ["4.8"]
@@ -1636,9 +1636,9 @@ checks:
 
   - id: 15100
     title: "Ensure 'Server (LanmanServer)' is set to 'Disabled'"
-    description: "Supports file, print, and named-pipe sharing over the network for this computer. If this  service is stopped, these functions will be unavailable. The recommended state for this setting is: Disabled."
+    description: "Supports file, print, and named-pipe sharing over the network for this computer. If this service is stopped, these functions will be unavailable. The recommended state for this setting is: Disabled."
     rationale: "In a high security environment, a secure workstation should only be a client, not a server. Sharing workstation resources for remote access increases security risk as the attack surface is notably higher."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Server"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Server"
     compliance:
       - cis: ["5.27"]
       - cis_csc: ["4.8"]
@@ -1650,9 +1650,9 @@ checks:
 
   - id: 15101
     title: "Ensure 'Simple TCP/IP Services (simptcp)' is set to 'Disabled' or 'Not Installed'"
-    description: "Supports the following TCP/IP services: Character Generator, Daytime, Discard, Echo, and  Quote of the Day. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but is installed  by enabling an optional Windows feature (Simple TCPIP services (i.e. echo, daytime etc))."
+    description: "Supports the following TCP/IP services: Character Generator, Daytime, Discard, Echo, and Quote of the Day. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but is installed by enabling an optional Windows feature (Simple TCPIP services (i.e. echo, daytime etc))."
     rationale: "The Simple TCP/IP Services have very little purpose in a modern enterprise environment - allowing them might increase exposure and risk for attack."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Simple TCP/IP Services"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Simple TCP/IP Services"
     compliance:
       - cis: ["5.28"]
       - cis_csc: ["4.8"]
@@ -1663,7 +1663,7 @@ checks:
 
   - id: 15102
     title: "Ensure 'SNMP Service (SNMP)' is set to 'Disabled' or 'Not Installed'"
-    description: "Enables Simple Network Management Protocol (SNMP) requests to be processed by this  computer. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but is installed  by enabling an optional Windows feature (Simple Network Management Protocol (SNMP))."
+    description: "Enables Simple Network Management Protocol (SNMP) requests to be processed by this computer. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but is installed by enabling an optional Windows feature (Simple Network Management Protocol (SNMP))."
     rationale: "Features that enable inbound network connections increase the attack surface. In a high security environment, management of secure workstations should be handled locally."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\SNMP Service"
     compliance:
@@ -1676,9 +1676,9 @@ checks:
 
   - id: 15103
     title: "Ensure 'Special Administration Console Helper (sacsvr)' is set to 'Disabled' or 'Not Installed'"
-    description: "This service allows administrators to remotely access a command prompt using Emergency  Management Services. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but it is installed  by enabling an optional Windows capability (Windows Emergency Management Services  and Serial Console). "
-    rationale: "Allowing the use of a remotely accessible command prompt that provides the ability to  perform remote management tasks on a computer is a security risk. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Special Administration Console Helper"
+    description: "This service allows administrators to remotely access a command prompt using Emergency Management Services. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but it is installed by enabling an optional Windows capability (Windows Emergency Management Services and Serial Console)."
+    rationale: "Allowing the use of a remotely accessible command prompt that provides the ability to perform remote management tasks on a computer is a security risk."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Special Administration Console Helper"
     compliance:
       - cis: ["5.30"]
       - cis_csc: ["4.8"]
@@ -1689,9 +1689,9 @@ checks:
 
   - id: 15104
     title: "Ensure 'SSDP Discovery (SSDPSRV)' is set to 'Disabled'"
-    description: "Discovers networked devices and services that use the SSDP discovery protocol, such as  UPnP devices. Also announces SSDP devices and services running on the local computer. The recommended state for this setting is: Disabled. "
-    rationale: "Universal Plug n Play (UPnP) is a real security risk - it allows automatic discovery and  attachment to network devices. Note that UPnP is different than regular Plug n Play (PnP).  Workstations should not be advertising their services (or automatically discovering and  connecting to networked services) in a security-conscious enterprise managed  environment. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\SSDP Discovery "
+    description: "Discovers networked devices and services that use the SSDP discovery protocol, such as UPnP devices. Also announces SSDP devices and services running on the local computer. The recommended state for this setting is: Disabled. "
+    rationale: "Universal Plug n Play (UPnP) is a real security risk - it allows automatic discovery and attachment to network devices. Note that UPnP is different than regular Plug n Play (PnP).  Workstations should not be advertising their services (or automatically discovering and connecting to networked services) in a security-conscious enterprise managed environment. "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\SSDP Discovery "
     compliance:
       - cis: ["5.31"]
       - cis_csc: ["4.8"]
@@ -1702,8 +1702,8 @@ checks:
   - id: 15105
     title: "Ensure 'UPnP Device Host (upnphost)' is set to 'Disabled'"
     description: "Allows UPnP devices to be hosted on this computer. The recommended state for this setting is: Disabled. "
-    rationale: "Universal Plug n Play (UPnP) is a real security risk - it allows automatic discovery and  attachment to network devices. Notes that UPnP is different than regular Plug n Play (PnP).  Workstations should not be advertising their services (or automatically discovering and  connecting to networked services) in a security-conscious enterprise managed  environment. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\UPnP Device Host "
+    rationale: "Universal Plug n Play (UPnP) is a real security risk - it allows automatic discovery and attachment to network devices. Notes that UPnP is different than regular Plug n Play (PnP).  Workstations should not be advertising their services (or automatically discovering and connecting to networked services) in a security-conscious enterprise managed environment. "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\UPnP Device Host "
     compliance:
       - cis: ["5.32"]
       - cis_csc: ["4.8"]
@@ -1713,9 +1713,9 @@ checks:
 
   - id: 15106
     title: "Ensure 'Web Management Service (WMSvc)' is set to 'Disabled' or 'Not Installed'"
-    description: "The Web Management Service enables remote and delegated management capabilities for  administrators to manage for the Web server, sites and applications present on the  machine. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but is installed  by enabling an optional Windows feature (Internet Information Services - Web Management  Tools - IIS Management Service). "
-    rationale: "Remote web administration of IIS on a workstation is an increased security risk, as the  attack surface of that workstation is then greatly increased. If proper security mitigations  are not followed, the chance of successful attack increases significantly. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Web Management Service"
+    description: "The Web Management Service enables remote and delegated management capabilities for administrators to manage for the Web server, sites and applications present on the machine. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but is installed by enabling an optional Windows feature (Internet Information Services - Web Management Tools - IIS Management Service). "
+    rationale: "Remote web administration of IIS on a workstation is an increased security risk, as the attack surface of that workstation is then greatly increased. If proper security mitigations are not followed, the chance of successful attack increases significantly. "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Web Management Service"
     compliance:
       - cis: ["5.33"]
       - cis_csc: ["4.8"]
@@ -1726,9 +1726,9 @@ checks:
 
   - id: 15107
     title: "Ensure 'Windows Error Reporting Service (WerSvc)' is set to 'Disabled'"
-    description: "Allows errors to be reported when programs stop working or responding and allows  existing solutions to be delivered. Also allows logs to be generated for diagnostic and repair  services. The recommended state for this setting is: Disabled. "
-    rationale: "If a Windows Error occurs in a secure, enterprise managed environment, the error should  be reported directly to IT staff for troubleshooting and remediation. There is no benefit to  the corporation to report these errors directly to Microsoft, and there is some risk of  unknowingly exposing sensitive data as part of the error. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Windows Error Reporting Service"
+    description: "Allows errors to be reported when programs stop working or responding and allows existing solutions to be delivered. Also allows logs to be generated for diagnostic and repair services. The recommended state for this setting is: Disabled. "
+    rationale: "If a Windows Error occurs in a secure, enterprise managed environment, the error should be reported directly to IT staff for troubleshooting and remediation. There is no benefit to the corporation to report these errors directly to Microsoft, and there is some risk of unknowingly exposing sensitive data as part of the error. "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Windows Error Reporting Service"
     compliance:
       - cis: ["5.34"]
       - cis_csc: ["4.8"]
@@ -1738,9 +1738,9 @@ checks:
 
   - id: 15108
     title: "Ensure 'Windows Event Collector (Wecsvc)' is set to 'Disabled'"
-    description: "This service manages persistent subscriptions to events from remote sources that support  WS-Management protocol. This includes Windows Vista event logs, hardware and IPMI enabled event sources. The service stores forwarded events in a local Event Log. The recommended state for this setting is: Disabled. "
-    rationale: "In a high security environment, remote connections to secure workstations should be  minimized, and management functions should be done locally. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Windows Event Collector "
+    description: "This service manages persistent subscriptions to events from remote sources that support WS-Management protocol. This includes Windows Vista event logs, hardware and IPMI enabled event sources. The service stores forwarded events in a local Event Log. The recommended state for this setting is: Disabled. "
+    rationale: "In a high security environment, remote connections to secure workstations should be minimized, and management functions should be done locally. "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Windows Event Collector "
     compliance:
       - cis: ["5.35"]
       - cis_csc: ["4.8"]
@@ -1750,9 +1750,9 @@ checks:
 
   - id: 15109
     title: "Ensure 'Windows Media Player Network Sharing Service (WMPNetworkSvc)' is set to 'Disabled' or 'Not Installed'"
-    description: "Shares Windows Media Player libraries to other networked players and media devices  using Universal Plug and Play. The recommended state for this setting is: Disabled or Not Installed. "
-    rationale: "Network sharing of media from Media Player has no place in an enterprise managed  environment. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Windows Media Player Network Sharing Service "
+    description: "Shares Windows Media Player libraries to other networked players and media devices using Universal Plug and Play. The recommended state for this setting is: Disabled or Not Installed. "
+    rationale: "Network sharing of media from Media Player has no place in an enterprise managed environment. "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Windows Media Player Network Sharing Service "
     compliance:
       - cis: ["5.36"]
       - cis_csc: ["4.8"]
@@ -1764,8 +1764,8 @@ checks:
   - id: 15110
     title: "Ensure 'Windows Mobile Hotspot Service (icssvc)' is set to 'Disabled'"
     description: "Provides the ability to share a cellular data connection with another device. The recommended state for this setting is: Disabled. "
-    rationale: "The capability to run a mobile hotspot from a domain-connected computer could easily  expose the internal network to wardrivers or other hackers. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Windows Mobile Hotspot Service "
+    rationale: "The capability to run a mobile hotspot from a domain-connected computer could easily expose the internal network to wardrivers or other hackers. "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Windows Mobile Hotspot Service "
     compliance:
       - cis: ["5.37"]
       - cis_csc: ["4.8"]
@@ -1775,9 +1775,9 @@ checks:
 
   - id: 15111
     title: "Ensure 'Windows Push Notifications System Service (WpnService)' is set to 'Disabled'"
-    description: "This service runs in session 0 and hosts the notification platform and connection provider  which handles the connection between the device and WNS server. The recommended state for this setting is: Disabled. Note: In the first two releases of Windows 10 (R1507 & R1511), the display name of this  service was initially named Windows Push Notifications Service - but it was renamed to  Windows Push Notifications System Service starting with Windows 10 R1607. "
-    rationale: "Windows Push Notification Services (WNS) is a mechanism to receive 3rd-party  notifications and updates from the cloud/Internet. In a high security environment, external  systems, especially those hosted outside the organization, should be prevented from having  an impact on the secure workstations. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Windows Push Notifications System Service"
+    description: "This service runs in session 0 and hosts the notification platform and connection provider which handles the connection between the device and WNS server. The recommended state for this setting is: Disabled. Note: In the first two releases of Windows 10 (R1507 & R1511), the display name of this service was initially named Windows Push Notifications Service - but it was renamed to Windows Push Notifications System Service starting with Windows 10 R1607. "
+    rationale: "Windows Push Notification Services (WNS) is a mechanism to receive 3rd-party notifications and updates from the cloud/Internet. In a high security environment, external systems, especially those hosted outside the organization, should be prevented from having an impact on the secure workstations. "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Windows Push Notifications System Service"
     compliance:
       - cis: ["5.38"]
       - cis_csc: ["4.8"]
@@ -1787,9 +1787,9 @@ checks:
 
   - id: 15112
     title: "Ensure 'Windows PushToInstall Service (PushToInstall)' is set to 'Disabled'"
-    description: "This service manages Apps that are pushed to the device from the Microsoft Store App  running on other devices or the web. The recommended state for this setting is: Disabled. "
-    rationale: "In a high security managed environment, application installations should be managed  centrally by IT staff, not by end users. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Windows PushToInstall Service (PushToInstall) "
+    description: "This service manages Apps that are pushed to the device from the Microsoft Store App running on other devices or the web. The recommended state for this setting is: Disabled. "
+    rationale: "In a high security managed environment, application installations should be managed centrally by IT staff, not by end users. "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Windows PushToInstall Service (PushToInstall) "
     compliance:
       - cis: ["5.39"]
       - cis_csc: ["4.8"]
@@ -1799,9 +1799,9 @@ checks:
 
   - id: 15113
     title: "Ensure 'Windows Remote Management (WS-Management) (WinRM)' is set to 'Disabled'"
-    description: "Windows Remote Management (WinRM) service implements the WS-Management  protocol for remote management. WS-Management is a standard web services protocol  used for remote software and hardware management. The WinRM service listens on the  network for WS-Management requests and processes them. The recommended state for this setting is: Disabled. "
-    rationale: "Features that enable inbound network connections increase the attack surface. In a high  security environment, management of secure workstations should be handled locally. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Windows Remote Management (WS-Management) "
+    description: "Windows Remote Management (WinRM) service implements the WS-Management protocol for remote management. WS-Management is a standard web services protocol used for remote software and hardware management. The WinRM service listens on the network for WS-Management requests and processes them. The recommended state for this setting is: Disabled. "
+    rationale: "Features that enable inbound network connections increase the attack surface. In a high security environment, management of secure workstations should be handled locally. "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Windows Remote Management (WS-Management) "
     compliance:
       - cis: ["5.40"]
       - cis_csc: ["4.8"]
@@ -1811,9 +1811,9 @@ checks:
 
   - id: 15114
     title: "Ensure 'World Wide Web Publishing Service (W3SVC)' is set to 'Disabled' or 'Not Installed'"
-    description: "Provides Web connectivity and administration through the Internet Information Services  Manager. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but is installed  by enabling an optional Windows feature (Internet Information Services - World Wide Web  Services). Note #2: An organization may choose to selectively grant exceptions to web developers to  allow IIS (or another web server) on their workstation, in order for them to locally test &  develop web pages. However, the organization should track those machines and ensure the  security controls and mitigations are kept up to date, to reduce risk of compromise. "
-    rationale: "Hosting a website from a workstation is an increased security risk, as the attack surface of  that workstation is then greatly increased. If proper security mitigations are not followed,  the chance of successful attack increases significantly. Note: This security concern applies to any web server application installed on a  workstation, not just IIS. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\World Wide Web Publishing Service "
+    description: "Provides Web connectivity and administration through the Internet Information Services Manager. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but is installed by enabling an optional Windows feature (Internet Information Services - World Wide Web Services). Note #2: An organization may choose to selectively grant exceptions to web developers to allow IIS (or another web server) on their workstation, in order for them to locally test &  develop web pages. However, the organization should track those machines and ensure the security controls and mitigations are kept up to date, to reduce risk of compromise. "
+    rationale: "Hosting a website from a workstation is an increased security risk, as the attack surface of that workstation is then greatly increased. If proper security mitigations are not followed,  the chance of successful attack increases significantly. Note: This security concern applies to any web server application installed on a workstation, not just IIS. "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\World Wide Web Publishing Service "
     compliance:
       - cis: ["5.41"]
       - cis_csc: ["4.8"]
@@ -1826,7 +1826,7 @@ checks:
     title: "Ensure 'Xbox Accessory Management Service (XboxGipSvc)' is set to 'Disabled'"
     description: "This service manages connected Xbox Accessories. The recommended state for this setting is: Disabled. "
     rationale: "Xbox Live is a gaming service and has no place in an enterprise managed environment  (perhaps unless it is a gaming company). "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Xbox Accessory Management Service "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Xbox Accessory Management Service "
     compliance:
       - cis: ["5.42"]
       - cis_csc: ["4.8"]
@@ -1838,7 +1838,7 @@ checks:
     title: "Ensure 'Xbox Live Auth Manager (XblAuthManager)' is set to 'Disabled'"
     description: "Provides authentication and authorization services for interacting with Xbox Live. The recommended state for this setting is: Disabled. "
     rationale: "Xbox Live is a gaming service and has no place in an enterprise managed environment  (perhaps unless it is a gaming company). "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Xbox Live Auth Manager "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Xbox Live Auth Manager "
     compliance:
       - cis: ["5.43"]
       - cis_csc: ["4.8"]
@@ -1850,7 +1850,7 @@ checks:
     title: "Ensure 'Xbox Live Game Save (XblGameSave)' is set to 'Disabled'"
     description: "This service syncs save data for Xbox Live save enabled games. The recommended state for this setting is: Disabled. "
     rationale: "Xbox Live is a gaming service and has no place in an enterprise managed environment  (perhaps unless it is a gaming company). "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Xbox Live Game Save "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Xbox Live Game Save "
     compliance:
       - cis: ["5.44"]
       - cis_csc: ["4.8"]
@@ -1860,9 +1860,9 @@ checks:
 
   - id: 15118
     title: "Ensure 'Xbox Live Networking Service (XboxNetApiSvc)' is set to 'Disabled'"
-    description: "This service supports the Windows.Networking.XboxLive application programming  interface. The recommended state for this setting is: Disabled. "
+    description: "This service supports the Windows.Networking.XboxLive application programming interface. The recommended state for this setting is: Disabled. "
     rationale: "Xbox Live is a gaming service and has no place in an enterprise managed environment  (perhaps unless it is a gaming company). "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Xbox Live Networking Service "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Xbox Live Networking Service "
     compliance:
       - cis: ["5.45"]
       - cis_csc: ["4.8"]
@@ -2329,9 +2329,9 @@ checks:
 
   - id: 15145
     title: "Ensure 'Audit Credential Validation' is set to 'Success and Failure'"
-    description: "This subcategory reports the results of validation tests on credentials submitted for a user  account logon request. These events occur on the computer that is authoritative for the  credentials. For domain accounts, the Domain Controller is authoritative, whereas for local  accounts, the local computer is authoritative. In domain environments, most of the Account  Logon events occur in the Security log of the Domain Controllers that are authoritative for  the domain accounts. However, these events can occur on other computers in the  organization when local accounts are used to log on."
+    description: "This subcategory reports the results of validation tests on credentials submitted for a user account logon request. These events occur on the computer that is authoritative for the credentials. For domain accounts, the Domain Controller is authoritative, whereas for local accounts, the local computer is authoritative. In domain environments, most of the Account Logon events occur in the Security log of the Domain Controllers that are authoritative for the domain accounts. However, these events can occur on other computers in the organization when local accounts are used to log on."
     rationale: "Auditing these events may be useful when investigating a security incident"
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Account Logon\\Audit Credential  Validation"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Success and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Account Logon\\Audit Credential Validation"
     compliance:
       - cis: ["17.1.1"]
     condition: all
@@ -2340,9 +2340,9 @@ checks:
 
   - id: 15146
     title: "Ensure 'Audit Application Group Management' is set to 'Success and Failure'"
-    description: "This policy setting allows you to audit events generated by changes to application groups  such as the following: -Application group is created, changed, or deleted. -Member is added or removed from an application group. Application groups are utilized by Windows Authorization Manager, which is a flexible  framework created by Microsoft for integrating role-based access control (RBAC) into  applications. More information on Windows Authorization Manager is available at MSDN - Windows Authorization Manager."
+    description: "This policy setting allows you to audit events generated by changes to application groups such as the following: -Application group is created, changed, or deleted. -Member is added or removed from an application group. Application groups are utilized by Windows Authorization Manager, which is a flexible framework created by Microsoft for integrating role-based access control (RBAC) into applications. More information on Windows Authorization Manager is available at MSDN - Windows Authorization Manager."
     rationale: "Auditing events in this category may be useful when investigating an incident."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Account Management\\Audit  Application Group Management"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Success and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Account Management\\Audit Application Group Management"
     compliance:
       - cis: ["17.2.1"]
       - cis_csc: ["8.5"]
@@ -2352,9 +2352,9 @@ checks:
 
   - id: 15147
     title: "Ensure 'Audit Security Group Management' is set to include 'Success'"
-    description: "This subcategory reports each event of security group management, such as when a  security group is created, changed, or deleted or when a member is added to or removed  from a security group. If you enable this Audit policy setting, administrators can track  events to detect malicious, accidental, and authorized creation of security group accounts."
+    description: "This subcategory reports each event of security group management, such as when a security group is created, changed, or deleted or when a member is added to or removed from a security group. If you enable this Audit policy setting, administrators can track events to detect malicious, accidental, and authorized creation of security group accounts."
     rationale: "Auditing events in this category may be useful when investigating an incident."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Account Management\\Audit Security  Group Management"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Account Management\\Audit Security Group Management"
     compliance:
       - cis: ["17.2.2"]
       - cis_csc: ["8.5"]
@@ -2364,9 +2364,9 @@ checks:
 
   - id: 15148
     title: "Ensure 'Audit User Account Management' is set to 'Success and Failure'"
-    description: "This subcategory reports each event of user account management, such as when a user  account is created, changed, or deleted; a user account is renamed, disabled, or enabled; or  a password is set or changed. If you enable this Audit policy setting, administrators can  track events to detect malicious, accidental, and authorized creation of user accounts."
+    description: "This subcategory reports each event of user account management, such as when a user account is created, changed, or deleted; a user account is renamed, disabled, or enabled; or a password is set or changed. If you enable this Audit policy setting, administrators can track events to detect malicious, accidental, and authorized creation of user accounts."
     rationale: "Auditing these events may be useful when investigating a security incident."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Account Management\\Audit User  Account Management"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Success and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Account Management\\Audit User Account Management"
     compliance:
       - cis: ["17.2.3"]
       - cis_csc: ["8.5"]
@@ -2378,7 +2378,7 @@ checks:
     title: "Ensure 'Audit PNP Activity' is set to include 'Success'"
     description: "This policy setting allows you to audit when plug and play detects an external device."
     rationale: "Enabling this setting will allow a user to audit events when a device is plugged into a system. This can help alert IT staff if unapproved devices are plugged in."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Detailed Tracking\\Audit PNP  Activity"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Detailed Tracking\\Audit PNP Activity"
     compliance:
       - cis: ["17.3.1"]
       - cis_csc: ["8.5"]
@@ -2390,7 +2390,7 @@ checks:
     title: "Ensure 'Audit Process Creation' is set to include 'Success'"
     description: "This subcategory reports the creation of a process and the name of the program or user that created it."
     rationale: "Auditing these events may be useful when investigating a security incident."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Detailed Tracking\\Audit Process  Creation"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Detailed Tracking\\Audit Process Creation"
     compliance:
       - cis: ["17.3.2"]
       - cis_csc: ["8.5"]
@@ -2402,7 +2402,7 @@ checks:
     title: "Ensure 'Audit Account Lockout' is set to include 'Failure'"
     description: "This subcategory reports when a user's account is locked out as a result of too many failed logon attempts."
     rationale: "Auditing these events may be useful when investigating a security incident."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Logon/Logoff\\Audit Account Lockout"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Logon/Logoff\\Audit Account Lockout"
     compliance:
       - cis: ["17.5.1"]
       - cis_csc: ["8.5"]
@@ -2412,9 +2412,9 @@ checks:
 
   - id: 15152
     title: "Ensure 'Audit Group Membership' is set to include 'Success'"
-    description: "This policy allows you to audit the group membership information in the user’s logon  token. Events in this subcategory are generated on the computer on which a logon session  is created. For an interactive logon, the security audit event is generated on the computer  that the user logged on to. For a network logon, such as accessing a shared folder on the  network, the security audit event is generated on the computer hosting the resource."
+    description: "This policy allows you to audit the group membership information in the user’s logon token. Events in this subcategory are generated on the computer on which a logon session is created. For an interactive logon, the security audit event is generated on the computer that the user logged on to. For a network logon, such as accessing a shared folder on the network, the security audit event is generated on the computer hosting the resource."
     rationale: "Auditing these events may be useful when investigating a security incident."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Logon/Logoff\\Audit Group Membership"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Logon/Logoff\\Audit Group Membership"
     compliance:
       - cis: ["17.5.2"]
     condition: all
@@ -2423,9 +2423,9 @@ checks:
 
   - id: 15153
     title: "Ensure 'Audit Logoff' is set to include 'Success'"
-    description: "This subcategory reports when a user logs off from the system. These events occur on the  accessed computer. For interactive logons, the generation of these events occurs on the  computer that is logged on to. If a network logon takes place to access a share, these events  generate on the computer that hosts the accessed resource. If you configure this setting to  No auditing, it is difficult or impossible to determine which user has accessed or attempted  to access organization computers."
+    description: "This subcategory reports when a user logs off from the system. These events occur on the accessed computer. For interactive logons, the generation of these events occurs on the computer that is logged on to. If a network logon takes place to access a share, these events generate on the computer that hosts the accessed resource. If you configure this setting to No auditing, it is difficult or impossible to determine which user has accessed or attempted to access organization computers."
     rationale: "Auditing these events may be useful when investigating a security incident."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Logon/Logoff\\Audit Logoff"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Logon/Logoff\\Audit Logoff"
     compliance:
       - cis: ["17.5.3"]
       - cis_csc: ["8.5"]
@@ -2435,9 +2435,9 @@ checks:
 
   - id: 15154
     title: "Ensure 'Audit Logon' is set to 'Success and Failure'"
-    description: "This subcategory reports when a user attempts to log on to the system. These events occur  on the accessed computer. For interactive logons, the generation of these events occurs on  the computer that is logged on to. If a network logon takes place to access a share, these  events generate on the computer that hosts the accessed resource. If you configure this  setting to No auditing, it is difficult or impossible to determine which user has accessed or  attempted to access organization computers."
+    description: "This subcategory reports when a user attempts to log on to the system. These events occur on the accessed computer. For interactive logons, the generation of these events occurs on the computer that is logged on to. If a network logon takes place to access a share, these events generate on the computer that hosts the accessed resource. If you configure this setting to No auditing, it is difficult or impossible to determine which user has accessed or attempted to access organization computers."
     rationale: "Auditing these events may be useful when investigating a security incident."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Logon/Logoff\\Audit Logon"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Success and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Logon/Logoff\\Audit Logon"
     compliance:
       - cis: ["17.5.4"]
       - cis_csc: ["8.5"]
@@ -2447,9 +2447,9 @@ checks:
 
   - id: 15155
     title: "Ensure 'Audit Other Logon/Logoff Events' is set to 'Success and Failure'"
-    description: "This subcategory reports other logon/logoff-related events, such as Remote Desktop  Services session disconnects and reconnects, using RunAs to run processes under a  different account, and locking and unlocking a workstation."
+    description: "This subcategory reports other logon/logoff-related events, such as Remote Desktop Services session disconnects and reconnects, using RunAs to run processes under a different account, and locking and unlocking a workstation."
     rationale: "Auditing these events may be useful when investigating a security incident."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Logon/Logoff\\Audit Other  Logon/Logoff Events "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Success and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Logon/Logoff\\Audit Other Logon/Logoff Events "
     compliance:
       - cis: ["17.5.5"]
       - cis_csc: ["8.5"]
@@ -2459,9 +2459,9 @@ checks:
 
   - id: 15156
     title: "Ensure 'Audit Special Logon' is set to include 'Success'"
-    description: "This subcategory reports when a special logon is used. A special logon is a logon that has  administrator-equivalent privileges and can be used to elevate a process to a higher level."
+    description: "This subcategory reports when a special logon is used. A special logon is a logon that has administrator-equivalent privileges and can be used to elevate a process to a higher level."
     rationale: "Auditing these events may be useful when investigating a security incident."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Logon/Logoff\\Audit Special Logon"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Logon/Logoff\\Audit Special Logon"
     compliance:
       - cis: ["17.5.6"]
       - cis_csc: ["8.5"]
@@ -2473,7 +2473,7 @@ checks:
     title: "Ensure 'Audit Detailed File Share' is set to include 'Failure'"
     description: "This subcategory allows you to audit attempts to access files and folders on a shared folder."
     rationale: "Auditing these events may be useful when investigating a security incident."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Object Access\\Audit Detailed File  Share"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Object Access\\Audit Detailed File Share"
     compliance:
       - cis: ["17.6.1"]
       - cis_csc: ["3.3", "8.5"]
@@ -2484,8 +2484,8 @@ checks:
   - id: 15158
     title: "Ensure 'Audit File Share' is set to 'Success and Failure'"
     description: "This policy setting allows you to audit attempts to access a shared folder."
-    rationale: "In an enterprise managed environment, workstations should have limited file sharing  activity, as file servers would normally handle the overall burden of file sharing activities.  Any unusual file sharing activity on workstations may therefore be useful in an  investigation of potentially malicious activity."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Object Access\\Audit File Share"
+    rationale: "In an enterprise managed environment, workstations should have limited file sharing activity, as file servers would normally handle the overall burden of file sharing activities.  Any unusual file sharing activity on workstations may therefore be useful in an investigation of potentially malicious activity."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Success and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Object Access\\Audit File Share"
     compliance:
       - cis: ["17.6.2"]
       - cis_csc: ["3.3", "8.5"]
@@ -2496,8 +2496,8 @@ checks:
   - id: 15159
     title: "Ensure 'Audit Other Object Access Events' is set to 'Success and Failure'"
     description: "This policy setting allows you to audit events generated by the management of task scheduler jobs or COM+ objects."
-    rationale: "The unexpected creation of scheduled tasks and COM+ objects could potentially be an  indication of malicious activity. Since these types of actions are generally low volume, it  may be useful to capture them in the audit logs for use during an investigation."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Object Access\\Audit Other Object  Access Events"
+    rationale: "The unexpected creation of scheduled tasks and COM+ objects could potentially be an indication of malicious activity. Since these types of actions are generally low volume, it may be useful to capture them in the audit logs for use during an investigation."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Success and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Object Access\\Audit Other Object Access Events"
     compliance:
       - cis: ["17.6.3"]
       - cis_csc: ["8.5"]
@@ -2507,9 +2507,9 @@ checks:
 
   - id: 15160
     title: "Ensure 'Audit Removable Storage' is set to 'Success and Failure'"
-    description: "This policy setting allows you to audit user attempts to access file system objects on a  removable storage device. A security audit event is generated only for all objects for all  types of access requested. If you configure this policy setting, an audit event is generated  each time an account accesses a file system object on a removable storage. Success audits  record successful attempts and Failure audits record unsuccessful attempts. If you do not  configure this policy setting, no audit event is generated when an account accesses a file  system object on a removable storage"
-    rationale: "Auditing removable storage may be useful when investigating an incident. For example, if  an individual is suspected of copying sensitive information onto a USB drive."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Object Access\\Audit Removable  Storage"
+    description: "This policy setting allows you to audit user attempts to access file system objects on a removable storage device. A security audit event is generated only for all objects for all types of access requested. If you configure this policy setting, an audit event is generated each time an account accesses a file system object on a removable storage. Success audits record successful attempts and Failure audits record unsuccessful attempts. If you do not configure this policy setting, no audit event is generated when an account accesses a file system object on a removable storage"
+    rationale: "Auditing removable storage may be useful when investigating an incident. For example, if an individual is suspected of copying sensitive information onto a USB drive."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Success and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Object Access\\Audit Removable Storage"
     compliance:
       - cis: ["17.6.4"]
       - cis_csc: ["8.5"]
@@ -2521,7 +2521,7 @@ checks:
     title: "Ensure 'Audit Audit Policy Change' is set to include 'Success'"
     description: "This subcategory reports changes in audit policy including SACL changes"
     rationale: "Auditing these events may be useful when investigating a security incident."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Policy Change\\Audit Audit Policy  Change "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Policy Change\\Audit Audit Policy Change "
     compliance:
       - cis: ["17.7.1"]
       - cis_csc: ["8.5"]
@@ -2533,7 +2533,7 @@ checks:
     title: "Ensure 'Audit Authentication Policy Change' is set to include 'Success'"
     description: "This subcategory reports changes in authentication policy."
     rationale: "Auditing these events may be useful when investigating a security incident."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Policy Change\\Audit Authentication  Policy Change"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Policy Change\\Audit Authentication Policy Change"
     compliance:
       - cis: ["17.7.2"]
       - cis_csc: ["8.5"]
@@ -2545,7 +2545,7 @@ checks:
     title: "Ensure 'Audit Authorization Policy Change' is set to include 'Success'"
     description: "This subcategory reports changes in authorization policy."
     rationale: "Auditing these events may be useful when investigating a security incident."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Policy Change\\Audit Authorization  Policy Change"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Policy Change\\Audit Authorization Policy Change"
     compliance:
       - cis: ["17.7.3"]
       - cis_csc: ["8.5"]
@@ -2555,9 +2555,9 @@ checks:
 
   - id: 15164
     title: "Ensure 'Audit MPSSVC Rule-Level Policy Change' is set to 'Success and Failure'"
-    description: "This subcategory determines whether the operating system generates audit events when  changes are made to policy rules for the Microsoft Protection Service (MPSSVC.exe)."
-    rationale: "Changes to firewall rules are important for understanding the security state of the  computer and how well it is protected against network attacks."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Policy Change\\Audit MPSSVC Rule-Level Policy Change"
+    description: "This subcategory determines whether the operating system generates audit events when changes are made to policy rules for the Microsoft Protection Service (MPSSVC.exe)."
+    rationale: "Changes to firewall rules are important for understanding the security state of the computer and how well it is protected against network attacks."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Success and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Policy Change\\Audit MPSSVC Rule-Level Policy Change"
     compliance:
       - cis: ["17.7.4"]
       - cis_csc: ["8.5"]
@@ -2567,9 +2567,9 @@ checks:
 
   - id: 15165
     title: "Ensure 'Audit Other Policy Change Events' is set to include 'Failure'"
-    description: "This subcategory contains events about EFS Data Recovery Agent policy changes, changes  in Windows Filtering Platform filter, status on Security policy settings updates for local  Group Policy settings, Central Access Policy changes, and detailed troubleshooting events  for Cryptographic Next Generation (CNG) operations."
+    description: "This subcategory contains events about EFS Data Recovery Agent policy changes, changes in Windows Filtering Platform filter, status on Security policy settings updates for local Group Policy settings, Central Access Policy changes, and detailed troubleshooting events for Cryptographic Next Generation (CNG) operations."
     rationale: "This setting can help detect errors in applied Security settings which came from Group Policy, and failure events related to Cryptographic Next Generation (CNG) functions."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\Policy Change\\Audit Other Policy  Change Events"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Policy Change\\Audit Other Policy Change Events"
     compliance:
       - cis: ["17.7.5"]
       - cis_csc: ["8.5"]
@@ -2591,9 +2591,9 @@ checks:
 
   - id: 15167
     title: "Ensure 'Audit IPsec Driver' is set to 'Success and Failure'"
-    description: "This subcategory reports on the activities of the Internet Protocol security (IPsec) driver.  Events for this subcategory include: - 4960: IPsec dropped an inbound packet that failed an integrity check. If this  problem persists, it could indicate a network issue or that packets are being  modified in transit to this computer. Verify that the packets sent from the remote  computer are the same as those received by this computer. This error might also  indicate interoperability problems with other IPsec implementations. - 4961: IPsec dropped an inbound packet that failed a replay check. If this problem  persists, it could indicate a replay attack against this computer. - 4962: IPsec dropped an inbound packet that failed a replay check. The inbound  packet had too low a sequence number to ensure it was not a replay. - 4963: IPsec dropped an inbound clear text packet that should have been secured.  This is usually due to the remote computer changing its IPsec policy without  informing this computer. This could also be a spoofing attack attempt. - 4965: IPsec received a packet from a remote computer with an incorrect Security  Parameter Index (SPI). This is usually caused by malfunctioning hardware that is  corrupting packets. If these errors persist, verify that the packets sent from the  remote computer are the same as those received by this computer. This error may  also indicate interoperability problems with other IPsec implementations. In that  case, if connectivity is not impeded, then these events can be ignored. - 5478: IPsec Services has started successfully. - 5479: IPsec Services has been shut down successfully. The shutdown of IPsec  Services can put the computer at greater risk of network attack or expose the  computer to potential security risks. - 5480: IPsec Services failed to get the complete list of network interfaces on the  computer. This poses a potential security risk because some of the network interfaces may not get the protection provided by the applied IPsec filters. Use the  IP Security Monitor snap-in to diagnose the problem. - 5483: IPsec Services failed to initialize RPC server. IPsec Services could not be  started.- 5484: IPsec Services has experienced a critical failure and has been shut down. The  shutdown of IPsec Services can put the computer at greater risk of network attack  or expose the computer to potential security risks. - 5485: IPsec Services failed to process some IPsec filters on a plug-and-play event for  network interfaces. This poses a potential security risk because some of the network  interfaces may not get the protection provided by the applied IPsec filters. Use the  IP Security Monitor snap-in to diagnose the problem. The recommended state for this setting is: Success and Failure. "
+    description: "This subcategory reports on the activities of the Internet Protocol security (IPsec) driver.  Events for this subcategory include: - 4960: IPsec dropped an inbound packet that failed an integrity check. If this problem persists, it could indicate a network issue or that packets are being modified in transit to this computer. Verify that the packets sent from the remote computer are the same as those received by this computer. This error might also indicate interoperability problems with other IPsec implementations. - 4961: IPsec dropped an inbound packet that failed a replay check. If this problem persists, it could indicate a replay attack against this computer. - 4962: IPsec dropped an inbound packet that failed a replay check. The inbound packet had too low a sequence number to ensure it was not a replay. - 4963: IPsec dropped an inbound clear text packet that should have been secured.  This is usually due to the remote computer changing its IPsec policy without informing this computer. This could also be a spoofing attack attempt. - 4965: IPsec received a packet from a remote computer with an incorrect Security Parameter Index (SPI). This is usually caused by malfunctioning hardware that is corrupting packets. If these errors persist, verify that the packets sent from the remote computer are the same as those received by this computer. This error may also indicate interoperability problems with other IPsec implementations. In that case, if connectivity is not impeded, then these events can be ignored. - 5478: IPsec Services has started successfully. - 5479: IPsec Services has been shut down successfully. The shutdown of IPsec Services can put the computer at greater risk of network attack or expose the computer to potential security risks. - 5480: IPsec Services failed to get the complete list of network interfaces on the computer. This poses a potential security risk because some of the network interfaces may not get the protection provided by the applied IPsec filters. Use the IP Security Monitor snap-in to diagnose the problem. - 5483: IPsec Services failed to initialize RPC server. IPsec Services could not be started.- 5484: IPsec Services has experienced a critical failure and has been shut down. The shutdown of IPsec Services can put the computer at greater risk of network attack or expose the computer to potential security risks. - 5485: IPsec Services failed to process some IPsec filters on a plug-and-play event for network interfaces. This poses a potential security risk because some of the network interfaces may not get the protection provided by the applied IPsec filters. Use the IP Security Monitor snap-in to diagnose the problem. The recommended state for this setting is: Success and Failure. "
     rationale: "Auditing these events may be useful when investigating a security incident. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\System\\Audit IPsec Driver "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Success and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\System\\Audit IPsec Driver "
     compliance:
       - cis: ["17.9.1"]
       - cis_csc: ["6.3", "6.4", "6.5"]
@@ -2603,9 +2603,9 @@ checks:
 
   - id: 15168
     title: "Ensure 'Audit Other System Events' is set to 'Success and Failure'"
-    description: "This subcategory reports on other system events. Events for this subcategory include: - 5024 : The Windows Firewall Service has started successfully. - 5025 : The Windows Firewall Service has been stopped. - 5027 : The Windows Firewall Service was unable to retrieve the security policy  from the local storage. The service will continue enforcing the current policy. - 5028 : The Windows Firewall Service was unable to parse the new security policy.  The service will continue with currently enforced policy. - 5029: The Windows Firewall Service failed to initialize the driver. The service will  continue to enforce the current policy. - 5030: The Windows Firewall Service failed to start. - 5032: Windows Firewall was unable to notify the user that it blocked an application  from accepting incoming connections on the network. - 5033 : The Windows Firewall Driver has started successfully. - 5034 : The Windows Firewall Driver has been stopped. - 5035 : The Windows Firewall Driver failed to start. - 5037 : The Windows Firewall Driver detected critical runtime error. Terminating. - 5058: Key file operation. - 5059: Key migration operation. The recommended state for this setting is: Success and Failure. "
-    rationale: "Capturing these audit events may be useful for identifying when the Windows Firewall is  not performing as expected."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\System\\Audit Other System Events "
+    description: "This subcategory reports on other system events. Events for this subcategory include: - 5024 : The Windows Firewall Service has started successfully. - 5025 : The Windows Firewall Service has been stopped. - 5027 : The Windows Firewall Service was unable to retrieve the security policy from the local storage. The service will continue enforcing the current policy. - 5028 : The Windows Firewall Service was unable to parse the new security policy.  The service will continue with currently enforced policy. - 5029: The Windows Firewall Service failed to initialize the driver. The service will continue to enforce the current policy. - 5030: The Windows Firewall Service failed to start. - 5032: Windows Firewall was unable to notify the user that it blocked an application from accepting incoming connections on the network. - 5033 : The Windows Firewall Driver has started successfully. - 5034 : The Windows Firewall Driver has been stopped. - 5035 : The Windows Firewall Driver failed to start. - 5037 : The Windows Firewall Driver detected critical runtime error. Terminating. - 5058: Key file operation. - 5059: Key migration operation. The recommended state for this setting is: Success and Failure. "
+    rationale: "Capturing these audit events may be useful for identifying when the Windows Firewall is not performing as expected."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Success and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\System\\Audit Other System Events "
     compliance:
       - cis: ["17.9.2"]
       - cis_csc: ["8.5"]
@@ -2615,9 +2615,9 @@ checks:
 
   - id: 15169
     title: "Ensure 'Audit Security State Change' is set to include 'Success'"
-    description: "This subcategory reports changes in security state of the system, such as when the security  subsystem starts and stops. Events for this subcategory include: - 4608: Windows is starting up. - 4609: Windows is shutting down. - 4616: The system time was changed. - 4621: Administrator recovered system from CrashOnAuditFail. Users who are not  administrators will now be allowed to log on. Some audit-able activity might not  have been recorded. The recommended state for this setting is to include: Success. "
+    description: "This subcategory reports changes in security state of the system, such as when the security subsystem starts and stops. Events for this subcategory include: - 4608: Windows is starting up. - 4609: Windows is shutting down. - 4616: The system time was changed. - 4621: Administrator recovered system from CrashOnAuditFail. Users who are not administrators will now be allowed to log on. Some audit-able activity might not have been recorded. The recommended state for this setting is to include: Success. "
     rationale: "Auditing these events may be useful when investigating a security incident. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\System\\Audit Security State Change "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\System\\Audit Security State Change "
     compliance:
       - cis: ["17.9.3"]
       - cis_csc: ["8.5"]
@@ -2627,9 +2627,9 @@ checks:
 
   - id: 15170
     title: "Ensure 'Audit Security System Extension' is set to include 'Success'"
-    description: "This subcategory reports the loading of extension code such as authentication packages by  the security subsystem. Events for this subcategory include: - 4610: An authentication package has been loaded by the Local Security Authority. - 4611: A trusted logon process has been registered with the Local Security Authority. - 4614: A notification package has been loaded by the Security Account Manager. - 4622: A security package has been loaded by the Local Security Authority. - 4697: A service was installed in the system. The recommended state for this setting is to include: Success. "
+    description: "This subcategory reports the loading of extension code such as authentication packages by the security subsystem. Events for this subcategory include: - 4610: An authentication package has been loaded by the Local Security Authority. - 4611: A trusted logon process has been registered with the Local Security Authority. - 4614: A notification package has been loaded by the Security Account Manager. - 4622: A security package has been loaded by the Local Security Authority. - 4697: A service was installed in the system. The recommended state for this setting is to include: Success. "
     rationale: "Auditing these events may be useful when investigating a security incident. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to include  Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\System\\Audit Security System  Extension "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to include Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\System\\Audit Security System Extension "
     compliance:
       - cis: ["17.9.4"]
       - cis_csc: ["8.5"]
@@ -2639,9 +2639,9 @@ checks:
 
   - id: 15171
     title: "Ensure 'Audit System Integrity' is set to 'Success and Failure'"
-    description: "This subcategory reports on violations of integrity of the security subsystem. Events for  this subcategory include: - 4612 : Internal resources allocated for the queuing of audit messages have been  exhausted, leading to the loss of some audits. - 4615 : Invalid use of LPC port. - 4618 : A monitored security event pattern has occurred. - 4816 : RPC detected an integrity violation while decrypting an incoming message. - 5038 : Code integrity determined that the image hash of a file is not valid. The file  could be corrupt due to unauthorized modification or the invalid hash could indicate  a potential disk device error. - 5056: A cryptographic self test was performed. - 5057: A cryptographic primitive operation failed. - 5060: Verification operation failed. - 5061: Cryptographic operation. - 5062: A kernel-mode cryptographic self test was performed. The recommended state for this setting is: Success and Failure. "
+    description: "This subcategory reports on violations of integrity of the security subsystem. Events for this subcategory include: - 4612 : Internal resources allocated for the queuing of audit messages have been exhausted, leading to the loss of some audits. - 4615 : Invalid use of LPC port. - 4618 : A monitored security event pattern has occurred. - 4816 : RPC detected an integrity violation while decrypting an incoming message. - 5038 : Code integrity determined that the image hash of a file is not valid. The file could be corrupt due to unauthorized modification or the invalid hash could indicate a potential disk device error. - 5056: A cryptographic self test was performed. - 5057: A cryptographic primitive operation failed. - 5060: Verification operation failed. - 5061: Cryptographic operation. - 5062: A kernel-mode cryptographic self test was performed. The recommended state for this setting is: Success and Failure. "
     rationale: "Auditing these events may be useful when investigating a security incident. "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Success  and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced  Audit Policy Configuration\\Audit Policies\\System\\Audit System Integrity "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Success and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\System\\Audit System Integrity "
     compliance:
       - cis: ["17.9.5"]
       - cis_csc: ["8.5"]
@@ -3478,9 +3478,9 @@ checks:
 
   - id: 15226
     title: "Ensure 'Turn On Virtualization Based Security' is set to 'Enabled'"
-    description: "This policy setting specifies whether Virtualization Based Security is enabled. Virtualization  Based Security uses the Windows Hypervisor to provide support for security services. The recommended state for this setting is: Enabled. Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot  enabled, which in turn requires that Windows was installed with a UEFI BIOS  configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual  machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be  exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows  Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using  Azure IaaS VMs."
-    rationale: "Kerberos, NTLM, and Credential manager isolate secrets by using virtualization-based  security. Previous versions of Windows stored secrets in the Local Security Authority  (LSA). Prior to Windows 10, the LSA stored secrets used by the operating system in its  process memory. With Windows Defender Credential Guard enabled, the LSA process in  the operating system talks to a new component called the isolated LSA process that stores  and protects those secrets. Data stored by the isolated LSA process is protected using  virtualization-based security and is not accessible to the rest of the operating system."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Device  Guard\\Turn On Virtualization Based Security Note: This Group Policy path may not exist by default. It is provided by the Group Policy  template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 RTM  (Release 1507) Administrative Templates (or newer). "
+    description: "This policy setting specifies whether Virtualization Based Security is enabled. Virtualization Based Security uses the Windows Hypervisor to provide support for security services. The recommended state for this setting is: Enabled. Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot enabled, which in turn requires that Windows was installed with a UEFI BIOS configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using Azure IaaS VMs."
+    rationale: "Kerberos, NTLM, and Credential manager isolate secrets by using virtualization-based security. Previous versions of Windows stored secrets in the Local Security Authority  (LSA). Prior to Windows 10, the LSA stored secrets used by the operating system in its process memory. With Windows Defender Credential Guard enabled, the LSA process in the operating system talks to a new component called the isolated LSA process that stores and protects those secrets. Data stored by the isolated LSA process is protected using virtualization-based security and is not accessible to the rest of the operating system."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Device Guard\\Turn On Virtualization Based Security Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 RTM  (Release 1507) Administrative Templates (or newer). "
     compliance:
       - cis: ["18.8.5.1"]
       - cis_csc: ["16.4"]
@@ -3490,9 +3490,9 @@ checks:
 
   - id: 15227
     title: "Ensure 'Turn On Virtualization Based Security: Select Platform Security Level' is set to 'Secure Boot and DMA Protection'"
-    description: "This policy setting specifies whether Virtualization Based Security is enabled. Virtualization  Based Security uses the Windows Hypervisor to provide support for security services. The recommended state for this setting is: Secure Boot and DMA Protection. Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot  enabled, which in turn requires that Windows was installed with a UEFI BIOS  configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual  machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be  exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows  Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using  Azure IaaS VMs."
-    rationale: "Secure Boot can help reduce the risk of bootloader attacks and in conjunction with DMA  protections to help protect data from being scraped from memory."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Secure  Boot and DMA Protection: Computer Configuration\\Policies\\Administrative Templates\\System\\Device  Guard\\Turn On Virtualization Based Security: Select Platform Security Level Note: This Group Policy path may not exist by default. It is provided by the Group Policy  template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 RTM  (Release 1507) Administrative Templates (or newer). "
+    description: "This policy setting specifies whether Virtualization Based Security is enabled. Virtualization Based Security uses the Windows Hypervisor to provide support for security services. The recommended state for this setting is: Secure Boot and DMA Protection. Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot enabled, which in turn requires that Windows was installed with a UEFI BIOS configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using Azure IaaS VMs."
+    rationale: "Secure Boot can help reduce the risk of bootloader attacks and in conjunction with DMA protections to help protect data from being scraped from memory."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Secure Boot and DMA Protection: Computer Configuration\\Policies\\Administrative Templates\\System\\Device Guard\\Turn On Virtualization Based Security: Select Platform Security Level Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 RTM  (Release 1507) Administrative Templates (or newer). "
     compliance:
       - cis: ["18.8.5.2"]
       - cis_csc: ["16.4"]
@@ -3502,9 +3502,9 @@ checks:
 
   - id: 15228
     title: "Ensure 'Turn On Virtualization Based Security: Virtualization Based Protection of Code Integrity' is set to 'Enabled with UEFI lock'"
-    description: "This setting enables virtualization based protection of Kernel Mode Code Integrity. When  this is enabled, kernel mode memory protections are enforced and the Code Integrity  validation path is protected by the Virtualization Based Security feature. The recommended state for this setting is: Enabled with UEFI lock. Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot  enabled, which in turn requires that Windows was installed with a UEFI BIOS  configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual  machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be  exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows  Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using  Azure IaaS VMs. "
-    rationale: "The Enabled with UEFI lock option ensures that Virtualization Based Protection of Code  Integrity cannot be disabled remotely.  "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled  with UEFI lock: Computer Configuration\\Policies\\Administrative Templates\\System\\Device  Guard\\Turn On Virtualization Based Security: Virtualization Based Protection  of Code Integrity Note: This Group Policy path may not exist by default. It is provided by the Group Policy  template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 RTM  (Release 1507) Administrative Templates (or newer). "
+    description: "This setting enables virtualization based protection of Kernel Mode Code Integrity. When this is enabled, kernel mode memory protections are enforced and the Code Integrity validation path is protected by the Virtualization Based Security feature. The recommended state for this setting is: Enabled with UEFI lock. Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot enabled, which in turn requires that Windows was installed with a UEFI BIOS configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using Azure IaaS VMs. "
+    rationale: "The Enabled with UEFI lock option ensures that Virtualization Based Protection of Code Integrity cannot be disabled remotely.  "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled with UEFI lock: Computer Configuration\\Policies\\Administrative Templates\\System\\Device Guard\\Turn On Virtualization Based Security: Virtualization Based Protection of Code Integrity Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 RTM  (Release 1507) Administrative Templates (or newer). "
     compliance:
       - cis: ["18.8.5.3"]
       - cis_csc: ["5.1"]
@@ -3514,9 +3514,9 @@ checks:
 
   - id: 15229
     title: "Ensure 'Turn On Virtualization Based Security: Require UEFIMemory Attributes Table' is set to 'True (checked)'"
-    description: "This option will only enable Virtualization Based Protection of Code Integrity on devices  with UEFI firmware support for the Memory Attributes Table. Devices without the UEFI  Memory Attributes Table may have firmware that is incompatible with Virtualization  Based Protection of Code Integrity which in some cases can lead to crashes or data loss or  incompatibility with certain plug-in cards. If not setting this option the targeted devices  should be tested to ensure compatibility. The recommended state for this setting is: True (checked). Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot  enabled, which in turn requires that Windows was installed with a UEFI BIOS  configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual  machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be  exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows  Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using  Azure IaaS VMs. "
-    rationale: "This setting will help protect this control from being enabled on a system that is not  compatible which could lead to a crash or data loss.  "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to TRUE: Computer Configuration\\Policies\\Administrative Templates\\System\\Device  Guard\\Turn On Virtualization Based Security: Require UEFI Memory Attributes  Table Note: This Group Policy path may not exist by default. It is provided by the Group Policy  template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 Release  1703 Administrative Templates (or newer). "
+    description: "This option will only enable Virtualization Based Protection of Code Integrity on devices with UEFI firmware support for the Memory Attributes Table. Devices without the UEFI Memory Attributes Table may have firmware that is incompatible with Virtualization Based Protection of Code Integrity which in some cases can lead to crashes or data loss or incompatibility with certain plug-in cards. If not setting this option the targeted devices should be tested to ensure compatibility. The recommended state for this setting is: True (checked). Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot enabled, which in turn requires that Windows was installed with a UEFI BIOS configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using Azure IaaS VMs. "
+    rationale: "This setting will help protect this control from being enabled on a system that is not compatible which could lead to a crash or data loss.  "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to TRUE: Computer Configuration\\Policies\\Administrative Templates\\System\\Device Guard\\Turn On Virtualization Based Security: Require UEFI Memory Attributes Table Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 Release  1703 Administrative Templates (or newer). "
     compliance:
       - cis: ["18.8.5.4"]
       - cis_csc: ["5.1"]
@@ -3526,9 +3526,9 @@ checks:
 
   - id: 15230
     title: "Ensure 'Turn On Virtualization Based Security: Credential Guard Configuration' is set to 'Enabled with UEFI lock'"
-    description: "This setting lets users turn on Credential Guard with virtualization-based security to help  protect credentials. The Enabled with UEFI lock option ensures that Credential Guard  cannot be disabled remotely. In order to disable the feature, you must set the Group Policy  to Disabled as well as remove the security functionality from each computer, with a  physically present user, in order to clear configuration persisted in UEFI. The recommended state for this setting is: Enabled with UEFI lock. Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot  enabled, which in turn requires that Windows was installed with a UEFI BIOS  configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual  machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be  exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows  Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using  Azure IaaS VMs."
-    rationale: "The Enabled with UEFI lock option ensures that Credential Guard cannot be disabled  remotely.  "
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled  with UEFI lock: Computer Configuration\\Policies\\Administrative Templates\\System\\Device  Guard\\Turn On Virtualization Based Security: Credential Guard Configuration Note: This Group Policy path may not exist by default. It is provided by the Group Policy  template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 Release  1511 Administrative Templates (or newer). "
+    description: "This setting lets users turn on Credential Guard with virtualization-based security to help protect credentials. The Enabled with UEFI lock option ensures that Credential Guard cannot be disabled remotely. In order to disable the feature, you must set the Group Policy to Disabled as well as remove the security functionality from each computer, with a physically present user, in order to clear configuration persisted in UEFI. The recommended state for this setting is: Enabled with UEFI lock. Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot enabled, which in turn requires that Windows was installed with a UEFI BIOS configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using Azure IaaS VMs."
+    rationale: "The Enabled with UEFI lock option ensures that Credential Guard cannot be disabled remotely.  "
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled with UEFI lock: Computer Configuration\\Policies\\Administrative Templates\\System\\Device Guard\\Turn On Virtualization Based Security: Credential Guard Configuration Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 Release  1511 Administrative Templates (or newer). "
     compliance:
       - cis: ["18.8.5.5"]
       - cis_csc: ["9.2"]
