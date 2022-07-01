@@ -20,8 +20,9 @@ namespace bld = builder::internals::builders;
 
 TEST(opBuilderHelperStringLessThanEqual, Builds)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"s_lt"}, std::vector<std::string> {"value1"});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"s_lt"},
+                                 std::vector<std::string> {"value1"});
 
     ASSERT_NO_THROW(bld::opBuilderHelperStringLessThanEqual(tuple));
 }
@@ -34,7 +35,8 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_false)
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "value2"})");
 
-    auto op = bld::opBuilderHelperStringLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op =
+        bld::opBuilderHelperStringLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -49,7 +51,8 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_true)
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "value1"})");
 
-    auto op = bld::opBuilderHelperStringLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op =
+        bld::opBuilderHelperStringLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -64,7 +67,8 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_true)
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "value1"})");
 
-    auto op = bld::opBuilderHelperStringLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op =
+        bld::opBuilderHelperStringLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -80,7 +84,8 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_ref_false)
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "value2",
                                                    "otherfield": "value1"})");
 
-    auto op = bld::opBuilderHelperStringLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op =
+        bld::opBuilderHelperStringLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -96,7 +101,8 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_ref_true)
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "value1",
                                                    "otherfield": "value2"})");
 
-    auto op = bld::opBuilderHelperStringLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op =
+        bld::opBuilderHelperStringLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -112,7 +118,8 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_ref_true)
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "value1",
                                                    "otherfield": "value1"})");
 
-    auto op = bld::opBuilderHelperStringLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op =
+        bld::opBuilderHelperStringLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -136,7 +143,8 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_multilevel_false)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperStringLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op =
+        bld::opBuilderHelperStringLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -160,7 +168,8 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_multilevel_true)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperStringLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op =
+        bld::opBuilderHelperStringLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -184,7 +193,8 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_multilevel_true)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperStringLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op =
+        bld::opBuilderHelperStringLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -208,7 +218,8 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_multilevel_ref_fal
                     }
                     })");
 
-    auto op = bld::opBuilderHelperStringLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op =
+        bld::opBuilderHelperStringLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -232,7 +243,8 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_multilevel_ref_true)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperStringLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op =
+        bld::opBuilderHelperStringLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -256,7 +268,8 @@ TEST(opBuilderHelperStringLessThanEqual, Exec_less_than_equal_multilevel_ref_tru
                     }
                     })");
 
-    auto op = bld::opBuilderHelperStringLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op =
+        bld::opBuilderHelperStringLessThanEqual(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 

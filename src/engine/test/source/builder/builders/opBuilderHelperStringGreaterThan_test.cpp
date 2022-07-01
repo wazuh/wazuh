@@ -20,8 +20,9 @@ namespace bld = builder::internals::builders;
 
 TEST(opBuilderHelperStringGreaterThan, Builds)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"s_gt"}, std::vector<std::string> {"value1"});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"s_gt"},
+                                 std::vector<std::string> {"value1"});
 
     ASSERT_NO_THROW(bld::opBuilderHelperStringGreaterThan(tuple));
 }
@@ -34,7 +35,8 @@ TEST(opBuilderHelperStringGreaterThan, Exec_greater_than_false)
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "value1"})");
 
-    auto op = bld::opBuilderHelperStringGreaterThan(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op =
+        bld::opBuilderHelperStringGreaterThan(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -49,7 +51,8 @@ TEST(opBuilderHelperStringGreaterThan, Exec_greater_than_true)
 
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "value2"})");
 
-    auto op = bld::opBuilderHelperStringGreaterThan(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op =
+        bld::opBuilderHelperStringGreaterThan(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -65,7 +68,8 @@ TEST(opBuilderHelperStringGreaterThan, Exec_greater_than_ref_false)
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "value1",
                                                    "otherfield": "value2"})");
 
-    auto op = bld::opBuilderHelperStringGreaterThan(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op =
+        bld::opBuilderHelperStringGreaterThan(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -81,7 +85,8 @@ TEST(opBuilderHelperStringGreaterThan, Exec_greater_than_ref_true)
     auto event1 = std::make_shared<json::Json>(R"({"field2check": "value2",
                                                    "otherfield": "value1"})");
 
-    auto op = bld::opBuilderHelperStringGreaterThan(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op =
+        bld::opBuilderHelperStringGreaterThan(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -105,7 +110,8 @@ TEST(opBuilderHelperStringGreaterThan, Exec_greater_than_multilevel_false)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperStringGreaterThan(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op =
+        bld::opBuilderHelperStringGreaterThan(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -129,7 +135,8 @@ TEST(opBuilderHelperStringGreaterThan, Exec_greater_than_multilevel_true)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperStringGreaterThan(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op =
+        bld::opBuilderHelperStringGreaterThan(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -153,7 +160,8 @@ TEST(opBuilderHelperStringGreaterThan, Exec_greater_than_multilevel_ref_false)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperStringGreaterThan(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op =
+        bld::opBuilderHelperStringGreaterThan(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
@@ -177,7 +185,8 @@ TEST(opBuilderHelperStringGreaterThan, Exec_greater_than_multilevel_ref_true)
                     }
                     })");
 
-    auto op = bld::opBuilderHelperStringGreaterThan(tuple)->getPtr<Term<EngineOp>>()->getFn();
+    auto op =
+        bld::opBuilderHelperStringGreaterThan(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
     result::Result<Event> result = op(event1);
 
