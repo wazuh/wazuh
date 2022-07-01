@@ -20,8 +20,9 @@ namespace bld = builder::internals::builders;
 
 TEST(opBuilderHelperStringEqual, Builds)
 {
-    auto tuple = std::make_tuple(
-        std::string {"/field"}, std::string {"s_eq"}, std::vector<std::string> {"value1"});
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"s_eq"},
+                                 std::vector<std::string> {"value1"});
 
     ASSERT_NO_THROW(bld::opBuilderHelperStringEqual(tuple));
 }
