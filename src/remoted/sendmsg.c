@@ -73,7 +73,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
     int key_id;
     ssize_t msg_size;
     char crypt_msg[OS_MAXSTR + 1] = {0};
-    int retval = -1;
+    int retval = OS_INVALID;
     int error = 0;
 
     key_lock_read();
@@ -82,7 +82,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
     if (key_id < 0) {
         key_unlock();
         merror(AR_NOAGENT_ERROR, agent_id);
-        return (-1);
+        return OS_INVALID;
     }
 
     w_mutex_lock(&keys.keyentries[key_id]->mutex);
@@ -92,7 +92,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
         w_mutex_unlock(&keys.keyentries[key_id]->mutex);
         key_unlock();
         mdebug1(SEND_DISCON, keys.keyentries[key_id]->id);
-        return (-1);
+        return OS_INVALID;
     }
 
     w_mutex_unlock(&keys.keyentries[key_id]->mutex);
@@ -105,7 +105,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
         w_mutex_unlock(&keys.keyentries[key_id]->mutex);
         key_unlock();
         merror(SEC_ERROR);
-        return (-1);
+        return OS_INVALID;
     }
 
     crypt_msg[msg_size] = '\0';
@@ -116,7 +116,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
         /* UDP mode, send the message */
         bytes_sent = sendto(logr.udp_sock, crypt_msg, msg_size, 0, (struct sockaddr *)&keys.keyentries[key_id]->peer_info, logr.peer_size);
         error = errno;
-        retval = bytes_sent == msg_size ? 0 : -1;
+        retval = bytes_sent == msg_size ? OS_SUCCESS : OS_INVALID;
     } else if (keys.keyentries[key_id]->sock >= 0) {
         /* TCP mode, enqueue the message in the send buffer */
         if (retval = nb_queue(&netbuffer_send, keys.keyentries[key_id]->sock, crypt_msg, msg_size), !retval) {
@@ -129,7 +129,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
         w_mutex_unlock(&keys.keyentries[key_id]->mutex);
         key_unlock();
         mdebug1("Send operation cancelled due to closed socket.");
-        return -1;
+        return OS_INVALID;
     }
 
     /* Check UDP send result */
