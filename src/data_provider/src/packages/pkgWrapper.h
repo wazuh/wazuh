@@ -136,9 +136,8 @@ class PKGWrapper final : public IPackageWrapper
                             m_description = getValueFnc(line);
 
                             std::string vendor;
-                            const auto ret {Utils::findRegexInString(m_description, vendor, bundleIdRegex, 1)};
 
-                            if (ret)
+                            if (Utils::findRegexInString(m_description, vendor, bundleIdRegex, 1))
                             {
                                 m_vendor = vendor;
                             }
