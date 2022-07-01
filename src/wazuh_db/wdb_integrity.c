@@ -69,7 +69,7 @@ void wdbi_remove_by_pk(wdb_t *wdb, wdb_component_t component, const char *pk_val
 
     assert(component < sizeof(INDEXES) / sizeof(int));
 
-    if (wdb_stmt_cache(wdb, INDEXES[component]) == -1) {
+    if (wdb_stmt_cache(wdb, INDEXES[component]) == OS_INVALID) {
         mdebug1("Cannot cache statement");
         return;
     }
@@ -119,7 +119,7 @@ int wdb_calculate_stmt_checksum(wdb_t * wdb, sqlite3_stmt * stmt, wdb_component_
 
         char * checksum = (char *)sqlite3_column_text(stmt, 0);
 
-        if (checksum == 0) {
+        if (checksum == NULL) {
             mdebug1("DB(%s) has a NULL %s checksum.", wdb->id, COMPONENT_NAMES[component]);
             continue;
         }
