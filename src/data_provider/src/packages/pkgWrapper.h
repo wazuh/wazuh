@@ -28,8 +28,8 @@ class PKGWrapper final : public IPackageWrapper
 {
     public:
         explicit PKGWrapper(const PackageContext& ctx)
-            : m_format{"pkg"}
-            , m_architecture{UNKNOWN_VALUE}
+            : m_architecture{UNKNOWN_VALUE}
+            , m_format{"pkg"}
             , m_vendor{UNKNOWN_VALUE}
         {
             getPkgData(ctx.filePath + "/" + ctx.package + "/" + APP_INFO_PATH);
