@@ -4019,12 +4019,12 @@ checks:
 
   - id: 26266
     title: "Ensure 'Require a password when a computer wakes (on battery)' is set to 'Enabled'"
-    description: "Dictates whether or not Windows is allowed to use standby states when sleeping the computer."
-    rationale: "System sleep states (S1-S3) keep power to the RAM which may contain secrets, such as the BitLocker volume encryption key. An attacker finding a computer in sleep states (S1-S3) could directly attack the memory of the computer and gain access to the secrets through techniques such as RAM reminisce and direct memory access (DMA)."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Power Management\\Sleep Settings\\Allow standby states (S1-S3) when sleeping (on battery)"
+    description: "Specifies whether or not the user is prompted for a password when the system resumes from sleep. The recommended state for this setting is: Enabled."
+    rationale: "Specifies whether or not the user is prompted for a password when the system resumes from sleep. The recommended state for this setting is: Enabled."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Power  Management\\Sleep Settings\\Require a password when a computer wakes (on  battery)"
     compliance:
       - cis: ["18.8.34.6.5"]
-      - cis_csc: ["13.2", "13.6"]
+      - cis_csc: ["4.3"]
       - pci_dss: ["8.2"]
       - tsc: ["CC6.1"]
     references:
