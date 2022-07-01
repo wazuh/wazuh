@@ -118,6 +118,17 @@ target_link_libraries(fileOutput_test
 )
 gtest_discover_tests(fileOutput_test)
 
+# Operation Builder File Output test
+add_executable(opBuilderFileOutput_test
+  ${BUILDER_BUILDERS_TEST_SOURCE_DIR}/opBuilderFileOutput_test.cpp
+  ${BUILDER_BUILDERS_ENGINE_SOURCE_DIR}/opBuilderFileOutput.cpp
+)
+target_link_libraries(opBuilderFileOutput_test
+  gtest_main base
+)
+gtest_discover_tests(opBuilderFileOutput_test)
+
+
 # Register test
 add_executable(register_test
   ${BUILDER_TEST_SOURCE_DIR}/register_test.cpp
