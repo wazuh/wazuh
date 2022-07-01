@@ -39,6 +39,9 @@ class FimDBWinFixture : public ::testing::Test
         unsigned int mockIntervalSync;
         unsigned int mockMaxRowsFile;
         unsigned int mockMaxRowsReg;
+        unsigned int syncResponseTimeout;
+        unsigned int syncMaxInterval;
+        bool syncRegistryEnabled;
 
         void SetUp() override
         {
@@ -53,6 +56,9 @@ class FimDBWinFixture : public ::testing::Test
             mockIntervalSync = 1000;
             mockMaxRowsFile = 1000;
             mockMaxRowsReg = 1000;
+            syncResponseTimeout = 30;
+            syncMaxInterval = 2000;
+            syncRegistryEnabled = 1;
 
             std::function<void(const std::string&)> callbackSyncFileWrapper
             {
@@ -93,7 +99,10 @@ class FimDBWinFixture : public ::testing::Test
                            dbsyncHandler,
                            rsyncHandler,
                            mockMaxRowsFile,
-                           mockMaxRowsReg);
+                           syncResponseTimeout,
+                           syncMaxInterval,
+                           mockMaxRowsReg,
+                           syncRegistryEnabled);
         }
 
         void TearDown() override
@@ -114,6 +123,9 @@ class FimDBFixture : public ::testing::Test
         unsigned int mockIntervalSync;
         unsigned int mockMaxRowsFile;
         unsigned int mockMaxRowsReg;
+        unsigned int syncResponseTimeout;
+        unsigned int syncMaxInterval;
+        bool syncRegistryEnabled;
 
         void SetUp() override
         {
@@ -128,6 +140,9 @@ class FimDBFixture : public ::testing::Test
             mockIntervalSync = 1000;
             mockMaxRowsFile = 1000;
             mockMaxRowsReg = 1000;
+            syncResponseTimeout = 30;
+            syncMaxInterval = 2000;
+            syncRegistryEnabled = 1;
 
             std::function<void(const std::string&)> callbackSyncFileWrapper
             {
@@ -174,7 +189,10 @@ class FimDBFixture : public ::testing::Test
                            dbsyncHandler,
                            rsyncHandler,
                            mockMaxRowsFile,
-                           mockMaxRowsReg);
+                           syncResponseTimeout,
+                           syncMaxInterval,
+                           mockMaxRowsReg,
+                           syncRegistryEnabled);
         }
 
         void TearDown() override

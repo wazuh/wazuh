@@ -125,7 +125,7 @@ void FIMDB::runIntegrity()
             {
                 if ((std::time(nullptr) - m_timeLastSyncMsg) > m_syncResponseTimeout)
                 {
-                    if (m_syncSuccessful)
+                    if (m_syncSuccessful && currentSyncInterval > m_syncInterval)
                     {
                         currentSyncInterval = m_syncInterval;
 

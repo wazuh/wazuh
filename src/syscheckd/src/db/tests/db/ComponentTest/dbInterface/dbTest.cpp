@@ -38,6 +38,7 @@ const auto insertRegistryValueStatement = R"({
 )"_json;
 
 const auto minSyncInterval { 10 };
+const auto maxInterval { 600 };
 
 void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_json, void* user_data)
 {
@@ -222,6 +223,7 @@ TEST(DBTest, TestInvalidFimLimit)
                     mockLoggingFunction,
                     -1,
                     minSyncInterval,
+                    maxInterval,
                     -1,
                     true)
     };
@@ -244,6 +246,7 @@ TEST(DBTest, TestValidFimLimit)
                     mockLoggingFunction,
                     100,
                     minSyncInterval,
+                    maxInterval,
                     100000,
                     true)
     };
