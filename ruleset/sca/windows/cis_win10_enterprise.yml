@@ -30,7 +30,7 @@ checks:
   - id: 15000
     title: "Ensure 'Enforce password history' is set to '24 or more password(s)'"
     description: "This policy setting determines the number of renewed, unique passwords that have to be associated with a user account before you can reuse an old password. The value for this policy setting must be between 0 and 24 passwords. The default value for Windows Vista is 0 passwords, but the default setting in a domain is 24 passwords. To maintain the effectiveness of this policy setting, use the Minimum password age setting to prevent users from repeatedly changing their password.The recommended state for this setting is: 24 or more password(s)."
-    rationale: "The longer a user uses the same password, the greater the chance that an attacker can determine the password through brute force attacks. Also, any accounts that may have been compromised will remain exploitable for as long as the password is left unchanged. If password changes are required but password reuse is not prevented, or if users continually reuse a small number of passwords, the effectiveness of a good password policy is greatly reduced.If you specify a low number for this policy setting, users will be able to use the same small number of passwords repeatedly. If you do not also configure the Minimum password age setting, users might repeatedly change their passwords until they can reuse their original password."
+    rationale: "The longer a user uses the same password, the greater the chance that an attacker can determine the password through brute force attacks. Also, any accounts that may have been compromised will remain exploitable for as long as the password is left unchanged. If password changes are required but password reuse is not prevented, or if users continually reuse a small number of passwords, the effectiveness of a good password policy is greatly reduced. If you specify a low number for this policy setting, users will be able to use the same small number of passwords repeatedly. If you do not also configure the Minimum password age setting, users might repeatedly change their passwords until they can reuse their original password."
     remediation: "To establish the recommended configuration via GP, set the following UI path to 24 or more password(s):Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Password Policy\\Enforce password history"
     compliance:
       - cis: ["1.1.1"]
@@ -67,7 +67,7 @@ checks:
   - id: 15003
     title: "Ensure 'Minimum password length' is set to '14 or more character(s)'"
     description: "This policy setting determines the least number of characters that make up a password for a user account. There are many different theories about how to determine the best password length for an organization, but perhaps 'passphrase' is a better term than 'password.' In Microsoft Windows 2000 and newer, passphrases can be quite long and can include spaces. Therefore, a phrase such as 'I want to drink a $5 milkshake' is a valid passphrase; it is a considerably stronger password than an 8 or 10 character string of random numbers and letters, and yet is easier to remember. Users must be educated about the proper selection and maintenance of passwords, especially with regard to password length. In enterprise environments, the ideal value for the Minimum password length setting is 14 characters, however you should adjust this value to meet your organization's business requirements.The recommended state for this setting is: 14 or more character(s)."
-    rationale: "Types of password attacks include dictionary attacks (which attempt to use common words 'and phrases) and brute force attacks (which try every possible combination of characters). 'Also, attackers sometimes try to obtain the account database so they can use tools to 'discover the accounts and passwords."
+    rationale: "Types of password attacks include dictionary attacks (which attempt to use common words and phrases) and brute force attacks (which try every possible combination of characters). 'Also, attackers sometimes try to obtain the account database so they can use tools to 'discover the accounts and passwords."
     remediation: "To establish the recommended configuration via GP, set the following UI path to 14 or 'more character(s):'Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account 'Policies\\Password Policy\\Minimum password length'"
     compliance:
       - cis: ["1.1.4"]
@@ -185,7 +185,7 @@ checks:
   - id: 15012
     title: "Ensure 'Accounts: Limit local account use of blank passwords to console logon only' is set to 'Enabled'"
     description: "This policy setting determines whether local accounts that are not password protected can be used to log on from locations other than the physical computer console. If you enable this policy setting, local accounts that have blank passwords will not be able to log on to the network from remote client computers. Such accounts will only be able to log on at the keyboard of the computer. The recommended state for this setting is: Enabled."
-    rationale: "Blank passwords are a serious threat to computer security and should be forbidden through both organizational policy and suitable technical measures. In fact, the default settings for Active Directory domains require complex passwords of at least seven characters. However, if users with the ability to create new accounts bypass your domainbased password policies, they could create accounts with blank passwords. For example, a user could build a stand-alone computer, create one or more accounts with blank passwords, and then join the computer to the domain. The local accounts with blank passwords would still function. Anyone who knows the name of one of these unprotected accounts could then use it to log on."
+    rationale: "Blank passwords are a serious threat to computer security and should be forbidden through both organizational policy and suitable technical measures. In fact, the default settings for Active Directory domains require complex passwords of at least seven characters. However, if users with the ability to create new accounts bypass your domain-based password policies, they could create accounts with blank passwords. For example, a user could build a stand-alone computer, create one or more accounts with blank passwords, and then join the computer to the domain. The local accounts with blank passwords would still function. Anyone who knows the name of one of these unprotected accounts could then use it to log on."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Accounts: Limit local account use of blank passwords to console logon only"
     compliance:
       - cis: ["2.3.1.4"]
@@ -202,7 +202,7 @@ checks:
   - id: 15013
     title: "Configure 'Accounts: Rename administrator account'"
     description: "The built-in local administrator account is a well-known account name that attackers will target. It is recommended to choose another name for this account, and to avoid names that denote administrative or elevated access accounts. Be sure to also change the default description for the local administrator (through the Computer Management console)."
-    rationale: "The Administrator account exists on all computers that run the Windows 2000 or newer operating systems. If you rename this account, it is slightly more difficult for unauthorized persons to guess this privileged user name and password combination."
+    rationale: "The Administrator account exists on all computers that run the Windows 2000 or newer operating systems. If you rename this account, it is slightly more difficult for unauthorized persons to guess this privileged user name and password combination. The built-in Administrator account cannot be locked out, regardless of how many times an attacker might use a bad password. This capability makes the Administrator account a popular target for brute force attacks that attempt to guess passwords. The value of this countermeasure is lessened because this account has a well-known SID, and there are third-party tools that allow authentication by using the SID rather than the account name. Therefore, even if you rename the Administrator account, an attacker could launch a brute force attack by using the SID to log on."
     remediation: "To establish the recommended configuration via GP, configure the following UI path: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Accounts: Rename administrator account"
     compliance:
       - cis: ["2.3.1.5"]
@@ -404,7 +404,7 @@ checks:
   - id: 15025
     title: "Ensure 'Interactive logon: Do not require CTRL+ALT+DEL' is set to 'Disabled'"
     description: "This policy setting determines whether users must press CTRL+ALT+DEL before they log on. The recommended state for this setting is: Disabled."
-    rationale: "Microsoft developed this feature to make it easier for users with certain types of physical impairments to log on to computers that run Windows. If users are not required to press CTRL+ALT+DEL, they are susceptible to attacks that attempt to intercept their passwords. If CTRL+ALT+DEL is required before logon, user passwords are communicated by means of a trusted path."
+    rationale: "Microsoft developed this feature to make it easier for users with certain types of physical impairments to log on to computers that run Windows. If users are not required to press CTRL+ALT+DEL, they are susceptible to attacks that attempt to intercept their passwords. If CTRL+ALT+DEL is required before logon, user passwords are communicated by means of a trusted path. An attacker could install a Trojan horse program that looks like the standard Windows logon dialog box and capture the user's password. The attacker would then be able to log on to the compromised account with whatever level of privilege that user has."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Do not require CTRL+ALT+DEL "
     compliance:
       - cis: ["2.3.7.1"]
@@ -483,7 +483,7 @@ checks:
   - id: 15030
     title: "Configure 'Interactive logon: Message title for users attempting to log on'"
     description: "This policy setting specifies the text displayed in the title bar of the window that users see  when they log on to the system. Configure this setting in a manner that is consistent with  the security and operational requirements of your organization."
-    rationale: "Displaying a warning message before logon may help prevent an attack by warning the  attacker about the consequences of their misconduct before it happens. It may also help to reinforce corporate policy by notifying employees of the appropriate policy during the  logon process."
+    rationale: "Displaying a warning message before logon may help prevent an attack by warning the  attacker about the consequences of their misconduct before it happens. It may also help to reinforce corporate policy by notifying employees of the appropriate policy during the logon process."
     remediation: "To establish the recommended configuration via GP, configure the following UI path to a  value that is consistent with the security and operational requirements of your  organization: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local  Policies\\Security Options\\Interactive logon: Message title for users  attempting to log on"
     compliance:
       - cis: ["2.3.7.6"]
@@ -1106,7 +1106,7 @@ checks:
   - id: 15064
     title: "Ensure 'System cryptography: Force strong key protection for user keys stored on the computer' is set to 'User is prompted when the key is first used' or higher"
     description: "This policy setting determines whether users' private keys (such as their S-MIME keys) require a password to be used. The recommended state for this setting is: User is prompted when the key is first used. Configuring this setting to User must enter a password each time they use a key also conforms to the benchmark."
-    rationale: "If a user's account is compromised or their computer is inadvertently left unsecured the malicious user can use the keys stored for the user to access protected resources. You can  configure this policy setting so that users must provide a password that is distinct from  their domain password every time they use a key. This configuration makes it more  difficult for an attacker to access locally stored user keys, even if the attacker takes control of the user's computer and determines their logon password."
+    rationale: "If a user's account is compromised or their computer is inadvertently left unsecured the malicious user can use the keys stored for the user to access protected resources. You can configure this policy setting so that users must provide a password that is distinct from their domain password every time they use a key. This configuration makes it more difficult for an attacker to access locally stored user keys, even if the attacker takes control of the user's computer and determines their logon password."
     remediation: "To establish the recommended configuration via GP, set the following UI path to User is  prompted when the key is first used (configuring to User must enter a password each time they use a key also conforms to the benchmark): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local  Policies\\Security Options\\System cryptography: Force strong key protection for user keys stored on the computer"
     compliance:
       - cis: ["2.3.14.1"]
@@ -1296,7 +1296,7 @@ checks:
   - id: 15075
     title: "Ensure 'Bluetooth Audio Gateway Service (BTAGService)' is set to 'Disabled'"
     description: "Service supporting the audio gateway role of the Bluetooth Handsfree Profile. The recommended state for this setting is: Disabled."
-    rationale: "Bluetooth technology has inherent security risks - especially prior to the v2.1 standard. Wireless Bluetooth traffic is not well encrypted (if at all), so in a high-security environment,  it should not be permitted, in spite of the added inconvenience of not being able to use  Bluetooth devices."
+    rationale: "Bluetooth technology has inherent security risks - especially prior to the v2.1 standard. Wireless Bluetooth traffic is not well encrypted (if at all), so in a high-security environment, it should not be permitted, in spite of the added inconvenience of not being able to use Bluetooth devices."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Bluetooth Audio Gateway Service"
     compliance:
       - cis: ["5.1"]
@@ -1308,7 +1308,7 @@ checks:
   - id: 15076
     title: "Ensure 'Bluetooth Support Service (bthserv)' is set to 'Disabled'"
     description: "The Bluetooth service supports discovery and association of remote Bluetooth devices. The recommended state for this setting is: Disabled."
-    rationale: "Bluetooth technology has inherent security risks - especially prior to the v2.1 standard. Wireless Bluetooth traffic is not well encrypted (if at all), so in a high-security environment, it should not be permitted, in spite of the added inconvenience of not being able to use  Bluetooth devices."
+    rationale: "Bluetooth technology has inherent security risks - especially prior to the v2.1 standard. Wireless Bluetooth traffic is not well encrypted (if at all), so in a high-security environment, it should not be permitted, in spite of the added inconvenience of not being able to use Bluetooth devices."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Bluetooth Support Service"
     compliance:
       - cis: ["5.2"]
@@ -1320,7 +1320,7 @@ checks:
   - id: 15077
     title: "Ensure 'Downloaded Maps Manager (MapsBroker)' is set to 'Disabled'"
     description: "Windows service for application access to downloaded maps. This service is started on-demand by application accessing downloaded maps."
-    rationale: "Mapping technologies can unwillingly reveal your location to attackers and other software  that picks up the information. In addition, automatic downloads of data from 3rd-party  sources should be minimized when not needed. Therefore this service should not be  needed in high security environments."
+    rationale: "Mapping technologies can unwillingly reveal your location to attackers and other software that picks up the information. In addition, automatic downloads of data from 3rd-party sources should be minimized when not needed. Therefore this service should not be needed in high security environments."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Downloaded Maps Manager"
     compliance:
       - cis: ["5.4"]
@@ -1334,7 +1334,7 @@ checks:
   - id: 15078
     title: "Ensure 'Geolocation Service (lfsvc)' is set to 'Disabled'"
     description: "This service monitors the current location of the system and manages geofences (a  geographical location with associated events). The recommended state for this setting is: Disabled."
-    rationale: "This setting affects the location feature (e.g. GPS or other location tracking). From a  security perspective, it’s not a good idea to reveal your location to software in most cases,  but there are legitimate uses, such as mapping software. However, they should not be used  in high security environments."
+    rationale: "This setting affects the location feature (e.g. GPS or other location tracking). From a security perspective, it’s not a good idea to reveal your location to software in most cases, but there are legitimate uses, such as mapping software. However, they should not be used in high security environments."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Geolocation Service"
     compliance:
       - cis: ["5.5"]
@@ -1361,7 +1361,7 @@ checks:
   - id: 15080
     title: "Ensure 'Infrared monitor service (irmon)' is set to 'Disabled' or 'Not Installed'"
     description: "Detects other Infrared devices that are in range and launches the file transfer application. The recommended state for this setting is: Disabled or Not Installed."
-    rationale: "Infrared connections can potentially be a source of data compromise - especially via the automatic file transfer application functionality. Enterprise-managed systems should  utilize a more secure method of connection than infrared."
+    rationale: "Infrared connections can potentially be a source of data compromise - especially via the automatic 'file transfer application' functionality. Enterprise-managed systems should utilize a more secure method of connection than infrared."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Infrared monitor service"
     compliance:
       - cis: ["5.7"]
@@ -1374,7 +1374,7 @@ checks:
   - id: 15081
     title: "Ensure 'Internet Connection Sharing (ICS) (SharedAccess)' is set to 'Disabled'"
     description: "Provides network access translation, addressing, name resolution and/or intrusion  prevention services for a home or small office network. The recommended state for this setting is: Disabled."
-    rationale: "Internet Connection Sharing (ICS) is a feature that allows someone to share their Internet  connection with other machines on the network - it was designed for home or small office  environments where only one machine has Internet access - it effectively turns that machine into an Internet router. This feature causes the bridging of networks and likely  bypassing other, more secure pathways. It should not be used on any enterprise-managed system."
+    rationale: "Internet Connection Sharing (ICS) is a feature that allows someone to 'share' their Internet connection with other machines on the network - it was designed for home or small office environments where only one machine has Internet access - it effectively turns that machine into an Internet router. This feature causes the bridging of networks and likely bypassing other, more secure pathways. It should not be used on any enterprise-managed system."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Internet Connection Sharing (ICS)"
     compliance:
       - cis: ["5.8"]
@@ -1388,7 +1388,7 @@ checks:
   - id: 15082
     title: "Ensure 'Link-Layer Topology Discovery Mapper (lltdsvc)' is set to 'Disabled'"
     description: "Creates a Network Map, consisting of PC and device topology (connectivity) information, and metadata describing each PC and device. The recommended state for this setting is: Disabled."
-    rationale: "The feature that this service enables could potentially be used for unauthorized discovery and connection to network devices. Disabling the service helps to prevent responses to  requests for network topology discovery in high security environments."
+    rationale: "The feature that this service enables could potentially be used for unauthorized discovery and connection to network devices. Disabling the service helps to prevent responses to requests for network topology discovery in high security environments."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Link-Layer Topology Discovery Mapper"
     compliance:
       - cis: ["5.9"]
@@ -1402,7 +1402,7 @@ checks:
   - id: 15083
     title: "Ensure 'LxssManager (LxssManager)' is set to 'Disabled' or 'Not Installed'"
     description: "The LXSS Manager service supports running native ELF binaries. The service provides the  infrastructure necessary for ELF binaries to run on Windows. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but is installed by enabling an optional Windows feature (Windows Subsystem for Linux)."
-    rationale: "The Linux SubSystem (LXSS) Manager allows full system access to Linux applications on  Windows, including the file system. While this can certainly have some functionality and  performance benefits for running those applications, it also creates new security risks in  the event that a hacker injects malicious code into a Linux application. For best security, it is preferred to run Linux applications on Linux, and Windows applications on Windows."
+    rationale: "The Linux Subsystem (LXSS) Manager allows full system access to Linux applications on Windows, including the file system. While this can certainly have some functionality and performance benefits for running those applications, it also creates new security risks in the event that a hacker injects malicious code into a Linux application. For best security, it is preferred to run Linux applications on Linux, and Windows applications on Windows."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\LxssManager"
     compliance:
       - cis: ["5.10"]
@@ -1415,7 +1415,7 @@ checks:
   - id: 15084
     title: "Ensure 'Microsoft FTP Service (FTPSVC)' is set to 'Disabled' or 'Not Installed'"
     description: "Enables the server to be a File Transfer Protocol (FTP) server. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but is installed by enabling an optional Windows feature (Internet Information Services - FTP Server)."
-    rationale: "Hosting an FTP server (especially a non-secure FTP server) from a workstation is an  increased security risk, as the attack surface of that workstation is then greatly increased."
+    rationale: "Hosting an FTP server (especially a non-secure FTP server) from a workstation is an increased security risk, as the attack surface of that workstation is then greatly increased. Note: This security concern applies to any FTP server application installed on a workstation, not just IIS."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Microsoft FTP Service"
     compliance:
       - cis: ["5.11"]
@@ -1428,7 +1428,7 @@ checks:
   - id: 15085
     title: "Ensure 'Microsoft iSCSI Initiator Service (MSiSCSI)' is set to 'Disabled'"
     description: "Manages Internet SCSI (iSCSI) sessions from this computer to remote target devices. The recommended state for this setting is: Disabled."
-    rationale: "This service is critically necessary in order to directly attach to an iSCSI device. However, iSCSI itself uses a very weak authentication protocol (CHAP), which means that the  passwords for iSCSI communication are easily exposed, unless all of the traffic is isolated  and/or encrypted using another technology like IPsec. This service is generally more  appropriate for servers in a controlled environment then on workstations requiring high security."
+    rationale: "This service is critically necessary in order to directly attach to an iSCSI device. However, iSCSI itself uses a very weak authentication protocol (CHAP), which means that the passwords for iSCSI communication are easily exposed, unless all of the traffic is isolated and/or encrypted using another technology like IPsec. This service is generally more appropriate for servers in a controlled environment then on workstations requiring high security."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Microsoft iSCSI Initiator Service"
     compliance:
       - cis: ["5.12"]
@@ -1442,7 +1442,7 @@ checks:
   - id: 15086
     title: "Ensure 'OpenSSH SSH Server (sshd)' is set to 'Disabled' or 'Not Installed'"
     description: "SSH protocol based service to provide secure encrypted communications between two  untrusted hosts over an insecure network. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but it is installed by enabling an optional Windows feature (OpenSSH Server)."
-    rationale: "Hosting an SSH server from a workstation is an increased security risk, as the attack  surface of that workstation is then greatly increased"
+    rationale: "Hosting an SSH server from a workstation is an increased security risk, as the attack surface of that workstation is then greatly increased. Note: This security concern applies to any SSH server application installed on a workstation, not just the one supplied with Windows."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\OpenSSH SSH Server"
     compliance:
       - cis: ["5.13"]
@@ -1455,7 +1455,7 @@ checks:
   - id: 15087
     title: "Ensure 'Peer Name Resolution Protocol (PNRPsvc)' is set to 'Disabled'"
     description: "Enables serverless peer name resolution over the Internet using the Peer Name Resolution  Protocol (PNRP). The recommended state for this setting is: Disabled. "
-    rationale: "Peer Name Resolution Protocol is a distributed and (mostly) serverless way to handle  name resolution of clients with each other. In a high security environment, it is more secure  to rely on centralized name resolution methods maintained by authorized staff."
+    rationale: "Peer Name Resolution Protocol is a distributed and (mostly) serverless way to handle name resolution of clients with each other. In a high security environment, it is more secure to rely on centralized name resolution methods maintained by authorized staff."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Peer Name Resolution Protocol"
     compliance:
       - cis: ["5.14"]
@@ -1469,7 +1469,7 @@ checks:
   - id: 15088
     title: "Ensure 'Peer Networking Grouping (p2psvc)' is set to 'Disabled'"
     description: "Enables multi-party communication using Peer-to-Peer Grouping. The recommended state for this setting is: Disabled."
-    rationale: "Peer Name Resolution Protocol is a distributed and (mostly) serverless way to handle  name resolution of clients with each other. In a high security environment, it is more secure  to rely on centralized name resolution methods maintained by authorized staff."
+    rationale: "Peer Name Resolution Protocol is a distributed and (mostly) serverless way to handle name resolution of clients with each other. In a high security environment, it is more secure to rely on centralized name resolution methods maintained by authorized staff."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Peer Networking Grouping"
     compliance:
       - cis: ["5.15"]
@@ -1483,7 +1483,7 @@ checks:
   - id: 15089
     title: "Ensure 'Peer Networking Identity Manager (p2pimsvc)' is set to 'Disabled'"
     description: "Provides identity services for the Peer Name Resolution Protocol (PNRP) and Peer-to-Peer  Grouping services. The recommended state for this setting is: Disabled."
-    rationale: "Peer Name Resolution Protocol is a distributed and (mostly) serverless way to handle  name resolution of clients with each other. In a high security environment, it is more secure  to rely on centralized name resolution methods maintained by authorized staff."
+    rationale: "Peer Name Resolution Protocol is a distributed and (mostly) serverless way to handle name resolution of clients with each other. In a high security environment, it is more secure to rely on centralized name resolution methods maintained by authorized staff."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Peer Networking Identity Manager"
     compliance:
       - cis: ["5.16"]
@@ -1497,7 +1497,7 @@ checks:
   - id: 15090
     title: "Ensure 'PNRP Machine Name Publication Service (PNRPAutoReg)' is set to 'Disabled'"
     description: "This service publishes a machine name using the Peer Name Resolution Protocol.  Configuration is managed via the netsh context ‘p2p pnrp peer’. The recommended state for this setting is: Disabled."
-    rationale: "Peer Name Resolution Protocol is a distributed and (mostly) serverless way to handle  name resolution of clients with each other. In a high security environment, it is more secure  to rely on centralized name resolution methods maintained by authorized staff."
+    rationale: "Peer Name Resolution Protocol is a distributed and (mostly) serverless way to handle name resolution of clients with each other. In a high security environment, it is more secure to rely on centralized name resolution methods maintained by authorized staff."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\PNRP Machine Name Publication Service"
     compliance:
       - cis: ["5.17"]
@@ -1525,7 +1525,7 @@ checks:
   - id: 15092
     title: "Ensure 'Problem Reports and Solutions Control Panel Support (wercplsupport)' is set to 'Disabled'"
     description: "This service provides support for viewing, sending and deletion of system-level problem  reports for the Problem Reports and Solutions control panel. The recommended state for this setting is: Disabled."
-    rationale: "This service is involved in the process of displaying/reporting issues & solutions to/from  Microsoft. In a high security environment, preventing this information from being sent can  help reduce privacy concerns for sensitive corporate information."
+    rationale: "This service is involved in the process of displaying/reporting issues & solutions to/from Microsoft. In a high security environment, preventing this information from being sent can help reduce privacy concerns for sensitive corporate information."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Problem Reports and Solutions Control Panel Support"
     compliance:
       - cis: ["5.19"]
@@ -1539,7 +1539,7 @@ checks:
   - id: 15093
     title: "Ensure 'Remote Access Auto Connection Manager (RasAuto)' is set to 'Disabled'"
     description: "Creates a connection to a remote network whenever a program references a remote DNS or NetBIOS name or address. The recommended state for this setting is: Disabled."
-    rationale: "The function of this service is to provide a demand dial type of functionality. In a high security environment, it is preferred that any remote dial connections (whether they be  legacy dial-in POTS or VPN) are initiated by the user, not automatically by the system."
+    rationale: "The function of this service is to provide a 'demand dial' type of functionality. In a high security environment, it is preferred that any remote 'dial' connections (whether they be legacy dial-in POTS or VPN) are initiated by the user, not automatically by the system."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Remote Access Auto Connection Manager"
     compliance:
       - cis: ["5.20"]
@@ -1567,7 +1567,7 @@ checks:
   - id: 15095
     title: "Ensure 'Remote Desktop Services (TermService)' is set to 'Disabled'"
     description: "Allows users to connect interactively to a remote computer. Remote Desktop and Remote  Desktop Session Host Server depend on this service. The recommended state for this setting is: Disabled."
-    rationale: "In a high security environment, Remote Desktop access is an increased security risk. For  these environments, only local console access should be permitted."
+    rationale: "In a high security environment, Remote Desktop access is an increased security risk. For these environments, only local console access should be permitted."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Remote Desktop Services"
     compliance:
       - cis: ["5.22"]
@@ -1581,7 +1581,7 @@ checks:
   - id: 15096
     title: "Ensure 'Remote Desktop Services UserMode Port Redirector (UmRdpService)' is set to 'Disabled'"
     description: "Allows the redirection of Printers/Drives/Ports for RDP connections. The recommended state for this setting is: Disabled."
-    rationale: "In a security-sensitive environment, it is desirable to reduce the possible attack surface - preventing the redirection of COM, LPT and PnP ports will reduce the number of  unexpected avenues for data exfiltration and/or malicious code transfer within an RDP  session."
+    rationale: "In a security-sensitive environment, it is desirable to reduce the possible attack surface - preventing the redirection of COM, LPT and PnP ports will reduce the number of unexpected avenues for data exfiltration and/or malicious code transfer within an RDP session."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Remote Desktop Services UserMode Port Redirector"
     compliance:
       - cis: ["5.23"]
@@ -1595,7 +1595,7 @@ checks:
   - id: 15097
     title: "Ensure 'Remote Procedure Call (RPC) Locator (RpcLocator)' is set to 'Disabled'"
     description: "In Windows 2003 and older versions of Windows, the Remote Procedure Call (RPC)  Locator service manages the RPC name service database. In Windows Vista and newer  versions of Windows, this service does not provide any functionality and is present for  application compatibility. The recommended state for this setting is: Disabled."
-    rationale: "This is a legacy service that has no value or purpose other than application compatibility  for very old software. It should be disabled unless there is a specific old application still in  use on the system that requires it."
+    rationale: "This is a legacy service that has no value or purpose other than application compatibility for very old software. It should be disabled unless there is a specific old application still in use on the system that requires it."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Remote Procedure Call (RPC) Locator"
     compliance:
       - cis: ["5.24"]
@@ -1609,7 +1609,7 @@ checks:
   - id: 15098
     title: "Ensure 'Remote Registry (RemoteRegistry)' is set to 'Disabled'"
     description: "Enables remote users to view and modify registry settings on this computer.The recommended state for this setting is: Disabled."
-    rationale: "In a high security environment, exposing the registry to remote access is an increased  security risk."
+    rationale: "In a high security environment, exposing the registry to remote access is an increased security risk."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Remote Registry"
     compliance:
       - cis: ["5.25"]
@@ -1637,7 +1637,7 @@ checks:
   - id: 15100
     title: "Ensure 'Server (LanmanServer)' is set to 'Disabled'"
     description: "Supports file, print, and named-pipe sharing over the network for this computer. If this  service is stopped, these functions will be unavailable. The recommended state for this setting is: Disabled."
-    rationale: "In a high security environment, a secure workstation should only be a client, not a server. Sharing workstation resources for remote access increases security risk as the attack  surface is notably higher."
+    rationale: "In a high security environment, a secure workstation should only be a client, not a server. Sharing workstation resources for remote access increases security risk as the attack surface is notably higher."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System  Services\\Server"
     compliance:
       - cis: ["5.27"]
@@ -1664,7 +1664,7 @@ checks:
   - id: 15102
     title: "Ensure 'SNMP Service (SNMP)' is set to 'Disabled' or 'Not Installed'"
     description: "Enables Simple Network Management Protocol (SNMP) requests to be processed by this  computer. The recommended state for this setting is: Disabled or Not Installed. Note: This service is not installed by default. It is supplied with Windows, but is installed  by enabling an optional Windows feature (Simple Network Management Protocol (SNMP))."
-    rationale: "Features that enable inbound network connections increase the attack surface. In a high  security environment, management of secure workstations should be handled locally."
+    rationale: "Features that enable inbound network connections increase the attack surface. In a high security environment, management of secure workstations should be handled locally."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\SNMP Service"
     compliance:
       - cis: ["5.29"]
