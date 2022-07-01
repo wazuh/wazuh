@@ -1165,3 +1165,20 @@ TEST(JsonSettersTest, AppendString)
     // Invalid pointer
     ASSERT_THROW(jObjString.appendString("object/key", "value2"), std::runtime_error);
 }
+
+TEST(JsonSettersTest, Erase)
+{
+    Json jObj {R"({
+        "nested": {
+            "key": "value"
+        }
+    })"};
+    ASSERT_TRUE(jObj.erase("/nested/key"));
+    ASSERT_EQ(jObj.size("/nested"), 0);
+    ASSERT_FALSE(jObj.erase("/nested/key"));
+    ASSERT_TRUE(jObj.erase());
+    ASSERT_TRUE(jObj.isNull());
+
+    // Invalid pointer
+    ASSERT_THROW(jObj.erase("object/key"), std::runtime_error);
+}

@@ -1,12 +1,12 @@
 #ifndef _DEFINITIONS_H_
 #define _DEFINITIONS_H_
 
-#include "builderTypes.hpp"
+#include "baseTypes.hpp"
 
 namespace builder::internals
 {
 
-void substituteDefinitions(base::Document& asset);
+void substituteDefinitions(json::Json& asset);
 
 } // namespace builder::internals
 
