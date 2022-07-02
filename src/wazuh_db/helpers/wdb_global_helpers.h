@@ -21,20 +21,16 @@ typedef enum global_db_access {
     WDB_UPDATE_AGENT_DATA,
     WDB_UPDATE_AGENT_KEEPALIVE,
     WDB_UPDATE_AGENT_CONNECTION_STATUS,
-    WDB_SET_AGENT_LABELS,
     WDB_GET_ALL_AGENTS,
     WDB_FIND_AGENT,
     WDB_GET_AGENT_INFO,
     WDB_GET_AGENT_LABELS,
     WDB_SELECT_AGENT_NAME,
     WDB_SELECT_AGENT_GROUP,
-    WDB_SELECT_KEEPALIVE,
     WDB_FIND_GROUP,
     WDB_SELECT_GROUPS,
     WDB_DELETE_AGENT,
     WDB_DELETE_GROUP,
-    WDB_SELECT_GROUP_BELONG,
-    WDB_DELETE_AGENT_BELONG,
     WDB_SET_AGENT_GROUPS,
     WDB_RESET_AGENTS_CONNECTION,
     WDB_GET_AGENTS_BY_CONNECTION_STATUS,
@@ -114,16 +110,6 @@ int wdb_update_agent_keepalive(int id, const char *connection_status, const char
 int wdb_update_agent_connection_status(int id, const char *connection_status, const char *sync_status, int *sock);
 
 /**
- * @brief Update agent's labels.
- *
- * @param[in] id Id of the agent for whom the labels must be updated.
- * @param[in] labels String with the key-values separated by EOL.
- * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return OS_SUCCESS on success or OS_INVALID on failure.
- */
-int wdb_set_agent_labels(int id, const char *labels, int *sock);
-
-/**
  * @brief Returns an array containing the ID of every agent (except 0), ended with -1.
  * This method creates and sends a command to WazuhDB to receive the ID of every agent.
  * If the response is bigger than the capacity of the socket, multiple commands will be sent until every agent ID is obtained.
@@ -185,16 +171,6 @@ char* wdb_get_agent_name(int id, int *sock);
 char* wdb_get_agent_group(int id, int *sock);
 
 /**
- * @brief Function to get the agent last keepalive.
- *
- * @param [in] name String with the name of the agent.
- * @param [in] ip String with the ip of the agent.
- * @param [in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return Returns this value, 0 on NULL or OS_INVALID on error.
- */
-time_t wdb_get_agent_keepalive(const char *name, const char *ip, int *sock);
-
-/**
  * @brief Find group by name.
  *
  * @param[in] name The group name.
@@ -229,24 +205,6 @@ int wdb_remove_agent(int id, int *sock);
  * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
  */
 int wdb_remove_group_db(const char *name, int *sock);
-
-/**
- * @brief Get groups from agent id in belongs table.
- *
- * @param id Id of the agent to get the groups from.
- * @param sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return JSON* with the information on success or NULL on failure.
- */
-cJSON* wdb_select_group_belong(int id, int *sock);
-
-/**
- * @brief Delete an agent from belongs table in global.db by using its ID.
- *
- * @param[in] id Id of the agent to be deleted.
- * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
- */
-int wdb_delete_agent_belongs(int id, int *sock);
 
 /**
  * @brief Set the groups of an agent using a comma separated string to represent the groups.

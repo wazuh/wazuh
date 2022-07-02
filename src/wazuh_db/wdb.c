@@ -161,7 +161,6 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_GROUP_BELONG_FIND] = "SELECT 1 FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = ?);",
     [WDB_STMT_GLOBAL_GROUP_BELONG_GET] = "SELECT id_agent FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = ?) AND id_agent > ?;",
     [WDB_STMT_GLOBAL_SELECT_GROUPS] = "SELECT name FROM `group`;",
-    [WDB_STMT_GLOBAL_SELECT_AGENT_KEEPALIVE] = "SELECT last_keepalive FROM agent WHERE name = ? AND (register_ip = ? OR register_ip LIKE ? || '/_%');",
     [WDB_STMT_GLOBAL_SYNC_REQ_GET] = "SELECT id, name, ip, os_name, os_version, os_major, os_minor, os_codename, os_build, os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, last_keepalive, connection_status, disconnection_time, group_config_status FROM agent WHERE id > ? AND sync_status = 'syncreq' LIMIT 1;",
     [WDB_STMT_GLOBAL_SYNC_SET] = "UPDATE agent SET sync_status = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_GROUP_SYNC_REQ_GET] = "SELECT id FROM agent WHERE id > ? AND group_sync_status = 'syncreq' AND date_add < ? LIMIT 1;",
@@ -237,7 +236,6 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_SYSCOLLECTOR_OSINFO_CLEAR] = "DELETE FROM sys_osinfo;",
     [WDB_STMT_VULN_CVES_INSERT] = "INSERT INTO vuln_cves (name, version, architecture, cve, reference, type, status, severity, cvss2_score, cvss3_score, detection_time, external_references, condition, title, published, updated) VALUES (?,?,?,?,?,?,?,?,?,?,strftime('%s', 'now'),?,?,?,?,?)"
                                   "ON CONFLICT (reference, cve) DO UPDATE SET type = excluded.type, status = excluded.status, severity = excluded.severity, cvss2_score = excluded.cvss2_score, cvss3_score = excluded.cvss3_score, detection_time = detection_time, external_references = excluded.external_references, condition = excluded.condition, title = excluded.title, published = excluded.published, updated = excluded.updated;",
-    [WDB_STMT_VULN_CVES_CLEAR] = "DELETE FROM vuln_cves;",
     [WDB_STMT_VULN_CVES_UPDATE] = "UPDATE vuln_cves SET status = ? WHERE status = ?;",
     [WDB_STMT_VULN_CVES_UPDATE_BY_TYPE] = "UPDATE vuln_cves SET status = ? WHERE type = ?;",
     [WDB_STMT_VULN_CVES_UPDATE_ALL] = "UPDATE vuln_cves SET status = ?",
@@ -562,36 +560,6 @@ int wdb_create_agent_db2(const char * agent_id) {
     }
 
     return 0;
-}
-
-/* Get agent name from location string */
-char* wdb_agent_loc2name(const char *location) {
-    char *name;
-    char *end;
-
-    switch (location[0]) {
-    case 'r':
-    case 's':
-        if (!(strncmp(location, "syscheck", 8) && strncmp(location, "rootcheck", 9)))
-            return strdup("localhost");
-            else
-            return NULL;
-
-    case '(':
-        name = strdup(location + 1);
-
-        if ((end = strchr(name, ')')))
-            *end = '\0';
-        else {
-            free(name);
-            name = NULL;
-        }
-
-        return name;
-
-    default:
-        return NULL;
-    }
 }
 
 /* Prepare SQL query with availability waiting */

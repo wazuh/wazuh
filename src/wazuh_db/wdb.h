@@ -223,7 +223,6 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_GROUP_BELONG_FIND,
     WDB_STMT_GLOBAL_GROUP_BELONG_GET,
     WDB_STMT_GLOBAL_SELECT_GROUPS,
-    WDB_STMT_GLOBAL_SELECT_AGENT_KEEPALIVE,
     WDB_STMT_GLOBAL_SYNC_REQ_GET,
     WDB_STMT_GLOBAL_SYNC_SET,
     WDB_STMT_GLOBAL_GROUP_SYNC_REQ_GET,
@@ -298,7 +297,6 @@ typedef enum wdb_stmt {
     WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_RANGE,
     WDB_STMT_SYSCOLLECTOR_OSINFO_CLEAR,
     WDB_STMT_VULN_CVES_INSERT,
-    WDB_STMT_VULN_CVES_CLEAR,
     WDB_STMT_VULN_CVES_UPDATE,
     WDB_STMT_VULN_CVES_UPDATE_BY_TYPE,
     WDB_STMT_VULN_CVES_UPDATE_ALL,
@@ -488,21 +486,6 @@ wdb_t * wdb_open_agent2(int agent_id);
  */
 wdb_t * wdb_open_tasks();
 
-/* Get agent name from location string */
-char* wdb_agent_loc2name(const char *location);
-
-/* Find file: returns ID, or 0 if it doesn't exists, or -1 on error. */
-int wdb_find_file(sqlite3 *db, const char *path, int type);
-
-/* Find file, Returns ID, or -1 on error. */
-int wdb_insert_file(sqlite3 *db, const char *path, int type);
-
-/* Get last event from file: returns WDB_FIM_*, or -1 on error. */
-int wdb_get_last_fim(sqlite3 *db, const char *path, int type);
-
-/* Insert FIM entry. Returns ID, or -1 on error. */
-int wdb_insert_fim(sqlite3 *db, int type, long timestamp, const char *f_name, const char *event, const sk_sum_t *sum);
-
 int wdb_syscheck_load(wdb_t * wdb, const char * file, char * output, size_t size);
 
 int wdb_syscheck_save(wdb_t * wdb, int ftype, char * checksum, const char * file);
@@ -645,18 +628,6 @@ int wdb_remove_agent_db(int id, const char * name);
 /* Remove agents databases from id's list. */
 cJSON *wdb_remove_multiple_agents(char *agent_list);
 
-/* Insert or update metadata entries. Returns 0 on success or -1 on error. */
-int wdb_fim_fill_metadata(wdb_t * wdb, char *data);
-
-/* Find metadata entries. Returns 0 if doesn't found, 1 on success or -1 on error. */
-int wdb_metadata_find_entry(wdb_t * wdb, const char * key);
-
-/* Insert entry. Returns 0 on success or -1 on error. */
-int wdb_metadata_insert_entry (wdb_t * wdb, const char *key, const char *value);
-
-/* Update entries. Returns 0 on success or -1 on error. */
-int wdb_metadata_update_entry (wdb_t * wdb, const char *key, const char *value);
-
 /* Insert metadata for minor and major version. Returns 0 on success or -1 on error. */
 int wdb_metadata_fill_version(sqlite3 *db);
 
@@ -702,20 +673,8 @@ int wdb_create_profile(const char *path);
 /* Create new database file from SQL script */
 int wdb_create_file(const char *path, const char *source);
 
-/* Delete FIM events of an agent. Returns number of affected rows on success or -1 on error. */
-int wdb_delete_fim(int id);
-
-/* Delete FIM events of all agents. */
-void wdb_delete_fim_all();
-
-/* Delete PM events of an agent. Returns number of affected rows on success or -1 on error. */
-int wdb_delete_pm(int id);
-
 /* Delete PM events of an agent. Returns number of affected rows on success or -1 on error. */
 int wdb_rootcheck_delete(wdb_t * wdb);
-
-/* Deletes PM events of all agents */
-void wdb_delete_pm_all();
 
 /* Rebuild database. Returns 0 on success or -1 on error. */
 int wdb_vacuum(sqlite3 *db);
@@ -1183,17 +1142,6 @@ int wdb_parse_global_select_agent_name(wdb_t * wdb, char * input, char * output)
 int wdb_parse_global_select_agent_group(wdb_t * wdb, char * input, char * output);
 
 /**
- * @brief Function to parse the agent delete from belongs table request.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with 'agent_id'.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
-int wdb_parse_global_delete_agent_belong(wdb_t * wdb, char * input, char * output);
-
-/**
  * @brief Function to parse the find agent request.
  *
  * @param [in] wdb The global struct database.
@@ -1275,17 +1223,6 @@ int wdb_parse_global_get_group_agents(wdb_t * wdb, char * input, char * output);
  *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_global_set_agent_groups(wdb_t* wdb, char* input, char* output);
-
-/**
- * @brief Function to parse the select keepalive request.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with 'agent_name agent_ip'.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
-int wdb_parse_global_select_agent_keepalive(wdb_t * wdb, char * input, char * output);
 
 /**
  * @brief Function to parse sync-agent-info-get params and set next ID to iterate on further calls.
@@ -1927,16 +1864,6 @@ cJSON* wdb_global_select_groups(wdb_t *wdb);
 cJSON* wdb_global_get_group_agents(wdb_t *wdb,  wdbc_result* status, char* group_name, int last_agent_id);
 
 /**
- * @brief Function to get an agent keepalive using the agent name and register ip.
- *
- * @param [in] wdb The Global struct database.
- * @param [in] name The agent name
- * @param [in] ip The agent ip
- * @return JSON with last_keepalive on success. NULL on error.
- */
-cJSON* wdb_global_select_agent_keepalive(wdb_t *wdb, char* name, char* ip);
-
-/**
  * @brief Function to update sync_status of a particular agent.
  *
  * @param [in] wdb The Global struct database.
@@ -2373,24 +2300,13 @@ int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output)
  *
  * @param [in] wdb The global struct database.
  * @param [in] input String with the the data in json format. It could receive a status to remove all the vulnerabilities
- *                   whith that status, or the CVE and reference to remove a particular entry. Examples:
+ *                   with that status. Example:
  *                   - To remove by status: {"status":"OBSOLETE"}
- *                   - To remove a specific entry: {"cve":"cve-xxxx-xxxx","reference":"refxxx"}
  * @param [out] output Response of the query.
  * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
  */
  int wdb_parse_agents_remove_vuln_cves(wdb_t* wdb, char* input, char* output);
-
- /**
- * @brief Function to parse the vuln_cves clear action.
- *
- * @param [in] wdb The global struct database.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
- int wdb_parse_agents_clear_vuln_cves(wdb_t* wdb, char* output);
 
 /**
  * Update old tasks with status in progress to status timeout
