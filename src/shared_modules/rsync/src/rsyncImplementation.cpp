@@ -23,6 +23,7 @@ void RSyncImplementation::release()
 
     for (const auto& ctx : m_remoteSyncContexts)
     {
+        m_registrationController.removeComponentByHandle(ctx.first);
         ctx.second->m_msgDispatcher.rundown();
     }
 
@@ -31,6 +32,7 @@ void RSyncImplementation::release()
 
 void RSyncImplementation::releaseContext(const RSYNC_HANDLE handle)
 {
+    m_registrationController.removeComponentByHandle(handle);
     remoteSyncContext(handle)->m_msgDispatcher.rundown();
     std::lock_guard<std::mutex> lock{ m_mutex };
     m_remoteSyncContexts.erase(handle);
@@ -143,8 +145,12 @@ void RSyncImplementation::registerSyncId(const RSYNC_HANDLE handle,
                                          const nlohmann::json& syncConfiguration,
                                          const ResultCallback callbackWrapper)
 {
-    const auto ctx { remoteSyncContext(handle) };
+    if (isComponentRegistered(messageHeaderID))
+    {
+        throw rsync_error { COMPONENT_ALREADY_REGISTERED };
+    }
 
+    const auto ctx { remoteSyncContext(handle) };
     const SyncMsgBodyType syncMessageType { SyncMsgBodyTypeMap.at(syncConfiguration.at("decoder_type")) };
 
     ctx->m_msgDispatcher.setMessageDecoderType(messageHeaderID, syncMessageType);
@@ -175,7 +181,9 @@ void RSyncImplementation::registerSyncId(const RSYNC_HANDLE handle,
 
         }
     };
+
     ctx->m_msgDispatcher.addCallback(messageHeaderID, registerCallback);
+    m_registrationController.initComponentByHandle(handle, messageHeaderID);
 }
 
 
@@ -399,7 +407,16 @@ void RSyncImplementation::sendAllData(const std::shared_ptr<DBSyncWrapper>& spDB
     {
         [&callbackWrapper, &messageCreator, &jsonSyncConfiguration] (const nlohmann::json & resultJSON)
         {
-            messageCreator->send(callbackWrapper, jsonSyncConfiguration, resultJSON);
+            const auto component { jsonSyncConfiguration.at("component").get_ref<const std::string&>() };
+
+            if (RSyncImplementation::instance().isComponentRegistered(component))
+            {
+                messageCreator->send(callbackWrapper, jsonSyncConfiguration, resultJSON);
+            }
+            else
+            {
+                throw std::runtime_error("Synchronization cancelled, component inactivated");
+            }
         }
     };
     nlohmann::json selectData;
@@ -420,4 +437,9 @@ void RSyncImplementation::sendAllData(const std::shared_ptr<DBSyncWrapper>& spDB
     const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(selectData.dump().c_str()) };
     spDBSyncWrapper->select(spJson.get(), { callbackDBSync, &sendRowData });
 
+}
+
+bool RSyncImplementation::isComponentRegistered(const std::string& component)
+{
+    return m_registrationController.isComponentRegistered(component);
 }

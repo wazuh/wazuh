@@ -16,7 +16,6 @@
 #include "../mocks/dbsyncmock.h"
 
 using ::testing::_;
-using ::testing::Return;
 
 void RSyncImplementationTest::SetUp()
 {

@@ -194,7 +194,7 @@ TEST_F(RSyncTest, startSyncWithIntegrityClear)
 
     const auto expectedResult1
     {
-        R"({"component":"test_component","data":{")"
+        R"({"component":"test_id","data":{")"
     };
 
     const auto expectedResult2
@@ -221,7 +221,7 @@ TEST_F(RSyncTest, startSyncWithIntegrityClear)
                     "order_by_opt":"path DESC",
                     "count_opt":1
                 },
-            "component":"test_component",
+            "component":"test_id",
             "index":"path",
             "last_event":"last_event",
             "checksum_field":"checksum",
@@ -277,7 +277,7 @@ TEST_F(RSyncTest, startSyncIntegrityGlobal)
 
     const auto expectedResult1
     {
-        R"({"component":"test_component","data":{"begin":"/boot/grub2/i386-pc/gzio.mod","checksum":"da39a3ee5e6b4b0d3255bfef95601890afd80709","end":"/boot/grub2/fonts/unicode.pf2")"
+        R"({"component":"test_id","data":{"begin":"/boot/grub2/i386-pc/gzio.mod","checksum":"da39a3ee5e6b4b0d3255bfef95601890afd80709","end":"/boot/grub2/fonts/unicode.pf2")"
     };
 
     const auto expectedResult2
@@ -304,7 +304,7 @@ TEST_F(RSyncTest, startSyncIntegrityGlobal)
                     "order_by_opt":"path DESC",
                     "count_opt":1
                 },
-            "component":"test_component",
+            "component":"test_id",
             "index":"path",
             "last_event":"last_event",
             "checksum_field":"checksum",
@@ -351,7 +351,7 @@ TEST_F(RSyncTest, startSyncIntegrityGlobal)
 
     dbsync_teardown();
 }
-TEST_F(RSyncTest, registerSyncId)
+TEST_F(RSyncTest, registerIncorrectSyncId)
 {
     const auto handle { rsync_create() };
     ASSERT_EQ(-1, rsync_register_sync_id(handle, nullptr, nullptr, nullptr, {}));
@@ -388,44 +388,44 @@ TEST_F(RSyncTest, RegisterAndPush)
 
     const auto expectedResult1
     {
-        R"({"component":"test_component","data":{"begin":"/boot/grub2/fonts/unicode.pf2","checksum":"acfe3a5baf97f842838c13b32e7e61a11e144e64","end":"/boot/grub2/grubenv","id":1,"tail":"/boot/grub2/i386-pc/datehook.mod"},"type":"integrity_check_left"})"
+        R"({"component":"test_id","data":{"begin":"/boot/grub2/fonts/unicode.pf2","checksum":"acfe3a5baf97f842838c13b32e7e61a11e144e64","end":"/boot/grub2/grubenv","id":1,"tail":"/boot/grub2/i386-pc/datehook.mod"},"type":"integrity_check_left"})"
     };
 
     const auto expectedResult2
     {
-        R"({"component":"test_component","data":{"begin":"/boot/grub2/i386-pc/datehook.mod","checksum":"891333533a9c7d989b92928d200ed8402fe67813","end":"/boot/grub2/i386-pc/gzio.mod","id":1},"type":"integrity_check_right"})"
+        R"({"component":"test_id","data":{"begin":"/boot/grub2/i386-pc/datehook.mod","checksum":"891333533a9c7d989b92928d200ed8402fe67813","end":"/boot/grub2/i386-pc/gzio.mod","id":1},"type":"integrity_check_right"})"
     };
 
     const auto expectedResult3
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"96482cde495f716fcd66a71a601fbb905c13b426","entry_type":0,"inode_id":1,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/fonts/unicode.pf2","scanned":1},"index":"/boot/grub2/fonts/unicode.pf2","timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"96482cde495f716fcd66a71a601fbb905c13b426","entry_type":0,"inode_id":1,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/fonts/unicode.pf2","scanned":1},"index":"/boot/grub2/fonts/unicode.pf2","timestamp":1596489273},"type":"state"})"
     };
 
     const auto expectedResult4
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"e041159610c7ec18490345af13f7f49371b56893","entry_type":0,"inode_id":2,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/grubenv","scanned":1},"index":"/boot/grub2/grubenv","timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"e041159610c7ec18490345af13f7f49371b56893","entry_type":0,"inode_id":2,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/grubenv","scanned":1},"index":"/boot/grub2/grubenv","timestamp":1596489273},"type":"state"})"
     };
 
     const auto expectedResult5
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"e4a541bdcf17cb5435064881a1616befdc71f871","entry_type":0,"inode_id":5,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/gzio.mod","scanned":1},"index":"/boot/grub2/i386-pc/gzio.mod","timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"e4a541bdcf17cb5435064881a1616befdc71f871","entry_type":0,"inode_id":5,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/gzio.mod","scanned":1},"index":"/boot/grub2/i386-pc/gzio.mod","timestamp":1596489273},"type":"state"})"
     };
 
     const auto expectedResult6
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"d59ffd58d107b9398ff5a809097f056b903b3c3e","entry_type":0,"inode_id":4,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/gcry_whirlpool.mod","scanned":1},"index":"/boot/grub2/i386-pc/gcry_whirlpool.mod","timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"d59ffd58d107b9398ff5a809097f056b903b3c3e","entry_type":0,"inode_id":4,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/gcry_whirlpool.mod","scanned":1},"index":"/boot/grub2/i386-pc/gcry_whirlpool.mod","timestamp":1596489273},"type":"state"})"
     };
 
     const auto expectedResult7
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"f83bc87319566e270fcece2fae4910bc18fe7355","entry_type":0,"inode_id":3,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/datehook.mod","scanned":1},"index":"/boot/grub2/i386-pc/datehook.mod","timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"f83bc87319566e270fcece2fae4910bc18fe7355","entry_type":0,"inode_id":3,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/datehook.mod","scanned":1},"index":"/boot/grub2/i386-pc/datehook.mod","timestamp":1596489273},"type":"state"})"
     };
 
     const auto registerConfigStmt
     {
         R"({"decoder_type":"JSON_RANGE",
             "table":"entry_path",
-            "component":"test_component",
+            "component":"test_id",
             "index":"path",
             "last_event":"last_event",
             "checksum_field":"checksum",
@@ -489,6 +489,7 @@ TEST_F(RSyncTest, RegisterAndPush)
     std::string buffer3{R"(test_id no_data {"begin":"/boot/grub2/fonts/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
     ASSERT_EQ(0, rsync_push_message(handle_rsync, reinterpret_cast<const void*>(buffer3.data()), buffer3.size()));
 
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     EXPECT_EQ(0, rsync_close(handle_rsync));
 
     dbsync_teardown();
@@ -506,7 +507,7 @@ TEST_F(RSyncTest, RegisterIncorrectQueryAndPush)
     {
         R"({"decoder_type":"JSON_RANGE",
             "table":"entry_path",
-            "component":"test_component",
+            "component":"test_id",
             "index":"path",
             "last_event":"last_event",
             "checksum_field":"checksum",
@@ -563,6 +564,7 @@ TEST_F(RSyncTest, RegisterIncorrectQueryAndPush)
     std::string buffer3{R"(test_id no_data {"begin":"/boot/grub2/fonts/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
     ASSERT_EQ(0, rsync_push_message(handle_rsync, reinterpret_cast<const void*>(buffer3.data()), buffer3.size()));
 
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     EXPECT_EQ(0, rsync_close(handle_rsync));
 
     dbsync_teardown();
@@ -580,44 +582,44 @@ TEST_F(RSyncTest, RegisterAndPushCPP)
 
     const auto expectedResult1
     {
-        R"({"component":"test_component","data":{"begin":"/boot/grub2/fonts/unicode.pf2","checksum":"acfe3a5baf97f842838c13b32e7e61a11e144e64","end":"/boot/grub2/grubenv","id":1,"tail":"/boot/grub2/i386-pc/datehook.mod"},"type":"integrity_check_left"})"
+        R"({"component":"test_id","data":{"begin":"/boot/grub2/fonts/unicode.pf2","checksum":"acfe3a5baf97f842838c13b32e7e61a11e144e64","end":"/boot/grub2/grubenv","id":1,"tail":"/boot/grub2/i386-pc/datehook.mod"},"type":"integrity_check_left"})"
     };
 
     const auto expectedResult2
     {
-        R"({"component":"test_component","data":{"begin":"/boot/grub2/i386-pc/datehook.mod","checksum":"891333533a9c7d989b92928d200ed8402fe67813","end":"/boot/grub2/i386-pc/gzio.mod","id":1},"type":"integrity_check_right"})"
+        R"({"component":"test_id","data":{"begin":"/boot/grub2/i386-pc/datehook.mod","checksum":"891333533a9c7d989b92928d200ed8402fe67813","end":"/boot/grub2/i386-pc/gzio.mod","id":1},"type":"integrity_check_right"})"
     };
 
     const auto expectedResult3
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"96482cde495f716fcd66a71a601fbb905c13b426","entry_type":0,"inode_id":1,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/fonts/unicode.pf2","scanned":1},"index":"/boot/grub2/fonts/unicode.pf2","timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"96482cde495f716fcd66a71a601fbb905c13b426","entry_type":0,"inode_id":1,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/fonts/unicode.pf2","scanned":1},"index":"/boot/grub2/fonts/unicode.pf2","timestamp":1596489273},"type":"state"})"
     };
 
     const auto expectedResult4
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"e041159610c7ec18490345af13f7f49371b56893","entry_type":0,"inode_id":2,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/grubenv","scanned":1},"index":"/boot/grub2/grubenv","timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"e041159610c7ec18490345af13f7f49371b56893","entry_type":0,"inode_id":2,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/grubenv","scanned":1},"index":"/boot/grub2/grubenv","timestamp":1596489273},"type":"state"})"
     };
 
     const auto expectedResult5
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"e4a541bdcf17cb5435064881a1616befdc71f871","entry_type":0,"inode_id":5,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/gzio.mod","scanned":1},"index":"/boot/grub2/i386-pc/gzio.mod","timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"e4a541bdcf17cb5435064881a1616befdc71f871","entry_type":0,"inode_id":5,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/gzio.mod","scanned":1},"index":"/boot/grub2/i386-pc/gzio.mod","timestamp":1596489273},"type":"state"})"
     };
 
     const auto expectedResult6
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"d59ffd58d107b9398ff5a809097f056b903b3c3e","entry_type":0,"inode_id":4,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/gcry_whirlpool.mod","scanned":1},"index":"/boot/grub2/i386-pc/gcry_whirlpool.mod","timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"d59ffd58d107b9398ff5a809097f056b903b3c3e","entry_type":0,"inode_id":4,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/gcry_whirlpool.mod","scanned":1},"index":"/boot/grub2/i386-pc/gcry_whirlpool.mod","timestamp":1596489273},"type":"state"})"
     };
 
     const auto expectedResult7
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"f83bc87319566e270fcece2fae4910bc18fe7355","entry_type":0,"inode_id":3,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/datehook.mod","scanned":1},"index":"/boot/grub2/i386-pc/datehook.mod","timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"f83bc87319566e270fcece2fae4910bc18fe7355","entry_type":0,"inode_id":3,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/datehook.mod","scanned":1},"index":"/boot/grub2/i386-pc/datehook.mod","timestamp":1596489273},"type":"state"})"
     };
 
     const auto registerConfigStmt
     {
         R"({"decoder_type":"JSON_RANGE",
             "table":"entry_path",
-            "component":"test_component",
+            "component":"test_id",
             "index":"path",
             "last_event":"last_event",
             "checksum_field":"checksum",
@@ -685,7 +687,7 @@ TEST_F(RSyncTest, RegisterAndPushCPP)
     std::string buffer3{R"(test_id no_data {"begin":"/boot/grub2/fonts/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
     ASSERT_NO_THROW(remoteSync->pushMessage({ buffer3.begin(), buffer3.end() }));
 
-    //sleep(1);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     remoteSync.reset();
 }
 
@@ -708,7 +710,7 @@ TEST_F(RSyncTest, startSyncWithIntegrityClearCPP)
 
     const auto expectedResult1
     {
-        R"({"component":"test_component","data":{")"
+        R"({"component":"test_id","data":{")"
     };
 
     const auto expectedResult2
@@ -735,7 +737,7 @@ TEST_F(RSyncTest, startSyncWithIntegrityClearCPP)
                     "order_by_opt":"path DESC",
                     "count_opt":1
                 },
-            "component":"test_component",
+            "component":"test_id",
             "index":"path",
             "last_event":"last_event",
             "checksum_field":"checksum",
@@ -814,7 +816,7 @@ TEST_F(RSyncTest, startSyncWithIntegrityClearCPPSelectByInode)
                     "order_by_opt":"inode_id DESC",
                     "count_opt":1
                 },
-            "component":"test_component",
+            "component":"test_id",
             "index":"inode_id",
             "last_event":"last_event",
             "checksum_field":"checksum",
@@ -877,44 +879,44 @@ TEST_F(RSyncTest, RegisterAndPushCPPByInode)
 
     const auto expectedResult1
     {
-        R"({"component":"test_component","data":{"begin":"1","checksum":"acfe3a5baf97f842838c13b32e7e61a11e144e64","end":"2","id":1,"tail":"3"},"type":"integrity_check_left"})"
+        R"({"component":"test_id","data":{"begin":"1","checksum":"acfe3a5baf97f842838c13b32e7e61a11e144e64","end":"2","id":1,"tail":"3"},"type":"integrity_check_left"})"
     };
 
     const auto expectedResult2
     {
-        R"({"component":"test_component","data":{"begin":"3","checksum":"891333533a9c7d989b92928d200ed8402fe67813","end":"5","id":1},"type":"integrity_check_right"})"
+        R"({"component":"test_id","data":{"begin":"3","checksum":"891333533a9c7d989b92928d200ed8402fe67813","end":"5","id":1},"type":"integrity_check_right"})"
     };
 
     const auto expectedResult3
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"96482cde495f716fcd66a71a601fbb905c13b426","entry_type":0,"inode_id":1,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/fonts/unicode.pf2","scanned":1},"index":1,"timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"96482cde495f716fcd66a71a601fbb905c13b426","entry_type":0,"inode_id":1,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/fonts/unicode.pf2","scanned":1},"index":1,"timestamp":1596489273},"type":"state"})"
     };
 
     const auto expectedResult4
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"e041159610c7ec18490345af13f7f49371b56893","entry_type":0,"inode_id":2,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/grubenv","scanned":1},"index":2,"timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"e041159610c7ec18490345af13f7f49371b56893","entry_type":0,"inode_id":2,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/grubenv","scanned":1},"index":2,"timestamp":1596489273},"type":"state"})"
     };
 
     const auto expectedResult5
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"f83bc87319566e270fcece2fae4910bc18fe7355","entry_type":0,"inode_id":3,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/datehook.mod","scanned":1},"index":3,"timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"f83bc87319566e270fcece2fae4910bc18fe7355","entry_type":0,"inode_id":3,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/datehook.mod","scanned":1},"index":3,"timestamp":1596489273},"type":"state"})"
     };
 
     const auto expectedResult6
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"d59ffd58d107b9398ff5a809097f056b903b3c3e","entry_type":0,"inode_id":4,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/gcry_whirlpool.mod","scanned":1},"index":4,"timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"d59ffd58d107b9398ff5a809097f056b903b3c3e","entry_type":0,"inode_id":4,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/gcry_whirlpool.mod","scanned":1},"index":4,"timestamp":1596489273},"type":"state"})"
     };
 
     const auto expectedResult7
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"e4a541bdcf17cb5435064881a1616befdc71f871","entry_type":0,"inode_id":5,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/gzio.mod","scanned":1},"index":5,"timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"e4a541bdcf17cb5435064881a1616befdc71f871","entry_type":0,"inode_id":5,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/gzio.mod","scanned":1},"index":5,"timestamp":1596489273},"type":"state"})"
     };
 
     const auto registerConfigStmt
     {
         R"({"decoder_type":"JSON_RANGE",
             "table":"entry_path",
-            "component":"test_component",
+            "component":"test_id",
             "index":"inode_id",
             "last_event":"last_event",
             "checksum_field":"checksum",
@@ -982,7 +984,7 @@ TEST_F(RSyncTest, RegisterAndPushCPPByInode)
     std::string buffer3{R"(test_id no_data {"begin":1,"end":5,"id":1})"};
     ASSERT_NO_THROW(remoteSync->pushMessage({ buffer3.begin(), buffer3.end() }));
 
-    std::this_thread::sleep_for(std::chrono::seconds(3));
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     remoteSync.reset();
 }
 
@@ -997,17 +999,17 @@ TEST_F(RSyncTest, RegisterAndPushCPPByInodePartialNODataRange)
 
     const auto expectedResult1
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"96482cde495f716fcd66a71a601fbb905c13b426","entry_type":0,"inode_id":1,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/fonts/unicode.pf2","scanned":1},"index":1,"timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"96482cde495f716fcd66a71a601fbb905c13b426","entry_type":0,"inode_id":1,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/fonts/unicode.pf2","scanned":1},"index":1,"timestamp":1596489273},"type":"state"})"
     };
 
     const auto expectedResult2
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"e041159610c7ec18490345af13f7f49371b56893","entry_type":0,"inode_id":2,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/grubenv","scanned":1},"index":2,"timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"e041159610c7ec18490345af13f7f49371b56893","entry_type":0,"inode_id":2,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/grubenv","scanned":1},"index":2,"timestamp":1596489273},"type":"state"})"
     };
 
     const auto expectedResult3
     {
-        R"({"component":"test_component","data":{"attributes":{"checksum":"f83bc87319566e270fcece2fae4910bc18fe7355","entry_type":0,"inode_id":3,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/datehook.mod","scanned":1},"index":3,"timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"f83bc87319566e270fcece2fae4910bc18fe7355","entry_type":0,"inode_id":3,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/i386-pc/datehook.mod","scanned":1},"index":3,"timestamp":1596489273},"type":"state"})"
     };
 
 
@@ -1015,7 +1017,7 @@ TEST_F(RSyncTest, RegisterAndPushCPPByInodePartialNODataRange)
     {
         R"({"decoder_type":"JSON_RANGE",
             "table":"entry_path",
-            "component":"test_component",
+            "component":"test_id",
             "index":"inode_id",
             "last_event":"last_event",
             "checksum_field":"checksum",
@@ -1072,6 +1074,6 @@ TEST_F(RSyncTest, RegisterAndPushCPPByInodePartialNODataRange)
     std::string buffer3{R"(test_id no_data {"begin":1,"end":3,"id":1})"};
     ASSERT_NO_THROW(remoteSync->pushMessage({ buffer3.begin(), buffer3.end() }));
 
-    std::this_thread::sleep_for(std::chrono::seconds(3));
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     remoteSync.reset();
 }

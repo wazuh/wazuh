@@ -46,6 +46,10 @@ constexpr auto INPUT_JSON_INCOMPLETE
 {
     std::make_pair(8, "Incomplete json provided." )
 };
+constexpr auto COMPONENT_ALREADY_REGISTERED
+{
+    std::make_pair(9, "Component already registered." )
+};
 
 namespace RSync
 {
