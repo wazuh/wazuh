@@ -18,6 +18,12 @@
 #include <functional>
 #include <iostream>
 #include "threadSafeQueue.h"
+
+constexpr auto UNLIMITED_QUEUE_SIZE
+{
+    0
+};
+
 namespace Utils
 {
     // *
@@ -65,7 +71,7 @@ namespace Utils
     class AsyncDispatcher
     {
         public:
-            AsyncDispatcher(Functor functor, const unsigned int numberOfThreads = std::thread::hardware_concurrency(), const size_t maxQueueSize = 0)
+            AsyncDispatcher(Functor functor, const unsigned int numberOfThreads = std::thread::hardware_concurrency(), const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE)
                 : m_functor{ functor }
                 , m_running{ true }
                 , m_numberOfThreads{ numberOfThreads }
@@ -89,7 +95,7 @@ namespace Utils
             {
                 if (m_running)
                 {
-                    if (0 == m_maxQueueSize || m_queue.size() < m_maxQueueSize)
+                    if (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || m_queue.size() < m_maxQueueSize)
                     {
                         m_queue.push
                         (
