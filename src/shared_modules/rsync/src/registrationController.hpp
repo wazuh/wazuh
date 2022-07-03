@@ -28,7 +28,9 @@ class RegistrationController final
 
     public:
         RegistrationController() = default;
+        // LCOV_EXCL_START
         virtual ~RegistrationController() = default;
+        // LCOV_EXCL_STOP
 
         void initComponentByHandle(const RSYNC_HANDLE handle,
                                    const std::string& component)

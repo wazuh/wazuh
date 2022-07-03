@@ -59,7 +59,6 @@ TEST_F(RSyncImplementationTest, ValidDecoder)
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().release());
 }
 
-
 TEST_F(RSyncImplementationTest, ValidDecoderPushedNoData)
 {
     const auto handle { RSync::RSyncImplementation::instance().create() };
@@ -79,7 +78,6 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedNoData)
 
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().release());
 }
-
 
 TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumFail)
 {
@@ -403,7 +401,6 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumNoData)
     EXPECT_ANY_THROW(RSync::RSyncImplementation::instance().push(handle, data));
 }
 
-
 TEST_F(RSyncImplementationTest, InvalidPushData)
 {
     const auto handle { RSync::RSyncImplementation::instance().create() };
@@ -417,5 +414,15 @@ TEST_F(RSyncImplementationTest, InvalidPushData)
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().push(handle, data));
 
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().release());
+}
+
+TEST(RSyncRegistrationController, ValidRegistrationFlow)
+{
+    RegistrationController regController;
+    EXPECT_NO_THROW(regController.initComponentByHandle(RSYNC_HANDLE(1), "test_component"));
+    EXPECT_EQ(regController.isComponentRegistered("test_component"), true);
+    EXPECT_EQ(regController.isComponentRegistered("test_component_false"), false);
+    EXPECT_NO_THROW(regController.removeComponentByHandle(RSYNC_HANDLE(1)));
+    EXPECT_EQ(regController.isComponentRegistered("test_component"), false);
 }
 
