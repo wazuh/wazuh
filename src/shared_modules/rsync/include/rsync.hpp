@@ -44,7 +44,7 @@ public:
     /**
      * @brief Remote sync initializes the instance.
      *
-     * @param maxQueueSize Maximum size of the queue.
+     * @param maxQueueSize Maximum size of the queue, if the value is 0, it is unlimited.
      */
     RemoteSync(const size_t maxQueueSize = 0);
 
