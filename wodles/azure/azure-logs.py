@@ -267,7 +267,7 @@ def create_new_row(table: orm.Base, md5_hash: str, query: str, offset: str) -> o
     try:
         orm.add_row(row=item)
     except orm.AzureORMError as e:
-        logging.error(f"Error inserting row object into {table.__tablename__}: e")
+        logging.error(f"Error inserting row object into {table.__tablename__}: {e}")
         sys.exit(1)
     return item
 
