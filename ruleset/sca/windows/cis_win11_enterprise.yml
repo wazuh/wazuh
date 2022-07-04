@@ -90,7 +90,7 @@ checks:
 
   - id: 26005
     title: "Ensure 'Relax minimum password length limits' is set to 'Enabled'"
-    description: "This policy setting determines whether the minimum password length setting can be increased beyond the legacy limit of 14 characters. For more information please see the following Microsoft Security Blog."
+    description: "This policy setting determines whether the minimum password length setting can be increased beyond the legacy limit of 14 characters."
     rationale: "This setting will enable the enforcement of longer and generally stronger passwords or passphrases where MFA is not in use."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled:Computer Configuration\\Policies\\Windows Settings\\Security Settings\\AccountPolicies\\Password Policy\\Relax minimum password length limits"
     compliance:
