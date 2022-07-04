@@ -17,7 +17,6 @@
 
 #include <shared.h>
 #include "os_net/os_net.h"
-#include "wazuh_modules/wmodules.h"
 #include "analysisd.h"
 #include "state.h"
 #include "config.h"
@@ -179,9 +178,7 @@ void * asyscom_main(__attribute__((unused)) void * arg) {
             if (errno != EINTR) {
                 merror_exit("At select(): '%s'", strerror(errno));
             }
-
             continue;
-
         case 0:
             continue;
         }
@@ -190,7 +187,6 @@ void * asyscom_main(__attribute__((unused)) void * arg) {
             if (errno != EINTR) {
                 merror("At accept(): '%s'", strerror(errno));
             }
-
             continue;
         }
         os_calloc(OS_MAXSTR, sizeof(char), buffer);

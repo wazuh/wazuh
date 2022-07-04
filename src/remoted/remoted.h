@@ -96,8 +96,11 @@ void *update_shared_files(void *none);
 /* Save control messages */
 void save_controlmsg(const keyentry * key, char *msg, size_t msg_length, int *wdb_sock);
 
-// Request listener thread entry point
-void * req_main(void * arg);
+// Initialize request module
+void req_init();
+
+// Request sender
+void req_sender(int peer, char *buffer, ssize_t length);
 
 // Save request data (ack or response). Return 0 on success or -1 on error.
 int req_save(const char * counter, const char * buffer, size_t length);
@@ -135,7 +138,6 @@ size_t rem_get_tsize();
 void rem_msgfree(message_t * message);
 
 // Read config
-size_t rem_getconfig(const char * section, char ** output);
 cJSON *getRemoteConfig(void);
 cJSON *getRemoteInternalConfig(void);
 cJSON *getRemoteGlobalConfig(void);
