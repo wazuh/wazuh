@@ -63,7 +63,7 @@ public:
                                                  jsonDefinition.typeName()));
         }
         // Process definitions
-        json::Json tmpJson{jsonDefinition};
+        json::Json tmpJson {jsonDefinition};
         internals::substituteDefinitions(tmpJson);
 
         auto objectDefinition = tmpJson.getObject().value();
@@ -139,6 +139,28 @@ public:
                 std::throw_with_nested(
                     std::runtime_error("[Asset::Asset(jsonDefinition, type)] failed to "
                                        "build stage check"));
+            }
+        }
+
+        // Get parse if present
+        auto parsePos =
+            std::find_if(objectDefinition.begin(),
+                         objectDefinition.end(),
+                         [](auto tuple) { return std::get<0>(tuple) == "parse"; });
+        if (parsePos != objectDefinition.end())
+        {
+            try
+            {
+                auto parseExpression = internals::Registry::getBuilder("stage.parse")(
+                    {std::get<1>(*parsePos)});
+                objectDefinition.erase(parsePos);
+                m_check = base::And::create("condition", {m_check, parseExpression});
+            }
+            catch (const std::exception& e)
+            {
+                std::throw_with_nested(
+                    std::runtime_error("[Asset::Asset(jsonDefinition, type)] failed to "
+                                       "build stage parse"));
             }
         }
 

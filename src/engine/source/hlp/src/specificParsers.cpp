@@ -37,6 +37,8 @@ static const std::unordered_map<std::string_view, std::tuple<const char*, const 
         // {"Stamp", "%b %d %T"},
         // {"UnixDate", "%a %b %d %T %Z %Y"},
         {"SYSLOG", {"%b %d %T", "Jun 14 15:16:01"}},
+        {"ISO8601", {"%Y-%d-%mT%T%z", "2018-08-14T14:30:02.203151+02:00"}},
+        {"HTTPDATE", {"%d/%b/%Y:%T %z", "26/Dec/2016:16:22:14 +0000"}},
 };
 
 bool configureTsParser(Parser& parser, std::vector<std::string_view> const& args)
