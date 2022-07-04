@@ -35,7 +35,6 @@ int test_AES()
     int decryptedSize = decrypt_AES((uchar*)encryptedBufffer, encryptedSize, key, iv, (uchar*)decryptedBufffer);
     
     assert_string_equal(decryptedBufffer, initialString);
-    assert_string_equal(decryptedBufffer, initialString);
 }
 
 int main(void) 
