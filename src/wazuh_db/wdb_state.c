@@ -26,8 +26,6 @@
 
 #define timeval_to_milis(time) ((time.tv_sec * (uint64_t)1000) + (time.tv_usec / 1000))
 
-STATIC uint64_t get_wazuhdb_time(wdb_state_t state);
-
 STATIC uint64_t get_agent_time(wdb_state_t state);
 
 STATIC uint64_t get_global_time(wdb_state_t state);
@@ -48,18 +46,6 @@ void w_inc_queries_total() {
 void w_inc_wazuhdb() {
     w_mutex_lock(&db_state_t_mutex);
     wdb_state.queries_breakdown.wazuhdb_queries++;
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
-void w_inc_wazuhdb_get_config() {
-    w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.wazuhdb_breakdown.get_config_queries++;
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
-void w_inc_wazuhdb_get_config_time(struct timeval time) {
-    w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.wazuhdb_breakdown.get_config_time, &time, &wdb_state.queries_breakdown.wazuhdb_breakdown.get_config_time);
     w_mutex_unlock(&db_state_t_mutex);
 }
 
@@ -1008,7 +994,6 @@ cJSON* wdb_create_state_json() {
     _wazuhdb_queries_breakdown = cJSON_CreateObject();
     cJSON_AddItemToObject(_queries_breakdown, "wazuhdb_queries_breakdown", _wazuhdb_queries_breakdown);
 
-    cJSON_AddNumberToObject(_wazuhdb_queries_breakdown, "getconfig_queries", wdb_state_cpy.queries_breakdown.wazuhdb_breakdown.get_config_queries);
     cJSON_AddNumberToObject(_wazuhdb_queries_breakdown, "remove_queries", wdb_state_cpy.queries_breakdown.wazuhdb_breakdown.remove_queries);
     cJSON_AddNumberToObject(_wazuhdb_queries_breakdown, "unknown_queries", wdb_state_cpy.queries_breakdown.wazuhdb_breakdown.unknown_queries);
 
@@ -1163,12 +1148,11 @@ cJSON* wdb_create_state_json() {
     _queries_time_breakdown = cJSON_CreateObject();
     cJSON_AddItemToObject(_statistics, "queries_time_breakdown", _queries_time_breakdown);
 
-    cJSON_AddNumberToObject(_queries_time_breakdown, "wazuhdb_time", get_wazuhdb_time(wdb_state_cpy));
+    cJSON_AddNumberToObject(_queries_time_breakdown, "wazuhdb_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.wazuhdb_breakdown.remove_time));
 
     _wazuhdb_time_breakdown = cJSON_CreateObject();
     cJSON_AddItemToObject(_queries_time_breakdown, "wazuhdb_time_breakdown", _wazuhdb_time_breakdown);
 
-    cJSON_AddNumberToObject(_wazuhdb_time_breakdown, "getconfig_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.wazuhdb_breakdown.get_config_time));
     cJSON_AddNumberToObject(_wazuhdb_time_breakdown, "remove_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.wazuhdb_breakdown.remove_time));
 
     cJSON_AddNumberToObject(_queries_time_breakdown, "agent_time", get_agent_time(wdb_state_cpy));
@@ -1303,7 +1287,7 @@ cJSON* wdb_create_state_json() {
     cJSON_AddNumberToObject(_task_time_breakdown, "set_timeout_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.set_timeout_time));
     cJSON_AddNumberToObject(_task_time_breakdown, "delete_old_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.delete_old_time));
 
-    cJSON_AddNumberToObject(_queries_time_breakdown, "mitre_time",timeval_to_milis(wdb_state_cpy.queries_breakdown.mitre_breakdown.sql_time));
+    cJSON_AddNumberToObject(_queries_time_breakdown, "mitre_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.mitre_breakdown.sql_time));
 
     _mitre_time_breakdown = cJSON_CreateObject();
     cJSON_AddItemToObject(_queries_time_breakdown, "mitre_time_breakdown", _mitre_time_breakdown);
@@ -1311,14 +1295,6 @@ cJSON* wdb_create_state_json() {
     cJSON_AddNumberToObject(_mitre_time_breakdown, "sql_time", timeval_to_milis(wdb_state_cpy.queries_breakdown.mitre_breakdown.sql_time));
 
     return wdb_state_json;
-}
-
-STATIC uint64_t get_wazuhdb_time(wdb_state_t state){
-    struct timeval task_time;
-
-    timeradd(&state.queries_breakdown.wazuhdb_breakdown.get_config_time, &state.queries_breakdown.wazuhdb_breakdown.remove_time, &task_time);
-
-    return timeval_to_milis(task_time);
 }
 
 STATIC uint64_t get_agent_time(wdb_state_t state){
@@ -1408,5 +1384,5 @@ STATIC uint64_t get_task_time(wdb_state_t state){
 }
 
 STATIC uint64_t get_time_total(wdb_state_t state){
-    return get_task_time(state) + get_global_time(state) + get_agent_time(state) + get_wazuhdb_time(state) + timeval_to_milis(state.queries_breakdown.mitre_breakdown.sql_time);
+    return get_task_time(state) + get_global_time(state) + get_agent_time(state) + timeval_to_milis(state.queries_breakdown.wazuhdb_breakdown.remove_time) + timeval_to_milis(state.queries_breakdown.mitre_breakdown.sql_time);
 }
