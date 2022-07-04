@@ -228,7 +228,6 @@ class FIMDBCreator final
         static void registerRsync(__attribute__((unused)) std::shared_ptr<RemoteSync> RSyncHandler,
                                   __attribute__((unused)) const RSYNC_HANDLE& handle,
                                   __attribute__((unused)) std::function<void(const std::string&)> syncFileMessageFunction,
-                                  __attribute__((unused)) const uint32_t syncMinInterval,
                                   __attribute__((unused)) std::function<void(const std::string&)> syncRegistryMessageFunction,
                                   __attribute__((unused)) const bool syncRegistryEnabled)
         {
@@ -284,11 +283,9 @@ class FIMDBCreator<OSType::WINDOWS> final
         static void registerRsync(std::shared_ptr<RemoteSync> RSyncHandler,
                                   const RSYNC_HANDLE& handle,
                                   std::function<void(const std::string&)> syncFileMessageFunction,
-                                  const uint32_t syncMinInterval,
                                   std::function<void(const std::string&)> syncRegistryMessageFunction,
                                   const bool syncRegistryEnabled)
         {
-            fileSyncConfig.minimalSyncIntervalTime(syncMinInterval);
             RSyncHandler->registerSyncID(FIM_COMPONENT_FILE,
                                         handle,
                                         fileSyncConfig.config(),
@@ -296,13 +293,11 @@ class FIMDBCreator<OSType::WINDOWS> final
 
             if (syncRegistryEnabled)
             {
-                registryKeySyncConfig.minimalSyncIntervalTime(syncMinInterval);
                 RSyncHandler->registerSyncID(FIM_COMPONENT_REGISTRY_KEY,
                                             handle,
                                             registryKeySyncConfig.config(),
                                             syncRegistryMessageFunction);
 
-                registryValueSyncConfig.minimalSyncIntervalTime(syncMinInterval);
                 RSyncHandler->registerSyncID(FIM_COMPONENT_REGISTRY_VALUE,
                                             handle,
                                             registryValueSyncConfig.config(),
@@ -357,11 +352,9 @@ class FIMDBCreator<OSType::OTHERS> final
         static void registerRsync(std::shared_ptr<RemoteSync> RSyncHandler,
                                   const RSYNC_HANDLE& handle,
                                   std::function<void(const std::string&)> syncFileMessageFunction,
-                                  const uint32_t syncMinInterval,
                                   __attribute__((unused)) std::function<void(const std::string&)> syncRegistryMessageFunction,
                                   __attribute__((unused)) const bool syncRegistryEnabled)
         {
-            fileSyncConfig.minimalSyncIntervalTime(syncMinInterval);
             RSyncHandler->registerSyncID(FIM_COMPONENT_FILE,
                                         handle,
                                         fileSyncConfig.config(),

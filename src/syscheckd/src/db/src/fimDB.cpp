@@ -24,7 +24,6 @@ void FIMDB::registerRSync()
         FIMDBCreator<OS_TYPE>::registerRsync(m_rsyncHandler,
                                              m_dbsyncHandler->handle(),
                                              m_syncFileMessageFunction,
-                                             m_syncResponseTimeout,
                                              m_syncRegistryMessageFunction,
                                              m_syncRegistryEnabled);
     }
