@@ -609,6 +609,7 @@ int wdb_hotfix_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
 
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_HOTFIX_INSERT2 : WDB_STMT_HOTFIX_INSERT) < 0) {
         mdebug1("at wdb_hotfix_insert(): cannot cache statement");
+        return OS_INVALID;
     }
 
     stmt = wdb->stmt[replace ? WDB_STMT_HOTFIX_INSERT2 : WDB_STMT_HOTFIX_INSERT];

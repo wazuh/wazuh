@@ -109,9 +109,6 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_task_insert_task -Wl,--wrap,wdb_task
                              -Wl,--wrap,wdb_task_cancel_upgrade_tasks -Wl,--wrap,wdb_task_set_timeout_status -Wl,--wrap,wdb_task_delete_old_entries -Wl,--wrap,wdb_open_tasks \
                              ${DEBUG_OP_WRAPPERS}")
 
-# Add extra compiling flags
-add_compile_options(-Wall)
-
 list(APPEND wdb_tests_names "test_wdb_rootcheck")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,sqlite3_bind_int \
                              -Wl,--wrap,sqlite3_last_insert_rowid -Wl,--wrap,wdb_step -Wl,--wrap,sqlite3_changes -Wl,--wrap,sqlite3_step \
@@ -122,6 +119,12 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_begin2 -Wl,--wrap,wdb_stmt_cache -Wl
                              -Wl,--wrap,wdb_step -Wl,--wrap,sqlite3_column_int -Wl,--wrap,time -Wl,--wrap,sqlite3_errmsg\
                              -Wl,--wrap,sqlite3_column_text -Wl,--wrap,sqlite3_step ${DEBUG_OP_WRAPPERS}")
 
+list(APPEND wdb_tests_names "test_wdb_syscollector")
+list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,sqlite3_bind_int -Wl,--wrap,sqlite3_step \
+                             -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror ${DEBUG_OP_WRAPPERS}")
+
+# Add extra compiling flags
+add_compile_options(-Wall)
 
 # Compilig tests
 list(LENGTH wdb_tests_names count)
