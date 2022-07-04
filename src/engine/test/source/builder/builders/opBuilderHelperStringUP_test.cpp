@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2022, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -7,323 +7,188 @@
  * Foundation.
  */
 
+#include <any>
 #include <gtest/gtest.h>
-
 #include <vector>
 
 #include <baseTypes.hpp>
 
-#include "testUtils.hpp"
 #include "opBuilderHelperMap.hpp"
 
 using namespace base;
 namespace bld = builder::internals::builders;
 
-using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg){};
-
-// Build ok
 TEST(opBuilderHelperStringUP, Builds)
 {
-    Document doc{R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "field2normalize": "+s_up/abcd"
-                }
-            }
-        ]
-    })"};
-    ASSERT_NO_THROW(bld::opBuilderHelperStringUP(doc.get("/normalize/0/map"), tr));
+    auto tuple = std::make_tuple(
+        std::string {"/field"}, std::string {"s_up"}, std::vector<std::string> {"test"});
+
+    ASSERT_NO_THROW(bld::opBuilderHelperStringUP(tuple));
 }
 
-// Build incorrect number of arguments
-TEST(opBuilderHelperStringUP, Builds_incorrect_number_of_arguments)
+TEST(opBuilderHelperStringUP, Builds_bad_parameters)
 {
-    Document doc{R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "field2normalize": "+s_up/test_value/test_value2"
-                }
-            }
-        ]
-    })"};
-    ASSERT_THROW(bld::opBuilderHelperStringUP(doc.get("/normalize/0/map"), tr), std::runtime_error);
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"s_up"},
+                                 std::vector<std::string> {"TEST", "test"});
+
+    ASSERT_THROW(bld::opBuilderHelperStringUP(tuple), std::runtime_error);
 }
 
-// Test ok: static values
-TEST(opBuilderHelperStringUP, Static_string_ok)
+TEST(opBuilderHelperStringUP, Exec_string_UP_field_not_exist)
 {
-    Document doc{R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "fieltToCreate": "+s_up/asd123asd"
-                }
-            }
-        ]
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"s_up"},
+                                 std::vector<std::string> {"test"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"not_fieltToCreate": "qwe"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"not_fieltToCreate": "ASD123asd"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"not_fieltToCreate": "ASD"}
-            )"));
-            s.on_completed();
-        });
+    auto event1 = std::make_shared<json::Json>(R"({"fieldcheck": 10})");
 
-    Lifter lift = bld::opBuilderHelperStringUP(doc.get("/normalize/0/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 3);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/fieltToCreate").GetString(), "ASD123ASD");
-    ASSERT_STREQ(expected[1]->getEvent()->get("/fieltToCreate").GetString(), "ASD123ASD");
-    ASSERT_STREQ(expected[2]->getEvent()->get("/fieltToCreate").GetString(), "ASD123ASD");
+    auto op = bld::opBuilderHelperStringUP(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
 }
 
-// Test ok: dynamic values (string)
-TEST(opBuilderHelperStringUP, Dynamics_string_ok)
+TEST(opBuilderHelperStringUP, Exec_string_UP_success)
 {
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"s_up"},
+                                 std::vector<std::string> {"test"});
 
-    Document doc{R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "fieltToCreate": "+s_up/$srcField"
-                }
-            }
-        ]
-    })"};
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"srcField": "qwe"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"srcField": "ASD123asd"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"srcField": "ASD"}
-            )"));
-            s.on_completed();
-        });
+    auto op = bld::opBuilderHelperStringUP(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-    Lifter lift = bld::opBuilderHelperStringUP(doc.get("/normalize/0/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 3);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/fieltToCreate").GetString(), "QWE");
-    ASSERT_STREQ(expected[1]->getEvent()->get("/fieltToCreate").GetString(), "ASD123ASD");
-    ASSERT_STREQ(expected[2]->getEvent()->get("/fieltToCreate").GetString(), "ASD");
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ("TEST", result.payload()->getString("/field2check").value());
 }
 
-TEST(opBuilderHelperStringUP, Multilevel_src)
+TEST(opBuilderHelperStringUP, Exec_string_UP_ref_field_not_exist)
 {
-    Document doc{R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "fieltToCreate": "+s_lo/$a.b.c.srcField"
-                }
-            }
-        ]
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"s_up"},
+                                 std::vector<std::string> {"$otherfield"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"a": {"b": {"c": {"srcField": "qwe"}}}}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"a": {"b": {"c": {"srcField": "ASD123asd"}}}}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"a": {"b": {"c": {"srcField": "ASD"}}}}
-            )"));
-            s.on_completed();
-        });
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
+                                                   "otherfield2": 10})");
 
-    Lifter lift = bld::opBuilderHelperStringLO(doc.get("/normalize/0/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 3);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/fieltToCreate").GetString(), "qwe");
-    ASSERT_STREQ(expected[1]->getEvent()->get("/fieltToCreate").GetString(), "asd123asd");
-    ASSERT_STREQ(expected[2]->getEvent()->get("/fieltToCreate").GetString(), "asd");
+    auto op = bld::opBuilderHelperStringUP(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result);
 }
 
-TEST(opBuilderHelperStringUP, Multilevel_dst)
+TEST(opBuilderHelperStringUP, Exec_string_UP_ref_success)
 {
-    Document doc{R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "a.b.fieltToCreate.2": "+s_lo/$a.b.c.srcField"
-                }
-            }
-        ]
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"s_up"},
+                                 std::vector<std::string> {"$otherfield"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"a": {"b": {"c": {"srcField": "qwe"}}}}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"a": {"b": {"c": {"srcField": "ASD123asd"}}}}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"a": {"b": {"c": {"srcField": "ASD"}}}}
-            )"));
-            s.on_completed();
-        });
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
+                                                   "otherfield": "test"})");
 
-    Lifter lift = bld::opBuilderHelperStringUP(doc.get("/normalize/0/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 3);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/a/b/fieltToCreate/2").GetString(), "QWE");
-    ASSERT_STREQ(expected[1]->getEvent()->get("/a/b/fieltToCreate/2").GetString(), "ASD123ASD");
-    ASSERT_STREQ(expected[2]->getEvent()->get("/a/b/fieltToCreate/2").GetString(), "ASD");
+    auto op = bld::opBuilderHelperStringUP(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ("TEST", result.payload()->getString("/field2check").value());
 }
 
-TEST(opBuilderHelperStringUP, Exist_dst)
+TEST(opBuilderHelperStringUP, Exec_string_UP_multilevel_field_not_exist)
 {
-    Document doc{R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "a.b": "+s_lo/$a.b.c.srcField"
-                }
-            }
-        ]
-    })"};
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"s_up"},
+                                 std::vector<std::string> {"test"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"a": {"b": {"c": {"srcField": "qwe"}}}}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"a": {"b": {"c": {"srcField": "ASD123asd"}}}}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"a": {"b": {"c": {"srcField": "ASD"}}}}
-            )"));
-            s.on_completed();
-        });
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": 15,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "fieldcheck": 10,
+                        "ref_key": 11
+                    }
+                    })");
 
-    Lifter lift = bld::opBuilderHelperStringUP(doc.get("/normalize/0/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 3);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/a/b").GetString(), "QWE");
-    ASSERT_STREQ(expected[1]->getEvent()->get("/a/b").GetString(), "ASD123ASD");
-    ASSERT_STREQ(expected[2]->getEvent()->get("/a/b").GetString(), "ASD");
+    auto op = bld::opBuilderHelperStringUP(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
 }
 
-TEST(opBuilderHelperStringUP, Not_exist_src)
+TEST(opBuilderHelperStringUP, Exec_string_UP_multilevel_success)
 {
-    Document doc{R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "a.b": "+s_lo/$srcField"
-                }
-            }
-        ]
-    })"};
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"s_up"},
+                                 std::vector<std::string> {"test"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"a": {"b": "QWE"}}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"c": {"d": "QWE123"}}
-            )"));
-            s.on_completed();
-        });
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": 15,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "field2check": 10,
+                        "ref_key": 11
+                    }
+                    })");
 
-    Lifter lift = bld::opBuilderHelperStringUP(doc.get("/normalize/0/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 2);
-    ASSERT_STREQ(expected[0]->getEvent()->get("/a/b").GetString(), "QWE");
-    ASSERT_FALSE(expected[1]->getEvent()->exists("/a/b"));
+    auto op = bld::opBuilderHelperStringUP(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ("TEST", result.payload()->getString("/parentObjt_1/field2check").value());
 }
 
-TEST(opBuilderHelperStringUP, Src_not_string)
+TEST(opBuilderHelperStringUP, Exec_string_UP_multilevel_ref_field_not_exist)
 {
-    Document doc{R"({
-        "normalize":
-        [
-            {
-                "map":
-                {
-                    "fieltToCreate": "+s_lo/$srcField123"
-                }
-            }
-        ]
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"s_up"},
+                                 std::vector<std::string> {"$otherfield"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"srcField": "qwe"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"srcField": "ASD123asd"}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"srcField": "ASD"}
-            )"));
-            s.on_completed();
-        });
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
+                                                   "otherfield2": 10})");
 
-    Lifter lift = bld::opBuilderHelperStringUP(doc.get("/normalize/0/map"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
-    output.subscribe([&](Event e) { expected.push_back(e); });
-    ASSERT_EQ(expected.size(), 3);
-    ASSERT_FALSE(expected[0]->getEvent()->exists("/fieltToCreate"));
-    ASSERT_FALSE(expected[1]->getEvent()->exists("/fieltToCreate"));
-    ASSERT_FALSE(expected[2]->getEvent()->exists("/fieltToCreate"));
+    auto op = bld::opBuilderHelperStringUP(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result);
+}
+
+TEST(opBuilderHelperStringUP, Exec_string_UP_multilevel_ref_success)
+{
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"s_up"},
+                                 std::vector<std::string> {"$/parentObjt_2/field2check"});
+
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": "test",
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "field2check": 10,
+                        "ref_key": 11
+                    }
+                    })");
+
+    auto op = bld::opBuilderHelperStringUP(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ("TEST", result.payload()->getString("/parentObjt_1/field2check").value());
 }
