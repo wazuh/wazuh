@@ -123,9 +123,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 // Key request socket
 #define KEY_REQUEST_SOCK "queue/sockets/krequest"
 
-// Remote requests socket
-#define REMOTE_REQ_SOCK "queue/sockets/request"
-
 // Local requests socket
 #define COM_LOCAL_SOCK  "queue/sockets/com"
 #define LC_LOCAL_SOCK  "queue/sockets/logcollector"
@@ -142,7 +139,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define CONTROL_SOCK "queue/sockets/control"
 #define LOGTEST_SOCK "queue/sockets/logtest"
 #define AGENT_UPGRADE_SOCK "queue/sockets/upgrade"
-
 
 // Tasks socket
 #define TASK_QUEUE "queue/tasks/task"
