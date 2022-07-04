@@ -305,8 +305,12 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
     utils.printHeader(moduleName=moduleName,
                       headerKey="rtr")
     runCppCheck(moduleName=moduleName)
-    build_tools.makeDeps(targetName=target, srcOnly=False)
-    build_tools.makeTarget(targetName=target, tests=True, debug=True)
+    runAStyleCheck(moduleName=moduleName)
+    build_tools.makeDeps(targetName=target,
+                         srcOnly=False)
+    build_tools.makeTarget(targetName=target,
+                           tests=True,
+                           debug=True)
     runTests(moduleName=moduleName)
     build_tools.cleanFolder(moduleName=moduleName,
                             additionalFolder="build")
@@ -319,7 +323,6 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
         build_tools.makeLib(moduleName=moduleName)
         runValgrind(moduleName=moduleName)
         runCoverage(moduleName=moduleName)
-    runAStyleCheck(moduleName=moduleName)
     configPath = os.path.join(utils.currentPath(),
                               "input/test_tool_config.json")
     smokeTestConfig = utils.readJSONFile(jsonFilePath=configPath)
@@ -379,7 +382,7 @@ def runScanBuild(targetName):
                                tests=False,
                                debug=True)
         build_tools.cleanInternals()
-        scanBuildCommand = "scan-build-10 --status-bugs \
+        scanBuildCommand = "scan-build --status-bugs \
                             --use-cc=/usr/bin/i686-w64-mingw32-gcc \
                             --use-c++=/usr/bin/i686-w64-mingw32-g++-posix \
                             --analyzer-target=i686-w64-mingw32 \
@@ -388,7 +391,7 @@ def runScanBuild(targetName):
     else:
         build_tools.makeDeps(targetName=targetName,
                              srcOnly=False)
-        scanBuildCommand = "scan-build-10 --status-bugs \
+        scanBuildCommand = "scan-build --status-bugs \
                             --force-analyze-debug-code \
                             --exclude external/ make TARGET={} \
                             DEBUG=1 -j4".format(targetName)
@@ -546,13 +549,13 @@ def runTests(moduleName):
     if len(tests) > 0:
         os.chdir(currentDir)
         for test in tests:
-            #path = os.path.join(currentDir, test)
+            path = os.path.join(currentDir, test)
             if ".exe" in test:
                 command = f'WINEPATH="/usr/i686-w64-mingw32/lib;\
                             {utils.currentPath()}" \
-                            WINEARCH=win64 /usr/bin/wine ./{test}'
+                            WINEARCH=win64 /usr/bin/wine {path}'
             else:
-                command = "./{}".format(test)
+                command = path
             out = subprocess.run(command,
                                  stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE,
