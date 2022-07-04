@@ -84,6 +84,35 @@ public:
                 rapidjson::GetParseError_En(result.Code()),
                 result.Offset()));
         }
+
+        // TODO: This should be checked by the library, or make a better validator.
+        // As stated in rapidjson docs, if an object contains duplicated memebers,
+        // equality comparator always returns false, for said member or for the whole
+        // object if it contains duplicated members.
+
+        // If equality between a member and itself is false, then it is a duplicate or
+        // contains duplicated members.
+        auto validateDuplicatedKeys = [](const rapidjson::Value& value,
+                                         auto& recurRef) -> void
+        {
+            if (value.IsObject())
+            {
+                for (auto it = value.MemberBegin(); it != value.MemberEnd(); ++it)
+                {
+                    if (value[it->name.GetString()] != value[it->name.GetString()])
+                    {
+                        throw std::runtime_error(fmt::format(
+                            "[Json(jsonString)] Unable to build json "
+                            "document because: Duplicated key, or inside [{}]",
+                            it->name.GetString()));
+                    }
+
+                    recurRef(it->value, recurRef);
+                }
+            }
+        };
+
+        validateDuplicatedKeys(m_document, validateDuplicatedKeys);
     }
 
     /**
