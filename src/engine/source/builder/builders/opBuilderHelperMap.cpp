@@ -196,6 +196,10 @@ opBuilderHelperIntTransformation(const std::string& targetField,
                     "[builders::opBuilderHelperIntTransformation()] could not convert {} to int",
                     rightParameter.m_value)));
             }
+            if(op == IntOperator::DIV && std::get<int>(rValue) == 0) {
+                throw std::runtime_error(fmt::format(
+                "[builders::opBuilderHelperIntTransformation()] division by zero"));
+            }
 
             break;
 
@@ -256,6 +260,9 @@ opBuilderHelperIntTransformation(const std::string& targetField,
         fmt::format("[{}] -> Failure: [{}] not found", name, rightParameter.m_value);
     const auto failureTrace3 = fmt::format("[{}] -> Failure", name);
 
+    const auto failureTrace4 =
+        fmt::format("[{}] -> Failure: [{}] division by zero", name, rightParameter.m_value);
+
     // Function that implements the helper
     return base::Term<base::EngineOp>::create(name,
     [=, targetField=std::move(targetField)](base::Event event) -> base::result::Result<base::Event>
@@ -279,6 +286,10 @@ opBuilderHelperIntTransformation(const std::string& targetField,
             }
             else
             {
+                if(op == IntOperator::DIV && resolvedRValue == 0)
+                {
+                    return base::result::makeFailure(event, failureTrace4);
+                }
                 auto res = transformFunction(lValue.value(), resolvedRValue.value());
                 event->setInt(res, targetField);
                 return base::result::makeSuccess(event, successTrace);
