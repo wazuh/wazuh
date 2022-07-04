@@ -1,0 +1,69 @@
+[
+    {
+        "test_suite_description": "Test a sigle patterns",
+        "batch_test": [
+            {
+                "pattern": "^hi (\\w+).",
+                "log": "hi wazuh.bye",
+                "end_match": ".bye",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "pattern": "^hi2 (\\w+).",
+                "log": "hi2 wazuh.bye",
+                "end_match": ".bye",
+                "captured_groups": [
+                    "wazuh"
+                ]
+            }
+        ]
+    },
+    {
+        "test_suite_description": "Test a double patterns",
+        "batch_test": [
+            {
+                "pattern": "^hi (\\w+)|^god bye (\\w+)$",
+                "log": "god bye wazuh",
+                "__end_match": "h",
+                "end_match": null,
+                "captured_groups": [
+                    "wazuh"
+                ]
+            }
+        ]
+    },
+    {
+        "test_suite_description": "Test a double patterns",
+        "batch_test": [
+            {
+                "pattern": "^hi (\\w+)|^god bye (\\w+)$",
+                "log": "god bye wazuh",
+                "__end_match": "h",
+                "end_match": null,
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "pattern": "^hi (\\w+)|^god bye (\\w+)$",
+                "log": "god bye wazuh",
+                "__end_match": "h",
+                "end_match": null,
+                "captured_groups": [
+                    "wazuh"
+                ]
+            },
+            {
+                "pattern": "^hi (\\w+)|^god bye (\\w+)$",
+                "log": "god bye wazuh",
+                "__end_match": "h",
+                "end_match": null,
+                "captured_groups": [
+                    "wazuh"
+                ]
+            }
+        ]
+    }
+]
