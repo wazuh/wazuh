@@ -2128,6 +2128,54 @@ stages:
           total_affected_items: 0
           total_failed_items: 1
 
+  # PUT /cluster/{node_id}/configuration
+  - name: Try to upload a configuration with remote commands
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      method: PUT
+      data: "{remote_command_ossec_conf:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1124
+              id:
+                - 'worker1'
+          total_affected_items: 0
+          total_failed_items: 1
+
+  # PUT /cluster/{node_id}/configuration
+  - name: Try to upload a configuration with limits
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      method: PUT
+      data: "{limits_ossec_conf:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1127
+              id:
+                - 'worker1'
+          total_affected_items: 0
+          total_failed_items: 1
+
   # GET /cluster/{node_id}/configuration
   - name: Ensure the config didn't change
     request:
