@@ -7,769 +7,503 @@
  * Foundation.
  */
 
+#include <any>
 #include <gtest/gtest.h>
 #include <vector>
 
 #include <baseTypes.hpp>
 
-#include "testUtils.hpp"
 #include "opBuilderHelperMap.hpp"
 
 using namespace base;
 namespace bld = builder::internals::builders;
 
-using FakeTrFn = std::function<void(std::string)>;
-static FakeTrFn tr = [](std::string msg){};
-
 TEST(opBuilderHelperIntCalc, Builds)
 {
-    Document doc{R"({
-        "normalice":
-            {"field_test": "+i_calc/sum/10"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"i_calc"},
+                                 std::vector<std::string> {"sum", "10"});
 
-    ASSERT_NO_THROW(bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr));
-}
-
-TEST(opBuilderHelperIntCalc, Builds_error_bad_parameter)
-{
-    Document doc{R"({
-        "normalice":
-            {"field_test": "+i_calc/test/test"}
-    })"};
-
-    ASSERT_THROW(bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr), std::runtime_error);
-}
-
-TEST(opBuilderHelperIntCalc, Builds_error_less_parameters)
-{
-    Document doc{R"({
-        "normalice":
-            {"field_test": "+i_calc/10"}
-    })"};
-
-    ASSERT_THROW(bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr), std::runtime_error);
-}
-
-
-TEST(opBuilderHelperIntCalc, Builds_error_more_parameters)
-{
-    Document doc{R"({
-        "normalice":
-            {"field_test": "+i_calc/10/10/10"}
-    })"};
-
-    ASSERT_THROW(bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr), std::runtime_error);
+    ASSERT_NO_THROW(bld::opBuilderHelperIntCalc(tuple));
 }
 
 TEST(opBuilderHelperIntCalc, Builds_error_bad_operator)
 {
-    Document doc{R"({
-        "normalice":
-            {"field_test": "+i_calc/^/10"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"i_calc"},
+                                 std::vector<std::string> {"test", "10"});
 
-    ASSERT_THROW(bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr), std::runtime_error);
+    ASSERT_THROW(bld::opBuilderHelperIntCalc(tuple), std::runtime_error);
 }
 
 TEST(opBuilderHelperIntCalc, Builds_error_zero_division)
 {
-    Document doc{R"({
-        "normalice":
-            {"field_test": "+i_calc/div/0"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field"},
+                                 std::string {"i_calc"},
+                                 std::vector<std::string> {"div", "0"});
 
-    ASSERT_THROW(bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr), std::runtime_error);
+    ASSERT_THROW(bld::opBuilderHelperIntCalc(tuple), std::runtime_error);
 }
 
-TEST(opBuilderHelperIntCalc, Exec_equal_ok)
+TEST(opBuilderHelperIntCalc, Exec_int_calc_field_not_exist)
 {
-    Document doc{R"({
-        "normalice":
-            {"field_test": "+i_calc/sum/10"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"i_calc"},
+                                 std::vector<std::string> {"sum", "10"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"field_test":9}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":11}
-            )"));
-            s.on_completed();
-        });
-    Lifter lift = bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
+    auto event1 = std::make_shared<json::Json>(R"({"fieldcheck": 10})");
 
-    output.subscribe([&](Event e) { expected.push_back(e); });
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-    ASSERT_EQ(expected.size(), 4);
-    ASSERT_EQ(expected[0]->getEvent()->get("/field_test").GetInt(),19);
-    ASSERT_EQ(expected[1]->getEvent()->get("/field_test").GetInt(),20);
-    ASSERT_EQ(expected[2]->getEvent()->get("/field_test").GetInt(),20);
-    ASSERT_EQ(expected[3]->getEvent()->get("/field_test").GetInt(),21);
+    result::Result<Event> result = op(event1);
 
+    ASSERT_FALSE(result);
 }
 
-TEST(opBuilderHelperIntCalc, Exec_sum_int)
+TEST(opBuilderHelperIntCalc, Exec_int_calc_sum)
 {
-    Document doc{R"({
-        "normalice":
-            {"field_test": "+i_calc/sum/10"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"i_calc"},
+                                 std::vector<std::string> {"sum", "10"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"field_test":0}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":9}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":11}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":100}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":-100}
-            )"));
-            s.on_completed();
-        });
-    Lifter lift = bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
 
-    output.subscribe([&](Event e) { expected.push_back(e); });
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-    ASSERT_EQ(expected.size(), 6);
-    ASSERT_EQ(expected[0]->getEvent()->get("/field_test").GetInt(),10);
-    ASSERT_EQ(expected[1]->getEvent()->get("/field_test").GetInt(),19);
-    ASSERT_EQ(expected[2]->getEvent()->get("/field_test").GetInt(),20);
-    ASSERT_EQ(expected[3]->getEvent()->get("/field_test").GetInt(),21);
-    ASSERT_EQ(expected[4]->getEvent()->get("/field_test").GetInt(),110);
-    ASSERT_EQ(expected[5]->getEvent()->get("/field_test").GetInt(),-90);
+    result::Result<Event> result = op(event1);
 
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ(20, result.payload()->getInt("/field2check").value());
 }
 
-TEST(opBuilderHelperIntCalc, Exec_sub_int)
+TEST(opBuilderHelperIntCalc, Exec_int_calc_sub)
 {
-    Document doc{R"({
-        "normalice":
-            {"field_test": "+i_calc/sub/10"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"i_calc"},
+                                 std::vector<std::string> {"sub", "10"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"field_test":0}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":9}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":11}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":100}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":-100}
-            )"));
-            s.on_completed();
-        });
-    Lifter lift = bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
 
-    output.subscribe([&](Event e) { expected.push_back(e); });
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-    ASSERT_EQ(expected.size(), 6);
-    ASSERT_EQ(expected[0]->getEvent()->get("/field_test").GetInt(),-10);
-    ASSERT_EQ(expected[1]->getEvent()->get("/field_test").GetInt(),-1);
-    ASSERT_EQ(expected[2]->getEvent()->get("/field_test").GetInt(),0);
-    ASSERT_EQ(expected[3]->getEvent()->get("/field_test").GetInt(),1);
-    ASSERT_EQ(expected[4]->getEvent()->get("/field_test").GetInt(),90);
-    ASSERT_EQ(expected[5]->getEvent()->get("/field_test").GetInt(),-110);
+    result::Result<Event> result = op(event1);
 
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ(0, result.payload()->getInt("/field2check").value());
 }
 
-TEST(opBuilderHelperIntCalc, Exec_mult_int)
+TEST(opBuilderHelperIntCalc, Exec_int_calc_mul)
 {
-    Document doc{R"({
-        "normalice":
-            {"field_test": "+i_calc/mul/10"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"i_calc"},
+                                 std::vector<std::string> {"mul", "10"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"field_test":0}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":9}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":11}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":100}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":-100}
-            )"));
-            s.on_completed();
-        });
-    Lifter lift = bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
 
-    output.subscribe([&](Event e) { expected.push_back(e); });
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-    ASSERT_EQ(expected.size(), 6);
-    ASSERT_EQ(expected[0]->getEvent()->get("/field_test").GetInt(),0);
-    ASSERT_EQ(expected[1]->getEvent()->get("/field_test").GetInt(),90);
-    ASSERT_EQ(expected[2]->getEvent()->get("/field_test").GetInt(),100);
-    ASSERT_EQ(expected[3]->getEvent()->get("/field_test").GetInt(),110);
-    ASSERT_EQ(expected[4]->getEvent()->get("/field_test").GetInt(),1000);
-    ASSERT_EQ(expected[5]->getEvent()->get("/field_test").GetInt(),-1000);
+    result::Result<Event> result = op(event1);
 
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ(100, result.payload()->getInt("/field2check").value());
 }
 
-TEST(opBuilderHelperIntCalc, Exec_div_int)
+TEST(opBuilderHelperIntCalc, Exec_int_calc_div)
 {
-    Document doc{R"({
-        "normalice":
-            {"field_test": "+i_calc/div/10"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"i_calc"},
+                                 std::vector<std::string> {"div", "10"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"field_test":0}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":9}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":11}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":100}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":-100}
-            )"));
-            s.on_completed();
-        });
-    Lifter lift = bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10})");
 
-    output.subscribe([&](Event e) { expected.push_back(e); });
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-    ASSERT_EQ(expected.size(), 6);
-    ASSERT_EQ(expected[0]->getEvent()->get("/field_test").GetInt(),0);
-    ASSERT_EQ(expected[1]->getEvent()->get("/field_test").GetInt(),0);
-    ASSERT_EQ(expected[2]->getEvent()->get("/field_test").GetInt(),1);
-    ASSERT_EQ(expected[3]->getEvent()->get("/field_test").GetInt(),1);
-    ASSERT_EQ(expected[4]->getEvent()->get("/field_test").GetInt(),10);
-    ASSERT_EQ(expected[5]->getEvent()->get("/field_test").GetInt(),-10);
+    result::Result<Event> result = op(event1);
 
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ(1, result.payload()->getInt("/field2check").value());
 }
 
-TEST(opBuilderHelperIntCalc, Exec_sum_ref)
+TEST(opBuilderHelperIntCalc, Exec_int_calc_ref_field_not_exist)
 {
-    Document doc{R"({
-        "normalice":
-            {"field_test": "+i_calc/sum/$field_src"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"i_calc"},
+                                 std::vector<std::string> {"sum", "$otherfield"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"field_test": 0,"field_src":10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":9,"field_src":10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test": 10,"field_src":10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":11,"field_src":10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test": 0,"field_src":-10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":9,"field_src":-10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test": 10,"field_src":-10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":11,"field_src":-10}
-            )"));
-            s.on_completed();
-        });
-    Lifter lift = bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
+                                                   "otherfield2": 10})");
 
-    output.subscribe([&](Event e) { expected.push_back(e); });
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-    ASSERT_EQ(expected.size(), 8);
-    ASSERT_EQ(expected[0]->getEvent()->get("/field_test").GetInt(),10);
-    ASSERT_EQ(expected[1]->getEvent()->get("/field_test").GetInt(),19);
-    ASSERT_EQ(expected[2]->getEvent()->get("/field_test").GetInt(),20);
-    ASSERT_EQ(expected[3]->getEvent()->get("/field_test").GetInt(),21);
-    ASSERT_EQ(expected[4]->getEvent()->get("/field_test").GetInt(),-10);
-    ASSERT_EQ(expected[5]->getEvent()->get("/field_test").GetInt(),-1);
-    ASSERT_EQ(expected[6]->getEvent()->get("/field_test").GetInt(),0);
-    ASSERT_EQ(expected[7]->getEvent()->get("/field_test").GetInt(),1);
+    result::Result<Event> result = op(event1);
 
+    ASSERT_FALSE(result);
 }
 
-TEST(opBuilderHelperIntCalc, Exec_sub_ref)
+TEST(opBuilderHelperIntCalc, Exec_int_calc_ref_sum)
 {
-    Document doc{R"({
-        "normalice":
-            {"field_test": "+i_calc/sub/$field_src"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"i_calc"},
+                                 std::vector<std::string> {"sum", "$otherfield"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"field_test": 0,"field_src":10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":9,"field_src":10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test": 10,"field_src":10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":11,"field_src":10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test": 0,"field_src":-10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":9,"field_src":-10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test": 10,"field_src":-10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":11,"field_src":-10}
-            )"));
-            s.on_completed();
-        });
-    Lifter lift = bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
+                                                   "otherfield": 10})");
 
-    output.subscribe([&](Event e) { expected.push_back(e); });
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-    ASSERT_EQ(expected.size(), 8);
-    ASSERT_EQ(expected[0]->getEvent()->get("/field_test").GetInt(),-10);
-    ASSERT_EQ(expected[1]->getEvent()->get("/field_test").GetInt(),-1);
-    ASSERT_EQ(expected[2]->getEvent()->get("/field_test").GetInt(),0);
-    ASSERT_EQ(expected[3]->getEvent()->get("/field_test").GetInt(),1);
-    ASSERT_EQ(expected[4]->getEvent()->get("/field_test").GetInt(),10);
-    ASSERT_EQ(expected[5]->getEvent()->get("/field_test").GetInt(),19);
-    ASSERT_EQ(expected[6]->getEvent()->get("/field_test").GetInt(),20);
-    ASSERT_EQ(expected[7]->getEvent()->get("/field_test").GetInt(),21);
+    result::Result<Event> result = op(event1);
 
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ(20, result.payload()->getInt("/field2check").value());
 }
 
-TEST(opBuilderHelperIntCalc, Exec_mult_ref)
+TEST(opBuilderHelperIntCalc, Exec_int_calc_ref_sub)
 {
-    Document doc{R"({
-        "normalice":
-            {"field_test": "+i_calc/mul/$field_src"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"i_calc"},
+                                 std::vector<std::string> {"sub", "$otherfield"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"field_test": 0,"field_src":10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":9,"field_src":10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test": 10,"field_src":10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":11,"field_src":10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test": 0,"field_src":-10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":9,"field_src":-10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test": 10,"field_src":-10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":11,"field_src":-10}
-            )"));
-            s.on_completed();
-        });
-    Lifter lift = bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
+                                                   "otherfield": 10})");
 
-    output.subscribe([&](Event e) { expected.push_back(e); });
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-    ASSERT_EQ(expected.size(), 8);
-    ASSERT_EQ(expected[0]->getEvent()->get("/field_test").GetInt(),0);
-    ASSERT_EQ(expected[1]->getEvent()->get("/field_test").GetInt(),90);
-    ASSERT_EQ(expected[2]->getEvent()->get("/field_test").GetInt(),100);
-    ASSERT_EQ(expected[3]->getEvent()->get("/field_test").GetInt(),110);
-    ASSERT_EQ(expected[4]->getEvent()->get("/field_test").GetInt(),0);
-    ASSERT_EQ(expected[5]->getEvent()->get("/field_test").GetInt(),-90);
-    ASSERT_EQ(expected[6]->getEvent()->get("/field_test").GetInt(),-100);
-    ASSERT_EQ(expected[7]->getEvent()->get("/field_test").GetInt(),-110);
+    result::Result<Event> result = op(event1);
 
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ(0, result.payload()->getInt("/field2check").value());
 }
 
-TEST(opBuilderHelperIntCalc, Exec_div_ref)
+TEST(opBuilderHelperIntCalc, Exec_int_calc_ref_mul)
 {
-    Document doc{R"({
-        "normalice":
-            {"field_test": "+i_calc/div/$field_src"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"i_calc"},
+                                 std::vector<std::string> {"mul", "$otherfield"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"field_test": 0,"field_src":10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":9,"field_src":10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test": 10,"field_src":10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":11,"field_src":10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test": 0,"field_src":-10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":9,"field_src":-10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test": 10,"field_src":-10}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":11,"field_src":-10}
-            )"));
-            s.on_completed();
-        });
-    Lifter lift = bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
+                                                   "otherfield": 10})");
 
-    output.subscribe([&](Event e) { expected.push_back(e); });
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-    ASSERT_EQ(expected.size(), 8);
-    ASSERT_EQ(expected[0]->getEvent()->get("/field_test").GetInt(),0);
-    ASSERT_EQ(expected[1]->getEvent()->get("/field_test").GetInt(),0);
-    ASSERT_EQ(expected[2]->getEvent()->get("/field_test").GetInt(),1);
-    ASSERT_EQ(expected[3]->getEvent()->get("/field_test").GetInt(),1);
-    ASSERT_EQ(expected[4]->getEvent()->get("/field_test").GetInt(),0);
-    ASSERT_EQ(expected[5]->getEvent()->get("/field_test").GetInt(),0);
-    ASSERT_EQ(expected[6]->getEvent()->get("/field_test").GetInt(),-1);
-    ASSERT_EQ(expected[7]->getEvent()->get("/field_test").GetInt(),-1);
+    result::Result<Event> result = op(event1);
 
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ(100, result.payload()->getInt("/field2check").value());
 }
 
-TEST(opBuilderHelperIntCalc, Exec_div_ref_zero)
+TEST(opBuilderHelperIntCalc, Exec_int_calc_ref_division_by_zero)
 {
-    Document doc{R"({
-        "normalice":
-            {"field_test": "+i_calc/div/$field_src"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"i_calc"},
+                                 std::vector<std::string> {"div", "$otherfield"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            s.on_next(createSharedEvent(R"(
-                {"field_test": 0,"field_src":0}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":9,"field_src":0}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test": 10,"field_src":0}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":11,"field_src":0}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test": 0,"field_src":0}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":9,"field_src":0}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test": 10,"field_src":0}
-            )"));
-            s.on_next(createSharedEvent(R"(
-                {"field_test":11,"field_src":0}
-            )"));
-            s.on_completed();
-        });
-    Lifter lift = bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
+                                                   "otherfield2": 0})");
 
-    output.subscribe([&](Event e) { expected.push_back(e); });
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-    ASSERT_EQ(expected.size(), 8);
-    ASSERT_EQ(expected[0]->getEvent()->get("/field_test").GetInt(),0);
-    ASSERT_EQ(expected[1]->getEvent()->get("/field_test").GetInt(),9);
-    ASSERT_EQ(expected[2]->getEvent()->get("/field_test").GetInt(),10);
-    ASSERT_EQ(expected[3]->getEvent()->get("/field_test").GetInt(),11);
-    ASSERT_EQ(expected[4]->getEvent()->get("/field_test").GetInt(),0);
-    ASSERT_EQ(expected[5]->getEvent()->get("/field_test").GetInt(),9);
-    ASSERT_EQ(expected[6]->getEvent()->get("/field_test").GetInt(),10);
-    ASSERT_EQ(expected[7]->getEvent()->get("/field_test").GetInt(),11);
+    result::Result<Event> result = op(event1);
 
+    ASSERT_FALSE(result);
 }
 
-TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_sum)
+TEST(opBuilderHelperIntCalc, Exec_int_calc_ref_div)
 {
-    Document doc{R"({
-        "normalice":
-            {"parentObjt_1.field2check": "+i_calc/sum/$parentObjt_2.ref_key"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"i_calc"},
+                                 std::vector<std::string> {"div", "$otherfield"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            // sorted
-            s.on_next(createSharedEvent(R"(
-                {
-                    "parentObjt_1": {
-                        "field2check": 10,
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
+                                                   "otherfield": 10})");
+
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ(1, result.payload()->getInt("/field2check").value());
+}
+
+TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_field_not_exist)
+{
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"i_calc"},
+                                 std::vector<std::string> {"sum", "10"});
+
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": 15,
                         "ref_key": 10
                     },
-                    "parentObjt_2": {
-                        "field2check": 11,
+                    "parentObjt_1": {
+                        "fieldcheck": 10,
                         "ref_key": 11
                     }
-                }
-            )"));
-            // not sorted
-            s.on_next(createSharedEvent(R"(
-                {
+                    })");
+
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result);
+}
+
+TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_sum)
+{
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"i_calc"},
+                                 std::vector<std::string> {"sum", "10"});
+
+    auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
-                        "field2check": 11,
+                        "field2check": 15,
                         "ref_key": 10
                     },
                     "parentObjt_1": {
                         "field2check": 10,
                         "ref_key": 11
                     }
-                }
-            )"));
-            s.on_completed();
-        });
+                    })");
 
-    Lifter lift = bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-    output.subscribe([&](Event e) { expected.push_back(e); });
+    result::Result<Event> result = op(event1);
 
-    ASSERT_EQ(expected.size(), 2);
-    ASSERT_EQ(expected[0]->getEvent()->get("/parentObjt_1/field2check").GetInt(), 21);
-    ASSERT_EQ(expected[1]->getEvent()->get("/parentObjt_1/field2check").GetInt(), 20);
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ(20, result.payload()->getInt("/parentObjt_1/field2check").value());
 }
 
-TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_sub)
+TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_sub)
 {
-    Document doc{R"({
-        "normalice":
-            {"parentObjt_1.field2check": "+i_calc/sub/$parentObjt_2.ref_key"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"i_calc"},
+                                 std::vector<std::string> {"sub", "10"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            // sorted
-            s.on_next(createSharedEvent(R"(
-                {
-                    "parentObjt_1": {
-                        "field2check": 10,
-                        "ref_key": 10
-                    },
+    auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
-                        "field2check": 11,
-                        "ref_key": 11
-                    }
-                }
-            )"));
-            // not sorted
-            s.on_next(createSharedEvent(R"(
-                {
-                    "parentObjt_2": {
-                        "field2check": 11,
+                        "field2check": 15,
                         "ref_key": 10
                     },
                     "parentObjt_1": {
                         "field2check": 10,
                         "ref_key": 11
                     }
-                }
-            )"));
-            s.on_completed();
-        });
+                    })");
 
-    Lifter lift = bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-    output.subscribe([&](Event e) { expected.push_back(e); });
+    result::Result<Event> result = op(event1);
 
-    ASSERT_EQ(expected.size(), 2);
-    ASSERT_EQ(expected[0]->getEvent()->get("/parentObjt_1/field2check").GetInt(), -1);
-    ASSERT_EQ(expected[1]->getEvent()->get("/parentObjt_1/field2check").GetInt(), 0);
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ(0, result.payload()->getInt("/parentObjt_1/field2check").value());
 }
 
-TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_mul)
+TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_mul)
 {
-    Document doc{R"({
-        "normalice":
-            {"parentObjt_1.field2check": "+i_calc/mul/$parentObjt_2.ref_key"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"i_calc"},
+                                 std::vector<std::string> {"mul", "10"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            // sorted
-            s.on_next(createSharedEvent(R"(
-                {
-                    "parentObjt_1": {
-                        "field2check": 10,
-                        "ref_key": 10
-                    },
+    auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
-                        "field2check": 11,
-                        "ref_key": 11
-                    }
-                }
-            )"));
-            // not sorted
-            s.on_next(createSharedEvent(R"(
-                {
-                    "parentObjt_2": {
-                        "field2check": 11,
+                        "field2check": 15,
                         "ref_key": 10
                     },
                     "parentObjt_1": {
                         "field2check": 10,
                         "ref_key": 11
                     }
-                }
-            )"));
-            s.on_completed();
-        });
+                    })");
 
-    Lifter lift = bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-    output.subscribe([&](Event e) { expected.push_back(e); });
+    result::Result<Event> result = op(event1);
 
-    ASSERT_EQ(expected.size(), 2);
-    ASSERT_EQ(expected[0]->getEvent()->get("/parentObjt_1/field2check").GetInt(), 110);
-    ASSERT_EQ(expected[1]->getEvent()->get("/parentObjt_1/field2check").GetInt(), 100);
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ(100, result.payload()->getInt("/parentObjt_1/field2check").value());
 }
 
-TEST(opBuilderHelperIntCalc, Exec_multilevel_dynamics_int_div)
+TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_div)
 {
-    Document doc{R"({
-        "normalice":
-            {"parentObjt_1.field2check": "+i_calc/div/$parentObjt_2.ref_key"}
-    })"};
+    auto tuple = std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                                 std::string {"i_calc"},
+                                 std::vector<std::string> {"div", "10"});
 
-    Observable input = observable<>::create<Event>(
-        [=](auto s)
-        {
-            // sorted
-            s.on_next(createSharedEvent(R"(
-                {
-                    "parentObjt_1": {
-                        "field2check": 10,
-                        "ref_key": 10
-                    },
+    auto event1 = std::make_shared<json::Json>(R"({
                     "parentObjt_2": {
-                        "field2check": 11,
-                        "ref_key": 11
-                    }
-                }
-            )"));
-            // not sorted
-            s.on_next(createSharedEvent(R"(
-                {
-                    "parentObjt_2": {
-                        "field2check": 11,
+                        "field2check": 15,
                         "ref_key": 10
                     },
                     "parentObjt_1": {
                         "field2check": 10,
                         "ref_key": 11
                     }
-                }
-            )"));
-            s.on_completed();
-        });
+                    })");
 
-    Lifter lift = bld::opBuilderHelperIntCalc(doc.get("/normalice"), tr);
-    Observable output = lift(input);
-    vector<Event> expected;
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
 
-    output.subscribe([&](Event e) { expected.push_back(e); });
+    result::Result<Event> result = op(event1);
 
-    ASSERT_EQ(expected.size(), 2);
-    ASSERT_EQ(expected[0]->getEvent()->get("/parentObjt_1/field2check").GetInt(), 0);
-    ASSERT_EQ(expected[1]->getEvent()->get("/parentObjt_1/field2check").GetInt(), 1);
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ(1, result.payload()->getInt("/parentObjt_1/field2check").value());
+}
+
+TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_ref_field_not_exist)
+{
+    auto tuple = std::make_tuple(std::string {"/field2check"},
+                                 std::string {"i_calc"},
+                                 std::vector<std::string> {"sum", "$otherfield"});
+
+    auto event1 = std::make_shared<json::Json>(R"({"field2check": 10,
+                                                   "otherfield2": 10})");
+
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result);
+}
+
+TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_ref_sum)
+{
+    auto tuple =
+        std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                        std::string {"i_calc"},
+                        std::vector<std::string> {"sum", "$/parentObjt_2/field2check"});
+
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": 10,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "field2check": 10,
+                        "ref_key": 11
+                    }
+                    })");
+
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ(20, result.payload()->getInt("/parentObjt_1/field2check").value());
+}
+
+TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_ref_sub)
+{
+    auto tuple =
+        std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                        std::string {"i_calc"},
+                        std::vector<std::string> {"sub", "$/parentObjt_2/field2check"});
+
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": 10,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "field2check": 10,
+                        "ref_key": 11
+                    }
+                    })");
+
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ(0, result.payload()->getInt("/parentObjt_1/field2check").value());
+}
+
+TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_ref_mul)
+{
+    auto tuple =
+        std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                        std::string {"i_calc"},
+                        std::vector<std::string> {"mul", "$/parentObjt_2/field2check"});
+
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": 10,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "field2check": 10,
+                        "ref_key": 11
+                    }
+                    })");
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ(100, result.payload()->getInt("/parentObjt_1/field2check").value());
+}
+
+TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_ref_division_by_zero)
+{
+    auto tuple =
+        std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                        std::string {"i_calc"},
+                        std::vector<std::string> {"div", "$/parentObjt_2/field2check"});
+
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": 0,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "field2check": 10,
+                        "ref_key": 11
+                    }
+                    })");
+
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_FALSE(result);
+}
+
+TEST(opBuilderHelperIntCalc, Exec_int_calc_multilevel_ref_div)
+{
+    auto tuple =
+        std::make_tuple(std::string {"/parentObjt_1/field2check"},
+                        std::string {"i_calc"},
+                        std::vector<std::string> {"div", "$/parentObjt_2/field2check"});
+
+    auto event1 = std::make_shared<json::Json>(R"({
+                    "parentObjt_2": {
+                        "field2check": 10,
+                        "ref_key": 10
+                    },
+                    "parentObjt_1": {
+                        "field2check": 10,
+                        "ref_key": 11
+                    }
+                    })");
+
+    auto op = bld::opBuilderHelperIntCalc(tuple)->getPtr<Term<EngineOp>>()->getFn();
+
+    result::Result<Event> result = op(event1);
+
+    ASSERT_TRUE(result);
+
+    ASSERT_EQ(1, result.payload()->getInt("/parentObjt_1/field2check").value());
 }
