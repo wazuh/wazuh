@@ -1134,7 +1134,6 @@ class Master(server.AbstractServer):
         self.pending_api_requests = {}
 
         # Agents reconnect
-        self.agents_reconnect_enabled = True  # Provisional
         self.agents_reconnect = None
 
     def to_dict(self) -> Dict:
@@ -1169,7 +1168,8 @@ class Master(server.AbstractServer):
 
     async def cluster_agents_reconnect_controller(self):
         """Controller task in charge of maintaining agents balance in the cluster."""
-        if not self.agents_reconnect_enabled:
+        if self.configuration['agent_reconnection']['disabled'] == 'yes':
+            self.logger.info("Agents reconnect is disabled.")
             return
 
         logger = self.setup_task_logger("Agents reconnect")
@@ -1335,7 +1335,7 @@ class Master(server.AbstractServer):
                                                   ).strftime(DECIMALS_DATE_FORMAT))
 
         # Get master agents reconnect process information
-        if self.agents_reconnect_enabled:
+        if self.configuration['agent_reconnection']['disabled'] == 'no':
             nodes_info["master-node"]["status"] = self.get_health_agents_reconnect()
 
         return {"n_connected_nodes": n_connected_nodes, "nodes": nodes_info}
