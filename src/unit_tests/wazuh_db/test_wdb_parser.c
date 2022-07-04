@@ -3676,31 +3676,6 @@ void test_dbsync_modify_type_exists_data_null_value_from_json(void **state) {
     os_free(query);
 }
 
-/* Tests wdb_parse_get_config */
-
-void test_wdb_parse_get_config_internal(){
-    will_return(__wrap_wdb_get_internal_config, 1);
-    cJSON *ret = wdb_parse_get_config("internal");
-    assert_int_equal(ret, 1);
-}
-
-void test_wdb_parse_get_config_wdb(){
-    will_return(__wrap_wdb_get_config, 1);
-    cJSON *ret = wdb_parse_get_config("wdb");
-    assert_int_equal(ret, 1);
-}
-
-void test_wdb_parse_get_config_arg_null() {
-    cJSON *ret = wdb_parse_get_config(0);
-    assert_int_equal(ret, NULL);
-}
-
-void test_wdb_parse_get_config_bad_arg() {
-    expect_string(__wrap__mdebug1, formatted_msg, "Invalid configuration source for wazuh-db");
-    cJSON *ret = wdb_parse_get_config("BAD_ARG");
-    assert_int_equal(ret, NULL);
-}
-
 /* wdb_parse_global_backup */
 
 void test_wdb_parse_global_backup_invalid_syntax(void **state) {
@@ -3963,11 +3938,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_dbsync_delete_type_exists_data_null_value_from_json, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_dbsync_modify_type_exists_data_null_value_from_json, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_dbsync_modify_type_exists_avoid_old_implementation, test_setup, test_teardown),
-        /* Tests wdb_parse_get_config */
-        cmocka_unit_test(test_wdb_parse_get_config_wdb),
-        cmocka_unit_test(test_wdb_parse_get_config_internal),
-        cmocka_unit_test(test_wdb_parse_get_config_arg_null),
-        cmocka_unit_test(test_wdb_parse_get_config_bad_arg),
         /* wdb_parse_global_backup */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_invalid_syntax, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_missing_action, test_setup, test_teardown),

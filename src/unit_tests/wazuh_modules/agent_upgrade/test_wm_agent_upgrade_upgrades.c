@@ -299,7 +299,7 @@ void test_wm_agent_upgrade_send_command_to_agent_connect_error(void **state)
     will_return(__wrap_OS_ConnectUnixDomain, OS_SOCKTERR);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8114): Cannot connect to 'queue/sockets/request'. Could not reach agent.");
+    expect_string(__wrap__mterror, formatted_msg, "(8114): Cannot connect to 'queue/sockets/remote'. Could not reach agent.");
 
     char *res = wm_agent_upgrade_send_command_to_agent(command, strlen(command));
 
