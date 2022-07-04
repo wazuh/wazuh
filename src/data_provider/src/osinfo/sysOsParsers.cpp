@@ -430,6 +430,9 @@ bool MacOsParser::parseUname(const std::string& in, nlohmann::json& output)
         {"17", "High Sierra"},
         {"18", "Mojave"},
         {"19", "Catalina"},
+        {"20", "Big Sur"},
+        {"21", "Monterey"},
+        {"22", "Ventura"},
     };
     constexpr auto PATTERN_MATCH{"[0-9]+"};
     std::string match;
