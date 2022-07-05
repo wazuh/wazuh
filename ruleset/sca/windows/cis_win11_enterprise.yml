@@ -5860,9 +5860,9 @@ checks:
 
   - id: 26383
     title: "Ensure 'Disallow WinRM from storing RunAs credentials' is set to 'Enabled'"
-    description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) service sends and receives unencrypted messages over the network."
-    rationale: "Encrypting WinRM network traffic reduces the risk of an attacker viewing or modifying WinRM messages as they transit the network."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Remote Management (WinRM)\\WinRM Service\\Disallow WinRM from storing RunAs credentials"
+    description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) service will allow RunAs credentials to be stored for any plug-ins. The recommended state for this setting is: Enabled."
+    rationale: "Although the ability to store RunAs credentials is a convenient feature it increases the risk  of account compromise slightly. For example, if you forget to lock your desktop before  leaving it unattended for a few minutes another person could access not only the desktop  of your computer but also any hosts you manage via WinRM with cached RunAs  credentials."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Remote Management (WinRM)\\WinRM Service\\Disallow WinRM from storing RunAs credentials"
     compliance:
       - cis: ["18.9.102.2.4"]
       - cis_csc: ["16.5", "16.13"]
