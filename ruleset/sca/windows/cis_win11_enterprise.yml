@@ -5063,7 +5063,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender -> PUAProtection -> 1'
 
   - id: 26331
-    title: "Ensure 'Turn off Microsoft Defender AntiVirus' is set to'Disabled'"
+    title: "Ensure 'Turn off Microsoft Defender AntiVirus' is set to 'Disabled'"
     description: "This policy setting turns off Microsoft Defender Antivirus. If the setting is configured to Disabled, Microsoft Defender Antivirus runs and computers are scanned for malware and other potentially unwanted software. The recommended state for this setting is: Disabled. "
     rationale: "It is important to ensure a current, updated antivirus product is scanning each computer for malicious file activity. Microsoft provides a competent solution out of the box in Microsoft Defender Antivirus. Organizations that choose to purchase a reputable 3rd-party antivirus solution may choose to exempt themselves from this recommendation in lieu of the commercial alternative. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Turn off Microsoft Defender AntiVirus Note: This Group Policy path is provided by the Group Policy template WindowsDefender.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Turn off Windows Defender, but it was renamed to Windows Defender Antivirus starting with the Windows 10 Release 1703 Administrative Templates. It was again renamed to Turn off Microsoft Defender Antivirus starting with the Windows 10 Release 2004 Administrative Templates. "
@@ -5072,7 +5072,7 @@ checks:
       - cis_csc: ["10.6","8.1"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsDefender -> DisableAntiSpyware -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender -> DisableAntiSpyware -> 0'
 
   - id: 26332
     title: "Ensure 'Enable news and interests on the taskbar' is set to'Disabled' "
