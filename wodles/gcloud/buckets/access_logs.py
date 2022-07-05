@@ -29,8 +29,8 @@ class GCSAccessLogs(WazuhGCloudBucket):
         kwargs : any
             Additional named arguments for WazuhGCloudBucket.
         """
-        self.db_table_name = "access_logs"
         super().__init__(credentials_file, logger, **kwargs)
+        self.db_table_name = "access_logs"
 
     def load_information_from_file(self, msg: str):
         """Load the contents of an Access Logs blob and process them.
@@ -52,7 +52,7 @@ class GCSAccessLogs(WazuhGCloudBucket):
         lines = msg.replace('"', '').split("\n")
 
         # Get the fieldnames from the first line
-        fieldnames = lines[0].split(",")
+        fieldnames = [field.strip() for field in lines[0].split(",")]
         values = lines[1:]
         tsv_file = csv.DictReader(values, fieldnames=fieldnames, delimiter=',')
         return [dict(x, source='gcp_bucket') for x in tsv_file]
