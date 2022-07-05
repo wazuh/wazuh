@@ -1,0 +1,8 @@
+decoders:
+  - default_decoder
+  - syslog
+  - auth
+  - nginx-access
+
+outputs:
+  - file_output
