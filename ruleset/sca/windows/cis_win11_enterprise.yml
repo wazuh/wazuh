@@ -5917,7 +5917,7 @@ checks:
     title: "Ensure 'Prevent users from modifying settings' is set to 'Enabled'"
     description: "This policy setting prevent users from making changes to the Exploit protection settings area in the Windows Defender Security Center."
     rationale: "Only authorized IT staff should be able to make changes to the exploit protection settings in order to ensure the organizations specific configuration is not modified."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender Security Center\\App and browser protection\\Prevent users from modifying settings"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Security\\App and browser protection\\Prevent users from modifying setting"
     compliance:
       - cis: ["18.9.105.2.1"]
       - cis_csc: ["8.4"]
@@ -5931,7 +5931,7 @@ checks:
     title: "Ensure 'No auto-restart with logged on users for scheduled automatic updates installations' is set to 'Disabled'"
     description: "This policy setting specifies that Automatic Updates will wait for computers to be restarted by the users who are logged on to them to complete a scheduled installation."
     rationale: "Some security updates require that the computer be restarted to complete an installation. If the computer cannot restart automatically, then the most recent update will not completely install and no new updates will download to the computer until it is restarted. Without the auto-restart functionality, users who are not security-conscious may choose to indefinitely delay the restart, therefore keeping the computer in a less secure state."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\No auto-restart with logged on users for scheduled automatic updates installations"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\Legacy Policies\\No auto-restart with logged on users for scheduled automatic updates installations"
     compliance:
       - cis: ["18.9.108.1.1"]
       - cis_csc: ["3.4", "3.5", "4.5"]
