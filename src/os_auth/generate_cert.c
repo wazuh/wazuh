@@ -18,26 +18,26 @@ EVP_PKEY* generate_key(int bits) {
     RSA* rsa = RSA_new(); // This structure is free'd after EVP_PKEY_assign_RSA.
 
     if(key == NULL) {
-        printf("Cannot create EVP_PKEY structure.\n");
-        goto error;
+        merror("Cannot create EVP_PKEY structure.\n"); //LCOV_EXCL_LINE
+        goto error; //LCOV_EXCL_LINE
     }
 
     if (bn == NULL) {
-        printf("Cannot create BN structure.\n");
-        goto error;
+        merror("Cannot create BN structure.\n"); //LCOV_EXCL_LINE
+        goto error; //LCOV_EXCL_LINE
     }
 
     if (rsa == NULL) {
-        printf("Cannot create RSA structure.\n");
-        goto error;
+        merror("Cannot create RSA structure.\n"); //LCOV_EXCL_LINE
+        goto error; //LCOV_EXCL_LINE
     }
 
     BN_set_word(bn, RSA_F4);
     RSA_generate_key_ex(rsa, bits, bn, NULL);
 
     if(!EVP_PKEY_assign_RSA(key, rsa)) {
-        printf("Cannot generate RSA key.\n");
-        goto error;
+        merror("Cannot generate RSA key.\n"); //LCOV_EXCL_LINE
+        goto error; //LCOV_EXCL_LINE
     }
 
     BN_free(bn);
@@ -71,19 +71,19 @@ int generate_cert(unsigned long days,
     char **split_subj = NULL;
 
     if(cert == NULL) {
-        printf("Cannot generate certificate\n");
-        goto error;
+        merror("Cannot generate certificate."); //LCOV_EXCL_LINE
+        goto error; //LCOV_EXCL_LINE
     }
 
     if (serial_number == NULL) {
-        printf("Cannot allocate serial number\n");
-        goto error;
+        merror("Cannot allocate serial number."); //LCOV_EXCL_LINE
+        goto error; //LCOV_EXCL_LINE
     }
 
     // Assign a random serial number to the certificate
     if (rand_serial(serial_number) == 1) {
-        printf("Cannot generate serial number.\n");
-        goto error;
+        merror("Cannot generate serial number."); //LCOV_EXCL_LINE
+        goto error; //LCOV_EXCL_LINE
     }
 
     key = generate_key(bits);
@@ -117,11 +117,14 @@ int generate_cert(unsigned long days,
     add_x509_ext(cert, &ctx, NID_basic_constraints, "critical,CA:TRUE");
 
     if(!X509_sign(cert, key, EVP_sha256())) {
-        printf("Error signing certificate.\n");
+        merror("Error signing certificate."); //LCOV_EXCL_LINE
+        goto error; //LCOV_EXCL_LINE
+    }
+
+    if (dump_key_cert(key, cert, key_path, cert_path)) {
         goto error;
     }
 
-    dump_key_cert(key, cert, key_path, cert_path);
     EVP_PKEY_free(key);
     ASN1_INTEGER_free(serial_number);
     free_strarray(split_subj);
@@ -132,9 +135,9 @@ error:
     X509_free(cert);
     ASN1_INTEGER_free(serial_number);
     free_strarray(split_subj);
+    EVP_PKEY_free(key);
+
     return 1;
-
-
 }
 
 void add_x509_ext(X509* cert, X509V3_CTX *ctx, int ext_nid, const char *value) {
@@ -150,13 +153,13 @@ int dump_key_cert(EVP_PKEY* key, X509* x509, const char* key_name, const char* c
 
     if(!key_file)
     {
-        printf("Cannot open %s\n ", key_name);
+        merror("Cannot open %s.", key_name);
         return 1;
     }
 
     if(!PEM_write_PrivateKey(key_file, key, NULL, NULL, 0, NULL, NULL))
     {
-        printf("Cannot dump private key.\n");
+        merror("Cannot dump private key.");
         fclose(key_file);
 
         return 1;
@@ -165,13 +168,13 @@ int dump_key_cert(EVP_PKEY* key, X509* x509, const char* key_name, const char* c
     FILE* x509_file = fopen(cert_name, "wb");
     if(!x509_file)
     {
-        printf("Cannot open %s.\n", cert_name);
+        merror("Cannot open %s.", cert_name);
         return 1;
     }
 
     if(!PEM_write_X509(x509_file, x509))
     {
-        printf("Cannot dump certificate.\n");
+        merror("Cannot dump certificate.");
         fclose(x509_file);
 
         return 1;
@@ -188,11 +191,11 @@ int rand_serial(ASN1_INTEGER *sn) {
     BIGNUM* bn = BN_new();
 
     if (sn == NULL) {
-        return 1;
+        return 1; //LCOV_EXCL_LINE
     }
 
     if (bn == NULL) {
-        return 1;
+        return 1; //LCOV_EXCL_LINE
     }
 
     /*
@@ -202,12 +205,12 @@ int rand_serial(ASN1_INTEGER *sn) {
     * rules won't force a leading octet.
     */
     if (!BN_rand(bn, 159, BN_RAND_TOP_ANY, BN_RAND_BOTTOM_ANY)) {
-        return 1;
+        return 1; //LCOV_EXCL_LINE
     }
 
     if (!BN_to_ASN1_INTEGER(bn, sn)) {
-        BN_free(bn);
-        return 1;
+        BN_free(bn); //LCOV_EXCL_LINE
+        return 1; //LCOV_EXCL_LINE
     }
 
     BN_free(bn);
