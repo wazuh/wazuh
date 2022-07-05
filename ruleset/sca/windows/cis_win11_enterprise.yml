@@ -5278,7 +5278,7 @@ checks:
       - cis_csc: ["3.10","9.2"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> SecurityLayer -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> SecurityLayer -> 2'
 
   - id: 26346
     title: "Ensure 'Require user authentication for remoteconnections by using Network Level Authentication' is set to 'Enabled'"
