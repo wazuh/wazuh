@@ -10,4 +10,8 @@
     </nodes>
     <hidden>no</hidden>
     <disabled>yes</disabled>
+    <agent_reconnection>
+      <disabled>yes</disabled>
+      <node_blacklist></node_blacklist>
+    </agent_reconnection>
   </cluster>

@@ -1135,7 +1135,6 @@ class Master(server.AbstractServer):
         self.pending_api_requests = {}
 
         # Agents reconnect
-        self.agents_reconnect_enabled = True  # Provisional
         self.agents_reconnect = None
 
     def to_dict(self) -> Dict:
@@ -1170,10 +1169,11 @@ class Master(server.AbstractServer):
 
     async def cluster_agents_reconnect_controller(self):
         """Controller task in charge of maintaining agents balance in the cluster."""
-        if not self.agents_reconnect_enabled:
+        logger = self.setup_task_logger("Agents reconnect")
+        if self.configuration['agent_reconnection']['disabled'] != 'no':
+            logger.info("Agents reconnect task is disabled.")
             return
 
-        logger = self.setup_task_logger("Agents reconnect")
         logger.info("Cluster agents reconnection started.")
 
         logger.info(
@@ -1181,9 +1181,9 @@ class Master(server.AbstractServer):
             f'before starting the agent-groups task, waiting for the workers connection.')
         await asyncio.sleep(self.cluster_items["intervals"]["master"]["agent_reconnection"]["nodes_stability_delay"])
 
-        # The master node is provisionally on the blacklisted nodes
+        blacklisted_nodes = set(self.configuration['agent_reconnection']['node_blacklist'].split(','))
         self.agents_reconnect = agents_reconnect.AgentsReconnect(
-            logger=logger, blacklisted_nodes={"master-node"}, nodes=self.clients,
+            logger=logger, blacklisted_nodes=blacklisted_nodes, nodes=self.clients,
             nodes_stability_threshold=self.cluster_items["intervals"]["master"]["agent_reconnection"]["nodes_stability_threshold"]
         )
 
@@ -1335,7 +1335,7 @@ class Master(server.AbstractServer):
                                                   ).strftime(DECIMALS_DATE_FORMAT))
 
         # Get master agents reconnect process information
-        if self.agents_reconnect_enabled:
+        if self.configuration['agent_reconnection']['disabled'] == 'no':
             nodes_info["master-node"]["status"] = self.get_health_agents_reconnect()
 
         return {"n_connected_nodes": n_connected_nodes, "nodes": nodes_info}

@@ -19,6 +19,8 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     static const char *disabled = "disabled";
     static const char *cluster_name = "name";
     static const char *node_name = "node_name";
+    static const char *agent_reconnection = "agent_reconnection";
+    static const char *node_blacklist = "node_blacklist";
     static const char *node_type = "node_type";
     static const char *key = "key";
     static const char *socket_timeout = "socket_timeout";
@@ -29,7 +31,7 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     static const char *port = "port";
     static const char *bind_addr = "bind_addr";
     static const char *C_VALID = "!\"#$%&'-.0123456789:<=>?ABCDEFGHIJKLMNOPQRESTUVWXYZ[\\]^_abcdefghijklmnopqrstuvwxyz{|}~";
-
+    static const char *N_BLACKLIST = "!\"#$%&'-.,0123456789:<=>?ABCDEFGHIJKLMNOPQRESTUVWXYZ[\\]^_abcdefghijklmnopqrstuvwxyz{|}~";
     _Config *Config;
     Config = (_Config *)d1;
     int i;
@@ -91,9 +93,15 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return OS_INVALID;
             }
+        } else if (!strcmp(node[i]->element, node_blacklist)) {
+            if (strspn(node[i]->content, N_BLACKLIST) < strlen(node[i]->content)) {
+                merror("Detected a not allowed character in node blacklist: \"%s\". Characters allowed: \"%s\".", node[i]->content, N_BLACKLIST);
+                return OS_INVALID;
+            }
         } else if (!strcmp(node[i]->element, interval)) {
             mwarn("Detected a deprecated configuration for cluster. Interval option is not longer available.");
         } else if (!strcmp(node[i]->element, nodes)) {
+        } else if (!strcmp(node[i]->element, agent_reconnection)) {
         } else if (!strcmp(node[i]->element, port)) {
         } else if (!strcmp(node[i]->element, bind_addr)) {
         } else {
