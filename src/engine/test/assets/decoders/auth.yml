@@ -4,14 +4,14 @@ parents:
   - syslog
 
 check: >-
-    process.name==sshd
-    OR process.name==sudo
-    OR process.name==groupadd
-    OR process.name==groupdel
-    OR process.name==goupmod
-    OR process.name==useradd
-    OR process.name==userdel
-    OR process.name==usermod
+  process.name==sshd
+  OR process.name==sudo
+  OR process.name==groupadd
+  OR process.name==groupdel
+  OR process.name==goupmod
+  OR process.name==useradd
+  OR process.name==userdel
+  OR process.name==usermod
 
 parse:
   logql:
@@ -57,8 +57,14 @@ parse:
         <source.port> <_>
 
     # Feb 24 09:20:10 precise32 sudo: pam_unix(sudo:session): session opened for user root by vagrant(uid=1000)
-    # Feb 24 09:20:10 precise32 sudo: pam_unix(sudo:session): session closed for user root
+    - message: >-
+        pam_unix(sudo:session): <_system.auth.sudo.event> <_system.auth.sudo.method> for user <user.effective.name> by <user.name>(uid=<user.id>)
     # Feb  9 21:20:03 precise32 sshd[8317]: subsystem request for sftp by user vagrant
+    - message: >-
+        <_system.auth.ssh.event> <_system.auth.ssh.method> for <user.effective.name> by user <user.name>
+    # Feb 24 09:20:10 precise32 sudo: pam_unix(sudo:session): session closed for user root
+    - message: >-
+        pam_unix(sudo:session): <_system.auth.sudo.event> <_system.auth.sudo.method> for <user.name>
 
 normalize:
   # Feb 21 21:54:44 localhost sshd[3402]: Accepted publickey for vagrant from 10.0.2.2 port 63673 ssh2: RSA 39:33:99:e9:a0:dc:f2:33:a3:e5:72:3b:7c:3a:56:84
@@ -110,3 +116,31 @@ normalize:
       )
     map:
       event.type: +s_append/group
+
+  - check: >-
+      +exists/process.name AND (
+      process.name==groupadd
+      OR process.name==useradd
+      )
+    map:
+      event.type: +s_append/creation
+
+  - check: >-
+      +exists/process.name AND (
+      process.name==groupdel
+      OR process.name==userdel
+      )
+    map:
+      event.type: +s_append/deletion
+
+  - check: >-
+      +exists/process.name AND (
+      process.name==groupmod
+      OR process.name==usermod
+      )
+    map:
+      event.type: +s_append/change
+
+  - map:
+      related.user: +s_append/$user.name/$user.effective.name # check for uniques only +s_append_unique/$user.name/$user.effective.name
+      related.ip: +s_append/$source.ip # check for uniques only +s_append_unique/$source.ip
