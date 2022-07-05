@@ -17,6 +17,38 @@
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 #include "../headers/os_err.h"
 
+typedef struct test_struct {
+    wdb_t *wdb;
+    char *output;
+} test_struct_t;
+
+/* setup/teardown */
+
+int setup_wdb(void **state) {
+    test_struct_t *init_data = NULL;
+    os_calloc(1,sizeof(test_struct_t),init_data);
+    os_calloc(1,sizeof(wdb_t),init_data->wdb);
+    os_strdup("000",init_data->wdb->id);
+    os_calloc(256,sizeof(char),init_data->output);
+    os_calloc(1,sizeof(sqlite3 *),init_data->wdb->db);
+    init_data->wdb->stmt[0] = (sqlite3_stmt*)1;
+    init_data->wdb->transaction = 0;
+    *state = init_data;
+    return 0;
+}
+
+int teardown_wdb(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    os_free(data->output);
+    os_free(data->wdb->id);
+    os_free(data->wdb->db);
+    os_free(data->wdb);
+    os_free(data);
+    return 0;
+}
+
+/* test objects */
+
 // sys_netinfo
 typedef struct netinfo_object {
     char *scan_id;
@@ -362,6 +394,118 @@ process_object process = {
     .replace = TRUE
 };
 
+/* methods configurations */
+
+void configure_sqlite3_bind_text(int position, const char* string) {
+    will_return(__wrap_sqlite3_bind_text, OS_SUCCESS);
+    expect_value(__wrap_sqlite3_bind_text, pos, position);
+    if (string) {
+        expect_string(__wrap_sqlite3_bind_text, buffer, string);
+    }
+}
+
+void configure_sqlite3_bind_int64(int position, int number) {
+    if (number < 0) {
+        will_return(__wrap_sqlite3_bind_null, OS_SUCCESS);
+        expect_value(__wrap_sqlite3_bind_null, index, position);
+    } else {
+        will_return(__wrap_sqlite3_bind_int64, OS_SUCCESS);
+        expect_value(__wrap_sqlite3_bind_int64, index, position);
+        expect_value(__wrap_sqlite3_bind_int64, value, number);
+    }
+}
+
+void configure_sqlite3_bind_int(int position, int number) {
+    if (number < 0) {
+        will_return(__wrap_sqlite3_bind_null, OS_SUCCESS);
+        expect_value(__wrap_sqlite3_bind_null, index, position);
+    } else {
+        will_return(__wrap_sqlite3_bind_int, OS_SUCCESS);
+        expect_value(__wrap_sqlite3_bind_int, index, position);
+        expect_value(__wrap_sqlite3_bind_int, value, number);
+    }
+}
+
+//wdb_netinfo_insert
+
+void configure_wdb_netinfo_insert(netinfo_object test_netinfo, int sqlite_code) {
+    will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
+
+    configure_sqlite3_bind_text(1, test_netinfo.scan_id);
+    configure_sqlite3_bind_text(2, test_netinfo.scan_time);
+    configure_sqlite3_bind_text(3, test_netinfo.name);
+    configure_sqlite3_bind_text(4, test_netinfo.adapter);
+    configure_sqlite3_bind_text(5, test_netinfo.type);
+    configure_sqlite3_bind_text(6, test_netinfo._state);
+    configure_sqlite3_bind_int(7, test_netinfo.mtu);
+    configure_sqlite3_bind_text(8, test_netinfo.mac);
+    configure_sqlite3_bind_int64(9, test_netinfo.tx_packets);
+    configure_sqlite3_bind_int64(10, test_netinfo.rx_packets);
+    configure_sqlite3_bind_int64(11, test_netinfo.tx_bytes);
+    configure_sqlite3_bind_int64(12, test_netinfo.rx_bytes);
+    configure_sqlite3_bind_int64(13, test_netinfo.tx_errors);
+    configure_sqlite3_bind_int64(14, test_netinfo.rx_errors);
+    configure_sqlite3_bind_int64(15, test_netinfo.tx_dropped);
+    configure_sqlite3_bind_int64(16, test_netinfo.rx_dropped);
+    configure_sqlite3_bind_text(17, test_netinfo.checksum);
+    configure_sqlite3_bind_text(18, test_netinfo.item_id);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, sqlite_code);
+}
+
+/* tests */
+
+// Test wdb_netinfo_save
+
+static void test_wdb_netinfo_save_transaction_fail(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, OS_INVALID);
+    expect_string(__wrap__mdebug1, formatted_msg, "at wdb_netinfo_save(): cannot begin transaction");
+
+    ret = wdb_netinfo_save(data->wdb, netinfo.scan_id, netinfo.scan_time, netinfo.name, netinfo.adapter, netinfo.type,
+                           netinfo._state, netinfo.mtu, netinfo.mac, netinfo.tx_packets, netinfo.rx_packets, netinfo.tx_bytes,
+                           netinfo.rx_bytes, netinfo.tx_errors, netinfo.rx_errors, netinfo.tx_dropped, netinfo.rx_dropped, netinfo.checksum,
+                           netinfo.item_id, netinfo.replace);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+static void test_wdb_netinfo_save_success(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, OS_SUCCESS);
+    configure_wdb_netinfo_insert(netinfo, SQLITE_DONE);
+
+    ret = wdb_netinfo_save(data->wdb, netinfo.scan_id, netinfo.scan_time, netinfo.name, netinfo.adapter, netinfo.type,
+                           netinfo._state, netinfo.mtu, netinfo.mac, netinfo.tx_packets, netinfo.rx_packets, netinfo.tx_bytes,
+                           netinfo.rx_bytes, netinfo.tx_errors, netinfo.rx_errors, netinfo.tx_dropped, netinfo.rx_dropped, netinfo.checksum,
+                           netinfo.item_id, netinfo.replace);
+
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+static void test_wdb_netinfo_save_fail(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, OS_SUCCESS);
+
+    // wdb_netinfo_insert
+    will_return(__wrap_wdb_stmt_cache, OS_INVALID);
+    expect_string(__wrap__mdebug1, formatted_msg, "at wdb_netinfo_insert(): cannot cache statement");
+
+    ret = wdb_netinfo_save(data->wdb, netinfo.scan_id, netinfo.scan_time, netinfo.name, netinfo.adapter, netinfo.type,
+                           netinfo._state, netinfo.mtu, netinfo.mac, netinfo.tx_packets, netinfo.rx_packets, netinfo.tx_bytes,
+                           netinfo.rx_bytes, netinfo.tx_errors, netinfo.rx_errors, netinfo.tx_dropped, netinfo.rx_dropped, netinfo.checksum,
+                           netinfo.item_id, netinfo.replace);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
 // Test wdb_netinfo_insert
 static void test_wdb_netinfo_insert_stmt_cache_fail(void **state) {
     int ret = OS_INVALID;
@@ -372,7 +516,106 @@ static void test_wdb_netinfo_insert_stmt_cache_fail(void **state) {
     ret = wdb_netinfo_insert(NULL, netinfo.scan_id, netinfo.scan_time, netinfo.name, netinfo.adapter, netinfo.type,
                              netinfo._state, netinfo.mtu, netinfo.mac, netinfo.tx_packets, netinfo.rx_packets, netinfo.tx_bytes,
                              netinfo.rx_bytes, netinfo.tx_errors, netinfo.rx_errors, netinfo.tx_dropped, netinfo.rx_dropped, netinfo.checksum,
-                             netinfo.item_id,  netinfo.replace);
+                             netinfo.item_id, netinfo.replace);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+static void test_wdb_netinfo_insert_success(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    configure_wdb_netinfo_insert(netinfo, SQLITE_DONE);
+
+    ret = wdb_netinfo_insert(data->wdb, netinfo.scan_id, netinfo.scan_time, netinfo.name, netinfo.adapter, netinfo.type,
+                             netinfo._state, netinfo.mtu, netinfo.mac, netinfo.tx_packets, netinfo.rx_packets, netinfo.tx_bytes,
+                             netinfo.rx_bytes, netinfo.tx_errors, netinfo.rx_errors, netinfo.tx_dropped, netinfo.rx_dropped, netinfo.checksum,
+                             netinfo.item_id, netinfo.replace);
+
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+static void test_wdb_netinfo_insert_name_null_success(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    netinfo_object test_netinfo = netinfo;
+    test_netinfo.name = NULL;
+
+    expect_value(__wrap_wdbi_remove_by_pk, component, WDB_SYSCOLLECTOR_NETINFO);
+    expect_value(__wrap_wdbi_remove_by_pk, pk_value, netinfo.item_id);
+
+    configure_wdb_netinfo_insert(test_netinfo, SQLITE_DONE);
+
+    ret = wdb_netinfo_insert(data->wdb, test_netinfo.scan_id, test_netinfo.scan_time, test_netinfo.name, test_netinfo.adapter, test_netinfo.type,
+                             test_netinfo._state, test_netinfo.mtu, test_netinfo.mac, test_netinfo.tx_packets, test_netinfo.rx_packets, test_netinfo.tx_bytes,
+                             test_netinfo.rx_bytes, test_netinfo.tx_errors, test_netinfo.rx_errors, test_netinfo.tx_dropped, test_netinfo.rx_dropped, test_netinfo.checksum,
+                             test_netinfo.item_id, test_netinfo.replace);
+
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+static void test_wdb_netinfo_insert_negative_values_error(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    netinfo_object test_netinfo = netinfo;
+
+    test_netinfo.mtu = OS_INVALID;
+    test_netinfo.tx_packets = OS_INVALID;
+    test_netinfo.rx_packets = OS_INVALID;
+    test_netinfo.tx_bytes = OS_INVALID;
+    test_netinfo.rx_bytes = OS_INVALID;
+    test_netinfo.tx_errors = OS_INVALID;
+    test_netinfo.rx_errors = OS_INVALID;
+    test_netinfo.tx_dropped = OS_INVALID;
+    test_netinfo.rx_dropped = OS_INVALID;
+
+    configure_wdb_netinfo_insert(test_netinfo, SQLITE_ERROR);
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR_MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "at wdb_netinfo_insert(): sqlite3_step(): ERROR_MESSAGE");
+
+    ret = wdb_netinfo_insert(data->wdb, test_netinfo.scan_id, test_netinfo.scan_time, test_netinfo.name, test_netinfo.adapter, test_netinfo.type,
+                             test_netinfo._state, test_netinfo.mtu, test_netinfo.mac, test_netinfo.tx_packets, test_netinfo.rx_packets, test_netinfo.tx_bytes,
+                             test_netinfo.rx_bytes, test_netinfo.tx_errors, test_netinfo.rx_errors, test_netinfo.tx_dropped, test_netinfo.rx_dropped, test_netinfo.checksum,
+                             test_netinfo.item_id, test_netinfo.replace);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+static void test_wdb_netinfo_insert_name_constraint_success(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    configure_wdb_netinfo_insert(netinfo, SQLITE_CONSTRAINT);
+
+    will_return(__wrap_sqlite3_errmsg, "UNIQUE constraint failed");
+    will_return(__wrap_sqlite3_errmsg, "UNIQUE constraint failed");
+    expect_string(__wrap__mdebug1, formatted_msg, "at wdb_netinfo_insert(): sqlite3_step(): UNIQUE constraint failed");
+
+
+    ret = wdb_netinfo_insert(data->wdb, netinfo.scan_id, netinfo.scan_time, netinfo.name, netinfo.adapter, netinfo.type,
+                             netinfo._state, netinfo.mtu, netinfo.mac, netinfo.tx_packets, netinfo.rx_packets, netinfo.tx_bytes,
+                             netinfo.rx_bytes, netinfo.tx_errors, netinfo.rx_errors, netinfo.tx_dropped, netinfo.rx_dropped, netinfo.checksum,
+                             netinfo.item_id, netinfo.replace);
+
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+static void test_wdb_netinfo_insert_name_constraint_fail(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    configure_wdb_netinfo_insert(netinfo, SQLITE_CONSTRAINT);
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR_MESSAGE");
+    will_return(__wrap_sqlite3_errmsg, "ERROR_MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "at wdb_netinfo_insert(): sqlite3_step(): ERROR_MESSAGE");
+
+
+    ret = wdb_netinfo_insert(data->wdb, netinfo.scan_id, netinfo.scan_time, netinfo.name, netinfo.adapter, netinfo.type,
+                             netinfo._state, netinfo.mtu, netinfo.mac, netinfo.tx_packets, netinfo.rx_packets, netinfo.tx_bytes,
+                             netinfo.rx_bytes, netinfo.tx_errors, netinfo.rx_errors, netinfo.tx_dropped, netinfo.rx_dropped, netinfo.checksum,
+                             netinfo.item_id, netinfo.replace);
 
     assert_int_equal(ret, OS_INVALID);
 }
@@ -489,8 +732,17 @@ static void test_wdb_process_insert_stmt_cache_fail(void **state) {
 
 int main(void) {
      const struct CMUnitTest tests[] = {
+        // Test wdb_netinfo_save
+        cmocka_unit_test_setup_teardown(test_wdb_netinfo_save_transaction_fail, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_netinfo_save_success, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_netinfo_save_fail, setup_wdb, teardown_wdb),
         // Test wdb_netinfo_insert
-        cmocka_unit_test(test_wdb_netinfo_insert_stmt_cache_fail),
+        cmocka_unit_test_setup_teardown(test_wdb_netinfo_insert_stmt_cache_fail, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_netinfo_insert_name_null_success, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_netinfo_insert_success, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_netinfo_insert_negative_values_error, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_netinfo_insert_name_constraint_success, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_netinfo_insert_name_constraint_fail, setup_wdb, teardown_wdb),
         // Test wdb_netproto_insert
         cmocka_unit_test(test_wdb_netproto_insert_stmt_cache_fail),
         // Test wdb_netaddr_insert

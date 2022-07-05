@@ -121,7 +121,9 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_begin2 -Wl,--wrap,wdb_stmt_cache -Wl
 
 list(APPEND wdb_tests_names "test_wdb_syscollector")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,sqlite3_bind_int -Wl,--wrap,sqlite3_step \
-                             -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror ${DEBUG_OP_WRAPPERS}")
+                             -Wl,--wrap,wdbi_remove_by_pk -Wl,--wrap,sqlite3_bind_int64 -Wl,--wrap,sqlite3_bind_null -Wl,--wrap,sqlite3_errmsg \
+                             -Wl,--wrap,wdb_begin2 \
+                             ${DEBUG_OP_WRAPPERS}")
 
 # Add extra compiling flags
 add_compile_options(-Wall)
