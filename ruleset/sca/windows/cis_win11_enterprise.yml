@@ -5736,7 +5736,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging -> EnableScriptBlockLogging -> 1'
 
-  - id: 26376
+  - id: 26375
     title: "Ensure 'Turn on PowerShell Transcription' is set to 'Disabled'"
     description: "This Policy setting lets you capture the input and output of Windows PowerShell commands into text-based transcripts."
     rationale: "If this setting is enabled there is a risk that passwords could get stored in plain text in the PowerShell_transcript output file."
@@ -5749,7 +5749,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\Transcription -> EnableTranscripting -> 0'
 
-  - id: 26377
+  - id: 26376
     title: "Ensure 'Allow Basic authentication' is set to 'Disabled'"
     description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) client uses Basic authentication."
     rationale: "Basic authentication is less robust than other authentication methods available in WinRM because credentials including passwords are transmitted in plain text. An attacker who is able to capture packets on the network where WinRM is running may be able to determine the credentials used for accessing remote hosts via WinRM."
@@ -5767,7 +5767,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowBasic -> 0'
 
-  - id: 26378
+  - id: 26377
     title: "Ensure 'Allow unencrypted traffic' is set to 'Disabled'"
     description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) client sends and receives unencrypted messages over the network."
     rationale: "Encrypting WinRM network traffic reduces the risk of an attacker viewing or modifying WinRM messages as they transit the network."
@@ -5785,7 +5785,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowUnencryptedTraffic -> 0'
 
-  - id: 26379
+  - id: 26378
     title: "Ensure 'Disallow Digest authentication' is set to 'Enabled'"
     description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) client will not use Digest authentication."
     rationale: "Digest authentication is less robust than other authentication methods available in WinRM, an attacker who is able to capture packets on the network where WinRM is running may be able to determine the credentials used for accessing remote hosts via WinRM."
@@ -5803,7 +5803,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowDigest -> 0'
 
-  - id: 26380
+  - id: 26379
     title: "Ensure 'Allow Basic authentication' is set to 'Disabled'"
     description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) service accepts Basic authentication from a remote client."
     rationale: "Basic authentication is less robust than other authentication methods available in WinRM because credentials including passwords are transmitted in plain text. An attacker who is able to capture packets on the network where WinRM is running may be able to determine the credentials used for accessing remote hosts via WinRM."
@@ -5821,7 +5821,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowBasic -> 0'
 
-  - id: 26381
+  - id: 26380
     title: "Ensure 'Allow remote server management through WinRM' is set to 'Disabled'"
     description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) service automatically listens on the network for requests on the HTTP transport over the default HTTP port. The recommended state for this setting is: Disabled."
     rationale: "Any feature is a potential avenue of attack, those that enable inbound network connections are particularly risky. Only enable the use of the Windows Remote Management (WinRM) service on trusted networks and when feasible employ additional controls such as IPsec."
@@ -5840,7 +5840,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowAutoConfig -> 0'
 
 
-  - id: 26382
+  - id: 26381
     title: "Ensure 'Allow unencrypted traffic' is set to 'Disabled'"
     description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) service sends and receives unencrypted messages over the network. The recommended state for this setting is: Disabled."
     rationale: "Encrypting WinRM network traffic reduces the risk of an attacker viewing or modifying WinRM messages as they transit the network."
@@ -5858,7 +5858,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowUnencryptedTraffic -> 0'
 
-  - id: 26383
+  - id: 26382
     title: "Ensure 'Disallow WinRM from storing RunAs credentials' is set to 'Enabled'"
     description: "This policy setting allows you to manage whether the Windows Remote Management (WinRM) service will allow RunAs credentials to be stored for any plug-ins. The recommended state for this setting is: Enabled."
     rationale: "Although the ability to store RunAs credentials is a convenient feature it increases the risk  of account compromise slightly. For example, if you forget to lock your desktop before  leaving it unattended for a few minutes another person could access not only the desktop  of your computer but also any hosts you manage via WinRM with cached RunAs  credentials."
@@ -5873,7 +5873,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> DisableRunAs -> 1'
 
-  - id: 26384
+  - id: 26383
     title: "Ensure 'Allow Remote Shell Access' is set to 'Disabled'"
     description: "This policy setting allows you to manage configuration of remote access to all supported shells to execute scripts and commands. The recommended state for this setting is: Disabled. Note: The GPME help text for this setting is incorrectly worded, implying that configuring it to Enabled will reject new Remote Shell connections, and setting it to Disabled will allow Remote Shell connections. The opposite is true (and is consistent with the title of the setting). This is a wording mistake by Microsoft in the Administrative Template."
     rationale: "Any feature is a potential avenue of attack, those that enable inbound network connections are particularly risky. Only enable the use of the Windows Remote Shell on trusted networks and when feasible employ additional controls such as IPsec."
@@ -5891,7 +5891,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service\WinRS -> AllowRemoteShellAccess -> 0'
 
-  - id: 26385
+  - id: 26384
     title: "Ensure 'Allow clipboard sharing with Windows Sandbox' is set to 'Disabled'"
     description: "This policy setting enables or disables clipboard sharing with the Windows sandbox. The recommended state for this setting is: Disabled. Note: The Windows Sandbox feature was first introduced in Windows 10 R1903, and allows a temporary clean install virtual instance of Windows to be run inside the host, for the ostensible purpose of testing applications without making changes to the host. "
     rationale: "Disabling copy and paste decreases the attack surface exposed by the Windows Sandbox and possible exposure of untrusted applications to the internal network. "
@@ -5902,7 +5902,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Sandbox -> AllowClipboardRedirection -> 0'
 
-  - id: 26386
+  - id: 26385
     title: "Ensure 'Allow networking in Windows Sandbox' is set to'Disabled'"
     description: "This policy setting enables or disables networking in the Windows Sandbox. Networking is achieved by creating a virtual switch on the host, and connecting the Windows Sandbox to it via a virtual Network Interface Card (NIC). The recommended state for this setting is: Disabled. Note: The Windows Sandbox feature was first introduced in Windows 10 R1903, and allows a temporary clean install virtual instance of Windows to be run inside the host, for the ostensible purpose of testing applications without making changes to the host. "
     rationale: "Disabling network access decreases the attack surface exposed by the Windows Sandbox and exposure of untrusted applications to the internal network. Note: Per Microsoft, enabling networking in the Windows Sandbox can expose untrusted applications to the internal network. "
@@ -5913,7 +5913,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Sandbox -> AllowNetworking -> 0'
 
-  - id: 26387
+  - id: 26386
     title: "Ensure 'Prevent users from modifying settings' is set to 'Enabled'"
     description: "This policy setting prevent users from making changes to the Exploit protection settings area in the Windows Defender Security Center."
     rationale: "Only authorized IT staff should be able to make changes to the exploit protection settings in order to ensure the organizations specific configuration is not modified."
@@ -5927,7 +5927,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\App and Browser protection -> DisallowExploitProtectionOverride -> 1'
 
-  - id: 26388
+  - id: 26387
     title: "Ensure 'No auto-restart with logged on users for scheduled automatic updates installations' is set to 'Disabled'"
     description: "This policy setting specifies that Automatic Updates will wait for computers to be restarted by the users who are logged on to them to complete a scheduled installation."
     rationale: "Some security updates require that the computer be restarted to complete an installation. If the computer cannot restart automatically, then the most recent update will not completely install and no new updates will download to the computer until it is restarted. Without the auto-restart functionality, users who are not security-conscious may choose to indefinitely delay the restart, therefore keeping the computer in a less secure state."
@@ -5947,7 +5947,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> NoAutoRebootWithLoggedOnUsers -> 0'
 
-  - id: 26389
+  - id: 26388
     title: "Ensure 'Configure Automatic Updates' is set to 'Enabled'"
     description: "This policy setting specifies whether computers in your environment will receive security updates from Windows Update or WSUS. If you configure this policy setting to Enabled, the operating system will recognize when a network connection is available and then use the network connection to search Windows Update or your designated intranet site for updates that apply to them. After you configure this policy setting to Enabled, select one of the following three options in the Configure Automatic Updates Properties dialog box to specify how the service will work: 2 - Notify for download and auto install (Notify before downloading any updates) 3 - Auto download and notify for install (Download the updates automatically and notify when they are ready to be installed.) (Default setting) 4 - Auto download and schedule the install (Automatically download updates and install them on the schedule specified below.)) 5 - Allow local admin to choose setting (Leave decision on above choices up to the local Administrators (Not Recommended)) The recommended state for this setting is: Enabled. Note: The sub-setting Configure automatic updating: has 4 possible values – all of them are valid depending on specific organizational needs, however if feasible we suggest using a value of 4 - Auto download and schedule the install. This suggestion is not a scored requirement. Note #2: Organizations that utilize a 3rd-party solution for patching may choose to exempt themselves from this recommendation, and instead configure it to Disabled so that the native Windows Update mechanism does not interfere with the 3rd-party patching process."
     rationale: "Although each version of Windows is thoroughly tested before release, it is possible that problems will be discovered after the products are shipped. The Configure Automatic Updates setting can help you ensure that the computers in your environment will always have the most recent critical operating system updates and service packs installed. "
@@ -5959,7 +5959,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> NoAutoUpdate -> 0'
 
-  - id: 26390
+  - id: 26389
     title: "Ensure 'Configure Automatic Updates: Scheduled install day' is set to '0 - Every day' "
     description: "This policy setting specifies when computers in your environment will receive security updates from Windows Update or WSUS. The recommended state for this setting is: 0 - Every day. Note: This setting is only applicable if 4 - Auto download and schedule the install is selected in the recommendation 'Configure Automatic Updates'. It will have no impact if any other option is selected. "
     rationale: "Although each version of Windows is thoroughly tested before release, it is possible that problems will be discovered after the products are shipped. The Configure Automatic Updates setting can help you ensure that the computers in your environment will always have the most recent critical operating system updates and service packs installed. "
@@ -5971,7 +5971,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> ScheduledInstallDay -> 0'
 
-  - id: 26391
+  - id: 26390
     title: "Ensure 'Remove access to Pause updates feature' is set to'Enabled' "
     description: "This policy removes access to Pause updates feature. The recommended state for this setting is: Enabled. "
     rationale: "In order to ensure security and system updates are applied, system administrators should control when updates are applied to systems. "
@@ -5983,7 +5983,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> SetDisablePauseUXAccess -> 1'
 
-  - id: 26392
+  - id: 26391
     title: "Ensure 'Manage preview builds' is set to 'Disabled'"
     description: "This policy setting manage which updates that are receive prior to the update being released."
     rationale: "It can be risky for experimental features to be allowed in an enterprise managed environment because this can introduce bugs and security holes into systems, making it easier for an attacker to gain access. It is generally preferred to only use production-ready builds."
@@ -5999,7 +5999,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> ManagePreviewBuildsPolicyValue -> 1'
 
-  - id: 26393
+  - id: 26392
     title: "Ensure 'Select when Preview Builds and Feature Updates are received' is set to 'Enabled: 180 or more days'"
     description: "This policy setting determines when Preview Build or Feature Updates are received. Defer Updates This enables devices to defer taking the next Feature Update available to your channel for up to 14 days for all the pre-release channels and up to 365 days for the Semi-Annual Channel. Or, if the device is updating from the Semi-Annual Channel, a version for the device to move to and/or stay on until the policy is updated or the device reaches end of service can be specified. Note: If you set both policies, the version specified will take precedence and the deferrals will not be in effect. Please see the Windows Release Information page for OS version information. Pause Updates To prevent Feature Updates from being received on their scheduled time, you can temporarily pause Feature Updates. The pause will remain in effect for 35 days from the specified start date or until the field is cleared (Quality Updates will still be offered)."
     rationale: "In a production environment, it is preferred to only use software and features that are publicly available, after they have gone through rigorous testing in beta."
@@ -6016,7 +6016,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> DeferFeatureUpdates -> 1'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate -> DeferFeatureUpdatesPeriodInDays -> n:^(\d+) compare >= 180'
 
-  - id: 26394
+  - id: 26393
     title: "Ensure 'Select when Quality Updates are received' is set to 'Enabled: 0 days'"
     description: "This settings controls when Quality Updates are received."
     rationale: "Quality Updates can contain important bug fixes and/or security patches, and should be installed as soon as possible."
