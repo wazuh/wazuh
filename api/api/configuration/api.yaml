@@ -53,14 +53,14 @@
 # max_upload_size: 10485760
 
 # Uploadable Wazuh configuration sections
-# upload_wazuh_configuration:
+# upload_configuration:
 #   remote_commands:
 #     localfile:
-#       allow: no
+#       allow: yes
 #       exceptions: []
 #     wodle_command:
-#       allow: no
+#       allow: yes
 #       exceptions: []
 #   limits:
 #     eps:
-#       allow: no
+#       allow: yes

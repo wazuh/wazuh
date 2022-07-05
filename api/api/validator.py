@@ -138,7 +138,7 @@ api_config_schema = {
                 "max_request_per_minute": {"type": "integer"},
             },
         },
-        "upload_wazuh_configuration": {
+        "upload_configuration": {
             "remote_commands": {
                 "type": "object",
                 "additionalProperties": False,

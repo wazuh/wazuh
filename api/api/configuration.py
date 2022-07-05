@@ -64,20 +64,20 @@ default_api_configuration = {
         "block_time": 300,
         "max_request_per_minute": 300
     },
-    "upload_wazuh_configuration": {
+    "upload_configuration": {
         "remote_commands": {
             "localfile": {
-                "allow": False,
+                "allow": True,
                 "exceptions": []
             },
             "wodle_command": {
-                "allow": False,
+                "allow": True,
                 "exceptions": []
             }
         },
         "limits": {
             "eps": {
-                "allow": False
+                "allow": True
             }
         }
     }

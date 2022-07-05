@@ -1896,7 +1896,7 @@ def test_check_disabled_limits_in_conf(limits_conf, expect_exc):
     </root>"""
 
     new_conf = utils.configuration.api_conf
-    new_conf['upload_wazuh_configuration']['limits'].update(limits_conf)
+    new_conf['upload_configuration']['limits'].update(limits_conf)
 
     with patch('wazuh.core.utils.configuration.api_conf', new=new_conf):
         if expect_exc:

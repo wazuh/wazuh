@@ -754,7 +754,7 @@ def check_remote_commands(data):
     data : str
         Configuration file
     """
-    blocked_configurations = configuration.api_conf['upload_wazuh_configuration']
+    blocked_configurations = configuration.api_conf['upload_configuration']
 
     def check_section(command_regex, section, split_section):
         try:
@@ -791,7 +791,7 @@ def check_disabled_limits_in_conf(data):
     WazuhError(1127)
         Raised if one of the disabled limits is present in the configuration to upload.
     """
-    blocked_configurations = configuration.api_conf['upload_wazuh_configuration']
+    blocked_configurations = configuration.api_conf['upload_configuration']
 
     xml_file = fromstring(data)
     limits_section = xml_file.find("global").find("limits")
