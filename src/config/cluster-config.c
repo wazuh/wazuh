@@ -64,12 +64,6 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
                 return OS_INVALID;
             }
             os_strdup(node[i]->content, Config->node_name);
-        } else if (!strcmp(node[i]->element, node_blacklist)) {
-            if (strspn(node[i]->content, N_BLACKLIST) < strlen(node[i]->content)) {
-                merror("Detected a not allowed character in node blacklist: \"%s\". Characters allowed: \"%s\".", node[i]->content, N_BLACKLIST);
-                return OS_INVALID;
-            }
-            // os_strdup(node[i]->content, Config->node_blacklist);
         } else if (!strcmp(node[i]->element, node_type)) {
             if (!strlen(node[i]->content)) {
                 merror("Node type is empty in configuration");
@@ -97,6 +91,11 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
                 Config->hide_cluster_info = 0;
             } else {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return OS_INVALID;
+            }
+        } else if (!strcmp(node[i]->element, node_blacklist)) {
+            if (strspn(node[i]->content, N_BLACKLIST) < strlen(node[i]->content)) {
+                merror("Detected a not allowed character in node blacklist: \"%s\". Characters allowed: \"%s\".", node[i]->content, N_BLACKLIST);
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, interval)) {
