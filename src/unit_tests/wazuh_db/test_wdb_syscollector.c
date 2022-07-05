@@ -165,7 +165,7 @@ typedef struct osinfo_object {
     char *os_display_version;
     char *checksum;
     bool replace;
-    os_sha1 reference;
+    char *reference;
     int triaged;
 } osinfo_object;
 
@@ -395,7 +395,6 @@ process_object process = {
 };
 
 /* methods configurations */
-
 void configure_sqlite3_bind_text(int position, const char* string) {
     will_return(__wrap_sqlite3_bind_text, OS_SUCCESS);
     expect_value(__wrap_sqlite3_bind_text, pos, position);
@@ -426,8 +425,18 @@ void configure_sqlite3_bind_int(int position, int number) {
     }
 }
 
-//wdb_netinfo_insert
+void configure_sqlite3_bind_double(int position, double number) {
+    if (number < 0) {
+        will_return(__wrap_sqlite3_bind_null, OS_SUCCESS);
+        expect_value(__wrap_sqlite3_bind_null, index, position);
+    } else {
+        will_return(__wrap_sqlite3_bind_double, OS_SUCCESS);
+        expect_value(__wrap_sqlite3_bind_double, index, position);
+        expect_value(__wrap_sqlite3_bind_double, value, number);
+    }
+}
 
+// wdb_netinfo_insert
 void configure_wdb_netinfo_insert(netinfo_object test_netinfo, int sqlite_code) {
     will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
 
@@ -454,10 +463,97 @@ void configure_wdb_netinfo_insert(netinfo_object test_netinfo, int sqlite_code) 
     will_return(__wrap_sqlite3_step, sqlite_code);
 }
 
+// wdb_osinfo_insert
+void configure_wdb_osinfo_insert(osinfo_object test_osinfo, int sqlite_code) {
+    will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
+
+    configure_sqlite3_bind_text(1, test_osinfo.scan_id);
+    configure_sqlite3_bind_text(2, test_osinfo.scan_time);
+    configure_sqlite3_bind_text(3, test_osinfo.hostname);
+    configure_sqlite3_bind_text(4, test_osinfo.architecture);
+    configure_sqlite3_bind_text(5, test_osinfo.os_name);
+    configure_sqlite3_bind_text(6, test_osinfo.os_version);
+    configure_sqlite3_bind_text(7, test_osinfo.os_codename);
+    configure_sqlite3_bind_text(8, test_osinfo.os_major);
+    configure_sqlite3_bind_text(9, test_osinfo.os_minor);
+    configure_sqlite3_bind_text(10, test_osinfo.os_patch);
+    configure_sqlite3_bind_text(11, test_osinfo.os_build);
+    configure_sqlite3_bind_text(12, test_osinfo.os_platform);
+    configure_sqlite3_bind_text(13, test_osinfo.sysname);
+    configure_sqlite3_bind_text(14, test_osinfo.release);
+    configure_sqlite3_bind_text(15, test_osinfo.version);
+    configure_sqlite3_bind_text(16, test_osinfo.os_release);
+    configure_sqlite3_bind_text(17, test_osinfo.os_display_version);
+    configure_sqlite3_bind_text(18, test_osinfo.checksum);
+    configure_sqlite3_bind_text(19, test_osinfo.reference);
+    configure_sqlite3_bind_int(20, test_osinfo.triaged);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, sqlite_code);
+}
+
+// wdb_package_insert
+void configure_wdb_package_insert(package_object test_package, int sqlite_code) {
+    will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
+
+    configure_sqlite3_bind_text(1, test_package.scan_id);
+    configure_sqlite3_bind_text(2, test_package.scan_time);
+    configure_sqlite3_bind_text(3, test_package.format);
+    configure_sqlite3_bind_text(4, test_package.name);
+    configure_sqlite3_bind_text(5, test_package.priority);
+    configure_sqlite3_bind_text(6, test_package.section);
+    configure_sqlite3_bind_int64(7, test_package.size);
+    configure_sqlite3_bind_text(8, test_package.vendor);
+    configure_sqlite3_bind_text(9, test_package.install_time);
+    configure_sqlite3_bind_text(10, test_package.version);
+    configure_sqlite3_bind_text(11, test_package.architecture);
+    configure_sqlite3_bind_text(12, test_package.multiarch);
+    configure_sqlite3_bind_text(13, test_package.source);
+    configure_sqlite3_bind_text(14, test_package.description);
+    configure_sqlite3_bind_text(15, test_package.location);
+    configure_sqlite3_bind_int(16, test_package.triaged);
+    configure_sqlite3_bind_text(17, test_package.checksum);
+    configure_sqlite3_bind_text(18, test_package.item_id);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, sqlite_code);
+}
+
+// wdb_hotfix_insert
+void configure_wdb_hotfix_insert(hotfix_object test_hotfix, int sqlite_code) {
+    will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
+
+    configure_sqlite3_bind_text(1, test_hotfix.scan_id);
+    configure_sqlite3_bind_text(2, test_hotfix.scan_time);
+    configure_sqlite3_bind_text(3, test_hotfix.hotfix);
+    configure_sqlite3_bind_text(4, test_hotfix.checksum);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, sqlite_code);
+}
+
+// wdb_hardware_insert
+void configure_wdb_hardware_insert(hardware_object test_hardware, int sqlite_code) {
+    will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
+
+    configure_sqlite3_bind_text(1, test_hardware.scan_id);
+    configure_sqlite3_bind_text(2, test_hardware.scan_time);
+    configure_sqlite3_bind_text(3, test_hardware.serial);
+    configure_sqlite3_bind_text(4, test_hardware.cpu_name);
+    configure_sqlite3_bind_int(5, test_hardware.cpu_cores);
+    configure_sqlite3_bind_double(6, test_hardware.cpu_mhz);
+    configure_sqlite3_bind_int64(7, test_hardware.ram_total);
+    configure_sqlite3_bind_int64(8, test_hardware.ram_free);
+    configure_sqlite3_bind_int(9, test_hardware.ram_usage);
+    configure_sqlite3_bind_text(10, test_hardware.checksum);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, sqlite_code);
+}
+
 /* tests */
 
 // Test wdb_netinfo_save
-
 static void test_wdb_netinfo_save_transaction_fail(void **state) {
     int ret = OS_INVALID;
     test_struct_t *data  = (test_struct_t *)*state;
@@ -661,6 +757,37 @@ static void test_wdb_osinfo_insert_stmt_cache_fail(void **state) {
     assert_int_equal(ret, OS_INVALID);
 }
 
+static void test_wdb_osinfo_insert_success(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    configure_wdb_osinfo_insert(osinfo, SQLITE_DONE);
+
+    ret = wdb_osinfo_insert(data->wdb, osinfo.scan_id, osinfo.scan_time, osinfo.hostname, osinfo.architecture, osinfo.os_name,
+                            osinfo.os_version, osinfo.os_codename, osinfo.os_major, osinfo.os_minor, osinfo.os_patch, osinfo.os_build,
+                            osinfo.os_platform, osinfo.sysname, osinfo.release, osinfo.version, osinfo.os_release, osinfo.os_display_version,
+                            osinfo.checksum, osinfo.replace, osinfo.reference, osinfo.triaged);
+
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+static void test_wdb_osinfo_insert_step_error(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    configure_wdb_osinfo_insert(osinfo, SQLITE_ERROR);
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR");
+    expect_string(__wrap__merror, formatted_msg, "at wdb_osinfo_insert(): sqlite3_step(): ERROR");
+
+    ret = wdb_osinfo_insert(data->wdb, osinfo.scan_id, osinfo.scan_time, osinfo.hostname, osinfo.architecture, osinfo.os_name,
+                            osinfo.os_version, osinfo.os_codename, osinfo.os_major, osinfo.os_minor, osinfo.os_patch, osinfo.os_build,
+                            osinfo.os_platform, osinfo.sysname, osinfo.release, osinfo.version, osinfo.os_release, osinfo.os_display_version,
+                            osinfo.checksum, osinfo.replace, osinfo.reference, osinfo.triaged);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
 // Test wdb_package_insert
 static void test_wdb_package_insert_stmt_cache_fail(void **state) {
     int ret = OS_INVALID;
@@ -672,6 +799,109 @@ static void test_wdb_package_insert_stmt_cache_fail(void **state) {
                              package.size, package.vendor, package.install_time, package.version, package.architecture, package.multiarch,
                              package.source, package.description, package.location, package.triaged, package.checksum, package.item_id,
                              package.replace);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+static void test_wdb_package_insert_success(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    configure_wdb_package_insert(package, SQLITE_DONE);
+
+    ret = wdb_package_insert(data->wdb, package.scan_id, package.scan_time, package.format, package.name, package.priority, package.section,
+                             package.size, package.vendor, package.install_time, package.version, package.architecture, package.multiarch,
+                             package.source, package.description, package.location, package.triaged, package.checksum, package.item_id,
+                             package.replace);
+
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+static void test_wdb_package_insert_step_error(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    configure_wdb_package_insert(package, SQLITE_ERROR);
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR");
+    expect_string(__wrap__merror, formatted_msg, "at wdb_package_insert(): sqlite3_step(): ERROR");
+
+    ret = wdb_package_insert(data->wdb, package.scan_id, package.scan_time, package.format, package.name, package.priority, package.section,
+                             package.size, package.vendor, package.install_time, package.version, package.architecture, package.multiarch,
+                             package.source, package.description, package.location, package.triaged, package.checksum, package.item_id,
+                             package.replace);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+static void test_wdb_package_insert_architecture_null(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data = (test_struct_t *)*state;
+    package_object temp_package = package;
+    temp_package.architecture = NULL;
+
+    expect_value(__wrap_wdbi_remove_by_pk, component, WDB_SYSCOLLECTOR_PACKAGES);
+    expect_value(__wrap_wdbi_remove_by_pk, pk_value, package.item_id);
+
+    configure_wdb_package_insert(temp_package, SQLITE_DONE);
+
+    ret = wdb_package_insert(data->wdb, temp_package.scan_id, temp_package.scan_time, temp_package.format, temp_package.name, temp_package.priority, temp_package.section,
+                             temp_package.size, temp_package.vendor, temp_package.install_time, temp_package.version, temp_package.architecture, temp_package.multiarch,
+                             temp_package.source, temp_package.description, temp_package.location, temp_package.triaged, temp_package.checksum, temp_package.item_id,
+                             temp_package.replace);
+
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+static void test_wdb_package_insert_size_negative_value(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data = (test_struct_t *)*state;
+    package_object temp_package = package;
+    temp_package.size = -1;
+
+    configure_wdb_package_insert(temp_package, SQLITE_DONE);
+
+    ret = wdb_package_insert(data->wdb, temp_package.scan_id, temp_package.scan_time, temp_package.format, temp_package.name, temp_package.priority, temp_package.section,
+                             temp_package.size, temp_package.vendor, temp_package.install_time, temp_package.version, temp_package.architecture, temp_package.multiarch,
+                             temp_package.source, temp_package.description, temp_package.location, temp_package.triaged, temp_package.checksum, temp_package.item_id,
+                             temp_package.replace);
+
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+static void test_wdb_package_insert_constraint_success(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data = (test_struct_t *)*state;
+
+    configure_wdb_package_insert(package, SQLITE_CONSTRAINT);
+
+    will_return(__wrap_sqlite3_errmsg, "UNIQUE constraint failed");
+    will_return(__wrap_sqlite3_errmsg, "UNIQUE constraint failed");
+
+    expect_string(__wrap__mdebug1, formatted_msg, "at wdb_package_insert(): sqlite3_step(): UNIQUE constraint failed");
+
+    ret = wdb_package_insert(data->wdb, package.scan_id, package.scan_time, package.format, package.name, package.priority, package.section,
+                             package.size, package.vendor, package.install_time, package.version, package.architecture, package.multiarch,
+                             package.source, package.description, package.location, package.triaged, package.checksum, package.item_id,
+                             package.replace);
+
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+static void test_wdb_package_insert_constraint_fail(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data = (test_struct_t *)*state;
+
+    configure_wdb_package_insert(package, SQLITE_CONSTRAINT);
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR");
+    will_return(__wrap_sqlite3_errmsg, "ERROR");
+    expect_string(__wrap__merror, formatted_msg, "at wdb_package_insert(): sqlite3_step(): ERROR");
+
+    ret = wdb_package_insert(data->wdb, package.scan_id, package.scan_time, package.format, package.name, package.priority, package.section,
+                            package.size, package.vendor, package.install_time, package.version, package.architecture, package.multiarch,
+                            package.source, package.description, package.location, package.triaged, package.checksum, package.item_id,
+                            package.replace);
 
     assert_int_equal(ret, OS_INVALID);
 }
@@ -688,6 +918,42 @@ static void test_wdb_hotfix_insert_stmt_cache_fail(void **state) {
     assert_int_equal(ret, OS_INVALID);
 }
 
+static void test_wdb_hotfix_insert_hotfix_null(void **state) {
+    int ret = OS_INVALID;
+    hotfix_object temp_hotfix = hotfix;
+    temp_hotfix.hotfix = NULL;
+
+    ret = wdb_hotfix_insert(NULL, temp_hotfix.scan_id, temp_hotfix.scan_time, temp_hotfix.hotfix, temp_hotfix.checksum, temp_hotfix.replace);
+
+    assert_int_equal(ret, OS_INVALID);
+
+}
+
+static void test_wdb_hotfix_insert_success(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    configure_wdb_hotfix_insert(hotfix, SQLITE_DONE);
+
+    ret = wdb_hotfix_insert(data->wdb, hotfix.scan_id, hotfix.scan_time, hotfix.hotfix, hotfix.checksum, hotfix.replace);
+
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+static void test_wdb_hotfix_insert_step_error(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    configure_wdb_hotfix_insert(hotfix, SQLITE_ERROR);
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR");
+    expect_string(__wrap__merror, formatted_msg, "at wdb_hotfix_insert(): sqlite3_step(): ERROR");
+
+    ret = wdb_hotfix_insert(data->wdb, hotfix.scan_id, hotfix.scan_time, hotfix.hotfix, hotfix.checksum, hotfix.replace);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
 // Test wdb_hardware_insert
 static void test_wdb_hardware_insert_stmt_cache_fail(void **state) {
     int ret = OS_INVALID;
@@ -699,6 +965,50 @@ static void test_wdb_hardware_insert_stmt_cache_fail(void **state) {
                               hardware.cpu_mhz, hardware.ram_total, hardware.ram_free, hardware.ram_usage, hardware.checksum, hardware.replace);
 
     assert_int_equal(ret, OS_INVALID);
+}
+
+static void test_wdb_hardware_insert_success(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    configure_wdb_hardware_insert(hardware, SQLITE_DONE);
+
+    ret = wdb_hardware_insert(data->wdb, hardware.scan_id, hardware.scan_time, hardware.serial, hardware.cpu_name, hardware.cpu_cores,
+                              hardware.cpu_mhz, hardware.ram_total, hardware.ram_free, hardware.ram_usage, hardware.checksum, hardware.replace);
+
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+static void test_wdb_hardware_insert_step_error(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    configure_wdb_hardware_insert(hardware, SQLITE_ERROR);
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR");
+    expect_string(__wrap__merror, formatted_msg, "at wdb_hardware_insert(): sqlite3_step(): ERROR");
+
+    ret = wdb_hardware_insert(data->wdb, hardware.scan_id, hardware.scan_time, hardware.serial, hardware.cpu_name, hardware.cpu_cores,
+                              hardware.cpu_mhz, hardware.ram_total, hardware.ram_free, hardware.ram_usage, hardware.checksum, hardware.replace);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+static void test_wdb_hardware_insert_success_null_values(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data = (test_struct_t *)*state;
+    hardware_object temp_hardware = hardware;
+    temp_hardware.cpu_cores = -1;
+    temp_hardware.cpu_mhz = -1;
+    temp_hardware.ram_usage = -1;
+
+    configure_wdb_hardware_insert(temp_hardware, SQLITE_DONE);
+
+    ret = wdb_hardware_insert(data->wdb, temp_hardware.scan_id, temp_hardware.scan_time, temp_hardware.serial, temp_hardware.cpu_name,
+                              temp_hardware.cpu_cores, temp_hardware.cpu_mhz, temp_hardware.ram_total, temp_hardware.ram_free, temp_hardware.ram_usage,
+                              temp_hardware.checksum, temp_hardware.replace);
+
+    assert_int_equal(ret, OS_SUCCESS);
 }
 
 // Test wdb_port_insert
@@ -749,12 +1059,26 @@ int main(void) {
         cmocka_unit_test(test_wdb_netaddr_insert_stmt_cache_fail),
         // Test wdb_osinfo_insert
         cmocka_unit_test(test_wdb_osinfo_insert_stmt_cache_fail),
+        cmocka_unit_test_setup_teardown(test_wdb_osinfo_insert_success, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_osinfo_insert_step_error, setup_wdb, teardown_wdb),
         // Test wdb_package_insert
         cmocka_unit_test(test_wdb_package_insert_stmt_cache_fail),
+        cmocka_unit_test_setup_teardown(test_wdb_package_insert_success, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_package_insert_step_error, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_package_insert_architecture_null, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_package_insert_size_negative_value, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_package_insert_constraint_success, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_package_insert_constraint_fail, setup_wdb, teardown_wdb),
         // Test wdb_hotfix_insert
         cmocka_unit_test(test_wdb_hotfix_insert_stmt_cache_fail),
+        cmocka_unit_test(test_wdb_hotfix_insert_hotfix_null),
+        cmocka_unit_test_setup_teardown(test_wdb_hotfix_insert_success, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_hotfix_insert_step_error, setup_wdb, teardown_wdb),
         // Test wdb_hardware_insert
         cmocka_unit_test(test_wdb_hardware_insert_stmt_cache_fail),
+        cmocka_unit_test_setup_teardown(test_wdb_hardware_insert_success, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_hardware_insert_step_error, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_hardware_insert_success_null_values, setup_wdb, teardown_wdb),
         // Test wdb_port_insert
         cmocka_unit_test(test_wdb_port_insert_stmt_cache_fail),
         // Test wdb_process_insert
