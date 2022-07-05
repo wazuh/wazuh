@@ -143,7 +143,7 @@ int wdb_netproto_save(wdb_t * wdb, const char * scan_id, const char * iface, int
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_netproto_save(): cannot begin transaction");
-        return -1;
+        return OS_INVALID;
     }
 
     if (wdb_netproto_insert(wdb,
@@ -157,10 +157,10 @@ int wdb_netproto_save(wdb_t * wdb, const char * scan_id, const char * iface, int
         item_id,
         replace) < 0) {
 
-        return -1;
+        return OS_INVALID;
     }
 
-    return 0;
+    return OS_SUCCESS;
 }
 
 // Insert IPv4/IPv6 protocol info tuple. Return 0 on success or -1 on error.

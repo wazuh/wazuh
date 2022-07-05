@@ -110,7 +110,7 @@ typedef struct netproto_object {
 netproto_object netproto = {
     .scan_id = "0",
     .iface = "Loopback Pseudo-Interface 1",
-    .type = 0,
+    .type = WDB_NETADDR_IPV4,
     .gateway = " ",
     .dhcp = "disabled",
     .metric = 75,
@@ -463,6 +463,40 @@ void configure_wdb_netinfo_insert(netinfo_object test_netinfo, int sqlite_code) 
     will_return(__wrap_sqlite3_step, sqlite_code);
 }
 
+// wdb_netproto_insert
+void configure_wdb_netproto_insert(netproto_object test_netproto, int sqlite_code) {
+    will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
+
+    configure_sqlite3_bind_text(1, test_netproto.scan_id);
+    configure_sqlite3_bind_text(2, test_netproto.iface);
+    configure_sqlite3_bind_text(3, test_netproto.type == WDB_NETADDR_IPV4 ? "ipv4" : "ipv6");
+    configure_sqlite3_bind_text(4, test_netproto.gateway);
+    configure_sqlite3_bind_text(5, test_netproto.dhcp);
+    configure_sqlite3_bind_int64(6, test_netproto.metric);
+    configure_sqlite3_bind_text(7, test_netproto.checksum);
+    configure_sqlite3_bind_text(8, test_netproto.item_id);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, sqlite_code);
+}
+
+// wdb_netaddr_insert
+void configure_wdb_netaddr_insert(netaddr_object test_netaddr, int sqlite_code) {
+    will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
+
+    configure_sqlite3_bind_text(1, test_netaddr.scan_id);
+    configure_sqlite3_bind_text(2, test_netaddr.iface);
+    configure_sqlite3_bind_text(3, test_netaddr.proto == WDB_NETADDR_IPV4 ? "ipv4" : "ipv6");
+    configure_sqlite3_bind_text(4, test_netaddr.address);
+    configure_sqlite3_bind_text(5, test_netaddr.netmask);
+    configure_sqlite3_bind_text(6, test_netaddr.broadcast);
+    configure_sqlite3_bind_text(7, test_netaddr.checksum);
+    configure_sqlite3_bind_text(8, test_netaddr.item_id);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, sqlite_code);
+}
+
 // wdb_osinfo_insert
 void configure_wdb_osinfo_insert(osinfo_object test_osinfo, int sqlite_code) {
     will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
@@ -546,6 +580,70 @@ void configure_wdb_hardware_insert(hardware_object test_hardware, int sqlite_cod
     configure_sqlite3_bind_int64(8, test_hardware.ram_free);
     configure_sqlite3_bind_int(9, test_hardware.ram_usage);
     configure_sqlite3_bind_text(10, test_hardware.checksum);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, sqlite_code);
+}
+
+// wdb_port_insert
+void configure_wdb_port_insert(port_object test_port, int sqlite_code) {
+    will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
+
+    configure_sqlite3_bind_text(1, test_port.scan_id);
+    configure_sqlite3_bind_text(2, test_port.scan_time);
+    configure_sqlite3_bind_text(3, test_port.protocol);
+    configure_sqlite3_bind_text(4, test_port.local_ip);
+    configure_sqlite3_bind_int(5, test_port.local_port);
+    configure_sqlite3_bind_text(6, test_port.remote_ip);
+    configure_sqlite3_bind_int(7, test_port.remote_port);
+    configure_sqlite3_bind_int(8, test_port.tx_queue);
+    configure_sqlite3_bind_int(9, test_port.rx_queue);
+    configure_sqlite3_bind_int64(10, test_port.inode);
+    configure_sqlite3_bind_text(11, test_port.state);
+    configure_sqlite3_bind_int(12, test_port.pid);
+    configure_sqlite3_bind_text(13, test_port.process);
+    configure_sqlite3_bind_text(14, test_port.checksum);
+    configure_sqlite3_bind_text(15, test_port.item_id);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, sqlite_code);
+}
+
+// wdb_process_insert
+void configure_wdb_process_insert(process_object test_process, int sqlite_code) {
+    will_return(__wrap_wdb_stmt_cache, OS_SUCCESS);
+
+    configure_sqlite3_bind_text(1, test_process.scan_id);
+    configure_sqlite3_bind_text(2, test_process.scan_time);
+    configure_sqlite3_bind_int(3, test_process.pid);
+    configure_sqlite3_bind_text(4, test_process.name);
+    configure_sqlite3_bind_text(5, test_process.state);
+    configure_sqlite3_bind_int(6, test_process.ppid);
+    configure_sqlite3_bind_int(7, test_process.utime);
+    configure_sqlite3_bind_int(8, test_process.stime);
+    configure_sqlite3_bind_text(9, test_process.cmd);
+    configure_sqlite3_bind_text(10, test_process.argvs);
+    configure_sqlite3_bind_text(11, test_process.euser);
+    configure_sqlite3_bind_text(12, test_process.ruser);
+    configure_sqlite3_bind_text(13, test_process.suser);
+    configure_sqlite3_bind_text(14, test_process.egroup);
+    configure_sqlite3_bind_text(15, test_process.rgroup);
+    configure_sqlite3_bind_text(16, test_process.sgroup);
+    configure_sqlite3_bind_text(17, test_process.fgroup);
+    configure_sqlite3_bind_int(18, test_process.priority);
+    configure_sqlite3_bind_int(19, test_process.nice);
+    configure_sqlite3_bind_int(20, test_process.size);
+    configure_sqlite3_bind_int(21, test_process.vm_size);
+    configure_sqlite3_bind_int(22, test_process.resident);
+    configure_sqlite3_bind_int(23, test_process.share);
+    configure_sqlite3_bind_int(24, test_process.start_time);
+    configure_sqlite3_bind_int(25, test_process.pgrp);
+    configure_sqlite3_bind_int(26, test_process.session);
+    configure_sqlite3_bind_int(27, test_process.nlwp);
+    configure_sqlite3_bind_int(28, test_process.tgid);
+    configure_sqlite3_bind_int(29, test_process.tty);
+    configure_sqlite3_bind_int(30, test_process.processor);
+    configure_sqlite3_bind_text(31, test_process.checksum);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, sqlite_code);
@@ -638,7 +736,7 @@ static void test_wdb_netinfo_insert_name_null_success(void **state) {
     test_netinfo.name = NULL;
 
     expect_value(__wrap_wdbi_remove_by_pk, component, WDB_SYSCOLLECTOR_NETINFO);
-    expect_value(__wrap_wdbi_remove_by_pk, pk_value, netinfo.item_id);
+    expect_value(__wrap_wdbi_remove_by_pk, pk_value, test_netinfo.item_id);
 
     configure_wdb_netinfo_insert(test_netinfo, SQLITE_DONE);
 
@@ -716,6 +814,48 @@ static void test_wdb_netinfo_insert_name_constraint_fail(void **state) {
     assert_int_equal(ret, OS_INVALID);
 }
 
+// Test wdb_netproto_save
+static void test_wdb_netproto_save_transaction_fail(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, OS_INVALID);
+    expect_string(__wrap__mdebug1, formatted_msg, "at wdb_netproto_save(): cannot begin transaction");
+
+    ret = wdb_netproto_save(data->wdb, netproto.scan_id, netproto.iface, netproto.type, netproto.gateway, netproto.dhcp,
+                            netproto.metric, netproto.checksum, netproto.item_id, netproto.replace );
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+static void test_wdb_netproto_save_success(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, OS_SUCCESS);
+    configure_wdb_netproto_insert(netproto, SQLITE_DONE);
+
+    ret = wdb_netproto_save(data->wdb, netproto.scan_id, netproto.iface, netproto.type, netproto.gateway, netproto.dhcp,
+                            netproto.metric, netproto.checksum, netproto.item_id, netproto.replace );
+
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+static void test_wdb_netproto_save_fail(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, OS_SUCCESS);
+    //wdb_netproto_insert
+    will_return(__wrap_wdb_stmt_cache, OS_INVALID);
+    expect_string(__wrap__mdebug1, formatted_msg, "at wdb_netproto_insert(): cannot cache statement");
+
+    ret = wdb_netproto_save(data->wdb, netproto.scan_id, netproto.iface, netproto.type, netproto.gateway, netproto.dhcp,
+                            netproto.metric, netproto.checksum, netproto.item_id, netproto.replace );
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
 // Test wdb_netproto_insert
 static void test_wdb_netproto_insert_stmt_cache_fail(void **state) {
     int ret = OS_INVALID;
@@ -725,6 +865,87 @@ static void test_wdb_netproto_insert_stmt_cache_fail(void **state) {
 
     ret = wdb_netproto_insert(NULL, netproto.scan_id, netproto.iface, netproto.type, netproto.gateway, netproto.dhcp,
                               netproto.metric, netproto.checksum, netproto.item_id, netproto.replace );
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+static void test_wdb_netproto_insert_success(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    configure_wdb_netproto_insert(netproto, SQLITE_DONE);
+
+    ret = wdb_netproto_insert(data->wdb, netproto.scan_id, netproto.iface, netproto.type, netproto.gateway, netproto.dhcp, netproto.metric,
+                              netproto.checksum, netproto.item_id, netproto.replace);
+
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+static void test_wdb_netproto_insert_iface_null(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    netproto_object test_netproto = netproto;
+    test_netproto.iface = NULL;
+
+    expect_value(__wrap_wdbi_remove_by_pk, component, WDB_SYSCOLLECTOR_NETPROTO);
+    expect_value(__wrap_wdbi_remove_by_pk, pk_value, test_netproto.item_id);
+
+    configure_wdb_netproto_insert(test_netproto, SQLITE_DONE);
+
+    ret = wdb_netproto_insert(data->wdb, test_netproto.scan_id, test_netproto.iface, test_netproto.type, test_netproto.gateway, test_netproto.dhcp, test_netproto.metric,
+                              test_netproto.checksum, test_netproto.item_id, test_netproto.replace);
+
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+static void test_wdb_netproto_insert_negative_values_error(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    netproto_object test_netproto = netproto;
+    test_netproto.type = 1;
+    test_netproto.metric = OS_INVALID;
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR_MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "at wdb_netproto_insert(): sqlite3_step(): ERROR_MESSAGE");
+
+    configure_wdb_netproto_insert(test_netproto, SQLITE_ERROR);
+
+    ret = wdb_netproto_insert(data->wdb, test_netproto.scan_id, test_netproto.iface, test_netproto.type, test_netproto.gateway, test_netproto.dhcp, test_netproto.metric,
+                              test_netproto.checksum, test_netproto.item_id, test_netproto.replace);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+static void test_wdb_netproto_insert_name_constraint_success(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    netproto_object test_netproto = netproto;
+
+    configure_wdb_netproto_insert(test_netproto, SQLITE_CONSTRAINT);
+
+    will_return(__wrap_sqlite3_errmsg, "UNIQUE constraint failed");
+    will_return(__wrap_sqlite3_errmsg, "UNIQUE constraint failed");
+    expect_string(__wrap__mdebug1, formatted_msg, "at wdb_netproto_insert(): sqlite3_step(): UNIQUE constraint failed");
+
+    ret = wdb_netproto_insert(data->wdb, test_netproto.scan_id, test_netproto.iface, test_netproto.type, test_netproto.gateway, test_netproto.dhcp, test_netproto.metric,
+                              test_netproto.checksum, test_netproto.item_id, test_netproto.replace);
+
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+static void test_wdb_netproto_insert_name_constraint_fail(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    netproto_object test_netproto = netproto;
+
+    configure_wdb_netproto_insert(test_netproto, SQLITE_CONSTRAINT);
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR_MESSAGE");
+    will_return(__wrap_sqlite3_errmsg, "ERROR_MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "at wdb_netproto_insert(): sqlite3_step(): ERROR_MESSAGE");
+
+    ret = wdb_netproto_insert(data->wdb, test_netproto.scan_id, test_netproto.iface, test_netproto.type, test_netproto.gateway, test_netproto.dhcp, test_netproto.metric,
+                              test_netproto.checksum, test_netproto.item_id, test_netproto.replace);
 
     assert_int_equal(ret, OS_INVALID);
 }
@@ -740,6 +961,36 @@ static void test_wdb_netaddr_insert_stmt_cache_fail(void **state) {
                              netaddr.broadcast, netaddr.checksum, netaddr.item_id, netaddr.replace );
 
     assert_int_equal(ret, OS_INVALID);
+}
+
+static void test_wdb_netaddr_insert_success(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    configure_wdb_netaddr_insert(netaddr, SQLITE_DONE);
+
+    ret = wdb_netaddr_insert(data->wdb, netaddr.scan_id, netaddr.iface, netaddr.proto, netaddr.address, netaddr.netmask,
+                             netaddr.broadcast, netaddr.checksum, netaddr.item_id, netaddr.replace );
+
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+static void test_wdb_netaddr_insert_null_values_success(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    netaddr_object test_netaddr = netaddr;
+    test_netaddr.iface = NULL;
+    test_netaddr.address = NULL;
+
+    expect_value(__wrap_wdbi_remove_by_pk, component, WDB_SYSCOLLECTOR_NETADDRESS);
+    expect_value(__wrap_wdbi_remove_by_pk, pk_value, test_netaddr.item_id);
+
+    configure_wdb_netaddr_insert(test_netaddr, SQLITE_DONE);
+
+    ret = wdb_netaddr_insert(data->wdb, test_netaddr.scan_id, test_netaddr.iface, test_netaddr.proto, test_netaddr.address, test_netaddr.netmask,
+                             test_netaddr.broadcast, test_netaddr.checksum, test_netaddr.item_id, test_netaddr.replace );
+
+    assert_int_equal(ret, OS_SUCCESS);
 }
 
 // Test wdb_osinfo_insert
@@ -1024,6 +1275,38 @@ static void test_wdb_port_insert_stmt_cache_fail(void **state) {
     assert_int_equal(ret, OS_INVALID);
 }
 
+static void test_wdb_port_insert_success(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    configure_wdb_port_insert(port, SQLITE_DONE);
+
+    ret = wdb_port_insert(data->wdb, port.scan_id, port.scan_time, port.protocol, port.local_ip, port.local_port, port.remote_ip, port.remote_port,
+                          port.tx_queue, port.rx_queue, port.inode, port.state, port.pid, port.process, port.checksum, port.item_id, port.replace);
+
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+static void test_wdb_port_insert_null_values_success(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    port_object test_port = port;
+    test_port.protocol = NULL;
+    test_port.local_ip = NULL;
+    test_port.local_port = OS_INVALID;
+    test_port.inode = OS_INVALID;
+
+    configure_wdb_port_insert(test_port, SQLITE_DONE);
+
+    expect_value(__wrap_wdbi_remove_by_pk, component, WDB_SYSCOLLECTOR_PORTS);
+    expect_value(__wrap_wdbi_remove_by_pk, pk_value, test_port.item_id);
+
+    ret = wdb_port_insert(data->wdb, test_port.scan_id, test_port.scan_time, test_port.protocol, test_port.local_ip, test_port.local_port, test_port.remote_ip, test_port.remote_port,
+                          test_port.tx_queue, test_port.rx_queue, test_port.inode, test_port.state, test_port.pid, test_port.process, test_port.checksum, test_port.item_id, test_port.replace);
+
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
 // Test wdb_process_insert
 static void test_wdb_process_insert_stmt_cache_fail(void **state) {
     int ret = OS_INVALID;
@@ -1040,6 +1323,37 @@ static void test_wdb_process_insert_stmt_cache_fail(void **state) {
     assert_int_equal(ret, OS_INVALID);
 }
 
+static void test_wdb_process_insert_success(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    configure_wdb_process_insert(process, SQLITE_DONE);
+
+    ret = wdb_process_insert(data->wdb, process.scan_id, process.scan_time, process.pid, process.name, process.state, process.ppid, process.utime,
+                             process.stime, process.cmd, process.argvs, process.euser, process.ruser, process.suser, process.egroup, process.rgroup,
+                             process.sgroup, process.fgroup, process.priority, process.nice, process.size, process.vm_size, process.resident,
+                             process.share, process.start_time, process.pgrp, process.session, process.nlwp, process.tgid, process.tty, process.processor,
+                             process.checksum, process.replace);
+
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+static void test_wdb_process_insert_null_values_fail(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    process_object test_process = process;
+    test_process.pid = OS_INVALID;
+
+    ret = wdb_process_insert(data->wdb, test_process.scan_id, test_process.scan_time, test_process.pid, test_process.name, test_process.state, test_process.ppid, test_process.utime,
+                             test_process.stime, test_process.cmd, test_process.argvs, test_process.euser, test_process.ruser, test_process.suser, test_process.egroup, test_process.rgroup,
+                             test_process.sgroup, test_process.fgroup, test_process.priority, test_process.nice, test_process.size, test_process.vm_size, test_process.resident,
+                             test_process.share, test_process.start_time, test_process.pgrp, test_process.session, test_process.nlwp, test_process.tgid, test_process.tty, test_process.processor,
+                             test_process.checksum, test_process.replace);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+// Main
 int main(void) {
      const struct CMUnitTest tests[] = {
         // Test wdb_netinfo_save
@@ -1047,16 +1361,27 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wdb_netinfo_save_success, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_netinfo_save_fail, setup_wdb, teardown_wdb),
         // Test wdb_netinfo_insert
-        cmocka_unit_test_setup_teardown(test_wdb_netinfo_insert_stmt_cache_fail, setup_wdb, teardown_wdb),
+        cmocka_unit_test(test_wdb_netinfo_insert_stmt_cache_fail),
         cmocka_unit_test_setup_teardown(test_wdb_netinfo_insert_name_null_success, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_netinfo_insert_success, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_netinfo_insert_negative_values_error, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_netinfo_insert_name_constraint_success, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_netinfo_insert_name_constraint_fail, setup_wdb, teardown_wdb),
+        // Test wdb_netproto_save
+        cmocka_unit_test_setup_teardown(test_wdb_netproto_save_transaction_fail, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_netproto_save_success, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_netproto_save_fail, setup_wdb, teardown_wdb),
         // Test wdb_netproto_insert
         cmocka_unit_test(test_wdb_netproto_insert_stmt_cache_fail),
+        cmocka_unit_test_setup_teardown(test_wdb_netproto_insert_success, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_netproto_insert_iface_null, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_netproto_insert_negative_values_error, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_netproto_insert_name_constraint_success, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_netproto_insert_name_constraint_fail, setup_wdb, teardown_wdb),
         // Test wdb_netaddr_insert
         cmocka_unit_test(test_wdb_netaddr_insert_stmt_cache_fail),
+        cmocka_unit_test_setup_teardown(test_wdb_netaddr_insert_success, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_netaddr_insert_null_values_success, setup_wdb, teardown_wdb),
         // Test wdb_osinfo_insert
         cmocka_unit_test(test_wdb_osinfo_insert_stmt_cache_fail),
         cmocka_unit_test_setup_teardown(test_wdb_osinfo_insert_success, setup_wdb, teardown_wdb),
@@ -1081,8 +1406,12 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wdb_hardware_insert_success_null_values, setup_wdb, teardown_wdb),
         // Test wdb_port_insert
         cmocka_unit_test(test_wdb_port_insert_stmt_cache_fail),
+        cmocka_unit_test_setup_teardown(test_wdb_port_insert_success, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_port_insert_null_values_success, setup_wdb, teardown_wdb),
         // Test wdb_process_insert
-        cmocka_unit_test(test_wdb_process_insert_stmt_cache_fail)
+        cmocka_unit_test(test_wdb_process_insert_stmt_cache_fail),
+        cmocka_unit_test_setup_teardown(test_wdb_process_insert_success, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_process_insert_null_values_fail, setup_wdb, teardown_wdb)
      };
 
      return cmocka_run_group_tests(tests, NULL, NULL);
