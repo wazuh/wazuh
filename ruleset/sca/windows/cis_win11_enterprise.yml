@@ -5156,7 +5156,7 @@ checks:
       - cis: ["18.9.65.3.3.1"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\TerminalServices -> EnableUiaRedirection -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> EnableUiaRedirection -> 0'
 
   - id: 26338
     title: "Ensure 'Do not allow COM port redirection' is set to 'Enabled'"
