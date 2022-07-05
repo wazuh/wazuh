@@ -1169,11 +1169,15 @@ class Master(server.AbstractServer):
 
     async def cluster_agents_reconnect_controller(self):
         """Controller task in charge of maintaining agents balance in the cluster."""
-        if self.configuration['agent_reconnection']['disabled'] == 'yes':
-            self.logger.info("Agents reconnect is disabled.")
+        logger = self.setup_task_logger("Agents reconnect")
+        try:
+            if self.configuration['agent_reconnection']['disabled'] != 'no':
+                logger.info("Agents reconnect is disabled.")
+                return
+        except KeyError:
+            logger.info("Missing agent_reconnection configuration block.")
             return
 
-        logger = self.setup_task_logger("Agents reconnect")
         logger.info("Cluster agents reconnection started.")
 
         logger.info(
@@ -1181,9 +1185,13 @@ class Master(server.AbstractServer):
             f'before starting the agent-groups task, waiting for the workers connection.')
         await asyncio.sleep(self.cluster_items["intervals"]["master"]["agent_reconnection"]["nodes_stability_delay"])
 
-        # The master node is provisionally on the blacklisted nodes
+        try:
+            blacklisted_nodes = set(self.configuration['agent_reconnection']['node_blacklist'].split(','))
+        except KeyError:
+            blacklisted_nodes = set()
+
         self.agents_reconnect = agents_reconnect.AgentsReconnect(
-            logger=logger, blacklisted_nodes={"master-node"}, nodes=self.clients,
+            logger=logger, blacklisted_nodes=blacklisted_nodes, nodes=self.clients,
             nodes_stability_threshold=self.cluster_items["intervals"]["master"]["agent_reconnection"]["nodes_stability_threshold"]
         )
 
