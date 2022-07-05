@@ -87,7 +87,7 @@ namespace RSync
 
             void releaseContext(const RSYNC_HANDLE handle);
 
-            RSYNC_HANDLE create(const size_t maxQueueSize = 0);
+            RSYNC_HANDLE create(const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE);
 
             void startRSync(const RSYNC_HANDLE handle,
                             const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,

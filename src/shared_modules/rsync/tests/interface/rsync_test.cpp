@@ -35,7 +35,7 @@ constexpr auto SQL_STMT_INFO
     CREATE INDEX inode_index ON entry_path (inode_id);
     COMMIT;)"
 };
-constexpr size_t maxQueueSize {0};
+constexpr size_t maxQueueSize {UNLIMITED_QUEUE_SIZE};
 
 class CallbackMock
 {
