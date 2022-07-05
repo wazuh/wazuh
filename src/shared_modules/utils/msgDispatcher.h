@@ -15,6 +15,7 @@
 #include <mutex>
 #include <functional>
 #include <utility>
+#include "commonDefs.h"
 #include "threadDispatcher.h"
 
 namespace Utils
@@ -32,7 +33,7 @@ namespace Utils
         , public RawValueDecoder
     {
         public:
-            MsgDispatcher(const size_t maxQueueSize = 0)
+            MsgDispatcher(const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE)
                 : ThreadType
             {
                 std::bind(&DispatcherType::dispatch, this, std::placeholders::_1),
