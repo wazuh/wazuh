@@ -1237,7 +1237,7 @@ class WazuhDBQuery(object):
             r'(\()?' +  # A ( character.
             r'([\w.]+)' +  # Field name: name of the field to look on DB
             '([' + ''.join(self.query_operators.keys()) + "]{1,2})" +  # Operator: looks for =, !=, <, > or ~.
-            r"((?:[\[\]\w _\-.:\\/']+(?:\([\[\]\w _\-.:\\/']*\))*)+)" +  # Value: A string.
+            r"((?:[\[\]\w _\-.:\\/'{}]+(?:\([\[\]\w _\-.:\\/'{}]*\))*)+)" +  # Value: A string.
             r"(\))?" +  # A ) character
             "([" + ''.join(self.query_separators.keys()) + "])?"  # Separator: looks for ;, , or nothing.
         )
