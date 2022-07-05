@@ -1,0 +1,9 @@
+---
+name: default_decoder
+
+check:
+  - queue: 1
+
+normalize:
+  - map:
+      event.original: $message

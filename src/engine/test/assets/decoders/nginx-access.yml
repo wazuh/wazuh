@@ -1,0 +1,40 @@
+---
+name: nginx-access
+parents:
+  - default_decoder
+
+metadata:
+  description: Parses nginx access logs
+
+check:
+  - event.original: +exists
+
+parse:
+  logql:
+    # "lessons.example.com 192.168.0.1 - - [09/Jun/2020:12:10:39 -0700] \"GET /A%20Beka%20G1%20Howe/029_AND_30/15%20reading%20elephants.mp4 HTTP/1.1\" 206 7648063 \"http://lessons.example.com/A%20Beka%20G1%20Howe/029_AND_30/15%20reading%20elephants.mp4\" \"Mozilla/5.0 (Linux; Android 5.1.1; KFFOWI) AppleWebKit/537.36 (KHTML, like Gecko) Silk/81.2.16 like Chrome/81.0.4044.138 Safari/537.36\""
+    - event.original: >-
+        <destination.domain> <source.ip> - <user.name> [<timestamp/HTTPDATE>] "<http.request.method>
+        <url.original> HTTP/<http.version>" <http.response.status_code> <http.response.body.bytes>
+        "<http.request.referrer>" "<user_agent.original>"
+    - event.original: >-
+        <source.ip> - <user.name> [<timestamp/HTTPDATE>] "<http.request.method>
+        <url.original> HTTP/<http.version>" <http.response.status_code> <http.response.body.bytes>
+        "<http.request.referrer>" "<user_agent.original>"
+
+normalize:
+  - map:
+      url.domain: $destination.domain
+      event.kind: event
+      event.category: +s_append/web
+      event.type: +s_append/access
+      related.ip: +s_append/$source.ip/$destination.ip
+      related.user: +s_append/$user.name
+
+  - check:
+      - http.response.status_code: +i_lt/400
+    map:
+      event.outcome: success
+  - check:
+      - http.response.status_code: +i_ge/400
+    map:
+      event.outcome: failure
