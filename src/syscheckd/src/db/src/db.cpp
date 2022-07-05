@@ -25,12 +25,12 @@
 
 void DB::init(const int storage,
               const int syncInterval,
+              const uint32_t syncMaxInterval,
+              const uint32_t syncResponseTimeout,
               std::function<void(const std::string&)> callbackSyncFileWrapper,
               std::function<void(const std::string&)> callbackSyncRegistryWrapper,
               std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,
               const int fileLimit,
-              const uint32_t syncResponseTimeout,
-              const uint32_t syncMaxInterval,
               const int valueLimit,
               bool syncRegistryEnabled)
 {
@@ -44,14 +44,14 @@ void DB::init(const int storage,
     auto rsyncHandler { std::make_shared<RemoteSync>() };
 
     FIMDB::instance().init(syncInterval,
+                           syncMaxInterval,
+                           syncResponseTimeout,
                            callbackSyncFileWrapper,
                            callbackSyncRegistryWrapper,
                            callbackLogWrapper,
                            dbsyncHandler,
                            rsyncHandler,
                            fileLimit,
-                           syncResponseTimeout,
-                           syncMaxInterval,
                            valueLimit,
                            syncRegistryEnabled);
 }
@@ -117,11 +117,11 @@ extern "C" {
 #endif
 FIMDBErrorCode fim_db_init(int storage,
                            int sync_interval,
+                           uint32_t sync_max_interval,
+                           uint32_t sync_response_timeout,
                            fim_sync_callback_t sync_callback,
                            logging_callback_t log_callback,
                            int file_limit,
-                           uint32_t sync_response_timeout,
-                           uint32_t sync_max_interval,
                            int value_limit,
                            bool sync_registry_enabled)
 {
@@ -221,12 +221,12 @@ FIMDBErrorCode fim_db_init(int storage,
         };
         DB::instance().init(storage,
                             sync_interval,
+                            sync_max_interval,
+                            sync_response_timeout,
                             callbackSyncFileWrapper,
                             callbackSyncRegistryWrapper,
                             callbackLogWrapper,
                             file_limit,
-                            sync_response_timeout,
-                            sync_max_interval,
                             value_limit,
                             sync_registry_enabled);
         retVal = FIMDBErrorCode::FIMDB_OK;

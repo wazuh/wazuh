@@ -46,14 +46,14 @@ void FIMDB::sync()
 }
 
 void FIMDB::init(unsigned int syncInterval,
+                 const uint32_t syncMaxInterval,
+                 const uint32_t syncResponseTimeout,
                  std::function<void(const std::string&)> callbackSyncFileWrapper,
                  std::function<void(const std::string&)> callbackSyncRegistryWrapper,
                  std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,
                  std::shared_ptr<DBSync> dbsyncHandler,
                  std::shared_ptr<RemoteSync> rsyncHandler,
                  const int fileLimit,
-                 const uint32_t syncResponseTimeout,
-                 const uint32_t syncMaxInterval,
                  const int registryLimit,
                  const bool syncRegistryEnabled)
 {

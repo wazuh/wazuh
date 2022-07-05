@@ -219,11 +219,11 @@ TEST(DBTest, TestInvalidFimLimit)
     {
         fim_db_init(FIM_DB_MEMORY,
                     300,
+                    maxInterval,
+                    minSyncInterval,
                     mockSyncMessage,
                     mockLoggingFunction,
                     -1,
-                    minSyncInterval,
-                    maxInterval,
                     -1,
                     true)
     };
@@ -242,11 +242,11 @@ TEST(DBTest, TestValidFimLimit)
     {
         fim_db_init(FIM_DB_MEMORY,
                     300,
+                    maxInterval,
+                    minSyncInterval,
                     mockSyncMessage,
                     mockLoggingFunction,
                     100,
-                    minSyncInterval,
-                    maxInterval,
                     100000,
                     true)
     };

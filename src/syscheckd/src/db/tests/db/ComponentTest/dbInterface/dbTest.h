@@ -82,11 +82,11 @@ class DBTestFixture : public testing::Test {
 
             fim_db_init(FIM_DB_MEMORY,
                         300,
+                        600,
+                        10,
                         mockSyncMessage,
                         mockLoggingFunction,
                         MAX_FILE_LIMIT,
-                        10,
-                        600,
                         100000,
                         true);
 

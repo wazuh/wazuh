@@ -81,12 +81,12 @@ int main(int argc, const char* argv[])
             {
                 DB::instance().init(storageType,
                                     syncInterval,
+                                    syncMaxInterval,
+                                    syncResponseTimeout,
                                     callbackSyncFileWrapper,
                                     callbackSyncRegistryWrapper,
                                     callbackLogWrapper,
                                     fileLimit,
-                                    syncResponseTimeout,
-                                    syncMaxInterval,
                                     registryLimit,
                                     syncRegistryEnabled);
 

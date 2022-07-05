@@ -80,21 +80,21 @@ void fim_initialize() {
 #ifndef WIN32
     FIMDBErrorCode ret_val = fim_db_init(syscheck.database_store,
                                          syscheck.sync_interval,
+                                         syscheck.sync_max_interval,
+                                         syscheck.sync_response_timeout,
                                          fim_send_sync_state,
                                          loggingFunction,
                                          syscheck.file_entry_limit,
-                                         syscheck.sync_response_timeout,
-                                         syscheck.sync_max_interval,
                                          0,
                                          false);
 #else
     FIMDBErrorCode ret_val = fim_db_init(syscheck.database_store,
                                          syscheck.sync_interval,
+                                         syscheck.sync_max_interval,
+                                         syscheck.sync_response_timeout,
                                          fim_send_sync_state,
                                          loggingFunction,
                                          syscheck.file_entry_limit,
-                                         syscheck.sync_response_timeout,
-                                         syscheck.sync_max_interval,
                                          syscheck.db_entry_registry_limit,
                                          syscheck.enable_registry_synchronization);
 #endif

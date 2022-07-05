@@ -115,26 +115,26 @@ class FIMDB
          * @brief Initialize the FIMDB singleton class, setting the attributes needed.
          *
          * @param syncInterval Interval in second, to determine frequency of the synchronization
+         * @param syncMaxInterval Maximun interval allowed for synchronization process.
+         * @param syncResponseTimeout Minimum interval for synchronization process.
          * @param callbackSyncFileWrapper callback used to send sync messages
          * @param callbackSyncRegistryWrapper callback used to send sync messages
          * @param callbackLogWrapper callback used to send log messages
          * @param dbsyncHandler Pointer to a dbsync handler.
          * @param rsyncHandler Pointer to a rsync handler.
          * @param fileLimit Maximun number of file entries in database.
-         * @param syncResponseTimeout Minimum interval for synchronization process.
-         * @param syncMaxInterval Maximun interval allowed for synchronization process.
          * @param registryLimit Maximun number of registry values entries in database (only for Windows).
          * @param syncRegistryEnabled Flag to specify if the synchronization for registries is enabled (only for Windows).
          */
         void init(unsigned int syncInterval,
+                  const uint32_t syncMaxInterval,
+                  const uint32_t syncResponseTimeout,
                   std::function<void(const std::string&)> callbackSyncFileWrapper,
                   std::function<void(const std::string&)> callbackSyncRegistryWrapper,
                   std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,
                   std::shared_ptr<DBSync> dbsyncHandler,
                   std::shared_ptr<RemoteSync> rsyncHandler,
                   int fileLimit,
-                  const uint32_t syncResponseTimeout,
-                  const uint32_t syncMaxInterval,
                   int registryLimit = 0,
                   bool syncRegistryEnabled = true);
 
