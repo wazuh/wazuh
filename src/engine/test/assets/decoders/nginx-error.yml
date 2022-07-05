@@ -1,0 +1,24 @@
+name: nginx-error
+
+metadata:
+  description: Nginx error log decoder
+
+parents:
+  - default_decoder
+
+check:
+  - event.original: +exists
+
+parse:
+  logql:
+    - event.original: >-
+        <timestamp/NGINX_ERROR> [<log.level>] <process.pid>#<process.thread.id>:
+        *<_nginx.error.connection_id/number> <message>
+
+normalize:
+  - map:
+      event.module: nginx
+      service.type: nginx
+      event.kind: event
+      event.category: +s_append/web
+      event.type: +s_append/error
