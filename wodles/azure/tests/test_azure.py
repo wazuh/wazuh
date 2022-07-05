@@ -21,6 +21,10 @@ with patch('azure-logs.orm'):
 TEST_DATA_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 TEST_AUTHENTICATION_PATH = os.path.join(TEST_DATA_PATH, 'authentication_files')
 
+PAST_DATE = "2022-01-01T12:00:00.000000Z"
+PRESENT_DATE = "2022-06-15T12:00:00.000000Z"
+FUTURE_DATE = "2022-12-31T12:00:00.000000Z"
+
 
 def create_mocked_blob(blob_name: str, last_modified: datetime = None):
     """Return a fake blob with name and creation time.
@@ -147,24 +151,23 @@ def test_read_auth_file_ko(mock_logging, file_name):
 
 
 @pytest.mark.parametrize('min_date, max_date', [
-    ("2021-12-01T12:00:00.000000Z", "2022-01-15T12:00:00.000000Z"),
-    ("2022-01-15T12:00:00.000000Z", "2022-01-15T12:00:00.000000Z"),
-    ("2021-12-01T12:00:00.000000Z", "2022-02-01T12:00:00.000000Z"),
-    ("2022-01-15T12:00:00.000000Z", "2022-02-01T12:00:00.000000Z")
+    (PAST_DATE, PRESENT_DATE),
+    (PAST_DATE, FUTURE_DATE),
+    (PRESENT_DATE, PRESENT_DATE),
+    (PRESENT_DATE, FUTURE_DATE),
+    (FUTURE_DATE, FUTURE_DATE)
 ])
 @patch('azure-logs.orm.update_row')
 @patch('azure-logs.orm.get_row')
 def test_update_row_object(mock_get, mock_update, min_date, max_date):
     """Test update_row_object alter the database values when corresponds."""
-    old_min_date = "2022-01-01T12:00:00.000000Z"
-    old_max_date = "2022-01-31T12:00:00.000000Z"
     mock_table = MagicMock(__tablename__="")
-    mock_get.return_value = MagicMock(min_processed_date=old_min_date, max_processed_date=old_max_date)
+    mock_get.return_value = MagicMock(min_processed_date=PRESENT_DATE, max_processed_date=PRESENT_DATE)
     azure.update_row_object(table=mock_table, md5_hash="", new_min=min_date, new_max=max_date, query="")
-    if min_date < old_min_date or max_date > old_max_date:
-        mock_update.assert_called_with(table=mock_table, md5="",
-                                       min_date=min_date if min_date < old_min_date else old_min_date,
-                                       max_date=max_date if max_date > old_max_date else old_max_date, query="")
+    if min_date < PRESENT_DATE or max_date > PRESENT_DATE:
+        mock_update.assert_called_with(table=mock_table, md5="", query="",
+                                       min_date=min_date if min_date < PRESENT_DATE else PRESENT_DATE,
+                                       max_date=max_date if max_date > PRESENT_DATE else PRESENT_DATE)
     else:
         mock_update.assert_not_called()
 
@@ -181,13 +184,13 @@ def test_update_row_object_ko(mock_get, mock_logging):
 
 @patch('azure-logs.logging.error')
 @patch('azure-logs.orm.update_row', side_effect=azure.orm.AzureORMError)
-@patch('azure-logs.orm.get_row', return_value=MagicMock(min_processed_date="2022-01-01T12:00:00.000000Z",
-                                                        max_processed_date="2022-01-31T12:00:00.000000Z"))
+@patch('azure-logs.orm.get_row', return_value=MagicMock(min_processed_date=PRESENT_DATE,
+                                                        max_processed_date=PRESENT_DATE))
 def test_update_row_object_ko_update(mock_get, mock_update, mock_logging):
     """Test update_row_object handles ORM errors as expected."""
     with pytest.raises(SystemExit) as err:
-        azure.update_row_object(table=MagicMock(__tablename__=""), md5_hash=None, new_min="2000-01-01T12:00:00.000000Z",
-                                new_max="2022-12-31T12:00:00.000000Z")
+        azure.update_row_object(table=MagicMock(__tablename__=""), md5_hash=None, new_min=PAST_DATE,
+                                new_max=FUTURE_DATE)
     assert err.value.code == 1
     mock_logging.assert_called_once()
 
@@ -272,10 +275,10 @@ def test_start_log_analytics_ko_credentials(mock_logging):
 
 
 @pytest.mark.parametrize('min_date, max_date, desired_date, reparse', [
-    ("2022-01-15T12:00:00.000000Z", "2022-12-15T12:00:00.000000Z", "2021-12-01T12:00:00.000000Z", False),
-    ("2021-12-01T12:00:00.000000Z", "2022-01-15T12:00:00.000000Z", "2022-12-15T12:00:00.000000Z", False),
-    ("2021-12-01T12:00:00.000000Z", "2022-12-15T12:00:00.000000Z", "2022-01-15T12:00:00.000000Z", False),
-    ("2000-12-01T12:00:00.000000Z", "2000-12-15T12:00:00.000000Z", "2022-01-15T12:00:00.000000Z", True),
+    (PRESENT_DATE, FUTURE_DATE, PAST_DATE, False),
+    (PAST_DATE, PRESENT_DATE, FUTURE_DATE, False),
+    (PAST_DATE, FUTURE_DATE, PRESENT_DATE, False),
+    (PAST_DATE, PAST_DATE, PRESENT_DATE, True),
 ])
 @patch('azure-logs.offset_to_datetime')
 @patch('azure-logs.create_new_row')
@@ -452,10 +455,10 @@ def test_start_graph_ko_credentials(mock_logging):
 
 
 @pytest.mark.parametrize('min_date, max_date, desired_date, reparse', [
-    ("2022-01-15T12:00:00.000000Z", "2022-12-15T12:00:00.000000Z", "2021-12-01T12:00:00.000000Z", False),
-    ("2021-12-01T12:00:00.000000Z", "2022-01-15T12:00:00.000000Z", "2022-12-15T12:00:00.000000Z", False),
-    ("2021-12-01T12:00:00.000000Z", "2022-12-15T12:00:00.000000Z", "2022-01-15T12:00:00.000000Z", False),
-    ("2000-12-01T12:00:00.000000Z", "2000-12-15T12:00:00.000000Z", "2022-01-15T12:00:00.000000Z", True),
+    (PRESENT_DATE, FUTURE_DATE, PAST_DATE, False),
+    (PAST_DATE, PRESENT_DATE, FUTURE_DATE, False),
+    (PAST_DATE, FUTURE_DATE, PRESENT_DATE, False),
+    (PAST_DATE, PAST_DATE, PRESENT_DATE, True),
 ])
 @patch('azure-logs.logging.info')
 @patch('azure-logs.offset_to_datetime')
@@ -565,8 +568,7 @@ def test_start_storage(mock_auth, mock_blob, mock_get_row, mock_create, mock_get
     offset = "1d"
     azure.args = MagicMock(storage_auth_path=auth_path, account_name=name, account_key=key, container=container_name,
                            storage_time_offset=offset)
-    mock_create.return_value = MagicMock(min_processed_date="2022-01-15T12:00:00.000000Z",
-                                         max_processed_date="2022-01-15T12:00:00.000000Z")
+    mock_create.return_value = MagicMock(min_processed_date=PRESENT_DATE, max_processed_date=PRESENT_DATE)
     mock_auth.return_value = (name, key)
     m = MagicMock()
     m.list_containers.return_value = [MagicMock(name=container_name)]
@@ -627,33 +629,23 @@ def test_start_storage_ko_credentials(mock_logging):
 
 @pytest.mark.parametrize('blob_date, min_date, max_date, desired_date, extension, reparse, json_file, inline, send_events', [
     # blob_date < desired_date - Blobs should be skipped
-    ("2022-01-01T12:00:00.000000Z", "2000-01-01T12:00:00.000000Z", "2000-01-01T12:00:00.000000Z",
-     "2022-12-31T12:00:00.000000Z", None, False, False, False, False),
+    (PRESENT_DATE, PAST_DATE, PAST_DATE, FUTURE_DATE, None, False, False, False, False),
     # blob_date > desired_date, min_date == blob_date and blob_date < max_date - Blobs should be skipped
-    ("2022-01-01T12:00:00.000000Z", "2022-01-01T12:00:00.000000Z", "2022-12-31T12:00:00.000000Z",
-     "2000-01-01T12:00:00.000000Z", None, False, False, False, False),
+    (PRESENT_DATE, PRESENT_DATE, FUTURE_DATE, PAST_DATE, None, False, False, False, False),
     # blob_date > desired_date, min_date < blob_date and blob_date == max_date - Blobs should be skipped
-    ("2022-12-31T12:00:00.000000Z", "2022-01-01T12:00:00.000000Z", "2022-12-31T12:00:00.000000Z",
-     "2000-01-01T12:00:00.000000Z", None, False, False, False, False),
+    (FUTURE_DATE, PRESENT_DATE, FUTURE_DATE, PAST_DATE, None, False, False, False, False),
     # blob_date > desired_date, min_date < blob_date and blob_date < max_date - Blobs should be skipped
-    ("2022-12-01T12:00:00.000000Z", "2022-01-01T12:00:00.000000Z", "2022-12-31T12:00:00.000000Z",
-     "2000-01-01T12:00:00.000000Z", None, False, False, False, False),
+    (PAST_DATE, PRESENT_DATE, FUTURE_DATE, PAST_DATE, None, False, False, False, False),
     # blob_date < min_datetime - Blobs must be processed
-    ("2000-01-01T12:00:00.000000Z", "2022-01-01T12:00:00.000000Z", "2022-12-31T12:00:00.000000Z",
-     "2000-01-01T12:00:00.000000Z", None, False, False, False, True),
+    (PAST_DATE, PRESENT_DATE, FUTURE_DATE, PAST_DATE, None, False, False, False, True),
     # blob_date > max_datetime - Blobs must be processed
-    ("2022-12-31T12:00:00.000000Z", "2000-01-01T12:00:00.000000Z", "2022-01-01T12:00:00.000000Z",
-     "2022-12-31T12:00:00.000000Z", None, False, False, True, True),
+    (FUTURE_DATE, PAST_DATE, PRESENT_DATE, FUTURE_DATE, None, False, False, True, True),
     # Reparse old logs
-    ("2022-12-31T12:00:00.000000Z", "2022-12-31T12:00:00.000000Z", "2022-12-31T12:00:00.000000Z",
-     "2022-12-31T12:00:00.000000Z", None, True, False, True, True),
+    (FUTURE_DATE, FUTURE_DATE, FUTURE_DATE, FUTURE_DATE, None, True, False, True, True),
     # Only .json files must be processed
-    ("2022-12-31T12:00:00.000000Z", "2000-01-01T12:00:00.000000Z", "2022-01-01T12:00:00.000000Z",
-     "2022-12-31T12:00:00.000000Z", ".json", False, False, False, True),
-    ("2022-12-31T12:00:00.000000Z", "2000-01-01T12:00:00.000000Z", "2022-01-01T12:00:00.000000Z",
-     "2022-12-31T12:00:00.000000Z", ".json", False, False, True, True),
-    ("2022-12-31T12:00:00.000000Z", "2000-01-01T12:00:00.000000Z", "2022-01-01T12:00:00.000000Z",
-     "2022-12-31T12:00:00.000000Z", ".json", False, True, False, True),
+    (FUTURE_DATE, PAST_DATE, PRESENT_DATE, FUTURE_DATE, ".json", False, False, False, True),
+    (FUTURE_DATE, PAST_DATE, PRESENT_DATE, FUTURE_DATE, ".json", False, False, True, True),
+    (FUTURE_DATE, PAST_DATE, PRESENT_DATE, FUTURE_DATE, ".json", False, True, False, True),
 ])
 @patch('azure-logs.update_row_object')
 @patch('azure-logs.send_message')
