@@ -17,6 +17,9 @@
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 #include "../headers/os_err.h"
 
+#define ALLOW_ZERO      true
+#define NOT_ALLOW_ZERO  false
+
 typedef struct test_struct {
     wdb_t *wdb;
     char *output;
@@ -403,36 +406,36 @@ void configure_sqlite3_bind_text(int position, const char* string) {
     }
 }
 
-void configure_sqlite3_bind_int64(int position, int number) {
-    if (number < 0) {
-        will_return(__wrap_sqlite3_bind_null, OS_SUCCESS);
-        expect_value(__wrap_sqlite3_bind_null, index, position);
-    } else {
+void configure_sqlite3_bind_int64(int position, int number, bool allow_zero) {
+    if (number > 0 || (0 == number && allow_zero)) {
         will_return(__wrap_sqlite3_bind_int64, OS_SUCCESS);
         expect_value(__wrap_sqlite3_bind_int64, index, position);
         expect_value(__wrap_sqlite3_bind_int64, value, number);
+    } else {
+        will_return(__wrap_sqlite3_bind_null, OS_SUCCESS);
+        expect_value(__wrap_sqlite3_bind_null, index, position);
     }
 }
 
-void configure_sqlite3_bind_int(int position, int number) {
-    if (number < 0) {
-        will_return(__wrap_sqlite3_bind_null, OS_SUCCESS);
-        expect_value(__wrap_sqlite3_bind_null, index, position);
-    } else {
+void configure_sqlite3_bind_int(int position, int number, bool allow_zero) {
+    if (number > 0 || (0 == number && allow_zero)) {
         will_return(__wrap_sqlite3_bind_int, OS_SUCCESS);
         expect_value(__wrap_sqlite3_bind_int, index, position);
         expect_value(__wrap_sqlite3_bind_int, value, number);
+    } else {
+        will_return(__wrap_sqlite3_bind_null, OS_SUCCESS);
+        expect_value(__wrap_sqlite3_bind_null, index, position);
     }
 }
 
-void configure_sqlite3_bind_double(int position, double number) {
-    if (number < 0) {
-        will_return(__wrap_sqlite3_bind_null, OS_SUCCESS);
-        expect_value(__wrap_sqlite3_bind_null, index, position);
-    } else {
+void configure_sqlite3_bind_double(int position, double number, bool allow_zero) {
+    if (number > 0 || (0 == number && allow_zero)) {
         will_return(__wrap_sqlite3_bind_double, OS_SUCCESS);
         expect_value(__wrap_sqlite3_bind_double, index, position);
         expect_value(__wrap_sqlite3_bind_double, value, number);
+    } else {
+        will_return(__wrap_sqlite3_bind_null, OS_SUCCESS);
+        expect_value(__wrap_sqlite3_bind_null, index, position);
     }
 }
 
@@ -446,16 +449,16 @@ void configure_wdb_netinfo_insert(netinfo_object test_netinfo, int sqlite_code) 
     configure_sqlite3_bind_text(4, test_netinfo.adapter);
     configure_sqlite3_bind_text(5, test_netinfo.type);
     configure_sqlite3_bind_text(6, test_netinfo._state);
-    configure_sqlite3_bind_int(7, test_netinfo.mtu);
+    configure_sqlite3_bind_int(7, test_netinfo.mtu, NOT_ALLOW_ZERO);
     configure_sqlite3_bind_text(8, test_netinfo.mac);
-    configure_sqlite3_bind_int64(9, test_netinfo.tx_packets);
-    configure_sqlite3_bind_int64(10, test_netinfo.rx_packets);
-    configure_sqlite3_bind_int64(11, test_netinfo.tx_bytes);
-    configure_sqlite3_bind_int64(12, test_netinfo.rx_bytes);
-    configure_sqlite3_bind_int64(13, test_netinfo.tx_errors);
-    configure_sqlite3_bind_int64(14, test_netinfo.rx_errors);
-    configure_sqlite3_bind_int64(15, test_netinfo.tx_dropped);
-    configure_sqlite3_bind_int64(16, test_netinfo.rx_dropped);
+    configure_sqlite3_bind_int64(9, test_netinfo.tx_packets, ALLOW_ZERO);
+    configure_sqlite3_bind_int64(10, test_netinfo.rx_packets, ALLOW_ZERO);
+    configure_sqlite3_bind_int64(11, test_netinfo.tx_bytes, ALLOW_ZERO);
+    configure_sqlite3_bind_int64(12, test_netinfo.rx_bytes, ALLOW_ZERO);
+    configure_sqlite3_bind_int64(13, test_netinfo.tx_errors, ALLOW_ZERO);
+    configure_sqlite3_bind_int64(14, test_netinfo.rx_errors, ALLOW_ZERO);
+    configure_sqlite3_bind_int64(15, test_netinfo.tx_dropped, ALLOW_ZERO);
+    configure_sqlite3_bind_int64(16, test_netinfo.rx_dropped, ALLOW_ZERO);
     configure_sqlite3_bind_text(17, test_netinfo.checksum);
     configure_sqlite3_bind_text(18, test_netinfo.item_id);
 
@@ -472,7 +475,7 @@ void configure_wdb_netproto_insert(netproto_object test_netproto, int sqlite_cod
     configure_sqlite3_bind_text(3, test_netproto.type == WDB_NETADDR_IPV4 ? "ipv4" : "ipv6");
     configure_sqlite3_bind_text(4, test_netproto.gateway);
     configure_sqlite3_bind_text(5, test_netproto.dhcp);
-    configure_sqlite3_bind_int64(6, test_netproto.metric);
+    configure_sqlite3_bind_int64(6, test_netproto.metric, ALLOW_ZERO);
     configure_sqlite3_bind_text(7, test_netproto.checksum);
     configure_sqlite3_bind_text(8, test_netproto.item_id);
 
@@ -520,7 +523,7 @@ void configure_wdb_osinfo_insert(osinfo_object test_osinfo, int sqlite_code) {
     configure_sqlite3_bind_text(17, test_osinfo.os_display_version);
     configure_sqlite3_bind_text(18, test_osinfo.checksum);
     configure_sqlite3_bind_text(19, test_osinfo.reference);
-    configure_sqlite3_bind_int(20, test_osinfo.triaged);
+    configure_sqlite3_bind_int(20, test_osinfo.triaged, ALLOW_ZERO);
 
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, sqlite_code);
@@ -536,7 +539,7 @@ void configure_wdb_package_insert(package_object test_package, int sqlite_code) 
     configure_sqlite3_bind_text(4, test_package.name);
     configure_sqlite3_bind_text(5, test_package.priority);
     configure_sqlite3_bind_text(6, test_package.section);
-    configure_sqlite3_bind_int64(7, test_package.size);
+    configure_sqlite3_bind_int64(7, test_package.size, ALLOW_ZERO);
     configure_sqlite3_bind_text(8, test_package.vendor);
     configure_sqlite3_bind_text(9, test_package.install_time);
     configure_sqlite3_bind_text(10, test_package.version);
@@ -545,7 +548,7 @@ void configure_wdb_package_insert(package_object test_package, int sqlite_code) 
     configure_sqlite3_bind_text(13, test_package.source);
     configure_sqlite3_bind_text(14, test_package.description);
     configure_sqlite3_bind_text(15, test_package.location);
-    configure_sqlite3_bind_int(16, test_package.triaged);
+    configure_sqlite3_bind_int(16, test_package.triaged, ALLOW_ZERO);
     configure_sqlite3_bind_text(17, test_package.checksum);
     configure_sqlite3_bind_text(18, test_package.item_id);
 
@@ -574,11 +577,11 @@ void configure_wdb_hardware_insert(hardware_object test_hardware, int sqlite_cod
     configure_sqlite3_bind_text(2, test_hardware.scan_time);
     configure_sqlite3_bind_text(3, test_hardware.serial);
     configure_sqlite3_bind_text(4, test_hardware.cpu_name);
-    configure_sqlite3_bind_int(5, test_hardware.cpu_cores);
-    configure_sqlite3_bind_double(6, test_hardware.cpu_mhz);
-    configure_sqlite3_bind_int64(7, test_hardware.ram_total);
-    configure_sqlite3_bind_int64(8, test_hardware.ram_free);
-    configure_sqlite3_bind_int(9, test_hardware.ram_usage);
+    configure_sqlite3_bind_int(5, test_hardware.cpu_cores, NOT_ALLOW_ZERO);
+    configure_sqlite3_bind_double(6, test_hardware.cpu_mhz, NOT_ALLOW_ZERO);
+    configure_sqlite3_bind_int64(7, test_hardware.ram_total, NOT_ALLOW_ZERO);
+    configure_sqlite3_bind_int64(8, test_hardware.ram_free, NOT_ALLOW_ZERO);
+    configure_sqlite3_bind_int(9, test_hardware.ram_usage, NOT_ALLOW_ZERO);
     configure_sqlite3_bind_text(10, test_hardware.checksum);
 
     will_return(__wrap_sqlite3_step, 0);
@@ -593,14 +596,14 @@ void configure_wdb_port_insert(port_object test_port, int sqlite_code) {
     configure_sqlite3_bind_text(2, test_port.scan_time);
     configure_sqlite3_bind_text(3, test_port.protocol);
     configure_sqlite3_bind_text(4, test_port.local_ip);
-    configure_sqlite3_bind_int(5, test_port.local_port);
+    configure_sqlite3_bind_int(5, test_port.local_port, ALLOW_ZERO);
     configure_sqlite3_bind_text(6, test_port.remote_ip);
-    configure_sqlite3_bind_int(7, test_port.remote_port);
-    configure_sqlite3_bind_int(8, test_port.tx_queue);
-    configure_sqlite3_bind_int(9, test_port.rx_queue);
-    configure_sqlite3_bind_int64(10, test_port.inode);
+    configure_sqlite3_bind_int(7, test_port.remote_port, ALLOW_ZERO);
+    configure_sqlite3_bind_int(8, test_port.tx_queue, ALLOW_ZERO);
+    configure_sqlite3_bind_int(9, test_port.rx_queue, ALLOW_ZERO);
+    configure_sqlite3_bind_int64(10, test_port.inode, ALLOW_ZERO);
     configure_sqlite3_bind_text(11, test_port.state);
-    configure_sqlite3_bind_int(12, test_port.pid);
+    configure_sqlite3_bind_int(12, test_port.pid, ALLOW_ZERO);
     configure_sqlite3_bind_text(13, test_port.process);
     configure_sqlite3_bind_text(14, test_port.checksum);
     configure_sqlite3_bind_text(15, test_port.item_id);
@@ -615,12 +618,12 @@ void configure_wdb_process_insert(process_object test_process, int sqlite_code) 
 
     configure_sqlite3_bind_text(1, test_process.scan_id);
     configure_sqlite3_bind_text(2, test_process.scan_time);
-    configure_sqlite3_bind_int(3, test_process.pid);
+    configure_sqlite3_bind_int(3, test_process.pid, ALLOW_ZERO);
     configure_sqlite3_bind_text(4, test_process.name);
     configure_sqlite3_bind_text(5, test_process.state);
-    configure_sqlite3_bind_int(6, test_process.ppid);
-    configure_sqlite3_bind_int(7, test_process.utime);
-    configure_sqlite3_bind_int(8, test_process.stime);
+    configure_sqlite3_bind_int(6, test_process.ppid, ALLOW_ZERO);
+    configure_sqlite3_bind_int(7, test_process.utime, ALLOW_ZERO);
+    configure_sqlite3_bind_int(8, test_process.stime, ALLOW_ZERO);
     configure_sqlite3_bind_text(9, test_process.cmd);
     configure_sqlite3_bind_text(10, test_process.argvs);
     configure_sqlite3_bind_text(11, test_process.euser);
@@ -630,19 +633,19 @@ void configure_wdb_process_insert(process_object test_process, int sqlite_code) 
     configure_sqlite3_bind_text(15, test_process.rgroup);
     configure_sqlite3_bind_text(16, test_process.sgroup);
     configure_sqlite3_bind_text(17, test_process.fgroup);
-    configure_sqlite3_bind_int(18, test_process.priority);
-    configure_sqlite3_bind_int(19, test_process.nice);
-    configure_sqlite3_bind_int(20, test_process.size);
-    configure_sqlite3_bind_int(21, test_process.vm_size);
-    configure_sqlite3_bind_int(22, test_process.resident);
-    configure_sqlite3_bind_int(23, test_process.share);
-    configure_sqlite3_bind_int(24, test_process.start_time);
-    configure_sqlite3_bind_int(25, test_process.pgrp);
-    configure_sqlite3_bind_int(26, test_process.session);
-    configure_sqlite3_bind_int(27, test_process.nlwp);
-    configure_sqlite3_bind_int(28, test_process.tgid);
-    configure_sqlite3_bind_int(29, test_process.tty);
-    configure_sqlite3_bind_int(30, test_process.processor);
+    configure_sqlite3_bind_int(18, test_process.priority, ALLOW_ZERO);
+    configure_sqlite3_bind_int(19, test_process.nice, ALLOW_ZERO);
+    configure_sqlite3_bind_int(20, test_process.size, ALLOW_ZERO);
+    configure_sqlite3_bind_int(21, test_process.vm_size, ALLOW_ZERO);
+    configure_sqlite3_bind_int(22, test_process.resident, ALLOW_ZERO);
+    configure_sqlite3_bind_int(23, test_process.share, ALLOW_ZERO);
+    configure_sqlite3_bind_int(24, test_process.start_time, ALLOW_ZERO);
+    configure_sqlite3_bind_int(25, test_process.pgrp, ALLOW_ZERO);
+    configure_sqlite3_bind_int(26, test_process.session, ALLOW_ZERO);
+    configure_sqlite3_bind_int(27, test_process.nlwp, ALLOW_ZERO);
+    configure_sqlite3_bind_int(28, test_process.tgid, ALLOW_ZERO);
+    configure_sqlite3_bind_int(29, test_process.tty, ALLOW_ZERO);
+    configure_sqlite3_bind_int(30, test_process.processor, ALLOW_ZERO);
     configure_sqlite3_bind_text(31, test_process.checksum);
 
     will_return(__wrap_sqlite3_step, 0);
@@ -1252,6 +1255,8 @@ static void test_wdb_hardware_insert_success_null_values(void **state) {
     temp_hardware.cpu_cores = -1;
     temp_hardware.cpu_mhz = -1;
     temp_hardware.ram_usage = -1;
+    temp_hardware.ram_total = 0;
+    temp_hardware.ram_free = 0;
 
     configure_wdb_hardware_insert(temp_hardware, SQLITE_DONE);
 
