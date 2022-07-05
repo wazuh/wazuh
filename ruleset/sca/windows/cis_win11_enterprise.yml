@@ -5281,7 +5281,7 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> SecurityLayer -> 2'
 
   - id: 26346
-    title: "Ensure 'Require user authentication for remoteconnections by using Network Level Authentication' is set to 'Enabled'"
+    title: "Ensure 'Require user authentication for remote connections by using Network Level Authentication' is set to 'Enabled'"
     description: "This policy setting allows you to specify whether to require user authentication for remote connections to the RD Session Host server by using Network Level Authentication. The recommended state for this setting is: Enabled. "
     rationale: "Requiring that user authentication occur earlier in the remote connection process enhances security. "
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Security\\Require user authentication for remote connections by using Network Level Authentication Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In the Microsoft Windows Vista Administrative Templates, this setting was initially named Require user authentication using RDP 6.0 for remote connections, but it was renamed starting with the Windows Server 2008 (non-R2) Administrative Templates. "
@@ -5302,7 +5302,7 @@ checks:
       - cis_csc: ["3.10","9.2"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MinEncryptionLevel -> 2'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MinEncryptionLevel -> 3'
 
   - id: 26348
     title: "Ensure 'Set time limit for active but idle Remote Desktop Services sessions' is set to 'Enabled: 15 minutes or less'"
