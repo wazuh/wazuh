@@ -5613,7 +5613,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\PhishingFilter -> PreventOverrideAppRepUnknown -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\MicrosoftEdge\PhishingFilter -> PreventOverride -> 1'
 
   - id: 26367
     title: "Ensure 'Enables or disables Windows Game Recording and Broadcasting' is set to 'Disabled'"
